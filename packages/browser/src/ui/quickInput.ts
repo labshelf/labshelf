@@ -4,9 +4,6 @@
  * (Escape, click outside). Used where the VS Code extension calls
  * `window.showQuickPick` / `window.showInputBox`, so folder moves and renames
  * feel the same in the browser.
- *
- * @depends ui/dom, ui/icons
- * @dependents library-page controllers (folder CRUD, move papers, add from tab)
  */
 import { el, highlight } from "./dom";
 import { icon } from "./icons";

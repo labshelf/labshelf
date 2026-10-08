@@ -72,7 +72,6 @@ interface Box {
 
 /**
  * Draws a rounded box with a title and clears its inside.
- * @usedBy drawOverlay
  * @returns the inner area
  */
 export function drawBox(screen: Screen, box: Box, title: string): Box {
@@ -91,7 +90,6 @@ export function drawBox(screen: Screen, box: Box, title: string): Box {
 
 /**
  * Draws a text field with a block cursor, scrolled so the cursor stays visible.
- * @usedBy drawOverlay, ui/render (inline input)
  * @returns void
  */
 export function drawField(screen: Screen, x: number, y: number, width: number, state: TextInputState, style: Style = theme.text): void {
@@ -116,7 +114,6 @@ function centered(screen: Screen, w: number, h: number): Box {
 
 /**
  * Draws whichever overlay is open.
- * @usedBy ui/render
  * @returns void
  */
 export function drawOverlay(screen: Screen, overlay: Overlay): void {
@@ -180,7 +177,6 @@ const HELP_GROUPS: BindingGroup[] = ["Navigate", "Find", "Select", "Papers", "Co
 
 /**
  * The help screen's lines, generated from the keymap.
- * @usedBy drawHelp, tests
  * @returns [keys, description, isHeader] rows
  */
 export function helpRows(): Array<{ keys: string; desc: string; header?: boolean }> {

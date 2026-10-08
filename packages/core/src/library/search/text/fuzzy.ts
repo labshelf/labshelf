@@ -5,13 +5,14 @@
 import { fold } from "./fold.js";
 
 /**
- * @returns the score (higher is better) and matched positions, or undefined when the pattern is not a subsequence
+ * @returns the score (higher is better), or undefined when the pattern is not a subsequence
  */
-export function fuzzyScore(pattern: string, text: string): { score: number; positions: number[] } | undefined {
+export function fuzzyScore(pattern: string, text: string): { score: number } | undefined {
   const p = fold(pattern).replace(/\s+/g, "");
-  if (!p) { return { score: 0, positions: [] }; }
+  if (!p) { return { score: 0 }; }
   const t = fold(text);
-  const positions: number[] = [];
+  let firstMatch = 0;
+  let matched = 0;
   let score = 0;
   let ti = 0;
   let streak = 0;
@@ -19,14 +20,15 @@ export function fuzzyScore(pattern: string, text: string): { score: number; posi
     const found = t.indexOf(ch, ti);
     if (found < 0) { return undefined; }
     const atWordStart = found === 0 || /[\s\-_/.:,(]/.test(t[found - 1] ?? "");
-    streak = found === ti && positions.length > 0 ? streak + 1 : 0;
+    streak = found === ti && matched > 0 ? streak + 1 : 0;
     score += 1 + streak * 3 + (atWordStart ? 4 : 0) - Math.min(found - ti, 10) * 0.2;
-    positions.push(found);
+    if (matched === 0) { firstMatch = found; }
+    matched++;
     ti = found + 1;
   }
   // Prefer shorter haystacks and earlier first matches.
-  score -= (positions[0] ?? 0) * 0.05 + t.length * 0.01;
-  return { score, positions };
+  score -= firstMatch * 0.05 + t.length * 0.01;
+  return { score };
 }
 
 /**

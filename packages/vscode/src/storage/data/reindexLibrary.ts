@@ -9,7 +9,7 @@ import { EVENTS, diffPapers } from "@labshelf/core";
 import type { EventBus, LibraryScan, PaperDiff, PaperRecord } from "@labshelf/core";
 
 /** The slice of the database the reindex reads and writes. */
-export interface ReindexableDatabase {
+interface ReindexableDatabase {
   listPapers(): Promise<PaperRecord[]>;
   upsertPaper(paper: PaperRecord): Promise<void>;
   deletePaper(id: string): Promise<void>;

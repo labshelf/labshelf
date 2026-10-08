@@ -1,12 +1,8 @@
 import { fuzzyScore, rankFuzzy } from "@labshelf/core";
 
 describe("fuzzyScore", () => {
-  it("matches a subsequence and reports the matched positions in order", () => {
-    const match = fuzzyScore("atn", "Attention Is All You Need");
-    expect(match).toBeDefined();
-    expect(match!.positions).toHaveLength(3);
-    expect(match!.positions[0]).toBe(0);
-    expect([...match!.positions].sort((a, b) => a - b)).toEqual(match!.positions);
+  it("matches a subsequence of the text", () => {
+    expect(fuzzyScore("atn", "Attention Is All You Need")).toBeDefined();
   });
 
   it("returns undefined when the pattern is not a subsequence of the text", () => {
@@ -16,14 +12,14 @@ describe("fuzzyScore", () => {
   });
 
   it("matches everything, with score 0, for an empty or blank pattern", () => {
-    expect(fuzzyScore("", "anything")).toEqual({ score: 0, positions: [] });
-    expect(fuzzyScore("   ", "anything")).toEqual({ score: 0, positions: [] });
+    expect(fuzzyScore("", "anything")).toEqual({ score: 0 });
+    expect(fuzzyScore("   ", "anything")).toEqual({ score: 0 });
   });
 
   it("ignores case, accents and spaces in the pattern", () => {
     expect(fuzzyScore("SCH", "Schrödinger")).toBeDefined();
     expect(fuzzyScore("schrod", "Schrödinger")).toBeDefined();
-    expect(fuzzyScore("a t n", "Attention")!.positions).toEqual(fuzzyScore("atn", "Attention")!.positions);
+    expect(fuzzyScore("a t n", "Attention")).toEqual(fuzzyScore("atn", "Attention"));
   });
 
   it("scores consecutive matches above scattered ones", () => {

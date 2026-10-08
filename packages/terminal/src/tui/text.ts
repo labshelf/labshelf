@@ -2,9 +2,6 @@
  * Display-width aware text helpers: how many terminal cells a string takes, and truncating, padding and wrapping by
  * cells rather than by UTF-16 units. Paper titles carry accents, CJK names and the odd ligature, so counting
  * characters would misalign every column.
- *
- * @depends none
- * @dependents tui/screen, ui/* views
  */
 
 const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
@@ -45,7 +42,6 @@ function isWide(cp: number): boolean {
 
 /**
  * Cells taken by one grapheme cluster: 0 for marks and format characters, 2 for wide characters, 1 otherwise.
- * @usedBy stringWidth, graphemes, tui/screen
  * @returns 0, 1 or 2
  */
 export function graphemeWidth(grapheme: string): 0 | 1 | 2 {
@@ -60,7 +56,6 @@ export function graphemeWidth(grapheme: string): 0 | 1 | 2 {
 
 /**
  * Splits text into grapheme clusters with their widths, replacing control characters with a visible placeholder.
- * @usedBy tui/screen, truncate, wrap
  * @returns the clusters in order
  */
 export function graphemes(text: string): Array<{ g: string; w: 0 | 1 | 2 }> {
@@ -81,7 +76,6 @@ export function graphemes(text: string): Array<{ g: string; w: 0 | 1 | 2 }> {
 }
 
 /**
- * @usedBy truncate, padEnd, ui views
  * @returns the number of terminal cells the text takes
  */
 export function stringWidth(text: string): number {
@@ -93,7 +87,6 @@ export function stringWidth(text: string): number {
 
 /**
  * Cuts text to at most `width` cells, ending with an ellipsis when something was cut.
- * @usedBy ui views
  * @returns the truncated text
  */
 export function truncate(text: string, width: number, ellipsis = "…"): string {
@@ -113,7 +106,6 @@ export function truncate(text: string, width: number, ellipsis = "…"): string 
 
 /**
  * Pads (or truncates) text to exactly `width` cells.
- * @usedBy ui views
  * @returns the padded text
  */
 export function fit(text: string, width: number): string {
@@ -123,7 +115,6 @@ export function fit(text: string, width: number): string {
 
 /**
  * Word-wraps text into lines of at most `width` cells; words longer than a line are broken. Newlines are kept.
- * @usedBy ui/preview
  * @returns the wrapped lines
  */
 export function wrap(text: string, width: number): string[] {
@@ -173,7 +164,6 @@ export function wrap(text: string, width: number): string[] {
  * Replaces control characters (except newline and tab) with U+FFFD, for text printed straight to a terminal: titles
  * and notes come from PDFs and other devices and could otherwise carry escape sequences (OSC 52 clipboard writes,
  * cursor moves, window titles).
- * @usedBy main (CLI output)
  * @returns the safe text
  */
 export function sanitizeForTerminal(text: string): string {
