@@ -1,5 +1,5 @@
 /**
- * Test fakes for sync tests: in-memory file system, remote provider and lock store, and timers fired by hand.
+ * Test fakes for sync tests: in-memory file system, remote provider, lock store and token store, and timers fired by hand.
  */
 import type {
   LocalFileSystem,
@@ -10,6 +10,8 @@ import type {
   RemoteProvider,
   SyncTimerId,
   SyncTimers,
+  TokenData,
+  TokenStore,
 } from "../../src/index.js";
 
 /** In-memory filesystem keyed by absolute POSIX paths. */
@@ -282,5 +284,30 @@ export class ManualSyncTimers implements SyncTimers {
 
   cancel(id: SyncTimerId): void {
     this.armed.delete(id);
+  }
+}
+
+/** In-memory TokenStore: tests never touch the real Keychain, secret-tool, credentials file or SecretStorage. */
+export class MemoryTokenStore implements TokenStore {
+  readonly kind = "file" as const;
+  saves: TokenData[] = [];
+  cleared = 0;
+  loads = 0;
+
+  constructor(public tokens: TokenData | null = null) {}
+
+  async load(): Promise<TokenData | null> {
+    this.loads++;
+    return this.tokens ? { ...this.tokens } : null;
+  }
+
+  async save(tokens: TokenData): Promise<void> {
+    this.tokens = { ...tokens };
+    this.saves.push({ ...tokens });
+  }
+
+  async clear(): Promise<void> {
+    this.tokens = null;
+    this.cleared++;
   }
 }

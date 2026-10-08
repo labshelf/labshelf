@@ -9,43 +9,12 @@ import { existsSync, promises as fs } from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
+import { parseTokens, type TokenData, type TokenStore } from "@labshelf/core";
 import { sharedConfigDir } from "@labshelf/core/node";
 
-import { hasCommand } from "../platform/system.js";
-
-export interface TokenData {
-  access_token: string;
-  refresh_token: string;
-  expiry_ms: number;
-}
-
-export interface TokenStore {
-  readonly kind: "keychain" | "secret-service" | "file";
-  load(): Promise<TokenData | null>;
-  save(tokens: TokenData): Promise<void>;
-  clear(): Promise<void>;
-}
+import { hasCommand } from "../platform/index.js";
 
 const SERVICE = "labshelf.gdrive.tokens";
-
-/**
- * Validates stored token JSON.
- * @returns the tokens, or null
- */
-export function parseTokens(text: string | undefined | null): TokenData | null {
-  if (!text) { return null; }
-  try {
-    const raw = JSON.parse(text) as Partial<TokenData>;
-    if (typeof raw.refresh_token !== "string" || !raw.refresh_token) { return null; }
-    return {
-      access_token: typeof raw.access_token === "string" ? raw.access_token : "",
-      refresh_token: raw.refresh_token,
-      expiry_ms: typeof raw.expiry_ms === "number" ? raw.expiry_ms : 0,
-    };
-  } catch {
-    return null;
-  }
-}
 
 /** Tokens in a JSON file readable only by the user. */
 export class FileTokenStore implements TokenStore {

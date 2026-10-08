@@ -7,7 +7,7 @@ import * as path from "node:path";
 import type { SharedConfig } from "@labshelf/core";
 import { loadSharedConfig } from "@labshelf/core/node";
 
-import { expandHome } from "../platform/dirs.js";
+import { expandHome } from "../platform/index.js";
 
 export type SortKey = "title" | "year" | "author" | "status" | "modified";
 

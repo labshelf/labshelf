@@ -4,6 +4,7 @@ import * as os from "node:os";
 import {
   createGoogleDriveProvider,
   libraryChanged,
+  ReauthRequiredError,
   SyncCoordinator,
   syncRoots,
   type ILogger,
@@ -12,20 +13,18 @@ import {
   type SyncTarget,
   type SyncTimers,
 } from "@labshelf/core";
-import { NodeLocalFileSystem } from "@labshelf/core/node";
+import { isProcessAlive, NodeLocalFileSystem, NodeLockStore, type PkceLoopbackAuth } from "@labshelf/core/node";
 
-import { isProcessAlive, NodeLockStore } from "../platform/index.js";
 import { scanLibraryOnDisk, type LibraryRoot } from "../library/index.js";
-import { ReauthRequiredError, type CliDriveAuth } from "./driveAuth.js";
 
 export interface TerminalSyncDeps {
   paths: LibraryRoot;
-  auth: CliDriveAuth;
+  auth: PkceLoopbackAuth;
   /** Reloaded after a sync that changed the papers on disk. */
   store?: LibraryStore;
   logger: ILogger;
   /** Injectable for tests; defaults to the Drive provider. */
-  providerFactory?: (auth: CliDriveAuth) => RemoteProvider;
+  providerFactory?: (auth: PkceLoopbackAuth) => RemoteProvider;
   now?: () => Date;
   host?: string;
   timers?: SyncTimers;

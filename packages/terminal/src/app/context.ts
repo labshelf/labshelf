@@ -12,10 +12,9 @@ import type { TerminalConfig } from "./config.js";
 import {
   LibraryRoot, LibraryWatcher, PaperSearchIndex, SidecarReader, TerminalPaperService, createLibraryStore, ensureLibraryStructure,
 } from "../library/index.js";
-import { cacheDir } from "../platform/dirs.js";
-import { moveToTrash, openExternal } from "../platform/system.js";
+import { cacheDir, moveToTrash, openExternal } from "../platform/index.js";
 import { defaultRenderer, ThumbnailService } from "../preview/thumbnails.js";
-import { CliDriveAuth, createTerminalSync, createTokenStore, DriveAccount, resolveOAuthClient } from "../sync/index.js";
+import { createTerminalAuth, createTerminalSync, createTokenStore, DriveAccount, resolveTerminalOAuthClient } from "../sync/index.js";
 import { detectImageProtocol, type ImageProtocol } from "../tui/graphics.js";
 
 export interface AppContext {
@@ -61,9 +60,8 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
   const store = createLibraryStore(paths, logger, search);
   await store.reload();
 
-  const auth = new CliDriveAuth(resolveOAuthClient(env), createTokenStore(env), fetch, {
+  const auth = createTerminalAuth(resolveTerminalOAuthClient(env), createTokenStore(env), logger, {
     openBrowser: (url) => openExternal(url),
-    onUrl: (url) => void logger.log("INFO", "sync", "Google sign-in started", { url }),
   });
   const sync = createTerminalSync({ paths, auth, store, logger });
   await sync.init();

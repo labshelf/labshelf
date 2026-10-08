@@ -13,21 +13,19 @@
  * Implements the cross-platform `IAuthProvider` from @labshelf/core, so the
  * same Drive RemoteProvider works in VS Code and in the browser.
  */
-import type { IAuthProvider } from "@labshelf/core";
+import { GOOGLE_AUTH_URL, GOOGLE_DRIVE_SCOPES, GOOGLE_REVOKE_URL, type IAuthProvider } from "@labshelf/core";
 import { bx } from "../../platform/browserApi";
 import { clearToken, loadToken, saveToken, type StoredToken } from "./tokenStore";
-import { CLIENT_ID, SCOPES } from "./oauthConfig";
+import { CLIENT_ID } from "./oauthConfig";
 
-const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
-const REVOKE_URL = "https://oauth2.googleapis.com/revoke";
 const REFRESH_LEEWAY_MS = 60_000;
 
 function buildAuthUrl(redirectUri: string, prompt: "none" | "consent"): string {
-  const url = new URL(AUTH_URL);
+  const url = new URL(GOOGLE_AUTH_URL);
   url.searchParams.set("response_type", "token");
   url.searchParams.set("client_id", CLIENT_ID);
   url.searchParams.set("redirect_uri", redirectUri);
-  url.searchParams.set("scope", SCOPES.join(" "));
+  url.searchParams.set("scope", GOOGLE_DRIVE_SCOPES.join(" "));
   url.searchParams.set("prompt", prompt);
   url.searchParams.set("include_granted_scopes", "true");
   return url.toString();
@@ -39,7 +37,7 @@ function parseRedirect(redirect: string): { accessToken: string; expiresIn: numb
   const params = new URLSearchParams(redirect.slice(hashIdx + 1));
   const accessToken = params.get("access_token");
   const expiresIn = Number(params.get("expires_in"));
-  const scope = params.get("scope") ?? SCOPES.join(" ");
+  const scope = params.get("scope") ?? GOOGLE_DRIVE_SCOPES.join(" ");
   const error = params.get("error");
   if (error) throw new Error(`OAuth error: ${error}`);
   if (!accessToken || !Number.isFinite(expiresIn)) {
@@ -83,7 +81,7 @@ export class BrowserDriveAuth implements IAuthProvider {
     await clearToken();
     if (previous) {
       try {
-        await fetch(`${REVOKE_URL}?token=${encodeURIComponent(previous.accessToken)}`, { method: "POST" });
+        await fetch(`${GOOGLE_REVOKE_URL}?token=${encodeURIComponent(previous.accessToken)}`, { method: "POST" });
       } catch {
         // best effort — local state is already cleared
       }

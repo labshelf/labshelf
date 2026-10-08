@@ -15,7 +15,7 @@ import { Worker } from "node:worker_threads";
 
 import type { ILogger } from "@labshelf/core";
 
-import { hasCommand } from "../platform/system.js";
+import { hasCommand } from "../platform/index.js";
 
 export interface ThumbnailRequest {
   pdfPath: string;

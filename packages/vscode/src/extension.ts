@@ -33,6 +33,7 @@ import { AnnotationManager } from "./pdf-viewer/AnnotationManager.js";
 import { PaperDataStore } from "./storage/data/paperDataStore.js";
 import { indexLibrary, reindexLibrary } from "./storage/data/reindexLibrary.js";
 import { SyncController } from "./sync/adapter/syncController.js";
+import { createVscodeDriveAuth } from "./sync/auth/index.js";
 import { findSimilarPapers } from "./ai/service/similarPapers.js";
 import { EventBus } from "./events/index.js";
 
@@ -118,7 +119,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       return;
     }
     const controller = new SyncController({
-      context,
+      createAuth: (logger) => createVscodeDriveAuth(context, logger),
       paths: libraryLayout(root, vscode.Uri.joinPath),
       localFs: fileSystem,
       eventBus,

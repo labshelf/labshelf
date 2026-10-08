@@ -16,7 +16,7 @@ import { openLibrary, type AppContext } from "./app/context.js";
 import { parseArgs, stringFlag } from "./cli/args.js";
 import { runDoctor, runLibraryCommand, USAGE, UsageError, type Output } from "./cli/commands.js";
 import { ensureLibraryStructure, LibraryRoot, looksLikeLibrary } from "./library/index.js";
-import { expandHome } from "./platform/dirs.js";
+import { expandHome } from "./platform/index.js";
 import { App, type TerminalLike } from "./ui/app.js";
 import { InputDecoder } from "./tui/input.js";
 import { sanitizeForTerminal } from "./tui/text.js";

@@ -9,13 +9,5 @@
  * The redirect URI is selected automatically at runtime via
  * `bx.identity.getRedirectURL()`, which returns the correct value per browser.
  * No client secret is needed — the implicit `response_type=token` flow is used.
- *
- * @depends none
- * @dependents browserDriveAuth
  */
 export const CLIENT_ID = "YOUR_WEB_APP_OAUTH_CLIENT_ID.apps.googleusercontent.com";
-
-export const SCOPES = [
-  "https://www.googleapis.com/auth/drive.file",
-  "https://www.googleapis.com/auth/drive.appdata",
-];

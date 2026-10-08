@@ -194,11 +194,6 @@
       "count": 1
     }
   },
-  "packages/terminal/src/sync/driveAuth.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
   "packages/terminal/src/tui/input.ts": {
     "max-lines-per-function": {
       "count": 1

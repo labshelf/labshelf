@@ -1,11 +1,10 @@
-/** The sync lock's file store over node:fs, and the process-liveness check the lock uses. */
+/** The sync lock's file store over node:fs, shared by every app that syncs a library. */
 import { randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import type { LockStore } from "@labshelf/core";
+import type { LockStore } from "../../ports/index.js";
 
-/** LockStore over node:fs; the exclusive create uses O_EXCL ("wx"). */
 export class NodeLockStore implements LockStore {
   async createExclusive(filePath: string, text: string): Promise<boolean> {
     await fs.mkdir(path.dirname(filePath), { recursive: true });
@@ -41,18 +40,5 @@ export class NodeLockStore implements LockStore {
 
   async remove(filePath: string): Promise<void> {
     await fs.rm(filePath, { force: true });
-  }
-}
-
-/**
- * Whether a process with this pid is running on this machine.
- * @returns true when it exists (or exists but belongs to another user)
- */
-export function isProcessAlive(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    return (error as NodeJS.ErrnoException).code === "EPERM";
   }
 }

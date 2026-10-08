@@ -1,11 +1,10 @@
 /** Signs the terminal in to and out of Google Drive, keeping the sync status in step. */
 import type { ILogger, SyncCoordinator } from "@labshelf/core";
-
-import type { CliDriveAuth, LoginOptions } from "./driveAuth.js";
+import type { LoginPrompt, PkceLoopbackAuth } from "@labshelf/core/node";
 
 export class DriveAccount {
   constructor(
-    private readonly auth: CliDriveAuth,
+    private readonly auth: PkceLoopbackAuth,
     private readonly sync: SyncCoordinator,
     private readonly logger: ILogger,
   ) {}
@@ -14,8 +13,8 @@ export class DriveAccount {
    * Signs in through the browser.
    * @returns void
    */
-  async login(options: LoginOptions): Promise<void> {
-    await this.auth.login(options);
+  async login(prompt: LoginPrompt): Promise<void> {
+    await this.auth.login(prompt);
     this.sync.refreshAuth();
     await this.logger.log("INFO", "terminal/sync", "Signed in to Google Drive", { store: this.auth.storeKind });
   }

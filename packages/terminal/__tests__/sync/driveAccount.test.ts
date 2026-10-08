@@ -1,7 +1,8 @@
 import * as http from "node:http";
 
+import { MemoryTokenStore } from "@labshelf/core/test-support/sync-fakes";
+
 import { DriveAccount } from "../../src/sync/index";
-import { MemoryTokenStore } from "../fixtures/fakeRemote";
 import { cleanupTempDirs } from "../fixtures/library";
 import { device } from "../fixtures/syncDevice";
 

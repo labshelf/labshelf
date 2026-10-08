@@ -2,12 +2,12 @@ import { spawnSync } from "node:child_process";
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { PaperDataStore, type SyncLockInfo, type SyncRunRecord } from "@labshelf/core";
+import { PaperDataStore, ReauthRequiredError, type SyncLockInfo, type SyncRunRecord } from "@labshelf/core";
+import { MemoryTokenStore } from "@labshelf/core/test-support/sync-fakes";
 import { stringify } from "yaml";
 
 import { NodeSidecarPort } from "../../src/library/sidecars";
-import { ReauthRequiredError } from "../../src/sync/index";
-import { FakeRemoteProvider, MemoryTokenStore } from "../fixtures/fakeRemote";
+import { FakeRemoteProvider } from "../fixtures/fakeRemote";
 import { cleanupTempDirs, listFiles, pathExists, readYaml, type PaperFixture } from "../fixtures/library";
 import { device, expectSynced, type Device } from "../fixtures/syncDevice";
 

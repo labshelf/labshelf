@@ -1,10 +1,12 @@
 /** A terminal "device" for sync tests: a temp library, its store, Drive auth with stored tokens, and its coordinator. */
 import type { ILogger, LibraryStore, RemoteProvider, SyncCoordinator, SyncOutcome, SyncStatus } from "@labshelf/core";
+import type { PkceLoopbackAuth } from "@labshelf/core/node";
+import { MemoryTokenStore } from "@labshelf/core/test-support/sync-fakes";
 
 import { createLibraryStore } from "../../src/library/libraryModel";
 import { PaperSearchIndex } from "../../src/library/paperSearchIndex";
-import { CliDriveAuth, createTerminalSync } from "../../src/sync/index";
-import { FakeRemoteProvider, MemoryTokenStore } from "./fakeRemote";
+import { createTerminalAuth, createTerminalSync } from "../../src/sync/index";
+import { FakeRemoteProvider } from "./fakeRemote";
 import { createTempLibrary, type PaperFixture, type TempLibrary } from "./library";
 
 export const SILENT_LOGGER: ILogger = { log: async () => undefined, error: async () => undefined };
@@ -15,7 +17,7 @@ export interface Device {
   lib: TempLibrary;
   store: LibraryStore;
   tokens: MemoryTokenStore;
-  auth: CliDriveAuth;
+  auth: PkceLoopbackAuth;
   sync: SyncCoordinator;
   factory: jest.Mock<RemoteProvider, []>;
   logs: Array<{ level: string; message: string }>;
@@ -43,7 +45,7 @@ export async function device(options: DeviceOptions = {}): Promise<Device> {
   const tokens = options.tokens ?? new MemoryTokenStore(VALID_TOKENS());
   const noNetwork = (async () => { throw new Error("unexpected network call from the auth layer"); }) as typeof fetch;
   const client = "client" in options ? options.client : CLIENT;
-  const auth = new CliDriveAuth(client, tokens, options.authFetch ?? noNetwork);
+  const auth = createTerminalAuth(client, tokens, SILENT_LOGGER, { openBrowser: () => undefined }, options.authFetch ?? noNetwork);
   const remote = options.remote ?? new FakeRemoteProvider();
   const factory = jest.fn((): RemoteProvider => remote);
   const logs: Array<{ level: string; message: string }> = [];

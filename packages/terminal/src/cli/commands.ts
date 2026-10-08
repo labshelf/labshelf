@@ -13,8 +13,8 @@ import { sharedConfigDir, sharedConfigPath } from "@labshelf/core/node";
 
 import type { TerminalConfig } from "../app/config.js";
 import type { AppContext } from "../app/context.js";
-import { copyToClipboard, hasCommand, openExternal } from "../platform/system.js";
-import { createTokenStore, resolveOAuthClient } from "../sync/index.js";
+import { copyToClipboard, hasCommand, openExternal } from "../platform/index.js";
+import { createTokenStore, resolveTerminalOAuthClient } from "../sync/index.js";
 import { detectImageProtocol } from "../tui/graphics.js";
 import { fit, stringWidth } from "../tui/text.js";
 import { STATUS_GLYPH } from "../ui/theme.js";
@@ -319,7 +319,7 @@ export async function runDoctor(root: string | undefined, rootSource: string, co
     const last = await fs.readFile(layout.lastRunPath(), "utf8").then((t) => JSON.parse(t) as { finishedAt?: string; app?: string }, () => undefined);
     line(last ? true : "warn", "last sync", last?.finishedAt ? `${relativeTime(last.finishedAt) || "never"} by ${last.app}` : "never (by an app that records it)");
   }
-  const client = resolveOAuthClient();
+  const client = resolveTerminalOAuthClient();
   line(client ? true : "warn", "drive client", client ? `configured (${client.clientId.slice(0, 12)}…)` : "missing: rebuild with the VS Code extension's credentials, or set LABSHELF_GOOGLE_CLIENT_ID/SECRET to a client of the same Google Cloud project");
   const store = createTokenStore();
   const tokens = await store.load().catch(() => null);

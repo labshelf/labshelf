@@ -20,7 +20,7 @@ import {
 
 import type { SortKey } from "../app/config.js";
 import type { AppContext } from "../app/context.js";
-import { copyToClipboard, openExternal, revealInFileManager, runEditor, trashSupported } from "../platform/system.js";
+import { copyToClipboard, openExternal, revealInFileManager, runEditor, trashSupported } from "../platform/index.js";
 import { clearImages, drawImage, fitImage, pngSize, type CellRect } from "../tui/graphics.js";
 import type { InputEvent, MouseEvent } from "../tui/input.js";
 import { Screen, type Style } from "../tui/screen.js";

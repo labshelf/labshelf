@@ -1,13 +1,6 @@
 /**
- * Cross-platform authentication contract used by RemoteProvider implementations.
- *
- * VS Code's GoogleDriveAuth (PKCE loopback + vscode.SecretStorage) and the
- * browser's BrowserDriveAuth (chrome.identity.launchWebAuthFlow + bx.storage)
- * both implement this interface, so the same RemoteProvider class runs on
- * both surfaces.
- *
- * @depends none
- * @dependents sync/drive/googleDriveProvider
+ * Authentication contract of a RemoteProvider. Each app implements it with its own sign-in: PkceLoopbackAuth in
+ * VS Code and the terminal, the identity API in the browser.
  */
 export interface IAuthProvider {
   /** Returns true when valid credentials are held in memory. */

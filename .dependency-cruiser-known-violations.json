@@ -2223,54 +2223,12 @@
   },
   {
     "type": "dependency",
-    "from": "packages/terminal/src/app/config.ts",
-    "to": "packages/terminal/src/platform/dirs.ts",
-    "unresolvedTo": "../platform/dirs.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/app/context.ts",
-    "to": "packages/terminal/src/platform/dirs.ts",
-    "unresolvedTo": "../platform/dirs.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "packages/terminal/src/app/context.ts",
     "to": "packages/terminal/src/platform/nodePdfOpener.ts",
     "unresolvedTo": "../platform/nodePdfOpener.js",
     "dependencyTypes": [
       "local",
       "dynamic-import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/app/context.ts",
-    "to": "packages/terminal/src/platform/system.ts",
-    "unresolvedTo": "../platform/system.js",
-    "dependencyTypes": [
-      "local",
-      "import"
     ],
     "rule": {
       "severity": "error",
@@ -2328,20 +2286,6 @@
     "dependencyTypes": [
       "local",
       "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/cli/commands.ts",
-    "to": "packages/terminal/src/platform/system.ts",
-    "unresolvedTo": "../platform/system.js",
-    "dependencyTypes": [
-      "local",
       "import"
     ],
     "rule": {
@@ -2521,20 +2465,6 @@
   {
     "type": "dependency",
     "from": "packages/terminal/src/main.ts",
-    "to": "packages/terminal/src/platform/dirs.ts",
-    "unresolvedTo": "./platform/dirs.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/main.ts",
     "to": "packages/terminal/src/tui/input.ts",
     "unresolvedTo": "./tui/input.js",
     "dependencyTypes": [
@@ -2605,37 +2535,9 @@
   },
   {
     "type": "dependency",
-    "from": "packages/terminal/src/preview/thumbnails.ts",
-    "to": "packages/terminal/src/platform/system.ts",
-    "unresolvedTo": "../platform/system.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "packages/terminal/src/preview/thumbnailWorker.ts",
     "to": "packages/terminal/src/platform/nodePdfOpener.ts",
     "unresolvedTo": "../platform/nodePdfOpener.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/sync/tokenStore.ts",
-    "to": "packages/terminal/src/platform/system.ts",
-    "unresolvedTo": "../platform/system.js",
     "dependencyTypes": [
       "local",
       "import"
@@ -2668,20 +2570,6 @@
     "dependencyTypes": [
       "local",
       "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/ui/app.ts",
-    "to": "packages/terminal/src/platform/system.ts",
-    "unresolvedTo": "../platform/system.js",
-    "dependencyTypes": [
-      "local",
       "import"
     ],
     "rule": {
@@ -3548,20 +3436,6 @@
     "dependencyTypes": [
       "local",
       "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/sync/adapter/syncController.ts",
-    "to": "packages/vscode/src/sync/auth/googleDriveAuth.ts",
-    "unresolvedTo": "../auth/googleDriveAuth.js",
-    "dependencyTypes": [
-      "local",
       "import"
     ],
     "rule": {

@@ -2,23 +2,23 @@
 import * as os from "node:os";
 import * as vscode from "vscode";
 
-import { createGoogleDriveProvider, SyncCoordinator, syncRoots, type LibraryLayout } from "@labshelf/core";
+import { createGoogleDriveProvider, ReauthRequiredError, SyncCoordinator, syncRoots, type LibraryLayout } from "@labshelf/core";
 import type { ILogger, LocalFileSystem, RemoteProvider, SyncOutcome, SyncResult, SyncTarget, SyncTimers } from "@labshelf/core";
-import { GoogleDriveAuth } from "../auth/googleDriveAuth.js";
-import { isProcessAlive, NodeLockStore } from "./nodeLockStore.js";
+import { isProcessAlive, NodeLockStore, type PkceLoopbackAuth } from "@labshelf/core/node";
 import { reportSyncOutcome } from "./syncReport.js";
 import type { EventBus } from "../../events/index.js";
 
 export interface SyncControllerDeps {
-  context: vscode.ExtensionContext;
   paths: LibraryLayout<vscode.Uri>;
   localFs: LocalFileSystem;
   eventBus: EventBus;
   logger: ILogger;
   /** Paper id → title pairs used to name Drive folders. */
   listTitles?: () => Promise<Iterable<readonly [string, string]>>;
+  /** Builds the Drive sign-in; the logger follows the library the controller points at. */
+  createAuth: (logger: ILogger) => PkceLoopbackAuth;
   /** Injectable for tests; defaults to the Drive provider. */
-  createProvider?: (auth: GoogleDriveAuth) => RemoteProvider;
+  createProvider?: (auth: PkceLoopbackAuth) => RemoteProvider;
   /** Injectable for tests; defaults to setTimeout and setInterval. */
   timers?: SyncTimers;
 }
@@ -26,7 +26,7 @@ export interface SyncControllerDeps {
 const INTERVAL_SETTING = "sync.autoSyncIntervalMinutes";
 
 export class SyncController implements vscode.Disposable {
-  private readonly auth: GoogleDriveAuth;
+  private readonly auth: PkceLoopbackAuth;
   private readonly coordinator: SyncCoordinator;
   private paths: LibraryLayout<vscode.Uri>;
   private localFs: LocalFileSystem;
@@ -40,10 +40,12 @@ export class SyncController implements vscode.Disposable {
   private readonly configListener: vscode.Disposable;
 
   constructor(deps: SyncControllerDeps) {
-    this.auth = new GoogleDriveAuth(deps.context);
     this.paths = deps.paths;
     this.localFs = deps.localFs;
     this.logger = deps.logger;
+    // The logger follows setLibrary: each library writes its own log.
+    const followingLogger: ILogger = { log: (...args) => this.logger.log(...args), error: (...args) => this.logger.error(...args) };
+    this.auth = deps.createAuth(followingLogger);
     this.statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 50);
     this.statusBar.command = "labshelf.sync.now";
     const createProvider = deps.createProvider ?? createGoogleDriveProvider;
@@ -55,8 +57,8 @@ export class SyncController implements vscode.Disposable {
       auth: { isAuthenticated: () => this.auth.isAuthenticated() },
       createProvider: () => createProvider(this.auth),
       ...(deps.listTitles ? { listTitles: deps.listTitles } : {}),
-      // The logger follows setLibrary: each library writes its own log.
-      logger: { log: (...args) => this.logger.log(...args), error: (...args) => this.logger.error(...args) },
+      logger: followingLogger,
+      isReauthError: (error) => error instanceof ReauthRequiredError,
       onOutcome: (outcome, reason) => this.onOutcome(outcome, reason),
       ...(deps.timers ? { timers: deps.timers } : {}),
     });
@@ -82,15 +84,15 @@ export class SyncController implements vscode.Disposable {
 
   /** Loads persisted auth state and the last run, and starts periodic syncs when signed in. */
   async initialize(): Promise<void> {
-    await this.auth.loadPersistedState();
+    await this.auth.load();
     await this.coordinator.init();
     this.updateStatusBar();
     this.applyInterval();
   }
 
-  /** Authenticates with Google Drive and runs an initial sync. */
+  /** Signs in to Google Drive and runs an initial sync. */
   async connect(): Promise<void> {
-    await this.auth.authenticate();
+    await this.auth.login();
     this.coordinator.refreshAuth();
     this.updateStatusBar();
     this.applyInterval();
@@ -146,6 +148,11 @@ export class SyncController implements vscode.Disposable {
   private onOutcome(outcome: SyncOutcome, reason: string): void {
     reportSyncOutcome(this.statusBar, outcome, reason === "manual");
     if (outcome.kind === "synced") { this._onDidSync.fire(outcome.result); }
+    // A rejected refresh token signs the user out: the status bar must offer to connect again.
+    if (outcome.kind === "failed" && outcome.reauth) {
+      this.updateStatusBar();
+      this.applyInterval();
+    }
   }
 
   // Updates the status bar item to reflect the current auth state.

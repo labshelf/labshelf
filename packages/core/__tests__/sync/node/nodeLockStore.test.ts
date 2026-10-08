@@ -2,8 +2,8 @@ import { spawnSync } from "node:child_process";
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { NodeLockStore, isProcessAlive } from "../../src/platform/nodeLockStore";
-import { cleanupTempDirs, makeTempDir } from "../fixtures/library";
+import { isProcessAlive, NodeLockStore } from "../../../src/sync/node/index";
+import { cleanupTempDirs, makeTempDir } from "../../support/tempDirs";
 
 afterEach(cleanupTempDirs);
 

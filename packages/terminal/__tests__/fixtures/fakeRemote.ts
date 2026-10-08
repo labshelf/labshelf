@@ -4,33 +4,6 @@
  */
 import type { RemoteFile, RemoteNamespace, RemoteProvider } from "@labshelf/core";
 
-import type { TokenData, TokenStore } from "../../src/sync/tokenStore";
-
-/** In-memory TokenStore: the real Keychain / secret-tool / credentials file are never touched by tests. */
-export class MemoryTokenStore implements TokenStore {
-  readonly kind = "file" as const;
-  saves: TokenData[] = [];
-  cleared = 0;
-  loads = 0;
-
-  constructor(public tokens: TokenData | null = null) {}
-
-  async load(): Promise<TokenData | null> {
-    this.loads++;
-    return this.tokens ? { ...this.tokens } : null;
-  }
-
-  async save(tokens: TokenData): Promise<void> {
-    this.tokens = { ...tokens };
-    this.saves.push({ ...tokens });
-  }
-
-  async clear(): Promise<void> {
-    this.tokens = null;
-    this.cleared++;
-  }
-}
-
 interface RemoteNode {
   file: RemoteFile;
   parentId: string;
