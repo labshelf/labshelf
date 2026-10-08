@@ -1,5 +1,5 @@
 jest.mock("../../src/storage", () => ({ createLibraryMutations: () => ({}) }));
-jest.mock("../../src/platform/logger", () => ({ BrowserLogger: class {} }));
+jest.mock("../../src/platform", () => ({ BrowserLogger: class {} }));
 jest.mock("../../src/ui/dialog", () => ({ confirmDialog: async () => false }));
 jest.mock("../../src/ui/quickInput", () => ({ inputBox: async () => undefined }));
 jest.mock("../../src/ui/toast", () => ({ toast: () => undefined }));
