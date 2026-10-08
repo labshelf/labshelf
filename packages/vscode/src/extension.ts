@@ -2,20 +2,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import {
-  EventBus,
-  InMemoryResearchDatabase,
-  PdfImportParser,
-  BibTeXService,
-  libraryLayout,
-  scanLibrary,
-  type IFileSystem,
-  type ILogger,
-  type IResearchDatabase,
-  type MutationContext,
-  type SyncResult,
-  type ReaderCommandId,
-} from "@labshelf/core";
+import { InMemoryResearchDatabase, PdfImportParser, BibTeXService, libraryLayout, scanLibrary, type IFileSystem, type ILogger, type IResearchDatabase, type MutationContext, type SyncResult, type ReaderCommandId } from "@labshelf/core";
 import { PaperImporter, PaperService, PaperTextLayers, createExtensionLogger } from "./core/index.js";
 import { VscodeFileSystem } from "./storage/vscodeFileSystem.js";
 import {
@@ -47,6 +34,7 @@ import { PaperDataStore } from "./storage/data/paperDataStore.js";
 import { indexLibrary, reindexLibrary } from "./storage/data/reindexLibrary.js";
 import { SyncController } from "./sync/adapter/syncController.js";
 import { findSimilarPapers } from "./ai/service/similarPapers.js";
+import { EventBus } from "./events/index.js";
 
 // The adapter belongs to one library root: its temp folder for atomic writes sits inside that root.
 const createFileSystem = (root: vscode.Uri): VscodeFileSystem =>

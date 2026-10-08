@@ -2,7 +2,8 @@ import * as vscode from 'vscode';
 import { AnnotationManager } from '../../src/pdf-viewer/AnnotationManager';
 import { PaperDataStore } from '../../src/storage/data/paperDataStore';
 import { makeMemoryFileSystem } from '../support/memoryFileSystem';
-import { EventBus, EVENTS, libraryLayout } from '@labshelf/core';
+import { libraryLayout } from '@labshelf/core';
+import { EventBus, EVENTS } from '../../src/events/index.js';
 
 function makeFakeStore(): PaperDataStore {
   const fs = makeMemoryFileSystem();

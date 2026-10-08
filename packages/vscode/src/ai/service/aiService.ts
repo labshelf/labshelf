@@ -4,22 +4,14 @@
  * preserves the no-direct-DB-from-UI rule and gives us one place to swap or
  * stub the implementation in tests.
  */
-import type {
-  AiPaperMetadata,
-  ClaimSearchResult,
-  EventBus,
-  IEmbeddingProvider,
-  ILogger,
-  ReadingEvent,
-  VectorFilter,
-  VectorMatch,
-} from "@labshelf/core";
+import type { AiPaperMetadata, ClaimSearchResult, IEmbeddingProvider, ILogger, ReadingEvent, VectorFilter, VectorMatch } from "@labshelf/core";
 import { retrieveTopK, searchByClaim as runSearchByClaim } from "@labshelf/core";
 import type { SqliteVectorStore } from "../../db/ai/sqliteVectorStore.js";
 import type { AiMetadataStore } from "../../db/ai/aiMetadataStore.js";
 import type { ReadingEventsStore } from "../../db/ai/readingEventsStore.js";
 import type { AiIndexer } from "../indexer/aiIndexer.js";
 import type { IndexerQueue } from "../indexer/indexerQueue.js";
+import type { EventBus } from "../../events/index.js";
 
 export interface AiServiceStatus {
   embeddingModelId: string;

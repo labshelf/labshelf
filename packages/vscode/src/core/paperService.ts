@@ -2,30 +2,9 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import {
-  EVENTS,
-  FolderService,
-  editPaperTags,
-  movePapers,
-  paperFiles,
-  trashPapers,
-  updatePaperFields,
-  withResolvedMetadata,
-  writePaperRecord,
-} from "@labshelf/core";
-import type {
-  BatchOutcome,
-  BibTeXService,
-  EventBus,
-  IResearchDatabase,
-  MoveOutcome,
-  MutationContext,
-  PaperFieldsPatch,
-  PaperRecord,
-  PaperRef,
-  PdfParse,
-  RecordMetadata,
-} from "@labshelf/core";
+import { FolderService, editPaperTags, movePapers, paperFiles, trashPapers, updatePaperFields, withResolvedMetadata, writePaperRecord } from "@labshelf/core";
+import type { BatchOutcome, BibTeXService, IResearchDatabase, MoveOutcome, MutationContext, PaperFieldsPatch, PaperRecord, PaperRef, PdfParse, RecordMetadata } from "@labshelf/core";
+import { EVENTS, EventBus } from "../events/index.js";
 
 export class PaperService {
   constructor(

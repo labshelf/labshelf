@@ -5,8 +5,9 @@
  *
  * Kept out of extension.ts on purpose: extension.ts is excluded from unit tests.
  */
-import { EVENTS, diffPapers } from "@labshelf/core";
-import type { EventBus, LibraryScan, PaperDiff, PaperRecord } from "@labshelf/core";
+import { diffPapers } from "@labshelf/core";
+import type { LibraryScan, PaperDiff, PaperRecord } from "@labshelf/core";
+import { EVENTS, EventBus } from "../../events/index.js";
 
 /** The slice of the database the reindex reads and writes. */
 interface ReindexableDatabase {

@@ -7,12 +7,13 @@ import { PDF_FILE, isUnderDir, paperFiles } from '@labshelf/core';
 import type { PaperService } from '../../core/index.js';
 import { removePapers } from '../../commands/removePapers.js';
 import type { TextLayerJob } from '../../commands/textLayerQueue.js';
-import type { Annotation, EventBus, PaperRecord } from '@labshelf/core';
+import type { Annotation, PaperRecord } from '@labshelf/core';
 import { buildListState, listAllCollectionFolders, rootNode } from '../library/index.js';
 import type { FolderReader, LibraryNode, PaperStats } from '../library/index.js';
 import { formatCitations } from './citationFormats.js';
 import { buildListPanelHtml } from './template.js';
 import { labshelfTabIcon } from '../tabIcon.js';
+import type { EventBus } from "../../events/index.js";
 
 const RELOAD_DEBOUNCE_MS = 60;
 const PAPER_EVENTS = ['paper:added', 'paper:updated', 'paper:deleted'] as const;

@@ -1,11 +1,12 @@
 /** The paper glue over the real core mutations: an in-memory disk, an index that records its writes, and an event spy. */
 import * as path from 'node:path';
-import { BibTeXService, type EventBus, type ILogger, type IResearchDatabase, type MutationContext, type PaperRecord } from '@labshelf/core';
+import { BibTeXService, type ILogger, type IResearchDatabase, type MutationContext, type PaperRecord } from '@labshelf/core';
 
 import { PaperImporter } from '../../src/core/paperImporter';
 import { PaperService } from '../../src/core/paperService';
 import { PaperTextLayers } from '../../src/core/paperTextLayers';
 import { MemoryLibraryFs } from '../support/memoryLibraryFs';
+import type { EventBus } from '../../src/events/index.js';
 
 export const PAPERS_ROOT = '/lib/papers';
 

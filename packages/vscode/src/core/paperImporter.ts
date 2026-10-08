@@ -1,14 +1,7 @@
 /** Imports picked PDFs and folders through the core import, putting each added paper in the index as it lands. */
-import { EVENTS, doiLookup, importPaths } from "@labshelf/core";
-import type {
-  EventBus,
-  IResearchDatabase,
-  ImportDeps,
-  ImportOutcome,
-  ImportProgress,
-  MutationContext,
-  PdfParse,
-} from "@labshelf/core";
+import { doiLookup, importPaths } from "@labshelf/core";
+import type { IResearchDatabase, ImportDeps, ImportOutcome, ImportProgress, MutationContext, PdfParse } from "@labshelf/core";
+import { EVENTS, EventBus } from "../events/index.js";
 
 export class PaperImporter {
   constructor(

@@ -1,9 +1,5 @@
 /**
- * Centralizes all extension events so producers and consumers remain decoupled.
- *
- * Uses an inline Map-based emitter rather than node:events so the bus is usable
- * inside the browser extension (service worker, content scripts, library page)
- * without polyfills.
+ * Decouples event producers and consumers inside the VS Code extension host.
  */
 import type { EventName } from "./events.js";
 

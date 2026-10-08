@@ -1,8 +1,5 @@
 /**
  * Centralizes extension event name constants used across the event bus.
- *
- * @depends none
- * @dependents events/eventBus.ts, paperService, annotationManager, pdfViewerPanel, syncController, browser background
  */
 export const EVENTS = {
   PAPER_ADDED: "paper:added",

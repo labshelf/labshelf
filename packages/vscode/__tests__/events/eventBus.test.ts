@@ -1,4 +1,4 @@
-import { EventBus, EVENTS } from '@labshelf/core';
+import { EventBus, EVENTS } from '../../src/events/index.js';
 
 describe('EventBus', () => {
   let eventBus: EventBus;

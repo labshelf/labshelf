@@ -4,7 +4,7 @@
  * AI is disabled in settings. Embeddings come from the hash provider.
  */
 import * as vscode from "vscode";
-import type { EventBus, ILogger, LocalFileSystem, PdfDocumentOpener } from "@labshelf/core";
+import type { ILogger, LocalFileSystem, PdfDocumentOpener } from "@labshelf/core";
 import { AiMetadataStore, ReadingEventsStore, SqliteVectorStore } from "../../db/ai/index.js";
 import { SqliteResearchDatabase } from "../../db/sqliteResearchDatabase.js";
 import { PdfTextExtractor } from "../pdf/pdfTextExtractor.js";
@@ -12,6 +12,7 @@ import { HashEmbeddingProvider } from "../runtime/index.js";
 import { AiIndexer } from "../indexer/aiIndexer.js";
 import { IndexerQueue } from "../indexer/indexerQueue.js";
 import { AiService } from "./aiService.js";
+import type { EventBus } from "../../events/index.js";
 
 export interface AiServiceFactoryDependencies {
   context: vscode.ExtensionContext;

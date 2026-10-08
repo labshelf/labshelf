@@ -3,7 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 
-import { EventBus, libraryLayout } from '@labshelf/core';
+import { libraryLayout } from '@labshelf/core';
 import { FakeRemoteProvider } from '@labshelf/core/test-support/sync-fakes';
 
 const provider = new FakeRemoteProvider();
@@ -26,6 +26,7 @@ jest.mock('@labshelf/core', () => ({
 
 import { SyncController } from '../../src/sync/adapter/syncController';
 import { VscodeFileSystem } from '../../src/storage/vscodeFileSystem';
+import { EventBus } from '../../src/events/index.js';
 
 function context(): vscode.ExtensionContext {
   return { subscriptions: [], secrets: { get: async () => undefined } } as unknown as vscode.ExtensionContext;

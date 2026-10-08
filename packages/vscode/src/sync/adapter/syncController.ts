@@ -15,15 +15,10 @@ import {
   SyncManifest,
   writeSyncRunRecord,
 } from "@labshelf/core";
-import type {
-  EventBus,
-  LocalFileSystem,
-  SyncResult,
-  FolderNameMaps,
-  SyncLockInfo,
-} from "@labshelf/core";
+import type { LocalFileSystem, SyncResult, FolderNameMaps, SyncLockInfo } from "@labshelf/core";
 import { GoogleDriveAuth } from "../auth/googleDriveAuth.js";
 import { isProcessAlive, NodeLockStore } from "./nodeLockStore.js";
+import type { EventBus } from "../../events/index.js";
 
 const DEBOUNCE_MS = 30_000;
 const APP_ID = "vscode";

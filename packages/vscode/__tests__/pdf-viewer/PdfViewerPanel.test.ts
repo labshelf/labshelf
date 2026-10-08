@@ -1,12 +1,13 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { EventBus, EVENTS, libraryLayout } from '@labshelf/core';
+import { libraryLayout } from '@labshelf/core';
 import { PdfViewerPanel, type PdfViewerDeps } from '../../src/pdf-viewer/PdfViewerPanel';
 import { ThemeManager } from '../../src/pdf-viewer/ThemeManager';
 import { AnnotationManager } from '../../src/pdf-viewer/AnnotationManager';
 import { PaperDataStore } from '../../src/storage/data/paperDataStore';
 import { makeMemoryFileSystem } from '../support/memoryFileSystem';
+import { EventBus, EVENTS } from '../../src/events/index.js';
 
 const vscode = require('vscode');
 

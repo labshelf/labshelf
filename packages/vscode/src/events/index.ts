@@ -1,5 +1,5 @@
 /**
- * Barrel re-export for event bus and event name constants.
+ * Public API of the VS Code event bus and its event names.
  */
 export { EVENTS } from "./events.js";
 export type { EventName } from "./events.js";

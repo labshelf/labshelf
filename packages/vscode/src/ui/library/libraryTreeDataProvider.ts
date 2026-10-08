@@ -3,11 +3,11 @@
  */
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import type { EventBus } from '@labshelf/core';
 import { countPapersUnder } from '@labshelf/core';
 import type { FolderReader } from './folderReader.js';
 import { rootNode } from './listState.js';
 import type { LibraryNode } from './listState.js';
+import type { EventBus } from "../../events/index.js";
 
 export type { LibraryNode } from './listState.js';
 

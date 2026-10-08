@@ -2,32 +2,13 @@
  * Creates and manages the PDF reader webview panels: lifecycle, the typed host side of the reader protocol, reading-state persistence, clipboard/export actions and reading analytics.
  */
 import * as vscode from "vscode";
-import {
-  type EventBus,
-  type ILogger,
-  type PaperRecord,
-  type Annotation,
-  type PdfTheme,
-  type ReadingEvent,
-  EVENTS,
-  formatAnnotationsMarkdown,
-  formatQuoteWithCitation,
-  isSafeExternalUrl,
-  paperFiles,
-  isPdfTheme,
-  isWebviewMessage,
-  normalizeReadingState,
-  type EffectiveTheme,
-  type HostToWebview,
-  type ReaderCommandId,
-  type ReadingState,
-  type WebviewToHost,
-} from "@labshelf/core";
+import { type ILogger, type PaperRecord, type Annotation, type PdfTheme, type ReadingEvent, formatAnnotationsMarkdown, formatQuoteWithCitation, isSafeExternalUrl, paperFiles, isPdfTheme, isWebviewMessage, normalizeReadingState, type EffectiveTheme, type HostToWebview, type ReaderCommandId, type ReadingState, type WebviewToHost } from "@labshelf/core";
 import { ThemeManager } from "./ThemeManager.js";
 import { AnnotationManager } from "./AnnotationManager.js";
 import { PdfRenderer, getPdfjsDirectory, getReaderBundleDirectory } from "./renderer/PdfRenderer.js";
 import { READER_CONFIG_SECTION, getReaderPrefs, getReaderViewColumn } from "./readerPrefs.js";
 import { labshelfTabIcon } from "../ui/tabIcon.js";
+import { EventBus, EVENTS } from "../events/index.js";
 
 export const READER_VIEW_TYPE = "labshelfPdf";
 

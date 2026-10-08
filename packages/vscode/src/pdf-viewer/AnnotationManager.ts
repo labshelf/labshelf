@@ -2,8 +2,9 @@
  * Manages create, read, update, and delete operations for paper annotations, delegating persistence to PaperDataStore and emitting events on each change.
  */
 import type { PaperDataStore } from "../storage/data/paperDataStore.js";
-import type { EventBus, Annotation, AnnotationType, AnnotationColor, AnnotationPosition } from "@labshelf/core";
-import { ANNOTATION_COLORS, ANNOTATION_TYPES, EVENTS } from "@labshelf/core";
+import type { Annotation, AnnotationType, AnnotationColor, AnnotationPosition } from "@labshelf/core";
+import { ANNOTATION_COLORS, ANNOTATION_TYPES } from "@labshelf/core";
+import { EventBus, EVENTS } from "../events/index.js";
 
 export class AnnotationManager {
   // Maps an annotation id to its owning paperId. Populated whenever annotations

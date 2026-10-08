@@ -5,12 +5,13 @@
  * last indexed run.
  */
 import * as vscode from "vscode";
-import type { EventBus, IEmbeddingProvider, ILogger, IResearchDatabase, LocalFileSystem } from "@labshelf/core";
-import { EVENTS, runIngestion } from "@labshelf/core";
+import type { IEmbeddingProvider, ILogger, IResearchDatabase, LocalFileSystem } from "@labshelf/core";
+import { runIngestion } from "@labshelf/core";
 import type { AiMetadataStore } from "../../db/ai/aiMetadataStore.js";
 import type { SqliteVectorStore } from "../../db/ai/sqliteVectorStore.js";
 import { PdfTextExtractor } from "../pdf/pdfTextExtractor.js";
 import { hashFile } from "../pdf/contentHash.js";
+import { EventBus, EVENTS } from "../../events/index.js";
 
 export interface AiIndexerDependencies {
   database: IResearchDatabase;
