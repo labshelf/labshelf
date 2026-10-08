@@ -5,12 +5,11 @@ import type { ILogger, SyncTimers } from "@labshelf/core";
 import { FakeRemoteProvider } from "@labshelf/core/test-support/sync-fakes";
 
 import { browserSyncStatus, createBrowserSync } from "../../src/sync";
-import { fakeFiles } from "../support/fakeIdb";
+import { clearFakeDb, fakeRows, putFile, textAt } from "../support/fakeIdb";
 
 const timers: SyncTimers = { start: () => undefined, cancel: () => undefined };
 
-function harness(authenticated: boolean) {
-  const provider = new FakeRemoteProvider();
+function harness(authenticated: boolean, provider = new FakeRemoteProvider()) {
   const logs: Array<{ level: string; message: string }> = [];
   const logger: ILogger = { log: async (level, _module, message) => { logs.push({ level, message }); }, error: async () => undefined };
   const auth = { isAuthenticated: () => authenticated, load: async () => undefined, getAccessToken: async () => "token", authenticate: async () => undefined, revoke: async () => undefined };
@@ -19,7 +18,7 @@ function harness(authenticated: boolean) {
   return { provider, logs, auth, onSynced, sync };
 }
 
-beforeEach(() => fakeFiles.clear());
+beforeEach(() => clearFakeDb());
 
 describe("createBrowserSync", () => {
   it("returns a skipped outcome while signed out instead of throwing", async () => {
@@ -66,5 +65,53 @@ describe("createBrowserSync", () => {
     expect(browserSyncStatus(sync.status(), true)).toMatchObject({ syncing: false, lastError: expect.stringContaining("not connected") });
     expect(logs).toContainEqual({ level: "ERROR", message: "Sync failed" });
     expect(onSynced).not.toHaveBeenCalled();
+  });
+});
+
+// A paper in the IndexedDB library: its files and its cached record, as the capture flow leaves them.
+function addPaper(id: string, title: string | undefined): void {
+  putFile(`papers/${id}/metadata.yaml`, `citekey: ${id}\n${title ? `title: ${title}\n` : ""}`);
+  putFile(`papers/${id}/paper.pdf`, "%PDF-1");
+  if (title) { fakeRows.metadata.set(id, { paperId: id, record: { id, title }, folderPath: `papers/${id}` }); }
+}
+
+async function driveFolders(provider: FakeRemoteProvider): Promise<Array<{ id: string; name: string }>> {
+  const root = await provider.resolveRoot("library");
+  return (await provider.list(root.id)).filter((f) => f.isFolder).map(({ id, name }) => ({ id, name }));
+}
+
+describe("browser sync and the other apps' Drive layout", () => {
+  it("names a new paper's Drive folder after its title", async () => {
+    addPaper("vaswani2017", "Attention Is All You Need");
+    const { sync, provider } = harness(true);
+    expect((await sync.syncNow("manual")).kind).toBe("synced");
+    expect((await driveFolders(provider)).map((f) => f.name)).toEqual(["Attention Is All You Need"]);
+  });
+
+  it("keeps the last run across a service-worker restart", async () => {
+    const { sync, provider } = harness(true);
+    const outcome = await sync.syncNow("manual");
+    const restarted = harness(true, provider).sync;
+    const status = await restarted.init();
+    expect(status.lastRun?.finishedAt).toBe(outcome.kind === "synced" ? outcome.record.finishedAt : "unreachable");
+    expect(status.lastRun?.app).toBe("browser");
+  });
+
+  it("keeps using a folder it created under the paper id before it knew titles", async () => {
+    addPaper("vaswani2017", undefined);
+    const { sync, provider } = harness(true);
+    await sync.syncNow("manual");
+    const [idFolder] = await driveFolders(provider);
+    expect(idFolder?.name).toBe("vaswani2017");
+
+    // The paper gets its title, a file is added here, and another device drops a file into the same Drive folder.
+    fakeRows.metadata.set("vaswani2017", { paperId: "vaswani2017", record: { id: "vaswani2017", title: "Attention" }, folderPath: "papers/vaswani2017" });
+    putFile("papers/vaswani2017/notes.md", "local note");
+    await provider.upload(idFolder!.id, "remote.md", new TextEncoder().encode("remote note"));
+    await sync.syncNow("manual");
+
+    expect(await driveFolders(provider)).toEqual([idFolder]);
+    expect((await provider.list(idFolder!.id)).map((f) => f.name).sort()).toEqual(["metadata.yaml", "notes.md", "paper.pdf", "remote.md"]);
+    expect(textAt("papers/vaswani2017/remote.md")).toBe("remote note");
   });
 });

@@ -107,6 +107,24 @@ describe("library folder naming across devices", () => {
     expect(device.has("/lib/101007s0028502402145/metadata.yaml")).toBe(false);
   });
 
+  it("keeps filling a paper folder synced under its id once titles are passed", async () => {
+    const provider = new FakeRemoteProvider();
+    const device = new MemoryFileSystem();
+    device.seed("/lib/ml/vaswani2017/metadata.yaml", metadata("vaswani2017", "Attention"));
+    device.seed("/lib/ml/vaswani2017/paper.pdf", "%PDF-A");
+    await syncDevice(device, provider);
+    const ml = (await provider.list((await provider.resolveRoot("library")).id)).find((f) => f.name === "ml")!;
+    const [idFolder] = await provider.list(ml.id);
+
+    device.seed("/lib/ml/vaswani2017/notes.md", "local", 5_000);
+    await provider.upload(idFolder!.id, "remote.md", Buffer.from("remote"));
+    await syncDevice(device, provider, buildLibraryFolderNames([["vaswani2017", "Attention"]]));
+
+    expect((await provider.list(ml.id)).map((f) => f.name)).toEqual(["vaswani2017"]);
+    expect((await provider.list(idFolder!.id)).map((f) => f.name).sort()).toEqual(["metadata.yaml", "notes.md", "paper.pdf", "remote.md"]);
+    expect(device.text("/lib/ml/vaswani2017/remote.md")).toBe("remote");
+  });
+
   it("keeps collection names and ignores unsafe citekeys", async () => {
     const provider = new FakeRemoteProvider();
     const deviceA = new MemoryFileSystem();

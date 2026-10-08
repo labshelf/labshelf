@@ -8,7 +8,7 @@ Every app that syncs must follow this contract. Breaking it can delete or duplic
 local library folder ⇄ (VS Code | terminal, one at a time) ⇄ Google Drive ⇄ browser (IndexedDB)
 ```
 
-VS Code and the terminal open the same local folder and share its manifest, so either one can sync it. The browser keeps its own copy and its own manifest in IndexedDB and meets the others on Drive. Any single app is enough to keep the library and Drive in step.
+VS Code and the terminal open the same local folder and share its manifest, so either one can sync it. The browser keeps its own copy, its own manifest and its own run record (key `google-drive.last.json`) in IndexedDB and meets the others on Drive. Any single app is enough to keep the library and Drive in step.
 
 ## Namespaces on Drive
 

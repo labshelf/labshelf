@@ -5,7 +5,10 @@
 import { BROWSER_SYNC_ROOTS, createGoogleDriveProvider, SYNC_PROVIDER_ID, SyncCoordinator } from "@labshelf/core";
 import type { IAuthProvider, ILogger, RemoteProvider, SyncStatus, SyncTimers } from "@labshelf/core";
 import type { SyncStatusData } from "../platform";
-import { IdbManifestFileSystem, IndexedDbFileSystem } from "../storage";
+import { IdbManifestFileSystem, IndexedDbFileSystem, listAllRecords } from "../storage";
+
+// Kept beside the manifest so a restarted service worker still knows when it last synced.
+const LAST_RUN_KEY = `${SYNC_PROVIDER_ID}.last.json`;
 
 export interface BrowserSyncDeps {
   /** `load` restores the stored token before each sync, so a restarted service worker is still signed in. */
@@ -25,7 +28,12 @@ export function createBrowserSync(deps: BrowserSyncDeps): SyncCoordinator {
   return new SyncCoordinator({
     app: "browser",
     host: "browser",
-    getTarget: () => ({ files, roots: BROWSER_SYNC_ROOTS, state: { fs: manifestFs, manifestPath: SYNC_PROVIDER_ID } }),
+    getTarget: () => ({
+      files,
+      roots: BROWSER_SYNC_ROOTS,
+      state: { fs: manifestFs, manifestPath: SYNC_PROVIDER_ID, lastRunPath: LAST_RUN_KEY },
+    }),
+    listTitles: async () => (await listAllRecords()).map((record) => [record.id, record.title] as const),
     auth: deps.auth,
     createProvider: deps.createProvider ?? (() => createGoogleDriveProvider(deps.auth)),
     logger: deps.logger,

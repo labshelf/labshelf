@@ -1,11 +1,6 @@
 /**
- * Minimal LocalFileSystem implementation that stores a single JSON blob in the
- * IDB "manifest" store. Passed to SyncManifest.load so the sync engine can
- * persist its merge-base without needing a real filesystem path.
- *
- * Only readFile, writeFile, and stat are meaningful here — the other methods
- * are no-ops or empty stubs that satisfy the interface but are never called by
- * SyncManifest.
+ * A LocalFileSystem over the IDB "manifest" store, one JSON document per key: the sync manifest and the last-run record.
+ * Only readFile, writeFile, stat and deleteFile do anything, since the sync state is never listed as a tree.
  */
 import type { LocalFileSystem, LocalStat } from "@labshelf/core";
 import { getDb } from "./idb/db";

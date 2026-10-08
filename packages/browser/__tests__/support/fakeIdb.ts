@@ -1,4 +1,4 @@
-/** A Map-backed stand-in for the "files" IndexedDB store, for tests of code that goes through getDb(). */
+/** Map-backed stand-ins for the IndexedDB stores, for tests of code that goes through getDb(). */
 import type { FileRow } from "../../src/storage/idb/schema";
 
 export const fakeFiles = new Map<string, FileRow>();
@@ -10,29 +10,45 @@ interface FakeRange { lo: string; hi: string }
   bound: (lo: string, hi: string): FakeRange => ({ lo, hi }),
 };
 
-function keysIn(range: FakeRange | undefined): string[] {
-  return [...fakeFiles.keys()].filter((key) => !range || (key >= range.lo && key < range.hi)).sort();
+type StoreName = "files" | "metadata" | "manifest";
+type Row = { [key: string]: unknown };
+
+/** The other two stores of the schema, keyed like the real ones. */
+export const fakeRows: Record<Exclude<StoreName, "files">, Map<string, Row>> = { metadata: new Map(), manifest: new Map() };
+const KEY_OF: Record<StoreName, string> = { files: "path", metadata: "paperId", manifest: "providerId" };
+
+function storeOf(name: StoreName) {
+  const rows = (name === "files" ? fakeFiles : fakeRows[name]) as Map<string, Row>;
+  const keysIn = (range: FakeRange | undefined): string[] =>
+    [...rows.keys()].filter((key) => !range || (key >= range.lo && key < range.hi)).sort();
+  return {
+    get: async (key: string) => rows.get(key),
+    getKey: async (range: FakeRange) => keysIn(range)[0],
+    getAllKeys: async (range?: FakeRange) => keysIn(range),
+    getAll: async (range?: FakeRange) => keysIn(range).map((key) => rows.get(key)!),
+    put: async (row: Row) => { rows.set(row[KEY_OF[name]] as string, row); },
+    clear: async () => { rows.clear(); },
+    delete: async (target: string | FakeRange) => {
+      for (const key of typeof target === "string" ? [target] : keysIn(target)) { rows.delete(key); }
+    },
+  };
 }
 
-const store = {
-  get: async (key: string) => fakeFiles.get(key),
-  getKey: async (range: FakeRange) => keysIn(range)[0],
-  getAllKeys: async (range?: FakeRange) => keysIn(range),
-  getAll: async (range?: FakeRange) => keysIn(range).map((key) => fakeFiles.get(key)!),
-  put: async (row: FileRow) => { fakeFiles.set(row.path, row); },
-  delete: async (target: string | FakeRange) => {
-    for (const key of typeof target === "string" ? [target] : keysIn(target)) { fakeFiles.delete(key); }
-  },
+export const fakeDb = {
+  get: (name: StoreName, key: string) => storeOf(name).get(key),
+  getKey: (name: StoreName, range: FakeRange) => storeOf(name).getKey(range),
+  getAllKeys: (name: StoreName, range?: FakeRange) => storeOf(name).getAllKeys(range),
+  getAll: (name: StoreName, range?: FakeRange) => storeOf(name).getAll(range),
+  put: (name: StoreName, row: Row) => storeOf(name).put(row),
+  delete: (name: StoreName, key: string) => storeOf(name).delete(key),
+  transaction: (name: StoreName) => ({ store: storeOf(name), done: Promise.resolve() }),
 };
 
-export const fakeDb = {
-  get: (_name: string, key: string) => store.get(key),
-  getKey: (_name: string, range: FakeRange) => store.getKey(range),
-  getAllKeys: (_name: string, range?: FakeRange) => store.getAllKeys(range),
-  put: (_name: string, row: FileRow) => store.put(row),
-  delete: (_name: string, key: string) => store.delete(key),
-  transaction: () => ({ store, done: Promise.resolve() }),
-};
+/** Empties every store between tests. */
+export function clearFakeDb(): void {
+  fakeFiles.clear();
+  for (const rows of Object.values(fakeRows)) { rows.clear(); }
+}
 
 export function putFile(path: string, content: string | Uint8Array): void {
   const bytes = typeof content === "string" ? new TextEncoder().encode(content) : content;
