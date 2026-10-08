@@ -442,20 +442,6 @@
   {
     "type": "dependency",
     "from": "packages/browser/src/content/scholarParse.ts",
-    "to": "packages/browser/src/capture/doiDetector.ts",
-    "unresolvedTo": "../capture/doiDetector",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/content/scholarParse.ts",
     "to": "packages/browser/src/platform/runtimeMessages.ts",
     "unresolvedTo": "../platform/runtimeMessages",
     "dependencyTypes": [

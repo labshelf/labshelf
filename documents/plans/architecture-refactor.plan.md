@@ -2,7 +2,7 @@
 
 Status: in progress (session 7 of 13)
 Size: GG — every package moves and duplicated logic merges across three apps; 13 sessions, one per phase (phases 4 and 9 are the heaviest).
-Pending decisions: 5
+Pending decisions: 4
 
 ## 1. Goal
 
@@ -63,6 +63,8 @@ When this plan is done, delete it and the note at the top of `architecture.md`.
   - **BC30** after a sync, apps reload only when the `library` namespace changed; an appdata-only download does not reload the terminal (S5.1);
   - **BC31** a browser sync requested while one runs joins it, and a sync while signed out returns a skipped outcome instead of throwing; VS Code logs sync failures (S5.1);
   - **BC32** VS Code signs in with the terminal's PKCE flow: state check, `prompt=consent`, a 5-minute timeout, an error when Google returns no refresh token, `invalid_grant` clears the tokens and asks to sign in again, and the `LABSHELF_GOOGLE_CLIENT_ID`/`_SECRET` override; token refresh is single-flight. Stored tokens stay valid (S5.2).
+  - **BC33** one DOI cleanup for every source (PDF text, links and XMP, browser pages, typed queries): `?query`, `#fragment`, a `.pdf` extension and publisher tails (`/abstract`, `/full`, `/pdf`) are dropped, percent-encoding is decoded, and trailing punctuation is stripped while balanced brackets stay; each source keeps its own scan rules (S6.1);
+  - **BC34** typed or pasted input in VS Code Fetch Metadata and terminal add/import recognises the same identifiers: a bare arXiv id, a bare DOI, arXiv `/abs`, `/pdf` and `/html` URLs and PubMed URLs (S6.1).
 
 Open questions (each one blocks only the steps named):
 
@@ -70,7 +72,7 @@ Open questions (each one blocks only the steps named):
   - Answer: in-memory. The index is a cache rebuilt on every activation, and dropping it removes `IResearchDatabase`, the column migrations and a whole layer. SQLite stays only for the AI stores. It also keeps the extension close to running as a web extension, which the writing workflow needs.
 - **Q2** (blocks S1.6, S6.3) The four unwired resolvers (OpenAlex, Semantic Scholar, Europe PMC, PMC) belong to [pdf-finding.plan.md](pdf-finding.plan.md).
   - Options: wire them in during S6.3 / delete them.
-  - Recommendation: wire them in if that plan goes ahead; otherwise delete them (git keeps them).
+  - Answer: wire them in during S6.3, with `titleMatch.ts`. pdf-finding.plan.md is active and puts its resolver steps in S6.3; its proxy and author-request steps stay in that plan.
 - **Q3** (blocks S1.3) About a third of the AI package has no consumer: `analysis/`, claims, term novelty, MMR, the sliding chunker.
   - Options: delete / keep.
   - Recommendation: delete, and rebuild when a feature needs it.
@@ -242,7 +244,7 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S6.1 | One identifier detection | S5.4 | M · module-splitter | copies gone | [ ] |
+| S6.1 | One identifier detection | S5.4 | M · module-splitter | copies gone | [x] |
 | S6.2 | Landing pages and metadata resolution in core | S6.1 | M · module-splitter | terminal imports a landing-page URL | [ ] |
 | S6.3 | PDF resolver chain and download in core | S6.2, Q2 | H+M · refactor-step | VS Code and terminal find PDFs by DOI | [ ] |
 | S6.4 | Split `core/src/import/` | S6.3 | M · module-splitter | A4 for `import/` | [ ] |
@@ -769,3 +771,4 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 - 2026-10-08 19:35 S5.3 code done, step left open for the scratch-Drive check: browser sync passes `listTitles` from its paper records and keeps the run record in IndexedDB under `google-drive.last.json` (lock-free), so new Drive folders are named after the title and the recent-run skip survives a service-worker restart. Before, the browser named the Drive folders it created after the paper id. The engine registers every remote folder under its manifest-first local name and creates folders only for unregistered paths, so existing id-named folders are reused in every app and never renamed; a browser and a core guard test pin this. The B2 regression tests fail on the previous `browserSync.ts`. The browser test `fakeIdb` keeps separate stores. Manual check for the user: build the pre-change extension, sync two papers to a scratch Drive, load the new build in the same profile, add a file to an old paper and save a new one, sync; the old folders keep their names and ids with no title-named sibling, the new paper's folder has its title, a file uploaded on Drive into an old folder arrives, and the last sync time survives an extension reload.
 - 2026-10-08 19:44 S5.4 done: the gitignored `credentials/google-desktop.json` (VS Code and the terminal) and `credentials/google-web.json` (the browser) hold the OAuth clients, with committed `.example.json` templates. `scripts/googleCredentials.mjs` turns them into esbuild defines, and core `BUILT_IN_GOOGLE_CLIENT` reads them; the six credential modules and the terminal's copy step are gone. Build-time env vars override the files. A build without the file builds an unconfigured client and says so. The browser bundle never carries the desktop secret (checked on the built bundles).
 - 2026-10-08 19:45 Session 7 finish: barrels for VS Code `commands/` and `pdf/` and browser `storage/idb/` clear the five `no-import-past-index` errors, so `pnpm run lint:deps` exits 0; stale baseline entries dropped. No acceptance criterion closes this session: A5 gains the lock store, PKCE auth and the sync coordinator, and A8 waits on B2's scratch-Drive check (S5.3 open).
+- 2026-10-08 20:02 S6.1 done: `core/src/io/identifiers/` holds `extractDoi` and `cleanDoiCandidate` (one DOI cleanup, BC33), `doiVariants`, the arXiv and PubMed URL helpers, the PDF `detectIdentifiers` and `identifiersFromInput` (BC34), which the terminal add/import and VS Code Fetch Metadata share. It sits under `io/` until S6.4 moves the domain. The browser `doiDetector.ts`, the terminal `identifiersIn` and the private DOI regexes in `xmp.ts` and `localSignals.ts` are gone. Q2 answered: wire the four resolvers in during S6.3. `detectIdentifiers` percent-decodes metadata and link targets before scanning; XMP and local signals use the browser's DOI scan, which stops at `,'[]{}|^`. The Scholar content script grew by 459 bytes.

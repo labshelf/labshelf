@@ -4,10 +4,8 @@
  * running head, and the non-standard keys publishers stamp into the Info
  * dictionary. This is the last-resort layer, used when every online registry
  * fails, so nothing here touches the network, pdfjs, or the filesystem.
- *
- * @depends io/pdf/types.ts
- * @dependents io/pdf/parser.ts
  */
+import { extractDoi } from "../identifiers/index.js";
 import type { ResolvedMetadata } from "./types.js";
 
 // Headings that end the abstract. Matched case-sensitively — "since the
@@ -394,11 +392,6 @@ function findByFragment(entries: Map<string, string>, fragment: string): string 
     }
   }
   return undefined;
-}
-
-function extractDoi(value: string | undefined): string | undefined {
-  const match = value?.match(/10\.\d{4,9}\/[^\s"<>]+/);
-  return match ? match[0].replace(/[).,;:]+$/, "") : undefined;
 }
 
 function extractYear(value: string | undefined): number | undefined {

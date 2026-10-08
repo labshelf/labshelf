@@ -7,7 +7,8 @@
 import * as vscode from "vscode";
 
 import {
-  detectIdentifiers,
+  extractDoi,
+  identifiersFromInput,
   resolveFirstIdentifier,
   searchOnlineCandidates,
 } from "@labshelf/core";
@@ -78,8 +79,7 @@ export async function fetchMetadataForPaper(
  * @returns One confirmed record, several candidates, or an empty list.
  */
 export async function lookupUserQuery(query: string): Promise<ResolvedMetadata[]> {
-  // A pasted link counts as both text and a link target.
-  const identifiers = detectIdentifiers({}, query, [query]);
+  const identifiers = identifiersFromInput(query);
   if (identifiers.length > 0) {
     const confirmed = await resolveFirstIdentifier(identifiers).catch(() => undefined);
     if (confirmed) {
@@ -166,7 +166,7 @@ function splitList(value: string, separator: string): string[] {
 
 // Accepts either form in the DOI box, since users paste whichever they have.
 function doiOrUrl(value: string): ResolvedMetadata {
-  const doi = value.match(/10\.\d{4,9}\/\S+/)?.[0];
+  const doi = extractDoi(value);
   if (doi) {
     return { doi, url: `https://doi.org/${doi}` };
   }

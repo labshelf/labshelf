@@ -5,12 +5,9 @@
  * digits, and a DOI scraped from the text may belong to a cited work. So every
  * candidate is confirmed against a registry, and search hits are checked for
  * agreement with what the PDF itself says before being accepted.
- *
- * @depends io/pdf/types.ts, io/pdf/identifiers.ts, io/pdf/registries.ts
- * @dependents io/pdf/parser.ts, capture/captureService (browser)
  */
-import type { DetectedIdentifier, ResolvedMetadata } from "./types.js";
-import { doiVariants } from "./identifiers.js";
+import type { ResolvedMetadata } from "./types.js";
+import { doiVariants, type DetectedIdentifier } from "../identifiers/index.js";
 import {
   arxivById,
   crossRefByDoi,

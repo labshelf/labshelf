@@ -20,9 +20,6 @@
  *
  * Pdfjs bootstrap and worker setup live in the consumer package (VS Code's
  * NodePdfOpener, browser's BrowserPdfOpener). Core never imports pdfjs.
- *
- * @depends io/pdf/types.ts, io/pdf/textExtraction.ts, io/pdf/extractor.ts, io/pdf/identifiers.ts, io/pdf/resolver.ts, io/pdf/xmp.ts, io/pdf/localSignals.ts, io/pdf/merge.ts
- * @dependents @labshelf/vscode paperService, @labshelf/browser captureService
  */
 import type {
   MetadataConfidence,
@@ -52,7 +49,7 @@ import {
   yearFromText,
   timestampsAreTrustworthy,
 } from "./extractor.js";
-import { detectIdentifiers } from "./identifiers.js";
+import { detectIdentifiers } from "../identifiers/index.js";
 import {
   enrichByDoi,
   resolveFirstIdentifier,

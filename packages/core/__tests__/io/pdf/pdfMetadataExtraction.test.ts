@@ -162,6 +162,12 @@ describe('metadataFromXmp', () => {
     expect(metadataFromXmp(xmp)?.doi).toBe('10.1038/nature12373');
   });
 
+  it('cleans a DOI stored with a query and a publisher tail', () => {
+    const xmp = { getAll: () => ({ 'dc:identifier': 'https://example.org/doi/10.1002/anie.201915678/abstract?x=1' }) };
+
+    expect(metadataFromXmp(xmp)?.doi).toBe('10.1002/anie.201915678');
+  });
+
   it('reads a Map and language-alternative values', () => {
     const xmp = {
       getAll: () => new Map<string, unknown>([['dc:title', { 'x-default': 'Mapped Title' }]]),

@@ -6,17 +6,14 @@
  * for its citation tags), else a registry search by title that must agree
  * with the year and authors Scholar printed. The "[PDF]" link Scholar found
  * is the first PDF candidate; the usual resolver chain follows it.
- * @depends capture/captureService, capture/pageFacts, capture/htmlPage, capture/doiDetector, platform/runtimeMessages (types)
- * @dependents background/index, capture/recordCapture
  */
-import type { MetadataSource, ResolvedMetadata } from "@labshelf/core";
+import { arxivIdFromUrl, extractDoi, pmidFromUrl } from "@labshelf/core";
+import type { DetectedIds, MetadataSource, ResolvedMetadata } from "@labshelf/core";
 import { draftFromFacts } from "./captureService";
 import type { CaptureDraft } from "./captureService";
 import { interpretPage } from "./pageFacts";
 import type { PageFacts, PdfCandidate } from "./pageFacts";
 import { parseHtmlPage } from "./htmlPage";
-import { arxivIdFromUrl, cleanDoi, pmidFromUrl } from "./doiDetector";
-import type { DetectedIds } from "./doiDetector";
 import type { ScholarHit } from "../platform/runtimeMessages";
 
 // Scholar's own line is abbreviated ("OH Ibarra", "Proceedings of the …"), so
@@ -30,7 +27,7 @@ const LANDING_TIMEOUT_MS = 12_000;
  */
 export function idsFromHit(hit: ScholarHit): DetectedIds {
   const urls = [hit.url, hit.pdfUrl].filter((u): u is string => !!u);
-  const doi = urls.map((u) => cleanDoi(u)).find(Boolean);
+  const doi = urls.map((u) => extractDoi(u)).find(Boolean);
   const arxivId = urls.map(arxivIdFromUrl).find(Boolean);
   const pmid = urls.map(pmidFromUrl).find(Boolean);
   return { ...(doi ? { doi } : {}), ...(arxivId ? { arxivId } : {}), ...(pmid ? { pmid } : {}) };

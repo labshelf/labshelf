@@ -1,8 +1,4 @@
-/**
- * Barrel re-export for IO services (PDF pipeline, BibTeX generator).
- *
- * @depends io/pdf, io/bibtex
- * @dependents @labshelf/core index, downstream packages
- */
+/** Barrel for IO services: identifier detection, the PDF pipeline and the BibTeX generator. */
+export * from "./identifiers/index.js";
 export * from "./pdf/index.js";
 export * from "./bibtex/index.js";

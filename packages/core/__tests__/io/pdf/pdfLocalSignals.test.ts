@@ -174,6 +174,10 @@ describe('publisherMetadataFromInfo', () => {
     });
   });
 
+  it('keeps the balanced brackets of a DOI', () => {
+    expect(publisherMetadataFromInfo({ doi: 'doi:10.1016/j.x.2020(1).' })).toEqual({ doi: '10.1016/j.x.2020(1)' });
+  });
+
   it('returns undefined when the dictionary holds nothing bibliographic', () => {
     expect(publisherMetadataFromInfo({ Producer: 'pdfTeX-1.40.21', Creator: 'LaTeX' })).toBeUndefined();
     expect(publisherMetadataFromInfo({ Journal: '   ', Volume: 12 })).toBeUndefined();

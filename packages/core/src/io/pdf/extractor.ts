@@ -1,12 +1,9 @@
 /**
  * Layout heuristics for inferring title and authors from font-grouped text
  * blocks, plus DOI/arXiv identifier detection and shared string helpers.
- *
- * @depends io/pdf/types.ts
- * @dependents io/pdf/parser.ts
  */
-import type { TextBlock, DetectedIdentifier } from "./types.js";
-import { detectIdentifiers } from "./identifiers.js";
+import type { TextBlock } from "./types.js";
+import { detectIdentifiers, type DetectedIdentifier } from "../identifiers/index.js";
 
 /**
  * Returns the title by picking the largest-font text run from the first eight blocks of page 1.

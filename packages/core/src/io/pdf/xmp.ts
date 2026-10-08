@@ -3,10 +3,8 @@
  * more there (journal, volume, issue, page range, DOI, ISSN) than in the
  * legacy Info dictionary, so XMP is the best offline metadata source when no
  * DOI can be resolved online.
- *
- * @depends io/pdf/types.ts
- * @dependents io/pdf/parser.ts
  */
+import { extractDoi } from "../identifiers/index.js";
 import type { ResolvedMetadata, XmpMetadataLike } from "./types.js";
 
 // XMP keys arrive with their namespace prefix (`dc:title`, `prism:doi`). Case
@@ -43,7 +41,7 @@ export function metadataFromXmp(xmp: XmpMetadataLike | null | undefined): Resolv
     volume: pick("prism:volume"),
     issue: pick("prism:number", "prism:issueidentifier"),
     pages: pageRange(pick("prism:pagerange"), pick("prism:startingpage"), pick("prism:endingpage")),
-    doi: normalizeDoi(pick("prism:doi", "crossmark:doi", "dc:identifier", "prism:url")),
+    doi: extractDoi(pick("prism:doi", "crossmark:doi", "dc:identifier", "prism:url")),
     url: pick("prism:url", "xmp:identifier"),
     issn: pick("prism:issn", "prism:eissn"),
     language: pick("dc:language", "prism:language"),
@@ -122,15 +120,6 @@ function pageRange(range: string | undefined, start: string | undefined, end: st
     return `${start}-${end}`;
   }
   return start ?? undefined;
-}
-
-// `dc:identifier` often holds `doi:10.x/y` or a doi.org URL rather than a bare DOI.
-function normalizeDoi(value: string | undefined): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-  const match = value.match(/10\.\d{4,9}\/[^\s"<>]+/);
-  return match ? match[0].replace(/[).,;:]+$/, "") : undefined;
 }
 
 function extractYear(value: string | undefined): number | undefined {

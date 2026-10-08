@@ -1,13 +1,9 @@
 /**
  * Barrel re-export for the PDF import pipeline.
- *
- * @depends types, textExtraction, extractor, xmp, localSignals, resolver, parser
- * @dependents io/index.ts, downstream packages
  */
 export type {
   ParsedPdfImport,
   ResolvedMetadata,
-  DetectedIdentifier,
   TextBlock,
   PdfDocumentLike,
   PdfMetadataLike,
@@ -15,10 +11,8 @@ export type {
   PdfPageLike,
   PdfDocumentOpener,
   PdfOcrEngine,
-  IdentifierType,
   MetadataConfidence,
 } from "./types.js";
-export { detectIdentifiers, doiVariants } from "./identifiers.js";
 export {
   crossRefByDoi,
   crossRefSearch,

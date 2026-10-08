@@ -1,8 +1,5 @@
 /**
- * Shared type definitions for the PDF import pipeline (identifiers, parsed metadata, resolved metadata).
- *
- * @depends none
- * @dependents io/pdf/parser.ts, io/pdf/extractor.ts, io/pdf/textExtraction.ts, io/pdf/resolver.ts
+ * Shared type definitions for the PDF import pipeline (parsed and resolved metadata, pdf.js shapes).
  */
 
 export interface ParsedPdfImport {
@@ -42,13 +39,6 @@ export interface ResolvedMetadata {
   language?: string | undefined;
   summary?: string | undefined;
   keywords?: string[] | undefined;
-}
-
-export type IdentifierType = "doi" | "arxiv" | "pmid" | "pmcid" | "isbn";
-
-export interface DetectedIdentifier {
-  type: IdentifierType;
-  value: string;
 }
 
 /**

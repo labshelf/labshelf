@@ -4,10 +4,8 @@
  * the right-column "[PDF]" link, and the green line under the title —
  * "A Aggarwal, M Klawe… - Proceedings of the …, 1986 - dl.acm.org" — split
  * into authors, venue, year.
- * @depends capture/doiDetector, platform/runtimeMessages (types)
- * @dependents content/scholar
  */
-import { arxivIdFromUrl, cleanDoi } from "../capture/doiDetector";
+import { arxivIdFromUrl, extractDoi } from "@labshelf/core";
 import type { LookupItem, ScholarHit } from "../platform/runtimeMessages";
 
 // Google Scholar's own hosts: scholar.google.com and its country domains
@@ -97,7 +95,7 @@ export function readResult(el: Element): ScholarHit | undefined {
  */
 export function lookupItemFor(hit: ScholarHit): LookupItem {
   const urls = [hit.url, hit.pdfUrl].filter((u): u is string => !!u);
-  const doi = urls.map((u) => cleanDoi(u)).find(Boolean);
+  const doi = urls.map((u) => extractDoi(u)).find(Boolean);
   const arxivId = urls.map(arxivIdFromUrl).find(Boolean);
   return {
     key: hit.key,

@@ -67,11 +67,6 @@
       "count": 1
     }
   },
-  "packages/core/src/io/pdf/identifiers.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
   "packages/core/src/io/pdf/localSignals.ts": {
     "max-lines": {
       "count": 1

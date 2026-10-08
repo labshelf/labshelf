@@ -6,13 +6,9 @@
  * authors agree with the page. Fields are merged one by one, most trusted
  * source first (core mergeMetadata), so a registry that lacks the issue
  * number does not erase the one the page printed.
- * @depends @labshelf/core (resolveOnlineMetadata, searchOnlineByTitle, enrichByDoi, mergeMetadata), capture/doiDetector
- * @dependents capture/captureService, capture/scholarCapture
  */
-import type { DetectedIdentifier, MetadataSource, ResolvedMetadata } from "@labshelf/core";
-import { enrichByDoi, mergeMetadata, resolveOnlineMetadata, searchOnlineByTitle, SOURCE_TRUST } from "@labshelf/core";
-import { arxivIdFromDoi } from "./doiDetector";
-import type { DetectedIds } from "./doiDetector";
+import type { DetectedIdentifier, DetectedIds, MetadataSource, ResolvedMetadata } from "@labshelf/core";
+import { arxivIdFromDoi, enrichByDoi, mergeMetadata, resolveOnlineMetadata, searchOnlineByTitle, SOURCE_TRUST } from "@labshelf/core";
 
 /** How much a page's own tags are trusted: below the registry, above a title search. */
 export const PAGE_TRUST = { structured: 80, titleOnly: 25 } as const;

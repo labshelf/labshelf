@@ -5,6 +5,7 @@
 import {
   claimCiteKey,
   describeError,
+  identifiersFromInput,
   importPdf,
   makeCiteKey,
   metadataFields,
@@ -19,8 +20,6 @@ import {
   type ResolvedMetadata,
 } from "@labshelf/core";
 import * as path from "node:path";
-
-import { identifiersIn } from "./importInputs.js";
 
 export interface NetworkImportEnv {
   ctx: MutationContext;
@@ -42,7 +41,7 @@ const MODULE = "terminal/paperService";
  * @returns what happened
  */
 export async function importIdentifier(env: NetworkImportEnv, input: string, targetDir: string): Promise<ImportOutcome> {
-  const identifiers = identifiersIn(input);
+  const identifiers = identifiersFromInput(input);
   if (!identifiers.length) { return { status: "failed", error: "No DOI, arXiv id, PMID or ISBN found", input }; }
   try {
     const found = await firstResolved(env, identifiers);

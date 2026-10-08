@@ -4,13 +4,10 @@
  * tab involved. Identifiers come from the stored record (its DOI, arXiv id or
  * PubMed URL); its landing page is read once for citation_pdf_url and download
  * anchors, exactly as a Scholar result's page is.
- * @depends capture/captureService (types), capture/doiDetector, capture/scholarCapture
- * @dependents background/index (paper.findPdf)
  */
-import type { PaperRecord } from "@labshelf/core";
+import { arxivIdFromDoi, arxivIdFromUrl, extractDoi, pmidFromUrl } from "@labshelf/core";
+import type { DetectedIds, PaperRecord } from "@labshelf/core";
 import type { CaptureDraft } from "./captureService";
-import { arxivIdFromDoi, arxivIdFromUrl, cleanDoi, pmidFromUrl } from "./doiDetector";
-import type { DetectedIds } from "./doiDetector";
 import { readLandingPage } from "./scholarCapture";
 
 /**
@@ -19,7 +16,7 @@ import { readLandingPage } from "./scholarCapture";
  * @usedBy draftFromRecord, tests
  */
 export function idsFromRecord(r: PaperRecord): DetectedIds {
-  const doi = cleanDoi(r.doi);
+  const doi = extractDoi(r.doi);
   const arxivId = arxivIdFromDoi(r.doi) ?? (r.url ? arxivIdFromUrl(r.url) : undefined);
   const pmid = r.url ? pmidFromUrl(r.url) : undefined;
   return {

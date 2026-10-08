@@ -207,4 +207,15 @@ describe("URL import", () => {
     expect(outcomes[0]!.status).toBe("added");
     expect(h.fetch.mock.calls.map(([url]) => url)).toEqual(["https://arxiv.org/pdf/1706.03762"]);
   });
+
+  it("resolves a PubMed link as a PMID, not a download", async () => {
+    const h = await harness();
+    h.resolve.mockResolvedValue({ title: "Nanometre-scale thermometry in a living cell", authors: ["G. Kucsko"], year: 2013 });
+
+    const outcomes = await h.service.importAny(["https://pubmed.ncbi.nlm.nih.gov/12345678/"], "");
+
+    expect(outcomes[0]!.status).toBe("added");
+    expect(h.resolve).toHaveBeenCalledWith({ type: "pmid", value: "12345678" });
+    expect(h.fetch).not.toHaveBeenCalled();
+  });
 });

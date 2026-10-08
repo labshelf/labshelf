@@ -1,11 +1,9 @@
 /**
- * Unit tests for the identifier-detection heuristics that scan a PDF's
- * metadata, link annotations and text for DOI/arXiv/PMID/PMCID/ISBN
- * candidates, and for the title-overlap scoring used to confirm an online
- * match.
+ * Unit tests for the heuristics that scan a PDF's metadata, link annotations
+ * and text for DOI/arXiv/PMID/PMCID/ISBN candidates.
  */
 
-import { detectIdentifiers, doiVariants, titleOverlap } from '@labshelf/core';
+import { detectIdentifiers } from '@labshelf/core';
 
 describe('detectIdentifiers', () => {
   it('finds multiple DOIs in the text and dedupes repeats', () => {
@@ -69,41 +67,37 @@ describe('detectIdentifiers', () => {
   });
 });
 
-describe('doiVariants', () => {
-  it('expands a component DOI into itself and its parent article DOI', () => {
-    expect(doiVariants('10.7554/eLife.28383.001')).toEqual([
-      '10.7554/eLife.28383.001',
-      '10.7554/eLife.28383',
-    ]);
+describe('detectIdentifiers DOI cleanup', () => {
+  const doiIn = (text: string, links: string[] = []) =>
+    detectIdentifiers({}, text, links).find((identifier) => identifier.type === 'doi')?.value;
+
+  it('keeps balanced brackets when stripping trailing punctuation', () => {
+    expect(doiIn('doi:10.1016/j.x.2020(1).')).toBe('10.1016/j.x.2020(1)');
   });
 
-  it('returns only the DOI itself when there is no numeric component suffix', () => {
-    expect(doiVariants('10.1038/nature12373')).toEqual(['10.1038/nature12373']);
-  });
-});
-
-describe('titleOverlap', () => {
-  it('scores identical strings as a full match', () => {
-    const title = 'Attention Is All You Need';
-
-    expect(titleOverlap(title, title)).toBe(1);
+  it('drops a closing bracket the DOI never opened', () => {
+    expect(doiIn('(doi:10.1145/10515.10546)')).toBe('10.1145/10515.10546');
   });
 
-  it('scores a candidate title fully contained in a longer page as a full match', () => {
-    const candidate = 'Attention Is All You Need';
-    const page =
-      'NeurIPS 2017\nAttention Is All You Need\nAshish Vaswani, Noam Shazeer, et al.\nAbstract...';
-
-    expect(titleOverlap(candidate, page)).toBe(1);
+  it('drops a ".pdf" extension on a link target', () => {
+    expect(doiIn('', ['https://link.springer.com/content/pdf/10.1007/s10107-023-01234-5.pdf'])).toBe(
+      '10.1007/s10107-023-01234-5',
+    );
   });
 
-  it('scores a completely different title as a low match', () => {
-    expect(
-      titleOverlap('Attention Is All You Need', 'A Survey of Deep Reinforcement Learning'),
-    ).toBeLessThan(0.3);
+  it('drops a publisher path tail on a link target', () => {
+    expect(doiIn('', ['https://onlinelibrary.wiley.com/doi/10.1002/anie.201915678/abstract'])).toBe(
+      '10.1002/anie.201915678',
+    );
   });
 
-  it('returns 0 for an empty candidate', () => {
-    expect(titleOverlap('', 'Attention Is All You Need')).toBe(0);
+  it('decodes percent-encoding in a link target', () => {
+    expect(doiIn('', ['https://www.example.org/doi/10.1000%2Fxyz123'])).toBe('10.1000/xyz123');
+  });
+
+  it('keeps a SICI DOI whole', () => {
+    const sici = '10.1002/(SICI)1097-4571(199806)49:8<693::AID-ASI4>3.0.CO;2-O';
+
+    expect(doiIn(`doi:${sici}`)).toBe(sici);
   });
 });

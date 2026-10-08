@@ -7,12 +7,9 @@
  * These are the tags Google Scholar itself indexes, so every serious
  * publisher emits them; they carry journal, volume, issue, pages, ISSN and
  * the full author list even when a registry lookup fails.
- * @depends @labshelf/core ResolvedMetadata, capture/doiDetector, capture/pageProbeContentScript (types)
- * @dependents capture/captureService, capture/scholarCapture, capture/pdfFetcher
  */
-import type { ResolvedMetadata } from "@labshelf/core";
-import { arxivIdFromDoi, arxivIdFromUrl, cleanDoi, pmidFromUrl } from "./doiDetector";
-import type { DetectedIds } from "./doiDetector";
+import { arxivIdFromDoi, arxivIdFromUrl, extractDoi, pmidFromUrl } from "@labshelf/core";
+import type { DetectedIds, ResolvedMetadata } from "@labshelf/core";
 import type { RawPage } from "./pageProbeContentScript";
 
 /** A URL that may serve the paper's PDF, and who suggested it (shown to the user). */
@@ -98,11 +95,11 @@ function identifiersOf(raw: RawPage, m: (...keys: string[]) => string | undefine
   // dc.identifier may hold an ISBN or a URL, so take the first value that is a DOI.
   const metaDoi = ["citation_doi", "dc.identifier.doi", "prism.doi", "bepress_citation_doi", "doi", "dc.identifier", "dcterms.identifier", "og:doi"]
     .flatMap((key) => raw.meta[key] ?? [])
-    .map((value) => cleanDoi(value))
+    .map((value) => extractDoi(value))
     .find((d): d is string => !!d);
   // A page cites many DOIs in its references; a lone doi.org link is its own.
-  const linkDois = [...new Set(raw.doiLinks.map((l) => cleanDoi(l)).filter((d): d is string => !!d).map((d) => d.toLowerCase()))];
-  const doi = metaDoi ?? cleanDoi(raw.pageUrl) ?? (linkDois.length === 1 ? cleanDoi(raw.doiLinks[0]) : undefined);
+  const linkDois = [...new Set(raw.doiLinks.map((l) => extractDoi(l)).filter((d): d is string => !!d).map((d) => d.toLowerCase()))];
+  const doi = metaDoi ?? extractDoi(raw.pageUrl) ?? (linkDois.length === 1 ? extractDoi(raw.doiLinks[0]) : undefined);
   if (doi) ids.doi = doi;
   const arxivId = m("citation_arxiv_id") ?? arxivIdFromUrl(raw.pageUrl) ?? arxivIdFromDoi(doi);
   if (arxivId) ids.arxivId = arxivId.replace(/^arxiv:/i, "").replace(/v\d+$/, "");
