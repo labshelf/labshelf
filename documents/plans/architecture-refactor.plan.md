@@ -1,8 +1,8 @@
 # Plan: architecture refactor
 
 Status: in progress (session 5 of 13)
-Size: GG — every package moves and duplicated logic merges across three apps; 13 sessions, one per phase (phases 4 and 9 are the heaviest). Adds a session if Q1 keeps the SQLite paper index (S10.5 grows).
-Pending decisions: 7
+Size: GG — every package moves and duplicated logic merges across three apps; 13 sessions, one per phase (phases 4 and 9 are the heaviest).
+Pending decisions: 6
 
 ## 1. Goal
 
@@ -57,8 +57,7 @@ When this plan is done, delete it and the note at the top of `architecture.md`.
 Open questions (each one blocks only the steps named):
 
 - **Q1** (blocks S10.5) Keep the SQLite paper index in VS Code, or use the in-memory library store from S4.3 as the terminal does?
-  - Options: keep / in-memory.
-  - Recommendation: in-memory. The index is a cache rebuilt on every activation, and dropping it removes `IResearchDatabase`, the column migrations and a whole layer. SQLite stays only for the AI stores.
+  - Answer: in-memory. The index is a cache rebuilt on every activation, and dropping it removes `IResearchDatabase`, the column migrations and a whole layer. SQLite stays only for the AI stores. It also keeps the extension close to running as a web extension, which the writing workflow needs.
 - **Q2** (blocks S1.6, S6.3) The four unwired resolvers (OpenAlex, Semantic Scholar, Europe PMC, PMC) belong to [pdf-finding.plan.md](pdf-finding.plan.md).
   - Options: wire them in during S6.3 / delete them.
   - Recommendation: wire them in if that plan goes ahead; otherwise delete them (git keeps them).
@@ -91,7 +90,8 @@ Open questions (each one blocks only the steps named):
   - no app imports another;
   - core imports no app;
   - neutral core imports no `node/` or `dom/` code, `node:*` or DOM;
-  - no import goes past another directory's `index.ts`.
+  - no import goes past another directory's `index.ts`;
+  - VS Code imports `node:*` and Node-only packages only from its `node/` folders.
 - [ ] **A3** knip runs as an error and reports no unused file, export or dependency.
 - [ ] **A4** ESLint runs as an error and passes: no source file over 300 lines, no test file over 500, no function over 50 lines. No directory holds more than 8 source files.
 - [ ] **A5** Each of these exists once, in core: the library mutations (one service instead of three), the `metadata.yaml` reader, the cite-key, tag and folder-name helpers, search, author formatting, shared config, the file logger, the Node file system, the lock store, PKCE auth, the sync coordinator, identifier detection, the PDF resolver chain, the reader host controller, the sidecar store, the design tokens, the icon set and the library UI.
@@ -282,7 +282,7 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 
 ### Session 12 — remaining splits
 
-- **Starts from:** session 11 committed. Q1 answered for S10.5.
+- **Starts from:** session 11 committed.
 - **Ends with:** no file over the limits.
 - **Commit:** one per step.
 
@@ -297,6 +297,7 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 | S10.7 | Split browser `popup/index.ts` | S9.5 | M · module-splitter | A4 | [ ] |
 | S10.8 | Split browser `paperController.ts` | S9.5 | M · module-splitter | A4 | [ ] |
 | S10.9 | Directory sizes and renames | S10.1–S10.8 | M · module-splitter | A4 everywhere | [ ] |
+| S10.10 | VS Code Node code behind `node/` folders | S10.3, S10.5 | H+M · code-mapper + module-splitter | A2 (Node rule) | [ ] |
 
 ### Session 13 — comments, docs, checks as errors
 
@@ -306,7 +307,7 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S11.1 | File headers per package | S10.9 | M · comment-enforcer | A9 (headers) | [ ] |
+| S11.1 | File headers per package | S10.9, S10.10 | M · comment-enforcer | A9 (headers) | [ ] |
 | S11.2 | History language and stale references | S11.1 | M · comment-enforcer | A9 | [ ] |
 | S11.3 | Docs paths, checks as errors, delete plan | S11.2 | M · doc-keeper | A2, A3, A4 as errors | [ ] |
 
@@ -624,7 +625,7 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 
 #### S9.1 — Library UI
 
-- **Do:** create `core/src/library-ui/` with the list state, list, rows, detail pane and sections, folder header and chips, and the filter bar, as typed TypeScript components. Start from browser `library-page/views/*` and `state/libraryStore.ts`. Add a typed message protocol and a transport port. Use only `--ls-*` tokens and core components.
+- **Do:** create `core/src/library-ui/` with the list state, list, rows, detail pane and sections, folder header and chips, and the filter bar, as typed TypeScript components. Start from browser `library-page/views/*` and `state/libraryStore.ts`. Add a typed message protocol and a transport port. Use only `--ls-*` tokens and core components. The protocol and the transport port know nothing about the host: the same messages serve the VS Code webview and the browser page, and views added later, such as Writing, join the same protocol.
 - **Context:** follow [product.md](../product.md): paper-first, and navigating never rebuilds the view.
 
 #### S9.2 — VS Code list on the shared UI
@@ -669,9 +670,7 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 
 #### S10.5 — VS Code database
 
-- **Do:**
-  - If Q1 is "in-memory": remove the paper index and `IResearchDatabase`, and keep SQLite only for the AI stores.
-  - If Q1 is "keep": split `sqliteResearchDatabase.ts` into schema, papers repo and logs repo.
+- **Do:** per Q1, remove the paper index and `IResearchDatabase`; the in-memory store from S4.3 serves the list. SQLite stays only for the AI stores.
 
 #### S10.6 — Browser background
 
@@ -694,6 +693,14 @@ Every session starts from a clean tree on the plan's branch, which is the state 
   - Bring every directory to at most 8 source files: browser `capture/`, `capture/resolvers/`, `library-page/views/`, `ui/`; VS Code `ui/list/`; core `import/`, `sync/core/`, `ai/heuristics/`.
   - Rename `sync/core/` to `sync/engine/`.
   - Rename VS Code `src/core/` so it does not clash with the package name.
+
+#### S10.10 — VS Code Node boundary
+
+- **Do:**
+  - Move every VS Code file that imports `node:*` or a Node-only package (`node:sqlite`, Tesseract, pdf.js for Node, `child_process`) into a `node/` folder of its domain, behind a port the rest of the extension uses.
+  - Add a dependency-cruiser rule: outside `node/` folders, VS Code imports no `node:*` and no Node-only package. Known violations go to the baseline like the other rules.
+- **Context:** the writing workflow runs the extension as a web extension (vscode.dev and the browser editor). This rule keeps the Node part small and visible.
+- **Done when:** the rule runs and its baseline lists only what cannot move yet.
 
 #### S11.1 — File headers
 
