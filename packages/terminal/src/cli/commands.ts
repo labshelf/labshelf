@@ -320,7 +320,7 @@ export async function runDoctor(root: string | undefined, rootSource: string, co
     line(last ? true : "warn", "last sync", last?.finishedAt ? `${relativeTime(last.finishedAt) || "never"} by ${last.app}` : "never (by an app that records it)");
   }
   const client = resolveTerminalOAuthClient();
-  line(client ? true : "warn", "drive client", client ? `configured (${client.clientId.slice(0, 12)}…)` : "missing: rebuild with the VS Code extension's credentials, or set LABSHELF_GOOGLE_CLIENT_ID/SECRET to a client of the same Google Cloud project");
+  line(client ? true : "warn", "drive client", client ? `configured (${client.clientId.slice(0, 12)}…)` : "missing: set up credentials/google-desktop.json and rebuild, or set LABSHELF_GOOGLE_CLIENT_ID/SECRET to a client of the same Google Cloud project");
   const store = createTokenStore();
   const tokens = await store.load().catch(() => null);
   line(tokens ? true : "warn", "drive sign-in", tokens ? `signed in (tokens in ${store.kind})` : `signed out — run \`labshelf auth login\` (tokens go to ${store.kind})`);

@@ -1,12 +1,11 @@
 /** The terminal's Google sign-in: its OAuth client (environment, then the credentials bundled at build time) and its wording. */
-import { resolveOAuthClient, type FetchFn, type ILogger, type OAuthClient, type TokenStore } from "@labshelf/core";
+import { BUILT_IN_GOOGLE_CLIENT, resolveOAuthClient, type FetchFn, type ILogger, type OAuthClient, type TokenStore } from "@labshelf/core";
 import { PkceLoopbackAuth, type LoginPrompt } from "@labshelf/core/node";
 
-import { CLIENT_ID, CLIENT_SECRET } from "./googleDriveCredentials.js";
 
 /** @returns the OAuth client, or undefined when none is configured */
 export function resolveTerminalOAuthClient(env: NodeJS.ProcessEnv = process.env): OAuthClient | undefined {
-  return resolveOAuthClient(env, { clientId: CLIENT_ID, clientSecret: CLIENT_SECRET });
+  return resolveOAuthClient(env, BUILT_IN_GOOGLE_CLIENT);
 }
 
 /**

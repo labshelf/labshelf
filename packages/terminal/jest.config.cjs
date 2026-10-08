@@ -20,8 +20,6 @@ module.exports = {
   ],
   coverageThreshold: { global: { branches: 50, functions: 50, lines: 50, statements: 50 } },
   moduleNameMapper: {
-    // The real credentials file is gitignored; tests never talk to Google, so the template stands in.
-    '^(\\.{1,2}/(?:.*/)?)googleDriveCredentials\\.js$': '$1googleDriveCredentials.example',
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
   testTimeout: 30000,

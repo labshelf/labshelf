@@ -1,43 +1,13 @@
-/**
- * Bundles @labshelf/terminal into dist/labshelf.mjs (the `labshelf` command) and dist/thumbnailWorker.mjs.
- * @labshelf/core is bundled from source; pdfjs-dist and the native canvas stay external and are
- * loaded from node_modules at run time, only when a PDF is parsed or rendered.
- *
- * Google OAuth credentials: src/sync/googleDriveCredentials.ts is gitignored. When it is missing, the VS Code
- * extension's copy is used (the terminal must share its OAuth client, see the .example file), and failing that the
- * placeholder template, which builds an app whose sync asks for LABSHELF_GOOGLE_CLIENT_ID/SECRET.
- *
- * @depends esbuild
- * @dependents pnpm --filter @labshelf/terminal build
- */
+/** Bundles @labshelf/terminal into dist/labshelf.mjs (the `labshelf` command) and dist/thumbnailWorker.mjs. @labshelf/core is bundled from source; pdfjs-dist and the native canvas stay external and are loaded from node_modules at run time, only when a PDF is parsed or rendered. */
 import { build, context } from "esbuild";
-import { chmod, copyFile, access } from "node:fs/promises";
+import { chmod } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { googleCredentialDefines } from "../../../scripts/googleCredentials.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "..");
-const repo = resolve(root, "../..");
 const watch = process.argv.includes("--watch");
-
-async function exists(file) {
-  try {
-    await access(file);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function ensureCredentials() {
-  const target = resolve(root, "src/sync/googleDriveCredentials.ts");
-  if (await exists(target)) return;
-  const fromVscode = resolve(repo, "packages/vscode/src/sync/auth/googleDriveCredentials.ts");
-  const template = resolve(root, "src/sync/googleDriveCredentials.example.ts");
-  const source = (await exists(fromVscode)) ? fromVscode : template;
-  await copyFile(source, target);
-  console.log(`[labshelf-terminal] OAuth credentials: copied ${source === fromVscode ? "the VS Code extension's client" : "the placeholder template"}`);
-}
 
 const banner = [
   "#!/usr/bin/env node",
@@ -55,9 +25,8 @@ const common = {
   // Loaded lazily from node_modules: pdfjs reads its data files next to itself, the canvas is a native module.
   external: ["pdfjs-dist", "pdfjs-dist/*", "@napi-rs/canvas"],
   banner: { js: banner },
+  define: googleCredentialDefines("desktop"),
 };
-
-await ensureCredentials();
 
 const entries = [
   { ...common, entryPoints: [resolve(root, "src/main.ts")], outfile: resolve(root, "dist/labshelf.mjs") },

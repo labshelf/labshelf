@@ -13,17 +13,16 @@
  * Implements the cross-platform `IAuthProvider` from @labshelf/core, so the
  * same Drive RemoteProvider works in VS Code and in the browser.
  */
-import { GOOGLE_AUTH_URL, GOOGLE_DRIVE_SCOPES, GOOGLE_REVOKE_URL, type IAuthProvider } from "@labshelf/core";
+import { BUILT_IN_GOOGLE_CLIENT, GOOGLE_AUTH_URL, GOOGLE_DRIVE_SCOPES, GOOGLE_REVOKE_URL, type IAuthProvider } from "@labshelf/core";
 import { bx } from "../../platform/browserApi";
 import { clearToken, loadToken, saveToken, type StoredToken } from "./tokenStore";
-import { CLIENT_ID } from "./oauthConfig";
 
 const REFRESH_LEEWAY_MS = 60_000;
 
 function buildAuthUrl(redirectUri: string, prompt: "none" | "consent"): string {
   const url = new URL(GOOGLE_AUTH_URL);
   url.searchParams.set("response_type", "token");
-  url.searchParams.set("client_id", CLIENT_ID);
+  url.searchParams.set("client_id", BUILT_IN_GOOGLE_CLIENT.clientId);
   url.searchParams.set("redirect_uri", redirectUri);
   url.searchParams.set("scope", GOOGLE_DRIVE_SCOPES.join(" "));
   url.searchParams.set("prompt", prompt);

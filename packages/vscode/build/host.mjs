@@ -1,12 +1,9 @@
-/**
- * Bundles the extension host into out/extension.js. @labshelf/* packages are bundled from source; every other
- * dependency stays external and loads from node_modules, because pdf.js, Tesseract and the native canvas locate their
- * own data files, workers and binaries next to themselves.
- */
+/** Bundles the extension host into out/extension.js. @labshelf/* packages are bundled from source; every other dependency stays external and loads from node_modules, because pdf.js, Tesseract and the native canvas locate their own data files, workers and binaries next to themselves. */
 import { build, context } from "esbuild";
 import { readFile, rm } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { googleCredentialDefines } from "../../../scripts/googleCredentials.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const pkgRoot = resolve(here, "..");
@@ -32,6 +29,7 @@ const options = {
   sourcemap: true,
   tsconfig: resolve(pkgRoot, "tsconfig.json"),
   logLevel: "info",
+  define: googleCredentialDefines("desktop"),
 };
 
 if (watch) {

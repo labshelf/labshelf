@@ -11,10 +11,12 @@ This folder explains how to build, run and verify each app. App-specific details
 
 Drive sync needs OAuth clients from one Google Cloud project, because an app only sees, through the Drive scopes, the files created by its own project ([contracts/sync.md](../contracts/sync.md#namespaces-on-drive)).
 
-| Client type | Used by | Local file (gitignored; copy the committed `.example`) |
+| Client type | Used by | Setup |
 |---|---|---|
-| Desktop | VS Code and the terminal | `packages/vscode/src/sync/auth/googleDriveCredentials.ts`; the terminal build copies it when its own copy is missing |
-| Web application | browser | `packages/browser/src/sync/auth/oauthConfig.ts` |
+| Desktop | VS Code and the terminal | Copy `credentials/google-desktop.example.json` → `credentials/google-desktop.json`, fill in the client ID and secret, rebuild. |
+| Web application | browser | Copy `credentials/google-web.example.json` → `credentials/google-web.json`, fill in the client ID, rebuild. |
+
+Credentials are read at build time and bundled into the apps. Environment variables `LABSHELF_GOOGLE_CLIENT_ID` and `LABSHELF_GOOGLE_CLIENT_SECRET` override the files at build time; the terminal also accepts them at runtime.
 
 To set them up in Google Cloud Console:
 
