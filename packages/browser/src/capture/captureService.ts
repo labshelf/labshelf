@@ -14,14 +14,11 @@
  * while the user is still choosing a folder), so Save is usually instant.
  * Scholar results enter at step 1 through capture/scholarCapture.
  */
-import type { DetectedIds, MetadataSource, PaperRecord, ResolvedMetadata } from "@labshelf/core";
+import { PAGE_TRUST, findInLibrary, interpretPage, resolveMetadata, withAbstract } from "@labshelf/core";
+import type {
+  DetectedIds, MetadataOrigin, MetadataSource, PageFacts, PaperRecord, PdfCandidate, RawPage, ResolvedMetadata,
+} from "@labshelf/core";
 import { probe } from "./pageProbeContentScript";
-import type { RawPage } from "./pageProbeContentScript";
-import { interpretPage } from "./pageFacts";
-import type { PageFacts, PdfCandidate } from "./pageFacts";
-import { PAGE_TRUST, resolveMetadata, withAbstract } from "./metadataResolver";
-import type { MetadataOrigin } from "./metadataResolver";
-import { findInLibrary } from "./libraryMatch";
 import { resolvePdf } from "./resolvers/index";
 import type { PdfAttempt, ResolvedPdf } from "./resolvers/index";
 import type { PdfFetchOptions } from "./pdfFetcher";

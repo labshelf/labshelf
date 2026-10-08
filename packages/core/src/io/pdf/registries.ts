@@ -6,6 +6,7 @@
  * @depends io/pdf/types.ts
  * @dependents io/pdf/resolver.ts
  */
+import { extractYear } from "./extractor.js";
 import type { ResolvedMetadata } from "./types.js";
 
 const USER_AGENT = "LabShelf/0.1 (research paper manager; mailto:contact@labshelf.dev)";
@@ -63,7 +64,7 @@ export async function arxivById(arxivId: string): Promise<RegistryRecord | undef
     authors: [...entry.matchAll(/<author>\s*<name>([\s\S]*?)<\/name>\s*<\/author>/g)]
       .map((match) => xmlText(match[1] ?? ""))
       .filter((name): name is string => Boolean(name)),
-    year: yearOf(matchTag(entry, "published") ?? matchTag(entry, "updated")),
+    year: extractYear(matchTag(entry, "published") ?? matchTag(entry, "updated")),
     journal: xmlText(matchTag(entry, "arxiv:journal_ref")) ?? "arXiv preprint",
     doi: xmlText(matchTag(entry, "arxiv:doi")),
     url: xmlText(matchTag(entry, "id")),
@@ -89,7 +90,7 @@ export async function pubMedByPmid(pmid: string): Promise<RegistryRecord | undef
   return {
     title: stripHtml(record.title),
     authors: (record.authors ?? []).map((author) => author.name).filter(Boolean),
-    year: yearOf(record.pubdate),
+    year: extractYear(record.pubdate),
     journal: record.fulljournalname ?? record.source,
     volume: record.volume,
     issue: record.issue,
@@ -171,7 +172,7 @@ export async function openLibraryByIsbn(isbn: string): Promise<RegistryRecord | 
   return {
     title: book.subtitle ? `${book.title}: ${book.subtitle}` : book.title,
     authors: (book.authors ?? []).map((author) => author.name).filter(Boolean),
-    year: yearOf(book.publish_date),
+    year: extractYear(book.publish_date),
     publisher: book.publishers?.[0]?.name,
     pages: book.number_of_pages ? String(book.number_of_pages) : undefined,
     url: book.url,
@@ -257,7 +258,7 @@ export async function googleBooksByIsbn(isbn: string): Promise<RegistryRecord | 
   return {
     title: volume.subtitle ? `${volume.title}: ${volume.subtitle}` : volume.title,
     authors: (volume.authors ?? []).filter((name): name is string => Boolean(name)),
-    year: yearOf(volume.publishedDate),
+    year: extractYear(volume.publishedDate),
     publisher: trimmed(volume.publisher),
     pages: volume.pageCount ? String(volume.pageCount) : undefined,
     url: trimmed(volume.infoLink),
@@ -440,7 +441,7 @@ function mapEuropePmcResult(result: EuropePmcResult): RegistryRecord {
       .split(", ")
       .map((name) => name.trim())
       .filter((name) => name.length > 0),
-    year: yearOf(result.pubYear),
+    year: extractYear(result.pubYear),
     journal: trimmed(result.journalTitle),
     volume: trimmed(result.journalVolume),
     issue: trimmed(result.issue),
@@ -482,7 +483,7 @@ function mapDblpInfo(info: DblpInfo): RegistryRecord {
     authors: asArray(info.authors?.author)
       .map((author) => trimmed(author.text))
       .filter((name): name is string => Boolean(name)),
-    year: yearOf(info.year),
+    year: extractYear(info.year),
     journal: firstNonEmpty(asArray(info.venue)),
     volume: trimmed(info.volume),
     pages: trimmed(info.pages),
@@ -570,9 +571,4 @@ function matchTag(content: string, tagName: string): string | undefined {
 
 function xmlText(value: string | undefined): string | undefined {
   return value?.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim() || undefined;
-}
-
-function yearOf(value: string | undefined): number | undefined {
-  const match = value?.match(/(?:19|20)\d{2}/);
-  return match ? Number(match[0]) : undefined;
 }

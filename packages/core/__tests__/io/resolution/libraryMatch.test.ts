@@ -1,5 +1,5 @@
 import type { PaperRecord } from "@labshelf/core";
-import { findInLibrary } from "../../src/capture/libraryMatch";
+import { findInLibrary } from "@labshelf/core";
 
 const rec = (over: Partial<PaperRecord>): PaperRecord => ({
   id: "x", title: "T", path: "papers/x", citeKey: "x", status: "unread", ...over,

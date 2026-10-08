@@ -11,9 +11,7 @@
  * the version of record); and, when both sides list authors, they share at least
  * one surname. Pure and network-free so every rule can be unit-tested.
  */
-import { titleKey } from "@labshelf/core";
-
-import { surname } from "./metadataResolver";
+import { surname, titleKey } from "@labshelf/core";
 
 /** A record thin enough for the comparison: whatever a source managed to supply. */
 export interface WorkRef {

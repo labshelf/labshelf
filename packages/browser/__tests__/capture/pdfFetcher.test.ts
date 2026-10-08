@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { fetchPdf, isBotCheck, nextHopsFromHtml } from "../../src/capture/pdfFetcher";
 import { isPdfBytes } from "../../src/capture/pdfBytes";
 
-const fixture = (name: string): string => readFileSync(join(__dirname, "..", "fixtures", name), "utf8");
+const fixture = (name: string): string => readFileSync(join(__dirname, "..", "..", "..", "core", "__tests__", "fixtures", name), "utf8");
 const PDF = new TextEncoder().encode("%PDF-1.7\n1 0 obj\n<<>>\nendobj\n%%EOF");
 const html = (body: string): Response => new Response(body, { status: 200, headers: { "content-type": "text/html; charset=utf-8" } });
 const pdf = (): Response => new Response(PDF, { status: 200, headers: { "content-type": "application/octet-stream" } });

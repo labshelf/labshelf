@@ -2,10 +2,8 @@
  * Shared types for the PDF resolver chain. Each resolver turns the identifiers
  * and page evidence gathered so far into URLs that may serve the paper's PDF;
  * the chain downloads them in order and keeps the first that really is one.
- * @depends capture/pageFacts (types)
- * @dependents capture/resolvers/*, capture/captureService
  */
-import type { PdfCandidate } from "../pageFacts";
+import type { PdfCandidate } from "@labshelf/core";
 
 /** Context shared with every resolver in the chain. */
 export interface ResolveContext {

@@ -49,6 +49,7 @@ export interface Harness {
   parse: jest.Mock<Promise<ParsedPdfImport>, [Uint8Array, string]>;
   parserFactory: jest.Mock<Promise<PdfImportParser>, []>;
   resolve: jest.Mock<Promise<ResolvedMetadata | undefined>, [DetectedIdentifier]>;
+  searchByTitle: jest.Mock<Promise<ResolvedMetadata | undefined>, [string]>;
   fetch: jest.Mock<Promise<Response>, [string, (RequestInit | undefined)?]>;
   routes: Map<string, () => Response>;
   inbox: string;
@@ -78,6 +79,7 @@ export async function harness(papers: PaperFixture[] = [], collections: string[]
   const parse = jest.fn(async (_bytes: Uint8Array, _stem: string): Promise<ParsedPdfImport> => ({ ...ATTENTION }));
   const parserFactory = jest.fn(async () => ({ parse }) as unknown as PdfImportParser);
   const resolve = jest.fn(async (_id: DetectedIdentifier): Promise<ResolvedMetadata | undefined> => undefined);
+  const searchByTitle = jest.fn(async (_title: string): Promise<ResolvedMetadata | undefined> => undefined);
   const routes = new Map<string, () => Response>();
   const fetchMock = jest.fn(async (url: string, _init?: RequestInit | undefined): Promise<Response> => {
     const route = routes.get(String(url));
@@ -93,10 +95,11 @@ export async function harness(papers: PaperFixture[] = [], collections: string[]
     trash,
     fetch: fetchMock as unknown as typeof fetch,
     resolveIdentifier: resolve,
+    searchByTitle,
     onLocalChange,
   });
   return {
-    lib, store, service, trashDir, trashed, trash, onLocalChange, logs, parse, parserFactory, resolve,
+    lib, store, service, trashDir, trashed, trash, onLocalChange, logs, parse, parserFactory, resolve, searchByTitle,
     fetch: fetchMock, routes, inbox,
     async writePdf(name = "attention.pdf", bytes = fakePdfBytes("download")) {
       const file = path.join(inbox, name);

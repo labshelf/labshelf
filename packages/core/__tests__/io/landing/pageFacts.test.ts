@@ -1,11 +1,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { parseHtmlPage } from "../../src/capture/htmlPage";
-import { authorsOf, interpretPage, pagesOf, yearOf } from "../../src/capture/pageFacts";
-import type { RawPage } from "../../src/capture/pageProbeContentScript";
+import { interpretPage, parseHtmlPage } from "@labshelf/core";
+import type { RawPage } from "@labshelf/core";
+import { authorsOf, pagesOf } from "../../../src/io/landing/citationFields";
 
 const springer = (): RawPage => parseHtmlPage(
-  readFileSync(join(__dirname, "..", "fixtures", "springerArticle.html"), "utf8"),
+  readFileSync(join(__dirname, "..", "..", "fixtures", "springerArticle.html"), "utf8"),
   "https://link.springer.com/article/10.1007/s10107-023-01234-5",
 );
 const page = (over: Partial<RawPage>): RawPage => ({ pageUrl: "https://example.org/a", meta: {}, pdfLinks: [], doiLinks: [], ...over });
@@ -80,12 +80,23 @@ describe("field helpers", () => {
     expect(authorsOf([], [], "Moran, S; Hui, R")).toEqual(["S Moran", "R Hui"]);
   });
 
-  it("extracts years and joins page ranges", () => {
-    expect(yearOf("1982/03/01")).toBe(1982);
-    expect(yearOf("March 2003")).toBe(2003);
-    expect(yearOf("n.d.")).toBeUndefined();
+  it("joins page ranges", () => {
     expect(pagesOf("45", "56")).toBe("45-56");
     expect(pagesOf("7", "7")).toBe("7");
     expect(pagesOf(undefined, "9")).toBeUndefined();
+  });
+});
+
+describe("publication year", () => {
+  const yearOf = (meta: Record<string, string[]>): number | undefined => interpretPage(page({ meta })).metadata.year;
+
+  it("reads the year from a compact date such as 20230115", () => {
+    expect(yearOf({ citation_date: ["20230115"] })).toBe(2023);
+  });
+
+  it("reads the year from slashed and worded dates and ignores text without one", () => {
+    expect(yearOf({ citation_publication_date: ["1982/03/01"] })).toBe(1982);
+    expect(yearOf({ "dc.date": ["March 2003"] })).toBe(2003);
+    expect(yearOf({ citation_date: ["n.d."] })).toBeUndefined();
   });
 });

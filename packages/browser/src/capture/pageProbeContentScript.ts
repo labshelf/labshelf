@@ -1,45 +1,15 @@
 /**
- * Page probe injected on demand into a tab via scripting.executeScript. It only
- * collects raw evidence — every <meta> value, PDF links and viewers, DOI links —
- * and leaves interpretation to capture/pageFacts, which runs the same rules
- * over HTML the background fetched itself (Scholar landing pages, publisher
- * interstitials). Keeping the probe dumb keeps both paths identical.
- * @depends none (must not import anything — serialized via Function.toString at inject time)
- * @dependents capture/captureService
+ * Page probe injected on demand into a tab via scripting.executeScript. It only collects raw evidence — every <meta>
+ * value, PDF links and viewers, DOI links — and leaves interpretation to core's interpretPage, which runs the same
+ * rules over HTML fetched without a DOM. Keeping the probe dumb keeps both paths identical.
+ * It is serialized via Function.toString at inject time, so it imports only types.
  */
-
-/** A link or viewer on the page that may lead to the article PDF. */
-export interface RawPdfLink {
-  url: string;
-  /**
-   * embed — a PDF viewer embedded in the page (<embed>/<iframe>/<object>);
-   * alternate — <link rel="alternate" type="application/pdf">;
-   * labelled — an anchor whose text, title or attributes say "PDF";
-   * href — an anchor whose URL looks like a PDF.
-   */
-  kind: "embed" | "alternate" | "labelled" | "href";
-}
-
-/** Everything the probe saw, as plain JSON (it crosses the scripting boundary). */
-export interface RawPage {
-  pageUrl: string;
-  /** document.title, or the PDF viewer's title when the tab is a PDF. */
-  documentTitle?: string;
-  /** True when the tab is showing a PDF document itself. */
-  pageIsPdf?: boolean;
-  /** Lower-cased <meta name|property> → every content value, in page order. */
-  meta: Record<string, string[]>;
-  pdfLinks: RawPdfLink[];
-  /** hrefs of doi.org links — publishers print the article's own DOI this way. */
-  doiLinks: string[];
-}
+import type { RawPage } from "@labshelf/core";
 
 /**
  * Inspects the page DOM and returns the raw evidence. Serialized via
  * Function.prototype.toString(), so it MUST NOT close over imported symbols
  * and may only use browser globals.
- * @usedBy capture/captureService (passed as func to scripting.executeScript)
- * @returns RawPage
  */
 export function probe(): RawPage {
   const meta: Record<string, string[]> = {};

@@ -8,18 +8,15 @@
  * is the first PDF candidate; the usual resolver chain follows it.
  */
 import { arxivIdFromUrl, extractDoi, pmidFromUrl } from "@labshelf/core";
-import type { DetectedIds, MetadataSource, ResolvedMetadata } from "@labshelf/core";
+import type { DetectedIds, MetadataSource, PageFacts, PdfCandidate, ResolvedMetadata } from "@labshelf/core";
 import { draftFromFacts } from "./captureService";
 import type { CaptureDraft } from "./captureService";
-import { interpretPage } from "./pageFacts";
-import type { PageFacts, PdfCandidate } from "./pageFacts";
-import { parseHtmlPage } from "./htmlPage";
+import { landingFacts } from "./landingFacts";
 import type { ScholarHit } from "../platform/runtimeMessages";
 
 // Scholar's own line is abbreviated ("OH Ibarra", "Proceedings of the …"), so
 // it only fills what nothing better states.
 const SCHOLAR_TRUST = 20;
-const LANDING_TIMEOUT_MS = 12_000;
 
 /**
  * Identifiers a result's links reveal (publisher URLs embed the DOI).
@@ -52,7 +49,7 @@ export function metadataFromHit(hit: ScholarHit): ResolvedMetadata {
  */
 export async function draftFromScholarHit(hit: ScholarHit): Promise<CaptureDraft> {
   const ids = idsFromHit(hit);
-  const landing = !ids.doi && !ids.arxivId && hit.url ? await readLandingPage(hit.url) : undefined;
+  const landing = !ids.doi && !ids.arxivId && hit.url ? await landingFacts(hit.url) : undefined;
 
   const scholarPdf: PdfCandidate[] = hit.pdfUrl ? [{ url: hit.pdfUrl, source: "scholar" }] : [];
   const facts: PageFacts = landing
@@ -61,24 +58,4 @@ export async function draftFromScholarHit(hit: ScholarHit): Promise<CaptureDraft
 
   const scholarSource: MetadataSource = { name: "scholar", trust: SCHOLAR_TRUST, metadata: metadataFromHit(hit) };
   return draftFromFacts(facts, {}, [scholarSource]);
-}
-
-/**
- * The article's landing page, read for citation tags; undefined when it cannot
- * be fetched or is not HTML (a bot wall, a PDF, a timeout). Shared with
- * capture/recordCapture, which reads a saved paper's page for "Find PDF".
- * @usedBy draftFromScholarHit, capture/recordCapture
- */
-export async function readLandingPage(url: string): Promise<PageFacts | undefined> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), LANDING_TIMEOUT_MS);
-  try {
-    const res = await fetch(url, { credentials: "include", redirect: "follow", signal: controller.signal });
-    if (!res.ok || !(res.headers.get("content-type") ?? "").includes("html")) return undefined;
-    return interpretPage(parseHtmlPage(await res.text(), res.url || url));
-  } catch {
-    return undefined;
-  } finally {
-    clearTimeout(timer);
-  }
 }

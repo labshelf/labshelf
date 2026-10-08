@@ -6,6 +6,7 @@
  * fails, so nothing here touches the network, pdfjs, or the filesystem.
  */
 import { extractDoi } from "../identifiers/index.js";
+import { extractYear } from "./extractor.js";
 import type { ResolvedMetadata } from "./types.js";
 
 // Headings that end the abstract. Matched case-sensitively — "since the
@@ -394,10 +395,6 @@ function findByFragment(entries: Map<string, string>, fragment: string): string 
   return undefined;
 }
 
-function extractYear(value: string | undefined): number | undefined {
-  const match = value?.match(/(?:19|20)\d{2}/);
-  return match ? Number(match[0]) : undefined;
-}
 
 function collapse(value: string): string | undefined {
   const trimmed = value.replace(/\s+/g, " ").trim();

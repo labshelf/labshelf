@@ -16,11 +16,10 @@
  * "Access Denied") refuse any request that is not a real page load. Such
  * URLs are reported in `blocked`, and the caller may retry them through
  * `viaHelperTab` — a background tab where the browser itself passes the check.
- * @depends capture/htmlPage, capture/pageFacts, capture/pdfBytes
+ * @depends capture/pdfBytes
  * @dependents capture/resolvers/resolverChain
  */
-import { parseHtmlPage, redirectTargets } from "./htmlPage";
-import { interpretPage } from "./pageFacts";
+import { interpretPage, parseHtmlPage, redirectTargets } from "@labshelf/core";
 import { isPdfBytes } from "./pdfBytes";
 
 export interface FetchedPdf {

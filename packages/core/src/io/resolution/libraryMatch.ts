@@ -1,10 +1,10 @@
 /**
- * Recognises a paper that is already in the library, so the popup and the
- * Scholar buttons can say "In LabShelf" instead of saving a duplicate. A DOI
- * or arXiv id settles it; otherwise the normalised title must match exactly
- * and the years must not disagree.
+ * Recognises a paper that is already in the library, so the host can say "In LabShelf" instead of saving a
+ * duplicate. A DOI or arXiv id settles it; otherwise the normalised title must match exactly and the years must
+ * not disagree.
  */
-import { titleKey, type PaperRecord } from "@labshelf/core";
+import { titleKey } from "../../library/index.js";
+import type { PaperRecord } from "../../model/index.js";
 
 export interface PaperQuery {
   doi?: string | undefined;
@@ -16,9 +16,7 @@ export interface PaperQuery {
 // Shorter titles ("Introduction", "Editorial") are too common to identify a paper.
 const MIN_TITLE_CHARS = 20;
 
-/**
- * The library record describing the queried paper, if any.
- */
+/** @returns the library record describing the queried paper, if any */
 export function findInLibrary(records: PaperRecord[], query: PaperQuery): PaperRecord | undefined {
   const doi = query.doi?.toLowerCase();
   if (doi) {

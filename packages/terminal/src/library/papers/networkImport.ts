@@ -1,17 +1,12 @@
 /**
- * Imports that start from the network: an identifier (DOI, arXiv, PMID, ISBN) resolved through the registries, or the
- * URL of a PDF. Both write through the core mutation context.
+ * Imports that start from the network: an identifier (DOI, arXiv, PMID, ISBN) resolved through the registries, or a
+ * URL that serves a PDF or a landing page. All write through the core mutation context.
  */
 import {
-  claimCiteKey,
   describeError,
   identifiersFromInput,
   importPdf,
-  makeCiteKey,
-  metadataFields,
-  normalizeTitle,
   resolveOnlineMetadata,
-  PDF_FILE,
   type DetectedIdentifier,
   type ImportDeps,
   type ImportOutcome,
@@ -21,18 +16,23 @@ import {
 } from "@labshelf/core";
 import * as path from "node:path";
 
+import { downloadPdf, fetchBytes, isHtml, isPdf } from "./downloads.js";
+import { importLandingPage } from "./landingImport.js";
+import { writeImportedPaper } from "./writeImportedPaper.js";
+
 export interface NetworkImportEnv {
   ctx: MutationContext;
   tmpDir: string;
   /** Read at each import, so it reflects the papers the earlier imports added. */
   importDeps(): ImportDeps;
+  /** Read at each import, so it reflects the papers the earlier imports added. */
+  records(): PaperRecord[];
   fetch?: typeof fetch;
-  /** Network metadata lookup; injectable for tests. */
+  /** Network metadata lookups; injectable for tests. */
   resolveIdentifier?: (identifier: DetectedIdentifier) => Promise<ResolvedMetadata | undefined>;
+  searchByTitle?: (title: string) => Promise<ResolvedMetadata | undefined>;
 }
 
-const PDF_MAGIC = "%PDF-";
-const MAX_DOWNLOAD_BYTES = 200 * 1024 * 1024;
 const MODULE = "terminal/paperService";
 
 /**
@@ -54,26 +54,17 @@ export async function importIdentifier(env: NetworkImportEnv, input: string, tar
     const existingId = doi ? deps.findByDoi(doi) : undefined;
     if (existingId) { return { status: "duplicate", existingId, input }; }
 
-    const pdf = identifier.type === "arxiv" ? await download(env, `https://arxiv.org/pdf/${identifier.value}`).catch(() => undefined) : undefined;
-    const title = normalizeTitle(metadata.title!);
-    const id = await claimCiteKey(
-      makeCiteKey({ ...metadata, title }, title),
-      deps.takenIds(),
-      (key) => env.ctx.fs.exists(env.ctx.paths.join(targetDir, key)),
-    );
-    const folder = env.ctx.paths.join(targetDir, id);
-    await env.ctx.fs.mkdir(folder);
-    if (pdf) { await env.ctx.fs.writeFile(env.ctx.paths.join(folder, PDF_FILE), pdf); }
-    const record: PaperRecord = {
-      id, title, path: folder, citeKey: id, status: "unread", hasPdf: Boolean(pdf),
-      ...metadataFields(metadata),
-      ...(identifier.type === "doi" && !metadata.doi ? { doi: identifier.value } : {}),
-      ...(identifier.type === "arxiv" && !metadata.url ? { url: `https://arxiv.org/abs/${identifier.value}` } : {}),
-    };
-    const { hasPdf: _hasPdf, ...stored } = record;
-    await env.ctx.artifacts.writePaperArtifacts(folder, stored, identifier.type === "arxiv" ? `${identifier.value}.pdf` : PDF_FILE);
-    await env.ctx.logger.log("INFO", MODULE, "Paper imported from identifier", {
-      id, type: identifier.type, value: identifier.value, withPdf: Boolean(pdf), targetDir,
+    const isArxiv = identifier.type === "arxiv";
+    const pdf = isArxiv ? await downloadPdf(env.fetch ?? fetch, `https://arxiv.org/pdf/${identifier.value}`).catch(() => undefined) : undefined;
+    const record = await writeImportedPaper(env.ctx, deps, targetDir, {
+      metadata,
+      pdf,
+      extra: {
+        ...(identifier.type === "doi" && !metadata.doi ? { doi: identifier.value } : {}),
+        ...(isArxiv && !metadata.url ? { url: `https://arxiv.org/abs/${identifier.value}` } : {}),
+      },
+      ...(isArxiv ? { sourceName: `${identifier.value}.pdf` } : {}),
+      log: { message: "Paper imported from identifier", context: { type: identifier.type, value: identifier.value } },
     });
     return { status: "added", record, needsReview: false, input };
   } catch (error) {
@@ -84,17 +75,22 @@ export async function importIdentifier(env: NetworkImportEnv, input: string, tar
 }
 
 /**
- * Downloads a PDF and imports it under the name in the URL.
+ * Imports what a URL serves: a PDF is imported under the name in the URL; a landing page is read for the paper it
+ * describes.
  * @returns what happened
  */
 export async function importUrl(env: NetworkImportEnv, url: string, targetDir: string): Promise<ImportOutcome> {
   const { ctx } = env;
   let tmp: string | undefined;
   try {
-    const bytes = await download(env, url);
+    const downloaded = await fetchBytes(env.fetch ?? fetch, url);
+    if (!isPdf(downloaded.bytes)) {
+      if (!isHtml(downloaded)) { throw new Error("The URL did not return a PDF"); }
+      return await importLandingPage(env, downloaded, url, targetDir);
+    }
     tmp = path.join(env.tmpDir, `download-${Date.now()}.pdf`);
     await ctx.fs.ensureDir(env.tmpDir);
-    await ctx.fs.writeFile(tmp, bytes);
+    await ctx.fs.writeFile(tmp, downloaded.bytes);
     const name = decodeURIComponent(new URL(url).pathname.split("/").pop() || "download.pdf");
     return await importPdf(ctx, env.importDeps(), tmp, targetDir, {
       sourceName: name.toLowerCase().endsWith(".pdf") ? name : `${name}.pdf`,
@@ -118,16 +114,4 @@ async function firstResolved(
     if (metadata?.title) { return { metadata, identifier }; }
   }
   return undefined;
-}
-
-// Checks the magic bytes so an HTML landing page is never saved as paper.pdf.
-async function download(env: NetworkImportEnv, url: string): Promise<Uint8Array> {
-  const doFetch = env.fetch ?? fetch;
-  const response = await doFetch(url, { redirect: "follow", headers: { "User-Agent": "LabShelf-Terminal/0.1" } });
-  if (!response.ok) { throw new Error(`Download failed: HTTP ${response.status}`); }
-  const length = Number(response.headers.get("content-length") ?? 0);
-  if (length > MAX_DOWNLOAD_BYTES) { throw new Error("The file is too large"); }
-  const bytes = new Uint8Array(await response.arrayBuffer());
-  if (new TextDecoder().decode(bytes.slice(0, 5)) !== PDF_MAGIC) { throw new Error("The URL did not return a PDF"); }
-  return bytes;
 }

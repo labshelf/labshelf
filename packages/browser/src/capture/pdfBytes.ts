@@ -1,9 +1,7 @@
 /**
  * The one pure test that proves bytes are a PDF, kept free of the fetch layer
  * so surfaces that only need the check (the library page's "Attach PDF…") can
- * import it without pulling in htmlPage/pageFacts.
- * @depends none
- * @dependents capture/pdfFetcher, library-page controllers
+ * import it without pulling in the fetch layer.
  */
 
 /** True when the buffer is a PDF: "%PDF-" within its first KiB (some servers prepend junk). */

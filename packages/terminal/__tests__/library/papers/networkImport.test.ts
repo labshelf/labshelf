@@ -183,9 +183,9 @@ describe("URL import", () => {
     expect((await readYaml(metaFile(h, "vaswani2017attention")))["source"]).toBe("12345.pdf");
   });
 
-  it("fails a URL that returns HTML, an HTTP error, or an oversized file", async () => {
+  it("fails a URL that returns something else than a PDF or a page, an HTTP error, or an oversized file", async () => {
     const h = await harness();
-    h.routes.set("https://example.org/landing", () => new Response("<html></html>", { status: 200 }));
+    h.routes.set("https://example.org/landing", () => new Response("just text", { status: 200 }));
     h.routes.set("https://example.org/huge.pdf", () => new Response(fakePdfBytes(), { status: 200, headers: { "content-length": String(300 * 1024 * 1024) } }));
 
     const outcomes = await h.service.importAny(["https://example.org/landing", "https://example.org/missing.pdf", "https://example.org/huge.pdf"], "");

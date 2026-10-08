@@ -13,7 +13,7 @@ import { getSettings } from "../platform/settings";
 import { BrowserDriveAuth } from "../sync/auth/browserDriveAuth";
 import { createBrowserSync } from "../sync";
 import {
-  attachPdfToPaper, draftFromRecord, findInLibrary, findPdf, refreshExisting, resetPdfSearch,
+  attachPdfToPaper, draftFromRecord, findPdf, refreshExisting, resetPdfSearch,
   safeFolder, saveOrAsk, summarizeAttempts,
 } from "../capture/index";
 import type { CaptureDraft, SaveDecision, SavedPaper } from "../capture/index";
@@ -27,7 +27,7 @@ import { installIdleSyncTrigger } from "./syncOnIdle";
 import { createSyncMessages } from "./syncMessages";
 import { AlarmSyncTimers } from "./alarmSyncTimers";
 import { installBadgeUpdater } from "./badgeUpdater";
-import { PDF_FILE, parentDir, type FolderTreeNode } from "@labshelf/core";
+import { PDF_FILE, findInLibrary, parentDir, type FolderTreeNode } from "@labshelf/core";
 
 const log = new BrowserLogger("background");
 const mutations = createLibraryMutations(log);

@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { decodeEntities, parseHtmlPage, redirectTargets } from "../../src/capture/htmlPage";
+import { parseHtmlPage, redirectTargets } from "@labshelf/core";
+import { decodeEntities } from "../../../src/io/landing/htmlTags";
 
-const fixture = (name: string): string => readFileSync(join(__dirname, "..", "fixtures", name), "utf8");
+const fixture = (name: string): string => readFileSync(join(__dirname, "..", "..", "fixtures", name), "utf8");
 
 describe("parseHtmlPage", () => {
   const raw = parseHtmlPage(fixture("springerArticle.html"), "https://link.springer.com/article/10.1007/s10107-023-01234-5");

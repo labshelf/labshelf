@@ -5,6 +5,7 @@
  * DOI can be resolved online.
  */
 import { extractDoi } from "../identifiers/index.js";
+import { extractYear } from "./extractor.js";
 import type { ResolvedMetadata, XmpMetadataLike } from "./types.js";
 
 // XMP keys arrive with their namespace prefix (`dc:title`, `prism:doi`). Case
@@ -122,10 +123,6 @@ function pageRange(range: string | undefined, start: string | undefined, end: st
   return start ?? undefined;
 }
 
-function extractYear(value: string | undefined): number | undefined {
-  const match = value?.match(/(?:19|20)\d{2}/);
-  return match ? Number(match[0]) : undefined;
-}
 
 function hasAnyValue(metadata: ResolvedMetadata): boolean {
   return Object.values(metadata).some((value) =>

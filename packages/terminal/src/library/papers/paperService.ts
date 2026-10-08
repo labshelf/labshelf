@@ -53,8 +53,9 @@ export interface PaperServiceDeps {
   fetch?: typeof fetch;
   /** Called after every change, so the sync service can schedule a debounced sync. */
   onLocalChange?: () => void;
-  /** Network metadata lookup; injectable for tests. */
+  /** Network metadata lookups; injectable for tests. */
   resolveIdentifier?: (identifier: DetectedIdentifier) => Promise<ResolvedMetadata | undefined>;
+  searchByTitle?: (title: string) => Promise<ResolvedMetadata | undefined>;
 }
 
 export class TerminalPaperService {
@@ -73,8 +74,10 @@ export class TerminalPaperService {
       ctx: this.ctx,
       tmpDir: deps.paths.layout.tmpDir(),
       importDeps: () => this.importDeps(),
+      records: () => this.records(),
       ...(deps.fetch ? { fetch: deps.fetch } : {}),
       ...(deps.resolveIdentifier ? { resolveIdentifier: deps.resolveIdentifier } : {}),
+      ...(deps.searchByTitle ? { searchByTitle: deps.searchByTitle } : {}),
     };
   }
 
@@ -85,11 +88,15 @@ export class TerminalPaperService {
     this.deps.onLocalChange?.();
   }
 
+  private records(): PaperRecord[] {
+    return [...this.deps.store.snapshot.papers.values()].map((entry) => entry.record);
+  }
+
   private importDeps(): ImportDeps {
     const papers = this.deps.store.snapshot.papers;
     return {
       parse: async (bytes, stem) => (await this.deps.pdfParser()).parse(bytes, stem),
-      findByDoi: doiLookup([...papers.values()].map((entry) => entry.record)),
+      findByDoi: doiLookup(this.records()),
       takenIds: () => papers.keys(),
     };
   }
