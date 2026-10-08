@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { PDF_FILE, isUnderDir, paperFiles } from '@labshelf/core';
 import type { PaperService } from '../../core/index.js';
-import { removePapers } from '../../commands/removePapers.js';
+import { removePapers } from '../../commands/index.js';
 import type { TextLayerJob } from '../../commands/textLayerQueue.js';
 import type { Annotation, PaperRecord } from '@labshelf/core';
 import { buildListState, listAllCollectionFolders, rootNode } from '../library/index.js';

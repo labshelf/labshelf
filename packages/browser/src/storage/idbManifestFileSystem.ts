@@ -3,7 +3,7 @@
  * Only readFile, writeFile, stat and deleteFile do anything, since the sync state is never listed as a tree.
  */
 import type { LocalFileSystem, LocalStat } from "@labshelf/core";
-import { getDb } from "./idb/db";
+import { getDb } from "./idb";
 
 export class IdbManifestFileSystem implements LocalFileSystem {
   async readFile(filePath: string): Promise<Uint8Array> {

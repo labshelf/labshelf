@@ -20,6 +20,7 @@
     "unresolvedTo": "../platform/logger",
     "dependencyTypes": [
       "local",
+      "type-only",
       "import"
     ],
     "rule": {
@@ -1875,91 +1876,6 @@
   },
   {
     "type": "dependency",
-    "from": "packages/browser/src/storage/folderTreeStore.ts",
-    "to": "packages/browser/src/storage/idb/db.ts",
-    "unresolvedTo": "./idb/db",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/storage/idbManifestFileSystem.ts",
-    "to": "packages/browser/src/storage/idb/db.ts",
-    "unresolvedTo": "./idb/db",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/storage/index.ts",
-    "to": "packages/browser/src/storage/idb/db.ts",
-    "unresolvedTo": "./idb/db",
-    "dependencyTypes": [
-      "local",
-      "export"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/storage/index.ts",
-    "to": "packages/browser/src/storage/idb/schema.ts",
-    "unresolvedTo": "./idb/schema",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "export"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/storage/indexedDbFileSystem.ts",
-    "to": "packages/browser/src/storage/idb/db.ts",
-    "unresolvedTo": "./idb/db",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/storage/paperRecordStore.ts",
-    "to": "packages/browser/src/storage/idb/db.ts",
-    "unresolvedTo": "./idb/db",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "packages/browser/src/sync/auth/browserDriveAuth.ts",
     "to": "packages/browser/src/platform/browserApi.ts",
     "unresolvedTo": "../../platform/browserApi",
@@ -2324,79 +2240,8 @@
   {
     "type": "dependency",
     "from": "packages/terminal/src/cli/commands.ts",
-    "to": "packages/terminal/src/ui/format.ts",
-    "unresolvedTo": "../ui/format.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/cli/commands.ts",
     "to": "packages/terminal/src/ui/theme.ts",
     "unresolvedTo": "../ui/theme.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/library/fuzzy.ts",
-    "to": "packages/terminal/src/tui/text.ts",
-    "unresolvedTo": "../tui/text.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/library/libraryStore.ts",
-    "to": "packages/terminal/src/app/config.ts",
-    "unresolvedTo": "../app/config.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/library/libraryStore.ts",
-    "to": "packages/terminal/src/tui/text.ts",
-    "unresolvedTo": "../tui/text.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/library/search.ts",
-    "to": "packages/terminal/src/tui/text.ts",
-    "unresolvedTo": "../tui/text.js",
     "dependencyTypes": [
       "local",
       "import"
@@ -2956,54 +2801,9 @@
   },
   {
     "type": "dependency",
-    "from": "packages/vscode/src/commands/fetchMetadata.ts",
-    "to": "packages/vscode/src/core/paperService.ts",
-    "unresolvedTo": "../core/paperService.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/commands/importProgress.ts",
-    "to": "packages/vscode/src/core/paperService.ts",
-    "unresolvedTo": "../core/paperService.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "packages/vscode/src/commands/registerAiCommands.ts",
     "to": "packages/vscode/src/ai/service/aiService.ts",
     "unresolvedTo": "../ai/service/aiService.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/commands/registerCommands.ts",
-    "to": "packages/vscode/src/core/paperService.ts",
-    "unresolvedTo": "../core/paperService.js",
     "dependencyTypes": [
       "local",
       "type-only",
@@ -3077,36 +2877,6 @@
   {
     "type": "dependency",
     "from": "packages/vscode/src/commands/textLayerQueue.ts",
-    "to": "packages/vscode/src/core/paperService.ts",
-    "unresolvedTo": "../core/paperService.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/commands/textLayerQueue.ts",
-    "to": "packages/vscode/src/pdf/searchablePdfBuilder.ts",
-    "unresolvedTo": "../pdf/searchablePdfBuilder.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/core/paperService.ts",
     "to": "packages/vscode/src/pdf/searchablePdfBuilder.ts",
     "unresolvedTo": "../pdf/searchablePdfBuilder.js",
     "dependencyTypes": [
@@ -3276,20 +3046,6 @@
   {
     "type": "dependency",
     "from": "packages/vscode/src/extension.ts",
-    "to": "packages/vscode/src/pdf/searchablePdfBuilder.ts",
-    "unresolvedTo": "./pdf/searchablePdfBuilder.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/extension.ts",
     "to": "packages/vscode/src/pdf/tesseractOcrEngine.ts",
     "unresolvedTo": "./pdf/tesseractOcrEngine.js",
     "dependencyTypes": [
@@ -3306,20 +3062,6 @@
     "from": "packages/vscode/src/extension.ts",
     "to": "packages/vscode/src/storage/data/externalChangeWatcher.ts",
     "unresolvedTo": "./storage/data/externalChangeWatcher.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/extension.ts",
-    "to": "packages/vscode/src/storage/data/libraryIndexer.ts",
-    "unresolvedTo": "./storage/data/libraryIndexer.js",
     "dependencyTypes": [
       "local",
       "import"
@@ -3451,49 +3193,6 @@
     "dependencyTypes": [
       "local",
       "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/ui/list/listWebviewPanel.ts",
-    "to": "packages/vscode/src/core/paperService.ts",
-    "unresolvedTo": "../../core/paperService.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/ui/list/listWebviewPanel.ts",
-    "to": "packages/vscode/src/ui/library/collectionFolders.ts",
-    "unresolvedTo": "../library/collectionFolders.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/ui/list/listWebviewPanel.ts",
-    "to": "packages/vscode/src/ui/library/folderNavigation.ts",
-    "unresolvedTo": "../library/folderNavigation.js",
-    "dependencyTypes": [
-      "local",
       "import"
     ],
     "rule": {

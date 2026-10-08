@@ -1,8 +1,6 @@
 /**
  * Opens (and upgrades) the "labshelf" IndexedDB database. Returns a singleton
  * promise so callers share one connection across the extension lifetime.
- * @depends idb, idb/schema, idb/upgrade
- * @dependents indexedDbFileSystem, paperRecordStore, manifestStore
  */
 import { openDB } from "idb";
 import type { IDBPDatabase } from "idb";

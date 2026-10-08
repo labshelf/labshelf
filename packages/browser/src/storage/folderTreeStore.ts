@@ -3,7 +3,7 @@
  * with core. No separate store is maintained: the tree changes only after a sync cycle or a folder mutation.
  */
 import { PAPERS_DIR, collectionsFromFilePaths, pdfDirsFromFilePaths, type FolderTreeNode } from "@labshelf/core";
-import { getDb } from "./idb/db";
+import { getDb } from "./idb";
 
 async function fileKeysUnder(rootPath: string): Promise<string[]> {
   const db = await getDb();

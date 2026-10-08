@@ -5,7 +5,7 @@
 import type { LibraryFileSystem, LocalStat } from "@labshelf/core";
 import { sha256Hex } from "@labshelf/core";
 import { belowDir, deleteTree, renameTree } from "./idbFileTree";
-import { getDb } from "./idb/db";
+import { getDb } from "./idb";
 
 export class IndexedDbFileSystem implements LibraryFileSystem {
   async listDir(dirPath: string): Promise<string[]> {

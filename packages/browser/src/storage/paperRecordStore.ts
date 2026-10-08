@@ -3,7 +3,7 @@
  * stored in IndexedDB, so reads never re-parse YAML.
  */
 import { METADATA_FILE, PAPERS_DIR, paperRecordFromMetadata, parsePaperMetadata, pdfDirsFromFilePaths, type PaperRecord } from "@labshelf/core";
-import { getDb } from "./idb/db";
+import { getDb } from "./idb";
 
 /** Upserts a PaperRecord into the metadata cache. */
 export async function upsertRecord(record: PaperRecord, folderPath: string): Promise<void> {

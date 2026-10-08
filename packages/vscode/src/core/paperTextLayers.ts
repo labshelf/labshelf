@@ -9,7 +9,7 @@ import {
   verdictForOutcome,
 } from "@labshelf/core";
 import type { MutationContext, PaperRecord, TextLayerInfo, TextLayerOutcome } from "@labshelf/core";
-import type { PdfTextLayerBuilder, TextLayerHooks } from "../pdf/searchablePdfBuilder.js";
+import type { PdfTextLayerBuilder, TextLayerHooks } from "../pdf/index.js";
 import type { PaperService } from "./paperService.js";
 
 /** What happened when a paper was checked for, and possibly given, a text layer. */

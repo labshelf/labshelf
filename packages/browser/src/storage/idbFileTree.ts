@@ -1,6 +1,6 @@
 /** Tree operations over the "files" store, where a folder is the set of rows whose key starts with `<folder>/`. */
-import { getDb } from "./idb/db";
-import type { FileRow } from "./idb/schema";
+import { getDb } from "./idb";
+import type { FileRow } from "./idb";
 
 /** @returns the key range covering everything below `dir` */
 export function belowDir(dir: string): IDBKeyRange {
