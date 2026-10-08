@@ -1,6 +1,6 @@
 # Plan: architecture refactor
 
-Status: in progress (session 5 of 13)
+Status: in progress (session 6 of 13)
 Size: GG — every package moves and duplicated logic merges across three apps; 13 sessions, one per phase (phases 4 and 9 are the heaviest).
 Pending decisions: 5
 
@@ -759,3 +759,4 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 - 2026-10-08 18:25 S4.4 done: `core/src/library/search/` holds the query language (terminal base plus the `kw`, `venue`, `note`, `key` and `abstract` field filters), the folded search document, scoring, `SYNTAX_HELP`, and `text/` (`fold`, picker fuzzy, accent-aware `highlightRanges`). The terminal list filter and find search annotation text through `PaperSearchIndex.matcher`; its help overlay and the browser search tooltip render `SYNTAX_HELP`. The browser searches the wider field set with phrases, exclusions and operators; touching highlight ranges merge into one mark. An operator with no value is ignored. The VS Code list keeps its webview search until S9.2. The browser rebuilds each search document per call; cache it per record if large libraries feel slow.
 - 2026-10-08 18:31 S4.5 done: `core/src/library/format/` holds `formatAuthors`/`familyName` (Q6: "A & B"), `relativeTime` (BC26), `venueLine`, `paperLink` (BC27) and `formatBytes`. The reader citation label, the terminal, the browser popup, library page and detail head (which gains volume, issue and pages), and the VS Code article link and citation DOI use them; the terminal says `never` for no date. The VS Code list host sends `creator`; its webview script keeps `lastName`, `fmtAgo`, `fmtSize` and its venue head until S9.2.
 - 2026-10-08 18:33 S4.6 done: `core/src/library/externalChange/` holds `isExternalChangeNoise`; the VS Code and terminal watchers keep only the platform watch and their debounces (1000 ms and 250 ms; the reactions differ in cost). `findMissingPapers` left in S4.3, because the reindex diff reports removed papers. BC28 has a test; the terminal watcher has its first test.
+- 2026-10-08 18:35 Session 6 finish: `architecture.md` names the `scan/`, `model/`, `search/`, `format/` and `externalChange/` folders of core `library/`; leftover dependency tags in touched files and unused exports are gone. Per S3.1, the event bus moved into VS Code (`packages/vscode/src/events/`), its only user. No acceptance criterion closes this session; A5 gains the library model, search and author formatting, and the VS Code list webview still copies search, sort and time formatting until S9.2.
