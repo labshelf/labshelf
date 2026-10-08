@@ -15,12 +15,11 @@ import * as path from "node:path";
 
 import {
   type ImportOutcome, type PaperEntry, type PaperRecord, type PaperStatus, type PaperData,
-  formatAnnotationsMarkdown, paperComparator, paperFiles, papersUnder, summarizeImport,
+  formatAnnotationsMarkdown, paperComparator, paperFiles, papersUnder, rankFuzzy, summarizeImport,
 } from "@labshelf/core";
 
 import type { SortKey } from "../app/config.js";
 import type { AppContext } from "../app/context.js";
-import { rankFuzzy, matchPaper, parseQuery, searchDoc } from "../library/index.js";
 import { copyToClipboard, openExternal, revealInFileManager, runEditor, trashSupported } from "../platform/system.js";
 import type { SyncOutcome, SyncStatus } from "../sync/syncService.js";
 import { clearImages, drawImage, fitImage, pngSize, type CellRect } from "../tui/graphics.js";
@@ -282,8 +281,7 @@ export class App {
     if (this.search !== undefined) {
       papers = this.ctx.store.search(this.search, this.sort);
       if (this.filter) {
-        const q = parseQuery(this.filter);
-        papers = papers.filter((p) => matchPaper(p.record, searchDoc(p.record), q) > 0);
+        papers = papers.filter(this.ctx.search.matcher(this.filter));
       }
     } else {
       const rel = this.folder === ALL ? "" : this.folder;
@@ -659,9 +657,9 @@ export class App {
 
   private findStep(direction: 1 | -1, from = this.cursor()): void {
     if (!this.findQuery) { return; }
-    const q = parseQuery(this.findQuery);
+    const isMatch = this.ctx.search.matcher(this.findQuery);
     const matches: number[] = [];
-    this.papers().forEach((p, i) => { if (matchPaper(p.record, searchDoc(p.record), q) > 0) { matches.push(i); } });
+    this.papers().forEach((p, i) => { if (isMatch(p)) { matches.push(i); } });
     if (!matches.length) {
       this.notify(`No match for "${this.findQuery}"`, "warn");
       return;

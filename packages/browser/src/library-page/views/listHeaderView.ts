@@ -4,22 +4,24 @@
  * "+ Add", toggle details. Same anatomy as the VS Code list panel header.
  * Crumbs are drop targets for paper moves.
  */
-import { $, el, esc, tokenize } from "../../ui/dom";
+import { $, el, esc } from "../../ui/dom";
 import { icon } from "../../ui/icons";
 import { togglePane } from "../app";
 import { emit } from "../events";
-import { breadcrumbFor } from "@labshelf/core";
+import { SYNTAX_HELP, breadcrumbFor, parseQuery } from "@labshelf/core";
 import { ROOT, listPapersUnder, papersInScope, statusCounts } from "../state/derive";
 import type { LibraryStore } from "../state/libraryStore";
 import { savePrefs } from "../state/uiPrefs";
 import { makeDropTarget } from "./dnd";
+
+const SEARCH_SYNTAX_TIP = SYNTAX_HELP.map((row) => `${row.syntax}   ${row.description}`).join("\n");
 
 /** Mounts the header and returns an unsubscribe function. */
 export function mountListHeader(container: HTMLElement, store: LibraryStore): () => void {
   container.innerHTML = `
     <button class="ls-icon-btn sidebar-toggle" id="showSidebarBtn" title="Show library sidebar">${icon("panel-left")}</button>
     <nav class="breadcrumb" id="breadcrumb" aria-label="Folder path"></nav>
-    <div class="ls-search" id="searchBox">
+    <div class="ls-search" id="searchBox" title="${esc(SEARCH_SYNTAX_TIP)}">
       ${icon("search")}
       <input id="searchInput" type="text" placeholder="Search title, author, year, keyword  ( / )" spellcheck="false" autocomplete="off" aria-label="Search papers"/>
       <button class="ls-search-clear" id="searchClear" title="Clear search (Esc)">${icon("x")}</button>
@@ -55,15 +57,15 @@ export function mountListHeader(container: HTMLElement, store: LibraryStore): ()
   $("showSidebarBtn", container).addEventListener("click", () => togglePane("sidebar"));
 
   return store.select(
-    (s) => ({ folder: s.folder, folders: s.folders, papers: s.papers, query: s.query, status: s.status, includeSub: s.includeSub }),
+    (s) => ({ folder: s.folder, folders: s.folders, papers: s.papers, query: s.query, status: s.status, includeSub: s.includeSub, pdfDirs: s.pdfDirs }),
     (slice) => {
       if (search.value !== slice.query) search.value = slice.query;
       searchBox.classList.toggle("has-query", slice.query.length > 0);
       includeSubBtn.classList.toggle("active", slice.includeSub);
       includeSubBtn.setAttribute("aria-pressed", String(slice.includeSub));
 
-      const inFolder = listPapersUnder(slice.papers, slice.folder);
-      const scope = papersInScope(inFolder, tokenize(slice.query), slice.includeSub);
+      const inFolder = listPapersUnder(slice.papers, slice.folder, slice.pdfDirs);
+      const scope = papersInScope(inFolder, parseQuery(slice.query), slice.includeSub);
       const counts = statusCounts(scope);
       const shown = slice.status === "all" ? scope.length : counts[slice.status];
       const narrowed = slice.query.length > 0 || slice.status !== "all";

@@ -1,14 +1,10 @@
 /**
- * fzf-style subsequence matching for the jump pickers (z: collections, Z: papers). Consecutive characters, word starts
+ * fzf-style subsequence matching for the jump pickers (collections, papers). Consecutive characters, word starts
  * and early matches score higher, so "atn" finds "Attention Is All You Need" before "Data anonymisation".
- *
- * @depends tui/text (fold)
- * @dependents ui/app (pickers)
  */
-import { fold } from "../tui/text.js";
+import { fold } from "./fold.js";
 
 /**
- * @usedBy rankFuzzy
  * @returns the score (higher is better) and matched positions, or undefined when the pattern is not a subsequence
  */
 export function fuzzyScore(pattern: string, text: string): { score: number; positions: number[] } | undefined {
@@ -35,7 +31,6 @@ export function fuzzyScore(pattern: string, text: string): { score: number; posi
 
 /**
  * Filters and ranks items by fuzzy match against their label.
- * @usedBy ui/app (pickers)
  * @returns matching items, best first (input order kept for an empty pattern)
  */
 export function rankFuzzy<T>(items: readonly T[], pattern: string, label: (item: T) => string): T[] {

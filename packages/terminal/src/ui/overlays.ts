@@ -2,10 +2,9 @@
  * Overlays drawn above the three columns — prompts, confirmations, fuzzy pickers and the help screen — and the
  * bottom-line input used by filter, find and library search. State types live here with their drawing code; the
  * App owns the instances and decides what happens on submit.
- *
- * @depends tui/screen, tui/text, ui/textInput, ui/keymap, ui/theme
- * @dependents ui/app, ui/render
  */
+import { SYNTAX_HELP } from "@labshelf/core";
+
 import type { Screen, Style } from "../tui/screen.js";
 import { fit, stringWidth, truncate, wrap } from "../tui/text.js";
 import { BINDINGS, keyLabel, type BindingGroup } from "./keymap.js";
@@ -194,15 +193,8 @@ export function helpRows(): Array<{ keys: string; desc: string; header?: boolean
     rows.push({ keys: "", desc: "" });
   }
   rows.push({ keys: "Query", desc: "", header: true });
-  for (const [keys, desc] of [
-    ["word \"a phrase\"", "every word must match; -word excludes"],
-    ["tag:nlp  #nlp", "has a tag"],
-    ["status:reading  is:r", "unread, reading, done"],
-    ["year:2015..2020", "publication year; also year:2017, >2018, <2000"],
-    ["author:vaswani", "author"],
-    ["has:pdf  no:pdf", "also has:note, has:doi, has:tags"],
-  ] as const) {
-    rows.push({ keys, desc });
+  for (const { syntax, description } of SYNTAX_HELP) {
+    rows.push({ keys: syntax, desc: description });
   }
   return rows;
 }

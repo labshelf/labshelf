@@ -1,4 +1,4 @@
-import type { FolderTreeNode, PaperRecord } from "@labshelf/core";
+import { parseQuery, type FolderTreeNode, type PaperRecord } from "@labshelf/core";
 import {
   ROOT,
   flattenFolders,
@@ -20,7 +20,7 @@ const tree: FolderTreeNode[] = [
 ];
 
 const papers = [
-  paper("root1", "papers", { title: "Zeta", authors: ["Ann Zed"], year: 2001 }),
+  paper("root1", "papers", { title: "Zeta", authors: ["Ann Zed"], year: 2001, tags: ["Café"], note: "revisit" }),
   paper("a1", "papers/A", { title: "Alpha", authors: ["Bob Young", "Cy Old", "Di Ng"], year: 2020, status: "done", journal: "Nature" }),
   paper("a11", "papers/A/A1", { title: "Beta", authors: ["Eve Kay"], year: 2010, status: "reading", keywords: ["graphs"] }),
   paper("b1", "papers/B", { title: "Gamma", year: 1999 }),
@@ -45,12 +45,6 @@ describe("listPapersUnder", () => {
   it("includes everything at the root with slash-joined relFolder", () => {
     expect(listPapersUnder(papers, ROOT).find((p) => p.id === "a11")?.relFolder).toBe("A / A1");
   });
-  it("builds a lower-cased haystack from the bibliographic fields", () => {
-    const p = listPapersUnder(papers, ROOT).find((x) => x.id === "a11")!;
-    expect(p.hay).toContain("eve kay");
-    expect(p.hay).toContain("graphs");
-    expect(p.hay).toContain("a / a1");
-  });
   it("sets hasPdf from pdfDirs by the record's path", () => {
     const pdfDirs = new Set(["papers/A/a1", "papers/B/b1"]);
     const byId = Object.fromEntries(listPapersUnder(papers, ROOT, pdfDirs).map((p) => [p.id, p.hasPdf]));
@@ -63,14 +57,37 @@ describe("listPapersUnder", () => {
 
 describe("papersInScope + statusCounts", () => {
   const all = listPapersUnder(papers, ROOT);
+  const scope = (query: string, includeSub = false): string[] => papersInScope(all, parseQuery(query), includeSub).map((p) => p.id);
+
   it("honours the subfolder toggle when there is no query", () => {
-    expect(papersInScope(all, [], false).map((p) => p.id)).toEqual(["root1"]);
-    expect(papersInScope(all, [], true)).toHaveLength(4);
+    expect(scope("")).toEqual(["root1"]);
+    expect(scope("", true)).toHaveLength(4);
   });
-  it("searches the whole subtree with every token required", () => {
-    expect(papersInScope(all, ["eve"], false).map((p) => p.id)).toEqual(["a11"]);
-    expect(papersInScope(all, ["eve", "graphs"], false)).toHaveLength(1);
-    expect(papersInScope(all, ["eve", "nature"], true)).toHaveLength(0);
+  it("treats an operator without a value as no query", () => {
+    expect(scope("author:")).toEqual(["root1"]);
+  });
+  it("searches the whole subtree with every term required", () => {
+    expect(scope("eve")).toEqual(["a11"]);
+    expect(scope("eve graphs")).toEqual(["a11"]);
+    expect(scope("eve nature", true)).toEqual([]);
+  });
+  it("matches the folder path shown in the row", () => {
+    expect(scope('"a / a1"')).toEqual(["a11"]);
+  });
+  it("searches tags, notes and ids", () => {
+    expect(scope("tag:cafe")).toEqual(["root1"]);
+    expect(scope("revisit")).toEqual(["root1"]);
+    expect(scope("b1")).toEqual(["b1"]);
+  });
+  it("supports phrases, exclusions and operators", () => {
+    expect(scope('"bob young"')).toEqual(["a1"]);
+    expect(scope('"young bob"')).toEqual([]);
+    expect(scope("-alpha -zeta -gamma")).toEqual(["a11"]);
+    expect(scope("year:2010..2020 is:reading")).toEqual(["a11"]);
+    expect(scope("venue:nature")).toEqual(["a1"]);
+  });
+  it("folds accents on both sides", () => {
+    expect(scope("cafe")).toEqual(["root1"]);
   });
   it("counts each status", () => {
     expect(statusCounts(all)).toEqual({ all: 4, unread: 2, reading: 1, done: 1 });

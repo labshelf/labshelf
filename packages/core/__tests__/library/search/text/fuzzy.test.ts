@@ -1,4 +1,4 @@
-import { fuzzyScore, rankFuzzy } from "../../src/library/fuzzy";
+import { fuzzyScore, rankFuzzy } from "@labshelf/core";
 
 describe("fuzzyScore", () => {
   it("matches a subsequence and reports the matched positions in order", () => {

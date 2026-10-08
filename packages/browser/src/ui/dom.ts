@@ -1,11 +1,9 @@
 /**
  * Small DOM helpers shared by every browser surface: element lookup that fails
- * loudly, HTML escaping for string templates, search-token highlighting, and a
+ * loudly, HTML escaping for string templates, search-term highlighting, and a
  * terse element factory. Kept framework-free on purpose — the UI is vanilla TS.
- *
- * @depends none
- * @dependents ui/*, popup, options, library-page views
  */
+import { highlightRanges } from "@labshelf/core";
 
 /** Returns the element with the given id or throws — missing mount points are programmer errors. */
 export function $<T extends HTMLElement = HTMLElement>(id: string, root: ParentNode = document): T {
@@ -24,27 +22,13 @@ export function esc(value: unknown): string {
     .replace(/'/g, "&#39;");
 }
 
-/**
- * Escapes `text` and wraps every occurrence of each search token in <mark>.
- * Mirrors the VS Code list webview so search feedback looks the same.
- */
-export function highlight(text: unknown, tokens: string[]): string {
+/** Escapes `text` and wraps every occurrence of each search term in <mark>, ignoring case and accents. */
+export function highlight(text: unknown, terms: string[]): string {
   const str = String(text ?? "");
-  if (tokens.length === 0) return esc(str);
-  const lower = str.toLowerCase();
-  const marks: Array<[number, number]> = [];
-  for (const t of tokens) {
-    let i = 0;
-    while ((i = lower.indexOf(t, i)) !== -1) { marks.push([i, i + t.length]); i += t.length; }
-  }
-  if (marks.length === 0) return esc(str);
-  marks.sort((a, b) => a[0] - b[0]);
   let out = "";
   let pos = 0;
-  for (const [from, to] of marks) {
-    if (to <= pos) continue;
-    const start = Math.max(from, pos);
-    out += esc(str.slice(pos, start)) + "<mark>" + esc(str.slice(start, to)) + "</mark>";
+  for (const [from, to] of highlightRanges(str, terms)) {
+    out += esc(str.slice(pos, from)) + "<mark>" + esc(str.slice(from, to)) + "</mark>";
     pos = to;
   }
   return out + esc(str.slice(pos));
@@ -72,11 +56,6 @@ export function el<K extends keyof HTMLElementTagNameMap>(
     node.append(child);
   }
   return node;
-}
-
-/** Splits a search query into lowercase tokens. */
-export function tokenize(query: string): string[] {
-  return query.toLowerCase().split(" ").filter(Boolean);
 }
 
 /** Formats an ISO timestamp as a short local time ("14:05") or date when not today. */

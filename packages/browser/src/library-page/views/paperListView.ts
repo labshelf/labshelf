@@ -7,10 +7,10 @@
  * Rows are rebuilt only when the data, filters or sort change; selection
  * changes just toggle classes, so scroll position and focus survive.
  */
-import { $, el, tokenize } from "../../ui/dom";
+import { $, el } from "../../ui/dom";
 import { icon } from "../../ui/icons";
 import { emit } from "../events";
-import { folderLabel } from "@labshelf/core";
+import { folderLabel, parseQuery } from "@labshelf/core";
 import { ROOT, listPapersUnder, papersInScope, sortPapers } from "../state/derive";
 import type { LibraryStore, SortKey } from "../state/libraryStore";
 import { savePrefs } from "../state/uiPrefs";
@@ -61,9 +61,10 @@ export function mountPaperList(container: HTMLElement, store: LibraryStore): () 
 
 function render(ctx: Ctx): void {
   const s = ctx.store.get();
-  const toks = tokenize(s.query);
+  const query = parseQuery(s.query);
+  const toks = query.terms;
   const inFolder = listPapersUnder(s.papers, s.folder, s.pdfDirs);
-  const scope = papersInScope(inFolder, toks, s.includeSub);
+  const scope = papersInScope(inFolder, query, s.includeSub);
   const papers = sortPapers(s.status === "all" ? scope : scope.filter((p) => p.status === s.status), s.sortKey, s.sortDir);
 
   ctx.heads.querySelectorAll<HTMLElement>(".sortable").forEach((h) => {

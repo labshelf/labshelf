@@ -1,180 +1,13 @@
-import type { PaperRecord } from "@labshelf/core";
-
-import { isEmptyQuery, matchPaper, parseQuery, searchDoc, tokenize } from "../../src/library/search";
+import { matchPaper, matchesTerms, paperMatches, parseQuery, searchDoc, type PaperRecord, type SearchExtra } from "@labshelf/core";
 
 function rec(overrides: Partial<PaperRecord> = {}): PaperRecord {
   return { id: "p1", title: "Untitled", path: "/lib/papers/p1", citeKey: "p1", status: "unread", hasPdf: true, ...overrides };
 }
 
 /** Score of one record against one query string. */
-function score(record: PaperRecord, query: string, annotationText = ""): number {
-  return matchPaper(record, searchDoc(record, annotationText), parseQuery(query));
+function score(record: PaperRecord, query: string, extra: SearchExtra = {}): number {
+  return matchPaper(record, searchDoc(record, extra), parseQuery(query));
 }
-
-describe("tokenize", () => {
-  it("splits on whitespace", () => {
-    expect(tokenize("attention   transformer\tbert")).toEqual(["attention", "transformer", "bert"]);
-  });
-
-  it("keeps a quoted phrase together, without the quotes", () => {
-    expect(tokenize('"is all you need" bert')).toEqual(["is all you need", "bert"]);
-  });
-
-  it("keeps the - and key: prefixes in front of a quoted phrase", () => {
-    expect(tokenize('-"bad phrase" ok')).toEqual(["-bad phrase", "ok"]);
-    expect(tokenize('author:"ashish vaswani"')).toEqual(["author:ashish vaswani"]);
-  });
-
-  it("accepts an unterminated quote", () => {
-    expect(tokenize('"is all you')).toEqual(["is all you"]);
-  });
-
-  it("returns nothing for blank input and drops empty phrases", () => {
-    expect(tokenize("")).toEqual([]);
-    expect(tokenize("   ")).toEqual([]);
-    expect(tokenize('""')).toEqual([]);
-  });
-});
-
-describe("parseQuery", () => {
-  it("collects plain words as folded terms", () => {
-    expect(parseQuery("Attention Transformer").terms).toEqual(["attention", "transformer"]);
-    expect(parseQuery("SCHRÖDINGER").terms).toEqual(["schrodinger"]);
-  });
-
-  it("keeps a quoted phrase as one term", () => {
-    expect(parseQuery('"All You Need" bert').terms).toEqual(["all you need", "bert"]);
-  });
-
-  it("treats -word as an exclusion", () => {
-    const q = parseQuery("transformer -Survey -review");
-    expect(q.terms).toEqual(["transformer"]);
-    expect(q.excluded).toEqual(["survey", "review"]);
-  });
-
-  it("treats a lone dash or hash as an ordinary term", () => {
-    expect(parseQuery("-").terms).toEqual(["-"]);
-    expect(parseQuery("#").terms).toEqual(["#"]);
-  });
-
-  it.each([["tag:NLP"], ["t:nlp"], ["#nlp"], ["#NLP"]])("reads %s as the tag nlp", (query) => {
-    const q = parseQuery(query);
-    expect(q.tags).toEqual(["nlp"]);
-    expect(q.terms).toEqual([]);
-  });
-
-  it.each([
-    ["status:reading", "reading"], ["is:unread", "unread"], ["s:done", "done"],
-    ["status:r", "reading"], ["is:u", "unread"], ["is:d", "done"],
-    ["status:new", "unread"], ["status:read", "done"], ["IS:DONE", "done"], ["status:Reading", "reading"],
-  ])("reads %s as status %s", (query, status) => {
-    expect(parseQuery(query).statuses).toEqual([status]);
-  });
-
-  it("collects several statuses", () => {
-    expect(parseQuery("is:u is:r").statuses).toEqual(["unread", "reading"]);
-  });
-
-  it("keeps an unknown status word as a plain term", () => {
-    const q = parseQuery("status:bogus");
-    expect(q.statuses).toEqual([]);
-    expect(q.terms).toEqual(["status:bogus"]);
-  });
-
-  describe("year", () => {
-    it("exact year sets both bounds", () => {
-      const q = parseQuery("year:2017");
-      expect([q.yearMin, q.yearMax]).toEqual([2017, 2017]);
-    });
-
-    it("range sets both bounds", () => {
-      const q = parseQuery("year:2015..2020");
-      expect([q.yearMin, q.yearMax]).toEqual([2015, 2020]);
-    });
-
-    it("open-ended ranges set one bound", () => {
-      expect(parseQuery("year:2015..")).toMatchObject({ yearMin: 2015 });
-      expect(parseQuery("year:2015..").yearMax).toBeUndefined();
-      expect(parseQuery("year:..2020")).toMatchObject({ yearMax: 2020 });
-      expect(parseQuery("year:..2020").yearMin).toBeUndefined();
-    });
-
-    it("> and < are exclusive", () => {
-      expect(parseQuery("year:>2018").yearMin).toBe(2019);
-      expect(parseQuery("year:<2000").yearMax).toBe(1999);
-    });
-
-    it(">= and <= are inclusive", () => {
-      expect(parseQuery("year:>=2018").yearMin).toBe(2018);
-      expect(parseQuery("year:<=2000").yearMax).toBe(2000);
-    });
-
-    it("accepts the y: shorthand", () => {
-      expect(parseQuery("y:2020")).toMatchObject({ yearMin: 2020, yearMax: 2020 });
-    });
-
-    it("combines a lower and an upper comparison", () => {
-      const q = parseQuery("year:>=2010 year:<2020");
-      expect([q.yearMin, q.yearMax]).toEqual([2010, 2019]);
-    });
-
-    it("keeps an unparseable year as a plain term", () => {
-      for (const bad of ["year:abc", "year:99", "year:20177"]) {
-        const q = parseQuery(bad);
-        expect(q.yearMin).toBeUndefined();
-        expect(q.terms).toEqual([bad]);
-      }
-    });
-  });
-
-  it.each([["author:vaswani"], ["au:Vaswani"], ["a:VASWANI"]])("reads %s as an author filter", (query) => {
-    expect(parseQuery(query).authors).toEqual(["vaswani"]);
-  });
-
-  it("folds accents in author filters and keeps a quoted full name", () => {
-    expect(parseQuery("author:Müller").authors).toEqual(["muller"]);
-    expect(parseQuery('au:"ashish vaswani"').authors).toEqual(["ashish vaswani"]);
-  });
-
-  it("reads has: and no: conditions, lower-cased", () => {
-    const q = parseQuery("has:PDF no:note has:doi");
-    expect(q.has).toEqual(["pdf", "doi"]);
-    expect(q.missing).toEqual(["note"]);
-  });
-
-  it("keeps key: tokens with an empty value or an unknown key as plain terms", () => {
-    expect(parseQuery("author:").terms).toEqual(["author:"]);
-    expect(parseQuery("foo:bar").terms).toEqual(["foo:bar"]);
-  });
-
-  it("parses a mixed query", () => {
-    const q = parseQuery('transformer "self attention" -survey tag:nlp #vision is:r year:2015..2020 au:vaswani has:pdf no:note');
-    expect(q).toEqual({
-      terms: ["transformer", "self attention"],
-      excluded: ["survey"],
-      tags: ["nlp", "vision"],
-      authors: ["vaswani"],
-      statuses: ["reading"],
-      yearMin: 2015,
-      yearMax: 2020,
-      has: ["pdf"],
-      missing: ["note"],
-    });
-  });
-});
-
-describe("isEmptyQuery", () => {
-  it.each(["", "   ", "\t"])("is true for %j", (query) => {
-    expect(isEmptyQuery(parseQuery(query))).toBe(true);
-  });
-
-  it.each([
-    "word", '"a phrase"', "-word", "tag:x", "#x", "status:done", "year:2020", "year:>2000", "year:..2000",
-    "author:x", "has:pdf", "no:pdf",
-  ])("is false for %j", (query) => {
-    expect(isEmptyQuery(parseQuery(query))).toBe(false);
-  });
-});
 
 describe("matchPaper: terms and ranking", () => {
   it("returns 0 when the paper does not match, a positive rank when it does", () => {
@@ -249,7 +82,64 @@ describe("matchPaper: terms and ranking", () => {
   it("finds a paper through its annotation text", () => {
     const paper = rec({ title: "Unrelated title" });
     expect(score(paper, "entanglement")).toBe(0);
-    expect(score(paper, "entanglement", "a highlighted passage about quantum entanglement")).toBeGreaterThan(0);
+    expect(score(paper, "entanglement", { annotations: "a highlighted passage about quantum entanglement" })).toBeGreaterThan(0);
+  });
+});
+
+describe("matchPaper: host text", () => {
+  it("searches the folder the host passes in", () => {
+    const paper = rec({ title: "Unrelated title" });
+    expect(score(paper, "robotics")).toBe(0);
+    expect(score(paper, "robotics", { folder: "Robotics / Control" })).toBeGreaterThan(0);
+  });
+});
+
+describe("matchPaper: field aliases", () => {
+  const paper = rec({
+    title: "Attention Is All You Need", citeKey: "vaswani2017", journal: "NeurIPS", publisher: "Curran Associates",
+    keywords: ["sequence transduction", "Self-Attention"], note: "Revisit the multi-head part", summary: "We propose the Transformer",
+    authors: ["Ashish Vaswani"],
+  });
+
+  it.each([
+    ["kw:transduction", "kw:graphs"], ["keyword:self-attention", "keyword:vision"],
+    ["venue:neurips", "venue:nature"], ["venue:curran", "journal:nature"], ["journal:neur", "journal:vision"],
+    ["note:multi-head", "note:vaswani"], ["key:vaswani2017", "key:smith"], ["abstract:propose", "abstract:revisit"],
+  ])("%s matches and %s does not", (hit, miss) => {
+    expect(score(paper, hit)).toBeGreaterThan(0);
+    expect(score(paper, miss)).toBe(0);
+  });
+
+  it("restricts the match to the named field", () => {
+    expect(score(paper, "note:attention")).toBe(0);
+    expect(score(paper, "kw:attention")).toBeGreaterThan(0);
+  });
+
+  it("folds accents on both sides", () => {
+    expect(score(rec({ keywords: ["Schrödinger"] }), "kw:schrodinger")).toBeGreaterThan(0);
+  });
+
+  it("ignores an operator with an empty value", () => {
+    expect(score(paper, "author:")).toBeGreaterThan(0);
+    expect(score(paper, "attention author:")).toBe(score(paper, "attention"));
+  });
+});
+
+describe("matchesTerms", () => {
+  it("requires every free-text term in the text, ignoring case and accents", () => {
+    expect(matchesTerms(parseQuery("deep learning"), "Deep Learning")).toBe(true);
+    expect(matchesTerms(parseQuery("cafe"), "Café Society")).toBe(true);
+    expect(matchesTerms(parseQuery("deep vision"), "Deep Learning")).toBe(false);
+    expect(matchesTerms(parseQuery(""), "anything")).toBe(true);
+  });
+});
+
+describe("paperMatches", () => {
+  it("is true exactly when the score is positive", () => {
+    const paper = rec({ title: "Attention" });
+    const doc = searchDoc(paper);
+    expect(paperMatches(paper, doc, parseQuery("attention"))).toBe(true);
+    expect(paperMatches(paper, doc, parseQuery("convolution"))).toBe(false);
   });
 });
 
@@ -337,34 +227,5 @@ describe("matchPaper: operators", () => {
     const paper = rec({ title: "Attention Is All You Need", year: 2017, status: "reading", tags: ["nlp"], authors: ["Ashish Vaswani"] });
     expect(score(paper, "attention tag:nlp is:r year:2015..2020 au:vaswani has:pdf")).toBeGreaterThan(0);
     expect(score(paper, "attention tag:nlp is:d year:2015..2020")).toBe(0);
-  });
-});
-
-describe("searchDoc", () => {
-  it("folds title and authors and keeps the folded tags", () => {
-    const doc = searchDoc(rec({ title: "Schrödinger", authors: ["José Müller", "Ann Lee"], tags: ["NLP", "Vision"] }));
-    expect(doc.title).toBe("schrodinger");
-    expect(doc.authors).toBe("jose muller; ann lee");
-    expect(doc.tags).toEqual(["nlp", "vision"]);
-  });
-
-  it("puts annotation text in the rest of the document", () => {
-    expect(searchDoc(rec(), "Highlighted TEXT").rest).toContain("highlighted text");
-  });
-
-  it("handles a record without authors, tags or optional fields", () => {
-    const doc = searchDoc(rec({ id: "x", citeKey: "x" }));
-    expect(doc.authors).toBe("");
-    expect(doc.tags).toEqual([]);
-    expect(doc.rest).toBe("x\nx");
-  });
-});
-
-describe("unknown has:/no: values", () => {
-  it("treats them as plain words instead of filters that match everything or nothing", () => {
-    const q = parseQuery("has:typo no:nonsense");
-    expect(q.has).toEqual([]);
-    expect(q.missing).toEqual([]);
-    expect(q.terms).toEqual(["has:typo", "no:nonsense"]);
   });
 });

@@ -28,3 +28,4 @@ export type { SharedConfig, SharedConfigPatch } from "./sharedConfig.js";
 export * from "./mutations/index.js";
 export * from "./model/index.js";
 export * from "./scan/index.js";
+export * from "./search/index.js";

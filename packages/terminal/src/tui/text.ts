@@ -179,12 +179,3 @@ export function wrap(text: string, width: number): string[] {
 export function sanitizeForTerminal(text: string): string {
   return text.replace(/[\x00-\x08\x0b-\x1f\x7f-\x9f]/g, "\uFFFD");
 }
-
-/**
- * Removes diacritics and case so "Schrödinger" matches "schrodinger".
- * @usedBy library/search, ui/fuzzy
- * @returns the folded text
- */
-export function fold(text: string): string {
-  return text.normalize("NFD").replace(/\p{M}+/gu, "").toLowerCase();
-}

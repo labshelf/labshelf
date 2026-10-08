@@ -4,9 +4,9 @@
  * strip. Folders never take list rows — the chips are the only place the
  * folder structure shows inside the list pane. Chips are drop targets.
  */
-import { el, esc, tokenize } from "../../ui/dom";
+import { el, esc } from "../../ui/dom";
 import { icon } from "../../ui/icons";
-import { subfoldersOf } from "@labshelf/core";
+import { parseQuery, subfoldersOf } from "@labshelf/core";
 import { ROOT, STATUSES, STATUS_LABEL, listPapersUnder, papersInScope, statusCounts } from "../state/derive";
 import type { LibraryStore, StatusFilter } from "../state/libraryStore";
 import { makeDropTarget } from "./dnd";
@@ -21,10 +21,10 @@ export function mountFilterBar(container: HTMLElement, store: LibraryStore): () 
   const strip = container.querySelector<HTMLElement>("#subStrip")!;
 
   return store.select(
-    (s) => ({ folder: s.folder, folders: s.folders, papers: s.papers, query: s.query, status: s.status, includeSub: s.includeSub }),
+    (s) => ({ folder: s.folder, folders: s.folders, papers: s.papers, query: s.query, status: s.status, includeSub: s.includeSub, pdfDirs: s.pdfDirs }),
     (slice) => {
-      const inFolder = listPapersUnder(slice.papers, slice.folder);
-      const counts = statusCounts(papersInScope(inFolder, tokenize(slice.query), slice.includeSub));
+      const inFolder = listPapersUnder(slice.papers, slice.folder, slice.pdfDirs);
+      const counts = statusCounts(papersInScope(inFolder, parseQuery(slice.query), slice.includeSub));
       renderTabs(tabs, store, slice.status, counts);
       renderChips(strip, store, subfoldersOf(slice.folders, slice.folder, ROOT, slice.papers.map((p) => p.path)));
     },

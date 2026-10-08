@@ -11,7 +11,6 @@ function listPaper(extra: Partial<ListPaper> = {}): ListPaper {
     status: "unread",
     folderPath: "papers",
     relFolder: "",
-    hay: "",
     hasPdf: false,
     ...extra,
   };

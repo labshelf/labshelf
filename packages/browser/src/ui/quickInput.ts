@@ -8,7 +8,7 @@
  * @depends ui/dom, ui/icons
  * @dependents library-page controllers (folder CRUD, move papers, add from tab)
  */
-import { el, highlight, tokenize } from "./dom";
+import { el, highlight } from "./dom";
 import { icon } from "./icons";
 import type { IconName } from "./icons";
 
@@ -46,7 +46,7 @@ export function quickPick<T>(items: QuickPickItem<T>[], opts: QuickPickOptions =
     let active = 0;
 
     const render = (): void => {
-      const toks = tokenize(input.value);
+      const toks = input.value.toLowerCase().split(" ").filter(Boolean);
       visible = toks.length
         ? items.filter((it) => toks.every((t) => `${it.label} ${it.description ?? ""}`.toLowerCase().includes(t)))
         : items;

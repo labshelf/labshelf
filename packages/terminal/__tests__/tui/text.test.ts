@@ -1,4 +1,4 @@
-import { fit, fold, graphemes, graphemeWidth, sanitizeForTerminal, stringWidth, truncate, wrap } from "../../src/tui/text";
+import { fit, graphemes, graphemeWidth, sanitizeForTerminal, stringWidth, truncate, wrap } from "../../src/tui/text";
 
 describe("text width helpers", () => {
   it("counts ASCII, accents, CJK and emoji by terminal cells", () => {
@@ -19,10 +19,6 @@ describe("text width helpers", () => {
   it("wraps words and hard-breaks long ones", () => {
     expect(wrap("one two three", 7)).toEqual(["one two", "three"]);
     expect(wrap("abcdefghij", 4)).toEqual(["abcd", "efgh", "ij"]);
-  });
-
-  it("folds accents and case", () => {
-    expect(fold("Lässig")).toBe("lassig");
   });
 });
 
@@ -237,16 +233,6 @@ describe("wrap", () => {
   it("does not lose any word", () => {
     const words = "the quick brown fox jumps over the lazy dog".split(" ");
     expect(wrap(words.join(" "), 11).join(" ").split(" ")).toEqual(words);
-  });
-});
-
-describe("fold", () => {
-  it("strips every kind of accent and lowercases", () => {
-    expect(fold("Çaglar ÉCOLE naïve")).toBe("caglar ecole naive");
-  });
-
-  it("leaves unaccented text only lowercased", () => {
-    expect(fold("Attention")).toBe("attention");
   });
 });
 
