@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { ListWebviewPanel } from '../../src/ui/list/listWebviewPanel';
 import type { ListPanelDeps } from '../../src/ui/list/listWebviewPanel';
-import type { LibraryNode, ListPanelState } from '../../src/ui/library/folderNavigation';
+import type { LibraryNode, ListPanelState } from '../../src/ui/library/index';
 import type { TextLayerJob } from '../../src/commands/textLayerQueue';
 
 const ROOT = '/lib/papers';
@@ -37,6 +37,7 @@ function open(folder?: LibraryNode, extra: Partial<ListPanelDeps> = {}): Harness
     paperService,
     eventBus: bus,
     getPapersRoot: () => ROOT,
+    readFolders: async () => [],
     onDidNavigate,
     ...extra,
   } as unknown as ListPanelDeps;
@@ -70,15 +71,9 @@ describe('ListWebviewPanel', () => {
   });
 
   it('opens a folder that has subfolders and lists them', async () => {
-    (vscode.workspace.fs.readDirectory as jest.Mock).mockImplementation(async (uri: vscode.Uri) =>
-      uri.fsPath === `${ROOT}/A` ? [['B', vscode.FileType.Directory]] : [],
-    );
-    (vscode.workspace.fs.stat as jest.Mock).mockImplementation(async (uri: vscode.Uri) => {
-      if (/(metadata\.yaml|paper\.pdf)$/.test(uri.fsPath)) { throw new Error('missing'); }
-      return { type: vscode.FileType.Directory };
-    });
+    const readFolders = async (dir: string) => (dir === `${ROOT}/A` ? [{ label: 'B', dirPath: `${ROOT}/A/B` }] : []);
 
-    const h = open({ label: 'A', dirPath: `${ROOT}/A` });
+    const h = open({ label: 'A', dirPath: `${ROOT}/A` }, { readFolders });
     await h.fire({ command: 'ready' });
 
     expect(h.lastState().subfolders).toEqual([{ label: 'B', dirPath: `${ROOT}/A/B`, count: 1 }]);

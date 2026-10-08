@@ -4,29 +4,19 @@ import { LibraryDragAndDropController, LibraryTreeDataProvider } from '../../src
 const ROOT = '/lib/papers';
 const TREE_MIME = 'application/vnd.code.tree.labshelf.library';
 
-// Disk layout: papers/{A/{B}, Z, loose-paper}; loose-paper is a paper folder, not a collection.
-function mockDisk(): void {
-  const dirs: Record<string, string[]> = { [ROOT]: ['Z', 'A', 'loose-paper', '.hidden'], [`${ROOT}/A`]: ['B'] };
-  (vscode.workspace.fs.readDirectory as jest.Mock).mockImplementation(async (uri: vscode.Uri) =>
-    (dirs[uri.fsPath] ?? []).map((name) => [name, vscode.FileType.Directory]),
-  );
-  (vscode.workspace.fs.stat as jest.Mock).mockImplementation(async (uri: vscode.Uri) => {
-    if (uri.fsPath === `${ROOT}/loose-paper/paper.pdf`) { return { type: vscode.FileType.File }; }
-    throw new Error('missing');
-  });
-}
+// Collection folders per directory: papers/{A/{B}, Z}. Which folders count as collections is core's folder-level reader's job.
+const FOLDERS: Record<string, string[]> = { [ROOT]: ['A', 'Z'], [`${ROOT}/A`]: ['B'] };
+const readFolders = async (dir: string) => (FOLDERS[dir] ?? []).map((label) => ({ label, dirPath: `${dir}/${label}` }));
 
 function makeProvider(): { provider: LibraryTreeDataProvider; bus: { on: jest.Mock } } {
   const bus = { on: jest.fn() };
-  const provider = new LibraryTreeDataProvider(vscode.Uri.file(ROOT), bus as never);
+  const provider = new LibraryTreeDataProvider(vscode.Uri.file(ROOT), readFolders, bus as never);
   provider.setPaperPathSource(async () => [`${ROOT}/A/p1`, `${ROOT}/A/B/p2`, `${ROOT}/loose-paper`]);
   return { provider, bus };
 }
 
-beforeEach(mockDisk);
-
 describe('LibraryTreeDataProvider', () => {
-  it('lists "All Papers" first, then sorted collection folders, skipping paper and hidden folders', async () => {
+  it('lists "All Papers" first, then the collection folders', async () => {
     const { provider } = makeProvider();
     const top = await provider.getChildren();
     expect(top.map((n) => n.label)).toEqual(['All Papers', 'A', 'Z']);
@@ -35,7 +25,7 @@ describe('LibraryTreeDataProvider', () => {
   });
 
   it('returns nothing while no library is configured', async () => {
-    const provider = new LibraryTreeDataProvider(null, { on: jest.fn() } as never);
+    const provider = new LibraryTreeDataProvider(null, null, { on: jest.fn() } as never);
     expect(await provider.getChildren()).toEqual([]);
   });
 

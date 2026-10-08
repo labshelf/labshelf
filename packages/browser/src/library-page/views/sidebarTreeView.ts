@@ -7,16 +7,13 @@
  *
  * Expansion state is persisted through uiPrefs; the open folder's ancestors
  * are always expanded so the selection is never hidden.
- *
- * @depends ui/dom, ui/icons, ui/menu, state/libraryStore, state/derive, state/uiPrefs, events, views/dnd
- * @dependents library-page/index
  */
 import { el, esc } from "../../ui/dom";
 import { icon } from "../../ui/icons";
 import { showMenu } from "../../ui/menu";
-import type { FolderNode } from "../../storage";
 import { emit } from "../events";
-import { ROOT, ROOT_LABEL, countPapersUnder, isUnder, parentDir } from "../state/derive";
+import { ROOT_LABEL, countPapersUnder, isUnderDir, parentDir, type FolderTreeNode } from "@labshelf/core";
+import { ROOT } from "../state/derive";
 import type { LibraryStore } from "../state/libraryStore";
 import { loadPrefs, savePrefs } from "../state/uiPrefs";
 import { makeDropTarget } from "./dnd";
@@ -66,7 +63,7 @@ export function mountSidebar(container: HTMLElement, store: LibraryStore): () =>
     (s) => ({ folders: s.folders, folder: s.folder, papers: s.papers }),
     ({ folder }) => {
       // Reveal the open folder: expand its ancestors, as VS Code's tree.reveal does.
-      for (let p = parentDir(folder); p !== ROOT && isUnder(p, ROOT); p = parentDir(p)) ctx.expanded.add(p);
+      for (let p = parentDir(folder, "/"); p !== ROOT && isUnderDir(p, ROOT, "/"); p = parentDir(p, "/")) ctx.expanded.add(p);
       render(ctx);
     },
   );
@@ -76,10 +73,10 @@ function render(ctx: Ctx): void {
   const { folders, folder, papers } = ctx.store.get();
   const paths = papers.map((p) => p.path);
   const frag = document.createDocumentFragment();
-  frag.append(row(ctx, { name: ROOT_LABEL, path: ROOT, children: [] }, 0, countPapersUnder(paths, ROOT), folder, true));
-  const walk = (nodes: FolderNode[], depth: number): void => {
+  frag.append(row(ctx, { name: ROOT_LABEL, path: ROOT, children: [] }, 0, countPapersUnder(paths, ROOT, "/"), folder, true));
+  const walk = (nodes: FolderTreeNode[], depth: number): void => {
     for (const node of nodes) {
-      frag.append(row(ctx, node, depth, countPapersUnder(paths, node.path), folder, false));
+      frag.append(row(ctx, node, depth, countPapersUnder(paths, node.path, "/"), folder, false));
       if (node.children.length && ctx.expanded.has(node.path)) walk(node.children, depth + 1);
     }
   };
@@ -91,7 +88,7 @@ function render(ctx: Ctx): void {
   paintFocus(ctx);
 }
 
-function row(ctx: Ctx, node: FolderNode, depth: number, count: number, selected: string, isRoot: boolean): HTMLElement {
+function row(ctx: Ctx, node: FolderTreeNode, depth: number, count: number, selected: string, isRoot: boolean): HTMLElement {
   const hasChildren = node.children.length > 0;
   const open = ctx.expanded.has(node.path);
   const guides = Array.from({ length: depth }, (_, i) => `<span class="guide" style="left:${16 + i * 8}px"></span>`).join("");
@@ -188,7 +185,7 @@ function onKey(e: KeyboardEvent, ctx: Ctx): void {
   else if (e.key === "Home") { ctx.focused = paths[0] ?? ROOT; }
   else if (e.key === "End") { ctx.focused = paths[paths.length - 1] ?? ROOT; }
   else if (e.key === "ArrowRight") { if (expandable && !open) { ctx.expanded.add(path); persist(ctx); render(ctx); } else if (open) ctx.focused = paths[idx + 1] ?? path; }
-  else if (e.key === "ArrowLeft") { if (open) { ctx.expanded.delete(path); persist(ctx); render(ctx); } else if (path !== ROOT) ctx.focused = parentDir(path) === ROOT ? ROOT : parentDir(path); }
+  else if (e.key === "ArrowLeft") { if (open) { ctx.expanded.delete(path); persist(ctx); render(ctx); } else if (path !== ROOT) ctx.focused = parentDir(path, "/") === ROOT ? ROOT : parentDir(path, "/"); }
   else if (e.key === "Enter" || e.key === " ") { ctx.store.openFolder(path); }
   else if (e.key === "F2" && path !== ROOT) { emit("labshelf:rename-folder", { path }); }
   else if ((e.key === "Delete" || e.key === "Backspace") && path !== ROOT) { emit("labshelf:delete-folder", { path }); }

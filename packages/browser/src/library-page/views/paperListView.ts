@@ -6,14 +6,12 @@
  *
  * Rows are rebuilt only when the data, filters or sort change; selection
  * changes just toggle classes, so scroll position and focus survive.
- *
- * @depends ui/dom, ui/icons, state/libraryStore, state/derive, state/uiPrefs, events, views/paperRow, views/dnd
- * @dependents library-page/index
  */
 import { $, el, tokenize } from "../../ui/dom";
 import { icon } from "../../ui/icons";
 import { emit } from "../events";
-import { folderLabel, listPapersUnder, papersInScope, sortPapers } from "../state/derive";
+import { folderLabel } from "@labshelf/core";
+import { ROOT, listPapersUnder, papersInScope, sortPapers } from "../state/derive";
 import type { LibraryStore, SortKey } from "../state/libraryStore";
 import { savePrefs } from "../state/uiPrefs";
 import { endPaperDrag, startPaperDrag } from "./dnd";
@@ -97,7 +95,7 @@ function render(ctx: Ctx): void {
       : buildEmptyState({
         narrowed: toks.length > 0 || s.status !== "all",
         onlyNested: inFolder.length > 0,
-        folderLabel: folderLabel(s.folder),
+        folderLabel: folderLabel(ROOT, s.folder, "/"),
         onClearFilters: () => { ctx.store.set({ status: "all", query: "" }); $("searchInput").focus(); },
         onShowSubfolders: () => { savePrefs({ includeSub: true }); ctx.store.set({ includeSub: true }); },
         onAdd: () => emit("labshelf:add-paper", {}),

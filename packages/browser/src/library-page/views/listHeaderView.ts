@@ -3,15 +3,13 @@
  * search box, and the toolbar — show-subfolders toggle, new subfolder,
  * "+ Add", toggle details. Same anatomy as the VS Code list panel header.
  * Crumbs are drop targets for paper moves.
- *
- * @depends ui/dom, ui/icons, state/libraryStore, state/derive, state/uiPrefs, events, views/dnd, app
- * @dependents library-page/index
  */
 import { $, el, esc, tokenize } from "../../ui/dom";
 import { icon } from "../../ui/icons";
 import { togglePane } from "../app";
 import { emit } from "../events";
-import { breadcrumbFor, listPapersUnder, papersInScope, statusCounts } from "../state/derive";
+import { breadcrumbFor } from "@labshelf/core";
+import { ROOT, listPapersUnder, papersInScope, statusCounts } from "../state/derive";
 import type { LibraryStore } from "../state/libraryStore";
 import { savePrefs } from "../state/uiPrefs";
 import { makeDropTarget } from "./dnd";
@@ -75,7 +73,7 @@ export function mountListHeader(container: HTMLElement, store: LibraryStore): ()
 }
 
 function renderCrumbs(container: HTMLElement, store: LibraryStore, folder: string, count: string): void {
-  const chain = breadcrumbFor(folder);
+  const chain = breadcrumbFor(ROOT, folder, "/");
   const frag = document.createDocumentFragment();
   chain.forEach((node, i) => {
     const last = i === chain.length - 1;

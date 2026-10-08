@@ -252,7 +252,7 @@ describe("search", () => {
 
   it("finds a paper through the text of its highlights once the annotation index is loaded", async () => {
     const s = await session();
-    s.ctx.store.setAnnotationText(await s.ctx.sidecars.annotationIndex(s.ctx.store.snapshot.papers.keys()));
+    s.ctx.search.setAnnotationText(await s.ctx.sidecars.annotationIndex(s.ctx.store.snapshot.papers.keys()));
     expect(await s.run("search", "positional", "encodings")).toBe(0);
     expect(s.text()).toContain("vaswani2017attention");
   });

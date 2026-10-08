@@ -1,21 +1,17 @@
 /**
- * Pure derivations for the library page — the browser counterpart of the
- * VS Code extension's `ui/library/folderNavigation.ts`, with "/"-separated
- * IndexedDB paths instead of absolute file paths. Everything here is
- * side-effect free so the views stay thin and the logic is unit-testable.
+ * View derivations for the library page: the list rows with their search text, the status tabs and the sort
+ * wiring. Path and tree logic lives in core. Everything here is side-effect free.
  */
-import { PAPER_STATUSES, type PaperRecord, type PaperStatus, PAPERS_DIR } from "@labshelf/core";
-import type { FolderNode } from "../../storage";
+import {
+  PAPER_STATUSES, PAPERS_DIR, isUnderDir, parentDir, recordComparator, relativeFolder,
+  type PaperRecord, type PaperSortKey, type PaperStatus, type FolderTreeNode,
+} from "@labshelf/core";
 import type { SortDir, SortKey, StatusFilter } from "./libraryStore";
 
 export const ROOT = PAPERS_DIR;
-export const ROOT_LABEL = "All Papers";
 export const STATUSES: readonly PaperStatus[] = PAPER_STATUSES;
 export const STATUS_LABEL: Record<PaperStatus, string> = { unread: "Unread", reading: "Reading", done: "Done" };
-const STATUS_ORDER: Record<PaperStatus, number> = { unread: 0, reading: 1, done: 2 };
-
-export interface Crumb { label: string; path: string; isRoot: boolean }
-export interface SubfolderEntry { label: string; path: string; count: number }
+const SEP = "/";
 
 /** A paper as the list sees it: the record plus where it sits relative to the open folder. */
 export interface ListPaper extends PaperRecord {
@@ -32,62 +28,11 @@ export interface ListPaper extends PaperRecord {
 /** Shared empty set so callers that do not track PDF presence (counts) need not build one. */
 const NO_PDF_DIRS: ReadonlySet<string> = new Set();
 
-export function isUnder(p: string, dir: string): boolean {
-  return p === dir || p.startsWith(`${dir}/`);
-}
-
-export function parentDir(p: string): string {
-  const i = p.lastIndexOf("/");
-  return i <= 0 ? p : p.slice(0, i);
-}
-
-export function baseName(p: string): string {
-  return p.slice(p.lastIndexOf("/") + 1);
-}
-
-export function folderLabel(path: string): string {
-  return path === ROOT || path === "" ? ROOT_LABEL : baseName(path);
-}
-
-/** Root-first chain of folders from papers/ down to `path`; just the root when `path` is outside it. */
-export function breadcrumbFor(path: string): Crumb[] {
-  const chain: Crumb[] = [{ label: ROOT_LABEL, path: ROOT, isRoot: true }];
-  if (!isUnder(path, ROOT) || path === ROOT) return chain;
-  let current = ROOT;
-  for (const seg of path.slice(ROOT.length + 1).split("/")) {
-    current = `${current}/${seg}`;
-    chain.push({ label: seg, path: current, isRoot: false });
-  }
-  return chain;
-}
-
-/** Finds a node in the tree by path; the root is represented by the tree itself. */
-export function findNode(tree: FolderNode[], path: string): FolderNode | undefined {
-  for (const node of tree) {
-    if (node.path === path) return node;
-    if (isUnder(path, node.path)) return findNode(node.children, path);
-  }
-  return undefined;
-}
-
-/** Direct child collections of `folder` with recursive paper counts, sorted by name. */
-export function subfoldersOf(tree: FolderNode[], folder: string, paperPaths: string[]): SubfolderEntry[] {
-  const children = folder === ROOT ? tree : findNode(tree, folder)?.children ?? [];
-  return children.map((c) => ({ label: c.name, path: c.path, count: countPapersUnder(paperPaths, c.path) }));
-}
-
-/** Number of papers stored at any depth under `dir`. */
-export function countPapersUnder(paperPaths: string[], dir: string): number {
-  let n = 0;
-  for (const p of paperPaths) if (isUnder(p, dir)) n++;
-  return n;
-}
-
-/** Every folder path in the tree, parents before children, root first. */
-export function flattenFolders(tree: FolderNode[]): Array<{ label: string; path: string }> {
+/** Every folder path in the tree, parents before children, labelled by the path below the root. */
+export function flattenFolders(tree: FolderTreeNode[]): Array<{ label: string; path: string }> {
   const out: Array<{ label: string; path: string }> = [];
-  const walk = (nodes: FolderNode[]): void => {
-    for (const n of nodes) { out.push({ label: n.path.slice(ROOT.length + 1).split("/").join(" / "), path: n.path }); walk(n.children); }
+  const walk = (nodes: FolderTreeNode[]): void => {
+    for (const n of nodes) { out.push({ label: n.path.slice(ROOT.length + 1).split(SEP).join(" / "), path: n.path }); walk(n.children); }
   };
   walk(tree);
   return out;
@@ -100,12 +45,10 @@ export function flattenFolders(tree: FolderNode[]): Array<{ label: string; path:
  */
 export function listPapersUnder(all: PaperRecord[], folder: string, pdfDirs: ReadonlySet<string> = NO_PDF_DIRS): ListPaper[] {
   return all
-    .filter((p) => isUnder(p.path, folder) && p.path !== folder)
+    .filter((p) => isUnderDir(p.path, folder, SEP) && p.path !== folder)
     .map((p) => {
-      const folderPath = parentDir(p.path);
-      const relFolder = folderPath === folder || !isUnder(folderPath, folder)
-        ? ""
-        : folderPath.slice(folder.length + 1).split("/").join(" / ");
+      const folderPath = parentDir(p.path, SEP);
+      const relFolder = relativeFolder(p.path, folder, SEP);
       const hay = [p.title, (p.authors ?? []).join(" "), p.year, p.citeKey, p.journal, p.publisher, (p.keywords ?? []).join(" "), relFolder]
         .join(" ").toLowerCase();
       return { ...p, folderPath, relFolder, hay, hasPdf: pdfDirs.has(p.path) };
@@ -142,20 +85,13 @@ export function nextStatus(status: PaperStatus): PaperStatus {
   return STATUSES[(STATUSES.indexOf(status) + 1) % STATUSES.length]!;
 }
 
-/** Stable sort by the chosen column with title as the tiebreaker. Returns a new array. */
+const CORE_SORT_KEY: Record<SortKey, PaperSortKey> = {
+  title: "title", creator: "author", year: "year", publication: "publication", status: "status",
+};
+
+/** Sorts by the chosen column with title as the tiebreaker. Returns a new array. */
 export function sortPapers(papers: ListPaper[], key: SortKey, dir: SortDir): ListPaper[] {
-  const val = (p: ListPaper): string | number => {
-    if (key === "creator") return fmtCreator(p.authors).toLowerCase();
-    if (key === "year") return p.year ?? 0;
-    if (key === "status") return STATUS_ORDER[p.status] ?? 0;
-    if (key === "publication") return (p.journal ?? p.publisher ?? "").toLowerCase();
-    return (p.title ?? "").toLowerCase();
-  };
-  return [...papers].sort((a, b) => {
-    const x = val(a);
-    const y = val(b);
-    if (x < y) return -dir;
-    if (x > y) return dir;
-    return (a.title ?? "").localeCompare(b.title ?? "");
-  });
+  // Core orders years newest first; the ascending arrow (dir 1) means oldest first, so year reads the direction the other way round.
+  const reverse = key === "year" ? dir === 1 : dir === -1;
+  return [...papers].sort(recordComparator({ key: CORE_SORT_KEY[key], reverse }));
 }

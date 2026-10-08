@@ -3,17 +3,15 @@
  * (`#/papers/Project/Refs`), so the browser's back/forward buttons walk the
  * folder history and a reload lands on the same folder. The shell is never
  * rebuilt on navigation — only the store changes.
- *
- * @depends state/libraryStore, state/derive
- * @dependents library-page/index
  */
-import { ROOT, isUnder } from "./state/derive";
+import { isUnderDir } from "@labshelf/core";
+import { ROOT } from "./state/derive";
 import type { LibraryStore } from "./state/libraryStore";
 
 /** Parses a location hash into a folder path, falling back to the root. */
 export function folderFromHash(hash: string): string {
   const raw = decodeURIComponent(hash.replace(/^#\/?/, "")).replace(/\/+$/, "");
-  return raw && isUnder(raw, ROOT) && !raw.split("/").some((s) => s === "" || s === "." || s === "..") ? raw : ROOT;
+  return raw && isUnderDir(raw, ROOT, "/") && !raw.split("/").some((s) => s === "" || s === "." || s === "..") ? raw : ROOT;
 }
 
 /** Builds the hash for a folder path. */

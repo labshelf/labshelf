@@ -10,8 +10,7 @@
  * vanilla TS/DOM and the state surface is small. Selection is an immutable Set
  * replaced on every change so slice equality stays a reference check.
  */
-import type { PaperRecord, PaperStatus } from "@labshelf/core";
-import type { FolderNode } from "../../storage";
+import type { FolderTreeNode, PaperRecord, PaperStatus } from "@labshelf/core";
 import type { SyncStatusData } from "../../platform/runtimeMessages";
 import { PAPERS_DIR } from "@labshelf/core";
 
@@ -20,7 +19,7 @@ export type SortKey = "title" | "creator" | "year" | "publication" | "status";
 export type SortDir = 1 | -1;
 
 export interface LibraryState {
-  folders: FolderNode[];
+  folders: FolderTreeNode[];
   /** Every PaperRecord in the library; views derive the folder scope. */
   papers: PaperRecord[];
   /** "papers/foo/bar"-style path; "papers" is the library root. */

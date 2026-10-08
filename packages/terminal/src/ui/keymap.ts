@@ -3,9 +3,6 @@
  * table, so they cannot disagree. Keys follow yazi where the meaning carries over (hjkl, gg/G, H/L history, J/K preview
  * scroll, space/v selection, x/p cut-paste, f filter, / find, z jump, , sort, ? help) and add paper-specific ones
  * (m status, t tags, e note, y copy citation formats, S sync).
- *
- * @depends none
- * @dependents ui/app, ui/overlays (help)
  */
 
 export type ActionId =
@@ -107,7 +104,7 @@ export const BINDINGS: Binding[] = [
   b([",", "t"], "sort", "Sort by title", "Sort", { arg: "title" }),
   b([",", "y"], "sort", "Sort by year (newest first)", "Sort", { arg: "year" }),
   b([",", "a"], "sort", "Sort by first author", "Sort", { arg: "author" }),
-  b([",", "s"], "sort", "Sort by status (reading first)", "Sort", { arg: "status" }),
+  b([",", "s"], "sort", "Sort by status (unread, reading, done)", "Sort", { arg: "status" }),
   b([",", "m"], "sort", "Sort by last modified", "Sort", { arg: "modified" }),
   b([",", "T"], "sort", "Sort by title, reversed", "Sort", { arg: "title!", alias: true }),
   b([",", "Y"], "sort", "Sort by year, oldest first", "Sort", { arg: "year!", alias: true }),
@@ -132,7 +129,6 @@ export type KeyResolution =
 
 /**
  * Matches the keys typed so far against the bindings.
- * @usedBy ui/app
  * @returns an action, a prefix waiting for more keys (with what can follow), or nothing
  */
 export function resolveKeys(pending: string[], bindings: Binding[] = BINDINGS): KeyResolution {
@@ -145,7 +141,6 @@ export function resolveKeys(pending: string[], bindings: Binding[] = BINDINGS): 
 
 /**
  * "g g", "m r", "C-d" as shown on the help screen.
- * @usedBy ui/overlays, ui/render
  * @returns the label
  */
 export function keyLabel(keys: string[]): string {

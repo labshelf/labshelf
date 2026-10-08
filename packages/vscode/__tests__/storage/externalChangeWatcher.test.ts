@@ -1,13 +1,9 @@
 import * as vscode from 'vscode';
 
-import { libraryLayout, type PaperRecord } from '@labshelf/core';
-import { ExternalChangeWatcher, findMissingPapers } from '../../src/storage/data/externalChangeWatcher';
+import { libraryLayout } from '@labshelf/core';
+import { ExternalChangeWatcher } from '../../src/storage/data/externalChangeWatcher';
 
 const watchers = (vscode as unknown as { _fileWatchers: Array<{ pattern: { base: vscode.Uri; pattern: string }; _fire(kind: string, uri: vscode.Uri): void; dispose: jest.Mock }> })._fileWatchers;
-
-function paper(id: string, folder: string): PaperRecord {
-  return { id, title: id, path: folder, citeKey: id, status: 'unread' };
-}
 
 beforeEach(() => {
   watchers.length = 0;
@@ -60,16 +56,5 @@ describe('ExternalChangeWatcher', () => {
     watcher.dispose();
     jest.advanceTimersByTime(50);
     expect(onChange).not.toHaveBeenCalled();
-  });
-});
-
-describe('findMissingPapers', () => {
-  it('returns the ids whose folder lost its metadata.yaml', async () => {
-    const present = new Set(['/lib/papers/a']);
-    const missing = await findMissingPapers(
-      [paper('a', '/lib/papers/a'), paper('b', '/lib/papers/b')],
-      async (folder) => present.has(folder),
-    );
-    expect(missing).toEqual(['b']);
   });
 });

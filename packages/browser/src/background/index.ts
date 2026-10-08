@@ -24,8 +24,7 @@ import {
 } from "../capture/index";
 import type { CaptureDraft, SaveDecision, SavedPaper } from "../capture/index";
 import { IndexedDbFileSystem, buildFolderTree, createLibraryMutations, listAllRecords, pdfDirs } from "../storage";
-import type { FolderNode } from "../storage";
-import { ROOT, parentDir } from "../library-page/state/derive";
+import { ROOT } from "../library-page/state/derive";
 import { hashForFolder } from "../library-page/router";
 import { draftForTab, forgetDraft, forgetPaper, scholarDraftFor } from "./draftCache";
 import { isScholarUrl } from "../content/scholarParse";
@@ -34,7 +33,7 @@ import type { SyncTrigger } from "./autoSyncScheduler";
 import { installIdleSyncTrigger } from "./syncOnIdle";
 import { SyncDebouncer } from "./eventDebouncer";
 import { installBadgeUpdater } from "./badgeUpdater";
-import { PDF_FILE } from "@labshelf/core";
+import { PDF_FILE, parentDir, type FolderTreeNode } from "@labshelf/core";
 
 const log = new BrowserLogger("background");
 const mutations = createLibraryMutations(log);
@@ -225,7 +224,7 @@ async function tabUrl(tabId: number): Promise<string> {
 }
 
 function ref(id: string, path: string, hasPdf: boolean): LibraryRef {
-  return { id, path, folder: parentDir(path), hasPdf };
+  return { id, path, folder: parentDir(path, "/"), hasPdf };
 }
 
 /** Whether `<path>/paper.pdf` exists (one stat; library.lookup uses a bulk scan). */
@@ -321,7 +320,7 @@ async function findPdfForPaper(id: string): Promise<AttachPdfData> {
 async function libraryFolders(): Promise<FoldersData> {
   const [tree, settings] = await Promise.all([buildFolderTree(ROOT), getSettings()]);
   const folders: FolderOption[] = [{ path: ROOT, label: "Library", depth: 0 }];
-  const walk = (nodes: FolderNode[], depth: number): void => {
+  const walk = (nodes: FolderTreeNode[], depth: number): void => {
     for (const n of nodes) { folders.push({ path: n.path, label: n.name, depth }); walk(n.children, depth + 1); }
   };
   walk(tree, 1);

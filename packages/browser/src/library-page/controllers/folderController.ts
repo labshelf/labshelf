@@ -2,14 +2,14 @@
  * Reacts to folder intents from the tree and header (new, rename, delete) through the core library mutations.
  * Prompts use the in-page input box and dialog; sync runs separately and is only asked to run soon.
  */
-import { validateFolderName } from "@labshelf/core";
+import { baseName, countPapersUnder, findNode, isUnderDir, parentDir, validateFolderName } from "@labshelf/core";
 import { BrowserLogger } from "../../platform/logger";
 import { createLibraryMutations } from "../../storage";
 import { confirmDialog } from "../../ui/dialog";
 import { inputBox } from "../../ui/quickInput";
 import { toast } from "../../ui/toast";
 import { on } from "../events";
-import { ROOT, baseName, countPapersUnder, findNode, isUnder, parentDir } from "../state/derive";
+import { ROOT } from "../state/derive";
 import type { LibraryStore } from "../state/libraryStore";
 import { errorMessage, refreshLibrary, scheduleSyncSoon } from "./dataController";
 
@@ -43,7 +43,7 @@ export function folderNameProblem(store: LibraryStore, parent: string, name: str
 
 async function handleNew(store: LibraryStore, parent: string): Promise<void> {
   const name = await inputBox({
-    title: parent === ROOT ? "New folder" : `New folder in ${baseName(parent)}`,
+    title: parent === ROOT ? "New folder" : `New folder in ${baseName(parent, "/")}`,
     prompt: "Folder name",
     placeholder: "e.g. Reading group",
     validate: (v) => folderNameProblem(store, parent, v),
@@ -57,8 +57,8 @@ async function handleNew(store: LibraryStore, parent: string): Promise<void> {
 
 async function handleRename(store: LibraryStore, oldPath: string): Promise<void> {
   if (oldPath === ROOT) return;
-  const current = baseName(oldPath);
-  const parent = parentDir(oldPath);
+  const current = baseName(oldPath, "/");
+  const parent = parentDir(oldPath, "/");
   const next = await inputBox({
     title: "Rename folder",
     prompt: "New name",
@@ -69,15 +69,15 @@ async function handleRename(store: LibraryStore, oldPath: string): Promise<void>
   const newPath = await mutations.renameFolder(oldPath, next);
   await refreshLibrary(store);
   const open = store.get().folder;
-  if (isUnder(open, oldPath)) store.openFolder(newPath + open.slice(oldPath.length));
+  if (isUnderDir(open, oldPath, "/")) store.openFolder(newPath + open.slice(oldPath.length));
   scheduleSyncSoon("folder.rename");
 }
 
 async function handleDelete(store: LibraryStore, path: string): Promise<void> {
   if (path === ROOT) return;
-  const count = countPapersUnder(store.get().papers.map((p) => p.path), path);
+  const count = countPapersUnder(store.get().papers.map((p) => p.path), path, "/");
   const ok = await confirmDialog(
-    `Delete "${baseName(path)}"?`,
+    `Delete "${baseName(path, "/")}"?`,
     count > 0
       ? `The folder and the ${count} paper${count === 1 ? "" : "s"} inside it will be removed from this library. The next sync removes them from Google Drive too.`
       : "The folder is empty. It will be removed from this library and from Google Drive on the next sync.",
@@ -87,7 +87,7 @@ async function handleDelete(store: LibraryStore, path: string): Promise<void> {
   if (!ok) return;
   await mutations.trashFolder(path);
   await refreshLibrary(store);
-  if (isUnder(store.get().folder, path)) store.openFolder(parentDir(path));
+  if (isUnderDir(store.get().folder, path, "/")) store.openFolder(parentDir(path, "/"));
   scheduleSyncSoon("folder.delete");
-  toast(`Deleted ${baseName(path)}`, "ok");
+  toast(`Deleted ${baseName(path, "/")}`, "ok");
 }

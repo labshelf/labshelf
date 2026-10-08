@@ -2,8 +2,7 @@
  * Persistent cache of PaperRecord objects, derived from the metadata.yaml files
  * stored in IndexedDB, so reads never re-parse YAML.
  */
-import { METADATA_FILE, PAPERS_DIR, paperRecordFromMetadata, parsePaperMetadata, type PaperRecord } from "@labshelf/core";
-import { pdfDirsFromKeys } from "./folderTreeStore";
+import { METADATA_FILE, PAPERS_DIR, paperRecordFromMetadata, parsePaperMetadata, pdfDirsFromFilePaths, type PaperRecord } from "@labshelf/core";
 import { getDb } from "./idb/db";
 
 /** Upserts a PaperRecord into the metadata cache. */
@@ -41,7 +40,7 @@ export async function listAllRecords(): Promise<PaperRecord[]> {
 export async function rebuildFromFiles(): Promise<void> {
   const db = await getDb();
   const keys = (await db.getAllKeys("files", IDBKeyRange.bound(`${PAPERS_DIR}/`, `${PAPERS_DIR}/\uffff`, false, true))) as string[];
-  const pdfs = pdfDirsFromKeys(keys);
+  const pdfs = pdfDirsFromFilePaths(keys);
   const decoder = new TextDecoder();
   const records: PaperRecord[] = [];
   for (const key of keys) {

@@ -874,7 +874,7 @@ describe("App library search (s)", () => {
     await writeSidecar(ATTENTION, [highlight(ATTENTION, 2, "Compare with the RNN baseline")]);
     await ctx.store.reload();
     await eventually(async () => {
-      ctx.store.setAnnotationText(await ctx.sidecars.annotationIndex(ctx.store.snapshot.papers.keys()));
+      ctx.search.setAnnotationText(await ctx.sidecars.annotationIndex(ctx.store.snapshot.papers.keys()));
       return ctx.store.search("baseline", { key: "title", reverse: false }).length === 1;
     }, "the highlight to be indexed");
     press("s");
@@ -1814,9 +1814,9 @@ describe("App sorting (,)", () => {
     expect(ids()).toEqual([BERT, EINSTEIN, LECUN, ATTENTION, ZEBRA]);
   });
 
-  it("sorts by status with reading first", () => {
+  it("sorts by status: unread, then reading, then done", () => {
     press(",", "s");
-    expect(ids()).toEqual([BERT, ATTENTION, ZEBRA, LECUN, EINSTEIN]);
+    expect(ids()).toEqual([ATTENTION, ZEBRA, BERT, LECUN, EINSTEIN]);
   });
 
   it("goes back to title order", () => {

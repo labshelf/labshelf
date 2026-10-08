@@ -11,12 +11,6 @@ export {
   listAllRecords,
   rebuildFromFiles,
 } from "./paperRecordStore";
-export {
-  buildFolderTree,
-  pdfDirsFromKeys,
-  scanLibrary,
-  pdfDirs,
-} from "./folderTreeStore";
-export type { FolderNode } from "./folderTreeStore";
+export { buildFolderTree, scanLibrary, pdfDirs } from "./folderTreeStore";
 export { getDb } from "./idb/db";
 export type { FileRow, MetadataRow, ManifestRow, LabShelfSchema } from "./idb/schema";

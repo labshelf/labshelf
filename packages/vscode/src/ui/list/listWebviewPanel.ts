@@ -8,9 +8,8 @@ import type { PaperService } from '../../core/index.js';
 import { removePapers } from '../../commands/removePapers.js';
 import type { TextLayerJob } from '../../commands/textLayerQueue.js';
 import type { Annotation, EventBus, PaperRecord } from '@labshelf/core';
-import { listAllCollectionFolders, readCollectionFolders } from '../library/collectionFolders.js';
-import { buildListState, rootNode } from '../library/folderNavigation.js';
-import type { LibraryNode, PaperStats } from '../library/folderNavigation.js';
+import { buildListState, listAllCollectionFolders, rootNode } from '../library/index.js';
+import type { FolderReader, LibraryNode, PaperStats } from '../library/index.js';
 import { formatCitations } from './citationFormats.js';
 import { buildListPanelHtml } from './template.js';
 import { labshelfTabIcon } from '../tabIcon.js';
@@ -40,6 +39,8 @@ export interface ListPanelDeps {
   eventBus: EventBus;
   /** Absolute path of papers/, or null while no library is configured. */
   getPapersRoot: () => string | null;
+  /** Lists the collection folders inside a directory. */
+  readFolders: FolderReader;
   /** Called whenever the panel shows a different folder, so the sidebar tree can follow. */
   onDidNavigate?: (folder: LibraryNode) => void;
   /** Papers waiting for or undergoing OCR, shown on their rows while it runs. */
@@ -209,7 +210,7 @@ export class ListWebviewPanel {
     } catch {
       // A failed index read keeps the panel usable and empty rather than broken.
     }
-    const subfolders = await readCollectionFolders(folder.dirPath);
+    const subfolders = await this._deps.readFolders(folder.dirPath);
     const stats = await this._readStats(papers);
     if (seq !== this._loadSeq) { return; }
 
@@ -446,7 +447,7 @@ export class ListWebviewPanel {
     const root = this._deps.getPapersRoot();
     if (!root || paperIds.length === 0) { return; }
 
-    const folders = [rootNode(root), ...(await listAllCollectionFolders(root))];
+    const folders = [rootNode(root), ...(await listAllCollectionFolders(this._deps.readFolders, root))];
     const picked = await vscode.window.showQuickPick(
       folders.map((f) => ({
         label: f.isRoot ? f.label : path.relative(root, f.dirPath).split(path.sep).join(' / '),

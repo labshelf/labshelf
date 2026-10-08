@@ -70,15 +70,6 @@ export class VscodeFileSystem implements LibraryFileSystem {
     }
   }
 
-  /** The children of a folder with their types in one call; [] when it is missing or unreadable, so one bad folder does not stop an index rebuild. */
-  async listEntries(dirPath: string): Promise<Array<[string, vscode.FileType]>> {
-    try {
-      return await vscode.workspace.fs.readDirectory(uriOf(dirPath));
-    } catch {
-      return [];
-    }
-  }
-
   // A missing file is already deleted; any other failure (permissions, a locked file) still surfaces.
   async deleteFile(filePath: string): Promise<void> {
     try {

@@ -6,12 +6,13 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { libraryLayout, paperFiles, type PaperRecord, type PaperStatus } from "@labshelf/core";
+import {
+  libraryLayout, paperComparator, paperFiles, papersUnder, type PaperEntry, type PaperRecord, type PaperStatus, type SortSpec,
+} from "@labshelf/core";
 import { sharedConfigDir, sharedConfigPath } from "@labshelf/core/node";
 
 import type { TerminalConfig } from "../app/config.js";
 import type { AppContext } from "../app/context.js";
-import { papersUnder, type PaperEntry, paperComparator, type SortSpec } from "../library/index.js";
 import { copyToClipboard, hasCommand, openExternal } from "../platform/system.js";
 import { resolveOAuthClient } from "../sync/driveAuth.js";
 import { createTokenStore } from "../sync/tokenStore.js";

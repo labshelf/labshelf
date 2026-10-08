@@ -11,9 +11,6 @@
  *   has:pdf  no:pdf  has:note  has:doi  has:tags
  *
  * Matching is case- and accent-insensitive. Results are ranked: title hits first, then authors, then the rest.
- *
- * @depends tui/text (fold), library/libraryScanner
- * @dependents library/libraryStore, ui, cli
  */
 import type { PaperRecord, PaperStatus } from "@labshelf/core";
 
@@ -41,7 +38,6 @@ const STATUS_ALIASES: Record<string, PaperStatus> = {
 
 /**
  * Splits a query into words, keeping quoted phrases together.
- * @usedBy parseQuery
  * @returns the tokens
  */
 export function tokenize(query: string): string[] {
@@ -84,7 +80,6 @@ function parseYear(value: string, query: ParsedQuery): boolean {
 
 /**
  * Parses the query language.
- * @usedBy matchPaper callers (libraryStore, cli)
  * @returns the structured query
  */
 export function parseQuery(query: string): ParsedQuery {
@@ -129,7 +124,15 @@ export function isEmptyQuery(q: ParsedQuery): boolean {
     && q.yearMin === undefined && q.yearMax === undefined && !q.has.length && !q.missing.length;
 }
 
-/** Folded text fields of a paper, computed once per paper and cached by the store. */
+/**
+ * @returns whether a collection name contains every word of the query
+ */
+export function matchesCollectionName(q: ParsedQuery, name: string): boolean {
+  const folded = fold(name);
+  return q.terms.every((term) => folded.includes(term));
+}
+
+/** Folded text fields of a paper, computed once per paper and cached by the search index. */
 export interface SearchDoc {
   title: string;
   authors: string;
@@ -139,7 +142,6 @@ export interface SearchDoc {
 
 /**
  * Builds the folded search document of a paper; `extra` adds annotation text.
- * @usedBy library/libraryStore
  * @returns the document
  */
 export function searchDoc(record: PaperRecord, extra = ""): SearchDoc {
@@ -168,7 +170,6 @@ function has(record: PaperRecord, what: string): boolean {
 
 /**
  * Scores a paper against a query.
- * @usedBy library/libraryStore, cli
  * @returns 0 when it does not match, otherwise a rank (higher is better)
  */
 export function matchPaper(record: PaperRecord, doc: SearchDoc, q: ParsedQuery): number {

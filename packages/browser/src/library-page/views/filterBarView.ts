@@ -3,13 +3,11 @@
  * Done, each with its count in the current scope) and the subfolder chip
  * strip. Folders never take list rows — the chips are the only place the
  * folder structure shows inside the list pane. Chips are drop targets.
- *
- * @depends ui/dom, ui/icons, state/libraryStore, state/derive, views/dnd
- * @dependents library-page/index
  */
 import { el, esc, tokenize } from "../../ui/dom";
 import { icon } from "../../ui/icons";
-import { STATUSES, STATUS_LABEL, listPapersUnder, papersInScope, statusCounts, subfoldersOf } from "../state/derive";
+import { subfoldersOf } from "@labshelf/core";
+import { ROOT, STATUSES, STATUS_LABEL, listPapersUnder, papersInScope, statusCounts } from "../state/derive";
 import type { LibraryStore, StatusFilter } from "../state/libraryStore";
 import { makeDropTarget } from "./dnd";
 
@@ -28,7 +26,7 @@ export function mountFilterBar(container: HTMLElement, store: LibraryStore): () 
       const inFolder = listPapersUnder(slice.papers, slice.folder);
       const counts = statusCounts(papersInScope(inFolder, tokenize(slice.query), slice.includeSub));
       renderTabs(tabs, store, slice.status, counts);
-      renderChips(strip, store, subfoldersOf(slice.folders, slice.folder, slice.papers.map((p) => p.path)));
+      renderChips(strip, store, subfoldersOf(slice.folders, slice.folder, ROOT, slice.papers.map((p) => p.path)));
     },
   );
 }

@@ -19,8 +19,8 @@ function makeRequireServices(paperService?: Partial<PaperService>, logger?: Part
   const am = { createHighlight: jest.fn(), createNote: jest.fn(), getAnnotationsByPaper: jest.fn(async () => []), deleteAnnotation: jest.fn(), updateAnnotation: jest.fn(), validatePosition: jest.fn() } as any;
   const db = { listPapers: jest.fn(async () => []), upsertPaper: jest.fn(), deletePaper: jest.fn(), appendLog: jest.fn() } as any;
   const store = { getReadingState: jest.fn(async () => null), setReadingState: jest.fn(async () => {}) } as any;
-  const reindexLibrary = jest.fn(async () => ({ added: [], updated: [] }));
-  return jest.fn(async () => ({ paperService: ps as PaperService, logger: lg as ILogger, themeManager: tm, annotationManager: am, database: db, paperDataStore: store, fileSystem: {} as any, importer: {} as any, textLayers: {} as any, mutations: {} as any, reindexLibrary }));
+  const reindexLibrary = jest.fn(async () => ({ added: [], updated: [], removed: [] }));
+  return jest.fn(async () => ({ paperService: ps as PaperService, logger: lg as ILogger, themeManager: tm, annotationManager: am, database: db, paperDataStore: store, fileSystem: {} as any, importer: {} as any, textLayers: {} as any, mutations: {} as any, reindexLibrary, folderReader: jest.fn() }));
 }
 
 function makeNullRequireServices(): RequireServices {

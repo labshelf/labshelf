@@ -5,11 +5,13 @@
  */
 import * as path from "node:path";
 
-import { BibTeXService, Logger, PdfImportParser, type ILogger } from "@labshelf/core";
+import { BibTeXService, Logger, PdfImportParser, type ILogger, type LibraryStore } from "@labshelf/core";
 import { FileLogSink, NodeFileSystem } from "@labshelf/core/node";
 
 import type { TerminalConfig } from "./config.js";
-import { LibraryRoot, ensureLibraryStructure, LibraryStore, LibraryWatcher, TerminalPaperService, SidecarReader } from "../library/index.js";
+import {
+  LibraryRoot, LibraryWatcher, PaperSearchIndex, SidecarReader, TerminalPaperService, createLibraryStore, ensureLibraryStructure,
+} from "../library/index.js";
 import { cacheDir } from "../platform/dirs.js";
 import { moveToTrash, openExternal } from "../platform/system.js";
 import { defaultRenderer, ThumbnailService } from "../preview/thumbnails.js";
@@ -23,6 +25,8 @@ export interface AppContext {
   config: TerminalConfig;
   logger: ILogger;
   store: LibraryStore;
+  /** The terminal's query language over the store; it also holds the annotation text that searches see. */
+  search: PaperSearchIndex;
   papers: TerminalPaperService;
   sidecars: SidecarReader;
   sync: SyncService;
@@ -54,7 +58,8 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
   await ensureLibraryStructure(paths);
   // The TUI owns the terminal, so the log file is the only channel and there is nowhere else to report a failure.
   const logger = new Logger([new FileLogSink(paths.layout.terminalLogPath())], { onSinkError: () => undefined });
-  const store = new LibraryStore(paths);
+  const search = new PaperSearchIndex();
+  const store = createLibraryStore(paths, logger, search);
   await store.reload();
 
   const auth = new CliDriveAuth(resolveOAuthClient(env), createTokenStore(env), fetch, {
@@ -89,7 +94,7 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
 
   // Highlights and notes become searchable; refreshed in the background whenever the library changes.
   const indexAnnotations = (): Promise<void> =>
-    sidecars.annotationIndex(store.snapshot.papers.keys()).then((index) => store.setAnnotationText(index), () => undefined);
+    sidecars.annotationIndex(store.snapshot.papers.keys()).then((index) => search.setAnnotationText(index), () => undefined);
   const annotationsReady = indexAnnotations();
 
   let watcher: LibraryWatcher | undefined;
@@ -112,6 +117,7 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
     config: options.config,
     logger,
     store,
+    search,
     papers,
     sidecars,
     sync,

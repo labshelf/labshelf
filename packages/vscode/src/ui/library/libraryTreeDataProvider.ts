@@ -4,11 +4,12 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import type { EventBus } from '@labshelf/core';
-import { readCollectionFolders } from './collectionFolders.js';
-import { countPapersUnder, rootNode } from './folderNavigation.js';
-import type { LibraryNode } from './folderNavigation.js';
+import { countPapersUnder } from '@labshelf/core';
+import type { FolderReader } from './folderReader.js';
+import { rootNode } from './listState.js';
+import type { LibraryNode } from './listState.js';
 
-export type { LibraryNode } from './folderNavigation.js';
+export type { LibraryNode } from './listState.js';
 
 const ROOT_ITEM_ID = 'labshelf:all-papers';
 const REFRESH_DEBOUNCE_MS = 60;
@@ -18,12 +19,14 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryN
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
   private _papersRoot: vscode.Uri | null;
+  private _readFolders: FolderReader | null;
   private _paperPathSource: (() => Promise<string[]>) | null = null;
   private _paperPaths: Promise<string[]> | null = null;
   private _refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(papersRoot: vscode.Uri | null, eventBus: EventBus) {
+  constructor(papersRoot: vscode.Uri | null, readFolders: FolderReader | null, eventBus: EventBus) {
     this._papersRoot = papersRoot;
+    this._readFolders = readFolders;
     // A folder move emits one paper:updated per paper, so event refreshes are coalesced.
     const refresh = (): void => this._scheduleRefresh();
     eventBus.on('paper:added', refresh);
@@ -32,11 +35,12 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryN
   }
 
   /**
-   * Updates the papers root URI and triggers a full tree refresh; called after workspace setup completes.
+   * Points the tree at a library's papers root and its folder reader, then refreshes; called after workspace setup completes.
    * @returns void
    */
-  setPapersRoot(papersRoot: vscode.Uri): void {
+  setLibrary(papersRoot: vscode.Uri, readFolders: FolderReader): void {
     this._papersRoot = papersRoot;
+    this._readFolders = readFolders;
     this.refresh();
   }
 
@@ -70,7 +74,7 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryN
    * @returns A vscode.TreeItem configured for the given node.
    */
   async getTreeItem(node: LibraryNode): Promise<vscode.TreeItem> {
-    const hasChildren = !node.isRoot && (await readCollectionFolders(node.dirPath)).length > 0;
+    const hasChildren = !node.isRoot && (await this._children(node.dirPath)).length > 0;
     const item = new vscode.TreeItem(
       node.label,
       hasChildren ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None,
@@ -101,13 +105,13 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryN
       return [];
     }
     if (node) {
-      return readCollectionFolders(node.dirPath);
+      return this._children(node.dirPath);
     }
     const root = this.rootNode();
     if (!root) {
       return [];
     }
-    return [root, ...(await readCollectionFolders(root.dirPath))];
+    return [root, ...(await this._children(root.dirPath))];
   }
 
   /**
@@ -124,6 +128,10 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryN
       return null;
     }
     return { label: path.basename(parent), dirPath: parent };
+  }
+
+  private async _children(dirPath: string): Promise<LibraryNode[]> {
+    return this._readFolders ? this._readFolders(dirPath) : [];
   }
 
   private _scheduleRefresh(): void {

@@ -7,8 +7,6 @@
  *
  * Triggers: on demand (S, `labshelf sync`), 30 s after a change made in the terminal (same debounce as VS Code), and
  * periodically while the TUI is open.
- *
- *          platform/nodeLockStore, library/*
  */
 import * as os from "node:os";
 
@@ -22,6 +20,7 @@ import {
   SyncManifest,
   writeSyncRunRecord,
   type ILogger,
+  type LibraryStore,
   type RemoteProvider,
   type SyncLockInfo,
   type SyncResult,
@@ -32,7 +31,7 @@ import {
 import { NodeLocalFileSystem } from "@labshelf/core/node";
 
 import { isProcessAlive, NodeLockStore } from "../platform/nodeLockStore.js";
-import { type LibraryRoot, scanLibrary, type LibraryStore } from "../library/index.js";
+import { type LibraryRoot, scanLibraryOnDisk } from "../library/index.js";
 import { ReauthRequiredError, type CliDriveAuth, type LoginOptions } from "./driveAuth.js";
 
 export const APP_ID = "terminal";
@@ -190,8 +189,8 @@ export class SyncService {
   private async runEngine(): Promise<SyncResult> {
     const { paths, auth } = this.deps;
     // Titles straight from disk, not from a possibly stale view: Drive folder names are derived from them.
-    const snapshot = await scanLibrary(paths);
-    const folderNames = buildLibraryFolderNames([...snapshot.papers.values()].map((e) => [e.record.id, e.record.title] as const));
+    const scan = await scanLibraryOnDisk(paths, this.deps.logger);
+    const folderNames = buildLibraryFolderNames(scan.papers.map((e) => [e.record.id, e.record.title] as const));
     const manifest = await SyncManifest.load(this.localFs, paths.layout.manifestPath(), SYNC_PROVIDER_ID);
     const provider = this.deps.providerFactory ? this.deps.providerFactory(auth) : createGoogleDriveProvider(auth);
     const engine = new SyncEngine({

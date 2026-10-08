@@ -81,20 +81,16 @@ describe('VscodeFileSystem reads', () => {
     expect(await makeFs().exists('/lib/missing')).toBe(false);
   });
 
-  it('listDir returns names and listEntries the types; both give [] for a missing folder', async () => {
+  it('listDir returns the names, and [] for a missing folder', async () => {
     wfs['readDirectory']!.mockResolvedValueOnce([['a.pdf', vscode.FileType.File], ['sub', vscode.FileType.Directory]]);
     expect(await makeFs().listDir('/lib')).toEqual(['a.pdf', 'sub']);
-    wfs['readDirectory']!.mockResolvedValueOnce([['a.pdf', vscode.FileType.File]]);
-    expect(await makeFs().listEntries('/lib')).toEqual([['a.pdf', vscode.FileType.File]]);
     wfs['readDirectory']!.mockRejectedValue(notFound());
     expect(await makeFs().listDir('/lib/missing')).toEqual([]);
-    expect(await makeFs().listEntries('/lib/missing')).toEqual([]);
   });
 
   it('listDir throws for a folder it may not read, so an import can report it', async () => {
     wfs['readDirectory']!.mockRejectedValue(Object.assign(new Error('NoPermissions'), { code: 'NoPermissions' }));
     await expect(makeFs().listDir('/lib/locked')).rejects.toThrow('NoPermissions');
-    expect(await makeFs().listEntries('/lib/locked')).toEqual([]);
   });
 
   it('stat reports file and folder types strictly, and undefined on error', async () => {

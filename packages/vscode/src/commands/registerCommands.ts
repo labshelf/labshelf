@@ -11,6 +11,7 @@ import { importPapers } from "./importProgress.js";
 import { removePapers } from "./removePapers.js";
 import { queueTextLayers } from "./textLayerQueue.js";
 import type { ReindexSummary } from "../storage/data/reindexLibrary.js";
+import type { FolderReader } from "../ui/library/index.js";
 
 const LOG_MODULE = "commands/registerCommands";
 
@@ -28,8 +29,10 @@ export type ActiveServices = {
   // The adapter of this library root; its temp folder for atomic writes is inside the root.
   fileSystem: IFileSystem & LocalFileSystem;
   // Rebuilds the index from disk and emits the resulting paper events. Bound in
-  // extension.ts over the live database, indexer and event bus.
+  // extension.ts over the live database, file system and event bus.
   reindexLibrary: () => Promise<ReindexSummary>;
+  // Lists the collection folders of this library root for the tree and the list panel.
+  folderReader: FolderReader;
 };
 
 export type RequireServices = () => Promise<ActiveServices | null>;
@@ -117,10 +120,10 @@ export function registerCommands(
       if (!services) { return; }
       await executeSafely(services.logger, "labshelf.rebuildIndex", async () => {
         const summary = await services.reindexLibrary();
-        const changed = summary.added.length + summary.updated.length;
+        const changed = summary.added.length + summary.updated.length + summary.removed.length;
         void vscode.window.showInformationMessage(
           changed > 0
-            ? `LabShelf: index rebuilt — ${summary.added.length} added, ${summary.updated.length} updated.`
+            ? `LabShelf: index rebuilt — ${summary.added.length} added, ${summary.updated.length} updated, ${summary.removed.length} removed.`
             : "LabShelf: index rebuilt; nothing changed.",
         );
       });

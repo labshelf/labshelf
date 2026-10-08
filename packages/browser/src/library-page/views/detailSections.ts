@@ -9,9 +9,9 @@
 import { esc } from "../../ui/dom";
 import { icon } from "../../ui/icons";
 import { attachmentsHeading } from "../../ui/pdfCopy";
-import { STATUSES, STATUS_LABEL, folderLabel } from "../state/derive";
+import { ROOT, STATUSES, STATUS_LABEL } from "../state/derive";
 import type { ListPaper } from "../state/derive";
-import { PDF_FILE, type PaperStatus } from "@labshelf/core";
+import { PDF_FILE, folderLabel, type PaperStatus } from "@labshelf/core";
 
 export const ABSTRACT_TRUNCATE_AT = 320;
 
@@ -81,7 +81,7 @@ function infoBody(p: ListPaper, openFolder: string): string {
   if (p.url) html += `<div class="detail-field"><div class="detail-label">URL</div><div class="detail-value"><a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.url)}</a></div></div>`;
   if (p.language) html += field("Language", p.language);
   html += field("Citation Key", p.citeKey, true);
-  html += `<div class="detail-field"><div class="detail-label">Folder</div><div class="detail-value"><a href="#" data-action="goFolder">${esc(p.relFolder || folderLabel(openFolder))}</a></div></div>`;
+  html += `<div class="detail-field"><div class="detail-label">Folder</div><div class="detail-value"><a href="#" data-action="goFolder">${esc(p.relFolder || folderLabel(ROOT, openFolder, "/"))}</a></div></div>`;
   return html;
 }
 

@@ -8,7 +8,7 @@ import {
   PdfImportParser,
   BibTeXService,
   libraryLayout,
-  paperFiles,
+  scanLibrary,
   type IFileSystem,
   type ILogger,
   type IResearchDatabase,
@@ -24,8 +24,8 @@ import {
   ensureLibraryStructure,
   mirrorLibraryRoot,
 } from "./storage/paths/index.js";
-import { ExternalChangeWatcher, findMissingPapers } from "./storage/data/externalChangeWatcher.js";
-import { LibraryTreeDataProvider, LibraryDragAndDropController } from "./ui/library/index.js";
+import { ExternalChangeWatcher } from "./storage/data/externalChangeWatcher.js";
+import { LibraryTreeDataProvider, LibraryDragAndDropController, createFolderReader } from "./ui/library/index.js";
 import type { LibraryNode } from "./ui/library/index.js";
 import { ListWebviewPanel } from "./ui/list/index.js";
 import { SettingsWebviewPanel } from "./ui/settings/index.js";
@@ -44,8 +44,7 @@ import { currentTextLayerJobs, onTextLayerJobsChanged, queueTextLayers } from ".
 import { ThemeManager } from "./pdf-viewer/ThemeManager.js";
 import { AnnotationManager } from "./pdf-viewer/AnnotationManager.js";
 import { PaperDataStore } from "./storage/data/paperDataStore.js";
-import { LibraryIndexer } from "./storage/data/libraryIndexer.js";
-import { reindexLibrary } from "./storage/data/reindexLibrary.js";
+import { indexLibrary, reindexLibrary } from "./storage/data/reindexLibrary.js";
 import { SyncController } from "./sync/adapter/syncController.js";
 import { findSimilarPapers } from "./ai/service/similarPapers.js";
 
@@ -97,7 +96,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   }
 
   // Library folder tree mirrors the real directory structure under papers/.
-  const libraryProvider = new LibraryTreeDataProvider(papersRootUri(), eventBus);
+  const libraryProvider = new LibraryTreeDataProvider(papersRootUri(), activeServices?.folderReader ?? null, eventBus);
 
   // Returns current services or triggers the setup wizard and builds services from the chosen root.
   async function requireServices(): Promise<ActiveServices | null> {
@@ -112,7 +111,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
     libraryRoot = root;
     activeServices = await buildServices(context, root, eventBus);
-    libraryProvider.setPapersRoot(libraryLayout(root, vscode.Uri.joinPath).papersRoot());
+    libraryProvider.setLibrary(libraryLayout(root, vscode.Uri.joinPath).papersRoot(), activeServices.folderReader);
     await ensureSyncController(root, activeServices);
 
     return activeServices;
@@ -163,7 +162,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   }
 
   // Changes made outside this window (the LabShelf terminal app, a sync it ran, another window) are picked up from
-  // disk: re-index, drop papers whose folder is gone, and refresh the views.
+  // disk: the re-index adds, updates and drops papers, then the views refresh.
   function watchLibrary(root: vscode.Uri): void {
     externalWatcher?.dispose();
     externalWatcher = new ExternalChangeWatcher(libraryLayout(root, vscode.Uri.joinPath), () => { void onExternalChange(); });
@@ -175,15 +174,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const services = activeServices;
     try {
       await services.reindexLibrary();
-      const missing = await findMissingPapers(await services.paperService.listPapers(), async (folder) => {
-        try {
-          await vscode.workspace.fs.stat(vscode.Uri.file(paperFiles(folder, path.join).metadata));
-          return true;
-        } catch {
-          return false;
-        }
-      });
-      for (const id of missing) { await services.paperService.removeFromIndex(id); }
     } catch (error) {
       await services.logger.log("WARN", "extension", "Re-index after an external change failed", {
         message: error instanceof Error ? error.message : String(error),
@@ -273,7 +263,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           if (!root) { return undefined; }
           libraryRoot = root;
           activeServices = await buildServices(context, root, eventBus);
-          libraryProvider.setPapersRoot(libraryLayout(root, vscode.Uri.joinPath).papersRoot());
+          libraryProvider.setLibrary(libraryLayout(root, vscode.Uri.joinPath).papersRoot(), activeServices.folderReader);
           await ensureSyncController(root, activeServices);
           return root;
         },
@@ -291,6 +281,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
               paperService: services.paperService,
               eventBus,
               getPapersRoot: () => papersRootUri()?.fsPath ?? null,
+              readFolders: services.folderReader,
               onDidNavigate: syncTreeToPanel,
               textLayerJobs: { current: currentTextLayerJobs, onDidChange: onTextLayerJobsChanged },
               loadSidecar: (paperId) => services.paperDataStore.load(paperId),
@@ -378,7 +369,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
       libraryRoot = root;
       activeServices = await buildServices(context, root, eventBus);
-      libraryProvider.setPapersRoot(libraryLayout(root, vscode.Uri.joinPath).papersRoot());
+      libraryProvider.setLibrary(libraryLayout(root, vscode.Uri.joinPath).papersRoot(), activeServices.folderReader);
       await ensureSyncController(root, activeServices);
       vscode.window.showInformationMessage(`LabShelf: Library configured at ${root.fsPath}`);
     }),
@@ -508,8 +499,8 @@ async function buildServices(
   const importer = new PaperImporter(mutations, database, eventBus, parse);
   const textLayers = new PaperTextLayers(mutations, paperService, createTextLayerBuilder(ocrEngine));
   const paperDataStore = new PaperDataStore(paths, fileSystem);
-  const indexer = new LibraryIndexer(paths, fileSystem, database);
-  await indexer.rebuild();
+  const scan = () => scanLibrary(fileSystem, path, paths.papersRoot().fsPath, logger);
+  await indexLibrary({ database, scan });
   // Papers imported before text layers were tracked are classified once, in the
   // background and without OCR; the verdict is saved in metadata.yaml. Papers
   // saved without a PDF have nothing to read and are left out.
@@ -523,13 +514,14 @@ async function buildServices(
   const reindex = () =>
     reindexLibrary({
       database,
-      indexer,
+      scan,
       eventBus,
       queueCheck: (papers) => void queueTextLayers(textLayers, papers, { mode: "check", logger }),
     });
   return {
     paperService, importer, textLayers, mutations, logger, themeManager, annotationManager, database, paperDataStore, fileSystem,
     reindexLibrary: reindex,
+    folderReader: createFolderReader(fileSystem, logger),
   };
 }
 

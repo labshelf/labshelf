@@ -3,10 +3,11 @@ import * as http from "node:http";
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { PaperDataStore, type RemoteProvider, type SyncLockInfo, type SyncResult, type SyncRunRecord } from "@labshelf/core";
+import { PaperDataStore, type ILogger, type LibraryStore, type RemoteProvider, type SyncLockInfo, type SyncResult, type SyncRunRecord } from "@labshelf/core";
 import { stringify } from "yaml";
 
-import { LibraryStore } from "../../src/library/libraryStore";
+import { createLibraryStore } from "../../src/library/libraryModel";
+import { PaperSearchIndex } from "../../src/library/paperSearchIndex";
 import { NodeSidecarPort } from "../../src/library/sidecars";
 import { CliDriveAuth, ReauthRequiredError } from "../../src/sync/driveAuth";
 import { SyncService, libraryChanged, type SyncOutcome, type SyncStatus } from "../../src/sync/syncService";
@@ -26,6 +27,7 @@ afterEach(async () => {
   await cleanupTempDirs();
 });
 
+const SILENT_LOGGER: ILogger = { log: async () => undefined, error: async () => undefined };
 const ID = "vaswani2017attention";
 const TITLE = "Attention Is All You Need";
 const VALID_TOKENS = () => ({ access_token: "access", refresh_token: "refresh", expiry_ms: Date.now() + 3_600_000 });
@@ -71,7 +73,7 @@ interface DeviceOptions {
 
 async function device(options: DeviceOptions = {}): Promise<Device> {
   const lib = await createTempLibrary(options.papers ?? []);
-  const store = new LibraryStore(lib.paths);
+  const store = createLibraryStore(lib.paths, SILENT_LOGGER, new PaperSearchIndex());
   await store.reload();
   const tokens = options.tokens ?? new MemoryTokenStore(VALID_TOKENS());
   const noNetwork = (async () => { throw new Error("unexpected network call from the auth layer"); }) as typeof fetch;
@@ -162,7 +164,7 @@ describe("SyncService.init and status", () => {
       uploaded: 1, downloaded: 2, deletedLocal: 0, deletedRemote: 0, conflicts: [],
     };
     await fs.writeFile(lib.paths.layout.lastRunPath(), JSON.stringify(record));
-    const store = new LibraryStore(lib.paths);
+    const store = createLibraryStore(lib.paths, SILENT_LOGGER, new PaperSearchIndex());
     const service = new SyncService({
       paths: lib.paths, auth: new CliDriveAuth(CLIENT, new MemoryTokenStore(VALID_TOKENS())), store,
       logger: { log: async () => undefined, error: async () => undefined },

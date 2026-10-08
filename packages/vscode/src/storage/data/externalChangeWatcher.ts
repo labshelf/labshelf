@@ -2,13 +2,10 @@
  * Notices library changes made outside this VS Code window — by the terminal app, a sync it ran, another window, or a
  * file manager — and lets the extension re-index, so papers added, edited, moved or removed elsewhere appear without a
  * reload. Watches papers/** and the sidecars; a burst of events (a sync pulling twenty papers) costs one re-index.
- *
- * Also owns the reconciliation the indexer does not do: papers whose folder disappeared from disk are dropped from the
- * index (the indexer only upserts).
  */
 import * as vscode from "vscode";
 
-import { SIDECAR_FILE, type LibraryLayout, type PaperRecord } from "@labshelf/core";
+import { SIDECAR_FILE, type LibraryLayout } from "@labshelf/core";
 
 const DEBOUNCE_MS = 1_000;
 
@@ -43,19 +40,4 @@ export class ExternalChangeWatcher implements vscode.Disposable {
     clearTimeout(this.timer);
     for (const watcher of this.watchers) { watcher.dispose(); }
   }
-}
-
-/**
- * Ids of indexed papers whose folder no longer holds a metadata.yaml.
- * @returns the ids to drop from the index
- */
-export async function findMissingPapers(
-  papers: PaperRecord[],
-  hasMetadata: (paperFolder: string) => Promise<boolean>,
-): Promise<string[]> {
-  const missing: string[] = [];
-  for (const paper of papers) {
-    if (!(await hasMetadata(paper.path))) { missing.push(paper.id); }
-  }
-  return missing;
 }

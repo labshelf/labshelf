@@ -4,7 +4,7 @@
  * refreshes the store in place.
  */
 import type { PaperRecord, PaperRef, PaperStatus } from "@labshelf/core";
-import { PDF_FILE } from "@labshelf/core";
+import { PDF_FILE, ROOT_LABEL, baseName } from "@labshelf/core";
 import { attachPdfToPaper, isPdfBytes } from "../../capture";
 import { BrowserLogger } from "../../platform/logger";
 import { openReader } from "../../reader/readerTabs";
@@ -16,7 +16,7 @@ import { quickPick } from "../../ui/quickInput";
 import { toast } from "../../ui/toast";
 import { on } from "../events";
 import type { PaperAction } from "../events";
-import { ROOT, ROOT_LABEL, baseName, flattenFolders } from "../state/derive";
+import { ROOT, flattenFolders } from "../state/derive";
 import type { LibraryStore } from "../state/libraryStore";
 import { errorMessage, refreshLibrary, scheduleSyncSoon, send } from "./dataController";
 
@@ -221,7 +221,7 @@ export async function movePapers(store: LibraryStore, ids: string[], target: str
   const papers = ids.map((id) => byId.get(id)).filter((p): p is PaperRecord => !!p);
   const { done, failed } = await mutations.movePapers(asRefs(papers), target);
   if (done.length) { await refreshLibrary(store); scheduleSyncSoon("paper.move"); }
-  const where = target === ROOT ? ROOT_LABEL : baseName(target);
+  const where = target === ROOT ? ROOT_LABEL : baseName(target, "/");
   const first = failed[0];
   if (first) toast(`${done.length} moved, ${failed.length} failed — "${byId.get(first.id)?.title ?? first.id}" — ${first.error}`, "error");
   else if (done.length) toast(`${done.length} paper${done.length === 1 ? "" : "s"} moved to ${where}`, "ok");

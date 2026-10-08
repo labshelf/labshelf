@@ -6,13 +6,15 @@ import {
   BibTeXService,
   type DetectedIdentifier,
   type ILogger,
+  type LibraryStore,
   type ParsedPdfImport,
   type PdfImportParser,
   type ResolvedMetadata,
 } from "@labshelf/core";
 import { NodeFileSystem } from "@labshelf/core/node";
 
-import { LibraryStore } from "../../src/library/libraryStore";
+import { createLibraryStore } from "../../src/library/libraryModel";
+import { PaperSearchIndex } from "../../src/library/paperSearchIndex";
 import { TerminalPaperService } from "../../src/library/papers/paperService";
 import {
   createTempLibrary,
@@ -57,7 +59,7 @@ export interface Harness {
 export async function harness(papers: PaperFixture[] = [], collections: string[] = []): Promise<Harness> {
   const lib = await createTempLibrary(papers);
   for (const rel of collections) { await lib.addCollection(rel); }
-  const store = new LibraryStore(lib.paths);
+  const store = createLibraryStore(lib.paths, { log: async () => undefined, error: async () => undefined }, new PaperSearchIndex());
   await store.reload();
   const trashDir = await makeTempDir("labshelf-trash-");
   const inbox = await makeTempDir("labshelf-inbox-");

@@ -2,7 +2,7 @@
  * Drawing primitives of the main screen: the column layout, list rows for collections and papers, styled preview
  * lines, the header breadcrumb and the status bar segments. Stateless; the App decides what to draw.
  */
-import type { PaperEntry } from "../library/index.js";
+import type { PaperEntry } from "@labshelf/core";
 import type { Screen, Style } from "../tui/screen.js";
 import { mergeStyle } from "../tui/screen.js";
 import { stringWidth, truncate } from "../tui/text.js";

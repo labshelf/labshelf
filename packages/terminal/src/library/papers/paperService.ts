@@ -27,6 +27,7 @@ import {
   type ImportDeps,
   type ImportOutcome,
   type ImportProgress,
+  type LibraryStore,
   type MutationContext,
   type PaperFieldsPatch,
   type PaperRecord,
@@ -38,7 +39,6 @@ import {
 import { NodeLibraryFileSystem } from "@labshelf/core/node";
 
 import type { LibraryRoot } from "../libraryRoot.js";
-import type { LibraryStore } from "../libraryStore.js";
 import { planImports, type ImportItem } from "./importInputs.js";
 import { importIdentifier, importUrl, type NetworkImportEnv } from "./networkImport.js";
 

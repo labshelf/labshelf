@@ -1,27 +1,20 @@
-import type { PaperRecord } from "@labshelf/core";
+import type { FolderTreeNode, PaperRecord } from "@labshelf/core";
 import {
   ROOT,
-  ROOT_LABEL,
-  breadcrumbFor,
-  countPapersUnder,
-  findNode,
   flattenFolders,
   fmtCreator,
-  folderLabel,
   listPapersUnder,
   nextStatus,
   papersInScope,
   sortPapers,
   statusCounts,
-  subfoldersOf,
 } from "../../src/library-page/state/derive";
-import type { FolderNode } from "../../src/storage";
 
 function paper(id: string, dir: string, extra: Partial<PaperRecord> = {}): PaperRecord {
   return { id, title: id, path: `${dir}/${id}`, citeKey: id, status: "unread", ...extra };
 }
 
-const tree: FolderNode[] = [
+const tree: FolderTreeNode[] = [
   { name: "A", path: "papers/A", children: [{ name: "A1", path: "papers/A/A1", children: [] }] },
   { name: "B", path: "papers/B", children: [] },
 ];
@@ -33,41 +26,7 @@ const papers = [
   paper("b1", "papers/B", { title: "Gamma", year: 1999 }),
 ];
 
-describe("breadcrumbFor", () => {
-  it("returns only the root for papers/ itself", () => {
-    expect(breadcrumbFor(ROOT)).toEqual([{ label: ROOT_LABEL, path: ROOT, isRoot: true }]);
-  });
-  it("lists every ancestor root-first", () => {
-    expect(breadcrumbFor("papers/A/A1").map((c) => c.label)).toEqual([ROOT_LABEL, "A", "A1"]);
-    expect(breadcrumbFor("papers/A/A1").map((c) => c.path)).toEqual([ROOT, "papers/A", "papers/A/A1"]);
-  });
-  it("falls back to the root for a path outside papers/", () => {
-    expect(breadcrumbFor("elsewhere/x")).toHaveLength(1);
-    expect(breadcrumbFor("papers-old/x")).toHaveLength(1);
-  });
-});
-
-describe("folder helpers", () => {
-  it("labels the root and the basename of folders", () => {
-    expect(folderLabel(ROOT)).toBe(ROOT_LABEL);
-    expect(folderLabel("papers/A/A1")).toBe("A1");
-  });
-  it("finds nested nodes", () => {
-    expect(findNode(tree, "papers/A/A1")?.name).toBe("A1");
-    expect(findNode(tree, "papers/C")).toBeUndefined();
-  });
-  it("lists direct subfolders with recursive counts", () => {
-    const paths = papers.map((p) => p.path);
-    expect(subfoldersOf(tree, ROOT, paths)).toEqual([
-      { label: "A", path: "papers/A", count: 2 },
-      { label: "B", path: "papers/B", count: 1 },
-    ]);
-    expect(subfoldersOf(tree, "papers/A", paths)).toEqual([{ label: "A1", path: "papers/A/A1", count: 1 }]);
-    expect(subfoldersOf(tree, "papers/B", paths)).toEqual([]);
-  });
-  it("counts papers at any depth and ignores shared prefixes", () => {
-    expect(countPapersUnder(["papers/A/x", "papers/A/A1/y", "papers/AB/z"], "papers/A")).toBe(2);
-  });
+describe("flattenFolders", () => {
   it("flattens the tree parents-first with slash-joined labels", () => {
     expect(flattenFolders(tree)).toEqual([
       { label: "A", path: "papers/A" }, { label: "A / A1", path: "papers/A/A1" }, { label: "B", path: "papers/B" },
@@ -124,12 +83,13 @@ describe("sortPapers", () => {
     const copy = [...all];
     expect(sortPapers(all, "title", 1).map((p) => p.title)).toEqual(["Alpha", "Beta", "Gamma", "Zeta"]);
     expect(sortPapers(all, "year", -1).map((p) => p.year)).toEqual([2020, 2010, 2001, 1999]);
+    expect(sortPapers(all, "year", 1).map((p) => p.year)).toEqual([1999, 2001, 2010, 2020]);
     expect(sortPapers(all, "status", 1).map((p) => p.status)).toEqual(["unread", "unread", "reading", "done"]);
     expect(all).toEqual(copy);
   });
   it("sorts by creator surname and by publication", () => {
-    // no authors < "Ann Zed" (single author keeps the full name) < "Eve Kay" < "Young et al."
-    expect(sortPapers(all, "creator", 1).map((p) => p.id)).toEqual(["b1", "root1", "a11", "a1"]);
+    // no authors, then by the first author's family name: Kay, Young, Zed
+    expect(sortPapers(all, "creator", 1).map((p) => p.id)).toEqual(["b1", "a11", "a1", "root1"]);
     expect(sortPapers(all, "publication", -1)[0]!.id).toBe("a1");
   });
 });

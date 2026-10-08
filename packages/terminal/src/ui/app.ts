@@ -14,12 +14,13 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 import {
-  type ImportOutcome, type PaperRecord, type PaperStatus, formatAnnotationsMarkdown, paperFiles, summarizeImport, type PaperData,
+  type ImportOutcome, type PaperEntry, type PaperRecord, type PaperStatus, type PaperData,
+  formatAnnotationsMarkdown, paperComparator, paperFiles, papersUnder, summarizeImport,
 } from "@labshelf/core";
 
 import type { SortKey } from "../app/config.js";
 import type { AppContext } from "../app/context.js";
-import { rankFuzzy, papersUnder, type PaperEntry, paperComparator, type SortSpec, matchPaper, parseQuery, searchDoc } from "../library/index.js";
+import { rankFuzzy, matchPaper, parseQuery, searchDoc } from "../library/index.js";
 import { copyToClipboard, openExternal, revealInFileManager, runEditor, trashSupported } from "../platform/system.js";
 import type { SyncOutcome, SyncStatus } from "../sync/syncService.js";
 import { clearImages, drawImage, fitImage, pngSize, type CellRect } from "../tui/graphics.js";
@@ -121,7 +122,7 @@ export class App {
   folder = ALL;
   search: string | undefined;
   flatten = false;
-  sort: SortSpec;
+  sort: { key: SortKey; reverse: boolean };
   filter = "";
   selection = new Set<string>();
   cut: string[] | undefined;

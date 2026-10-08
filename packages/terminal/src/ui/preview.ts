@@ -3,9 +3,10 @@
  * summary of the hovered folder. Pure functions of the snapshot and the sidecar, so tests render them without a
  * terminal.
  */
-import { type Annotation, type PaperRecord, cleanQuote, type PaperData } from "@labshelf/core";
+import {
+  type Annotation, type CollectionNode, type LibrarySnapshot, type PaperEntry, type PaperRecord, cleanQuote, type PaperData,
+} from "@labshelf/core";
 
-import type { CollectionNode, LibrarySnapshot, PaperEntry } from "../library/index.js";
 import type { Style } from "../tui/screen.js";
 import { wrap } from "../tui/text.js";
 import { formatBytes, shortAuthors, venueLine } from "./format.js";
