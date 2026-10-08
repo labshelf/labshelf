@@ -2251,11 +2251,11 @@ describe("syncSegment", () => {
   });
 
   it("shows when the last sync of this terminal finished", () => {
-    expect(syncSegment({ state: "idle", lastRun: run("terminal", 5) }, now)).toEqual({ text: " synced 5 min ago ", style: theme.sync.ok });
+    expect(syncSegment({ state: "idle", lastRun: run("terminal", 5) }, now)).toEqual({ text: " synced 5m ago ", style: theme.sync.ok });
   });
 
   it("names the other app that did the last sync", () => {
-    expect(syncSegment({ state: "idle", lastRun: run("vscode", 120) }, now).text).toBe(" synced 2 h ago (VS Code) ");
+    expect(syncSegment({ state: "idle", lastRun: run("vscode", 120) }, now).text).toBe(" synced 2h ago (VS Code) ");
     expect(syncSegment({ state: "idle", lastRun: run("browser", 0) }, now).text).toBe(" synced just now (browser) ");
   });
 });

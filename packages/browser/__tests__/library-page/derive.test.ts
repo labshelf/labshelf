@@ -2,7 +2,6 @@ import { parseQuery, type FolderTreeNode, type PaperRecord } from "@labshelf/cor
 import {
   ROOT,
   flattenFolders,
-  fmtCreator,
   listPapersUnder,
   nextStatus,
   papersInScope,
@@ -112,12 +111,6 @@ describe("sortPapers", () => {
 });
 
 describe("formatting", () => {
-  it("formats creators like the VS Code panel", () => {
-    expect(fmtCreator(undefined)).toBe("");
-    expect(fmtCreator(["Ann Zed"])).toBe("Ann Zed");
-    expect(fmtCreator(["Ann Zed", "Bob Young"])).toBe("Zed, Young");
-    expect(fmtCreator(["Ann Zed", "Bob Young", "Cy Old"])).toBe("Zed et al.");
-  });
   it("cycles status unread → reading → done → unread", () => {
     expect(nextStatus("unread")).toBe("reading");
     expect(nextStatus("reading")).toBe("done");

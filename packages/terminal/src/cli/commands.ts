@@ -7,7 +7,7 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import {
-  libraryLayout, paperComparator, paperFiles, papersUnder, type PaperEntry, type PaperRecord, type PaperStatus, type SortSpec,
+  formatBytes, libraryLayout, paperComparator, paperFiles, paperLink, papersUnder, relativeTime, venueLine, type PaperEntry, type PaperRecord, type PaperStatus, type SortSpec,
 } from "@labshelf/core";
 import { sharedConfigDir, sharedConfigPath } from "@labshelf/core/node";
 
@@ -18,7 +18,6 @@ import { resolveOAuthClient } from "../sync/driveAuth.js";
 import { createTokenStore } from "../sync/tokenStore.js";
 import { detectImageProtocol } from "../tui/graphics.js";
 import { fit, stringWidth } from "../tui/text.js";
-import { formatBytes, paperLink, relativeTime, venueLine } from "../ui/format.js";
 import { STATUS_GLYPH } from "../ui/theme.js";
 import { stringFlag, type ParsedArgs } from "./args.js";
 
@@ -289,7 +288,7 @@ async function runAuth(ctx: AppContext, sub: string | undefined, io: Output): Pr
   if (sub === "status" || sub === undefined) {
     const status = ctx.sync.status();
     io.out(`drive:     ${status.state === "unconfigured" ? "no OAuth client configured" : status.state === "disconnected" ? "signed out" : "signed in"}`);
-    io.out(`last sync: ${status.lastRun ? `${relativeTime(status.lastRun.finishedAt)} by ${status.lastRun.app} on ${status.lastRun.host}` : "never"}`);
+    io.out(`last sync: ${status.lastRun ? `${relativeTime(status.lastRun.finishedAt) || "never"} by ${status.lastRun.app} on ${status.lastRun.host}` : "never"}`);
     return 0;
   }
   throw new UsageError("Usage: labshelf auth login | logout | status");
@@ -319,7 +318,7 @@ export async function runDoctor(root: string | undefined, rootSource: string, co
     const lock = await fs.readFile(layout.lockPath(), "utf8").catch(() => undefined);
     if (lock) { line("warn", "sync lock", `held: ${lock.replace(/\s+/g, " ").slice(0, 120)}`); }
     const last = await fs.readFile(layout.lastRunPath(), "utf8").then((t) => JSON.parse(t) as { finishedAt?: string; app?: string }, () => undefined);
-    line(last ? true : "warn", "last sync", last?.finishedAt ? `${relativeTime(last.finishedAt)} by ${last.app}` : "never (by an app that records it)");
+    line(last ? true : "warn", "last sync", last?.finishedAt ? `${relativeTime(last.finishedAt) || "never"} by ${last.app}` : "never (by an app that records it)");
   }
   const client = resolveOAuthClient();
   line(client ? true : "warn", "drive client", client ? `configured (${client.clientId.slice(0, 12)}…)` : "missing: rebuild with the VS Code extension's credentials, or set LABSHELF_GOOGLE_CLIENT_ID/SECRET to a client of the same Google Cloud project");

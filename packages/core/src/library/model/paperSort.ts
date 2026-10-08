@@ -1,14 +1,10 @@
 /** Orders papers by a sort key with title as the tie-break; one rule set for every app. */
 import { PAPER_STATUSES, type PaperRecord } from "../../model/index.js";
+import { familyName } from "../format/index.js";
 import type { PaperEntry, SortSpec } from "./types.js";
 
 /** Numeric, accent- and case-insensitive: "Paper 2" sorts before "Paper 10". */
 export const nameCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
-
-// "Vaswani, Ashish" and "Ashish Vaswani" both sort under Vaswani.
-function familyName(author: string): string {
-  return author.includes(",") ? author.split(",")[0]!.trim() : author.trim().split(/\s+/).pop() ?? "";
-}
 
 function compareRecords(key: SortSpec["key"], a: PaperRecord, b: PaperRecord): number {
   switch (key) {

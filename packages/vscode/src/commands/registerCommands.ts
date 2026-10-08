@@ -5,7 +5,7 @@ import type { PaperImporter, PaperService, PaperTextLayers } from "../core/index
 import type { ThemeManager } from "../pdf-viewer/ThemeManager.js";
 import type { AnnotationManager } from "../pdf-viewer/AnnotationManager.js";
 import type { PaperDataStore } from "../storage/data/paperDataStore.js";
-import { type IFileSystem, type ILogger, type IResearchDatabase, type LocalFileSystem, type PaperRecord, type MutationContext, type PaperStatus, isSafeExternalUrl, paperFiles } from "@labshelf/core";
+import { type IFileSystem, type ILogger, type IResearchDatabase, type LocalFileSystem, type PaperRecord, type MutationContext, type PaperStatus, isSafeExternalUrl, paperFiles, paperLink } from "@labshelf/core";
 import { fetchMetadataForPaper, resolveMissingMetadata } from "./fetchMetadata.js";
 import { importPapers } from "./importProgress.js";
 import { removePapers } from "./removePapers.js";
@@ -235,7 +235,7 @@ export async function ensurePaperPdf(services: ActiveServices, paper: PaperRecor
 // Only safe web schemes are offered, so a hand-edited record cannot smuggle a
 // file: or command: link into an openExternal call.
 function articleLink(paper: PaperRecord): string | undefined {
-  const candidate = paper.doi ? `https://doi.org/${paper.doi}` : paper.url;
+  const candidate = paperLink(paper);
   return candidate && isSafeExternalUrl(candidate) ? candidate : undefined;
 }
 

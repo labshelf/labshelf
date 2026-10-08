@@ -9,10 +9,10 @@
 import { el, esc, highlight } from "../../ui/dom";
 import { icon } from "../../ui/icons";
 import { emit } from "../events";
-import { STATUS_LABEL, fmtCreator, nextStatus } from "../state/derive";
+import { STATUS_LABEL, nextStatus } from "../state/derive";
 import type { ListPaper } from "../state/derive";
 import type { LibraryStore } from "../state/libraryStore";
-import { PDF_FILE } from "@labshelf/core";
+import { PDF_FILE, formatAuthors } from "@labshelf/core";
 
 export interface RowHandlers {
   onClick: (id: string, e: MouseEvent) => void;
@@ -27,7 +27,7 @@ export interface RowHandlers {
 export function buildPaperRow(p: ListPaper, toks: string[], store: LibraryStore, h: RowHandlers): HTMLElement {
   // Only a paper with a PDF can expand; a PDF-less row never shows children.
   const expanded = p.hasPdf && h.isExpanded(p.id);
-  const creator = fmtCreator(p.authors);
+  const creator = formatAuthors(p.authors);
   const venue = p.journal ?? p.publisher ?? "";
   const chip = p.relFolder ? `<span class="loc-chip" title="Go to ${esc(p.relFolder)}">${highlight(p.relFolder, toks)}</span>` : "";
   const row = el("div", { class: `paper-row${expanded ? " expanded" : ""}${p.hasPdf ? "" : " no-pdf"}`, "data-id": p.id });

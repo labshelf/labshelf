@@ -28,6 +28,10 @@ describe('authorYearLabel', () => {
     expect(authorYearLabel(paperWithoutYear({ authors: [] }))).toBe('nasser2024');
   });
 
+  it('falls back to the citeKey when every author is blank', () => {
+    expect(authorYearLabel(paper({ authors: ['', '  '], year: 2024 }))).toBe('nasser2024, 2024');
+  });
+
   it('uses the surname of a single author', () => {
     expect(authorYearLabel(paper({ authors: ['Ada Lovelace'], year: 1843 }))).toBe('Lovelace, 1843');
   });

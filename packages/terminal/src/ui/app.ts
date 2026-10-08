@@ -15,7 +15,7 @@ import * as path from "node:path";
 
 import {
   type ImportOutcome, type PaperEntry, type PaperRecord, type PaperStatus, type PaperData,
-  formatAnnotationsMarkdown, paperComparator, paperFiles, papersUnder, rankFuzzy, summarizeImport,
+  formatAnnotationsMarkdown, paperComparator, paperFiles, paperLink, papersUnder, rankFuzzy, relativeTime, summarizeImport,
 } from "@labshelf/core";
 
 import type { SortKey } from "../app/config.js";
@@ -27,7 +27,6 @@ import type { InputEvent, MouseEvent } from "../tui/input.js";
 import { Screen, type Style } from "../tui/screen.js";
 import type { TerminalSize } from "../tui/terminal.js";
 import { stringWidth, truncate } from "../tui/text.js";
-import { paperLink, relativeTime } from "./format.js";
 import { keyLabel, resolveKeys, type Binding } from "./keymap.js";
 import {
   drawField,
@@ -1539,7 +1538,7 @@ export function syncSegment(status: SyncStatus, now: number): { text: string; st
       const last = status.lastRun;
       if (!last) { return { text: " Drive: not synced yet ", style: theme.sync.off }; }
       const by = last.app === "terminal" ? "" : ` (${last.app === "vscode" ? "VS Code" : last.app})`;
-      return { text: ` synced ${relativeTime(last.finishedAt, now)}${by} `, style: theme.sync.ok };
+      return { text: ` synced ${(relativeTime(last.finishedAt, now) || "never")}${by} `, style: theme.sync.ok };
     }
   }
 }

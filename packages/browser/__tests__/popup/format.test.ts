@@ -1,9 +1,10 @@
 import { folderName, folderPathLabel, metaLine, parseTags } from "../../src/popup/format";
 
 describe("popup format", () => {
-  it("writes the byline with surnames, et al. past three", () => {
+  it("writes the byline with surnames, et al. past two", () => {
     expect(metaLine({ authors: ["Alan Edelman", "Tomás A. Arias", "Steven T. Smith"], venue: "SIAM J. Matrix Anal. Appl.", year: 1998 }))
-      .toBe("Edelman, Arias, Smith · SIAM J. Matrix Anal. Appl. · 1998");
+      .toBe("Edelman et al. · SIAM J. Matrix Anal. Appl. · 1998");
+    expect(metaLine({ authors: ["Alan Edelman", "Tomás A. Arias"], venue: "SIAM J." })).toBe("Edelman & Arias · SIAM J.");
     expect(metaLine({ authors: ["A B", "C D", "E F", "G H"], year: 2001 })).toBe("B et al. · 2001");
     expect(metaLine({ authors: [] })).toBe("");
   });

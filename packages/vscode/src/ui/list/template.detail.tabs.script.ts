@@ -4,7 +4,7 @@
  * keywords, same venue, and similar content when the AI index runs).
  *
  * Returned as a source fragment that template.script.ts splices into its IIFE, so it shares that scope with the list
- * and detail fragments (view, ICON, NL, esc, post, selIds, paperById, libraryById, hasPdf, fmtCreator, fmtAgo, fmtDate,
+ * and detail fragments (view, ICON, NL, esc, post, selIds, paperById, libraryById, hasPdf, fmtAgo, fmtDate,
  * fmtSize, lastName, section, muted, iconBtn, textLayerSummary, renderDetail).
  */
 
@@ -223,7 +223,7 @@ export function detailTabsScriptFragment(): string {
     return '<div class="rel-row" data-action="openRelated" data-id="' + esc(q.id) + '" title="' + (here ? 'Select' : 'Go to') + ' this paper — double-click to open it">' +
       '<span class="status-dot s-' + q.status + '" title="' + STATUS_LABEL[q.status] + '"></span>' +
       '<div class="rel-main"><div class="rel-title">' + esc(q.title) + '</div>' +
-        '<div class="rel-sub">' + esc([fmtCreator(q.authors), q.year].filter(Boolean).join(' · ')) + (extra || '') + '</div></div>' +
+        '<div class="rel-sub">' + esc([q.creator, q.year].filter(Boolean).join(' · ')) + (extra || '') + '</div></div>' +
       iconBtn('openPdf', 'book-open', 'Open PDF', ' data-id="' + esc(q.id) + '"') + '</div>';
   }
   function relatedTab(p) {

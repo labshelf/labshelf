@@ -4,12 +4,11 @@
  * terminal.
  */
 import {
-  type Annotation, type CollectionNode, type LibrarySnapshot, type PaperEntry, type PaperRecord, cleanQuote, type PaperData,
+  type Annotation, type CollectionNode, type LibrarySnapshot, type PaperEntry, type PaperRecord, cleanQuote, formatAuthors, formatBytes, venueLine, type PaperData,
 } from "@labshelf/core";
 
 import type { Style } from "../tui/screen.js";
 import { wrap } from "../tui/text.js";
-import { formatBytes, shortAuthors, venueLine } from "./format.js";
 import { STATUS_GLYPH, theme } from "./theme.js";
 
 export interface Segment {
@@ -251,6 +250,6 @@ export function libraryOverview(snapshot: LibrarySnapshot): Line[] {
 
 /** Short one-line description of a paper for pickers and messages. */
 export function paperLabel(record: PaperRecord): string {
-  const authors = shortAuthors(record.authors, 1);
+  const authors = formatAuthors(record.authors);
   return [record.title, authors, record.year].filter(Boolean).join(" · ");
 }

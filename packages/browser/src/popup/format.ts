@@ -2,15 +2,13 @@
  * Pure text helpers for the popup: the one-line byline under the title, tag
  * parsing, and human labels for folders.
  */
-import { normalizeTags } from "@labshelf/core";
+import { formatAuthors, normalizeTags, venueLine } from "@labshelf/core";
 
 import type { DraftView, FoldersData } from "../platform/runtimeMessages";
 
-/** "Edelman, Arias, Smith · SIAM J. Matrix Anal. Appl. · 1998" — surnames, et al. past three. */
+/** "Edelman et al. · SIAM J. Matrix Anal. Appl. · 1998" — surnames, et al. past two. */
 export function metaLine(d: Pick<DraftView, "authors" | "venue" | "year">): string {
-  const surnames = d.authors.map((a) => a.trim().split(/\s+/).pop() ?? a).filter(Boolean);
-  const who = surnames.length > 3 ? `${surnames[0]} et al.` : surnames.join(", ");
-  return [who, d.venue, d.year].filter(Boolean).join(" · ");
+  return [formatAuthors(d.authors), venueLine({ journal: d.venue, year: d.year })].filter(Boolean).join(" · ");
 }
 
 /** "ml, #Thesis ch2 , ML" → ["ml", "Thesis ch2"]: split on , and ;, a leading # dropped, then normalised. */

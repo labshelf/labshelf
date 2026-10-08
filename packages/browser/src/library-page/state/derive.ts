@@ -67,17 +67,6 @@ export function statusCounts(scope: ListPaper[]): Record<StatusFilter, number> {
   return counts;
 }
 
-export function lastName(author: string): string {
-  return author.trim().split(" ").pop() ?? author;
-}
-
-/** "Smith", "Smith, Lee" or "Smith et al." — the Creator column. */
-export function fmtCreator(authors: string[] | undefined): string {
-  if (!authors || authors.length === 0) return "";
-  if (authors.length === 1) return authors[0]!;
-  return authors.length > 2 ? `${lastName(authors[0]!)} et al.` : authors.map(lastName).join(", ");
-}
-
 export function nextStatus(status: PaperStatus): PaperStatus {
   return STATUSES[(STATUSES.indexOf(status) + 1) % STATUSES.length]!;
 }

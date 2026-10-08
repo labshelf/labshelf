@@ -22,6 +22,14 @@ describe('buildListState', () => {
     expect(state.subfolders).toEqual([{ label: 'B', dirPath: `${ROOT}/A/B`, count: 1 }]);
   });
 
+  it('sends the short author label with each paper and each related-paper entry', () => {
+    const authored = { ...paper('p5', `${ROOT}/A`), authors: ['Ada Lovelace', 'Charles Babbage', 'Alan Turing'] } as PaperRecord;
+    const pair = { ...paper('p6', `${ROOT}/A`), authors: ['Ada Lovelace', 'Babbage, Charles'] } as PaperRecord;
+    const state = buildListState([authored, pair, paper('p7', `${ROOT}/A`)], { label: 'A', dirPath: `${ROOT}/A` }, ROOT, [], '/');
+    expect(state.papers.map((p) => p.creator)).toEqual(['Lovelace et al.', 'Lovelace & Babbage', '']);
+    expect(state.library.map((p) => p.creator)).toEqual(['Lovelace et al.', 'Lovelace & Babbage', '']);
+  });
+
   it('maps the breadcrumb onto dirPath, marking only the root', () => {
     const state = buildListState(papers, { label: 'B', dirPath: `${ROOT}/A/B` }, ROOT, [], '/');
     expect(state.breadcrumb).toEqual([

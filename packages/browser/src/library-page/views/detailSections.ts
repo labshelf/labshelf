@@ -11,7 +11,7 @@ import { icon } from "../../ui/icons";
 import { attachmentsHeading } from "../../ui/pdfCopy";
 import { ROOT, STATUSES, STATUS_LABEL } from "../state/derive";
 import type { ListPaper } from "../state/derive";
-import { PDF_FILE, folderLabel, type PaperStatus } from "@labshelf/core";
+import { PDF_FILE, folderLabel, venueLine, type PaperStatus } from "@labshelf/core";
 
 export const ABSTRACT_TRUNCATE_AT = 320;
 
@@ -117,7 +117,7 @@ export interface DetailViewState {
 
 /** The full detail pane for a single paper. */
 export function paperDetailHtml(p: ListPaper, v: DetailViewState): string {
-  const venue = [p.journal ?? p.publisher, p.year].filter(Boolean).join(" · ");
+  const venue = venueLine(p);
   const c = (id: string): boolean => !!v.collapsed[id];
   return `<div class="detail-head">` +
       `<div class="detail-paper-title">${esc(p.title)}</div>` +

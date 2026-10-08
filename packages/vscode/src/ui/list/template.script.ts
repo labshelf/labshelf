@@ -75,11 +75,6 @@ export function buildListScript(nonce: string): string {
     var c = a.indexOf(',');
     return c !== -1 ? a.slice(0, c).trim() : a.split(' ').pop();
   }
-  function fmtCreator(authors) {
-    if (!authors || authors.length === 0) return '';
-    if (authors.length === 1) return lastName(authors[0]);
-    return authors.length > 2 ? lastName(authors[0]) + ' et al.' : authors.map(lastName).join(' & ');
-  }
   function fmtAgo(iso) {
     var t = iso ? Date.parse(iso) : NaN;
     if (isNaN(t)) return '';
@@ -140,7 +135,7 @@ export function buildListScript(nonce: string): string {
   // When a row matched only through a field it does not show, say which.
   var HINT_FIELDS = [['authors', 'author'], ['keywords', 'keyword'], ['tags', 'tag'], ['summary', 'abstract'], ['note', 'note'], ['citeKey', 'cite key']];
   function matchHint(p, toks) {
-    var visible = [p._f.title, fmtCreator(p.authors).toLowerCase(), p._f.year, p._f.venue, p._f.folder, p._f.tags].join(' ');
+    var visible = [p._f.title, p.creator.toLowerCase(), p._f.year, p._f.venue, p._f.folder, p._f.tags].join(' ');
     for (var i = 0; i < toks.length; i++) {
       var t = toks[i];
       if (t.field || visible.indexOf(t.text) !== -1) continue;
@@ -222,7 +217,7 @@ export function buildListScript(nonce: string): string {
   function sortPapers(papers) {
     var key = view.sortKey, dir = view.sortDir;
     function val(p) {
-      if (key === 'creator') return fmtCreator(p.authors).toLowerCase();
+      if (key === 'creator') return p.creator.toLowerCase();
       if (key === 'year') return p.year || 0;
       if (key === 'status') return STATUS_ORDER[p.status] || 0;
       if (key === 'publication') return String(p.journal || p.publisher || '').toLowerCase();
@@ -363,7 +358,7 @@ export function buildListScript(nonce: string): string {
     row.dataset.id = p.id;
     row.draggable = true;
     var st = view.stats[p.id] || {};
-    var creator = fmtCreator(p.authors), venue = p.journal || p.publisher || '';
+    var creator = p.creator, venue = p.journal || p.publisher || '';
     var tags = p.tags || [];
     var tagHtml = tags.slice(0, 3).map(function (t) {
       return '<span class="row-tag" data-tag="' + esc(t) + '" title="Show papers tagged ' + esc(t) + '">' + hl(t, toks) + '</span>';

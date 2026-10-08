@@ -1,11 +1,8 @@
 /**
  * Formats a paper as a ready-to-paste reference in the common styles (APA 7, MLA 9, Chicago author-date) and as an
  * in-text marker, from whatever bibliographic fields the record has. Missing fields are left out rather than guessed.
- *
- * @depends @labshelf/core (types only)
- * @dependents ui/list/listWebviewPanel.ts
  */
-import type { PaperRecord } from '@labshelf/core';
+import { paperLink, type PaperRecord } from '@labshelf/core';
 
 export interface CitationSet {
   apa: string;
@@ -22,7 +19,6 @@ interface Name {
 
 /**
  * Builds every citation style for one paper.
- * @usedBy ui/list/listWebviewPanel.ts
  * @returns the formatted references
  */
 export function formatCitations(paper: PaperRecord): CitationSet {
@@ -62,11 +58,6 @@ function sentence(text: string): string {
   return /[.?!]$/.test(trimmed) ? trimmed : trimmed + '.';
 }
 
-function doiUrl(paper: PaperRecord): string {
-  if (paper.doi) { return 'https://doi.org/' + paper.doi.replace(/^https?:\/\/(dx\.)?doi\.org\//i, ''); }
-  return paper.url ?? '';
-}
-
 function joinList(items: string[], conj: string, serialComma: boolean): string {
   if (items.length <= 1) { return items.join(''); }
   if (items.length === 2) { return items[0] + ' ' + conj + ' ' + items[1]; }
@@ -90,7 +81,7 @@ function apa(paper: PaperRecord): string {
     if (paper.pages) { source += ', ' + paper.pages.replace(/-+/g, '–'); }
     parts.push(source + '.');
   }
-  const link = doiUrl(paper);
+  const link = paperLink(paper) ?? '';
   if (link) { parts.push(link); }
   return parts.join(' ');
 }
@@ -139,7 +130,7 @@ function chicago(paper: PaperRecord): string {
     if (paper.pages) { source += ': ' + paper.pages.replace(/-+/g, '–'); }
     parts.push(source + '.');
   }
-  const link = doiUrl(paper);
+  const link = paperLink(paper) ?? '';
   if (link) { parts.push(sentence(link)); }
   return parts.join(' ');
 }

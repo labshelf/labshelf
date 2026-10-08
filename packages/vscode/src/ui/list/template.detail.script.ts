@@ -4,14 +4,10 @@
  * pane's collapse and resize behaviour. The tab bodies come from template.detail.tabs.script.ts.
  *
  * Returned as a source fragment that template.script.ts splices into its IIFE, so it shares that scope (view, ICON, STATUSES, STATUS_LABEL, NL, MOD, esc, post, saveState, selIds, navigate, setStatus, setQuery, searchTag, revealPaper, paperById, hasPdf, hasNoText, jobFor, jobText, typeIconCell, fmtAgo, lastName, list, render, openMenu, paperMenu).
- *
- * @depends none
- * @dependents ui/list/template.script.ts
  */
 
 /**
  * Returns the detail-pane JavaScript source. Like its host script it avoids template literals and backslashes.
- * @usedBy ui/list/template.script.ts
  * @returns JavaScript source text, without a surrounding script tag
  */
 export function detailScriptFragment(): string {
@@ -225,7 +221,7 @@ export function detailScriptFragment(): string {
     '</div>' +
     '<div class="sel-list">' + papers.map(function (p) {
       return '<div class="rel-row" data-action="selectOnly" data-id="' + esc(p.id) + '" title="Show only this paper"><span class="status-dot s-' + p.status + '"></span>' +
-        '<div class="rel-main"><div class="rel-title">' + esc(p.title) + '</div><div class="rel-sub">' + esc([fmtCreator(p.authors), p.year].filter(Boolean).join(' · ')) + '</div></div></div>';
+        '<div class="rel-main"><div class="rel-title">' + esc(p.title) + '</div><div class="rel-sub">' + esc([p.creator, p.year].filter(Boolean).join(' · ')) + '</div></div></div>';
     }).join('') + '</div>';
   }
 

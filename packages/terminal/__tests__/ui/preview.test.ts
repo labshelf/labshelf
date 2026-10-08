@@ -487,8 +487,9 @@ describe("paperLabel", () => {
     expect(paperLabel(record({ authors: ["Ashish Vaswani"], year: 2017 }))).toBe("Attention Is All You Need · Vaswani · 2017");
   });
 
-  it("abbreviates several authors", () => {
-    expect(paperLabel(record({ authors: ["Ashish Vaswani", "Noam Shazeer"], year: 2017 }))).toBe("Attention Is All You Need · Vaswani et al. · 2017");
+  it("names two authors and abbreviates more", () => {
+    expect(paperLabel(record({ authors: ["Ashish Vaswani", "Noam Shazeer"], year: 2017 }))).toBe("Attention Is All You Need · Vaswani & Shazeer · 2017");
+    expect(paperLabel(record({ authors: ["Ashish Vaswani", "Noam Shazeer", "Niki Parmar"], year: 2017 }))).toBe("Attention Is All You Need · Vaswani et al. · 2017");
   });
 
   it("skips what is missing", () => {
