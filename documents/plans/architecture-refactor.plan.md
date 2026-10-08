@@ -2,7 +2,7 @@
 
 Status: in progress (session 5 of 13)
 Size: GG — every package moves and duplicated logic merges across three apps; 13 sessions, one per phase (phases 4 and 9 are the heaviest).
-Pending decisions: 6
+Pending decisions: 5
 
 ## 1. Goal
 
@@ -53,6 +53,12 @@ When this plan is done, delete it and the note at the top of `architecture.md`.
   - **BC20** VS Code has one import flow for every entry point: each offers the metadata lookup for unconfirmed papers, an empty import says `No PDF found there`, and a picked non-PDF file fails with `Not a PDF file` (S4.2);
   - **BC21** the terminal `add` command prints `skipped <input>` and exits 1 for a skipped input (S4.2);
   - **BC22** the browser background `paper.remove` reports a failed delete instead of claiming success (S4.2).
+  - **BC23** one paper sort order: status Unread → Reading → Done, author by family name ("Last, First" too), numeric collation for titles and folders, papers without a year last in both directions (S4.3);
+  - **BC24** one scan rule: dot entries are skipped, a folder holding only `paper.pdf` is not a paper, a symlinked file or folder counts as absent, and on a duplicate id the first folder in path order wins and the others are logged (S4.3);
+  - **BC25** VS Code drops a paper from its index when its folder leaves the disk (S4.3);
+  - **BC26** relative times read `just now`, `5m ago`, `3h ago`, `yesterday`, `4d ago`, `2w ago`, `Mar 4`, `Mar 2024` in every app; the terminal keeps `never` for no date (S4.5);
+  - **BC27** a DOI stored as a `doi.org` URL links once, not doubled (S4.5);
+  - **BC28** the VS Code watcher also ignores editor backups (`~`) and swap files (`.swp`) (S4.6).
 
 Open questions (each one blocks only the steps named):
 
@@ -71,8 +77,7 @@ Open questions (each one blocks only the steps named):
   - Options: yes, delete them / no, keep them.
   - Recommendation: if yes, delete. If no, keep them under `migrations/`, each with its deletion condition.
 - **Q6** (blocks S4.5) The author format for two authors.
-  - Options: "A & B" (VS Code, reader) / "A, B" (browser, terminal).
-  - Recommendation: "A & B", the citation convention.
+  - Answer: "A & B", the citation convention (VS Code and the reader today; the browser and the terminal write "A, B").
 - **Q7** (blocks S1.8) The ONNX embeddings never run, because `@xenova/transformers` is not a dependency.
   - Options: add the dependency / remove the ONNX path and the model download.
   - Recommendation: remove it, unless the AI features are in active use. The hash fallback is what runs today.
@@ -208,7 +213,7 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
 | S4.3 | Library snapshot, tree, navigation, store, reindex diff | S4.2 | H+M · refactor-step | old copies gone | [ ] |
-| S4.4 | One search language (BC4) | S4.3 | H+M · refactor-step | BC4 tests | [ ] |
+| S4.4 | One search language (BC4; VS Code list in S9.2) | S4.3 | H+M · refactor-step | BC4 tests | [ ] |
 | S4.5 | One author formatter and paper formatting (BC5) | S4.3, Q6 | M · module-splitter | BC5 test | [ ] |
 | S4.6 | External change filter in core | S4.3 | M · module-splitter | both watchers use it | [ ] |
 
@@ -505,7 +510,7 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 
 #### S4.4 — Search (BC4)
 
-- **Do:** create `core/src/library/search/`, based on the terminal language: `tag:`, `status:`, `year:` with ranges, `author:`, `has:`/`no:`, phrases and `-exclusions`. Add VS Code's aliases (`kw`, `venue`, `note`, `key`, `abstract`), fuzzy matching, and accent folding (move `fold` out of `tui/text.ts`). All three apps use it.
+- **Do:** create `core/src/library/search/`, based on the terminal language: `tag:`, `status:`, `year:` with ranges, `author:`, `has:`/`no:`, phrases and `-exclusions`. Add VS Code's aliases (`kw`, `venue`, `note`, `key`, `abstract`), fuzzy matching for pickers, and accent folding (move `fold` out of `tui/text.ts`). The terminal and the browser use it. The VS Code list searches inside its string-template webview script, which cannot import core; it adopts core search in S9.2, when the list moves to the shared UI.
 
 #### S4.5 — Formatting (BC5)
 
@@ -630,7 +635,7 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 
 #### S9.2 — VS Code list on the shared UI
 
-- **Do:** `ListWebviewPanel` bundles the core library UI and supplies a `postMessage` transport and a typed handler. Delete `ui/list/template*.ts` (about 2,800 lines) and the untyped 20-case switch. Merge `citationFormats.ts` with the reader's `citationFormat.ts` in core.
+- **Do:** `ListWebviewPanel` bundles the core library UI and supplies a `postMessage` transport and a typed handler. Delete `ui/list/template*.ts` (about 2,800 lines) and the untyped 20-case switch. Merge `citationFormats.ts` with the reader's `citationFormat.ts` in core. The list then uses core search (BC4), core relative time, file size and venue line (BC26), and the core sort order (BC23), which its webview script still copies.
 
 #### S9.3 — Browser library page on the shared UI
 
