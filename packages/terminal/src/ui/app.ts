@@ -6,7 +6,7 @@
  * filter/find/search, fuzzy jumps, citation copying and Drive sync — over the same files the VS Code extension uses.
  * Changes made by VS Code or a sync appear live through the library watcher.
  *
- * The App holds UI state only; library changes go through TerminalPaperService and syncs through SyncService.
+ * The App holds UI state only; library changes go through TerminalPaperService and syncs through the core SyncCoordinator.
  * Rendering builds a fresh Screen per frame and the Terminal writes only the cells that changed.
  */
 import { promises as fs } from "node:fs";
@@ -14,14 +14,13 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 import {
-  type ImportOutcome, type PaperEntry, type PaperRecord, type PaperStatus, type PaperData,
+  type ImportOutcome, type PaperEntry, type PaperRecord, type PaperStatus, type PaperData, type SyncOutcome, type SyncStatus,
   formatAnnotationsMarkdown, paperComparator, paperFiles, paperLink, papersUnder, rankFuzzy, relativeTime, summarizeImport,
 } from "@labshelf/core";
 
 import type { SortKey } from "../app/config.js";
 import type { AppContext } from "../app/context.js";
 import { copyToClipboard, openExternal, revealInFileManager, runEditor, trashSupported } from "../platform/system.js";
-import type { SyncOutcome, SyncStatus } from "../sync/syncService.js";
 import { clearImages, drawImage, fitImage, pngSize, type CellRect } from "../tui/graphics.js";
 import type { InputEvent, MouseEvent } from "../tui/input.js";
 import { Screen, type Style } from "../tui/screen.js";
@@ -184,7 +183,7 @@ export class App {
     const minutes = this.ctx.config.terminal?.autoSyncMinutes ?? 15;
     this.ctx.sync.startPeriodic(minutes);
     if (minutes > 0) {
-      void this.ctx.sync.periodicTick(minutes * 60_000).then((outcome) => outcome && this.reportSync(outcome, true));
+      void this.ctx.sync.periodicTick().then((outcome) => outcome && this.reportSync(outcome, true));
     }
     return new Promise((resolve) => { this.resolveQuit = resolve; });
   }
@@ -1206,7 +1205,7 @@ export class App {
       case "login": return void this.login();
       case "logout":
         void this.task("auth", "signing out", async () => {
-          await this.ctx.sync.logout();
+          await this.ctx.drive.logout();
           this.notify("Signed out of Google Drive. The library stays on this computer.");
         });
         return;
@@ -1238,7 +1237,7 @@ export class App {
 
   private async login(): Promise<void> {
     await this.task("auth", "waiting for Google sign-in", async () => {
-      await this.ctx.sync.login({
+      await this.ctx.drive.login({
         openBrowser: (url) => openExternal(url),
         onUrl: (url) => {
           void copyToClipboard(url, (seq) => this.term.writeRaw(seq));

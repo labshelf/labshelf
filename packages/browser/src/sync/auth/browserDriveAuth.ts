@@ -12,9 +12,6 @@
  *
  * Implements the cross-platform `IAuthProvider` from @labshelf/core, so the
  * same Drive RemoteProvider works in VS Code and in the browser.
- *
- * @depends @labshelf/core IAuthProvider, platform/browserApi, tokenStore, oauthConfig
- * @dependents sync/browserSyncController (Phase 4), background message handlers
  */
 import type { IAuthProvider } from "@labshelf/core";
 import { bx } from "../../platform/browserApi";
@@ -91,6 +88,15 @@ export class BrowserDriveAuth implements IAuthProvider {
         // best effort — local state is already cleared
       }
     }
+  }
+
+  /**
+   * Loads the stored token once per service-worker life, so isAuthenticated() holds after a restart. A stored token
+   * that has expired goes through the silent refresh, which renews it or drops it.
+   */
+  async load(): Promise<void> {
+    await this.hydrate();
+    if (this.token && this.token.expiryMs <= Date.now()) await this.refreshSilently();
   }
 
   private async hydrate(): Promise<void> {

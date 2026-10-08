@@ -2,7 +2,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { InMemoryResearchDatabase, PdfImportParser, BibTeXService, libraryLayout, scanLibrary, type IFileSystem, type ILogger, type IResearchDatabase, type MutationContext, type SyncResult, type ReaderCommandId } from "@labshelf/core";
+import { InMemoryResearchDatabase, PdfImportParser, BibTeXService, libraryChanged, libraryLayout, scanLibrary, type IFileSystem, type ILogger, type IResearchDatabase, type MutationContext, type SyncResult, type ReaderCommandId } from "@labshelf/core";
 import { PaperImporter, PaperService, PaperTextLayers, createExtensionLogger } from "./core/index.js";
 import { VscodeFileSystem } from "./storage/vscodeFileSystem.js";
 import {
@@ -107,26 +107,24 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // Creates the sync controller once, wiring the post-sync re-index. A sync that
   // pulls files from Drive must surface in the list without a reload, so the
-  // controller's onDidSync triggers reindexLibrary (edits 8-9).
+  // controller's onDidSync triggers reindexLibrary.
   async function ensureSyncController(root: vscode.Uri, services: ActiveServices): Promise<void> {
     const fileSystem = services.fileSystem;
     // Every path that activates a library root comes through here, so the watcher and the shared config follow it.
     watchLibrary(root);
     void mirrorLibraryRoot(root, services.logger);
     if (syncController) {
-      syncController.setLibrary(libraryLayout(root, vscode.Uri.joinPath), fileSystem);
+      syncController.setLibrary(libraryLayout(root, vscode.Uri.joinPath), fileSystem, services.logger);
       return;
     }
-    const controller = new SyncController(
+    const controller = new SyncController({
       context,
-      libraryLayout(root, vscode.Uri.joinPath),
-      fileSystem,
+      paths: libraryLayout(root, vscode.Uri.joinPath),
+      localFs: fileSystem,
       eventBus,
-      async () => {
-        const papers = await activeServices!.paperService.listPapers();
-        return new Map(papers.map((p) => [p.id, p.title]));
-      },
-    );
+      logger: services.logger,
+      listTitles: async () => (await activeServices!.paperService.listPapers()).map((p) => [p.id, p.title] as const),
+    });
     controller.onDidSync((result) => { void onLibrarySynced(result); });
     await controller.initialize();
     context.subscriptions.push(controller);
@@ -137,7 +135,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // refreshes the views. The list panel, tree and AI indexer update through the
   // paper events reindexLibrary emits.
   async function onLibrarySynced(result: SyncResult): Promise<void> {
-    if (!activeServices || !syncChangedLibrary(result)) { return; }
+    if (!activeServices || !libraryChanged(result)) { return; }
     try {
       await activeServices.reindexLibrary();
     } catch (error) {
@@ -394,15 +392,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
 /** Called by VS Code on extension deactivation — cleanup is handled via disposables */
 export function deactivate(): void { return; }
-
-// True when a sync pulled, removed or conflicted files in the library
-// namespace — the cases where on-disk papers (or their PDFs) changed and the
-// index must be rebuilt. Uploads alone need no re-index.
-function syncChangedLibrary(result: SyncResult): boolean {
-  return result.namespaces.some(
-    (ns) => ns.namespace === "library" && (ns.downloaded > 0 || ns.deletedLocal > 0 || ns.conflicts.length > 0),
-  );
-}
 
 // Spins up the AI service when a library is configured. Resolution failures
 // degrade the AI subsystem instead of breaking activation; the rest of the

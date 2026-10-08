@@ -14,8 +14,7 @@ import { sharedConfigDir, sharedConfigPath } from "@labshelf/core/node";
 import type { TerminalConfig } from "../app/config.js";
 import type { AppContext } from "../app/context.js";
 import { copyToClipboard, hasCommand, openExternal } from "../platform/system.js";
-import { resolveOAuthClient } from "../sync/driveAuth.js";
-import { createTokenStore } from "../sync/tokenStore.js";
+import { createTokenStore, resolveOAuthClient } from "../sync/index.js";
 import { detectImageProtocol } from "../tui/graphics.js";
 import { fit, stringWidth } from "../tui/text.js";
 import { STATUS_GLYPH } from "../ui/theme.js";
@@ -273,7 +272,7 @@ async function runSync(ctx: AppContext, io: Output, json: boolean): Promise<numb
 
 async function runAuth(ctx: AppContext, sub: string | undefined, io: Output): Promise<number> {
   if (sub === "login") {
-    await ctx.sync.login({
+    await ctx.drive.login({
       openBrowser: (url) => openExternal(url),
       onUrl: (url) => io.err(`Opening Google sign-in in your browser. If nothing opens, visit:\n\n  ${url}\n`),
     });
@@ -281,7 +280,7 @@ async function runAuth(ctx: AppContext, sub: string | undefined, io: Output): Pr
     return 0;
   }
   if (sub === "logout") {
-    await ctx.sync.logout();
+    await ctx.drive.logout();
     io.out("Signed out. The library stays on this computer.");
     return 0;
   }

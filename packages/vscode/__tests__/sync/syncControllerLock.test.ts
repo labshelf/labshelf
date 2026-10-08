@@ -3,7 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 
-import { libraryLayout } from '@labshelf/core';
+import { libraryLayout, type ILogger, type SyncTimerId, type SyncTimers } from '@labshelf/core';
 import { FakeRemoteProvider } from '@labshelf/core/test-support/sync-fakes';
 
 const provider = new FakeRemoteProvider();
@@ -19,12 +19,8 @@ jest.mock('../../src/sync/auth/googleDriveAuth', () => ({
   },
 }));
 
-jest.mock('@labshelf/core', () => ({
-  ...jest.requireActual('@labshelf/core'),
-  createGoogleDriveProvider: () => provider,
-}));
-
 import { SyncController } from '../../src/sync/adapter/syncController';
+import { reportSyncOutcome } from '../../src/sync/adapter/syncReport';
 import { VscodeFileSystem } from '../../src/storage/vscodeFileSystem';
 import { EventBus } from '../../src/events/index.js';
 
@@ -32,8 +28,20 @@ function context(): vscode.ExtensionContext {
   return { subscriptions: [], secrets: { get: async () => undefined } } as unknown as vscode.ExtensionContext;
 }
 
-function makeController(root: string): SyncController {
-  return new SyncController(context(), libraryLayout(vscode.Uri.file(root), vscode.Uri.joinPath), new VscodeFileSystem(path.join(root, '.research', 'tmp')), new EventBus(), async () => new Map());
+const logs: Array<{ level: string; message: string }> = [];
+const logger: ILogger = { log: async (level, _module, message) => { logs.push({ level, message }); }, error: async () => undefined };
+
+function makeController(root: string, timers?: SyncTimers): SyncController {
+  return new SyncController({
+    ...(timers ? { timers } : {}),
+    context: context(),
+    paths: libraryLayout(vscode.Uri.file(root), vscode.Uri.joinPath),
+    localFs: new VscodeFileSystem(path.join(root, '.research', 'tmp')),
+    eventBus: new EventBus(),
+    logger,
+    listTitles: async () => [],
+    createProvider: () => provider,
+  });
 }
 
 function lockFile(root: string): string {
@@ -64,7 +72,7 @@ describe('SyncController and the cross-app sync lock', () => {
     const listSpy = jest.spyOn(provider, 'list');
     const controller = makeController(root);
 
-    await controller.sync('manual');
+    await controller.sync();
 
     expect(listSpy).not.toHaveBeenCalled();
     expect(vscode.window.setStatusBarMessage).toHaveBeenCalledWith(
@@ -83,8 +91,8 @@ describe('SyncController and the cross-app sync lock', () => {
       const listSpy = jest.spyOn(provider, 'list');
       const controller = makeController(root);
 
-      controller.setLibrary(libraryLayout(vscode.Uri.file(other), vscode.Uri.joinPath), new VscodeFileSystem(path.join(other, '.research', 'tmp')));
-      await controller.sync('manual');
+      controller.setLibrary(libraryLayout(vscode.Uri.file(other), vscode.Uri.joinPath), new VscodeFileSystem(path.join(other, '.research', 'tmp')), logger);
+      await controller.sync();
 
       expect(listSpy).toHaveBeenCalled();
       expect(JSON.parse(fs.readFileSync(lockFile(root), 'utf8')).token).toBe('terminal-token');
@@ -94,17 +102,18 @@ describe('SyncController and the cross-app sync lock', () => {
     }
   });
 
-  it('stays quiet when an automatic sync finds the lock taken', async () => {
-    holdLockAsTerminal();
+  it('logs a failed sync as an error and shows it', async () => {
     const controller = makeController(root);
-    await controller.sync('auto');
-    expect(vscode.window.setStatusBarMessage).not.toHaveBeenCalled();
+    jest.spyOn(provider, 'resolveRoot').mockRejectedValueOnce(new Error('Drive is down'));
+    await controller.sync();
+    expect(logs).toContainEqual({ level: 'ERROR', message: 'Sync failed' });
+    expect(vscode.window.showErrorMessage).toHaveBeenCalledWith('LabShelf Sync: Drive is down');
     controller.dispose();
   });
 
   it('syncs, records the run for the other apps and releases the lock', async () => {
     const controller = makeController(root);
-    await controller.sync('manual');
+    await controller.sync();
 
     expect(fs.existsSync(lockFile(root))).toBe(false);
     // Atomic write: the content goes to a temp file that is renamed to the record's path.
@@ -124,9 +133,43 @@ describe('SyncController and the cross-app sync lock', () => {
     }));
     const listSpy = jest.spyOn(provider, 'list');
     const controller = makeController(root);
-    await controller.sync('manual');
+    await controller.sync();
     expect(listSpy).toHaveBeenCalled();
     expect(fs.existsSync(lockFile(root))).toBe(false);
     controller.dispose();
+  });
+
+  it('stays quiet when an automatic sync finds the lock taken or the user signed out', () => {
+    const statusBar = { text: '' } as vscode.StatusBarItem;
+    reportSyncOutcome(statusBar, { kind: 'busy', holder: undefined }, false);
+    reportSyncOutcome(statusBar, { kind: 'skipped', reason: 'not signed in to Google Drive' }, false);
+    expect(vscode.window.setStatusBarMessage).not.toHaveBeenCalled();
+    expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
+  });
+
+  it('re-reads the interval setting on connect and on a change, and stops periodic syncs on disconnect', async () => {
+    const armed = new Map<SyncTimerId, number>();
+    const timers: SyncTimers = { start: (id, delayMs) => { armed.set(id, delayMs); }, cancel: (id) => { armed.delete(id); } };
+    const workspace = vscode.workspace as unknown as { _config: Record<string, Record<string, unknown>>; _fireConfigChange(section: string): void };
+    workspace._config['labshelf'] = { 'sync.autoSyncIntervalMinutes': 5 };
+    const controller = makeController(root, timers);
+    try {
+      await controller.initialize();
+      expect(armed.get('periodic')).toBe(5 * 60_000);
+
+      workspace._config['labshelf'] = { 'sync.autoSyncIntervalMinutes': 7 };
+      await controller.connect();
+      expect(armed.get('periodic')).toBe(7 * 60_000);
+
+      workspace._config['labshelf'] = { 'sync.autoSyncIntervalMinutes': 9 };
+      workspace._fireConfigChange('labshelf.sync.autoSyncIntervalMinutes');
+      expect(armed.get('periodic')).toBe(9 * 60_000);
+
+      await controller.disconnect();
+      expect(armed.has('periodic')).toBe(false);
+    } finally {
+      controller.dispose();
+      delete workspace._config['labshelf'];
+    }
   });
 });

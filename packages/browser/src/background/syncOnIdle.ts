@@ -3,12 +3,12 @@
  * threshold is 5 minutes (matching the plan) and a minimum gap prevents the
  * trigger from firing more than once per minute, so locking/unlocking the
  * machine in quick succession doesn't queue a flurry of syncs.
- * @depends platform/browserApi, platform/logger, background/autoSyncScheduler
- * @dependents background/index
  */
 import { bx } from "../platform/browserApi";
 import { BrowserLogger } from "../platform/logger";
-import type { SyncTrigger } from "./autoSyncScheduler";
+
+/** Starts a sync for the given reason. */
+export type SyncTrigger = (reason: string) => void;
 
 const IDLE_DETECTION_SECONDS = 300;
 const MIN_GAP_MS = 60_000;
@@ -21,7 +21,6 @@ export interface IdleSyncOptions {
 /**
  * Subscribes to bx.idle transitions and forwards the "idle" state to the sync
  * trigger.
- * @usedBy background/index
  */
 export function installIdleSyncTrigger(opts: IdleSyncOptions): void {
   const { trigger, logger = new BrowserLogger("idle") } = opts;

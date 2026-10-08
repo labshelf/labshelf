@@ -1,23 +1,5 @@
-import { SyncLock, parseSyncLock, type LockStore } from "@labshelf/core";
-
-/** In-memory LockStore with an atomic exclusive create. */
-class MemoryLockStore implements LockStore {
-  files = new Map<string, string>();
-  async createExclusive(path: string, text: string): Promise<boolean> {
-    if (this.files.has(path)) return false;
-    this.files.set(path, text);
-    return true;
-  }
-  async read(path: string): Promise<string | undefined> {
-    return this.files.get(path);
-  }
-  async write(path: string, text: string): Promise<void> {
-    this.files.set(path, text);
-  }
-  async remove(path: string): Promise<void> {
-    this.files.delete(path);
-  }
-}
+import { SyncLock, parseSyncLock } from "@labshelf/core";
+import { MemoryLockStore } from "../../support/syncFakes.js";
 
 const PATH = "/lib/.research/sync/google-drive.lock";
 const vscode = { app: "vscode", pid: 100, host: "laptop" };

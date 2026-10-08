@@ -1,57 +1,30 @@
 /**
- * Schedules periodic background sync via bx.alarms. Reads autoSyncMinutes from
- * the persisted settings and re-creates the alarm whenever that value changes,
- * so the options page edits take effect without an extension reload. The
- * trigger is invoked with reason="alarm" when the alarm fires.
- * @depends platform/browserApi, platform/settings, platform/logger
- * @dependents background/index
+ * Keeps the periodic sync interval in step with the autoSyncMinutes setting, so an edit in the options page takes
+ * effect without an extension reload.
  */
 import { bx } from "../platform/browserApi";
 import { getSettings } from "../platform/settings";
-import { BrowserLogger } from "../platform/logger";
+import type { BrowserLogger } from "../platform/logger";
 
-export const AUTO_SYNC_ALARM = "labshelf.autoSync";
 const SETTINGS_KEY = "labshelf.settings";
 
-/** Fired by every Phase 7 trigger source; the background wires it to BrowserSyncController.sync. */
-export type SyncTrigger = (reason: string) => void;
-
 export interface AutoSyncSchedulerOptions {
-  trigger: SyncTrigger;
-  logger?: BrowserLogger;
+  sync: { startPeriodic(minutes: number): void };
+  logger: BrowserLogger;
 }
 
-/**
- * Installs the recurring alarm and the storage listener that adapts the
- * interval when the user changes it in the options page.
- * @usedBy background/index
- */
+/** Applies the interval now and whenever the setting changes. */
 export async function installAutoSyncScheduler(opts: AutoSyncSchedulerOptions): Promise<void> {
-  const { trigger, logger = new BrowserLogger("scheduler") } = opts;
-
-  await applyInterval(logger);
-
-  bx.alarms.onAlarm.addListener((alarm) => {
-    if (alarm.name !== AUTO_SYNC_ALARM) return;
-    trigger("alarm");
-  });
-
+  await applyInterval(opts);
   bx.storage.onChanged.addListener((changes, areaName) => {
     if (areaName !== "local") return;
     if (!(SETTINGS_KEY in changes)) return;
-    void applyInterval(logger);
+    void applyInterval(opts);
   });
 }
 
-async function applyInterval(logger: BrowserLogger): Promise<void> {
+async function applyInterval({ sync, logger }: AutoSyncSchedulerOptions): Promise<void> {
   const { autoSyncMinutes } = await getSettings();
-  await bx.alarms.clear(AUTO_SYNC_ALARM);
-  if (autoSyncMinutes <= 0) {
-    await logger.info("auto-sync disabled");
-    return;
-  }
-  // Chrome MV3 enforces a 1-minute minimum periodInMinutes in production.
-  const period = Math.max(1, Math.floor(autoSyncMinutes));
-  await bx.alarms.create(AUTO_SYNC_ALARM, { periodInMinutes: period });
-  await logger.info("auto-sync scheduled", { periodInMinutes: period });
+  sync.startPeriodic(autoSyncMinutes);
+  await logger.info(autoSyncMinutes > 0 ? "auto-sync scheduled" : "auto-sync disabled", { autoSyncMinutes });
 }

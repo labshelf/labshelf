@@ -43,69 +43,12 @@
   },
   {
     "type": "dependency",
-    "from": "packages/browser/src/background/badgeUpdater.ts",
-    "to": "packages/browser/src/platform/browserApi.ts",
-    "unresolvedTo": "../platform/browserApi",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/background/badgeUpdater.ts",
-    "to": "packages/browser/src/sync/browserSyncController.ts",
-    "unresolvedTo": "../sync/browserSyncController",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "packages/browser/src/background/draftCache.ts",
     "to": "packages/browser/src/platform/runtimeMessages.ts",
     "unresolvedTo": "../platform/runtimeMessages",
     "dependencyTypes": [
       "local",
       "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/background/eventDebouncer.ts",
-    "to": "packages/browser/src/platform/browserApi.ts",
-    "unresolvedTo": "../platform/browserApi",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/background/eventDebouncer.ts",
-    "to": "packages/browser/src/platform/logger.ts",
-    "unresolvedTo": "../platform/logger",
-    "dependencyTypes": [
-      "local",
       "import"
     ],
     "rule": {
@@ -217,20 +160,6 @@
     "from": "packages/browser/src/background/index.ts",
     "to": "packages/browser/src/sync/auth/browserDriveAuth.ts",
     "unresolvedTo": "../sync/auth/browserDriveAuth",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/background/index.ts",
-    "to": "packages/browser/src/sync/browserSyncController.ts",
-    "unresolvedTo": "../sync/browserSyncController",
     "dependencyTypes": [
       "local",
       "import"
@@ -2059,62 +1988,6 @@
   },
   {
     "type": "dependency",
-    "from": "packages/browser/src/sync/browserSyncController.ts",
-    "to": "packages/browser/src/storage/idbManifestFileSystem.ts",
-    "unresolvedTo": "../storage/idbManifestFileSystem",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/sync/browserSyncController.ts",
-    "to": "packages/browser/src/storage/indexedDbFileSystem.ts",
-    "unresolvedTo": "../storage/indexedDbFileSystem",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/sync/browserSyncController.ts",
-    "to": "packages/browser/src/storage/paperRecordStore.ts",
-    "unresolvedTo": "../storage/paperRecordStore",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/sync/browserSyncController.ts",
-    "to": "packages/browser/src/sync/auth/browserDriveAuth.ts",
-    "unresolvedTo": "./auth/browserDriveAuth",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "packages/browser/src/ui/pdfCopy.ts",
     "to": "packages/browser/src/platform/runtimeMessages.ts",
     "unresolvedTo": "../platform/runtimeMessages",
@@ -2421,48 +2294,6 @@
   {
     "type": "dependency",
     "from": "packages/terminal/src/app/context.ts",
-    "to": "packages/terminal/src/sync/driveAuth.ts",
-    "unresolvedTo": "../sync/driveAuth.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/app/context.ts",
-    "to": "packages/terminal/src/sync/syncService.ts",
-    "unresolvedTo": "../sync/syncService.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/app/context.ts",
-    "to": "packages/terminal/src/sync/tokenStore.ts",
-    "unresolvedTo": "../sync/tokenStore.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/app/context.ts",
     "to": "packages/terminal/src/tui/graphics.ts",
     "unresolvedTo": "../tui/graphics.js",
     "dependencyTypes": [
@@ -2509,34 +2340,6 @@
     "from": "packages/terminal/src/cli/commands.ts",
     "to": "packages/terminal/src/platform/system.ts",
     "unresolvedTo": "../platform/system.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/cli/commands.ts",
-    "to": "packages/terminal/src/sync/driveAuth.ts",
-    "unresolvedTo": "../sync/driveAuth.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/cli/commands.ts",
-    "to": "packages/terminal/src/sync/tokenStore.ts",
-    "unresolvedTo": "../sync/tokenStore.js",
     "dependencyTypes": [
       "local",
       "import"
@@ -2830,20 +2633,6 @@
   },
   {
     "type": "dependency",
-    "from": "packages/terminal/src/sync/syncService.ts",
-    "to": "packages/terminal/src/platform/nodeLockStore.ts",
-    "unresolvedTo": "../platform/nodeLockStore.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "packages/terminal/src/sync/tokenStore.ts",
     "to": "packages/terminal/src/platform/system.ts",
     "unresolvedTo": "../platform/system.js",
@@ -2893,21 +2682,6 @@
     "unresolvedTo": "../platform/system.js",
     "dependencyTypes": [
       "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/ui/app.ts",
-    "to": "packages/terminal/src/sync/syncService.ts",
-    "unresolvedTo": "../sync/syncService.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
       "import"
     ],
     "rule": {

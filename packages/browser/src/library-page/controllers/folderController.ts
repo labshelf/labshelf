@@ -3,7 +3,7 @@
  * Prompts use the in-page input box and dialog; sync runs separately and is only asked to run soon.
  */
 import { baseName, countPapersUnder, findNode, isUnderDir, parentDir, validateFolderName } from "@labshelf/core";
-import { BrowserLogger } from "../../platform/logger";
+import { BrowserLogger } from "../../platform";
 import { createLibraryMutations } from "../../storage";
 import { confirmDialog } from "../../ui/dialog";
 import { inputBox } from "../../ui/quickInput";

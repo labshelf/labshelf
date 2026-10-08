@@ -1,277 +1,170 @@
-/** Orchestrates the sync lifecycle — auth, engine wiring, debounced auto-sync on library events, periodic polling, and status bar feedback. Shares the library with the terminal app: both hold the core SyncLock while syncing, name Drive folders with the same core rule, and record each run in the shared last-run file. */
+/** Drives the core sync coordinator from VS Code: Drive sign-in, library events, the interval setting and the status bar. */
 import * as os from "node:os";
 import * as vscode from "vscode";
 
-import {
-  SYNC_PROVIDER_ID,
-  syncRoots,
-  type LibraryLayout,
-  buildLibraryFolderNames,
-  createGoogleDriveProvider,
-  readSyncRunRecord,
-  summarizeSyncResult,
-  SyncEngine,
-  SyncLock,
-  SyncManifest,
-  writeSyncRunRecord,
-} from "@labshelf/core";
-import type { LocalFileSystem, SyncResult, FolderNameMaps, SyncLockInfo } from "@labshelf/core";
+import { createGoogleDriveProvider, SyncCoordinator, syncRoots, type LibraryLayout } from "@labshelf/core";
+import type { ILogger, LocalFileSystem, RemoteProvider, SyncOutcome, SyncResult, SyncTarget, SyncTimers } from "@labshelf/core";
 import { GoogleDriveAuth } from "../auth/googleDriveAuth.js";
 import { isProcessAlive, NodeLockStore } from "./nodeLockStore.js";
+import { reportSyncOutcome } from "./syncReport.js";
 import type { EventBus } from "../../events/index.js";
 
-const DEBOUNCE_MS = 30_000;
-const APP_ID = "vscode";
+export interface SyncControllerDeps {
+  context: vscode.ExtensionContext;
+  paths: LibraryLayout<vscode.Uri>;
+  localFs: LocalFileSystem;
+  eventBus: EventBus;
+  logger: ILogger;
+  /** Paper id → title pairs used to name Drive folders. */
+  listTitles?: () => Promise<Iterable<readonly [string, string]>>;
+  /** Injectable for tests; defaults to the Drive provider. */
+  createProvider?: (auth: GoogleDriveAuth) => RemoteProvider;
+  /** Injectable for tests; defaults to setTimeout and setInterval. */
+  timers?: SyncTimers;
+}
 
-/** Where a sync request came from: a manual one reports a busy lock, an automatic one stays quiet. */
-export type SyncReason = "manual" | "auto";
+const INTERVAL_SETTING = "sync.autoSyncIntervalMinutes";
 
 export class SyncController implements vscode.Disposable {
   private readonly auth: GoogleDriveAuth;
+  private readonly coordinator: SyncCoordinator;
+  private paths: LibraryLayout<vscode.Uri>;
   private localFs: LocalFileSystem;
+  private logger: ILogger;
   private readonly statusBar: vscode.StatusBarItem;
   private readonly _onDidChangeStatus = new vscode.EventEmitter<void>();
   readonly onDidChangeStatus: vscode.Event<void> = this._onDidChangeStatus.event;
-  // Fired after a successful sync so the host can re-index when Drive pulled
-  // files in (a paper, or a paper's PDF, that arrived on another device).
+  // Fired after a successful sync so the host can re-index when Drive pulled files in.
   private readonly _onDidSync = new vscode.EventEmitter<SyncResult>();
   readonly onDidSync: vscode.Event<SyncResult> = this._onDidSync.event;
-  private debounceTimer: ReturnType<typeof setTimeout> | undefined;
-  private periodicTimer: ReturnType<typeof setInterval> | undefined;
-  private syncing = false;
-  private lastSyncTime: string | null = null;
-  private readonly disposables: vscode.Disposable[] = [];
+  private readonly configListener: vscode.Disposable;
 
-  constructor(
-    private readonly context: vscode.ExtensionContext,
-    private paths: LibraryLayout<vscode.Uri>,
-    localFs: LocalFileSystem,
-    eventBus: EventBus,
-    /** Returns a paperId → title map used to name Drive folders. */
-    private readonly getPaperTitles?: () => Promise<Map<string, string>>,
-  ) {
-    this.auth = new GoogleDriveAuth(context);
-    this.localFs = localFs;
-
+  constructor(deps: SyncControllerDeps) {
+    this.auth = new GoogleDriveAuth(deps.context);
+    this.paths = deps.paths;
+    this.localFs = deps.localFs;
+    this.logger = deps.logger;
     this.statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 50);
     this.statusBar.command = "labshelf.sync.now";
-    this.disposables.push(this.statusBar);
-
-    // Debounce a sync whenever any library change event fires.
-    const scheduleSync = (): void => this.scheduleDebounce();
-    eventBus.on("paper:added", scheduleSync);
-    eventBus.on("paper:deleted", scheduleSync);
-    eventBus.on("paper:updated", scheduleSync);
-    eventBus.on("annotation:created", scheduleSync);
-    eventBus.on("annotation:updated", scheduleSync);
-    eventBus.on("annotation:deleted", scheduleSync);
+    const createProvider = deps.createProvider ?? createGoogleDriveProvider;
+    this.coordinator = new SyncCoordinator({
+      app: "vscode",
+      host: os.hostname(),
+      pid: process.pid,
+      getTarget: () => this.target(),
+      auth: { isAuthenticated: () => this.auth.isAuthenticated() },
+      createProvider: () => createProvider(this.auth),
+      ...(deps.listTitles ? { listTitles: deps.listTitles } : {}),
+      // The logger follows setLibrary: each library writes its own log.
+      logger: { log: (...args) => this.logger.log(...args), error: (...args) => this.logger.error(...args) },
+      onOutcome: (outcome, reason) => this.onOutcome(outcome, reason),
+      ...(deps.timers ? { timers: deps.timers } : {}),
+    });
+    this.coordinator.onStatus((status) => {
+      if (status.state === "syncing") { this.statusBar.text = "$(sync~spin) LabShelf Sync"; }
+      this._onDidChangeStatus.fire();
+    });
+    const schedule = (): void => this.coordinator.scheduleLocalChange();
+    for (const event of ["paper:added", "paper:deleted", "paper:updated", "annotation:created", "annotation:updated", "annotation:deleted"] as const) {
+      deps.eventBus.on(event, schedule);
+    }
+    this.configListener = vscode.workspace.onDidChangeConfiguration((e) => {
+      if (e.affectsConfiguration(`labshelf.${INTERVAL_SETTING}`)) { this.applyInterval(); }
+    });
   }
 
   /** Points the controller at another library, so the lock, manifest and synced folders follow a reconfigured root. */
-  setLibrary(paths: LibraryLayout<vscode.Uri>, localFs: LocalFileSystem): void {
+  setLibrary(paths: LibraryLayout<vscode.Uri>, localFs: LocalFileSystem, logger: ILogger): void {
     this.paths = paths;
     this.localFs = localFs;
+    this.logger = logger;
   }
 
-  /** Loads persisted auth state and starts periodic sync if already authenticated */
+  /** Loads persisted auth state and the last run, and starts periodic syncs when signed in. */
   async initialize(): Promise<void> {
     await this.auth.loadPersistedState();
+    await this.coordinator.init();
     this.updateStatusBar();
-    if (this.auth.isAuthenticated()) {
-      this.startPeriodicSync();
-    }
+    this.applyInterval();
   }
 
-  /** Authenticates with Google Drive, starts periodic sync, and runs an initial sync */
+  /** Authenticates with Google Drive and runs an initial sync. */
   async connect(): Promise<void> {
     await this.auth.authenticate();
+    this.coordinator.refreshAuth();
     this.updateStatusBar();
-    this.startPeriodicSync();
+    this.applyInterval();
     vscode.window.showInformationMessage("LabShelf: Connected to Google Drive.");
     await this.sync();
   }
 
-  /** Stops periodic sync and revokes Google Drive credentials */
+  /** Revokes Google Drive credentials and stops scheduled syncs. */
   async disconnect(): Promise<void> {
-    this.stopPeriodicSync();
+    this.coordinator.cancelScheduled();
+    this.coordinator.startPeriodic(0);
     await this.auth.revoke();
+    this.coordinator.refreshAuth();
     this.updateStatusBar();
     vscode.window.showInformationMessage("LabShelf: Disconnected from Google Drive.");
   }
 
-  /** Runs a full sync if authenticated, updating the status bar and reporting results. Skips (quietly when automatic) while another app — the terminal, another window — holds the library's sync lock */
-  async sync(reason: SyncReason = "manual"): Promise<void> {
-    if (!this.auth.isAuthenticated()) {
-      if (reason === "manual") {
-        vscode.window.showWarningMessage("LabShelf Sync: connect to Google Drive first.");
-      }
-      return;
-    }
-    if (this.syncing) { return; }
-    this.syncing = true;
-    this.statusBar.text = "$(sync~spin) LabShelf Sync";
-    this.statusBar.show();
-    this._onDidChangeStatus.fire();
-
-    try {
-      const lock = new SyncLock(new NodeLockStore(), this.lockPath(), { app: APP_ID, pid: process.pid, host: os.hostname() }, { isProcessAlive });
-      const attempt = await lock.runExclusive(() => this.runEngine());
-      if (!attempt.ran) {
-        this.reportBusy(attempt.holder, reason);
-        return;
-      }
-      const result = attempt.value;
-      this.lastSyncTime = new Date().toLocaleTimeString();
-      await this.recordRun(result);
-      this.reportResult(result);
-      this._onDidSync.fire(result);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      vscode.window.showErrorMessage(`LabShelf Sync: ${msg}`);
-      this.statusBar.text = "$(sync-ignored) LabShelf";
-    } finally {
-      this.syncing = false;
-      this._onDidChangeStatus.fire();
-    }
+  /** Runs a sync on the user's request; the outcome is reported in the status bar and toasts. */
+  async sync(): Promise<void> {
+    await this.coordinator.syncNow("manual");
   }
 
-  /** Returns whether the controller is currently authenticated with Google Drive */
   isConnected(): boolean {
     return this.auth.isAuthenticated();
   }
 
-  /** Returns whether a sync operation is currently in progress */
   isSyncing(): boolean {
-    return this.syncing;
+    return this.coordinator.status().state === "syncing";
   }
 
-  /** Returns the locale time string of the last successful sync, or null */
+  /** @returns the local time of the last successful sync of this library by any app, or null */
   getLastSyncTime(): string | null {
-    return this.lastSyncTime;
+    const finishedAt = this.coordinator.status().lastRun?.finishedAt;
+    return finishedAt ? new Date(finishedAt).toLocaleTimeString() : null;
   }
 
-  // Builds the paperId ↔ display title translation maps used to name Drive folders (the core rule the terminal shares).
-  private async buildFolderNames(): Promise<FolderNameMaps | undefined> {
-    if (!this.getPaperTitles) return undefined;
-    return buildLibraryFolderNames(await this.getPaperTitles());
+  // Periodic syncs run only while signed in, at the interval the setting holds now.
+  private applyInterval(): void {
+    const minutes = vscode.workspace.getConfiguration("labshelf").get<number>(INTERVAL_SETTING, 15);
+    this.coordinator.startPeriodic(this.auth.isAuthenticated() ? minutes : 0);
   }
 
-  private lockPath(): string {
-    return this.paths.lockPath().fsPath;
-  }
-
-  private lastRunPath(): string {
-    return this.paths.lastRunPath().fsPath;
-  }
-
-  // Records the run for the other apps on this library; a failure here must not fail the sync itself.
-  private async recordRun(result: SyncResult): Promise<void> {
-    try {
-      await writeSyncRunRecord(this.localFs, this.lastRunPath(), summarizeSyncResult(result, APP_ID, os.hostname()));
-    } catch {
-      // The record is informational.
-    }
-  }
-
-  // Another app is syncing this library: its changes arrive through the file watcher, so only a manual request says so.
-  private reportBusy(holder: SyncLockInfo | undefined, reason: SyncReason): void {
-    this.statusBar.text = "$(cloud) LabShelf";
-    if (reason === "manual") {
-      const who = holder?.app === "terminal" ? "The LabShelf terminal app" : "Another LabShelf window";
-      vscode.window.setStatusBarMessage(`LabShelf Sync: ${who} is syncing this library right now.`, 6000);
-    }
-  }
-
-  // True when any app on this library synced within the last half interval, so a periodic run would find nothing new.
-  private async syncedRecently(intervalMs: number): Promise<boolean> {
-    const last = await readSyncRunRecord(this.localFs, this.lastRunPath()).catch(() => undefined);
-    return last !== undefined && Date.now() - Date.parse(last.finishedAt) < intervalMs / 2;
-  }
-
-  // Instantiates the provider, manifest, and engine, then runs a full sync.
-  private async runEngine(): Promise<SyncResult> {
-    const provider = createGoogleDriveProvider(this.auth);
-    const manifestPath = this.paths.manifestPath().fsPath;
-    const manifest = await SyncManifest.load(this.localFs, manifestPath, SYNC_PROVIDER_ID);
-    const folderNames = await this.buildFolderNames();
+  private target(): SyncTarget {
     const roots = syncRoots(this.paths);
-    const engine = new SyncEngine({
-      provider,
-      fs: this.localFs,
-      manifest,
+    return {
+      files: this.localFs,
       roots: { library: roots.library.fsPath, appdata: roots.appdata.fsPath },
-      ...(folderNames !== undefined ? { libraryFolderNames: folderNames } : {}),
-    });
-    return engine.run();
+      state: { fs: this.localFs, manifestPath: this.paths.manifestPath().fsPath, lastRunPath: this.paths.lastRunPath().fsPath },
+      lock: { store: new NodeLockStore(), path: this.paths.lockPath().fsPath, isProcessAlive },
+    };
   }
 
-  // Displays a status bar message and optional warning for conflicts after a sync run.
-  private reportResult(result: SyncResult): void {
-    const total = result.namespaces.reduce(
-      (acc, ns) => acc + ns.uploaded + ns.downloaded + ns.deletedLocal + ns.deletedRemote,
-      0,
-    );
-    const conflicts = result.namespaces.flatMap(ns => ns.conflicts);
-    const now = new Date().toLocaleTimeString();
-    this.statusBar.text = `$(cloud) LabShelf (${now})`;
-
-    if (conflicts.length > 0) {
-      vscode.window.showWarningMessage(
-        `LabShelf Sync: ${conflicts.length} conflict(s) detected. Duplicate files saved with a "(conflict)" suffix.`,
-      );
-    } else if (total > 0) {
-      vscode.window.setStatusBarMessage(`LabShelf Sync: ${total} file(s) synced`, 4000);
-    }
-  }
-
-  // Schedules a debounced sync if authenticated, resetting any pending timer.
-  private scheduleDebounce(): void {
-    if (!this.auth.isAuthenticated()) { return; }
-    clearTimeout(this.debounceTimer);
-    this.debounceTimer = setTimeout(() => { void this.sync("auto"); }, DEBOUNCE_MS);
-  }
-
-  // Starts the periodic sync interval using the configured autoSyncIntervalMinutes setting.
-  private startPeriodicSync(): void {
-    this.stopPeriodicSync();
-    const intervalMin = vscode.workspace
-      .getConfiguration("labshelf")
-      .get<number>("sync.autoSyncIntervalMinutes", 15);
-    const intervalMs = intervalMin * 60_000;
-    this.periodicTimer = setInterval(() => {
-      void this.syncedRecently(intervalMs).then((recent) => { if (!recent) { void this.sync("auto"); } });
-    }, intervalMs);
-  }
-
-  // Clears the periodic sync interval if running.
-  private stopPeriodicSync(): void {
-    if (this.periodicTimer !== undefined) {
-      clearInterval(this.periodicTimer);
-      this.periodicTimer = undefined;
-    }
+  private onOutcome(outcome: SyncOutcome, reason: string): void {
+    reportSyncOutcome(this.statusBar, outcome, reason === "manual");
+    if (outcome.kind === "synced") { this._onDidSync.fire(outcome.result); }
   }
 
   // Updates the status bar item to reflect the current auth state.
   private updateStatusBar(): void {
-    if (this.auth.isAuthenticated()) {
-      this.statusBar.text = "$(cloud) LabShelf";
-      this.statusBar.tooltip = "LabShelf: synced with Google Drive. Click to sync.";
-      this.statusBar.command = "labshelf.sync.now";
-      this.statusBar.show();
-    } else {
-      this.statusBar.text = "$(cloud-upload) LabShelf";
-      this.statusBar.tooltip = "LabShelf: not synced. Click to connect to Drive.";
-      this.statusBar.command = "labshelf.sync.connect";
-      this.statusBar.show();
-    }
+    const connected = this.auth.isAuthenticated();
+    this.statusBar.text = connected ? "$(cloud) LabShelf" : "$(cloud-upload) LabShelf";
+    this.statusBar.tooltip = connected
+      ? "LabShelf: synced with Google Drive. Click to sync."
+      : "LabShelf: not synced. Click to connect to Drive.";
+    this.statusBar.command = connected ? "labshelf.sync.now" : "labshelf.sync.connect";
+    this.statusBar.show();
     this._onDidChangeStatus.fire();
   }
 
   dispose(): void {
-    clearTimeout(this.debounceTimer);
-    this.stopPeriodicSync();
+    void this.coordinator.stop();
+    this.configListener.dispose();
     this._onDidChangeStatus.dispose();
     this._onDidSync.dispose();
-    this.disposables.forEach(d => d.dispose());
+    this.statusBar.dispose();
   }
 }

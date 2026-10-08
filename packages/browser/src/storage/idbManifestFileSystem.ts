@@ -6,9 +6,6 @@
  * Only readFile, writeFile, and stat are meaningful here — the other methods
  * are no-ops or empty stubs that satisfy the interface but are never called by
  * SyncManifest.
- *
- * @depends idb/db, @labshelf/core LocalFileSystem, LocalStat
- * @dependents sync/browserSyncController
  */
 import type { LocalFileSystem, LocalStat } from "@labshelf/core";
 import { getDb } from "./idb/db";

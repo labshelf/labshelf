@@ -25,7 +25,6 @@ export interface OAuthClient {
 
 /**
  * The OAuth client: environment first, then the credentials bundled at build time.
- * @usedBy app/context, cli doctor
  * @returns the client, or undefined when none is configured
  */
 export function resolveOAuthClient(env: NodeJS.ProcessEnv = process.env): OAuthClient | undefined {
@@ -79,7 +78,6 @@ export class CliDriveAuth implements IAuthProvider {
 
   /**
    * Loads stored tokens once.
-   * @usedBy sync/syncService
    * @returns void
    */
   async load(): Promise<void> {
@@ -109,7 +107,6 @@ export class CliDriveAuth implements IAuthProvider {
 
   /**
    * Runs the PKCE loopback flow and stores the tokens.
-   * @usedBy cli auth login, ui/app (:login)
    * @returns void
    */
   async login(options: LoginOptions): Promise<void> {
@@ -144,7 +141,6 @@ export class CliDriveAuth implements IAuthProvider {
 
   /**
    * Revokes the refresh token (best effort) and forgets it.
-   * @usedBy cli auth logout, ui/app (:logout)
    * @returns void
    */
   async revoke(): Promise<void> {

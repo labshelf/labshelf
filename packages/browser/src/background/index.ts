@@ -1,13 +1,7 @@
 /**
- * Background entry. In MV3 Chrome this runs as a service worker; in Firefox
- * it runs as a non-persistent background script. Wires Drive auth, sync
- * controller, capture, the Phase 7 schedulers (alarm + idle + debouncer) and
- * the toolbar badge updater into the runtime message channel so popup,
- * options, library-page and the Google Scholar buttons can drive every flow.
- *          sync/auth/browserDriveAuth, sync/browserSyncController, capture/index,
- *          storage, library-page/state/derive, library-page/router,
- *          background/draftCache, background/autoSyncScheduler, background/syncOnIdle,
- *          background/eventDebouncer, background/badgeUpdater.
+ * Background entry (MV3 service worker in Chrome, non-persistent background script in Firefox). Wires Drive auth, the
+ * sync coordinator and its triggers, capture and the toolbar badge into the runtime message channel that the popup,
+ * options, library page and Google Scholar buttons use.
  */
 import { bx } from "../platform/browserApi";
 import { BrowserLogger } from "../platform/logger";
@@ -17,45 +11,47 @@ import type {
 } from "../platform/runtimeMessages";
 import { getSettings } from "../platform/settings";
 import { BrowserDriveAuth } from "../sync/auth/browserDriveAuth";
-import { BrowserSyncController } from "../sync/browserSyncController";
+import { createBrowserSync } from "../sync";
 import {
   attachPdfToPaper, draftFromRecord, findInLibrary, findPdf, refreshExisting, resetPdfSearch,
   safeFolder, saveOrAsk, summarizeAttempts,
 } from "../capture/index";
 import type { CaptureDraft, SaveDecision, SavedPaper } from "../capture/index";
-import { IndexedDbFileSystem, buildFolderTree, createLibraryMutations, listAllRecords, pdfDirs } from "../storage";
+import { IndexedDbFileSystem, buildFolderTree, createLibraryMutations, listAllRecords, pdfDirs, rebuildFromFiles } from "../storage";
 import { ROOT } from "../library-page/state/derive";
 import { hashForFolder } from "../library-page/router";
 import { draftForTab, forgetDraft, forgetPaper, scholarDraftFor } from "./draftCache";
 import { isScholarUrl } from "../content/scholarParse";
 import { installAutoSyncScheduler } from "./autoSyncScheduler";
-import type { SyncTrigger } from "./autoSyncScheduler";
 import { installIdleSyncTrigger } from "./syncOnIdle";
-import { SyncDebouncer } from "./eventDebouncer";
+import { createSyncMessages } from "./syncMessages";
+import { AlarmSyncTimers } from "./alarmSyncTimers";
 import { installBadgeUpdater } from "./badgeUpdater";
 import { PDF_FILE, parentDir, type FolderTreeNode } from "@labshelf/core";
 
 const log = new BrowserLogger("background");
 const mutations = createLibraryMutations(log);
 const auth = new BrowserDriveAuth();
-const sync = new BrowserSyncController(auth);
+const timers = new AlarmSyncTimers(log);
+const sync = createBrowserSync({
+  auth,
+  logger: log,
+  timers,
+  onSynced: async () => {
+    await rebuildFromFiles();
+    // A sync may have downloaded PDFs; let open pages refresh presence.
+    broadcastChanged("sync");
+  },
+});
+timers.listen((id) => { void sync.onTimer(id); });
+void sync.init();
 
-const triggerSync: SyncTrigger = (reason) => {
-  void log.info("sync trigger", { reason });
-  void sync.sync()
-    .then(() => {
-      void log.info("sync completed", sync.status() as unknown as Record<string, unknown>);
-      // A sync may have downloaded PDFs; let open pages refresh presence.
-      broadcastChanged("sync");
-    })
-    .catch((err: unknown) => log.error("background", err, { op: "trigger", reason }));
-};
+const syncMessages = createSyncMessages(auth, sync, log);
+const scheduleSync = syncMessages.scheduleSoon;
 
-const debouncer = new SyncDebouncer(triggerSync);
-
-void installAutoSyncScheduler({ trigger: triggerSync, logger: log });
-installIdleSyncTrigger({ trigger: triggerSync, logger: log });
-installBadgeUpdater(() => sync.status());
+void installAutoSyncScheduler({ sync, logger: log });
+installIdleSyncTrigger({ trigger: syncMessages.trigger, logger: log });
+installBadgeUpdater(syncMessages.snapshot);
 
 bx.runtime.onInstalled.addListener((details) => {
   void log.info("extension installed", { reason: details.reason });
@@ -98,31 +94,17 @@ async function handle(msg: RuntimeMessage): Promise<unknown> {
     case "ping":
       return { pong: true, at: new Date().toISOString() };
     case "auth.status":
-      return { connected: auth.isAuthenticated() };
+      return syncMessages.authStatus();
     case "auth.connect":
-      await auth.authenticate();
-      await log.info("authenticated to Google Drive");
-      return { connected: true };
+      return syncMessages.connect();
     case "auth.disconnect":
-      await auth.revoke();
-      await log.info("disconnected from Google Drive");
-      return { connected: false };
+      return syncMessages.disconnect();
     case "sync.status":
-      return sync.status();
-    case "sync.now": {
-      // Fire-and-forget so the popup updates immediately. Cancel any pending
-      // debounced sync — it would just duplicate this one.
-      void debouncer.cancel();
-      void sync.sync()
-        .then(() => {
-          void log.info("sync completed", sync.status() as unknown as Record<string, unknown>);
-          broadcastChanged("sync");
-        })
-        .catch((err: unknown) => log.error("background", err, { op: "sync.now" }));
-      return sync.status();
-    }
+      return syncMessages.status();
+    case "sync.now":
+      return syncMessages.syncNow();
     case "sync.scheduleSoon":
-      await debouncer.schedule(msg.reason);
+      scheduleSync(msg.reason);
       return { scheduled: true };
     case "capture.inspect": {
       const draft = await draftForTab(msg.tabId, await tabUrl(msg.tabId));
@@ -175,7 +157,7 @@ async function handle(msg: RuntimeMessage): Promise<unknown> {
       if (!pdf) return { id, attached: false, miss: summarizeAttempts(draft.pdfAttempts) } satisfies AttachPdfData;
       const { written } = await attachPdfToPaper(id, pdf.bytes);
       if (written) {
-        void debouncer.schedule("capture.attachPdf");
+        scheduleSync("capture.attachPdf");
         broadcastChanged("attach", id);
       }
       return { id, attached: written, ...(written ? { source: pdf.source } : { alreadyHadPdf: true }) } satisfies AttachPdfData;
@@ -188,7 +170,7 @@ async function handle(msg: RuntimeMessage): Promise<unknown> {
       const { done, failed } = await mutations.trashPapers([{ id: record.id, path: record.path }]);
       if (!done.length) throw new Error(failed[0]?.error ?? "The paper could not be removed.");
       forgetPaper(record.id);
-      void debouncer.schedule("paper.remove");
+      scheduleSync("paper.remove");
       broadcastChanged("remove", record.id);
       await log.info("paper removed from popup", { id: record.id });
       return { removed: true };
@@ -260,7 +242,7 @@ function outcome(draft: CaptureDraft, decision: SaveDecision): SaveOutcome {
 
 // A capture wrote to IDB; coalesce the follow-up sync and tell open pages.
 function saved(result: SavedPaper): SavedPaperData {
-  void debouncer.schedule("capture");
+  scheduleSync("capture");
   const { paper } = result;
   broadcastChanged("capture", paper.id);
   return {
@@ -307,7 +289,7 @@ async function findPdfForPaper(id: string): Promise<AttachPdfData> {
     if (!pdf) return { id, attached: false, miss: summarizeAttempts(draft.pdfAttempts) };
     const { written } = await attachPdfToPaper(id, pdf.bytes);
     if (written) {
-      void debouncer.schedule("paper.findPdf");
+      scheduleSync("paper.findPdf");
       broadcastChanged("attach", id);
     }
     return { id, attached: written, ...(written ? { source: pdf.source } : { alreadyHadPdf: true }) };

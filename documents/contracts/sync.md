@@ -1,6 +1,6 @@
 # Contract: sync and several apps on one library
 
-Every app that syncs must follow this contract. Breaking it can delete or duplicate a user's papers on another device. The sync engine lives in core and is the same in every app. Apps supply only storage adapters, authentication and the triggers that start a sync.
+Every app that syncs must follow this contract. Breaking it can delete or duplicate a user's papers on another device. The sync engine and the coordinator that drives it live in core and are the same in every app. The coordinator runs one sync at a time, syncs 30 s after the last local change and runs periodic syncs. Apps supply only storage adapters, authentication, timers and the triggers that start a sync.
 
 ## Topology
 
@@ -16,6 +16,8 @@ VS Code and the terminal open the same local folder and share its manifest, so e
 |---|---|---|---|
 | `library` | visible folder `LabShelf Library` (scope `drive.file`) | `papers/` | one folder per paper, plus the user's folders |
 | `appdata` | hidden `appDataFolder` (scope `drive.appdata`) | `.research/papers/` | `<paperId>/data.json` sidecars |
+
+Dot files are synced like any other file. The browser marks an empty folder with a `.keep` file.
 
 Nothing else is uploaded. The SQLite index, logs and the files in `.research/sync/` stay on the device ([library-format.md](library-format.md)).
 

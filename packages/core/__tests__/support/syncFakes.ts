@@ -1,12 +1,15 @@
 /**
- * Test fakes: in-memory LocalFileSystem and RemoteProvider for sync tests.
+ * Test fakes for sync tests: in-memory file system, remote provider and lock store, and timers fired by hand.
  */
 import type {
   LocalFileSystem,
   LocalStat,
+  LockStore,
   RemoteFile,
   RemoteNamespace,
   RemoteProvider,
+  SyncTimerId,
+  SyncTimers,
 } from "../../src/index.js";
 
 /** In-memory filesystem keyed by absolute POSIX paths. */
@@ -241,5 +244,43 @@ export class FakeRemoteProvider implements RemoteProvider {
       data: Buffer.from(content, "utf8"),
     });
     return file;
+  }
+}
+
+/** In-memory LockStore with an atomic exclusive create. */
+export class MemoryLockStore implements LockStore {
+  readonly files = new Map<string, string>();
+
+  async createExclusive(path: string, text: string): Promise<boolean> {
+    if (this.files.has(path)) return false;
+    this.files.set(path, text);
+    return true;
+  }
+
+  async read(path: string): Promise<string | undefined> {
+    return this.files.get(path);
+  }
+
+  async write(path: string, text: string): Promise<void> {
+    this.files.set(path, text);
+  }
+
+  async remove(path: string): Promise<void> {
+    this.files.delete(path);
+  }
+}
+
+/** SyncTimers that only record what is armed; the test fires them through the coordinator's onTimer. */
+export class ManualSyncTimers implements SyncTimers {
+  readonly armed = new Map<SyncTimerId, { delayMs: number; repeat: boolean }>();
+  starts = 0;
+
+  start(id: SyncTimerId, delayMs: number, repeat: boolean): void {
+    this.starts += 1;
+    this.armed.set(id, { delayMs, repeat });
+  }
+
+  cancel(id: SyncTimerId): void {
+    this.armed.delete(id);
   }
 }

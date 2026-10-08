@@ -5,7 +5,7 @@
  */
 import * as path from "node:path";
 
-import { BibTeXService, Logger, PdfImportParser, type ILogger, type LibraryStore } from "@labshelf/core";
+import { BibTeXService, Logger, PdfImportParser, type ILogger, type LibraryStore, type SyncCoordinator } from "@labshelf/core";
 import { FileLogSink, NodeFileSystem } from "@labshelf/core/node";
 
 import type { TerminalConfig } from "./config.js";
@@ -15,9 +15,7 @@ import {
 import { cacheDir } from "../platform/dirs.js";
 import { moveToTrash, openExternal } from "../platform/system.js";
 import { defaultRenderer, ThumbnailService } from "../preview/thumbnails.js";
-import { CliDriveAuth, resolveOAuthClient } from "../sync/driveAuth.js";
-import { SyncService } from "../sync/syncService.js";
-import { createTokenStore } from "../sync/tokenStore.js";
+import { CliDriveAuth, createTerminalSync, createTokenStore, DriveAccount, resolveOAuthClient } from "../sync/index.js";
 import { detectImageProtocol, type ImageProtocol } from "../tui/graphics.js";
 
 export interface AppContext {
@@ -29,7 +27,8 @@ export interface AppContext {
   search: PaperSearchIndex;
   papers: TerminalPaperService;
   sidecars: SidecarReader;
-  sync: SyncService;
+  sync: SyncCoordinator;
+  drive: DriveAccount;
   thumbnails: ThumbnailService;
   thumbnailRenderer: string;
   imageProtocol: ImageProtocol;
@@ -66,8 +65,9 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
     openBrowser: (url) => openExternal(url),
     onUrl: (url) => void logger.log("INFO", "sync", "Google sign-in started", { url }),
   });
-  const sync = new SyncService({ paths, auth, store, logger });
+  const sync = createTerminalSync({ paths, auth, store, logger });
   await sync.init();
+  const drive = new DriveAccount(auth, sync, logger);
 
   let parser: PdfImportParser | undefined;
   const papers = new TerminalPaperService({
@@ -83,7 +83,7 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
       return parser;
     },
     trash: moveToTrash,
-    onLocalChange: () => sync.notifyLocalChange(),
+    onLocalChange: () => sync.scheduleLocalChange(),
   });
 
   const sidecars = new SidecarReader(paths);
@@ -121,6 +121,7 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
     papers,
     sidecars,
     sync,
+    drive,
     thumbnails,
     thumbnailRenderer: renderer.name,
     imageProtocol,

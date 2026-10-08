@@ -4,9 +4,9 @@
  */
 import type { PaperRecord, ResolvedMetadata } from "@labshelf/core";
 import { BibTeXService, PDF_FILE, PAPERS_DIR, claimCiteKey, makeCiteKey, normalizeTags } from "@labshelf/core";
-import { BrowserLogger } from "../platform/logger";
+import { BrowserLogger } from "../platform";
 import { IndexedDbFileSystem } from "../storage/indexedDbFileSystem";
-import { createLibraryMutations } from "../storage/libraryMutations";
+import { createLibraryMutations } from "../storage";
 import { listAllRecords, upsertRecord } from "../storage/paperRecordStore";
 
 const mutations = createLibraryMutations(new BrowserLogger("capture"));

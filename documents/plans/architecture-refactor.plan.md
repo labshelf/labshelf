@@ -59,6 +59,10 @@ When this plan is done, delete it and the note at the top of `architecture.md`.
   - **BC26** relative times read `just now`, `5m ago`, `3h ago`, `yesterday`, `4d ago`, `2w ago`, `Mar 4`, `Mar 2024` in every app; the terminal keeps `never` for no date (S4.5);
   - **BC27** a DOI stored as a `doi.org` URL links once, not doubled (S4.5);
   - **BC28** the VS Code watcher also ignores editor backups (`~`) and swap files (`.swp`) (S4.6).
+  - **BC29** a failed run-record write is logged and never fails a sync (S5.1);
+  - **BC30** after a sync, apps reload only when the `library` namespace changed; an appdata-only download does not reload the terminal (S5.1);
+  - **BC31** a browser sync requested while one runs joins it, and a sync while signed out returns a skipped outcome instead of throwing; VS Code logs sync failures (S5.1);
+  - **BC32** VS Code signs in with the terminal's PKCE flow: state check, `prompt=consent`, a 5-minute timeout, an error when Google returns no refresh token, `invalid_grant` clears the tokens and asks to sign in again, and the `LABSHELF_GOOGLE_CLIENT_ID`/`_SECRET` override; token refresh is single-flight. Stored tokens stay valid (S5.2).
 
 Open questions (each one blocks only the steps named):
 
@@ -225,7 +229,7 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S5.1 | Sync coordinator in core | S4.6 | H · main thread | all three apps drive it | [ ] |
+| S5.1 | Sync coordinator in core | S4.6 | H · main thread | all three apps drive it | [x] |
 | S5.2 | Node lock store and PKCE auth in core | S5.1 | M · module-splitter | copies gone | [ ] |
 | S5.3 | Browser sync parity (B2) | S5.1 | H · main thread | A8 for B2, scratch-Drive check | [ ] |
 | S5.4 | One OAuth credentials source per client type | S5.2 | L · implementer (haiku) | both builds read it | [ ] |
@@ -760,3 +764,4 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 - 2026-10-08 18:31 S4.5 done: `core/src/library/format/` holds `formatAuthors`/`familyName` (Q6: "A & B"), `relativeTime` (BC26), `venueLine`, `paperLink` (BC27) and `formatBytes`. The reader citation label, the terminal, the browser popup, library page and detail head (which gains volume, issue and pages), and the VS Code article link and citation DOI use them; the terminal says `never` for no date. The VS Code list host sends `creator`; its webview script keeps `lastName`, `fmtAgo`, `fmtSize` and its venue head until S9.2.
 - 2026-10-08 18:33 S4.6 done: `core/src/library/externalChange/` holds `isExternalChangeNoise`; the VS Code and terminal watchers keep only the platform watch and their debounces (1000 ms and 250 ms; the reactions differ in cost). `findMissingPapers` left in S4.3, because the reindex diff reports removed papers. BC28 has a test; the terminal watcher has its first test.
 - 2026-10-08 18:35 Session 6 finish: `architecture.md` names the `scan/`, `model/`, `search/`, `format/` and `externalChange/` folders of core `library/`; leftover dependency tags in touched files and unused exports are gone. Per S3.1, the event bus moved into VS Code (`packages/vscode/src/events/`), its only user. No acceptance criterion closes this session; A5 gains the library model, search and author formatting, and the VS Code list webview still copies search, sort and time formatting until S9.2.
+- 2026-10-08 19:12 S5.1 done: `core/src/sync/coordinator/` runs one sync (lock, titles, manifest, engine with the app logger, run record), the 30 s debounce, periodic runs with the recent-run skip and the busy outcome, over injected timers (`SyncTimers`, so the browser keeps `bx.alarms`) and an `onOutcome` hook for app reactions; core `libraryChanged` replaces both app copies. The terminal keeps `terminalSync.ts` and `driveAccount.ts`; VS Code `SyncController` is glue plus `syncReport.ts`; the browser has `sync/browserSync.ts`, `background/alarmSyncTimers.ts` and `background/syncMessages.ts`, with no lock, folder names or run record until S5.3. BC29–BC32 added to D7 (asked while mapping). Also decided: a failed store reload or browser rebuild after a sync is logged and the run counts as synced; VS Code settings show the shared run record; VS Code re-reads the interval on connect and on a setting change and stops periodic runs on disconnect; the browser loads its stored token before each run, so syncs run after a service-worker restart (they failed before). Sync uploads `.keep`, the browser's empty-folder marker (`sync.md`). The terminal `syncService.test.ts` (866 lines) is split into core coordinator tests and terminal glue tests. Five `no-import-past-index` errors from earlier sessions are left for the session finish.
