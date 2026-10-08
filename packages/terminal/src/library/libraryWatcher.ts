@@ -5,19 +5,12 @@
  */
 import { watch, type FSWatcher } from "node:fs";
 
-import type { ILogger } from "@labshelf/core";
+import { isExternalChangeNoise, type ILogger } from "@labshelf/core";
 
 import { LibraryRoot } from "./libraryRoot.js";
 
 const DEBOUNCE_MS = 250;
 const POLL_MS = 5_000;
-
-// Our own atomic-write temp files and editor droppings are not library changes.
-function isNoise(file: string | null): boolean {
-  if (!file) { return false; }
-  const base = file.split(/[\\/]/).pop() ?? "";
-  return (base.startsWith(".") && base.endsWith(".tmp")) || base === ".DS_Store" || base.endsWith("~") || base.endsWith(".swp");
-}
 
 export class LibraryWatcher {
   private watchers: FSWatcher[] = [];
@@ -38,7 +31,7 @@ export class LibraryWatcher {
     for (const dir of [this.paths.layout.papersRoot(), this.paths.layout.paperDataRoot()]) {
       try {
         const watcher = watch(dir, { recursive: true, persistent: false }, (_event, file) => {
-          if (!isNoise(typeof file === "string" ? file : null)) { this.schedule(); }
+          if (typeof file !== "string" || !isExternalChangeNoise(file)) { this.schedule(); }
         });
         watcher.on("error", (error) => {
           void this.logger?.log("WARN", "terminal/libraryWatcher", "Watcher failed, polling instead", { dir, message: String(error) });

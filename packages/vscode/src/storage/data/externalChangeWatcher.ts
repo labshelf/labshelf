@@ -5,7 +5,7 @@
  */
 import * as vscode from "vscode";
 
-import { SIDECAR_FILE, type LibraryLayout } from "@labshelf/core";
+import { SIDECAR_FILE, isExternalChangeNoise, type LibraryLayout } from "@labshelf/core";
 
 const DEBOUNCE_MS = 1_000;
 
@@ -29,9 +29,7 @@ export class ExternalChangeWatcher implements vscode.Disposable {
   }
 
   private schedule(uri: vscode.Uri): void {
-    // The terminal app's atomic writes pass through hidden temp files; they are not changes of their own.
-    const name = uri.fsPath.split(/[\\/]/).pop() ?? "";
-    if ((name.startsWith(".") && name.endsWith(".tmp")) || name === ".DS_Store") { return; }
+    if (isExternalChangeNoise(uri.fsPath)) { return; }
     clearTimeout(this.timer);
     this.timer = setTimeout(() => this.onChange(), this.debounceMs);
   }

@@ -44,6 +44,8 @@ describe('ExternalChangeWatcher', () => {
     const watcher = new ExternalChangeWatcher(libraryLayout(vscode.Uri.file('/lib'), vscode.Uri.joinPath), onChange, 10);
     watchers[0]!._fire('create', vscode.Uri.file('/lib/papers/p/.metadata.yaml.123.tmp'));
     watchers[0]!._fire('change', vscode.Uri.file('/lib/papers/.DS_Store'));
+    watchers[0]!._fire('change', vscode.Uri.file('/lib/papers/p/a~'));
+    watchers[0]!._fire('change', vscode.Uri.file('/lib/papers/p/a.swp'));
     jest.advanceTimersByTime(50);
     expect(onChange).not.toHaveBeenCalled();
     watcher.dispose();
