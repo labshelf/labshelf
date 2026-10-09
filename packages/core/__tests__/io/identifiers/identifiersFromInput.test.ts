@@ -9,6 +9,12 @@ describe('identifiersFromInput', () => {
     expect(identifiersFromInput('arXiv:1706.03762')).toEqual([{ type: 'arxiv', value: '1706.03762' }]);
   });
 
+  it('reads an old-style arXiv id, bare or in a link', () => {
+    expect(identifiersFromInput('hep-th/9711200')).toEqual([{ type: 'arxiv', value: 'hep-th/9711200' }]);
+    expect(identifiersFromInput('https://arxiv.org/abs/math.GT/0309136v2')).toEqual([{ type: 'arxiv', value: 'math.GT/0309136' }]);
+    expect(identifiersFromInput('10.48550/arXiv.hep-th/9711200')).toEqual([{ type: 'doi', value: '10.48550/arXiv.hep-th/9711200' }]);
+  });
+
   it('reads a bare DOI and cleans trailing punctuation', () => {
     expect(identifiersFromInput('10.1038/nature12373')).toEqual([{ type: 'doi', value: '10.1038/nature12373' }]);
     expect(identifiersFromInput('10.1038/nature12373,')).toEqual([{ type: 'doi', value: '10.1038/nature12373' }]);

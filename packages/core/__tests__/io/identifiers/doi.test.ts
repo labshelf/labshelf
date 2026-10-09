@@ -1,6 +1,6 @@
 /** Contract of DOI extraction and cleanup, whatever source the candidate came from. */
 
-import { cleanDoiCandidate, doiVariants, extractDoi } from '@labshelf/core';
+import { cleanDoiCandidate, doiVariants, encodeDoiPathSegment, extractDoi } from '@labshelf/core';
 
 describe('extractDoi', () => {
   it.each([
@@ -53,5 +53,14 @@ describe('doiVariants', () => {
 
   it('returns only the DOI itself when there is no numeric component suffix', () => {
     expect(doiVariants('10.1038/nature12373')).toEqual(['10.1038/nature12373']);
+  });
+});
+
+describe('encodeDoiPathSegment', () => {
+  it('keeps the slash literal and encodes everything else that is unsafe in a path', () => {
+    expect(encodeDoiPathSegment('10.1002/(SICI)1097-4571(199806)49:8<693::AID-ASI4>3.0.CO;2-O')).toBe(
+      '10.1002/(SICI)1097-4571(199806)49%3A8%3C693%3A%3AAID-ASI4%3E3.0.CO%3B2-O',
+    );
+    expect(encodeDoiPathSegment('10.1000/a b')).toBe('10.1000/a%20b');
   });
 });

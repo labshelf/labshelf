@@ -4,8 +4,8 @@
  * refreshes the store in place.
  */
 import type { PaperRecord, PaperRef, PaperStatus } from "@labshelf/core";
-import { PDF_FILE, ROOT_LABEL, baseName } from "@labshelf/core";
-import { attachPdfToPaper, isPdfBytes } from "../../capture";
+import { PDF_FILE, ROOT_LABEL, baseName, isPdfBytes } from "@labshelf/core";
+import { attachPdfToPaper } from "../../capture";
 import { BrowserLogger } from "../../platform";
 import { openReader } from "../../reader/readerTabs";
 import type { AttachPdfData, IfNoPdf, PdfMiss, SaveOutcome, TabSummary } from "../../platform/runtimeMessages";

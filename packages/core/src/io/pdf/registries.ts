@@ -2,10 +2,8 @@
  * Thin clients for the bibliographic registries LabShelf resolves against.
  * Each function maps one registry's payload onto ResolvedMetadata and returns
  * undefined on any failure, so the orchestrator can simply try the next source.
- *
- * @depends io/pdf/types.ts
- * @dependents io/pdf/resolver.ts
  */
+import { encodeDoiPathSegment } from "../identifiers/index.js";
 import { extractYear } from "./extractor.js";
 import type { ResolvedMetadata } from "./types.js";
 
@@ -550,15 +548,6 @@ function asArray<T>(value: T | T[] | undefined): T[] {
     return [];
   }
   return Array.isArray(value) ? value : [value];
-}
-
-/**
- * Percent-encodes a DOI for use inside a URL path. The slash is restored,
- * because Semantic Scholar routes on the literal `DOI:10.x/y` segment and
- * answers a `%2F` in its place with a rate-limit error instead of the record.
- */
-function encodeDoiPathSegment(doi: string): string {
-  return encodeURIComponent(doi).replace(/%2F/gi, "/");
 }
 
 function stripHtml(value: string): string {

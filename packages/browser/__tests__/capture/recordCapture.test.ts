@@ -17,4 +17,9 @@ describe("draftFromRecord", () => {
     expect(draft.isPaper).toBe(true);
     expect(draft.existing).toBe(r);
   });
+
+  it("carries the record's title, authors and year, so a suggested copy can be checked against them", async () => {
+    const draft = await draftFromRecord(rec({ title: "Attention is all you need", authors: ["Ashish Vaswani"], year: 2017, doi: "10.1000/xyz123" }));
+    expect(draft.metadata).toEqual({ title: "Attention is all you need", authors: ["Ashish Vaswani"], year: 2017, doi: "10.1000/xyz123" });
+  });
 });

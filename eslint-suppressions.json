@@ -7,16 +7,6 @@
       "count": 1
     }
   },
-  "packages/browser/src/capture/resolvers/openalexResolver.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/browser/src/capture/resolvers/pmcResolver.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
   "packages/browser/src/library-page/app.ts": {
     "max-lines-per-function": {
       "count": 1

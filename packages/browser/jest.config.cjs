@@ -23,7 +23,8 @@ module.exports = {
     'src/reader/inPageTransport.ts',
     // Injected into pages or driving real tabs: verified in a browser, not in node.
     '!src/capture/pageProbeContentScript.ts',
-    '!src/capture/helperTab.ts',
+    '!src/capture/tab/**',
+    '!src/capture/tabProbe.ts',
   ],
   coverageThreshold: { global: { branches: 50, functions: 50, lines: 50, statements: 50 } },
   moduleNameMapper: {

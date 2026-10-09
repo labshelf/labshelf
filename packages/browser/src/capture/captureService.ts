@@ -4,9 +4,8 @@
  *   1. inspect — probe the tab, read the page's citation tags, settle the
  *      record (registry by DOI/arXiv/PMID, else a checked title search) and
  *      check whether the library already holds it;
- *   2. save — find the PDF (page links → publisher URL → arXiv → CrossRef →
- *      Unpaywall → opt-in Sci-Hub; each candidate proven by its bytes, a
- *      bot-checked one retried through a background tab) and
+ *   2. save — find the PDF (core's resolver chain; each candidate proven by
+ *      its bytes, a bot-checked one retried through a background tab) and
  *      write the paper into the chosen collection with the user's tags and
  *      note. No PDF reachable still saves the record, and says so.
  *
@@ -14,15 +13,13 @@
  * while the user is still choosing a folder), so Save is usually instant.
  * Scholar results enter at step 1 through capture/scholarCapture.
  */
-import { PAGE_TRUST, findInLibrary, interpretPage, resolveMetadata, withAbstract } from "@labshelf/core";
+import { PAGE_TRUST, findInLibrary, interpretPage, makeResolveContext, resolvePdf, resolveMetadata, withAbstract } from "@labshelf/core";
 import type {
-  DetectedIds, MetadataOrigin, MetadataSource, PageFacts, PaperRecord, PdfCandidate, RawPage, ResolvedMetadata,
+  DetectedIds, MetadataOrigin, MetadataSource, PageFacts, PaperRecord, PdfAttempt, PdfCandidate, PdfFetchOptions,
+  ResolvedMetadata, ResolvedPdf,
 } from "@labshelf/core";
-import { probe } from "./pageProbeContentScript";
-import { resolvePdf } from "./resolvers/index";
-import type { PdfAttempt, ResolvedPdf } from "./resolvers/index";
-import type { PdfFetchOptions } from "./pdfFetcher";
-import { fetchViaHelperTab } from "./helperTab";
+import { fetchInTab, fetchViaHelperTab } from "./tab";
+import { probeTab } from "./tabProbe";
 import { addPaper } from "./addPaperFlow";
 import { getSettings, updateSettings } from "../platform/settings";
 import { BrowserLogger } from "../platform/logger";
@@ -41,7 +38,8 @@ export interface CaptureDraft {
   origin: MetadataOrigin;
   isPaper: boolean;
   pdfCandidates: PdfCandidate[];
-  fetchOpts: PdfFetchOptions;
+  /** The tab whose session may be borrowed for same-site downloads; absent for papers captured without a tab. */
+  fetchOpts: Pick<PdfFetchOptions, "tab">;
   /** The library's copy, when the paper is already there. */
   existing?: PaperRecord;
   /** Started on first request; shared by the popup's PDF check and Save. */
@@ -69,7 +67,7 @@ export interface SavedPaper {
 export async function inspectTab(tabId: number, tabUrl: string): Promise<CaptureDraft> {
   const raw = await probeTab(tabId, tabUrl);
   const facts = interpretPage(raw);
-  return draftFromFacts(facts, { tabId, tabUrl });
+  return draftFromFacts(facts, { tab: { url: tabUrl, fetchInTab: (url) => fetchInTab(tabId, url) } });
 }
 
 /**
@@ -78,7 +76,7 @@ export async function inspectTab(tabId: number, tabUrl: string): Promise<Capture
  */
 export async function draftFromFacts(
   facts: PageFacts,
-  fetchOpts: PdfFetchOptions,
+  fetchOpts: CaptureDraft["fetchOpts"],
   extraSources: MetadataSource[] = [],
 ): Promise<CaptureDraft> {
   const pageSource: MetadataSource = {
@@ -123,16 +121,15 @@ export async function draftFromFacts(
 export function findPdf(draft: CaptureDraft): Promise<ResolvedPdf | undefined> {
   draft.pdf ??= (async () => {
     const settings = await getSettings();
-    const pdf = await resolvePdf({
-      pageCandidates: draft.pdfCandidates,
-      allowSciHub: settings.enableSciHub,
+    const context = makeResolveContext(draft.ids, draft.metadata, draft.pageUrl || undefined, draft.pdfCandidates, {
       contactEmail: settings.contactEmail,
-      sciHubMirror: settings.sciHubMirror,
-      ...(draft.pageUrl ? { landingUrl: draft.pageUrl } : {}),
-      ...(draft.ids.doi ? { doi: draft.ids.doi } : {}),
-      ...(draft.ids.arxivId ? { arxivId: draft.ids.arxivId } : {}),
-      ...(draft.ids.pmid ? { pmid: draft.ids.pmid } : {}),
-    }, { ...draft.fetchOpts, viaHelperTab: fetchViaHelperTab }, draft.pdfAttempts);
+      ...(settings.enableSciHub ? { sciHubMirror: settings.sciHubMirror } : {}),
+    });
+    const pdf = await resolvePdf(
+      context,
+      { ...draft.fetchOpts, credentials: "include", logger: log, viaHelperTab: fetchViaHelperTab },
+      draft.pdfAttempts,
+    );
     if (pdf) {
       void log.info("pdf found", { page: draft.pageUrl, source: pdf.source, url: pdf.url, bytes: pdf.bytes.length });
     } else {
@@ -170,7 +167,7 @@ export async function saveDraft(draft: CaptureDraft, opts: SaveOptions = {}): Pr
 
 /**
  * Pure summary of what a failed search tried, for the "No PDF found" dialog.
- * Entries labelled "<source> (via tab)" (resolverChain) are a bot-check retry,
+ * Entries labelled "<source> (via tab)" (core resolvePdf) are a bot-check retry,
  * so they are not double-counted but do set `blocked`.
  */
 export function summarizeAttempts(attempts: PdfAttempt[]): PdfMiss {
@@ -231,23 +228,4 @@ export function safeFolder(folder: string | undefined): string {
   const parts = clean.split("/");
   if (parts[0] !== PAPERS_DIR || parts.some((p) => p === "" || p === "." || p === "..")) return PAPERS_DIR;
   return clean;
-}
-
-// Probes the tab DOM; a tab the probe cannot enter (the browser's own PDF
-// viewer on some versions) is still usable when its URL is a PDF.
-async function probeTab(tabId: number, tabUrl: string): Promise<RawPage> {
-  // webextension-polyfill does not expose scripting; access the raw global.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const scripting = (globalThis as any).chrome?.scripting ?? (globalThis as any).browser?.scripting;
-  try {
-    if (!scripting) throw new Error("scripting API unavailable");
-    const results = (await scripting.executeScript({ target: { tabId }, func: probe })) as Array<{ result?: RawPage }>;
-    const raw = results[0]?.result;
-    if (raw) return raw;
-    throw new Error("probe returned nothing");
-  } catch (err) {
-    void log.warn("probe failed, using the URL alone", { url: tabUrl, error: err instanceof Error ? err.message : String(err) });
-    const pageIsPdf = /\.pdf(?:[?#]|$)/i.test(tabUrl);
-    return { pageUrl: tabUrl, meta: {}, pdfLinks: [], doiLinks: [], ...(pageIsPdf ? { pageIsPdf: true } : {}) };
-  }
 }

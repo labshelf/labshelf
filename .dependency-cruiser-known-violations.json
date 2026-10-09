@@ -285,62 +285,6 @@
   },
   {
     "type": "dependency",
-    "from": "packages/browser/src/capture/helperTab.ts",
-    "to": "packages/browser/src/platform/browserApi.ts",
-    "unresolvedTo": "../platform/browserApi",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/capture/resolvers/europePmcResolver.ts",
-    "to": "packages/browser/src/platform/logger.ts",
-    "unresolvedTo": "../../platform/logger",
-    "dependencyTypes": [
-      "local",
-      "dynamic-import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/capture/resolvers/openalexResolver.ts",
-    "to": "packages/browser/src/platform/logger.ts",
-    "unresolvedTo": "../../platform/logger",
-    "dependencyTypes": [
-      "local",
-      "dynamic-import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/capture/resolvers/semanticScholarResolver.ts",
-    "to": "packages/browser/src/platform/logger.ts",
-    "unresolvedTo": "../../platform/logger",
-    "dependencyTypes": [
-      "local",
-      "dynamic-import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "packages/browser/src/capture/scholarCapture.ts",
     "to": "packages/browser/src/platform/runtimeMessages.ts",
     "unresolvedTo": "../platform/runtimeMessages",

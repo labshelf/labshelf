@@ -6,4 +6,3 @@ export type { CaptureDraft, SaveOptions, SavedPaper, SaveDecision } from "./capt
 export { draftFromScholarHit } from "./scholarCapture";
 export { draftFromRecord } from "./recordCapture";
 export { attachPdfToPaper } from "./addPaperFlow";
-export { isPdfBytes } from "./pdfBytes";

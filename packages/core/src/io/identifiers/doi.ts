@@ -63,6 +63,15 @@ export function doiVariants(doi: string): string[] {
   return variants;
 }
 
+/**
+ * Percent-encodes a DOI for use inside a URL path. The slash stays literal,
+ * because Semantic Scholar routes on the `DOI:10.x/y` segment and answers a
+ * `%2F` in its place with a rate-limit error instead of the record.
+ */
+export function encodeDoiPathSegment(doi: string): string {
+  return encodeURIComponent(doi).replace(/%2F/gi, "/");
+}
+
 function openers(text: string): number {
   return countOf(text, "(") + countOf(text, "[");
 }

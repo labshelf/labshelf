@@ -2,10 +2,11 @@
  * Turns a paper already in the library into a capture draft, so the library
  * page's "Find PDF" can run the same resolver chain a fresh capture does — no
  * tab involved. Identifiers come from the stored record (its DOI, arXiv id or
- * PubMed URL); its landing page is read once for citation_pdf_url and download
- * anchors, exactly as a Scholar result's page is.
+ * PubMed URL) and its stored title, authors and year, which decide whether a
+ * copy an aggregator suggests is the same paper. Its landing page is read once
+ * for citation_pdf_url and download anchors, exactly as a Scholar result's page is.
  */
-import { idsFromRecord } from "@labshelf/core";
+import { idsFromRecord, metadataFromRecord } from "@labshelf/core";
 import type { PaperRecord } from "@labshelf/core";
 import type { CaptureDraft } from "./captureService";
 import { landingFacts } from "./landingFacts";
@@ -19,7 +20,7 @@ export async function draftFromRecord(r: PaperRecord): Promise<CaptureDraft> {
   return {
     pageUrl: r.url ?? "",
     ids: { ...(landing?.ids ?? {}), ...idsFromRecord(r) },
-    metadata: {},
+    metadata: metadataFromRecord(r),
     origin: "none",
     isPaper: true,
     pdfCandidates: landing?.pdfCandidates ?? [],
