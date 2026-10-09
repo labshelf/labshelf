@@ -20,6 +20,12 @@
         "icon": "$(file-add)"
       },
       {
+        "command": "labshelf.addPaperByIdentifier",
+        "title": "Research: Add Paper by DOI or Link…",
+        "category": "LabShelf",
+        "icon": "$(link)"
+      },
+      {
         "command": "labshelf.makeSearchable",
         "title": "Research: Make Scanned Paper Searchable (OCR)",
         "category": "LabShelf"
@@ -271,14 +277,19 @@
           "group": "navigation@1"
         },
         {
-          "command": "labshelf.newFolderAtRoot",
+          "command": "labshelf.addPaperByIdentifier",
           "when": "view == labshelf.library",
           "group": "navigation@2"
         },
         {
-          "command": "labshelf.library.refresh",
+          "command": "labshelf.newFolderAtRoot",
           "when": "view == labshelf.library",
           "group": "navigation@3"
+        },
+        {
+          "command": "labshelf.library.refresh",
+          "when": "view == labshelf.library",
+          "group": "navigation@4"
         }
       ],
       "view/item/context": [

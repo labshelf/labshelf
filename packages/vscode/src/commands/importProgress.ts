@@ -48,12 +48,18 @@ export async function importWithProgress(
   targetDir?: string,
 ): Promise<ImportOutcome[]> {
   const outcomes = await runImport(services.importer, uris, targetDir);
-  // Scanned papers gain their text layer after they appear: reading every page can take a minute, too long to hold an
-  // import. With automatic OCR off they are still checked, so the list can flag them.
+  queueTextLayersOfAdded(services, outcomes);
+  return outcomes;
+}
+
+/**
+ * Scanned papers gain their text layer after they appear: reading every page can take a minute, too long to hold an
+ * import. With automatic OCR off they are still checked, so the list can flag them.
+ */
+export function queueTextLayersOfAdded(services: Pick<ImportServices, "textLayers" | "logger">, outcomes: ImportOutcome[]): void {
   const autoOcr = vscode.workspace.getConfiguration("labshelf").get<boolean>("ocr.makeSearchable", true);
   const added = outcomes.flatMap((outcome) => (outcome.status === "added" ? [outcome.record] : []));
   void queueTextLayers(services.textLayers, added, { logger: services.logger, mode: autoOcr ? "ocr" : "check" });
-  return outcomes;
 }
 
 function runImport(importer: PaperImporter, uris: vscode.Uri[], targetDir?: string): Thenable<ImportOutcome[]> {

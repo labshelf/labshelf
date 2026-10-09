@@ -18,7 +18,7 @@ async function importLanding(h: Harness, url = LANDING) {
 }
 
 describe("landing-page import", () => {
-  it("saves the paper the page describes with the first link that serves a PDF", async () => {
+  it("saves the paper the page describes with the PDF the chain finds from its links", async () => {
     const h = await harness();
     h.routes.set(LANDING, htmlResponse(SPRINGER));
     h.routes.set(PDF_URL, pdfResponse("springer"));
@@ -47,7 +47,7 @@ describe("landing-page import", () => {
     expect(outcome.status === "added" && outcome.record.title).toBe("Registry Grassmann Title");
   });
 
-  it("saves a reference without a PDF when no link on the page serves one, and logs each skipped link", async () => {
+  it("saves a reference without a PDF when no link on the page serves one, and logs the links it tried", async () => {
     const h = await harness();
     h.routes.set(LANDING, htmlResponse(SPRINGER));
     h.routes.set(PDF_URL, htmlResponse("<html>Please log in</html>"));
@@ -56,9 +56,9 @@ describe("landing-page import", () => {
 
     expect(outcome.status === "added" && outcome.record.hasPdf).toBe(false);
     expect(await listFiles(h.lib.paperDir("edelman2024optimization"))).toEqual(["bib.bib", "metadata.yaml"]);
-    const skipped = h.logs.filter((l) => l.message === "PDF link of the landing page skipped");
-    expect(skipped.length).toBeGreaterThan(0);
-    expect(skipped[0]!.context).toMatchObject({ url: PDF_URL, message: "The URL did not return a PDF" });
+    const notFound = h.logs.find((l) => l.message === "No PDF found; saving the reference only");
+    expect(notFound).toMatchObject({ level: "INFO", context: { input: LANDING } });
+    expect(notFound!.context!["attempts"]).toEqual(expect.arrayContaining([expect.stringContaining(PDF_URL)]));
   });
 
   it("skips a paper the library already has, without downloading its PDF", async () => {

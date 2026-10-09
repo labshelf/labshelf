@@ -474,7 +474,11 @@ async function buildServices(
   };
   const parse = (bytes: Uint8Array, stem: string) => pdfImportParser.parse(bytes, stem);
   const paperService = new PaperService(mutations, database, eventBus, bibTeXService, parse);
-  const importer = new PaperImporter(mutations, database, eventBus, parse);
+  const network = {
+    tmpDir: paths.tmpDir().fsPath,
+    download: { fetch: globalThis.fetch, headers: { "User-Agent": `LabShelf-VSCode/${context.extension.packageJSON.version}` } },
+  };
+  const importer = new PaperImporter(mutations, database, eventBus, parse, network);
   const textLayers = new PaperTextLayers(mutations, paperService, createTextLayerBuilder(ocrEngine));
   const paperDataStore = new PaperDataStore(paths, fileSystem);
   const scan = () => scanLibrary(fileSystem, path, paths.papersRoot().fsPath, logger);

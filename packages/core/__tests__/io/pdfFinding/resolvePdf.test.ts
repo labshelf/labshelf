@@ -13,6 +13,18 @@ describe("resolvePdf", () => {
     expect(h.calls).toEqual(["https://scholar-pdf.example/p.pdf"]);
   });
 
+  it("skips a supplementary file an aggregator lists as the paper's PDF", async () => {
+    const h = makeFindingHarness();
+    const supplement = "https://static-content.springer.com/esm/art%3A10.1038%2Fnature12373/MediaObjects/41586_2013_BFnature12373_MOESM63_ESM.pdf";
+    h.routes[supplement] = pdf;
+    h.routes["https://repo.example/article.pdf"] = pdf;
+    const got = await resolvePdf(makeContext({
+      pageCandidates: [{ url: supplement, source: "page" }, { url: "https://repo.example/article.pdf", source: "page" }],
+    }), h.opts());
+    expect(got?.url).toBe("https://repo.example/article.pdf");
+    expect(h.calls).not.toContain(supplement);
+  });
+
   it("falls through a login wall to the publisher URL built from the DOI", async () => {
     const h = makeFindingHarness();
     h.routes["https://site.example/paper.pdf"] = () => html("<html><title>Sign in</title></html>");

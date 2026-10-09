@@ -14,7 +14,7 @@ import type { RuntimeMessage, RuntimeResponse, SyncStatusData } from "../platfor
 import { $, el, esc } from "../ui/dom";
 import { icon } from "../ui/icons";
 import { applyTheme, getThemePref, onThemeChange, setThemePref } from "../ui/theme";
-import type { CitationStyle, ReaderPrefs, ZoomPreset } from "@labshelf/core";
+import { DEFAULT_CONTACT_EMAIL, type CitationStyle, type ReaderPrefs, type ZoomPreset } from "@labshelf/core";
 import { loadReaderPrefs, saveReaderPrefs } from "../reader/readerPrefsStore";
 import type { ThemePref } from "../ui/theme";
 
@@ -42,7 +42,7 @@ function readForm(): Partial<LabShelfSettings> {
   const mirror = $<HTMLInputElement>("scihub-mirror").value.trim() || DEFAULT_MIRROR;
   return {
     autoSyncMinutes: Math.min(240, Math.max(0, Number($<HTMLInputElement>("sync-interval").value) || 0)),
-    contactEmail: $<HTMLInputElement>("contact-email").value.trim() || "contact@labshelf.dev",
+    contactEmail: $<HTMLInputElement>("contact-email").value.trim() || DEFAULT_CONTACT_EMAIL,
     enableSciHub: $<HTMLInputElement>("enable-scihub").checked,
     sciHubMirror: mirror.replace(/\/+$/, ""),
   };

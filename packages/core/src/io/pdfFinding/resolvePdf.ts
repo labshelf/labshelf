@@ -2,7 +2,7 @@
  * Runs the resolvers in order and downloads each one's candidate URLs before asking the next, until one really is a
  * PDF. Candidates a bot check refused are retried at the end through a real tab, when the host offers one.
  */
-import { downloadPdf } from "./download/index.js";
+import { downloadPdf, isSupplementaryUrl } from "./download/index.js";
 import { makeEnv, reportError, warn } from "./env.js";
 import { RESOLVER_ORDER } from "./resolverOrder.js";
 import { originOf } from "./urlParts.js";
@@ -29,6 +29,8 @@ export async function resolvePdf(
     for (const url of await candidatesOf(resolver, ctx, env)) {
       if (tried.has(url)) continue;
       tried.add(url);
+      // An aggregator can list a supplement as the paper's PDF; it would download fine and be the wrong document.
+      if (isSupplementaryUrl(url)) continue;
       const source = sourceLabel(resolver, ctx, url);
       attempts.push({ source, url });
       const outcome = await downloadPdf(url, opts, env);

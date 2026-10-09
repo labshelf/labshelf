@@ -1,0 +1,105 @@
+import { DEFAULT_CONTACT_EMAIL, importNetworkInput, type ImportOutcome, type NetworkImportEnv, type ResolvedMetadata } from "@labshelf/core";
+
+import { makeImportDeps } from "../../support/importFakes";
+import { makeHarness, PAPERS, type MutationHarness } from "../../support/mutationHarness";
+import { html, json, makeFindingHarness, pdf, PDF, type FindingHarness } from "../../support/pdfFindingHarness";
+
+const ATTENTION: ResolvedMetadata = { title: "Attention Is All You Need", authors: ["Ashish Vaswani"], year: 2017 };
+const PAPER_DIR = `${PAPERS}/vaswani2017attention`;
+const unpaywall = (doi: string): string => `https://api.unpaywall.org/v2/${encodeURIComponent(doi)}?email=${encodeURIComponent(DEFAULT_CONTACT_EMAIL)}`;
+
+interface Setup { h: MutationHarness; net: FindingHarness; env: NetworkImportEnv; resolve: jest.Mock }
+
+function setup(metadata: ResolvedMetadata | undefined = ATTENTION): Setup {
+  const h = makeHarness();
+  const net = makeFindingHarness();
+  const resolve = jest.fn(async () => metadata);
+  const deps = makeImportDeps();
+  const env: NetworkImportEnv = {
+    ctx: h.ctx,
+    tmpDir: "/lib/tmp",
+    importDeps: () => deps,
+    records: () => [],
+    download: { fetch: net.opts().fetch!, headers: { "User-Agent": "Test/1" } },
+    resolveIdentifier: resolve,
+  };
+  return { h, net, env, resolve };
+}
+
+const added = (outcome: ImportOutcome): void => expect(outcome.status).toBe("added");
+
+describe("importNetworkInput with an identifier", () => {
+  it("saves the PDF the chain finds for a DOI, asking with the default contact email and never Sci-Hub", async () => {
+    const { h, net, env } = setup();
+    net.routes[unpaywall("10.1000/abc")] = () => json({ best_oa_location: { url_for_pdf: "https://repo.example.org/a.pdf" } });
+    net.routes["https://repo.example.org/a.pdf"] = pdf;
+
+    added(await importNetworkInput(env, "10.1000/abc", PAPERS));
+
+    expect(await h.fs.readFile(`${PAPER_DIR}/paper.pdf`)).toEqual(PDF);
+    expect(net.calls.some((url) => /sci-?hub/i.test(url))).toBe(false);
+    expect(h.logs.find((l) => l.message === "PDF found")).toMatchObject({ level: "INFO", context: { source: "unpaywall" } });
+  });
+
+  it("keeps arXiv's source name and saves a reference when no PDF downloads, logging the attempts", async () => {
+    const { h, net, env } = setup();
+    net.routes["https://arxiv.org/pdf/1706.03762"] = () => html("<html>log in</html>");
+
+    added(await importNetworkInput(env, "arXiv:1706.03762", PAPERS));
+
+    expect(h.fs.fileList().filter((f) => f.startsWith(PAPER_DIR))).toEqual([`${PAPER_DIR}/bib.bib`, `${PAPER_DIR}/metadata.yaml`]);
+    expect((await h.readMeta(PAPER_DIR))["source"]).toBe("1706.03762.pdf");
+    expect(h.logs.find((l) => l.message === "No PDF found; saving the reference only")).toMatchObject({
+      level: "INFO", context: { attempts: ["arxiv: https://arxiv.org/pdf/1706.03762"] },
+    });
+  });
+
+  it("does not look for a PDF of a book", async () => {
+    const { net, env } = setup({ title: "Deep Learning", authors: ["Ian Goodfellow"], year: 2016 });
+
+    added(await importNetworkInput(env, "ISBN 978-0-262-03561-3", PAPERS));
+
+    expect(net.calls).toEqual([]);
+  });
+
+  it("logs a registry that throws and fails with the identifier it could not find", async () => {
+    const { h, env, resolve } = setup();
+    resolve.mockRejectedValue(new Error("registry down"));
+
+    expect(await importNetworkInput(env, "10.1000/abc", PAPERS)).toEqual({ status: "failed", error: "Could not find DOI 10.1000/abc", input: "10.1000/abc" });
+    expect(h.logs.find((l) => l.message === "Registry lookup failed")).toMatchObject({ level: "WARN", context: { message: "registry down" } });
+  });
+});
+
+describe("importNetworkInput with a link", () => {
+  it("imports a PDF link under the name in the URL and removes the download", async () => {
+    const { h, net, env } = setup();
+    net.routes["https://example.org/files/My%20Paper.pdf"] = pdf;
+
+    added(await importNetworkInput(env, "https://example.org/files/My%20Paper.pdf", PAPERS));
+
+    expect(h.fs.fileList().some((f) => f.startsWith("/lib/tmp/"))).toBe(false);
+    expect((await h.readMeta(PAPER_DIR))["source"]).toBe("My Paper.pdf");
+  });
+
+  it("finds the PDF of an article page through the chain, from the page's own links", async () => {
+    const { h, net, env } = setup();
+    const page = `<html><head><meta name="citation_title" content="A Study of Things"><meta name="citation_author" content="Lee, Ann">
+      <meta name="citation_publication_date" content="2020/05/01"><meta name="citation_pdf_url" content="https://example.org/study.pdf"></head></html>`;
+    net.routes["https://example.org/article/1"] = () => html(page);
+    net.routes["https://example.org/study.pdf"] = pdf;
+
+    added(await importNetworkInput(env, "https://example.org/article/1", PAPERS));
+
+    expect(await h.fs.readFile(`${PAPERS}/lee2020study/paper.pdf`)).toEqual(PDF);
+  });
+
+  it("fails a link that is neither a PDF nor a page", async () => {
+    const { net, env } = setup();
+    net.routes["https://example.org/data"] = () => new Response("just text");
+
+    expect(await importNetworkInput(env, "https://example.org/data", PAPERS)).toEqual({
+      status: "failed", error: "The URL did not return a PDF", input: "https://example.org/data",
+    });
+  });
+});

@@ -58,7 +58,7 @@ export function makeGlue(): Glue {
   void fs.mkdir(PAPERS_ROOT);
   return {
     fs, ctx, rows, emitted, indexWrites, service, parse,
-    importer: new PaperImporter(ctx, database, eventBus, parse),
+    importer: new PaperImporter(ctx, database, eventBus, parse, { tmpDir: '/lib/tmp', download: { fetch: jest.fn() as unknown as typeof fetch, headers: { 'User-Agent': 'LabShelf-VSCode/test' } } }),
     textLayers: (builder) => new PaperTextLayers(ctx, service, builder as never),
     async seed(id, meta = {}, dir = PAPERS_ROOT) {
       const folder = `${dir}/${id}`;

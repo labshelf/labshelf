@@ -7,6 +7,7 @@ import type { AnnotationManager } from "../pdf-viewer/AnnotationManager.js";
 import type { PaperDataStore } from "../storage/data/paperDataStore.js";
 import { type IFileSystem, type ILogger, type IResearchDatabase, type LocalFileSystem, type PaperRecord, type MutationContext, type PaperStatus, isSafeExternalUrl, paperFiles, paperLink } from "@labshelf/core";
 import { fetchMetadataForPaper, resolveMissingMetadata } from "./fetchMetadata.js";
+import { addPaperByIdentifier } from "./addByIdentifier.js";
 import { importPapers } from "./importProgress.js";
 import { removePapers } from "./removePapers.js";
 import { queueTextLayers } from "./textLayerQueue.js";
@@ -61,6 +62,11 @@ export function registerCommands(
 
         await importPapers(services, selected);
       });
+    }),
+    vscode.commands.registerCommand("labshelf.addPaperByIdentifier", async () => {
+      const services = await requireServices();
+      if (!services) { return; }
+      await executeSafely(services.logger, "labshelf.addPaperByIdentifier", () => addPaperByIdentifier(services));
     }),
     // Called with paper ids from the list panel, or with nothing from the palette.
     vscode.commands.registerCommand("labshelf.makeSearchable", async (target?: string | string[]) => {

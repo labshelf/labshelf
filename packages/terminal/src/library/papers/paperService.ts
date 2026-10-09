@@ -11,6 +11,7 @@ import {
   createFolder,
   doiLookup,
   editPaperTags,
+  importNetworkInput,
   importPdf,
   METADATA_FILE,
   moveFolder,
@@ -29,6 +30,7 @@ import {
   type ImportProgress,
   type LibraryStore,
   type MutationContext,
+  type NetworkImportEnv,
   type PaperFieldsPatch,
   type PaperRecord,
   type PaperRef,
@@ -40,7 +42,8 @@ import { NodeLibraryFileSystem } from "@labshelf/core/node";
 
 import type { LibraryRoot } from "../libraryRoot.js";
 import { planImports, type ImportItem } from "./importInputs.js";
-import { importIdentifier, importUrl, type NetworkImportEnv } from "./networkImport.js";
+
+const USER_AGENT = "LabShelf-Terminal/0.1";
 
 export interface PaperServiceDeps {
   paths: LibraryRoot;
@@ -75,7 +78,7 @@ export class TerminalPaperService {
       tmpDir: deps.paths.layout.tmpDir(),
       importDeps: () => this.importDeps(),
       records: () => this.records(),
-      ...(deps.fetch ? { fetch: deps.fetch } : {}),
+      download: { fetch: deps.fetch ?? globalThis.fetch, headers: { "User-Agent": USER_AGENT } },
       ...(deps.resolveIdentifier ? { resolveIdentifier: deps.resolveIdentifier } : {}),
       ...(deps.searchByTitle ? { searchByTitle: deps.searchByTitle } : {}),
     };
@@ -187,7 +190,7 @@ export class TerminalPaperService {
 
   /**
    * Imports whatever the user typed or passed on the command line: a PDF, a folder of PDFs (recursively), a PDF URL,
-   * or an identifier. Changes are announced once at the end.
+   * an article page or an identifier. Changes are announced once at the end.
    * @returns one outcome per imported item
    */
   async importAny(inputs: string[], targetRel: string, onProgress?: (progress: ImportProgress) => void): Promise<ImportOutcome[]> {
@@ -212,8 +215,7 @@ export class TerminalPaperService {
 
   private importItem(item: ImportItem, targetDir: string): Promise<ImportOutcome> {
     if (item.kind === "pdf") { return importPdf(this.ctx, this.importDeps(), item.value, targetDir); }
-    if (item.kind === "url") { return importUrl(this.network, item.value, targetDir); }
-    return importIdentifier(this.network, item.value, targetDir);
+    return importNetworkInput(this.network, item.value, targetDir);
   }
 
   /**

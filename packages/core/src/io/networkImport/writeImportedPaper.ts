@@ -1,17 +1,8 @@
 /** Writes a paper that came from the network: claims its cite key, creates the folder, saves the PDF if any, writes the artifacts. */
-import {
-  claimCiteKey,
-  makeCiteKey,
-  metadataFields,
-  normalizeTitle,
-  PDF_FILE,
-  type ImportDeps,
-  type MutationContext,
-  type PaperRecord,
-  type ResolvedMetadata,
-} from "@labshelf/core";
-
-const MODULE = "terminal/paperService";
+import { claimCiteKey, makeCiteKey, metadataFields, PDF_FILE, type ImportDeps, type MutationContext } from "../../library/index.js";
+import type { PaperRecord } from "../../model/index.js";
+import { normalizeTitle, type ResolvedMetadata } from "../pdf/index.js";
+import { NETWORK_IMPORT_MODULE } from "./env.js";
 
 export interface ImportedPaper {
   /** Needs a title. */
@@ -49,6 +40,6 @@ export async function writeImportedPaper(
   };
   const { hasPdf: _hasPdf, ...stored } = record;
   await ctx.artifacts.writePaperArtifacts(folder, stored, paper.sourceName ?? PDF_FILE);
-  await ctx.logger.log("INFO", MODULE, paper.log.message, { ...paper.log.context, id, withPdf: Boolean(pdf), targetDir });
+  await ctx.logger.log("INFO", NETWORK_IMPORT_MODULE, paper.log.message, { ...paper.log.context, id, withPdf: Boolean(pdf), targetDir });
   return record;
 }

@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import type { ImportOutcome, ResolvedMetadata } from "@labshelf/core";
+import { DEFAULT_CONTACT_EMAIL, type ImportOutcome, type ResolvedMetadata } from "@labshelf/core";
 
 import { harness, metaFile, pdfResponse, type Harness } from "../../fixtures/paperService";
 import { cleanupTempDirs, fakePdfBytes, listFiles, pathExists, readYaml } from "../../fixtures/library";
@@ -22,9 +22,13 @@ describe("identifier import", () => {
   };
   const ARXIV: ResolvedMetadata = { title: "Attention Is All You Need", authors: ["Ashish Vaswani"], year: 2017 };
 
-  it("saves a DOI as a reference without a PDF, keyed author + year + first title word (hyphens read as spaces)", async () => {
+  it("saves a DOI whose PDF no source offers as a reference, keyed author + year + first title word, and logs what was tried", async () => {
     const h = await harness([], ["ML"]);
     h.resolve.mockResolvedValue(NATURE);
+    h.routes.set(
+      `https://api.unpaywall.org/v2/${encodeURIComponent("10.1038/nature12373")}?email=${encodeURIComponent(DEFAULT_CONTACT_EMAIL)}`,
+      () => Response.json({ best_oa_location: { url_for_pdf: "https://repo.example.org/gone.pdf" } }),
+    );
 
     const outcome = await importOne(h, "10.1038/nature12373", "ML");
 
@@ -39,7 +43,42 @@ describe("identifier import", () => {
     expect(yaml).toMatchObject({ citekey: "kucsko2013nanometre", status: "unread", source: "paper.pdf", doi: "10.1038/nature12373", authors: ["G. Kucsko", "P. C. Maurer"] });
     expect(yaml["title"]).toBe("Nanometre scale thermometry in a living cell");
     expect(await fs.readFile(path.join(folder, "bib.bib"), "utf8")).not.toContain("file =");
-    expect(h.fetch).not.toHaveBeenCalled();
+    const notFound = h.logs.find((l) => l.message === "No PDF found; saving the reference only");
+    expect(notFound).toMatchObject({ level: "INFO", context: { input: "10.1038/nature12373" } });
+    expect(notFound!.context!["attempts"]).toEqual(["unpaywall: https://repo.example.org/gone.pdf"]);
+  });
+
+  it("finds the PDF of a DOI through the chain, identifying itself and never contacting Sci-Hub", async () => {
+    const h = await harness();
+    h.resolve.mockResolvedValue(NATURE);
+    const unpaywall = `https://api.unpaywall.org/v2/${encodeURIComponent("10.1038/nature12373")}?email=${encodeURIComponent(DEFAULT_CONTACT_EMAIL)}`;
+    h.routes.set(unpaywall, () => Response.json({ best_oa_location: { url_for_pdf: "https://repo.example.org/nature12373.pdf" } }));
+    h.routes.set("https://repo.example.org/nature12373.pdf", pdfResponse("oa"));
+
+    const outcome = await importOne(h, "10.1038/nature12373");
+
+    expect(outcome.status === "added" && outcome.record.hasPdf).toBe(true);
+    const folder = h.lib.paperDir("kucsko2013nanometre");
+    expect(new Uint8Array(await fs.readFile(path.join(folder, "paper.pdf")))).toEqual(fakePdfBytes("oa"));
+    expect(h.fetch).toHaveBeenCalledWith(
+      "https://repo.example.org/nature12373.pdf",
+      expect.objectContaining({ headers: { "User-Agent": "LabShelf-Terminal/0.1" } }),
+    );
+    expect(h.fetch.mock.calls.some(([url]) => /sci-?hub/i.test(url))).toBe(false);
+    expect(h.logs.find((l) => l.message === "PDF found")).toMatchObject({ level: "INFO", context: { source: "unpaywall" } });
+  });
+
+  it("finds the PDF of a PubMed Central id through the chain", async () => {
+    const h = await harness();
+    h.resolve.mockResolvedValue({ title: "Open Access Study", authors: ["Ann Lee"], year: 2020 });
+    const bucket = "https://pmc-oa-opendata.s3.amazonaws.com";
+    h.routes.set(`${bucket}/?list-type=2&prefix=PMC1234567.&max-keys=100`, () => new Response("<Key>PMC1234567.1/PMC1234567.1.pdf</Key>"));
+    h.routes.set(`${bucket}/PMC1234567.1/PMC1234567.1.pdf`, pdfResponse("pmc"));
+
+    const outcome = await importOne(h, "PMC1234567");
+
+    expect(h.resolve).toHaveBeenCalledWith({ type: "pmcid", value: "PMC1234567" });
+    expect(outcome.status === "added" && outcome.record.hasPdf).toBe(true);
   });
 
   it("downloads the PDF of an arXiv paper and notes the abstract URL", async () => {
@@ -57,7 +96,10 @@ describe("identifier import", () => {
     expect(await listFiles(folder)).toEqual(["bib.bib", "metadata.yaml", "paper.pdf"]);
     expect(new Uint8Array(await fs.readFile(path.join(folder, "paper.pdf")))).toEqual(fakePdfBytes("arxiv"));
     expect((await readYaml(path.join(folder, "metadata.yaml")))["source"]).toBe("1706.03762.pdf");
-    expect(h.fetch).toHaveBeenCalledWith("https://arxiv.org/pdf/1706.03762", expect.objectContaining({ redirect: "follow" }));
+    expect(h.fetch).toHaveBeenCalledWith(
+      "https://arxiv.org/pdf/1706.03762",
+      expect.objectContaining({ redirect: "follow", headers: { "User-Agent": "LabShelf-Terminal/0.1" } }),
+    );
     expect(await fs.readFile(path.join(folder, "bib.bib"), "utf8")).toContain("file =");
   });
 
@@ -216,6 +258,6 @@ describe("URL import", () => {
 
     expect(outcomes[0]!.status).toBe("added");
     expect(h.resolve).toHaveBeenCalledWith({ type: "pmid", value: "12345678" });
-    expect(h.fetch).not.toHaveBeenCalled();
+    expect(h.fetch.mock.calls.map(([url]) => url)).not.toContain("https://pubmed.ncbi.nlm.nih.gov/12345678/");
   });
 });

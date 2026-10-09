@@ -4,7 +4,7 @@
  * decide whether to attempt Sci-Hub, which mirror to use, etc.
  */
 import { bx } from "./browserApi";
-import { PAPERS_DIR } from "@labshelf/core";
+import { DEFAULT_CONTACT_EMAIL, PAPERS_DIR } from "@labshelf/core";
 
 /** Persisted user preferences. */
 export interface LabShelfSettings {
@@ -25,7 +25,7 @@ const STORAGE_KEY = "labshelf.settings";
 const DEFAULTS: LabShelfSettings = {
   enableSciHub: false,
   sciHubMirror: "https://sci-hub.se",
-  contactEmail: "contact@labshelf.dev",
+  contactEmail: DEFAULT_CONTACT_EMAIL,
   autoSyncMinutes: 15,
   lastFolder: PAPERS_DIR,
 };

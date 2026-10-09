@@ -51,6 +51,14 @@ describe('registerCommands — registration', () => {
     expect(cmd).toBeDefined();
   });
 
+  it('registers labshelf.addPaperByIdentifier, which asks for nothing before a library is configured', async () => {
+    registerCommands(makeContext(), makeNullRequireServices());
+    const cmd = (vscode.commands.registerCommand as jest.Mock).mock.calls.find(([name]) => name === 'labshelf.addPaperByIdentifier');
+    expect(cmd).toBeDefined();
+    await cmd[1]();
+    expect(vscode.window.showInputBox).not.toHaveBeenCalled();
+  });
+
   it('registers labshelf.openSidebar', () => {
     const ctx = makeContext();
     registerCommands(ctx, makeRequireServices());
