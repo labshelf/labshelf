@@ -1,7 +1,7 @@
 /** A routed fake network and a recording logger for the PDF finder: URL to canned Response, every call kept. */
 import type { ILogger, PdfFetchOptions, ResolveContext } from "@labshelf/core";
 
-import type { ResolverEnv } from "../../src/io/pdfFinding/types";
+import type { ResolverEnv } from "../../src/import/pdfFinding/types";
 
 export const PDF = new TextEncoder().encode("%PDF-1.5 body");
 

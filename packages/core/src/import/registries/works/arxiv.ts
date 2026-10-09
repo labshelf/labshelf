@@ -1,0 +1,32 @@
+/** arXiv client: preprint lookup by identifier. */
+import { extractYear } from "../../metadata/index.js";
+import { fetchText } from "../http.js";
+import { matchTag, xmlText } from "../text.js";
+import type { RegistryRecord } from "../types.js";
+
+/**
+ * Looks up an arXiv preprint by its identifier.
+ * @returns Preprint metadata, or undefined when the id is unknown.
+ */
+export async function arxivById(arxivId: string): Promise<RegistryRecord | undefined> {
+  const xml = await fetchText(
+    `https://export.arxiv.org/api/query?id_list=${encodeURIComponent(arxivId)}`,
+  );
+  const entry = xml?.match(/<entry>([\s\S]*?)<\/entry>/)?.[1];
+  if (!entry || /<title>\s*Error/i.test(entry)) {
+    return undefined;
+  }
+
+  // A preprint has no DOI until it is published; `<id>` is its abstract page.
+  return {
+    title: xmlText(matchTag(entry, "title")),
+    authors: [...entry.matchAll(/<author>\s*<name>([\s\S]*?)<\/name>\s*<\/author>/g)]
+      .map((match) => xmlText(match[1] ?? ""))
+      .filter((name): name is string => Boolean(name)),
+    year: extractYear(matchTag(entry, "published") ?? matchTag(entry, "updated")),
+    journal: xmlText(matchTag(entry, "arxiv:journal_ref")) ?? "arXiv preprint",
+    doi: xmlText(matchTag(entry, "arxiv:doi")),
+    url: xmlText(matchTag(entry, "id")),
+    summary: xmlText(matchTag(entry, "summary")),
+  };
+}

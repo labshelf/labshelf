@@ -47,39 +47,8 @@
       "count": 1
     }
   },
-  "packages/core/src/io/bibtex/bibtexService.ts": {
+  "packages/core/src/import/bibtex/bibtexService.ts": {
     "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/core/src/io/pdf/extractor.ts": {
-    "max-lines": {
-      "count": 1
-    }
-  },
-  "packages/core/src/io/pdf/localSignals.ts": {
-    "max-lines": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/core/src/io/pdf/parser.ts": {
-    "max-lines": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/core/src/io/pdf/registries.ts": {
-    "max-lines": {
-      "count": 1
-    }
-  },
-  "packages/core/src/io/pdf/resolver.ts": {
-    "max-lines": {
       "count": 1
     }
   },
