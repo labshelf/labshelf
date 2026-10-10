@@ -22,6 +22,11 @@ pnpm dev:vscode                        # watches both
 - Drive needs the Desktop OAuth client ([README.md](README.md#google-oauth-clients)). Tokens live in `SecretStorage` under `labshelf.gdrive.tokens`; **LabShelf: Disconnect from Google Drive** clears them.
 - The SQLite index (`.research/index.sqlite`) is a cache that can be rebuilt from the library files. Deleting it is always safe.
 
+## Adding papers
+
+- **Research: Add Paper by DOI or Link…** takes a DOI, arXiv id, PMID, PMCID or article link. It runs the core network import: metadata from the registries, then the core PDF chain ([architecture.md](../architecture.md)). A paper without a free PDF is saved without one.
+- Sci-Hub is off, and the registries' contact email is the default, until a setting exists.
+
 ## Extension host run
 
 Jest mocks `vscode`, and plain Node passes pdf.js's "am I Node?" check, so both hide bugs that appear only in the extension host. The host is an Electron utility process (`process.type === "utility"`), and pdf.js treats it as a browser. Any change to import, OCR, the text layer or pdf.js usage must run in a real host:

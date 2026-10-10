@@ -16,6 +16,11 @@ labshelf doctor                             # checks library, config, Drive and 
 - Thumbnails are faster with `brew install poppler` (pdftoppm). Without it, pdf.js renders them through `@napi-rs/canvas`.
 - PDFs open in the system viewer, or in `LABSHELF_PDF_VIEWER` or `terminal.pdfViewer` from the config.
 
+## Adding papers over the network
+
+- `labshelf add` and the explorer's add accept a DOI, PMID, PMCID, arXiv id or a landing-page URL. The core network import resolves metadata, skips a paper the library already has (DOI, arXiv id, or title and year), and finds the PDF through the core chain. A landing page without a downloadable PDF is saved without one.
+- Sci-Hub is off, and the registries' contact email is the default, until a setting exists.
+
 ## Verification
 
 Always rebuild first (`node build/build.mjs`). A stale bundle silently shows the old UI.

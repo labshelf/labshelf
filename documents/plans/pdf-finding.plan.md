@@ -6,26 +6,28 @@ Date: 2026-10-08. Branch `feat/reader-ux`. Scope: the browser extension (`packag
 
 - **Measured.** On 66 real papers, counting only PDFs whose text matches the paper:
   - The current chain finds 21/66 from identifiers alone and 24/66 from the article page.
-  - Four open-access resolvers, written but not wired in, raise this to **27/66** and **29/66**.
+  - Four open-access resolvers, now wired in, raise this to **27/66** and **29/66**.
   - Without a browser session the ceiling is about 33/66.
 - **Most of the remaining gap is closed-access papers the user can already read.** The access comes through their institution (IP, single sign-on such as CAFe/Shibboleth, EZproxy, OpenAthens) or a personal subscription. Paperpile wins there by downloading through the user's own access and retrying through the library proxy. Section 4 says how LabShelf can do the same.
 - **For readers with no access at all**, section 5 adds a legal last step that Paperpile lacks: one click asks the paper's author for a copy by email.
-- **Where the code goes:** the resolver chain moves to core during [architecture-refactor.plan.md](architecture-refactor.plan.md) step 6.3, so VS Code and the terminal get the same PDF search. Implement the steps below there.
+- **Where the code goes:** the resolver chain moved to core (`import/pdfFinding/`) in [architecture-refactor.plan.md](architecture-refactor.plan.md) step 6.3, so VS Code and the terminal get the same PDF search. Implement the steps below there; browser-only parts (helper tab, tab fetch) stay in `packages/browser/src/capture/`.
 
 ---
 
 ## 1. Where things stand
 
-### 1.1 Written but not wired in
+### 1.1 Wired in (core `import/pdfFinding/`)
 
-These files compile, but nothing calls them and they have no tests:
+The four resolvers run in every app's chain, with tests:
 
-- `capture/resolvers/openalexResolver.ts`: OpenAlex by DOI (free endpoint). Reads the PDF and landing locations and the PMCID. Landing copies are checked with `sameWork`.
-- `capture/resolvers/semanticScholarResolver.ts`: one call per capture. Reads `openAccessPdf` and turns `externalIds` (ArXiv, ACL, PubMedCentral) into arXiv, ACL Anthology or PMC candidates.
-- `capture/resolvers/europePmcResolver.ts`: REST search, used for identifiers only. Requires a title match.
-- `capture/resolvers/pmcResolver.ts`: PMCID to PDF, first the AWS open-data bucket, then the PMC site. It also contains `solvePmcPow()` for PMC's proof-of-work page (see 2.1).
-- `capture/titleMatch.ts`: `sameWork()`. Accepts a title equal after normalisation or with word-bigram Dice ≥ 0.9, a year within ±1 (±2 for preprints), and a shared surname.
-- `capture/resolvers/types.ts`: `ResolveContext` gains `pmcid`, `title`, `authors` and `year`.
+- `resolvers/learning/openalex.ts`: OpenAlex by DOI (free endpoint). Reads the PDF and landing locations and the PMCID. Landing copies are checked with `sameWork`.
+- `resolvers/learning/semanticScholar.ts`: one call per capture. Reads `openAccessPdf` and turns `externalIds` (ArXiv, ACL, PubMedCentral) into arXiv, ACL Anthology or PMC candidates.
+- `resolvers/learning/europePmc.ts`: REST search, used for identifiers only. Requires a title match.
+- `resolvers/direct/pmc.ts`: PMCID to PDF through the AWS open-data bucket. The PMC site's proof-of-work page (see 2.1) is not handled: that code was deleted in the refactor, and step 5 restores it from git history (`git log -- '*pmcResolver.ts'`).
+- `import/resolution/sameWork.ts`: `sameWork()`. Accepts a title equal after normalisation or with word-bigram Dice ≥ 0.9, a year within ±1 (±2 for preprints), and a shared surname.
+- `pdfFinding/resolveContext.ts`: the context carries `pmcid`, `title`, `authors` and `year`.
+
+The order is in `pdfFinding/resolverOrder.ts`. The browser keeps only tab glue in `capture/` (helper tab, tab fetch, page probe).
 
 ### 1.2 Measurement
 
@@ -145,7 +147,7 @@ Shape known, but behind Cloudflare or a login from here (these download for a su
 - **AMS:** `<landing>/<PII>.pdf`.
 - **RSC, Emerald and OUP:** the PDF id is not in the DOI, so use `citation_pdf_url` from the page.
 
-The full tables (36 platforms, each with a landing→PDF regex and a verified example) are in the research reports listed under Sources. Turn them into `capture/pdfUrlRules.ts`, with one unit test per rule.
+The full tables (36 platforms, each with a landing→PDF regex and a verified example) are in the research reports listed under Sources. Turn them into `import/pdfFinding/pdfUrlRules.ts`, with one unit test per rule.
 
 ---
 
@@ -153,11 +155,7 @@ The full tables (36 platforms, each with a landing→PDF regex and a verified ex
 
 Steps in order of return. Each is small enough to ship alone.
 
-1. **Wire in the four resolvers.**
-   - Add them to `resolverChain.ts`, with the identifier-learning resolvers first (pubmed, openalex, semanticScholar, europePmc) so pmc and arxiv can use what they learn.
-   - Make `captureService.findPdf` pass `title`, `authors` and `year` from the draft.
-   - Add unit tests with mocked `fetch`.
-   - Expected gain: +6 correct PDFs on the corpus.
+1. **Wire in the four resolvers.** Done: core `import/pdfFinding/` runs OpenAlex, Semantic Scholar and Europe PMC before PMC and the publisher, passes `title`, `authors` and `year`, and has tests with mocked `fetch`. Measured gain: +6 correct PDFs on the corpus.
 2. **Run lookups in parallel.**
    - Lookups (Stage A): run them concurrently with a 3 s cap.
    - Downloads: at most 3–4 at a time, a 10 s time-to-first-byte limit, 30 s per URL and a global limit of about 40 s.
@@ -169,11 +167,11 @@ Steps in order of return. Each is small enough to ship alone.
    - Route those URLs to the helper tab.
    - In a real browser this is probably the largest single gain (chemistry, social science, Cloudflare publishers), but Node cannot measure it.
 4. **Publisher rules.**
-   - Create `capture/pdfUrlRules.ts` with `publisherPdfUrls(doi)`, `landingPdfUrls(url)` and `canonicalUrl(url)`.
+   - Create `import/pdfFinding/pdfUrlRules.ts` with `publisherPdfUrls(doi)`, `landingPdfUrls(url)` and `canonicalUrl(url)`.
    - Apply `landingPdfUrls` to every landing URL: the tab, doi.org redirects and the aggregators' landing pages.
 5. **PMC.**
-   - Try the S3 bucket first.
-   - Then solve the proof-of-work, either with the `cookies` permission or inside the helper tab.
+   - The S3 bucket is already tried first.
+   - Restore `solvePmcPow()` from git history (it was deleted with the old browser resolver), then solve the proof-of-work, either with the `cookies` permission or inside the helper tab.
    - Send all NCBI calls through one queue at no more than 3 requests/s.
 6. **Title-only twins.** For papers without a DOI (NeurIPS, ICML, ICLR):
    - First try arXiv by title plus surname.
@@ -321,7 +319,7 @@ For an existing paper (the library's "Find PDF"), the address comes from the sam
 | Honest "no PDF" state, retry later (Find PDF), attach a local file | Have (this branch) |
 | Ask before saving without a PDF | Have (this branch) |
 | Open-access discovery (Unpaywall, CrossRef) | Have |
-| OpenAlex, Semantic Scholar, Europe PMC, PMC, title twins | Written, not wired (section 3, steps 1, 5, 6) |
+| OpenAlex, Semantic Scholar, Europe PMC, PMC bucket | Have (core chain); PMC proof-of-work and title twins missing (steps 5, 6) |
 | Publisher-specific PDF URL rules ("recipes") | Partial (about 20 DOI prefixes); research covers about 36 platforms (step 4) |
 | Background tab for bot checks | Partial (one site, Cloudflare/Akamai only) (step 3) |
 | Use the user's publisher login | Partial: works when cookies reach background requests; no fallback yet (4.2) |
@@ -334,7 +332,7 @@ For an existing paper (the library's "Find PDF"), the address comes from the sam
 
 ## 7. Sci-Hub, LibGen, Anna's Archive
 
-- **What exists.** `capture/resolvers/scihubResolver.ts` is the user's existing opt-in Sci-Hub source:
+- **What exists.** `import/pdfFinding/resolvers/direct/sciHub.ts` is the user's existing opt-in Sci-Hub source:
   - off by default;
   - controlled by `enableSciHub` and `sciHubMirror` in the options page;
   - consulted last, only when a DOI is known.

@@ -33,6 +33,10 @@ The minimum versions are the floor for pdf.js 6.3.
 - The Scholar content script renders inside a shadow root and loads the tokens as text, with `:root` rewritten to `:host`.
 - Cloudflare-protected publishers (ACM, SIAM, ScienceDirect) block headless browsers and plain `fetch`. Real downloads from them can only be tested by hand.
 
+## Capture structure
+
+Identifier detection, landing-page parsing, metadata resolution and the PDF resolver chain live in core `import/` and are shared with the other apps. `src/capture/` keeps only what needs the browser: the page probe content script, the helper tab and tab fetch (`capture/tab/`), the capture and Scholar flows, and mapping a draft to a record.
+
 ## Headless run
 
 Playwright's full Chrome for Testing can load the unpacked extension. Run it outside the sandbox:
