@@ -2070,20 +2070,6 @@
   {
     "type": "dependency",
     "from": "packages/terminal/src/app/context.ts",
-    "to": "packages/terminal/src/platform/nodePdfOpener.ts",
-    "unresolvedTo": "../platform/nodePdfOpener.js",
-    "dependencyTypes": [
-      "local",
-      "dynamic-import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/app/context.ts",
     "to": "packages/terminal/src/preview/thumbnails.ts",
     "unresolvedTo": "../preview/thumbnails.js",
     "dependencyTypes": [
@@ -2299,20 +2285,6 @@
     "from": "packages/terminal/src/main.ts",
     "to": "packages/terminal/src/ui/app.ts",
     "unresolvedTo": "./ui/app.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/preview/thumbnailWorker.ts",
-    "to": "packages/terminal/src/platform/nodePdfOpener.ts",
-    "unresolvedTo": "../platform/nodePdfOpener.js",
     "dependencyTypes": [
       "local",
       "import"
@@ -2950,34 +2922,6 @@
     "from": "packages/vscode/src/extension.ts",
     "to": "packages/vscode/src/pdf-viewer/ThemeManager.ts",
     "unresolvedTo": "./pdf-viewer/ThemeManager.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/extension.ts",
-    "to": "packages/vscode/src/pdf/nodePdfOpener.ts",
-    "unresolvedTo": "./pdf/nodePdfOpener.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/extension.ts",
-    "to": "packages/vscode/src/pdf/tesseractOcrEngine.ts",
-    "unresolvedTo": "./pdf/tesseractOcrEngine.js",
     "dependencyTypes": [
       "local",
       "import"

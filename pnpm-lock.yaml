@@ -68,6 +68,9 @@ importers:
 
   packages/core:
     dependencies:
+      '@napi-rs/canvas':
+        specifier: ^1.0.9
+        version: 1.0.9
       pdfjs-dist:
         specifier: ~6.3.289
         version: 6.3.289

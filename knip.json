@@ -19,6 +19,9 @@
       "project": [
         "src/**/*.ts",
         "__tests__/**/*.ts"
+      ],
+      "ignoreDependencies": [
+        "@napi-rs/canvas"
       ]
     },
     "packages/vscode": {
@@ -32,6 +35,9 @@
         "src/**/*.ts",
         "build/*.mjs",
         "__tests__/**/*.ts"
+      ],
+      "ignoreDependencies": [
+        "@napi-rs/canvas"
       ]
     },
     "packages/browser": {
@@ -66,6 +72,10 @@
       "ignoreBinaries": [
         "pdftoppm",
         "secret-tool"
+      ],
+      "ignoreDependencies": [
+        "@napi-rs/canvas",
+        "pdfjs-dist"
       ]
     }
   }

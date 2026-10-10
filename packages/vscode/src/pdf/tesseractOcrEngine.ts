@@ -6,13 +6,9 @@
  * Both dependencies are loaded lazily and their absence is non-fatal: a build
  * without them simply falls back to whatever the text layer provided.
  *
- * @depends pdfjs-dist, tesseract.js, @labshelf/core, pdf/pdfjsNodeEnvironment.ts
- * @dependents extension.ts
  */
 import type { PdfOcrEngine } from "@labshelf/core";
-
-import { loadPdfjs } from "./nodePdfOpener.js";
-import { loadPdfCanvas, nodeRenderOptions } from "./pdfjsNodeEnvironment.js";
+import { loadNativeCanvas, nativeRenderOptions, type PdfjsLoader } from "@labshelf/core/node";
 
 // Tesseract wants roughly 300 DPI; PDF user space is 72 DPI.
 const RENDER_SCALE = 300 / 72;
@@ -20,6 +16,8 @@ const RENDER_SCALE = 300 / 72;
 const MAX_RENDER_PIXELS = 40_000_000;
 
 export interface TesseractOcrOptions {
+  // The extension's pdf.js, shared with every other caller that opens a PDF.
+  pdfjs: PdfjsLoader;
   // Where Tesseract caches its downloaded language data between sessions.
   cachePath?: string | undefined;
   languages?: string[] | undefined;
@@ -31,11 +29,10 @@ export class TesseractOcrEngine implements PdfOcrEngine {
   private worker: TesseractWorker | undefined;
   private workerPromise: Promise<TesseractWorker | undefined> | undefined;
 
-  constructor(private readonly options: TesseractOcrOptions = {}) {}
+  constructor(private readonly options: TesseractOcrOptions) {}
 
   /**
    * Renders the given pages and returns their recognized text.
-   * @usedBy @labshelf/core PdfImportParser (injected)
    * @returns Newline-joined page text, or an empty string when OCR is unavailable.
    */
   async recognize(pdfBytes: Uint8Array, pageNumbers: number[]): Promise<string> {
@@ -43,12 +40,12 @@ export class TesseractOcrEngine implements PdfOcrEngine {
     if (!worker) {
       return "";
     }
-    if (!loadPdfCanvas()) {
+    if (!loadNativeCanvas()) {
       this.options.onDiagnostic?.("OCR unavailable: no native canvas build is installed for this platform");
       return "";
     }
 
-    const document = await openPdfForOcr(pdfBytes);
+    const document = await openPdfForOcr(this.options.pdfjs, pdfBytes);
     if (!document) {
       return "";
     }
@@ -79,7 +76,6 @@ export class TesseractOcrEngine implements PdfOcrEngine {
    * Reads one page image and returns Tesseract's own text-only PDF for it: a
    * page the size of the image holding nothing but invisible, positioned text.
    * Laid over the original page it makes a scan selectable and searchable.
-   * @usedBy pdf/searchablePdfBuilder.ts
    * @returns The layer's PDF bytes, or undefined when OCR is unavailable or found no text.
    */
   async recognizeTextLayer(image: Buffer): Promise<Uint8Array | undefined> {
@@ -95,7 +91,6 @@ export class TesseractOcrEngine implements PdfOcrEngine {
   /**
    * Reports a one-line diagnostic through the engine's channel, so everything
    * OCR-related lands in the same log module.
-   * @usedBy pdf/searchablePdfBuilder.ts
    * @returns void
    */
   report(message: string): void {
@@ -104,7 +99,6 @@ export class TesseractOcrEngine implements PdfOcrEngine {
 
   /**
    * Shuts the Tesseract worker down. Safe to call when none was started.
-   * @usedBy extension.ts (deactivate)
    * @returns void
    */
   async dispose(): Promise<void> {
@@ -171,26 +165,19 @@ export interface OcrDocument {
 
 /**
  * Opens a PDF for rendering onto the native canvas.
- * @usedBy pdf/tesseractOcrEngine.ts, pdf/searchablePdfBuilder.ts
  * @returns The document handle, or undefined when no native canvas is installed.
  */
-export async function openPdfForOcr(pdfBytes: Uint8Array): Promise<OcrDocument | undefined> {
-  const canvasPkg = loadPdfCanvas();
+export async function openPdfForOcr(pdfjs: PdfjsLoader, pdfBytes: Uint8Array): Promise<OcrDocument | undefined> {
+  const canvasPkg = loadNativeCanvas();
   if (!canvasPkg) {
     return undefined;
   }
 
-  // Not a bare import: in the extension host pdfjs needs its worker registered
-  // first, and a check at startup can run before anything else opened a PDF.
-  const pdfjs = await loadPdfjs();
-  const getDocument = pdfjs["getDocument"] as (opts: Record<string, unknown>) => {
-    promise: Promise<PdfRenderDocument>;
-    destroy(): Promise<void>;
-  };
   // The extension host is not recognised as Node by pdfjs, which would then
   // reach for a DOM canvas; the render options pin the native one instead.
-  const loadingTask = getDocument({ data: new Uint8Array(pdfBytes), ...nodeRenderOptions(canvasPkg) });
-  const document = await loadingTask.promise;
+  const loadingTask = await pdfjs.getDocument({ data: new Uint8Array(pdfBytes), ...nativeRenderOptions(canvasPkg) });
+  const document = (await loadingTask.promise) as unknown as PdfRenderDocument;
+  const { OPS } = (await pdfjs.load()) as { OPS: Record<string, number> };
 
   return {
     numPages: document.numPages,
@@ -203,7 +190,7 @@ export async function openPdfForOcr(pdfBytes: Uint8Array): Promise<OcrDocument |
     },
     async invisibleTextShare(pageNumber) {
       const ops = await (await document.getPage(pageNumber)).getOperatorList();
-      return invisibleShare(ops, pdfjs["OPS"] as Record<string, number>);
+      return invisibleShare(ops, OPS);
     },
     async renderPng(pageNumber) {
       const page = await document.getPage(pageNumber);
@@ -243,7 +230,6 @@ const INVISIBLE_MODES = new Set([3, 7]);
 /**
  * Counts which share of a page's text-showing operators run in an invisible
  * render mode. The mode is graphics state, so it follows save/restore.
- * @usedBy pdf/tesseractOcrEngine.ts
  * @returns A fraction from 0 to 1, or undefined when the page shows no text.
  */
 export function invisibleShare(ops: OperatorList, OPS: Record<string, number>): number | undefined {

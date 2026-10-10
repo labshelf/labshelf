@@ -16,7 +16,6 @@ module.exports = {
     '!src/main.ts',
     '!src/tui/terminal.ts',
     '!src/preview/thumbnailWorker.ts',
-    '!src/platform/nodePdfOpener.ts',
   ],
   coverageThreshold: { global: { branches: 50, functions: 50, lines: 50, statements: 50 } },
   moduleNameMapper: {

@@ -13,6 +13,9 @@ module.exports = {
   moduleNameMapper: {
     // Tests run against source, not the built package.
     '^@labshelf/core$': '<rootDir>/src/index.ts',
+    // pdfjs-dist uses import.meta.url (ESM-only) and cannot be loaded in Jest CJS mode.
+    'pdfjs-dist/legacy/build/pdf\\.worker\\.mjs': '<rootDir>/__mocks__/pdfjs-worker-legacy.js',
+    'pdfjs-dist/legacy/build/pdf\\.mjs': '<rootDir>/__mocks__/pdfjs-dist-legacy.js',
     // Remap .js extensions in relative imports so ts-jest resolves the .ts files.
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },

@@ -7,11 +7,19 @@
 
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 
+import { createPdfjsLoader } from '@labshelf/core/node';
+
 import { SearchablePdfBuilder } from '../../src/pdf/searchablePdfBuilder';
 import { openPdfForOcr } from '../../src/pdf/tesseractOcrEngine';
 import type { OcrDocument, TesseractOcrEngine } from '../../src/pdf/tesseractOcrEngine';
 
 jest.mock('../../src/pdf/tesseractOcrEngine', () => ({ openPdfForOcr: jest.fn() }));
+
+const pdfjs = createPdfjsLoader();
+
+function builderFor(engine: TesseractOcrEngine | undefined, options?: { maxPages?: number }): SearchablePdfBuilder {
+  return new SearchablePdfBuilder(engine, pdfjs, options);
+}
 
 const PAGE_OF_TEXT = 'The quick brown fox jumps over the lazy dog. '.repeat(12);
 
@@ -64,7 +72,7 @@ describe('SearchablePdfBuilder', () => {
     const engine = engineReturning(await textLayer());
     const steps: number[] = [];
 
-    const outcome = await new SearchablePdfBuilder(engine).build(await blankPdf(2), {
+    const outcome = await builderFor(engine).build(await blankPdf(2), {
       onProgress: (step) => steps.push(step.pageNumber),
     });
 
@@ -81,7 +89,7 @@ describe('SearchablePdfBuilder', () => {
     openSequence(ocrDocument([PAGE_OF_TEXT, '', PAGE_OF_TEXT]));
     const engine = engineReturning(await textLayer());
 
-    expect(await new SearchablePdfBuilder(engine).build(await blankPdf(3))).toEqual({ status: 'not-needed', layer: 'native' });
+    expect(await builderFor(engine).build(await blankPdf(3))).toEqual({ status: 'not-needed', layer: 'native' });
     expect(engine.recognizeTextLayer).not.toHaveBeenCalled();
   });
 
@@ -90,7 +98,7 @@ describe('SearchablePdfBuilder', () => {
     openSequence(ocrDocument([PAGE_OF_TEXT, PAGE_OF_TEXT, PAGE_OF_TEXT], [], [undefined, 0.84, 0]));
     const engine = engineReturning(await textLayer());
 
-    expect(await new SearchablePdfBuilder(engine).build(await blankPdf(3))).toEqual({ status: 'not-needed', layer: 'ocr' });
+    expect(await builderFor(engine).build(await blankPdf(3))).toEqual({ status: 'not-needed', layer: 'ocr' });
     expect(engine.recognizeTextLayer).not.toHaveBeenCalled();
   });
 
@@ -98,32 +106,32 @@ describe('SearchablePdfBuilder', () => {
     const stamp = 'Downloaded 12/25/12 to 150.135.135.70. Redistribution subject to SIAM license or copyright';
     openSequence(ocrDocument([stamp, stamp]), ocrDocument([PAGE_OF_TEXT, PAGE_OF_TEXT]));
 
-    const outcome = await new SearchablePdfBuilder(engineReturning(await textLayer())).build(await blankPdf(2));
+    const outcome = await builderFor(engineReturning(await textLayer())).build(await blankPdf(2));
     expect(outcome.status).toBe('added');
   });
 
   it('refuses documents above the page limit', async () => {
     openSequence(ocrDocument(['', '', '']));
 
-    const outcome = await new SearchablePdfBuilder(engineReturning(await textLayer()), { maxPages: 2 }).build(await blankPdf(3));
+    const outcome = await builderFor(engineReturning(await textLayer()), { maxPages: 2 }).build(await blankPdf(3));
     expect(outcome).toEqual({ status: 'skipped', reason: '3 pages need OCR, above the limit of 2 (labshelf.ocr.maxPages)' });
   });
 
   it('classifies but never reads when OCR is turned off', async () => {
     openSequence(ocrDocument(['', '']));
 
-    expect(await new SearchablePdfBuilder(undefined).build(await blankPdf(2))).toEqual({
+    expect(await builderFor(undefined).build(await blankPdf(2))).toEqual({
       status: 'skipped',
       reason: 'OCR is turned off in settings (labshelf.ocr.enabled)',
     });
     openSequence(ocrDocument([PAGE_OF_TEXT, PAGE_OF_TEXT]));
-    expect(await new SearchablePdfBuilder(undefined).build(await blankPdf(2))).toEqual({ status: 'not-needed', layer: 'native' });
+    expect(await builderFor(undefined).build(await blankPdf(2))).toEqual({ status: 'not-needed', layer: 'native' });
   });
 
   it('skips rotated pages and counts them as failed', async () => {
     openSequence(ocrDocument(['', ''], [90, 0]), ocrDocument(['', PAGE_OF_TEXT]));
 
-    const outcome = await new SearchablePdfBuilder(engineReturning(await textLayer())).build(await blankPdf(2, true));
+    const outcome = await builderFor(engineReturning(await textLayer())).build(await blankPdf(2, true));
     expect(outcome).toMatchObject({ status: 'added', pagesAdded: 1, pagesFailed: 1 });
   });
 
@@ -131,26 +139,26 @@ describe('SearchablePdfBuilder', () => {
     openSequence(ocrDocument(['', '']));
     const engine = engineReturning(await textLayer());
 
-    expect(await new SearchablePdfBuilder(engine).build(await blankPdf(2), { isCancelled: () => true })).toEqual({ status: 'cancelled' });
+    expect(await builderFor(engine).build(await blankPdf(2), { isCancelled: () => true })).toEqual({ status: 'cancelled' });
     expect(engine.recognizeTextLayer).not.toHaveBeenCalled();
   });
 
   it('returns nothing to write when OCR finds no text, the result fails verification, or no canvas exists', async () => {
     openSequence(ocrDocument(['']));
-    expect(await new SearchablePdfBuilder(engineReturning(undefined)).build(await blankPdf(1))).toMatchObject({
+    expect(await builderFor(engineReturning(undefined)).build(await blankPdf(1))).toMatchObject({
       status: 'unavailable',
       reason: 'OCR found no text on any page',
     });
 
     // Verification re-opens the result and still finds the page empty.
     openSequence(ocrDocument(['']), ocrDocument(['']));
-    expect(await new SearchablePdfBuilder(engineReturning(await textLayer())).build(await blankPdf(1))).toMatchObject({
+    expect(await builderFor(engineReturning(await textLayer())).build(await blankPdf(1))).toMatchObject({
       status: 'unavailable',
       reason: 'the rewritten PDF did not pass verification',
     });
 
     openSequence(undefined);
-    expect((await new SearchablePdfBuilder(engineReturning(undefined)).build(await blankPdf(1))).status).toBe('unavailable');
+    expect((await builderFor(engineReturning(undefined)).build(await blankPdf(1))).status).toBe('unavailable');
   });
 
   it('explains an encrypted PDF in plain words', async () => {
@@ -162,7 +170,7 @@ describe('SearchablePdfBuilder', () => {
     );
     openSequence(ocrDocument(['']));
 
-    expect(await new SearchablePdfBuilder(engineReturning(await textLayer())).build(bytes)).toEqual({
+    expect(await builderFor(engineReturning(await textLayer())).build(bytes)).toEqual({
       status: 'unavailable',
       reason: 'the PDF is encrypted by its publisher, so text cannot be added to it',
     });
@@ -171,7 +179,7 @@ describe('SearchablePdfBuilder', () => {
   it('leaves an unreadable PDF untouched', async () => {
     openSequence(ocrDocument(['']));
 
-    const outcome = await new SearchablePdfBuilder(engineReturning(await textLayer())).build(new Uint8Array([1, 2, 3]));
+    const outcome = await builderFor(engineReturning(await textLayer())).build(new Uint8Array([1, 2, 3]));
     expect(outcome.status).toBe('unavailable');
   });
 });
@@ -179,7 +187,7 @@ describe('SearchablePdfBuilder', () => {
 describe('SearchablePdfBuilder.detect', () => {
   it('tells a scan from a born-digital paper without any OCR', async () => {
     const engine = engineReturning(await textLayer());
-    const builder = new SearchablePdfBuilder(engine);
+    const builder = builderFor(engine);
 
     openSequence(ocrDocument(['', '', PAGE_OF_TEXT]));
     expect(await builder.detect(new Uint8Array())).toEqual({ status: 'missing', textlessPages: 2, totalPages: 3 });
@@ -196,10 +204,10 @@ describe('SearchablePdfBuilder.detect', () => {
   it('closes the document and reports a PDF that cannot be opened', async () => {
     const document = ocrDocument(['']);
     openSequence(document);
-    await new SearchablePdfBuilder(undefined).detect(new Uint8Array());
+    await builderFor(undefined).detect(new Uint8Array());
     expect(document.close).toHaveBeenCalled();
 
     openSequence(undefined);
-    expect(await new SearchablePdfBuilder(undefined).detect(new Uint8Array())).toMatchObject({ status: 'unavailable' });
+    expect(await builderFor(undefined).detect(new Uint8Array())).toMatchObject({ status: 'unavailable' });
   });
 });

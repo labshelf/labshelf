@@ -3,6 +3,7 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 
 import { InMemoryResearchDatabase, PdfImportParser, BibTeXService, libraryChanged, libraryLayout, scanLibrary, type IFileSystem, type ILogger, type IResearchDatabase, type MutationContext, type SyncResult, type ReaderCommandId } from "@labshelf/core";
+import { NodePdfOpener } from "@labshelf/core/node";
 import { PaperImporter, PaperService, PaperTextLayers, createExtensionLogger } from "./core/index.js";
 import { VscodeFileSystem } from "./storage/vscodeFileSystem.js";
 import {
@@ -24,9 +25,7 @@ import { moveFolders, registerFolderCommands, type FolderCommandHost } from "./c
 import type { ActiveServices } from "./commands/registerCommands.js";
 import { createAiService, AiService } from "./ai/service/index.js";
 import { SqliteResearchDatabase } from "./db/sqliteResearchDatabase.js";
-import { NodePdfOpener } from "./pdf/nodePdfOpener.js";
-import { TesseractOcrEngine } from "./pdf/tesseractOcrEngine.js";
-import { SearchablePdfBuilder } from "./pdf/index.js";
+import { createOcrEngine, createTextLayerBuilder, hostPdfjs } from "./pdf/index.js";
 import { currentTextLayerJobs, onTextLayerJobsChanged, queueTextLayers } from "./commands/textLayerQueue.js";
 import { ThemeManager } from "./pdf-viewer/ThemeManager.js";
 import { AnnotationManager } from "./pdf-viewer/AnnotationManager.js";
@@ -410,7 +409,7 @@ async function maybeStartAi(
       fileSystem: services.fileSystem,
       eventBus,
       logger: services.logger,
-      pdfOpener: new NodePdfOpener(),
+      pdfOpener: new NodePdfOpener(hostPdfjs),
       resolvePdfUri: (paperId) => services.paperService.resolvePdfUri(paperId),
     });
     if (!result) return null;
@@ -422,37 +421,6 @@ async function maybeStartAi(
     });
     return null;
   }
-}
-
-// Builds the OCR fallback used when a PDF's text layer cannot be read.
-// Returns undefined when the user has turned it off, so imports skip it entirely.
-function createOcrEngine(
-  context: vscode.ExtensionContext,
-  logger: ILogger,
-): TesseractOcrEngine | undefined {
-  const config = vscode.workspace.getConfiguration("labshelf");
-  if (!config.get<boolean>("ocr.enabled", true)) {
-    return undefined;
-  }
-
-  const languages = config.get<string[]>("ocr.languages", ["eng"]);
-  const engine = new TesseractOcrEngine({
-    languages,
-    // Language data is downloaded once and reused across sessions.
-    cachePath: vscode.Uri.joinPath(context.globalStorageUri, "ocr-cache").fsPath,
-    onDiagnostic: (message) => void logger.log("INFO", "ocr", message),
-  });
-  context.subscriptions.push({ dispose: () => void engine.dispose() });
-  return engine;
-}
-
-// Builds the step that classifies PDFs and gives scans a selectable text layer.
-// It shares the import's OCR engine; with OCR off it still classifies, so the
-// library can flag scans. labshelf.ocr.makeSearchable only governs whether
-// that runs on its own after an import (commands/importProgress.ts).
-function createTextLayerBuilder(engine: TesseractOcrEngine | undefined): SearchablePdfBuilder {
-  const config = vscode.workspace.getConfiguration("labshelf");
-  return new SearchablePdfBuilder(engine, { maxPages: config.get<number>("ocr.maxPages", 150) });
 }
 
 // Constructs and wires all application services for the given library root.
@@ -467,7 +435,7 @@ async function buildServices(
   const database = await initializeDatabase(paths.indexPath(), fileSystem);
   const logger = createExtensionLogger(paths.appLogPath().fsPath, { append: (entry) => database.appendLog(entry) });
   const ocrEngine = createOcrEngine(context, logger);
-  const pdfImportParser = new PdfImportParser(new NodePdfOpener(), { ocr: ocrEngine });
+  const pdfImportParser = new PdfImportParser(new NodePdfOpener(hostPdfjs), { ocr: ocrEngine });
   const bibTeXService = new BibTeXService(fileSystem);
   const mutations: MutationContext = {
     fs: fileSystem, paths: path, artifacts: bibTeXService, logger, papersRoot: paths.papersRoot().fsPath,

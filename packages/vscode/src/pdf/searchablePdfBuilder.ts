@@ -5,6 +5,7 @@
  * paper looks exactly as it did and grows by a few kilobytes per page.
  */
 import { isSparseText } from "@labshelf/core";
+import type { PdfjsLoader } from "@labshelf/core/node";
 import type { ExistingLayer, TextLayerDetection, TextLayerOutcome } from "@labshelf/core";
 
 import { openPdfForOcr, type OcrDocument, type TesseractOcrEngine } from "./tesseractOcrEngine.js";
@@ -39,6 +40,7 @@ export class SearchablePdfBuilder implements PdfTextLayerBuilder {
   constructor(
     // Absent when OCR is turned off: documents are still classified, never read.
     private readonly engine: TesseractOcrEngine | undefined,
+    private readonly pdfjs: PdfjsLoader,
     private readonly options: SearchablePdfOptions = {},
   ) {}
 
@@ -48,7 +50,7 @@ export class SearchablePdfBuilder implements PdfTextLayerBuilder {
    * @returns native, missing (with page counts), or why the PDF could not be opened.
    */
   async detect(pdfBytes: Uint8Array): Promise<TextLayerDetection> {
-    const source = await openPdfForOcr(pdfBytes).catch(() => undefined);
+    const source = await openPdfForOcr(this.pdfjs, pdfBytes).catch(() => undefined);
     if (!source) {
       return { status: "unavailable", reason: "the PDF could not be opened for reading" };
     }
@@ -67,7 +69,7 @@ export class SearchablePdfBuilder implements PdfTextLayerBuilder {
    * @returns The outcome; bytes are present only when a layer was actually added.
    */
   async build(pdfBytes: Uint8Array, hooks: TextLayerHooks = {}): Promise<TextLayerOutcome> {
-    const source = await openPdfForOcr(pdfBytes);
+    const source = await openPdfForOcr(this.pdfjs, pdfBytes);
     if (!source) {
       return { status: "unavailable", reason: "no native canvas build is installed for this platform" };
     }
@@ -152,7 +154,7 @@ export class SearchablePdfBuilder implements PdfTextLayerBuilder {
 
     const bytes = await target.save();
     // The file replaces the user's paper, so it is proven readable first.
-    if (!(await hasTextOn(bytes, pages, source.numPages))) {
+    if (!(await hasTextOn(this.pdfjs, bytes, pages, source.numPages))) {
       return { status: "unavailable", reason: "the rewritten PDF did not pass verification" };
     }
     return { status: "added", bytes, pagesAdded, pagesFailed };
@@ -197,8 +199,8 @@ async function pagesWithoutText(document: OcrDocument): Promise<number[]> {
 
 // Re-opens the result and confirms it still has every page and that at least
 // one of the pages that were read now carries real text.
-async function hasTextOn(bytes: Uint8Array, pages: number[], expectedPages: number): Promise<boolean> {
-  const reopened = await openPdfForOcr(bytes).catch(() => undefined);
+async function hasTextOn(pdfjs: PdfjsLoader, bytes: Uint8Array, pages: number[], expectedPages: number): Promise<boolean> {
+  const reopened = await openPdfForOcr(pdfjs, bytes).catch(() => undefined);
   if (!reopened) {
     return false;
   }

@@ -6,7 +6,7 @@
 import * as path from "node:path";
 
 import { BibTeXService, Logger, PdfImportParser, type ILogger, type LibraryStore, type SyncCoordinator } from "@labshelf/core";
-import { FileLogSink, NodeFileSystem } from "@labshelf/core/node";
+import { FileLogSink, NodeFileSystem, NodePdfOpener, createPdfjsLoader } from "@labshelf/core/node";
 
 import type { TerminalConfig } from "./config.js";
 import {
@@ -75,8 +75,7 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
     logger,
     pdfParser: async () => {
       if (!parser) {
-        const { NodePdfOpener } = await import("../platform/nodePdfOpener.js");
-        parser = new PdfImportParser(new NodePdfOpener());
+        parser = new PdfImportParser(new NodePdfOpener(createPdfjsLoader()));
       }
       return parser;
     },
