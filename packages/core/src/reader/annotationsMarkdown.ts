@@ -2,7 +2,7 @@
  * Renders a paper's annotations as a Markdown reading-notes document grouped by page.
  */
 import type { Annotation } from "../model/index.js";
-import { byPageThenCreated } from "./paperData.js";
+import { byPageThenCreated } from "./sidecar/index.js";
 import { authorYearLabel, cleanQuote, type CitablePaper } from "./citationFormat.js";
 
 /**

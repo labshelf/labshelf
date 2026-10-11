@@ -2,7 +2,7 @@
  * Handlers that write the paper's sidecar from the reader: annotation create, update and delete, and the reading position.
  */
 import type { WebviewToHost } from "../protocol.js";
-import { normalizeReadingState } from "../readingState.js";
+import { normalizeReadingState } from "../sidecar/index.js";
 import { READER_LOG_MODULE, type HostContext, type MessageHandlers } from "./hostContext.js";
 
 type StoreResult<T> = { ok: true; value: T } | { ok: false };

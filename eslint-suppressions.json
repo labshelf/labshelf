@@ -12,11 +12,6 @@
       "count": 1
     }
   },
-  "packages/browser/src/library-page/controllers/paperController.ts": {
-    "max-lines": {
-      "count": 1
-    }
-  },
   "packages/browser/src/library-page/views/listHeaderView.ts": {
     "max-lines-per-function": {
       "count": 1
@@ -47,57 +42,12 @@
       "count": 1
     }
   },
-  "packages/core/src/reader/dom/reader.ts": {
-    "max-lines-per-function": {
-      "count": 2
-    }
-  },
-  "packages/core/src/reader/dom/ui/hoverPreview.ts": {
-    "max-lines": {
-      "count": 1
-    }
-  },
-  "packages/core/src/reader/dom/ui/pdfLoader.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/core/src/reader/dom/ui/toolbar.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/core/src/reader/dom/ui/viewerSetup.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/core/src/reader/logic/captions.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/core/src/reader/logic/referenceList.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
   "packages/core/src/sync/core/treeScan.ts": {
     "max-lines-per-function": {
       "count": 1
     }
   },
   "packages/terminal/__tests__/cli/commands.test.ts": {
-    "max-lines": {
-      "count": 1
-    }
-  },
-  "packages/terminal/__tests__/library/paperService.test.ts": {
-    "max-lines": {
-      "count": 1
-    }
-  },
-  "packages/terminal/__tests__/sync/syncService.test.ts": {
     "max-lines": {
       "count": 1
     }
@@ -118,19 +68,6 @@
     }
   },
   "packages/terminal/src/cli/commands.ts": {
-    "max-lines": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/terminal/src/library/libraryScanner.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/terminal/src/library/paperService.ts": {
     "max-lines": {
       "count": 1
     },
@@ -174,15 +111,7 @@
       "count": 1
     }
   },
-  "packages/vscode/src/core/paperService.ts": {
-    "max-lines": {
-      "count": 1
-    }
-  },
   "packages/vscode/src/db/sqliteResearchDatabase.ts": {
-    "max-lines": {
-      "count": 1
-    },
     "max-lines-per-function": {
       "count": 1
     }

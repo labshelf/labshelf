@@ -5,7 +5,7 @@
  */
 import { promises as fs } from "node:fs";
 
-import { PaperDataStore, type ILogger, type PaperData } from "@labshelf/core";
+import { PaperDataStore, byPageThenCreated, type ILogger, type PaperData } from "@labshelf/core";
 import { createNodeSidecarPort } from "@labshelf/core/node";
 
 import { LibraryRoot } from "./libraryRoot.js";
@@ -32,7 +32,7 @@ export class SidecarReader {
     const cached = this.cache.get(paperId);
     if (cached && cached.mtimeMs === mtimeMs) { return cached.data; }
     const data = await this.store.load(paperId);
-    data.annotations.sort((a, b) => a.pageNumber - b.pageNumber || a.createdAt.localeCompare(b.createdAt));
+    data.annotations.sort(byPageThenCreated);
     this.cache.set(paperId, { mtimeMs, data });
     return data;
   }

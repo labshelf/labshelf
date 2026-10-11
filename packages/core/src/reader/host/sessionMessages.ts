@@ -2,7 +2,7 @@
  * Handlers for the reader session: the init handshake, readiness, open timing, page and zoom reports, and theme choice.
  */
 import { isPdfTheme } from "../../model/index.js";
-import { byPageThenCreated } from "../paperData.js";
+import { byPageThenCreated } from "../sidecar/index.js";
 import { READER_LOG_MODULE, type MessageHandlers } from "./hostContext.js";
 
 export const sessionHandlers: Pick<

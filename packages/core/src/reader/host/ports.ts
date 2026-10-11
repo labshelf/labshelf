@@ -3,7 +3,7 @@
  */
 import type { Annotation, PaperRecord } from "../../model/index.js";
 import type { ILogger } from "../../ports/index.js";
-import type { PaperDataStore } from "../paperData.js";
+import type { PaperDataStore } from "../sidecar/index.js";
 import type { EffectiveTheme, HostToWebview, ReaderPrefs } from "../protocol.js";
 
 export type NoticeKind = "info" | "ok" | "error";

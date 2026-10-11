@@ -1,8 +1,6 @@
 {
   "packages/browser/src/library-page/views": 9,
   "packages/browser/src/ui": 9,
-  "packages/core/src/reader/dom/ui": 28,
-  "packages/core/src/reader/logic": 13,
   "packages/core/src/sync/core": 10,
   "packages/vscode/src/ui/list": 9
 }

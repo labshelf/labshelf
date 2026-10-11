@@ -3,7 +3,7 @@
  * DOM-free and vscode-free so both TypeScript programs (and jest) can compile it.
  */
 import type { Annotation, AnnotationColor, PdfTheme } from "../model/index.js";
-import type { ReadingState } from "./readingState.js";
+import type { ReadingState } from "./sidecar/index.js";
 
 export const PROTOCOL_VERSION = 1;
 
