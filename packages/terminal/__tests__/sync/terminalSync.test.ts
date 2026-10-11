@@ -3,10 +3,10 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import { PaperDataStore, ReauthRequiredError, type SyncLockInfo, type SyncRunRecord } from "@labshelf/core";
+import { createNodeSidecarPort } from "@labshelf/core/node";
 import { MemoryTokenStore } from "@labshelf/core/test-support/sync-fakes";
 import { stringify } from "yaml";
 
-import { NodeSidecarPort } from "../../src/library/sidecars";
 import { FakeRemoteProvider } from "../fixtures/fakeRemote";
 import { cleanupTempDirs, listFiles, pathExists, readYaml, type PaperFixture } from "../fixtures/library";
 import { device, expectSynced, type Device } from "../fixtures/syncDevice";
@@ -187,7 +187,7 @@ describe("terminal sync: two devices", () => {
   it("does not reload the library when only a sidecar (appdata) arrived", async () => {
     const { a, b } = await pair();
     await b.sync.syncNow();
-    await new PaperDataStore(new NodeSidecarPort(a.lib.paths)).addHighlight(ID, 2, "positional encodings", "green", { x: 0.1, y: 0.2, width: 0.3, height: 0.05 });
+    await new PaperDataStore(createNodeSidecarPort(a.lib.paths.layout)).addHighlight(ID, 2, "positional encodings", "green", { x: 0.1, y: 0.2, width: 0.3, height: 0.05 });
     await a.sync.syncNow();
     const changes = jest.fn();
     b.store.onChange(changes);

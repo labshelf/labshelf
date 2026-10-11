@@ -1,15 +1,10 @@
 import { ThemeManager } from '../../src/pdf-viewer/ThemeManager';
-import { libraryLayout, PDF_THEMES, THEME_PRESETS, presetFor, toPageColors } from '@labshelf/core';
-import { PaperDataStore } from '../../src/storage/data/paperDataStore';
-import { makeMemoryFileSystem } from '../support/memoryFileSystem';
+import { PDF_THEMES, THEME_PRESETS, presetFor, toPageColors } from '@labshelf/core';
+import { makeMemoryPaperDataStore } from '../support/memorySidecarPort';
 
 const vscode = require('vscode');
 
-// In-memory PaperDataStore for theme-preference tests.
-function makeFakeStore(): PaperDataStore {
-  const fs = makeMemoryFileSystem();
-  return new PaperDataStore(libraryLayout(vscode.Uri.file('/lib'), vscode.Uri.joinPath), fs);
-}
+const makeFakeStore = makeMemoryPaperDataStore;
 
 describe('ThemeManager', () => {
   let manager: ThemeManager;

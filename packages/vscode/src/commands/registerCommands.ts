@@ -3,9 +3,7 @@ import * as vscode from "vscode";
 
 import type { PaperImporter, PaperService, PaperTextLayers } from "../core/index.js";
 import type { ThemeManager } from "../pdf-viewer/ThemeManager.js";
-import type { AnnotationManager } from "../pdf-viewer/AnnotationManager.js";
-import type { PaperDataStore } from "../storage/data/paperDataStore.js";
-import { type IFileSystem, type ILogger, type IResearchDatabase, type LocalFileSystem, type PaperRecord, type MutationContext, type PaperStatus, isSafeExternalUrl, paperFiles, paperLink } from "@labshelf/core";
+import { type PaperDataStore, type IFileSystem, type ILogger, type IResearchDatabase, type LocalFileSystem, type PaperRecord, type MutationContext, type PaperStatus, isSafeExternalUrl, paperFiles, paperLink } from "@labshelf/core";
 import { fetchMetadataForPaper, resolveMissingMetadata } from "./fetchMetadata.js";
 import { addPaperByIdentifier } from "./addByIdentifier.js";
 import { importPapers } from "./importProgress.js";
@@ -24,7 +22,6 @@ export type ActiveServices = {
   mutations: MutationContext;
   logger: ILogger;
   themeManager: ThemeManager;
-  annotationManager: AnnotationManager;
   database: IResearchDatabase;
   paperDataStore: PaperDataStore;
   // The adapter of this library root; its temp folder for atomic writes is inside the root.

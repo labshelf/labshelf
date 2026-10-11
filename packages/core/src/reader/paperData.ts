@@ -4,7 +4,7 @@
  * IndexedDB path appdata/<id>/data.json; the sync "appdata" namespace maps one onto the other, so the format must not drift.
  */
 import { ANNOTATION_COLORS, isPdfTheme, type Annotation, type AnnotationColor, type AnnotationPosition, type PdfTheme } from "../model/index.js";
-import type { SidecarPort } from "../ports/index.js";
+import type { ILogger, SidecarPort } from "../ports/index.js";
 import { normalizeReadingState, type ReadingState } from "./readingState.js";
 
 export interface PaperData {
@@ -95,6 +95,8 @@ export function validateAnnotationPosition(pos: unknown): AnnotationPosition {
 export interface PaperDataStoreOptions {
   now?: () => string;
   newId?: () => string;
+  /** Receives a warning when a sidecar cannot be parsed and loads as empty. */
+  logger?: ILogger;
 }
 
 /**
@@ -105,10 +107,12 @@ export class PaperDataStore {
   private readonly queues = new Map<string, Promise<unknown>>();
   private readonly now: () => string;
   private readonly newId: () => string;
+  private readonly logger: ILogger | undefined;
 
   constructor(private readonly port: SidecarPort, options: PaperDataStoreOptions = {}) {
     this.now = options.now ?? (() => new Date().toISOString());
     this.newId = options.newId ?? (() => globalThis.crypto.randomUUID());
+    this.logger = options.logger;
   }
 
   private enqueue<T>(paperId: string, task: () => Promise<T>): Promise<T> {
@@ -131,7 +135,8 @@ export class PaperDataStore {
     if (text === null) { return emptyPaperData(); }
     try {
       return normalizePaperData(JSON.parse(text) as unknown);
-    } catch {
+    } catch (error) {
+      void this.logger?.log("WARN", "sidecar", "Sidecar is not valid JSON; loading it as empty", { paperId, error: String(error) });
       return emptyPaperData();
     }
   }
@@ -153,7 +158,7 @@ export class PaperDataStore {
   }
 
   /**
-   * Validates like the VS Code AnnotationManager: known color, positive integer page, non-empty text, normalized position.
+   * Validates: known color, positive integer page, non-empty text, normalized position.
    * @returns the stored highlight.
    */
   async addHighlight(
@@ -183,9 +188,13 @@ export class PaperDataStore {
 
   private async add(paperId: string, fields: Pick<Annotation, "type" | "pageNumber" | "content" | "color" | "position">): Promise<Annotation> {
     const at = this.now();
-    const annotation: Annotation = { ...fields, paperId, id: this.newId(), createdAt: at, updatedAt: at };
-    if (annotation.color === undefined) { delete annotation.color; }
-    if (annotation.position === undefined) { delete annotation.position; }
+    // Key order is the on-disk contract (library-format.md), so every app writes the same bytes.
+    const annotation: Annotation = {
+      id: this.newId(), paperId, type: fields.type, pageNumber: fields.pageNumber, content: fields.content,
+      ...(fields.color === undefined ? {} : { color: fields.color }),
+      ...(fields.position === undefined ? {} : { position: fields.position }),
+      createdAt: at, updatedAt: at,
+    };
     await this.mutate(paperId, (data) => { data.annotations.push(annotation); return annotation; });
     return annotation;
   }

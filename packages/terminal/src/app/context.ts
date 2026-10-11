@@ -83,7 +83,7 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
     onLocalChange: () => sync.scheduleLocalChange(),
   });
 
-  const sidecars = new SidecarReader(paths);
+  const sidecars = new SidecarReader(paths, logger);
   const workerUrl = options.thumbnailWorkerUrl;
   const renderer = defaultRenderer(path.join(cacheDir(env), "tmp"), workerUrl);
   const thumbnails = new ThumbnailService(cacheDir(env), renderer.render, logger);

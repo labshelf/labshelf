@@ -127,3 +127,119 @@ describe('PaperDataStore', () => {
     expect(await s.getTheme('p')).toBe('light');
   });
 });
+
+describe('PaperDataStore theme and reading state', () => {
+  const reading = { page: 7, scaleValue: 'page-width', left: 0, top: 412.5, updatedAt: '2026-02-03T10:00:00.000Z' };
+
+  it('defaults the theme to auto and round-trips a chosen one', async () => {
+    const s = store(memoryPort());
+    expect(await s.getTheme('p')).toBe('auto');
+    await s.setTheme('p', 'sepia');
+    expect(await s.getTheme('p')).toBe('sepia');
+  });
+
+  it('keeps theme, annotations and reading state independent', async () => {
+    const s = store(memoryPort());
+    await s.addNote('p', 1, 'a');
+    await s.setTheme('p', 'sepia');
+    const withSidebar = { ...reading, sidebar: { open: true, tab: 'outline' as const, width: 260 } };
+    await s.setReadingState('p', withSidebar);
+    const data = await s.load('p');
+    expect(data.annotations).toHaveLength(1);
+    expect(data.theme).toBe('sepia');
+    expect(data.reading).toEqual(withSidebar);
+  });
+
+  it('reads no reading state until the paper has been read, and writes no reading key', async () => {
+    const port = memoryPort();
+    const s = store(port);
+    expect(await s.getReadingState('p')).toBeNull();
+    await s.setTheme('p', 'dark');
+    expect(JSON.parse(port.files['p']!)).toEqual({ annotations: [], theme: 'dark' });
+  });
+
+  it('loads a sidecar that has no reading key', async () => {
+    const s = store(memoryPort({ p: JSON.stringify({ annotations: [], theme: 'dark' }) }));
+    expect(await s.load('p')).toEqual({ annotations: [], theme: 'dark' });
+  });
+
+  it('drops a corrupt reading value instead of failing the load', async () => {
+    const s = store(memoryPort({ p: JSON.stringify({ annotations: [], theme: 'sepia', reading: { page: 'seven', scaleValue: 12 } }) }));
+    const data = await s.load('p');
+    expect(data.theme).toBe('sepia');
+    expect(data.reading).toBeUndefined();
+  });
+
+  it('does not serialise different papers behind each other', async () => {
+    const port = memoryPort();
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const slow: SidecarPort = { read: port.read, write: async (id, t) => { if (id === 'slow') { await gate; } await port.write(id, t); } };
+    const s = store(slow);
+    const blocked = s.setTheme('slow', 'dark');
+    await s.setTheme('fast', 'sepia');
+    expect(await s.getTheme('fast')).toBe('sepia');
+    expect(port.files['slow']).toBeUndefined();
+    release();
+    await blocked;
+    expect(await s.getTheme('slow')).toBe('dark');
+  });
+});
+
+describe('PaperDataStore annotations', () => {
+  it('accepts all five colours', async () => {
+    const s = store(memoryPort());
+    for (const color of ['yellow', 'green', 'blue', 'red', 'pink']) {
+      expect((await s.addHighlight('p', 1, 'x', color)).color).toBe(color);
+    }
+  });
+
+  it('stores a highlight without a position', async () => {
+    const s = store(memoryPort());
+    const h = await s.addHighlight('p', 1, 'x', 'yellow');
+    expect(h).not.toHaveProperty('position');
+    expect((await s.getAnnotations('p'))[0]).toEqual(h);
+  });
+
+  it('stores a note with its text and page', async () => {
+    const s = store(memoryPort());
+    const note = await s.addNote('p', 4, 'remember');
+    expect(note).toMatchObject({ type: 'note', pageNumber: 4, content: 'remember', paperId: 'p' });
+  });
+
+  it('keeps annotations of different papers apart', async () => {
+    const s = store(memoryPort());
+    await s.addNote('a', 1, 'in a');
+    await s.addNote('b', 1, 'in b');
+    expect((await s.getAnnotations('a')).map((x) => x.content)).toEqual(['in a']);
+    expect((await s.getAnnotations('b')).map((x) => x.content)).toEqual(['in b']);
+  });
+
+  it('writes annotation keys in the contract order', async () => {
+    const port = memoryPort();
+    const s = store(port);
+    await s.addHighlight('p', 2, 'text', 'green', { x: 0.1, y: 0.2, width: 0.3, height: 0.1 });
+    await s.addNote('p', 1, 'note');
+    const [highlight, note] = (JSON.parse(port.files['p']!) as { annotations: object[] }).annotations;
+    expect(Object.keys(highlight!)).toEqual(['id', 'paperId', 'type', 'pageNumber', 'content', 'color', 'position', 'createdAt', 'updatedAt']);
+    expect(Object.keys(note!)).toEqual(['id', 'paperId', 'type', 'pageNumber', 'content', 'createdAt', 'updatedAt']);
+    expect(port.files['p']).toContain('"id": "id-');
+    expect(port.files['p']!.indexOf('"id"')).toBeLessThan(port.files['p']!.indexOf('"paperId"'));
+  });
+});
+
+describe('PaperDataStore logging', () => {
+  it('logs a warning when the sidecar does not parse, and still loads empty data', async () => {
+    const log = jest.fn(async () => undefined);
+    const logger = { log, error: jest.fn(async () => undefined) };
+    const s = new PaperDataStore(memoryPort({ p: '{not json' }), { logger });
+    expect(await s.load('p')).toEqual(emptyPaperData());
+    expect(log).toHaveBeenCalledWith('WARN', 'sidecar', expect.any(String), expect.objectContaining({ paperId: 'p' }));
+  });
+
+  it('does not log for a missing sidecar', async () => {
+    const log = jest.fn(async () => undefined);
+    await new PaperDataStore(memoryPort(), { logger: { log, error: jest.fn(async () => undefined) } }).load('p');
+    expect(log).not.toHaveBeenCalled();
+  });
+});

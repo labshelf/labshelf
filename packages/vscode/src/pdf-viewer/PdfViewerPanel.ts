@@ -2,9 +2,8 @@
  * Creates and manages the PDF reader webview panels: lifecycle, the typed host side of the reader protocol, reading-state persistence, clipboard/export actions and reading analytics.
  */
 import * as vscode from "vscode";
-import { type ILogger, type PaperRecord, type Annotation, type PdfTheme, type ReadingEvent, formatAnnotationsMarkdown, formatQuoteWithCitation, isSafeExternalUrl, paperFiles, isPdfTheme, isWebviewMessage, normalizeReadingState, type EffectiveTheme, type HostToWebview, type ReaderCommandId, type ReadingState, type WebviewToHost } from "@labshelf/core";
+import { type ILogger, type PaperDataStore, type PaperRecord, type PdfTheme, type ReadingEvent, formatAnnotationsMarkdown, formatQuoteWithCitation, isSafeExternalUrl, paperFiles, isPdfTheme, isWebviewMessage, normalizeReadingState, type EffectiveTheme, type HostToWebview, type ReaderCommandId, type WebviewToHost } from "@labshelf/core";
 import { ThemeManager } from "./ThemeManager.js";
-import { AnnotationManager } from "./AnnotationManager.js";
 import { PdfRenderer, getPdfjsDirectory, getReaderBundleDirectory } from "./renderer/PdfRenderer.js";
 import { READER_CONFIG_SECTION, getReaderPrefs, getReaderViewColumn } from "./readerPrefs.js";
 import { labshelfTabIcon } from "../ui/tabIcon.js";
@@ -15,18 +14,11 @@ export const READER_VIEW_TYPE = "labshelfPdf";
 // A page counts as read, for analytics, once the reader has stayed on it this long.
 const MIN_DWELL_MS = 5000;
 
-/** The slice of PaperDataStore the reader needs; kept structural so tests can pass a stub. */
-export interface ReadingStateStore {
-  getReadingState(paperId: string): Promise<ReadingState | null>;
-  setReadingState(paperId: string, state: ReadingState): Promise<void>;
-}
-
 export interface PdfViewerDeps {
   extensionUri: vscode.Uri;
   eventBus: EventBus;
   themeManager: ThemeManager;
-  annotationManager: AnnotationManager;
-  readingStore?: ReadingStateStore;
+  store: PaperDataStore;
   logger?: ILogger;
   /** Reading analytics sink (the AI subsystem's reading_events), absent when AI is disabled. */
   onReadingEvent?: (event: ReadingEvent) => void;
@@ -198,12 +190,12 @@ export class PdfViewerPanel {
   }
 
   private async _sendInit(): Promise<void> {
-    const { themeManager, annotationManager, readingStore } = this.deps;
+    const { themeManager, store } = this.deps;
     const paperId = this.paper.id;
     const [theme, annotations, reading] = await Promise.all([
       themeManager.getThemeForPaper(paperId),
-      annotationManager.getAnnotationsByPaper(paperId),
-      readingStore ? readingStore.getReadingState(paperId).catch(() => null) : Promise.resolve(null),
+      store.getAnnotations(paperId),
+      store.getReadingState(paperId).catch(() => null),
     ]);
     this._themePreference = theme;
     this._post({
@@ -217,7 +209,7 @@ export class PdfViewerPanel {
   }
 
   private async _refreshAnnotations(): Promise<void> {
-    const all = await this.deps.annotationManager.getAnnotationsByPaper(this.paper.id);
+    const all = await this.deps.store.getAnnotations(this.paper.id);
     this._post({ type: "updateAnnotations", annotations: all });
   }
 
@@ -237,7 +229,7 @@ export class PdfViewerPanel {
 
   private async _dispatch(msg: WebviewToHost): Promise<void> {
     const { paper } = this;
-    const { themeManager, annotationManager } = this.deps;
+    const { themeManager, store, eventBus } = this.deps;
     switch (msg.command) {
       case "ready-for-init":
         await this._sendInit();
@@ -284,16 +276,10 @@ export class PdfViewerPanel {
         break;
       case "createAnnotation":
         try {
-          if (msg.type === "highlight") {
-            const validPos = msg.position ? annotationManager.validatePosition(msg.position) : undefined;
-            await annotationManager.createHighlight(
-              paper.id, msg.pageNumber, msg.content,
-              (msg.color as Annotation["color"]) ?? "yellow",
-              validPos,
-            );
-          } else {
-            await annotationManager.createNote(paper.id, msg.pageNumber, msg.content);
-          }
+          const created = msg.type === "highlight"
+            ? await store.addHighlight(paper.id, msg.pageNumber, msg.content, msg.color ?? "yellow", msg.position ?? undefined)
+            : await store.addNote(paper.id, msg.pageNumber, msg.content);
+          eventBus.emit(EVENTS.ANNOTATION_CREATED, created);
           this._emitReadingEvent({ kind: "annotate", page: msg.pageNumber });
           await this._refreshAnnotations();
         } catch (err) {
@@ -304,7 +290,9 @@ export class PdfViewerPanel {
         break;
       case "deleteAnnotation":
         try {
-          await annotationManager.deleteAnnotation(msg.id, paper.id);
+          if (await store.deleteAnnotation(paper.id, msg.id)) {
+            eventBus.emit(EVENTS.ANNOTATION_DELETED, { annotationId: msg.id, paperId: paper.id });
+          }
           await this._refreshAnnotations();
         } catch (err) {
           vscode.window.showErrorMessage(
@@ -314,7 +302,7 @@ export class PdfViewerPanel {
         break;
       case "updateAnnotation":
         try {
-          await annotationManager.updateAnnotation(msg.id, msg.content);
+          eventBus.emit(EVENTS.ANNOTATION_UPDATED, await store.updateAnnotation(paper.id, msg.id, msg.content));
           await this._refreshAnnotations();
         } catch (err) {
           vscode.window.showErrorMessage(
@@ -324,9 +312,7 @@ export class PdfViewerPanel {
         break;
       case "saveReadingState": {
         const state = normalizeReadingState(msg.state);
-        if (state && this.deps.readingStore) {
-          await this.deps.readingStore.setReadingState(paper.id, state);
-        }
+        if (state) { await store.setReadingState(paper.id, state); }
         break;
       }
       case "copyWithCitation": {
@@ -340,7 +326,7 @@ export class PdfViewerPanel {
         vscode.window.setStatusBarMessage("Copied to clipboard", 2000);
         break;
       case "exportAnnotations":
-        await PdfViewerPanel.exportAnnotations(annotationManager, paper, msg.target);
+        await PdfViewerPanel.exportAnnotations(store, paper, msg.target);
         break;
       case "openExternalLink":
         if (isSafeExternalUrl(msg.url)) {
@@ -361,11 +347,11 @@ export class PdfViewerPanel {
    * @returns void
    */
   static async exportAnnotations(
-    annotationManager: AnnotationManager,
+    store: PaperDataStore,
     paper: PaperRecord,
     target: "clipboard" | "file",
   ): Promise<void> {
-    const markdown = formatAnnotationsMarkdown(paper, await annotationManager.getAnnotationsByPaper(paper.id));
+    const markdown = formatAnnotationsMarkdown(paper, await store.getAnnotations(paper.id));
     if (target === "clipboard") {
       await vscode.env.clipboard.writeText(markdown);
       vscode.window.setStatusBarMessage("Annotations copied as Markdown", 2500);

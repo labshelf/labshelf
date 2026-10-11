@@ -2719,38 +2719,8 @@
   {
     "type": "dependency",
     "from": "packages/vscode/src/commands/registerCommands.ts",
-    "to": "packages/vscode/src/pdf-viewer/AnnotationManager.ts",
-    "unresolvedTo": "../pdf-viewer/AnnotationManager.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/commands/registerCommands.ts",
     "to": "packages/vscode/src/pdf-viewer/ThemeManager.ts",
     "unresolvedTo": "../pdf-viewer/ThemeManager.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/commands/registerCommands.ts",
-    "to": "packages/vscode/src/storage/data/paperDataStore.ts",
-    "unresolvedTo": "../storage/data/paperDataStore.js",
     "dependencyTypes": [
       "local",
       "type-only",
@@ -2892,20 +2862,6 @@
   {
     "type": "dependency",
     "from": "packages/vscode/src/extension.ts",
-    "to": "packages/vscode/src/pdf-viewer/AnnotationManager.ts",
-    "unresolvedTo": "./pdf-viewer/AnnotationManager.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/extension.ts",
     "to": "packages/vscode/src/pdf-viewer/PdfViewerPanel.ts",
     "unresolvedTo": "./pdf-viewer/PdfViewerPanel.js",
     "dependencyTypes": [
@@ -2936,20 +2892,6 @@
     "from": "packages/vscode/src/extension.ts",
     "to": "packages/vscode/src/storage/data/externalChangeWatcher.ts",
     "unresolvedTo": "./storage/data/externalChangeWatcher.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/extension.ts",
-    "to": "packages/vscode/src/storage/data/paperDataStore.ts",
-    "unresolvedTo": "./storage/data/paperDataStore.js",
     "dependencyTypes": [
       "local",
       "import"
@@ -3003,21 +2945,6 @@
   },
   {
     "type": "dependency",
-    "from": "packages/vscode/src/pdf-viewer/AnnotationManager.ts",
-    "to": "packages/vscode/src/storage/data/paperDataStore.ts",
-    "unresolvedTo": "../storage/data/paperDataStore.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "packages/vscode/src/pdf-viewer/PdfViewerPanel.ts",
     "to": "packages/vscode/src/pdf-viewer/renderer/PdfRenderer.ts",
     "unresolvedTo": "./renderer/PdfRenderer.js",
@@ -3037,21 +2964,6 @@
     "unresolvedTo": "../ui/tabIcon.js",
     "dependencyTypes": [
       "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/pdf-viewer/ThemeManager.ts",
-    "to": "packages/vscode/src/storage/data/paperDataStore.ts",
-    "unresolvedTo": "../storage/data/paperDataStore.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
       "import"
     ],
     "rule": {

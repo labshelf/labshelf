@@ -5,35 +5,18 @@
  */
 import { promises as fs } from "node:fs";
 
-import { PaperDataStore, type PaperData, type SidecarPort } from "@labshelf/core";
-import { writeFileAtomic } from "@labshelf/core/node";
+import { PaperDataStore, type ILogger, type PaperData } from "@labshelf/core";
+import { createNodeSidecarPort } from "@labshelf/core/node";
 
 import { LibraryRoot } from "./libraryRoot.js";
-
-/** SidecarPort over the library's .research/papers folder. */
-export class NodeSidecarPort implements SidecarPort {
-  constructor(private readonly paths: LibraryRoot) {}
-
-  async read(paperId: string): Promise<string | null> {
-    try {
-      return await fs.readFile(this.paths.layout.paperDataPath(paperId), "utf8");
-    } catch {
-      return null;
-    }
-  }
-
-  async write(paperId: string, text: string): Promise<void> {
-    await writeFileAtomic(this.paths.layout.paperDataPath(paperId), text, this.paths.layout.tmpDir());
-  }
-}
 
 /** Cached sidecar reads, invalidated by mtime so edits from VS Code or a sync show up. */
 export class SidecarReader {
   private readonly store: PaperDataStore;
   private readonly cache = new Map<string, { mtimeMs: number; data: PaperData }>();
 
-  constructor(private readonly paths: LibraryRoot) {
-    this.store = new PaperDataStore(new NodeSidecarPort(paths));
+  constructor(private readonly paths: LibraryRoot, logger?: ILogger) {
+    this.store = new PaperDataStore(createNodeSidecarPort(paths.layout, logger), logger ? { logger } : {});
   }
 
   /**

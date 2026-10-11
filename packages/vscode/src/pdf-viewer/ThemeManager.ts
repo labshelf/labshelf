@@ -3,8 +3,7 @@
  * Theme colours themselves live in core's reader/themePresets.ts (page pixels) and reader/dom/styles/reader.css (chrome).
  */
 import * as vscode from "vscode";
-import type { PaperDataStore } from "../storage/data/paperDataStore.js";
-import { isPdfTheme, type PdfTheme } from "@labshelf/core";
+import { isPdfTheme, type PaperDataStore, type PdfTheme } from "@labshelf/core";
 
 // Mapping from VS Code ColorThemeKind to pdf theme names
 const VSCODE_THEME_MAP: Record<number, PdfTheme> = {

@@ -1,24 +1,17 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { libraryLayout } from '@labshelf/core';
 import { PdfViewerPanel, type PdfViewerDeps } from '../../src/pdf-viewer/PdfViewerPanel';
 import { ThemeManager } from '../../src/pdf-viewer/ThemeManager';
-import { AnnotationManager } from '../../src/pdf-viewer/AnnotationManager';
-import { PaperDataStore } from '../../src/storage/data/paperDataStore';
-import { makeMemoryFileSystem } from '../support/memoryFileSystem';
-import { EventBus, EVENTS } from '../../src/events/index.js';
+import { makeMemoryPaperDataStore } from '../support/memorySidecarPort';
+import { EventBus, EVENTS, type EventName } from '../../src/events/index.js';
 
 const vscode = require('vscode');
 
 let _paperId = 0;
 function nextPaperId() { return `paper-${++_paperId}`; }
 
-// In-memory PaperDataStore so PdfViewerPanel tests never touch disk.
-function makeFakeStore(): PaperDataStore {
-  const fsService = makeMemoryFileSystem();
-  return new PaperDataStore(libraryLayout(vscode.Uri.file('/lib'), vscode.Uri.joinPath), fsService);
-}
+const makeFakeStore = makeMemoryPaperDataStore;
 
 function makePaper(overrides: Record<string, unknown> = {}) {
   const id = nextPaperId();
@@ -57,20 +50,18 @@ describe('PdfViewerPanel', () => {
     const store = makeFakeStore();
     const eventBus = new EventBus();
     const themeManager = new ThemeManager(store);
-    const annotationManager = new AnnotationManager(store, eventBus);
     const logger = { log: jest.fn(async () => {}) } as any;
     const onReadingEvent = jest.fn();
     const deps: PdfViewerDeps = {
       extensionUri: vscode.Uri.file(extensionDir),
       eventBus,
       themeManager,
-      annotationManager,
-      readingStore: store,
+      store,
       logger,
       onReadingEvent,
       ...overrides,
     };
-    return { deps, store, eventBus, themeManager, annotationManager, logger, onReadingEvent };
+    return { deps, store, eventBus, themeManager, logger, onReadingEvent };
   }
 
   function lastPanel() {
@@ -183,9 +174,9 @@ describe('PdfViewerPanel', () => {
 
   describe('init handshake', () => {
     it('replies to ready-for-init with theme, annotations, prefs and the stored reading position', async () => {
-      const { panel, store, annotationManager, paper } = open();
+      const { panel, store, paper } = open();
       await store.setTheme(paper.id, 'sepia');
-      await annotationManager.createHighlight(paper.id, 2, 'a highlight', 'green');
+      await store.addHighlight(paper.id, 2, 'a highlight', 'green');
       const reading = { page: 5, scaleValue: 'page-width', top: 300, left: 0, updatedAt: '2026-01-01T00:00:00.000Z' };
       await store.setReadingState(paper.id, reading);
 
@@ -266,8 +257,8 @@ describe('PdfViewerPanel', () => {
     });
 
     it('creates a highlight and sends the refreshed list', async () => {
-      const { panel, annotationManager, paper } = open();
-      const createSpy = jest.spyOn(annotationManager, 'createHighlight');
+      const { panel, store, paper } = open();
+      const createSpy = jest.spyOn(store, 'addHighlight');
       panel.webview._fireMessage({
         command: 'createAnnotation', type: 'highlight', pageNumber: 1, content: 'test highlight', color: 'yellow',
         position: { x: 0.1, y: 0.1, width: 0.5, height: 0.05 },
@@ -279,14 +270,70 @@ describe('PdfViewerPanel', () => {
     });
 
     it('deletes an annotation', async () => {
-      const { panel, annotationManager, paper } = open();
-      const ann = await annotationManager.createHighlight(paper.id, 1, 'to delete', 'green');
-      const deleteSpy = jest.spyOn(annotationManager, 'deleteAnnotation');
+      const { panel, store, paper } = open();
+      const ann = await store.addHighlight(paper.id, 1, 'to delete', 'green');
+      const deleteSpy = jest.spyOn(store, 'deleteAnnotation');
       panel.webview._fireMessage({ command: 'deleteAnnotation', id: ann.id });
       await flush();
       await flush();
-      expect(deleteSpy).toHaveBeenCalledWith(ann.id, paper.id);
+      expect(deleteSpy).toHaveBeenCalledWith(paper.id, ann.id);
       expect(posted(panel, 'updateAnnotations').at(-1).annotations).toHaveLength(0);
+    });
+
+    describe('annotation events', () => {
+      const seen = (eventBus: EventBus, name: EventName) => {
+        const handler = jest.fn();
+        eventBus.on(name, handler);
+        return handler;
+      };
+
+      it('emits ANNOTATION_CREATED with the stored annotation', async () => {
+        const { panel, eventBus, store, paper } = open();
+        const created = seen(eventBus, EVENTS.ANNOTATION_CREATED);
+        panel.webview._fireMessage({ command: 'createAnnotation', type: 'note', pageNumber: 2, content: 'a note' });
+        await flush();
+        await flush();
+        const [stored] = await store.getAnnotations(paper.id);
+        expect(created).toHaveBeenCalledTimes(1);
+        expect(created).toHaveBeenCalledWith(stored);
+      });
+
+      it('emits ANNOTATION_UPDATED with the updated annotation', async () => {
+        const { panel, eventBus, store, paper } = open();
+        const ann = await store.addNote(paper.id, 1, 'old');
+        const updated = seen(eventBus, EVENTS.ANNOTATION_UPDATED);
+        panel.webview._fireMessage({ command: 'updateAnnotation', id: ann.id, content: 'new' });
+        await flush();
+        await flush();
+        expect(updated).toHaveBeenCalledWith(expect.objectContaining({ id: ann.id, content: 'new' }));
+      });
+
+      it('emits ANNOTATION_DELETED with the ids when an annotation was removed', async () => {
+        const { panel, eventBus, store, paper } = open();
+        const ann = await store.addNote(paper.id, 1, 'x');
+        const deleted = seen(eventBus, EVENTS.ANNOTATION_DELETED);
+        panel.webview._fireMessage({ command: 'deleteAnnotation', id: ann.id });
+        await flush();
+        await flush();
+        expect(deleted).toHaveBeenCalledWith({ annotationId: ann.id, paperId: paper.id });
+      });
+
+      it('emits nothing when the deleted id does not exist', async () => {
+        const { panel, eventBus } = open();
+        const deleted = seen(eventBus, EVENTS.ANNOTATION_DELETED);
+        panel.webview._fireMessage({ command: 'deleteAnnotation', id: 'missing' });
+        await flush();
+        await flush();
+        expect(deleted).not.toHaveBeenCalled();
+      });
+
+      it('creates a highlight when the webview sends a null position', async () => {
+        const { panel, store, paper } = open();
+        panel.webview._fireMessage({ command: 'createAnnotation', type: 'highlight', pageNumber: 1, content: 'x', position: null });
+        await flush();
+        await flush();
+        expect(await store.getAnnotations(paper.id)).toHaveLength(1);
+      });
     });
 
     it.each([
@@ -310,8 +357,8 @@ describe('PdfViewerPanel', () => {
     });
 
     it('exports annotations as Markdown to the clipboard', async () => {
-      const { panel, annotationManager, paper } = open();
-      await annotationManager.createHighlight(paper.id, 3, 'key finding', 'blue');
+      const { panel, store, paper } = open();
+      await store.addHighlight(paper.id, 3, 'key finding', 'blue');
       panel.webview._fireMessage({ command: 'exportAnnotations', target: 'clipboard' });
       await flush();
       await flush();

@@ -2,8 +2,8 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { InMemoryResearchDatabase, PdfImportParser, BibTeXService, libraryChanged, libraryLayout, scanLibrary, type IFileSystem, type ILogger, type IResearchDatabase, type MutationContext, type SyncResult, type ReaderCommandId } from "@labshelf/core";
-import { NodePdfOpener } from "@labshelf/core/node";
+import { InMemoryResearchDatabase, PaperDataStore, PdfImportParser, BibTeXService, libraryChanged, libraryLayout, scanLibrary, type IFileSystem, type ILogger, type IResearchDatabase, type MutationContext, type SyncResult, type ReaderCommandId } from "@labshelf/core";
+import { NodePdfOpener, createNodeSidecarPort } from "@labshelf/core/node";
 import { PaperImporter, PaperService, PaperTextLayers, createExtensionLogger } from "./core/index.js";
 import { VscodeFileSystem } from "./storage/vscodeFileSystem.js";
 import {
@@ -28,8 +28,6 @@ import { SqliteResearchDatabase } from "./db/sqliteResearchDatabase.js";
 import { createOcrEngine, createTextLayerBuilder, hostPdfjs } from "./pdf/index.js";
 import { currentTextLayerJobs, onTextLayerJobsChanged, queueTextLayers } from "./commands/textLayerQueue.js";
 import { ThemeManager } from "./pdf-viewer/ThemeManager.js";
-import { AnnotationManager } from "./pdf-viewer/AnnotationManager.js";
-import { PaperDataStore } from "./storage/data/paperDataStore.js";
 import { indexLibrary, reindexLibrary } from "./storage/data/reindexLibrary.js";
 import { SyncController } from "./sync/adapter/syncController.js";
 import { createVscodeDriveAuth } from "./sync/auth/index.js";
@@ -295,8 +293,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           extensionUri: context.extensionUri,
           eventBus,
           themeManager: services.themeManager,
-          annotationManager: services.annotationManager,
-          readingStore: services.paperDataStore,
+          store: services.paperDataStore,
           logger: services.logger,
           onReadingEvent: (event) => aiService?.recordReadingEvent(event),
         },
@@ -313,7 +310,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         [{ label: "Copy to clipboard", target: "clipboard" as const }, { label: "Save as file...", target: "file" as const }],
         { placeHolder: "Export annotations as Markdown" },
       );
-      if (target) { await PdfViewerPanel.exportAnnotations(services.annotationManager, paper, target.target); }
+      if (target) { await PdfViewerPanel.exportAnnotations(services.paperDataStore, paper, target.target); }
     }),
     // Contributed keybindings (scoped to the focused reader panel) land here: VS Code resolves those chords
     // before the webview sees them, so the reader cannot rely on its own keydown handler alone.
@@ -448,7 +445,7 @@ async function buildServices(
   };
   const importer = new PaperImporter(mutations, database, eventBus, parse, network);
   const textLayers = new PaperTextLayers(mutations, paperService, createTextLayerBuilder(ocrEngine));
-  const paperDataStore = new PaperDataStore(paths, fileSystem);
+  const paperDataStore = new PaperDataStore(createNodeSidecarPort(libraryLayout(root.fsPath, path.join), logger), { logger });
   const scan = () => scanLibrary(fileSystem, path, paths.papersRoot().fsPath, logger);
   await indexLibrary({ database, scan });
   // Papers imported before text layers were tracked are classified once, in the
@@ -460,7 +457,6 @@ async function buildServices(
     void queueTextLayers(textLayers, toCheck, { mode: "check", logger });
   }
   const themeManager = new ThemeManager(paperDataStore);
-  const annotationManager = new AnnotationManager(paperDataStore, eventBus);
   const reindex = () =>
     reindexLibrary({
       database,
@@ -469,7 +465,7 @@ async function buildServices(
       queueCheck: (papers) => void queueTextLayers(textLayers, papers, { mode: "check", logger }),
     });
   return {
-    paperService, importer, textLayers, mutations, logger, themeManager, annotationManager, database, paperDataStore, fileSystem,
+    paperService, importer, textLayers, mutations, logger, themeManager, database, paperDataStore, fileSystem,
     reindexLibrary: reindex,
     folderReader: createFolderReader(fileSystem, logger),
   };
