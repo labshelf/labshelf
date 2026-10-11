@@ -16,7 +16,7 @@ import { queueTextLayers } from '../../src/commands/textLayerQueue';
 function makeRequireServices(paperService?: Partial<PaperService>, logger?: Partial<ILogger>): RequireServices {
   const ps = paperService ?? { listPapers: jest.fn(async () => []), regenerateBibTeX: jest.fn(async () => 0), reconcilePdf: jest.fn(async () => undefined) };
   const lg = logger ?? { log: jest.fn(async () => {}), error: jest.fn(async () => {}) };
-  const tm = { getThemeForPaper: jest.fn(async () => 'auto'), setThemeForPaper: jest.fn(async () => {}), getEffectiveTheme: jest.fn(() => 'dark'), mapVsCodeTheme: jest.fn(() => 'dark'), onVsCodeThemeChange: jest.fn(() => ({ dispose: jest.fn() })), dispose: jest.fn() } as any;
+  const tm = { getEffectiveTheme: jest.fn(() => 'dark'), mapVsCodeTheme: jest.fn(() => 'dark'), onVsCodeThemeChange: jest.fn(() => ({ dispose: jest.fn() })) } as any;
   const db = { listPapers: jest.fn(async () => []), upsertPaper: jest.fn(), deletePaper: jest.fn(), appendLog: jest.fn() } as any;
   const store = makeMemoryPaperDataStore();
   const reindexLibrary = jest.fn(async () => ({ added: [], updated: [], removed: [] }));

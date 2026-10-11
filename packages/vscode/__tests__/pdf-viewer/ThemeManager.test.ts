@@ -1,10 +1,7 @@
 import { ThemeManager } from '../../src/pdf-viewer/ThemeManager';
 import { PDF_THEMES, THEME_PRESETS, presetFor, toPageColors } from '@labshelf/core';
-import { makeMemoryPaperDataStore } from '../support/memorySidecarPort';
 
 const vscode = require('vscode');
-
-const makeFakeStore = makeMemoryPaperDataStore;
 
 describe('ThemeManager', () => {
   let manager: ThemeManager;
@@ -92,30 +89,6 @@ describe('ThemeManager', () => {
       const disposable = manager.onVsCodeThemeChange(callback);
       expect(vscode.window.onDidChangeActiveColorTheme).toHaveBeenCalled();
       disposable.dispose();
-    });
-  });
-
-  // ── Sidecar-backed per-paper preferences ────────────────────────────────
-  describe('getThemeForPaper / setThemeForPaper', () => {
-    it('returns auto as default when no preference stored', async () => {
-      const mgr = new ThemeManager(makeFakeStore());
-      expect(await mgr.getThemeForPaper('paper-1')).toBe('auto');
-    });
-
-    it('persists and retrieves theme preference', async () => {
-      const mgr = new ThemeManager(makeFakeStore());
-      await mgr.setThemeForPaper('paper-1', 'sepia');
-      expect(await mgr.getThemeForPaper('paper-1')).toBe('sepia');
-    });
-
-    it('returns auto when no store provided', async () => {
-      const mgr = new ThemeManager();
-      expect(await mgr.getThemeForPaper('paper-1')).toBe('auto');
-    });
-
-    it('setThemeForPaper is a no-op when no store provided', async () => {
-      const mgr = new ThemeManager();
-      await expect(mgr.setThemeForPaper('paper-1', 'dark')).resolves.toBeUndefined();
     });
   });
 });

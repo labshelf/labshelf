@@ -1,9 +1,9 @@
 /**
- * Maps VS Code color themes to PDF viewer themes and persists per-paper theme preferences via PaperDataStore.
+ * Maps VS Code colour themes to reader themes, which is what the reader's "auto" theme follows in VS Code.
  * Theme colours themselves live in core's reader/themePresets.ts (page pixels) and reader/dom/styles/reader.css (chrome).
  */
 import * as vscode from "vscode";
-import { isPdfTheme, type PaperDataStore, type PdfTheme } from "@labshelf/core";
+import { isPdfTheme, type PdfTheme } from "@labshelf/core";
 
 // Mapping from VS Code ColorThemeKind to pdf theme names
 const VSCODE_THEME_MAP: Record<number, PdfTheme> = {
@@ -14,14 +14,6 @@ const VSCODE_THEME_MAP: Record<number, PdfTheme> = {
 };
 
 export class ThemeManager {
-  private readonly store: PaperDataStore | null;
-  private themeChangeListeners: Array<(theme: string) => void> = [];
-  private vsCodeThemeDisposable: vscode.Disposable | null = null;
-
-  constructor(store?: PaperDataStore) {
-    this.store = store ?? null;
-  }
-
   /**
    * Maps a VS Code ColorThemeKind number to the corresponding PDF theme name.
    * @returns A PdfTheme string such as 'light', 'dark', or 'high-contrast'.
@@ -54,33 +46,5 @@ export class ThemeManager {
       const newTheme = this.mapVsCodeTheme(event.kind);
       callback(newTheme);
     });
-  }
-
-  // ── Per-paper preferences (sidecar-backed) ───────────────────────────────
-
-  /**
-   * Retrieves the stored theme preference for a paper from the sidecar, defaulting to 'auto'.
-   * @returns The PdfTheme preference string for the paper.
-   */
-  async getThemeForPaper(paperId: string): Promise<PdfTheme> {
-    if (this.store) { return this.store.getTheme(paperId); }
-    return 'auto';
-  }
-
-  /**
-   * Persists the given theme preference to the per-paper sidecar via PaperDataStore.
-   * @returns void
-   */
-  async setThemeForPaper(paperId: string, theme: PdfTheme): Promise<void> {
-    if (this.store) { await this.store.setTheme(paperId, theme); }
-  }
-
-  /**
-   * Releases the VS Code theme-change subscription and clears registered listeners.
-   * @returns void
-   */
-  dispose(): void {
-    this.vsCodeThemeDisposable?.dispose();
-    this.themeChangeListeners = [];
   }
 }

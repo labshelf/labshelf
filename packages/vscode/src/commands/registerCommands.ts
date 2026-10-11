@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import type { PaperImporter, PaperService, PaperTextLayers } from "../core/index.js";
-import type { ThemeManager } from "../pdf-viewer/ThemeManager.js";
+import type { ThemeManager } from "../pdf-viewer/index.js";
 import { type PaperDataStore, type IFileSystem, type ILogger, type IResearchDatabase, type LocalFileSystem, type PaperRecord, type MutationContext, type PaperStatus, isSafeExternalUrl, paperFiles, paperLink } from "@labshelf/core";
 import { fetchMetadataForPaper, resolveMissingMetadata } from "./fetchMetadata.js";
 import { addPaperByIdentifier } from "./addByIdentifier.js";

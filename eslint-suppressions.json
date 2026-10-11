@@ -37,11 +37,6 @@
       "count": 1
     }
   },
-  "packages/browser/src/reader/browserReaderHost.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
   "packages/browser/src/reader/index.ts": {
     "max-lines-per-function": {
       "count": 1
@@ -198,14 +193,6 @@
     },
     "max-lines-per-function": {
       "count": 1
-    }
-  },
-  "packages/vscode/src/pdf-viewer/PdfViewerPanel.ts": {
-    "max-lines": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 2
     }
   },
   "packages/vscode/src/pdf-viewer/renderer/PdfRenderer.ts": {

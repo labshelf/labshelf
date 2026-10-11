@@ -2719,21 +2719,6 @@
   {
     "type": "dependency",
     "from": "packages/vscode/src/commands/registerCommands.ts",
-    "to": "packages/vscode/src/pdf-viewer/ThemeManager.ts",
-    "unresolvedTo": "../pdf-viewer/ThemeManager.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/commands/registerCommands.ts",
     "to": "packages/vscode/src/storage/data/reindexLibrary.ts",
     "unresolvedTo": "../storage/data/reindexLibrary.js",
     "dependencyTypes": [
@@ -2850,34 +2835,6 @@
     "from": "packages/vscode/src/extension.ts",
     "to": "packages/vscode/src/db/sqliteResearchDatabase.ts",
     "unresolvedTo": "./db/sqliteResearchDatabase.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/extension.ts",
-    "to": "packages/vscode/src/pdf-viewer/PdfViewerPanel.ts",
-    "unresolvedTo": "./pdf-viewer/PdfViewerPanel.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/extension.ts",
-    "to": "packages/vscode/src/pdf-viewer/ThemeManager.ts",
-    "unresolvedTo": "./pdf-viewer/ThemeManager.js",
     "dependencyTypes": [
       "local",
       "import"

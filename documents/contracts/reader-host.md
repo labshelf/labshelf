@@ -2,6 +2,8 @@
 
 The PDF reader is one UI that runs inside two hosts: the VS Code webview and a browser extension page. Hosts own persistence, clipboard, files, external links and settings. The reader owns everything on screen. They talk only through the typed message protocol in the reader's `protocol` module, which is the single source of truth for message shapes.
 
+One host controller in core answers every message the reader sends. Each host implements the controller's ports (sidecar store, posting to the reader, preferences, the auto theme, clipboard, notices, external links, saving the Markdown export, logging, and optional hooks for sidecar changes and reading activity) and keeps only its own lifecycle: creating the view, forwarding theme and preference changes, and asking for a page.
+
 ## Startup
 
 1. The host serves the HTML shell (shared by both hosts) with an inert JSON boot block, `ReaderBootParams`. The block carries the protocol version, asset URLs, paper id and title, theme preference and effective theme, reader preferences and `isMac`.
@@ -11,7 +13,9 @@ The PDF reader is one UI that runs inside two hosts: the VS Code webview and a b
 
 ## Rules
 
-- **Every message is handled by every host.** Adding a message means adding its handler to the VS Code host and to the browser host in the same change.
+- **Every message has one handler.** Adding a message means adding its handler to the shared host controller; a host changes only when the message needs a port it does not implement yet.
+- **A requested page waits for `ready`.** The reader drops `scrollToPage` before the document is laid out, so the controller holds a page asked for earlier and sends it on `ready`.
+- **Every failure is logged and shown.** A handler that throws is logged with the paper and command and becomes a `Reader action failed` notice; a rejected annotation write becomes a `Failed to create|update|delete annotation` notice and the reader keeps its list.
 - **The host validates untrusted input.** Messages from the reader go through `isWebviewMessage`, so a malformed message is rejected and never half-applied. External links go through `isSafeExternalUrl`, which allows only `http:`, `https:` and `mailto:`, so a crafted PDF cannot open `file:`, `command:` or `vscode:` URIs.
 - **Preferences are validated once.** Both hosts pass stored preferences through the shared `normalizeReaderPrefs`. VS Code reads them from settings; the browser reads them from extension storage.
 - **The sidecar format is shared.** The host persists annotations, theme and reading position through the shared `PaperDataStore` over a `SidecarPort`, which keeps the bytes identical everywhere ([library-format.md](library-format.md#sidecar-datajson)).

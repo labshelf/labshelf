@@ -1,27 +1,27 @@
 /**
- * Creates and manages the PDF reader webview panels: lifecycle, the typed host side of the reader protocol, reading-state persistence, clipboard/export actions and reading analytics.
+ * Creates and manages the PDF reader webview panels and connects each one to the shared reader host controller.
  */
 import * as vscode from "vscode";
-import { type ILogger, type PaperDataStore, type PaperRecord, type PdfTheme, type ReadingEvent, formatAnnotationsMarkdown, formatQuoteWithCitation, isSafeExternalUrl, paperFiles, isPdfTheme, isWebviewMessage, normalizeReadingState, type EffectiveTheme, type HostToWebview, type ReaderCommandId, type WebviewToHost } from "@labshelf/core";
+import { ReaderHostController, paperFiles, type EffectiveTheme, type HostToWebview, type ILogger, type PaperDataStore, type PaperRecord, type ReaderCommandId } from "@labshelf/core";
 import { ThemeManager } from "./ThemeManager.js";
 import { PdfRenderer, getPdfjsDirectory, getReaderBundleDirectory } from "./renderer/PdfRenderer.js";
 import { READER_CONFIG_SECTION, getReaderPrefs, getReaderViewColumn } from "./readerPrefs.js";
+import { createVsCodeOutputPorts, emitSidecarChanges } from "./readerHostPorts.js";
+import { ReadingActivityTracker, type ReadingEventSink } from "./readingActivity.js";
 import { labshelfTabIcon } from "../ui/tabIcon.js";
 import { EventBus, EVENTS } from "../events/index.js";
 
-export const READER_VIEW_TYPE = "labshelfPdf";
-
-// A page counts as read, for analytics, once the reader has stayed on it this long.
-const MIN_DWELL_MS = 5000;
+// The contributed reader keybindings match this id in their `activeWebviewPanelId` when-clauses.
+const READER_VIEW_TYPE = "labshelfPdf";
 
 export interface PdfViewerDeps {
   extensionUri: vscode.Uri;
   eventBus: EventBus;
   themeManager: ThemeManager;
   store: PaperDataStore;
-  logger?: ILogger;
+  logger: ILogger;
   /** Reading analytics sink (the AI subsystem's reading_events), absent when AI is disabled. */
-  onReadingEvent?: (event: ReadingEvent) => void;
+  onReadingEvent?: ReadingEventSink;
 }
 
 export interface OpenOptions {
@@ -29,22 +29,17 @@ export interface OpenOptions {
   page?: number;
 }
 
-// Track open panels by paperId so we can reveal instead of re-creating
+// Open panels by paperId, so opening a paper again reveals its panel instead of creating another.
 const openPanels = new Map<string, PdfViewerPanel>();
 
 export class PdfViewerPanel {
   private static activePanel: PdfViewerPanel | undefined;
 
   private readonly _panel: vscode.WebviewPanel;
+  private readonly _controller: ReaderHostController;
+  private readonly _activity: ReadingActivityTracker;
   private _disposables: vscode.Disposable[] = [];
-  private _currentPage = 1;
-  private _themePreference: PdfTheme = "auto";
-  private readonly _renderer = new PdfRenderer();
   private _disposed = false;
-  private readonly _openedAt = Date.now();
-  private _pageEnteredAt = Date.now();
-  private _pendingPage: number | undefined;
-  private _visible = true;
   private _closed = false;
 
   /**
@@ -75,7 +70,7 @@ export class PdfViewerPanel {
     const existing = openPanels.get(paper.id);
     if (existing) {
       existing._panel.reveal();
-      if (options.page) { existing._post({ type: "scrollToPage", pageNumber: options.page }); }
+      if (options.page !== undefined) { existing._controller.requestPage(options.page); }
       return;
     }
 
@@ -104,26 +99,33 @@ export class PdfViewerPanel {
 
   private constructor(
     panel: vscode.WebviewPanel,
-    private readonly deps: PdfViewerDeps,
+    deps: PdfViewerDeps,
     pdfUri: vscode.Uri,
-    private readonly paper: PaperRecord,
+    paper: PaperRecord,
     options: OpenOptions,
   ) {
     this._panel = panel;
-    this._pendingPage = options.page;
+    this._activity = new ReadingActivityTracker(paper.id, deps.onReadingEvent);
+    this._controller = new ReaderHostController({
+      paper,
+      store: deps.store,
+      post: (msg) => this._post(msg),
+      getPrefs: getReaderPrefs,
+      autoTheme: () => deps.themeManager.getEffectiveTheme("auto") as EffectiveTheme,
+      ...createVsCodeOutputPorts(paper),
+      logger: deps.logger,
+      sidecarChanged: emitSidecarChanges(deps.eventBus, paper.id),
+      activity: this._activity,
+    }, options.page !== undefined ? { page: options.page } : {});
     openPanels.set(paper.id, this);
     if (panel.active) { PdfViewerPanel.activePanel = this; }
 
-    this._panel.webview.onDidReceiveMessage(
-      (msg: unknown) => { void this._handleMessage(msg); },
-      null,
-      this._disposables,
-    );
+    panel.webview.onDidReceiveMessage((msg: unknown) => { void this._controller.handle(msg); }, null, this._disposables);
 
     // The shell is assigned synchronously so the webview starts fetching pdf.js and the PDF at once;
     // everything that needs disk (theme, annotations, reading position) follows in the `init` reply.
-    this._panel.webview.html = this._renderer.generateHtml({
-      webview: this._panel.webview,
+    panel.webview.html = new PdfRenderer().generateHtml({
+      webview: panel.webview,
       extensionUri: deps.extensionUri,
       pdfUri,
       paperId: paper.id,
@@ -133,17 +135,15 @@ export class PdfViewerPanel {
       prefs: getReaderPrefs(),
     });
 
-    // Update the active theme without rebuilding the webview for faster response.
-    this._disposables.push(deps.themeManager.onVsCodeThemeChange((newTheme) => {
-      if (this._themePreference === "auto") {
-        this._post({ type: "applyTheme", theme: "auto", effectiveTheme: newTheme as EffectiveTheme });
-      }
-    }));
+    this._subscribe(deps, paper);
+  }
 
+  private _subscribe(deps: PdfViewerDeps, paper: PaperRecord): void {
+    this._disposables.push(deps.themeManager.onVsCodeThemeChange((theme) => {
+      this._controller.onAutoThemeChange(theme as EffectiveTheme);
+    }));
     this._disposables.push(vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration(READER_CONFIG_SECTION)) {
-        this._post({ type: "prefsChanged", prefs: getReaderPrefs() });
-      }
+      if (e.affectsConfiguration(READER_CONFIG_SECTION)) { this._controller.onPrefsChange(); }
     }));
 
     this._panel.onDidChangeViewState((e) => {
@@ -152,235 +152,24 @@ export class PdfViewerPanel {
       } else if (PdfViewerPanel.activePanel === this) {
         PdfViewerPanel.activePanel = undefined;
       }
-      // Time spent with the panel in the background is not reading time.
-      if (e.webviewPanel.visible && !this._visible) {
-        this._visible = true;
-        this._pageEnteredAt = Date.now();
-      } else if (!e.webviewPanel.visible && this._visible) {
-        this._recordDwell();
-        this._visible = false;
-      }
+      this._activity.visibilityChanged(e.webviewPanel.visible);
     }, null, this._disposables);
 
     this._panel.onDidDispose(() => {
       // dispose() below re-enters panel.dispose(); close-out must happen exactly once.
       if (this._closed) { return; }
       this._closed = true;
-      this._recordDwell();
-      this._emitReadingEvent({ kind: "close", page: this._currentPage, durationMs: Date.now() - this._openedAt });
-      deps.eventBus.emit(EVENTS.PDF_VIEWER_CLOSED, {
-        paperId: paper.id,
-        currentPage: this._currentPage,
-        timestamp: new Date().toISOString(),
-      });
+      const currentPage = this._activity.closed();
+      deps.eventBus.emit(EVENTS.PDF_VIEWER_CLOSED, { paperId: paper.id, currentPage, timestamp: new Date().toISOString() });
       openPanels.delete(paper.id);
       if (PdfViewerPanel.activePanel === this) { PdfViewerPanel.activePanel = undefined; }
       this.dispose();
     }, null, this._disposables);
-
-    deps.eventBus.emit(EVENTS.PDF_VIEWER_OPENED, {
-      paperId: paper.id,
-      timestamp: new Date().toISOString(),
-    });
   }
 
   private _post(msg: HostToWebview): void {
     if (this._disposed) { return; }
     void this._panel.webview.postMessage(msg);
-  }
-
-  private async _sendInit(): Promise<void> {
-    const { themeManager, store } = this.deps;
-    const paperId = this.paper.id;
-    const [theme, annotations, reading] = await Promise.all([
-      themeManager.getThemeForPaper(paperId),
-      store.getAnnotations(paperId),
-      store.getReadingState(paperId).catch(() => null),
-    ]);
-    this._themePreference = theme;
-    this._post({
-      type: "init",
-      reading,
-      annotations,
-      prefs: getReaderPrefs(),
-      theme,
-      effectiveTheme: themeManager.getEffectiveTheme(theme) as EffectiveTheme,
-    });
-  }
-
-  private async _refreshAnnotations(): Promise<void> {
-    const all = await this.deps.store.getAnnotations(this.paper.id);
-    this._post({ type: "updateAnnotations", annotations: all });
-  }
-
-  private async _handleMessage(raw: unknown): Promise<void> {
-    if (!isWebviewMessage(raw)) {
-      void this.deps.logger?.log("WARN", "pdf-viewer", "Ignored malformed reader message", { paperId: this.paper.id });
-      return;
-    }
-    try {
-      await this._dispatch(raw);
-    } catch (err) {
-      vscode.window.showErrorMessage(
-        `LabShelf: Reader action failed: ${err instanceof Error ? err.message : String(err)}`,
-      );
-    }
-  }
-
-  private async _dispatch(msg: WebviewToHost): Promise<void> {
-    const { paper } = this;
-    const { themeManager, store, eventBus } = this.deps;
-    switch (msg.command) {
-      case "ready-for-init":
-        await this._sendInit();
-        break;
-      case "ready":
-        this._pageEnteredAt = Date.now();
-        this._emitReadingEvent({ kind: "open" });
-        if (this._pendingPage) {
-          this._post({ type: "scrollToPage", pageNumber: this._pendingPage });
-          this._pendingPage = undefined;
-        }
-        break;
-      case "perf":
-        // hostMs spans the whole open as the user feels it; timeline entries are ms since the webview began loading.
-        void this.deps.logger?.log("INFO", "pdf-viewer", "PDF open timeline", {
-          paperId: paper.id,
-          hostMs: Date.now() - this._openedAt,
-          timeline: msg.timeline,
-          theme: msg.theme,
-          dpr: msg.dpr,
-          canvas: msg.canvas,
-        });
-        break;
-      case "pageChanged":
-        if (msg.pageNumber !== this._currentPage) {
-          this._recordDwell();
-          this._currentPage = msg.pageNumber;
-        }
-        break;
-      case "zoomChanged":
-        // Superseded by saveReadingState; still accepted from older bundles.
-        break;
-      case "selectTheme":
-        if (isPdfTheme(msg.theme)) {
-          this._themePreference = msg.theme;
-          await themeManager.setThemeForPaper(paper.id, msg.theme);
-          // Send updated theme to webview without full re-render
-          this._post({
-            type: "applyTheme",
-            theme: msg.theme,
-            effectiveTheme: themeManager.getEffectiveTheme(msg.theme) as EffectiveTheme,
-          });
-        }
-        break;
-      case "createAnnotation":
-        try {
-          const created = msg.type === "highlight"
-            ? await store.addHighlight(paper.id, msg.pageNumber, msg.content, msg.color ?? "yellow", msg.position ?? undefined)
-            : await store.addNote(paper.id, msg.pageNumber, msg.content);
-          eventBus.emit(EVENTS.ANNOTATION_CREATED, created);
-          this._emitReadingEvent({ kind: "annotate", page: msg.pageNumber });
-          await this._refreshAnnotations();
-        } catch (err) {
-          vscode.window.showErrorMessage(
-            `LabShelf: Failed to create annotation: ${err instanceof Error ? err.message : String(err)}`,
-          );
-        }
-        break;
-      case "deleteAnnotation":
-        try {
-          if (await store.deleteAnnotation(paper.id, msg.id)) {
-            eventBus.emit(EVENTS.ANNOTATION_DELETED, { annotationId: msg.id, paperId: paper.id });
-          }
-          await this._refreshAnnotations();
-        } catch (err) {
-          vscode.window.showErrorMessage(
-            `LabShelf: Failed to delete annotation: ${err instanceof Error ? err.message : String(err)}`,
-          );
-        }
-        break;
-      case "updateAnnotation":
-        try {
-          eventBus.emit(EVENTS.ANNOTATION_UPDATED, await store.updateAnnotation(paper.id, msg.id, msg.content));
-          await this._refreshAnnotations();
-        } catch (err) {
-          vscode.window.showErrorMessage(
-            `LabShelf: Failed to update annotation: ${err instanceof Error ? err.message : String(err)}`,
-          );
-        }
-        break;
-      case "saveReadingState": {
-        const state = normalizeReadingState(msg.state);
-        if (state) { await store.setReadingState(paper.id, state); }
-        break;
-      }
-      case "copyWithCitation": {
-        const text = formatQuoteWithCitation(msg.text, paper, msg.pageNumber, getReaderPrefs().citationStyle);
-        await vscode.env.clipboard.writeText(text);
-        vscode.window.setStatusBarMessage(`Copied with citation (@${paper.citeKey}, p. ${msg.pageNumber})`, 2500);
-        break;
-      }
-      case "copyText":
-        await vscode.env.clipboard.writeText(msg.text);
-        vscode.window.setStatusBarMessage("Copied to clipboard", 2000);
-        break;
-      case "exportAnnotations":
-        await PdfViewerPanel.exportAnnotations(store, paper, msg.target);
-        break;
-      case "openExternalLink":
-        if (isSafeExternalUrl(msg.url)) {
-          await vscode.env.openExternal(vscode.Uri.parse(msg.url));
-        } else {
-          void this.deps.logger?.log("WARN", "pdf-viewer", "Blocked external link with disallowed scheme", { paperId: paper.id });
-        }
-        break;
-      default: {
-        const unreachable: never = msg;
-        void unreachable;
-      }
-    }
-  }
-
-  /**
-   * Exports a paper's annotations as Markdown to the clipboard or to a file chosen by the user (default: <paper folder>/annotations.md).
-   * @returns void
-   */
-  static async exportAnnotations(
-    store: PaperDataStore,
-    paper: PaperRecord,
-    target: "clipboard" | "file",
-  ): Promise<void> {
-    const markdown = formatAnnotationsMarkdown(paper, await store.getAnnotations(paper.id));
-    if (target === "clipboard") {
-      await vscode.env.clipboard.writeText(markdown);
-      vscode.window.setStatusBarMessage("Annotations copied as Markdown", 2500);
-      return;
-    }
-    const uri = await vscode.window.showSaveDialog({
-      defaultUri: vscode.Uri.joinPath(vscode.Uri.file(paper.path), "annotations.md"),
-      filters: { Markdown: ["md"] },
-    });
-    if (!uri) { return; }
-    await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(markdown));
-    await vscode.window.showTextDocument(uri, { preview: true, viewColumn: vscode.ViewColumn.Beside });
-  }
-
-  private _recordDwell(): void {
-    const now = Date.now();
-    const durationMs = now - this._pageEnteredAt;
-    this._pageEnteredAt = now;
-    if (durationMs >= MIN_DWELL_MS && this._visible) {
-      this._emitReadingEvent({ kind: "scroll", page: this._currentPage, durationMs });
-    }
-  }
-
-  private _emitReadingEvent(event: Omit<ReadingEvent, "paperId" | "occurredAt">): void {
-    try {
-      this.deps.onReadingEvent?.({ paperId: this.paper.id, occurredAt: Date.now(), ...event });
-    } catch {
-      // Analytics must never disturb reading.
-    }
   }
 
   /**

@@ -2,7 +2,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { InMemoryResearchDatabase, PaperDataStore, PdfImportParser, BibTeXService, libraryChanged, libraryLayout, scanLibrary, type IFileSystem, type ILogger, type IResearchDatabase, type MutationContext, type SyncResult, type ReaderCommandId } from "@labshelf/core";
+import { InMemoryResearchDatabase, PaperDataStore, PdfImportParser, BibTeXService, libraryChanged, libraryLayout, scanLibrary, exportAnnotations, type IFileSystem, type ILogger, type IResearchDatabase, type MutationContext, type SyncResult, type ReaderCommandId } from "@labshelf/core";
 import { NodePdfOpener, createNodeSidecarPort } from "@labshelf/core/node";
 import { PaperImporter, PaperService, PaperTextLayers, createExtensionLogger } from "./core/index.js";
 import { VscodeFileSystem } from "./storage/vscodeFileSystem.js";
@@ -17,7 +17,7 @@ import { LibraryTreeDataProvider, LibraryDragAndDropController, createFolderRead
 import type { LibraryNode } from "./ui/library/index.js";
 import { ListWebviewPanel } from "./ui/list/index.js";
 import { SettingsWebviewPanel } from "./ui/settings/index.js";
-import { PdfViewerPanel } from "./pdf-viewer/PdfViewerPanel.js";
+import { PdfViewerPanel, ThemeManager, createVsCodeExportPorts } from "./pdf-viewer/index.js";
 import { registerCommands, resolvePaper, ensurePaperPdf } from "./commands/registerCommands.js";
 import { registerAiCommands } from "./commands/registerAiCommands.js";
 import { importPapers } from "./commands/importProgress.js";
@@ -27,7 +27,6 @@ import { createAiService, AiService } from "./ai/service/index.js";
 import { SqliteResearchDatabase } from "./db/sqliteResearchDatabase.js";
 import { createOcrEngine, createTextLayerBuilder, hostPdfjs } from "./pdf/index.js";
 import { currentTextLayerJobs, onTextLayerJobsChanged, queueTextLayers } from "./commands/textLayerQueue.js";
-import { ThemeManager } from "./pdf-viewer/ThemeManager.js";
 import { indexLibrary, reindexLibrary } from "./storage/data/reindexLibrary.js";
 import { SyncController } from "./sync/adapter/syncController.js";
 import { createVscodeDriveAuth } from "./sync/auth/index.js";
@@ -310,7 +309,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         [{ label: "Copy to clipboard", target: "clipboard" as const }, { label: "Save as file...", target: "file" as const }],
         { placeHolder: "Export annotations as Markdown" },
       );
-      if (target) { await PdfViewerPanel.exportAnnotations(services.paperDataStore, paper, target.target); }
+      if (target) { await exportAnnotations(createVsCodeExportPorts(paper, services.paperDataStore), target.target); }
     }),
     // Contributed keybindings (scoped to the focused reader panel) land here: VS Code resolves those chords
     // before the webview sees them, so the reader cannot rely on its own keydown handler alone.
@@ -456,7 +455,7 @@ async function buildServices(
   if (toCheck.length > 0) {
     void queueTextLayers(textLayers, toCheck, { mode: "check", logger });
   }
-  const themeManager = new ThemeManager(paperDataStore);
+  const themeManager = new ThemeManager();
   const reindex = () =>
     reindexLibrary({
       database,

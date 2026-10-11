@@ -7,6 +7,7 @@
 import {
   PROTOCOL_VERSION,
   PaperDataStore,
+  ReaderHostController,
   type EffectiveTheme,
   type HostToWebview,
   type ReaderBootParams,
@@ -20,10 +21,10 @@ import type { RuntimeMessage } from "../platform/runtimeMessages";
 import { IndexedDbFileSystem, getRecord } from "../storage";
 import { getThemePref, onThemeChange, resolveTheme } from "../ui/theme";
 import { toast } from "../ui/toast";
-import { BrowserReaderHost, type ReaderHostLogger } from "./browserReaderHost";
 import { createIdbSidecarPort } from "./idbSidecarPort";
 import { createInPageChannel } from "./inPageTransport";
 import { loadReaderPrefs, onReaderPrefsChange } from "./readerPrefsStore";
+import { syncReasonFor } from "./readerSyncReason";
 import { parseReaderQuery } from "./readerTabs";
 
 // First statement, so scriptStart measures the whole open like in VS Code.
@@ -50,12 +51,6 @@ function isMacPlatform(): boolean {
 function autoTheme(): EffectiveTheme {
   return resolveTheme(getThemePref());
 }
-
-const hostLog: ReaderHostLogger = {
-  info: (message, context) => { void logger.info(message, context); },
-  warn: (message, context) => { void logger.warn(message, context); },
-  error: (error, context) => { void logger.error("reader", error, context); },
-};
 
 /** Chords VS Code's webview frame swallows (print, save) and drops that would navigate the tab away from the paper. */
 function installPageGuards(): void {
@@ -87,7 +82,7 @@ async function openExternal(url: string): Promise<void> {
   });
 }
 
-async function saveFile(fileName: string, text: string): Promise<void> {
+async function saveMarkdown(fileName: string, text: string): Promise<void> {
   const url = URL.createObjectURL(new Blob([text], { type: "text/markdown" }));
   try {
     await bx.downloads.download({ url, filename: fileName, saveAs: true });
@@ -129,7 +124,7 @@ async function main(): Promise<void> {
   const store = new PaperDataStore(createIdbSidecarPort(fs));
   // The host answers through the channel, which needs the host to exist first.
   let send: (msg: HostToWebview) => void = () => undefined;
-  const host: BrowserReaderHost = new BrowserReaderHost({
+  const host = new ReaderHostController({
     paper,
     store,
     post: (msg) => send(msg),
@@ -138,9 +133,9 @@ async function main(): Promise<void> {
     writeClipboard,
     notify: (message, kind) => { toast(message, kind); },
     openExternal,
-    saveFile,
-    scheduleSync,
-    log: hostLog,
+    saveAnnotations: (markdown) => saveMarkdown(`${paper.citeKey}-annotations.md`, markdown),
+    logger,
+    sidecarChanged: (change) => scheduleSync(syncReasonFor(change)),
   }, page !== undefined ? { page } : {});
   const channel = createInPageChannel((msg) => { void host.handle(msg); });
   send = channel.send;
@@ -177,7 +172,7 @@ async function main(): Promise<void> {
   };
 
   onThemeChange((theme) => host.onAutoThemeChange(theme));
-  onReaderPrefsChange((next) => { currentPrefs = next; host.onPrefsChange(next); });
+  onReaderPrefsChange((next) => { currentPrefs = next; host.onPrefsChange(); });
   // A sync may have brought annotations made in VS Code while this tab was in the background.
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") void host.refreshAnnotations().catch(() => undefined);

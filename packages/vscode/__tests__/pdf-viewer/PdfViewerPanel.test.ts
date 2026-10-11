@@ -4,14 +4,12 @@ import * as path from 'node:path';
 import { PdfViewerPanel, type PdfViewerDeps } from '../../src/pdf-viewer/PdfViewerPanel';
 import { ThemeManager } from '../../src/pdf-viewer/ThemeManager';
 import { makeMemoryPaperDataStore } from '../support/memorySidecarPort';
-import { EventBus, EVENTS, type EventName } from '../../src/events/index.js';
+import { EventBus, EVENTS } from '../../src/events/index.js';
 
 const vscode = require('vscode');
 
 let _paperId = 0;
 function nextPaperId() { return `paper-${++_paperId}`; }
-
-const makeFakeStore = makeMemoryPaperDataStore;
 
 function makePaper(overrides: Record<string, unknown> = {}) {
   const id = nextPaperId();
@@ -47,10 +45,10 @@ describe('PdfViewerPanel', () => {
   });
 
   function makeDeps(overrides: Partial<PdfViewerDeps> = {}) {
-    const store = makeFakeStore();
+    const store = makeMemoryPaperDataStore();
     const eventBus = new EventBus();
-    const themeManager = new ThemeManager(store);
-    const logger = { log: jest.fn(async () => {}) } as any;
+    const themeManager = new ThemeManager();
+    const logger = { log: jest.fn(async () => {}), error: jest.fn(async () => {}) } as any;
     const onReadingEvent = jest.fn();
     const deps: PdfViewerDeps = {
       extensionUri: vscode.Uri.file(extensionDir),
@@ -115,32 +113,43 @@ describe('PdfViewerPanel', () => {
 
     it('assigns the HTML shell synchronously, before any disk access', () => {
       const ctx = makeDeps();
-      jest.spyOn(ctx.themeManager, 'getThemeForPaper').mockImplementation(() => new Promise(() => {}));
+      jest.spyOn(ctx.store, 'load').mockImplementation(() => new Promise(() => {}));
       PdfViewerPanel.createOrShow(ctx.deps, makePaper());
       const html: string = lastPanel().webview.html;
       expect(html).toContain('data-pdf-theme="dark"');
       expect(html).toContain(path.join('dist', 'reader', 'reader.js'));
     });
 
-    it('emits PDF_VIEWER_OPENED and PDF_VIEWER_CLOSED', () => {
+    it('emits PDF_VIEWER_CLOSED with the last page once when the panel closes', async () => {
       const ctx = makeDeps();
-      const opened = jest.fn();
       const closed = jest.fn();
-      ctx.eventBus.on(EVENTS.PDF_VIEWER_OPENED, opened);
       ctx.eventBus.on(EVENTS.PDF_VIEWER_CLOSED, closed);
       const paper = makePaper();
       PdfViewerPanel.createOrShow(ctx.deps, paper);
-      expect(opened).toHaveBeenCalledWith(expect.objectContaining({ paperId: paper.id }));
+      lastPanel().webview._fireMessage({ command: 'pageChanged', pageNumber: 5 });
+      await flush();
       lastPanel().dispose();
-      expect(closed).toHaveBeenCalledWith(expect.objectContaining({ paperId: paper.id }));
+      expect(closed).toHaveBeenCalledTimes(1);
+      expect(closed).toHaveBeenCalledWith(expect.objectContaining({ paperId: paper.id, currentPage: 5 }));
     });
 
-    it('reveals the existing panel and scrolls it to a requested page', () => {
+    it('reveals the existing ready panel and scrolls it to a requested page', async () => {
       const { deps, paper, panel } = open();
+      panel.webview._fireMessage({ command: 'ready', totalPages: 10 });
+      await flush();
       const created = (vscode.window.createWebviewPanel as jest.Mock).mock.calls.length;
       PdfViewerPanel.createOrShow(deps, paper, { page: 7 });
       expect(vscode.window.createWebviewPanel).toHaveBeenCalledTimes(created);
       expect(panel.reveal).toHaveBeenCalled();
+      expect(posted(panel, 'scrollToPage')).toEqual([{ type: 'scrollToPage', pageNumber: 7 }]);
+    });
+
+    it('holds a page asked for by a reveal before the reader is ready, and scrolls there once it is', async () => {
+      const { deps, paper, panel } = open();
+      PdfViewerPanel.createOrShow(deps, paper, { page: 7 });
+      expect(posted(panel, 'scrollToPage')).toHaveLength(0);
+      panel.webview._fireMessage({ command: 'ready', totalPages: 10 });
+      await flush();
       expect(posted(panel, 'scrollToPage')).toEqual([{ type: 'scrollToPage', pageNumber: 7 }]);
     });
 
@@ -172,232 +181,69 @@ describe('PdfViewerPanel', () => {
     });
   });
 
-  describe('init handshake', () => {
-    it('replies to ready-for-init with theme, annotations, prefs and the stored reading position', async () => {
+  describe('host controller wiring', () => {
+    it('answers ready-for-init from the sidecar through the shared controller', async () => {
       const { panel, store, paper } = open();
       await store.setTheme(paper.id, 'sepia');
       await store.addHighlight(paper.id, 2, 'a highlight', 'green');
-      const reading = { page: 5, scaleValue: 'page-width', top: 300, left: 0, updatedAt: '2026-01-01T00:00:00.000Z' };
-      await store.setReadingState(paper.id, reading);
-
       panel.webview._fireMessage({ command: 'ready-for-init' });
       await flush();
       await flush();
-
       const [init] = posted(panel, 'init');
-      expect(init.theme).toBe('sepia');
-      expect(init.effectiveTheme).toBe('sepia');
-      expect(init.reading).toEqual(reading);
+      expect(init).toMatchObject({ theme: 'sepia', effectiveTheme: 'sepia', reading: null });
       expect(init.annotations).toHaveLength(1);
       expect(init.prefs.defaultZoom).toBe('page-width');
     });
 
-    it('sends reading: null for a paper that was never opened', async () => {
+    it('resolves the auto theme from the VS Code colour theme', async () => {
       const { panel } = open();
       panel.webview._fireMessage({ command: 'ready-for-init' });
       await flush();
       await flush();
-      expect(posted(panel, 'init')[0].reading).toBeNull();
+      expect(posted(panel, 'init')[0]).toMatchObject({ theme: 'auto', effectiveTheme: 'dark' });
     });
-  });
 
-  describe('webview message handling', () => {
-    it('ignores malformed messages and logs a warning', async () => {
-      const { panel, logger, store, paper } = open();
-      const setSpy = jest.spyOn(store, 'setReadingState');
-      panel.webview._fireMessage({ command: 'saveReadingState' });
-      panel.webview._fireMessage({ command: 'nope' });
+    it('logs malformed messages through the injected logger', async () => {
+      const { panel, logger, paper } = open();
       panel.webview._fireMessage('garbage');
-      panel.webview._fireMessage({ command: 'pageChanged', pageNumber: 'three' });
       await flush();
-      expect(setSpy).not.toHaveBeenCalled();
-      expect(logger.log).toHaveBeenCalledWith('WARN', 'pdf-viewer', expect.any(String), { paperId: paper.id });
+      expect(logger.log).toHaveBeenCalledWith('WARN', 'reader', 'Ignored malformed reader message', { paperId: paper.id });
     });
 
-    it('logs the open timeline from a perf message', async () => {
-      const { panel, logger } = open();
-      panel.webview._fireMessage({ command: 'perf', timeline: { scriptStart: 1 }, pageNumber: 1, theme: 'dark', dpr: 2, canvas: '10x10' });
-      await flush();
-      expect(logger.log).toHaveBeenCalledWith('INFO', 'pdf-viewer', 'PDF open timeline', expect.objectContaining({
-        timeline: { scriptStart: 1 }, hostMs: expect.any(Number),
-      }));
-    });
-
-    it('persists a valid reading state and drops a corrupt one', async () => {
-      const { panel, store, paper } = open();
-      panel.webview._fireMessage({ command: 'saveReadingState', state: { page: 0, scaleValue: 'huge' } });
-      await flush();
-      expect(await store.getReadingState(paper.id)).toBeNull();
-
-      panel.webview._fireMessage({
-        command: 'saveReadingState',
-        state: { page: 3, scaleValue: '1.25', top: 120, sidebar: { open: true, tab: 'outline', width: 9999 }, updatedAt: 'x' },
-      });
-      await flush();
-      await flush();
-      const saved = await store.getReadingState(paper.id);
-      expect(saved).toMatchObject({ page: 3, scaleValue: '1.25', top: 120 });
-      expect(saved?.sidebar).toEqual({ open: true, tab: 'outline', width: 480 });
-    });
-
-    it('persists the selected theme and echoes applyTheme', async () => {
-      const { panel, store, paper } = open();
-      panel.webview._fireMessage({ command: 'selectTheme', theme: 'sepia' });
-      await flush();
-      await flush();
-      expect(await store.getTheme(paper.id)).toBe('sepia');
-      expect(posted(panel, 'applyTheme')).toContainEqual({ type: 'applyTheme', theme: 'sepia', effectiveTheme: 'sepia' });
-    });
-
-    it('rejects an unknown theme', async () => {
-      const { panel, store, paper } = open();
-      panel.webview._fireMessage({ command: 'selectTheme', theme: 'neon' });
-      await flush();
-      expect(await store.getTheme(paper.id)).toBe('auto');
-    });
-
-    it('creates a highlight and sends the refreshed list', async () => {
-      const { panel, store, paper } = open();
-      const createSpy = jest.spyOn(store, 'addHighlight');
-      panel.webview._fireMessage({
-        command: 'createAnnotation', type: 'highlight', pageNumber: 1, content: 'test highlight', color: 'yellow',
-        position: { x: 0.1, y: 0.1, width: 0.5, height: 0.05 },
-      });
-      await flush();
-      await flush();
-      expect(createSpy).toHaveBeenCalledWith(paper.id, 1, 'test highlight', 'yellow', expect.objectContaining({ x: 0.1 }));
-      expect(posted(panel, 'updateAnnotations').at(-1).annotations).toHaveLength(1);
-    });
-
-    it('deletes an annotation', async () => {
-      const { panel, store, paper } = open();
-      const ann = await store.addHighlight(paper.id, 1, 'to delete', 'green');
-      const deleteSpy = jest.spyOn(store, 'deleteAnnotation');
-      panel.webview._fireMessage({ command: 'deleteAnnotation', id: ann.id });
-      await flush();
-      await flush();
-      expect(deleteSpy).toHaveBeenCalledWith(paper.id, ann.id);
-      expect(posted(panel, 'updateAnnotations').at(-1).annotations).toHaveLength(0);
-    });
-
-    describe('annotation events', () => {
-      const seen = (eventBus: EventBus, name: EventName) => {
-        const handler = jest.fn();
-        eventBus.on(name, handler);
-        return handler;
-      };
-
-      it('emits ANNOTATION_CREATED with the stored annotation', async () => {
-        const { panel, eventBus, store, paper } = open();
-        const created = seen(eventBus, EVENTS.ANNOTATION_CREATED);
-        panel.webview._fireMessage({ command: 'createAnnotation', type: 'note', pageNumber: 2, content: 'a note' });
-        await flush();
-        await flush();
-        const [stored] = await store.getAnnotations(paper.id);
-        expect(created).toHaveBeenCalledTimes(1);
-        expect(created).toHaveBeenCalledWith(stored);
-      });
-
-      it('emits ANNOTATION_UPDATED with the updated annotation', async () => {
-        const { panel, eventBus, store, paper } = open();
-        const ann = await store.addNote(paper.id, 1, 'old');
-        const updated = seen(eventBus, EVENTS.ANNOTATION_UPDATED);
-        panel.webview._fireMessage({ command: 'updateAnnotation', id: ann.id, content: 'new' });
-        await flush();
-        await flush();
-        expect(updated).toHaveBeenCalledWith(expect.objectContaining({ id: ann.id, content: 'new' }));
-      });
-
-      it('emits ANNOTATION_DELETED with the ids when an annotation was removed', async () => {
-        const { panel, eventBus, store, paper } = open();
-        const ann = await store.addNote(paper.id, 1, 'x');
-        const deleted = seen(eventBus, EVENTS.ANNOTATION_DELETED);
-        panel.webview._fireMessage({ command: 'deleteAnnotation', id: ann.id });
-        await flush();
-        await flush();
-        expect(deleted).toHaveBeenCalledWith({ annotationId: ann.id, paperId: paper.id });
-      });
-
-      it('emits nothing when the deleted id does not exist', async () => {
-        const { panel, eventBus } = open();
-        const deleted = seen(eventBus, EVENTS.ANNOTATION_DELETED);
-        panel.webview._fireMessage({ command: 'deleteAnnotation', id: 'missing' });
-        await flush();
-        await flush();
-        expect(deleted).not.toHaveBeenCalled();
-      });
-
-      it('creates a highlight when the webview sends a null position', async () => {
-        const { panel, store, paper } = open();
-        panel.webview._fireMessage({ command: 'createAnnotation', type: 'highlight', pageNumber: 1, content: 'x', position: null });
-        await flush();
-        await flush();
-        expect(await store.getAnnotations(paper.id)).toHaveLength(1);
-      });
-    });
-
-    it.each([
-      ['pandoc', '> A quoted passage.\n\n[@test2026, p. 12]'],
-      ['latex', "``A quoted passage.'' \\cite[p.~12]{test2026}"],
-      ['author-year', '"A quoted passage." (Silva et al., 2026, p. 12)'],
-      ['citekey', 'A quoted passage. @test2026'],
-    ])('copies a selection with a %s citation', async (style, expected) => {
-      vscode.workspace._config['labshelf.reader'] = { citationStyle: style };
+    it('reads the citation style from the labshelf.reader settings', async () => {
+      vscode.workspace._config['labshelf.reader'] = { citationStyle: 'citekey' };
       const { panel } = open();
       panel.webview._fireMessage({ command: 'copyWithCitation', text: 'A quoted\npassage.', pageNumber: 12 });
       await flush();
-      expect(vscode.env.clipboard.writeText).toHaveBeenCalledWith(expected);
+      expect(vscode.env.clipboard.writeText).toHaveBeenCalledWith('A quoted passage. @test2026');
+      expect(vscode.window.setStatusBarMessage).toHaveBeenCalledWith('Copied with citation (@test2026, p. 12)', 2500);
     });
 
-    it('copies plain text', async () => {
+    it('emits annotation events on the event bus for the list and sync', async () => {
+      const { panel, eventBus, store, paper } = open();
+      const created = jest.fn();
+      const deleted = jest.fn();
+      eventBus.on(EVENTS.ANNOTATION_CREATED, created);
+      eventBus.on(EVENTS.ANNOTATION_DELETED, deleted);
+      panel.webview._fireMessage({ command: 'createAnnotation', type: 'note', pageNumber: 2, content: 'a note' });
+      await flush();
+      await flush();
+      const [stored] = await store.getAnnotations(paper.id);
+      expect(created).toHaveBeenCalledWith(stored);
+      panel.webview._fireMessage({ command: 'deleteAnnotation', id: stored!.id });
+      await flush();
+      await flush();
+      expect(deleted).toHaveBeenCalledWith({ annotationId: stored!.id, paperId: paper.id });
+    });
+
+    it('exports to the file chosen in the save dialog', async () => {
       const { panel } = open();
-      panel.webview._fireMessage({ command: 'copyText', text: '[1] A. Author. Title.' });
-      await flush();
-      expect(vscode.env.clipboard.writeText).toHaveBeenCalledWith('[1] A. Author. Title.');
-    });
-
-    it('exports annotations as Markdown to the clipboard', async () => {
-      const { panel, store, paper } = open();
-      await store.addHighlight(paper.id, 3, 'key finding', 'blue');
-      panel.webview._fireMessage({ command: 'exportAnnotations', target: 'clipboard' });
-      await flush();
-      await flush();
-      const markdown = (vscode.env.clipboard.writeText as jest.Mock).mock.calls.at(-1)[0] as string;
-      expect(markdown).toContain('# Test Paper');
-      expect(markdown).toContain('## Page 3');
-      expect(markdown).toContain('> key finding');
-    });
-
-    it('exports annotations to the file chosen in the save dialog, defaulting to the paper folder', async () => {
-      const { panel, paper } = open();
       const target = vscode.Uri.file('/tmp/out/annotations.md');
       (vscode.window.showSaveDialog as jest.Mock).mockResolvedValueOnce(target);
       panel.webview._fireMessage({ command: 'exportAnnotations', target: 'file' });
       await flush();
       await flush();
-      const dialogOptions = (vscode.window.showSaveDialog as jest.Mock).mock.calls.at(-1)[0];
-      expect(dialogOptions.defaultUri.fsPath).toBe(path.join(paper.path, 'annotations.md'));
       expect(vscode.workspace.fs.writeFile).toHaveBeenCalledWith(target, expect.anything());
-    });
-
-    it('writes nothing when the save dialog is cancelled', async () => {
-      const { panel } = open();
-      panel.webview._fireMessage({ command: 'exportAnnotations', target: 'file' });
-      await flush();
-      await flush();
-      expect(vscode.workspace.fs.writeFile).not.toHaveBeenCalled();
-    });
-
-    it('opens http(s) and mailto links externally and blocks every other scheme', async () => {
-      const { panel } = open();
-      for (const url of ['https://doi.org/10.1/x', 'mailto:a@b.org']) {
-        panel.webview._fireMessage({ command: 'openExternalLink', url });
-      }
-      for (const url of ['file:///etc/passwd', 'command:workbench.action.terminal.new', 'vscode://x/y', 'javascript:alert(1)', 'not a url']) {
-        panel.webview._fireMessage({ command: 'openExternalLink', url });
-      }
-      await flush();
-      expect(vscode.env.openExternal).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -448,22 +294,6 @@ describe('PdfViewerPanel', () => {
       expect(events.map((e) => e.kind)).toEqual(['open', 'scroll', 'annotate', 'close']);
       expect(events[1]).toMatchObject({ paperId: paper.id, page: 2, durationMs: 8000 });
       expect(events[3]).toMatchObject({ kind: 'close', page: 3 });
-    });
-
-    it('does not count time while the panel is hidden', async () => {
-      jest.useFakeTimers({ doNotFake: ['setImmediate', 'nextTick'] });
-      jest.setSystemTime(new Date('2026-01-01T00:00:00Z'));
-      const { panel, onReadingEvent } = open();
-      panel.webview._fireMessage({ command: 'ready', totalPages: 9 });
-      await flush();
-      jest.setSystemTime(new Date('2026-01-01T00:00:01Z'));
-      panel._fireViewState({ active: false, visible: false });
-      jest.setSystemTime(new Date('2026-01-01T01:00:00Z'));
-      panel._fireViewState({ active: true, visible: true });
-      jest.setSystemTime(new Date('2026-01-01T01:00:02Z'));
-      panel.webview._fireMessage({ command: 'pageChanged', pageNumber: 2 });
-      await flush();
-      expect(onReadingEvent.mock.calls.map((c) => c[0].kind)).toEqual(['open']);
     });
 
     it('survives a throwing analytics sink', async () => {

@@ -2,6 +2,7 @@
  * Renders a paper's annotations as a Markdown reading-notes document grouped by page.
  */
 import type { Annotation } from "../model/index.js";
+import { byPageThenCreated } from "./paperData.js";
 import { authorYearLabel, cleanQuote, type CitablePaper } from "./citationFormat.js";
 
 /**
@@ -14,9 +15,7 @@ export function formatAnnotationsMarkdown(paper: CitablePaper, annotations: read
     lines.push("_No annotations._", "");
     return lines.join("\n");
   }
-  const sorted = [...annotations].sort(
-    (a, b) => a.pageNumber - b.pageNumber || a.createdAt.localeCompare(b.createdAt),
-  );
+  const sorted = [...annotations].sort(byPageThenCreated);
   let page = -1;
   for (const ann of sorted) {
     if (ann.pageNumber !== page) {

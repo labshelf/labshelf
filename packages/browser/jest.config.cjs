@@ -18,7 +18,7 @@ module.exports = {
     'src/capture/**/*.ts',
     'src/content/scholarParse.ts',
     'src/popup/format.ts',
-    'src/reader/browserReaderHost.ts',
+    'src/reader/readerSyncReason.ts',
     'src/reader/idbSidecarPort.ts',
     'src/reader/inPageTransport.ts',
     // Injected into pages or driving real tabs: verified in a browser, not in node.

@@ -5,7 +5,6 @@ export const EVENTS = {
   PAPER_ADDED: "paper:added",
   PAPER_UPDATED: "paper:updated",
   PAPER_DELETED: "paper:deleted",
-  PDF_VIEWER_OPENED: "pdf:viewer:opened",
   PDF_VIEWER_CLOSED: "pdf:viewer:closed",
   ANNOTATION_CREATED: "annotation:created",
   ANNOTATION_UPDATED: "annotation:updated",

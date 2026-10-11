@@ -50,8 +50,11 @@ export function serializePaperData(data: PaperData): string {
   return JSON.stringify(payload, null, 2);
 }
 
-/** Sorted the way the reader lists them: by page, then by creation time. */
-function byPageThenCreated(a: Annotation, b: Annotation): number {
+/**
+ * The order the reader lists annotations in: by page, then by creation time.
+ * @returns a negative number when `a` comes first, positive when `b` does, 0 when they tie.
+ */
+export function byPageThenCreated(a: Annotation, b: Annotation): number {
   return a.pageNumber - b.pageNumber || a.createdAt.localeCompare(b.createdAt);
 }
 
