@@ -1,3 +1,4 @@
+// Tests deduplication of actions arriving from keyboard and host.
 import {
   CROSS_SOURCE_WINDOW_MS,
   isDuplicateDelivery,

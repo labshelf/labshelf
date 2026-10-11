@@ -1,3 +1,4 @@
+// Tests scroll decisions for find match hits.
 import {
   FIND_ORIGIN_TTL_MS,
   FIND_OVERLAY_PX,

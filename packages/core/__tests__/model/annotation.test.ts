@@ -1,11 +1,10 @@
 /**
- * Tests the annotation type and colour lists and the colour guard.
+ * Tests the annotation colour list and the colour guard.
  */
-import { ANNOTATION_COLORS, ANNOTATION_TYPES, isAnnotationColor } from '@labshelf/core';
+import { ANNOTATION_COLORS, isAnnotationColor } from '@labshelf/core';
 
 describe('annotation lists', () => {
-  it('lists the types and colours in display order', () => {
-    expect(ANNOTATION_TYPES).toEqual(['highlight', 'note', 'comment', 'tag']);
+  it('lists the colours in display order', () => {
     expect(ANNOTATION_COLORS).toEqual(['yellow', 'green', 'blue', 'red', 'pink']);
   });
 

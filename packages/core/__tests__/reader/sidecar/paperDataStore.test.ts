@@ -1,3 +1,4 @@
+// Tests the paper data store for annotations and reading state.
 import { PaperDataStore } from '../../../src/reader/sidecar/paperDataStore';
 import { emptyPaperData } from '../../../src/reader/sidecar/paperData';
 import type { SidecarPort } from '../../../src/ports/index';

@@ -1,3 +1,4 @@
+// Tests the Node.js sidecar port for reading and writing paper data.
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 

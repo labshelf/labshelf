@@ -1,3 +1,4 @@
+// Tests normalization of reading state.
 import { clampPage, MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, normalizeReadingState } from '../../../src/reader/sidecar/readingState';
 
 describe('normalizeReadingState', () => {

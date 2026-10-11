@@ -1,3 +1,4 @@
+// Tests caption and figure label detection.
 import { findCaptionLines, pickCaption } from '../../../../src/reader/logic/text/captions';
 import type { TextLine } from '../../../../src/reader/logic/text/textLines';
 

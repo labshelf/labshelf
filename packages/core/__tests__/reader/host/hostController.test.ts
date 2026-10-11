@@ -1,3 +1,4 @@
+// Tests the reader host controller's message handling and error recovery.
 import { DEFAULT_READER_PREFS } from "@labshelf/core";
 import { setupHost, sidecar } from "./hostFixture";
 

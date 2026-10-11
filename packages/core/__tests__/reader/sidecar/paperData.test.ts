@@ -1,3 +1,4 @@
+// Tests normalization and serialization of paper data.
 import { emptyPaperData, normalizePaperData, serializePaperData } from '../../../src/reader/sidecar/paperData';
 
 describe('normalizePaperData', () => {

@@ -1,3 +1,4 @@
+// Tests reader session messages: init, ready, theme resolution.
 import { DEFAULT_READER_PREFS, type HostToWebview } from "@labshelf/core";
 import { setupHost, sidecar } from "./hostFixture";
 

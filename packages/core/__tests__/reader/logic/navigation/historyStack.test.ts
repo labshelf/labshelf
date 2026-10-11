@@ -1,3 +1,4 @@
+// Tests back/forward history navigation.
 import { HISTORY_CAP, HistoryStack, type ViewLocation } from '../../../../src/reader/logic/navigation/historyStack';
 
 function loc(pageNumber: number, top = 0): ViewLocation {

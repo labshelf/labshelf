@@ -1,3 +1,4 @@
+// Tests PDF destination point parsing.
 import { cropRectForPreview, destPoint } from '../../../../src/reader/logic/presentation/destGeometry';
 
 describe('destPoint', () => {

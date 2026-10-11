@@ -1,3 +1,4 @@
+// Tests zoom scale calculations and limits.
 import {
   anchorOrigin,
   boundedFactor,

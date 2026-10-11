@@ -1,3 +1,4 @@
+// Tests in-text reference detection and formatting.
 import {
   findInTextRefs,
   floatKindOf,

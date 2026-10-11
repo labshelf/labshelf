@@ -1,3 +1,4 @@
+// Tests reference list parsing and lookups.
 import * as fs from 'fs';
 import * as path from 'path';
 import {

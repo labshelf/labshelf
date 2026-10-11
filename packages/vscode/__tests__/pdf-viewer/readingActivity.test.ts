@@ -1,3 +1,4 @@
+// Tests reading activity tracking.
 import { ReadingActivityTracker } from '../../src/pdf-viewer/readingActivity';
 
 describe('ReadingActivityTracker', () => {

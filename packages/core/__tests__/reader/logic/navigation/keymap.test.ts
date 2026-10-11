@@ -1,3 +1,4 @@
+// Tests keyboard input resolution to reader actions.
 import { ACTIONS_BLOCKED_WHILE_TYPING, cheatsheetRows, resolveKey, type KeyContext, type KeyInput } from '../../../../src/reader/logic/navigation/keymap';
 
 function ctx(overrides: Partial<KeyContext> = {}): KeyContext {

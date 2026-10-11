@@ -1,3 +1,4 @@
+// Tests splitting reference entries.
 import * as fs from 'fs';
 import * as path from 'path';
 import { splitReferenceEntries } from '../../../../src/reader/logic/text/referenceSplit';

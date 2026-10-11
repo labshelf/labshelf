@@ -1,3 +1,4 @@
+// Tests float region calculation for captions.
 import { floatRegion } from '../../../../src/reader/logic/text/floatRegion';
 import type { TextLine } from '../../../../src/reader/logic/text/textLines';
 

@@ -1,3 +1,4 @@
+// Tests VS Code reader host port implementations.
 import * as path from 'node:path';
 import { exportAnnotations } from '@labshelf/core';
 import { createVsCodeExportPorts, createVsCodeOutputPorts, emitSidecarChanges, notifyInVsCode } from '../../src/pdf-viewer/readerHostPorts';

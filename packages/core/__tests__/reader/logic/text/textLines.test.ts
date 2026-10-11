@@ -1,3 +1,4 @@
+// Tests grouping and analyzing text items into lines.
 import { detectColumns, groupItemsIntoLines, readableItems, runOrientation, type TextItemBox } from '../../../../src/reader/logic/text/textLines';
 
 function item(str: string, x: number, y: number, width: number, height = 10): TextItemBox {

@@ -8,8 +8,7 @@ export interface AnnotationPosition {
   height: number;
 }
 
-export const ANNOTATION_TYPES = ["highlight", "note", "comment", "tag"] as const;
-export type AnnotationType = (typeof ANNOTATION_TYPES)[number];
+export type AnnotationType = "highlight" | "note" | "comment" | "tag";
 
 export const ANNOTATION_COLORS = ["yellow", "green", "blue", "red", "pink"] as const;
 export type AnnotationColor = (typeof ANNOTATION_COLORS)[number];

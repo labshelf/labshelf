@@ -1,3 +1,4 @@
+// Tests reader annotation messages: create, update, delete.
 import { setupHost } from "./hostFixture";
 
 const stored = (files: Record<string, string>) => JSON.parse(files.p1!).annotations as Array<Record<string, unknown>>;

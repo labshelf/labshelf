@@ -1,3 +1,4 @@
+// Tests toolbar autohide on scroll.
 import { initialAutohide, toolbarVisibility, type AutohideInputs, type AutohideState } from '../../../../src/reader/logic/presentation/autohide';
 
 function inputs(overrides: Partial<AutohideInputs> = {}): AutohideInputs {

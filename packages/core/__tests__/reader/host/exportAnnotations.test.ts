@@ -1,3 +1,4 @@
+// Tests exporting annotations to clipboard or file.
 import { exportAnnotations } from "@labshelf/core";
 import { setupHost, sidecar } from "./hostFixture";
 

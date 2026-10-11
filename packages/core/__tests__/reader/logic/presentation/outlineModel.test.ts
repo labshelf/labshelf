@@ -1,3 +1,4 @@
+// Tests flattening and display of document outline.
 import {
   activeOutlineIndex,
   flattenOutline,

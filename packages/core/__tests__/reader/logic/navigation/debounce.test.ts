@@ -1,3 +1,4 @@
+// Tests the debouncer for trailing call execution.
 import { createDebouncer, type Timers } from '../../../../src/reader/logic/navigation/debounce';
 
 /** In-memory Timers implementation so tests do not depend on real wall-clock time. */

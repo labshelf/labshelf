@@ -1,3 +1,4 @@
+// Tests reader share messages: copy text, citations and annotations.
 import { DEFAULT_READER_PREFS, type CitationStyle } from "@labshelf/core";
 import { setupHost, sidecar } from "./hostFixture";
 

@@ -1,3 +1,4 @@
+// Tests the sync reason naming for theme and annotation changes.
 import type { Annotation } from "@labshelf/core";
 import { syncReasonFor } from "../../src/reader/readerSyncReason";
 

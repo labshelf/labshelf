@@ -1,3 +1,4 @@
+// Tests annotation position validation.
 import { validateAnnotationPosition } from '../../../src/reader/sidecar/annotationValidation';
 
 describe('validateAnnotationPosition', () => {
