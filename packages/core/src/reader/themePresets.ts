@@ -1,6 +1,7 @@
 /**
- * Single source of the page-pixel colours each reader theme hands to pdf.js `pageColors`.
+ * The page-pixel colours each reader theme hands to pdf.js `pageColors`, read from the reader theme tokens.
  */
+import { READER_THEMES } from "../ui/index.js";
 import type { EffectiveTheme } from "./protocol.js";
 
 interface PagePreset {
@@ -9,11 +10,15 @@ interface PagePreset {
 }
 
 export const THEME_PRESETS: Record<EffectiveTheme, PagePreset> = {
-  "light": { bg: "#ffffff", text: "#000000" },
-  "dark": { bg: "#1e1e1e", text: "#e8e8e8" },
-  "sepia": { bg: "#faf6ee", text: "#3a2a1a" },
-  "high-contrast": { bg: "#000000", text: "#ffffff" },
+  "light": pagePreset("light"),
+  "dark": pagePreset("dark"),
+  "sepia": pagePreset("sepia"),
+  "high-contrast": pagePreset("high-contrast"),
 };
+
+function pagePreset(theme: EffectiveTheme): PagePreset {
+  return { bg: READER_THEMES[theme].page, text: READER_THEMES[theme].ink };
+}
 
 /**
  * Looks up a preset, falling back to light for an unknown theme name.

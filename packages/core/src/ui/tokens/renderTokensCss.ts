@@ -4,6 +4,7 @@
 import { COLOR_TOKENS, STATUS_TOKENS } from "./colorTokens.js";
 import { token, type DesignToken } from "./designToken.js";
 import { HIGHLIGHT_COLORS } from "./highlightTokens.js";
+import { renderReaderThemesCss } from "./readerThemeTokens.js";
 import { ELEVATION_TOKENS, MOTION_TOKENS, SHAPE_TOKENS, SPACE_TOKENS, TYPE_TOKENS } from "./scaleTokens.js";
 
 const ALL_TOKENS: Record<string, DesignToken> = {
@@ -35,5 +36,5 @@ export function renderTokensCss(tokens: Record<string, DesignToken> = ALL_TOKENS
     ...light,
     "}",
     "",
-  ].join("\n");
+  ].join("\n") + renderReaderThemesCss();
 }

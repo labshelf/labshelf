@@ -1,63 +1,36 @@
 /*
  * Reader page host styles: what a VS Code webview gives the reader before its own CSS loads.
  *
- * 1. The --vscode-* variables the reader (and VS Code's default webview stylesheet) read, mapped from the --ls-*
- *    tokens, which already mirror VS Code Dark Modern / Light Modern (tokens.css, keyed on html[data-theme]).
- * 2. VS Code's default webview stylesheet (vs/workbench/contrib/webview/browser/pre/index.html): scrollbars, kbd,
- *    focus outlines, overscroll. Kept verbatim so the reader looks the same in both products.
- * 3. Toasts, the browser counterpart of VS Code's status-bar messages and notifications.
+ * 1. VS Code's default webview stylesheet (vs/workbench/contrib/webview/browser/pre/index.html): scrollbars, kbd,
+ *    focus outlines, overscroll, on the --ls-* tokens so the reader looks the same in both products.
+ * 2. Toasts, the browser counterpart of VS Code's status-bar messages and notifications.
  *
  * Deliberately NOT base.css: its global box-sizing reset shrinks pdf.js canvases and misaligns the text layer.
  * Loaded before pdf_viewer.css and reader.css, which win wherever they set the same properties.
  */
 
-:root {
-  --vscode-font-family: var(--ls-font);
-  --vscode-font-weight: normal;
-  --vscode-font-size: var(--ls-font-size);
-  --vscode-editor-font-family: var(--ls-mono);
-  --vscode-editor-background: var(--ls-bg);
-  --vscode-editor-foreground: var(--ls-fg);
-  --vscode-focusBorder: var(--ls-focus);
-  --vscode-errorForeground: var(--ls-error);
-  --vscode-scrollbarSlider-background: var(--ls-scrollbar);
-  --vscode-scrollbarSlider-hoverBackground: var(--ls-scrollbar-hover);
-  --vscode-scrollbarSlider-activeBackground: rgba(191, 191, 191, .4);
-  --vscode-textLink-foreground: var(--ls-link);
-  --vscode-textLink-activeForeground: var(--ls-link);
-  --vscode-keybindingLabel-background: var(--ls-kbd-bg);
-  --vscode-keybindingLabel-foreground: var(--ls-fg);
-  --vscode-keybindingLabel-border: var(--ls-kbd-border);
-  --vscode-keybindingLabel-bottomBorder: var(--ls-kbd-bottom);
-  --vscode-widget-shadow: rgba(0, 0, 0, .36);
-}
-:root[data-theme="light"] {
-  --vscode-scrollbarSlider-activeBackground: rgba(0, 0, 0, .6);
-  --vscode-widget-shadow: rgba(0, 0, 0, .16);
-}
-
 /* ── VS Code default webview stylesheet ─────────────────────── */
-html { scrollbar-color: var(--vscode-scrollbarSlider-background) var(--vscode-editor-background); }
+html { scrollbar-color: var(--ls-scrollbar) var(--ls-bg); }
 body {
-  overscroll-behavior-x: none; background-color: transparent; color: var(--vscode-editor-foreground);
-  font-family: var(--vscode-font-family); font-weight: var(--vscode-font-weight); font-size: var(--vscode-font-size);
+  overscroll-behavior-x: none; background-color: transparent; color: var(--ls-fg);
+  font-family: var(--ls-font); font-weight: normal; font-size: var(--ls-font-size);
   margin: 0; padding: 0 20px;
 }
 img, video { max-width: 100%; max-height: 100%; }
-a, a code { color: var(--vscode-textLink-foreground); }
-a:hover { color: var(--vscode-textLink-activeForeground); }
+a, a code { color: var(--ls-link); }
+a:hover { color: var(--ls-link); }
 a:focus, input:focus, select:focus, textarea:focus { outline: 1px solid -webkit-focus-ring-color; outline-offset: -1px; }
 kbd {
-  background-color: var(--vscode-keybindingLabel-background); color: var(--vscode-keybindingLabel-foreground);
-  border-style: solid; border-width: 1px; border-radius: 3px; border-color: var(--vscode-keybindingLabel-border);
-  border-bottom-color: var(--vscode-keybindingLabel-bottomBorder); box-shadow: inset 0 -1px 0 var(--vscode-widget-shadow);
+  background-color: var(--ls-kbd-bg); color: var(--ls-kbd-fg);
+  border-style: solid; border-width: 1px; border-radius: 3px; border-color: var(--ls-kbd-border);
+  border-bottom-color: var(--ls-kbd-bottom); box-shadow: inset 0 -1px 0 var(--ls-kbd-bottom);
   vertical-align: middle; padding: 1px 3px;
 }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-corner { background-color: var(--vscode-editor-background); }
-::-webkit-scrollbar-thumb { background-color: var(--vscode-scrollbarSlider-background); }
-::-webkit-scrollbar-thumb:hover { background-color: var(--vscode-scrollbarSlider-hoverBackground); }
-::-webkit-scrollbar-thumb:active { background-color: var(--vscode-scrollbarSlider-activeBackground); }
+::-webkit-scrollbar-corner { background-color: var(--ls-bg); }
+::-webkit-scrollbar-thumb { background-color: var(--ls-scrollbar); }
+::-webkit-scrollbar-thumb:hover { background-color: var(--ls-scrollbar-hover); }
+::-webkit-scrollbar-thumb:active { background-color: var(--ls-scrollbar-active); }
 
 /* ── Toasts (ui/toast.ts; same look as the library page) ────── */
 .ls-toasts {
