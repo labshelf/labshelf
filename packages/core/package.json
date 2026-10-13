@@ -5,7 +5,8 @@
     "typecheck": "tsc --noEmit -p ./",
     "lint": "node ../../scripts/run-eslint.mjs && pnpm run lint:runtime",
     "lint:runtime": "node ../../scripts/check-runtime-tsconfigs.mjs",
-    "test": "jest"
+    "test": "jest",
+    "tokens": "WRITE_TOKENS=1 jest __tests__/ui/tokensCss.test.ts"
   },
   "dependencies": {
     "@napi-rs/canvas": "^1.0.9",
@@ -24,7 +25,8 @@
     ".": "./src/index.ts",
     "./dom": "./src/dom/index.ts",
     "./node": "./src/node/index.ts",
-    "./styles/*": "./src/reader/dom/styles/*",
+    "./styles/reader.css": "./src/reader/dom/styles/reader.css",
+    "./styles/tokens.css": "./src/ui/dom/tokens.css",
     "./test-support/sync-fakes": "./__tests__/support/syncFakes.ts",
     "./package.json": "./package.json"
   }

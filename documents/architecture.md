@@ -79,7 +79,7 @@ Each app has exactly one composition root, and only that root instantiates adapt
 
 The design system gives the three apps one look:
 
-- **Tokens** are defined once, as data in `core/src/ui/tokens.ts`: colour roles for light and dark, the type scale, spacing, radii and elevation. The build generates `tokens.css` (`--ls-*` custom properties) from them, and the terminal maps the same colour roles onto its truecolor palette.
+- **Tokens** are defined once, as data in `core/src/ui/tokens/`: colour roles for light and dark, the status colours, one highlight palette keyed by annotation colour, the type scale, spacing, radii and elevation. `pnpm --filter @labshelf/core tokens` renders them into the committed `core/src/ui/dom/tokens.css` (`--ls-*` custom properties), and a core test fails when the file drifts from the data; and the terminal maps the same colour roles onto its truecolor palette.
 - **In VS Code**, a host stylesheet maps each `--ls-*` token to the matching `--vscode-*` variable, so the UI follows the user's VS Code theme. **In the browser**, `tokens.css` supplies values that match VS Code Dark Modern and Light Modern. Components use only `--ls-*`, so the same component looks the same in both hosts.
 - **Components** (`core/src/ui/dom/`) and **icons** (one Feather-based inline-SVG set) are shared by the VS Code webviews, the browser pages, the reader and the website.
 - **The reader** derives its page themes (light, dark, sepia, high contrast) from the same tokens. Its pdf.js page colours and its CSS read from one table.

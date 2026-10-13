@@ -1,9 +1,9 @@
 /**
  * Inline CSS styles for the paper list webview panel.
- *
- * @depends none
- * @dependents ui/list/template.ts
  */
+import { HIGHLIGHT_COLORS } from "@labshelf/core";
+
+const HIGHLIGHT_VARS = Object.entries(HIGHLIGHT_COLORS).map(([name, hex]) => `--hl-${name}:${hex};`).join("");
 
 /** Returns the full inline CSS block for the list webview panel. */
 export function listPanelCss(): string {
@@ -15,7 +15,7 @@ export function listPanelCss(): string {
   --border-soft:var(--vscode-panel-border,rgba(128,128,128,.12));
   --muted:var(--vscode-descriptionForeground);
   --side-bg:var(--vscode-sideBar-background,var(--vscode-editor-background));
-  --hl-yellow:#f2c94c;--hl-green:#6fcf97;--hl-blue:#56a8f5;--hl-red:#eb5757;--hl-pink:#f178b6;
+  ${HIGHLIGHT_VARS}
 }
 /* Narrow editors drop columns before the title gets squeezed: last read first, then the publication. */
 @media (max-width:1080px){:root{--cols:26px minmax(0,1fr) 140px 50px 170px 80px}.col-read{display:none !important}}

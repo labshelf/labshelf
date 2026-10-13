@@ -164,8 +164,8 @@ button { font: inherit; color: inherit; }
 .rd-ann-text { flex: 1; min-width: 0; font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
 .rd-ann-delete { visibility: hidden; flex-shrink: 0; }
 .rd-ann-item:hover .rd-ann-delete, .rd-ann-item:focus-within .rd-ann-delete { visibility: visible; }
-.rd-color-yellow { background: #f5c518; } .rd-color-green { background: #4caf50; } .rd-color-blue { background: #2196f3; }
-.rd-color-red { background: #f44336; } .rd-color-pink { background: #e91e63; } .rd-color-note { background: #9c27b0; }
+.rd-color-yellow { background: var(--ls-hl-yellow); } .rd-color-green { background: var(--ls-hl-green); } .rd-color-blue { background: var(--ls-hl-blue); }
+.rd-color-red { background: var(--ls-hl-red); } .rd-color-pink { background: var(--ls-hl-pink); } .rd-color-note { background: var(--ls-hl-note); }
 
 /* Outline */
 .rd-outline-item { display: flex; align-items: center; gap: 2px; padding: 3px 8px; font-size: 12px; line-height: 1.5; cursor: pointer; }

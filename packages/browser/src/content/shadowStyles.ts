@@ -4,10 +4,8 @@
  * a shadow root, with `:root` rewritten to `:host` so the --ls-* tokens apply
  * there. The theme follows the page itself (Google Scholar is light), not the
  * OS, so the button never looks dark on a white page.
- * @depends ui/styles/tokens.css, ui/styles/base.css (as text)
- * @dependents content/scholar
  */
-import tokensCss from "../ui/styles/tokens.css";
+import tokensCss from "@labshelf/core/styles/tokens.css";
 import baseCss from "../ui/styles/base.css";
 
 // base.css styles <body>; in a shadow root the root's children play that part
@@ -21,7 +19,6 @@ const KIT_CSS = `${tokensCss
  * Attaches a shadow root to `host` carrying the kit plus `extraCss`. The
  * host's own box (`hostStyle`) is set inline: page selectors such as
  * ".gs_ggsd div { margin }" reach the host element, and inline styles beat them.
- * @usedBy content/scholar
  */
 export function kitShadow(host: HTMLElement, extraCss: string, hostStyle: string): ShadowRoot {
   host.style.cssText = `all: initial; ${hostStyle}`;

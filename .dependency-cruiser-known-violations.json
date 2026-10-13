@@ -414,20 +414,6 @@
   },
   {
     "type": "dependency",
-    "from": "packages/browser/src/content/shadowStyles.ts",
-    "to": "packages/browser/src/ui/styles/tokens.css",
-    "unresolvedTo": "../ui/styles/tokens.css",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "packages/browser/src/library-page/app.ts",
     "to": "packages/browser/src/library-page/state/uiPrefs.ts",
     "unresolvedTo": "./state/uiPrefs",
