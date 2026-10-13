@@ -1,9 +1,8 @@
 /**
  * Small DOM helpers shared by every browser surface: element lookup that fails
- * loudly, HTML escaping for string templates, search-term highlighting, and a
- * terse element factory. Kept framework-free on purpose — the UI is vanilla TS.
+ * loudly, search-term highlighting, and a terse element factory. Kept framework-free on purpose — the UI is vanilla TS.
  */
-import { highlightRanges } from "@labshelf/core";
+import { escapeHtml, highlightRanges } from "@labshelf/core";
 
 /** Returns the element with the given id or throws — missing mount points are programmer errors. */
 export function $<T extends HTMLElement = HTMLElement>(id: string, root: ParentNode = document): T {
@@ -12,26 +11,16 @@ export function $<T extends HTMLElement = HTMLElement>(id: string, root: ParentN
   return el;
 }
 
-/** Escapes a value for safe interpolation into an HTML string. */
-export function esc(value: unknown): string {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
 /** Escapes `text` and wraps every occurrence of each search term in <mark>, ignoring case and accents. */
 export function highlight(text: unknown, terms: string[]): string {
   const str = String(text ?? "");
   let out = "";
   let pos = 0;
   for (const [from, to] of highlightRanges(str, terms)) {
-    out += esc(str.slice(pos, from)) + "<mark>" + esc(str.slice(from, to)) + "</mark>";
+    out += escapeHtml(str.slice(pos, from)) + "<mark>" + escapeHtml(str.slice(from, to)) + "</mark>";
     pos = to;
   }
-  return out + esc(str.slice(pos));
+  return out + escapeHtml(str.slice(pos));
 }
 
 type Attrs = Record<string, string | number | boolean | null | undefined>;

@@ -3,7 +3,7 @@
  *
  * The script body deliberately avoids template literals and backslashes so it can live inside a TypeScript template string without escaping.
  */
-import { PAPER_STATUSES } from '@labshelf/core';
+import { PAPER_STATUSES, escapeHtml } from '@labshelf/core';
 import { secIcon } from './template.icons.js';
 import { menuScriptFragment } from './template.menu.script.js';
 import { detailScriptFragment } from './template.detail.script.js';
@@ -66,9 +66,7 @@ export function buildListScript(nonce: string): string {
   };
 
   // ── formatting ────────────────────────────────────────────────────────────
-  function esc(s) {
-    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
+  const esc = (${escapeHtml.toString()});
   // "Family, Given" or "Given Family" → family name.
   function lastName(a) {
     a = String(a).trim();

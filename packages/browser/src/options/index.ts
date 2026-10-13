@@ -11,10 +11,10 @@ import { BrowserLogger } from "../platform/logger";
 import { getSettings, updateSettings } from "../platform/settings";
 import type { LabShelfSettings } from "../platform/settings";
 import type { RuntimeMessage, RuntimeResponse, SyncStatusData } from "../platform/runtimeMessages";
-import { $, el, esc } from "../ui/dom";
+import { $, el } from "../ui/dom";
 import { icon } from "../ui/icons";
 import { applyTheme, getThemePref, onThemeChange, setThemePref } from "../ui/theme";
-import { DEFAULT_CONTACT_EMAIL, type CitationStyle, type ReaderPrefs, type ZoomPreset } from "@labshelf/core";
+import { DEFAULT_CONTACT_EMAIL, escapeHtml, type CitationStyle, type ReaderPrefs, type ZoomPreset } from "@labshelf/core";
 import { loadReaderPrefs, saveReaderPrefs } from "../reader/readerPrefsStore";
 import type { ThemePref } from "../ui/theme";
 
@@ -121,19 +121,19 @@ async function renderConnection(): Promise<void> {
     const state = s.syncing ? "Syncing…" : s.connected
       ? (s.lastSyncTime ? `Connected — last sync ${new Date(s.lastSyncTime).toLocaleString()}` : "Connected to Google Drive")
       : "Not connected to Google Drive";
-    status.innerHTML = `<span class="ls-dot ${s.lastError ? "s-error" : s.connected ? "s-ok" : ""}"></span><span>${esc(state)}</span>` +
-      (s.lastError ? `<span style="color:var(--ls-error)"> — ${esc(s.lastError)}</span>` : "");
+    status.innerHTML = `<span class="ls-dot ${s.lastError ? "s-error" : s.connected ? "s-ok" : ""}"></span><span>${escapeHtml(state)}</span>` +
+      (s.lastError ? `<span style="color:var(--ls-error)"> — ${escapeHtml(s.lastError)}</span>` : "");
     actions.replaceChildren(...(s.connected
       ? [button("Sync now", "sync", "sync.now", false), button("Disconnect", "cloud-off", "auth.disconnect", false)]
       : [button("Connect to Google Drive", "cloud", "auth.connect", true)]));
   } catch (err) {
-    status.innerHTML = `<span class="ls-dot s-error"></span><span>Background unavailable — ${esc(err instanceof Error ? err.message : String(err))}</span>`;
+    status.innerHTML = `<span class="ls-dot s-error"></span><span>Background unavailable — ${escapeHtml(err instanceof Error ? err.message : String(err))}</span>`;
     actions.replaceChildren();
   }
 }
 
 function button(label: string, glyph: string, type: "sync.now" | "auth.connect" | "auth.disconnect", primary: boolean): HTMLButtonElement {
-  const b = el("button", { class: `ls-btn${primary ? " ls-btn-primary" : ""}`, type: "button", html: `${icon(glyph)}<span>${esc(label)}</span>` });
+  const b = el("button", { class: `ls-btn${primary ? " ls-btn-primary" : ""}`, type: "button", html: `${icon(glyph)}<span>${escapeHtml(label)}</span>` });
   b.addEventListener("click", async () => {
     b.disabled = true;
     try {

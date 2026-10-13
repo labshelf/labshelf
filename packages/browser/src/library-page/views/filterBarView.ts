@@ -4,9 +4,9 @@
  * strip. Folders never take list rows — the chips are the only place the
  * folder structure shows inside the list pane. Chips are drop targets.
  */
-import { el, esc } from "../../ui/dom";
+import { el } from "../../ui/dom";
 import { icon } from "../../ui/icons";
-import { parseQuery, subfoldersOf } from "@labshelf/core";
+import { escapeHtml, parseQuery, subfoldersOf } from "@labshelf/core";
 import { ROOT, STATUSES, STATUS_LABEL, listPapersUnder, papersInScope, statusCounts } from "../state/derive";
 import type { LibraryStore, StatusFilter } from "../state/libraryStore";
 import { makeDropTarget } from "./dnd";
@@ -54,7 +54,7 @@ function renderChips(container: HTMLElement, store: LibraryStore, subfolders: Ar
       class: "ls-chip",
       type: "button",
       title: `Open ${f.label} — or drop papers here to move them`,
-      html: `${icon("folder")}<span>${esc(f.label)}</span>${f.count > 0 ? `<span class="n">${f.count}</span>` : ""}`,
+      html: `${icon("folder")}<span>${escapeHtml(f.label)}</span>${f.count > 0 ? `<span class="n">${f.count}</span>` : ""}`,
     });
     b.addEventListener("click", () => store.openFolder(f.path));
     makeDropTarget(b, f.path);

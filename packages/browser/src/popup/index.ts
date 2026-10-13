@@ -15,14 +15,14 @@ import type {
   AttachPdfData, DraftView, FoldersData, IfNoPdf, LibraryRef, PdfMiss, PdfStatusData,
   RuntimeMessage, RuntimeResponse, SaveOutcome, SavedPaperData, SyncStatusData,
 } from "../platform/runtimeMessages";
-import { $, esc, shortTime } from "../ui/dom";
+import { $, shortTime } from "../ui/dom";
 import { icon } from "../ui/icons";
 import { applyTheme } from "../ui/theme";
 import { showDialog } from "../ui/dialog";
 import { noPdfDialogCopy } from "../ui/pdfCopy";
 import { folderName, metaLine, parseTags } from "./format";
 import { pdfLineText, pdfSourceLabel } from "../ui/pdfCopy";
-import { PAPERS_DIR } from "@labshelf/core";
+import { PAPERS_DIR, escapeHtml } from "@labshelf/core";
 
 type PopupState = "loading" | "form" | "library" | "empty" | "saving" | "saved";
 
@@ -60,10 +60,10 @@ function showStatus(opts: { glyph: string; tone: "ok" | "muted" | "warn"; title:
   $("statusDetail").hidden = !opts.detail;
   const open = $<HTMLButtonElement>("open");
   open.hidden = !opts.open;
-  open.innerHTML = `${icon("library")}<span>${esc(opts.open ?? "")}</span>`;
+  open.innerHTML = `${icon("library")}<span>${escapeHtml(opts.open ?? "")}</span>`;
   const attach = $<HTMLButtonElement>("attachPdf");
   attach.hidden = !opts.attach;
-  attach.innerHTML = `${icon("paperclip")}<span>${esc(opts.attach ?? "")}</span>`;
+  attach.innerHTML = `${icon("paperclip")}<span>${escapeHtml(opts.attach ?? "")}</span>`;
   $("undo").hidden = !opts.undo;
   $("tryAnyway").hidden = !opts.tryAnyway;
 }
@@ -79,13 +79,13 @@ function renderPdf(status: PdfStatusData | "searching"): void {
   el.hidden = false;
   if (status === "searching") {
     el.dataset["tone"] = "muted";
-    el.innerHTML = `<span class="spin">${icon("sync")}</span><span>${esc(pdfLineText("searching"))}</span>`;
+    el.innerHTML = `<span class="spin">${icon("sync")}</span><span>${escapeHtml(pdfLineText("searching"))}</span>`;
   } else if (status.found) {
     el.dataset["tone"] = "ok";
-    el.innerHTML = `${icon("file-text")}<span>${esc(pdfLineText(status))}</span>`;
+    el.innerHTML = `${icon("file-text")}<span>${escapeHtml(pdfLineText(status))}</span>`;
   } else {
     el.dataset["tone"] = "warn";
-    el.innerHTML = `${icon("warning")}<span>${esc(pdfLineText(status))}</span>`;
+    el.innerHTML = `${icon("warning")}<span>${escapeHtml(pdfLineText(status))}</span>`;
   }
 }
 

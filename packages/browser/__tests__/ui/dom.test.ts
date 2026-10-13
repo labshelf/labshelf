@@ -1,12 +1,4 @@
-import { esc, highlight } from "../../src/ui/dom";
-
-describe("esc", () => {
-  it("escapes HTML metacharacters and stringifies nullish values", () => {
-    expect(esc(`<a href="x">Tom & 'Jerry'</a>`)).toBe("&lt;a href=&quot;x&quot;&gt;Tom &amp; &#39;Jerry&#39;&lt;/a&gt;");
-    expect(esc(null)).toBe("");
-    expect(esc(2017)).toBe("2017");
-  });
-});
+import { highlight } from "../../src/ui/dom";
 
 describe("highlight", () => {
   it("wraps every case-insensitive token match in <mark> and escapes the rest", () => {

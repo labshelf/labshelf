@@ -6,13 +6,13 @@
  * location chip when the paper sits in a subfolder, creator, year, publication,
  * and a status badge that cycles on click.
  */
-import { el, esc, highlight } from "../../ui/dom";
+import { el, highlight } from "../../ui/dom";
 import { icon } from "../../ui/icons";
 import { emit } from "../events";
 import { STATUS_LABEL, nextStatus } from "../state/derive";
 import type { ListPaper } from "../state/derive";
 import type { LibraryStore } from "../state/libraryStore";
-import { PDF_FILE, formatAuthors } from "@labshelf/core";
+import { PDF_FILE, escapeHtml, formatAuthors } from "@labshelf/core";
 
 export interface RowHandlers {
   onClick: (id: string, e: MouseEvent) => void;
@@ -29,7 +29,7 @@ export function buildPaperRow(p: ListPaper, toks: string[], store: LibraryStore,
   const expanded = p.hasPdf && h.isExpanded(p.id);
   const creator = formatAuthors(p.authors);
   const venue = p.journal ?? p.publisher ?? "";
-  const chip = p.relFolder ? `<span class="loc-chip" title="Go to ${esc(p.relFolder)}">${highlight(p.relFolder, toks)}</span>` : "";
+  const chip = p.relFolder ? `<span class="loc-chip" title="Go to ${escapeHtml(p.relFolder)}">${highlight(p.relFolder, toks)}</span>` : "";
   const row = el("div", { class: `paper-row${expanded ? " expanded" : ""}${p.hasPdf ? "" : " no-pdf"}`, "data-id": p.id });
   row.draggable = true;
   // A hidden leaf cell keeps the 7-column grid aligned when there is no twistie.
@@ -43,10 +43,10 @@ export function buildPaperRow(p: ListPaper, toks: string[], store: LibraryStore,
     `<div class="paper-row-main">` +
       twistie +
       typeIcon +
-      `<div class="col-title title-cell" title="${esc(p.title)}"><span class="title-text">${highlight(p.title, toks)}</span>${chip}</div>` +
-      `<div class="col-meta" title="${esc((p.authors ?? []).join(", "))}">${highlight(creator, toks)}</div>` +
+      `<div class="col-title title-cell" title="${escapeHtml(p.title)}"><span class="title-text">${highlight(p.title, toks)}</span>${chip}</div>` +
+      `<div class="col-meta" title="${escapeHtml((p.authors ?? []).join(", "))}">${highlight(creator, toks)}</div>` +
       `<div class="col-meta">${p.year ? highlight(p.year, toks) : ""}</div>` +
-      `<div class="col-meta col-pub" title="${esc(venue)}">${highlight(venue, toks)}</div>` +
+      `<div class="col-meta col-pub" title="${escapeHtml(venue)}">${highlight(venue, toks)}</div>` +
       `<div class="col-meta">${badgeHtml(p)}</div>` +
     `</div>` +
     (p.hasPdf
@@ -78,7 +78,7 @@ export function buildPaperRow(p: ListPaper, toks: string[], store: LibraryStore,
 }
 
 function badgeHtml(p: ListPaper): string {
-  return `<button class="ls-badge ls-badge-${esc(p.status)}" data-cycle="1" title="Click to mark as ${STATUS_LABEL[nextStatus(p.status)]}">${esc(STATUS_LABEL[p.status] ?? p.status)}</button>`;
+  return `<button class="ls-badge ls-badge-${escapeHtml(p.status)}" data-cycle="1" title="Click to mark as ${STATUS_LABEL[nextStatus(p.status)]}">${escapeHtml(STATUS_LABEL[p.status] ?? p.status)}</button>`;
 }
 
 export interface EmptyStateOptions {
@@ -94,7 +94,7 @@ export interface EmptyStateOptions {
 export function buildEmptyState(o: EmptyStateOptions): HTMLElement {
   const box = el("div", { class: "ls-empty" });
   if (o.narrowed) {
-    box.innerHTML = `<div class="ls-empty-icon">${icon("search")}</div><div class="ls-empty-text">No papers match in ${esc(o.folderLabel)}</div>` +
+    box.innerHTML = `<div class="ls-empty-icon">${icon("search")}</div><div class="ls-empty-text">No papers match in ${escapeHtml(o.folderLabel)}</div>` +
       `<button class="ls-btn" type="button">Clear filters</button>`;
     box.querySelector("button")!.addEventListener("click", o.onClearFilters);
     return box;

@@ -8,11 +8,11 @@
  * Expansion state is persisted through uiPrefs; the open folder's ancestors
  * are always expanded so the selection is never hidden.
  */
-import { el, esc } from "../../ui/dom";
+import { el } from "../../ui/dom";
 import { icon } from "../../ui/icons";
 import { showMenu } from "../../ui/menu";
 import { emit } from "../events";
-import { ROOT_LABEL, countPapersUnder, isUnderDir, parentDir, type FolderTreeNode } from "@labshelf/core";
+import { ROOT_LABEL, escapeHtml, countPapersUnder, isUnderDir, parentDir, type FolderTreeNode } from "@labshelf/core";
 import { ROOT } from "../state/derive";
 import type { LibraryStore } from "../state/libraryStore";
 import { loadPrefs, savePrefs } from "../state/uiPrefs";
@@ -103,7 +103,7 @@ function row(ctx: Ctx, node: FolderTreeNode, depth: number, count: number, selec
     title: isRoot ? "Every paper in the library" : node.path.slice(ROOT.length + 1),
     html: `${guides}<span class="tree-twisty${hasChildren ? "" : " leaf"}">${icon("chevron-down")}</span>` +
       `<span class="tree-icon">${icon(isRoot ? "library" : "folder")}</span>` +
-      `<span class="tree-label">${esc(node.name)}</span>` +
+      `<span class="tree-label">${escapeHtml(node.name)}</span>` +
       (count > 0 ? `<span class="tree-count">${count}</span>` : "") +
       `<span class="tree-row-actions"><button class="ls-icon-btn" data-action="new" title="New subfolder" tabindex="-1">${icon("folder-plus")}</button></span>`,
   });

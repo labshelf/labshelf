@@ -9,6 +9,7 @@
  * @depends ui/dom, ui/icons
  * @dependents library-page views (sidebar context menu, "+ Add" dropdown), popup, content/scholar
  */
+import { escapeHtml } from "@labshelf/core";
 import { el } from "./dom";
 import { icon } from "./icons";
 import type { IconName } from "./icons";
@@ -49,7 +50,7 @@ export function showMenu(anchor: MenuAnchor | HTMLElement, entries: MenuEntry[],
       role: "menuitem",
       type: "button",
       disabled: entry.disabled ? true : undefined,
-      html: `${entry.icon ? icon(entry.icon) : '<span style="width:14px"></span>'}<span>${escapeText(entry.label)}</span>${entry.hint ? `<span class="hint">${escapeText(entry.hint)}</span>` : ""}`,
+      html: `${entry.icon ? icon(entry.icon) : '<span style="width:14px"></span>'}<span>${escapeHtml(entry.label)}</span>${entry.hint ? `<span class="hint">${escapeHtml(entry.hint)}</span>` : ""}`,
     });
     item.addEventListener("click", () => { close(); entry.onSelect(); });
     menu.append(item);
@@ -99,8 +100,4 @@ function place(menu: HTMLElement, point: MenuAnchor, anchorHeight: number): void
   if (y + height + pad > window.innerHeight) y = Math.max(pad, point.y - height - anchorHeight - 4);
   menu.style.left = `${x}px`;
   menu.style.top = `${y}px`;
-}
-
-function escapeText(value: string): string {
-  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }

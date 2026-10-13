@@ -983,20 +983,6 @@
   {
     "type": "dependency",
     "from": "packages/browser/src/library-page/views/detailSections.ts",
-    "to": "packages/browser/src/ui/dom.ts",
-    "unresolvedTo": "../../ui/dom",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/library-page/views/detailSections.ts",
     "to": "packages/browser/src/ui/icons.ts",
     "unresolvedTo": "../../ui/icons",
     "dependencyTypes": [

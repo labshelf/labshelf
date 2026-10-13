@@ -4,11 +4,11 @@
  * "+ Add", toggle details. Same anatomy as the VS Code list panel header.
  * Crumbs are drop targets for paper moves.
  */
-import { $, el, esc } from "../../ui/dom";
+import { $, el } from "../../ui/dom";
 import { icon } from "../../ui/icons";
 import { togglePane } from "../app";
 import { emit } from "../events";
-import { SYNTAX_HELP, breadcrumbFor, parseQuery } from "@labshelf/core";
+import { SYNTAX_HELP, escapeHtml, breadcrumbFor, parseQuery } from "@labshelf/core";
 import { ROOT, listPapersUnder, papersInScope, statusCounts } from "../state/derive";
 import type { LibraryStore } from "../state/libraryStore";
 import { savePrefs } from "../state/uiPrefs";
@@ -21,7 +21,7 @@ export function mountListHeader(container: HTMLElement, store: LibraryStore): ()
   container.innerHTML = `
     <button class="ls-icon-btn sidebar-toggle" id="showSidebarBtn" title="Show library sidebar">${icon("panel-left")}</button>
     <nav class="breadcrumb" id="breadcrumb" aria-label="Folder path"></nav>
-    <div class="ls-search" id="searchBox" title="${esc(SEARCH_SYNTAX_TIP)}">
+    <div class="ls-search" id="searchBox" title="${escapeHtml(SEARCH_SYNTAX_TIP)}">
       ${icon("search")}
       <input id="searchInput" type="text" placeholder="Search title, author, year, keyword  ( / )" spellcheck="false" autocomplete="off" aria-label="Search papers"/>
       <button class="ls-search-clear" id="searchClear" title="Clear search (Esc)">${icon("x")}</button>
@@ -84,7 +84,7 @@ function renderCrumbs(container: HTMLElement, store: LibraryStore, folder: strin
       class: `crumb${last ? " current" : ""}`,
       type: "button",
       title: last ? node.label : `Go to ${node.label}`,
-      html: `${node.isRoot ? icon("library") : ""}<span>${esc(node.label)}</span>`,
+      html: `${node.isRoot ? icon("library") : ""}<span>${escapeHtml(node.label)}</span>`,
     });
     if (!last) {
       b.addEventListener("click", () => store.openFolder(node.path));

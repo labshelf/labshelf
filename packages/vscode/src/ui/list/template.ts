@@ -2,7 +2,7 @@
  * Generates the static HTML shell for the list webview panel. Folder contents arrive afterwards as state messages, so the shell is rendered only once per panel.
  */
 import * as vscode from 'vscode';
-import { renderTokensCss, renderVscodeHostCss } from '@labshelf/core';
+import { createNonce, renderTokensCss, renderVscodeHostCss } from '@labshelf/core';
 import { listPanelCss } from './styles/index.js';
 import { secIcon } from './template.icons.js';
 import { buildListScript } from './template.script.js';
@@ -12,7 +12,7 @@ import { buildListScript } from './template.script.js';
  * @returns A full HTML document string ready to assign to webview.html.
  */
 export function buildListPanelHtml(webview: vscode.Webview): string {
-  const n = nonce();
+  const n = createNonce();
 
   return `<!doctype html>
 <html lang="en">
@@ -64,11 +64,4 @@ ${listPanelCss()}</style>
 ${buildListScript(n)}
 </body>
 </html>`;
-}
-
-// ─── private helpers ───────────────────────────────────────────────────────────
-
-function nonce(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  return Array.from({ length: 32 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 }

@@ -1,5 +1,6 @@
 import * as vm from 'node:vm';
 import { buildListPanelHtml } from '../../src/ui/list/template';
+import { escapeHtml } from '@labshelf/core';
 import { buildListScript } from '../../src/ui/list/template.script';
 
 const webview = { cspSource: 'vscode-resource:' } as never;
@@ -28,7 +29,7 @@ describe('buildListPanelHtml', () => {
   });
 
   it('locks scripts to a nonce', () => {
-    const nonce = /script-src 'nonce-([A-Za-z0-9]+)'/.exec(html)?.[1];
+    const nonce = /script-src 'nonce-([0-9a-f]{32})'/.exec(html)?.[1];
     expect(nonce).toBeDefined();
     expect(html).toContain(`<script nonce="${nonce}">`);
   });
@@ -55,6 +56,16 @@ describe('buildListScript', () => {
 
   it('directs drag-and-drop import to the sidebar tree in the empty state', () => {
     expect(body).toContain('drop PDF files onto a folder in the LabShelf tree');
+  });
+
+  it('defines esc as the core escapeHtml', () => {
+    const source = /const esc = (\(function[\s\S]*?\n\s*\}\));/.exec(body)?.[1];
+    expect(source).toBeDefined();
+    const esc = vm.runInNewContext(source as string) as (value: unknown) => string;
+    for (const value of [`<a href="x">Tom & 'Jerry'</a>`, null, undefined, 2017, '']) {
+      expect(esc(value)).toBe(escapeHtml(value));
+    }
+    expect(esc(`& < > " '`)).toBe('&amp; &lt; &gt; &quot; &#39;');
   });
 
   it('has no backslashes outside the embedded icon table', () => {

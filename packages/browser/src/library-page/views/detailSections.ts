@@ -6,29 +6,28 @@
  * PDF — the note and tags attached when saving from the toolbar (read-only here
  * for now).
  */
-import { esc } from "../../ui/dom";
 import { icon } from "../../ui/icons";
 import { attachmentsHeading } from "../../ui/pdfCopy";
 import { ROOT, STATUSES, STATUS_LABEL } from "../state/derive";
 import type { ListPaper } from "../state/derive";
-import { PDF_FILE, folderLabel, venueLine, type PaperStatus } from "@labshelf/core";
+import { PDF_FILE, escapeHtml, folderLabel, venueLine, type PaperStatus } from "@labshelf/core";
 
 export const ABSTRACT_TRUNCATE_AT = 320;
 
 function field(label: string, value: string, mono = false): string {
-  return `<div class="detail-field"><div class="detail-label">${esc(label)}</div><div class="detail-value${mono ? " mono" : ""}">${esc(value)}</div></div>`;
+  return `<div class="detail-field"><div class="detail-label">${escapeHtml(label)}</div><div class="detail-value${mono ? " mono" : ""}">${escapeHtml(value)}</div></div>`;
 }
 
 export function section(id: string, title: string, body: string, collapsed: boolean): string {
   return `<div class="detail-section">` +
     `<div class="sec-head${collapsed ? " collapsed" : ""}" data-sec="${id}" role="button" aria-expanded="${!collapsed}">` +
-      `<div class="sec-head-left"><span class="sec-chevron${collapsed ? " collapsed" : ""}">${icon("chevron-down")}</span><span>${esc(title)}</span></div>` +
+      `<div class="sec-head-left"><span class="sec-chevron${collapsed ? " collapsed" : ""}">${icon("chevron-down")}</span><span>${escapeHtml(title)}</span></div>` +
     `</div>` +
     `<div class="sec-body${collapsed ? " hidden" : ""}" id="sec-${id}">${body}</div></div>`;
 }
 
 function muted(text: string): string {
-  return `<div class="muted-note">${esc(text)}</div>`;
+  return `<div class="muted-note">${escapeHtml(text)}</div>`;
 }
 
 export function statusSeg(current: PaperStatus | null): string {
@@ -78,29 +77,29 @@ function infoBody(p: ListPaper, openFolder: string): string {
     ["Issue", p.issue], ["Pages", p.pages], ["DOI", p.doi], ["ISSN", p.issn],
   ];
   for (const [k, v] of pairs) if (v) html += field(k, String(v));
-  if (p.url) html += `<div class="detail-field"><div class="detail-label">URL</div><div class="detail-value"><a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.url)}</a></div></div>`;
+  if (p.url) html += `<div class="detail-field"><div class="detail-label">URL</div><div class="detail-value"><a href="${escapeHtml(p.url)}" target="_blank" rel="noopener">${escapeHtml(p.url)}</a></div></div>`;
   if (p.language) html += field("Language", p.language);
   html += field("Citation Key", p.citeKey, true);
-  html += `<div class="detail-field"><div class="detail-label">Folder</div><div class="detail-value"><a href="#" data-action="goFolder">${esc(p.relFolder || folderLabel(ROOT, openFolder, "/"))}</a></div></div>`;
+  html += `<div class="detail-field"><div class="detail-label">Folder</div><div class="detail-value"><a href="#" data-action="goFolder">${escapeHtml(p.relFolder || folderLabel(ROOT, openFolder, "/"))}</a></div></div>`;
   return html;
 }
 
 function abstractBody(p: ListPaper, open: boolean): string {
   if (!p.summary) return muted("No abstract available");
   const long = p.summary.length > ABSTRACT_TRUNCATE_AT;
-  return `<div class="detail-abstract${long && !open ? " detail-abstract-truncated" : ""}">${esc(p.summary)}</div>` +
+  return `<div class="detail-abstract${long && !open ? " detail-abstract-truncated" : ""}">${escapeHtml(p.summary)}</div>` +
     (long ? `<button class="more-link" type="button" data-action="toggleAbstract">${open ? "Show less" : "Show more"}</button>` : "");
 }
 
 function keywordsBody(p: ListPaper): string {
   return `<div class="kw-list">${(p.keywords ?? []).map((k) =>
-    `<button class="kw" type="button" data-action="searchKeyword" data-keyword="${esc(k)}" title="Search this keyword">${esc(k)}</button>`).join("")}</div>`;
+    `<button class="kw" type="button" data-action="searchKeyword" data-keyword="${escapeHtml(k)}" title="Search this keyword">${escapeHtml(k)}</button>`).join("")}</div>`;
 }
 
 function tagsBody(p: ListPaper): string {
   if (!p.tags?.length) return muted("No tags — add them when saving from the toolbar button");
   return `<div class="kw-list">${p.tags.map((t) =>
-    `<button class="kw" type="button" data-action="searchKeyword" data-keyword="${esc(t)}" title="Search this tag">${icon("tag")}${esc(t)}</button>`).join("")}</div>`;
+    `<button class="kw" type="button" data-action="searchKeyword" data-keyword="${escapeHtml(t)}" title="Search this tag">${icon("tag")}${escapeHtml(t)}</button>`).join("")}</div>`;
 }
 
 function countLabel(n: number, noun: string): string {
@@ -120,16 +119,16 @@ export function paperDetailHtml(p: ListPaper, v: DetailViewState): string {
   const venue = venueLine(p);
   const c = (id: string): boolean => !!v.collapsed[id];
   return `<div class="detail-head">` +
-      `<div class="detail-paper-title">${esc(p.title)}</div>` +
-      (p.authors?.length ? `<div class="detail-byline">${esc(p.authors.join(", "))}</div>` : "") +
-      (venue ? `<div class="detail-venue">${esc(venue)}</div>` : "") +
+      `<div class="detail-paper-title">${escapeHtml(p.title)}</div>` +
+      (p.authors?.length ? `<div class="detail-byline">${escapeHtml(p.authors.join(", "))}</div>` : "") +
+      (venue ? `<div class="detail-venue">${escapeHtml(venue)}</div>` : "") +
       actionRow(true, p.hasPdf, v.pdfBusy) + statusSeg(p.status) +
     `</div>` +
     section("abstract", "Abstract", abstractBody(p, v.abstractOpen), c("abstract")) +
     (p.keywords?.length ? section("keywords", "Keywords", keywordsBody(p), c("keywords")) : "") +
     section("info", "Info", infoBody(p, v.openFolder), c("info")) +
     section("attach", attachmentsHeading(p.hasPdf), attachBody(p.hasPdf, v.pdfBusy), c("attach")) +
-    section("notes", p.note ? "1 Note" : "0 Notes", p.note ? `<div class="detail-note">${esc(p.note)}</div>` : muted("No note — add one when saving from the toolbar button"), c("notes")) +
+    section("notes", p.note ? "1 Note" : "0 Notes", p.note ? `<div class="detail-note">${escapeHtml(p.note)}</div>` : muted("No note — add one when saving from the toolbar button"), c("notes")) +
     section("tags", countLabel(p.tags?.length ?? 0, "Tag"), tagsBody(p), c("tags"));
 }
 

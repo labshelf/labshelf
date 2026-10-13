@@ -77,14 +77,14 @@ describe('PdfRenderer', () => {
     it('keeps the CSP that pdf.js needs (nonce, wasm, blob worker)', () => {
       const html = renderer.generateHtml(makeParams());
       expect(html).toContain('Content-Security-Policy');
-      expect(html).toMatch(/script-src 'nonce-[A-Za-z0-9]{32}' 'wasm-unsafe-eval' vscode-resource:/);
+      expect(html).toMatch(/script-src 'nonce-[0-9a-f]{32}' 'wasm-unsafe-eval' vscode-resource:/);
       expect(html).toContain('worker-src vscode-resource: blob:');
       expect(html).toContain("default-src 'none'");
     });
 
     it('loads the bundled runtime as a nonce-tagged module script and its stylesheet', () => {
       const html = renderer.generateHtml(makeParams());
-      const nonce = html.match(/nonce-([A-Za-z0-9]{32})/)?.[1];
+      const nonce = html.match(/nonce-([0-9a-f]{32})/)?.[1];
       expect(html).toMatch(new RegExp(`<script nonce="${nonce}" type="module" src="[^"]*dist/reader/reader\\.js"></script>`));
       expect(html).toMatch(/<link rel="stylesheet" href="[^"]*dist\/reader\/reader\.css"\/>/);
       expect(html).toMatch(/<link rel="modulepreload" href="[^"]*reader\.js"\/>/);
@@ -148,8 +148,8 @@ describe('PdfRenderer', () => {
     it('generates different nonces on each call', () => {
       const html1 = renderer.generateHtml(makeParams());
       const html2 = renderer.generateHtml(makeParams());
-      const nonce1 = html1.match(/nonce-([A-Za-z0-9]{32})/)?.[1];
-      const nonce2 = html2.match(/nonce-([A-Za-z0-9]{32})/)?.[1];
+      const nonce1 = html1.match(/nonce-([0-9a-f]{32})/)?.[1];
+      const nonce2 = html2.match(/nonce-([0-9a-f]{32})/)?.[1];
       expect(nonce1).toBeTruthy();
       expect(nonce2).toBeTruthy();
       expect(nonce1).not.toBe(nonce2);

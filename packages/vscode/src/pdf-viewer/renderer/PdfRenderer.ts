@@ -7,6 +7,8 @@ import * as vscode from "vscode";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import {
+  createNonce,
+  escapeHtml,
   type PdfTheme,
   PROTOCOL_VERSION,
   READER_SHELL_BODY,
@@ -106,15 +108,6 @@ export function getPdfjsDirectory(): vscode.Uri | null {
   }
 }
 
-function nonce(): string {
-  const chars =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  return Array.from(
-    { length: 32 },
-    () => chars[Math.floor(Math.random() * chars.length)]
-  ).join("");
-}
-
 export interface ReaderBundleUris {
   scriptUri: vscode.Uri;
   styleUri: vscode.Uri;
@@ -159,7 +152,7 @@ export class PdfRenderer {
     const bundle = resolveReaderBundleUris(webview, extensionUri);
     if (!bundle) { return bundleMissingHtml(paperTitle); }
 
-    const n = nonce();
+    const n = createNonce();
     const cspSource = webview.cspSource;
     const resolved = resolvePdfjsUris(webview);
     const pdfjsUrl     = resolved?.pdfjsWebviewUri.toString()     ?? "";
@@ -245,12 +238,4 @@ ${renderVscodeHostCss()}</style>
 <p>dist/reader/reader.js is missing. Run <code>pnpm --filter @labshelf/vscode build</code> and reopen the PDF.</p>
 </body>
 </html>`;
-}
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }
