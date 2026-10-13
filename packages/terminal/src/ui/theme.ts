@@ -1,16 +1,49 @@
 /**
  * Colors of the TUI. Only the 16 ANSI colors and SGR attributes are used, so the app takes the palette of the user's
  * terminal theme, light or dark, the way yazi's default theme does. NO_COLOR (https://no-color.org) drops colors and
- * keeps attributes.
- *
- * @depends tui/screen
- * @dependents ui/render, ui/preview, ui/overlays
+ * keeps attributes. Colour roles come from the core design tokens; this file only picks the ANSI index that stands
+ * for each role.
  */
-import type { PaperStatus } from "@labshelf/core";
+import {
+  ANNOTATION_COLORS,
+  type AnnotationColor,
+  type COLOR_TOKENS,
+  type PaperStatus,
+  type STATUS_TOKENS,
+} from "@labshelf/core";
 
 import type { Style } from "../tui/screen.js";
 
 const noColor = Boolean(process.env["NO_COLOR"]);
+
+// Typed by the core role names, so a renamed or removed role fails the build.
+const ANSI = {
+  error: 1,
+  green: 2,
+  yellow: 3,
+  warning: 3,
+  blue: 4,
+  link: 4,
+} satisfies Partial<Record<keyof typeof COLOR_TOKENS, number>>;
+
+// Core has no role for these two; they are terminal-only accents.
+const MAGENTA = 5;
+const CYAN = 6;
+
+// A new annotation colour in core fails the build until it has an ANSI index here.
+const ANNOTATION_ANSI: Record<AnnotationColor, number> = {
+  yellow: ANSI.yellow,
+  green: ANSI.green,
+  blue: ANSI.blue,
+  red: ANSI.error,
+  pink: MAGENTA,
+};
+
+const STATUS_ANSI: Record<keyof typeof STATUS_TOKENS, Style> = {
+  "status-unread": { dim: true },
+  "status-reading": { fg: ANSI.yellow, bold: true },
+  "status-done": { fg: ANSI.green },
+};
 
 function c(style: Style): Style {
   if (!noColor) { return style; }
@@ -23,52 +56,48 @@ export const theme = {
   dim: c({ dim: true }),
   bold: c({ bold: true }),
   title: c({ bold: true }),
-  brand: c({ fg: 4, bold: true }),
-  crumb: c({ fg: 4 }),
-  crumbCurrent: c({ fg: 4, bold: true }),
+  brand: c({ fg: ANSI.blue, bold: true }),
+  crumb: c({ fg: ANSI.blue }),
+  crumbCurrent: c({ fg: ANSI.blue, bold: true }),
   separator: c({ dim: true }),
-  collection: c({ fg: 4, bold: true }),
+  collection: c({ fg: ANSI.blue, bold: true }),
   count: c({ dim: true }),
   year: c({ dim: true }),
   noPdf: c({ italic: true }),
   hover: c({ reverse: true }),
   hoverParent: c({ reverse: true, dim: true }),
-  selectedMark: c({ fg: 5, bold: true }),
-  cutMark: c({ fg: 1, bold: true }),
+  selectedMark: c({ fg: MAGENTA, bold: true }),
+  cutMark: c({ fg: ANSI.error, bold: true }),
   label: c({ dim: true }),
-  tag: c({ fg: 6 }),
-  link: c({ fg: 4, underline: true }),
+  tag: c({ fg: CYAN }),
+  link: c({ fg: ANSI.link, underline: true }),
   tabActive: c({ reverse: true, bold: true }),
   tabInactive: c({ dim: true }),
-  error: c({ fg: 1, bold: true }),
-  warn: c({ fg: 3 }),
-  info: c({ fg: 2 }),
-  key: c({ fg: 3, bold: true }),
-  popupBorder: c({ fg: 4 }),
-  popupTitle: c({ fg: 4, bold: true }),
+  error: c({ fg: ANSI.error, bold: true }),
+  warn: c({ fg: ANSI.warning }),
+  info: c({ fg: ANSI.green }),
+  key: c({ fg: ANSI.yellow, bold: true }),
+  popupBorder: c({ fg: ANSI.blue }),
+  popupTitle: c({ fg: ANSI.blue, bold: true }),
   mode: {
-    NORMAL: c({ fg: 4, reverse: true, bold: true }),
-    VISUAL: c({ fg: 5, reverse: true, bold: true }),
-    FILTER: c({ fg: 3, reverse: true, bold: true }),
-    SEARCH: c({ fg: 2, reverse: true, bold: true }),
+    NORMAL: c({ fg: ANSI.blue, reverse: true, bold: true }),
+    VISUAL: c({ fg: MAGENTA, reverse: true, bold: true }),
+    FILTER: c({ fg: ANSI.yellow, reverse: true, bold: true }),
+    SEARCH: c({ fg: ANSI.green, reverse: true, bold: true }),
   } as Record<string, Style>,
   status: {
-    unread: c({ dim: true }),
-    reading: c({ fg: 3, bold: true }),
-    done: c({ fg: 2 }),
+    unread: c(STATUS_ANSI["status-unread"]),
+    reading: c(STATUS_ANSI["status-reading"]),
+    done: c(STATUS_ANSI["status-done"]),
   } as Record<PaperStatus, Style>,
-  annotation: {
-    yellow: c({ fg: 3 }),
-    green: c({ fg: 2 }),
-    blue: c({ fg: 4 }),
-    red: c({ fg: 1 }),
-    pink: c({ fg: 5 }),
-  } as Record<string, Style>,
+  annotation: Object.fromEntries(
+    ANNOTATION_COLORS.map((name) => [name, c({ fg: ANNOTATION_ANSI[name] })]),
+  ) as Record<string, Style>,
   sync: {
-    ok: c({ fg: 2 }),
-    busy: c({ fg: 3 }),
+    ok: c({ fg: ANSI.green }),
+    busy: c({ fg: ANSI.yellow }),
     off: c({ dim: true }),
-    error: c({ fg: 1 }),
+    error: c({ fg: ANSI.error }),
   },
 };
 

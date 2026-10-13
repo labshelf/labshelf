@@ -2,9 +2,6 @@
  * A grid of styled cells that views draw into, and the diff that turns two frames into the shortest ANSI output.
  * Rendering always builds a whole new frame; only the cells that changed since the previous frame reach the terminal,
  * which keeps redraws flicker-free even over SSH.
- *
- * @depends tui/text
- * @dependents tui/terminal, ui/*
  */
 import { graphemes } from "./text.js";
 
