@@ -1,17 +1,14 @@
 /**
  * Generates the static HTML shell for the list webview panel. Folder contents arrive afterwards as state messages, so the shell is rendered only once per panel.
- *
- * @depends ui/list/template.css.ts, ui/list/template.icons.ts, ui/list/template.script.ts
- * @dependents ui/list/listWebviewPanel.ts, ui/list/index.ts
  */
 import * as vscode from 'vscode';
-import { listPanelCss } from './template.css.js';
+import { renderTokensCss, renderVscodeHostCss } from '@labshelf/core';
+import { listPanelCss } from './styles/index.js';
 import { secIcon } from './template.icons.js';
 import { buildListScript } from './template.script.js';
 
 /**
  * Builds the complete HTML shell for the list webview: collection header with search and actions, the status and subfolder filter bar, sortable column heads, the paper list, the tabbed detail pane, and the tag suggestions list.
- * @usedBy ui/list/listWebviewPanel.ts
  * @returns A full HTML document string ready to assign to webview.html.
  */
 export function buildListPanelHtml(webview: vscode.Webview): string {
@@ -24,7 +21,9 @@ export function buildListPanelHtml(webview: vscode.Webview): string {
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${n}';">
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>LabShelf</title>
-<style>${listPanelCss()}</style>
+<style>${renderTokensCss()}
+${renderVscodeHostCss()}
+${listPanelCss()}</style>
 </head>
 <body>
 <div class="app">

@@ -19,6 +19,14 @@ describe('buildListPanelHtml', () => {
     }
   });
 
+  it('maps the tokens to VS Code after defining them', () => {
+    const defined = html.indexOf('--ls-bg: #1f1f1f');
+    const mapped = html.indexOf('--ls-bg: var(--vscode-editor-background)');
+    expect(defined).toBeGreaterThan(-1);
+    expect(mapped).toBeGreaterThan(defined);
+    expect(html.indexOf('.list-pane{')).toBeGreaterThan(mapped);
+  });
+
   it('locks scripts to a nonce', () => {
     const nonce = /script-src 'nonce-([A-Za-z0-9]+)'/.exec(html)?.[1];
     expect(nonce).toBeDefined();

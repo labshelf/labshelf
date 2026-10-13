@@ -10,6 +10,8 @@ import {
   type PdfTheme,
   PROTOCOL_VERSION,
   READER_SHELL_BODY,
+  renderTokensCss,
+  renderVscodeHostCss,
   type EffectiveTheme,
   type ReaderBootParams,
   type ReaderPrefs,
@@ -235,8 +237,10 @@ function bundleMissingHtml(paperTitle: string): string {
 <meta charset="UTF-8"/>
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline';"/>
 <title>${escapeHtml(paperTitle)}</title>
+<style>${renderTokensCss()}
+${renderVscodeHostCss()}</style>
 </head>
-<body style="font-family:var(--vscode-font-family,sans-serif);padding:24px;color:var(--vscode-editor-foreground)">
+<body style="font-family:var(--ls-font);padding:24px;color:var(--ls-fg)">
 <h3>Reader bundle not built</h3>
 <p>dist/reader/reader.js is missing. Run <code>pnpm --filter @labshelf/vscode build</code> and reopen the PDF.</p>
 </body>

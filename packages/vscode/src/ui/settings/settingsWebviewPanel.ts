@@ -2,11 +2,9 @@
  * Manages the LabShelf settings editor tab: it shows the current library root and Google
  * Drive connection state, and delegates every action back to the commands and callbacks
  * owned by the composition root.
- *
- * @depends sync/adapter/syncController.ts, ui/tabIcon.ts
- * @dependents ui/settings/index.ts, extension.ts
  */
 import * as vscode from "vscode";
+import { renderTokensCss, renderVscodeHostCss } from "@labshelf/core";
 import type { SyncController } from "../../sync/adapter/syncController.js";
 import { labshelfTabIcon } from "../tabIcon.js";
 
@@ -165,14 +163,16 @@ function buildSettingsHtml(state: SettingsViewState): string {
 <meta charset="UTF-8" />
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';" />
 <style>
-  body { font-family: var(--vscode-font-family); color: var(--vscode-foreground); padding: 24px 32px; }
+${renderTokensCss()}
+${renderVscodeHostCss()}
+  body { font-family: var(--ls-font); color: var(--ls-fg); padding: 24px 32px; }
   h1 { font-size: 1.4em; margin: 0 0 24px; }
-  section { border-top: 1px solid var(--vscode-panel-border); padding: 16px 0; }
+  section { border-top: 1px solid var(--ls-border); padding: 16px 0; }
   h2 { font-size: 1em; margin: 0 0 8px; }
-  p { margin: 0 0 12px; color: var(--vscode-descriptionForeground); word-break: break-all; }
+  p { margin: 0 0 12px; color: var(--ls-desc); word-break: break-all; }
   button { font-family: inherit; font-size: inherit; margin-right: 8px; padding: 4px 12px; border: none; cursor: pointer;
-           color: var(--vscode-button-foreground); background: var(--vscode-button-background); }
-  button:hover { background: var(--vscode-button-hoverBackground); }
+           color: var(--ls-button-fg); background: var(--ls-button-bg); }
+  button:hover { background: var(--ls-button-hover); }
 </style>
 </head>
 <body>
