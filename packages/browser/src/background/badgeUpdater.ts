@@ -4,14 +4,15 @@
  * red. A polling loop updates the badge ~1×/s so transient sync flips show up
  * without bespoke event plumbing.
  */
+import { COLOR_TOKENS } from "@labshelf/core";
 import { bx, type SyncStatusData } from "../platform";
 
 const POLL_MS = 1000;
 // ASCII-only spinner frames (project rule: no emoji in UI text).
 const SPINNER_FRAMES = [".  ", ".. ", "...", " ..", "  ."];
-const COLOR_IDLE = "#6e6a60";
-const COLOR_SYNC = "#5b8def";
-const COLOR_ERROR = "#d05750";
+// The toolbar has no theme, so the badge uses the dark values of the core tokens.
+const COLOR_SYNC = COLOR_TOKENS.blue.value;
+const COLOR_ERROR = COLOR_TOKENS.error.value;
 
 /** Provided by background/index so the badge tracks the live controller. */
 export type GetSyncStatus = () => SyncStatusData;
@@ -45,7 +46,6 @@ export function installBadgeUpdater(getStatus: GetSyncStatus): void {
       return;
     }
     if (status.connected) {
-      void bx.action.setBadgeBackgroundColor({ color: COLOR_IDLE });
       void bx.action.setBadgeText({ text: "" });
       const when = status.lastSyncTime
         ? new Date(status.lastSyncTime).toLocaleTimeString()
