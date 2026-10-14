@@ -17,8 +17,7 @@
  */
 import { bx } from "../platform/browserApi";
 import type { FoldersData, IfNoPdf, LookupData, RuntimeMessage, RuntimeResponse, SaveOutcome, ScholarHit } from "../platform/runtimeMessages";
-import { showDialog } from "../ui/dialog";
-import { closeMenu, showMenu } from "../ui/menu";
+import { showDialog, closeMenu, showMenu } from "@labshelf/core/dom";
 import { noPdfDialogCopy, pdfSourceLabel } from "../ui/pdfCopy";
 import { isScholarUrl, lookupItemFor, readResult } from "./scholarParse";
 import { kitShadow } from "./shadowStyles";

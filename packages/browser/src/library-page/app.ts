@@ -10,7 +10,7 @@
  * @depends ui/dom, state/uiPrefs
  * @dependents library-page/index
  */
-import { $ } from "../ui/dom";
+import { $ } from "@labshelf/core/dom";
 import { loadPrefs, savePrefs } from "./state/uiPrefs";
 
 export interface LibraryAppMounts {

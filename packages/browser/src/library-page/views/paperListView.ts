@@ -7,7 +7,7 @@
  * Rows are rebuilt only when the data, filters or sort change; selection
  * changes just toggle classes, so scroll position and focus survive.
  */
-import { $, el } from "../../ui/dom";
+import { $, el } from "@labshelf/core/dom";
 import { emit } from "../events";
 import { folderLabel, parseQuery, icon } from "@labshelf/core";
 import { ROOT, listPapersUnder, papersInScope, sortPapers } from "../state/derive";

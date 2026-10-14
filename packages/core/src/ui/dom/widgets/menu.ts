@@ -5,12 +5,10 @@
  * at a time; opening another closes the previous one. Mounts on document.body,
  * or inside a shadow root when the host page's CSS must not reach it (the
  * Google Scholar buttons).
- *
- * @depends ui/dom
- * @dependents library-page views (sidebar context menu, "+ Add" dropdown), popup, content/scholar
  */
-import { escapeHtml, icon, type IconName } from "@labshelf/core";
-import { el } from "./dom";
+import { escapeHtml } from "../../escapeHtml.js";
+import { icon, type IconName } from "../../icons/index.js";
+import { el } from "../dom.js";
 
 export interface MenuItem {
   label: string;

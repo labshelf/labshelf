@@ -1,15 +1,11 @@
 /**
- * Modal confirmation dialog styled after VS Code's custom dialogs. Replaces
- * `window.confirm`, which the browser renders in its own chrome and which the
- * VS Code extension answers with `showWarningMessage({ modal: true })`.
+ * Modal confirmation dialog styled after VS Code's custom dialogs. Stands in
+ * for `window.confirm`, which the browser renders in its own chrome.
  * Resolves with the chosen button's id, or undefined when dismissed.
- *
- * @depends ui/dom, ui/quickInput (overlay)
- * @dependents library-page controllers (delete paper / folder), popup, content/scholar
  */
-import { el } from "./dom";
-import { mountOverlay } from "./quickInput";
-import { icon } from "@labshelf/core";
+import { icon } from "../../icons/index.js";
+import { el } from "../dom.js";
+import { mountOverlay } from "./overlay.js";
 
 export interface DialogButton<T extends string> {
   id: T;

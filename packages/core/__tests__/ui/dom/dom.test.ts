@@ -1,4 +1,4 @@
-import { highlight } from "../../src/ui/dom";
+import { highlight } from "../../../src/ui/dom/dom";
 
 describe("highlight", () => {
   it("wraps every case-insensitive token match in <mark> and escapes the rest", () => {

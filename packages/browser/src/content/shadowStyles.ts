@@ -6,7 +6,7 @@
  * OS, so the button never looks dark on a white page.
  */
 import tokensCss from "@labshelf/core/styles/tokens.css";
-import baseCss from "../ui/styles/base.css";
+import baseCss from "@labshelf/core/styles/base.css";
 
 // base.css styles <body>; in a shadow root the root's children play that part
 // (the host itself is reset inline, which outranks any :host rule).

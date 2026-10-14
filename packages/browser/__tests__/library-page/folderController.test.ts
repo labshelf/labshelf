@@ -1,8 +1,10 @@
 jest.mock("../../src/storage", () => ({ createLibraryMutations: () => ({}) }));
 jest.mock("../../src/platform", () => ({ BrowserLogger: class {} }));
-jest.mock("../../src/ui/dialog", () => ({ confirmDialog: async () => false }));
-jest.mock("../../src/ui/quickInput", () => ({ inputBox: async () => undefined }));
-jest.mock("../../src/ui/toast", () => ({ toast: () => undefined }));
+jest.mock("@labshelf/core/dom", () => ({
+  confirmDialog: async () => false,
+  inputBox: async () => undefined,
+  toast: () => undefined,
+}));
 jest.mock("../../src/library-page/controllers/dataController", () => ({
   errorMessage: String,
   refreshLibrary: async () => undefined,

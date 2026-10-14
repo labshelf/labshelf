@@ -14,7 +14,6 @@ module.exports = {
     'src/library-page/state/**/*.ts',
     'src/library-page/router.ts',
     'src/storage/folderTreeStore.ts',
-    'src/ui/dom.ts',
     'src/capture/**/*.ts',
     'src/content/scholarParse.ts',
     'src/popup/format.ts',

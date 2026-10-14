@@ -7,9 +7,9 @@
  * @depends ui/dom, ui/theme, platform/browserApi, state/libraryStore, events
  * @dependents library-page/index
  */
-import { $, shortTime } from "../../ui/dom";
+import { $, shortTime } from "@labshelf/core/dom";
 import { cycleThemePref, onThemeChange } from "../../ui/theme";
-import type { ThemePref } from "../../ui/theme";
+import type { ThemePref } from "@labshelf/core/dom";
 import { bx } from "../../platform/browserApi";
 import type { SyncStatusData } from "../../platform/runtimeMessages";
 import { emit } from "../events";

@@ -20,6 +20,13 @@ describe("reader page shell", () => {
     expect(html).not.toContain("base.css");
     expect(html.indexOf("pdf_viewer.css")).toBeLessThan(html.indexOf("reader.css"));
   });
+
+  it("links toast.css and lifts the toasts above the reader's bottom bar", () => {
+    const html = readFileSync(join(__dirname, "../../src/reader/index.html"), "utf8");
+    const host = readFileSync(join(__dirname, "../../src/reader/host.css"), "utf8");
+    expect(html).toContain('href="../ui/styles/toast.css"');
+    expect(host).toContain("--ls-toast-bottom: 54px");
+  });
 });
 
 describe("idbSidecarPort", () => {

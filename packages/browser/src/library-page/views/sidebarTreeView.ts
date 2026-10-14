@@ -8,8 +8,7 @@
  * Expansion state is persisted through uiPrefs; the open folder's ancestors
  * are always expanded so the selection is never hidden.
  */
-import { el } from "../../ui/dom";
-import { showMenu } from "../../ui/menu";
+import { el, showMenu } from "@labshelf/core/dom";
 import { emit } from "../events";
 import { ROOT_LABEL, escapeHtml, countPapersUnder, isUnderDir, parentDir, type FolderTreeNode, icon } from "@labshelf/core";
 import { ROOT } from "../state/derive";

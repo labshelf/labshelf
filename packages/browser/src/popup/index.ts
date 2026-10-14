@@ -15,9 +15,8 @@ import type {
   AttachPdfData, DraftView, FoldersData, IfNoPdf, LibraryRef, PdfMiss, PdfStatusData,
   RuntimeMessage, RuntimeResponse, SaveOutcome, SavedPaperData, SyncStatusData,
 } from "../platform/runtimeMessages";
-import { $, shortTime } from "../ui/dom";
+import { $, shortTime, showDialog } from "@labshelf/core/dom";
 import { applyTheme } from "../ui/theme";
-import { showDialog } from "../ui/dialog";
 import { noPdfDialogCopy } from "../ui/pdfCopy";
 import { folderName, metaLine, parseTags } from "./format";
 import { pdfLineText, pdfSourceLabel } from "../ui/pdfCopy";

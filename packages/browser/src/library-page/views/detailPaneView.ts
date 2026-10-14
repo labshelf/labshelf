@@ -4,7 +4,7 @@
  * state is persisted through uiPrefs, like the VS Code webview's state.
  */
 import type { PaperStatus } from "@labshelf/core";
-import { $ } from "../../ui/dom";
+import { $ } from "@labshelf/core/dom";
 import { emit } from "../events";
 import type { PaperAction } from "../events";
 import { listPapersUnder } from "../state/derive";

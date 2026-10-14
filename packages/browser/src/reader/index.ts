@@ -14,13 +14,12 @@ import {
   type PaperRecord,
 } from "@labshelf/core";
 import { PDF_FILE } from "@labshelf/core";
-import { startReader, PerfMarks } from "@labshelf/core/dom";
+import { startReader, PerfMarks, resolveTheme, toast } from "@labshelf/core/dom";
 import { bx } from "../platform/browserApi";
 import { BrowserLogger } from "../platform/logger";
 import type { RuntimeMessage } from "../platform/runtimeMessages";
 import { IndexedDbFileSystem, getRecord } from "../storage";
-import { getThemePref, onThemeChange, resolveTheme } from "../ui/theme";
-import { toast } from "../ui/toast";
+import { getThemePref, onThemeChange } from "../ui/theme";
 import { createIdbSidecarPort } from "./idbSidecarPort";
 import { createInPageChannel } from "./inPageTransport";
 import { loadReaderPrefs, onReaderPrefsChange } from "./readerPrefsStore";

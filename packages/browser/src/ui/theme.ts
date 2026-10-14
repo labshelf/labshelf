@@ -1,16 +1,9 @@
 /**
- * Theme preference shared by every browser surface. VS Code follows its colour
- * theme; here the page follows the OS unless the user pins light or dark. The
- * resolved value lives on <html data-theme> so tokens.css needs no media query,
- * and the preference is stored in localStorage so it applies before paint via
- * ui/themeBoot.ts. A storage event keeps every open surface in step.
- *
- * @depends none
- * @dependents ui/themeBoot, library-page statusBarView, options
+ * Theme preference shared by every browser surface. The page follows the OS unless the user pins light
+ * or dark; the preference lives in localStorage so ui/themeBoot.ts applies it before paint, and a
+ * storage event keeps every open surface in step.
  */
-
-export type ThemePref = "auto" | "light" | "dark";
-export type ResolvedTheme = "light" | "dark";
+import { applyThemeToDocument, nextThemePref, resolveTheme, type ResolvedTheme, type ThemePref } from "@labshelf/core/dom";
 
 export const THEME_STORAGE_KEY = "labshelf.theme";
 
@@ -27,16 +20,10 @@ export function getThemePref(): ThemePref {
   }
 }
 
-/** Resolves a preference against the OS colour scheme. */
-export function resolveTheme(pref: ThemePref): ResolvedTheme {
-  if (pref !== "auto") return pref;
-  return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
-}
-
 /** Applies the resolved theme to <html> and notifies subscribers. */
 export function applyTheme(pref: ThemePref = getThemePref()): ResolvedTheme {
   const theme = resolveTheme(pref);
-  document.documentElement.dataset["theme"] = theme;
+  applyThemeToDocument(theme);
   for (const cb of listeners) cb(theme, pref);
   return theme;
 }
@@ -50,10 +37,9 @@ export function setThemePref(pref: ThemePref): void {
   applyTheme(pref);
 }
 
-/** Cycles auto → light → dark → auto, the way the status-bar toggle expects. */
+/** Advances the preference one step through the cycle, the way the status-bar toggle expects. */
 export function cycleThemePref(): ThemePref {
-  const next: Record<ThemePref, ThemePref> = { auto: "light", light: "dark", dark: "auto" };
-  const pref = next[getThemePref()];
+  const pref = nextThemePref(getThemePref());
   setThemePref(pref);
   return pref;
 }

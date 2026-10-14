@@ -5,9 +5,7 @@
 import { baseName, countPapersUnder, findNode, isUnderDir, parentDir, validateFolderName } from "@labshelf/core";
 import { BrowserLogger } from "../../platform";
 import { createLibraryMutations } from "../../storage";
-import { confirmDialog } from "../../ui/dialog";
-import { inputBox } from "../../ui/quickInput";
-import { toast } from "../../ui/toast";
+import { confirmDialog, inputBox, toast } from "@labshelf/core/dom";
 import { on } from "../events";
 import { ROOT } from "../state/derive";
 import type { LibraryStore } from "../state/libraryStore";

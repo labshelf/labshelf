@@ -1,8 +1,9 @@
 /**
- * Small DOM helpers shared by every browser surface: element lookup that fails
- * loudly, search-term highlighting, and a terse element factory. Kept framework-free on purpose — the UI is vanilla TS.
+ * Small DOM helpers shared by every DOM surface: element lookup that fails loudly, search-term
+ * highlighting, and a terse element factory. Framework-free on purpose.
  */
-import { escapeHtml, highlightRanges } from "@labshelf/core";
+import { escapeHtml } from "../escapeHtml.js";
+import { highlightRanges } from "../../library/search/index.js";
 
 /** Returns the element with the given id or throws — missing mount points are programmer errors. */
 export function $<T extends HTMLElement = HTMLElement>(id: string, root: ParentNode = document): T {

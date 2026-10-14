@@ -11,11 +11,11 @@ import { BrowserLogger } from "../platform/logger";
 import { getSettings, updateSettings } from "../platform/settings";
 import type { LabShelfSettings } from "../platform/settings";
 import type { RuntimeMessage, RuntimeResponse, SyncStatusData } from "../platform/runtimeMessages";
-import { $, el } from "../ui/dom";
+import { $, el } from "@labshelf/core/dom";
 import { applyTheme, getThemePref, onThemeChange, setThemePref } from "../ui/theme";
 import { DEFAULT_CONTACT_EMAIL, escapeHtml, type CitationStyle, type ReaderPrefs, type ZoomPreset, icon, type IconName } from "@labshelf/core";
 import { loadReaderPrefs, saveReaderPrefs } from "../reader/readerPrefsStore";
-import type { ThemePref } from "../ui/theme";
+import type { ThemePref } from "@labshelf/core/dom";
 
 const logger = new BrowserLogger("options");
 const SAVE_DEBOUNCE_MS = 400;

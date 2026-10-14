@@ -9,7 +9,7 @@
 import { bx } from "../../platform/browserApi";
 import type { LibraryChangedBroadcast, RuntimeMessage, RuntimeResponse, SyncStatusData } from "../../platform/runtimeMessages";
 import { listAllRecords, scanLibrary } from "../../storage";
-import { toast } from "../../ui/toast";
+import { toast } from "@labshelf/core/dom";
 import { on } from "../events";
 import type { LibraryStore } from "../state/libraryStore";
 import { loadPrefs } from "../state/uiPrefs";

@@ -6,7 +6,7 @@
  * location chip when the paper sits in a subfolder, creator, year, publication,
  * and a status badge that cycles on click.
  */
-import { el, highlight } from "../../ui/dom";
+import { el, highlight } from "@labshelf/core/dom";
 import { emit } from "../events";
 import { STATUS_LABEL, nextStatus } from "../state/derive";
 import type { ListPaper } from "../state/derive";

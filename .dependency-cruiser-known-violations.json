@@ -330,34 +330,6 @@
   {
     "type": "dependency",
     "from": "packages/browser/src/content/scholar.ts",
-    "to": "packages/browser/src/ui/dialog.ts",
-    "unresolvedTo": "../ui/dialog",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/content/scholar.ts",
-    "to": "packages/browser/src/ui/menu.ts",
-    "unresolvedTo": "../ui/menu",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/content/scholar.ts",
     "to": "packages/browser/src/ui/pdfCopy.ts",
     "unresolvedTo": "../ui/pdfCopy",
     "dependencyTypes": [
@@ -386,37 +358,9 @@
   },
   {
     "type": "dependency",
-    "from": "packages/browser/src/content/shadowStyles.ts",
-    "to": "packages/browser/src/ui/styles/base.css",
-    "unresolvedTo": "../ui/styles/base.css",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "packages/browser/src/library-page/app.ts",
     "to": "packages/browser/src/library-page/state/uiPrefs.ts",
     "unresolvedTo": "./state/uiPrefs",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/library-page/app.ts",
-    "to": "packages/browser/src/ui/dom.ts",
-    "unresolvedTo": "../ui/dom",
     "dependencyTypes": [
       "local",
       "import"
@@ -486,20 +430,6 @@
   },
   {
     "type": "dependency",
-    "from": "packages/browser/src/library-page/controllers/dataController.ts",
-    "to": "packages/browser/src/ui/toast.ts",
-    "unresolvedTo": "../../ui/toast",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "packages/browser/src/library-page/controllers/folderController.ts",
     "to": "packages/browser/src/library-page/state/derive.ts",
     "unresolvedTo": "../state/derive",
@@ -520,48 +450,6 @@
     "dependencyTypes": [
       "local",
       "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/library-page/controllers/folderController.ts",
-    "to": "packages/browser/src/ui/dialog.ts",
-    "unresolvedTo": "../../ui/dialog",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/library-page/controllers/folderController.ts",
-    "to": "packages/browser/src/ui/quickInput.ts",
-    "unresolvedTo": "../../ui/quickInput",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/library-page/controllers/folderController.ts",
-    "to": "packages/browser/src/ui/toast.ts",
-    "unresolvedTo": "../../ui/toast",
-    "dependencyTypes": [
-      "local",
       "import"
     ],
     "rule": {
@@ -630,50 +518,8 @@
   {
     "type": "dependency",
     "from": "packages/browser/src/library-page/controllers/paperController.ts",
-    "to": "packages/browser/src/ui/dialog.ts",
-    "unresolvedTo": "../../ui/dialog",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/library-page/controllers/paperController.ts",
     "to": "packages/browser/src/ui/pdfCopy.ts",
     "unresolvedTo": "../../ui/pdfCopy",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/library-page/controllers/paperController.ts",
-    "to": "packages/browser/src/ui/quickInput.ts",
-    "unresolvedTo": "../../ui/quickInput",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/library-page/controllers/paperController.ts",
-    "to": "packages/browser/src/ui/toast.ts",
-    "unresolvedTo": "../../ui/toast",
     "dependencyTypes": [
       "local",
       "import"
@@ -940,20 +786,6 @@
   },
   {
     "type": "dependency",
-    "from": "packages/browser/src/library-page/views/detailPaneView.ts",
-    "to": "packages/browser/src/ui/dom.ts",
-    "unresolvedTo": "../../ui/dom",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "packages/browser/src/library-page/views/detailSections.ts",
     "to": "packages/browser/src/library-page/state/derive.ts",
     "unresolvedTo": "../state/derive",
@@ -1011,20 +843,6 @@
   },
   {
     "type": "dependency",
-    "from": "packages/browser/src/library-page/views/filterBarView.ts",
-    "to": "packages/browser/src/ui/dom.ts",
-    "unresolvedTo": "../../ui/dom",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "packages/browser/src/library-page/views/listHeaderView.ts",
     "to": "packages/browser/src/library-page/state/derive.ts",
     "unresolvedTo": "../state/derive",
@@ -1057,20 +875,6 @@
     "from": "packages/browser/src/library-page/views/listHeaderView.ts",
     "to": "packages/browser/src/library-page/state/uiPrefs.ts",
     "unresolvedTo": "../state/uiPrefs",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/library-page/views/listHeaderView.ts",
-    "to": "packages/browser/src/ui/dom.ts",
-    "unresolvedTo": "../../ui/dom",
     "dependencyTypes": [
       "local",
       "import"
@@ -1125,20 +929,6 @@
   },
   {
     "type": "dependency",
-    "from": "packages/browser/src/library-page/views/paperListView.ts",
-    "to": "packages/browser/src/ui/dom.ts",
-    "unresolvedTo": "../../ui/dom",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "packages/browser/src/library-page/views/paperRow.ts",
     "to": "packages/browser/src/library-page/state/derive.ts",
     "unresolvedTo": "../state/derive",
@@ -1159,20 +949,6 @@
     "dependencyTypes": [
       "local",
       "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/library-page/views/paperRow.ts",
-    "to": "packages/browser/src/ui/dom.ts",
-    "unresolvedTo": "../../ui/dom",
-    "dependencyTypes": [
-      "local",
       "import"
     ],
     "rule": {
@@ -1214,34 +990,6 @@
     "from": "packages/browser/src/library-page/views/sidebarTreeView.ts",
     "to": "packages/browser/src/library-page/state/uiPrefs.ts",
     "unresolvedTo": "../state/uiPrefs",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/library-page/views/sidebarTreeView.ts",
-    "to": "packages/browser/src/ui/dom.ts",
-    "unresolvedTo": "../../ui/dom",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/library-page/views/sidebarTreeView.ts",
-    "to": "packages/browser/src/ui/menu.ts",
-    "unresolvedTo": "../../ui/menu",
     "dependencyTypes": [
       "local",
       "import"
@@ -1288,20 +1036,6 @@
     "dependencyTypes": [
       "local",
       "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/library-page/views/statusBarView.ts",
-    "to": "packages/browser/src/ui/dom.ts",
-    "unresolvedTo": "../../ui/dom",
-    "dependencyTypes": [
-      "local",
       "import"
     ],
     "rule": {
@@ -1397,20 +1131,6 @@
   {
     "type": "dependency",
     "from": "packages/browser/src/options/index.ts",
-    "to": "packages/browser/src/ui/dom.ts",
-    "unresolvedTo": "../ui/dom",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/options/index.ts",
     "to": "packages/browser/src/ui/theme.ts",
     "unresolvedTo": "../ui/theme",
     "dependencyTypes": [
@@ -1459,34 +1179,6 @@
     "dependencyTypes": [
       "local",
       "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/popup/index.ts",
-    "to": "packages/browser/src/ui/dialog.ts",
-    "unresolvedTo": "../ui/dialog",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/popup/index.ts",
-    "to": "packages/browser/src/ui/dom.ts",
-    "unresolvedTo": "../ui/dom",
-    "dependencyTypes": [
-      "local",
       "import"
     ],
     "rule": {
@@ -1585,20 +1277,6 @@
     "from": "packages/browser/src/reader/index.ts",
     "to": "packages/browser/src/ui/theme.ts",
     "unresolvedTo": "../ui/theme",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/reader/index.ts",
-    "to": "packages/browser/src/ui/toast.ts",
-    "unresolvedTo": "../ui/toast",
     "dependencyTypes": [
       "local",
       "import"

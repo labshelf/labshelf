@@ -1,13 +1,10 @@
 /**
  * Bottom-right notifications styled after VS Code toasts. Errors stay until
- * dismissed; info/ok messages fade after a few seconds. Replaces the footer
- * error pill so failures never hide the sync status.
- *
- * @depends ui/dom
- * @dependents library-page controllers and views, popup
+ * dismissed; info/ok messages fade after a few seconds, so failures never hide
+ * the sync status. Styled by toast.css.
  */
-import { el } from "./dom";
-import { icon } from "@labshelf/core";
+import { icon } from "../../icons/index.js";
+import { el } from "../dom.js";
 
 export type ToastKind = "info" | "ok" | "error";
 

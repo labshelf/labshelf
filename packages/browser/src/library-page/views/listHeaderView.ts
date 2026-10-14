@@ -4,7 +4,7 @@
  * "+ Add", toggle details. Same anatomy as the VS Code list panel header.
  * Crumbs are drop targets for paper moves.
  */
-import { $, el } from "../../ui/dom";
+import { $, el } from "@labshelf/core/dom";
 import { togglePane } from "../app";
 import { emit } from "../events";
 import { SYNTAX_HELP, escapeHtml, breadcrumbFor, parseQuery, icon } from "@labshelf/core";
