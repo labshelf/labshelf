@@ -3,6 +3,7 @@
  */
 export { IndexedDbFileSystem } from "./indexedDbFileSystem";
 export { IdbManifestFileSystem } from "./idbManifestFileSystem";
+export { createIdbSidecarPort } from "./idbSidecarPort";
 export { createLibraryMutations } from "./libraryMutations";
 export type { LibraryMutations } from "./libraryMutations";
 export {

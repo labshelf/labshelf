@@ -1,4 +1,4 @@
-/** Public API of the library UI derivations: list rows, scope and counts, sorting, folders, text layers and related papers. */
+/** Public API of the library UI derivations: list rows, scope and counts, sorting, folders, text layers, related papers and sidecar summaries. */
 export { listPapersUnder, papersInScope, statusCounts } from "./listPapers.js";
 export type { ListPaper } from "./listPapers.js";
 export { firstSortDir, sortPapers } from "./sortPapers.js";
@@ -8,3 +8,5 @@ export type { ListScope, ListView } from "./listView.js";
 export { hasNoText, jobProgress, jobText, textLayerSummary } from "./textLayer.js";
 export { relatedGroups } from "./related.js";
 export type { RelatedGroups } from "./related.js";
+export { paperDetailsOf, paperStatsOf } from "./sidecarSummary.js";
+export type { SidecarSummarySource } from "./sidecarSummary.js";

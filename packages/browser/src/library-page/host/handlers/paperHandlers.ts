@@ -1,10 +1,10 @@
 /**
- * Paper work the UI asks for: set the status, move, remove (to the trash) and copy text to the clipboard. Each change
+ * Paper work the UI asks for: set the status, tags and note, move, remove (to the trash) and copy text to the clipboard. Each change
  * goes through the core library mutations, posts a fresh snapshot and asks for a sync soon.
  */
 import { PAPERS_DIR, ROOT_LABEL, baseName, type PaperStatus } from "@labshelf/core";
-import { asRefs, type HostContext } from "./hostContext";
-import { errorMessage, scheduleSyncSoon } from "./runtimeRequests";
+import { asRefs, type HostContext } from "../hostContext";
+import { errorMessage, scheduleSyncSoon } from "../runtimeRequests";
 
 export async function setStatus(ctx: HostContext, ids: readonly string[], status: PaperStatus): Promise<void> {
   const changed = ctx.papers(ids).filter((p) => p.status !== status);
@@ -13,6 +13,22 @@ export async function setStatus(ctx: HostContext, ids: readonly string[], status
   await ctx.snapshots.refresh();
   scheduleSyncSoon("paper.status");
   if (failed.length) ctx.notice("error", `${failed.length} could not be updated — ${failed[0]!.error}`);
+}
+
+export async function setTags(ctx: HostContext, ids: readonly string[], add: readonly string[], remove: readonly string[]): Promise<void> {
+  const clean = (tags: readonly string[]): string[] => tags.map((t) => t.trim()).filter(Boolean);
+  const { done, failed } = await ctx.mutations.editTags(asRefs(ctx.papers(ids)), clean(add), clean(remove));
+  await ctx.snapshots.refresh();
+  if (done.length) scheduleSyncSoon("paper.tags");
+  if (failed.length) ctx.notice("error", `${failed.length} kept their tags — ${failed[0]!.error}`);
+}
+
+export async function setNote(ctx: HostContext, id: string, note: string): Promise<void> {
+  const [paper] = ctx.papers([id]);
+  const written = paper && (await ctx.mutations.setNote({ id: paper.id, path: paper.path }, note));
+  if (!written) { ctx.notice("error", "The note could not be saved — the paper is not in the library"); return; }
+  await ctx.snapshots.refresh();
+  scheduleSyncSoon("paper.note");
 }
 
 /** Moves paper folders under `target`; papers already there are skipped. */

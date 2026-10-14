@@ -24,12 +24,13 @@ Shared actions (open, status, move, remove, copy, folders, tags and keywords as 
 
 | Capability | Host answers | VS Code | Browser |
 |---|---|---|---|
-| `paperData` | `paper.details`; sends `sidecarChanged`; its stats fill Last read and the row marks | yes | no |
-| `editTags` | `paper.setTags` | yes | no |
-| `editNote` | `paper.setNote` | yes | no |
+| `paperData` | `paper.details`; sends `sidecarChanged`; its stats fill Last read and the row marks | yes | yes |
+| `editTags` | `paper.setTags` | yes | yes |
+| `editNote` | `paper.setNote` | yes | yes |
 | `textLayer` | `paper.makeSearchable`; sends `jobs`; the UI shows the No text filter and banners | yes | no |
 | `similar` | `paper.similar` | yes | no |
-| `reveal`, `openExternal`, `fetchMetadata`, `exportAnnotations` | the message of the same name | yes | no |
+| `reveal`, `openExternal`, `fetchMetadata` | the message of the same name | yes | no |
+| `exportAnnotations` | `annotations.export`: saves the annotations as a Markdown file | yes | yes |
 | `findPdf`, `attachPdf` | `paper.findPdf`, `paper.attachPdf` | no | yes |
 
 Labels are the few texts that name a host's own way of working: the Add button's tooltip, the empty folder's hint, and the name of the reveal action.

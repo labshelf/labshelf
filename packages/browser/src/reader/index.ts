@@ -15,16 +15,13 @@ import {
 } from "@labshelf/core";
 import { PDF_FILE } from "@labshelf/core";
 import { startReader, PerfMarks, resolveTheme, toast } from "@labshelf/core/dom";
-import { bx } from "../platform/browserApi";
-import { BrowserLogger } from "../platform/logger";
-import type { RuntimeMessage } from "../platform/runtimeMessages";
-import { IndexedDbFileSystem, getRecord } from "../storage";
+import { BrowserLogger, bx, downloadTextFile } from "../platform";
+import { IndexedDbFileSystem, createIdbSidecarPort, getRecord } from "../storage";
 import { getThemePref, onThemeChange } from "../ui/theme";
-import { createIdbSidecarPort } from "./idbSidecarPort";
 import { createInPageChannel } from "./inPageTransport";
 import { loadReaderPrefs, onReaderPrefsChange } from "./readerPrefsStore";
-import { syncReasonFor } from "./readerSyncReason";
 import { parseReaderQuery } from "./readerTabs";
+import { announceSidecarChange } from "./sidecarChangeNotice";
 
 // First statement, so scriptStart measures the whole open like in VS Code.
 const perf = new PerfMarks();
@@ -81,21 +78,6 @@ async function openExternal(url: string): Promise<void> {
   });
 }
 
-async function saveMarkdown(fileName: string, text: string): Promise<void> {
-  const url = URL.createObjectURL(new Blob([text], { type: "text/markdown" }));
-  try {
-    await bx.downloads.download({ url, filename: fileName, saveAs: true });
-  } finally {
-    // The download has its own copy once started; a cancelled dialog needs nothing either.
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
-  }
-}
-
-function scheduleSync(reason: string): void {
-  const msg: RuntimeMessage = { type: "sync.scheduleSoon", reason };
-  void bx.runtime.sendMessage(msg).catch(() => undefined);
-}
-
 async function readPdfBytes(paper: PaperRecord): Promise<ArrayBuffer> {
   const bytes = await fs.readFile(`${paper.path}/${PDF_FILE}`);
   // pdf.js transfers the buffer to its worker; hand it a private copy of exactly the file's bytes.
@@ -132,9 +114,9 @@ async function main(): Promise<void> {
     writeClipboard,
     notify: (message, kind) => { toast(message, kind); },
     openExternal,
-    saveAnnotations: (markdown) => saveMarkdown(`${paper.citeKey}-annotations.md`, markdown),
+    saveAnnotations: (markdown) => downloadTextFile(`${paper.citeKey}-annotations.md`, markdown, "text/markdown"),
     logger,
-    sidecarChanged: (change) => scheduleSync(syncReasonFor(change)),
+    sidecarChanged: (change) => announceSidecarChange(paper.id, change),
   }, page !== undefined ? { page } : {});
   const channel = createInPageChannel((msg) => { void host.handle(msg); });
   send = channel.send;

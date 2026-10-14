@@ -5,11 +5,12 @@
 import { PAPERS_DIR, type HostEndpoint, type PaperRecord, type PaperRef } from "@labshelf/core";
 import { BrowserLogger } from "../../platform";
 import { createLibraryMutations, type LibraryMutations } from "../../storage";
-import { createLibrarySnapshots, type LibrarySnapshots } from "./librarySnapshots";
+import { createLibrarySnapshots, createSidecarReads, type LibrarySnapshots, type SidecarReads } from "./snapshots";
 
 export interface HostContext {
   endpoint: HostEndpoint;
   snapshots: LibrarySnapshots;
+  sidecars: SidecarReads;
   mutations: LibraryMutations;
   log: BrowserLogger;
   /** The folder the UI shows, kept from its navigate messages. */
@@ -21,9 +22,10 @@ export interface HostContext {
 
 export function createHostContext(endpoint: HostEndpoint): HostContext {
   const log = new BrowserLogger("library-page");
-  const snapshots = createLibrarySnapshots(endpoint);
+  const sidecars = createSidecarReads(log);
+  const snapshots = createLibrarySnapshots(endpoint, sidecars);
   return {
-    endpoint, snapshots, log,
+    endpoint, snapshots, sidecars, log,
     mutations: createLibraryMutations(log),
     folder: PAPERS_DIR,
     notice: (kind, text) => endpoint.post({ type: "notice", kind, text }),

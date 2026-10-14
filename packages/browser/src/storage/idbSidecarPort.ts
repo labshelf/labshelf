@@ -4,7 +4,7 @@
  * reader theme and reading position written here reach the VS Code reader and back.
  */
 import { APPDATA_DIR, SIDECAR_FILE, type SidecarPort } from "@labshelf/core";
-import type { IndexedDbFileSystem } from "../storage/indexedDbFileSystem";
+import type { IndexedDbFileSystem } from "./indexedDbFileSystem";
 
 /**
  * @returns the IndexedDB path of a paper's sidecar.

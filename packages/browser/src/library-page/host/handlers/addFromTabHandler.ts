@@ -5,9 +5,9 @@
  */
 import type { IfNoPdf } from "@labshelf/core";
 import { pdfSourceLabel } from "@labshelf/core";
-import type { SaveOutcome, TabSummary } from "../../platform";
-import type { HostContext } from "./hostContext";
-import { send } from "./runtimeRequests";
+import type { SaveOutcome, TabSummary } from "../../../platform";
+import type { HostContext } from "../hostContext";
+import { send } from "../runtimeRequests";
 
 function hostOf(url: string): string {
   try { return new URL(url).hostname; } catch { return ""; }

@@ -1,0 +1,7 @@
+/** Public API of the library page's message handlers. */
+export { offerOpenTabs, captureTab } from "./addFromTabHandler";
+export { createFolder, deleteFolder, renameFolder } from "./folderHandlers";
+export { exportAnnotations, sendDetails } from "./paperDataHandlers";
+export { movePapers, removePapers, setNote, setStatus, setTags, writeClipboard } from "./paperHandlers";
+export { createPdfHandlers } from "./pdfHandlers";
+export type { PdfHandlers } from "./pdfHandlers";

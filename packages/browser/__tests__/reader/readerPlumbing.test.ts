@@ -4,7 +4,7 @@ import { READER_SHELL_BODY } from "@labshelf/core";
 
 jest.mock("webextension-polyfill", () => ({ runtime: { getURL: (p: string) => `chrome-extension://ext/${p}` } }));
 
-import { createIdbSidecarPort, sidecarPath } from "../../src/reader/idbSidecarPort";
+import { createIdbSidecarPort, sidecarPath } from "../../src/storage/idbSidecarPort";
 import { createInPageChannel } from "../../src/reader/inPageTransport";
 import { parseReaderQuery, readerUrl } from "../../src/reader/readerTabs";
 

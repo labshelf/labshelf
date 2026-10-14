@@ -301,9 +301,9 @@
   },
   {
     "type": "dependency",
-    "from": "packages/browser/src/library-page/host/pdfHandlers.ts",
+    "from": "packages/browser/src/library-page/host/handlers/pdfHandlers.ts",
     "to": "packages/browser/src/reader/readerTabs.ts",
-    "unresolvedTo": "../../reader/readerTabs",
+    "unresolvedTo": "../../../reader/readerTabs",
     "dependencyTypes": [
       "local",
       "import"
@@ -463,64 +463,6 @@
     "unresolvedTo": "../ui/theme",
     "dependencyTypes": [
       "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/reader/idbSidecarPort.ts",
-    "to": "packages/browser/src/storage/indexedDbFileSystem.ts",
-    "unresolvedTo": "../storage/indexedDbFileSystem",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/reader/index.ts",
-    "to": "packages/browser/src/platform/browserApi.ts",
-    "unresolvedTo": "../platform/browserApi",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/reader/index.ts",
-    "to": "packages/browser/src/platform/logger.ts",
-    "unresolvedTo": "../platform/logger",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/reader/index.ts",
-    "to": "packages/browser/src/platform/runtimeMessages.ts",
-    "unresolvedTo": "../platform/runtimeMessages",
-    "dependencyTypes": [
-      "local",
-      "type-only",
       "import"
     ],
     "rule": {

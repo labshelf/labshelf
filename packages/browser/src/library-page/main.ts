@@ -26,14 +26,14 @@ function boot(): void {
   attachRouter(host);
   const ui = mountLibraryUi(root, {
     transport, prefs, withSidebar: true,
-    capabilities: { findPdf: true, attachPdf: true },
+    capabilities: { paperData: true, editTags: true, editNote: true, exportAnnotations: true, findPdf: true, attachPdf: true },
     labels: {
       addTooltip: "Add a paper from an open tab",
       emptyHint: "Open the paper's page in a tab and use the LabShelf toolbar button, or click Add to pick one of your open tabs.",
     },
   });
   if (ui.sidebar) mountSidebarTree(ui, ui.sidebar, prefs);
-  const sync = createSyncStatus(() => hostCtx.snapshots.refresh());
+  const sync = createSyncStatus(() => hostCtx.snapshots.reload());
   mountStatusBar(root, sync, (listener) => ui.store.select((s) => s.papers.length, listener));
   void log.info("library page mounted");
 }

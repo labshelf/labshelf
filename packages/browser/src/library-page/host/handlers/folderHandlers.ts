@@ -3,8 +3,8 @@
  * fresh snapshot, navigation that follows the change, and a sync soon.
  */
 import { baseName, isUnderDir, parentDir } from "@labshelf/core";
-import type { HostContext } from "./hostContext";
-import { scheduleSyncSoon } from "./runtimeRequests";
+import type { HostContext } from "../hostContext";
+import { scheduleSyncSoon } from "../runtimeRequests";
 
 export async function createFolder(ctx: HostContext, parent: string, name: string): Promise<void> {
   const target = await ctx.mutations.createFolder(parent, name);

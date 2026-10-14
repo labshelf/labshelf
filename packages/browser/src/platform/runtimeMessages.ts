@@ -113,13 +113,13 @@ export interface AttachPdfData {
 }
 
 /**
- * Background -> extension pages after it changed the library. Kept OUT of
+ * Background (or the reader, for "annotations") -> extension pages after the library changed. Kept OUT of
  * RuntimeMessage, because background/index forces every RuntimeMessage to be
  * handled and this broadcast is not a request.
  */
 export interface LibraryChangedBroadcast {
   type: "library.changed";
-  reason: "capture" | "attach" | "remove" | "sync";
+  reason: "capture" | "attach" | "remove" | "sync" | "annotations";
   paperId?: string;
 }
 

@@ -1,7 +1,7 @@
 /** Applies the core library mutations to the IndexedDB library and keeps the paper-record cache in step with the files. */
 import {
-  BibTeXService, FolderService, createFolder, movePapers, posixPathOps, readPaperOnDisk, renameFolder, setPaperStatus,
-  trashFolder, trashPapers, writePaperRecord, PAPERS_DIR,
+  BibTeXService, FolderService, createFolder, editPaperTags, movePapers, posixPathOps, readPaperOnDisk, renameFolder, setPaperStatus,
+  trashFolder, trashPapers, updatePaperFields, writePaperRecord, PAPERS_DIR,
 } from "@labshelf/core";
 import type {
   BatchOutcome, FieldsBatchOutcome, ILogger, IPaperRecordIndex, MoveOutcome, MutationContext, PaperRecord, PaperRef, PaperStatus,
@@ -11,6 +11,10 @@ import { deleteRecord, listAllRecords, upsertRecord } from "./paperRecordStore";
 
 export interface LibraryMutations {
   setStatus(papers: PaperRef[], status: PaperStatus): Promise<FieldsBatchOutcome>;
+  /** Adds and removes tags on several papers. */
+  editTags(papers: PaperRef[], add: string[], remove: string[]): Promise<FieldsBatchOutcome>;
+  /** Sets a paper's note; resolves to undefined when the paper's folder holds no paper. */
+  setNote(paper: PaperRef, note: string): Promise<PaperRecord | undefined>;
   /** Rewrites the metadata files of a paper whose PDF was just written, keeping the status on disk. */
   recordPdfAttached(record: PaperRecord): Promise<PaperRecord>;
   movePapers(papers: PaperRef[], targetDir: string): Promise<MoveOutcome>;
@@ -37,6 +41,16 @@ export function createLibraryMutations(logger: ILogger): LibraryMutations {
       const outcome = await setPaperStatus(ctx, papers, status);
       for (const record of outcome.records) { await upsertRecord(record, record.path); }
       return outcome;
+    },
+    async editTags(papers, add, remove) {
+      const outcome = await editPaperTags(ctx, papers, add, remove);
+      for (const record of outcome.records) { await upsertRecord(record, record.path); }
+      return outcome;
+    },
+    async setNote(paper, note) {
+      const record = await updatePaperFields(ctx, paper.path, { note });
+      if (record) { await upsertRecord(record, record.path); }
+      return record;
     },
     async recordPdfAttached(record) {
       const current = (await readPaperOnDisk(ctx, record.path)) ?? record;

@@ -18,7 +18,8 @@ module.exports = {
     'src/content/scholarParse.ts',
     'src/popup/format.ts',
     'src/reader/readerSyncReason.ts',
-    'src/reader/idbSidecarPort.ts',
+    'src/reader/sidecarChangeNotice.ts',
+    'src/storage/idbSidecarPort.ts',
     'src/reader/inPageTransport.ts',
     // Injected into pages or driving real tabs: verified in a browser, not in node.
     '!src/capture/pageProbeContentScript.ts',

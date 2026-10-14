@@ -59,6 +59,45 @@ describe("setStatus", () => {
   });
 });
 
+describe("editTags", () => {
+  it("adds and removes tags in metadata.yaml and in the cache", async () => {
+    const record = paper("a2020", "papers", { tags: ["old", "keep"] });
+    seed(record, "title: A\nstatus: unread\ncitekey: a2020\ntags: [old, keep]\nreviewer: ana\n");
+
+    const outcome = await mutations.editTags([{ id: record.id, path: record.path }], ["new"], ["old"]);
+
+    expect(outcome.done).toEqual(["a2020"]);
+    expect(mockCache.get("a2020")?.tags).toEqual(["keep", "new"]);
+    expect(textAt("papers/a2020/metadata.yaml")).toMatch(/reviewer: ana/);
+    expect(textAt("papers/a2020/metadata.yaml")).toMatch(/new/);
+    expect(textAt("papers/a2020/metadata.yaml")).not.toMatch(/old/);
+  });
+
+  it("reports a paper whose folder is gone", async () => {
+    const outcome = await mutations.editTags([{ id: "gone", path: "papers/gone" }], ["x"], []);
+    expect(outcome.failed).toEqual([{ id: "gone", error: "Paper not found" }]);
+  });
+});
+
+describe("setNote", () => {
+  it("writes the note to metadata.yaml and the cache", async () => {
+    const record = paper("a2020");
+    seed(record, "title: A\nstatus: unread\ncitekey: a2020\n");
+
+    const written = await mutations.setNote({ id: record.id, path: record.path }, "Read chapter 3 again");
+
+    expect(written?.note).toBe("Read chapter 3 again");
+    expect(textAt("papers/a2020/metadata.yaml")).toMatch(/Read chapter 3 again/);
+    expect(mockCache.get("a2020")?.note).toBe("Read chapter 3 again");
+  });
+
+  it("resolves to undefined for a paper whose folder is gone and leaves the cache alone", async () => {
+    mockCache.set("gone", paper("gone"));
+    expect(await mutations.setNote({ id: "gone", path: "papers/gone" }, "x")).toBeUndefined();
+    expect(mockCache.get("gone")?.note).toBeUndefined();
+  });
+});
+
 describe("recordPdfAttached", () => {
   it("keeps the status on disk when the cached status is stale and marks the PDF present", async () => {
     const record = paper("a2020", "papers", { status: "unread" });

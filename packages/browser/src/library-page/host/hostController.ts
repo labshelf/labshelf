@@ -4,12 +4,12 @@
  * the click that asked for it.
  */
 import type { HostEndpoint, UiToHost } from "@labshelf/core";
-import { offerOpenTabs, captureTab } from "./addFromTabHandler";
-import { deleteFolder, createFolder, renameFolder } from "./folderHandlers";
+import {
+  captureTab, createFolder, createPdfHandlers, deleteFolder, exportAnnotations, movePapers, offerOpenTabs, removePapers,
+  renameFolder, sendDetails, setNote, setStatus, setTags, writeClipboard, type PdfHandlers,
+} from "./handlers";
 import { createHostContext, type HostContext } from "./hostContext";
-import { watchLibraryChanges } from "./librarySnapshots";
-import { movePapers, removePapers, setStatus, writeClipboard } from "./paperHandlers";
-import { createPdfHandlers, type PdfHandlers } from "./pdfHandlers";
+import { watchLibraryChanges } from "./snapshots";
 import { errorMessage } from "./runtimeRequests";
 
 export interface LibraryHostOptions {
@@ -40,13 +40,18 @@ function dispatch(ctx: HostContext, pdf: PdfHandlers, m: UiToHost, options: Libr
     case "paper.findPdf": run(ctx, () => pdf.find(m.id)); return;
     case "paper.attachPdf": pdf.attach(m.id); return;
     case "paper.setStatus": run(ctx, () => setStatus(ctx, m.ids, m.status)); return;
+    case "paper.details": run(ctx, () => sendDetails(ctx, m.id)); return;
+    case "paper.setTags": run(ctx, () => setTags(ctx, m.ids, m.add, m.remove)); return;
+    case "paper.setNote": run(ctx, () => setNote(ctx, m.id, m.note)); return;
+    case "annotations.export": run(ctx, () => exportAnnotations(ctx, m.id)); return;
     case "paper.move": run(ctx, () => movePapers(ctx, m.ids, m.target)); return;
     case "paper.remove": run(ctx, () => removePapers(ctx, m.ids)); return;
     case "paper.add": run(ctx, () => offerOpenTabs(ctx, m.folder)); return;
     case "paper.addFrom": run(ctx, () => captureTab(ctx, m.folder, m.sourceId, m.ifNoPdf, m.retryPdf)); return;
     case "clipboard.write": run(ctx, () => writeClipboard(ctx, m.text, m.label)); return;
     default:
-      // The page declares none of the capabilities behind the other messages, so the UI never sends them.
+      // The page declares none of the capabilities behind the other messages (text layer, similar content, reveal,
+      // open in the default app, fetch metadata), so the UI never sends them.
       void ctx.log.warn("Unhandled library UI message", { type: m.type });
   }
 }

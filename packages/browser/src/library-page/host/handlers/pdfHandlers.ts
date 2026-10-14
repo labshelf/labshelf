@@ -4,12 +4,12 @@
  * background write IndexedDB themselves.
  */
 import { PDF_FILE, isPdfBytes, pdfSourceLabel } from "@labshelf/core";
-import { attachPdfToPaper } from "../../capture";
-import type { AttachPdfData } from "../../platform";
-import { openReader } from "../../reader/readerTabs";
-import { IndexedDbFileSystem } from "../../storage";
-import type { HostContext } from "./hostContext";
-import { errorMessage, scheduleSyncSoon, send } from "./runtimeRequests";
+import { attachPdfToPaper } from "../../../capture";
+import type { AttachPdfData } from "../../../platform";
+import { openReader } from "../../../reader/readerTabs";
+import { IndexedDbFileSystem } from "../../../storage";
+import type { HostContext } from "../hostContext";
+import { errorMessage, scheduleSyncSoon, send } from "../runtimeRequests";
 
 /** Local PDFs above this size are refused, matching the fetch layer's cap. */
 const MAX_PDF_BYTES = 120 * 1024 * 1024;
