@@ -1,10 +1,6 @@
 /**
- * Context / dropdown menu styled after VS Code's custom menus. Positions itself
- * at a point or under an anchor element, clamps to the viewport, closes on
- * outside click or Escape, and supports arrow-key navigation. One menu is open
- * at a time; opening another closes the previous one. Mounts on document.body,
- * or inside a shadow root when the host page's CSS must not reach it (the
- * Google Scholar buttons).
+ * Context and dropdown menu after VS Code's: at a point or under an anchor, clamped to the viewport, closed by an
+ * outside click or Escape, arrow keys to move; one at a time, on document.body or inside a shadow root.
  */
 import { escapeHtml } from "../../escapeHtml.js";
 import { icon, type IconName } from "../../icons/index.js";
@@ -13,6 +9,10 @@ import { el } from "../dom.js";
 export interface MenuItem {
   label: string;
   icon?: IconName;
+  /** Trusted markup shown where the icon goes, such as a status dot; `icon` wins when both are set. */
+  lead?: string;
+  /** Shows a check mark in the icon's place. */
+  checked?: boolean;
   hint?: string;
   danger?: boolean;
   disabled?: boolean;
@@ -42,11 +42,12 @@ export function showMenu(anchor: MenuAnchor | HTMLElement, entries: MenuEntry[],
   for (const entry of entries) {
     if (entry === "separator") { menu.append(el("div", { class: "ls-menu-sep", role: "separator" })); continue; }
     const item = el("button", {
-      class: `ls-menu-item${entry.danger ? " danger" : ""}`,
-      role: "menuitem",
+      class: `ls-menu-item${entry.danger ? " danger" : ""}${entry.checked ? " checked" : ""}`,
+      role: entry.checked === undefined ? "menuitem" : "menuitemcheckbox",
+      "aria-checked": entry.checked === undefined ? undefined : String(entry.checked),
       type: "button",
       disabled: entry.disabled ? true : undefined,
-      html: `${entry.icon ? icon(entry.icon) : '<span style="width:14px"></span>'}<span>${escapeHtml(entry.label)}</span>${entry.hint ? `<span class="hint">${escapeHtml(entry.hint)}</span>` : ""}`,
+      html: `<span class="ls-menu-lead">${leadOf(entry)}</span><span class="ls-menu-label">${escapeHtml(entry.label)}</span>${entry.hint ? `<span class="hint">${escapeHtml(entry.hint)}</span>` : ""}`,
     });
     item.addEventListener("click", () => { close(); entry.onSelect(); });
     menu.append(item);
@@ -79,6 +80,11 @@ export function showMenu(anchor: MenuAnchor | HTMLElement, entries: MenuEntry[],
     if (closeCurrent === close) closeCurrent = null;
   }
   closeCurrent = close;
+}
+
+function leadOf(entry: MenuItem): string {
+  if (entry.checked) return icon("check");
+  return entry.icon ? icon(entry.icon) : entry.lead ?? "";
 }
 
 function anchorPoint(anchor: HTMLElement): MenuAnchor {

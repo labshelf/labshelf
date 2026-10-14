@@ -4,19 +4,23 @@
  */
 import { parentDir } from "../../../library/index.js";
 import { listKeyAction, type ListKeyAction } from "../../listKeymap.js";
-import { confirmRemove, copyCiteKeys, openPaper, setPaperStatus } from "../flows/index.js";
-import { overlayOpen, type UiContext } from "../uiContext.js";
+import { confirmRemove, copyCitation, openPaper, setPaperStatus } from "../flows/index.js";
+import { showPaperMenu } from "../menu/index.js";
+import { overlayOpen, type ListCursor, type UiContext } from "../uiContext.js";
 
-export interface ListCursor {
-  /** Ids of the rows as shown. */
-  order(): readonly string[];
-  /** Moves the cursor by `delta` rows (from the edge when there is none), extending the selection when asked. */
-  step(delta: 1 | -1, extend: boolean): void;
+// The menu key opens the paper menu under the cursor row, a little in from its left edge.
+function openMenuAtCursor(ctx: UiContext): void {
+  const { cursor, selected } = ctx.store.get();
+  const row = [...ctx.root.querySelectorAll<HTMLElement>(".paper-row")].find((r) => r.dataset["id"] === cursor);
+  if (!row || selected.size === 0) return;
+  const r = row.getBoundingClientRect();
+  showPaperMenu(ctx, { x: r.left + 40, y: r.bottom });
 }
 
 function ignored(e: KeyboardEvent, ctx: UiContext): boolean {
   const active = document.activeElement as HTMLElement | null;
-  if (overlayOpen()) return true;
+  // An overlay that took the key (Escape closing a menu) has already handled it.
+  if (overlayOpen() || e.defaultPrevented) return true;
   if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) return true;
   if (active && ctx.root.querySelector(".sidebar")?.contains(active)) return true;
   return !!active && active.tagName === "BUTTON" && (e.key === "Enter" || e.key === " ");
@@ -31,15 +35,19 @@ function perform(ctx: UiContext, cursor: ListCursor, action: ListKeyAction): boo
     case "edge": ctx.store.set({ cursor: null }); cursor.step(action.to === "first" ? 1 : -1, false); return true;
     case "parent": if (s.folder.includes("/")) ctx.store.openFolder(parentDir(s.folder, "/")); return true;
     case "open": if (s.cursor) openPaper(ctx, s.cursor); return true;
-    case "escape": if (s.query || s.status !== "all") ctx.store.set({ status: "all", query: "" }); else ctx.store.clearSelection(); return true;
+    case "escape":
+      if (s.query || s.status !== "all" || s.noText) ctx.store.set({ status: "all", noText: false, query: "" });
+      else ctx.store.clearSelection();
+      return true;
     case "selectAll": ctx.store.set({ selected: new Set(cursor.order()) }); return true;
     case "setStatus": setPaperStatus(ctx, [...s.selected], action.status); return true;
     case "remove": if (s.selected.size) void confirmRemove(ctx, [...s.selected]); return true;
     case "copyKeys":
       // A text selection copies as text; the keys are copied only when nothing is selected on the page.
       if (s.selected.size === 0 || window.getSelection()?.toString()) return false;
-      copyCiteKeys(ctx, [...s.selected]);
+      copyCitation(ctx, [...s.selected], "key");
       return true;
+    case "menu": openMenuAtCursor(ctx); return true;
     case "typeToSearch":
       // Focus moves before the key lands, so the character types into the search box.
       ctx.focusSearch();

@@ -8,6 +8,7 @@
 import * as path from "node:path";
 
 import {
+  bibtexEntry,
   createFolder,
   doiLookup,
   editPaperTags,
@@ -223,6 +224,6 @@ export class TerminalPaperService {
    * @returns the entries separated by blank lines
    */
   bibtexFor(records: PaperRecord[]): string {
-    return records.map((r) => this.deps.bibtex.generateBibTeX(r, { includeFile: false })).join("\n\n") + "\n";
+    return records.map((r) => bibtexEntry(r, { includeFile: false })).join("\n\n") + "\n";
   }
 }

@@ -1,12 +1,7 @@
-import { authorYearLabel, cleanQuote, formatQuoteWithCitation, type CitablePaper } from '../../src/reader/citationFormat';
+import { cleanQuote, formatQuoteWithCitation, type CitablePaper } from '../../src/reader/citationFormat';
 
 function paper(overrides: Partial<CitablePaper> = {}): CitablePaper {
   return { citeKey: 'nasser2024', title: 'A Great Paper', authors: ['Luca Nasser'], year: 2024, ...overrides };
-}
-
-/** Builds a CitablePaper with no `year` key at all (rather than `year: undefined`). */
-function paperWithoutYear(overrides: Partial<Omit<CitablePaper, 'year'>> = {}): CitablePaper {
-  return { citeKey: 'nasser2024', title: 'A Great Paper', authors: ['Luca Nasser'], ...overrides };
 }
 
 describe('cleanQuote', () => {
@@ -20,38 +15,6 @@ describe('cleanQuote', () => {
 
   it('keeps a real hyphen when the continuation starts with an uppercase letter', () => {
     expect(cleanQuote('non-\nEuropean countries')).toBe('non- European countries');
-  });
-});
-
-describe('authorYearLabel', () => {
-  it('falls back to the citeKey when there are no authors', () => {
-    expect(authorYearLabel(paperWithoutYear({ authors: [] }))).toBe('nasser2024');
-  });
-
-  it('falls back to the citeKey when every author is blank', () => {
-    expect(authorYearLabel(paper({ authors: ['', '  '], year: 2024 }))).toBe('nasser2024, 2024');
-  });
-
-  it('uses the surname of a single author', () => {
-    expect(authorYearLabel(paper({ authors: ['Ada Lovelace'], year: 1843 }))).toBe('Lovelace, 1843');
-  });
-
-  it('joins two authors with "&"', () => {
-    expect(authorYearLabel(paper({ authors: ['Ada Lovelace', 'Charles Babbage'], year: 1843 }))).toBe('Lovelace & Babbage, 1843');
-  });
-
-  it('uses "et al." for three or more authors', () => {
-    expect(authorYearLabel(paper({ authors: ['Ada Lovelace', 'Charles Babbage', 'Alan Turing'], year: 1950 }))).toBe(
-      'Lovelace et al., 1950',
-    );
-  });
-
-  it('extracts the surname from a "Last, First" formatted author', () => {
-    expect(authorYearLabel(paper({ authors: ['Nasser, Luca'], year: 2024 }))).toBe('Nasser, 2024');
-  });
-
-  it('omits the year when it is missing', () => {
-    expect(authorYearLabel(paperWithoutYear({ authors: ['Ada Lovelace'] }))).toBe('Lovelace');
   });
 });
 

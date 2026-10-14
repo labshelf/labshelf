@@ -1,6 +1,6 @@
 /**
  * Generates the HTML shell of the PDF reader webview: CSP, pdf.js asset preloads, structural containers, the inert JSON boot block and the bundled runtime (dist/reader).
- * All behaviour lives in the bundle built from src/reader/main.ts and @labshelf/core/dom by build/reader.mjs; the body
+ * All behaviour lives in the bundle built from src/reader/main.ts and @labshelf/core/dom by build/webviews.mjs; the body
  * skeleton is the shared READER_SHELL_BODY, which the browser extension's reader page uses too.
  */
 import * as vscode from "vscode";

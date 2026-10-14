@@ -2,7 +2,7 @@
  * Tests that every icon renders with the shared wrapper and that no two names share a glyph.
  */
 import { CODICON_GLYPHS, STROKE_GLYPHS } from "../../src/ui/icons/glyphs";
-import { icon, iconMap, type IconName } from "../../src/ui/icons";
+import { icon, type IconName } from "../../src/ui/icons";
 
 const NAMES = [...Object.keys(STROKE_GLYPHS), ...Object.keys(CODICON_GLYPHS), "logo"] as IconName[];
 const STROKE_NAMES = Object.keys(STROKE_GLYPHS) as IconName[];
@@ -43,18 +43,5 @@ describe("icon", () => {
   it("gives every name its own drawing", () => {
     const drawings = NAMES.map((name) => inner(icon(name)));
     expect(new Set(drawings).size).toBe(NAMES.length);
-  });
-});
-
-describe("iconMap", () => {
-  it("returns exactly the requested names with their markup", () => {
-    const map = iconMap(["folder", "x"]);
-    expect(Object.keys(map)).toEqual(["folder", "x"]);
-    expect(map["folder"]).toBe(icon("folder"));
-    expect(map["x"]).toBe(icon("x"));
-  });
-
-  it("returns an empty map for no names", () => {
-    expect(iconMap([])).toEqual({});
   });
 });

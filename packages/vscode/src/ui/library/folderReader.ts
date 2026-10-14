@@ -2,7 +2,7 @@
 import * as path from 'node:path';
 import type { ILogger } from '@labshelf/core';
 import { createScanEnv, readFolderLevel, type ScanFileSystem } from '@labshelf/core';
-import type { LibraryNode } from './listState.js';
+import type { LibraryNode } from './libraryNode.js';
 
 const LOG_MODULE = 'ui/library/folderReader';
 

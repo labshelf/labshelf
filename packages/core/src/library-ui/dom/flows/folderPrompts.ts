@@ -36,8 +36,8 @@ export async function confirmDeleteFolder(ctx: UiContext, path: string): Promise
   const ok = await confirmDialog(
     `Delete "${baseName(path, "/")}"?`,
     count > 0
-      ? `The folder and the ${count} paper${count === 1 ? "" : "s"} inside it will be removed from this library. The next sync removes them from Google Drive too.`
-      : "The folder is empty. It will be removed from this library and from Google Drive on the next sync.",
+      ? `The folder and the ${count} paper${count === 1 ? "" : "s"} inside it are deleted from the library on this device and on every synced device.`
+      : "The folder is empty. It is deleted from the library on this device and on every synced device.",
     "Delete",
     true,
   );

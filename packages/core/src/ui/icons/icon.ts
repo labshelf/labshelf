@@ -15,8 +15,3 @@ export function icon(name: IconName): string {
   if (name in CODICON_GLYPHS) return `<svg ${FILLED_ATTRS}>${CODICON_GLYPHS[name as keyof typeof CODICON_GLYPHS]}</svg>`;
   return `<svg ${STROKE_ATTRS}>${STROKE_GLYPHS[name as keyof typeof STROKE_GLYPHS]}</svg>`;
 }
-
-/** @returns the markup of each named icon keyed by name, for webview scripts that cannot import core. */
-export function iconMap(names: readonly IconName[]): Record<string, string> {
-  return Object.fromEntries(names.map((name) => [name, icon(name)]));
-}

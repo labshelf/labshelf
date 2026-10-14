@@ -68,7 +68,7 @@ Core never reaches the platform directly. It declares a port, and each app imple
 | sidecar port | core `node/` | IndexedDB | core `node/` |
 | auth | core `node/` PKCE + `SecretStorage` | `identity.launchWebAuthFlow` | core `node/` PKCE + keychain |
 | reader transport | webview `postMessage` | in-page calls | no reader (system viewer) |
-| library UI transport and prefs | none (the list panel has its own webview) | in-page loopback, localStorage | no library UI (TUI) |
+| library UI transport and prefs | webview `postMessage`, webview state | in-page loopback, localStorage | no library UI (TUI) |
 
 Each app has exactly one composition root, and only that root instantiates adapters:
 

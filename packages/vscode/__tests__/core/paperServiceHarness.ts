@@ -54,7 +54,7 @@ export function makeGlue(): Glue {
   const bibtex = new BibTeXService(fs);
   const ctx: MutationContext = { fs, paths: path, artifacts: bibtex, logger, papersRoot: PAPERS_ROOT, now: () => '2026-01-01T00:00:00.000Z' };
   const parse = jest.fn(async () => ({ title: 'Test Paper', citeKey: 'testpaper2024', authors: ['Alice'], year: 2024 }));
-  const service = new PaperService(ctx, database, eventBus, bibtex, parse);
+  const service = new PaperService(ctx, database, eventBus, parse);
   void fs.mkdir(PAPERS_ROOT);
   return {
     fs, ctx, rows, emitted, indexWrites, service, parse,

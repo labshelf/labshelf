@@ -1,6 +1,6 @@
 /**
  * The drag handles beside the side panes: dragging resizes a pane, dragging below its threshold collapses it, and a
- * double-click restores a collapsed one.
+ * double-click restores a collapsed one (and, when the pane has a default width, returns to it).
  */
 export interface SashOptions {
   root: HTMLElement;
@@ -9,6 +9,8 @@ export interface SashOptions {
   limits: { min: number; max: number; collapseAt: number };
   widthFromPointer: (clientX: number) => number;
   persist: (width: number, collapsed: boolean) => void;
+  /** The width a double-click returns to; without it a double-click only restores a collapsed pane. */
+  defaultWidth?: number;
 }
 
 /** Wires one sash; returns the function that removes its window listeners. */
@@ -37,6 +39,7 @@ export function attachSash(sash: HTMLElement, o: SashOptions): () => void {
   };
   sash.addEventListener("dblclick", () => {
     o.root.classList.remove(o.collapsedClass);
+    if (o.defaultWidth) o.pane.style.width = `${o.defaultWidth}px`;
     o.persist(width(), false);
   });
   window.addEventListener("mousemove", onMove);

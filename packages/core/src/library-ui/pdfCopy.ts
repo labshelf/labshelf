@@ -1,6 +1,5 @@
 /**
- * What LabShelf says about a paper's PDF on every surface: resolver labels, the "No PDF found" texts and the
- * attachments heading.
+ * What LabShelf says about a paper's PDF on every surface: resolver labels and the "No PDF found" texts.
  */
 import type { PdfMiss } from "./protocol/index.js";
 
@@ -45,9 +44,4 @@ export function findMissMessage(title: string, miss: PdfMiss): string {
     ? `LabShelf tried ${miss.tried} ${miss.tried === 1 ? "link" : "links"} but could not download a PDF for "${title}".`
     : `LabShelf found no PDF link, DOI or arXiv id for "${title}".`;
   return `${head} Attach a file you already have, or search again later.${miss.blocked ? BOT_CHECK_HINT : ""}`;
-}
-
-/** The attachments section heading: a paper has either its one PDF or none. */
-export function attachmentsHeading(hasPdf: boolean): string {
-  return hasPdf ? "1 Attachment" : "No PDF";
 }

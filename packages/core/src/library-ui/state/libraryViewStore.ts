@@ -2,8 +2,9 @@
  * Reactive store behind the library UI. Views subscribe to slices with {@link LibraryViewStore.select} and repaint
  * only when their slice changes; the host's snapshots go through {@link LibraryViewStore.applySnapshot}.
  */
-import type { PaperStatus } from "../../model/index.js";
-import type { LibraryUiSnapshot } from "../protocol/index.js";
+import { editedTags } from "../../library/index.js";
+import type { PaperRecord, PaperStatus } from "../../model/index.js";
+import type { LibraryUiSnapshot, PaperDetails, SimilarPaper, TextLayerJobView } from "../protocol/index.js";
 import { shallowEqual } from "./shallowEqual.js";
 import { mergeSnapshot } from "./snapshotIdentity.js";
 import { INITIAL_VIEW_STATE, type LibraryViewState } from "./viewState.js";
@@ -50,8 +51,41 @@ export class LibraryViewStore {
 
   /** Shows a status change at once, before the host confirms it with the next snapshot. */
   applyStatus(ids: readonly string[], status: PaperStatus): void {
-    const wanted = new Set(ids);
-    this.set({ papers: this.state.papers.map((p) => (wanted.has(p.id) && p.status !== status ? { ...p, status } : p)) });
+    this.patchPapers(ids, (p) => (p.status === status ? p : { ...p, status }));
+  }
+
+  /** Shows a tag edit at once, before the host confirms it with the next snapshot. */
+  applyTags(ids: readonly string[], add: readonly string[], remove: readonly string[]): void {
+    this.patchPapers(ids, (p) => {
+      const tags = editedTags(p.tags ?? [], add, remove);
+      return tags.join("\n") === (p.tags ?? []).join("\n") ? p : { ...p, tags };
+    });
+  }
+
+  /** Shows a saved note at once, before the host confirms it with the next snapshot. */
+  applyNote(id: string, note: string): void {
+    this.patchPapers([id], (p) => ((p.note ?? "") === note ? p : { ...p, note }));
+  }
+
+  /** Replaces the OCR jobs with the host's list. */
+  setJobs(jobs: readonly TextLayerJobView[]): void {
+    this.set({ jobs: Object.fromEntries(jobs.map((j) => [j.paperId, j])) });
+  }
+
+  /** Shows papers as queued for OCR at once, before the host reports its jobs. */
+  queueJobs(ids: readonly string[]): void {
+    const queued = ids.filter((id) => !this.state.jobs[id]).map((paperId): [string, TextLayerJobView] => [paperId, { paperId, phase: "queued" }]);
+    if (queued.length) this.set({ jobs: { ...this.state.jobs, ...Object.fromEntries(queued) } });
+  }
+
+  /** Keeps what the host sent about one paper. */
+  setDetails(id: string, details: PaperDetails): void {
+    this.set({ details: { ...this.state.details, [id]: details } });
+  }
+
+  /** Keeps a paper's similar papers; null marks a search in flight. */
+  setSimilar(id: string, items: SimilarPaper[] | null): void {
+    this.set({ similar: { ...this.state.similar, [id]: items } });
   }
 
   /** Marks a paper's PDF search as running or done. */
@@ -87,9 +121,15 @@ export class LibraryViewStore {
     this.set({ selected: new Set(), anchor: null, cursor: null });
   }
 
-  /** Opens a folder and resets the search, the status tab and the selection. */
+  /** Opens a folder and resets the search, the status tab, the No text filter and the selection. */
   openFolder(path: string): void {
     if (path === this.state.folder) return;
-    this.set({ folder: path, query: "", status: "all", selected: new Set(), anchor: null, cursor: null });
+    this.set({ folder: path, query: "", status: "all", noText: false, selected: new Set(), anchor: null, cursor: null });
+  }
+
+  private patchPapers(ids: readonly string[], change: (p: PaperRecord) => PaperRecord): void {
+    const wanted = new Set(ids);
+    const papers = this.state.papers.map((p) => (wanted.has(p.id) ? change(p) : p));
+    if (papers.some((p, i) => p !== this.state.papers[i])) this.set({ papers });
   }
 }

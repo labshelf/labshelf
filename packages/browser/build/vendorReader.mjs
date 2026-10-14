@@ -46,7 +46,7 @@ export async function vendorReader({ outDir, pkgRoot }) {
   await mkdir(join(outDir, "reader"), { recursive: true });
   await copyFile(require.resolve("@labshelf/core/styles/reader.css"), join(outDir, "reader/reader.css"));
   await mkdir(join(outDir, "ui/styles"), { recursive: true });
-  for (const sheet of ["tokens", "base", "toast", "library-ui"]) {
+  for (const sheet of ["tokens", "base", "toast", "library-ui", "library-list", "library-detail", "library-tabs"]) {
     await copyFile(require.resolve(`@labshelf/core/styles/${sheet}.css`), join(outDir, `ui/styles/${sheet}.css`));
   }
 }

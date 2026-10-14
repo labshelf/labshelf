@@ -1,6 +1,6 @@
 /** Changes the fields the user owns on papers (reading status, tags, note), reading each paper from disk first. */
 import type { PaperRecord, PaperStatus } from "../../model/index.js";
-import { normalizeTags } from "../identity/index.js";
+import { editedTags, normalizeTags } from "../identity/index.js";
 import { describeError, MUTATIONS_MODULE, type BatchOutcome, type MutationContext, type PaperRef } from "./context.js";
 import { readPaperOnDisk } from "./paperOnDisk.js";
 import { writePaperRecord } from "./paperRecordWrite.js";
@@ -44,11 +44,7 @@ export function editPaperTags(
   add: string[],
   remove: string[],
 ): Promise<FieldsBatchOutcome> {
-  const removeKeys = new Set(remove.map((tag) => tag.trim().toLowerCase()));
-  return eachPaper(ctx, papers, (current) => {
-    const kept = (current.tags ?? []).filter((tag) => !removeKeys.has(tag.toLowerCase()));
-    return applyPatch(ctx, current, { tags: [...kept, ...add] });
-  });
+  return eachPaper(ctx, papers, (current) => applyPatch(ctx, current, { tags: editedTags(current.tags ?? [], add, remove) }));
 }
 
 async function applyPatch(ctx: MutationContext, current: PaperRecord, patch: PaperFieldsPatch): Promise<PaperRecord> {

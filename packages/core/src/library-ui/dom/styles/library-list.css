@@ -1,0 +1,88 @@
+/*
+ * The paper list: sortable column heads and paper rows (type icon, tags, location chip, marks, Last read, status
+ * badge, the PDF child row), under .ls-library. Narrow windows drop Last read, then the publication.
+ */
+/* ── Column heads ───────────────────────────────────────────────── */
+.ls-library .col-heads {
+  display: grid; grid-template-columns: var(--cols); padding: 3px var(--ls-space-2); flex-shrink: 0; user-select: none;
+  border-bottom: 1px solid var(--ls-border-soft); font-size: var(--ls-text-sm); color: var(--ls-desc); background: var(--ls-sidebar-bg);
+}
+.ls-library .col-heads > div { padding: 0 var(--ls-space-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ls-library .col-head.sortable { cursor: pointer; display: flex; align-items: center; gap: var(--ls-space-1); }
+.ls-library .col-head.sortable:hover, .ls-library .col-head.sorted { color: var(--ls-fg); }
+.ls-library .sort-ind { display: none; width: 12px; height: 12px; flex-shrink: 0; }
+.ls-library .sort-ind svg { width: 12px; height: 12px; }
+.ls-library .col-head.sorted .sort-ind { display: inline-flex; }
+.ls-library .col-head.sorted.asc .sort-ind { transform: rotate(180deg); }
+
+/* ── Rows ───────────────────────────────────────────────────────── */
+.ls-library .paper-list { flex: 1; overflow-y: auto; outline: none; }
+.ls-library .paper-row { cursor: pointer; }
+.ls-library .paper-row-main {
+  display: grid; grid-template-columns: var(--cols); align-items: center; padding: 5px var(--ls-space-2); gap: 0;
+  border-bottom: 1px solid var(--ls-border-faint);
+}
+.ls-library .paper-row-main:hover { background: var(--ls-list-hover); }
+.ls-library .paper-row.cursor:not(.selected) .paper-row-main { background: var(--ls-list-inactive-bg); }
+.ls-library .paper-row.selected .paper-row-main { background: var(--ls-list-active-bg); color: var(--ls-list-active-fg); }
+.ls-library .paper-row.selected .paper-row-main .col-meta { color: var(--ls-list-active-fg); }
+.ls-library .paper-list:focus .paper-row.cursor .paper-row-main { outline: 1px solid var(--ls-list-focus-outline); outline-offset: -1px; }
+.ls-library .paper-row-main > div, .ls-library .child-row > div { padding: 0 var(--ls-space-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ls-library .expand-btn {
+  display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; flex-shrink: 0;
+  color: var(--ls-fg); transition: transform var(--ls-fast);
+}
+.ls-library .expand-btn svg { width: 16px; height: 16px; }
+.ls-library .expand-btn.collapsed { transform: rotate(-90deg); }
+.ls-library .paper-row-main > .expand-btn { padding: 0; overflow: visible; }
+.ls-library .paper-row.selected .expand-btn { color: inherit; }
+/* A PDF-less row keeps a blank twistie cell for alignment and dims its file-minus icon. */
+.ls-library .expand-btn.leaf { visibility: hidden; pointer-events: none; }
+.ls-library .paper-row.no-pdf .paper-type-icon { opacity: .35; }
+.ls-library .paper-type-icon { opacity: .7; display: flex; align-items: center; }
+.ls-library .paper-type-icon svg { width: 13px; height: 13px; }
+.ls-library .paper-type-icon.tl-missing { opacity: 1; color: var(--ls-warning); }
+.ls-library .paper-type-icon.tl-busy { opacity: 1; color: var(--ls-link); }
+.ls-library .paper-row.selected .paper-type-icon.tl-missing, .ls-library .paper-row.selected .paper-type-icon.tl-busy { color: inherit; }
+.ls-library .col-title { font-size: var(--ls-font-size); }
+.ls-library .col-meta { font-size: var(--ls-text-md); color: var(--ls-desc); }
+.ls-library .title-cell { display: flex; align-items: center; gap: var(--ls-space-4); min-width: 0; }
+.ls-library .title-cell > .title-text { overflow: hidden; text-overflow: ellipsis; min-width: 0; flex-shrink: 1; }
+.ls-library .row-tag {
+  flex-shrink: 0; max-width: 120px; overflow: hidden; text-overflow: ellipsis; font-size: var(--ls-text-xs); line-height: 15px;
+  padding: 0 var(--ls-space-3); border-radius: var(--ls-radius-pill); cursor: pointer; background: var(--ls-badge-bg); color: var(--ls-badge-fg); opacity: .85;
+}
+.ls-library .row-tag:hover { opacity: 1; outline: 1px solid var(--ls-focus); }
+.ls-library .row-tag.more { cursor: default; outline: none; }
+.ls-library .paper-row.selected .row-tag { color: inherit; background: var(--ls-toolbar-hover); }
+.ls-library .row-marks { display: inline-flex; gap: var(--ls-space-3); margin-left: auto; padding-left: var(--ls-space-3); flex-shrink: 0; }
+.ls-library .row-mark { display: inline-flex; align-items: center; gap: var(--ls-space-1); font-size: var(--ls-text-xs); color: var(--ls-desc); }
+.ls-library .row-mark svg { width: 12px; height: 12px; }
+.ls-library .paper-row.selected .row-mark { color: var(--ls-list-active-fg); }
+.ls-library .loc-chip {
+  flex-shrink: 0; max-width: 45%; overflow: hidden; text-overflow: ellipsis; font-size: var(--ls-text-xs); padding: 0 var(--ls-space-3);
+  border-radius: var(--ls-radius-pill); cursor: pointer; color: var(--ls-desc); border: 1px solid var(--ls-border-soft);
+}
+.ls-library .loc-chip:hover { color: var(--ls-fg); border-color: var(--ls-focus); }
+.ls-library .paper-row.selected .loc-chip { color: inherit; border-color: currentColor; opacity: .8; }
+.ls-library .paper-row.dragging { opacity: .45; }
+.ls-library .paper-children { display: none; background: var(--ls-bg); }
+.ls-library .paper-row.expanded .paper-children { display: block; }
+.ls-library .child-row {
+  display: grid; grid-template-columns: var(--cols); align-items: center; padding: var(--ls-space-2) var(--ls-space-2) var(--ls-space-2) 28px; gap: 0;
+  font-size: var(--ls-text-md); color: var(--ls-desc); cursor: pointer; border-bottom: 1px solid var(--ls-border-faint);
+}
+.ls-library .child-row:hover { background: var(--ls-list-hover); color: var(--ls-fg); }
+.ls-library .child-row .paper-type-icon { opacity: .6; }
+.ls-library .list-loading { padding: 32px var(--ls-space-7); color: var(--ls-desc); font-size: var(--ls-text-md); text-align: center; }
+.ls-library.no-reading .col-read { display: none !important; }
+
+/* Narrow windows drop columns before the title gets squeezed: Last read first, then the publication. */
+@media (max-width: 1080px) {
+  .ls-library { --cols: 28px 22px minmax(0, 1fr) 150px 52px 170px 86px; }
+  .ls-library .col-read { display: none !important; }
+}
+@media (max-width: 860px) {
+  .ls-library, .ls-library.no-reading { --cols: 28px 22px minmax(0, 1fr) 130px 52px 86px; }
+  .ls-library .col-pub { display: none !important; }
+}

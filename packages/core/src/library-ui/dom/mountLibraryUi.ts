@@ -2,6 +2,7 @@
  * Mounts the library UI once into a host element: the frame, the header, the filter bar, the list and the detail
  * pane, wired to a host through a transport. The host fills the optional sidebar slot with its own folder view.
  */
+import type { LibraryUiCapabilities, LibraryUiLabels } from "../hostConfig.js";
 import type { LibraryTransport } from "../protocol/index.js";
 import { LibraryViewStore, type PrefsPort } from "../state/index.js";
 import { mountDetailPane } from "./detail/index.js";
@@ -17,6 +18,9 @@ import { createUiContext, type UiContext } from "./uiContext.js";
 export interface LibraryUiOptions {
   transport: LibraryTransport;
   prefs: PrefsPort;
+  /** What the host can do beyond the shared actions; see the library UI host contract. */
+  capabilities: LibraryUiCapabilities;
+  labels: LibraryUiLabels;
   /** Adds a resizable sidebar slot left of the list. */
   withSidebar?: boolean;
 }
@@ -45,8 +49,10 @@ function reportFolder(ctx: UiContext): () => void {
 export function mountLibraryUi(host: HTMLElement, options: LibraryUiOptions): LibraryUi {
   const saved = options.prefs.load();
   const store = new LibraryViewStore({ sortKey: saved.sortKey, sortDir: saved.sortDir, includeSub: saved.includeSub });
-  const frame = buildFrame(host, options.prefs, options.withSidebar ?? false);
-  const ctx = createUiContext(frame.root, store, options.transport, options.prefs);
+  const { transport, prefs, capabilities: caps, labels } = options;
+  // Without reading stats the Last read column has nothing to say, so it is not drawn.
+  const frame = buildFrame(host, prefs, options.withSidebar ?? false, caps.paperData ? [] : ["no-reading"]);
+  const ctx = createUiContext(frame.root, { store, transport, prefs, caps, labels });
   const offs = [
     attachHostMessages(ctx),
     mountListHeader(ctx, frame.header),

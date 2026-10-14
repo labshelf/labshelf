@@ -1,0 +1,98 @@
+/*
+ * The detail tabs' contents under .ls-library: label and value rows, the abstract, keywords and citation box, the
+ * annotation cards and filters, the note editor, related papers and the list of a multi-selection.
+ */
+.ls-library .kv-grid { display: grid; grid-template-columns: minmax(64px, max-content) minmax(0, 1fr); gap: 5px var(--ls-space-6); align-items: baseline; }
+.ls-library .kv-label { color: var(--ls-desc); font-size: var(--ls-text-sm); white-space: nowrap; }
+.ls-library .kv-value { min-width: 0; line-height: 1.4; overflow-wrap: anywhere; user-select: text; }
+.ls-library .kv-line { display: flex; align-items: center; gap: var(--ls-space-3); min-width: 0; }
+.ls-library .detail-pane .kv-line .ls-icon-btn { width: 20px; height: 20px; opacity: 0; }
+.ls-library .detail-pane .kv-line .ls-icon-btn svg { width: 12px; height: 12px; }
+.ls-library .kv-value:hover .kv-line .ls-icon-btn, .ls-library .kv-line .ls-icon-btn:focus-visible { opacity: .75; }
+.ls-library .detail-pane .kv-line .ls-icon-btn:hover { opacity: 1; }
+.ls-library .kv-line a.link-btn { color: var(--ls-link); }
+.ls-library .attach-actions { display: flex; gap: var(--ls-space-3); flex-wrap: wrap; margin-top: var(--ls-space-4); }
+
+.ls-library .detail-abstract { line-height: 1.55; user-select: text; white-space: pre-wrap; }
+.ls-library .detail-abstract.clamped { -webkit-line-clamp: 6; -webkit-box-orient: vertical; display: -webkit-box; overflow: hidden; }
+.ls-library .more-link { margin-top: var(--ls-space-2); }
+.ls-library .kw-list { display: flex; flex-wrap: wrap; gap: var(--ls-space-2); }
+.ls-library .kw {
+  padding: 1px var(--ls-space-4); border-radius: var(--ls-radius-pill); cursor: pointer; font-size: var(--ls-text-sm); background: none;
+  color: var(--ls-fg); border: 1px solid var(--ls-border);
+}
+.ls-library .kw:hover { border-color: var(--ls-focus); color: var(--ls-link); }
+.ls-library .seg-tabs { display: flex; flex-wrap: wrap; gap: var(--ls-space-1); margin-bottom: var(--ls-space-3); }
+.ls-library .seg-tab { padding: var(--ls-space-1) var(--ls-space-4); border-radius: var(--ls-radius); border: none; background: none; cursor: pointer; font-size: var(--ls-text-sm); color: var(--ls-desc); }
+.ls-library .seg-tab:hover { color: var(--ls-fg); background: var(--ls-toolbar-hover); }
+.ls-library .seg-tab.on { color: var(--ls-fg); background: var(--ls-list-inactive-bg); font-weight: 600; }
+.ls-library .cite-box {
+  margin: 0; padding: var(--ls-space-4) var(--ls-space-5); border-radius: var(--ls-radius); max-height: 220px; overflow: auto; user-select: text;
+  white-space: pre-wrap; overflow-wrap: anywhere; font-family: inherit; font-size: var(--ls-text-md); line-height: 1.5;
+  background: var(--ls-code-bg); border: 1px solid var(--ls-border-soft);
+}
+.ls-library .cite-box.code { font-family: var(--ls-mono); font-size: var(--ls-text-sm); white-space: pre; }
+.ls-library .row-end { display: flex; justify-content: flex-end; margin-top: var(--ls-space-3); }
+
+/* ── Annotations ────────────────────────────────────────────────── */
+.ls-library .mini-input {
+  flex: 1; min-width: 0; height: 24px; padding: 0 var(--ls-space-4); border-radius: var(--ls-radius-sm); font-size: var(--ls-text-md); outline: none;
+  background: var(--ls-input-bg); color: var(--ls-input-fg); border: 1px solid var(--ls-input-border);
+}
+.ls-library .mini-input:focus { border-color: var(--ls-focus); }
+.ls-library .ann-color { width: 14px; height: 14px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; flex-shrink: 0; margin: 0 1px; padding: 0; }
+.ls-library .ann-color.on { border-color: var(--ls-fg); }
+.ls-library .ann-list { padding: 0 14px; }
+.ls-library .ann-page { font-size: var(--ls-text-xs); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--ls-desc); margin: var(--ls-space-5) 0 var(--ls-space-2); }
+.ls-library .ann-card {
+  position: relative; padding: var(--ls-space-3) var(--ls-space-4) var(--ls-space-2) 11px; margin-bottom: var(--ls-space-3); border-radius: var(--ls-radius);
+  cursor: pointer; background: var(--ls-widget-bg); border: 1px solid var(--ls-border-soft);
+}
+.ls-library .ann-card::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: var(--ls-radius) 0 0 var(--ls-radius); background: var(--ls-desc);
+}
+.ls-library .ann-color.c-yellow, .ls-library .ann-card.c-yellow::before { background: var(--ls-hl-yellow); }
+.ls-library .ann-color.c-green, .ls-library .ann-card.c-green::before { background: var(--ls-hl-green); }
+.ls-library .ann-color.c-blue, .ls-library .ann-card.c-blue::before { background: var(--ls-hl-blue); }
+.ls-library .ann-color.c-red, .ls-library .ann-card.c-red::before { background: var(--ls-hl-red); }
+.ls-library .ann-color.c-pink, .ls-library .ann-card.c-pink::before { background: var(--ls-hl-pink); }
+.ls-library .ann-card:hover { border-color: var(--ls-focus); }
+.ls-library .ann-kind { float: left; margin: 1px var(--ls-space-3) 0 0; display: inline-flex; color: var(--ls-desc); }
+.ls-library .ann-kind svg { width: 12px; height: 12px; }
+.ls-library .ann-text { font-size: var(--ls-text-md); line-height: 1.5; -webkit-line-clamp: 5; -webkit-box-orient: vertical; display: -webkit-box; overflow: hidden; user-select: text; }
+.ls-library .ann-card.is-note .ann-text { font-style: italic; }
+.ls-library .ann-meta { display: flex; align-items: center; gap: var(--ls-space-4); font-size: var(--ls-text-xs); color: var(--ls-desc); margin-top: var(--ls-space-1); }
+.ls-library .detail-pane .ann-meta .ls-icon-btn { width: 20px; height: 20px; opacity: 0; }
+.ls-library .detail-pane .ann-meta .ls-icon-btn svg { width: 12px; height: 12px; }
+.ls-library .ann-card:hover .ann-meta .ls-icon-btn, .ls-library .ann-meta .ls-icon-btn:focus-visible { opacity: .8; }
+.ls-library .sec-body .ann-card { margin-left: calc(-1 * var(--ls-space-4)); }
+.ls-library .tab-empty { display: flex; flex-direction: column; align-items: center; gap: var(--ls-space-3); padding: 32px 20px; text-align: center; font-size: var(--ls-text-md); }
+.ls-library .tab-empty > svg { width: 28px; height: 28px; opacity: .35; margin-bottom: var(--ls-space-2); }
+.ls-library .tab-empty .ls-btn { margin-top: var(--ls-space-4); }
+
+/* ── Notes ──────────────────────────────────────────────────────── */
+.ls-library .notes-tab { display: flex; flex-direction: column; }
+.ls-library .note-input {
+  margin: var(--ls-space-5) 14px 0; min-height: 240px; height: 42vh; resize: vertical; padding: var(--ls-space-4) var(--ls-space-5);
+  border-radius: var(--ls-radius); outline: none; font-family: var(--ls-mono); font-size: var(--ls-text-md); line-height: 1.55;
+  background: var(--ls-input-bg); color: var(--ls-input-fg); border: 1px solid var(--ls-input-border);
+}
+.ls-library .note-input:focus { border-color: var(--ls-focus); }
+.ls-library .note-input::placeholder { color: var(--ls-input-placeholder); }
+.ls-library .detail-note { margin: var(--ls-space-5) 14px 0; line-height: 1.5; font-size: var(--ls-text-md); white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+.ls-library .notes-tab > .muted-note { padding: var(--ls-space-5) 14px; }
+
+/* ── Related papers, and the list of a multi-selection ──────────── */
+.ls-library .rel-row {
+  display: flex; align-items: center; gap: var(--ls-space-4); padding: var(--ls-space-2) var(--ls-space-3); margin: 0 calc(-1 * var(--ls-space-3));
+  border-radius: var(--ls-radius); cursor: pointer;
+}
+.ls-library .rel-row:hover { background: var(--ls-list-hover); }
+.ls-library .rel-main { flex: 1; min-width: 0; }
+.ls-library .rel-title { font-size: var(--ls-text-md); line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ls-library .rel-sub { font-size: var(--ls-text-sm); color: var(--ls-desc); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ls-library .rel-why { margin-left: var(--ls-space-3); font-style: italic; }
+.ls-library .rel-why::before { content: "· "; }
+.ls-library .detail-pane .rel-row .ls-icon-btn { opacity: 0; width: 22px; height: 22px; }
+.ls-library .rel-row:hover .ls-icon-btn, .ls-library .rel-row .ls-icon-btn:focus-visible { opacity: .8; }
+.ls-library .sel-list { padding: var(--ls-space-2) 14px var(--ls-space-7) 20px; border-top: 1px solid var(--ls-border-soft); }

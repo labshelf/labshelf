@@ -24,7 +24,14 @@ function boot(): void {
   // button, the page selects the paper just saved.
   const hostCtx = attachLibraryHost(host, { initialPaper: new URLSearchParams(location.search).get("paper") });
   attachRouter(host);
-  const ui = mountLibraryUi(root, { transport, prefs, withSidebar: true });
+  const ui = mountLibraryUi(root, {
+    transport, prefs, withSidebar: true,
+    capabilities: { findPdf: true, attachPdf: true },
+    labels: {
+      addTooltip: "Add a paper from an open tab",
+      emptyHint: "Open the paper's page in a tab and use the LabShelf toolbar button, or click Add to pick one of your open tabs.",
+    },
+  });
   if (ui.sidebar) mountSidebarTree(ui, ui.sidebar, prefs);
   const sync = createSyncStatus(() => hostCtx.snapshots.refresh());
   mountStatusBar(root, sync, (listener) => ui.store.select((s) => s.papers.length, listener));

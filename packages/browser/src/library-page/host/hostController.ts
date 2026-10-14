@@ -44,7 +44,10 @@ function dispatch(ctx: HostContext, pdf: PdfHandlers, m: UiToHost, options: Libr
     case "paper.remove": run(ctx, () => removePapers(ctx, m.ids)); return;
     case "paper.add": run(ctx, () => offerOpenTabs(ctx, m.folder)); return;
     case "paper.addFrom": run(ctx, () => captureTab(ctx, m.folder, m.sourceId, m.ifNoPdf, m.retryPdf)); return;
-    case "clipboard.write": run(ctx, () => writeClipboard(ctx, m.text)); return;
+    case "clipboard.write": run(ctx, () => writeClipboard(ctx, m.text, m.label)); return;
+    default:
+      // The page declares none of the capabilities behind the other messages, so the UI never sends them.
+      void ctx.log.warn("Unhandled library UI message", { type: m.type });
   }
 }
 

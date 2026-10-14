@@ -1,0 +1,134 @@
+/**
+ * @jest-environment jsdom
+ */
+import type { Annotation } from "@labshelf/core";
+import { ALL_CAPABILITIES, mountForTest, paper } from "../mountHarness";
+
+const library = [
+  paper("a", "papers", {
+    title: "Attention", authors: ["Ashish Vaswani", "Noam Shazeer"], year: 2017, journal: "NeurIPS", tags: ["nlp"], note: "",
+    doi: "10.1/x", summary: "Transformers.",
+  }),
+  paper("b", "papers/B", { title: "Follow-up", authors: ["Vaswani, A."], year: 2019, tags: ["NLP"] }),
+];
+
+function annotation(id: string, page: number, content: string, type: Annotation["type"] = "highlight"): Annotation {
+  return { id, paperId: "a", type, pageNumber: page, content, color: "yellow", createdAt: "2024-01-01T00:00:00Z", updatedAt: "2024-01-01T00:00:00Z" };
+}
+
+function showA(caps = ALL_CAPABILITIES, prefs = {}) {
+  const t = mountForTest(prefs, caps);
+  t.snapshot(library, ["papers/a"], [{ name: "B", path: "papers/B", children: [] }], { a: { annotations: 2, lastPage: 4 } });
+  t.host.post({ type: "select", id: "a" });
+  return t;
+}
+
+describe("detail pane head", () => {
+  it("continues at the last page and searches an author by family name", () => {
+    const t = showA();
+    expect(t.detail().querySelector(".open-btn")?.textContent).toBe("Continue · p. 4");
+    t.click('[data-action="searchAuthor"]', t.detail());
+    expect(t.lib.store.get().query).toBe("author:vaswani");
+  });
+
+  it("adds a tag with Enter and removes one with its x, showing both at once", () => {
+    const t = showA();
+    const input = t.detail().querySelector<HTMLInputElement>(".tag-input")!;
+    input.value = "transformers";
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    expect(t.sent).toContainEqual({ type: "paper.setTags", ids: ["a"], add: ["transformers"], remove: [] });
+    expect(t.lib.store.get().papers[0]!.tags).toEqual(["nlp", "transformers"]);
+    t.click('[data-action="removeTag"][data-tag="nlp"]', t.detail());
+    expect(t.sent).toContainEqual({ type: "paper.setTags", ids: ["a"], add: [], remove: ["nlp"] });
+  });
+
+  it("shows tags read-only to a host that cannot write them", () => {
+    const t = showA({});
+    expect(t.detail().querySelector(".tag-input")).toBeNull();
+    expect(t.detail().querySelector(".tag-name")?.textContent).toBe("nlp");
+  });
+});
+
+describe("detail data from the host", () => {
+  it("asks for a paper's details when it is shown, and again when its sidecar changes", () => {
+    const t = showA();
+    expect(t.sent.filter((m) => m.type === "paper.details")).toEqual([{ type: "paper.details", id: "a" }]);
+    t.host.post({ type: "details", id: "a", details: { annotations: [], reading: null, pdf: { size: 2_500_000, relPath: "a/paper.pdf" } } });
+    expect(t.detail().textContent).toContain("2.4 MB");
+    t.host.post({ type: "sidecarChanged", id: "a" });
+    expect(t.sent.filter((m) => m.type === "paper.details")).toHaveLength(2);
+  });
+
+  it("asks nothing of a host without paper data and has no Annotations tab there", () => {
+    const t = showA({});
+    expect(t.sent.some((m) => m.type === "paper.details")).toBe(false);
+    expect(t.detail().querySelector('[data-tab="annotations"]')).toBeNull();
+  });
+});
+
+describe("detail tabs", () => {
+  it("lists annotations by page and copies them as the core Markdown", () => {
+    const t = showA(ALL_CAPABILITIES, { detailTab: "annotations" });
+    t.host.post({ type: "details", id: "a", details: { annotations: [annotation("2", 5, "later"), annotation("1", 2, "first")], reading: null, pdf: null } });
+    expect([...t.detail().querySelectorAll(".ann-page")].map((e) => e.textContent)).toEqual(["Page 2", "Page 5"]);
+    t.click('[data-action="copyAnnotations"]', t.detail());
+    const copy = t.sent.at(-1) as { text: string; label: string };
+    expect(copy.label).toBe("2 annotations");
+    expect(copy.text).toContain("Vaswani & Shazeer, 2017 · `@key-a`");
+    expect(copy.text).toContain("## Page 2\n\n> first");
+    t.click('.ann-card[data-page="5"]', t.detail());
+    expect(t.sent.at(-1)).toEqual({ type: "paper.open", id: "a", page: 5 });
+  });
+
+  it("saves the note after a pause and keeps the field while typing", () => {
+    jest.useFakeTimers();
+    try {
+      const t = showA(ALL_CAPABILITIES, { detailTab: "notes" });
+      const note = t.detail().querySelector<HTMLTextAreaElement>(".note-input")!;
+      note.focus();
+      note.value = "Key idea";
+      note.dispatchEvent(new Event("input", { bubbles: true }));
+      expect(t.detail().querySelector(".note-state")?.textContent).toBe("Editing…");
+      jest.advanceTimersByTime(700);
+      expect(t.sent).toContainEqual({ type: "paper.setNote", id: "a", note: "Key idea" });
+      expect(t.detail().querySelector(".note-input")).toBe(note);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("finds related papers by the same author and shared tags across folders, and reveals one", () => {
+    const t = showA(ALL_CAPABILITIES, { detailTab: "related" });
+    expect(t.sent).toContainEqual({ type: "paper.similar", id: "a" });
+    t.host.post({ type: "similar", id: "a", items: [] });
+    const titles = [...t.detail().querySelectorAll(".sec-title")].map((e) => e.textContent);
+    expect(titles).toEqual(["Same authors", "Shared tags & keywords"]);
+    t.click('.rel-row[data-id="b"]', t.detail());
+    expect(t.lib.store.get().folder).toBe("papers");
+    expect([...t.lib.store.get().selected]).toEqual(["b"]);
+    t.lib.store.openFolder("papers/B");
+    t.lib.store.selectOnly("b");
+    t.click('.rel-row[data-id="a"]', t.detail());
+    expect(t.lib.store.get().folder).toBe("papers");
+    expect([...t.lib.store.get().selected]).toEqual(["a"]);
+  });
+
+  it("formats the citation in the chosen style and remembers it", () => {
+    const t = showA();
+    t.click('[data-action="citeFormat"][data-format="apa"]', t.detail());
+    expect(t.saved).toContainEqual({ citeFormat: "apa" });
+    expect(t.detail().querySelector(".cite-box")?.textContent).toBe("Vaswani, A., & Shazeer, N. (2017). Attention. NeurIPS. https://doi.org/10.1/x");
+    t.click('.row-end [data-action="copyCite"]', t.detail());
+    expect(t.sent.at(-1)).toMatchObject({ type: "clipboard.write", label: "APA reference" });
+  });
+});
+
+describe("multi-selection", () => {
+  it("shows the common tags and the selected papers", () => {
+    const t = showA();
+    t.lib.store.set({ selected: new Set(["a", "b"]) });
+    expect(t.detail().querySelector(".detail-title")?.textContent).toBe("2 papers selected");
+    expect([...t.detail().querySelectorAll(".tag-name")].map((e) => e.textContent)).toEqual(["nlp"]);
+    expect(t.detail().querySelectorAll(".sel-list .rel-row")).toHaveLength(2);
+  });
+});

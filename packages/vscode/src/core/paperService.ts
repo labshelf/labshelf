@@ -3,7 +3,7 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 
 import { FolderService, editPaperTags, movePapers, paperFiles, trashPapers, updatePaperFields, withResolvedMetadata, writePaperRecord } from "@labshelf/core";
-import type { BatchOutcome, BibTeXService, IResearchDatabase, MoveOutcome, MutationContext, PaperFieldsPatch, PaperRecord, PaperRef, PdfParse, RecordMetadata } from "@labshelf/core";
+import type { BatchOutcome, IResearchDatabase, MoveOutcome, MutationContext, PaperFieldsPatch, PaperRecord, PaperRef, PdfParse, RecordMetadata } from "@labshelf/core";
 import { EVENTS, EventBus } from "../events/index.js";
 
 export class PaperService {
@@ -11,7 +11,6 @@ export class PaperService {
     private readonly ctx: MutationContext,
     private readonly database: IResearchDatabase,
     private readonly eventBus: EventBus,
-    private readonly bibTeXService: BibTeXService,
     private readonly parse: PdfParse,
   ) {}
 
@@ -60,11 +59,6 @@ export class PaperService {
     const updated: PaperRecord = { ...current, hasPdf };
     await this.putUpdated(updated);
     return { paper: updated, hasPdf };
-  }
-
-  /** @returns the BibTeX entry as written to the paper's folder, without the local `file` line */
-  bibtexFor(paper: PaperRecord): string {
-    return this.bibTeXService.generateBibTeX(paper, { includeFile: false });
   }
 
   updatePaperStatus(paperId: string, status: PaperRecord["status"]): Promise<PaperRecord | undefined> {

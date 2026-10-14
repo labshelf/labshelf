@@ -9,6 +9,7 @@
   "exclude": [
     "node_modules",
     "src/reader",
+    "src/libraryWebview",
     ".vscode-test"
   ]
 }

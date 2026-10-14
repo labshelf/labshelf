@@ -43,7 +43,8 @@ export interface LibrarySnapshot {
   scannedAt: number;
 }
 
-export type PaperSortKey = "title" | "author" | "year" | "publication" | "status" | "modified";
+/** "lastRead" orders by when the paper was last open in the reader, which the caller supplies. */
+export type PaperSortKey = "title" | "author" | "year" | "publication" | "status" | "modified" | "lastRead";
 
 export interface SortSpec {
   key: PaperSortKey;

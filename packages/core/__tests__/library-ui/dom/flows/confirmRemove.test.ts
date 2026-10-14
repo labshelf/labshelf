@@ -10,7 +10,7 @@ describe("confirm before remove", () => {
     t.lib.store.set({ selected: new Set(["a", "b"]), anchor: "a", cursor: "a" });
     t.key("Delete");
     expect(document.querySelector(".ls-dialog-title")?.textContent).toBe("Remove 2 papers from the library?");
-    expect(document.querySelector(".ls-dialog-msg")?.textContent).toContain("The PDF and its metadata");
+    expect(document.querySelector(".ls-dialog-msg")?.textContent).toBe("Their folders and files are deleted from the library on this device and on every synced device.");
     [...document.querySelectorAll<HTMLButtonElement>(".ls-dialog button")].find((b) => b.textContent === "Remove")!.click();
     await Promise.resolve();
     expect(t.sent.at(-1)).toEqual({ type: "paper.remove", ids: ["a", "b"] });

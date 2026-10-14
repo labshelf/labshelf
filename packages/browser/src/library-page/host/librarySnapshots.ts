@@ -20,11 +20,11 @@ export interface LibrarySnapshots {
 async function read(): Promise<LibraryUiSnapshot> {
   // One key scan gives both the tree and the PDF presence.
   const [scan, papers] = await Promise.all([scanLibrary(PAPERS_DIR), listAllRecords()]);
-  return { folders: scan.tree, papers, pdfDirs: [...scan.pdfDirs] };
+  return { folders: scan.tree, papers, pdfDirs: [...scan.pdfDirs], stats: {} };
 }
 
 export function createLibrarySnapshots(endpoint: HostEndpoint): LibrarySnapshots {
-  let current: LibraryUiSnapshot = { folders: [], papers: [], pdfDirs: [] };
+  let current: LibraryUiSnapshot = { folders: [], papers: [], pdfDirs: [], stats: {} };
   const refresh = async (): Promise<void> => {
     current = await read();
     endpoint.post({ type: "snapshot", snapshot: current });

@@ -29,8 +29,12 @@ describe("sortPapers", () => {
     expect(sortPapers(all, "creator", 1).map((p) => p.id)).toEqual(["b1", "a11", "a1", "root1"]);
     expect(sortPapers(all, "publication", -1)[0]!.id).toBe("a1");
   });
+  it("sorts by Last read newest first on the first click, papers never read last in both directions", () => {
+    const stats = { a1: { annotations: 0, lastRead: "2024-05-01T10:00:00Z" }, b1: { annotations: 0, lastRead: "2025-01-02T10:00:00Z" } };
+    expect(sortPapers(all, "lastRead", firstSortDir("lastRead"), stats).map((p) => p.id)).toEqual(["b1", "a1", "a11", "root1"]);
+    expect(sortPapers(all, "lastRead", 1, stats).map((p) => p.id)).toEqual(["a1", "b1", "root1", "a11"]);
+  });
 });
-
 
 describe("firstSortDir", () => {
   it("starts the year column newest first and every other column A to Z", () => {

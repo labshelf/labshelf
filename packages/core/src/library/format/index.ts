@@ -1,5 +1,9 @@
-/** Public API of the paper formatters: authors, venue, link, relative time and file size. */
-export { familyName, formatAuthors } from "./authors.js";
+/** Public API of the paper formatters: authors, citations, venue, link, dates and file size. */
+export { authorKey, familyName, formatAuthors, splitName } from "./authors.js";
+export type { PersonName } from "./authors.js";
+export { formatCitations, inTextCitation } from "./citationStyles.js";
+export type { CitationSet, CitedPaper } from "./citationStyles.js";
+export { formatDateTime } from "./dateTime.js";
 export { formatBytes } from "./fileSize.js";
 export { paperLink } from "./paperLink.js";
 export { relativeTime } from "./relativeTime.js";

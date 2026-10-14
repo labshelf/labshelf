@@ -5,11 +5,11 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { countPapersUnder } from '@labshelf/core';
 import type { FolderReader } from './folderReader.js';
-import { rootNode } from './listState.js';
-import type { LibraryNode } from './listState.js';
+import { rootNode } from './libraryNode.js';
+import type { LibraryNode } from './libraryNode.js';
 import type { EventBus } from "../../events/index.js";
 
-export type { LibraryNode } from './listState.js';
+export type { LibraryNode } from './libraryNode.js';
 
 const ROOT_ITEM_ID = 'labshelf:all-papers';
 const REFRESH_DEBOUNCE_MS = 60;

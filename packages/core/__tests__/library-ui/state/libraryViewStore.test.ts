@@ -1,3 +1,4 @@
+import type { PaperStats } from "../../../src/library-ui/protocol";
 import type { PaperRecord } from "@labshelf/core";
 import { LibraryViewStore } from "../../../src/library-ui/state/libraryViewStore";
 import { shallowEqual } from "../../../src/library-ui/state/shallowEqual";
@@ -119,7 +120,8 @@ describe("LibraryViewStore", () => {
 
 describe("LibraryViewStore snapshots", () => {
   const record = (id: string, extra: Partial<PaperRecord> = {}): PaperRecord => ({ id, title: id, path: `papers/${id}`, citeKey: id, status: "unread", ...extra });
-  const snapshot = (papers: PaperRecord[], pdfDirs: string[] = []) => ({ folders: [{ name: "A", path: "papers/A", children: [] }], papers, pdfDirs });
+  const snapshot = (papers: PaperRecord[], pdfDirs: string[] = [], stats: Record<string, PaperStats> = {}) =>
+    ({ folders: [{ name: "A", path: "papers/A", children: [] }], papers, pdfDirs, stats });
 
   it("ends loading with the first snapshot", () => {
     const store = new LibraryViewStore();
@@ -147,6 +149,36 @@ describe("LibraryViewStore snapshots", () => {
     store.select((s) => s.papers, () => calls++);
     store.applySnapshot(snapshot([record("a")]));
     expect(calls).toBe(1);
+  });
+
+  it("keeps each reading stat that did not change", () => {
+    const store = new LibraryViewStore();
+    store.applySnapshot(snapshot([record("a"), record("b")], [], { a: { annotations: 2 }, b: { annotations: 0 } }));
+    const before = store.get().stats;
+    store.applySnapshot(JSON.parse(JSON.stringify(snapshot([record("a"), record("b")], [], { a: { annotations: 2 }, b: { annotations: 1 } }))));
+    expect(store.get().stats["a"]).toBe(before["a"]);
+    expect(store.get().stats["b"]).toEqual({ annotations: 1 });
+    const same = store.get().stats;
+    store.applySnapshot(JSON.parse(JSON.stringify(snapshot([record("a"), record("b")], [], { a: { annotations: 2 }, b: { annotations: 1 } }))));
+    expect(store.get().stats).toBe(same);
+  });
+
+  it("applies tags and a note at once, keeping untouched papers", () => {
+    const store = new LibraryViewStore();
+    store.applySnapshot(snapshot([record("a", { tags: ["NLP", "old"] }), record("b")]));
+    const b = store.get().papers[1];
+    store.applyTags(["a"], ["vision", "nlp"], ["OLD"]);
+    store.applyNote("a", "read twice");
+    expect(store.get().papers[0]).toMatchObject({ tags: ["NLP", "vision"], note: "read twice" });
+    expect(store.get().papers[1]).toBe(b);
+  });
+
+  it("queues OCR at once and takes the host's jobs as they come", () => {
+    const store = new LibraryViewStore();
+    store.queueJobs(["a"]);
+    expect(store.get().jobs).toEqual({ a: { paperId: "a", phase: "queued" } });
+    store.setJobs([{ paperId: "b", phase: "reading", page: 2, total: 9 }]);
+    expect(Object.keys(store.get().jobs)).toEqual(["b"]);
   });
 
   it("applies a status at once and only to papers whose status differs", () => {

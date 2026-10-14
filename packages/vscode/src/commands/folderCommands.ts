@@ -46,15 +46,54 @@ export async function moveFolders(host: FolderCommandHost, sourceDirs: string[],
   host.refreshViews();
 }
 
+/** The folder changes, without prompts, for a caller that asks the user itself (the list panel). Each one throws when it fails. */
+export function folderActions(host: FolderCommandHost): {
+  create(parent: string, name: string): Promise<void>;
+  rename(dir: string, name: string): Promise<void>;
+  trash(dir: string): Promise<void>;
+} {
+  return {
+    create: (parent, name) => createFolderIn(host, parent, name),
+    rename: (dir, name) => renameFolderTo(host, dir, name),
+    trash: (dir) => trashFolderAt(host, dir),
+  };
+}
+
+/** Creates folder `name` in `parent`, then refreshes the views. Throws when it cannot. */
+async function createFolderIn(host: FolderCommandHost, parent: string, name: string): Promise<void> {
+  const services = await host.requireServices();
+  if (!services) { return; }
+  await createFolder(services.mutations, parent, name);
+  host.refreshViews();
+}
+
+/** Renames folder `dir` to `name`, brings its papers' records along and keeps an open list panel on it. Throws when it cannot. */
+async function renameFolderTo(host: FolderCommandHost, dir: string, name: string): Promise<void> {
+  const services = await host.requireServices();
+  if (!services) { return; }
+  const renamed = await renameFolder(services.mutations, dir, name);
+  await services.paperService.relocatePapersUnder(dir, renamed);
+  host.refreshViews();
+  await host.followFolderMove(dir, renamed);
+}
+
+/** Moves folder `dir` with everything inside it to the trash. Throws when it cannot. */
+async function trashFolderAt(host: FolderCommandHost, dir: string): Promise<void> {
+  const services = await host.requireServices();
+  if (!services) { return; }
+  // The index follows the disk: its papers leave the list only once the folder is really in the trash.
+  await trashFolder(services.mutations, dir);
+  await services.paperService.removePapersUnder(dir);
+  host.refreshViews();
+}
+
 async function newFolder(host: FolderCommandHost, node?: LibraryNode): Promise<void> {
   const services = await host.requireServices();
   const parent = node?.dirPath ?? host.papersRoot();
   if (!services || !parent) { return; }
   const name = await vscode.window.showInputBox({ prompt: "Folder name", placeHolder: "My Folder", validateInput: validateFolderNameInput });
   if (!name?.trim()) { return; }
-  await guarded(services, "Could not create the folder", { parent, name }, async () => {
-    await createFolder(services.mutations, parent, name);
-  });
+  await guarded(services, "Could not create the folder", { parent, name }, () => createFolderIn(host, parent, name));
   host.refreshViews();
 }
 
@@ -64,12 +103,7 @@ async function renameFolderNode(host: FolderCommandHost, node?: LibraryNode): Pr
   if (!services) { return; }
   const name = await vscode.window.showInputBox({ prompt: "New folder name", value: node.label, validateInput: validateFolderNameInput });
   if (!name?.trim() || name.trim() === node.label) { return; }
-  await guarded(services, `Could not rename "${node.label}"`, { dir: node.dirPath, name }, async () => {
-    const renamed = await renameFolder(services.mutations, node.dirPath, name);
-    await services.paperService.relocatePapersUnder(node.dirPath, renamed);
-    host.refreshViews();
-    await host.followFolderMove(node.dirPath, renamed);
-  });
+  await guarded(services, `Could not rename "${node.label}"`, { dir: node.dirPath, name }, () => renameFolderTo(host, node.dirPath, name));
 }
 
 async function trashFolderNode(host: FolderCommandHost, node?: LibraryNode): Promise<void> {
@@ -82,11 +116,7 @@ async function trashFolderNode(host: FolderCommandHost, node?: LibraryNode): Pro
     "Delete",
   );
   if (choice !== "Delete") { return; }
-  await guarded(services, `Could not delete "${node.label}"`, { dir: node.dirPath }, async () => {
-    // The index follows the disk: its papers leave the list only once the folder is really in the trash.
-    await trashFolder(services.mutations, node.dirPath);
-    await services.paperService.removePapersUnder(node.dirPath);
-  });
+  await guarded(services, `Could not delete "${node.label}"`, { dir: node.dirPath }, () => trashFolderAt(host, node.dirPath));
   host.refreshViews();
 }
 

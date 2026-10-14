@@ -25,6 +25,7 @@ export type ListKeyAction =
   | { kind: "setStatus"; status: PaperStatus }
   | { kind: "remove" }
   | { kind: "copyKeys" }
+  | { kind: "menu" }
   | { kind: "typeToSearch" };
 
 const STATUS_BY_CODE: Record<string, PaperStatus> = { Digit1: "unread", Digit2: "reading", Digit3: "done" };
@@ -37,6 +38,7 @@ function modifiedAction(k: KeyPress, mod: boolean): ListKeyAction | null {
   const status = STATUS_BY_CODE[k.code];
   if (k.alt && !mod && status) return { kind: "setStatus", status };
   if (k.alt && k.key === "ArrowUp") return { kind: "parent" };
+  if (k.key === "ContextMenu" || (k.shift && k.key === "F10")) return { kind: "menu" };
   return null;
 }
 

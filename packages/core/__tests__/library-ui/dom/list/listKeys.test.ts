@@ -42,7 +42,7 @@ describe("list keys", () => {
     const t = mountForTest();
     selected(t, "c", "a");
     t.key("c", { ctrlKey: true });
-    expect(t.sent).toContainEqual({ type: "clipboard.write", text: "key-a,key-c" });
+    expect(t.sent).toContainEqual({ type: "clipboard.write", text: "key-a,key-c", label: "2 × cite key" });
   });
 
   it("Cmd/Ctrl+C with nothing selected leaves the clipboard alone", () => {

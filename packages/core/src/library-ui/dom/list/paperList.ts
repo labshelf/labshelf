@@ -5,13 +5,15 @@
 import { PAPERS_DIR, folderLabel } from "../../../library/index.js";
 import { nextStatus, type PaperRecord } from "../../../model/index.js";
 import { deriveListView, type ListPaper } from "../../derive/index.js";
+import { tagQuery } from "../../searchQueries.js";
 import { endPaperDrag, startPaperDrag } from "../dnd/index.js";
 import { openPaper, requestAddPaper, setPaperStatus } from "../flows/index.js";
-import { overlayOpen, type UiContext } from "../uiContext.js";
+import { showPaperMenu } from "../menu/index.js";
+import { overlayOpen, type ListCursor, type UiContext } from "../uiContext.js";
 import { COLUMN_HEADS_HTML, paintColumnHeads, wireColumnHeads } from "./columnHeads.js";
 import { buildEmptyState, buildLoading } from "./emptyState.js";
-import { attachListKeys, type ListCursor } from "./listKeys.js";
-import { buildPaperRow, type RowHandlers } from "./paperRow.js";
+import { attachListKeys } from "./listKeys.js";
+import { buildPaperRow, type RowHandlers, type RowView } from "./paperRow.js";
 import { RowReconciler } from "./rowReconciler.js";
 
 interface List {
@@ -27,6 +29,11 @@ interface List {
   records: Map<string, PaperRecord>;
 }
 
+function rowView(list: List, p: ListPaper): RowView {
+  const s = list.ctx.store.get();
+  return { terms: list.terms, stats: s.stats[p.id], job: s.jobs[p.id], textLayer: !!list.ctx.caps.textLayer };
+}
+
 function rowHandlers(list: List): RowHandlers {
   const { ctx } = list;
   return {
@@ -38,6 +45,11 @@ function rowHandlers(list: List): RowHandlers {
     onOpen: (id) => openPaper(ctx, id),
     onCycleStatus: (p) => setPaperStatus(ctx, [p.id], nextStatus(p.status)),
     onOpenFolder: (folder) => ctx.store.openFolder(folder),
+    onSearchTag: (tag) => ctx.store.set({ status: "all", query: tagQuery(tag) }),
+    onMenu: (id, e) => {
+      if (!ctx.store.get().selected.has(id)) ctx.store.selectOnly(id);
+      showPaperMenu(ctx, { x: e.clientX, y: e.clientY });
+    },
     onDragStart: (id, e) => {
       if (!ctx.store.get().selected.has(id)) ctx.store.selectOnly(id);
       const ids = [...ctx.store.get().selected];
@@ -56,10 +68,12 @@ function placeholder(list: List, view: ReturnType<typeof deriveListView>): HTMLE
   if (view.rows.length > 0) return null;
   if (s.loading && s.papers.length === 0) return buildLoading();
   return buildEmptyState({
-    narrowed: view.terms.length > 0 || s.status !== "all",
+    narrowed: view.terms.length > 0 || s.status !== "all" || s.noText,
+    onlyNoText: s.noText && view.terms.length === 0 && s.status === "all",
     onlyNested: view.inFolder.length > 0,
     folderLabel: folderLabel(PAPERS_DIR, s.folder, "/"),
-    onClearFilters: () => { ctx.store.set({ status: "all", query: "" }); ctx.focusSearch(); },
+    hint: ctx.labels.emptyHint,
+    onClearFilters: () => { ctx.store.set({ status: "all", noText: false, query: "" }); ctx.focusSearch(); },
     onShowSubfolders: () => { ctx.prefs.save({ includeSub: true }); ctx.store.set({ includeSub: true }); },
     onAdd: () => requestAddPaper(ctx),
   });
@@ -115,17 +129,22 @@ function cursorOf(list: List): ListCursor {
 export function mountPaperList(ctx: UiContext, container: HTMLElement): () => void {
   container.innerHTML = `${COLUMN_HEADS_HTML}<div class="paper-list" tabindex="0" role="listbox" aria-multiselectable="true"></div>`;
   const el = container.querySelector<HTMLElement>(".paper-list")!;
-  // A row renders from its record, PDF presence, location and the highlighted terms; anything else keeps the node.
+  // A row renders from its record, PDF presence, location, reading stats, OCR job and the highlighted terms; anything
+  // else keeps the node.
   const list: List = {
     ctx, el, heads: container.querySelector<HTMLElement>(".col-heads")!, order: [], expanded: new Set(), lastFolder: null, terms: [], records: new Map(),
-    rows: new RowReconciler<ListPaper>(el, (p) => buildPaperRow(p, list.terms, handlers),
-      (p) => [list.records.get(p.id), p.hasPdf, p.relFolder, list.terms.join("\u0000")]),
+    rows: new RowReconciler<ListPaper>(el, (p) => buildPaperRow(p, rowView(list, p), handlers),
+      (p) => [list.records.get(p.id), p.hasPdf, p.relFolder, list.terms.join("\u0000"), ctx.store.get().stats[p.id], ctx.store.get().jobs[p.id]]),
   };
   const handlers = rowHandlers(list);
   wireColumnHeads(ctx, list.heads);
-  const offKeys = attachListKeys(ctx, cursorOf(list));
+  ctx.cursor = cursorOf(list);
+  const offKeys = attachListKeys(ctx, ctx.cursor);
   const offRows = ctx.store.select(
-    (s) => ({ folder: s.folder, papers: s.papers, query: s.query, status: s.status, sortKey: s.sortKey, sortDir: s.sortDir, includeSub: s.includeSub, loading: s.loading, pdfDirs: s.pdfDirs }),
+    (s) => ({
+      folder: s.folder, papers: s.papers, query: s.query, status: s.status, noText: s.noText, sortKey: s.sortKey, sortDir: s.sortDir,
+      includeSub: s.includeSub, loading: s.loading, pdfDirs: s.pdfDirs, stats: s.stats, jobs: s.jobs,
+    }),
     () => render(list),
   );
   const offSel = ctx.store.select((s) => ({ selected: s.selected, cursor: s.cursor }), () => paintSelection(list));

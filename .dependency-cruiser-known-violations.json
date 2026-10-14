@@ -1696,21 +1696,6 @@
   },
   {
     "type": "dependency",
-    "from": "packages/vscode/src/ui/list/listWebviewPanel.ts",
-    "to": "packages/vscode/src/commands/textLayerQueue.ts",
-    "unresolvedTo": "../../commands/textLayerQueue.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "packages/vscode/src/ui/settings/settingsWebviewPanel.ts",
     "to": "packages/vscode/src/sync/adapter/syncController.ts",
     "unresolvedTo": "../../sync/adapter/syncController.js",

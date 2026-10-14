@@ -1,0 +1,4 @@
+/* The library webview page: the shared library UI fills the editor tab. */
+html, body { height: 100%; overflow: hidden; }
+body, #root { display: flex; flex-direction: column; }
+#root { height: 100%; min-height: 0; }

@@ -22,10 +22,11 @@ describe("localStorage prefs", () => {
     prefs.saveTreeExpanded(["papers/A"]);
     prefs.save({ sortKey: "year", sortDir: -1 });
     prefs.save({ includeSub: false });
-    expect(prefs.load()).toMatchObject({ sortKey: "year", sortDir: -1, includeSub: false, detailWidth: 272 });
+    expect(prefs.load()).toMatchObject({ sortKey: "year", sortDir: -1, includeSub: false, detailWidth: DEFAULT_PREFS.detailWidth });
     expect(prefs.treeExpanded()).toEqual(["papers/A"]);
     expect(Object.keys(JSON.parse(storage.getItem(PREFS_KEY)!)).sort()).toEqual([
-      "detailCollapsed", "detailWidth", "includeSub", "secCollapsed", "sidebarCollapsed", "sidebarWidth", "sortDir", "sortKey", "treeExpanded",
+      "citeFormat", "detailCollapsed", "detailTab", "detailWidth", "includeSub", "secCollapsed", "sidebarCollapsed", "sidebarWidth", "sortDir", "sortKey",
+      "treeExpanded",
     ]);
   });
 

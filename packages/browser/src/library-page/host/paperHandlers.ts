@@ -35,10 +35,11 @@ export async function removePapers(ctx: HostContext, ids: readonly string[]): Pr
   else ctx.notice("ok", done.length === 1 ? "Paper removed" : `${done.length} papers removed`);
 }
 
-export async function writeClipboard(ctx: HostContext, text: string): Promise<void> {
+/** `label` names what was copied ("2 × cite key"); without it the notice quotes the text. */
+export async function writeClipboard(ctx: HostContext, text: string, label?: string): Promise<void> {
   try {
     await navigator.clipboard.writeText(text);
-    ctx.notice("ok", `Copied: ${text}`);
+    ctx.notice("ok", label ? `Copied ${label}` : `Copied: ${text}`);
   } catch (err) {
     ctx.notice("error", `Clipboard blocked — ${errorMessage(err)}`);
   }

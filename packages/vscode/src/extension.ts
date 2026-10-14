@@ -21,7 +21,7 @@ import { PdfViewerPanel, ThemeManager, createVsCodeExportPorts } from "./pdf-vie
 import { registerCommands, resolvePaper, ensurePaperPdf } from "./commands/registerCommands.js";
 import { registerAiCommands } from "./commands/registerAiCommands.js";
 import { importPapers } from "./commands/importProgress.js";
-import { moveFolders, registerFolderCommands, type FolderCommandHost } from "./commands/index.js";
+import { folderActions, moveFolders, registerFolderCommands, type FolderCommandHost } from "./commands/index.js";
 import type { ActiveServices } from "./commands/registerCommands.js";
 import { createAiService, AiService } from "./ai/service/index.js";
 import { SqliteResearchDatabase } from "./db/sqliteResearchDatabase.js";
@@ -260,11 +260,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         if (services) {
           ListWebviewPanel.createOrShow(
             {
-              extensionUri: context.extensionUri,
-              paperService: services.paperService,
-              eventBus,
+              extensionUri: context.extensionUri, paperService: services.paperService, eventBus, logger: services.logger,
               getPapersRoot: () => papersRootUri()?.fsPath ?? null,
-              readFolders: services.folderReader,
+              readFolders: services.folderReader, folders: folderActions(folderHost),
               onDidNavigate: syncTreeToPanel,
               textLayerJobs: { current: currentTextLayerJobs, onDidChange: onTextLayerJobsChanged },
               loadSidecar: (paperId) => services.paperDataStore.load(paperId),
@@ -300,16 +298,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         typeof page === "number" ? { page } : {},
       );
     }),
-    vscode.commands.registerCommand("labshelf.exportAnnotations", async (paperId?: string) => {
+    // The list passes "file": it copies the Markdown itself, so only saving is left to ask for.
+    vscode.commands.registerCommand("labshelf.exportAnnotations", async (paperId?: string, to?: "file") => {
       const services = await requireServices();
       if (!services) { return; }
       const paper = await resolvePaper(services.paperService, paperId, "Export annotations to Markdown");
       if (!paper) { return; }
-      const target = await vscode.window.showQuickPick(
+      const target = to ?? (await vscode.window.showQuickPick(
         [{ label: "Copy to clipboard", target: "clipboard" as const }, { label: "Save as file...", target: "file" as const }],
         { placeHolder: "Export annotations as Markdown" },
-      );
-      if (target) { await exportAnnotations(createVsCodeExportPorts(paper, services.paperDataStore), target.target); }
+      ))?.target;
+      if (target) { await exportAnnotations(createVsCodeExportPorts(paper, services.paperDataStore), target); }
     }),
     // Contributed keybindings (scoped to the focused reader panel) land here: VS Code resolves those chords
     // before the webview sees them, so the reader cannot rely on its own keydown handler alone.
@@ -437,7 +436,7 @@ async function buildServices(
     fs: fileSystem, paths: path, artifacts: bibTeXService, logger, papersRoot: paths.papersRoot().fsPath,
   };
   const parse = (bytes: Uint8Array, stem: string) => pdfImportParser.parse(bytes, stem);
-  const paperService = new PaperService(mutations, database, eventBus, bibTeXService, parse);
+  const paperService = new PaperService(mutations, database, eventBus, parse);
   const network = {
     tmpDir: paths.tmpDir().fsPath,
     download: { fetch: globalThis.fetch, headers: { "User-Agent": `LabShelf-VSCode/${context.extension.packageJSON.version}` } },

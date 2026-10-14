@@ -3,14 +3,15 @@
  */
 import type { Annotation } from "../model/index.js";
 import { byPageThenCreated } from "./sidecar/index.js";
-import { authorYearLabel, cleanQuote, type CitablePaper } from "./citationFormat.js";
+import { inTextCitation } from "../library/index.js";
+import { cleanQuote, type CitablePaper } from "./citationFormat.js";
 
 /**
  * Highlights become block quotes tagged with their colour; notes and comments become plain paragraphs.
  * @returns a Markdown document ending in a newline.
  */
 export function formatAnnotationsMarkdown(paper: CitablePaper, annotations: readonly Annotation[]): string {
-  const lines: string[] = [`# ${paper.title}`, "", `${authorYearLabel(paper)} · \`@${paper.citeKey}\``, ""];
+  const lines: string[] = [`# ${paper.title}`, "", `${inTextCitation(paper)} · \`@${paper.citeKey}\``, ""];
   if (annotations.length === 0) {
     lines.push("_No annotations._", "");
     return lines.join("\n");

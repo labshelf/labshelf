@@ -22,24 +22,52 @@ function compareRecords(key: SortSpec["key"], a: PaperRecord, b: PaperRecord): n
   }
 }
 
-function comparatorFor<T>(sort: SortSpec, record: (item: T) => PaperRecord, modifiedMs: (item: T) => number) {
+interface ItemAccess<T> {
+  record: (item: T) => PaperRecord;
+  modifiedMs: (item: T) => number;
+  lastRead: (item: T) => string | undefined;
+}
+
+// Years and reading times run newest first, and an item without one sorts after those with one, whichever way the
+// list runs.
+function missingLast(a: unknown, b: unknown): number {
+  return (a === undefined) === (b === undefined) ? 0 : a === undefined ? 1 : -1;
+}
+
+function comparatorFor<T>(sort: SortSpec, access: ItemAccess<T>) {
   const sign = sort.reverse ? -1 : 1;
   return (a: T, b: T): number => {
-    const ra = record(a);
-    const rb = record(b);
-    // A paper without a year sorts after those with one, whichever way the list runs.
-    if (sort.key === "year" && (ra.year === undefined) !== (rb.year === undefined)) { return ra.year === undefined ? 1 : -1; }
-    const primary = sort.key === "modified" ? modifiedMs(b) - modifiedMs(a) : compareRecords(sort.key, ra, rb);
+    const ra = access.record(a);
+    const rb = access.record(b);
+    if (sort.key === "year") {
+      const missing = missingLast(ra.year, rb.year);
+      if (missing) { return missing; }
+    }
+    if (sort.key === "lastRead") {
+      const [la, lb] = [access.lastRead(a), access.lastRead(b)];
+      const missing = missingLast(la, lb);
+      if (missing) { return missing; }
+      const primary = la && lb ? lb.localeCompare(la) : 0;
+      return sign * (primary || nameCollator.compare(ra.title, rb.title));
+    }
+    const primary = sort.key === "modified" ? access.modifiedMs(b) - access.modifiedMs(a) : compareRecords(sort.key, ra, rb);
     return sign * (primary || nameCollator.compare(ra.title, rb.title));
   };
 }
 
 /** @returns a comparator over scanned papers; "modified" puts the most recently changed first */
 export function paperComparator(sort: SortSpec): (a: PaperEntry, b: PaperEntry) => number {
-  return comparatorFor<PaperEntry>(sort, (entry) => entry.record, (entry) => entry.modifiedMs);
+  return comparatorFor<PaperEntry>(sort, { record: (entry) => entry.record, modifiedMs: (entry) => entry.modifiedMs, lastRead: () => undefined });
 }
 
-/** @returns a comparator over bare records, which carry no modification time: "modified" falls back to the title */
-export function recordComparator(sort: SortSpec): (a: PaperRecord, b: PaperRecord) => number {
-  return comparatorFor<PaperRecord>(sort, (record) => record, () => 0);
+/**
+ * Bare records carry no modification time, so "modified" falls back to the title; `lastRead` gives each paper's last
+ * reading time (ISO) for the "lastRead" key.
+ * @returns a comparator over bare records
+ */
+export function recordComparator(
+  sort: SortSpec,
+  lastRead: (record: PaperRecord) => string | undefined = () => undefined,
+): (a: PaperRecord, b: PaperRecord) => number {
+  return comparatorFor<PaperRecord>(sort, { record: (record) => record, modifiedMs: () => 0, lastRead });
 }

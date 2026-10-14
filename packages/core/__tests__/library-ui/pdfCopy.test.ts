@@ -1,4 +1,4 @@
-import { attachmentsHeading, findMissMessage, noPdfDialogCopy, pdfSourceLabel } from "../../src/library-ui/pdfCopy";
+import { findMissMessage, noPdfDialogCopy, pdfSourceLabel } from "../../src/library-ui/pdfCopy";
 import type { PdfMiss } from "../../src/library-ui/protocol";
 
 const miss = (over: Partial<PdfMiss> = {}): PdfMiss => ({ tried: 0, sources: [], blocked: false, ...over });
@@ -38,12 +38,6 @@ describe("noPdfDialogCopy", () => {
   });
 });
 
-describe("attachmentsHeading", () => {
-  it("names the one PDF or none", () => {
-    expect(attachmentsHeading(true)).toBe("1 Attachment");
-    expect(attachmentsHeading(false)).toBe("No PDF");
-  });
-});
 
 describe("findMissMessage", () => {
   it("counts the links tried, or says nothing was found to try, and adds the bot-check hint", () => {

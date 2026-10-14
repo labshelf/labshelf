@@ -154,7 +154,9 @@ kbd {
   display: flex; align-items: center; gap: 8px; width: 100%; height: 26px; padding: 0 10px 0 8px;
   border: 0; border-radius: var(--ls-radius); background: none; text-align: left; font-size: 12px; cursor: pointer; white-space: nowrap;
 }
+.ls-menu-lead { width: 14px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .ls-menu-item svg { width: 14px; height: 14px; opacity: .85; flex-shrink: 0; }
+.ls-menu-label { overflow: hidden; text-overflow: ellipsis; }
 .ls-menu-item .hint { margin-left: auto; padding-left: 16px; color: var(--ls-desc); font-size: 11px; }
 .ls-menu-item:hover, .ls-menu-item:focus-visible { background: var(--ls-list-active-bg); color: var(--ls-list-active-fg); outline: none; }
 .ls-menu-item:hover .hint, .ls-menu-item:focus-visible .hint { color: inherit; opacity: .8; }

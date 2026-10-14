@@ -37,5 +37,8 @@ describe("listKeyAction", () => {
     expect(listKeyAction(press("x"))).toEqual({ kind: "typeToSearch" });
     expect(listKeyAction(press("x", { alt: true }))).toBeNull();
     expect(listKeyAction(press("Tab"))).toBeNull();
+    expect(listKeyAction(press("ContextMenu"))).toEqual({ kind: "menu" });
+    expect(listKeyAction(press("F10", { shift: true }))).toEqual({ kind: "menu" });
+    expect(listKeyAction(press("F10"))).toBeNull();
   });
 });

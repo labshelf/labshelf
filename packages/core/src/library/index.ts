@@ -20,12 +20,12 @@ export {
 export type { Join, LibraryLayout, PaperFiles } from "./layout.js";
 export {
   FOLDER_NAME_MAX_LENGTH,
-  citeKeySlug, claimCiteKey, makeCiteKey, normalizeTags, titleKey, uniqueCiteKey, validateFolderName,
+  citeKeySlug, claimCiteKey, editedTags, makeCiteKey, normalizeTags, titleKey, uniqueCiteKey, validateFolderName,
 } from "./identity/index.js";
 export type { CiteKeyMetadata } from "./identity/index.js";
 export { SHARED_CONFIG_VERSION, mergeSharedConfig, parseSharedConfig, serializeSharedConfig } from "./sharedConfig.js";
 export type { SharedConfig, SharedConfigPatch } from "./sharedConfig.js";
-export { familyName, formatAuthors, formatBytes, paperLink, relativeTime, venueLine } from "./format/index.js";
+export * from "./format/index.js";
 export * from "./externalChange/index.js";
 export * from "./mutations/index.js";
 export * from "./model/index.js";

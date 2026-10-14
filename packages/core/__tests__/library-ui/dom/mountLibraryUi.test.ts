@@ -35,25 +35,40 @@ describe("mountLibraryUi", () => {
     const t = mountForTest();
     t.snapshot(library, [], folders);
     t.host.post({ type: "select", id: "r" });
-    expect(t.container.querySelector(".detail-paper-title")?.textContent).toBe("Root paper");
+    expect(t.container.querySelector(".detail-title")?.textContent).toBe("Root paper");
   });
 
   it("asks the host to attach a PDF inside the click itself", () => {
-    const t = mountForTest();
+    const t = mountForTest({}, { attachPdf: true, findPdf: true });
     t.snapshot(library, [], folders);
     t.host.post({ type: "select", id: "r" });
-    t.container.querySelector<HTMLElement>('[data-action="attach-pdf"]')!.click();
+    t.click('.detail-toolbar [data-action="attachPdf"]');
     expect(t.sent.at(-1)).toEqual({ type: "paper.attachPdf", id: "r" });
   });
 
   it("marks a paper's PDF search as running while the host says it is busy", () => {
-    const t = mountForTest();
+    const t = mountForTest({}, { attachPdf: true, findPdf: true });
     t.snapshot(library, [], folders);
     t.host.post({ type: "select", id: "r" });
     t.host.post({ type: "pdf.busy", id: "r", busy: true });
-    expect(t.container.querySelector<HTMLButtonElement>('.detail-action-row [data-action="find-pdf"]')!.disabled).toBe(true);
-    t.container.querySelector<HTMLElement>('.detail-action-row [data-action="find-pdf"]')!.click();
+    expect(t.container.querySelector<HTMLButtonElement>('.detail-toolbar [data-action="findPdf"]')!.disabled).toBe(true);
+    t.click('.detail-toolbar [data-action="findPdf"]');
     expect(t.sent.some((m) => m.type === "paper.findPdf")).toBe(false);
+  });
+
+  it("offers no Find or Attach PDF to a host without them", () => {
+    const t = mountForTest();
+    t.snapshot(library, [], folders);
+    t.host.post({ type: "select", id: "r" });
+    expect(t.container.querySelector('[data-action="findPdf"], [data-action="attachPdf"]')).toBeNull();
+    expect(t.container.querySelector<HTMLButtonElement>(".detail-toolbar .open-btn")!.disabled).toBe(true);
+  });
+
+  it("names the host's way of adding papers in the Add tooltip and the empty folder", () => {
+    const t = mountForTest();
+    t.snapshot([]);
+    expect(t.container.querySelector('[data-act="add"]')?.getAttribute("title")).toBe("Add a paper");
+    expect(t.container.querySelector(".ls-empty-hint")?.textContent).toBe("Papers come in through the Add button.");
   });
 
   it("removes its frame on dispose", () => {

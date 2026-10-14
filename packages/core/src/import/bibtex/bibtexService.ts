@@ -1,14 +1,13 @@
 /**
- * Generates BibTeX entries and YAML metadata sidecar files for imported papers.
- *
- * Operates on POSIX-style string paths through an injected IFileSystem, so the
- * same service runs against vscode.workspace.fs and the IndexedDB filesystem.
+ * Writes a paper's metadata.yaml and bib.bib through an injected IFileSystem on POSIX-style paths, so it runs
+ * against vscode.workspace.fs and the IndexedDB filesystem alike.
  */
 import YAML from "yaml";
 
 import type { IFileSystem } from "../../ports/index.js";
 import type { PaperRecord } from "../../model/index.js";
 import { PDF_FILE, joinWith, paperFiles } from "../../library/index.js";
+import { bibtexEntry } from "./bibtexEntry.js";
 
 const posixJoin = joinWith("/");
 
@@ -93,7 +92,7 @@ export class BibTeXService {
     // file that is not there. Decide from the folder, not from the record.
     const pdfExists = await this.fs.exists(paperFiles(paperFolder, posixJoin).pdf);
     await this.fs.writeText(metadataPath, YAML.stringify(metadata));
-    await this.fs.writeText(bibPath, this.generateBibTeX(paper, { includeFile: pdfExists }));
+    await this.fs.writeText(bibPath, bibtexEntry(paper, { includeFile: pdfExists }));
   }
 
   // The current sidecar as a plain object; empty when absent or unreadable,
@@ -108,48 +107,5 @@ export class BibTeXService {
     } catch {
       return {};
     }
-  }
-
-  /**
-   * Generates a BibTeX @article entry string for the given paper record.
-   * @param options.includeFile Whether to emit the `file = {…/paper.pdf}` line.
-   *   Defaults to true; writePaperArtifacts passes false when the folder holds
-   *   no paper.pdf, so the entry never points at a file that does not exist.
-   * @returns string
-   */
-  generateBibTeX(paper: PaperRecord, options: { includeFile?: boolean } = {}): string {
-    const lines: string[] = [`@article{${paper.citeKey},`];
-
-    lines.push(`  title = {${this.esc(paper.title)}},`);
-    lines.push(`  author = {${this.formatAuthors(paper.authors)}},`);
-    if (paper.year) { lines.push(`  year = {${paper.year}},`); }
-    if (paper.journal) { lines.push(`  journal = {${this.esc(paper.journal)}},`); }
-    if (paper.publisher) { lines.push(`  publisher = {${this.esc(paper.publisher)}},`); }
-    if (paper.volume) { lines.push(`  volume = {${this.esc(paper.volume)}},`); }
-    if (paper.issue) { lines.push(`  number = {${this.esc(paper.issue)}},`); }
-    if (paper.pages) { lines.push(`  pages = {${this.esc(paper.pages)}},`); }
-    if (paper.doi) { lines.push(`  doi = {${this.esc(paper.doi)}},`); }
-    if (paper.issn) { lines.push(`  issn = {${this.esc(paper.issn)}},`); }
-    if (paper.url) { lines.push(`  url = {${this.esc(paper.url)}},`); }
-    if (paper.language) { lines.push(`  language = {${this.esc(paper.language)}},`); }
-    if (paper.summary) { lines.push(`  note = {${this.esc(paper.summary)}},`); }
-    if (options.includeFile !== false) {
-      lines.push(`  file = {${this.esc(paperFiles(paper.path, posixJoin).pdf)}},`);
-    }
-    lines.push(`  keywords = {labshelf, imported}`);
-    lines.push(`}`);
-
-    return lines.join("\n");
-  }
-
-  // Strips curly braces from a string to avoid BibTeX syntax errors.
-  private esc(value: string): string {
-    return value.replace(/[{}]/g, "");
-  }
-
-  // Formats an author list as a BibTeX "A and B and C" string, defaulting to "Unknown".
-  private formatAuthors(authors: string[] | undefined): string {
-    const normalized = (authors ?? []).map((a) => a.trim()).filter(Boolean);
-    return normalized.length > 0 ? normalized.map((a) => this.esc(a)).join(" and ") : "Unknown";
   }
 }

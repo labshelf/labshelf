@@ -1,4 +1,4 @@
-import { familyName, formatAuthors } from "../../../src/library/format/index";
+import { authorKey, familyName, formatAuthors, splitName } from "../../../src/library/format/index";
 
 describe("familyName", () => {
   it("takes the surname of 'First Last' and of 'Last, First'", () => {
@@ -46,5 +46,24 @@ describe("formatAuthors", () => {
     expect(formatAuthors(["", "A One", " ", "\t"])).toBe("One");
     expect(formatAuthors(["A One", " ", "B Two"])).toBe("One & Two");
     expect(formatAuthors(["", " "])).toBe("");
+  });
+});
+
+describe("splitName and the particle rule", () => {
+  it("keeps name particles with the family name", () => {
+    expect(splitName("Ludwig van Beethoven")).toEqual({ given: "Ludwig", family: "van Beethoven" });
+    expect(familyName("Charles de la Vallée")).toBe("de la Vallée");
+    expect(formatAuthors(["Ludwig van Beethoven", "Ada Lovelace"])).toBe("van Beethoven & Lovelace");
+  });
+
+  it("reads 'Family, Given' as written", () => {
+    expect(splitName("van Beethoven, Ludwig")).toEqual({ given: "Ludwig", family: "van Beethoven" });
+  });
+});
+
+describe("authorKey", () => {
+  it("treats the full and the initialled form of one person alike", () => {
+    expect(authorKey("Ashish Vaswani")).toBe(authorKey("Vaswani, A."));
+    expect(authorKey("Ashish Vaswani")).not.toBe(authorKey("Noam Vaswani"));
   });
 });

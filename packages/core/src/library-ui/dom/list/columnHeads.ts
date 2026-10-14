@@ -7,13 +7,15 @@ import { firstSortDir } from "../../derive/index.js";
 import type { SortDir, SortKey } from "../../state/index.js";
 import type { UiContext } from "../uiContext.js";
 
-const COLUMNS: Array<{ key: SortKey; label: string; cls?: string }> = [
+const COLUMNS: Array<{ key: SortKey; label: string; cls?: string; title?: string }> = [
   { key: "title", label: "Title" }, { key: "creator", label: "Creator" }, { key: "year", label: "Year" },
-  { key: "publication", label: "Publication", cls: "col-pub" }, { key: "status", label: "Status" },
+  { key: "publication", label: "Publication", cls: "col-pub" },
+  { key: "lastRead", label: "Last read", cls: "col-read", title: "When you last had the paper open in the reader" },
+  { key: "status", label: "Status" },
 ];
 
 export const COLUMN_HEADS_HTML = `<div class="col-heads"><div></div><div></div>${COLUMNS.map((c) =>
-  `<div class="col-head sortable ${c.cls ?? ""}" data-sort="${c.key}">${c.label}<span class="sort-ind">${icon("chevron-down")}</span></div>`).join("")}</div>`;
+  `<div class="col-head sortable ${c.cls ?? ""}" data-sort="${c.key}"${c.title ? ` title="${c.title}"` : ""}>${c.label}<span class="sort-ind">${icon("chevron-down")}</span></div>`).join("")}</div>`;
 
 /** Wires the head clicks: they change the sort and save it. */
 export function wireColumnHeads(ctx: UiContext, heads: HTMLElement): void {

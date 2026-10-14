@@ -114,45 +114,6 @@
       "count": 1
     }
   },
-  "packages/vscode/src/ui/list/listWebviewPanel.ts": {
-    "max-lines": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/vscode/src/ui/list/template.detail.script.ts": {
-    "max-lines": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/vscode/src/ui/list/template.detail.tabs.script.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/vscode/src/ui/list/template.menu.script.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/vscode/src/ui/list/template.script.ts": {
-    "max-lines": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/vscode/src/ui/list/template.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
   "packages/vscode/src/ui/settings/settingsWebviewPanel.ts": {
     "max-lines-per-function": {
       "count": 1

@@ -1,7 +1,7 @@
 /**
  * Formats a quoted passage together with a citation of the paper it came from, in the style chosen by `labshelf.reader.citationStyle`.
  */
-import { formatAuthors } from "../library/index.js";
+import { inTextCitation } from "../library/index.js";
 import type { PaperRecord } from "../model/index.js";
 import type { CitationStyle } from "./protocol.js";
 
@@ -16,15 +16,6 @@ export function cleanQuote(text: string): string {
     .replace(/(\p{L})-\s*\n\s*(\p{Ll})/gu, "$1$2")
     .replace(/\s+/g, " ")
     .trim();
-}
-
-/**
- * Short author-year label such as "Silva et al., 2021".
- * @returns the label; falls back to the cite key when no author is known.
- */
-export function authorYearLabel(paper: CitablePaper): string {
-  const who = formatAuthors(paper.authors) || paper.citeKey;
-  return paper.year ? `${who}, ${paper.year}` : who;
 }
 
 /**
@@ -44,7 +35,7 @@ export function formatQuoteWithCitation(
     case "latex":
       return `\`\`${quote}'' \\cite[p.~${pageNumber}]{${paper.citeKey}}`;
     case "author-year":
-      return `"${quote}" (${authorYearLabel(paper)}, p. ${pageNumber})`;
+      return `"${quote}" (${inTextCitation(paper)}, p. ${pageNumber})`;
     case "citekey":
       return `${quote} @${paper.citeKey}`;
   }

@@ -1,11 +1,26 @@
 /**
- * Applies what the host sends: snapshots, navigation and selection go to the store, notices and progress become
- * toasts, and PDF and add-paper replies open their dialogs.
+ * Applies what the host sends: snapshots, navigation, selection, per-paper data and OCR jobs go to the store, notices
+ * and progress become toasts, and PDF and add-paper replies open their dialogs.
  */
 import { toast } from "../../ui/dom/index.js";
 import type { HostToUi } from "../protocol/index.js";
 import { onAddNoPdf, onAddSources, onFindMiss, onPdfMissing } from "./flows/index.js";
 import type { UiContext } from "./uiContext.js";
+
+function applyData(ctx: UiContext, m: HostToUi): boolean {
+  switch (m.type) {
+    case "snapshot":
+      ctx.store.applySnapshot(m.snapshot);
+      // A record may have changed under the paper on show (its PDF, its file size); ask again for what it shows.
+      ctx.data.invalidate(null);
+      return true;
+    case "details": ctx.data.received(m.id); ctx.store.setDetails(m.id, m.details); return true;
+    case "similar": ctx.store.setSimilar(m.id, m.items); return true;
+    case "sidecarChanged": ctx.data.invalidate(m.id); return true;
+    case "jobs": ctx.store.setJobs(m.jobs); return true;
+    default: return false;
+  }
+}
 
 /** Starts handling host messages; returns the function that stops it. */
 export function attachHostMessages(ctx: UiContext): () => void {
@@ -17,8 +32,8 @@ export function attachHostMessages(ctx: UiContext): () => void {
     if (text) progress.set(key, toast(text, "info"));
   };
   return ctx.transport.subscribe((m: HostToUi) => {
+    if (applyData(ctx, m)) return;
     switch (m.type) {
-      case "snapshot": ctx.store.applySnapshot(m.snapshot); return;
       case "navigate": ctx.store.openFolder(m.folder); return;
       case "select": ctx.store.selectOnly(m.id); return;
       case "notice": toast(m.text, m.kind); return;
