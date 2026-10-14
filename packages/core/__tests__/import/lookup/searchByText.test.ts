@@ -39,9 +39,9 @@ describe('searchOnlineByText', () => {
   it('rejects a short title that is missing one of its words from the page', async () => {
     // Three of the four words appear together; "critical" does not.
     const page = [
-      'From fitness landscapes to seascapes: non-equilibrium dynamics of selection and adaptation',
-      'Ville Mustonen and Michael Lassig. Evolution is a quest for innovation. Organisms adapt to changing',
-      'natural selection by evolving new phenotypes. Can we read this dynamics in their genomes?',
+      'From spectral gaps to mixing times: non-equilibrium dynamics of random walks on expanders',
+      'Peter Winkler and David Aldous. A Markov chain is a quest for convergence. A random walk explores',
+      'the state space by visiting new configurations. Can we read this dynamics in their spectra?',
     ].join(' ');
     mockCrossRef([{ title: 'Non equilibrium critical dynamics', DOI: '10.1017/cbo9781139046213.011' }]);
 
