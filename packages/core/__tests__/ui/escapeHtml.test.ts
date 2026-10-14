@@ -1,3 +1,6 @@
+/**
+ * Tests that escapeHtml escapes the five HTML-significant characters and empties nullish values.
+ */
 import { escapeHtml } from "../../src/ui/escapeHtml";
 
 describe("escapeHtml", () => {

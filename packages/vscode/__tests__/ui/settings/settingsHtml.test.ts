@@ -1,3 +1,6 @@
+/**
+ * Tests the settings page HTML: its CSP nonce and the escaping of library values.
+ */
 import { buildSettingsHtml } from '../../../src/ui/settings/settingsHtml';
 
 const state = { libraryRoot: '/home/<me>/"lib"', connected: false, syncing: false, lastSync: null };

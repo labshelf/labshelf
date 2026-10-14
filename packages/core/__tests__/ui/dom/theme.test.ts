@@ -1,3 +1,6 @@
+/**
+ * Tests the storage-free theme functions: resolving auto and cycling the preference.
+ */
 import { nextThemePref, resolveTheme } from "../../../src/ui/dom/theme";
 
 describe("nextThemePref", () => {

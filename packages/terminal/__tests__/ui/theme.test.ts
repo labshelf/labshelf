@@ -1,3 +1,6 @@
+/**
+ * Tests that the terminal theme maps the core colour roles to the same ANSI styles and honours NO_COLOR.
+ */
 import { ANNOTATION_COLORS } from "@labshelf/core";
 
 type Theme = typeof import("../../src/ui/theme.js").theme;

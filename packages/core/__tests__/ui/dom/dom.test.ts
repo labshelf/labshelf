@@ -1,3 +1,6 @@
+/**
+ * Tests the DOM helpers that mark search matches in rendered text.
+ */
 import { highlight } from "../../../src/ui/dom/dom";
 
 describe("highlight", () => {

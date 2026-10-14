@@ -1,3 +1,6 @@
+/**
+ * Tests that every icon renders with the shared wrapper and that no two names share a glyph.
+ */
 import { CODICON_GLYPHS, STROKE_GLYPHS } from "../../src/ui/icons/glyphs";
 import { icon, iconMap, type IconName } from "../../src/ui/icons";
 

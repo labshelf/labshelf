@@ -1,3 +1,6 @@
+/**
+ * Tests that toast.css takes its bottom offset from a variable each page can set.
+ */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 

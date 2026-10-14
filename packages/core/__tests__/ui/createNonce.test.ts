@@ -1,3 +1,6 @@
+/**
+ * Tests that createNonce returns 32 random hex characters.
+ */
 import { createNonce } from "../../src/ui/createNonce";
 
 describe("createNonce", () => {
