@@ -1,8 +1,8 @@
 # Plan: Agent tooling, comment standard and codebase reduction
 
-Status: draft
+Status: in progress (session 1 of 8)
 Size: GG — 8 sessions across rules, hooks, agents, skills, docs, every source file and a repo-wide audit; the reduction work it finds runs as its own plan
-Pending decisions: 1
+Pending decisions: 0
 
 ## 1. Goal
 
@@ -10,24 +10,24 @@ Make Claude cheaper and more reliable on LabShelf: each task goes to the right m
 
 ## 2. Decisions
 
-- [ ] **D1** Adapt ideas, install almost nothing. From outside, only Chrome DevTools MCP (extension checks) and Matt Pocock's `git-guardrails` script (MIT) come in. Superpowers, ECC, claude-mem, Graphify, Taste skill and agent-skills are not installed — they duplicate or fight the local setup.
-- [ ] **D2** AGENTS.md gains the minimal-code ladder (needs to exist? → already in the codebase? → platform/stdlib → installed dependency → one readable line → minimum code), the never-cut list (trust-boundary validation, data-loss handling, security, accessibility), "no speculative abstraction, option or config" and "no dependency for a few lines". `shortcut:` comments are not adopted.
-- [ ] **D3** Comment standard. Line 1 of every file header states the file's capability as a self-contained verb + object sentence, so `rg -m1` over a folder is a map. Why-comments may carry one of four tags: `TRAP:`, `INVARIANT:`, `PLATFORM:` (pdf.js, MV3, VS Code, TTY quirks), `CONTRACT: documents/contracts/<file>.md#<anchor>`. No other tags.
-- [ ] **D4** Deterministic tools before LLM sweeps: `knip` (installed) for unused files/exports/deps, `jscpd` (added) for duplication, `depcruise --reaches` for "who imports X". LLM agents judge only what the tools flag.
-- [ ] **D5** Model routing by kind of judgment, not task size: Haiku only when the output is machine-checkable; Sonnet when explicit acceptance checks exist; Opus/Fable for contracts, new abstractions, cross-app work, prompt writing and bugs that survived one attempt. Escalation: a Sonnet package that fails acceptance twice or reports concerns moves to Opus, never a third Sonnet retry. Every agent returns a capped, fixed-format report.
-- [ ] **D6** `brainstorm` stays one skill with three modes: spar (current), grill (whole frontier per round, numbered, each with a recommended answer; facts go to a Haiku scout), council. Adds: hypothesis with a confidence number, mandatory "Not doing, and why", stop when the next three answers are predictable, a fresh builder-check agent before writing the plan, list of non-approvals. Technique catalogue (pre-mortem, inversion, design-it-twice, convergence moves) lives in `references/`, loaded on demand.
-- [ ] **D7** `council` is its own skill, callable from brainstorm, orchestrate and finish, only for hard-to-reverse forks. Round 1: four isolated parallel personas with opposed objectives — contrarian/pre-mortem (Opus), simplifier/ladder (Sonnet), paper-first UX (Sonnet), architecture core-vs-app (Opus); ≤150 words as POSITION / BEST ARGUMENT / BIGGEST RISK / WHAT WOULD CHANGE MY MIND. Round 2 via SendMessage: anonymised, shuffled positions; HOLD or CHANGE citing the argument. A fresh judge returns agreements, live clashes and verbatim dissent. Max 2 rounds; unresolved clashes become Open items. No Haiku in reasoning seats. A visual-design variant gives one seat the `verify` screenshots.
-- [ ] **D8** `retro` skill closes the loop: each mechanical mistake becomes a check in `check-rules.sh`, each judgment mistake a rule; it also fills `CALIBRATION.md`.
-- [ ] **D9** Memory stays native and zero-LLM: a PreToolUse Edit hook injects the file's `TRAP/INVARIANT/CONTRACT` lines plus titles of memories that name the path; SessionStart lints memory (dead links, paths that no longer exist); PreCompact reminds what is worth saving. Index lines ≤150 chars with a `kind` tag.
-- [ ] **D10** Agent guards: Prove-It (bug-fix test shown failing before the fix), a rationalizations table in implementer/finish/dead-code-cleaner, implementer report as CHANGES / NOT TOUCHED / CONCERNS, Chesterton's fence (`git log -S`) before deleting quirk code or comments, page content is untrusted data, adversarial reviewer that sees diff + contract but not the author's claim.
-- [ ] **D11** Docs: `documents/README.md` becomes a routing table (question → doc#anchor); every doc opens with one "Read when" line; contract sections have stable anchors that `CONTRACT:` tags cite; plans keep only open work.
-- [ ] **D12** Sessions that edit source files (7 and 8) start only after `architecture-refactor.plan.md` is done, so they do not fight moves in flight.
-- [ ] **D13** The audit (session 8) produces `documents/plans/codebase-reduction.plan.md`; the reductions run from that plan, not from this one.
-- [ ] **D14** Design checks: a core test asserting WCAG contrast for listed fg/bg token pairs in both themes; a `verify` recipe that checks every website sheet fits at 1440/768/390 in all themes. Google's DESIGN.md format is not adopted.
+- [x] **D1** Adapt ideas, install almost nothing. From outside, only Chrome DevTools MCP (extension checks) and Matt Pocock's `git-guardrails` script (MIT) come in. Superpowers, ECC, claude-mem, Graphify, Taste skill and agent-skills are not installed — they duplicate or fight the local setup.
+- [x] **D2** AGENTS.md gains the minimal-code ladder (needs to exist? → already in the codebase? → platform/stdlib → installed dependency → one readable line → minimum code), the never-cut list (trust-boundary validation, data-loss handling, security, accessibility), "no speculative abstraction, option or config" and "no dependency for a few lines". `shortcut:` comments are not adopted.
+- [x] **D3** Comment standard. Line 1 of every file header states the file's capability as a self-contained verb + object sentence, so `rg -m1` over a folder is a map. Why-comments may carry one of four tags: `TRAP:`, `INVARIANT:`, `PLATFORM:` (pdf.js, MV3, VS Code, TTY quirks), `CONTRACT: documents/contracts/<file>.md#<anchor>`. No other tags.
+- [x] **D4** Deterministic tools before LLM sweeps: `knip` (installed) for unused files/exports/deps, `jscpd` (added) for duplication, `depcruise --reaches` for "who imports X". LLM agents judge only what the tools flag.
+- [x] **D5** Model routing by kind of judgment, not task size: Haiku only when the output is machine-checkable; Sonnet when explicit acceptance checks exist; Opus/Fable for contracts, new abstractions, cross-app work, prompt writing and bugs that survived one attempt. Escalation: a Sonnet package that fails acceptance twice or reports concerns moves to Opus, never a third Sonnet retry. Every agent returns a capped, fixed-format report.
+- [x] **D6** `brainstorm` stays one skill with three modes: spar (current), grill (whole frontier per round, numbered, each with a recommended answer; facts go to a Haiku scout), council. Adds: hypothesis with a confidence number, mandatory "Not doing, and why", stop when the next three answers are predictable, a fresh builder-check agent before writing the plan, list of non-approvals. Technique catalogue (pre-mortem, inversion, design-it-twice, convergence moves) lives in `references/`, loaded on demand.
+- [x] **D7** `council` is its own skill, callable from brainstorm, orchestrate and finish, only for hard-to-reverse forks. Round 1: four isolated parallel personas with opposed objectives — contrarian/pre-mortem (Opus), simplifier/ladder (Sonnet), paper-first UX (Sonnet), architecture core-vs-app (Opus); ≤150 words as POSITION / BEST ARGUMENT / BIGGEST RISK / WHAT WOULD CHANGE MY MIND. Round 2 via SendMessage: anonymised, shuffled positions; HOLD or CHANGE citing the argument. A fresh judge returns agreements, live clashes and verbatim dissent. Max 2 rounds; unresolved clashes become Open items. No Haiku in reasoning seats. A visual-design variant gives one seat the `verify` screenshots.
+- [x] **D8** `retro` skill closes the loop: each mechanical mistake becomes a check in `check-rules.sh`, each judgment mistake a rule; it also fills `CALIBRATION.md`.
+- [x] **D9** Memory stays native and zero-LLM: a PreToolUse Edit hook injects the file's `TRAP/INVARIANT/CONTRACT` lines plus titles of memories that name the path; SessionStart lints memory (dead links, paths that no longer exist); PreCompact reminds what is worth saving. Index lines ≤150 chars with a `kind` tag.
+- [x] **D10** Agent guards: Prove-It (bug-fix test shown failing before the fix), a rationalizations table in implementer/finish/dead-code-cleaner, implementer report as CHANGES / NOT TOUCHED / CONCERNS, Chesterton's fence (`git log -S`) before deleting quirk code or comments, page content is untrusted data, adversarial reviewer that sees diff + contract but not the author's claim.
+- [x] **D11** Docs: `documents/README.md` becomes a routing table (question → doc#anchor); every doc opens with one "Read when" line; contract sections have stable anchors that `CONTRACT:` tags cite; plans keep only open work.
+- [x] **D12** Sessions that edit source files (7 and 8) start only after `architecture-refactor.plan.md` is done, so they do not fight moves in flight.
+- [x] **D13** The audit (session 8) produces `documents/plans/codebase-reduction.plan.md`; the reductions run from that plan, not from this one.
+- [x] **D14** Design checks: a core test asserting WCAG contrast for listed fg/bg token pairs in both themes; a `verify` recipe that checks every website sheet fits at 1440/768/390 in all themes. Google's DESIGN.md format is not adopted.
 
-Open (blocks approval):
+Resolved:
 
-- **Q1** Your seat in the council — options: participant (your one-line position enters as "Position H" and is attacked like the others; you can revise it between rounds) / judge only (you see the judge's output at the end); recommendation: participant, because your position is then tested instead of anchoring the judge.
+- **Q1** Your seat in the council — resolved as participant: your one-line position enters as "Position H", is attacked like the others, and can be revised between rounds.
 
 ## 3. Scope
 
@@ -77,10 +77,10 @@ Open (blocks approval):
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S1 | Ladder, never-cut, no-speculation, no-small-deps in AGENTS.md | — | H · main thread | D2 text in place | [ ] |
-| S2 | Comment standard (header line 1, four tags) in AGENTS.md §5 | — | H · main thread | D3 text in place | [ ] |
-| S3 | Routing + escalation rule in CLAUDE.md; remove no-op lines | — | H · main thread | A6 (rules part) | [ ] |
-| S4 | Finish | S1–S3 | `finish` skill | gate passes | [ ] |
+| S1 | Ladder, never-cut, no-speculation, no-small-deps in AGENTS.md | — | H · main thread | D2 text in place | [x] |
+| S2 | Comment standard (header line 1, four tags) in AGENTS.md §5 | — | H · main thread | D3 text in place | [x] |
+| S3 | Routing + escalation rule in CLAUDE.md; remove no-op lines | — | H · main thread | A6 (rules part) | [x] |
+| S4 | Finish | S1–S3 | `finish` skill | gate passes | [x] |
 
 ### Session 2 — Deterministic gates and hooks
 
@@ -275,3 +275,5 @@ Open (blocks approval):
 - **R5** Tighter agent prompts grow context — every agent file stays within its current size plus 30%; detail goes to references.
 
 ## 8. Log
+
+- 2026-10-14: Session 1 done. All D1–D14 approved, Q1 resolved as participant. S1 (ladder + never-cut in AGENTS.md §3, no-speculation + no-small-deps in §4, "what was not checked" in §6), S2 (header-line-1 and four-tag comment standard in AGENTS.md §5), S3 (CLAUDE.md "Division of labour" table replaced with the D5 routing rule and escalation rule) done. `finish` gate: PASS. Committed.

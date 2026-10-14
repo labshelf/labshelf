@@ -39,6 +39,8 @@ More rules:
 
 ## 3. Size and shape
 
+- **Climb the minimal-code ladder before writing anything:** needs to exist? → already in the codebase? → platform or stdlib does it? → an installed dependency does it? → one readable line is enough? → only then, the minimum code for it.
+- **Never cut corners on trust-boundary validation, data-loss handling, security or accessibility.** The ladder does not excuse skipping these.
 - **One responsibility per file.** You must be able to state it in one sentence without "and", and the file name must say it.
 - **Source files stay at or under 200 lines, with a hard limit of 300.** Test files have a hard limit of 500. Past the limit, split by responsibility, not by line count.
 - **Functions stay at or under 50 lines.** A longer function is doing more than one thing.
@@ -50,6 +52,8 @@ More rules:
 
 ## 4. Delete, do not keep
 
+- **No speculative abstraction, option or config.** Build for the request in front of you, not a hypothetical future one.
+- **No dependency for a few lines.** Add one only when hand-writing it would be longer or riskier than the dependency itself.
 - **Delete unused code in the same change that makes it unused:** files, exports, functions, parameters, types, CSS rules, settings, commands, dependencies, feature flags, tests of deleted code and docs of deleted behaviour.
 - **What is forbidden:**
   - commented-out code;
@@ -66,6 +70,8 @@ More rules:
 
 - **Describe what is, in the present tense.** Never describe what used to be. Do not write "now", "new", "no longer", "previously", "used to", "was replaced", "instead of the old", "legacy", "refactored to" or "changed from". Write "Sync keeps both copies on conflict", never "Sync now keeps both copies instead of overwriting".
 - **Comments explain why, not what.** Write them only for intent, a non-obvious constraint or a trap. A comment that repeats the code or the signature must not exist.
+- **A file header's first line is a capability sentence:** a self-contained verb + object, no file name — e.g. `// Searches papers by fuzzy title match.`, not `// searchByText.ts`.
+- **A why-comment may carry one tag, and tags appear nowhere else:** `TRAP:` for a non-obvious gotcha (`// TRAP: CrossRef returns 200 with an empty list on a miss.`); `INVARIANT:` for a condition the code relies on (`// INVARIANT: ids are sorted ascending.`); `PLATFORM:` for a pdf.js, MV3, VS Code or TTY quirk (`// PLATFORM: MV3 service workers cannot hold an IndexedDB connection open.`); `CONTRACT: documents/contracts/<file>.md#<anchor>` for a cross-app contract (`// CONTRACT: documents/contracts/sync.md#conflict-resolution`).
 - **Docs hold only what the code cannot say:** contracts between apps, architecture rules, product principles, setup, and how to verify. Never document file lists, function lists or constants.
 - **Each fact lives in one place.** Link to it instead of repeating it.
 - **Update docs in the same change as the code.** Delete docs of removed behaviour; do not mark them as outdated.
@@ -77,6 +83,7 @@ More rules:
 - Every behaviour change ships with a test that fails without it.
 - Log important actions and every failure through the injected `ILogger`, with enough context to diagnose without a debugger. Log fallbacks explicitly, and do not log in hot paths.
 - Errors carry context. Never swallow an error silently; log it or surface it.
+- Replies end with what was not checked, not just what passed.
 
 ## 7. Commands
 

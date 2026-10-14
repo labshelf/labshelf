@@ -4,28 +4,17 @@
 
 Talk to the user in the language they write in. Everything committed to the repo is in English.
 
-### Division of labour between models
+### Model routing
 
-The model the user picked for the session (often Opus or Fable) is the expensive one. Spend it on understanding the request, design decisions and hard code. Hand everything else to cheaper agents:
+Route by the kind of judgment the work needs, not by task size:
 
-| Work | Who | Model |
-|---|---|---|
-| reading the codebase to understand the current state | `Explore` scouts, several in parallel, returning briefs | Sonnet (Haiku for narrow lookups) |
-| planning a large request into work packages | `orchestrate` skill, run by you | yours |
-| design, algorithms, new UI, judgment-heavy refactors | you, or `implementer` with `model: "opus"` or `"fable"` for parallel packages | Opus / Fable |
-| well-specified implementation, moves and splits, tests | `implementer`, `module-splitter`, `test-writer`, `code-mapper` | Sonnet |
-| typecheck, tests, limits | `check` skill (forked; returns only errors) | Haiku |
-| dead code, comments, docs, architecture review | `finish` skill (forked; fixes mechanical issues, returns what needs judgment) | Sonnet |
-| commits, changelog, import fixes | `commit-splitter`, `changelog-writer`, `import-validator` | Haiku |
+- **Haiku** — only when the output is machine-checkable: `check` (typecheck/test gates), `commit-splitter`, `changelog-writer`, `import-validator`.
+- **Sonnet** — explicit acceptance checks exist: `Explore` scouts, `implementer`, `module-splitter`, `test-writer`, `code-mapper`, and the `finish` skill (dead code, comments, docs, architecture review).
+- **Opus/Fable** — contracts, new abstractions, cross-app work, prompt writing, and a bug that survived one Sonnet attempt. This is also the session model's own default work.
 
-Rules:
+Escalation: a Sonnet package that fails its acceptance checks twice, or that reports concerns instead of a result, moves to Opus — never a third Sonnet retry. Every agent returns a capped, fixed-format report.
 
-- For any request to build or change something that spans several files or packages, start with the `orchestrate` skill. When the user is exploring an idea or asking your opinion, use `brainstorm`: no files and no plan until they approve.
-- Do not sweep the codebase yourself. Launch `Explore` scouts and read their briefs; open a file only when a decision depends on its exact code.
-- Do not read test logs or run check loops yourself. Use `check`.
-- Do not update `documents/`, do not apply the comment standard, and do not hunt dead code in the main thread. Run `finish` once at the end. It replaces the "Before finishing a change" steps in AGENTS.md §7.
-- Agents do not see this conversation. Every delegated prompt must be self-contained: goal, the relevant brief, the files, what not to touch, acceptance checks.
-- If the user assigns a model to part of the work, follow it.
+For any request spanning several files or packages, start with the `orchestrate` skill; for an idea or opinion, use `brainstorm` instead — no files and no plan until approved. Do not sweep the codebase, read test logs, run check loops, update `documents/`, apply the comment standard, or hunt dead code yourself — `Explore`, `check` and `finish` do that. Agents do not see this conversation: every delegated prompt is self-contained (goal, brief, files, what not to touch, acceptance checks). If the user assigns a model to part of the work, follow it.
 
 ### Hooks
 
