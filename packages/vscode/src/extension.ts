@@ -47,6 +47,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   let activeServices: ActiveServices | null = null;
   let syncController: SyncController | null = null;
+  // The settings page hears sync status through this, including from a controller created after the page opened.
+  const driveStatusChanged = new vscode.EventEmitter<void>();
+  context.subscriptions.push(driveStatusChanged);
   let aiService: AiService | null = null;
   let libraryRoot: vscode.Uri | undefined = await resolveLibraryRoot(context);
 
@@ -122,6 +125,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       logger: services.logger,
       listTitles: async () => (await activeServices!.paperService.listPapers()).map((p) => [p.id, p.title] as const),
     });
+    controller.onDidChangeStatus(() => driveStatusChanged.fire());
     controller.onDidSync((result) => { void onLibrarySynced(result); });
     await controller.initialize();
     context.subscriptions.push(controller);
@@ -240,7 +244,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand("labshelf.openSettings", () => {
       SettingsWebviewPanel.createOrShow(context.extensionUri, {
         getLibraryRoot: () => libraryRoot ?? null,
-        getSyncController: () => syncController,
+        getDriveStatus: () => syncController?.driveStatus() ?? null,
+        onDidChangeDriveStatus: driveStatusChanged.event,
+        getLogger: () => activeServices?.logger,
         reconfigureLibrary: async () => {
           const root = await runLibrarySetupWizard(context, createFileSystem);
           if (!root) { return undefined; }

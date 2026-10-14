@@ -266,7 +266,7 @@
       },
       {
         "view": "labshelf.settings",
-        "contents": "Drive, sync, LaTeX bridge.\n[Open settings](command:labshelf.openSettings)"
+        "contents": "Library, Drive sync, preferences.\n[Open settings](command:labshelf.openSettings)"
       }
     ],
     "menus": {

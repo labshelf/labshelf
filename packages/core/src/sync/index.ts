@@ -5,3 +5,4 @@ export * from "./drive/index.js";
 export * from "./util/index.js";
 export * from "./auth/index.js";
 export * from "./coordinator/index.js";
+export * from "./status/index.js";

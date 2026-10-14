@@ -1,7 +1,8 @@
 /**
- * Bundles the webview runtimes: the PDF reader into dist/reader/reader.{js,css} and the library list into
- * dist/library/library.{js,css}. Both UIs live in @labshelf/core/dom (also bundled by the browser extension);
- * src/reader/main.ts and src/libraryWebview/main.ts are their VS Code entries.
+ * Bundles the webview runtimes: the PDF reader into dist/reader/reader.{js,css}, the library list into
+ * dist/library/library.{js,css} and the settings page into dist/settings/settings.{js,css}. The UIs live in
+ * @labshelf/core/dom (also bundled by the browser extension); src/reader/main.ts, src/libraryWebview/main.ts and
+ * src/ui/settings/webview/main.ts are their VS Code entries.
  */
 import { build, context } from "esbuild";
 import { mkdir, rm } from "node:fs/promises";
@@ -11,7 +12,11 @@ import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 const pkgRoot = resolve(here, "..");
 const distDir = resolve(pkgRoot, "dist");
-const BUNDLES = { "reader/reader": "src/reader/main.ts", "library/library": "src/libraryWebview/main.ts" };
+const BUNDLES = {
+  "reader/reader": "src/reader/main.ts",
+  "library/library": "src/libraryWebview/main.ts",
+  "settings/settings": "src/ui/settings/webview/main.ts",
+};
 
 const watch = process.argv.includes("--watch");
 const production = process.argv.includes("--production");

@@ -120,6 +120,21 @@ describe('SyncController and the cross-app sync lock', () => {
     controller.dispose();
   });
 
+  it('reports the last error and clears it after the next successful sync', async () => {
+    const controller = await makeController(root);
+    expect(controller.driveStatus()).toEqual({ connected: true, syncing: false, lastSyncTime: null, lastError: null });
+
+    jest.spyOn(provider, 'resolveRoot').mockRejectedValueOnce(new Error('Drive is down'));
+    await controller.sync();
+    expect(controller.driveStatus()).toMatchObject({ connected: true, lastError: 'Drive is down' });
+
+    await controller.sync();
+    const status = controller.driveStatus();
+    expect(status.lastError).toBeNull();
+    expect(Number.isNaN(Date.parse(status.lastSyncTime ?? ''))).toBe(false);
+    controller.dispose();
+  });
+
   it('syncs, records the run for the other apps and releases the lock', async () => {
     const controller = await makeController(root);
     await controller.sync();

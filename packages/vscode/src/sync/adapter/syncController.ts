@@ -3,7 +3,7 @@ import * as os from "node:os";
 import * as vscode from "vscode";
 
 import { createGoogleDriveProvider, ReauthRequiredError, SyncCoordinator, syncRoots, type LibraryLayout } from "@labshelf/core";
-import type { ILogger, LocalFileSystem, RemoteProvider, SyncOutcome, SyncResult, SyncTarget, SyncTimers } from "@labshelf/core";
+import type { DriveStatus, ILogger, LocalFileSystem, RemoteProvider, SyncOutcome, SyncResult, SyncTarget, SyncTimers } from "@labshelf/core";
 import { isProcessAlive, NodeLockStore, type PkceLoopbackAuth } from "@labshelf/core/node";
 import { reportSyncOutcome } from "./syncReport.js";
 import type { EventBus } from "../../events/index.js";
@@ -123,10 +123,15 @@ export class SyncController implements vscode.Disposable {
     return this.coordinator.status().state === "syncing";
   }
 
-  /** @returns the local time of the last successful sync of this library by any app, or null */
-  getLastSyncTime(): string | null {
-    const finishedAt = this.coordinator.status().lastRun?.finishedAt;
-    return finishedAt ? new Date(finishedAt).toLocaleTimeString() : null;
+  /** @returns what the settings page shows: the sign-in, a running sync, the last successful sync by any app and the last error */
+  driveStatus(): DriveStatus {
+    const status = this.coordinator.status();
+    return {
+      connected: this.isConnected(),
+      syncing: this.isSyncing(),
+      lastSyncTime: status.lastRun?.finishedAt ?? null,
+      lastError: status.lastError ?? null,
+    };
   }
 
   // Periodic syncs run only while signed in, at the interval the setting holds now.

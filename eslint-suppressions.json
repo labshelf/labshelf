@@ -113,10 +113,5 @@
     "max-lines-per-function": {
       "count": 1
     }
-  },
-  "packages/vscode/src/ui/settings/settingsWebviewPanel.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    }
   }
 }

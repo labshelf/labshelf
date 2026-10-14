@@ -1,126 +1,89 @@
 /**
- * Manages the LabShelf settings editor tab: it shows the current library root and Google
- * Drive connection state, and delegates every action back to the commands and callbacks
- * owned by the composition root.
+ * The LabShelf settings editor tab. The shell is set once; the host sends the page its state when it says ready and
+ * on every change, and the page posts the actions back.
  */
 import * as vscode from "vscode";
-import type { SyncController } from "../../sync/adapter/syncController.js";
+import type { DriveStatus, ILogger } from "@labshelf/core";
 import { labshelfTabIcon } from "../tabIcon.js";
-import { buildSettingsHtml } from "./settingsHtml.js";
+import type { SettingsHostMessage, SettingsState } from "./protocol.js";
+import { handleSettingsMessage } from "./settingsMessages.js";
+import { settingsBundleDirectory, settingsShellHtml } from "./settingsShell.js";
+
+const LOG_MODULE = "settings";
+const NOT_SET_UP: DriveStatus = { connected: false, syncing: false, lastSyncTime: null, lastError: null };
 
 export interface SettingsPanelOptions {
   /** Current library root, or null while no library is configured. */
   getLibraryRoot: () => vscode.Uri | null;
-  /** Active sync controller, or null while Drive sync has not been set up. */
-  getSyncController: () => SyncController | null;
+  /** Null while Drive sync has not been set up. */
+  getDriveStatus: () => DriveStatus | null;
+  /** Fires when the Drive status may have changed, including when sync is set up after the panel opened. */
+  onDidChangeDriveStatus: vscode.Event<void>;
   /** Runs the library setup wizard and resolves to the new root, or undefined if cancelled. */
   reconfigureLibrary: () => Promise<vscode.Uri | undefined>;
+  /** The library's logger, or undefined while no library is configured. */
+  getLogger: () => ILogger | undefined;
 }
 
 export class SettingsWebviewPanel {
   public static currentPanel: SettingsWebviewPanel | undefined;
 
-  private readonly _panel: vscode.WebviewPanel;
-  private readonly _options: SettingsPanelOptions;
-  private _disposables: vscode.Disposable[] = [];
+  private readonly disposables: vscode.Disposable[] = [];
 
-  /**
-   * Reveals the existing settings panel if one is open, or creates a new one.
-   * @usedBy extension.ts (labshelf.openSettings)
-   * @returns void
-   */
-  public static createOrShow(
-    extensionUri: vscode.Uri,
-    options: SettingsPanelOptions,
-  ): void {
-    if (SettingsWebviewPanel.currentPanel) {
-      SettingsWebviewPanel.currentPanel._panel.reveal(vscode.ViewColumn.One);
-      SettingsWebviewPanel.currentPanel._render();
+  static createOrShow(extensionUri: vscode.Uri, options: SettingsPanelOptions): void {
+    const current = SettingsWebviewPanel.currentPanel;
+    if (current) {
+      current.panel.reveal(vscode.ViewColumn.One);
+      current.postState();
       return;
     }
-
-    const panel = vscode.window.createWebviewPanel(
-      "labshelfSettings",
-      "LabShelf Settings",
-      vscode.ViewColumn.One,
-      {
-        enableScripts: true,
-        retainContextWhenHidden: true,
-        localResourceRoots: [extensionUri],
-      },
-    );
+    const panel = vscode.window.createWebviewPanel("labshelfSettings", "LabShelf Settings", vscode.ViewColumn.One, {
+      enableScripts: true,
+      retainContextWhenHidden: true,
+      localResourceRoots: [settingsBundleDirectory(extensionUri)],
+    });
     panel.iconPath = labshelfTabIcon(extensionUri);
-
+    panel.webview.html = settingsShellHtml(panel.webview, extensionUri);
     SettingsWebviewPanel.currentPanel = new SettingsWebviewPanel(panel, options);
   }
 
-  private constructor(panel: vscode.WebviewPanel, options: SettingsPanelOptions) {
-    this._panel = panel;
-    this._options = options;
-
-    this._panel.webview.onDidReceiveMessage(
-      (msg: Record<string, unknown>) => this._handleMessage(msg),
-      null,
-      this._disposables,
-    );
-    this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
-
-    const controller = options.getSyncController();
-    if (controller) {
-      this._disposables.push(controller.onDidChangeStatus(() => this._render()));
-    }
-
-    this._render();
+  private constructor(private readonly panel: vscode.WebviewPanel, private readonly options: SettingsPanelOptions) {
+    panel.webview.onDidReceiveMessage((raw: unknown) => this.receive(raw), null, this.disposables);
+    panel.onDidDispose(() => this.dispose(), null, this.disposables);
+    this.disposables.push(options.onDidChangeDriveStatus(() => this.postState()));
   }
 
-  private async _handleMessage(msg: Record<string, unknown>): Promise<void> {
-    switch (msg["command"]) {
-      case "library.reconfigure":
-        await this._options.reconfigureLibrary();
-        break;
-      case "sync.connect":
-        await vscode.commands.executeCommand("labshelf.sync.connect");
-        break;
-      case "sync.now":
-        await vscode.commands.executeCommand("labshelf.sync.now");
-        break;
-      case "sync.disconnect":
-        await vscode.commands.executeCommand("labshelf.sync.disconnect");
-        break;
-      case "settings.openNative":
-        await vscode.commands.executeCommand(
-          "workbench.action.openSettings",
-          "labshelf",
-        );
-        break;
-      default:
-        return;
-    }
-    this._render();
-  }
-
-  private _render(): void {
-    const root = this._options.getLibraryRoot();
-    const controller = this._options.getSyncController();
-    this._panel.webview.html = buildSettingsHtml({
-      libraryRoot: root ? root.fsPath : null,
-      connected: controller?.isConnected() ?? false,
-      syncing: controller?.isSyncing() ?? false,
-      lastSync: controller?.getLastSyncTime() ?? null,
+  private receive(raw: unknown): void {
+    handleSettingsMessage(raw, {
+      postState: () => this.postState(),
+      reconfigureLibrary: () => this.options.reconfigureLibrary(),
+      executeCommand: (command, ...args) => vscode.commands.executeCommand(command, ...args),
+      warn: (message, context) => this.log("WARN", message, context),
+    }).catch((error: unknown) => {
+      const logger = this.options.getLogger();
+      if (logger) { void logger.error(LOG_MODULE, error, { op: "settings action" }); } else { console.error("LabShelf settings action failed", error); }
     });
   }
 
-  /**
-   * Disposes the panel and every subscription held by it.
-   * @usedBy vscode WebviewPanel onDidDispose
-   * @returns void
-   */
-  public dispose(): void {
+  // Without a library there is no logger yet; the extension host console is the fallback.
+  private log(level: "WARN", message: string, context: Record<string, unknown>): void {
+    const logger = this.options.getLogger();
+    if (logger) { void logger.log(level, LOG_MODULE, message, context); } else { console.warn(`LabShelf: ${message}`, context); }
+  }
+
+  private postState(): void {
+    const root = this.options.getLibraryRoot();
+    const state: SettingsState = { libraryRoot: root ? root.fsPath : null, sync: this.options.getDriveStatus() ?? NOT_SET_UP };
+    const message: SettingsHostMessage = { type: "state", state };
+    void this.panel.webview.postMessage(message);
+  }
+
+  dispose(): void {
+    const owned = this.disposables.splice(0);
+    // panel.dispose() raises onDidDispose, which calls back here.
+    if (owned.length === 0) { return; }
     SettingsWebviewPanel.currentPanel = undefined;
-    this._panel.dispose();
-    for (const d of this._disposables) {
-      d.dispose();
-    }
-    this._disposables = [];
+    this.panel.dispose();
+    for (const d of owned) { d.dispose(); }
   }
 }

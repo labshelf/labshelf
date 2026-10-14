@@ -1,189 +1,69 @@
 /**
- * Settings page logic. Loads persisted settings into the form and autosaves
- * every change (debounced, with a "Saved" flag) — the VS Code settings
- * editor has no Save button either. Mirrors the Drive connection state with
- * connect / sync / disconnect actions, edits the PDF reader preferences (the
- * browser twin of VS Code's labshelf.reader.* settings), exposes the theme
- * preference shared by every surface, and renders the recent log buffer.
+ * The options page: builds the settings page from the core components, loads the stored settings into the forms and
+ * autosaves every change (debounced, with a "Saved" flag), as the VS Code settings editor does. The reader
+ * preferences are the browser twin of VS Code's labshelf.reader.* settings.
  */
-import { bx } from "../platform/browserApi";
-import { BrowserLogger } from "../platform/logger";
-import { getSettings, updateSettings } from "../platform/settings";
-import type { LabShelfSettings } from "../platform/settings";
-import type { RuntimeMessage, RuntimeResponse, SyncStatusData } from "../platform/runtimeMessages";
-import { $, el } from "@labshelf/core/dom";
-import { applyTheme, getThemePref, onThemeChange, setThemePref } from "../ui/theme";
-import { DEFAULT_CONTACT_EMAIL, escapeHtml, type CitationStyle, type ReaderPrefs, type ZoomPreset, icon, type IconName } from "@labshelf/core";
+import { $, settingsPage } from "@labshelf/core/dom";
+import { BrowserLogger, getSettings, updateSettings } from "../platform";
 import { loadReaderPrefs, saveReaderPrefs } from "../reader/readerPrefsStore";
-import type { ThemePref } from "@labshelf/core/dom";
+import { applyTheme } from "../ui";
+import { createAppearanceSection } from "./appearanceSection";
+import { createDriveConnection } from "./driveConnection";
+import { createGeneralForm } from "./generalForm";
+import { createLogSection } from "./logSection";
+import { createReaderForm } from "./readerForm";
+import { createSavedFlag } from "./savedFlag";
 
 const logger = new BrowserLogger("options");
 const SAVE_DEBOUNCE_MS = 400;
-const DEFAULT_MIRROR = "https://sci-hub.se";
 
-async function send<T = unknown>(message: RuntimeMessage): Promise<T> {
-  const reply = (await bx.runtime.sendMessage(message)) as RuntimeResponse;
-  if (!reply.ok) throw new Error(reply.error);
-  return reply.data as T;
-}
-
-let savedTimer: ReturnType<typeof setTimeout> | null = null;
-function flashSaved(): void {
-  const flag = $("savedFlag");
-  flag.innerHTML = `${icon("check")}<span>Saved</span>`;
-  flag.classList.add("show");
-  if (savedTimer) clearTimeout(savedTimer);
-  savedTimer = setTimeout(() => flag.classList.remove("show"), 2000);
-}
-
-// ── form ────────────────────────────────────────────────────────────────────
-function readForm(): Partial<LabShelfSettings> {
-  const mirror = $<HTMLInputElement>("scihub-mirror").value.trim() || DEFAULT_MIRROR;
-  return {
-    autoSyncMinutes: Math.min(240, Math.max(0, Number($<HTMLInputElement>("sync-interval").value) || 0)),
-    contactEmail: $<HTMLInputElement>("contact-email").value.trim() || DEFAULT_CONTACT_EMAIL,
-    enableSciHub: $<HTMLInputElement>("enable-scihub").checked,
-    sciHubMirror: mirror.replace(/\/+$/, ""),
+/** Runs `save` once the user has paused editing any of `controls`. */
+function autosave(controls: HTMLElement[], save: () => Promise<void>): void {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const schedule = (): void => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => void save(), SAVE_DEBOUNCE_MS);
   };
-}
-
-async function loadIntoForm(): Promise<void> {
-  const s = await getSettings();
-  $<HTMLInputElement>("sync-interval").value = String(s.autoSyncMinutes);
-  $<HTMLInputElement>("contact-email").value = s.contactEmail;
-  $<HTMLInputElement>("enable-scihub").checked = s.enableSciHub;
-  $<HTMLInputElement>("scihub-mirror").value = s.sciHubMirror;
-  $("mirrorSetting").classList.toggle("disabled", !s.enableSciHub);
-}
-
-let saveTimer: ReturnType<typeof setTimeout> | null = null;
-function scheduleSave(): void {
-  $("mirrorSetting").classList.toggle("disabled", !$<HTMLInputElement>("enable-scihub").checked);
-  if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    void (async () => {
-      const patch = readForm();
-      await updateSettings(patch);
-      await logger.info("settings saved", patch as Record<string, unknown>);
-      flashSaved();
-    })();
-  }, SAVE_DEBOUNCE_MS);
-}
-
-// ── PDF reader ──────────────────────────────────────────────────────────────
-const READER_FIELDS = ["reader-default-zoom", "reader-restore-position", "reader-toolbar-autohide", "reader-hover-previews", "reader-hover-delay", "reader-citation-style", "reader-vim-keys"];
-
-function readReaderForm(): Partial<ReaderPrefs> {
-  return {
-    defaultZoom: $<HTMLSelectElement>("reader-default-zoom").value as ZoomPreset,
-    restorePosition: $<HTMLInputElement>("reader-restore-position").checked,
-    toolbarAutoHide: $<HTMLInputElement>("reader-toolbar-autohide").checked,
-    hoverPreviews: $<HTMLInputElement>("reader-hover-previews").checked,
-    hoverDelayMs: Number($<HTMLInputElement>("reader-hover-delay").value),
-    citationStyle: $<HTMLSelectElement>("reader-citation-style").value as CitationStyle,
-    vimKeys: $<HTMLInputElement>("reader-vim-keys").checked,
-  };
-}
-
-function fillReaderForm(p: ReaderPrefs): void {
-  $<HTMLSelectElement>("reader-default-zoom").value = p.defaultZoom;
-  $<HTMLInputElement>("reader-restore-position").checked = p.restorePosition;
-  $<HTMLInputElement>("reader-toolbar-autohide").checked = p.toolbarAutoHide;
-  $<HTMLInputElement>("reader-hover-previews").checked = p.hoverPreviews;
-  $<HTMLInputElement>("reader-hover-delay").value = String(p.hoverDelayMs);
-  $<HTMLSelectElement>("reader-citation-style").value = p.citationStyle;
-  $<HTMLInputElement>("reader-vim-keys").checked = p.vimKeys;
-  $("hoverDelaySetting").classList.toggle("disabled", !p.hoverPreviews);
-}
-
-let readerSaveTimer: ReturnType<typeof setTimeout> | null = null;
-function scheduleReaderSave(): void {
-  $("hoverDelaySetting").classList.toggle("disabled", !$<HTMLInputElement>("reader-hover-previews").checked);
-  if (readerSaveTimer) clearTimeout(readerSaveTimer);
-  readerSaveTimer = setTimeout(() => {
-    void (async () => {
-      // Normalized on save: an out-of-range delay is clamped, and the form shows what was stored.
-      const saved = await saveReaderPrefs(readReaderForm());
-      if (document.activeElement?.id !== "reader-hover-delay") fillReaderForm(saved);
-      await logger.info("reader preferences saved", saved as unknown as Record<string, unknown>);
-      flashSaved();
-    })();
-  }, SAVE_DEBOUNCE_MS);
-}
-
-// ── Drive connection ────────────────────────────────────────────────────────
-async function renderConnection(): Promise<void> {
-  const status = $("connection");
-  const actions = $("connectionActions");
-  try {
-    const s = await send<SyncStatusData>({ type: "sync.status" });
-    const state = s.syncing ? "Syncing…" : s.connected
-      ? (s.lastSyncTime ? `Connected — last sync ${new Date(s.lastSyncTime).toLocaleString()}` : "Connected to Google Drive")
-      : "Not connected to Google Drive";
-    status.innerHTML = `<span class="ls-dot ${s.lastError ? "s-error" : s.connected ? "s-ok" : ""}"></span><span>${escapeHtml(state)}</span>` +
-      (s.lastError ? `<span style="color:var(--ls-error)"> — ${escapeHtml(s.lastError)}</span>` : "");
-    actions.replaceChildren(...(s.connected
-      ? [button("Sync now", "refresh", "sync.now", false), button("Disconnect", "cloud-off", "auth.disconnect", false)]
-      : [button("Connect to Google Drive", "cloud", "auth.connect", true)]));
-  } catch (err) {
-    status.innerHTML = `<span class="ls-dot s-error"></span><span>Background unavailable — ${escapeHtml(err instanceof Error ? err.message : String(err))}</span>`;
-    actions.replaceChildren();
+  for (const control of controls) {
+    control.addEventListener("input", schedule);
+    control.addEventListener("change", schedule);
   }
-}
-
-function button(label: string, glyph: IconName, type: "sync.now" | "auth.connect" | "auth.disconnect", primary: boolean): HTMLButtonElement {
-  const b = el("button", { class: `ls-btn${primary ? " ls-btn-primary" : ""}`, type: "button", html: `${icon(glyph)}<span>${escapeHtml(label)}</span>` });
-  b.addEventListener("click", async () => {
-    b.disabled = true;
-    try {
-      await send({ type });
-      await logger.info(`${type} via options page`);
-    } catch (err) {
-      await logger.error("options", err, { op: type });
-    } finally {
-      await renderConnection();
-      await renderLog();
-    }
-  });
-  return b;
-}
-
-// ── theme ───────────────────────────────────────────────────────────────────
-function renderThemeSeg(current: ThemePref): void {
-  const seg = $("themeSeg");
-  const options: Array<[ThemePref, string, IconName]> = [["auto", "System", "globe"], ["light", "Light", "sun"], ["dark", "Dark", "moon"]];
-  seg.replaceChildren(...options.map(([pref, label, glyph]) => {
-    const b = el("button", { class: current === pref ? "on" : "", type: "button", role: "radio", "aria-checked": String(current === pref), html: `${icon(glyph)}<span>${label}</span>` });
-    b.addEventListener("click", () => { setThemePref(pref); flashSaved(); });
-    return b;
-  }));
-}
-
-// ── log ─────────────────────────────────────────────────────────────────────
-async function renderLog(): Promise<void> {
-  const entries = await logger.recent();
-  $("log").textContent = entries.length === 0
-    ? "No log entries yet."
-    : entries.map((e) => `${e.timestamp} [${e.level.toUpperCase()}] (${e.module}) ${e.message}`).join("\n");
 }
 
 async function init(): Promise<void> {
   applyTheme();
-  $("brand").innerHTML = `${icon("logo")}<span>LabShelf</span>`;
-  await loadIntoForm();
-  fillReaderForm(await loadReaderPrefs());
-  for (const id of READER_FIELDS) {
-    $(id).addEventListener("input", scheduleReaderSave);
-    $(id).addEventListener("change", scheduleReaderSave);
-  }
-  for (const id of ["sync-interval", "contact-email", "enable-scihub", "scihub-mirror"]) {
-    $(id).addEventListener("input", scheduleSave);
-    $(id).addEventListener("change", scheduleSave);
-  }
-  onThemeChange((_theme, pref) => renderThemeSeg(pref));
-  renderThemeSeg(getThemePref());
-  await renderConnection();
-  await renderLog();
+  const saved = createSavedFlag();
+  const general = createGeneralForm();
+  const reader = createReaderForm();
+  const log = createLogSection(logger);
+  const drive = createDriveConnection(logger, () => log.refresh());
+
+  $("root").replaceChildren(settingsPage(
+    { title: "LabShelf Settings", aside: saved.element },
+    drive.section.element,
+    ...general.sections,
+    reader.section,
+    createAppearanceSection(saved.flash),
+    log.element,
+  ));
+
+  general.fill(await getSettings());
+  reader.fill(await loadReaderPrefs());
+  autosave(general.controls, async () => {
+    const patch = general.read();
+    await updateSettings(patch);
+    await logger.info("settings saved", patch as Record<string, unknown>);
+    saved.flash();
+  });
+  autosave(reader.controls, async () => {
+    // Normalized on save: an out-of-range delay is clamped, and the form shows what was stored.
+    const stored = await saveReaderPrefs(reader.read());
+    reader.fill(stored, true);
+    await logger.info("reader preferences saved", stored as unknown as Record<string, unknown>);
+    saved.flash();
+  });
+  await drive.refresh();
+  await log.refresh();
 }
 
 void init();

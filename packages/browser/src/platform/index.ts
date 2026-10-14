@@ -2,6 +2,7 @@
 export { bx } from "./browserApi";
 export { BrowserLogger } from "./logger";
 export { downloadTextFile } from "./downloadTextFile";
+export { getSettings, updateSettings, type LabShelfSettings } from "./settings";
 export type {
   AttachPdfData, LibraryChangedBroadcast, RuntimeMessage, RuntimeResponse, SaveOutcome, SyncStatusData, TabSummary,
 } from "./runtimeMessages";

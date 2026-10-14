@@ -12,13 +12,12 @@ import {
   type PdfTheme,
   PROTOCOL_VERSION,
   READER_SHELL_BODY,
-  renderTokensCss,
-  renderVscodeHostCss,
   type EffectiveTheme,
   type ReaderBootParams,
   type ReaderPrefs,
 } from "@labshelf/core";
 import { ThemeManager } from "../ThemeManager.js";
+import { bundleMissingHtml } from "../../ui/bundleMissing/index.js";
 
 export interface RenderParams {
   webview: vscode.Webview;
@@ -150,7 +149,7 @@ export class PdfRenderer {
     const { webview, extensionUri, pdfUri, paperId, paperTitle, themeManager, themePreference, prefs } = params;
 
     const bundle = resolveReaderBundleUris(webview, extensionUri);
-    if (!bundle) { return bundleMissingHtml(paperTitle); }
+    if (!bundle) { return bundleMissingHtml({ title: paperTitle, heading: "Reader bundle not built", file: "dist/reader/reader.js", reopen: "the PDF" }); }
 
     const n = createNonce();
     const cspSource = webview.cspSource;
@@ -220,22 +219,4 @@ export function serializeBoot(boot: ReaderBootParams): string {
     .replace(/</g, "\\u003c")
     .replace(/\u2028/g, "\\u2028")
     .replace(/\u2029/g, "\\u2029");
-}
-
-// A dev checkout compiled with `tsc` alone has no dist/reader; say so instead of showing a blank panel.
-function bundleMissingHtml(paperTitle: string): string {
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"/>
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline';"/>
-<title>${escapeHtml(paperTitle)}</title>
-<style>${renderTokensCss()}
-${renderVscodeHostCss()}</style>
-</head>
-<body style="font-family:var(--ls-font);padding:24px;color:var(--ls-fg)">
-<h3>Reader bundle not built</h3>
-<p>dist/reader/reader.js is missing. Run <code>pnpm --filter @labshelf/vscode build</code> and reopen the PDF.</p>
-</body>
-</html>`;
 }

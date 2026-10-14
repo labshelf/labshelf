@@ -12,7 +12,7 @@ The full LabShelf workspace inside VS Code:
 ## Build and run
 
 ```bash
-pnpm --filter @labshelf/vscode build   # host → out/extension.js, reader → dist/reader/, list → dist/library/
+pnpm --filter @labshelf/vscode build   # host → out/extension.js, reader → dist/reader/, list → dist/library/, settings → dist/settings/
 pnpm dev:vscode                        # watches both
 ```
 

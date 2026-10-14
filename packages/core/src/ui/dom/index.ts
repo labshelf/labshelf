@@ -4,3 +4,4 @@
 export { $, el, highlight, shortTime } from "./dom.js";
 export { resolveTheme, applyThemeToDocument, nextThemePref, type ThemePref, type ResolvedTheme } from "./theme.js";
 export * from "./widgets/index.js";
+export * from "./settings/index.js";

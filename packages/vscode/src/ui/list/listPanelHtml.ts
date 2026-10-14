@@ -5,23 +5,17 @@
 import * as fs from 'node:fs';
 import * as vscode from 'vscode';
 import { createNonce } from '@labshelf/core';
+import { bundleMissingHtml } from '../bundleMissing/index.js';
 
 /** <extension>/dist/library, for localResourceRoots. */
 export function libraryBundleDirectory(extensionUri: vscode.Uri): vscode.Uri {
   return vscode.Uri.joinPath(extensionUri, 'dist', 'library');
 }
 
-// A dev checkout compiled without the webview bundle says so instead of showing a blank panel.
-function bundleMissingHtml(): string {
-  return `<!doctype html><html lang="en"><head><meta charset="UTF-8"/>
-<meta http-equiv="Content-Security-Policy" content="default-src 'none';"/><title>LabShelf</title></head>
-<body><h3>Library bundle not built</h3><p>dist/library/library.js is missing. Run <code>pnpm --filter @labshelf/vscode build</code> and reopen the list.</p></body></html>`;
-}
-
 export function listPanelHtml(webview: vscode.Webview, extensionUri: vscode.Uri): string {
   const dir = libraryBundleDirectory(extensionUri);
   const script = vscode.Uri.joinPath(dir, 'library.js');
-  if (!fs.existsSync(script.fsPath)) { return bundleMissingHtml(); }
+  if (!fs.existsSync(script.fsPath)) { return bundleMissingHtml({ title: 'LabShelf', heading: 'Library bundle not built', file: 'dist/library/library.js', reopen: 'the list' }); }
   const nonce = createNonce();
   const csp = `default-src 'none'; script-src 'nonce-${nonce}'; style-src ${webview.cspSource}; img-src ${webview.cspSource} data:; font-src ${webview.cspSource};`;
   return `<!doctype html>
