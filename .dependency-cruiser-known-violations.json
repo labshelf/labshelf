@@ -344,20 +344,6 @@
   {
     "type": "dependency",
     "from": "packages/browser/src/content/scholar.ts",
-    "to": "packages/browser/src/ui/icons.ts",
-    "unresolvedTo": "../ui/icons",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/content/scholar.ts",
     "to": "packages/browser/src/ui/menu.ts",
     "unresolvedTo": "../ui/menu",
     "dependencyTypes": [
@@ -983,20 +969,6 @@
   {
     "type": "dependency",
     "from": "packages/browser/src/library-page/views/detailSections.ts",
-    "to": "packages/browser/src/ui/icons.ts",
-    "unresolvedTo": "../../ui/icons",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/library-page/views/detailSections.ts",
     "to": "packages/browser/src/ui/pdfCopy.ts",
     "unresolvedTo": "../../ui/pdfCopy",
     "dependencyTypes": [
@@ -1053,20 +1025,6 @@
   },
   {
     "type": "dependency",
-    "from": "packages/browser/src/library-page/views/filterBarView.ts",
-    "to": "packages/browser/src/ui/icons.ts",
-    "unresolvedTo": "../../ui/icons",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "packages/browser/src/library-page/views/listHeaderView.ts",
     "to": "packages/browser/src/library-page/state/derive.ts",
     "unresolvedTo": "../state/derive",
@@ -1113,20 +1071,6 @@
     "from": "packages/browser/src/library-page/views/listHeaderView.ts",
     "to": "packages/browser/src/ui/dom.ts",
     "unresolvedTo": "../../ui/dom",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/library-page/views/listHeaderView.ts",
-    "to": "packages/browser/src/ui/icons.ts",
-    "unresolvedTo": "../../ui/icons",
     "dependencyTypes": [
       "local",
       "import"
@@ -1195,20 +1139,6 @@
   },
   {
     "type": "dependency",
-    "from": "packages/browser/src/library-page/views/paperListView.ts",
-    "to": "packages/browser/src/ui/icons.ts",
-    "unresolvedTo": "../../ui/icons",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "packages/browser/src/library-page/views/paperRow.ts",
     "to": "packages/browser/src/library-page/state/derive.ts",
     "unresolvedTo": "../state/derive",
@@ -1241,20 +1171,6 @@
     "from": "packages/browser/src/library-page/views/paperRow.ts",
     "to": "packages/browser/src/ui/dom.ts",
     "unresolvedTo": "../../ui/dom",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/library-page/views/paperRow.ts",
-    "to": "packages/browser/src/ui/icons.ts",
-    "unresolvedTo": "../../ui/icons",
     "dependencyTypes": [
       "local",
       "import"
@@ -1312,20 +1228,6 @@
     "from": "packages/browser/src/library-page/views/sidebarTreeView.ts",
     "to": "packages/browser/src/ui/dom.ts",
     "unresolvedTo": "../../ui/dom",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/library-page/views/sidebarTreeView.ts",
-    "to": "packages/browser/src/ui/icons.ts",
-    "unresolvedTo": "../../ui/icons",
     "dependencyTypes": [
       "local",
       "import"
@@ -1398,20 +1300,6 @@
     "from": "packages/browser/src/library-page/views/statusBarView.ts",
     "to": "packages/browser/src/ui/dom.ts",
     "unresolvedTo": "../../ui/dom",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/library-page/views/statusBarView.ts",
-    "to": "packages/browser/src/ui/icons.ts",
-    "unresolvedTo": "../../ui/icons",
     "dependencyTypes": [
       "local",
       "import"
@@ -1523,20 +1411,6 @@
   {
     "type": "dependency",
     "from": "packages/browser/src/options/index.ts",
-    "to": "packages/browser/src/ui/icons.ts",
-    "unresolvedTo": "../ui/icons",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/options/index.ts",
     "to": "packages/browser/src/ui/theme.ts",
     "unresolvedTo": "../ui/theme",
     "dependencyTypes": [
@@ -1611,20 +1485,6 @@
     "from": "packages/browser/src/popup/index.ts",
     "to": "packages/browser/src/ui/dom.ts",
     "unresolvedTo": "../ui/dom",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/popup/index.ts",
-    "to": "packages/browser/src/ui/icons.ts",
-    "unresolvedTo": "../ui/icons",
     "dependencyTypes": [
       "local",
       "import"

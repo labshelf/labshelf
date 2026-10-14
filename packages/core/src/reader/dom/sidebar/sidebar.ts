@@ -3,7 +3,7 @@
  */
 import { MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, type SidebarState, type SidebarTab } from "../../index.js";
 import { byId, clamp, h } from "../elements/index.js";
-import { icon, type IconName } from "../elements/index.js";
+import { icon, type IconName } from "../../../ui/index.js";
 
 export interface SidebarPanel {
   readonly el: HTMLElement;

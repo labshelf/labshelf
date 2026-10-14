@@ -4,7 +4,7 @@
 import { formatZoomLabel } from "../../logic/index.js";
 import type { ReaderContext } from "../session/index.js";
 import { byId, h, iconButton } from "../elements/index.js";
-import { icon } from "../elements/index.js";
+import { icon } from "../../../ui/index.js";
 import { buildMenu, togglePopover, type MenuItem } from "../elements/index.js";
 import type { ZoomController } from "../navigation/index.js";
 

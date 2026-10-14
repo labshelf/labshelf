@@ -5,8 +5,7 @@
  * folder structure shows inside the list pane. Chips are drop targets.
  */
 import { el } from "../../ui/dom";
-import { icon } from "../../ui/icons";
-import { escapeHtml, parseQuery, subfoldersOf } from "@labshelf/core";
+import { escapeHtml, parseQuery, subfoldersOf, icon } from "@labshelf/core";
 import { ROOT, STATUSES, STATUS_LABEL, listPapersUnder, papersInScope, statusCounts } from "../state/derive";
 import type { LibraryStore, StatusFilter } from "../state/libraryStore";
 import { makeDropTarget } from "./dnd";

@@ -2,7 +2,8 @@
  * Overlay toolbar. It floats above the page (never part of the layout) so showing or hiding it cannot resize the viewer and trigger a re-raster.
  */
 import { initialAutohide, toolbarVisibility, type AutohideEvent, type AutohideState } from "../../logic/index.js";
-import { byId, h, icon, iconButton, isPopoverOpen, onPopoverToggle } from "../elements/index.js";
+import { byId, h, iconButton, isPopoverOpen, onPopoverToggle } from "../elements/index.js";
+import { icon } from "../../../ui/index.js";
 
 export interface ToolbarActions {
   toggleSidebar(): void;
@@ -35,7 +36,7 @@ export class Toolbar {
     this.autoHide = autoHide;
     const mod = isMac ? "Cmd" : "Ctrl";
     const alt = isMac ? "Option" : "Alt";
-    this.sidebarBtn = iconButton(icon("sidebar"), "Toggle sidebar (F4)");
+    this.sidebarBtn = iconButton(icon("panel-left"), "Toggle sidebar (F4)");
     this.backBtn = iconButton(icon("arrow-left"), `Back (${alt}+Left)`);
     this.forwardBtn = iconButton(icon("arrow-right"), `Forward (${alt}+Right)`);
     const findBtn = iconButton(icon("search"), `Find (${mod}+F)`);

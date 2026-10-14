@@ -171,7 +171,7 @@ export function detailScriptFragment(): string {
     var open = hasPdf(p)
       ? '<button class="action-btn primary open-btn" data-action="openPdf" title="Open in the reader (Enter)' + (st.lastPage > 1 ? ' — it reopens where you left off' : '') + '">' + ICON['book-open'] +
         '<span>' + (st.lastPage > 1 ? 'Continue · p. ' + st.lastPage : 'Open PDF') + '</span></button>'
-      : '<button class="action-btn open-btn" disabled title="This paper has no PDF">' + ICON['file-off'] + '<span>No PDF</span></button>';
+      : '<button class="action-btn open-btn" disabled title="This paper has no PDF">' + ICON['file-minus'] + '<span>No PDF</span></button>';
     return '<div class="detail-head">' +
       '<div class="detail-title" title="' + esc(p.title) + '">' + esc(p.title) + '</div>' +
       (authors.length ? '<div class="detail-byline">' + byline + '</div>' : '') +

@@ -7,12 +7,11 @@
  * and a status badge that cycles on click.
  */
 import { el, highlight } from "../../ui/dom";
-import { icon } from "../../ui/icons";
 import { emit } from "../events";
 import { STATUS_LABEL, nextStatus } from "../state/derive";
 import type { ListPaper } from "../state/derive";
 import type { LibraryStore } from "../state/libraryStore";
-import { PDF_FILE, escapeHtml, formatAuthors } from "@labshelf/core";
+import { PDF_FILE, escapeHtml, formatAuthors, icon } from "@labshelf/core";
 
 export interface RowHandlers {
   onClick: (id: string, e: MouseEvent) => void;

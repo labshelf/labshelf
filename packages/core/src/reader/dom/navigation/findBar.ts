@@ -3,7 +3,7 @@
  */
 import type { ReaderContext } from "../session/index.js";
 import { byId, h, iconButton } from "../elements/index.js";
-import { icon } from "../elements/index.js";
+import { icon } from "../../../ui/index.js";
 import type { NavHistory } from "./navHistory.js";
 
 const FAR_JUMP_SETTLE_MS = 300;

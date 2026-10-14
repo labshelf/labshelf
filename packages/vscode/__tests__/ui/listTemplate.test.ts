@@ -85,7 +85,7 @@ describe('buildListScript', () => {
 
   it('renders papers saved without a PDF honestly', () => {
     expect(body).toContain('function hasPdf(p)');
-    expect(body).toContain('file-off');
+    expect(body).toContain("ICON['file-minus']");
     expect(body).toContain('No PDF attached');
     // textLayerSummary reports "No PDF" instead of a text-layer verdict.
     expect(body).toContain("'No PDF'");

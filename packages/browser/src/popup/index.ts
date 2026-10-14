@@ -16,13 +16,12 @@ import type {
   RuntimeMessage, RuntimeResponse, SaveOutcome, SavedPaperData, SyncStatusData,
 } from "../platform/runtimeMessages";
 import { $, shortTime } from "../ui/dom";
-import { icon } from "../ui/icons";
 import { applyTheme } from "../ui/theme";
 import { showDialog } from "../ui/dialog";
 import { noPdfDialogCopy } from "../ui/pdfCopy";
 import { folderName, metaLine, parseTags } from "./format";
 import { pdfLineText, pdfSourceLabel } from "../ui/pdfCopy";
-import { PAPERS_DIR, escapeHtml } from "@labshelf/core";
+import { PAPERS_DIR, escapeHtml, icon, type IconName } from "@labshelf/core";
 
 type PopupState = "loading" | "form" | "library" | "empty" | "saving" | "saved";
 
@@ -47,11 +46,11 @@ function setState(state: PopupState): void {
   for (const id of ["folder", "tags", "note", "save"]) $<HTMLInputElement>(id).disabled = busy;
   // While searching, pdfStatus is undefined; Save then waits on the search.
   $("save").innerHTML = busy
-    ? `<span class="spin">${icon("sync")}</span><span>${pdfStatus ? "Saving…" : "Looking for the PDF…"}</span>`
+    ? `<span class="spin">${icon("refresh")}</span><span>${pdfStatus ? "Saving…" : "Looking for the PDF…"}</span>`
     : `<span>Save to LabShelf</span>`;
 }
 
-function showStatus(opts: { glyph: string; tone: "ok" | "muted" | "warn"; title: string; detail: string; open?: string; attach?: string; undo?: boolean; tryAnyway?: boolean }): void {
+function showStatus(opts: { glyph: IconName; tone: "ok" | "muted" | "warn"; title: string; detail: string; open?: string; attach?: string; undo?: boolean; tryAnyway?: boolean }): void {
   const glyph = $("statusIcon");
   glyph.innerHTML = icon(opts.glyph);
   glyph.dataset["tone"] = opts.tone;
@@ -79,7 +78,7 @@ function renderPdf(status: PdfStatusData | "searching"): void {
   el.hidden = false;
   if (status === "searching") {
     el.dataset["tone"] = "muted";
-    el.innerHTML = `<span class="spin">${icon("sync")}</span><span>${escapeHtml(pdfLineText("searching"))}</span>`;
+    el.innerHTML = `<span class="spin">${icon("refresh")}</span><span>${escapeHtml(pdfLineText("searching"))}</span>`;
   } else if (status.found) {
     el.dataset["tone"] = "ok";
     el.innerHTML = `${icon("file-text")}<span>${escapeHtml(pdfLineText(status))}</span>`;
@@ -304,7 +303,7 @@ async function renderSync(): Promise<void> {
       btn.title = "Not syncing — connect Google Drive in Settings";
       btn.dataset["action"] = "connect";
     } else {
-      btn.innerHTML = icon(sync.syncing ? "sync" : sync.lastError ? "warning" : "cloud");
+      btn.innerHTML = icon(sync.syncing ? "refresh" : sync.lastError ? "warning" : "cloud");
       btn.title = sync.syncing ? "Syncing…"
         : sync.lastError ? `Sync failed — ${sync.lastError}. Click to retry.`
         : `Synced with Google Drive${sync.lastSyncTime ? ` ${shortTime(sync.lastSyncTime)}` : ""}. Click to sync now.`;

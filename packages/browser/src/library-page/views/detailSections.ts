@@ -6,11 +6,10 @@
  * PDF — the note and tags attached when saving from the toolbar (read-only here
  * for now).
  */
-import { icon } from "../../ui/icons";
 import { attachmentsHeading } from "../../ui/pdfCopy";
 import { ROOT, STATUSES, STATUS_LABEL } from "../state/derive";
 import type { ListPaper } from "../state/derive";
-import { PDF_FILE, escapeHtml, folderLabel, venueLine, type PaperStatus } from "@labshelf/core";
+import { PDF_FILE, escapeHtml, folderLabel, venueLine, type PaperStatus, icon } from "@labshelf/core";
 
 export const ABSTRACT_TRUNCATE_AT = 320;
 
@@ -44,7 +43,7 @@ export function statusSeg(current: PaperStatus | null): string {
 export function actionRow(single: boolean, hasPdf = true, busy = false): string {
   const primary = hasPdf
     ? `<button class="ls-btn ls-btn-primary" type="button" data-action="open-pdf">Open PDF</button>`
-    : `<button class="ls-btn ls-btn-primary" type="button" data-action="find-pdf"${busy ? " disabled" : ""}>${busy ? `<span class="spin">${icon("sync")}</span><span>Searching…</span>` : "Find PDF"}</button>`;
+    : `<button class="ls-btn ls-btn-primary" type="button" data-action="find-pdf"${busy ? " disabled" : ""}>${busy ? `<span class="spin">${icon("refresh")}</span><span>Searching…</span>` : "Find PDF"}</button>`;
   return `<div class="detail-action-row">` +
     (single ? `${primary}<button class="ls-btn" type="button" data-action="copy-cite">Copy Key</button>` : "") +
     `<button class="ls-btn${single ? "" : " ls-btn-primary"}" type="button" data-action="move">Move to…</button>` +
@@ -58,7 +57,7 @@ function attachBody(hasPdf: boolean, busy: boolean): string {
     return `<div class="attach-item" data-action="open-pdf"><span class="sec-icon">${icon("file")}</span><span>${PDF_FILE}</span></div>`;
   }
   if (busy) {
-    return `<div class="attach-busy"><span class="spin">${icon("sync")}</span><span>Searching for the PDF…</span></div>`;
+    return `<div class="attach-busy"><span class="spin">${icon("refresh")}</span><span>Searching for the PDF…</span></div>`;
   }
   return `<div class="attach-empty">` +
     muted("No PDF attached") +

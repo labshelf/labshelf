@@ -9,10 +9,9 @@
  * are always expanded so the selection is never hidden.
  */
 import { el } from "../../ui/dom";
-import { icon } from "../../ui/icons";
 import { showMenu } from "../../ui/menu";
 import { emit } from "../events";
-import { ROOT_LABEL, escapeHtml, countPapersUnder, isUnderDir, parentDir, type FolderTreeNode } from "@labshelf/core";
+import { ROOT_LABEL, escapeHtml, countPapersUnder, isUnderDir, parentDir, type FolderTreeNode, icon } from "@labshelf/core";
 import { ROOT } from "../state/derive";
 import type { LibraryStore } from "../state/libraryStore";
 import { loadPrefs, savePrefs } from "../state/uiPrefs";

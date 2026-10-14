@@ -6,13 +6,11 @@
  * or inside a shadow root when the host page's CSS must not reach it (the
  * Google Scholar buttons).
  *
- * @depends ui/dom, ui/icons
+ * @depends ui/dom
  * @dependents library-page views (sidebar context menu, "+ Add" dropdown), popup, content/scholar
  */
-import { escapeHtml } from "@labshelf/core";
+import { escapeHtml, icon, type IconName } from "@labshelf/core";
 import { el } from "./dom";
-import { icon } from "./icons";
-import type { IconName } from "./icons";
 
 export interface MenuItem {
   label: string;

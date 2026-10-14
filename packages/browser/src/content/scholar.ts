@@ -12,17 +12,17 @@
  * survives Scholar re-rendering its result list. When the search finds no PDF,
  * the user is asked first (shared "No PDF found" dialog, in the overlay shadow
  * root); a result saved without a PDF reads distinctly, not as complete.
- * @depends platform/browserApi, platform/runtimeMessages, content/scholarParse, content/shadowStyles, ui/icons, ui/menu, ui/dialog, ui/pdfCopy
+ * @depends platform/browserApi, platform/runtimeMessages, content/scholarParse, content/shadowStyles, ui/menu, ui/dialog, ui/pdfCopy
  * @dependents manifest content_scripts (scholar.google.*)
  */
 import { bx } from "../platform/browserApi";
 import type { FoldersData, IfNoPdf, LookupData, RuntimeMessage, RuntimeResponse, SaveOutcome, ScholarHit } from "../platform/runtimeMessages";
-import { icon } from "../ui/icons";
 import { showDialog } from "../ui/dialog";
 import { closeMenu, showMenu } from "../ui/menu";
 import { noPdfDialogCopy, pdfSourceLabel } from "../ui/pdfCopy";
 import { isScholarUrl, lookupItemFor, readResult } from "./scholarParse";
 import { kitShadow } from "./shadowStyles";
+import { icon, type IconName } from "@labshelf/core";
 
 type ButtonState = "idle" | "saving" | "saved" | "error" | "confirm";
 
@@ -63,9 +63,9 @@ const BUTTON_CSS = `
 @keyframes lsx-spin { to { transform: rotate(360deg); } }
 `;
 
-const LABELS: Record<ButtonState, { glyph: string; text: string }> = {
+const LABELS: Record<ButtonState, { glyph: IconName; text: string }> = {
   idle: { glyph: "logo", text: "Save to LabShelf" },
-  saving: { glyph: "sync", text: "Finding PDF…" },
+  saving: { glyph: "refresh", text: "Finding PDF…" },
   saved: { glyph: "check", text: "In LabShelf" },
   error: { glyph: "warning", text: "Try again" },
   confirm: { glyph: "warning", text: "No PDF found" },

@@ -34,6 +34,7 @@ button { font: inherit; color: inherit; }
   background: none; color: var(--ls-reader-fg); cursor: pointer;
 }
 .rd-btn-sm { width: 24px; height: 24px; }
+.rd-btn svg, .rd-tab svg { width: 16px; height: 16px; }
 .rd-btn-sm svg { width: 14px; height: 14px; }
 .rd-btn:hover:not(:disabled) { background: var(--ls-reader-hover); }
 .rd-btn:active:not(:disabled), .rd-btn[aria-pressed="true"], .rd-btn[aria-expanded="true"] { background: var(--ls-reader-active); }

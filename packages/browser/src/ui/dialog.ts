@@ -4,12 +4,12 @@
  * VS Code extension answers with `showWarningMessage({ modal: true })`.
  * Resolves with the chosen button's id, or undefined when dismissed.
  *
- * @depends ui/dom, ui/icons, ui/quickInput (overlay)
+ * @depends ui/dom, ui/quickInput (overlay)
  * @dependents library-page controllers (delete paper / folder), popup, content/scholar
  */
 import { el } from "./dom";
-import { icon } from "./icons";
 import { mountOverlay } from "./quickInput";
+import { icon } from "@labshelf/core";
 
 export interface DialogButton<T extends string> {
   id: T;

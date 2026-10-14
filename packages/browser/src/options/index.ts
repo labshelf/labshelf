@@ -12,9 +12,8 @@ import { getSettings, updateSettings } from "../platform/settings";
 import type { LabShelfSettings } from "../platform/settings";
 import type { RuntimeMessage, RuntimeResponse, SyncStatusData } from "../platform/runtimeMessages";
 import { $, el } from "../ui/dom";
-import { icon } from "../ui/icons";
 import { applyTheme, getThemePref, onThemeChange, setThemePref } from "../ui/theme";
-import { DEFAULT_CONTACT_EMAIL, escapeHtml, type CitationStyle, type ReaderPrefs, type ZoomPreset } from "@labshelf/core";
+import { DEFAULT_CONTACT_EMAIL, escapeHtml, type CitationStyle, type ReaderPrefs, type ZoomPreset, icon, type IconName } from "@labshelf/core";
 import { loadReaderPrefs, saveReaderPrefs } from "../reader/readerPrefsStore";
 import type { ThemePref } from "../ui/theme";
 
@@ -124,7 +123,7 @@ async function renderConnection(): Promise<void> {
     status.innerHTML = `<span class="ls-dot ${s.lastError ? "s-error" : s.connected ? "s-ok" : ""}"></span><span>${escapeHtml(state)}</span>` +
       (s.lastError ? `<span style="color:var(--ls-error)"> — ${escapeHtml(s.lastError)}</span>` : "");
     actions.replaceChildren(...(s.connected
-      ? [button("Sync now", "sync", "sync.now", false), button("Disconnect", "cloud-off", "auth.disconnect", false)]
+      ? [button("Sync now", "refresh", "sync.now", false), button("Disconnect", "cloud-off", "auth.disconnect", false)]
       : [button("Connect to Google Drive", "cloud", "auth.connect", true)]));
   } catch (err) {
     status.innerHTML = `<span class="ls-dot s-error"></span><span>Background unavailable — ${escapeHtml(err instanceof Error ? err.message : String(err))}</span>`;
@@ -132,7 +131,7 @@ async function renderConnection(): Promise<void> {
   }
 }
 
-function button(label: string, glyph: string, type: "sync.now" | "auth.connect" | "auth.disconnect", primary: boolean): HTMLButtonElement {
+function button(label: string, glyph: IconName, type: "sync.now" | "auth.connect" | "auth.disconnect", primary: boolean): HTMLButtonElement {
   const b = el("button", { class: `ls-btn${primary ? " ls-btn-primary" : ""}`, type: "button", html: `${icon(glyph)}<span>${escapeHtml(label)}</span>` });
   b.addEventListener("click", async () => {
     b.disabled = true;
@@ -152,7 +151,7 @@ function button(label: string, glyph: string, type: "sync.now" | "auth.connect" 
 // ── theme ───────────────────────────────────────────────────────────────────
 function renderThemeSeg(current: ThemePref): void {
   const seg = $("themeSeg");
-  const options: Array<[ThemePref, string, string]> = [["auto", "System", "globe"], ["light", "Light", "sun"], ["dark", "Dark", "moon"]];
+  const options: Array<[ThemePref, string, IconName]> = [["auto", "System", "globe"], ["light", "Light", "sun"], ["dark", "Dark", "moon"]];
   seg.replaceChildren(...options.map(([pref, label, glyph]) => {
     const b = el("button", { class: current === pref ? "on" : "", type: "button", role: "radio", "aria-checked": String(current === pref), html: `${icon(glyph)}<span>${label}</span>` });
     b.addEventListener("click", () => { setThemePref(pref); flashSaved(); });

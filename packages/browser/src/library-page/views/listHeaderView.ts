@@ -5,10 +5,9 @@
  * Crumbs are drop targets for paper moves.
  */
 import { $, el } from "../../ui/dom";
-import { icon } from "../../ui/icons";
 import { togglePane } from "../app";
 import { emit } from "../events";
-import { SYNTAX_HELP, escapeHtml, breadcrumbFor, parseQuery } from "@labshelf/core";
+import { SYNTAX_HELP, escapeHtml, breadcrumbFor, parseQuery, icon } from "@labshelf/core";
 import { ROOT, listPapersUnder, papersInScope, statusCounts } from "../state/derive";
 import type { LibraryStore } from "../state/libraryStore";
 import { savePrefs } from "../state/uiPrefs";

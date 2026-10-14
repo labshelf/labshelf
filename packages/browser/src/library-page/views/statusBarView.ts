@@ -4,17 +4,17 @@
  * sync while in flight, cloud-off when disconnected; click runs a sync), the
  * right side shows the paper count, the theme toggle and a settings shortcut.
  *
- * @depends ui/dom, ui/icons, ui/theme, platform/browserApi, state/libraryStore, events
+ * @depends ui/dom, ui/theme, platform/browserApi, state/libraryStore, events
  * @dependents library-page/index
  */
 import { $, shortTime } from "../../ui/dom";
-import { icon } from "../../ui/icons";
 import { cycleThemePref, onThemeChange } from "../../ui/theme";
 import type { ThemePref } from "../../ui/theme";
 import { bx } from "../../platform/browserApi";
 import type { SyncStatusData } from "../../platform/runtimeMessages";
 import { emit } from "../events";
 import type { LibraryStore } from "../state/libraryStore";
+import { icon } from "@labshelf/core";
 
 const THEME_LABEL: Record<ThemePref, string> = { auto: "Theme: follows the system", light: "Theme: light", dark: "Theme: dark" };
 
@@ -54,7 +54,7 @@ export function mountStatusBar(container: HTMLElement, store: LibraryStore): () 
 function renderSync(el: HTMLButtonElement, sync: SyncStatusData | null): void {
   el.classList.remove("error");
   if (!sync) { el.innerHTML = `${icon("cloud-off")}<span>LabShelf</span>`; el.title = "Sync status unavailable"; return; }
-  if (sync.syncing) { el.innerHTML = `<span class="spin">${icon("sync")}</span><span>LabShelf Sync</span>`; el.title = "Syncing with Google Drive…"; return; }
+  if (sync.syncing) { el.innerHTML = `<span class="spin">${icon("refresh")}</span><span>LabShelf Sync</span>`; el.title = "Syncing with Google Drive…"; return; }
   if (sync.lastError) {
     el.classList.add("error");
     el.innerHTML = `${icon("warning")}<span>Sync failed</span>`;

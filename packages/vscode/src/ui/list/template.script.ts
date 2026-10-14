@@ -3,17 +3,16 @@
  *
  * The script body deliberately avoids template literals and backslashes so it can live inside a TypeScript template string without escaping.
  */
-import { PAPER_STATUSES, escapeHtml } from '@labshelf/core';
-import { secIcon } from './template.icons.js';
+import { PAPER_STATUSES, escapeHtml, iconMap, type IconName } from '@labshelf/core';
 import { menuScriptFragment } from './template.menu.script.js';
 import { detailScriptFragment } from './template.detail.script.js';
 import { detailTabsScriptFragment } from './template.detail.tabs.script.js';
 
-const ICON_NAMES = [
-  'chevron-down', 'chevron-right', 'file', 'folder', 'library', 'book', 'search', 'file-no-text', 'file-off', 'loader',
-  'book-open', 'key', 'quote', 'folder-move', 'more', 'copy', 'external', 'highlighter', 'note', 'sparkle', 'trash',
-  'refresh', 'download', 'link', 'check', 'users', 'tag', 'x',
-] as const;
+const ICON_NAMES: readonly IconName[] = [
+  'chevron-down', 'chevron-right', 'file', 'folder', 'library', 'book', 'search', 'file-no-text', 'file-minus', 'loader',
+  'book-open', 'key', 'quote', 'folder-move', 'more', 'copy', 'external', 'highlighter', 'note', 'trash',
+  'refresh', 'download', 'link', 'check', 'tag', 'x',
+];
 
 /**
  * Builds the inline `<script>` block for the list webview.
@@ -21,7 +20,7 @@ const ICON_NAMES = [
  * @returns A complete `<script>` HTML string.
  */
 export function buildListScript(nonce: string): string {
-  const icons = JSON.stringify(Object.fromEntries(ICON_NAMES.map((name) => [name, secIcon(name)])));
+  const icons = JSON.stringify(iconMap(ICON_NAMES));
 
   return `<script nonce="${nonce}">
 (function(){
@@ -169,7 +168,7 @@ export function buildListScript(nonce: string): string {
     var job = jobFor(p);
     if (job) return { cls: 'tl-busy', html: '<span class="spin" style="display:flex">' + ICON['loader'] + '</span>', title: jobText(job) };
     if (!hasPdf(p)) {
-      return { cls: 'no-pdf', html: ICON['file-off'], title: 'No PDF: this paper was saved without one.' };
+      return { cls: 'no-pdf', html: ICON['file-minus'], title: 'No PDF: this paper was saved without one.' };
     }
     if (hasNoText(p)) {
       return { cls: 'tl-missing', html: ICON['file-no-text'],

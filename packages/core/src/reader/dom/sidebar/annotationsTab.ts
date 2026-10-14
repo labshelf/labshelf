@@ -5,7 +5,7 @@ import type { Annotation } from "../../../model/index.js";
 import { byPageThenCreated } from "../../sidecar/index.js";
 import { h, iconButton } from "../elements/index.js";
 import type { HostBridge } from "../session/index.js";
-import { icon } from "../elements/index.js";
+import { icon } from "../../../ui/index.js";
 import type { SidebarPanel } from "./sidebar.js";
 
 const PREVIEW_CHARS = 140;

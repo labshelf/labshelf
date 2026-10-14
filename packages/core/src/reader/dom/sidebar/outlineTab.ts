@@ -4,7 +4,7 @@
 import { activeOutlineIndex, flattenOutline, visibleRows, type OutlineRow, type RawOutlineNode } from "../../logic/index.js";
 import type { ReaderContext } from "../session/index.js";
 import { h } from "../elements/index.js";
-import { icon } from "../elements/index.js";
+import { icon } from "../../../ui/index.js";
 import type { SidebarPanel } from "./sidebar.js";
 
 export class OutlineTab implements SidebarPanel {

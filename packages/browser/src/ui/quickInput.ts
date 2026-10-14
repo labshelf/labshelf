@@ -6,8 +6,7 @@
  * feel the same in the browser.
  */
 import { el, highlight } from "./dom";
-import { icon } from "./icons";
-import type { IconName } from "./icons";
+import { icon, type IconName } from "@labshelf/core";
 
 export interface QuickPickItem<T> {
   label: string;

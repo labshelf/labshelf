@@ -8,9 +8,8 @@
  * changes just toggle classes, so scroll position and focus survive.
  */
 import { $, el } from "../../ui/dom";
-import { icon } from "../../ui/icons";
 import { emit } from "../events";
-import { folderLabel, parseQuery } from "@labshelf/core";
+import { folderLabel, parseQuery, icon } from "@labshelf/core";
 import { ROOT, listPapersUnder, papersInScope, sortPapers } from "../state/derive";
 import type { LibraryStore, SortKey } from "../state/libraryStore";
 import { savePrefs } from "../state/uiPrefs";

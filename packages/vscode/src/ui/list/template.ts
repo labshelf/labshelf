@@ -2,9 +2,8 @@
  * Generates the static HTML shell for the list webview panel. Folder contents arrive afterwards as state messages, so the shell is rendered only once per panel.
  */
 import * as vscode from 'vscode';
-import { createNonce, renderTokensCss, renderVscodeHostCss } from '@labshelf/core';
+import { createNonce, icon, renderTokensCss, renderVscodeHostCss } from '@labshelf/core';
 import { listPanelCss } from './styles/index.js';
-import { secIcon } from './template.icons.js';
 import { buildListScript } from './template.script.js';
 
 /**
@@ -31,14 +30,14 @@ ${listPanelCss()}</style>
     <div class="list-header">
       <nav class="breadcrumb" id="breadcrumb" aria-label="Collection path"></nav>
       <div class="search-box" title="Searches title, authors, year, venue, tags, keywords, abstract and your note.&#10;Narrow to one field with author:  year:  tag:  kw:  venue:  note:  — or #tag">
-        <span class="search-icon">${secIcon('search')}</span>
+        <span class="search-icon">${icon('search')}</span>
         <input id="searchInput" type="text" placeholder="Search papers, tags, notes…   /" spellcheck="false" autocomplete="off"/>
-        <button class="search-clear" id="searchClear" title="Clear search (Esc)">${secIcon('x')}</button>
+        <button class="search-clear" id="searchClear" title="Clear search (Esc)">${icon('x')}</button>
       </div>
-      <button class="list-icon-btn" id="includeSubBtn" title="Show papers from subfolders">${secIcon('layers')}</button>
-      <button class="list-icon-btn" id="newFolderBtn" title="New subfolder">${secIcon('folder-plus')}</button>
+      <button class="list-icon-btn" id="includeSubBtn" title="Show papers from subfolders">${icon('layers')}</button>
+      <button class="list-icon-btn" id="newFolderBtn" title="New subfolder">${icon('folder-plus')}</button>
       <button class="list-add-btn" id="addPaperBtn" title="Add PDF or folder here">+ Add</button>
-      <button class="list-icon-btn" id="toggleDetailBtn" title="Toggle details panel">${secIcon('panel-right')}</button>
+      <button class="list-icon-btn" id="toggleDetailBtn" title="Toggle details panel">${icon('panel-right')}</button>
     </div>
     <div class="filter-bar">
       <div class="status-filters" id="statusFilters" role="tablist" aria-label="Reading status"></div>
@@ -46,12 +45,12 @@ ${listPanelCss()}</style>
     </div>
     <div class="col-heads" id="colHeads">
       <div></div>
-      <div class="col-head sortable" data-sort="title">Title<span class="sort-ind">${secIcon('chevron-down')}</span></div>
-      <div class="col-head sortable" data-sort="creator">Creator<span class="sort-ind">${secIcon('chevron-down')}</span></div>
-      <div class="col-head sortable" data-sort="year">Year<span class="sort-ind">${secIcon('chevron-down')}</span></div>
-      <div class="col-head sortable col-pub" data-sort="publication">Publication<span class="sort-ind">${secIcon('chevron-down')}</span></div>
-      <div class="col-head sortable col-read" data-sort="lastRead" title="When you last had the paper open in the reader">Last read<span class="sort-ind">${secIcon('chevron-down')}</span></div>
-      <div class="col-head sortable" data-sort="status">Status<span class="sort-ind">${secIcon('chevron-down')}</span></div>
+      <div class="col-head sortable" data-sort="title">Title<span class="sort-ind">${icon('chevron-down')}</span></div>
+      <div class="col-head sortable" data-sort="creator">Creator<span class="sort-ind">${icon('chevron-down')}</span></div>
+      <div class="col-head sortable" data-sort="year">Year<span class="sort-ind">${icon('chevron-down')}</span></div>
+      <div class="col-head sortable col-pub" data-sort="publication">Publication<span class="sort-ind">${icon('chevron-down')}</span></div>
+      <div class="col-head sortable col-read" data-sort="lastRead" title="When you last had the paper open in the reader">Last read<span class="sort-ind">${icon('chevron-down')}</span></div>
+      <div class="col-head sortable" data-sort="status">Status<span class="sort-ind">${icon('chevron-down')}</span></div>
     </div>
     <div class="paper-list" id="paperList" tabindex="0"><div class="detail-placeholder">Loading…</div></div>
   </div>

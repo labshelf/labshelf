@@ -4,7 +4,7 @@
 import { ANNOTATION_COLORS, type AnnotationColor } from "../../../model/index.js";
 import type { ReaderContext } from "../session/index.js";
 import { byId, clamp, h, iconButton } from "../elements/index.js";
-import { icon } from "../elements/index.js";
+import { icon } from "../../../ui/index.js";
 
 const HIDE_GRACE_MS = 150;
 
