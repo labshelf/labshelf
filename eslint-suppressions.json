@@ -7,26 +7,6 @@
       "count": 1
     }
   },
-  "packages/browser/src/library-page/app.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/browser/src/library-page/views/listHeaderView.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/browser/src/library-page/views/paperListView.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/browser/src/library-page/views/paperRow.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
   "packages/browser/src/popup/index.ts": {
     "max-lines": {
       "count": 1
@@ -142,14 +122,6 @@
       "count": 1
     }
   },
-  "packages/vscode/src/ui/list/template.css.ts": {
-    "max-lines": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
   "packages/vscode/src/ui/list/template.detail.script.ts": {
     "max-lines": {
       "count": 1
@@ -159,11 +131,6 @@
     }
   },
   "packages/vscode/src/ui/list/template.detail.tabs.script.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/vscode/src/ui/list/template.icons.ts": {
     "max-lines-per-function": {
       "count": 1
     }

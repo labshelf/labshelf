@@ -1,17 +1,13 @@
 /**
- * Two-way binding between the open folder and the URL hash
- * (`#/papers/Project/Refs`), so the browser's back/forward buttons walk the
- * folder history and a reload lands on the same folder. The shell is never
- * rebuilt on navigation — only the store changes.
+ * Binds the open folder to the URL hash (`#/papers/Project/Refs`), so back/forward walk the folder history and a reload
+ * lands on the same folder. The host tells the UI about hash changes and follows the UI's own navigation.
  */
-import { isUnderDir } from "@labshelf/core";
-import { ROOT } from "./state/derive";
-import type { LibraryStore } from "./state/libraryStore";
+import { PAPERS_DIR, isUnderDir, type HostEndpoint } from "@labshelf/core";
 
 /** Parses a location hash into a folder path, falling back to the root. */
 export function folderFromHash(hash: string): string {
   const raw = decodeURIComponent(hash.replace(/^#\/?/, "")).replace(/\/+$/, "");
-  return raw && isUnderDir(raw, ROOT, "/") && !raw.split("/").some((s) => s === "" || s === "." || s === "..") ? raw : ROOT;
+  return raw && isUnderDir(raw, PAPERS_DIR, "/") && !raw.split("/").some((s) => s === "" || s === "." || s === "..") ? raw : PAPERS_DIR;
 }
 
 /** Builds the hash for a folder path. */
@@ -19,18 +15,16 @@ export function hashForFolder(folder: string): string {
   return `#/${folder.split("/").map(encodeURIComponent).join("/")}`;
 }
 
-/** Starts syncing store.folder <-> location.hash; returns a disposer. */
-export function attachRouter(store: LibraryStore): () => void {
-  store.openFolder(folderFromHash(location.hash));
-
-  const onHash = (): void => { store.openFolder(folderFromHash(location.hash)); };
+/** Starts syncing the UI's folder with location.hash; returns a disposer. */
+export function attachRouter(endpoint: HostEndpoint): () => void {
+  const onHash = (): void => endpoint.post({ type: "navigate", folder: folderFromHash(location.hash) });
   window.addEventListener("hashchange", onHash);
-
-  const unsub = store.select((s) => s.folder, (folder) => {
-    const next = hashForFolder(folder);
+  const off = endpoint.subscribe((m) => {
+    if (m.type === "ready") onHash();
+    if (m.type !== "navigate") return;
+    const next = hashForFolder(m.folder);
     if (location.hash !== next) history.pushState(null, "", next);
-    document.title = folder === ROOT ? "LabShelf" : `${folder.slice(folder.lastIndexOf("/") + 1)} — LabShelf`;
+    document.title = m.folder === PAPERS_DIR ? "LabShelf" : `${m.folder.slice(m.folder.lastIndexOf("/") + 1)} — LabShelf`;
   });
-
-  return () => { window.removeEventListener("hashchange", onHash); unsub(); };
+  return () => { window.removeEventListener("hashchange", onHash); off(); };
 }

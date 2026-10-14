@@ -12,15 +12,14 @@
  */
 import { bx } from "../platform/browserApi";
 import type {
-  AttachPdfData, DraftView, FoldersData, IfNoPdf, LibraryRef, PdfMiss, PdfStatusData,
+  AttachPdfData, DraftView, FoldersData, LibraryRef, PdfStatusData,
   RuntimeMessage, RuntimeResponse, SaveOutcome, SavedPaperData, SyncStatusData,
 } from "../platform/runtimeMessages";
 import { $, shortTime, showDialog } from "@labshelf/core/dom";
 import { applyTheme } from "../ui/theme";
-import { noPdfDialogCopy } from "../ui/pdfCopy";
 import { folderName, metaLine, parseTags } from "./format";
-import { pdfLineText, pdfSourceLabel } from "../ui/pdfCopy";
-import { PAPERS_DIR, escapeHtml, icon, type IconName } from "@labshelf/core";
+import { pdfLineText } from "../ui/pdfCopy";
+import { PAPERS_DIR, escapeHtml, icon, noPdfDialogCopy, pdfSourceLabel, type IconName, type IfNoPdf, type PdfMiss } from "@labshelf/core";
 
 type PopupState = "loading" | "form" | "library" | "empty" | "saving" | "saved";
 

@@ -12,3 +12,4 @@ export * from "./logging/index.js";
 export * from "./ai/index.js";
 export * from "./reader/index.js";
 export * from "./ui/index.js";
+export * from "./library-ui/index.js";

@@ -1,14 +1,7 @@
 /**
- * Discriminated message types exchanged between background and UI surfaces
- * (popup, options, library-page, the Google Scholar content script).
- * Centralised so every send/receive site is type-checked against the same
- * envelope.
- * @depends none.
- * @dependents background/index, popup, options, library-page, content/scholar.
+ * The runtime messages between the background and the extension pages and content script, in one typed envelope.
  */
-
-/** What a save does when the resolver chain found no PDF. A missing field means "ask". */
-export type IfNoPdf = "ask" | "save";
+import type { IfNoPdf, PdfMiss } from "@labshelf/core";
 
 export type RuntimeMessage =
   | { type: "ping" }
@@ -52,16 +45,6 @@ export interface SyncStatusData {
   syncing: boolean;
   lastSyncTime: string | null;
   lastError: string | null;
-}
-
-/** How a PDF search that found nothing went; feeds every "No PDF found" dialog. */
-export interface PdfMiss {
-  /** Distinct candidate URLs downloaded and rejected (helper-tab retries not double-counted). */
-  tried: number;
-  /** Resolver labels consulted, de-duplicated, chain order: page | scholar | arxiv | publisher | crossref | unpaywall | sci-hub. */
-  sources: string[];
-  /** At least one candidate answered with a bot check the helper tab could not pass. */
-  blocked: boolean;
 }
 
 /** The library's copy of a paper. */

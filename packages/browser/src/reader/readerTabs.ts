@@ -2,9 +2,6 @@
  * Opens a paper in the reader page, one tab per paper like one VS Code panel per paper: when a reader tab already
  * shows the paper it is brought to the front (and moved to the requested page) instead of opening a second copy.
  * Open tabs are found through extension.getViews, so no "tabs" permission is needed.
- *
- * @depends platform/browserApi
- * @dependents library-page/controllers/paperController, reader/index (exposes the handle)
  */
 import { bx } from "../platform/browserApi";
 
@@ -42,10 +39,7 @@ export function parseReaderQuery(search: string): { paperId: string | null; page
   return Number.isInteger(page) && page > 0 ? { paperId, page } : { paperId };
 }
 
-/**
- * @usedBy library-page/controllers/paperController
- * @returns resolves once the paper's reader tab is in front.
- */
+/** Resolves once the paper's reader tab is in front. */
 export async function openReader(paperId: string, page?: number): Promise<void> {
   const views = (bx.extension.getViews?.({ type: "tab" }) ?? []) as Window[];
   for (const view of views) {

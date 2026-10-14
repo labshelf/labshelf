@@ -50,7 +50,7 @@ Domains:
 | `import/` | everything that turns an input into a paper: identifier detection, PDF text and metadata extraction, metadata registries (CrossRef, arXiv, Semantic Scholar…), resolution and merge, landing-page parsing, the PDF resolver chain and download, BibTeX; `node/` has the pdfjs opener for Node |
 | `sync/` | the sync engine, Drive provider, lock, run record, folder naming, and, in `coordinator/`, the sync coordinator (debounce, periodic runs, lock handling) every app drives ([contracts/sync.md](contracts/sync.md)); `auth/` has the Google endpoints, the token record and the token requests every sign-in uses; `node/` has the lock store and the PKCE loopback auth shared by VS Code and the terminal |
 | `reader/` | the PDF reader: protocol, preferences, citation formats, and the host controller that answers reader messages for every host ([contracts/reader-host.md](contracts/reader-host.md)); `sidecar/` has the per-paper data store and reading state; `logic/` has the pure logic in `navigation/`, `text/` and `presentation/`; `dom/` has the reader UI and its styles, grouped into `elements/`, `session/`, `navigation/`, `text/`, `chrome/`, `sidebar/`, `hover/` and `startup/`; `node/` has the Node sidecar port (VS Code and the terminal) |
-| `library-ui/` | the library surface shared by the VS Code list panel and the browser library page: list state, list, detail pane, folder header and chips; `dom/` holds the components |
+| `library-ui/` | the library surface a host mounts once: the host message protocol and its in-page loopback channel ([contracts/library-ui-host.md](contracts/library-ui-host.md)), the view store and prefs in `state/`, list rows, scope, counts and sorting in `derive/`, the list keymap and the PDF wording; `dom/` has the frame, header, filter bar, list, detail pane, drag-and-drop, the dialogs in `flows/`, and its stylesheet |
 | `ui/` | the design system: tokens, base styles, components (button, menu, dialog, toast, quick input), icons |
 | `ai/` | embeddings contracts, chunking, retrieval, heuristics; runtimes stay in the VS Code app |
 | `logging/` | the JSON-lines log format and a logger over a port; `node/` has the file log sink |
@@ -68,6 +68,7 @@ Core never reaches the platform directly. It declares a port, and each app imple
 | sidecar port | core `node/` | IndexedDB | core `node/` |
 | auth | core `node/` PKCE + `SecretStorage` | `identity.launchWebAuthFlow` | core `node/` PKCE + keychain |
 | reader transport | webview `postMessage` | in-page calls | no reader (system viewer) |
+| library UI transport and prefs | none (the list panel has its own webview) | in-page loopback, localStorage | no library UI (TUI) |
 
 Each app has exactly one composition root, and only that root instantiates adapters:
 

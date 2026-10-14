@@ -1,6 +1,3 @@
 {
-  "packages/browser/src/library-page/views": 9,
-  "packages/browser/src/ui": 9,
-  "packages/core/src/sync/core": 10,
-  "packages/vscode/src/ui/list": 9
+  "packages/core/src/sync/core": 10
 }

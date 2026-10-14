@@ -18,8 +18,7 @@ import {
 } from "../capture/index";
 import type { CaptureDraft, SaveDecision, SavedPaper } from "../capture/index";
 import { IndexedDbFileSystem, buildFolderTree, createLibraryMutations, listAllRecords, pdfDirs, rebuildFromFiles } from "../storage";
-import { ROOT } from "../library-page/state/derive";
-import { hashForFolder } from "../library-page/router";
+import { hashForFolder } from "../library-page";
 import { draftForTab, forgetDraft, forgetPaper, scholarDraftFor } from "./draftCache";
 import { isScholarUrl } from "../content/scholarParse";
 import { installAutoSyncScheduler } from "./autoSyncScheduler";
@@ -27,7 +26,7 @@ import { installIdleSyncTrigger } from "./syncOnIdle";
 import { createSyncMessages } from "./syncMessages";
 import { AlarmSyncTimers } from "./alarmSyncTimers";
 import { installBadgeUpdater } from "./badgeUpdater";
-import { PDF_FILE, findInLibrary, parentDir, type FolderTreeNode } from "@labshelf/core";
+import { PAPERS_DIR, PDF_FILE, findInLibrary, parentDir, type FolderTreeNode } from "@labshelf/core";
 
 const log = new BrowserLogger("background");
 const mutations = createLibraryMutations(log);
@@ -300,14 +299,14 @@ async function findPdfForPaper(id: string): Promise<AttachPdfData> {
 }
 
 async function libraryFolders(): Promise<FoldersData> {
-  const [tree, settings] = await Promise.all([buildFolderTree(ROOT), getSettings()]);
-  const folders: FolderOption[] = [{ path: ROOT, label: "Library", depth: 0 }];
+  const [tree, settings] = await Promise.all([buildFolderTree(PAPERS_DIR), getSettings()]);
+  const folders: FolderOption[] = [{ path: PAPERS_DIR, label: "Library", depth: 0 }];
   const walk = (nodes: FolderTreeNode[], depth: number): void => {
     for (const n of nodes) { folders.push({ path: n.path, label: n.name, depth }); walk(n.children, depth + 1); }
   };
   walk(tree, 1);
   // A remembered folder that was since deleted or renamed falls back to the root.
-  const lastFolder = folders.some((f) => f.path === settings.lastFolder) ? settings.lastFolder : ROOT;
+  const lastFolder = folders.some((f) => f.path === settings.lastFolder) ? settings.lastFolder : PAPERS_DIR;
   return { folders, lastFolder };
 }
 

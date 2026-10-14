@@ -24,7 +24,7 @@ import { addPaper } from "./addPaperFlow";
 import { getSettings, updateSettings } from "../platform/settings";
 import { BrowserLogger } from "../platform/logger";
 import { listAllRecords } from "../storage/paperRecordStore";
-import type { IfNoPdf, PdfMiss } from "../platform/runtimeMessages";
+import type { IfNoPdf, PdfMiss } from "@labshelf/core";
 import { PAPERS_DIR } from "@labshelf/core";
 
 const log = new BrowserLogger("capture");

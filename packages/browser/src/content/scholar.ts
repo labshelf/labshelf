@@ -12,13 +12,12 @@
  * survives Scholar re-rendering its result list. When the search finds no PDF,
  * the user is asked first (shared "No PDF found" dialog, in the overlay shadow
  * root); a result saved without a PDF reads distinctly, not as complete.
- * @depends platform/browserApi, platform/runtimeMessages, content/scholarParse, content/shadowStyles, ui/menu, ui/dialog, ui/pdfCopy
- * @dependents manifest content_scripts (scholar.google.*)
  */
 import { bx } from "../platform/browserApi";
-import type { FoldersData, IfNoPdf, LookupData, RuntimeMessage, RuntimeResponse, SaveOutcome, ScholarHit } from "../platform/runtimeMessages";
+import type { IfNoPdf } from "@labshelf/core";
+import type { FoldersData, LookupData, RuntimeMessage, RuntimeResponse, SaveOutcome, ScholarHit } from "../platform/runtimeMessages";
 import { showDialog, closeMenu, showMenu } from "@labshelf/core/dom";
-import { noPdfDialogCopy, pdfSourceLabel } from "../ui/pdfCopy";
+import { noPdfDialogCopy, pdfSourceLabel } from "@labshelf/core";
 import { isScholarUrl, lookupItemFor, readResult } from "./scholarParse";
 import { kitShadow } from "./shadowStyles";
 import { icon, type IconName } from "@labshelf/core";

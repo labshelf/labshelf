@@ -17,6 +17,7 @@
     "@types/jest": "^29.5.14",
     "@types/node": "^22.13.10",
     "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
     "ts-jest": "^29.4.9",
     "typescript": "^7.0.2",
     "typescript-js": "npm:typescript@^6.0.3"
@@ -28,6 +29,7 @@
     "./styles/reader.css": "./src/reader/dom/styles/reader.css",
     "./styles/base.css": "./src/ui/dom/base.css",
     "./styles/toast.css": "./src/ui/dom/widgets/toast.css",
+    "./styles/library-ui.css": "./src/library-ui/dom/styles/library-ui.css",
     "./styles/tokens.css": "./src/ui/dom/tokens.css",
     "./styles/vscodeHost.css": "./src/ui/dom/vscodeHost.css",
     "./test-support/sync-fakes": "./__tests__/support/syncFakes.ts",

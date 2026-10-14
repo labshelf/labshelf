@@ -9,6 +9,7 @@ This folder holds what the code cannot say by itself. The rules for every change
 | [contracts/library-format.md](contracts/library-format.md) | before touching files on disk: library layout, `metadata.yaml`, the sidecar, shared config |
 | [contracts/sync.md](contracts/sync.md) | before touching sync, Drive or anything that coordinates apps |
 | [contracts/reader-host.md](contracts/reader-host.md) | before touching the PDF reader or a host of it |
+| [contracts/library-ui-host.md](contracts/library-ui-host.md) | before touching the library UI or a host of it |
 | [apps/](apps/README.md) | to build, run or verify an app; OAuth setup |
 | [plans/](plans/) | active plans, all written from [plans/TEMPLATE.md](plans/TEMPLATE.md); each one is deleted when it is done. [plans/CALIBRATION.md](plans/CALIBRATION.md) compares past estimates with reality |
 | [archive/](archive/README.md) | the rare finished document worth keeping |

@@ -297,7 +297,7 @@ For an existing paper (the library's "Find PDF"), the address comes from the sam
 | `emailFromAffiliation(text)` for PubMed's "Electronic address:" | same file | pure, unit-tested |
 | `requestCopyMailto(paper, requester, lang)`, with correct encoding and the length cap | `capture/requestCopy.ts` | pure, unit-tested |
 | `paper.authorContact { id }` → `{ contacts, requestCopyUrl?, articleUrl? }` | `background/index.ts` | runtime message (extension pages only, like `paper.findPdf`) |
-| Ask the author button, "requested on" line | `library-page/views/detailSections.ts`, popup, Scholar dialog | UI |
+| Ask the author button, "requested on" line | `core/src/library-ui/dom/detail/detailSections.ts`, popup, Scholar dialog | UI |
 | `pdfRequestedAt` round trip | `core/types/paperRecord.ts`, `storage/paperRecordStore.recordFromYaml`, `BibTeXService` | data |
 
 ### 5.5 Tests and spec

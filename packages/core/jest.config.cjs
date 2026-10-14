@@ -1,6 +1,8 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
+  // DOM tests opt into jsdom per file; they still resolve packages such as yaml to their Node (CommonJS) builds.
+  testEnvironmentOptions: { customExportConditions: ['node', 'node-addons'] },
   // TypeScript 7 ships only the native compiler, without the JS API ts-jest
   // needs, so tests compile with the aliased TypeScript 6 package instead
   // (same arrangement as packages/vscode; see the root .pnpmfile.cjs).
