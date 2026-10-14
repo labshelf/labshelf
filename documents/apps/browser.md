@@ -49,7 +49,7 @@ Playwright's full Chrome for Testing can load the unpacked extension. Run it out
 
 - The DevTools port is in `<user-data-dir>/DevToolsActivePort`. Node has a global `WebSocket`, so the DevTools protocol can be driven without dependencies.
 - Pick the extension's service worker by `url.endsWith("/background/index.js")`. Chrome for Testing ships a component extension whose worker comes first. Read `chrome.storage.local` by evaluating in that worker.
-- To test a page without the background, serve `dist/chrome` statically and inject a callback-style `window.chrome` stub (webextension-polyfill needs only `runtime.id`). Seed IndexedDB `labshelf` v1 on the same origin before navigating to `library-page/index.html`.
+- To test a page without the background, serve `dist/chrome` statically and inject a callback-style `window.chrome` stub (webextension-polyfill needs only `runtime.id`). Seed IndexedDB `labshelf` v1 on the same origin before navigating to `library-page/index.html`, which mounts core's library UI over an in-page loopback ([library-ui-host.md](../contracts/library-ui-host.md)) and reads reading stats and annotations from the papers' sidecars.
 - To test the Scholar content script on a fixture, `Fetch.enable` for `https://scholar.google.com/scholar*` and fulfil the request with the fixture HTML.
 - To test the popup against an article tab, open `popup/index.html` in a 340 px target, overriding `chrome.tabs.query` through `Page.addScriptToEvaluateOnNewDocument`.
 - For reader parity with VS Code, render both readers on the same real paper and pixel-diff the toolbar and sidebar. CDP drags do not create text selections in either reader; select with a `Range` plus a synthetic `mouseup` instead.

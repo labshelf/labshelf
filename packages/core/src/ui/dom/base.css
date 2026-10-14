@@ -1,9 +1,4 @@
-/*
- * Shared primitives for every LabShelf browser surface. Ported from the VS Code
- * extension's list webview (template.css.ts) and reader chrome (reader.css) so
- * buttons, inputs, badges, and overlays look identical across both products.
- * Requires tokens.css.
- */
+/* Shared primitives (buttons, inputs, badges, overlays) for every LabShelf web surface. Requires tokens.css. */
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {

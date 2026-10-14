@@ -1,7 +1,6 @@
 /**
- * Keeps the library UI's snapshot current: reads the folder tree, PDF presence, every paper record and the reading
- * stats from IndexedDB, posts them to the UI, and reads again when the page becomes visible or the background reports a
- * change made elsewhere (a capture from the popup or Scholar, an attach, a sync, an annotation made in the reader).
+ * Keeps the library UI's snapshot current from IndexedDB, reading again when the page becomes visible or the
+ * background reports a change made elsewhere (popup or Scholar capture, attach, sync, reader annotation).
  */
 import { PAPERS_DIR, type HostEndpoint, type LibraryUiSnapshot, type PaperRecord, type PaperStats } from "@labshelf/core";
 import { bx, type BrowserLogger, type LibraryChangedBroadcast } from "../../../platform";

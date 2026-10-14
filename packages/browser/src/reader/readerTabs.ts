@@ -18,7 +18,6 @@ declare global {
 }
 
 /**
- * @usedBy openReader, background or tests that need the reader address
  * @returns the extension URL of the reader page for a paper.
  */
 export function readerUrl(paperId: string, page?: number): string {
@@ -29,7 +28,6 @@ export function readerUrl(paperId: string, page?: number): string {
 
 /**
  * Parses the reader page's query string.
- * @usedBy reader/index
  * @returns the paper id (null when absent) and an optional page.
  */
 export function parseReaderQuery(search: string): { paperId: string | null; page?: number } {

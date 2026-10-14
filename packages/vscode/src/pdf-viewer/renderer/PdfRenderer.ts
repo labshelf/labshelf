@@ -1,7 +1,6 @@
 /**
- * Generates the HTML shell of the PDF reader webview: CSP, pdf.js asset preloads, structural containers, the inert JSON boot block and the bundled runtime (dist/reader).
- * All behaviour lives in the bundle built from src/reader/main.ts and @labshelf/core/dom by build/webviews.mjs; the body
- * skeleton is the shared READER_SHELL_BODY, which the browser extension's reader page uses too.
+ * Generates the HTML shell of the PDF reader webview; all behaviour lives in the bundle built by build/webviews.mjs.
+ * The body skeleton is the shared READER_SHELL_BODY, which the browser extension's reader page uses too.
  */
 import * as vscode from "vscode";
 import * as fs from "node:fs";
@@ -43,7 +42,6 @@ export interface ResolvedUris {
 
 /**
  * Resolves pdfjs-dist file paths (including cmaps, fonts, wasm, iccs) and converts them to webview-safe URIs.
- * @usedBy pdf-viewer/renderer/PdfRenderer.ts (generateHtml), pdf-viewer/index.ts, pdf-viewer/PdfRenderer.ts (shim)
  * @returns A ResolvedUris object with all webview URIs, or null if pdfjs-dist cannot be located.
  */
 export function resolvePdfjsUris(webview: vscode.Webview): ResolvedUris | null {
@@ -85,7 +83,6 @@ export function resolvePdfjsUris(webview: vscode.Webview): ResolvedUris | null {
 
 /**
  * Locates and returns the pdfjs-dist package root directory as a vscode.Uri for use in webview localResourceRoots.
- * @usedBy pdf-viewer/PdfViewerPanel.ts, pdf-viewer/index.ts, pdf-viewer/PdfRenderer.ts (shim)
  * @returns A vscode.Uri pointing to the pdfjs-dist root, or null if the package cannot be resolved.
  */
 export function getPdfjsDirectory(): vscode.Uri | null {
@@ -114,7 +111,6 @@ export interface ReaderBundleUris {
 
 /**
  * Directory holding the esbuild output of the reader webview, for use in localResourceRoots.
- * @usedBy pdf-viewer/PdfViewerPanel.ts
  * @returns <extension>/dist/reader
  */
 export function getReaderBundleDirectory(extensionUri: vscode.Uri): vscode.Uri {
@@ -123,7 +119,6 @@ export function getReaderBundleDirectory(extensionUri: vscode.Uri): vscode.Uri {
 
 /**
  * Resolves the bundled reader runtime to webview URIs.
- * @usedBy pdf-viewer/renderer/PdfRenderer.ts (generateHtml)
  * @returns the script and stylesheet URIs, or null when the bundle has not been built (dev checkout before `pnpm build`).
  */
 export function resolveReaderBundleUris(
@@ -142,7 +137,6 @@ export function resolveReaderBundleUris(
 export class PdfRenderer {
   /**
    * Generates the reader's HTML shell. The document carries no behaviour of its own: the bundle reads the JSON boot block and builds the UI.
-   * @usedBy pdf-viewer/PdfViewerPanel.ts
    * @returns An HTML string ready to assign to webview.html.
    */
   generateHtml(params: RenderParams): string {
@@ -211,7 +205,6 @@ ${READER_SHELL_BODY}
 
 /**
  * JSON for an inert <script type="application/json"> block. `<` is escaped so a paper title containing "</script>" cannot terminate the block, and U+2028/2029 because they are line terminators in older parsers.
- * @usedBy generateHtml
  * @returns the JSON-encoded boot payload, safe to embed inside a script tag.
  */
 export function serializeBoot(boot: ReaderBootParams): string {

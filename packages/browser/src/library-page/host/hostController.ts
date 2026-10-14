@@ -1,7 +1,6 @@
 /**
- * The library page's host: answers every message the library UI sends by dispatching to the IndexedDB and background
- * handlers. Failures become error notices. Attach PDF is dispatched synchronously so its file picker opens inside
- * the click that asked for it.
+ * The library page's host: dispatches every library UI message to the IndexedDB and background handlers.
+ * Attach PDF runs synchronously so its file picker opens inside the click that asked for it.
  */
 import type { HostEndpoint, UiToHost } from "@labshelf/core";
 import {

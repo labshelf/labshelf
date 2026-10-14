@@ -1,9 +1,7 @@
 /**
- * Every change the terminal makes to the library. The mutations themselves are core's; this class maps collection paths
- * to folders, finds papers that moved since the last scan, and reloads the store and tells the sync after each change.
- *
- * Titles are never rewritten: Drive folders are named after titles (see core folderNames), and renaming one outside a
- * sync would make the next sync read it as a different paper.
+ * Every change the terminal makes to the library: maps collection paths to folders and reloads the store and tells the
+ * sync after each change. Titles are never rewritten, because renaming a Drive folder outside a sync makes the next
+ * sync read it as a different paper.
  */
 import * as path from "node:path";
 
