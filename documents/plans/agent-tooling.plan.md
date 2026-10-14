@@ -71,7 +71,7 @@ Open (blocks approval):
 
 ### Session 1 — Rules and standards
 
-- **Starts from:** clean tree (current `feat/reader-ux` work committed)
+- **Starts from:** clean tree 
 - **Ends with:** A6 (rules part), the comment standard written down
 - **Commit:** yes
 
