@@ -1,17 +1,15 @@
-/**
- * Execute classified diff operations against RemoteProvider and LocalFileSystem,
- * including keep-both conflict resolution.
- */
-import type { RemoteProvider, RemoteNamespace } from "../provider/remoteProvider.js";
-import type { LocalFileSystem } from "../../ports/index.js";
+// Execute classified diff operations against RemoteProvider and LocalFileSystem,
+// including keep-both conflict resolution.
+import type { RemoteProvider, RemoteNamespace } from "../../provider/remoteProvider.js";
+import type { LocalFileSystem } from "../../../ports/index.js";
 import type {
   NamespaceResult,
   SyncOperation,
-} from "./syncTypes.js";
-import type { SyncManifest } from "./syncManifest.js";
-import { RemotePathResolver, splitPath } from "../provider/remotePathResolver.js";
-import { conflictPath } from "../util/conflictName.js";
-import { sha256Hex } from "../util/contentHash.js";
+} from "../syncTypes.js";
+import type { SyncManifest } from "../state/index.js";
+import { RemotePathResolver, splitPath } from "../../provider/remotePathResolver.js";
+import { conflictPath } from "../../util/conflictName.js";
+import { sha256Hex } from "../../util/contentHash.js";
 
 /** Context the apply step needs beyond the operation list. */
 export interface ApplyContext {

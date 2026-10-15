@@ -1,13 +1,11 @@
-/**
- * Persist and query the per-provider sync manifest — the three-way merge base
- * mapping relative paths to their last-synced state.
- */
-import type { LocalFileSystem } from "../../ports/index.js";
+// Persist and query the per-provider sync manifest — the three-way merge base
+// mapping relative paths to their last-synced state.
+import type { LocalFileSystem } from "../../../ports/index.js";
 import type {
   ManifestData,
   ManifestEntry,
-} from "./syncTypes.js";
-import type { RemoteNamespace } from "../provider/remoteProvider.js";
+} from "../syncTypes.js";
+import type { RemoteNamespace } from "../../provider/remoteProvider.js";
 
 // Returns a fresh empty ManifestData for a given providerId.
 function emptyData(providerId: string): ManifestData {

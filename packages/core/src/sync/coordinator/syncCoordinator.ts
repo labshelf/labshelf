@@ -2,7 +2,7 @@
  * Drives the sync of one library for one app: on demand, after local changes and periodically, one run at a time, and
  * keeps a status the app renders. Platform access (files, lock, auth, timers) is injected.
  */
-import { readSyncRunRecord } from "../core/index.js";
+import { readSyncRunRecord } from "../engine/index.js";
 import { runSyncOnce } from "./syncRun.js";
 import { LOCAL_CHANGE_DEBOUNCE_MS, syncedRecently } from "./syncSchedule.js";
 import { SyncStatusCell, type SyncStatusListener } from "./syncStatus.js";

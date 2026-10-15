@@ -1,11 +1,9 @@
-/**
- * Enumerate the local and remote file trees of a namespace into path-keyed maps consumed by the diff.
- */
-import type { ILogger, LocalFileSystem } from "../../ports/index.js";
-import type { TreeNode } from "./syncTypes.js";
-import type { RemoteFile, RemoteProvider } from "../provider/remoteProvider.js";
-import type { RemotePathResolver } from "../provider/remotePathResolver.js";
-import { sha256Hex } from "../util/contentHash.js";
+// Enumerate the local and remote file trees of a namespace into path-keyed maps consumed by the diff.
+import type { ILogger, LocalFileSystem } from "../../../ports/index.js";
+import type { TreeNode } from "../syncTypes.js";
+import type { RemoteFile, RemoteProvider } from "../../provider/remoteProvider.js";
+import type { RemotePathResolver } from "../../provider/remotePathResolver.js";
+import { sha256Hex } from "../../util/contentHash.js";
 
 // Joins a relative directory prefix and a child name into a POSIX path.
 function joinPath(prefix: string, name: string): string {
@@ -92,49 +90,61 @@ export async function scanRemoteTree(
 
   async function walk(folderId: string, relDir: string, listed?: RemoteFile[]): Promise<void> {
     const children = listed ?? await provider.list(folderId);
-    // Two remote folders must never share a local name — their files would be merged and one paper would overwrite
-    // the other. Folders with the strongest claim (rank) take their name first; a later claimant falls back to its
-    // display name, then to the display name plus part of its id.
     const taken = new Set(children.filter((c) => !c.isFolder).map((c) => c.name));
-    const folders: Array<{ folder: RemoteFile; kids: RemoteFile[] | undefined; naming: FolderNaming }> = [];
-    for (const folder of children.filter((c) => c.isFolder)) {
-      // The namer needs the folder's contents; listing them here is the listing walk() would do anyway.
-      const kids = nameFolder ? await provider.list(folder.id) : undefined;
-      const mapped = folderNameMap?.get(folder.name);
-      const naming = (kids ? await nameFolder!(folder, kids) : undefined)
-        ?? (mapped ? { name: mapped, rank: RANK_NAME_MAP } : { name: folder.name, rank: RANK_DISPLAY });
-      folders.push({ folder, kids, naming });
-    }
-    folders.sort((a, b) => a.naming.rank - b.naming.rank);
+    const folders = await rankedFolderNames(children.filter((c) => c.isFolder), provider, folderNameMap, nameFolder);
     for (const { folder, kids, naming } of folders) {
-      let localName = naming.name;
-      if (taken.has(localName)) { localName = folder.name; }
-      if (taken.has(localName)) { localName = `${folder.name} (${folder.id.slice(-6)})`; }
-      taken.add(localName);
-      const rel = joinPath(relDir, localName);
+      const rel = joinPath(relDir, claimLocalName(naming, folder, taken));
       resolver.register(rel, folder.id);
       await walk(folder.id, rel, kids);
     }
-    for (const child of children) {
-      if (child.isFolder) { continue; }
-      const rel = joinPath(relDir, child.name);
-      const node: TreeNode = {
-        path: rel,
-        modifiedTime: child.modifiedTime,
-        remoteId: child.id,
-      };
-      if (child.size !== undefined) {
-        node.size = child.size;
-      }
-      // Drive allows two files with one name in a folder (left behind by the old appdata listing,
-      // which uploaded a second data.json beside the first). Keep the newest, the last one written.
-      const seen = tree.get(rel);
-      if (!seen || seen.modifiedTime < child.modifiedTime) {
-        tree.set(rel, node);
-      }
-    }
+    collectFileNodes(children, relDir, tree);
   }
 
   await walk(rootId, "");
   return tree;
+}
+
+type RankedFolder = { folder: RemoteFile; kids: RemoteFile[] | undefined; naming: FolderNaming };
+
+// The namer needs a folder's contents to decide its name, strongest claim (lowest rank) first, falling back to the
+// display-name translation, then the display name itself.
+async function rankedFolderNames(
+  folders: RemoteFile[],
+  provider: RemoteProvider,
+  folderNameMap: Map<string, string> | undefined,
+  nameFolder: RemoteFolderNamer | undefined,
+): Promise<RankedFolder[]> {
+  const ranked: RankedFolder[] = [];
+  for (const folder of folders) {
+    // The namer needs the folder's contents; listing them here is the listing walk() would do anyway.
+    const kids = nameFolder ? await provider.list(folder.id) : undefined;
+    const mapped = folderNameMap?.get(folder.name);
+    const naming = (kids ? await nameFolder!(folder, kids) : undefined)
+      ?? (mapped ? { name: mapped, rank: RANK_NAME_MAP } : { name: folder.name, rank: RANK_DISPLAY });
+    ranked.push({ folder, kids, naming });
+  }
+  return ranked.sort((a, b) => a.naming.rank - b.naming.rank);
+}
+
+// Two remote folders must never share a local name — their files would be merged and one paper would overwrite the
+// other — so a later claimant falls back to its display name, then to the display name plus part of its id.
+function claimLocalName(naming: FolderNaming, folder: RemoteFile, taken: Set<string>): string {
+  let localName = naming.name;
+  if (taken.has(localName)) { localName = folder.name; }
+  if (taken.has(localName)) { localName = `${folder.name} (${folder.id.slice(-6)})`; }
+  taken.add(localName);
+  return localName;
+}
+
+// Drive allows two files with one name in a folder (left behind by the old appdata listing, which uploaded a
+// second data.json beside the first). Keep the newest, the last one written.
+function collectFileNodes(children: RemoteFile[], relDir: string, tree: Map<string, TreeNode>): void {
+  for (const child of children) {
+    if (child.isFolder) { continue; }
+    const rel = joinPath(relDir, child.name);
+    const node: TreeNode = { path: rel, modifiedTime: child.modifiedTime, remoteId: child.id };
+    if (child.size !== undefined) { node.size = child.size; }
+    const seen = tree.get(rel);
+    if (!seen || seen.modifiedTime < child.modifiedTime) { tree.set(rel, node); }
+  }
 }

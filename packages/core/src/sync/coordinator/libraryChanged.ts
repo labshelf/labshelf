@@ -1,5 +1,5 @@
 /** Decides whether a sync changed the local library, so an app re-reads its papers only when it has to. */
-import type { SyncResult } from "../core/index.js";
+import type { SyncResult } from "../engine/index.js";
 
 /**
  * True when the run pulled, removed or conflicted files in the `library` namespace. Uploads and appdata-only changes

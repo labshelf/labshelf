@@ -1,22 +1,20 @@
-/**
- * Decides the local folder name of each Drive folder in the "library" namespace. Drive folders of papers are named
- * after titles (see folderNames.ts), locally they are named after the paper id; a device that does not know a title
- * yet (a paper added elsewhere), or that knew an older title, used to bring the folder down under its title, giving
- * the paper a second id and orphaning its sidecar. The rules, in order:
- *
- *  1. A folder synced before keeps the local name its files were synced under (found through the manifest by remote
- *     file id) — so nothing already on disk is ever renamed by a title change.
- *  2. A paper folder new to this device is named after the citekey in its metadata.yaml, which every LabShelf surface
- *     writes equal to the paper id (preferred over the title, which two papers may share).
- *  3. A title this device knows maps to its paper id.
- *  4. Otherwise the display name is kept (collections, foreign folders).
- *
- * The rank of each answer lets scanRemoteTree settle two folders claiming one name: the stronger claim keeps it.
- */
-import { METADATA_FILE, parsePaperMetadata } from "../../library/index.js";
-import type { RemoteProvider } from "../provider/remoteProvider.js";
-import type { SyncManifest } from "./syncManifest.js";
-import type { FolderNaming, RemoteFolderNamer } from "./treeScan.js";
+// Decides the local folder name of each Drive folder in the "library" namespace. Drive folders of papers are named
+// after titles (see folderNames.ts), locally they are named after the paper id; a device that does not know a title
+// yet (a paper added elsewhere), or that knows an older title, would bring the folder down under its title, giving
+// the paper a second id and orphaning its sidecar. The rules, in order:
+//
+//  1. A folder synced before keeps the local name its files were synced under (found through the manifest by remote
+//     file id) — so nothing already on disk is ever renamed by a title change.
+//  2. A paper folder new to this device is named after the citekey in its metadata.yaml, which every LabShelf surface
+//     writes equal to the paper id (preferred over the title, which two papers may share).
+//  3. A title this device knows maps to its paper id.
+//  4. Otherwise the display name is kept (collections, foreign folders).
+//
+// The rank of each answer lets scanRemoteTree settle two folders claiming one name: the stronger claim keeps it.
+import { METADATA_FILE, parsePaperMetadata } from "../../../library/index.js";
+import type { RemoteProvider } from "../../provider/remoteProvider.js";
+import type { SyncManifest } from "../state/index.js";
+import type { FolderNaming, RemoteFolderNamer } from "../pipeline/index.js";
 
 export interface LibraryFolderNamerDeps {
   provider: RemoteProvider;

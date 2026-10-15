@@ -1,5 +1,5 @@
 /** When automatic syncs run: the local-change debounce and the periodic "synced recently" skip. */
-import type { SyncRunRecord } from "../core/index.js";
+import type { SyncRunRecord } from "../engine/index.js";
 
 /** A burst of local edits syncs once, this long after the last one. */
 export const LOCAL_CHANGE_DEBOUNCE_MS = 30_000;

@@ -13,7 +13,7 @@ import {
   type SyncLockOwner,
   type SyncResult,
   type SyncRunRecord,
-} from "../core/index.js";
+} from "../engine/index.js";
 import type { SyncTarget } from "./types.js";
 
 export interface SyncRunInput {
