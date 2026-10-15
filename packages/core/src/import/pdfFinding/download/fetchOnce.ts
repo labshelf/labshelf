@@ -42,7 +42,7 @@ export async function fetchOnce(url: string, env: ResolverEnv, settings: Request
     const { status } = res;
     if (!res.ok || status === 202) {
       const html = await res.text().catch(() => "");
-      return { finalUrl, status, outcome: classifyFetch({ status, finalUrl, html }) };
+      return { finalUrl, status, outcome: classifyFetch({ status, finalUrl, html, headers: res.headers }) };
     }
     if (Number(res.headers.get("content-length") ?? "0") > MAX_PDF_BYTES) return { finalUrl, status, outcome: "error" };
     const bytes = new Uint8Array(await res.arrayBuffer());
@@ -50,7 +50,7 @@ export async function fetchOnce(url: string, env: ResolverEnv, settings: Request
     const type = (res.headers.get("content-type") ?? "").toLowerCase();
     const isHtml = !isPdfBytes(bytes) && bytes.length <= MAX_HTML_BYTES && (type.includes("html") || type === "");
     const html = isHtml ? new TextDecoder().decode(bytes) : undefined;
-    const outcome = classifyFetch({ status, finalUrl, bytes, ...(html !== undefined ? { html } : {}) });
+    const outcome = classifyFetch({ status, finalUrl, bytes, headers: res.headers, ...(html !== undefined ? { html } : {}) });
     return {
       finalUrl, status, outcome,
       ...(outcome === "pdf" ? { pdf: { bytes, url: finalUrl } } : {}),

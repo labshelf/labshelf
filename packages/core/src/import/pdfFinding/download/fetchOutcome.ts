@@ -2,6 +2,7 @@
 import { isPdfBytes } from "../../../library/index.js";
 import type { FetchOutcome } from "../types.js";
 import { isBotCheck } from "./botCheck.js";
+import type { HeaderReader } from "./wallSignatures.js";
 import { nextHopsFromHtml } from "./nextHops.js";
 
 /** What a hop came back with; `html` is the decoded body of an HTML or non-OK answer. */
@@ -11,10 +12,12 @@ export interface FetchFacts {
   /** Start of the body when it was read as a download. */
   bytes?: Uint8Array;
   html?: string;
+  /** The response headers, for the walls that announce themselves there. */
+  headers?: HeaderReader;
 }
 
 const PASSWORD_FIELD = /<input\b[^>]*\btype\s*=\s*["']?password/i;
-const LOGIN_WORDS = /sign in|access through your institution|purchase|get access/i;
+const LOGIN_WORDS = /sign in|log ?in,? or register|log in via an institution|access through your institution|purchase|get access/i;
 
 /** True for a page that asks for credentials or payment instead of showing the article. */
 function isLoginWall(html: string): boolean {
@@ -22,9 +25,9 @@ function isLoginWall(html: string): boolean {
   return PASSWORD_FIELD.test(markup) || LOGIN_WORDS.test(markup.replace(/<[^>]*>/g, " "));
 }
 
-export function classifyFetch({ status, finalUrl, bytes, html }: FetchFacts): FetchOutcome {
+export function classifyFetch({ status, finalUrl, bytes, html, headers }: FetchFacts): FetchOutcome {
   if (bytes && isPdfBytes(bytes)) return "pdf";
-  if (html !== undefined && isBotCheck(status, html)) return "bot";
+  if (isBotCheck(status, html ?? "", { finalUrl, ...(headers ? { headers } : {}) })) return "bot";
   if (status === 401 || status === 403) return "login";
   if (status < 200 || status >= 300 || html === undefined) return "error";
   // A page that still offers a PDF or a redirect is a hop to follow, whatever else it says.
