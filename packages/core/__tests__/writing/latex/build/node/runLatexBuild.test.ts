@@ -1,0 +1,83 @@
+/** Verifies a LaTeX build against fake toolchains: PDF only on success, problems located in the project, cancellation. */
+import { promises as fs } from "node:fs";
+import * as path from "node:path";
+
+import { latexBuildDir, runLatexBuild, type LatexBuildRequest } from "../../../../../src/writing/latex/build/node/index";
+import { fakeLogger } from "../../../../support/fakeLogger";
+import { cleanupTempDirs, makeTempDir } from "../../../../support/tempDirs";
+
+afterEach(cleanupTempDirs);
+
+const posixOnly = process.platform === "win32" ? describe.skip : describe;
+
+function writesLog(lines: string[]): string {
+  return `cat > "$OUT/main.log" <<'LOG'\n${lines.join("\n")}\nLOG\nexit 1`;
+}
+
+async function setup(script: string): Promise<LatexBuildRequest> {
+  const projectFolder = await makeTempDir();
+  const outDir = path.join(await makeTempDir(), "build");
+  await fs.mkdir(path.join(projectFolder, "chapters"));
+  await fs.writeFile(path.join(projectFolder, "main.tex"), "\\documentclass{article}\n");
+  await fs.writeFile(path.join(projectFolder, "chapters", "intro.tex"), "x\n");
+  const executable = path.join(await makeTempDir(), "tectonic");
+  await fs.writeFile(executable, `#!/bin/sh\nOUT="${outDir}"\n${script}\n`, { mode: 0o755 });
+  return { toolchain: { engine: "tectonic", executable }, projectFolder, main: "main.tex", outDir, signal: new AbortController().signal, logger: fakeLogger() };
+}
+
+posixOnly("runLatexBuild", () => {
+  it("copies the PDF next to the main file on success and leaves the rest in the build folder", async () => {
+    const request = await setup('echo "%PDF-1.5 built" > "$OUT/main.pdf"; echo "(main.tex)" > "$OUT/main.log"; echo aux > "$OUT/main.aux"');
+    const result = await runLatexBuild(request);
+    expect(result).toEqual({ status: "succeeded", pdf: path.join(request.projectFolder, "main.pdf"), problems: [] });
+    expect(await fs.readFile(path.join(request.projectFolder, "main.pdf"), "utf8")).toBe("%PDF-1.5 built\n");
+    expect((await fs.readdir(request.projectFolder)).sort()).toEqual(["chapters", "main.pdf", "main.tex"]);
+  });
+
+  it("keeps the previous PDF on failure and places the error in the \\input file Tectonic names without extension", async () => {
+    const request = await setup(writesLog(["(main.tex (chapters/intro", "! Undefined control sequence.", "l.3 Another \\badmacro"]));
+    await fs.writeFile(path.join(request.projectFolder, "main.pdf"), "old");
+    const result = await runLatexBuild(request);
+    expect(result).toEqual({ status: "failed", problems: [expect.objectContaining({
+      severity: "error", message: "Unknown command \\badmacro.", file: path.join(request.projectFolder, "chapters", "intro.tex"), line: 3,
+    })] });
+    expect(await fs.readFile(path.join(request.projectFolder, "main.pdf"), "utf8")).toBe("old");
+  });
+
+  it("puts a problem from a package file on the main file, named after the package", async () => {
+    const request = await setup(writesLog(["(main.tex (fontspec.sty", "! Undefined control sequence.", "l.9 \\oops"]));
+    const result = await runLatexBuild(request);
+    expect(result).toMatchObject({ status: "failed", problems: [{ message: "fontspec.sty: Unknown command \\oops.", file: path.join(request.projectFolder, "main.tex") }] });
+    expect((result as { problems: { line?: number }[] }).problems[0]!.line).toBeUndefined();
+  });
+
+  it("reports the toolchain's own error when the log names none", async () => {
+    const request = await setup('echo "error: failed to download the bundle: network unreachable" >&2; exit 1');
+    expect(await runLatexBuild(request)).toMatchObject({ status: "failed", problems: [{ severity: "error", message: "failed to download the bundle: network unreachable" }] });
+  });
+
+  it("reports a toolchain that cannot be started", async () => {
+    const request = await setup("");
+    request.toolchain = { engine: "tectonic", executable: path.join(request.outDir, "missing") };
+    const result = await runLatexBuild(request);
+    expect(result).toMatchObject({ status: "failed", problems: [{ severity: "error", file: path.join(request.projectFolder, "main.tex") }] });
+    expect((result as { problems: { message: string }[] }).problems[0]!.message).toContain("Could not start");
+  });
+
+  it("stops the process tree when cancelled and writes no PDF", async () => {
+    const request = await setup('sleep 30 & wait; echo "%PDF" > "$OUT/main.pdf"');
+    const controller = new AbortController();
+    const started = Date.now();
+    const running = runLatexBuild({ ...request, signal: controller.signal });
+    setTimeout(() => controller.abort(), 200);
+    expect(await running).toEqual({ status: "cancelled" });
+    expect(Date.now() - started).toBeLessThan(5000);
+    await expect(fs.stat(path.join(request.projectFolder, "main.pdf"))).rejects.toThrow();
+  });
+});
+
+describe("latexBuildDir", () => {
+  it("keeps each project's build under the shared cache", () => {
+    expect(latexBuildDir("deep-nets", { XDG_CACHE_HOME: "/xdg" })).toBe(path.join("/xdg", "labshelf", "builds", "deep-nets"));
+  });
+});
