@@ -1,6 +1,6 @@
 # Plan: Find and download PDFs as well as Zotero and Paperpile
 
-Status: in progress (session 2 of 8)
+Status: in progress (session 3 of 8)
 Size: GG — a measurement harness, a reordered resolver engine, a publisher rule table, a bot-wall ladder, library proxies, PDF versions and two last-resort flows across core and the browser extension; grows past 8 sessions if the user's manual checks show session access failing for reasons the rules cannot fix
 Pending decisions: 0
 Branch: `feat/pdf-finding`, cut from `feat/reader-ux` (72b3dc0), in the worktree `../labshelf-pdf-finding` — `main` predates `import/pdfFinding/`
@@ -18,7 +18,7 @@ Research (2026-10-15, Zotero source, the Paperpile Firefox add-on 1.0.132 source
 - [x] **D3** Page first. The article page (the user's tab, or the DOI landing page fetched in the background) is parsed before the aggregator results are downloaded, and every download sends the page as Referer — this is what Zotero and Paperpile do.
 - [x] **D4** Two stages: all lookups (the page, and the learning and direct resolvers) run concurrently with a 3 s cap, then the ranked candidates download with limited concurrency — this keeps the learners-feed-PMC invariant and makes "not found" fast.
 - [x] **D5** Polite per-domain pacing: 1 s between requests to a domain, and a domain is skipped for the run after 5 consecutive failures — publishers block bursts (Zotero's numbers).
-- [x] **D6** Publisher rules are a data table ported from the URL shapes in Zotero's translators and the earlier research, rewritten and not copied — Zotero is AGPL; URL shapes are facts. Each rule has a verified example and a unit test, and may carry paywall ("restricted") signatures.
+- [x] **D6** Publisher rules are a data table ported from the URL shapes in Zotero's translators and the earlier research, rewritten and not copied — Zotero is AGPL; URL shapes are facts. Each rule has a verified example and a unit test.
 - [x] **D7** Every fetch has an outcome: `pdf`, `bot`, `login`, `html`, `error`. `bot` matches the wall signatures (§6, S10) on any status and on the final URL. `login` is a 401/403 without bot markers, or HTML with paywall or sign-in markers and no PDF candidate.
 - [x] **D8** Bot-wall ladder, browser only: background fetch with cookies → the inactive helper tab (it also passes the PMC proof-of-work, because the page's own script solves it) → on the user's click, a visible tab that is watched and attaches the PDF when it becomes reachable. The visible tab also serves institutional sign-in (CAFe/Shibboleth).
 - [x] **D9** Library proxies: an ordered list of `{ name, template, enabled }` in the options page. The kind follows from the template: a prefix with `$@` (Paperpile's convention), a hostname suffix (`.ezproxy.uni.edu`), or the OpenAthens redirector. Only candidates on publisher hosts that answered `login` are retried through them. No credentials are stored, and there is no preset database.
@@ -57,8 +57,8 @@ Coordination with the writing plans, which run in parallel:
 - [x] **A1** `pnpm --filter @labshelf/core eval:pdf` runs the corpus in the "ids" and "landing" scenarios and prints, per category and in total, correct PDFs, wrong PDFs, misses by outcome, and median times. It writes a JSON report beside the corpus.
 - [ ] **A2** On the harness, the "landing" scenario reaches at least 40/66 correct PDFs and "ids" at least 37/66, with at most 2 wrong PDFs (session 1 baseline: landing 35, ids 34, 4 wrong in each).
 - [x] **A3** On the harness, the median time to "not found" is at most 3 s and to a found PDF at most 2.5 s.
-- [ ] **A4** The rule table covers at least 36 publisher platforms. Every rule has a unit test with a verified example DOI or landing URL.
-- [ ] **A5** Unit tests classify saved fixtures: every wall in S10's table gives `bot` on any status; login pages from Springer, Elsevier, Wiley, IEEE and a CAFe/Shibboleth page give `login`.
+- [x] **A4** The rule table covers at least 36 publisher platforms. Every rule has a unit test with a verified example DOI or landing URL.
+- [x] **A5** Unit tests classify saved fixtures: every wall in S10's table gives `bot` on any status; login pages from Springer, Elsevier, Wiley, IEEE and a CAFe/Shibboleth page give `login`.
 - [ ] **A6** The prefix, hostname and OpenAthens rewrites are pure and unit-tested, and an end-to-end engine test shows that a `login` candidate is retried through an enabled proxy and an open-access host is not.
 - [ ] **A7** Manual, by the user, in Chrome and in Firefox while signed in through the institution: from the closed-access checklist (15 papers), the toolbar popup attaches the correct PDF for at least 12 and the Google Scholar capture for at least 10. The session 1 baseline is in §8.
 - [ ] **A8** Manual: when a capture ends in "PDF not found" because of a sign-in or bot wall, the dialog offers "Open to sign in" / "Open to pass the check". After the user signs in or solves it in that tab, the PDF attaches without another click.
@@ -78,7 +78,7 @@ Coordination with the writing plans, which run in parallel:
 | Fetch outcome classifier | `core/src/import/pdfFinding/download/` | `pdf / bot / login / html / error` from status, headers, final URL and body. |
 | Two-stage engine and domain pacer | `core/src/import/pdfFinding/` | `resolvePdf(ctx, fetchOpts, attempts)` keeps its signature. `PdfAttempt` gains `outcome` and `status`. |
 | Page-first context | `core/src/import/` (identifier import) | The DOI landing page becomes `landingUrl` and `pageCandidates` in every app. |
-| Publisher rule table | `core/src/import/pdfFinding/rules/` | `{ platform, match (DOI prefix or landing regex), pdfUrls(), restricted?: RegExp[] }`, one file per platform family, so that no folder holds more than 8 files. |
+| Publisher rule table | `core/src/import/pdfFinding/rules/` | `{ platform, hosts, doi?: { prefixes, pdfUrls }, landing?: { path, pdfUrls }, examples }`, one file per platform family, so that no folder holds more than 8 files. |
 | Proxy rewrite | `core/src/import/pdfFinding/access/` | Pure. The proxy list comes in through `fetchOpts`, so core never reads settings. |
 | Access stage | engine, after the open-access candidates | `login` candidates → helper tab → each enabled proxy → verdict. |
 | Helper tab and visible watched tab | `packages/browser/src/capture/tab/` | The visible tab opens only on a click in the dialog. It is watched through `tabs.onUpdated` for up to 5 minutes, one tab per paper. |
@@ -128,10 +128,10 @@ Each session ends with typecheck and tests green, the `finish` pass, a harness r
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S8 | Rule table schema; move the 22 existing rules into it | S5 | H · main thread | existing tests pass | [ ] |
-| S9 | Port rules to at least 36 platforms | S8 | M · implementer (sonnet), 2 in parallel by platform family | A4 | [ ] |
-| S10 | Bot and login signatures with fixtures | S2 | M · implementer (sonnet) | A5 | [ ] |
-| S11 | Finish and harness run | S8–S10 | `finish` skill + main thread | A2 checked, §8 | [ ] |
+| S8 | Rule table schema; move the 22 existing rules into it | S5 | H · main thread | existing tests pass | [x] |
+| S9 | Port rules to at least 36 platforms | S8 | M · implementer (sonnet), 2 in parallel by platform family | A4 | [x] |
+| S10 | Bot and login signatures with fixtures | S2 | M · implementer (sonnet) | A5 | [x] |
+| S11 | Finish and harness run | S8–S10 | `finish` skill + main thread | A2 checked, §8 | [x] |
 
 ### Session 4 — Bot-wall ladder and guided sign-in
 
@@ -305,7 +305,7 @@ Each session ends with typecheck and tests green, the `finish` pass, a harness r
   | HighWire JavaScript | `function leastFactor(` |
   | MDPI interstitial | `/_sec/verify?provider=interstitial` |
 
-  Also add login fixtures for the five pages in A5, plus the per-rule `restricted` signatures.
+  Also add login fixtures for the five pages in A5.
 - **Touch:** `core/src/import/pdfFinding/download/`, `rules/`, tests. **Do not touch:** the browser.
 - **Done when:** A5.
 
@@ -452,3 +452,7 @@ Each session ends with typecheck and tests green, the `finish` pass, a harness r
 - 2026-10-15 21:20 — S5: two-stage engine in `core/src/import/pdfFinding/engine/`. A candidate starts downloading once its lookup and every higher-ranked lookup have answered, so page links start at once instead of after the 3 s cap. Rank: page, landing, publisher, arXiv, learners, learned arXiv, PMC, CrossRef, Unpaywall, custom. An attempt reports the most telling outcome on its hop chain (S4's open item). Deadlines use plain timers, because `AbortSignal.timeout` let the Node harness exit with a run unsettled.
 - 2026-10-15 21:20 — S6: the DOI landing page is a lookup inside the engine (`engine/landingLookup.ts`), not a step in `importIdentifier`, so every app and the harness's "ids" scenario get it (D4 lists the page among the lookups). The A10 test is in `importNetworkInput.test.ts`. Known gap: the browser drops a Referer set through fetch, so background downloads in the extension send none; sending it needs `declarativeNetRequest`, a manifest change to decide in S12.
 - 2026-10-15 21:25 — S7 harness: ids 34/66 correct, 3 wrong; misses bot 13, error 6, login 4, html 3, none 3; medians found 1.9 s, not-found 1.4 s. Landing 33/66, 4 wrong; medians found 2.4 s, not-found 1.4 s. A3 met. Landing lost 2 against session 1, both external: ImageNet IJCV (Semantic Scholar 429, so no arXiv id; concurrent lookups raise S2 rate limits in the harness, which runs papers in parallel) and Hallmarks of Cancer (EPFL's repository answers 405 with or without Referer). Wrong copies unchanged (OpenAlex pre-review and Dialnet copies, the Nature supplement; ResNet's OpenAlex copy appears in landing). Finish pass green; `pnpm -r typecheck` and `pnpm -r test` pass. Browser lint fails on `libraryMutations.ts:36` (53-line function), which predates this branch.
+- 2026-10-15 22:20 — S8: rule table in `core/src/import/pdfFinding/rules/`. Each rule carries `examples`, and `ruleTable.test.ts` runs them all, so a rule without a verified example fails the suite. Landing rules also apply to every HTML hop (`download/nextHops.ts`), which covers doi.org redirects and aggregator landing pages. Per-rule `restricted` paywall signatures were dropped: no live paywall page could be captured (the Springer pages tried were open), and a paywalled hop's next hop already reports `login` through the telling-outcome rule.
+- 2026-10-15 22:20 — S9: 46 platforms (A4). Corrections to the step block's shapes: MIT Press `/doi/pdf/<doi>` is a 404 (the PDF URL carries an internal id), so it has no rule; Project Euclid and SPIE are behind Incapsula plus hCaptcha even in a real browser, so `.full`→`.pdf` is unverified and left out; JSTOR's `pdfplus` redirects to `/stable/pdf/<id>.pdf?acceptTC=true`, which the rule emits. Atypon and Wiley PDF URLs all answer a Cloudflare 403 from Node, so their shapes are verified only up to the wall; the DOI redirects confirm the hosts. Royal Society, ATS, SEG, ICE and AMS (meteorology) are no longer on Atypon.
+- 2026-10-15 22:20 — S10: wall signatures in `download/wallSignatures.ts`, matched on any status, final URL and headers; the generic Cloudflare/Akamai words stay gated on challenge statuses. Imperva's `x-iinfo` header counts only with a challenge status, because Imperva sends it on every answer. Fixtures: walls f5Fastly, anubis, pmcProofOfWork, imperva, cloudflare, akamai and logins Springer, ScienceDirect, IEEE are live captures; awsWaf (HTML), radware, highwire, mdpi and logins Wiley and Shibboleth are built from the markers (CAFe's WAYF renders in JavaScript). The navbar "Sign in" false positive from S2 remains; no fixture showed a safe narrowing.
+- 2026-10-15 22:20 — S11 harness: ids 33/66 correct, 2 wrong; misses bot 17, error 7, login 4, html 2, none 1; medians found 1.9 s, not-found 2.0 s. Landing 33/66, 3 wrong; medians found 2.2 s, not-found 1.8 s. A3 holds; A2 not met. The rules add nothing in Node, because every closed publisher bot-walls Node (R4); their gain shows only with a browser session (A7, S14). Two fixes found on the way: hops read from an HTML answer skip supplements (the Nature DQN wrong copy is gone; Fiji's "correct" copy was its supplement, so it is now a miss), and a doi.org arXiv DOI link counts as an arXiv URL, so OpenAlex no longer proposes a second, paced copy of the arXiv PDF that held the winner back for about 1 s (found median 2.7 s → 1.9 s). The remaining wrong copies come from OpenAlex (Manchester pre-review copy, Dialnet, and a mislabelled UNAL repository file for ResNet). Finish pass green: typecheck in all four packages, core tests pass.
