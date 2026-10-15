@@ -1,6 +1,6 @@
 # Plan: Codebase reduction
 
-Status: in progress (session 2 of 6)
+Status: in progress (session 3 of 6)
 Size: GG — about 2,300 lines across core and all three apps, two contract edits (cite-key scheme, VS Code AI store) and one user-data migration (library root); grows past 6 sessions if S24's adapter fold finds callers that rely on today's divergent semantics
 Pending decisions: 0
 
@@ -16,7 +16,7 @@ Remove the code the minimal-code ladder (AGENTS.md §3) says should not exist: d
 - [x] **D4** Council (LibraryOperations fork): one runtime-neutral core `resolvePaperRefs(ids, lookup)`; each app injects an async lookup, so rescan and no-op-suppression policy stay in the app. The outcome merge stays an inline spread. No shared `LibraryOperations` service — the three apps refresh in three incompatible ways.
 - [x] **D5** Batch-outcome and sync-outcome wording moves to core: three reviewers found it already drifted ("Paper removed" vs `Removed "<title>"`). This settles the council's open notice-text clash.
 - [x] **D6** Council (cite-key fork): `makeCiteKey` in `library/identity` is the only scheme; `import/pdf/citeKey.ts` is deleted. Local import passes authors only when `fieldSources.authors` scores at XMP level (60) or above; otherwise no authors. "An ugly key is better than a wrong one" — ids never change once written. Existing folders keep their names.
-- [x] **D7** The no-author fallback stays `makeCiteKey`'s current form unless S9's measurement on a copy of the user's library shows more than 5 % `claimCiteKey` suffixes among no-author keys; then it uses two title words. This settles the council's open fallback clash with a number.
+- [x] **D7** The no-author fallback stays `makeCiteKey`'s current form unless S9's measurement on a copy of the user's library shows more than 5 % `claimCiteKey` suffixes among no-author keys; then it uses two title words. This settles the council's open fallback clash with a number. **S9: 0 % (0 of 1 no-author keys collide, library of 3 papers) — the fallback stays.**
 - [x] **D8** `VscodeFileSystem` stays (F70 rejected): it goes through VS Code's FS layer (remote workspaces) and its rename refuses to overwrite.
 - [x] **D9** The library root lives only in the shared config file; a `migrations/` reader copies a globalState-only root once. Its header: delete when no supported VS Code build predates the shared config.
 - [x] **D10** The browser page probe (F27) is replaced by core `parseHtmlPage(document.documentElement.outerHTML)` only if the S25 check on a script-rendered publisher page finds the same PDF candidates; otherwise it stays and the finding closes as "keep".
@@ -35,9 +35,9 @@ Remove the code the minimal-code ladder (AGENTS.md §3) says should not exist: d
 - [x] **A2** None of the silent catches listed in S2 remains; each failure is logged through `ILogger` with context.
 - [x] **A3** One `isPdfBytes` and one `isLibraryPath` guard every listed trust boundary; tests cover a rejected input at each.
 - [x] **A4** The AI pieces in D2 are gone from code, `package.json` contributions and docs; the reader still opens, searches text and OCRs a scanned PDF.
-- [ ] **A5** One cite-key builder exists. A local import whose authors come only from layout heuristics gets a surname-free key; one with XMP or lookup authors gets `authorYearWord`.
-- [ ] **A6** `resolvePaperRefs` lives in core and is used by vscode and terminal; jscpd finds no copy of the id-to-ref loop.
-- [ ] **A7** Batch and sync outcome notices read the same in all three apps, from one core module.
+- [x] **A5** One cite-key builder exists. A local import whose authors come only from layout heuristics gets a surname-free key; one with XMP or lookup authors gets `authorYearWord`.
+- [x] **A6** `resolvePaperRefs` lives in core and is used by vscode and terminal; jscpd finds no copy of the id-to-ref loop.
+- [x] **A7** Batch and sync outcome notices read the same in all three apps, from one core module.
 - [ ] **A8** VS Code shows the Settings view's welcome buttons; every action the webview offered is reachable by command; the webview code is gone.
 - [ ] **A9** An install whose root exists only in globalState opens the same library after the upgrade (test), and the shared config then holds it.
 - [ ] **A10** `pnpm knip`, `pnpm lint:deps` and `pnpm jscpd` pass; the jscpd baseline drops below its current value; `packages/*/src` loses at least 1,500 net lines (measured with `git diff --shortstat` from the plan's first commit).
@@ -93,11 +93,11 @@ Every session starts from the previous one committed on a clean tree. Every sess
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S9 | Measure no-author keys on a copy of the user's library | — | H · main thread | D7 resolved with a number | [ ] |
-| S10 | Council decisions: `resolvePaperRefs`, one cite-key scheme (F17, F33) | S9 | H · implementer (opus) | A5, A6 | [ ] |
-| S11 | Shared core pieces (F23, F29, F31, F32, F37, F39, F40, F46, F57, F66) | — | M · implementer (sonnet) ×2 | A7 | [ ] |
-| S12 | Browser onto core: Logger, runtime send, drive status (F8, F18, F28) | S11 | M · implementer (sonnet) | gate passes | [ ] |
-| S13 | Finish | S9–S12 | `finish` skill | gate passes | [ ] |
+| S9 | Measure no-author keys on a copy of the user's library | — | H · main thread | D7 resolved with a number | [x] |
+| S10 | Council decisions: `resolvePaperRefs`, one cite-key scheme (F17, F33) | S9 | H · implementer (opus) | A5, A6 | [x] |
+| S11 | Shared core pieces (F23, F29, F31, F32, F37, F39, F40, F46, F57, F66) | — | M · implementer (sonnet) ×2 | A7 | [x] |
+| S12 | Browser onto core: Logger, runtime send, drive status (F8, F18, F28) | S11 | M · implementer (sonnet) | gate passes | [x] |
+| S13 | Finish | S9–S12 | `finish` skill | gate passes | [x] |
 
 ### Session 4 — VS Code surface
 
@@ -212,6 +212,12 @@ Every session starts from the previous one committed on a clean tree. Every sess
 - 2026-10-15 12:39 session 2 · S6 (sonnet): 22 source + 13 test files deleted; hash gate → `indexed_papers` + SHA-256, PDF read once, promise tail; core `extractPageTexts` returns `PageText[]` and logs failing pages. Orchestrator added: reader `pageChanged`/`zoomChanged` removed end to end (dead after S6); F72 logged for S20.
 - 2026-10-15 12:39 session 2 · S7 (sonnet): all eight rows; F13 removed only the 4 flags true in both hosts (7 others differ per host and stay).
 - 2026-10-15 12:39 session 2 · S8 finish + verify: gate PASS (core 1768, vscode 349, browser 112, terminal 859; knip 0, jscpd 9). Verify on a library copy found pre-ef39315 `index.sqlite` files keep a `chunk_embeddings → papers` FK that fails every new upsert; fixed with `ai/node/migrations/dropForeignKeyEmbeddings.ts`. Session net: src −1,139, tests −245.
+- 2026-10-15 13:20 session 3 · S9 (main, parser bundled from src on copies of the 3 library PDFs): 2 papers get authors from a confirmed DOI (trust 100) → `mustonen2009fitness`, `simon2024evolutionary`; 1 (SIAM 1986) gets layout authors "SIAM J. COMPUT. © 1986 Society for Industrial" (trust 10) → gate gives `1986downloaded`, 0 collisions → D7 0 %. Sample is tiny; the gate visibly blocks a wrong surname. That paper's DOI 10.1137/0215033 was not found this run and its title came out as the download stamp (F73).
+- 2026-10-15 13:40 session 3 · S11a (sonnet): core `outcomeCopy`, `createSidecarReader`, `folderPathLabel`, shared `askNoPdf`, frame CSS in library-ui.css; browser root label "Library" → "All Papers", `FolderOption.label` gone; remove/move/tag failures name the paper; terminal trash uses `removeNotice` (its move/tag notices are generic folder-or-paper batches, left as is).
+- 2026-10-15 13:40 session 3 · S11b (sonnet): core `describeSyncOutcome` (one wording, app-specific sign-in hint appended by each app), `diskSyncTarget` (runtime-neutral, sync root), `import/node/canvas/renderPagePng` (terminal thumbnail now gets `nativeRenderOptions`, untested at the worker), `library-ui/citeText`; VS Code shows already-in-sync/busy/skipped on a manual sync. jscpd 9 → 8.
+- 2026-10-15 14:05 session 3 · S10 (opus): core `resolvePaperRefs` used by vscode `refsFor` and terminal `refs` (terminal rescans on a miss for move and trash too); `parsedRecord` keys with `makeCiteKey` behind the trust ≥ 60 author gate, `import/pdf/citeKey.ts` deleted, scheme in `library-format.md`. Open: no trusted authors and no year gives a one-word key ("my scan" → `my`).
+- 2026-10-15 14:05 session 3 · S12 (sonnet): browser `platform/logging/` (storage-ring + console sinks on core `Logger`, created in background, options, library page, reader; popup and Scholar content script never logged), one `sendRuntime`, core `errorMessage`, core `driveStatusOf` in browser and vscode.
+- 2026-10-15 14:20 session 3 · S13 finish: gate PASS (core 1801, vscode 350, browser 119, terminal 862; knip 0, lint:deps 0, lint:dirs 0, jscpd 5); folded core's two other `errorMessage` copies and the import/** inline ones; F74 added. Session net: src +6 (842/836), tests +394. Plan net so far: src −1,079 of the −1,500 A10 needs.
 
 ## 9. Findings
 
@@ -291,3 +297,5 @@ Ranked by lines saved × risk weight (low 3, med 2, high 1). Rung: 1 needs to ex
 | F70 | VscodeFileSystem duplicates core NodeLibraryFileSystem — REJECTED: VS Code FS layer serves remote workspaces and rename uses overwrite:false | vscode storage/vscodeFileSystem.ts | 2 | 0 | high | — |
 | F71 | Silent catches outside S2's list (found by session 1's finish pass): `run.catch(() => undefined)`, broadcast and draftCache catches | browser background/handlers/library.ts:41, broadcast.ts, draftCache.ts | 2 | 0 | low | S12 |
 | F72 | Silent catches outside S2's list (found by S6): OCR `.recognize(...).catch(() => "")` and an online-record swallow | core import/pdf/parser/PdfImportParser.ts:134, onlineRecord.ts:36 | 1 | 2 | low | S20 |
+| F73 | SIAM 1986 PDF: download stamp "Downloaded 12/25/12 to …" wins the title and the printed DOI is not confirmed; the library holds it under its DOI key, so an earlier run did confirm it | core import/pdf/frontPageLayout.ts, parser/PdfImportParser.ts identify | — | — | med | S20 |
+| F74 | Inline `instanceof Error ? error.message : String(error)` left outside core import/**: sync coordinator/syncRun/treeScan, textLayerVerdict, reader host and pdfLoader → core `errorMessage` (`describeError` where the stack is wanted) | core sync/**, library/mutations/textLayer, reader/** | 2 | 8 | low | S20 |
