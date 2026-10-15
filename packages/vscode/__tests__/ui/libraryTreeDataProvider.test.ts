@@ -1,18 +1,23 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
+import { snapshotFromScan, type LibrarySnapshot, type PaperEntry, type PaperRecord } from '@labshelf/core';
+import { createLibraryEvents, type LibraryEvents } from '../../src/events/index';
 import { LibraryDragAndDropController, LibraryTreeDataProvider } from '../../src/ui/library/libraryTreeDataProvider';
 
 const ROOT = '/lib/papers';
 const TREE_MIME = 'application/vnd.code.tree.labshelf.library';
 
-// Collection folders per directory: papers/{A/{B}, Z}. Which folders count as collections is core's folder-level reader's job.
-const FOLDERS: Record<string, string[]> = { [ROOT]: ['A', 'Z'], [`${ROOT}/A`]: ['B'] };
-const readFolders = async (dir: string) => (FOLDERS[dir] ?? []).map((label) => ({ label, dirPath: `${dir}/${label}` }));
+// papers/{A/{B}, Z} with p1 in A, p2 in A/B and one paper directly in papers/. Z holds no paper.
+function snapshotOf(folders: string[]): LibrarySnapshot {
+  const entry = (id: string, collection: string): PaperEntry => ({ record: { id } as PaperRecord, collection, modifiedMs: 0 });
+  return snapshotFromScan(ROOT, { folders, papers: [entry('p1', 'A'), entry('p2', 'A/B'), entry('loose-paper', '')], orphans: [], duplicates: [] }, 0);
+}
+let snapshot: LibrarySnapshot | undefined;
 
-function makeProvider(): { provider: LibraryTreeDataProvider; bus: { on: jest.Mock } } {
-  const bus = { on: jest.fn() };
-  const provider = new LibraryTreeDataProvider(vscode.Uri.file(ROOT), readFolders, bus as never, path);
-  provider.setPaperPathSource(async () => [`${ROOT}/A/p1`, `${ROOT}/A/B/p2`, `${ROOT}/loose-paper`]);
+function makeProvider(): { provider: LibraryTreeDataProvider; bus: LibraryEvents } {
+  const bus = createLibraryEvents();
+  snapshot = snapshotOf(['A', 'A/B', 'Z']);
+  const provider = new LibraryTreeDataProvider(vscode.Uri.file(ROOT), () => snapshot, bus, path);
   return { provider, bus };
 }
 
@@ -26,8 +31,17 @@ describe('LibraryTreeDataProvider', () => {
   });
 
   it('returns nothing while no library is configured', async () => {
-    const provider = new LibraryTreeDataProvider(null, null, { on: jest.fn() } as never, path);
+    const provider = new LibraryTreeDataProvider(null, () => undefined, createLibraryEvents(), path);
     expect(await provider.getChildren()).toEqual([]);
+  });
+
+  it('lists the folders of the snapshot it reads at request time, empty ones included', async () => {
+    const { provider } = makeProvider();
+    expect((await provider.getChildren()).map((n) => n.label)).toEqual(['All Papers', 'A', 'Z']);
+    expect(await provider.getChildren({ label: 'A', dirPath: `${ROOT}/A` })).toEqual([{ label: 'B', dirPath: `${ROOT}/A/B` }]);
+
+    snapshot = snapshotOf(['A', 'A/B', 'Z', 'New']);
+    expect((await provider.getChildren()).map((n) => n.label)).toEqual(['All Papers', 'A', 'New', 'Z']);
   });
 
   it('opens every folder in the list panel, including ones with subfolders', async () => {
@@ -51,12 +65,6 @@ describe('LibraryTreeDataProvider', () => {
     expect(root.collapsibleState).toBe(vscode.TreeItemCollapsibleState.None);
   });
 
-  it('still renders when the count source fails', async () => {
-    const { provider } = makeProvider();
-    provider.setPaperPathSource(async () => { throw new Error('db down'); });
-    expect((await provider.getTreeItem({ label: 'A', dirPath: `${ROOT}/A` })).label).toBe('A');
-  });
-
   it('resolves parents for reveal and stops at the top level', () => {
     const { provider } = makeProvider();
     expect(provider.getParent({ label: 'B', dirPath: `${ROOT}/A/B` })).toEqual({ label: 'A', dirPath: `${ROOT}/A` });
@@ -70,9 +78,9 @@ describe('LibraryTreeDataProvider', () => {
       const { provider, bus } = makeProvider();
       const fired = jest.fn();
       provider.onDidChangeTreeData(fired);
-      const onUpdated = bus.on.mock.calls.find(([event]) => event === 'paper:updated')?.[1] as () => void;
+      const paper = { id: 'p1' } as PaperRecord;
 
-      onUpdated(); onUpdated(); onUpdated();
+      bus.paperUpdated.fire(paper); bus.paperUpdated.fire(paper); bus.paperAdded.fire(paper);
       jest.advanceTimersByTime(100);
       expect(fired).toHaveBeenCalledTimes(1);
     } finally {

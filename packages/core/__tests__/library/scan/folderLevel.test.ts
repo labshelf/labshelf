@@ -1,4 +1,6 @@
-import { createScanEnv, posixPathOps, readFolderLevel } from "@labshelf/core";
+import { posixPathOps } from "@labshelf/core";
+import { readFolderLevel } from "../../../src/library/scan/folderLevel";
+import { createScanEnv } from "../../../src/library/scan/scanEnv";
 
 import { makeHarness, PAPERS } from "../../support/mutationHarness";
 

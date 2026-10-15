@@ -4,6 +4,7 @@
  */
 import { METADATA_FILE, PAPERS_DIR, paperRecordFromMetadata, parsePaperMetadata, pdfDirsFromFilePaths, type PaperRecord } from "@labshelf/core";
 import { getDb } from "./idb";
+import { belowDir } from "./idbFileTree";
 
 /** Upserts a PaperRecord into the metadata cache. */
 export async function upsertRecord(record: PaperRecord, folderPath: string): Promise<void> {
@@ -39,7 +40,7 @@ export async function listAllRecords(): Promise<PaperRecord[]> {
  */
 export async function rebuildFromFiles(): Promise<void> {
   const db = await getDb();
-  const keys = (await db.getAllKeys("files", IDBKeyRange.bound(`${PAPERS_DIR}/`, `${PAPERS_DIR}/\uffff`, false, true))) as string[];
+  const keys = (await db.getAllKeys("files", belowDir(PAPERS_DIR))) as string[];
   const pdfs = pdfDirsFromFilePaths(keys);
   const decoder = new TextDecoder();
   const records: PaperRecord[] = [];

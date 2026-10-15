@@ -1,7 +1,8 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import type { HostToUi, LibraryUiSnapshot } from '@labshelf/core';
+import { snapshotFromScan, type HostToUi, type LibraryUiSnapshot, type PaperEntry, type PaperRecord } from '@labshelf/core';
 import { ListWebviewPanel } from '../../src/ui/list/listWebviewPanel';
+import { createLibraryEvents } from '../../src/events/index';
 import type { ListPanelDeps } from '../../src/ui/list/listPanelDeps';
 import type { LibraryNode } from '../../src/ui/library/index';
 import type { TextLayerJob } from '../../src/commands/textLayerQueue';
@@ -18,19 +19,20 @@ function open(folder?: LibraryNode, extra: Partial<ListPanelDeps> = {}) {
   const paperService = {
     listPapers: jest.fn(async () => [paper('p1', `${ROOT}/A`), paper('p2', `${ROOT}/A/B`, { hasPdf: false }), paper('p3', ROOT)]),
     movePapers: jest.fn(async (ids: string[]) => ({ done: ids, failed: [] as Failure[], moves: [] })),
-    updatePaperStatus: jest.fn(async (id: string) => ({ id })),
+    updatePapersStatus: jest.fn(async () => [] as string[]),
     updatePaperFields: jest.fn(async (id: string) => ({ id })),
     trashPapers: jest.fn(async (ids: string[]) => ({ done: ids, failed: [] as Failure[] })),
     editTags: jest.fn(async (ids: string[]) => ({ done: ids, failed: [] })),
   };
-  const bus = { on: jest.fn(), off: jest.fn() };
+  const bus = createLibraryEvents();
   const folders = { create: jest.fn(async () => {}), rename: jest.fn(async () => {}), trash: jest.fn(async () => {}) };
   const logger = { log: jest.fn(async () => {}), error: jest.fn(async () => {}) };
   const onDidNavigate = jest.fn();
-  const readFolders = async (dir: string) =>
-    dir === ROOT ? [{ label: 'A', dirPath: `${ROOT}/A` }] : dir === `${ROOT}/A` ? [{ label: 'B', dirPath: `${ROOT}/A/B` }] : [];
+  const entry = (id: string, collection: string): PaperEntry => ({ record: { id } as PaperRecord, collection, modifiedMs: 0 });
+  const library = snapshotFromScan(ROOT, { folders: ['A', 'A/B'], papers: [entry('p1', 'A'), entry('p2', 'A/B'), entry('p3', '')], orphans: [], duplicates: [] }, 0);
+  const getSnapshot = () => library;
   const deps = {
-    extensionUri: vscode.Uri.file('/ext'), paperService, eventBus: bus, logger, pathOps: path, folders, onDidNavigate, readFolders,
+    extensionUri: vscode.Uri.file('/ext'), paperService, events: bus, logger, pathOps: path, folders, onDidNavigate, getSnapshot,
     getPapersRoot: () => ROOT, ...extra,
   } as unknown as ListPanelDeps;
 
@@ -62,7 +64,7 @@ describe('ListWebviewPanel — snapshots and folders', () => {
     const snap = h.snapshot();
     expect(snap.papers.map((p) => p.path)).toEqual(['papers/A/p1', 'papers/A/B/p2', 'papers/p3']);
     expect(snap.pdfDirs).toEqual(['papers/A/p1', 'papers/p3']);
-    expect(snap.folders).toEqual([{ name: 'A', path: 'papers/A', children: [{ name: 'B', path: 'papers/A/B', children: [] }] }]);
+    expect(snap.folders).toEqual([{ name: 'A', path: 'papers/A', total: 2, children: [{ name: 'B', path: 'papers/A/B', total: 1, children: [] }] }]);
   });
 
   it('carries each paper\'s reading stats from its sidecar', async () => {
@@ -140,7 +142,10 @@ describe('ListWebviewPanel — snapshots and folders', () => {
   it('detaches its event listeners on dispose', () => {
     const h = open();
     ListWebviewPanel.currentPanel?.dispose();
-    expect(h.bus.off).toHaveBeenCalledTimes(h.bus.on.mock.calls.length);
+    const before = h.posted().length;
+    h.bus.annotationChanged.fire({ paperId: 'p1' });
+    h.bus.pdfViewerClosed.fire({ paperId: 'p1' });
+    expect(h.posted()).toHaveLength(before);
     expect(ListWebviewPanel.currentPanel).toBeUndefined();
   });
 });
@@ -181,7 +186,7 @@ describe('ListWebviewPanel — paper actions', () => {
     await h.fire({ type: 'paper.setStatus', ids: ['p1', 'p3'], status: 'done' });
     await h.fire({ type: 'paper.setTags', ids: ['p1', 'p2'], add: ['nlp '], remove: ['old'] });
     await h.fire({ type: 'paper.setNote', id: 'p1', note: 'Key idea' });
-    expect(h.paperService.updatePaperStatus.mock.calls).toEqual([['p1', 'done'], ['p3', 'done']]);
+    expect(h.paperService.updatePapersStatus).toHaveBeenCalledWith(['p1', 'p3'], 'done');
     expect(h.paperService.editTags).toHaveBeenCalledWith(['p1', 'p2'], ['nlp'], ['old']);
     expect(h.paperService.updatePaperFields).toHaveBeenCalledWith('p1', { note: 'Key idea' });
   });
@@ -240,8 +245,7 @@ describe('ListWebviewPanel — per-paper data', () => {
   it('tells the UI when a paper\'s sidecar changed', async () => {
     const h = open();
     await h.fire({ type: 'ready' });
-    const onSidecar = h.bus.on.mock.calls.find(([event]) => event === 'annotation:created')![1] as (payload: unknown) => void;
-    onSidecar({ paperId: 'p1' });
+    h.bus.annotationChanged.fire({ paperId: 'p1' });
     await flush();
     expect(h.last('sidecarChanged')).toEqual({ type: 'sidecarChanged', id: 'p1' });
   });

@@ -7,10 +7,7 @@ import { cleanTags, keptFieldNotice, moveNotice, removeNotice, type PaperStatus 
 import { LOG_MODULE, type ListHostContext } from './hostContext.js';
 
 export async function setStatus(ctx: ListHostContext, ids: string[], status: PaperStatus): Promise<void> {
-  const failed: string[] = [];
-  for (const id of ids) {
-    if (!(await ctx.deps.paperService.updatePaperStatus(id, status))) { failed.push(id); }
-  }
+  const failed = await ctx.deps.paperService.updatePapersStatus(ids, status);
   if (failed.length) { ctx.notice('error', keptFieldNotice('status', failed.length, 'not found in the library')); }
 }
 

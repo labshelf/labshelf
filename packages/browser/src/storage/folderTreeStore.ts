@@ -4,11 +4,10 @@
  */
 import { PAPERS_DIR, collectionsFromFilePaths, pdfDirsFromFilePaths, type FolderTreeNode } from "@labshelf/core";
 import { getDb } from "./idb";
+import { belowDir } from "./idbFileTree";
 
 async function fileKeysUnder(rootPath: string): Promise<string[]> {
-  const db = await getDb();
-  const prefix = `${rootPath}/`;
-  return (await db.getAllKeys("files", IDBKeyRange.bound(prefix, `${prefix}\uffff`, false, true))) as string[];
+  return (await (await getDb()).getAllKeys("files", belowDir(rootPath))) as string[];
 }
 
 /** Builds the collection tree under `rootPath` from a single key scan. */

@@ -1,12 +1,12 @@
 /**
- * Declares what the list panel needs from the extension: the paper service, events, the library root, folder reading and
+ * Declares what the list panel needs from the extension: the paper service, events, the library root, the library snapshot and
  * folder changes, OCR jobs, reader sidecars and the AI index.
  */
 import type * as vscode from 'vscode';
-import type { Annotation, ILogger, PaperRecord, PathOps, SimilarPaper, TextLayerJobView } from '@labshelf/core';
+import type { Annotation, ILogger, LibrarySnapshot, PaperRecord, PathOps, SimilarPaper, TextLayerJobView } from '@labshelf/core';
 import type { PaperService } from '../../core/index.js';
-import type { EventBus } from '../../events/index.js';
-import type { FolderReader, LibraryNode } from '../library/index.js';
+import type { LibraryEvents } from '../../events/index.js';
+import type { LibraryNode } from '../library/index.js';
 
 /** The slice of a paper's reader sidecar the panel reads. */
 interface PaperSidecar {
@@ -24,13 +24,13 @@ interface ListFolderActions {
 export interface ListPanelDeps {
   extensionUri: vscode.Uri;
   paperService: PaperService;
-  eventBus: EventBus;
+  events: LibraryEvents;
   logger: ILogger;
   pathOps: PathOps;
   /** Absolute path of papers/, or null while no library is configured. */
   getPapersRoot: () => string | null;
-  /** Lists the collection folders inside a directory. */
-  readFolders: FolderReader;
+  /** The library's current snapshot, whose collections are the folder tree. */
+  getSnapshot: () => LibrarySnapshot;
   folders: ListFolderActions;
   /** Called whenever the panel shows a different folder, so the sidebar tree can follow. */
   onDidNavigate?: (folder: LibraryNode) => void;

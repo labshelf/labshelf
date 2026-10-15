@@ -6,6 +6,7 @@ import * as vscode from 'vscode';
 import { isUnderDir, type HostToUi, type PaperRecord, type TextLayerJobView } from '@labshelf/core';
 import { rootNode, type LibraryNode } from '../library/index.js';
 import { labshelfTabIcon } from '../tabIcon.js';
+import { onPaperChange } from '../../events/index.js';
 import { handleListMessage, type ListHostContext } from './host/index.js';
 import { libraryPaths, type LibraryPaths } from './libraryPaths.js';
 import { libraryBundleDirectory, listPanelHtml } from './listPanelHtml.js';
@@ -13,9 +14,6 @@ import type { ListPanelDeps } from './listPanelDeps.js';
 import { readSnapshot } from './listSnapshots.js';
 
 const RELOAD_DEBOUNCE_MS = 60;
-const PAPER_EVENTS = ['paper:added', 'paper:updated', 'paper:deleted'] as const;
-// Annotations change the counts on the rows; closing the reader moves "last read".
-const SIDECAR_EVENTS = ['annotation:created', 'annotation:updated', 'annotation:deleted', 'pdf:viewer:closed'] as const;
 
 export class ListWebviewPanel {
   public static currentPanel: ListWebviewPanel | undefined;
@@ -30,10 +28,8 @@ export class ListWebviewPanel {
   private _loadSeq = 0;
   private _lastNotified: string | undefined;
   private _reloadTimer: ReturnType<typeof setTimeout> | null = null;
-  private readonly _onPaperEvent = (): void => this._scheduleReload();
-  private readonly _onSidecarEvent = (payload: unknown): void => {
-    const paperId = (payload as { paperId?: unknown } | undefined)?.paperId;
-    void this._post({ type: 'sidecarChanged', id: typeof paperId === 'string' ? paperId : null });
+  private readonly _onSidecarEvent = ({ paperId }: { paperId: string }): void => {
+    void this._post({ type: 'sidecarChanged', id: paperId });
     this._scheduleReload();
   };
 
@@ -62,8 +58,12 @@ export class ListWebviewPanel {
     });
     this._panel.webview.onDidReceiveMessage((raw: unknown) => handleListMessage(this._host, raw), null, this._disposables);
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
-    for (const event of PAPER_EVENTS) { _deps.eventBus.on(event, this._onPaperEvent); }
-    for (const event of SIDECAR_EVENTS) { _deps.eventBus.on(event, this._onSidecarEvent); }
+    this._disposables.push(
+      onPaperChange(_deps.events, () => this._scheduleReload()),
+      // Annotations change the counts on the rows; closing the reader moves "last read".
+      _deps.events.annotationChanged.event(this._onSidecarEvent),
+      _deps.events.pdfViewerClosed.event(this._onSidecarEvent),
+    );
     // Job updates arrive every page or two; they patch the rows without re-reading the index.
     if (_deps.textLayerJobs) {
       this._disposables.push(_deps.textLayerJobs.onDidChange((jobs) => void this._postJobs(jobs)));
@@ -181,8 +181,6 @@ export class ListWebviewPanel {
     this._disposed = true;
     if (ListWebviewPanel.currentPanel === this) { ListWebviewPanel.currentPanel = undefined; }
     if (this._reloadTimer) { clearTimeout(this._reloadTimer); }
-    for (const event of PAPER_EVENTS) { this._deps.eventBus.off(event, this._onPaperEvent); }
-    for (const event of SIDECAR_EVENTS) { this._deps.eventBus.off(event, this._onSidecarEvent); }
     this._panel.dispose();
     while (this._disposables.length) { this._disposables.pop()?.dispose(); }
   }

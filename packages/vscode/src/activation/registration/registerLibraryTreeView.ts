@@ -7,13 +7,13 @@ import { LibraryTreeDataProvider, LibraryDragAndDropController } from "../../ui/
 import type { LibraryNode } from "../../ui/library/index.js";
 import { ListWebviewPanel } from "../../ui/list/index.js";
 import { importPapers, moveFolders, type FolderCommandHost } from "../../commands/index.js";
-import type { EventBus } from "../../events/index.js";
+import type { LibraryEvents } from "../../events/index.js";
 import type { LibraryRootController } from "../libraryLifecycle/index.js";
 import type { HostAdapters } from "../serviceComposition/index.js";
 
 export interface LibraryTreeViewDeps {
   context: vscode.ExtensionContext;
-  eventBus: EventBus;
+  events: LibraryEvents;
   controller: LibraryRootController;
   papersRootUri: () => vscode.Uri | null;
   folderHost: FolderCommandHost;
@@ -27,23 +27,18 @@ export interface LibraryTreeViewHandles {
 }
 
 export function registerLibraryTreeView(deps: LibraryTreeViewDeps): LibraryTreeViewHandles {
-  const { context, eventBus, controller, papersRootUri, folderHost, adapters } = deps;
+  const { context, events, controller, papersRootUri, folderHost, adapters } = deps;
 
   // Library folder tree mirrors the real directory structure under papers/.
-  const libraryProvider = new LibraryTreeDataProvider(papersRootUri(), controller.currentServices()?.folderReader ?? null, eventBus, adapters.paths);
-  controller.onDidChangeRoot(({ root, services }) => {
-    libraryProvider.setLibrary(libraryLayout(root, vscode.Uri.joinPath).papersRoot(), services.folderReader);
+  const libraryProvider = new LibraryTreeDataProvider(papersRootUri(), () => controller.currentServices()?.library.snapshot, events, adapters.paths);
+  controller.onDidChangeRoot(({ root }) => {
+    libraryProvider.setLibrary(libraryLayout(root, vscode.Uri.joinPath).papersRoot());
   });
 
   const libraryDnD = new LibraryDragAndDropController(async (uris, targetDir) => {
     const services = await folderHost.requireServices();
     if (services) { await importPapers(services, uris, targetDir); }
   }, (sourceDirs, targetDir) => moveFolders(folderHost, sourceDirs, targetDir));
-
-  libraryProvider.setPaperPathSource(async () => {
-    const services = controller.currentServices();
-    return services ? (await services.paperService.listPapers()).map((p) => p.path) : [];
-  });
 
   const libraryTreeView = vscode.window.createTreeView("labshelf.library", {
     treeDataProvider: libraryProvider,
