@@ -16,7 +16,7 @@ Rules:
 - Write for the user: no module names, file paths or TypeScript.
 - One bullet per logical change; when the entry would pass 40 lines, merge or drop the least visible bullets.
 - Skip internal refactors unless they fixed something a user could see.
-- Describe the result in the present tense; do not narrate how it used to be.
+- Describe the result in the present tense only.
 - English only.
 
 Return exactly this, at most 40 lines:

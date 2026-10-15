@@ -15,7 +15,7 @@ Given a change (default: `git diff HEAD`):
    - `apps/*`: build, setup, verification recipes, platform constraints.
    - `plans/*`: tick finished steps; when a plan is complete, delete it (or archive it only if it meets `archive/README.md`).
 2. Edit only what the change made wrong or missing. Each fact lives in one place — link instead of repeating.
-3. Delete text about behavior that no longer exists. Never mark it "outdated" or "removed".
+3. Delete text about behavior the code does not have. Never mark it "outdated" or "removed".
 
 Writing rules:
 - Present tense, describing what is, in English. No history: no "now", "new", "no longer", "previously", "used to", "was replaced", "legacy", "instead of the old".
