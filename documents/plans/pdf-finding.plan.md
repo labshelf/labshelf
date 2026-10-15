@@ -1,6 +1,6 @@
 # Plan: Find and download PDFs as well as Zotero and Paperpile
 
-Status: in progress (session 4 of 8)
+Status: in progress (session 5 of 8)
 Size: GG — a measurement harness, a reordered resolver engine, a publisher rule table, a bot-wall ladder, library proxies, PDF versions and two last-resort flows across core and the browser extension; grows past 8 sessions if the user's manual checks show session access failing for reasons the rules cannot fix
 Pending decisions: 0
 Branch: `feat/pdf-finding`, cut from `feat/reader-ux` (72b3dc0), in the worktree `../labshelf-pdf-finding` — `main` predates `import/pdfFinding/`
@@ -59,7 +59,7 @@ Coordination with the writing plans, which run in parallel:
 - [x] **A3** On the harness, the median time to "not found" is at most 3 s and to a found PDF at most 2.5 s.
 - [x] **A4** The rule table covers at least 36 publisher platforms. Every rule has a unit test with a verified example DOI or landing URL.
 - [x] **A5** Unit tests classify saved fixtures: every wall in S10's table gives `bot` on any status; login pages from Springer, Elsevier, Wiley, IEEE and a CAFe/Shibboleth page give `login`.
-- [ ] **A6** The prefix, hostname and OpenAthens rewrites are pure and unit-tested, and an end-to-end engine test shows that a `login` candidate is retried through an enabled proxy and an open-access host is not.
+- [x] **A6** The prefix, hostname and OpenAthens rewrites are pure and unit-tested, and an end-to-end engine test shows that a `login` candidate is retried through an enabled proxy and an open-access host is not.
 - [ ] **A7** Manual, by the user, in Chrome and in Firefox while signed in through the institution: from the closed-access checklist (15 papers), the toolbar popup attaches the correct PDF for at least 12 and the Google Scholar capture for at least 10. The session 1 baseline is in §8.
 - [ ] **A8** Manual: when a capture ends in "PDF not found" because of a sign-in or bot wall, the dialog offers "Open to sign in" / "Open to pass the check". After the user signs in or solves it in that tab, the PDF attaches without another click.
 - [ ] **A9** With a custom resolver template configured, a DOI that no other source has attaches through it. With none, no request goes to any custom host. A profile that had `enableSciHub` and `sciHubMirror` set opens with one equivalent enabled entry.
@@ -153,8 +153,8 @@ Each session ends with typecheck and tests green, the `finish` pass, a harness r
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S15 | Proxy rewrites and the access stage | S12 | H · main thread | A6 | [ ] |
-| S16 | Options section for proxies | S15 | M · implementer (sonnet) | settings round trip test | [ ] |
+| S15 | Proxy rewrites and the access stage | S12 | H · main thread | A6 | [x] |
+| S16 | Options section for proxies | S15 | M · implementer (sonnet) | settings round trip test | [x] |
 | S17 | Finish; user runs A7 | S15–S16 | `finish` skill + user | A7 | [ ] |
 
 ### Session 6 — Custom resolver and small sources
@@ -460,3 +460,6 @@ Each session ends with typecheck and tests green, the `finish` pass, a harness r
 - 2026-10-15 23:07 — S13: `PdfMiss.access` is the best-ranked `login` or `bot` attempt. The dialogs offer "Open to sign in" / "Open to pass the check"; before a save that choice is `ifNoPdf: "open"`, which saves the reference and then opens the page. The watch lives in `storage.session` (it survives the MV3 worker sleeping) and a top-level `tabs.onUpdated` listener checks each load for 5 minutes: the PDF the tab shows, or up to 3 PDF links of a page whose `citation_title` is the same work. Open library pages get a toast through the `library.changed` notice. A8 waits for the user's check in Chrome and Firefox. The Referer gap from S6 stays open: no manifest change was needed for the ladder.
 - 2026-10-15 23:07 — S14: finish pass green (typecheck in all four packages; core 2128, browser 138, vscode 255 tests; knip clean after dropping the unused `PublisherRule` re-export). The user's closed checklist (A7, A8) on the `72b3dc0` build and on this one, in Chrome and Firefox, is still to run.
 
+- 2026-10-15 20:22 — S15: rewrites in `core/src/import/pdfFinding/access/proxyRewrite.ts` and the access stage in `access/accessStage.ts`, run from `resolvePdf` only when the download stage found nothing. It retries the `login` attempts on a paywalled rule-table host, or on the article's own site when no rule knows the host. Rules gain `openAccess: true` (`hostAccess`), so open platforms, bioRxiv and the ACL Anthology are never proxied. Order: helper tab per site, then each enabled proxy on the 3 best-ranked pages. A proxy that answers `login` or `bot` gets no more pages, and the next proxy runs. Proxied attempts carry `proxy: <name>`. The step block corrects to EZproxy's host folding: hyphens are doubled before dots become hyphens. Known gap: an HTML sign-in page on a host with a landing rule classifies as `html`, because the rule offers a next hop. Its outcome is `login` only when that hop answers a sign-in, as publishers do with a 403.
+- 2026-10-15 20:22 — S16: "Library proxies" options section (`browser/src/options/proxySection.ts`, pure row logic in `proxyRows.ts`). `settings.proxies` is validated on read and passed to `findPaperPdf`. `summarizeAttempts` prefers a proxy's sign-in page, so "Open to sign in" opens the library's login. Checked in headless Chrome: kind labels, inline error, storage round trip and reload, light and dark.
+- 2026-10-15 20:22 — S17: finish pass green (core typecheck and 2152 tests, browser typecheck and 148 tests). A7 (closed checklist in Chrome and Firefox, with a proxy configured if the institution has one) and the A8 check from S14 are still to run.
