@@ -1,6 +1,6 @@
 # Plan: writing in VS Code
 
-Status: in progress (session 2 of 7 done)
+Status: in progress (session 3 of 7 done)
 Size: GG — a new domain in core (projects, citations, LaTeX build, SyncTeX, Typst in WASM) plus a new VS Code surface and a reader-host contract change; 7 sessions. Grows if the Typst SVG layer needs its own spike session.
 Pending decisions: 0
 
@@ -42,16 +42,16 @@ Answered:
 ## 4. Acceptance criteria
 
 - [x] **A1** "New project" in the Writing view creates `<library>/projects/<id>/` with `labshelf.yaml` and a template main file; "Add existing folder" registers a folder and lists it without creating anything but `labshelf.yaml`.
-- [ ] **A2** On a machine without TeX, the first build offers Tectonic, downloads it, and produces `main.pdf`; the project folder then holds only the sources, `labshelf.yaml`, `labshelf.bib` and `main.pdf`.
+- [x] **A2** On a machine without TeX, the first build offers Tectonic, downloads it, and produces `main.pdf`; the project folder then holds only the sources, `labshelf.yaml`, `labshelf.bib` and `main.pdf`.
 - [ ] **A3** A build with an undefined control sequence shows one Problems entry on the right line in plain words; the reader keeps the previous PDF with the failure banner.
-- [ ] **A4** Picking pdfLaTeX while on Tectonic fails with the TeX Live message and the guide link; a missing `.sty` on TeX Live names the package and the `tlmgr` command.
-- [ ] **A5** Switching compiler and main is one click each in the status bar and persists in `labshelf.yaml`.
+- [x] **A4** Picking pdfLaTeX while on Tectonic fails with the TeX Live message and the guide link; a missing `.sty` on TeX Live names the package and the `tlmgr` command.
+- [x] **A5** Switching compiler and main is one click each in the status bar and persists in `labshelf.yaml`.
 - [ ] **A6** Double-click in the reader jumps to the source line; "Show in preview" scrolls the reader to the cursor.
 - [x] **A7** Typing `\cite{` lists library papers; accepting one inserts the key and adds the entry to `labshelf.bib`; the same works with `@` in Typst.
 - [ ] **A8** `\ref{` completes labels, an undefined label is a warning, the outline lists sections, hovering `$\alpha^2$` renders it, and the word count shows in the status bar.
 - [ ] **A9** In a Typst project the reader updates while typing, without reloading or losing the scroll position; "Export PDF" writes `main.pdf`.
 - [ ] **A10** In review mode, hovering a citation in the PDF shows the library paper; clicking opens it.
-- [ ] **A11** With LaTeX Workshop installed, LabShelf shows the duplication notice once per workspace.
+- [x] **A11** With LaTeX Workshop installed, LabShelf shows the duplication notice once per workspace.
 
 ## 5. Design
 
@@ -113,11 +113,11 @@ typst: 0.13.1            # written on build, Typst projects only
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S8 | Log parser with plain-language messages | — | H · main thread | fixture tests over real logs | [ ] |
-| S9 | Toolchain detection, first-run picker, Tectonic download | S1 | M · implementer (sonnet) | A2 (download) | [ ] |
-| S10 | Build runner with cache dir, PDF copy on success, build on save | S8, S9 | H · main thread | A2, A3, A4 | [ ] |
-| S11 | Compiler status bar item, LaTeX Workshop notice | S10 | M · implementer (sonnet) | A5, A11 | [ ] |
-| S12 | Finish, plus an extension-host run on a sample project | S8–S11 | `finish` + `verify` skills | gate passes | [ ] |
+| S8 | Log parser with plain-language messages | — | H · main thread | fixture tests over real logs | [x] |
+| S9 | Toolchain detection, first-run picker, Tectonic download | S1 | M · implementer (sonnet) | A2 (download) | [x] |
+| S10 | Build runner with cache dir, PDF copy on success, build on save | S8, S9 | H · main thread | A2, A3, A4 | [x] |
+| S11 | Compiler status bar item, LaTeX Workshop notice | S10 | M · implementer (sonnet) | A5, A11 | [x] |
+| S12 | Finish, plus an extension-host run on a sample project | S8–S11 | `finish` + `verify` skills | gate passes | [x] |
 
 ### Session 4 — the reader as preview
 
@@ -271,3 +271,9 @@ typst: 0.13.1            # written on build, Typst projects only
 - 2026-10-15 18:25 — S5: `core/src/writing/citations/` and `node/`. Entries come from `bibtexEntry(record, {includeFile: false})`, not from each `bib.bib`: the same text without the library path. Keys match `citeKey` case-sensitively; on a duplicate key the smallest id wins. The bibliography line goes into the main file with the first resolved citation (Typst: only when no other `#bibliography` exists, else a conflict for the user). An `OpenSources` port lets the host supply unsaved text and edit an open main file in the editor. 33 tests.
 - 2026-10-15 18:45 — S6: `packages/vscode/src/writing/citations/`. Ctrl+click is a DocumentLink to `labshelf.openPdfViewer`, not a DefinitionProvider, which must return a source location. Library items carry `sortText` "0…" to lead other providers. The extension activates on `workspaceContains:**/labshelf.yaml`, `onLanguage:latex` and `onLanguage:typst`. Key positions and the completion context moved into core (`citedKeys`, `partialKeyStart`), so the app holds no copy of the regexes. `bibliography:` is recorded only once the main loads the file, so a Typst conflict is retried.
 - 2026-10-15 19:05 — S7: finish gate passes (core 2012, vscode 326 tests); contract gains `labshelf.bib`. The extension host confirms A7 for LaTeX and Typst: completion, accept, `labshelf.bib`, the main line in the unsaved editor, `labshelf.yaml`, the reader link, and shrinking on save. Not checked: ordering beside Tinymist, real keystroke auto-trigger.
+- 2026-10-15 18:25 — Session 3 runs in the `labshelf-writing-core` worktree. Wall-clock times from here are the system clock; earlier lines ran ahead of it.
+- 2026-10-15 18:25 — S8: `core/src/writing/latex/log/` (`readTexLog` → `explainTexMessage` → `parseTexLog`). Fixtures are real logs: Tectonic 0.17.0 and TeX Live 2026 `latexmk -file-line-error` (Docker `texlive/texlive:latest-medium`), 6 cases each. Tectonic halts at the first error and names `\input` files without extension; TeX Live keeps going and follows a fatal error with "Emergency stop", which is dropped when a cause exists. Unknown messages keep TeX's words (R4).
+- 2026-10-15 18:25 — S9: Tectonic 0.17.0 pinned with SHA-256 per platform (macOS, Linux musl, Windows msvc); installed under `<globalStorage>/tectonic/0.17.0/` on consent, hash checked before extraction with the system `tar`. A first-run pick of TeX Live writes `engine: pdflatex`. Real download verified on darwin-arm64 only.
+- 2026-10-15 18:25 — S10: `core/src/writing/latex/build/` (command line) and `node/` (cancellable run that kills the process tree, problem locating, PDF copied atomically on success). `cacheDir` moved from the terminal to `core/src/library/node`. VS Code: `writing/build/` queues one build per project, a newer save cancels the running one, and a dismissed toolchain prompt stops save builds from asking until Build Project runs.
+- 2026-10-15 18:25 — S11: compiler item at priority 49 with `labshelf.writing.pickCompiler`; LaTeX Workshop notice once per workspace (`workspaceState`), button writes `latex-workshop.latex.autoBuild.run: never`. Toolchain files grouped in `writing/build/toolchain/`.
+- 2026-10-15 18:25 — S12: finish gate passes (core 2056, vscode 361, terminal 862); `documents/apps/vscode.md` gains the build. The extension host confirms A2, A3 (Problems entry; the banner is S13), A4 first half, A5 and A11 (with a stand-in LaTeX Workshop). A4 second half confirmed by a real `latexmk` build. Not checked: the TeX Live guide link opening, the Turn off button's setting write in a real host, Windows and Linux Tectonic installs.
