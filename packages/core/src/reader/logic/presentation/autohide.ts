@@ -2,10 +2,10 @@
  * Decides when the overlay toolbar is visible. Kept as a pure reducer so the feel (thresholds, pinning conditions) is unit-tested rather than tuned by hand in DOM handlers.
  */
 
-export const HIDE_AFTER_DOWN_PX = 24;
-export const SHOW_AFTER_UP_PX = 8;
-export const POINTER_REVEAL_PX = 48;
-export const TOP_REVEAL_PX = 8;
+const HIDE_AFTER_DOWN_PX = 24;
+const SHOW_AFTER_UP_PX = 8;
+const POINTER_REVEAL_PX = 48;
+const TOP_REVEAL_PX = 8;
 
 export interface AutohideState {
   visible: boolean;

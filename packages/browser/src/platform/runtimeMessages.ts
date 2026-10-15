@@ -89,7 +89,7 @@ export interface SavedPaperData extends LibraryRef {
 }
 
 /** A save sent with ifNoPdf "ask" found no PDF: NOTHING was written. Re-send with ifNoPdf "save" to confirm. */
-export interface NoPdfData {
+interface NoPdfData {
   status: "no-pdf";
   title: string;
   /** The article's landing page, when known (a dialog may offer "Open the article page"). */

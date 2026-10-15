@@ -33,7 +33,7 @@ function pageSize(app: App): number {
   return Math.max(1, (app.layout.papers ?? app.layout.folders)!.h - 1);
 }
 
-export function dispatch(app: App, binding: Binding): void {
+function dispatch(app: App, binding: Binding): void {
   const page = pageSize(app);
   if (dispatchNavigate(app, binding, page)) { return; }
   if (dispatchPapers(app, binding)) { return; }
@@ -149,7 +149,7 @@ function escape(app: App): void {
   if (app.search !== undefined) { app.historyNav.leaveSearch(); }
 }
 
-export function up(app: App): void {
+function up(app: App): void {
   if (app.focus === "papers") {
     if (app.search !== undefined) { app.historyNav.leaveSearch(); return; }
     app.focus = "folders";

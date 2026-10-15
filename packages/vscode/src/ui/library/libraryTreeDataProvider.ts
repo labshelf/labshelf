@@ -158,8 +158,6 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryN
   }
 }
 
-export default LibraryTreeDataProvider;
-
 // text/uri-list carries OS file drops (PDF import). The tree mime carries folders
 // dragged inside this tree; its name is fixed by VS Code from the view id.
 const URI_LIST_MIME = 'text/uri-list';

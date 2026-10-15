@@ -11,7 +11,7 @@ import { expandHome } from "../platform/index.js";
 
 export type SortKey = "title" | "year" | "author" | "status" | "modified";
 
-export interface TerminalPreferences {
+interface TerminalPreferences {
   /** Command used to open PDFs instead of the system default, e.g. "zathura" or "open -a Skim". */
   pdfViewer?: string;
   /** "auto" | "kitty" | "iterm" | "off". */

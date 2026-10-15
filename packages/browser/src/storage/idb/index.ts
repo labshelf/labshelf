@@ -2,4 +2,4 @@
  * Public API of the IndexedDB connection and schema.
  */
 export { getDb } from "./db";
-export type { FileRow, MetadataRow, ManifestRow, LabShelfSchema } from "./schema";
+export type { FileRow } from "./schema";

@@ -1,7 +1,7 @@
 // Declares the TUI key bindings as data; the dispatcher, help screen and prefix hints are generated from it.
 // Keys follow yazi where the meaning carries over and add paper-specific ones.
 
-export type ActionId =
+type ActionId =
   | "down" | "up" | "top" | "bottom" | "halfDown" | "halfUp" | "pageDown" | "pageUp"
   | "parent" | "enter" | "open" | "reveal" | "back" | "forward" | "home" | "toggleFlatten"
   | "previewDown" | "previewUp" | "nextTab" | "prevTab"

@@ -26,7 +26,7 @@ const RENDER_TIMEOUT_MS = 20_000;
  * Renders with pdftoppm into a temporary prefix.
  * @returns the PNG bytes
  */
-export function renderWithPdftoppm(tmpDir: string): Renderer {
+function renderWithPdftoppm(tmpDir: string): Renderer {
   return async (pdfPath, widthPx) => {
     await fs.mkdir(tmpDir, { recursive: true });
     const prefix = path.join(tmpDir, `thumb-${process.pid}-${Date.now()}`);
@@ -50,7 +50,7 @@ export function renderWithPdftoppm(tmpDir: string): Renderer {
  * Renders with pdfjs in a one-shot worker thread.
  * @returns the PNG bytes
  */
-export function renderWithWorker(workerUrl: URL): Renderer {
+function renderWithWorker(workerUrl: URL): Renderer {
   return (pdfPath, widthPx) => new Promise((resolve, reject) => {
     const worker = new Worker(workerUrl, { workerData: { pdfPath, widthPx } });
     const timer = setTimeout(() => { void worker.terminate(); reject(new Error("Rendering timed out")); }, RENDER_TIMEOUT_MS);

@@ -63,7 +63,7 @@ function sidecarFor(app: App, id: string): PaperData | undefined {
   return undefined;
 }
 
-export function thumbnailFor(app: App, paper: PaperEntry, box: CellRect): ImagePlan | undefined {
+function thumbnailFor(app: App, paper: PaperEntry, box: CellRect): ImagePlan | undefined {
   const request = { pdfPath: paperFiles(paper.record.path, path.join).pdf, sizeBytes: paper.pdfBytes ?? 0, mtimeMs: paper.modifiedMs };
   const png = app.ctx.thumbnails.peek(request);
   if (!png) {

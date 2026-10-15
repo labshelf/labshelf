@@ -1,7 +1,7 @@
 // Decodes raw xterm/VT input (CSI/SS3 keys, SGR mouse, bracketed paste) into key, paste and mouse events.
 // Each key becomes a short id the keymap binds against: "j", "C-d", "M-x", "enter", "esc", "S-tab", "space".
 
-export interface KeyEvent {
+interface KeyEvent {
   type: "key";
   /** Normalized id used by keymaps, e.g. "j", "C-d", "up", "enter". */
   id: string;
@@ -9,7 +9,7 @@ export interface KeyEvent {
   text?: string;
 }
 
-export interface PasteEvent {
+interface PasteEvent {
   type: "paste";
   text: string;
 }

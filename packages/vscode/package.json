@@ -533,7 +533,6 @@
   "dependencies": {
     "@labshelf/core": "workspace:*",
     "@napi-rs/canvas": "^1.0.9",
-    "@thednp/dommatrix": "^3.0.4",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "~6.3.289",
     "tesseract.js": "^7.0.0"

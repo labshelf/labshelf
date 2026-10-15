@@ -2,10 +2,10 @@
 // PLATFORM: open tabs are found through extension.getViews, so no "tabs" permission is needed.
 import { bx } from "../../platform";
 
-export const READER_PAGE = "reader/index.html";
+const READER_PAGE = "reader/index.html";
 
 /** What each reader tab publishes on its window for readerTabs to find it. */
-export interface ReaderWindowHandle {
+interface ReaderWindowHandle {
   paperId: string;
   reveal(page?: number): Promise<void>;
 }

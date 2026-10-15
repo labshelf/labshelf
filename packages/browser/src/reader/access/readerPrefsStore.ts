@@ -3,7 +3,7 @@
 import { normalizeReaderPrefs, type ReaderPrefs } from "@labshelf/core";
 import { bx } from "../../platform";
 
-export const READER_PREFS_KEY = "labshelf.readerPrefs";
+const READER_PREFS_KEY = "labshelf.readerPrefs";
 
 /**
  * @returns the stored preferences, every missing or invalid value replaced by its default.

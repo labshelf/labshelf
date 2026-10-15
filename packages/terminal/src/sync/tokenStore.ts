@@ -43,7 +43,7 @@ export class FileTokenStore implements TokenStore {
 }
 
 /** macOS login Keychain through /usr/bin/security. */
-export class KeychainTokenStore implements TokenStore {
+class KeychainTokenStore implements TokenStore {
   readonly kind = "keychain" as const;
   private readonly account = os.userInfo().username;
 
@@ -69,7 +69,7 @@ export class KeychainTokenStore implements TokenStore {
 }
 
 /** freedesktop Secret Service (GNOME Keyring, KWallet) through secret-tool; the secret goes over stdin. */
-export class SecretServiceTokenStore implements TokenStore {
+class SecretServiceTokenStore implements TokenStore {
   readonly kind = "secret-service" as const;
 
   async load(): Promise<TokenData | null> {

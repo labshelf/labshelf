@@ -34,7 +34,7 @@ export interface CaptureDraft {
   pdfAttempts: PdfAttempt[];
 }
 
-export interface SaveOptions {
+interface SaveOptions {
   folder?: string;
   tags?: string[];
   note?: string;
@@ -134,7 +134,7 @@ export function findPdf(draft: CaptureDraft): Promise<ResolvedPdf | undefined> {
  * Saves a draft into the library. Refuses a page that is not a paper and has
  * no PDF either — there would be nothing worth keeping.
  */
-export async function saveDraft(draft: CaptureDraft, opts: SaveOptions = {}): Promise<SavedPaper> {
+async function saveDraft(draft: CaptureDraft, opts: SaveOptions = {}): Promise<SavedPaper> {
   const [pdf, metadata] = await Promise.all([findPdf(draft), withAbstract(draft.metadata)]);
   if (!pdf && !draft.isPaper) {
     throw new Error("No paper found on this page — open the article's page, its PDF, or a Google Scholar result.");

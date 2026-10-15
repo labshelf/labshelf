@@ -8,7 +8,7 @@ import type { Style } from "../tui/index.js";
 import { wrap } from "../tui/index.js";
 import { STATUS_GLYPH, theme } from "./theme.js";
 
-export interface Segment {
+interface Segment {
   text: string;
   style?: Style;
 }

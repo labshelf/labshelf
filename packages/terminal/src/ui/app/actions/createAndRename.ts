@@ -45,7 +45,7 @@ export async function importInputs(app: App, inputs: string[], target: string): 
   });
 }
 
-export function reportImport(app: App, outcomes: ImportOutcome[]): void {
+function reportImport(app: App, outcomes: ImportOutcome[]): void {
   const shortened = outcomes.map((o): ImportOutcome => (o.status === "added" ? { ...o, record: { ...o.record, title: truncate(o.record.title, 60) } } : o));
   const summary = summarizeImport(shortened);
   if (summary.reveal) { app.historyNav.revealPaper(summary.reveal); }

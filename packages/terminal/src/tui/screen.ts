@@ -3,7 +3,7 @@
 import { graphemes } from "./text.js";
 
 /** 0–255 palette index (0–15 follow the user's terminal theme), "#rrggbb", or undefined for the default color. */
-export type Color = number | `#${string}`;
+type Color = number | `#${string}`;
 
 export interface Style {
   fg?: Color;

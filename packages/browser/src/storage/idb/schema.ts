@@ -14,7 +14,7 @@ export interface FileRow {
 }
 
 /** Cached PaperRecord derived from the metadata.yaml sidecar of each paper. */
-export interface MetadataRow {
+interface MetadataRow {
   /** Same as PaperRecord.id. */
   paperId: string;
   record: PaperRecord;
@@ -23,7 +23,7 @@ export interface MetadataRow {
 }
 
 /** Serialised ManifestData for the Drive sync provider. */
-export interface ManifestRow {
+interface ManifestRow {
   providerId: string;
   json: string;
 }

@@ -14,7 +14,7 @@ const TOKEN = /[A-Za-z][A-Za-z'-]{2,}/g;
  *
  * @returns Set of normalized terms.
  */
-export function extractTerms(text: string): Set<string> {
+function extractTerms(text: string): Set<string> {
   const tokens = text.match(TOKEN) ?? [];
   const out = new Set<string>();
   for (const t of tokens) {

@@ -52,7 +52,7 @@ export interface HelpOverlay {
 
 export type Overlay = PromptOverlay | ConfirmOverlay | PickerOverlay | HelpOverlay;
 
-export type InlinePurpose = "filter" | "find" | "search";
+type InlinePurpose = "filter" | "find" | "search";
 
 /** The bottom-line input of filter (f), find (/) and search (s); results update as the user types. */
 export interface InlineInput {

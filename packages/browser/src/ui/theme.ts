@@ -2,7 +2,7 @@
 // Stored in localStorage so themeBoot.ts applies it before paint; a storage event syncs open surfaces.
 import { applyThemeToDocument, nextThemePref, resolveTheme, type ResolvedTheme, type ThemePref } from "@labshelf/core/dom";
 
-export const THEME_STORAGE_KEY = "labshelf.theme";
+const THEME_STORAGE_KEY = "labshelf.theme";
 
 const listeners = new Set<(theme: ResolvedTheme, pref: ThemePref) => void>();
 let media: MediaQueryList | null = null;

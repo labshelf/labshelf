@@ -38,8 +38,12 @@
         "build/*.mjs",
         "__tests__/**/*.ts"
       ],
+      "ignoreBinaries": [
+        "wait"
+      ],
       "ignoreDependencies": [
-        "@napi-rs/canvas"
+        "@napi-rs/canvas",
+        "pdfjs-dist"
       ]
     },
     "packages/browser": {

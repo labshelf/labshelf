@@ -34,7 +34,7 @@ export function paste(app: App): void {
   void app.taskStatus.task("move", "moving", () => moveKeys(app, keys, target));
 }
 
-export async function moveKeys(app: App, keys: string[], target: string): Promise<void> {
+async function moveKeys(app: App, keys: string[], target: string): Promise<void> {
   const paperIds = keys.filter((k) => k.startsWith("p:")).map((k) => k.slice(2));
   const folders = keys.filter((k) => k.startsWith("c:")).map((k) => k.slice(2));
   let moved = 0;

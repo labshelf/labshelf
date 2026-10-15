@@ -9,7 +9,7 @@ import type { TextLayerProgress } from "../pdf/index.js";
 const LOG_MODULE = "commands/textLayerQueue";
 
 /** ocr: check, then read the pages if the PDF has no text. check: classify only. */
-export type TextLayerJobMode = "ocr" | "check";
+type TextLayerJobMode = "ocr" | "check";
 
 /** A paper waiting for, or in the middle of, OCR — as the library list shows it. */
 export interface TextLayerJob {
