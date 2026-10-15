@@ -38,7 +38,7 @@ core/src/<domain>/
   dom/        may use the DOM (consumed by VS Code webviews and browser pages)
 ```
 
-The package exposes three entry points that match these runtimes: `@labshelf/core`, `@labshelf/core/node` and `@labshelf/core/dom`. Stylesheets are exported as `@labshelf/core/styles/*`. Separate tsconfigs (neutral code without the DOM and Node libs) and an import-boundary lint make a violation fail the build.
+The package exposes three entry points that match these runtimes: `@labshelf/core`, `@labshelf/core/node` and `@labshelf/core/dom`. A fourth, `@labshelf/core/math`, renders LaTeX math to SVG with MathJax; it stays out of the root barrel because MathJax is large and has import-time side effects, so only the code that renders math pulls it into a bundle. Stylesheets are exported as `@labshelf/core/styles/*`. Separate tsconfigs (neutral code without the DOM and Node libs) and an import-boundary lint make a violation fail the build.
 
 Domains:
 
