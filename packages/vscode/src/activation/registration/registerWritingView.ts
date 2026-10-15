@@ -1,4 +1,4 @@
-// Registers the Writing sidebar view, its commands, the main-document and compiler status bar items, the LaTeX build with its notice and preview, the citation providers, the LaTeX command completion and the source-aware LaTeX editing, and reloads the project list when the library root changes.
+// Registers the Writing sidebar view, its commands, the main-document and compiler status bar items, the LaTeX and Typst builds with the LaTeX Workshop notice, the Tinymist bridge and the preview, the citation providers, the LaTeX command completion and the source-aware LaTeX editing, and reloads the project list when the library root changes.
 import * as vscode from "vscode";
 
 import {
@@ -6,8 +6,9 @@ import {
   registerProjectItemCommands, type WritingHost,
 } from "../../writing/index.js";
 import {
-  registerCompilerStatusBar, registerLatexBuild, registerLatexWorkshopNotice, registerPickCompiler,
+  BuildDiagnostics, registerBuildCommand, registerCompilerStatusBar, registerLatexBuild, registerLatexWorkshopNotice, registerPickCompiler,
 } from "../../writing/build/index.js";
+import { registerTinymistBridge, registerTypstBuild } from "../../writing/typst/index.js";
 import { BuildPreviews, registerShowInPreview, registerShowPreview } from "../../writing/preview/index.js";
 import { registerCitationProviders } from "../../writing/citations/index.js";
 import { registerLatexCommandCompletion, registerLatexEditing } from "../../writing/latexEditing/index.js";
@@ -39,7 +40,14 @@ export function registerWritingView(context: vscode.ExtensionContext, controller
   registerMainCommands({ context, host, projects });
   registerMainStatusBar(context, projects);
   const previews = new BuildPreviews({ host, extensionUri: context.extensionUri, ...reader });
-  registerLatexBuild({ context, host, projects, previews });
+  const diagnostics = new BuildDiagnostics();
+  context.subscriptions.push(diagnostics);
+  const builders = {
+    latex: registerLatexBuild({ context, host, projects, previews, diagnostics }),
+    typst: registerTypstBuild({ context, host, projects, previews, diagnostics, hasPreview: (folder) => previews.hasPreview(folder) }),
+  };
+  registerBuildCommand({ context, projects, builders });
+  registerTinymistBridge(context, { host, projects });
   registerShowPreview({ context, projects, previews });
   registerShowInPreview({ context, projects, previews });
   registerPickCompiler({ context, host, projects });

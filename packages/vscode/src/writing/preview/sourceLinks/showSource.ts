@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 
 import { sourceAt, type ILogger, type PagePoint } from "@labshelf/core";
 import { openSourceLine } from "./openSourceLine.js";
-import { NOT_BUILT_MESSAGE, NO_SOURCE_MESSAGE, PREVIEW_LOG_MODULE } from "../previewStrings.js";
+import { NOT_BUILT_MESSAGE, NO_SOURCE_MESSAGE, PREVIEW_LOG_MODULE, TYPST_SOURCE_LINKS_MESSAGE } from "../previewStrings.js";
 import type { SynctexLookup } from "./projectSynctex.js";
 
 
@@ -17,6 +17,10 @@ export interface ShowSourceDeps {
 export async function showSource(deps: ShowSourceDeps, point: PagePoint): Promise<void> {
   const { logger, projectFolder } = deps;
   const lookup = await deps.synctex();
+  if (lookup.status === "unsupported") {
+    await vscode.window.showInformationMessage(TYPST_SOURCE_LINKS_MESSAGE);
+    return;
+  }
   if (lookup.status !== "found") {
     await logger.log("WARN", PREVIEW_LOG_MODULE, "No SyncTeX data for the preview", { projectFolder, page: point.page, reason: lookup.status });
     await vscode.window.showInformationMessage(NOT_BUILT_MESSAGE);

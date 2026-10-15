@@ -79,7 +79,7 @@ format: latex
 main: main.tex
 engine: tectonic
 bibliography: labshelf.bib
-typst: 0.13.1
+typst: 0.14.2
 ```
 
 | Key | Type | Notes |
@@ -89,7 +89,7 @@ typst: 0.13.1
 | `main` | string | main file, relative to the project folder; when absent, the first root `.tex` file declaring `\documentclass` (`main.tex` first, then alphabetical), or `main.typ` |
 | `engine` | `tectonic` \| `xelatex` \| `pdflatex` \| `lualatex` | LaTeX only |
 | `bibliography` | string | the bibliography file the main file loads, `labshelf.bib` by default; written once the main file loads it |
-| `typst` | string | Typst compiler version of the last build; a YAML number reads as its text |
+| `typst` | string | Typst compiler version of the last successful Typst build, written after each one; a YAML number reads as its text |
 
 Rules:
 

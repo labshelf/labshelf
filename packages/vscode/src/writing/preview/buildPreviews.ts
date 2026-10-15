@@ -1,4 +1,4 @@
-// Keeps one reader preview per LaTeX project: reloads it after a build, shows the build status and opens it when asked.
+// Keeps one reader preview per writing project: reloads it after a build, shows the build status and opens it when asked.
 import * as path from "node:path";
 import * as vscode from "vscode";
 
@@ -53,13 +53,17 @@ export class BuildPreviews implements BuildListener {
     // INVARIANT: an open preview holds the SyncTeX data of the build it shows, read before a later failed build can overwrite the file.
     this.synctex.invalidate(project.folder);
     if (panel) {
-      void this.synctex.load(project);
+      if (project.settings.format === "latex") { void this.synctex.load(project); }
       panel.controller.reloadDocument();
       panel.controller.setBuildStatus("succeeded");
       void this.deps.host.current()?.logger.log("INFO", PREVIEW_LOG_MODULE, "Reloaded preview", { projectFolder: project.folder, pdf: result.pdf });
     } else if (trigger === "command") {
       this.show(project, result.pdf, { beside: true });
     }
+  }
+
+  hasPreview(projectFolder: string): boolean {
+    return this.panels.has(projectFolder);
   }
 
   /** Opens the project's preview on a PDF, or reveals the open one. */

@@ -10,6 +10,7 @@ import { PREVIEW_LOG_MODULE } from "../previewStrings.js";
 export type SynctexLookup =
   | { status: "found"; index: SyncIndex }
   | { status: "missing"; path: string }
+  | { status: "unsupported" }
   | { status: "unreadable" };
 
 export class ProjectSynctex {
@@ -35,6 +36,8 @@ export class ProjectSynctex {
   }
 
   private async read(project: ReadyProject): Promise<SynctexLookup> {
+    // Typst writes no SyncTeX; its compiler has no PDF-to-source map LabShelf can read.
+    if (project.settings.format !== "latex") { return { status: "unsupported" }; }
     if (!project.main) { return { status: "missing", path: project.folder }; }
     const mainFile = path.join(project.folder, project.main);
     try {

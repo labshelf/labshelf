@@ -365,6 +365,7 @@ window.visibleTextEditors = [];
 
 workspace.textDocuments = [];
 workspace.applyEdit = jest.fn(async () => true);
+workspace.saveAll = jest.fn(async () => true);
 
 // Handlers per document event; tests call workspace._fireDocumentEvent("save" | "open" | "close", document).
 const _documentListeners = { save: [], open: [], close: [] };
