@@ -1,4 +1,4 @@
-/** Tree operations over the "files" store, where a folder is the set of rows whose key starts with `<folder>/`. */
+/** Runs tree operations over the "files" store, where a folder is the set of rows whose key starts with `<folder>/`. */
 import { getDb } from "./idb";
 import type { FileRow } from "./idb";
 

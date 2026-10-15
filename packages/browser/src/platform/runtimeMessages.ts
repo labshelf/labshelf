@@ -1,5 +1,5 @@
 /**
- * The runtime messages between the background and the extension pages and content script, in one typed envelope.
+ * Declares the runtime messages between the background and the extension pages and content script, in one typed envelope.
  */
 import type { IfNoPdf, PdfMiss } from "@labshelf/core";
 

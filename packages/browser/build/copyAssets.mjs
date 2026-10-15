@@ -1,7 +1,5 @@
 /**
  * Copies manifests and static HTML/CSS files into the per-target dist folder.
- * @depends node:fs/promises.
- * @dependents build.mjs.
  */
 import { copyFile, mkdir, readdir, stat } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";

@@ -1,4 +1,4 @@
-/** Browser platform access shared by the extension's modules: the WebExtension API, the logger and the runtime message types. */
+// Exports the browser platform access the extension's modules share: the WebExtension API, the logger and the runtime message types.
 export { bx } from "./browserApi";
 export { BrowserLogger } from "./logger";
 export { downloadTextFile } from "./downloadTextFile";

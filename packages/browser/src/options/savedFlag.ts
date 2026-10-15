@@ -1,4 +1,4 @@
-/** The "Saved" flag beside the page title: appears for two seconds after a setting is stored. */
+/** Shows the "Saved" flag beside the page title; it appears for two seconds after a setting is stored. */
 import { el } from "@labshelf/core/dom";
 import { icon } from "@labshelf/core";
 

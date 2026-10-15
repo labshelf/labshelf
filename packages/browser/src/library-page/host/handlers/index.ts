@@ -1,4 +1,4 @@
-/** Public API of the library page's message handlers. */
+// Exports the library page's message handlers' public API.
 export { offerOpenTabs, captureTab } from "./addFromTabHandler";
 export { createFolder, deleteFolder, renameFolder } from "./folderHandlers";
 export { exportAnnotations, sendDetails } from "./paperDataHandlers";

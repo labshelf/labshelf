@@ -1,2 +1,2 @@
-/** The browser's sync wiring over the IndexedDB library. */
+// Exports the browser sync's public API: wiring over the IndexedDB library.
 export { createBrowserSync, browserSyncStatus } from "./browserSync";

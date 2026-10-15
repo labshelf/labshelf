@@ -1,4 +1,4 @@
-/** The Sync and PDF resolution sections: auto-sync interval, contact email and the Sci-Hub fallback. */
+/** Builds the Sync and PDF resolution sections: auto-sync interval, contact email and the Sci-Hub fallback. */
 import { DEFAULT_CONTACT_EMAIL } from "@labshelf/core";
 import {
   checkboxField, inlineCode, numberField, setRowDisabled, settingRow, settingsSection, textField,

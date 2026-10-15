@@ -1,4 +1,4 @@
-/** The Google Drive section of the options page: the background's sync status and the Connect, Sync now and Disconnect requests. */
+/** Builds the options page's Google Drive section: the background's sync status and the Connect, Sync now and Disconnect requests. */
 import { driveSection, inlineCode, type DriveSection } from "@labshelf/core/dom";
 import type { BrowserLogger, RuntimeMessage, SyncStatusData } from "../platform";
 import { send } from "./runtimeSend";

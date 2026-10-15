@@ -1,5 +1,5 @@
 /**
- * A LocalFileSystem over the IDB "manifest" store, one JSON document per key: the sync manifest and the last-run record.
+ * Implements a LocalFileSystem over the IDB "manifest" store, one JSON document per key: the sync manifest and the last-run record.
  * Only readFile, writeFile, stat and deleteFile do anything, since the sync state is never listed as a tree.
  */
 import type { LocalFileSystem, LocalStat } from "@labshelf/core";

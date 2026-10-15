@@ -1,5 +1,5 @@
 /**
- * SyncTimers over bx.alarms rather than setTimeout: an alarm survives the suspension of the MV3 service worker between
+ * Implements SyncTimers over bx.alarms rather than setTimeout: an alarm survives the suspension of the MV3 service worker between
  * a change and the sync it schedules, and periodic syncs keep firing while no page is open.
  */
 import type { ILogger, SyncTimerId, SyncTimers } from "@labshelf/core";

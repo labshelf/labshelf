@@ -1,5 +1,5 @@
 /**
- * Pure text helpers for the popup: the one-line byline under the title, tag
+ * Formats popup text: the one-line byline under the title, tag
  * parsing, and human labels for folders.
  */
 import { formatAuthors, normalizeTags, venueLine } from "@labshelf/core";

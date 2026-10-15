@@ -1,6 +1,4 @@
-/**
- * Public API of the browser storage layer.
- */
+// Exports the browser storage layer's public API.
 export { IndexedDbFileSystem } from "./indexedDbFileSystem";
 export { IdbManifestFileSystem } from "./idbManifestFileSystem";
 export { createIdbSidecarPort } from "./idbSidecarPort";

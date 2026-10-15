@@ -1,4 +1,4 @@
-/** The Appearance section: the theme preference shared by every browser surface, as a segmented control. */
+/** Builds the Appearance section: the theme preference shared by every browser surface, as a segmented control. */
 import { icon, type IconName } from "@labshelf/core";
 import { el, settingRow, settingsSection, type ThemePref } from "@labshelf/core/dom";
 import { getThemePref, onThemeChange, setThemePref } from "../ui";

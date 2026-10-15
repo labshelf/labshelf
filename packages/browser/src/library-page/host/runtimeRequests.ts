@@ -1,5 +1,5 @@
 /**
- * Requests from the library page to the background: a typed send that unwraps the reply envelope, and the
+ * Sends the library page's requests to the background: a typed send that unwraps the reply envelope, and the
  * fire-and-forget nudge that coalesces a sync after a local change.
  */
 import { bx, type RuntimeMessage, type RuntimeResponse } from "../../platform";

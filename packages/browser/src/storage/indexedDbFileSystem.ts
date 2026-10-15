@@ -1,6 +1,6 @@
 /**
- * The library file system over the "files" IndexedDB store: keys are POSIX paths, and directories are the prefixes of
- * keys. Serves both the sync engine and the library mutations.
+ * Implements the library file system over the "files" IndexedDB store: keys are POSIX paths, and directories are the
+ * prefixes of keys. Serves both the sync engine and the library mutations.
  */
 import type { LibraryFileSystem, LocalStat } from "@labshelf/core";
 import { sha256Hex } from "@labshelf/core";

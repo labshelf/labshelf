@@ -1,5 +1,5 @@
 /**
- * The bottom status bar, drawn like VS Code's: the sync item on the left (cloud when connected, spinning while a sync
+ * Draws the bottom status bar like VS Code's: the sync item on the left (cloud when connected, spinning while a sync
  * runs, cloud-off when disconnected; a click syncs now), the paper count, the theme toggle and settings on the right.
  */
 import { icon } from "@labshelf/core";

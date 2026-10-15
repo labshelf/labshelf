@@ -1,4 +1,4 @@
-// Public API of the background message handlers.
+// Exports the background message handlers' public API.
 export {
   handleCaptureInspect, handleCaptureFindPdf, handleCaptureSave, handleCaptureTab, handleScholarSave, handleCaptureAttachPdf,
 } from "./capture";

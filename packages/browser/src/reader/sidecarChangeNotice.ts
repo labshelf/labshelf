@@ -1,5 +1,5 @@
 /**
- * After the reader changes a paper's sidecar: asks the background to sync soon, and tells the library page to refresh
+ * Reacts to the reader changing a paper's sidecar: asks the background to sync soon, and tells the library page to refresh
  * that paper's marks. A theme change shows nowhere in the library, so only the sync hears of it.
  */
 import type { SidecarChange } from "@labshelf/core";

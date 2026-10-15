@@ -1,6 +1,6 @@
 /**
- * The library page's preferences in localStorage, under one key: the shared library UI prefs plus the sidebar
- * tree's expanded folders. A corrupt or missing entry falls back to the defaults field by field.
+ * Stores the library page's preferences in localStorage under one key: the shared library UI prefs plus the
+ * sidebar tree's expanded folders. A corrupt or missing entry falls back to the defaults field by field.
  */
 import { sanitizePrefs, type LibraryUiPrefs, type PrefsPort } from "@labshelf/core";
 

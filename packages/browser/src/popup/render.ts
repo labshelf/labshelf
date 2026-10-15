@@ -1,4 +1,4 @@
-// DOM-rendering helpers for the popup form: paper title/byline, PDF status line, folder select, the shared
+// Renders the popup form's DOM: paper title/byline, PDF status line, folder select, the shared
 // status banner (used for the library copy, errors and the saved confirmation), and textarea auto-grow.
 import { $ } from "@labshelf/core/dom";
 import { escapeHtml, icon, type IconName } from "@labshelf/core";

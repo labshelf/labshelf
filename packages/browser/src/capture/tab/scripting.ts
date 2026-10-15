@@ -1,4 +1,5 @@
-/** The browser's scripting API, found on whichever global the browser exposes it (webextension-polyfill omits it). */
+/** Finds the browser's scripting API on whichever global exposes it. */
+// PLATFORM: webextension-polyfill omits the scripting API.
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function scriptingApi(): any {

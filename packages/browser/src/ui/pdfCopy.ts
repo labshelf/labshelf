@@ -1,5 +1,5 @@
 /**
- * The popup's one-line PDF status, which the shared core PDF copy builds on: searching, found, or not found.
+ * Words the popup's one-line PDF status, which the shared core PDF copy builds on: searching, found, or not found.
  */
 import { pdfSourceLabel } from "@labshelf/core";
 import type { PdfStatusData } from "../platform";

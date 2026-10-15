@@ -1,5 +1,5 @@
 /**
- * IndexedDB store definitions for the labshelf browser extension. Schema: files (raw bytes), metadata (PaperRecord cache), manifest (sync state).
+ * Declares the IndexedDB stores of the labshelf browser extension. Schema: files (raw bytes), metadata (PaperRecord cache), manifest (sync state).
  */
 import type { PaperRecord } from "@labshelf/core";
 

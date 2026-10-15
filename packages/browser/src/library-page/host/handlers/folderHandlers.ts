@@ -1,5 +1,5 @@
 /**
- * Folder work the UI asks for after its prompt: create, rename and delete through the core library mutations, then a
+ * Does the folder work the UI asks for after its prompt: create, rename and delete through the core library mutations, then a
  * fresh snapshot, navigation that follows the change, and a sync soon.
  */
 import { baseName, isUnderDir, parentDir } from "@labshelf/core";

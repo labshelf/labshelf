@@ -1,4 +1,4 @@
-// The header sync button: state at a glance (connected/syncing/error), click syncs now or opens settings.
+// Drives the header sync button: state at a glance (connected/syncing/error), click syncs now or opens settings.
 import { $, shortTime } from "@labshelf/core/dom";
 import { icon } from "@labshelf/core";
 

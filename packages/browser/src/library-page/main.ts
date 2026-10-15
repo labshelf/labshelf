@@ -1,5 +1,5 @@
 /**
- * Library page bootstrap: mounts the shared library UI with a sidebar slot, answers it through an in-page host over a
+ * Bootstraps the library page: mounts the shared library UI with a sidebar slot, answers it through an in-page host over a
  * synchronous loopback channel, and adds the page's own glue (folder tree, URL hash, status bar).
  */
 import { createLoopbackTransport } from "@labshelf/core";

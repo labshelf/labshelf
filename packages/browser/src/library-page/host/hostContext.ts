@@ -1,5 +1,5 @@
 /**
- * What every library page host handler shares: the channel to the UI, the snapshots, the core library mutations, the
+ * Holds what every library page host handler shares: the channel to the UI, the snapshots, the core library mutations, the
  * logger and the folder the UI shows.
  */
 import { PAPERS_DIR, type HostEndpoint, type PaperRecord, type PaperRef } from "@labshelf/core";

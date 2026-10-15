@@ -1,4 +1,4 @@
-/** The PDF reader section: the browser twin of VS Code's labshelf.reader.* settings. */
+/** Builds the PDF reader section, the browser twin of VS Code's labshelf.reader.* settings. */
 import type { CitationStyle, ReaderPrefs, ZoomPreset } from "@labshelf/core";
 import {
   checkboxField, inlineCode, numberField, selectField, setRowDisabled, settingRow, settingsSection,

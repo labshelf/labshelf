@@ -1,5 +1,5 @@
 /**
- * Persistent cache of PaperRecord objects, derived from the metadata.yaml files
+ * Caches PaperRecord objects persistently, derived from the metadata.yaml files
  * stored in IndexedDB, so reads never re-parse YAML.
  */
 import { METADATA_FILE, PAPERS_DIR, paperRecordFromMetadata, parsePaperMetadata, pdfDirsFromFilePaths, type PaperRecord } from "@labshelf/core";

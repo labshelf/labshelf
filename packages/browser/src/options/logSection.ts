@@ -1,4 +1,4 @@
-/** The Recent log section: the last background events, for troubleshooting. */
+/** Builds the Recent log section: the last background events, for troubleshooting. */
 import { el, settingsSection } from "@labshelf/core/dom";
 import type { BrowserLogger } from "../platform";
 

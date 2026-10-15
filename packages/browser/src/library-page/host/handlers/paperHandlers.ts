@@ -1,5 +1,5 @@
 /**
- * Paper work the UI asks for: set the status, tags and note, move, remove (to the trash) and copy text to the clipboard. Each change
+ * Does the paper work the UI asks for: set the status, tags and note, move, remove (to the trash) and copy text to the clipboard. Each change
  * goes through the core library mutations, posts a fresh snapshot and asks for a sync soon.
  */
 import { PAPERS_DIR, ROOT_LABEL, baseName, type PaperStatus } from "@labshelf/core";

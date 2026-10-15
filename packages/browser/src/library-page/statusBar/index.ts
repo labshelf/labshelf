@@ -1,3 +1,3 @@
-/** Public API of the library page status bar. */
+// Exports the library page status bar's public API.
 export { mountStatusBar } from "./statusBar";
 export { createSyncStatus } from "./syncStatus";

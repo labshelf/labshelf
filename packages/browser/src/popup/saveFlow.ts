@@ -1,4 +1,4 @@
-// The capture/save/undo flow: inspecting the current tab, the shared "No PDF found" dialog, saving the
+// Runs the capture, save and undo flow: inspecting the current tab, the shared "No PDF found" dialog, saving the
 // draft, attaching a PDF to an already-saved copy, and undoing a save.
 import { $, showDialog } from "@labshelf/core/dom";
 import { noPdfDialogCopy, pdfSourceLabel, type IfNoPdf, type PdfMiss } from "@labshelf/core";

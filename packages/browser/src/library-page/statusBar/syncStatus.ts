@@ -1,5 +1,5 @@
 /**
- * The sync state the status bar shows: read from the background at start, polled while a sync runs (then the library
+ * Tracks the sync state the status bar shows: read from the background at start, polled while a sync runs (then the library
  * is read again), and a "sync now" that runs one.
  */
 import { toast } from "@labshelf/core/dom";

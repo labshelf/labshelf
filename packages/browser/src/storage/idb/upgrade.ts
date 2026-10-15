@@ -1,5 +1,5 @@
 /**
- * Schema upgrade steps for the "labshelf" IndexedDB database. Each step only
+ * Runs the schema upgrade steps for the "labshelf" IndexedDB database. Each step only
  * changes structure; the rows in the stores are never touched.
  */
 import type { IDBPDatabase, IDBPTransaction } from "idb";

@@ -1,2 +1,2 @@
-/** Public API of the library page sidebar. */
+// Exports the library page sidebar's public API.
 export { mountSidebarTree } from "./sidebarTree";

@@ -1,4 +1,4 @@
-/** A typed request from the options page to the background that unwraps the reply envelope. */
+/** Sends a typed request from the options page to the background and unwraps the reply envelope. */
 import { bx, type RuntimeMessage, type RuntimeResponse } from "../platform";
 
 export async function send<T = unknown>(message: RuntimeMessage): Promise<T> {

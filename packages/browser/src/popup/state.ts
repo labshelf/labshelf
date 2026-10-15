@@ -1,4 +1,4 @@
-// The popup's mutable session state (current tab, folders, the saved paper, PDF search result) and the
+// Holds the popup's mutable session state (current tab, folders, the saved paper, PDF search result) and the
 // data-state/#popup DOM toggle that drives which section of the form is visible.
 import { $ } from "@labshelf/core/dom";
 import { PAPERS_DIR, icon } from "@labshelf/core";

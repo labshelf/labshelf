@@ -1,4 +1,4 @@
-// Popup's typed request to the background that unwraps the reply envelope, and an error-to-text helper.
+// Sends the popup's typed request to the background, unwraps the reply envelope, and turns errors into text.
 import { bx } from "../platform";
 import type { RuntimeMessage, RuntimeResponse } from "../platform";
 

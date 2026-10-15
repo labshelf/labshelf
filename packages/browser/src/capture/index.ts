@@ -1,6 +1,4 @@
-/**
- * Public surface of the capture module.
- */
+// Exports the capture module's public API.
 export { inspectTab, findPdf, safeFolder, summarizeAttempts, resetPdfSearch, saveOrAsk, refreshExisting } from "./captureService";
 export type { CaptureDraft, SavedPaper, SaveDecision } from "./captureService";
 export { draftFromScholarHit } from "./scholarCapture";
