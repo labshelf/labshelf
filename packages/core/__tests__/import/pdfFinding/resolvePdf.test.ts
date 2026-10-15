@@ -106,7 +106,7 @@ describe("the order of the chain", () => {
   it("downloads candidates in rank order whatever order the lookups answer in", async () => {
     const h = makeFindingHarness();
     const delayed = (ms: number, body: () => Response) => () => new Promise<Response>((resolve) => setTimeout(() => resolve(body()), ms));
-    h.routes[`${OPENALEX}works/doi:10.1145%2F1.2?select=id,doi,title,publication_year,ids,open_access,best_oa_location,locations&mailto=me%40uni.edu`] = delayed(60, () => json({
+    h.routes[`${OPENALEX}works/doi:10.1145%2F1.2?select=id,doi,title,publication_year,authorships,ids,open_access,best_oa_location,locations&mailto=me%40uni.edu`] = delayed(60, () => json({
       title: "Attention is all you need",
       best_oa_location: { pdf_url: "https://repo.example/openalex.pdf" },
       locations: [{ landing_page_url: "https://arxiv.org/abs/1706.03762v7" }],
@@ -144,6 +144,16 @@ describe("the order of the chain", () => {
     expect(got).toMatchObject({ source: "arxiv", url: "https://arxiv.org/pdf/hep-th/9711200" });
   });
 
+  it("downloads the arXiv twin of a paper that has only a title", async () => {
+    const h = makeFindingHarness();
+    const title = "The Large N Limit of Superconformal Field Theories and Supergravity";
+    h.routes[`https://export.arxiv.org/api/query?search_query=${encodeURIComponent(`ti:"${title}"`)}+AND+au:maldacena&max_results=3`] = () =>
+      new Response(`<feed><entry><id>http://arxiv.org/abs/hep-th/9711200v3</id><title>${title}</title><author><name>Juan Maldacena</name></author></entry></feed>`);
+    h.routes["https://arxiv.org/pdf/hep-th/9711200"] = pdf;
+    const got = await resolvePdf(makeContext({ title, authors: ["Juan Maldacena"] }), h.opts());
+    expect(got).toMatchObject({ source: "arxiv", url: "https://arxiv.org/pdf/hep-th/9711200" });
+  });
+
   it("fetches an arXiv PDF known from the start once", async () => {
     const h = makeFindingHarness();
     await resolvePdf(makeContext({ doi: "10.1/x", arxivId: "2301.00001" }), h.opts());
@@ -157,7 +167,7 @@ describe("the order of the chain", () => {
   });
 
   it("uses a copy a learner suggests only when the record is the same work", async () => {
-    const lookup = "https://api.openalex.org/works/doi:10.1%2Fx?select=id,doi,title,publication_year,ids,open_access,best_oa_location,locations&mailto=me%40uni.edu";
+    const lookup = "https://api.openalex.org/works/doi:10.1%2Fx?select=id,doi,title,publication_year,authorships,ids,open_access,best_oa_location,locations&mailto=me%40uni.edu";
     const record = (title: string) => () => json({ title, best_oa_location: { pdf_url: "https://repo.example/copy.pdf" } });
     const same = makeFindingHarness();
     same.routes[lookup] = record("Attention is all you need");

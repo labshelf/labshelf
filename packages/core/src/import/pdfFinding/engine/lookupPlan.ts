@@ -1,7 +1,7 @@
 /** Lists the lookups in download rank (page, publisher, open-access copies, user resolvers) and what each waits for. */
 import {
   arxivResolver, crossrefResolver, europePmcResolver, openalexResolver, pageHintResolver, pmcResolver,
-  publisherResolver, customResolver, semanticScholarResolver, unpaywallResolver,
+  publisherResolver, customResolver, semanticScholarResolver, titleTwinResolver, unpaywallResolver,
 } from "../resolvers/index.js";
 import type { PdfResolver } from "../types.js";
 
@@ -11,10 +11,10 @@ export interface LookupStep {
   after?: readonly PdfResolver[];
 }
 
-const LEARNERS = [openalexResolver, semanticScholarResolver, europePmcResolver];
+const LEARNERS = [openalexResolver, semanticScholarResolver, europePmcResolver, titleTwinResolver];
 
-// INVARIANT: learners (OpenAlex, Semantic Scholar, Europe PMC) settle before PMC and the second arXiv step, so the
-// ids they reveal feed those; the publisher rules wait for the landing page, whose URL keys some platforms.
+// INVARIANT: learners (OpenAlex, Semantic Scholar, Europe PMC, the title-only twin search) settle before PMC and the
+// second arXiv step, so the ids they reveal feed those; the publisher rules wait for the landing page, whose URL keys some platforms.
 // arXiv appears twice: an id known from the start downloads early, a learned one later; a URL is tried once.
 export function lookupPlan(landing: PdfResolver): LookupStep[] {
   return [

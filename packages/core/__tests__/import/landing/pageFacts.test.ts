@@ -60,6 +60,16 @@ describe("interpretPage", () => {
     expect(interpretPage(page({ meta: { citation_doi: ["10.48550/arXiv.1706.03762"] } })).ids).toMatchObject({ arxivId: "1706.03762" });
   });
 
+  it("reads old-style arXiv ids from the citation meta tag and the abs URL", () => {
+    expect(interpretPage(page({ meta: { citation_arxiv_id: ["arXiv:hep-th/9711200v3"] } })).ids.arxivId).toBe("hep-th/9711200");
+    expect(interpretPage(page({ meta: { citation_arxiv_id: ["math.GT/0309136"] } })).ids.arxivId).toBe("math.GT/0309136");
+    expect(interpretPage(page({ pageUrl: "https://arxiv.org/abs/hep-th/9711200v2" })).ids.arxivId).toBe("hep-th/9711200");
+  });
+
+  it("takes no arXiv id from a citation_arxiv_id that is not one", () => {
+    expect(interpretPage(page({ meta: { citation_arxiv_id: ["see the abstract"] } })).ids.arxivId).toBeUndefined();
+  });
+
   it("treats a PDF tab as a paper whose first candidate is the tab itself", () => {
     const facts = interpretPage(page({ pageUrl: "https://example.org/x.pdf", pageIsPdf: true }));
     expect(facts.isPaper).toBe(true);

@@ -2,7 +2,7 @@
 import { openalexResolver } from "../../../../../src/import/pdfFinding/resolvers/index";
 import { json, makeContext, makeFindingHarness } from "../../../../support/pdfFindingHarness";
 
-const LOOKUP = "https://api.openalex.org/works/doi:10.1%2Fx?select=id,doi,title,publication_year,ids,open_access,best_oa_location,locations&mailto=me%40uni.edu";
+const LOOKUP = "https://api.openalex.org/works/doi:10.1%2Fx?select=id,doi,title,publication_year,authorships,ids,open_access,best_oa_location,locations&mailto=me%40uni.edu";
 const work = {
   title: "Deep residual learning for image recognition",
   publication_year: 2016,

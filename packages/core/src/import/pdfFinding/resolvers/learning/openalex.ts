@@ -1,7 +1,7 @@
-// Looks up OpenAlex's record for a DOI, proposing its publisher and repository copies and learning `pmcid` and `arxivId`.
+// Looks up OpenAlex's record for a DOI or work id, proposing its publisher and repository copies and learning `pmcid` and `arxivId`.
 import { arxivIdFromUrl, normalizePmcid, pmcidFromUrl } from "../../../identifiers/index.js";
 import { lookupJson } from "../timedFetch.js";
-import type { PdfResolver, ResolveContext } from "../../types.js";
+import type { PdfResolver, ResolveContext, ResolverEnv } from "../../types.js";
 import { acceptRecord } from "./acceptRecord.js";
 import { learnIds } from "./learnIds.js";
 
@@ -17,6 +17,7 @@ interface OpenAlexLocation {
 interface OpenAlexWork {
   title?: string | null;
   publication_year?: number | null;
+  authorships?: Array<{ author?: { display_name?: string | null } | null }> | null;
   ids?: { pmcid?: string | null } | null;
   open_access?: { oa_url?: string | null } | null;
   best_oa_location?: OpenAlexLocation | null;
@@ -24,25 +25,34 @@ interface OpenAlexWork {
 }
 
 // Root fields only; OpenAlex rejects dotted paths such as best_oa_location.pdf_url.
-const SELECT = "id,doi,title,publication_year,ids,open_access,best_oa_location,locations";
+const SELECT = "id,doi,title,publication_year,authorships,ids,open_access,best_oa_location,locations";
 const RANK = { publisher: 40, openAccessUrl: 45, repository: 60 };
 
 export const openalexResolver: PdfResolver = {
   name: "openalex",
   async resolve(ctx, env) {
-    if (!ctx.doi) return [];
-    const work = await lookupJson<OpenAlexWork>(
-      env,
-      `https://api.openalex.org/works/doi:${encodeURIComponent(ctx.doi)}?select=${SELECT}&mailto=${encodeURIComponent(ctx.contactEmail)}`,
-    );
-    if (!work) return [];
-    const record = { title: work.title ?? undefined, year: work.publication_year ?? undefined };
-    if (!acceptRecord("openalex", ctx, env, record)) return [];
-    const locations = [work.best_oa_location, ...(work.locations ?? [])].filter((l): l is OpenAlexLocation => Boolean(l));
-    learnIdentifiers(ctx, work, locations);
-    return copiesOf(work, locations);
+    return ctx.doi ? openAlexCopies(ctx, env, `doi:${encodeURIComponent(ctx.doi)}`) : [];
   },
 };
+
+/**
+ * Reads OpenAlex's single-work record and proposes its copies.
+ * @param workRef the path segment naming the work: `doi:<encoded doi>` or an OpenAlex id ("W2626778328")
+ * @returns Publisher and repository copies, none when the record is missing or is another paper's
+ */
+export async function openAlexCopies(ctx: ResolveContext, env: ResolverEnv, workRef: string): Promise<string[]> {
+  const work = await lookupJson<OpenAlexWork>(
+    env,
+    `https://api.openalex.org/works/${workRef}?select=${SELECT}&mailto=${encodeURIComponent(ctx.contactEmail)}`,
+  );
+  if (!work) return [];
+  const authors = (work.authorships ?? []).map((a) => a.author?.display_name ?? "").filter(Boolean);
+  const record = { title: work.title ?? undefined, year: work.publication_year ?? undefined, ...(authors.length ? { authors } : {}) };
+  if (!acceptRecord("openalex", ctx, env, record)) return [];
+  const locations = [work.best_oa_location, ...(work.locations ?? [])].filter((l): l is OpenAlexLocation => Boolean(l));
+  learnIdentifiers(ctx, work, locations);
+  return copiesOf(work, locations);
+}
 
 function learnIdentifiers(ctx: ResolveContext, work: OpenAlexWork, locations: OpenAlexLocation[]): void {
   const urls = locations.flatMap((l) => [l.landing_page_url, l.pdf_url]).filter((u): u is string => Boolean(u));

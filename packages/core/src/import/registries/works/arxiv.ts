@@ -1,4 +1,4 @@
-/** Looks up arXiv preprints by identifier. */
+/** Looks up arXiv preprints by identifier and reads arXiv Atom answers. */
 import { extractYear } from "../../metadata/index.js";
 import { fetchText, type RegistryEnv } from "../http.js";
 import { matchTag, xmlText } from "../text.js";
@@ -13,11 +13,21 @@ export async function arxivById(env: RegistryEnv, arxivId: string): Promise<Regi
     env,
     `https://export.arxiv.org/api/query?id_list=${encodeURIComponent(arxivId)}`,
   );
-  const entry = xml?.match(/<entry>([\s\S]*?)<\/entry>/)?.[1];
-  if (!entry || /<title>\s*Error/i.test(entry)) {
-    return undefined;
-  }
+  return xml ? parseArxivFeed(xml)[0] : undefined;
+}
 
+/**
+ * Reads the preprints of an arXiv Atom answer.
+ * @returns One record per entry, `url` being the abstract page; none for an error entry.
+ */
+export function parseArxivFeed(xml: string): RegistryRecord[] {
+  return [...xml.matchAll(/<entry>([\s\S]*?)<\/entry>/g)]
+    .map((match) => match[1] ?? "")
+    .filter((entry) => !/<title>\s*Error/i.test(entry))
+    .map(mapArxivEntry);
+}
+
+function mapArxivEntry(entry: string): RegistryRecord {
   // A preprint has no DOI until it is published; `<id>` is its abstract page.
   return {
     title: xmlText(matchTag(entry, "title")),
