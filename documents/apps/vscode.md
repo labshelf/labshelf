@@ -35,6 +35,9 @@ pnpm dev:vscode                        # watches the host and the webview bundle
 - Build output goes to `<cache>/labshelf/builds/<project id>/`, so the project folder holds no auxiliary files. The PDF is copied next to the main file only when the build succeeds.
 - The compiler item in the status bar and **Research: Choose LaTeX Compiler** pick the engine (`tectonic`, `xelatex`, `pdflatex` or `lualatex`), stored in `labshelf.yaml` ([contract](../contracts/library-format.md#labshelfyaml)). The first build offers an installed TeX Live and otherwise Tectonic. Tectonic 0.17.0 is pinned: after consent it is downloaded, checked against its SHA-256 and installed under the extension's `globalStorage`.
 - When LaTeX Workshop is installed, a one-time notice per workspace says it builds on save too and offers to turn that off.
+- LaTeX sources are read across the whole project (the main file and the files it includes). `\ref`, `\eqref` and similar commands complete the project's labels, Ctrl+click goes to the `\label`, and a reference to an undefined label is a warning in the Problems panel. The Outline lists the sections.
+- Hovering a formula renders it with MathJax, using the project's `\newcommand` and `\DeclareMathOperator` macros. The status bar shows the word count of the whole project, with the active file's count in its tooltip.
+- Commands and environments complete from a catalog of core and common-package names. Typing `}` after `\begin{name}`, or pressing Enter right after it, inserts the matching `\end{name}`.
 
 ## Adding papers
 

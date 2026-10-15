@@ -1,4 +1,4 @@
-// Registers the Writing sidebar view, its commands, the main-document and compiler status bar items, the LaTeX build with its notice and preview and the citation providers, and reloads the project list when the library root changes.
+// Registers the Writing sidebar view, its commands, the main-document and compiler status bar items, the LaTeX build with its notice and preview, the citation providers, the LaTeX command completion and the source-aware LaTeX editing, and reloads the project list when the library root changes.
 import * as vscode from "vscode";
 
 import {
@@ -10,7 +10,7 @@ import {
 } from "../../writing/build/index.js";
 import { BuildPreviews, registerShowInPreview, registerShowPreview } from "../../writing/preview/index.js";
 import { registerCitationProviders } from "../../writing/citations/index.js";
-import { registerLatexCommandCompletion } from "../../writing/latexEditing/index.js";
+import { registerLatexCommandCompletion, registerLatexEditing } from "../../writing/latexEditing/index.js";
 import type { LibraryRootController } from "../libraryLifecycle/index.js";
 import type { HostAdapters } from "../serviceComposition/index.js";
 
@@ -53,5 +53,6 @@ export function registerWritingView(context: vscode.ExtensionContext, controller
     },
   });
   registerLatexCommandCompletion(context);
+  registerLatexEditing(context, { projects, logger: () => controller.currentServices()?.logger });
   void projects.reload();
 }
