@@ -49,7 +49,8 @@ export function authorsFromBlocks(blocks: TextBlock[], title: string | undefined
   for (let i = titleIndex + 1; i < Math.min(blocks.length, titleIndex + 4); i += 1) {
     const candidate = blocks[i]!;
     if (looksLikeAuthorLine(candidate.text)) {
-      return normalizeAuthors(candidate.text);
+      const authors = normalizeAuthors(candidate.text);
+      return isAllCapsByline(candidate.text) ? authors.map(titleCaseName) : authors;
     }
   }
   return [];
@@ -65,7 +66,16 @@ function looksLikeAuthorLine(text: string): boolean {
   if (/\b(abstract|introduction|university|department|institut|faculty|laborat)/i.test(text)) {
     return false;
   }
-  return /[A-ZÀ-Þ][a-zà-ÿ]+/.test(text);
+  return /[A-ZÀ-Þ][a-zà-ÿ]+/.test(text) || isAllCapsByline(text);
+}
+
+// Journals such as SIAM set the byline in capitals; digits and punctuation other than name marks rule out stamps and running heads.
+function isAllCapsByline(text: string): boolean {
+  return /^[A-ZÀ-Þ][A-ZÀ-Þ'’.\-]*(?:[\s,]+[A-ZÀ-Þ][A-ZÀ-Þ'’.\-]*)+$/.test(text);
+}
+
+function titleCaseName(name: string): string {
+  return name.toLowerCase().replace(/(^|[\s'’-])([a-zà-ÿ])/g, (_, lead: string, letter: string) => lead + letter.toUpperCase());
 }
 
 function medianSize(blocks: TextBlock[]): number {

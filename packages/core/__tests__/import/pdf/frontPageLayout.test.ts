@@ -1,4 +1,4 @@
-import { titleFromBlocks, type TextBlock } from '@labshelf/core';
+import { authorsFromBlocks, titleFromBlocks, type TextBlock } from '@labshelf/core';
 
 // Page 1 of a SIAM 1986 article: the licence stamp is set larger than the title.
 const SIAM_PAGE: TextBlock[] = [
@@ -17,5 +17,23 @@ describe('titleFromBlocks', () => {
 
   it('returns undefined when the stamp is all the page offers', () => {
     expect(titleFromBlocks([SIAM_PAGE[0]!, { size: 8, text: 'body text of the page that goes on' }])).toBeUndefined();
+  });
+});
+
+describe('authorsFromBlocks', () => {
+  const title = 'EFFICIENT ALGORITHMS FOR GEOMETRIC GRAPH SEARCH PROBLEMS*';
+
+  it('splits an all-caps byline into title-cased authors', () => {
+    expect(authorsFromBlocks(SIAM_PAGE, title)).toEqual(['Hiroshi Imai', 'Takao Asano']);
+  });
+
+  it('keeps hyphens and apostrophes inside all-caps names', () => {
+    const page: TextBlock[] = [{ size: 12, text: title }, { size: 9, text: "JEAN-PIERRE O'BRIEN AND ANA LOPEZ" }];
+    expect(authorsFromBlocks(page, title)).toEqual(["Jean-Pierre O'Brien", 'Ana Lopez']);
+  });
+
+  it('leaves a mixed-case byline as written', () => {
+    const page: TextBlock[] = [{ size: 12, text: title }, { size: 9, text: 'Hiroshi Imai and Takao Asano' }];
+    expect(authorsFromBlocks(page, title)).toEqual(['Hiroshi Imai', 'Takao Asano']);
   });
 });
