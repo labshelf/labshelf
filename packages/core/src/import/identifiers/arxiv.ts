@@ -7,7 +7,8 @@ const ARXIV_ID = `(?:${NEW_STYLE}|${OLD_STYLE})`;
 
 // arXiv's own DOIs (10.48550/arXiv.2301.12345) name the preprint.
 const ARXIV_DOI = new RegExp(`^10\\.48550\\/arxiv\\.(${ARXIV_ID})(?:v\\d+)?$`, "i");
-const ARXIV_URL = new RegExp(`arxiv\\.org\\/(?:abs|pdf|html)\\/(${ARXIV_ID})(?:v\\d+)?`, "i");
+// doi.org links of arXiv DOIs count too: aggregators list them as the preprint's landing page.
+const ARXIV_URL = new RegExp(`(?:arxiv\\.org\\/(?:abs|pdf|html)\\/|doi\\.org\\/10\\.48550\\/arxiv\\.)(${ARXIV_ID})(?:v\\d+)?`, "i");
 const BARE_ARXIV_ID = new RegExp(`^${ARXIV_ID}$`, "i");
 
 /** The arXiv id named by an arXiv DOI, if `doi` is one. */
@@ -15,7 +16,7 @@ export function arxivIdFromDoi(doi: string | undefined): string | undefined {
   return doi ? ARXIV_DOI.exec(doi)?.[1] : undefined;
 }
 
-/** The arXiv id in an arxiv.org `/abs/`, `/pdf/` or `/html/` URL. */
+/** The arXiv id in an arxiv.org `/abs/`, `/pdf/` or `/html/` URL, or in the doi.org link of an arXiv DOI. */
 export function arxivIdFromUrl(url: string): string | undefined {
   return ARXIV_URL.exec(url)?.[1];
 }
