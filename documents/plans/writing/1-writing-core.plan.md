@@ -1,6 +1,6 @@
 # Plan: writing in VS Code
 
-Status: in progress (session 4 of 7 done)
+Status: in progress (session 5 of 7 done)
 Size: GG — a new domain in core (projects, citations, LaTeX build, SyncTeX, Typst in WASM) plus a new VS Code surface and a reader-host contract change; 7 sessions. Grows if the Typst SVG layer needs its own spike session.
 Pending decisions: 0
 
@@ -48,7 +48,7 @@ Answered:
 - [x] **A5** Switching compiler and main is one click each in the status bar and persists in `labshelf.yaml`.
 - [x] **A6** Double-click in the reader jumps to the source line; "Show in preview" scrolls the reader to the cursor.
 - [x] **A7** Typing `\cite{` lists library papers; accepting one inserts the key and adds the entry to `labshelf.bib`; the same works with `@` in Typst.
-- [ ] **A8** `\ref{` completes labels, an undefined label is a warning, the outline lists sections, hovering `$\alpha^2$` renders it, and the word count shows in the status bar.
+- [x] **A8** `\ref{` completes labels, an undefined label is a warning, the outline lists sections, hovering `$\alpha^2$` renders it, and the word count shows in the status bar.
 - [ ] **A9** In a Typst project the reader updates while typing, without reloading or losing the scroll position; "Export PDF" writes `main.pdf`.
 - [ ] **A10** In review mode, hovering a citation in the PDF shows the library paper; clicking opens it.
 - [x] **A11** With LaTeX Workshop installed, LabShelf shows the duplication notice once per workspace.
@@ -139,11 +139,11 @@ typst: 0.13.1            # written on build, Typst projects only
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S16 | Label, outline and macro parsers; word count | — | M · implementer (sonnet) | core tests | [ ] |
-| S17 | Providers: refs, outline, word count | S16 | M · implementer (sonnet) | A8 (refs, outline, count) | [ ] |
-| S18 | Math hover with the user's macros | S16 | H · main thread | A8 (math) | [ ] |
-| S19 | Command catalog and `\begin` auto-close | Q1 | M · implementer (sonnet) | completion lists catalog items | [ ] |
-| S20 | Finish | S16–S19 | `finish` skill | gate passes | [ ] |
+| S16 | Label, outline and macro parsers; word count | — | M · implementer (sonnet) | core tests | [x] |
+| S17 | Providers: refs, outline, word count | S16 | M · implementer (sonnet) | A8 (refs, outline, count) | [x] |
+| S18 | Math hover with the user's macros | S16 | H · main thread | A8 (math) | [x] |
+| S19 | Command catalog and `\begin` auto-close | Q1 | M · implementer (sonnet) | completion lists catalog items | [x] |
+| S20 | Finish | S16–S19 | `finish` skill | gate passes | [x] |
 
 ### Session 6 — Typst
 
@@ -281,3 +281,9 @@ typst: 0.13.1            # written on build, Typst projects only
 - 2026-10-15 19:28 — S13: `PROTOCOL_VERSION` 2 with `reloadDocument`, `buildStatus`, `revealPoint`, `showBuildProblem`, `showSource` and `ReaderBootParams.preview`; S14's messages are part of the same bump. The controller holds the latest message of each type until `ready` (replaces `pendingPage`); optional `preview` ports, logged and ignored where absent (browser). The reader swaps the pdf.js document in place (`DocumentReloader`, `DOCUMENT_REPLACED`), not a webview re-render: no flash, sidebar and find survive; outline, thumbnails, page total and hover caches reset on the event. VS Code: `ReaderPanel` shared by library papers and previews; previews use an in-memory store that refuses annotations with a notice; Build Project opens the preview beside the editor, saves only update an open one; a preview opened later shows the last failed or running build.
 - 2026-10-15 19:28 — S14: `core/src/writing/synctex/` and `node/`, cross-checked against the `synctex` CLI on a real pdfTeX build (46 of 47 inverse points, 16 of 16 forward lines). Double-click to source only in previews; Show in Preview on `ctrl/cmd+alt+j`, which is also LaTeX Workshop's key (D3 notice covers that); revealing an open preview keeps editor focus.
 - 2026-10-15 19:28 — S15: finish gate passes (core 2117, vscode 392, browser 124). The extension host confirms A3 (banner, click to the error, clears on fix) and A6 both ways, plus in-place reload keeping scroll and zoom over three saves and outline, thumbnails and page total growing. Open: `lint:deps` reports 28 Node imports outside `node/` folders in `vscode/src/writing/` (22 from sessions 1–3, 6 from this one) — needs a move into `writing/node/` or a rule exception for the domain; two jscpd clones (`projectFolder.ts`/`projectRegistryFile.ts`, `tokens.css`). Not checked: Tectonic and XeTeX/LuaTeX SyncTeX, the banner's no-wrap CSS fix on screen, webview errors at first open.
+- 2026-10-15 20:16 — Session 5 runs in the `labshelf-writing-core` worktree.
+- 2026-10-15 20:16 — S16: `core/src/writing/latex/source/` (`scanLatexSource`, `collectProjectSources` over an async `ProjectSourceReader`, `undefinedRefs`, `macrosToMathJax`, `countWords`). Includes resolve from the project root, as LaTeX does; a file reached twice is scanned once, which also guards cycles. Labels known only through `\externaldocument` show as undefined (TRAP in core). 32 tests.
+- 2026-10-15 20:16 — S17: `vscode/src/writing/latexEditing/` `project/` (open editors first, then disk; cache per project), `labels/` (completion, go-to, `labshelf-labels` warnings), `outline/`, `wordCount/` (whole include tree, priority 48, active file in the tooltip). 29 tests.
+- 2026-10-15 20:16 — S18: `core/src/writing/latex/math/` with `mathjax-full` 3.2.2 (bundles statically; v4 loads fonts at run time). It is the `@labshelf/core/math` entry, not in the root barrel: from the root, MathJax (about 2.5 MB of CommonJS with import-time side effects) landed in every browser and webview bundle. Parse errors show TeX's message; unknown commands keep MathJax's red name, recoloured with the error token. Hover with project macros, or the file's own outside a project.
+- 2026-10-15 20:16 — S19: `core/src/writing/latex/catalog/` (about 205 commands and 50 environments from LaTeX Workshop's data; MIT notice as a `/*! */` comment in its index, kept by esbuild) and `latexEditing/commands/`. Auto-close fires on `}` and on Enter after `\begin{x}`: with VS Code's default bracket pairing, typing `}` overtypes and changes no text.
+- 2026-10-15 20:16 — S20: finish gate passes (core 2175, vscode 447); architecture.md gains the `math` entry, apps/vscode.md the editing features. The extension host confirms A8 in full (ref completion and go-to across files, the warning, nested outline, α² and ℝⁿ hovers in Dark Modern, word count, catalog, `\end` on Enter). Not checked: light theme hover colours, a run repeated after the clean one, the browser and terminal gates, the session-4 `lint:deps` item.
