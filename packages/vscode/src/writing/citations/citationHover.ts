@@ -7,7 +7,7 @@ import { citingProject, type CitationWorkspace } from "./citationWorkspace.js";
 const escapeMarkdown = (text: string): string => text.replace(/[\\`*_{}[\]()#+\-.!|<>~&]/g, "\\$&");
 
 // Opening the paper is the cited key's Ctrl+click link, whose tooltip shows under this hover.
-export function paperHover(paper: PaperRecord): vscode.MarkdownString {
+function paperHover(paper: PaperRecord): vscode.MarkdownString {
   const markdown = new vscode.MarkdownString();
   markdown.appendMarkdown(`**${escapeMarkdown(paper.title)}**`);
   const byline = [paper.authors?.join(", "), paper.year].filter((part) => part !== undefined && part !== "").join(" ");

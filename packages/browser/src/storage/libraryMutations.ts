@@ -32,6 +32,23 @@ const recordIndex: IPaperRecordIndex = {
   deletePaper: (id) => deleteRecord(id),
 };
 
+type FolderMutations = Pick<LibraryMutations, "createFolder" | "renameFolder" | "trashFolder">;
+
+function folderMutations(ctx: MutationContext): FolderMutations {
+  return {
+    createFolder: (parentDir, name) => createFolder(ctx, parentDir, name),
+    async renameFolder(dir, name) {
+      const to = await renameFolder(ctx, dir, name);
+      if (to !== dir) { await relocatePapersUnder(recordIndex, dir, to); }
+      return to;
+    },
+    async trashFolder(dir) {
+      await trashFolder(ctx, dir);
+      await removePapersUnder(recordIndex, dir);
+    },
+  };
+}
+
 /** The mutations run on disk first and the cache follows, so a failed write never leaves the cache ahead of the files. */
 export function createLibraryMutations(logger: ILogger): LibraryMutations {
   const fs = new IndexedDbFileSystem();
@@ -74,15 +91,6 @@ export function createLibraryMutations(logger: ILogger): LibraryMutations {
       for (const id of outcome.done) { await deleteRecord(id); }
       return outcome;
     },
-    createFolder: (parentDir, name) => createFolder(ctx, parentDir, name),
-    async renameFolder(dir, name) {
-      const to = await renameFolder(ctx, dir, name);
-      if (to !== dir) { await relocatePapersUnder(recordIndex, dir, to); }
-      return to;
-    },
-    async trashFolder(dir) {
-      await trashFolder(ctx, dir);
-      await removePapersUnder(recordIndex, dir);
-    },
+    ...folderMutations(ctx),
   };
 }

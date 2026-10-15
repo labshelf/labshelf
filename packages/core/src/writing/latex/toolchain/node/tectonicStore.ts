@@ -12,7 +12,7 @@ export function tectonicVersionDir(storageDir: string): string {
   return path.join(tectonicRoot(storageDir), TECTONIC_VERSION);
 }
 
-export function tectonicBinaryName(platform: string = process.platform): string {
+function tectonicBinaryName(platform: string = process.platform): string {
   return platform === "win32" ? "tectonic.exe" : "tectonic";
 }
 

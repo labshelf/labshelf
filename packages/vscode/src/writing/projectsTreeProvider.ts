@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 import type { ProjectEntry } from "@labshelf/core/node";
 import type { WritingProjects } from "./projectStore.js";
 
-export const OPEN_MAIN_COMMAND = "labshelf.writing.openMain";
+const OPEN_MAIN_COMMAND = "labshelf.writing.openMain";
 
 function contextValue(entry: ProjectEntry): string {
   const external = entry.location === "external" ? "External" : "";

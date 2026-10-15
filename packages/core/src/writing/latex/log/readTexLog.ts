@@ -1,6 +1,6 @@
 /** Reads a TeX transcript (.log) into its errors, warnings and bad boxes, each placed in the file and line it came from. */
 
-export type TexLogMessageKind = "error" | "warning" | "badbox";
+type TexLogMessageKind = "error" | "warning" | "badbox";
 
 export interface TexLogMessage {
   kind: TexLogMessageKind;

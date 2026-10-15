@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 import { owningProject } from "./mainDocument.js";
 import type { WritingProjects } from "./projectStore.js";
 
-export const PICK_MAIN_COMMAND = "labshelf.writing.pickMain";
+const PICK_MAIN_COMMAND = "labshelf.writing.pickMain";
 
 export function registerMainStatusBar(context: vscode.ExtensionContext, projects: Pick<WritingProjects, "list" | "onDidChange">): void {
   const item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);

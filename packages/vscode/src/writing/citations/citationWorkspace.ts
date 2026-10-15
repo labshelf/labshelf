@@ -5,7 +5,7 @@ import type { ILogger, PaperRecord } from "@labshelf/core";
 import type { WritingProjects } from "../projectStore.js";
 import { owningProject, type ReadyProject } from "../mainDocument.js";
 
-export interface CitationSession {
+interface CitationSession {
   listPapers(): Promise<PaperRecord[]>;
   logger: ILogger;
 }
