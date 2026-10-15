@@ -203,7 +203,10 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 |---|---|---|---|---|---|
 | S11.1 | File headers per package | S10.9, S10.10 | M · comment-enforcer | A9 (headers) | [x] |
 | S11.2 | History language and stale references | S11.1 | M · comment-enforcer | A9 | [x] |
-| S11.3 | Docs paths, checks as errors, delete plan | S11.2 | M · doc-keeper | A2, A3, A4 as errors | [ ] |
+| S11.3a | Functions and test files under the size limits | S11.2 | M · implementer | ESLint passes with no suppressions | [x] |
+| S11.3b | knip findings resolved | S11.3a | M · dead-code-cleaner | `pnpm exec knip` reports nothing | [ ] |
+| S11.3c | Imports go through each directory's `index.ts` | S11.3b | M · module-splitter | dependency-cruiser passes without known violations | [ ] |
+| S11.3d | Docs paths, checks as errors, close the plan | S11.3c | H · main thread | A2, A3, A4 as errors | [ ] |
 
 ### Step blocks
 
@@ -304,7 +307,8 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 
 #### S11.3 — Close the plan
 
-- **Do:** update the changed paths in `documents/`, delete the note at the top of `architecture.md`, and switch every check from S0.4 to error. Add a row to [CALIBRATION.md](CALIBRATION.md), then delete this plan.
+- **Context:** on 2026-10-15 the baselines hold 12 ESLint size violations (11 functions, one test file), 150 `no-import-past-index` imports and 46 knip findings, so S11.3a–c clear them before S11.3d removes the baselines.
+- **Do (S11.3d):** update the changed paths in `documents/`, delete the note at the top of `architecture.md`, and switch every check from S0.4 to error. Add a row to [CALIBRATION.md](CALIBRATION.md), then delete this plan.
 
 ## 7. Risks
 
@@ -382,3 +386,4 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 - 2026-10-15 08:50 S10.10 done: VS Code's Node code lives in `node/` folders (`activation/node`, `ai/node` from `db/ai`, `pdf/node`, `core/node`, `sync/node`, `storage/node`, `pdf-viewer/node`). `createNodeAdapters()` builds every Node adapter and `extension.ts` passes them as `HostAdapters`. Path-only files take core's `PathOps`. AI stores sit behind `ai/ports.ts` and core's `IVectorStore`, sync gets its host, lock and `DriveSignIn` injected, the shared config sits behind `SharedLibraryConfig`, and pdf.js is located by an injected locator. Bundle checks use async `workspace.fs.stat`, and `contentHash` uses Web Crypto SHA-1 with the same hex. Two dependency-cruiser rules forbid Node built-ins, `@labshelf/core/node` and Node-only packages outside `node/` folders, with zero baseline entries. The baseline was stale at HEAD (95 errors from S10.1–S10.9 moves). The regenerated baseline adds 94 `no-import-past-index` entries from earlier steps and drops 53 that no longer apply; S11.3 resolves them. Small differences, none listed in D7 or visible to the user: a partial `pdfjs-dist` install yields no pdf.js root, and a panel closed during the async stat keeps a blank page. Typecheck, tests, lint and the VS Code build pass. Not run in a real extension host.
 - 2026-10-15 09:38 S11.1 done: 140 source files across the four packages have a header of at most two lines, line 1 a capability sentence, and no `@depends`/`@dependents`/`@usedBy` list remains in `src/` or `__tests__/`. Rationale the long headers carried moved next to the code as tagged why-comments (the text-layer focus guard, folder-naming rules, sync-lock and folder-name invariants, MV3 and pdf.js quirks); plain descriptions were dropped. Only comments changed. Typecheck, tests, lint, knip and jscpd pass.
 - 2026-10-15 09:40 S11.2 done: planning tags (D4, Feature C, F07/F18) and history wording (the duplicate `data.json` note in the Drive tree scan, a "used to" in a terminal test) are gone from comments. The lock-store port states its atomic-create invariant instead of naming O_EXCL, which the Node adapter does not use. The other listed stale references (`ThemeManager`, `fileSystemService`, `embeddingCodec`, the options-page resolver order) no longer appear in comments. A scan of every comment in `src/` and `__tests__/` for the hook's history words, planning tags and step ids finds only present-tense uses of "now".
+- 2026-10-15 09:45 S11.3a done: the 11 functions over 50 lines split by sub-responsibility (VS Code `activate`, the two Fetch Metadata flows, `registerAiCommands`, the reader HTML and the text-layer overlay; terminal `openLibrary`, `main` and the input decoder's `feed`; core `writePaperArtifacts`; the browser reader's `main`). New siblings: `manualMetadataEntry.ts`, `readerDocument.ts`, `textLayerOverlay.ts`, browser `reader/pageGuards.ts`. The terminal preview test splits off `previewFolder.test.ts` with a shared `fixtures/previewEntries.ts`, keeping 859 tests. `eslint-suppressions.json` is empty. The order of awaits, logs and listener registration is unchanged; one random call (`createNonce`) now runs before the pdf.js URIs resolve. Gate passes; the apps were not run.

@@ -5,15 +5,14 @@
 import * as vscode from "vscode";
 import {
   createNonce,
-  escapeHtml,
   type PdfTheme,
   PROTOCOL_VERSION,
-  READER_SHELL_BODY,
   type EffectiveTheme,
   type ReaderBootParams,
   type ReaderPrefs,
 } from "@labshelf/core";
 import { ThemeManager } from "../ThemeManager.js";
+import { readerDocument } from "./readerDocument.js";
 import { bundleExists, bundleMissingHtml } from "../../ui/bundleMissing/index.js";
 
 export interface RenderParams {
@@ -108,65 +107,55 @@ export class PdfRenderer {
    * @returns An HTML string ready to assign to webview.html.
    */
   async generateHtml(params: RenderParams): Promise<string> {
-    const { webview, extensionUri, pdfUri, paperId, paperTitle, themeManager, themePreference, prefs, pdfjs, isMac } = params;
+    const { webview, extensionUri, pdfUri, paperTitle, themeManager, themePreference } = params;
 
     const bundle = await resolveReaderBundleUris(webview, extensionUri);
     if (!bundle) { return bundleMissingHtml({ title: paperTitle, heading: "Reader bundle not built", file: "dist/reader/reader.js", reopen: "the PDF" }); }
 
-    const n = createNonce();
-    const cspSource = webview.cspSource;
-    const resolved = resolvePdfjsUris(webview, pdfjs);
-    const pdfjsUrl     = resolved?.pdfjsWebviewUri.toString()     ?? "";
-    const workerUrl    = resolved?.workerWebviewUri.toString()    ?? "";
-    const viewerUrl    = resolved?.viewerWebviewUri.toString()    ?? "";
-    const viewerCssUrl = resolved?.viewerCssWebviewUri.toString() ?? "";
-    const pdfUrl       = webview.asWebviewUri(pdfUri).toString();
-    const scriptUrl    = bundle.scriptUri.toString();
-    const styleUrl     = bundle.styleUri.toString();
-
+    const nonce = createNonce();
+    const resolved = resolvePdfjsUris(webview, params.pdfjs);
     const effectiveTheme = themeManager.getEffectiveTheme(themePreference) as EffectiveTheme;
-    const boot: ReaderBootParams = {
-      protocolVersion: PROTOCOL_VERSION,
-      assets: {
-        pdfjsUrl,
-        viewerUrl,
-        workerUrl,
-        pdfUrl,
-        cMapUrl:    resolved?.cMapWebviewUrl         ?? "",
-        stdFontUrl: resolved?.standardFontWebviewUrl ?? "",
-        wasmUrl:    resolved?.wasmWebviewUrl         ?? "",
-        iccUrl:     resolved?.iccWebviewUrl          ?? "",
-      },
-      paperId,
-      paperTitle,
-      themePreference,
-      effectiveTheme,
-      prefs,
-      isMac,
-    };
+    const boot = buildBootParams(params, resolved, webview.asWebviewUri(pdfUri).toString(), effectiveTheme);
 
-    return `<!doctype html>
-<html id="root" lang="en" data-pdf-theme="${escapeHtml(effectiveTheme)}">
-<head>
-<meta charset="UTF-8"/>
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${n}' 'wasm-unsafe-eval' ${cspSource}; worker-src ${cspSource} blob:; style-src 'unsafe-inline' ${cspSource}; img-src ${cspSource} blob: data:; connect-src ${cspSource}; font-src ${cspSource};"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>${escapeHtml(paperTitle)}</title>
-${pdfjsUrl  ? `<link rel="modulepreload" href="${pdfjsUrl}"/>` : ""}
-${viewerUrl ? `<link rel="modulepreload" href="${viewerUrl}"/>` : ""}
-<link rel="modulepreload" href="${scriptUrl}"/>
-${workerUrl ? `<link rel="preload" href="${workerUrl}" as="fetch" crossorigin="anonymous"/>` : ""}
-<link rel="preload" href="${pdfUrl}" as="fetch" crossorigin="anonymous"/>
-${viewerCssUrl ? `<link rel="stylesheet" href="${viewerCssUrl}"/>` : ""}
-<link rel="stylesheet" href="${styleUrl}"/>
-</head>
-<body>
-${READER_SHELL_BODY}
-<script id="labshelf-boot" type="application/json">${serializeBoot(boot)}</script>
-<script nonce="${n}" type="module" src="${scriptUrl}"></script>
-</body>
-</html>`;
+    return readerDocument({
+      nonce,
+      cspSource: webview.cspSource,
+      title: paperTitle,
+      effectiveTheme,
+      assets: boot.assets,
+      bootJson: serializeBoot(boot),
+      viewerCssUrl: resolved?.viewerCssWebviewUri.toString() ?? "",
+      scriptUrl: bundle.scriptUri.toString(),
+      styleUrl: bundle.styleUri.toString(),
+    });
   }
+}
+
+function buildBootParams(
+  params: RenderParams,
+  resolved: ResolvedUris | null,
+  pdfUrl: string,
+  effectiveTheme: EffectiveTheme,
+): ReaderBootParams {
+  return {
+    protocolVersion: PROTOCOL_VERSION,
+    assets: {
+      pdfjsUrl:   resolved?.pdfjsWebviewUri.toString()  ?? "",
+      viewerUrl:  resolved?.viewerWebviewUri.toString() ?? "",
+      workerUrl:  resolved?.workerWebviewUri.toString() ?? "",
+      pdfUrl,
+      cMapUrl:    resolved?.cMapWebviewUrl         ?? "",
+      stdFontUrl: resolved?.standardFontWebviewUrl ?? "",
+      wasmUrl:    resolved?.wasmWebviewUrl         ?? "",
+      iccUrl:     resolved?.iccWebviewUrl          ?? "",
+    },
+    paperId: params.paperId,
+    paperTitle: params.paperTitle,
+    themePreference: params.themePreference,
+    effectiveTheme,
+    prefs: params.prefs,
+    isMac: params.isMac,
+  };
 }
 
 /* ── Helpers ────────────────────────────────────────────────────── */

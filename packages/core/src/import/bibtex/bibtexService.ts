@@ -34,6 +34,52 @@ function sourceName(existing: Record<string, unknown>, sourceFileName: string): 
   return typeof kept === "string" && kept ? kept : given;
 }
 
+// The sidecar keys derived from the record; optional fields are written only when set.
+function metadataFromRecord(paper: PaperRecord, source: string): Record<string, unknown> {
+  const metadata: Record<string, unknown> = {
+    title: paper.title,
+    authors: paper.authors ?? [],
+    year: paper.year ?? null,
+    path: paper.path,
+    citekey: paper.citeKey,
+    status: paper.status,
+    source,
+  };
+
+  if (paper.journal) { metadata["journal"] = paper.journal; }
+  if (paper.publisher) { metadata["publisher"] = paper.publisher; }
+  if (paper.volume) { metadata["volume"] = paper.volume; }
+  if (paper.issue) { metadata["issue"] = paper.issue; }
+  if (paper.pages) { metadata["pages"] = paper.pages; }
+  if (paper.doi) { metadata["doi"] = paper.doi; }
+  if (paper.url) { metadata["url"] = paper.url; }
+  if (paper.issn) { metadata["issn"] = paper.issn; }
+  if (paper.language) { metadata["language"] = paper.language; }
+  // metadata.yaml is what the index is rebuilt from on every activation, so
+  // a field left out here is a field silently dropped on the next start.
+  if (paper.keywords?.length) { metadata["keywords"] = paper.keywords; }
+  if (paper.summary) { metadata["summary"] = paper.summary; }
+  if (paper.textLayer) { metadata["textLayer"] = paper.textLayer; }
+  return metadata;
+}
+
+// Keys this service does not derive from the record (the browser's tags and
+// note, a hand edit) belong to whoever wrote them, so a rewrite from a
+// surface that does not know them — the VS Code index has no tag column —
+// carries them over instead of deleting them.
+function carryOverUserKeys(metadata: Record<string, unknown>, paper: PaperRecord, existing: Record<string, unknown>): void {
+  const carried = Object.fromEntries(Object.entries(existing).filter(([key]) => !OWNED_KEYS.has(key)));
+  if (paper.tags !== undefined) {
+    delete carried["tags"];
+    if (paper.tags.length) { metadata["tags"] = paper.tags; }
+  }
+  if (paper.note !== undefined) {
+    delete carried["note"];
+    if (paper.note.trim()) { metadata["note"] = paper.note; }
+  }
+  Object.assign(metadata, carried);
+}
+
 /** Generates and writes metadata.yaml and bib.bib sidecar files for a paper. */
 export class BibTeXService {
   constructor(private readonly fs: IFileSystem) {}
@@ -46,45 +92,8 @@ export class BibTeXService {
     const { metadata: metadataPath, bib: bibPath } = paperFiles(paperFolder, posixJoin);
     const existing = await this.readExisting(metadataPath);
 
-    const metadata: Record<string, unknown> = {
-      title: paper.title,
-      authors: paper.authors ?? [],
-      year: paper.year ?? null,
-      path: paper.path,
-      citekey: paper.citeKey,
-      status: paper.status,
-      source: sourceName(existing, sourceFileName),
-    };
-
-    if (paper.journal) { metadata["journal"] = paper.journal; }
-    if (paper.publisher) { metadata["publisher"] = paper.publisher; }
-    if (paper.volume) { metadata["volume"] = paper.volume; }
-    if (paper.issue) { metadata["issue"] = paper.issue; }
-    if (paper.pages) { metadata["pages"] = paper.pages; }
-    if (paper.doi) { metadata["doi"] = paper.doi; }
-    if (paper.url) { metadata["url"] = paper.url; }
-    if (paper.issn) { metadata["issn"] = paper.issn; }
-    if (paper.language) { metadata["language"] = paper.language; }
-    // metadata.yaml is what the index is rebuilt from on every activation, so
-    // a field left out here is a field silently dropped on the next start.
-    if (paper.keywords?.length) { metadata["keywords"] = paper.keywords; }
-    if (paper.summary) { metadata["summary"] = paper.summary; }
-    if (paper.textLayer) { metadata["textLayer"] = paper.textLayer; }
-
-    // Keys this service does not derive from the record (the browser's tags and
-    // note, a hand edit) belong to whoever wrote them, so a rewrite from a
-    // surface that does not know them — the VS Code index has no tag column —
-    // carries them over instead of deleting them.
-    const carried = Object.fromEntries(Object.entries(existing).filter(([key]) => !OWNED_KEYS.has(key)));
-    if (paper.tags !== undefined) {
-      delete carried["tags"];
-      if (paper.tags.length) { metadata["tags"] = paper.tags; }
-    }
-    if (paper.note !== undefined) {
-      delete carried["note"];
-      if (paper.note.trim()) { metadata["note"] = paper.note; }
-    }
-    Object.assign(metadata, carried);
+    const metadata = metadataFromRecord(paper, sourceName(existing, sourceFileName));
+    carryOverUserKeys(metadata, paper, existing);
 
     // The bib `file` line must only point at a PDF that is actually on disk:
     // the browser writes a reference without paper.pdf when it finds none, so a

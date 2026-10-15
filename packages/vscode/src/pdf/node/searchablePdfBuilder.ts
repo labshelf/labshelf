@@ -5,6 +5,7 @@ import type { PdfjsLoader } from "@labshelf/core/node";
 import type { ExistingLayer, TextLayerDetection, TextLayerOutcome } from "@labshelf/core";
 
 import type { PdfTextLayerBuilder, TextLayerHooks } from "../textLayerBuilder.js";
+import { openRewriteTarget, overlayTextLayers } from "./textLayerOverlay.js";
 import { openPdfForOcr, type OcrDocument, type TesseractOcrEngine } from "./tesseractOcrEngine.js";
 
 export interface SearchablePdfOptions {
@@ -78,60 +79,21 @@ export class SearchablePdfBuilder implements PdfTextLayerBuilder {
     pages: number[],
     hooks: TextLayerHooks,
   ): Promise<TextLayerOutcome> {
-    const { PDFDocument } = await import("pdf-lib");
-    let target: Awaited<ReturnType<typeof PDFDocument.load>>;
-    try {
-      target = await PDFDocument.load(pdfBytes);
-    } catch (error) {
-      // Encrypted or structurally unusual files: leave the paper untouched.
-      // Publisher DRM is the usual cause, and pdf-lib's own wording is about its API.
-      const reason = /encrypted/i.test(describe(error))
-        ? "the PDF is encrypted by its publisher, so text cannot be added to it"
-        : `the PDF cannot be rewritten (${describe(error)})`;
-      return { status: "unavailable", reason };
-    }
-    if (target.getPageCount() !== source.numPages) {
-      return { status: "unavailable", reason: "page count differs between the reader and the writer" };
+    const opened = await openRewriteTarget(pdfBytes, source.numPages);
+    if (opened.status !== "ready") {
+      return opened;
     }
 
-    let pagesAdded = 0;
-    let pagesFailed = 0;
-    for (const [position, pageNumber] of pages.entries()) {
-      if (hooks.isCancelled?.()) {
-        return { status: "cancelled" };
-      }
-      hooks.onProgress?.({ index: position + 1, total: pages.length, pageNumber });
-
-      try {
-        // A rotated page renders upright while its boxes stay unrotated, so the
-        // layer would land sideways. Rare in papers; skipped rather than guessed.
-        if ((await source.rotation(pageNumber)) % 360 !== 0) {
-          pagesFailed += 1;
-          continue;
-        }
-        const layer = await engine.recognizeTextLayer(await source.renderPng(pageNumber));
-        if (!layer) {
-          // A figure or a blank page: nothing to add, and not a failure.
-          continue;
-        }
-
-        const [embedded] = await target.embedPdf(layer, [0]);
-        const page = target.getPage(pageNumber - 1);
-        // pdfjs rendered the crop box, so that is the area the layer describes.
-        const box = page.getCropBox();
-        page.drawPage(embedded!, { x: box.x, y: box.y, width: box.width, height: box.height });
-        pagesAdded += 1;
-      } catch (error) {
-        pagesFailed += 1;
-        engine.report(`Text layer failed on page ${pageNumber}: ${describe(error)}`);
-      }
+    const overlay = await overlayTextLayers(engine, source, opened.target, pages, hooks);
+    if (overlay.cancelled) {
+      return { status: "cancelled" };
     }
-
+    const { pagesAdded, pagesFailed } = overlay;
     if (pagesAdded === 0) {
       return { status: "unavailable", reason: "OCR found no text on any page" };
     }
 
-    const bytes = await target.save();
+    const bytes = await opened.target.save();
     // The file replaces the user's paper, so it is proven readable first.
     if (!(await hasTextOn(this.pdfjs, bytes, pages, source.numPages))) {
       return { status: "unavailable", reason: "the rewritten PDF did not pass verification" };
@@ -192,8 +154,4 @@ async function hasTextOn(pdfjs: PdfjsLoader, bytes: Uint8Array, pages: number[],
   } finally {
     await reopened.close();
   }
-}
-
-function describe(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

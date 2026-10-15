@@ -3,13 +3,13 @@
 import * as vscode from "vscode";
 
 import {
-  extractDoi,
   identifiersFromInput,
   resolveFirstIdentifier,
   searchOnlineCandidates,
 } from "@labshelf/core";
 import type { PaperRecord, ResolvedMetadata } from "@labshelf/core";
 import type { PaperService } from "../core/index.js";
+import { enterMetadataManually, truncate } from "./manualMetadataEntry.js";
 
 /**
  * Asks the user how to identify the paper, resolves it online, and writes the
@@ -20,28 +20,21 @@ export async function fetchMetadataForPaper(
   paperService: PaperService,
   paper: PaperRecord,
 ): Promise<PaperRecord | undefined> {
-  const query = await vscode.window.showInputBox({
-    title: `Fetch metadata — ${paper.title}`,
-    prompt: "Paste a DOI, arXiv id, PMID, publisher link, or type the paper's title",
-    placeHolder: "10.7554/eLife.28383",
-    ignoreFocusOut: true,
-    validateInput: (value) => (value.trim().length < 4 ? "Enter a DOI, identifier, link, or title" : undefined),
-  });
-
-  if (!query?.trim()) {
+  const query = await askForQuery(paper);
+  if (!query) {
     return undefined;
   }
 
   const found = await vscode.window.withProgress(
     { location: vscode.ProgressLocation.Notification, title: "LabShelf: looking up metadata…" },
-    () => lookupUserQuery(query.trim()),
+    () => lookupUserQuery(query),
   );
 
   if (found.length === 0) {
     // Nothing online knows this paper — unpublished work, internal reports and
     // obscure venues all land here, so typing it in must stay possible.
     const choice = await vscode.window.showWarningMessage(
-      `LabShelf: no record matched "${truncate(query.trim(), 60)}".`,
+      `LabShelf: no record matched "${truncate(query, 60)}".`,
       "Enter manually",
       "Try again",
       "Cancel",
@@ -50,7 +43,7 @@ export async function fetchMetadataForPaper(
       return fetchMetadataForPaper(paperService, paper);
     }
     if (choice === "Enter manually") {
-      return enterMetadataManually(paperService, paper, query.trim());
+      return enterMetadataManually(paperService, paper, query);
     }
     return undefined;
   }
@@ -69,6 +62,17 @@ export async function fetchMetadataForPaper(
   return updated;
 }
 
+async function askForQuery(paper: PaperRecord): Promise<string | undefined> {
+  const query = await vscode.window.showInputBox({
+    title: `Fetch metadata — ${paper.title}`,
+    prompt: "Paste a DOI, arXiv id, PMID, publisher link, or type the paper's title",
+    placeHolder: "10.7554/eLife.28383",
+    ignoreFocusOut: true,
+    validateInput: (value) => (value.trim().length < 4 ? "Enter a DOI, identifier, link, or title" : undefined),
+  });
+  return query?.trim() || undefined;
+}
+
 /**
  * Turns free-form user input into candidate records, preferring an identifier
  * it can confirm over a title it can only search for.
@@ -84,89 +88,6 @@ export async function lookupUserQuery(query: string): Promise<ResolvedMetadata[]
   }
 
   return searchOnlineCandidates(query).catch(() => []);
-}
-
-/**
- * Collects the record by hand. The genuine last resort, for work no registry
- * indexes: unpublished manuscripts, internal reports, theses, lecture notes.
- * @returns The updated paper, or undefined when the user cancelled.
- */
-export async function enterMetadataManually(
-  paperService: PaperService,
-  paper: PaperRecord,
-  titleHint?: string,
-): Promise<PaperRecord | undefined> {
-  const ask = async (
-    field: string,
-    prompt: string,
-    value: string | undefined,
-    step: number,
-  ): Promise<string | undefined> =>
-    vscode.window.showInputBox({
-      title: `Paper details (${step}/6) — ${field}`,
-      prompt,
-      value: value ?? "",
-      ignoreFocusOut: true,
-    });
-
-  // The title is the only field worth refusing to continue without.
-  const title = await ask("Title", "Title of the paper", titleHint ?? paper.title, 1);
-  if (title === undefined || !title.trim()) {
-    return undefined;
-  }
-
-  const authors = await ask("Authors", "Authors, separated by ';'", paper.authors?.join("; "), 2);
-  if (authors === undefined) {
-    return undefined;
-  }
-  const year = await ask("Year", "Publication year", paper.year ? String(paper.year) : undefined, 3);
-  if (year === undefined) {
-    return undefined;
-  }
-  const journal = await ask("Journal", "Journal, conference, or publisher", paper.journal, 4);
-  if (journal === undefined) {
-    return undefined;
-  }
-  const doi = await ask("DOI", "DOI or URL (optional)", paper.doi, 5);
-  if (doi === undefined) {
-    return undefined;
-  }
-  const keywords = await ask("Keywords", "Keywords, separated by ',' (optional)", paper.keywords?.join(", "), 6);
-  if (keywords === undefined) {
-    return undefined;
-  }
-
-  const parsedYear = Number.parseInt(year.trim(), 10);
-  const metadata: ResolvedMetadata = {
-    title: title.trim(),
-    ...(authors.trim() ? { authors: splitList(authors, ";") } : {}),
-    ...(Number.isFinite(parsedYear) ? { year: parsedYear } : {}),
-    ...(journal.trim() ? { journal: journal.trim() } : {}),
-    ...(doi.trim() ? doiOrUrl(doi.trim()) : {}),
-    ...(keywords.trim() ? { keywords: splitList(keywords, ",") } : {}),
-  };
-
-  const updated = await paperService.applyResolvedMetadata(paper.id, metadata);
-  if (updated) {
-    await vscode.window.showInformationMessage(`LabShelf: saved "${truncate(updated.title, 70)}".`);
-  }
-  return updated;
-}
-
-function splitList(value: string, separator: string): string[] {
-  return value
-    .split(separator)
-    .map((entry) => entry.trim())
-    .filter(Boolean);
-}
-
-// Accepts either form in the DOI box, since users paste whichever they have.
-function doiOrUrl(value: string): ResolvedMetadata {
-  const doi = extractDoi(value);
-  if (doi) {
-    return { doi, url: `https://doi.org/${doi}` };
-  }
-  return /^https?:\/\//i.test(value) ? { url: value } : {};
 }
 
 // Shows the matches so the user can confirm which work this PDF actually is.
@@ -260,8 +181,4 @@ export async function offerMetadataFetch(
       ? fetchMetadataForPaper(paperService, paper)
       : enterMetadataManually(paperService, paper));
   }
-}
-
-function truncate(value: string, max: number): string {
-  return value.length > max ? `${value.slice(0, max - 1)}…` : value;
 }

@@ -80,91 +80,93 @@ export class InputDecoder {
    * @returns the complete events found; incomplete trailing sequences stay pending
    */
   feed(chunk: string): InputEvent[] {
-    let data = this.pending + chunk;
+    const data = this.pending + chunk;
     this.pending = "";
     const events: InputEvent[] = [];
     let i = 0;
     while (i < data.length) {
-      if (this.pasting !== undefined) {
-        const end = data.indexOf(PASTE_END, i);
-        if (end < 0) {
-          // The end marker may arrive split across reads: hold back a trailing partial marker.
-          let keep = 0;
-          for (let n = Math.min(PASTE_END.length - 1, data.length - i); n > 0; n--) {
-            if (PASTE_END.startsWith(data.slice(data.length - n))) {
-              keep = n;
-              break;
-            }
-          }
-          this.pasting += data.slice(i, data.length - keep);
-          this.pending = data.slice(data.length - keep);
-          return events;
-        }
-        events.push({ type: "paste", text: this.pasting + data.slice(i, end) });
-        this.pasting = undefined;
-        i = end + PASTE_END.length;
-        continue;
-      }
-      const ch = data[i]!;
-      if (ch !== "\x1b") {
-        const code = ch.charCodeAt(0);
-        if (code < 0x20 || code === 0x7f) {
-          events.push(controlKey(code));
-          i++;
-          continue;
-        }
-        const cp = data.codePointAt(i)!;
-        const text = String.fromCodePoint(cp);
-        events.push(printableKey(text));
-        i += text.length;
-        continue;
-      }
-      // Escape: a lone ESC, an Alt-modified key, or the start of a CSI / SS3 sequence.
-      if (i + 1 >= data.length) {
-        this.pending = data.slice(i);
-        return events;
-      }
-      const next = data[i + 1]!;
-      if (next === "[") {
-        const parsed = this.parseCsi(data, i);
-        if (parsed === "incomplete") {
-          this.pending = data.slice(i);
-          return events;
-        }
-        if (parsed.event) { events.push(parsed.event); }
-        i = parsed.end;
-        continue;
-      }
-      if (next === "O") {
-        if (i + 2 >= data.length) {
-          this.pending = data.slice(i);
-          return events;
-        }
-        const name = CSI_LETTER[data[i + 2]!];
-        if (name) { events.push({ type: "key", id: name }); }
-        i += 3;
-        continue;
-      }
-      if (next === "\x1b") {
-        events.push({ type: "key", id: "esc" });
-        i++;
-        continue;
-      }
-      // Alt + key.
-      const code = next.charCodeAt(0);
-      if (code < 0x20 || code === 0x7f) {
-        const inner = controlKey(code);
-        events.push({ type: "key", id: "M-" + inner.id });
-      } else {
-        const cp = data.codePointAt(i + 1)!;
-        const text = String.fromCodePoint(cp);
-        events.push({ type: "key", id: "M-" + (text === " " ? "space" : text) });
-        i += text.length - 1;
-      }
-      i += 2;
+      const next = this.pasting !== undefined ? this.feedPaste(data, i, events) : this.feedKey(data, i, events);
+      if (next === undefined) { return events; }
+      i = next;
     }
-    data = "";
     return events;
+  }
+
+  // The feed* steps return the next index, or undefined once the rest of the chunk is held in `pending`.
+  private feedPaste(data: string, i: number, events: InputEvent[]): number | undefined {
+    const end = data.indexOf(PASTE_END, i);
+    if (end < 0) {
+      // The end marker may arrive split across reads: hold back a trailing partial marker.
+      let keep = 0;
+      for (let n = Math.min(PASTE_END.length - 1, data.length - i); n > 0; n--) {
+        if (PASTE_END.startsWith(data.slice(data.length - n))) {
+          keep = n;
+          break;
+        }
+      }
+      this.pasting += data.slice(i, data.length - keep);
+      this.pending = data.slice(data.length - keep);
+      return undefined;
+    }
+    events.push({ type: "paste", text: this.pasting + data.slice(i, end) });
+    this.pasting = undefined;
+    return end + PASTE_END.length;
+  }
+
+  private feedKey(data: string, i: number, events: InputEvent[]): number | undefined {
+    const ch = data[i]!;
+    if (ch === "\x1b") { return this.feedEscape(data, i, events); }
+    const code = ch.charCodeAt(0);
+    if (code < 0x20 || code === 0x7f) {
+      events.push(controlKey(code));
+      return i + 1;
+    }
+    const text = String.fromCodePoint(data.codePointAt(i)!);
+    events.push(printableKey(text));
+    return i + text.length;
+  }
+
+  // A lone ESC, an Alt-modified key, or the start of a CSI / SS3 sequence.
+  private feedEscape(data: string, i: number, events: InputEvent[]): number | undefined {
+    if (i + 1 >= data.length) {
+      this.pending = data.slice(i);
+      return undefined;
+    }
+    const next = data[i + 1]!;
+    if (next === "[") {
+      const parsed = this.parseCsi(data, i);
+      if (parsed === "incomplete") {
+        this.pending = data.slice(i);
+        return undefined;
+      }
+      if (parsed.event) { events.push(parsed.event); }
+      return parsed.end;
+    }
+    if (next === "O") {
+      if (i + 2 >= data.length) {
+        this.pending = data.slice(i);
+        return undefined;
+      }
+      const name = CSI_LETTER[data[i + 2]!];
+      if (name) { events.push({ type: "key", id: name }); }
+      return i + 3;
+    }
+    if (next === "\x1b") {
+      events.push({ type: "key", id: "esc" });
+      return i + 1;
+    }
+    return this.feedAltKey(data, i, events);
+  }
+
+  private feedAltKey(data: string, i: number, events: InputEvent[]): number {
+    const code = data[i + 1]!.charCodeAt(0);
+    if (code < 0x20 || code === 0x7f) {
+      events.push({ type: "key", id: "M-" + controlKey(code).id });
+      return i + 2;
+    }
+    const text = String.fromCodePoint(data.codePointAt(i + 1)!);
+    events.push({ type: "key", id: "M-" + (text === " " ? "space" : text) });
+    return i + 1 + text.length;
   }
 
   /**

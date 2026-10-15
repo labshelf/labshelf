@@ -33,57 +33,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // The settings page hears sync status through this, including from a controller created after the page opened.
   const driveStatusChanged = new vscode.EventEmitter<void>();
   context.subscriptions.push(driveStatusChanged);
-  let aiService: AiService | null = null;
 
   // Reassigned once the Library tree view is registered; the lifecycle modules below only ever
   // call it after that point, so the forward reference is safe.
   let refreshLibraryViews: () => void = () => {};
 
-  const externalChangeHandling = new ExternalChangeHandling({
-    context,
-    getActiveServices: () => controller.currentServices(),
-    onRefresh: () => refreshLibraryViews(),
+  const controller = createLibraryController({
+    context, eventBus, adapters, driveStatusChanged, refreshViews: () => refreshLibraryViews(),
   });
-  const syncLifecycle = new SyncControllerLifecycle({
-    context,
-    eventBus,
-    adapters,
-    driveStatusChanged,
-    getActiveServices: () => controller.currentServices(),
-    // A sync that pulls files from Drive must surface in the list without a reload.
-    onSynced: async (result) => {
-      if (!libraryChanged(result)) { return; }
-      await externalChangeHandling.reindexAndRefresh("sync");
-    },
-  });
-  const controller = new LibraryRootController(context, eventBus, externalChangeHandling, syncLifecycle, adapters);
 
-  const papersRootUri = (): vscode.Uri | null => {
-    const root = controller.currentRoot();
-    return root ? libraryLayout(root, vscode.Uri.joinPath).papersRoot() : null;
-  };
-
-  const initialRoot = await resolveLibraryRoot(context, adapters.sharedLibraryConfig);
-  if (initialRoot) {
-    // The Library tree is only registered once the index is open. Until then the view shows
-    // "Loading your library…" (package.json viewsWelcome, keyed on labshelf.libraryLoaded) under
-    // VS Code's own progress bar, never "No folders yet", which would read as a lost library.
-    await vscode.window.withProgress({ location: { viewId: "labshelf.library" } }, async () => {
-      const services = await controller.loadInitial(initialRoot);
-      aiService = await startAiService(context, eventBus, services, adapters);
-      return services;
-    });
-  } else {
-    // Library not configured — inform the user without blocking activation.
-    vscode.window.showInformationMessage(
-      'LabShelf: No library configured. Run "Configure Library" to get started.',
-      "Configure Library",
-    ).then((choice) => {
-      if (choice === "Configure Library") {
-        vscode.commands.executeCommand("labshelf.configureLibrary");
-      }
-    });
-  }
+  const papersRootUri = papersRootResolver(controller);
+  const aiService = await loadConfiguredLibrary(context, eventBus, controller, adapters);
 
   // Returns current services or triggers the setup wizard and builds services from the chosen root.
   const requireServices = (): Promise<ActiveServices | null> => controller.require();
@@ -114,16 +74,88 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   registerCommands(context, requireServices);
   registerAiCommands(context, () => aiService);
 
-  const activeServices = controller.currentServices();
-  if (activeServices) {
-    const services = activeServices;
-    eventBus.on("paper:added", async (payload) => {
-      await services.logger.log("INFO", "extension", "Paper added", { payload });
+  logPaperEvents(eventBus, controller.currentServices());
+}
+
+function papersRootResolver(controller: LibraryRootController): () => vscode.Uri | null {
+  return () => {
+    const root = controller.currentRoot();
+    return root ? libraryLayout(root, vscode.Uri.joinPath).papersRoot() : null;
+  };
+}
+
+interface LibraryControllerDeps {
+  context: vscode.ExtensionContext;
+  eventBus: EventBus;
+  adapters: ReturnType<typeof createNodeAdapters>;
+  driveStatusChanged: vscode.EventEmitter<void>;
+  refreshViews: () => void;
+}
+
+function createLibraryController(deps: LibraryControllerDeps): LibraryRootController {
+  const { context, eventBus, adapters, driveStatusChanged, refreshViews } = deps;
+  const externalChangeHandling = new ExternalChangeHandling({
+    context,
+    getActiveServices: () => controller.currentServices(),
+    onRefresh: refreshViews,
+  });
+  const syncLifecycle = new SyncControllerLifecycle({
+    context,
+    eventBus,
+    adapters,
+    driveStatusChanged,
+    getActiveServices: () => controller.currentServices(),
+    // A sync that pulls files from Drive must surface in the list without a reload.
+    onSynced: async (result) => {
+      if (!libraryChanged(result)) { return; }
+      await externalChangeHandling.reindexAndRefresh("sync");
+    },
+  });
+  const controller = new LibraryRootController(context, eventBus, externalChangeHandling, syncLifecycle, adapters);
+  return controller;
+}
+
+/** Opens the configured library, or tells the user to configure one. @returns the AI service, when one started. */
+async function loadConfiguredLibrary(
+  context: vscode.ExtensionContext,
+  eventBus: EventBus,
+  controller: LibraryRootController,
+  adapters: ReturnType<typeof createNodeAdapters>,
+): Promise<AiService | null> {
+  const initialRoot = await resolveLibraryRoot(context, adapters.sharedLibraryConfig);
+  if (!initialRoot) {
+    // Library not configured — inform the user without blocking activation.
+    vscode.window.showInformationMessage(
+      'LabShelf: No library configured. Run "Configure Library" to get started.',
+      "Configure Library",
+    ).then((choice) => {
+      if (choice === "Configure Library") {
+        vscode.commands.executeCommand("labshelf.configureLibrary");
+      }
     });
-    eventBus.on("paper:updated", async (payload) => {
-      await services.logger.log("INFO", "extension", "Paper updated", { payload });
-    });
+    return null;
   }
+
+  // The Library tree is only registered once the index is open. Until then the view shows
+  // "Loading your library…" (package.json viewsWelcome, keyed on labshelf.libraryLoaded) under
+  // VS Code's own progress bar, never "No folders yet", which would read as a lost library.
+  let aiService: AiService | null = null;
+  await vscode.window.withProgress({ location: { viewId: "labshelf.library" } }, async () => {
+    const services = await controller.loadInitial(initialRoot);
+    aiService = await startAiService(context, eventBus, services, adapters);
+    return services;
+  });
+  return aiService;
+}
+
+function logPaperEvents(eventBus: EventBus, services: ActiveServices | null): void {
+  if (!services) { return; }
+  eventBus.on("paper:added", async (payload) => {
+    await services.logger.log("INFO", "extension", "Paper added", { payload });
+  });
+  eventBus.on("paper:updated", async (payload) => {
+    await services.logger.log("INFO", "extension", "Paper updated", { payload });
+  });
 }
 
 /** Called by VS Code on extension deactivation — cleanup is handled via disposables */

@@ -8,6 +8,7 @@ import {
   type HostToWebview,
   type ReaderBootParams,
   type PaperRecord,
+  type ReaderPrefs,
 } from "@labshelf/core";
 import { PDF_FILE } from "@labshelf/core";
 import { startReader, PerfMarks, resolveTheme, toast } from "@labshelf/core/dom";
@@ -16,6 +17,7 @@ import { IndexedDbFileSystem, createIdbSidecarPort, getRecord } from "../storage
 import { getThemePref, onThemeChange } from "../ui/theme";
 import { createInPageChannel } from "./inPageTransport";
 import { loadReaderPrefs, onReaderPrefsChange } from "./readerPrefsStore";
+import { installPageGuards, isMacPlatform } from "./pageGuards";
 import { parseReaderQuery } from "./readerTabs";
 import { announceSidecarChange } from "./sidecarChangeNotice";
 
@@ -36,28 +38,8 @@ function showFatal(message: string): void {
   if (error) { error.hidden = false; error.textContent = message; }
 }
 
-function isMacPlatform(): boolean {
-  return /Mac|iPhone|iPad|iPod/i.test(navigator.platform);
-}
-
 function autoTheme(): EffectiveTheme {
   return resolveTheme(getThemePref());
-}
-
-/** Chords VS Code's webview frame swallows (print, save) and drops that would navigate the tab away from the paper. */
-function installPageGuards(): void {
-  const mac = isMacPlatform();
-  document.addEventListener("keydown", (e) => {
-    const mod = mac ? e.metaKey : e.ctrlKey;
-    const key = e.key.toLowerCase();
-    if (mod && !e.altKey && (key === "p" || key === "s")) { e.preventDefault(); return; }
-    // Firefox opens Quick Find on these when nothing handles them; the reader has its own find bar.
-    const typing = e.target instanceof HTMLElement && (e.target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName));
-    if (!typing && !mod && !e.altKey && (e.key === "/" || e.key === "'") && !e.defaultPrevented) e.preventDefault();
-  });
-  for (const type of ["dragover", "drop"] as const) {
-    document.addEventListener(type, (e) => e.preventDefault());
-  }
 }
 
 async function writeClipboard(text: string): Promise<void> {
@@ -80,24 +62,27 @@ async function readPdfBytes(paper: PaperRecord): Promise<ArrayBuffer> {
   return bytes.slice().buffer;
 }
 
-async function main(): Promise<void> {
-  installPageGuards();
-  const { paperId, page } = parseReaderQuery(location.search);
-  if (!paperId) { showFatal("No paper was given to open. Open a paper from the LabShelf library."); return; }
-
+// Resolves the paper and prefs to open, showing the fatal message for each way the open can fail.
+async function loadOpenablePaper(paperId: string): Promise<{ paper: PaperRecord; prefs: ReaderPrefs } | undefined> {
   const [paper, prefs] = await Promise.all([getRecord(paperId), loadReaderPrefs()]);
   if (!paper) {
     showFatal("This paper is no longer in your LabShelf library. It may have been removed, or the library has not synced yet.");
     void logger.warn("reader opened for an unknown paper", { paperId });
-    return;
+    return undefined;
   }
   document.title = paper.title;
   if (!(await fs.stat(`${paper.path}/${PDF_FILE}`))?.isFile) {
     showFatal("This paper has no PDF yet — it was saved from a page that did not offer one.");
-    return;
+    return undefined;
   }
+  return { paper, prefs };
+}
 
-  let currentPrefs = prefs;
+function createHostWithChannel(
+  paper: PaperRecord,
+  page: number | undefined,
+  getPrefs: () => ReaderPrefs,
+): { host: ReaderHostController; channel: ReturnType<typeof createInPageChannel> } {
   const store = new PaperDataStore(createIdbSidecarPort(fs));
   // The host answers through the channel, which needs the host to exist first.
   let send: (msg: HostToWebview) => void = () => undefined;
@@ -105,7 +90,7 @@ async function main(): Promise<void> {
     paper,
     store,
     post: (msg) => send(msg),
-    getPrefs: () => currentPrefs,
+    getPrefs,
     autoTheme,
     writeClipboard,
     notify: (message, kind) => { toast(message, kind); },
@@ -116,8 +101,11 @@ async function main(): Promise<void> {
   }, page !== undefined ? { page } : {});
   const channel = createInPageChannel((msg) => { void host.handle(msg); });
   send = channel.send;
+  return { host, channel };
+}
 
-  const boot: ReaderBootParams = {
+function bootParams(paper: PaperRecord, prefs: ReaderPrefs): ReaderBootParams {
+  return {
     protocolVersion: PROTOCOL_VERSION,
     assets: {
       pdfjsUrl: asset("build/pdf.min.mjs"),
@@ -137,7 +125,9 @@ async function main(): Promise<void> {
     prefs,
     isMac: isMacPlatform(),
   };
+}
 
+function exposeReaderApi(paper: PaperRecord, host: ReaderHostController): void {
   window.labshelfReader = {
     paperId: paper.id,
     async reveal(target?: number) {
@@ -147,13 +137,32 @@ async function main(): Promise<void> {
       if (target) host.requestPage(target);
     },
   };
+}
 
+function forwardChangesToHost(host: ReaderHostController, setPrefs: (prefs: ReaderPrefs) => void): void {
   onThemeChange((theme) => host.onAutoThemeChange(theme));
-  onReaderPrefsChange((next) => { currentPrefs = next; host.onPrefsChange(); });
+  onReaderPrefsChange((next) => { setPrefs(next); host.onPrefsChange(); });
   // A sync may have brought annotations made in VS Code while this tab was in the background.
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") void host.refreshAnnotations().catch(() => undefined);
   });
+}
+
+async function main(): Promise<void> {
+  installPageGuards();
+  const { paperId, page } = parseReaderQuery(location.search);
+  if (!paperId) { showFatal("No paper was given to open. Open a paper from the LabShelf library."); return; }
+
+  const opened = await loadOpenablePaper(paperId);
+  if (!opened) return;
+  const { paper, prefs } = opened;
+
+  let currentPrefs = prefs;
+  const { host, channel } = createHostWithChannel(paper, page, () => currentPrefs);
+  const boot = bootParams(paper, prefs);
+
+  exposeReaderApi(paper, host);
+  forwardChangesToHost(host, (next) => { currentPrefs = next; });
 
   void logger.info("reader opened", { paperId: paper.id, page: page ?? null });
   await startReader({

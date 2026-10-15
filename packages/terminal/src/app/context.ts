@@ -43,6 +43,51 @@ export interface OpenOptions {
   thumbnailWorkerUrl: URL;
 }
 
+async function openSync(paths: LibraryRoot, store: LibraryStore, logger: ILogger, env: NodeJS.ProcessEnv) {
+  const auth = createTerminalAuth(resolveTerminalOAuthClient(env), createTokenStore(env), logger, {
+    openBrowser: (url) => openExternal(url),
+  });
+  const sync = createTerminalSync({ paths, auth, store, logger });
+  await sync.init();
+  return { sync, drive: new DriveAccount(auth, sync, logger) };
+}
+
+function createPaperService(paths: LibraryRoot, store: LibraryStore, logger: ILogger, sync: SyncCoordinator): TerminalPaperService {
+  let parser: PdfImportParser | undefined;
+  return new TerminalPaperService({
+    paths,
+    store,
+    bibtex: new BibTeXService(new NodeFileSystem(paths.layout.tmpDir())),
+    logger,
+    pdfParser: async () => {
+      if (!parser) {
+        parser = new PdfImportParser(new NodePdfOpener(createPdfjsLoader()));
+      }
+      return parser;
+    },
+    trash: moveToTrash,
+    onLocalChange: () => sync.scheduleLocalChange(),
+  });
+}
+
+function createThumbnails(env: NodeJS.ProcessEnv, workerUrl: URL, logger: ILogger) {
+  const renderer = defaultRenderer(path.join(cacheDir(env), "tmp"), workerUrl);
+  return { renderer, thumbnails: new ThumbnailService(cacheDir(env), renderer.render, logger) };
+}
+
+function startWatcher(
+  paths: LibraryRoot, store: LibraryStore, sync: SyncCoordinator, logger: ILogger, indexAnnotations: () => Promise<void>,
+): LibraryWatcher {
+  const watcher = new LibraryWatcher(paths, () => {
+    void store.reload().then(() => {
+      void indexAnnotations();
+      void sync.refreshLastRun();
+    });
+  }, logger);
+  watcher.start();
+  return watcher;
+}
+
 /**
  * Opens a library: creates its folder structure if needed, scans it, and wires every service.
  * @returns the context
@@ -57,33 +102,11 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
   const store = createLibraryStore(paths, logger, search);
   await store.reload();
 
-  const auth = createTerminalAuth(resolveTerminalOAuthClient(env), createTokenStore(env), logger, {
-    openBrowser: (url) => openExternal(url),
-  });
-  const sync = createTerminalSync({ paths, auth, store, logger });
-  await sync.init();
-  const drive = new DriveAccount(auth, sync, logger);
-
-  let parser: PdfImportParser | undefined;
-  const papers = new TerminalPaperService({
-    paths,
-    store,
-    bibtex: new BibTeXService(new NodeFileSystem(paths.layout.tmpDir())),
-    logger,
-    pdfParser: async () => {
-      if (!parser) {
-        parser = new PdfImportParser(new NodePdfOpener(createPdfjsLoader()));
-      }
-      return parser;
-    },
-    trash: moveToTrash,
-    onLocalChange: () => sync.scheduleLocalChange(),
-  });
+  const { sync, drive } = await openSync(paths, store, logger, env);
+  const papers = createPaperService(paths, store, logger, sync);
 
   const sidecars = new SidecarReader(paths, logger);
-  const workerUrl = options.thumbnailWorkerUrl;
-  const renderer = defaultRenderer(path.join(cacheDir(env), "tmp"), workerUrl);
-  const thumbnails = new ThumbnailService(cacheDir(env), renderer.render, logger);
+  const { thumbnails, renderer } = createThumbnails(env, options.thumbnailWorkerUrl, logger);
   const imageProtocol = detectImageProtocol(env, env["LABSHELF_IMAGES"] ?? options.config.terminal?.images ?? "auto");
 
   // Highlights and notes become searchable; refreshed in the background whenever the library changes.
@@ -91,16 +114,7 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
     sidecars.annotationIndex(store.snapshot.papers.keys()).then((index) => search.setAnnotationText(index), () => undefined);
   const annotationsReady = indexAnnotations();
 
-  let watcher: LibraryWatcher | undefined;
-  if (options.watch) {
-    watcher = new LibraryWatcher(paths, () => {
-      void store.reload().then(() => {
-        void indexAnnotations();
-        void sync.refreshLastRun();
-      });
-    }, logger);
-    watcher.start();
-  }
+  const watcher = options.watch ? startWatcher(paths, store, sync, logger, indexAnnotations) : undefined;
 
   await logger.log("INFO", "terminal/app", "Library opened", {
     root: paths.root, papers: store.snapshot.papers.size, sync: sync.status().state, images: imageProtocol, renderer: renderer.name,

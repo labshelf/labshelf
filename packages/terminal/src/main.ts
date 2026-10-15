@@ -8,7 +8,7 @@ import { sharedConfigPath, updateSharedConfig } from "@labshelf/core/node";
 
 import { loadTerminalConfig, resolveLibraryRoot, type TerminalConfig } from "./app/config.js";
 import { openLibrary, type AppContext } from "./app/context.js";
-import { parseArgs, stringFlag } from "./cli/args.js";
+import { parseArgs, stringFlag, type ParsedArgs } from "./cli/args.js";
 import { runDoctor, runLibraryCommand, USAGE, UsageError, type Output } from "./cli/index.js";
 import { dumpFrame } from "./cli/dumpFrame.js";
 import { ensureLibraryStructure, LibraryRoot, looksLikeLibrary } from "./library/index.js";
@@ -70,6 +70,50 @@ async function resolveRoot(flag: string | undefined, config: TerminalConfig, int
   return answer ? { root: await adoptLibrary(answer), source: "config" } : undefined;
 }
 
+function printWhere(root: string, source: string): void {
+  const paths = new LibraryRoot(root);
+  io.out(`library  ${paths.root}  (from ${source})`);
+  io.out(`config   ${sharedConfigPath()}`);
+  io.out(`log      ${paths.layout.terminalLogPath()}`);
+  io.out(`manifest ${paths.layout.manifestPath()}`);
+}
+
+async function runTui(ctx: AppContext): Promise<number> {
+  const terminal = new Terminal();
+  const app = new App(ctx, terminal);
+  process.on("uncaughtException", (error) => {
+    terminal.leave();
+    void ctx.logger.error("terminal/main", error).finally(() => {
+      io.err(`labshelf crashed: ${error.stack ?? error.message}`);
+      process.exit(1);
+    });
+  });
+  await app.run();
+  return 0;
+}
+
+async function runOpenedLibrary(ctx: AppContext, args: ParsedArgs, tuiWanted: boolean): Promise<number> {
+  try {
+    const dump = stringFlag(args.flags, "dump-frame");
+    if (dump) {
+      await dumpFrame(ctx, dump, stringFlag(args.flags, "keys"), io.out);
+      return 0;
+    }
+    if (tuiWanted) { return await runTui(ctx); }
+    return await runLibraryCommand(ctx, args, io);
+  } catch (error) {
+    if (error instanceof UsageError) {
+      io.err(error.message);
+      return 2;
+    }
+    io.err(error instanceof Error ? error.message : String(error));
+    await ctx.logger.error("terminal/cli", error);
+    return 1;
+  } finally {
+    await ctx.dispose();
+  }
+}
+
 async function main(argv: string[]): Promise<number> {
   const args = parseArgs(argv);
   if (args.flags["version"] === true) {
@@ -100,11 +144,7 @@ async function main(argv: string[]): Promise<number> {
   const resolved = await resolveRoot(libraryFlag, config, Boolean(process.stdin.isTTY && process.stderr.isTTY));
   if (!resolved) { return 1; }
   if (args.command === "where") {
-    const paths = new LibraryRoot(resolved.root);
-    io.out(`library  ${paths.root}  (from ${resolved.source})`);
-    io.out(`config   ${sharedConfigPath()}`);
-    io.out(`log      ${paths.layout.terminalLogPath()}`);
-    io.out(`manifest ${paths.layout.manifestPath()}`);
+    printWhere(resolved.root, resolved.source);
     return 0;
   }
 
@@ -113,37 +153,7 @@ async function main(argv: string[]): Promise<number> {
     watch: tuiWanted,
     thumbnailWorkerUrl: new URL("./thumbnailWorker.mjs", import.meta.url),
   });
-  try {
-    const dump = stringFlag(args.flags, "dump-frame");
-    if (dump) {
-      await dumpFrame(ctx, dump, stringFlag(args.flags, "keys"), io.out);
-      return 0;
-    }
-    if (tuiWanted) {
-      const terminal = new Terminal();
-      const app = new App(ctx, terminal);
-      process.on("uncaughtException", (error) => {
-        terminal.leave();
-        void ctx.logger.error("terminal/main", error).finally(() => {
-          io.err(`labshelf crashed: ${error.stack ?? error.message}`);
-          process.exit(1);
-        });
-      });
-      await app.run();
-      return 0;
-    }
-    return await runLibraryCommand(ctx, args, io);
-  } catch (error) {
-    if (error instanceof UsageError) {
-      io.err(error.message);
-      return 2;
-    }
-    io.err(error instanceof Error ? error.message : String(error));
-    await ctx.logger.error("terminal/cli", error);
-    return 1;
-  } finally {
-    await ctx.dispose();
-  }
+  return runOpenedLibrary(ctx, args, tuiWanted);
 }
 
 main(process.argv.slice(2)).then(
