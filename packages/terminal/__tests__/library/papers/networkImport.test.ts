@@ -45,10 +45,13 @@ describe("identifier import", () => {
     expect(await fs.readFile(path.join(folder, "bib.bib"), "utf8")).not.toContain("file =");
     const notFound = h.logs.find((l) => l.message === "No PDF found");
     expect(notFound).toMatchObject({ level: "INFO", context: { input: "10.1038/nature12373" } });
-    expect(notFound!.context!["attempts"]).toEqual(["unpaywall: https://repo.example.org/gone.pdf"]);
+    expect(notFound!.context!["attempts"]).toEqual([
+      "publisher: https://www.nature.com/articles/nature12373.pdf",
+      "unpaywall: https://repo.example.org/gone.pdf",
+    ]);
   });
 
-  it("finds the PDF of a DOI through the chain, identifying itself and never contacting Sci-Hub", async () => {
+  it("finds the PDF of a DOI through the chain and identifying itself", async () => {
     const h = await harness();
     h.resolve.mockResolvedValue(NATURE);
     const unpaywall = `https://api.unpaywall.org/v2/${encodeURIComponent("10.1038/nature12373")}?email=${encodeURIComponent(DEFAULT_CONTACT_EMAIL)}`;
