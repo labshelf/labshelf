@@ -88,7 +88,7 @@ typst: 0.13.1
 | `format` | `latex` \| `typst` | required |
 | `main` | string | main file, relative to the project folder; when absent, the first root `.tex` file declaring `\documentclass` (`main.tex` first, then alphabetical), or `main.typ` |
 | `engine` | `tectonic` \| `xelatex` \| `pdflatex` \| `lualatex` | LaTeX only |
-| `bibliography` | string | the generated bibliography file |
+| `bibliography` | string | the bibliography file the main file loads, `labshelf.bib` by default; written once the main file loads it |
 | `typst` | string | Typst compiler version of the last build; a YAML number reads as its text |
 
 Rules:
@@ -97,6 +97,17 @@ Rules:
 - Rewrites change only the keys being set and keep the user's comments, key order and unknown keys.
 - A `labshelf.yaml` that does not parse is never rewritten.
 - Registering a folder writes `labshelf.yaml` when the folder has none and touches nothing else in it. A folder inside the library cannot be registered.
+
+## labshelf.bib
+
+LabShelf owns this file in a writing project and regenerates it from the cite keys the project's sources cite.
+
+- The first line is the generated-file comment; edits are overwritten.
+- Entries are in key order, built from library metadata without a `file` field.
+- A key matches a paper's cite key case-sensitively. When two papers share a cite key, the smallest paper id wins.
+- A cited key with no library paper has no entry; it is left to the user's own `.bib` file.
+- The file is created with the first cited library paper.
+- Once the main file loads the file, the main file has the bibliography line and `labshelf.yaml` has `bibliography:`. A Typst main file that already calls `#bibliography` is left to the user.
 
 ## .research/projects.json
 
