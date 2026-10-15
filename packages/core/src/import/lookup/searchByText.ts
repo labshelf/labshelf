@@ -30,7 +30,8 @@ export async function searchOnlineByQueries(
     if (!candidate || candidate.length < 12) {
       continue;
     }
-    const key = normalizeForMatch(candidate).slice(0, 120);
+    // TRAP: a long junk title (an access stamp) can be a prefix of the page text, so only an identical query counts as tried.
+    const key = normalizeForMatch(candidate);
     if (tried.has(key)) {
       continue;
     }

@@ -4,7 +4,7 @@
  * candidate — not merely share words with it.
  */
 
-import { searchOnlineByText } from '@labshelf/core';
+import { searchOnlineByQueries, searchOnlineByText } from '@labshelf/core';
 
 const FRONT_MATTER = [
   'SIAM J. COMPUT. 1986 Society for Industrial and Applied Mathematics Vol. 15, No. 2, May 1986',
@@ -64,5 +64,29 @@ describe('searchOnlineByText', () => {
     ]);
 
     expect((await searchOnlineByText('Attention Is All You Need'))?.doi).toBe('10.5555/3295222');
+  });
+});
+
+describe('searchOnlineByQueries', () => {
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  // Page 1 of the SIAM 1986 scan as its text layer reads: an access stamp, then the OCR'd masthead.
+  const STAMP =
+    'Downloaded 12/25/12 to 150.135.135.70. Redistribution subject to SIAM license or copyright; see http://www.siam.org/journals/ojsa.php';
+  const PAGE_ONE = [
+    STAMP,
+    'SIAM J. COMPUT. © 1986 Society for Industrial and Applied Mathematics Vol. 15, No. 2, May 1986 011',
+    '= EFFICIENT ALGORITHMS FOR GEOMETRIC 5 GRAPH SEARCH PROBLEMS* 5 HIROSHI IMAIT AND TAKAO ASANOfE los} E',
+    'Abstract. In this paper, we show that many graph search problems can be solved quite efficiently for i=l',
+    'a geometric intersection graph of horizontal and vertical line segments.',
+  ].join(' ');
+
+  it('still sends the page query when a long title query is a prefix of it', async () => {
+    mockCrossRef([{ title: 'Efficient Algorithms for Geometric Graph Search Problems', DOI: '10.1137/0215033' }]);
+
+    expect((await searchOnlineByQueries([STAMP, PAGE_ONE]))?.metadata.doi).toBe('10.1137/0215033');
   });
 });
