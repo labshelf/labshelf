@@ -1,0 +1,11 @@
+{
+  "path": ["packages/core/src", "packages/vscode/src", "packages/browser/src", "packages/terminal/src"],
+  "format": ["typescript", "tsx", "css"],
+  "ignore": ["**/__tests__/**", "**/node_modules/**", "**/dist/**", "**/out/**", "**/build/**"],
+  "minTokens": 50,
+  "minLines": 5,
+  "reporters": ["json"],
+  "output": "./.jscpd-report",
+  "absolute": true,
+  "gitignore": true
+}
