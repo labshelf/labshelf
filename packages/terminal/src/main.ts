@@ -17,7 +17,7 @@ import { parseArgs, stringFlag } from "./cli/args.js";
 import { runDoctor, runLibraryCommand, USAGE, UsageError, type Output } from "./cli/commands.js";
 import { ensureLibraryStructure, LibraryRoot, looksLikeLibrary } from "./library/index.js";
 import { expandHome } from "./platform/index.js";
-import { App, type TerminalLike } from "./ui/app.js";
+import { App, type TerminalLike } from "./ui/app/index.js";
 import { InputDecoder } from "./tui/input.js";
 import { sanitizeForTerminal } from "./tui/text.js";
 import type { Screen } from "./tui/screen.js";
