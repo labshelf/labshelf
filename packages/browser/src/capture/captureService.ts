@@ -12,7 +12,7 @@ import { getSettings, updateSettings } from "../platform";
 import { BrowserLogger } from "../platform";
 import { listAllRecords } from "../storage";
 import type { IfNoPdf, PdfMiss } from "@labshelf/core";
-import { PAPERS_DIR } from "@labshelf/core";
+import { PAPERS_DIR, isLibraryPath } from "@labshelf/core";
 
 const log = new BrowserLogger("capture");
 
@@ -210,9 +210,6 @@ export async function refreshExisting(draft: CaptureDraft): Promise<void> {
  * to the library root rather than writing outside the library.
  */
 export function safeFolder(folder: string | undefined): string {
-  if (!folder) return PAPERS_DIR;
-  const clean = folder.replace(/\/+$/, "");
-  const parts = clean.split("/");
-  if (parts[0] !== PAPERS_DIR || parts.some((p) => p === "" || p === "." || p === "..")) return PAPERS_DIR;
-  return clean;
+  const clean = folder?.replace(/\/+$/, "");
+  return isLibraryPath(clean) ? clean : PAPERS_DIR;
 }

@@ -8,7 +8,7 @@ describe("router hash <-> folder", () => {
     expect(hashForFolder("papers/Reading group")).toBe("#/papers/Reading%20group");
   });
   it("falls back to the root for empty, foreign or traversal hashes", () => {
-    for (const h of ["", "#", "#/", "#/elsewhere", "#/papers-old/x", "#/papers/../x", "#/papers//x", "#/papers/./x"]) {
+    for (const h of ["", "#", "#/", "#/elsewhere", "#/papers-old/x", "#/papers/../x", "#/papers//x", "#/papers/./x", "#/papers/a%5Cb"]) {
       expect(folderFromHash(h)).toBe("papers");
     }
   });

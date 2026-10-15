@@ -2,12 +2,12 @@
  * Binds the open folder to the URL hash (`#/papers/Project/Refs`), so back/forward walk the folder history and a reload
  * lands on the same folder. The host tells the UI about hash changes and follows the UI's own navigation.
  */
-import { PAPERS_DIR, isUnderDir, type HostEndpoint } from "@labshelf/core";
+import { PAPERS_DIR, isLibraryPath, type HostEndpoint } from "@labshelf/core";
 
 /** Parses a location hash into a folder path, falling back to the root. */
 export function folderFromHash(hash: string): string {
   const raw = decodeURIComponent(hash.replace(/^#\/?/, "")).replace(/\/+$/, "");
-  return raw && isUnderDir(raw, PAPERS_DIR, "/") && !raw.split("/").some((s) => s === "" || s === "." || s === "..") ? raw : PAPERS_DIR;
+  return isLibraryPath(raw) ? raw : PAPERS_DIR;
 }
 
 /** Builds the hash for a folder path. */

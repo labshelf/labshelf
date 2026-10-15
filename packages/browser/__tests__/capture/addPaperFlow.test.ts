@@ -44,6 +44,8 @@ describe("safeFolder", () => {
     expect(safeFolder(undefined)).toBe("papers");
     expect(safeFolder("appdata/secrets")).toBe("papers");
     expect(safeFolder("papers/../appdata")).toBe("papers");
+    expect(safeFolder("papers\\..\\appdata")).toBe("papers");
+    expect(safeFolder("papers/a\\b")).toBe("papers");
   });
 });
 
