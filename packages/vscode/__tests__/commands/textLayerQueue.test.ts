@@ -102,8 +102,17 @@ describe('describeOutcome / describePage', () => {
     expect(describeOutcome('T', { status: 'unavailable', reason: 'no canvas' }, true)).toBe(
       'Could not make "T" searchable: no canvas.',
     );
-    expect(describeOutcome('T', { status: 'skipped', reason: 'OCR is off' }, false)).toBeUndefined();
-    expect(describeOutcome('T', { status: 'skipped', reason: 'OCR is off' }, true)).toBe('"T" was not read: OCR is off.');
+    expect(describeOutcome('T', { status: 'skipped', reason: 'it has no PDF' }, false)).toBeUndefined();
+    expect(describeOutcome('T', { status: 'skipped', reason: 'it has no PDF' }, true)).toBe('"T" was not read: it has no PDF.');
+  });
+
+  it('names the VS Code setting that lifts each skip', () => {
+    expect(describeOutcome('T', { status: 'skipped', code: 'ocr-disabled', reason: 'OCR is turned off' }, true)).toBe(
+      '"T" was not read: OCR is turned off in settings (labshelf.ocr.enabled).',
+    );
+    expect(describeOutcome('T', { status: 'skipped', code: 'page-limit', reason: '3 pages need OCR, above the limit of 2' }, true)).toBe(
+      '"T" was not read: 3 pages need OCR, above the limit of 2 (labshelf.ocr.maxPages).',
+    );
   });
 
   it('mentions pages that could not be read', () => {

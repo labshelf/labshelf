@@ -59,11 +59,11 @@ export class SearchablePdfBuilder implements PdfTextLayerBuilder {
         return { status: "not-needed", layer: await existingLayer(source) };
       }
       if (!this.engine) {
-        return { status: "skipped", reason: "OCR is turned off in settings (labshelf.ocr.enabled)" };
+        return { status: "skipped", code: "ocr-disabled", reason: "OCR is turned off" };
       }
       const maxPages = this.options.maxPages ?? DEFAULT_MAX_PAGES;
       if (pages.length > maxPages) {
-        return { status: "skipped", reason: `${pages.length} pages need OCR, above the limit of ${maxPages} (labshelf.ocr.maxPages)` };
+        return { status: "skipped", code: "page-limit", reason: `${pages.length} pages need OCR, above the limit of ${maxPages}` };
       }
       return await this.addLayers(this.engine, pdfBytes, source, pages, hooks);
     } finally {

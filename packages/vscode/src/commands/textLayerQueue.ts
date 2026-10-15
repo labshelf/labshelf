@@ -170,9 +170,21 @@ export function describeOutcome(title: string, result: MakeSearchableResult, ann
     case "not-needed":
       return announceAll ? `"${title}" already has a text layer.` : undefined;
     case "skipped":
-      return announceAll ? `"${title}" was not read: ${result.reason}.` : undefined;
+      return announceAll ? `"${title}" was not read: ${skipReasonWithSetting(result)}.` : undefined;
     case "unavailable":
       return announceAll ? `Could not make "${title}" searchable: ${result.reason}.` : undefined;
+  }
+}
+
+// Core names no settings; the setting that lifts each skip is VS Code's to point at.
+function skipReasonWithSetting(result: Extract<MakeSearchableResult, { status: "skipped" }>): string {
+  switch (result.code) {
+    case "ocr-disabled":
+      return `${result.reason} in settings (labshelf.ocr.enabled)`;
+    case "page-limit":
+      return `${result.reason} (labshelf.ocr.maxPages)`;
+    default:
+      return result.reason;
   }
 }
 

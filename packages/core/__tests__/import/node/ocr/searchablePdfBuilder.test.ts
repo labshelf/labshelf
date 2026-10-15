@@ -115,7 +115,7 @@ describe('SearchablePdfBuilder', () => {
     openSequence(ocrDocument(['', '', '']));
 
     const outcome = await builderFor(engineReturning(await textLayer()), { maxPages: 2 }).build(await blankPdf(3));
-    expect(outcome).toEqual({ status: 'skipped', reason: '3 pages need OCR, above the limit of 2 (labshelf.ocr.maxPages)' });
+    expect(outcome).toEqual({ status: 'skipped', code: 'page-limit', reason: '3 pages need OCR, above the limit of 2' });
   });
 
   it('classifies but never reads when OCR is turned off', async () => {
@@ -123,7 +123,8 @@ describe('SearchablePdfBuilder', () => {
 
     expect(await builderFor(undefined).build(await blankPdf(2))).toEqual({
       status: 'skipped',
-      reason: 'OCR is turned off in settings (labshelf.ocr.enabled)',
+      code: 'ocr-disabled',
+      reason: 'OCR is turned off',
     });
     openSequence(ocrDocument([PAGE_OF_TEXT, PAGE_OF_TEXT]));
     expect(await builderFor(undefined).build(await blankPdf(2))).toEqual({ status: 'not-needed', layer: 'native' });

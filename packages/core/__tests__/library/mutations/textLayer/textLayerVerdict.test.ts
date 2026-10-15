@@ -13,7 +13,7 @@ describe("verdictForOutcome", () => {
       .toEqual({ state: "ocr", ocrPages: 3, failedPages: 2, checkedAt: NOW });
     expect(verdictForOutcome({ status: "not-needed", layer: "native" }, now)).toEqual({ state: "native", checkedAt: NOW });
     expect(verdictForOutcome({ status: "cancelled" }, now)).toEqual({ state: "missing", reason: "OCR was cancelled", checkedAt: NOW });
-    expect(verdictForOutcome({ status: "skipped", reason: "OCR is off" }, now)).toEqual({ state: "missing", reason: "OCR is off", checkedAt: NOW });
+    expect(verdictForOutcome({ status: "skipped", code: "ocr-disabled", reason: "OCR is off" }, now)).toEqual({ state: "missing", reason: "OCR is off", checkedAt: NOW });
     expect(verdictForOutcome({ status: "unavailable", reason: "no worker" }, now)).toEqual({ state: "failed", reason: "no worker", checkedAt: NOW });
   });
 });

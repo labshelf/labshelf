@@ -7,7 +7,7 @@ import {
   verdictForError,
   verdictForOutcome,
 } from "@labshelf/core";
-import type { MutationContext, PaperRecord, TextLayerInfo, TextLayerOutcome, PdfTextLayerBuilder, TextLayerHooks } from "@labshelf/core";
+import type { MutationContext, PaperRecord, TextLayerInfo, TextLayerOutcome, TextLayerSkipCode, PdfTextLayerBuilder, TextLayerHooks } from "@labshelf/core";
 import type { PaperService } from "./paperService.js";
 
 /** What happened when a paper was checked for, and possibly given, a text layer. */
@@ -15,7 +15,8 @@ export type MakeSearchableResult =
   | { status: "added"; paper: PaperRecord; pagesAdded: number; pagesFailed: number }
   | { status: "not-needed" | "cancelled" }
   // skipped: needs OCR but was deliberately not read; unavailable: OCR failed.
-  | { status: "skipped" | "unavailable"; reason: string };
+  | { status: "skipped"; reason: string; code?: TextLayerSkipCode }
+  | { status: "unavailable"; reason: string };
 
 export class PaperTextLayers {
   constructor(
