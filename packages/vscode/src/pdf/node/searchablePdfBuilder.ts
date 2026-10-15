@@ -1,9 +1,5 @@
-/**
- * Makes a scanned PDF selectable and searchable. Every page without a text
- * layer is read optically, and Tesseract's invisible, positioned text is laid
- * over the original page. The page's own content is never re-encoded, so the
- * paper looks exactly as it did and grows by a few kilobytes per page.
- */
+// Makes a scanned PDF searchable by overlaying Tesseract's invisible text on each textless page.
+// Page content is never re-encoded, so the paper looks identical and grows only a few KB per page.
 import { isSparseText } from "@labshelf/core";
 import type { PdfjsLoader } from "@labshelf/core/node";
 import type { ExistingLayer, TextLayerDetection, TextLayerOutcome } from "@labshelf/core";

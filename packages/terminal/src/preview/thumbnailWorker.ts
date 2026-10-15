@@ -1,9 +1,5 @@
-/**
- * Worker thread that renders page 1 of a PDF to PNG with pdfjs and the native canvas, used when poppler's pdftoppm is
- * not installed. Rendering runs off the main thread so the TUI keeps responding while a large PDF is drawn.
- *
- * Message in: { pdfPath, widthPx }. Message out: { png: Uint8Array } or { error: string }.
- */
+// Renders page 1 of a PDF to PNG in a worker thread so the TUI keeps responding (used without pdftoppm).
+// Message in: { pdfPath, widthPx }. Message out: { png: Uint8Array } or { error: string }.
 import { readFile } from "node:fs/promises";
 import { parentPort, workerData } from "node:worker_threads";
 

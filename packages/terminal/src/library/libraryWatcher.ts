@@ -1,8 +1,5 @@
-/**
- * Watches the library on disk so changes made elsewhere — the VS Code extension, a sync run by either app, a file
- * manager — show up in the TUI within a fraction of a second. Uses recursive fs.watch (macOS, Windows, Linux on Node
- * 20+) and falls back to polling the papers folder when recursive watching is unavailable.
- */
+// Watches the library on disk so changes made elsewhere show up in the TUI within a fraction of a second.
+// Uses recursive fs.watch and polls the papers folder when recursive watching is unavailable.
 import { watch, type FSWatcher } from "node:fs";
 
 import { isExternalChangeNoise, type ILogger } from "@labshelf/core";

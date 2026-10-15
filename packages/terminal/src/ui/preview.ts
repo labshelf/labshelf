@@ -1,8 +1,5 @@
-/**
- * Content of the preview pane (right column), as styled lines: a paper's Info / Abstract / Notes / BibTeX tabs, or a
- * summary of the hovered folder. Pure functions of the snapshot and the sidecar, so tests render them without a
- * terminal.
- */
+// Builds the preview pane content as styled lines: a paper's tabs or a summary of the hovered folder.
+// Pure functions of the snapshot and the sidecar, so tests render them without a terminal.
 import {
   type Annotation, type CollectionNode, type LibrarySnapshot, type PaperEntry, type PaperRecord, cleanQuote, formatAuthors, formatBytes, venueLine, type PaperData,
 } from "@labshelf/core";

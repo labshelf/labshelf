@@ -1,9 +1,5 @@
-/**
- * Settles a paper's bibliographic record from everything known about it: the registry record behind its
- * identifier, the fields a page states in its citation tags, and, when there is no identifier, a registry search
- * by title accepted only when year and authors agree with the page. Fields merge one by one, most trusted source
- * first, so a registry that lacks the issue number does not erase the one the page printed.
- */
+// Resolves a paper's bibliographic record from its registry record, page citation tags and a title search.
+// Fields merge one by one, most trusted source first, so a registry missing the issue number keeps the page's.
 import type { DetectedIdentifier, DetectedIds } from "../identifiers/index.js";
 import { arxivIdFromDoi } from "../identifiers/index.js";
 import { mergeMetadata, SOURCE_TRUST, type MetadataSource, type ResolvedMetadata } from "../metadata/index.js";

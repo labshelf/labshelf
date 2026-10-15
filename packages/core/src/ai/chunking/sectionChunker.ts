@@ -1,8 +1,5 @@
-/**
- * Builds embedding-ready chunks from detected sections. Long sections are
- * split on paragraph boundaries when they exceed the token budget so the
- * embedding model never receives oversized inputs.
- */
+// Builds embedding-ready chunks from detected sections.
+// Sections over the token budget are split on paragraph boundaries.
 import type {
   ExtractedPdfText,
   PaperChunk,

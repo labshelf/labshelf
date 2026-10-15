@@ -1,9 +1,5 @@
-/**
- * Fires the sync trigger whenever the browser idle state flips to "idle". The
- * threshold is 5 minutes (matching the plan) and a minimum gap prevents the
- * trigger from firing more than once per minute, so locking/unlocking the
- * machine in quick succession doesn't queue a flurry of syncs.
- */
+// Fires the sync trigger whenever the browser idle state flips to "idle".
+// A minimum gap stops quick lock/unlock cycles from queuing a flurry of syncs.
 import { bx } from "../platform/browserApi";
 import { BrowserLogger } from "../platform/logger";
 

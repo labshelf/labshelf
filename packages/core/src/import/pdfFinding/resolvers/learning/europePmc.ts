@@ -1,13 +1,12 @@
-/**
- * The Europe PMC REST API: the PMCID and non-Europe-PMC full-text links. Its own PDF endpoints sit behind a bot
- * check, so PMC copies are left to the PMC resolver. The record is accepted only when its DOI equals the one asked
- * for, because Europe PMC maps some DOIs to an unrelated paper.
- */
+// Looks up the Europe PMC REST API for the PMCID and non-Europe-PMC full-text links.
 import { warn } from "../../env.js";
 import { lookupJson } from "../timedFetch.js";
 import type { PdfResolver, ResolveContext } from "../../types.js";
 import { acceptRecord } from "./acceptRecord.js";
 import { learnIds } from "./learnIds.js";
+
+// TRAP: Europe PMC's own PDF endpoints sit behind a bot check, so PMC copies are left to the PMC resolver.
+// A record is accepted only when its DOI equals the one asked for, because Europe PMC maps some DOIs to unrelated papers.
 
 interface EpmcResult {
   pmcid?: string | null;

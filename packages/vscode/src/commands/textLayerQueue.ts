@@ -1,13 +1,5 @@
-/**
- * Runs text-layer jobs one at a time, in the background. An "ocr" job gives a
- * scanned paper a searchable text layer, with visible and cancellable progress;
- * a "check" job only records whether the PDF has text of its own, and is
- * silent. Reading a page takes seconds, so a paper is imported first and gains
- * its text layer afterwards rather than holding the import for a minute.
- *
- * The jobs waiting or running are published (currentTextLayerJobs,
- * onTextLayerJobsChanged) so the library list can show them on each row.
- */
+// Runs text-layer jobs one at a time in the background: "ocr" adds a searchable layer, "check" only classifies.
+// Pending jobs are published so the library list can show them per row.
 import * as vscode from "vscode";
 
 import type { ILogger, PaperRecord } from "@labshelf/core";

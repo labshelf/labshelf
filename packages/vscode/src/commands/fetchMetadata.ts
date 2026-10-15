@@ -1,9 +1,5 @@
-/**
- * Resolves a paper's bibliographic record from something the user types — a
- * DOI, an arXiv id, a PMID, a publisher URL, or just the title. This is the
- * escape hatch for PDFs the automatic pipeline cannot recognise, such as scans
- * too poor for OCR or papers no registry indexes.
- */
+// Resolves a paper's record from a DOI, arXiv id, PMID, URL or title the user types.
+// Serves PDFs the automatic pipeline cannot recognise (poor scans, unindexed papers).
 import * as vscode from "vscode";
 
 import {

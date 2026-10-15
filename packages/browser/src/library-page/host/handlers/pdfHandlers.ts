@@ -1,8 +1,5 @@
-/**
- * PDF work the UI asks for: open a paper in the reader (or report that it has no PDF), search the web for its PDF in
- * the background, and attach a local file the user picks. PDF bytes never cross runtime messaging; the page and the
- * background write IndexedDB themselves.
- */
+// Handles the UI's PDF requests: open in the reader, search the web, attach a local file.
+// INVARIANT: PDF bytes never cross runtime messaging; the page and the background write IndexedDB themselves.
 import { PDF_FILE, isPdfBytes, pdfSourceLabel } from "@labshelf/core";
 import { attachPdfToPaper } from "../../../capture";
 import type { AttachPdfData } from "../../../platform";

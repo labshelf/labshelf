@@ -1,8 +1,5 @@
-/**
- * Every change the terminal makes to the library: maps collection paths to folders and reloads the store and tells the
- * sync after each change. Titles are never rewritten, because renaming a Drive folder outside a sync makes the next
- * sync read it as a different paper.
- */
+// Applies every library change the terminal makes, then reloads the store and tells the sync.
+// TRAP: titles are never rewritten; renaming a Drive folder outside a sync makes the next sync read a different paper.
 import * as path from "node:path";
 
 import {

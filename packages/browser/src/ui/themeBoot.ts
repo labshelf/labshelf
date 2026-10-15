@@ -1,12 +1,5 @@
-/**
- * Synchronous theme bootstrap. Loaded as a classic <script> in <head> before
- * the stylesheets so <html data-theme> is set before first paint — MV3 forbids
- * inline scripts, hence a separate entry. Keep this file dependency-free and
- * tiny; the full API lives in ui/theme.ts.
- *
- * @depends none
- * @dependents popup/index.html, options/index.html, library-page/index.html, reader/index.html
- */
+// Sets <html data-theme> before first paint from a classic <script> in <head>; keep it dependency-free.
+// PLATFORM: MV3 forbids inline scripts, hence a separate entry.
 (() => {
   let pref: string | null = null;
   try { pref = localStorage.getItem("labshelf.theme"); } catch { /* ignore */ }

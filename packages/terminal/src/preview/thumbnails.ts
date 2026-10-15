@@ -1,12 +1,5 @@
-/**
- * First-page thumbnails for the preview pane. Rendered once per PDF version and cached on disk (keyed by path, size
- * and mtime) in the user cache directory — never inside the library, which is synced. Rendering prefers poppler's
- * pdftoppm (fast, what yazi uses) and falls back to pdfjs in a worker thread. Only the most recent request matters:
- * while the user scrolls, requests that were overtaken are dropped before they start.
- *
- * @depends platform/system (hasCommand), preview/thumbnailWorker
- * @dependents app/context, ui/app
- */
+// Renders first-page PDF thumbnails for the preview pane and caches them per PDF version (path, size, mtime).
+// The cache lives in the user cache directory, never inside the synced library.
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { promises as fs } from "node:fs";
@@ -31,7 +24,6 @@ const RENDER_TIMEOUT_MS = 20_000;
 
 /**
  * Renders with pdftoppm into a temporary prefix.
- * @usedBy defaultRenderer
  * @returns the PNG bytes
  */
 export function renderWithPdftoppm(tmpDir: string): Renderer {
@@ -56,7 +48,6 @@ export function renderWithPdftoppm(tmpDir: string): Renderer {
 
 /**
  * Renders with pdfjs in a one-shot worker thread.
- * @usedBy defaultRenderer
  * @returns the PNG bytes
  */
 export function renderWithWorker(workerUrl: URL): Renderer {
@@ -74,7 +65,6 @@ export function renderWithWorker(workerUrl: URL): Renderer {
 
 /**
  * pdftoppm when installed, otherwise the pdfjs worker.
- * @usedBy app/context
  * @returns the renderer and its name (for doctor)
  */
 export function defaultRenderer(tmpDir: string, workerUrl: URL): { name: string; render: Renderer } {
@@ -86,6 +76,7 @@ export function defaultRenderer(tmpDir: string, workerUrl: URL): { name: string;
 export class ThumbnailService {
   private readonly memory = new Map<string, Uint8Array>();
   private readonly failed = new Set<string>();
+  // Only the newest request matters: requests overtaken while the user scrolls are dropped before they start.
   private generation = 0;
   private chain: Promise<unknown> = Promise.resolve();
 
@@ -101,7 +92,6 @@ export class ThumbnailService {
 
   /**
    * The cached thumbnail, if it was rendered before (memory only; cheap enough to call on every frame).
-   * @usedBy ui/app
    * @returns PNG bytes or undefined
    */
   peek(request: ThumbnailRequest): Uint8Array | undefined {
@@ -111,7 +101,6 @@ export class ThumbnailService {
   /**
    * Returns the thumbnail from memory, disk or a fresh render. A request overtaken by a newer one resolves undefined
    * without rendering.
-   * @usedBy ui/app
    * @returns PNG bytes, or undefined (overtaken, or the PDF cannot be rendered)
    */
   async get(request: ThumbnailRequest): Promise<Uint8Array | undefined> {

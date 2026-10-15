@@ -1,9 +1,5 @@
-/**
- * Page probe injected on demand into a tab via scripting.executeScript. It only collects raw evidence — every <meta>
- * value, PDF links and viewers, DOI links — and leaves interpretation to core's interpretPage, which runs the same
- * rules over HTML fetched without a DOM. Keeping the probe dumb keeps both paths identical.
- * It is serialized via Function.toString at inject time, so it imports only types.
- */
+// Collects raw page evidence (meta values, PDF and DOI links) inside a tab via scripting.executeScript.
+// Interpretation stays in core's interpretPage, so DOM and DOM-less paths apply identical rules.
 import type { RawPage } from "@labshelf/core";
 
 /**

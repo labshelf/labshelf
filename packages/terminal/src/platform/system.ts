@@ -1,8 +1,5 @@
-/**
- * The few places the terminal app touches the desktop: copying to the clipboard, opening a PDF or folder with the
- * user's apps, moving folders to the trash, and running $EDITOR. Each one degrades instead of failing: no clipboard
- * tool falls back to OSC 52 (works over SSH), no trash support is reported so the caller can ask before deleting.
- */
+// Reaches the desktop: clipboard, opening PDFs and folders, trash and $EDITOR.
+// Each degrades instead of failing: OSC 52 replaces a missing clipboard tool (works over SSH); missing trash is reported.
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, promises as fs } from "node:fs";
 import * as os from "node:os";

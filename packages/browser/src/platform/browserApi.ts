@@ -1,10 +1,5 @@
-/**
- * Cross-browser WebExtension API surface. Imported everywhere instead of the
- * raw `chrome.*` or `browser.*` globals so we can target both Chromium and
- * Firefox without conditional code at call sites.
- * @depends webextension-polyfill.
- * @dependents background, popup, options, library-page, sync/auth.
- */
+// Exposes the cross-browser WebExtension API instead of raw `chrome.*` or `browser.*` globals.
+// Call sites target Chromium and Firefox without conditionals.
 import polyfill from "webextension-polyfill";
 
 export const bx = polyfill;

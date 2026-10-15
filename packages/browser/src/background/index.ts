@@ -1,8 +1,5 @@
-/**
- * Background entry (MV3 service worker in Chrome, non-persistent background script in Firefox). Wires Drive auth, the
- * sync coordinator and its triggers, capture and the toolbar badge into the runtime message channel that the popup,
- * options, library page and Google Scholar buttons use.
- */
+// Wires Drive auth, sync, capture and the badge into the runtime message channel the UI pages use.
+// Runs as an MV3 service worker in Chrome and a non-persistent background script in Firefox.
 import { bx } from "../platform/browserApi";
 import { BrowserLogger } from "../platform/logger";
 import { BrowserDriveAuth } from "../sync/auth/browserDriveAuth";

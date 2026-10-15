@@ -1,8 +1,5 @@
-/**
- * Display-width aware text helpers: how many terminal cells a string takes, and truncating, padding and wrapping by
- * cells rather than by UTF-16 units. Paper titles carry accents, CJK names and the odd ligature, so counting
- * characters would misalign every column.
- */
+// Measures, truncates, pads and wraps text by terminal cells rather than UTF-16 units.
+// Titles carry accents, CJK names and ligatures, so counting characters would misalign every column.
 
 const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 

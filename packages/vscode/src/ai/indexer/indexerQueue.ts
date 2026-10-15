@@ -1,12 +1,5 @@
-/**
- * Single-worker FIFO queue used to serialise ingestion jobs. Embedding work is
- * CPU-bound and benefits from concurrency=1 — running two pipelines in parallel
- * would just thrash the model. Failures are caught and reported so the queue
- * keeps draining even when a single paper blows up.
- *
- * @depends @labshelf/core (logger)
- * @dependents indexer/aiIndexer.ts
- */
+// Serialises ingestion jobs through a single-worker FIFO queue.
+// A failing job is logged and the queue keeps draining.
 import type { ILogger } from "@labshelf/core";
 
 export type IndexerJob = () => Promise<void>;
@@ -17,33 +10,17 @@ export class IndexerQueue {
 
   constructor(private readonly logger: ILogger) {}
 
-  /**
-   * Schedules a job to run after any currently in-flight or queued jobs.
-   *
-   * @usedBy aiIndexer event listeners
-   * @returns void
-   */
+  // PLATFORM: embedding is CPU-bound, so one worker; parallel pipelines would only thrash the model.
   enqueue(job: IndexerJob): void {
     this.pending.push(job);
     void this.drain();
   }
 
-  /**
-   * Returns the number of queued jobs (excluding the active one).
-   *
-   * @usedBy ai settings status
-   * @returns Pending job count.
-   */
+  /** Counts queued jobs, excluding the active one. */
   size(): number {
     return this.pending.length;
   }
 
-  /**
-   * Returns true when a job is currently running.
-   *
-   * @usedBy ai settings status
-   * @returns Running flag.
-   */
   isRunning(): boolean {
     return this.active;
   }

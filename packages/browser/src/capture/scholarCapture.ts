@@ -1,12 +1,5 @@
-/**
- * Turns one Google Scholar result (its "Save to LabShelf" button) into a capture
- * draft. Scholar shows only a title, an abbreviated author line and links, so
- * the paper is identified the way a person would: the DOI inside the result's
- * links, else the article's landing page (fetched in the background and read
- * for its citation tags), else a registry search by title that must agree
- * with the year and authors Scholar printed. The "[PDF]" link Scholar found
- * is the first PDF candidate; the usual resolver chain follows it.
- */
+// Turns one Google Scholar result into a capture draft: DOI in its links, else landing page, else title search.
+// A title match must agree with the year and authors Scholar printed; Scholar's "[PDF]" link is the first candidate.
 import { arxivIdFromUrl, extractDoi, pmidFromUrl } from "@labshelf/core";
 import type { DetectedIds, MetadataSource, PageFacts, PdfCandidate, ResolvedMetadata } from "@labshelf/core";
 import { draftFromFacts } from "./captureService";
@@ -20,7 +13,6 @@ const SCHOLAR_TRUST = 20;
 
 /**
  * Identifiers a result's links reveal (publisher URLs embed the DOI).
- * @usedBy draftFromScholarHit, tests
  */
 export function idsFromHit(hit: ScholarHit): DetectedIds {
   const urls = [hit.url, hit.pdfUrl].filter((u): u is string => !!u);
@@ -32,7 +24,6 @@ export function idsFromHit(hit: ScholarHit): DetectedIds {
 
 /**
  * What Scholar itself printed, as a low-trust metadata source.
- * @usedBy draftFromScholarHit, tests
  */
 export function metadataFromHit(hit: ScholarHit): ResolvedMetadata {
   const meta: ResolvedMetadata = { title: hit.title };
@@ -45,7 +36,6 @@ export function metadataFromHit(hit: ScholarHit): ResolvedMetadata {
 
 /**
  * Builds the draft for a Scholar result.
- * @usedBy background/index (scholar.save)
  */
 export async function draftFromScholarHit(hit: ScholarHit): Promise<CaptureDraft> {
   const ids = idsFromHit(hit);

@@ -1,8 +1,5 @@
-/**
- * Opens a paper in the reader page, one tab per paper like one VS Code panel per paper: when a reader tab already
- * shows the paper it is brought to the front (and moved to the requested page) instead of opening a second copy.
- * Open tabs are found through extension.getViews, so no "tabs" permission is needed.
- */
+// Opens a paper in the reader page, one tab per paper, focusing an existing tab instead of opening a copy.
+// PLATFORM: open tabs are found through extension.getViews, so no "tabs" permission is needed.
 import { bx } from "../platform/browserApi";
 
 export const READER_PAGE = "reader/index.html";

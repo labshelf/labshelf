@@ -1,12 +1,4 @@
-/**
- * F02 — Reading difficulty heatmap scorer. Combines three signals:
- *
- *   1. Flesch-Kincaid grade-level (sentence and word complexity).
- *   2. Equation density (LaTeX-style markers per paragraph).
- *   3. Novel terms (callers may pass a known-vocabulary set).
- *
- * The output is a 0..1 difficulty score per page.
- */
+// Scores per-page reading difficulty 0..1 from Flesch-Kincaid grade, equation density and novel terms.
 import { countNovelTerms } from "./termNovelty.js";
 
 const EQUATION_TOKEN = /(\$[^$]+\$|\\\(|\\\[|\\begin\{equation\}|\\sum|\\int|\\frac|\\sqrt|=\s*\\?[A-Za-z])/g;

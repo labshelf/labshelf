@@ -1,8 +1,5 @@
-/**
- * F07 — Search by claim with stance classification. Detection runs without an
- * LLM: each retrieved chunk is compared against two anchor sentences using
- * the same embedding model that produced its index vector.
- */
+// Classifies retrieved chunks as supporting or contradicting a claim without an LLM.
+// INVARIANT: chunks are compared to anchor sentences with the same embedding model that indexed them.
 import type {
   IEmbeddingProvider,
   IVectorStore,

@@ -1,10 +1,5 @@
-/**
- * Brings the extension's design kit into a host page without letting the
- * page's CSS in or ours out: tokens.css + base.css are injected as text into
- * a shadow root, with `:root` rewritten to `:host` so the --ls-* tokens apply
- * there. The theme follows the page itself (Google Scholar is light), not the
- * OS, so the button never looks dark on a white page.
- */
+// Injects the design kit (tokens.css + base.css) into a shadow root, with `:root` rewritten to `:host`.
+// The theme follows the host page, not the OS, so a button never looks dark on a white page.
 import tokensCss from "@labshelf/core/styles/tokens.css";
 import baseCss from "@labshelf/core/styles/base.css";
 

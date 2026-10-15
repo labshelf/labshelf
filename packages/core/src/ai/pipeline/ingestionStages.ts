@@ -1,9 +1,4 @@
-/**
- * Declarative pipeline for paper ingestion. The pipeline is an ordered list of
- * stages; each stage consumes the previous stage's output. Stages that depend
- * on external runtimes (embeddings, vision) are optional — when their provider
- * is absent, the pipeline degrades to heuristic-only.
- */
+// Runs the ordered paper-ingestion stages; without an embedder or vector store it runs heuristics only.
 import type {
   ExtractedPdfText,
   PaperChunk,

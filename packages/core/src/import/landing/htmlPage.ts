@@ -1,11 +1,8 @@
-/**
- * Reads HTML fetched without a DOM (a landing page, a publisher's "your PDF is loading" interstitial) into the
- * RawPage shape the in-tab probe produces. A tolerant regex reader of the few tags that matter, because the MV3
- * service worker and the terminal have no DOMParser.
- */
+// Reads HTML fetched without a DOM into the RawPage shape the in-tab probe produces.
 import { absoluteHttpUrl, attributes, decodeEntities } from "./htmlTags.js";
 import type { RawPage, RawPdfLink } from "./types.js";
 
+// PLATFORM: the MV3 service worker and the terminal have no DOMParser, so a tolerant regex reader handles the few tags that matter.
 /** @returns the meta tags, PDF links and viewers, and DOI links of an HTML document */
 export function parseHtmlPage(html: string, pageUrl: string): RawPage {
   const title = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1];

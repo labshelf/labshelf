@@ -1,13 +1,11 @@
-/**
- * OpenAlex's record for a DOI: every known location (publisher, repository, PMC, arXiv) and the PMCID. The
- * single-work lookup is free; searches cost credits and are not used. Learns `pmcid` and `arxivId` for the
- * resolvers that follow, and proposes the publisher and repository copies itself.
- */
+// Looks up OpenAlex's record for a DOI, proposing its publisher and repository copies and learning `pmcid` and `arxivId`.
 import { arxivIdFromUrl, normalizePmcid, pmcidFromUrl } from "../../../identifiers/index.js";
 import { lookupJson } from "../timedFetch.js";
 import type { PdfResolver, ResolveContext } from "../../types.js";
 import { acceptRecord } from "./acceptRecord.js";
 import { learnIds } from "./learnIds.js";
+
+// TRAP: only the free single-work lookup is used; OpenAlex searches cost credits.
 
 interface OpenAlexLocation {
   pdf_url?: string | null;

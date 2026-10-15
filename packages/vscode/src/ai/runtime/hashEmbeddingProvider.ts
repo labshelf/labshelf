@@ -1,8 +1,4 @@
-/**
- * Deterministic hash-based bag-of-words embedding provider. The same text
- * yields the same vector and cosine similarity is well-defined, with no model
- * files or native runtime involved.
- */
+// Embeds text as a deterministic hashed bag-of-words vector, with no model files or native runtime.
 import type { IEmbeddingProvider } from "@labshelf/core";
 
 const TOKEN_RE = /[A-Za-z][A-Za-z0-9'-]{1,}/g;

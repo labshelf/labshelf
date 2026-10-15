@@ -1,8 +1,4 @@
-/**
- * Produces a stable content hash for a paper's PDF so the indexer can skip
- * unchanged inputs across reruns. Hash is over the raw bytes; tiny but enough
- * to detect any modification.
- */
+// Hashes a paper's PDF bytes so the indexer can skip unchanged files.
 import * as vscode from "vscode";
 import type { LocalFileSystem } from "@labshelf/core";
 

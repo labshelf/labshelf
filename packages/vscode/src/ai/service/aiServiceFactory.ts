@@ -1,9 +1,5 @@
-/**
- * Wires the AI subsystem together from the dependencies the extension
- * already constructs (its opened AI storage, event bus, logger, paths).
- * Returns null when AI is disabled in settings. Embeddings come from the
- * hash provider.
- */
+// Builds the AI service from the extension's storage, event bus and logger.
+// Returns null when AI is disabled in settings.
 import * as vscode from "vscode";
 import type { ILogger, LocalFileSystem, PaperRecord, PdfDocumentOpener } from "@labshelf/core";
 import type { AiStorage } from "../ports.js";

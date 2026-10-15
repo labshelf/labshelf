@@ -1,9 +1,5 @@
-/**
- * Façade over the AI subsystem. UI surfaces, commands, and other services
- * interact with the AI feature set exclusively through this interface — that
- * preserves the no-direct-DB-from-UI rule and gives us one place to swap or
- * stub the implementation in tests.
- */
+// Exposes the AI subsystem to UI, commands and services.
+// INVARIANT: callers reach AI data only through this facade, never the database directly.
 import type { AiPaperMetadata, ClaimSearchResult, IEmbeddingProvider, ILogger, ReadingEvent, VectorFilter, VectorMatch } from "@labshelf/core";
 import { retrieveTopK, searchByClaim as runSearchByClaim } from "@labshelf/core";
 import type { AiStores } from "../ports.js";

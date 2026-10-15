@@ -1,9 +1,6 @@
 /*
- * Toolbar popup. Same product language as the library page and the VS Code
- * extension, kept to one task: what paper is this, where does it go, save.
- * Brand header with icon actions, the recognised paper, three compact
- * fields (folder, tags, note) and the primary button; outcomes replace the
- * form with a single status block. Requires ui/styles/tokens.css + base.css.
+ * Styles the toolbar popup: header, recognised paper, compact fields, primary button, status block.
+ * Requires core tokens.css and base.css.
  */
 body { width: 340px; background: var(--ls-widget-bg); }
 /* The "No PDF found" dialog is position:fixed and does not grow the popup; a

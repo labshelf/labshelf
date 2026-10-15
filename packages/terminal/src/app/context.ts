@@ -1,8 +1,5 @@
-/**
- * Composition root of the terminal app (the counterpart of packages/vscode/src/extension.ts): builds the concrete
- * adapters and wires the services for one library. The TUI and the CLI both start here; nothing else instantiates
- * adapters.
- */
+// Builds the concrete adapters and wires the services for one library.
+// INVARIANT: the TUI and the CLI both start here; nothing else instantiates adapters.
 import * as path from "node:path";
 
 import { BibTeXService, Logger, PdfImportParser, type ILogger, type LibraryStore, type SyncCoordinator } from "@labshelf/core";

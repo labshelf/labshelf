@@ -1,8 +1,5 @@
-/**
- * Persistence for reading events. Used to feed the intellectual heatmap (F17)
- * and reading-session analytics. Bounded retention — caller may purge old
- * events with `pruneOlderThan` if needed.
- */
+// Persists reading events for the heatmap and reading-session analytics.
+// Callers bound retention with `pruneOlderThan`.
 import type { DatabaseSync } from "node:sqlite";
 import type { ReadingEvent } from "@labshelf/core";
 

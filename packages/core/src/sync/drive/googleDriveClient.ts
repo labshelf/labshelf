@@ -35,7 +35,7 @@ async function assertOk(res: Response): Promise<void> {
   }
 }
 
-/** Thin HTTP client for Google Drive REST API v3. @usedBy googleDriveProvider. */
+/** Thin HTTP client for Google Drive REST API v3. */
 export class DriveClient {
   constructor(private readonly getToken: () => Promise<string>) {}
 

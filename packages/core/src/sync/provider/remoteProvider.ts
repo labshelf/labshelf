@@ -1,9 +1,4 @@
-/**
- * Provider-agnostic contract for a remote storage backend (Google Drive, Dropbox, …) consumed by the sync engine.
- *
- * @depends none
- * @dependents sync/core/*, sync/drive/googleDriveProvider
- */
+// Declares the provider-agnostic contract of a remote storage backend used by the sync engine.
 
 /** A namespace splits visible library content from hidden app data. */
 export type RemoteNamespace = "library" | "appdata";

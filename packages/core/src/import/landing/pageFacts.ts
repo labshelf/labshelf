@@ -1,8 +1,5 @@
-/**
- * Turns the raw evidence of a page into the paper's identifiers, the bibliographic fields it states in its
- * citation_* / Dublin Core / PRISM meta tags, and the PDF links worth trying. These are the tags Google Scholar
- * indexes, so every serious publisher emits them, even when a registry lookup fails.
- */
+// Interprets a page's citation_* / Dublin Core / PRISM meta tags into paper facts and PDF links to try.
+// Publishers emit these tags for Google Scholar, so they are present even when a registry lookup fails.
 import { extractYear, type ResolvedMetadata } from "../metadata/index.js";
 import { authorsOf, keywordsOf, pagesOf, squash } from "./citationFields.js";
 import { identifiersOf } from "./pageIdentifiers.js";

@@ -1,8 +1,5 @@
-/**
- * Makes pdf.js usable inside an Electron utility process such as the VS Code extension host. pdf.js decides at import
- * time whether it runs under Node and an Electron utility process fails that test, so it assumes a browser and reads
- * navigator and DOMMatrix, which do not exist there.
- */
+// Makes pdf.js usable inside an Electron utility process such as the VS Code extension host.
+// PLATFORM: pdf.js tests for Node at import time, an Electron utility process fails that test, and pdf.js then reads navigator and DOMMatrix, which do not exist there.
 const PLATFORM_BY_OS: Record<string, string> = {
   linux: "Linux x86_64",
   darwin: "MacIntel",

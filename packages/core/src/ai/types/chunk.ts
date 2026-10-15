@@ -1,9 +1,4 @@
-/**
- * Domain types for textual chunks produced from a paper during ingestion.
- *
- * A chunk is the unit of embedding. Section chunking is the default; sliding
- * window chunking is reserved for paraphrase detection (F23).
- */
+// Defines the paper chunk, the unit of embedding produced during ingestion.
 
 export type ChunkKind = "section" | "sliding" | "title" | "abstract";
 

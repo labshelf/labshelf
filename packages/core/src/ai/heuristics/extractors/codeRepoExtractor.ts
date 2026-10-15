@@ -1,8 +1,5 @@
-/**
- * F13 — Code-repo discovery. Extracts GitHub and GitLab repository URLs.
- * Status fields are left undefined; the consumer (vscode repoHealthChecker)
- * fills them in via background HTTP checks.
- */
+// Extracts GitHub and GitLab repository URLs from text.
+// Status stays "unknown"; a consumer fills it in via HTTP checks.
 import type { CodeRepoRef } from "../../types/index.js";
 
 const GITHUB = /https?:\/\/(?:www\.)?github\.com\/([\w.-]+\/[\w.-]+)/gi;

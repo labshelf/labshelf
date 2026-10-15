@@ -1,9 +1,5 @@
-/**
- * Colors of the TUI. Only the 16 ANSI colors and SGR attributes are used, so the app takes the palette of the user's
- * terminal theme, light or dark, the way yazi's default theme does. NO_COLOR (https://no-color.org) drops colors and
- * keeps attributes. Colour roles come from the core design tokens; this file only picks the ANSI index that stands
- * for each role.
- */
+// Maps the core design-token colour roles to ANSI indexes for the TUI.
+// PLATFORM: only the 16 ANSI colors are used so the user's terminal theme applies; NO_COLOR drops colors, keeps attributes.
 import {
   ANNOTATION_COLORS,
   type AnnotationColor,

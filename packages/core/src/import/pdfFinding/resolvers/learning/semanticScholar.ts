@@ -1,13 +1,12 @@
-/**
- * The Semantic Scholar Graph API (no key), valued for `externalIds` (arXiv, PubMed Central, ACL) and its open-access
- * link. The unauthenticated endpoint throttles hard, so there is one call per search, no retry, and a 429 is a soft
- * miss. The DOI keeps its slash in the path, because an encoded one is rate-limited too.
- */
+// Looks up the keyless Semantic Scholar Graph API for `externalIds` (arXiv, PMC, ACL) and the open-access link.
 import { encodeDoiPathSegment, normalizeArxivId, normalizePmcid, arxivIdFromUrl, pmcidFromUrl } from "../../../identifiers/index.js";
 import { lookupJson } from "../timedFetch.js";
 import type { PdfResolver, ResolveContext } from "../../types.js";
 import { acceptRecord } from "./acceptRecord.js";
 import { learnIds } from "./learnIds.js";
+
+// TRAP: the unauthenticated endpoint throttles hard, so one call per search, no retry, and a 429 is a soft miss.
+// The DOI keeps its slash in the path because an encoded one is rate-limited too.
 
 interface S2Paper {
   title?: string | null;

@@ -12,7 +12,6 @@ const PREF_KEYS: readonly (keyof ReaderPrefs)[] = [
 
 /**
  * Settings are user-editable JSON, so every value is validated (shared normalizeReaderPrefs) and falls back to its default.
- * @usedBy pdf-viewer/PdfViewerPanel.ts
  * @returns the current reader preferences.
  */
 export function getReaderPrefs(): ReaderPrefs {
@@ -24,7 +23,6 @@ export function getReaderPrefs(): ReaderPrefs {
 
 /**
  * Whether the reader opens beside the current editor (ViewColumn.Two) or full-width in the active group (default).
- * @usedBy pdf-viewer/PdfViewerPanel.ts
  * @returns the view column to open the reader panel in.
  */
 export function getReaderViewColumn(): vscode.ViewColumn {

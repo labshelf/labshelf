@@ -1,13 +1,9 @@
-/**
- * Finds every publication identifier a PDF might carry — DOI, arXiv, PubMed,
- * PMC and ISBN — in its metadata, link annotations and text. Returns ranked
- * candidates rather than one guess, because text recovered by OCR or from a
- * damaged font encoding routinely contains near-misses that only an online
- * lookup can tell apart.
- */
+// Finds DOI, arXiv, PubMed, PMC and ISBN identifiers in a PDF's metadata, link annotations and text.
 import { asString } from "../metadata/index.js";
 import { cleanDoiCandidate, decodeUrlEscapes } from "./doi.js";
 import type { DetectedIdentifier, IdentifierType } from "./types.js";
+
+// TRAP: returns ranked candidates, not one guess; OCR or damaged-font text holds near-misses only an online lookup can tell apart.
 
 // A whitelist, not a "not whitespace" scan: PDF text runs a DOI into the next
 // word, and the SICI form (`10.1002/(SICI)1097-4571(199806)49:8<693::AID-ASI4>3.0.CO;2-O`)

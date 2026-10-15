@@ -1,10 +1,5 @@
-/**
- * Detects section headings in extracted PDF text using heading regexes that
- * cover the most common academic paper conventions (numbered sections,
- * Introduction / Methods / Results / Discussion / References anchors).
- *
- * No model required. Returns headings with their offset in the joined text.
- */
+// Detects section headings in extracted PDF text with numbered and named heading regexes.
+// Returns headings with their offset in the joined text.
 import type { PaperSection } from "../types/index.js";
 
 const NUMBERED = /^\s{0,4}(\d{1,2}(?:\.\d{1,2}){0,2})\s+([A-Z][^\n]{2,80})$/gm;

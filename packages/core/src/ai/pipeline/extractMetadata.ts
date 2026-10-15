@@ -1,8 +1,4 @@
-/**
- * Pipeline stage: derives AiPaperMetadata from extracted PDF text using only
- * heuristics. The runtime persists the returned object; no DB access happens
- * here.
- */
+// Derives AiPaperMetadata from extracted PDF text using heuristics only; the caller persists it.
 import type { ExtractedPdfText, AiPaperMetadata } from "../types/index.js";
 import {
   detectDatasets,

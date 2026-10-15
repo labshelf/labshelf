@@ -1,11 +1,5 @@
-/**
- * Platform-agnostic filesystem abstraction. Implementations live in the
- * consuming package (VS Code, browser) and are injected via constructor.
- *
- * Paths are POSIX-style relative or absolute strings — never platform URI
- * objects — so the same services run on top of vscode.workspace.fs and
- * IndexedDB without leaking platform details into core.
- */
+// Declares the filesystem port that apps implement and inject.
+// INVARIANT: paths are POSIX-style strings, never platform URI objects.
 export interface IFileSystem {
   /** Creates a directory (and any parents) at the given path, idempotent. */
   ensureDir(path: string): Promise<void>;

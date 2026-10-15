@@ -1,14 +1,11 @@
-/**
- * Reader preferences for the browser extension: the same settings VS Code keeps under labshelf.reader.*, stored in
- * bx.storage.local and validated with the shared normalizer. The options page edits them; open reader tabs follow live.
- */
+// Stores the reader preferences (VS Code's labshelf.reader.* settings) in bx.storage.local.
+// Values pass through the shared normalizer; open reader tabs follow changes live.
 import { normalizeReaderPrefs, type ReaderPrefs } from "@labshelf/core";
 import { bx } from "../platform/browserApi";
 
 export const READER_PREFS_KEY = "labshelf.readerPrefs";
 
 /**
- * @usedBy reader/index, options/index
  * @returns the stored preferences, every missing or invalid value replaced by its default.
  */
 export async function loadReaderPrefs(): Promise<ReaderPrefs> {
@@ -19,7 +16,6 @@ export async function loadReaderPrefs(): Promise<ReaderPrefs> {
 
 /**
  * Merges a patch into the stored preferences; the result is normalized before it is written.
- * @usedBy options/index
  * @returns the preferences now stored.
  */
 export async function saveReaderPrefs(patch: Partial<ReaderPrefs>): Promise<ReaderPrefs> {
@@ -30,7 +26,6 @@ export async function saveReaderPrefs(patch: Partial<ReaderPrefs>): Promise<Read
 
 /**
  * Fires whenever another page (the options page) changes the stored preferences.
- * @usedBy reader/index
  * @returns a function that removes the listener.
  */
 export function onReaderPrefsChange(cb: (prefs: ReaderPrefs) => void): () => void {

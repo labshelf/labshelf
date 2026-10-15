@@ -1,10 +1,4 @@
-/**
- * Abstract vector store used by RAG and search features.
- *
- * VSCode implements this with sqlite-vec on top of the AI subsystem's own SQLite database; the browser
- * implementation may use a flat in-memory index. The contract is the minimum needed for top-k retrieval with
- * metadata filtering.
- */
+// Declares the vector store port: top-k retrieval with metadata filtering.
 export interface VectorRecord {
   id: number;
   paperId: string;

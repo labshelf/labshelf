@@ -1,8 +1,4 @@
-/**
- * Bottom-right notifications styled after VS Code toasts. Errors stay until
- * dismissed; info/ok messages fade after a few seconds, so failures never hide
- * the sync status. Styled by toast.css.
- */
+// Shows bottom-right notifications; errors stay until dismissed, info/ok messages fade after a few seconds.
 import { icon } from "../../icons/index.js";
 import { el } from "../dom.js";
 

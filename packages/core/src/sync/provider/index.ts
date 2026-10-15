@@ -1,9 +1,4 @@
-/**
- * Barrel re-export for sync/provider public symbols.
- *
- * @depends remoteProvider, authProvider, remotePathResolver
- * @dependents sync/index, sync/core/*, sync/drive/*
- */
+// Exports the public remote-provider contract and path resolver.
 export type {
   RemoteNamespace,
   RemoteFile,

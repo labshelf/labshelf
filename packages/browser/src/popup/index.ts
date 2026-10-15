@@ -1,15 +1,5 @@
-/**
- * Popup bootstrap. One job: save the paper on this tab. It shows what was
- * recognised (title, authors · venue · year, whether the PDF was found),
- * lets the user pick the folder and add tags and a note, and saves. Sync,
- * the library and settings are icon buttons in the header; Drive connection
- * lives on the options page.
- *
- * States (data-state on #popup): loading → form (a paper, not yet saved) |
- * library (already saved) | empty (no paper here) → saving → saved. A paper
- * whose PDF the search cannot reach is never written silently: the user is
- * asked first through the shared "No PDF found" dialog.
- */
+// Saves the paper on the current tab from the toolbar popup.
+// States (data-state on #popup): loading, form | library | empty, saving, saved.
 import { bx } from "../platform/browserApi";
 import type { FoldersData } from "../platform/runtimeMessages";
 import { $ } from "@labshelf/core/dom";

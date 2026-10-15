@@ -1,18 +1,5 @@
-/**
- * Orchestrates capture in two steps, so the popup can show the paper before
- * anything is written:
- *   1. inspect — probe the tab, read the page's citation tags, settle the
- *      record (registry by DOI/arXiv/PMID, else a checked title search) and
- *      check whether the library already holds it;
- *   2. save — find the PDF (core's resolver chain; each candidate proven by
- *      its bytes, a bot-checked one retried through a background tab) and
- *      write the paper into the chosen collection with the user's tags and
- *      note. No PDF reachable still saves the record, and says so.
- *
- * The PDF search starts as soon as a draft exists (the popup asks for it
- * while the user is still choosing a folder), so Save is usually instant.
- * Scholar results enter at step 1 through capture/scholarCapture.
- */
+// Captures a paper in two steps, inspect then save, so the popup shows the paper before anything is written.
+// The PDF search starts once a draft exists, so Save is usually instant.
 import { PAGE_TRUST, findInLibrary, interpretPage, makeResolveContext, resolvePdf, resolveMetadata, withAbstract } from "@labshelf/core";
 import type {
   DetectedIds, MetadataOrigin, MetadataSource, PageFacts, PaperRecord, PdfAttempt, PdfCandidate, PdfFetchOptions,

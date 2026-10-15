@@ -1,10 +1,4 @@
-/**
- * Minimal argv parser for the labshelf command: a command word, positionals, and long/short flags. Flags listed in
- * VALUE_FLAGS take a value ("--to ML", "--to=ML", "-o refs.bib"); every other flag is a boolean.
- *
- * @depends none
- * @dependents main, cli/commands
- */
+// Parses the labshelf argv into a command word, positionals and long/short flags.
 
 export interface ParsedArgs {
   command: string | undefined;
@@ -12,11 +6,11 @@ export interface ParsedArgs {
   flags: Record<string, string | boolean>;
 }
 
+// Flags listed here take a value ("--to ML", "--to=ML", "-o refs.bib"); every other flag is a boolean.
 const VALUE_FLAGS = new Set(["library", "to", "output", "collection", "dump-frame", "keys", "sort"]);
 const SHORT: Record<string, string> = { L: "library", o: "output", c: "collection", r: "recursive", h: "help", v: "version", j: "json" };
 
 /**
- * @usedBy main
  * @returns the parsed arguments
  */
 export function parseArgs(argv: string[]): ParsedArgs {
@@ -52,7 +46,6 @@ export function parseArgs(argv: string[]): ParsedArgs {
 }
 
 /**
- * @usedBy cli/commands
  * @returns a string flag value, or undefined
  */
 export function stringFlag(flags: ParsedArgs["flags"], name: string): string | undefined {

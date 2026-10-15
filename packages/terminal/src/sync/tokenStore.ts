@@ -1,9 +1,5 @@
-/**
- * Where the terminal keeps its Google Drive tokens. The VS Code extension keeps its own in VS Code's SecretStorage,
- * which no other process can read, so the terminal signs in once on its own (same Google account and OAuth client,
- * hence the same Drive files). Storage, best first: the macOS Keychain, the freedesktop Secret Service (secret-tool),
- * and a 0600 file in the config directory. LABSHELF_TOKEN_STORE=file forces the file.
- */
+// Stores the terminal's Google Drive tokens: macOS Keychain, Secret Service (secret-tool), else a 0600 file.
+// LABSHELF_TOKEN_STORE=file forces the file.
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, promises as fs } from "node:fs";
 import * as os from "node:os";
@@ -11,6 +7,9 @@ import * as path from "node:path";
 
 import { parseTokens, type TokenData, type TokenStore } from "@labshelf/core";
 import { sharedConfigDir } from "@labshelf/core/node";
+
+// PLATFORM: VS Code's SecretStorage is unreadable by other processes, so the terminal signs in on its own
+// (same Google account and OAuth client, hence the same Drive files).
 
 import { hasCommand } from "../platform/index.js";
 

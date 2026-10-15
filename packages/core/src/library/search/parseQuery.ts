@@ -1,17 +1,4 @@
-/**
- * Parses the query language shared by the apps:
- *
- *   attention transformer        every word must match (title, authors, venue, abstract, tags, note, ids…)
- *   "exact phrase"               quoted phrase
- *   -survey                      exclude a word
- *   tag:nlp  #nlp                has the tag (prefix match)
- *   status:reading  is:unread    reading status
- *   year:2017  year:2015..2020   year:>2018  year:<2000
- *   author:vaswani               one field: author, kw, venue, note, key, abstract
- *   has:pdf  no:pdf              has:note, has:doi, has:tags, has:abstract
- *
- * Matching is case- and accent-insensitive.
- */
+// Parses the search query language shared by the apps into a structured query.
 import { fold } from "./text/index.js";
 import {
   FIELD_KEYS, HAS_ALIASES, HAS_KEYS, MISSING_KEYS, STATUS_ALIASES, STATUS_KEYS, TAG_KEYS, YEAR_KEYS, isOperatorKey,
@@ -54,9 +41,15 @@ function applyOperator(token: string, q: Query): boolean {
   return false;
 }
 
-/**
- * @returns the structured query
- */
+// Syntax (matching is case- and accent-insensitive):
+//   attention transformer        every word must match (title, authors, venue, abstract, tags, note, ids…)
+//   "exact phrase"               quoted phrase
+//   -survey                      exclude a word
+//   tag:nlp  #nlp                has the tag (prefix match)
+//   status:reading  is:unread    reading status
+//   year:2017  year:2015..2020   year:>2018  year:<2000
+//   author:vaswani               one field: author, kw, venue, note, key, abstract
+//   has:pdf  no:pdf              has:note, has:doi, has:tags, has:abstract
 export function parseQuery(text: string): Query {
   const q = emptyQuery();
   for (const token of tokenize(text)) {

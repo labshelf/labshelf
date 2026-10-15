@@ -1,10 +1,5 @@
-/**
- * Reloads the library store from disk, diffs the result against what it held before, and emits the paper events the
- * list panel, the sidebar tree and the AI indexer listen for. Local mutations and external changes (sync, a file
- * watcher) both call this, so there is exactly one reindex path.
- *
- * Kept out of extension.ts on purpose: extension.ts is excluded from unit tests.
- */
+// Reloads the library store from disk, diffs it against the previous state and emits paper events.
+// Local mutations and external changes share this single reindex path; it lives outside extension.ts, which tests exclude.
 import { diffPapers } from "@labshelf/core";
 import type { LibraryStore, PaperRecord } from "@labshelf/core";
 import { EVENTS, EventBus } from "../../events/index.js";

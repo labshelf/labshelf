@@ -1,12 +1,9 @@
-/**
- * Reflects sync state on the toolbar action badge. Disconnected = no badge;
- * connected idle = dim dot; syncing = cycling spinner in blue; error = "!" in
- * red. A polling loop updates the badge ~1×/s so transient sync flips show up
- * without bespoke event plumbing.
- */
+// Reflects sync state on the toolbar action badge: none, idle dot, spinner or "!".
+// Polls about once a second.
 import { COLOR_TOKENS } from "@labshelf/core";
 import { bx, type SyncStatusData } from "../platform";
 
+// Polling shows transient sync flips without bespoke event plumbing.
 const POLL_MS = 1000;
 // ASCII-only spinner frames (project rule: no emoji in UI text).
 const SPINNER_FRAMES = [".  ", ".. ", "...", " ..", "  ."];

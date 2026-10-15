@@ -1,8 +1,5 @@
-/**
- * Classifies the children of one directory under papers/: a folder with metadata.yaml is a paper, one with only
- * paper.pdf is an orphan, any other folder is a collection. Dot entries are hidden, and a symlinked folder or file
- * counts as absent because the port's stat reports it as neither a file nor a folder.
- */
+// Classifies the children of one papers/ directory as papers, orphans (paper.pdf only) or collections.
+// PLATFORM: a symlinked folder or file counts as absent because the port's stat reports it as neither.
 import { METADATA_FILE, PDF_FILE } from "../layout.js";
 import { nameCollator } from "../model/index.js";
 import type { LocalStat } from "../../ports/index.js";

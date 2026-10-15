@@ -1,8 +1,8 @@
-// Cross-process lock around a sync run. The VS Code extension and the terminal app sync the same local library with
-// the same manifest file, so two runs at once would race on the manifest and on the files themselves. The lock is a
-// small JSON file created exclusively next to the manifest; a holder refreshes its heartbeat while it works, and a
-// lock whose heartbeat stopped (crash, killed process) is taken over.
+// Holds a cross-process lock around a sync run, as an exclusive JSON file next to the manifest.
+// A holder refreshes its heartbeat; a lock whose heartbeat stopped (crash, killed process) is taken over.
 import type { LockStore } from "../../../ports/index.js";
+
+// INVARIANT: apps syncing the same library share one manifest, so two simultaneous runs would race on it and on files.
 
 /** Who is syncing: shown to the other app while it waits. */
 export interface SyncLockOwner {

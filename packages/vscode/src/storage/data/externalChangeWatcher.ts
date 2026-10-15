@@ -1,8 +1,5 @@
-/**
- * Notices library changes made outside this VS Code window — by the terminal app, a sync it ran, another window, or a
- * file manager — and lets the extension re-index, so papers added, edited, moved or removed elsewhere appear without a
- * reload. Watches papers/** and the sidecars; a burst of events (a sync pulling twenty papers) costs one re-index.
- */
+// Detects library changes made outside this window (terminal app, sync, file manager) and triggers a re-index.
+// Watches papers/** and the sidecars; a burst of events is debounced into one re-index.
 import * as vscode from "vscode";
 
 import { SIDECAR_FILE, isExternalChangeNoise, type LibraryLayout } from "@labshelf/core";

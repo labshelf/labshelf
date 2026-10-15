@@ -1,8 +1,5 @@
-/**
- * One physical chord can reach the reader twice: through the webview's own keydown and through a contributed VS Code
- * keybinding that the host turns into a `command` message. Only the second delivery *from the other source* is a
- * duplicate; repeats from the same source are genuine (held key, repeated palette command) and must all run.
- */
+// Detects a keyboard chord delivered twice, once by the webview keydown and once by a host command message.
+// INVARIANT: only a repeat from the other source is a duplicate; same-source repeats (held key, palette) all run.
 
 export type ActionSource = "key" | "host";
 

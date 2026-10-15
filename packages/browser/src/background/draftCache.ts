@@ -1,20 +1,12 @@
-/**
- * Keeps capture drafts between the calls that confirm a save, so the second
- * call reuses the record and the PDF search already run:
- *   - tab drafts (the popup's inspect → findPdf → save), keyed by tab id;
- *   - Scholar drafts (the button's save → "Save without PDF"), keyed by the
- *     result's composite identity, since Scholar has no tab to key on.
- * Both caches live in the background's memory: when the browser suspends the
- * service worker they are simply rebuilt on the next call. Scholar hits are
- * untrusted page data, so that cache is size-capped as well as TTL-bounded.
- * @depends capture/index
- * @dependents background/index
- */
+// Keeps capture drafts (keyed by tab id or Scholar result identity) between the calls that confirm a save.
+// Lets the second call reuse the record and the PDF search already run.
 import { draftFromScholarHit, inspectTab } from "../capture/index";
 import type { CaptureDraft } from "../capture/index";
 import type { ScholarHit } from "../platform/runtimeMessages";
 
+// PLATFORM: both caches live in memory; a suspended MV3 service worker drops them and the next call rebuilds.
 const TTL_MS = 10 * 60_000;
+// TRAP: Scholar hits are untrusted page data, so that cache is size-capped as well as TTL-bounded.
 const SCHOLAR_MAX = 64;
 
 interface Entry {
@@ -28,7 +20,6 @@ const scholarEntries = new Map<string, { at: number; draft: Promise<CaptureDraft
 
 /**
  * The tab's draft, inspected once per URL and reused for TTL_MS.
- * @usedBy background/index
  */
 export function draftForTab(tabId: number, url: string, fresh = false): Promise<CaptureDraft> {
   const now = Date.now();
@@ -51,7 +42,6 @@ export function forgetDraft(tabId: number): void {
  * A Scholar result's cache key. hit.key falls back to the title, so the links
  * are part of the identity: two results that share a title but link to
  * different papers must not collide.
- * @usedBy scholarDraftFor, tests
  */
 export function scholarCacheKey(hit: ScholarHit): string {
   return JSON.stringify([hit.key, hit.url ?? "", hit.pdfUrl ?? "", hit.title]);
@@ -61,7 +51,6 @@ export function scholarCacheKey(hit: ScholarHit): string {
  * The Scholar result's draft, built once and reused for TTL_MS, so the
  * "Save without PDF" confirmation reuses the finished search instead of
  * re-fetching the landing page and re-running the whole chain.
- * @usedBy background/index (scholar.save)
  */
 export function scholarDraftFor(hit: ScholarHit): Promise<CaptureDraft> {
   const now = Date.now();

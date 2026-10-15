@@ -1,8 +1,4 @@
-/**
- * F03 — Citation marker extraction. Parses inline citation marks like [12],
- * [12, 13], or (Vaswani et al., 2017) and emits structured records that the
- * citation popup resolver consumes to locate the referenced paper.
- */
+// Extracts inline citation marks such as [12] or (Vaswani et al., 2017) from text.
 
 export interface CitationMark {
   kind: "numeric" | "authorYear";

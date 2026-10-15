@@ -1,10 +1,5 @@
-/**
- * Last resort for a PDF behind a bot check: open the publisher's site in a
- * background tab, let the browser itself pass the check (Cloudflare's
- * challenge resolves on its own in a real page load), then fetch the PDF
- * from inside that tab with the clearance it just earned, and close the tab.
- * The tab is inactive, so the user's focus — and the popup — stay put.
- */
+// Fetches a bot-checked PDF from inside a background tab that passed the check, then closes the tab.
+// The tab is inactive so the user's focus and the popup stay put.
 import { fetchPdf, nextHopsFromHtml } from "@labshelf/core";
 import type { FetchedPdf } from "@labshelf/core";
 import { BrowserLogger, bx } from "../../platform";

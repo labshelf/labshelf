@@ -1,9 +1,5 @@
-/**
- * Hover previews. Two ways in, one popup out: a PDF link annotation under the pointer, or a reference found in the
- * plain text under it (scans with an OCR layer, papers typeset without hyperlinks). This controller owns the timers,
- * the pending and open targets and the `attempt` token that drops stale async work; the content comes from
- * `LinkContent` and `ReferenceContent`, the drawing from `HoverPopup`.
- */
+// Opens one hover popup for a PDF link annotation or a text reference under the pointer.
+// Owns the timers, targets and the `attempt` token that drops stale async work.
 import type { CitationResolver, FloatResolver } from "../text/index.js";
 import { byId } from "../elements/index.js";
 import type { ReaderContext } from "../session/index.js";

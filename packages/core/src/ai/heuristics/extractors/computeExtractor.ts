@@ -1,11 +1,7 @@
-/**
- * F16 — Compute disclosure extraction. Detects accelerator counts/models and
- * training hours; estimates cost from a static cloud-pricing table. The table
- * lives next to the extractor because it is a single source of truth that
- * downstream UI should not duplicate.
- */
+// Extracts accelerator counts, models and training hours, and estimates cost from a static price table.
 import type { ComputeDisclosure } from "../../types/index.js";
 
+// The price table lives here as the single source of truth; UI must not duplicate it.
 const COUNT_MODEL = /\b(\d{1,4})\s?[x×]\s?(A100|H100|V100|TPU\s?v\d|MI\d{3}X?)\b/i;
 const HOURS = /\b([\d,.]+)\s*(?:GPU|TPU)?-?hours?\b/i;
 

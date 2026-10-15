@@ -1,8 +1,4 @@
-/**
- * Modal confirmation dialog styled after VS Code's custom dialogs. Stands in
- * for `window.confirm`, which the browser renders in its own chrome.
- * Resolves with the chosen button's id, or undefined when dismissed.
- */
+// Shows a modal confirmation dialog in place of `window.confirm`; resolves with the chosen button id, or undefined when dismissed.
 import { icon } from "../../icons/index.js";
 import { el } from "../dom.js";
 import { mountOverlay } from "./overlay.js";

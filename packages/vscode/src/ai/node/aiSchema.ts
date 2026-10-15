@@ -1,8 +1,5 @@
-/**
- * Ensures the AI subsystem tables exist on its own SQLite database. Schema is additive — calling it multiple times
- * is safe — and embeddings are stored as raw BLOB float32 vectors. A future migration may attach sqlite-vec for
- * accelerated top-k, but the table layout is deliberately compatible with both flat-scan and vec0-backed access.
- */
+// Creates the AI tables on its SQLite database; safe to call repeatedly.
+// Embeddings are raw float32 BLOBs, a layout usable by flat-scan or sqlite-vec access.
 import type { DatabaseSync } from "node:sqlite";
 
 const SCHEMA = `

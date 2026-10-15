@@ -1,7 +1,8 @@
-// Builds the paperId ↔ Drive folder name maps for the "library" namespace. Every surface that syncs the same local
-// library (the VS Code extension and the terminal app) must name Drive folders identically, or one of them would
-// read the other's folders as new remote papers. This module is that single rule.
+// Builds the paperId ↔ Drive folder name maps for the "library" namespace.
 import type { FolderNameMaps } from "../pipeline/index.js";
+
+// INVARIANT: every app syncing the same library must name Drive folders identically, or one reads the other's
+// folders as new remote papers.
 
 // Drive accepts almost any name, but control characters and path separators would break the local mapping back.
 const UNSAFE_NAME_CHARS = /[\x00-\x1f\x7f/\\]/g;

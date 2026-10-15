@@ -1,9 +1,5 @@
-/**
- * Key bindings of the TUI, as data: the dispatcher, the help screen and the prefix hints are all generated from this
- * table, so they cannot disagree. Keys follow yazi where the meaning carries over (hjkl, gg/G, H/L history, J/K preview
- * scroll, space/v selection, x/p cut-paste, f filter, / find, z jump, , sort, ? help) and add paper-specific ones
- * (m status, t tags, e note, y copy citation formats, S sync).
- */
+// Declares the TUI key bindings as data; the dispatcher, help screen and prefix hints are generated from it.
+// Keys follow yazi where the meaning carries over and add paper-specific ones.
 
 export type ActionId =
   | "down" | "up" | "top" | "bottom" | "halfDown" | "halfUp" | "pageDown" | "pageUp"

@@ -1,22 +1,11 @@
-/**
- * Google Drive OAuth via the WebExtension identity API. Uses
- * `bx.identity.launchWebAuthFlow` with a single "Web application" OAuth client
- * that has both the chromiumapp.org (Chrome) and allizom.org (Firefox) redirect
- * URIs registered. The redirect URI is selected at runtime via
- * `bx.identity.getRedirectURL()`. Uses the implicit `response_type=token`
- * flow — no client secret is needed or shipped with the extension.
- *
- * Because the implicit flow returns no refresh token, this provider renews
- * the access token by re-running the same flow with `interactive: false`
- * before the current token expires.
- *
- * Implements the cross-platform `IAuthProvider` from @labshelf/core, so the
- * same Drive RemoteProvider works in VS Code and in the browser.
- */
+// Authorizes Google Drive through bx.identity.launchWebAuthFlow and implements core's IAuthProvider.
+// One "Web application" OAuth client has the chromiumapp.org and allizom.org redirect URIs; getRedirectURL() picks one.
 import { BUILT_IN_GOOGLE_CLIENT, GOOGLE_AUTH_URL, GOOGLE_DRIVE_SCOPES, GOOGLE_REVOKE_URL, type IAuthProvider } from "@labshelf/core";
 import { bx } from "../../platform/browserApi";
 import { clearToken, loadToken, saveToken, type StoredToken } from "./tokenStore";
 
+// INVARIANT: the implicit response_type=token flow ships no client secret and returns no refresh token, so the token
+// is renewed by re-running the flow with `interactive: false` before it expires.
 const REFRESH_LEEWAY_MS = 60_000;
 
 function buildAuthUrl(redirectUri: string, prompt: "none" | "consent"): string {

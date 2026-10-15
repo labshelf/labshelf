@@ -1,10 +1,5 @@
-/**
- * Platform-agnostic contract for text embedding providers.
- *
- * Concrete implementations live in consumer packages (e.g. the hash provider in
- * packages/vscode/src/ai/runtime). The pipeline never depends on a specific
- * model file; only on the dimensionality declared by the provider.
- */
+// Declares the port for text embedding providers; apps implement it.
+// INVARIANT: the pipeline depends only on the provider's declared dimensions, never on a model file.
 export interface IEmbeddingProvider {
   readonly dimensions: number;
   readonly modelId: string;

@@ -1,9 +1,5 @@
-/**
- * Reads bibliographic data out of a PDF's XMP packet. Publishers embed far
- * more there (journal, volume, issue, page range, DOI, ISSN) than in the
- * legacy Info dictionary, so XMP is the best offline metadata source when no
- * DOI can be resolved online.
- */
+// Reads bibliographic data from a PDF's XMP packet, the richest offline metadata source.
+// Publishers embed journal, volume, issue, pages, DOI and ISSN there, beyond the Info dictionary.
 import { extractDoi } from "../identifiers/index.js";
 import { collapseWhitespace, extractYear, type ResolvedMetadata } from "../metadata/index.js";
 import type { XmpMetadataLike } from "./types.js";

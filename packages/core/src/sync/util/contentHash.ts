@@ -1,18 +1,9 @@
-/**
- * Computes a stable SHA-256 hex digest of file content via Web Crypto, so the
- * same routine runs under Node 20+, Electron, and browser extension contexts.
- *
- * @depends none (uses globalThis.crypto.subtle)
- * @dependents sync/core/treeScan, sync/core/syncApply
- */
+// Computes the SHA-256 hex digest of file content.
+// PLATFORM: uses Web Crypto so the same routine runs under Node 20+ and browser extension contexts.
 
 const HEX = "0123456789abcdef";
 
-/**
- * Returns the lowercase hex SHA-256 digest of the given bytes.
- * @usedBy treeScan, syncApply
- * @returns Promise<string>
- */
+/** Returns the lowercase hex SHA-256 digest of the given bytes. */
 export async function sha256Hex(content: Uint8Array): Promise<string> {
   const buffer = await crypto.subtle.digest("SHA-256", content as Uint8Array<ArrayBuffer>);
   const view = new Uint8Array(buffer);

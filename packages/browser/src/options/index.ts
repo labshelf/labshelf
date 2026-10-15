@@ -1,8 +1,5 @@
-/**
- * The options page: builds the settings page from the core components, loads the stored settings into the forms and
- * autosaves every change (debounced, with a "Saved" flag), as the VS Code settings editor does. The reader
- * preferences are the browser twin of VS Code's labshelf.reader.* settings.
- */
+// Builds the options page from core components and autosaves every change, debounced, with a "Saved" flag.
+// Reader preferences mirror VS Code's labshelf.reader.* settings.
 import { $, settingsPage } from "@labshelf/core/dom";
 import { BrowserLogger, getSettings, updateSettings } from "../platform";
 import { loadReaderPrefs, saveReaderPrefs } from "../reader/readerPrefsStore";

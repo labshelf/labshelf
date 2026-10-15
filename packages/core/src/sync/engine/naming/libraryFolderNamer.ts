@@ -1,15 +1,4 @@
-// Decides the local folder name of each Drive folder in the "library" namespace. Drive folders of papers are named
-// after titles (see folderNames.ts), locally they are named after the paper id; a device that does not know a title
-// yet (a paper added elsewhere), or that knows an older title, would bring the folder down under its title, giving
-// the paper a second id and orphaning its sidecar. The rules, in order:
-//
-//  1. A folder synced before keeps the local name its files were synced under (found through the manifest by remote
-//     file id) — so nothing already on disk is ever renamed by a title change.
-//  2. A paper folder new to this device is named after the citekey in its metadata.yaml, which every LabShelf surface
-//     writes equal to the paper id (preferred over the title, which two papers may share).
-//  3. A title this device knows maps to its paper id.
-//  4. Otherwise the display name is kept (collections, foreign folders).
-//
+// Decides the local folder name of each Drive folder in the "library" namespace.
 // The rank of each answer lets scanRemoteTree settle two folders claiming one name: the stronger claim keeps it.
 import { METADATA_FILE, parsePaperMetadata } from "../../../library/index.js";
 import type { RemoteProvider } from "../../provider/remoteProvider.js";
@@ -31,6 +20,15 @@ export function isSafeFolderName(name: string): boolean {
   return name.length > 0 && name.length <= 255 && name !== "." && name !== ".." && !/[\x00-\x1f\x7f/\\]/.test(name);
 }
 
+// TRAP: Drive names papers by title but locally they are named by id; a device that does not know a title yet (or
+// knows an older one) would bring the folder down under its title, giving the paper a second id and orphaning its
+// sidecar. Rules, in order:
+//  1. A folder synced before keeps the local name its files were synced under (manifest, by remote file id), so a
+//     title change never renames anything on disk.
+//  2. A paper folder new to this device is named after the citekey in its metadata.yaml, which every surface writes
+//     equal to the paper id (preferred over the title, which two papers may share).
+//  3. A title this device knows maps to its paper id.
+//  4. Otherwise the display name is kept (collections, foreign folders).
 /**
  * Builds the namer for one sync run.
  * @returns the namer passed to scanRemoteTree

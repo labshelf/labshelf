@@ -1,8 +1,5 @@
-/**
- * Typed wrapper around bx.storage.local for user-facing preferences.
- * The options page reads/writes here, and resolvers consult these values to
- * decide whether to attempt Sci-Hub, which mirror to use, etc.
- */
+// Reads and writes the user-facing preferences held in bx.storage.local.
+// The options page edits them; resolvers consult them (Sci-Hub toggle, mirror).
 import { bx } from "./browserApi";
 import { DEFAULT_CONTACT_EMAIL, PAPERS_DIR } from "@labshelf/core";
 

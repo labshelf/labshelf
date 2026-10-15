@@ -1,8 +1,5 @@
-/**
- * Recognises a paper that is already in the library, so the host can say "In LabShelf" instead of saving a
- * duplicate. A DOI or arXiv id settles it; otherwise the normalised title must match exactly and the years must
- * not disagree.
- */
+// Finds the library record that matches a queried paper, so the host can skip saving a duplicate.
+// A DOI or arXiv id settles it; otherwise the normalised title must match and the years must not disagree.
 import { titleKey } from "../../library/index.js";
 import type { PaperRecord } from "../../model/index.js";
 

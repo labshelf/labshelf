@@ -1,18 +1,5 @@
-/**
- * Google Scholar content script: puts a "Save to LabShelf" split button under
- * each result's right-hand links (where Scholar shows "[PDF] host"), the way
- * reference managers do. The main part saves into the last-used folder; the
- * chevron opens the kit's menu to pick another one. Results already in the
- * library show "In LabShelf" (green mark) and open the paper in the library.
- *
- * The button is the extension's own design (--ls-* tokens, VS Code split
- * button: brand mark, label, separator, chevron) rendered in a shadow root,
- * so Scholar's stylesheet cannot reshape it. All work happens in the
- * background (scholar.save); this script reads the result, renders state and
- * survives Scholar re-rendering its result list. When the search finds no PDF,
- * the user is asked first (shared "No PDF found" dialog, in the overlay shadow
- * root); a result saved without a PDF reads distinctly, not as complete.
- */
+// Adds a "Save to LabShelf" split button to each Google Scholar result and renders its saved state.
+// PLATFORM: the button lives in a shadow root so Scholar's stylesheet cannot reshape it; all saving runs in the background.
 import { bx } from "../platform/browserApi";
 import type { IfNoPdf } from "@labshelf/core";
 import type { FoldersData, LookupData, RuntimeMessage, RuntimeResponse, SaveOutcome, ScholarHit } from "../platform/runtimeMessages";

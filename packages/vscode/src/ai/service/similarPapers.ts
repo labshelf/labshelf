@@ -1,10 +1,4 @@
-/**
- * Finds the papers whose indexed content is closest to a given paper's title and abstract, one entry per paper with
- * its best chunk score. Used by the list panel's Related tab.
- *
- * @depends ai/service/aiService.ts (types only), @labshelf/core (types only)
- * @dependents extension.ts
- */
+// Finds the papers closest to a given paper's title and abstract, one entry per paper with its best chunk score.
 import type { PaperRecord } from "@labshelf/core";
 import type { AiService } from "./aiService.js";
 
@@ -13,7 +7,6 @@ const MAX_PAPERS = 8;
 
 /**
  * Ranks other papers by semantic similarity; an empty list when the AI index is not running.
- * @usedBy extension.ts (list panel findSimilar)
  * @returns up to eight papers, most similar first
  */
 export async function findSimilarPapers(

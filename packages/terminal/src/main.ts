@@ -1,10 +1,5 @@
-/**
- * Entry point of the `labshelf` command: resolves the library, then either opens the TUI or runs a subcommand.
- * First run without a configured library asks for its folder (the one the VS Code extension uses) and remembers it in
- * the shared config file.
- *
- * Debug: `labshelf --dump-frame 120x40 [--keys "jj<enter>"]` prints one rendered frame as text, without a terminal.
- */
+// Runs the `labshelf` command: resolves the library, then opens the TUI or runs a subcommand.
+// A first run without a configured library asks for its folder and saves it in the shared config file.
 import * as path from "node:path";
 import { createInterface } from "node:readline/promises";
 

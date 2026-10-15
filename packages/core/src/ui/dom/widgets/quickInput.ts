@@ -1,10 +1,4 @@
-/**
- * VS Code-style quick input widgets: a filterable QuickPick and a single-line
- * InputBox with live validation. Both resolve to `undefined` when dismissed
- * (Escape, click outside). Used where the VS Code extension calls
- * `window.showQuickPick` / `window.showInputBox`, so folder moves and renames
- * feel the same in the browser.
- */
+// Shows a filterable quick pick and a validated input box; both resolve to `undefined` when dismissed.
 import { icon, type IconName } from "../../icons/index.js";
 import { el, highlight } from "../dom.js";
 import { mountOverlay } from "./overlay.js";

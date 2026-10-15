@@ -1,8 +1,5 @@
-/**
- * Finds the things a reader hovers in running text — numeric citations, author–year citations and figure/table/equation
- * references — without relying on PDF link annotations. Scanned papers made searchable by OCR have none, and the OCR
- * text arrives one word per text run, so detection works on a whole visual line re-joined from its runs.
- */
+// Finds numeric, author–year and figure/table/equation references in running text without PDF link annotations.
+// PLATFORM: OCR text arrives one word per text run, so detection works on a visual line re-joined from its runs.
 
 export type FloatKind = "figure" | "table" | "equation";
 

@@ -1,8 +1,4 @@
-/**
- * F14 — Reproducibility score. Checks for the presence of well-known
- * reproducibility signals in the paper's text. Returns a 0..10 score where
- * each signal is worth two points.
- */
+// Scores reproducibility 0..10 from five text signals worth two points each.
 import type { ReproducibilityScore } from "../../types/index.js";
 
 const SIGNALS = {

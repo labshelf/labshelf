@@ -1,9 +1,4 @@
-/**
- * F11 — Methodology auto-tagging. Scans a paper's text for canonical ML/CS
- * methodology keywords using a curated lexicon. Each method has aliases so
- * variations like "contrastive learning" / "contrastive pre-training" map to
- * a single tag.
- */
+// Tags a paper's methodology by matching a curated lexicon of ML/CS terms and their aliases.
 
 interface MethodEntry {
   tag: string;

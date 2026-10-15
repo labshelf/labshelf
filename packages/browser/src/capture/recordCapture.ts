@@ -1,11 +1,5 @@
-/**
- * Turns a paper already in the library into a capture draft, so the library
- * page's "Find PDF" can run the same resolver chain a fresh capture does — no
- * tab involved. Identifiers come from the stored record (its DOI, arXiv id or
- * PubMed URL) and its stored title, authors and year, which decide whether a
- * copy an aggregator suggests is the same paper. Its landing page is read once
- * for citation_pdf_url and download anchors, exactly as a Scholar result's page is.
- */
+// Turns a paper already in the library into a capture draft, so "Find PDF" runs the resolver chain without a tab.
+// Identifiers and title, authors and year come from the stored record; the landing page is read once.
 import { idsFromRecord, metadataFromRecord } from "@labshelf/core";
 import type { PaperRecord } from "@labshelf/core";
 import type { CaptureDraft } from "./captureService";

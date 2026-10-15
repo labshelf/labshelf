@@ -1,8 +1,5 @@
-/**
- * Reads a paper folder's metadata.yaml into a PaperRecord: the id is the folder name (== cite key), the title falls
- * back to the id, and hasPdf comes from the folder listing, never from the file. Every app that reads the library
- * from disk shares this so a paper looks the same everywhere.
- */
+// Reads a paper folder's metadata.yaml into a PaperRecord (id is the folder name, title falls back to the id).
+// INVARIANT: hasPdf comes from the folder listing, never from the file.
 import YAML from "yaml";
 
 import { isPaperStatus, parseTextLayerInfo, type PaperRecord } from "../model/index.js";

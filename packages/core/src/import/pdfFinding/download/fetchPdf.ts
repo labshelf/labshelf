@@ -1,15 +1,12 @@
-/**
- * Downloads a candidate URL and proves it is the PDF by its bytes, never by headers: publishers answer a PDF link
- * with a login page, a cookie wall or a "your PDF is loading" interstitial as often as with the file. When the
- * answer is HTML, it is read for where the PDF actually is and that is followed, a few hops at most. As a last
- * resort a URL on the tab's own site is fetched from inside the tab, which reproduces the page's exact session.
- */
+// Downloads a candidate URL and follows HTML answers to the PDF, up to a few hops.
+// Last resort: a same-site URL is fetched from inside the tab, which reuses the page's session.
 import { makeEnv, warn } from "../env.js";
 import type { FetchedPdf, InTabAnswer, PdfFetchOptions, ResolverEnv } from "../types.js";
 import { siteOf } from "../urlParts.js";
 import { fetchOnce } from "./fetchOnce.js";
 import { nextHopsFromHtml } from "./nextHops.js";
 
+// TRAP: a response is a PDF only by its bytes, never its headers; publishers answer with login pages, cookie walls or "loading" interstitials as often as with the file.
 const MAX_HOPS = 3;
 
 /** The PDF (if any) plus the URLs a bot check refused, which a real tab may still get through. */

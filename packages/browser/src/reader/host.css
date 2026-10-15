@@ -1,12 +1,6 @@
 /*
- * Reader page host styles: what a VS Code webview gives the reader before its own CSS loads.
- *
- * 1. VS Code's default webview stylesheet (vs/workbench/contrib/webview/browser/pre/index.html): scrollbars, kbd,
- *    focus outlines, overscroll, on the --ls-* tokens so the reader looks the same in both products.
- * 2. The toast offset: the reader's bottom bar is taller than the other pages', so toast.css lifts the stack.
- *
- * Deliberately NOT base.css: its global box-sizing reset shrinks pdf.js canvases and misaligns the text layer.
- * Loaded before pdf_viewer.css and reader.css, which win wherever they set the same properties.
+ * Reproduces VS Code's default webview stylesheet on the --ls-* tokens, plus the reader's toast offset.
+ * TRAP: not base.css; its global box-sizing reset shrinks pdf.js canvases and misaligns the text layer. Loads before pdf_viewer.css and reader.css.
  */
 
 /* ── VS Code default webview stylesheet ─────────────────────── */

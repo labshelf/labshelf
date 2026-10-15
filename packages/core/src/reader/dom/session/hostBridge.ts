@@ -1,8 +1,4 @@
-/**
- * Typed wrapper over the reader's host transport. The UI only ever talks to HostBridge; which host is on the other
- * side (the VS Code extension host, or the browser extension's in-page host) is decided by the transport the entry
- * point hands in.
- */
+// Wraps the reader's host transport in typed messages; the entry point decides which host is on the other side.
 import type { HostToWebview, WebviewToHost } from "../../index.js";
 
 /** How messages travel between the reader UI and its host. */

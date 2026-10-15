@@ -1,11 +1,6 @@
-/**
- * Lightweight token-count estimator used to bound chunk size before sending
- * text to the embedding model. We do not run a real tokenizer here to keep
- * the AI primitives dependency-free; embedding providers own
- * any real tokenizer. ~4 chars per token is the well-known approximation for English
- * academic text and is adequate for chunk sizing.
- */
+// Estimates token counts from character length to bound chunk size.
 
+// ~4 chars per token approximates English academic text; real tokenizers belong to embedding providers.
 const CHARS_PER_TOKEN = 4;
 
 /**

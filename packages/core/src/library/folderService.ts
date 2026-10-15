@@ -1,10 +1,5 @@
-/**
- * Platform-agnostic helpers for re-indexing PaperRecords when a collection
- * folder is renamed, moved, or deleted. Filesystem-level operations (mkdir,
- * rename, rmdir) stay in the consuming package because their APIs diverge
- * (vscode.workspace.fs vs IndexedDbFileSystem); only the record bookkeeping is
- * shared here.
- */
+// Re-indexes paper records when a collection folder is renamed, moved or deleted.
+// Filesystem operations stay in each app because their APIs diverge; only the record bookkeeping is shared.
 import type { PaperRecord } from "../model/index.js";
 
 /**

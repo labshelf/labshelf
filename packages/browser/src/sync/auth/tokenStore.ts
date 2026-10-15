@@ -1,17 +1,8 @@
-/**
- * Persists the Google Drive access token in `bx.storage.local`. We deliberately
- * avoid `bx.storage.sync` so the token never leaves the local profile.
- *
- * The implicit OAuth flow used by the browser shell does not return a refresh
- * token — instead we record the absolute expiration time and let
- * BrowserDriveAuth re-run a silent `launchWebAuthFlow({ interactive: false })`
- * before the access token expires.
- *
- * @depends platform/browserApi
- * @dependents sync/auth/browserDriveAuth
- */
+// Persists the Google Drive access token and its absolute expiry in `bx.storage.local`.
 import { bx } from "../../platform/browserApi";
 
+// TRAP: never `bx.storage.sync`; the token must not leave the local profile. The expiry is stored because the
+// implicit flow returns no refresh token.
 const STORAGE_KEY = "labshelf.gdrive.token";
 
 export interface StoredToken {

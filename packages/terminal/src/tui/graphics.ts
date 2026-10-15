@@ -1,11 +1,5 @@
-/**
- * Inline images in the terminal, used for the first-page thumbnail in the preview pane. Supports the kitty graphics
- * protocol (kitty, Ghostty) and the iTerm2 inline image protocol (iTerm2, WezTerm, VS Code's terminal with
- * terminal.integrated.enableImages). Anything else gets no image and the preview falls back to text.
- *
- * @depends none
- * @dependents ui/app, ui/views/preview
- */
+// Draws inline images via the kitty graphics protocol and the iTerm2 inline image protocol.
+// PLATFORM: VS Code's terminal needs terminal.integrated.enableImages; other terminals get no image (text preview).
 
 export type ImageProtocol = "kitty" | "iterm" | "none";
 
@@ -19,7 +13,6 @@ export interface CellRect {
 /**
  * Picks the image protocol for this terminal; `preference` ("auto", "kitty", "iterm", "off") comes from
  * LABSHELF_IMAGES or the config file.
- * @usedBy app/context
  * @returns the protocol to use
  */
 export function detectImageProtocol(env: NodeJS.ProcessEnv, preference = "auto"): ImageProtocol {
@@ -38,7 +31,6 @@ export function detectImageProtocol(env: NodeJS.ProcessEnv, preference = "auto")
 
 /**
  * Width and height of a PNG from its IHDR chunk.
- * @usedBy fitImage callers
  * @returns pixel size, or undefined for something that is not a PNG
  */
 export function pngSize(png: Uint8Array): { width: number; height: number } | undefined {
@@ -50,7 +42,6 @@ export function pngSize(png: Uint8Array): { width: number; height: number } | un
 /**
  * The largest cell box inside `box` that keeps the image's aspect ratio, centered horizontally.
  * cellAspect is a cell's height divided by its width (about 2 in most fonts).
- * @usedBy ui/app
  * @returns the target rectangle
  */
 export function fitImage(image: { width: number; height: number }, box: CellRect, cellAspect = 2.1): CellRect {
@@ -68,7 +59,6 @@ const KITTY_CHUNK = 4096;
 
 /**
  * Escape sequence that draws a PNG at a cell rectangle.
- * @usedBy ui/app
  * @returns the bytes to write after the frame
  */
 export function drawImage(protocol: ImageProtocol, png: Uint8Array, rect: CellRect, imageId = 1): string {
@@ -94,7 +84,6 @@ export function drawImage(protocol: ImageProtocol, png: Uint8Array, rect: CellRe
 /**
  * Escape sequence that removes images. kitty images live on their own layer and are deleted; iTerm2 images are plain
  * cell content, which the caller clears by repainting the cells (see Terminal.invalidate).
- * @usedBy ui/app
  * @returns the bytes to write
  */
 export function clearImages(protocol: ImageProtocol): string {

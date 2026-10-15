@@ -1,8 +1,5 @@
-/**
- * Generic top-k retrieval. Embeds the query, hands it to the vector store, and
- * returns matches unchanged. Keeping this thin keeps store implementations in
- * charge of filtering and ranking.
- */
+// Embeds a query and returns the vector store's top-k matches unchanged.
+// The store owns filtering and ranking.
 import type {
   IEmbeddingProvider,
   IVectorStore,

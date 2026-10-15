@@ -1,8 +1,5 @@
-/**
- * Keeps a container's rows in step with an ordered list of items, keyed by id. A row whose inputs are unchanged keeps
- * its DOM node (so focus, hover and expansion survive a refresh); only changed rows are rebuilt, and nodes move only
- * when the order changes.
- */
+// Keeps a container's rows in step with an id-keyed list; rows with unchanged inputs keep their DOM node,
+// so focus, hover and expansion survive a refresh.
 interface Row {
   node: HTMLElement;
   inputs: readonly unknown[];

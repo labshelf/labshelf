@@ -1,9 +1,7 @@
-/**
- * Builds the publisher's own PDF URL from a DOI, for the platforms whose PDF address is a fixed function of the DOI.
- * These are the links a subscriber clicks: they download whenever the user's institution (by IP or session cookies)
- * grants access, and otherwise land on a login page, which the downloader recognises as "not a PDF".
- */
+// Builds the publisher's own PDF URL from a DOI for platforms whose PDF address is a fixed function of it.
 import type { PdfResolver } from "../../types.js";
+
+// Without institutional access these URLs land on a login page, which the downloader rejects as "not a PDF".
 
 type Template = (doi: string) => string;
 

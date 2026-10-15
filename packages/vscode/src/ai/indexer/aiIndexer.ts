@@ -1,9 +1,5 @@
-/**
- * Coordinates AI ingestion for newly added or updated papers. Subscribes to
- * paper:added / paper:updated and drives the @labshelf/core pipeline through a
- * single-worker queue. Idempotent: skips papers whose contentHash matches the
- * last indexed run.
- */
+// Ingests added or updated papers into the AI index through a single-worker queue.
+// Skips papers whose contentHash matches the last indexed run.
 import * as vscode from "vscode";
 import type { IEmbeddingProvider, ILogger, IVectorStore, LocalFileSystem, PaperRecord } from "@labshelf/core";
 import { runIngestion } from "@labshelf/core";

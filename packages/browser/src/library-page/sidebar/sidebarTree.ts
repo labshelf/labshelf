@@ -1,8 +1,5 @@
-/**
- * The folder tree in the sidebar, drawn like VS Code's tree view: an "All Papers" root, then the folders with their
- * recursive paper counts. A row opens its folder, the twistie expands, hover reveals "new subfolder", right-click opens
- * the folder menu, and rows accept dropped papers. Expansion is saved; the open folder's ancestors stay expanded.
- */
+// Draws the sidebar folder tree like VS Code's tree view, with recursive paper counts and drop targets.
+// Expansion is saved; the open folder's ancestors stay expanded.
 import { PAPERS_DIR, ROOT_LABEL, countPapersUnder, escapeHtml, icon, isUnderDir, parentDir, type FolderTreeNode } from "@labshelf/core";
 import { el, showMenu, type LibraryUi } from "@labshelf/core/dom";
 import type { PagePrefs } from "../prefs";

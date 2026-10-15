@@ -1,9 +1,4 @@
-/**
- * Types for reading-activity events feeding F17 (intellectual heatmap).
- *
- * Events are emitted by the PDF viewer in @labshelf/vscode and persisted to
- * the reading_events table. Aggregation runs in the consumer.
- */
+// Defines the reading-activity events (open, scroll, annotate, close) emitted by the PDF viewer.
 export type ReadingEventKind = "open" | "scroll" | "annotate" | "close";
 
 export interface ReadingEvent {

@@ -1,8 +1,5 @@
-/**
- * A grid of styled cells that views draw into, and the diff that turns two frames into the shortest ANSI output.
- * Rendering always builds a whole new frame; only the cells that changed since the previous frame reach the terminal,
- * which keeps redraws flicker-free even over SSH.
- */
+// Holds a grid of styled cells and diffs two frames into the shortest ANSI output.
+// Only cells that changed since the previous frame reach the terminal, which keeps redraws flicker-free over SSH.
 import { graphemes } from "./text.js";
 
 /** 0–255 palette index (0–15 follow the user's terminal theme), "#rrggbb", or undefined for the default color. */
@@ -23,7 +20,6 @@ const styleIds = new Map<string, number>([["{}", 0]]);
 
 /**
  * Interns a style so cells store a small integer instead of an object.
- * @usedBy Screen.text, Screen.fill
  * @returns the style id
  */
 export function styleId(style: Style | undefined): number {
@@ -40,7 +36,6 @@ export function styleId(style: Style | undefined): number {
 
 /**
  * Merges two styles, the second winning.
- * @usedBy ui views
  * @returns the merged style
  */
 export function mergeStyle(base: Style | undefined, over: Style | undefined): Style {
@@ -62,7 +57,6 @@ function colorCode(color: Color, background: boolean): string {
 
 /**
  * The SGR sequence selecting a style from a reset state.
- * @usedBy Screen.diff
  * @returns the escape sequence
  */
 export function sgr(id: number): string {
@@ -119,7 +113,6 @@ export class Screen {
 
   /**
    * Draws text at (x, y), clipped to maxWidth cells and to the screen edge.
-   * @usedBy ui views
    * @returns the number of cells written
    */
   text(x: number, y: number, text: string, style?: Style, maxWidth = Infinity): number {
@@ -142,7 +135,6 @@ export class Screen {
 
   /**
    * Fills a rectangle with one character and style.
-   * @usedBy ui views
    * @returns void
    */
   fill(x: number, y: number, w: number, h: number, style?: Style, ch = " "): void {
@@ -158,7 +150,6 @@ export class Screen {
 
   /**
    * The plain text of one row, wide characters included once; used by tests and the --dump-frame debug flag.
-   * @usedBy tests, main
    * @returns the row text
    */
   rowText(y: number): string {
@@ -168,7 +159,6 @@ export class Screen {
   }
 
   /**
-   * @usedBy tests, main
    * @returns every row joined by newlines, with trailing spaces trimmed
    */
   toText(): string {
@@ -179,7 +169,6 @@ export class Screen {
 
   /**
    * The style of one cell, for tests.
-   * @usedBy tests
    * @returns the style
    */
   styleAt(x: number, y: number): Style {
@@ -189,7 +178,6 @@ export class Screen {
   /**
    * ANSI output that turns `previous` into this frame; without a previous frame (or after a resize) every cell is
    * written.
-   * @usedBy tui/terminal render loop
    * @returns the escape sequence string
    */
   diff(previous: Screen | undefined): string {

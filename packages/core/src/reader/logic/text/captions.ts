@@ -1,8 +1,5 @@
-/**
- * Locates figures, tables and numbered equations from the page text alone, so "Fig. 3" can be previewed in PDFs that
- * carry no link annotations (scans made searchable by OCR, papers typeset without hyperlinks).
- * A caption is a line that STARTS with the label; the float itself is the text-free band next to it.
- */
+// Locates figures, tables and numbered equations from page text alone, for PDFs without link annotations.
+// A caption is a line that STARTS with the label; the float itself is the text-free band next to it.
 import { FIGURE_WORD, FLOAT_LABEL, floatKindOf, type FloatKind } from "./inTextRefs.js";
 import type { TextLine } from "./textLines.js";
 

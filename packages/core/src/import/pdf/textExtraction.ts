@@ -1,10 +1,7 @@
-/**
- * Reads raw text from a PdfDocumentLike — page-1 font-grouped blocks for title
- * inference, concatenated text from the first N pages for identifier detection,
- * and link annotation targets, which often carry the DOI even when the text
- * layer is unreadable.
- */
+// Reads title blocks, identifier-detection text and link annotation targets from a PdfDocumentLike.
 import type { PdfDocumentLike, TextBlock } from "./types.js";
+
+// TRAP: link annotation targets often carry the DOI even when the text layer is unreadable.
 
 /**
  * Groups page-1 text items into runs that share the same font size, in reading order.

@@ -1,16 +1,7 @@
-/**
- * Maps relative POSIX paths to remote folder ids, creating intermediate folders on demand.
- *
- * @depends remoteProvider
- * @dependents sync/core/syncApply, sync/core/syncEngine, sync/core/treeScan
- */
+// Maps relative POSIX paths to remote folder ids, creating intermediate folders on demand.
 import type { RemoteProvider, RemoteFile } from "./remoteProvider.js";
 
-/**
- * POSIX dirname/basename split for relative sync paths.
- * @usedBy syncApply, syncEngine
- * @returns { dir, name }
- */
+/** POSIX dirname/basename split for relative sync paths. */
 export function splitPath(path: string): { dir: string; name: string } {
   const idx = path.lastIndexOf("/");
   return idx < 0
@@ -38,20 +29,12 @@ export class RemotePathResolver {
     }
   }
 
-  /**
-   * Records a folder discovered while scanning the remote tree.
-   * @usedBy treeScan
-   * @returns void
-   */
+  /** Records a folder discovered while scanning the remote tree. */
   register(path: string, id: string): void {
     this.folderIds.set(path, id);
   }
 
-  /**
-   * Returns the remote folder id for a directory path, creating missing intermediate folders as needed.
-   * @usedBy parentOf
-   * @returns string
-   */
+  /** Creates any missing intermediate folders on the way to `dirPath`. */
   async ensureFolder(dirPath: string): Promise<string> {
     const cached = this.folderIds.get(dirPath);
     if (cached) {
@@ -66,11 +49,6 @@ export class RemotePathResolver {
     return created.id;
   }
 
-  /**
-   * Resolves the remote parent folder id of a file path.
-   * @usedBy syncApply
-   * @returns string
-   */
   async parentOf(filePath: string): Promise<string> {
     return this.ensureFolder(splitPath(filePath).dir);
   }

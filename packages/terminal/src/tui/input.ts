@@ -1,11 +1,5 @@
-/**
- * Decodes raw terminal input into key, paste and mouse events. Understands the xterm/VT sequences every modern
- * terminal emits (CSI and SS3 keys with modifiers, SGR mouse, bracketed paste) and turns each key into a short id the
- * keymap binds against: "j", "G", "C-d", "M-x", "enter", "esc", "up", "S-tab", "f1", "space".
- *
- * @depends none
- * @dependents tui/terminal, ui/app
- */
+// Decodes raw xterm/VT input (CSI/SS3 keys, SGR mouse, bracketed paste) into key, paste and mouse events.
+// Each key becomes a short id the keymap binds against: "j", "C-d", "M-x", "enter", "esc", "S-tab", "space".
 
 export interface KeyEvent {
   type: "key";
@@ -76,7 +70,6 @@ function printableKey(ch: string): KeyEvent {
 /**
  * Stateful decoder. Sequences split across reads are held until the rest arrives (or flushed as plain keys after a
  * short timeout by the caller via flush()).
- * @usedBy tui/terminal
  */
 export class InputDecoder {
   private pending = "";
@@ -84,7 +77,6 @@ export class InputDecoder {
 
   /**
    * Decodes one chunk of input.
-   * @usedBy tui/terminal
    * @returns the complete events found; incomplete trailing sequences stay pending
    */
   feed(chunk: string): InputEvent[] {
@@ -177,7 +169,6 @@ export class InputDecoder {
 
   /**
    * Emits whatever is pending as plain keys — a lone ESC typed by the user arrives without a follow-up byte.
-   * @usedBy tui/terminal (escape timeout)
    * @returns the flushed events
    */
   flush(): InputEvent[] {

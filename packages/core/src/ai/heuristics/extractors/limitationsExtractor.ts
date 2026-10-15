@@ -1,10 +1,4 @@
-/**
- * F15 — Heuristic fallback for limitations extraction. Looks for a section
- * titled "Limitations" / "Threats to Validity" and returns its bullet/lines.
- * When no dedicated section exists, scans for sentences starting with common
- * hedge phrases ("we acknowledge", "a limitation of"). The LLM-driven version
- * lives in the Copilot tier (Phase 2) and supersedes this when available.
- */
+// Extracts limitation statements from a Limitations section, else from hedge-phrase sentences.
 
 const SECTION_RE = /\b(?:Limitations?|Threats to Validity)\b/i;
 const HEDGES = [

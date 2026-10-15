@@ -1,9 +1,4 @@
-/**
- * Tracks term novelty against an accumulated user vocabulary. Feeds the
- * difficulty score (F02) and powers the "you keep tripping on X" suggestion
- * surfaces. Stopwords are filtered so common English words never count as
- * novel.
- */
+// Counts terms absent from the user's accumulated vocabulary, ignoring stopwords.
 
 const STOPWORDS = new Set([
   "the", "and", "of", "to", "a", "in", "is", "that", "for", "on", "with",

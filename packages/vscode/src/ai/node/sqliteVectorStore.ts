@@ -1,9 +1,5 @@
-/**
- * IVectorStore backed by SQLite BLOB storage and a JS flat-scan cosine top-k.
- * Adequate up to ~10k chunks; beyond that, swap in sqlite-vec without changing
- * the contract. We deliberately keep search() in-process (no SQL UDFs) so the
- * vector math runs on the same Float32Array layout used by the embedder.
- */
+// Stores vectors as SQLite BLOBs and ranks them by a flat-scan cosine top-k.
+// Adequate up to ~10k chunks; search() stays in-process so it uses the embedder's Float32Array layout.
 import type { DatabaseSync } from "node:sqlite";
 import type {
   IVectorStore,

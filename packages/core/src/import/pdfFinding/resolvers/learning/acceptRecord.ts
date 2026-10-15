@@ -1,12 +1,11 @@
-/**
- * Decides whether a record returned by an aggregator is for the paper being searched. Aggregators attach a
- * neighbouring paper's locations to a correct DOI often enough that nothing from a record is used unless it passes
- * `sameWork` against the context's title. Without a title there is nothing to check, so the record is accepted.
- */
+// Decides whether an aggregator record is for the paper being searched.
 import { sameWork } from "../../../resolution/index.js";
 import type { WorkRef } from "../../../resolution/index.js";
 import { warn } from "../../env.js";
 import type { ResolveContext, ResolverEnv } from "../../types.js";
+
+// TRAP: aggregators often attach a neighbouring paper's locations to a correct DOI, so a record must pass `sameWork` against the title.
+// Without a title there is nothing to check and the record is accepted.
 
 export function acceptRecord(source: string, ctx: ResolveContext, env: ResolverEnv, record: WorkRef): boolean {
   if (!ctx.title) return true;

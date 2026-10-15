@@ -1,12 +1,5 @@
-/**
- * Recovers text from PDFs whose text layer cannot be read — scans, and files
- * whose embedded fonts carry a broken character map. Renders the page with
- * pdfjs onto a native canvas and reads it with Tesseract.
- *
- * Both dependencies are loaded lazily and their absence is non-fatal: a build
- * without them simply falls back to whatever the text layer provided.
- *
- */
+// Recovers text from scans and broken-font PDFs by rendering pages with pdfjs and reading them with Tesseract.
+// INVARIANT: both dependencies load lazily and their absence is non-fatal; callers fall back to the text layer.
 import type { PdfOcrEngine } from "@labshelf/core";
 import { loadNativeCanvas, nativeRenderOptions, type PdfjsLoader } from "@labshelf/core/node";
 

@@ -1,8 +1,4 @@
-/**
- * Float32-friendly cosine similarity. Embeddings are
- * Float32Array; converting them to plain arrays just to compute
- * dot-products would waste allocations. Kept dependency-free.
- */
+// Computes cosine similarity directly on Float32Array embeddings, avoiding array copies.
 
 /**
  * Cosine similarity between two equal-length vectors.

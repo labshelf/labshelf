@@ -1,9 +1,6 @@
-/**
- * F12 — Dataset extraction. Matches a curated list of canonical benchmark
- * names. We avoid generic capitalization rules because they produce too many
- * false positives on author surnames and section titles.
- */
+// Detects canonical benchmark dataset names in text.
 
+// TRAP: a curated list, not capitalization rules, which false-positive on author surnames and section titles.
 const DATASETS: { tag: string; pattern: RegExp }[] = [
   { tag: "ImageNet", pattern: /\bImageNet\b/ },
   { tag: "CIFAR-10", pattern: /\bCIFAR-?10\b/ },

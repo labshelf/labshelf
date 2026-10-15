@@ -1,14 +1,5 @@
-/**
- * The TUI: a paper manager with yazi's feel. Three panes in yazi's column layout — folders, papers, preview — arranged
- * the way Zotero arranges its panes: folders are navigation, papers are the content (papers and folders never share a
- * list). h/l walk the hierarchy (paper → its folder → parent folder, and back down to opening the PDF), the papers pane
- * follows the hovered folder live, and everything else is a key away: multi-select, cut/paste moves, live
- * filter/find/search, fuzzy jumps, citation copying and Drive sync — over the same files the VS Code extension uses.
- * Changes made by VS Code or a sync appear live through the library watcher.
- *
- * The App holds UI state only; library changes go through TerminalPaperService and syncs through the core SyncCoordinator.
- * Rendering builds a fresh Screen per frame and the Terminal writes only the cells that changed.
- */
+// Runs the TUI: folders, papers and preview panes driven by the keymap over the library the VS Code extension uses.
+// Holds UI state only; library changes go through TerminalPaperService, syncs through the core SyncCoordinator.
 import type { PaperData, PaperEntry } from "@labshelf/core";
 
 import type { SortKey } from "../../app/config.js";

@@ -1,11 +1,5 @@
-/**
- * Registers AI-namespaced commands (labshelf.ai.*). The handler closures
- * resolve the AiService lazily via getter so commands remain valid even when
- * the service is created after activation (e.g. when the library is set up).
- *
- * @depends vscode, ai/service/aiService
- * @dependents extension.ts
- */
+// Registers the labshelf.ai.* commands.
+// INVARIANT: handlers resolve the AiService lazily, because it can be created after activation.
 import * as vscode from "vscode";
 import type { AiService } from "../ai/service/aiService.js";
 
@@ -16,9 +10,6 @@ const REQUIRED_MESSAGE = "LabShelf AI is not available. Configure a library and 
 /**
  * Registers labshelf.ai.rebuildIndex, labshelf.ai.searchByClaim,
  * labshelf.ai.searchByText, and labshelf.ai.openSettings.
- *
- * @usedBy extension.ts activate()
- * @returns void
  */
 export function registerAiCommands(
   context: vscode.ExtensionContext,

@@ -1,10 +1,9 @@
-/**
- * Decides whether two bibliographic records describe the same work. Aggregators and title searches return a
- * neighbouring paper often enough (BWA for BWA-SW, ResNet for an unrelated thesis) that a copy which did not come
- * from the DOI's own record must pass this check before it is downloaded.
- */
+// Decides whether two bibliographic records describe the same work.
 import { titleKey } from "../../library/index.js";
 import { surname } from "./titleAgreement.js";
+
+// TRAP: aggregators and title searches often return a neighbouring paper (BWA for BWA-SW), so a copy that did not
+// come from the DOI's own record must pass this check before it is downloaded.
 
 /** A record thin enough for the comparison: whatever a source managed to supply. */
 export interface WorkRef {

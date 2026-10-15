@@ -1,9 +1,5 @@
-/**
- * Extracts per-page text from a paper's PDF using the existing PdfDocumentOpener
- * adapter, then runs the @labshelf/core section detector to produce structured
- * input for the ingestion pipeline. Falls back to per-page chunks when no
- * headings are detected.
- */
+// Extracts per-page text and detected sections from a paper's PDF for ingestion.
+// Falls back to per-page chunks when no headings are detected.
 import * as vscode from "vscode";
 import type { ExtractedPdfText, LocalFileSystem, PdfDocumentLike, PdfDocumentOpener } from "@labshelf/core";
 import { detectSections } from "@labshelf/core";

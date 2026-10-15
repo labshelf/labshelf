@@ -1,9 +1,5 @@
-/**
- * Entry of the reader page (reader/index.html?paper=<id>[&page=<n>]): the browser extension's counterpart of the VS Code
- * reader panel. It starts the very same reader UI (startReader from @labshelf/core/dom) with boot parameters built here
- * (pdf.js from the extension's vendor/pdfjs/, the PDF bytes from IndexedDB) and an in-page host that keeps the paper's
- * annotations, reader theme and reading position in its synced sidecar.
- */
+// Starts the core reader UI on reader/index.html?paper=<id>[&page=<n>] with pdf.js, IndexedDB bytes and an in-page host.
+// The host keeps annotations, reader theme and reading position in the paper's synced sidecar.
 import {
   PROTOCOL_VERSION,
   PaperDataStore,

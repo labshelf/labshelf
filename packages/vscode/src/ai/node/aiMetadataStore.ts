@@ -1,8 +1,5 @@
-/**
- * Persistence for AiPaperMetadata. Stored as JSON-typed text columns to keep
- * schema simple; structured queries (e.g. method facet search) go through the
- * methods/datasets indexes that aiSchema declares.
- */
+// Persists AiPaperMetadata as JSON text columns.
+// Structured queries go through the methods/datasets indexes declared in aiSchema.
 import type { DatabaseSync } from "node:sqlite";
 import type { AiPaperMetadata } from "@labshelf/core";
 

@@ -1,8 +1,5 @@
-/**
- * SidecarPort over the extension's IndexedDB file store. A paper's sidecar lives at appdata/<paperId>/data.json: the
- * sync "appdata" namespace root in this browser, which VS Code maps to <library>/.research/papers, so annotations,
- * reader theme and reading position written here reach the VS Code reader and back.
- */
+// Implements SidecarPort over the IndexedDB file store at appdata/<paperId>/data.json.
+// INVARIANT: that path is the sync "appdata" root, which VS Code maps to <library>/.research/papers.
 import { APPDATA_DIR, SIDECAR_FILE, type SidecarPort } from "@labshelf/core";
 import type { IndexedDbFileSystem } from "./indexedDbFileSystem";
 

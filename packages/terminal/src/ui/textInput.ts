@@ -1,11 +1,5 @@
-/**
- * Single-line text field state with readline/emacs editing keys (the ones yazi and shells accept): arrows, Home/End,
- * C-a/C-e, C-b/C-f, M-b/M-f, Backspace/Delete, C-h, C-w, M-backspace, C-u, C-k, and bracketed paste. Pure, so the
- * prompts, the filter and the pickers share it and tests drive it directly.
- *
- * @depends tui/input (event types)
- * @dependents ui/overlays, ui/app
- */
+// Edits a single-line text field with readline/emacs keys and bracketed paste.
+// Pure state, so prompts, filter and pickers share it and tests drive it directly.
 import type { InputEvent } from "../tui/input.js";
 
 export interface TextInputState {
@@ -15,7 +9,6 @@ export interface TextInputState {
 }
 
 /**
- * @usedBy ui/overlays
  * @returns a field holding `value` with the cursor at the end
  */
 export function textInput(value = ""): TextInputState {
@@ -51,7 +44,6 @@ function nextIndex(value: string, cursor: number): number {
 
 /**
  * Applies one input event.
- * @usedBy ui/overlays, ui/app
  * @returns the new state, or undefined when the event is not an editing key (the caller handles it)
  */
 export function editText(state: TextInputState, event: InputEvent): TextInputState | undefined {

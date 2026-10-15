@@ -1,8 +1,5 @@
-/**
- * The in-memory view of the library an app reads from: the latest snapshot, a collection's listing (sub-collections
- * first, then papers, sorted), library-wide search and change notification. Reloads are coalesced, so a burst of
- * file events (a sync pulling twenty papers) costs one rescan.
- */
+// Holds the in-memory library snapshot with collection listings, search and change notification.
+// Reloads are coalesced, so a burst of file events (a sync pulling twenty papers) costs one rescan.
 import { snapshotFromScan, emptySnapshot } from "./snapshot.js";
 import { papersUnder } from "./collectionTree.js";
 import { nameCollator, paperComparator } from "./paperSort.js";

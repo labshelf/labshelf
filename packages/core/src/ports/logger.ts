@@ -1,8 +1,4 @@
-/**
- * Structured logger interface used by services and adapters across platforms.
- * Concrete implementations write to a workspace log file (VS Code) or a
- * ring buffer in extension storage (browser).
- */
+// Declares the structured logger port that apps implement and inject.
 import type { LogEntry } from "../model/index.js";
 
 export interface ILogger {

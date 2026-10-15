@@ -1,8 +1,5 @@
-/**
- * Overlays drawn above the three columns — prompts, confirmations, fuzzy pickers and the help screen — and the
- * bottom-line input used by filter, find and library search. State types live here with their drawing code; the
- * App owns the instances and decides what happens on submit.
- */
+// Draws overlays above the columns: prompts, confirmations, fuzzy pickers, help and the bottom-line input.
+// State types live with their drawing code; the App owns the instances and decides what happens on submit.
 import { SYNTAX_HELP } from "@labshelf/core";
 
 import type { Screen, Style } from "../tui/screen.js";

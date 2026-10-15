@@ -1,8 +1,5 @@
-/**
- * Adding a paper from another open tab: the host lists the window's tabs as add sources, then captures the one the
- * user picked into the open folder. A capture that found no PDF writes nothing and asks the UI first; a paper already
- * in the library is selected instead of duplicated.
- */
+// Lists the window's tabs as add sources and captures the picked one into the open folder.
+// A capture with no PDF writes nothing until the UI confirms; an existing paper is selected, not duplicated.
 import type { IfNoPdf } from "@labshelf/core";
 import { pdfSourceLabel } from "@labshelf/core";
 import type { SaveOutcome, TabSummary } from "../../../platform";

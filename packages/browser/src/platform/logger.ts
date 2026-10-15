@@ -1,10 +1,5 @@
-/**
- * BrowserLogger implements `ILogger` from @labshelf/core. Writes to the console
- * and to a small ring buffer in `bx.storage.local` so the options page can
- * display recent activity for troubleshooting.
- * @depends @labshelf/core ILogger, browserApi.
- * @dependents background, sync, capture flows (all Phase 2+).
- */
+// Logs to the console and to a ring buffer in `bx.storage.local` that the options page displays.
+// Implements core's ILogger.
 import type { ILogger, LogEntry } from "@labshelf/core";
 import { bx } from "./browserApi";
 

@@ -1,11 +1,5 @@
-/**
- * Owns the real terminal while the TUI runs: raw mode, the alternate screen, mouse and bracketed paste, resize and
- * input events, frame output wrapped in synchronized-update markers, and restoring everything on exit, crash, Ctrl-Z
- * and when handing the terminal to $EDITOR.
- *
- * @depends tui/input, tui/screen
- * @dependents ui/app, main
- */
+// Owns the real terminal while the TUI runs: raw mode, alternate screen, mouse, paste, resize and frame output.
+// INVARIANT: everything is restored on exit, crash, Ctrl-Z and when handing the terminal to $EDITOR.
 import type { ReadStream, WriteStream } from "node:tty";
 
 import { InputDecoder, type InputEvent } from "./input.js";
@@ -59,7 +53,6 @@ export class Terminal {
 
   /**
    * Starts listening for input and resizes.
-   * @usedBy ui/app
    * @returns void
    */
   listen(onInput: (event: InputEvent) => void, onResize: (size: TerminalSize) => void): void {
@@ -69,7 +62,6 @@ export class Terminal {
 
   /**
    * Switches to the alternate screen in raw mode.
-   * @usedBy ui/app, suspend
    * @returns void
    */
   enter(): void {
@@ -90,7 +82,6 @@ export class Terminal {
 
   /**
    * Restores the terminal exactly as it was found.
-   * @usedBy ui/app (quit), suspend, process exit handler
    * @returns void
    */
   leave(): void {
@@ -110,7 +101,6 @@ export class Terminal {
 
   /**
    * Hands the terminal to another program (an editor) and takes it back afterwards.
-   * @usedBy ui/app (note editing)
    * @returns what run returned
    */
   suspend<T>(run: () => T): T {
@@ -126,7 +116,6 @@ export class Terminal {
 
   /**
    * Stops the process like a shell job (Ctrl-Z); SIGCONT brings the TUI back.
-   * @usedBy ui/app
    * @returns void
    */
   stopJob(): void {
@@ -137,7 +126,6 @@ export class Terminal {
 
   /**
    * Writes one frame (only the cells that changed) plus any raw extra output such as image escapes.
-   * @usedBy ui/app render loop
    * @returns void
    */
   draw(frame: Screen, extra = ""): void {
@@ -151,7 +139,6 @@ export class Terminal {
 
   /**
    * Forgets the last frame so the next draw repaints every cell (after an image was removed, or an editor ran).
-   * @usedBy ui/app
    * @returns void
    */
   invalidate(): void {
@@ -160,7 +147,6 @@ export class Terminal {
 
   /**
    * Writes raw bytes (image protocol escapes) outside of a frame.
-   * @usedBy ui/app
    * @returns void
    */
   writeRaw(data: string): void {

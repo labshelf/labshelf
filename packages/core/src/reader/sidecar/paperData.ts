@@ -1,8 +1,5 @@
-/**
- * The per-paper sidecar (data.json: annotations, reader theme, reading position) as both extensions read and write it.
- * VS Code keeps it at <library>/.research/papers/<id>/data.json and the browser at IndexedDB path appdata/<id>/data.json;
- * the sync "appdata" namespace maps one onto the other, so the format must not drift.
- */
+// Defines the per-paper sidecar (data.json: annotations, theme, reading position) every app reads and writes.
+// INVARIANT: the sync "appdata" namespace maps each app's sidecar location onto the others, so the format must not drift.
 import { isPdfTheme, type Annotation, type PdfTheme } from "../../model/index.js";
 import { normalizeReadingState, type ReadingState } from "./readingState.js";
 
