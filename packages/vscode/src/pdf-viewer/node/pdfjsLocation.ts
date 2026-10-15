@@ -3,7 +3,7 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 import type { PdfjsFiles } from "../renderer/index.js";
 
-// The legacy build runs on more webview engines; the modern one is the fallback when it is not installed.
+// PLATFORM: the pdfjs-dist/legacy build runs on more webview engines; the standard build is used when it is not installed.
 const BUILDS = ["pdfjs-dist/legacy", "pdfjs-dist"] as const;
 
 function resolveBuild(prefix: string): { files: string[]; entry: string } {

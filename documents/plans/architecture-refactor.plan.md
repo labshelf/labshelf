@@ -1,6 +1,6 @@
 # Plan: architecture refactor
 
-Status: in progress (session 12 of 13)
+Status: in progress (session 13 of 13)
 Size: GG — every package moves and duplicated logic merges across three apps; 13 sessions, one per phase (phases 4 and 9 are the heaviest).
 Pending decisions: 4
 
