@@ -4,7 +4,7 @@ import type { ILogger, ImportedPaper, PaperRecord, PdfFetchOptions, PdfSearch, R
 jest.mock("webextension-polyfill", () => ({ storage: { local: { get: async () => ({}), set: async () => undefined } } }));
 jest.mock("../../src/storage/paperRecordStore", () => ({ listAllRecords: async () => [], upsertRecord: async () => undefined }));
 
-const mockSettings = { enableSciHub: false, sciHubMirror: "", contactEmail: "me@uni.edu", lastFolder: "papers/Thesis" };
+const mockSettings = { customResolvers: [], contactEmail: "me@uni.edu", lastFolder: "papers/Thesis" };
 const mockUpdateSettings = jest.fn(async () => undefined);
 jest.mock("../../src/platform/settings", () => ({ getSettings: async () => mockSettings, updateSettings: () => mockUpdateSettings() }));
 

@@ -63,7 +63,7 @@ export interface DraftView {
 
 export interface PdfStatusData {
   found: boolean;
-  /** Who supplied it: page, scholar, publisher, arxiv, crossref, unpaywall, sci-hub. */
+  /** Who supplied it: page, scholar, publisher, arxiv, crossref, unpaywall, custom. */
   source?: string;
   /** Present when found is false: lets the popup open the dialog instantly, with no round trip. */
   miss?: PdfMiss;

@@ -1,11 +1,11 @@
-/** What the browser hands the core PDF search: the draft's record, the user's Sci-Hub choice, cookies and the tab. */
-import type { ILogger, PdfFetchOptions, PdfSearch } from "@labshelf/core";
+/** What the browser hands the core PDF search: the draft's record, the user's custom resolvers, cookies and the tab. */
+import type { CustomResolver, ILogger, PdfFetchOptions, PdfSearch } from "@labshelf/core";
 
 jest.mock("webextension-polyfill", () => ({ storage: { local: { get: async () => ({}), set: async () => undefined } } }));
 jest.mock("../../src/storage/paperRecordStore", () => ({ listAllRecords: async () => [], upsertRecord: async () => undefined }));
 
 const mockSettings = {
-  enableSciHub: false, sciHubMirror: "https://sci-hub.se", contactEmail: "me@uni.edu",
+  contactEmail: "me@uni.edu", customResolvers: [] as CustomResolver[],
   proxies: [{ name: "Uni library", template: ".ezproxy.uni.edu", enabled: true }],
 };
 jest.mock("../../src/platform/settings", () => ({ getSettings: async () => mockSettings, updateSettings: async () => undefined }));
@@ -31,7 +31,7 @@ const draft = (over: Partial<CaptureDraft> = {}): CaptureDraft => ({
 });
 
 beforeEach(() => {
-  mockSettings.enableSciHub = false;
+  mockSettings.customResolvers = [];
   mockFindPaperPdf.mockClear();
   jest.spyOn(console, "info").mockImplementation(() => undefined);
   jest.spyOn(console, "warn").mockImplementation(() => undefined);
@@ -45,17 +45,15 @@ describe("findPdf", () => {
     expect(mockFindPaperPdf.mock.calls[0]![1]).toEqual({
       ids: { doi: "10.1/x" }, metadata: { title: "Attention is all you need", authors: ["Ashish Vaswani"], year: 2017 },
       landingUrl: "https://pub.example/article/1", pageCandidates: [{ url: "https://pub.example/a.pdf", source: "page" }],
-      input: "https://pub.example/article/1", contactEmail: "me@uni.edu",
+      input: "https://pub.example/article/1", contactEmail: "me@uni.edu", customResolvers: [],
     });
     expect(mockFindPaperPdf.mock.calls[0]![2]).toBe(d.pdfAttempts);
   });
 
-  it("offers the Sci-Hub mirror only when the user enabled it", async () => {
+  it("hands the chain the user's custom resolvers as stored", async () => {
+    mockSettings.customResolvers = [{ name: "Mirror", template: "https://host.example/find/{doi}", enabled: true }];
     await findPdf(log, draft());
-    expect(mockFindPaperPdf.mock.calls[0]![1]).not.toHaveProperty("sciHubMirror");
-    mockSettings.enableSciHub = true;
-    await findPdf(log, draft());
-    expect(mockFindPaperPdf.mock.calls[1]![1]).toMatchObject({ sciHubMirror: "https://sci-hub.se" });
+    expect(mockFindPaperPdf.mock.calls[0]![1]).toMatchObject({ customResolvers: mockSettings.customResolvers });
   });
 
   it("downloads with the user's cookies, the tab's session and a helper tab for bot checks", async () => {

@@ -22,7 +22,7 @@ labshelf doctor                             # checks library, config, Drive and 
 ## Adding papers over the network
 
 - `labshelf add` and the explorer's add accept a DOI, PMID, PMCID, arXiv id or a landing-page URL. The core network import resolves metadata, skips a paper the library already has (DOI, arXiv id, or title and year), and finds the PDF through the core chain. A landing page without a downloadable PDF is saved without one.
-- Sci-Hub is off, and the registries' contact email is the default, until a setting exists.
+- No custom resolver is configured and the registries' contact email is the default, until a setting exists.
 
 ## Verification
 

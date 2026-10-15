@@ -105,7 +105,7 @@ export function findPdf(log: ILogger, draft: CaptureDraft): Promise<ResolvedPdf 
         pageCandidates: draft.pdfCandidates,
         input: draft.pageUrl,
         contactEmail: settings.contactEmail,
-        ...(settings.enableSciHub ? { sciHubMirror: settings.sciHubMirror } : {}),
+        customResolvers: settings.customResolvers,
       },
       draft.pdfAttempts,
     );

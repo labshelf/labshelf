@@ -41,6 +41,8 @@ Identifier detection, landing-page parsing, metadata resolution and the PDF find
 
 When the PDF finder stops at a sign-in page or a bot check, the helper tab loads candidate pages in a background tab to pass what a script can pass. When the user chooses to open the page, a visible tab is opened and watched: each time a page in it finishes loading, the extension looks for a PDF and attaches it to the paper. The watch is kept in `storage.session`, so it survives the service worker sleeping, and ends after 5 minutes, when the tab closes, or when the PDF is attached. After that, publisher pages that asked for a sign-in are retried through the Library proxies listed in the options page (a prefix with `$@`, a hostname suffix or an OpenAthens redirector), top to bottom; when a proxy answers with its own sign-in page, that page is the one the dialog offers to open.
 
+The options page also lists Custom resolvers, empty and off by default. Each enabled entry is an address with `{doi}` where the paper's DOI goes. When no other source has the paper, the PDF finder opens the entries top to bottom and reads each answer like any other page: a PDF link in it is followed, and a bot check or sign-in wall goes to the helper tab and the watched tab. The extension names no site; the user supplies every address. A stored mirror toggle and address become one enabled entry when the profile loads.
+
 ## Headless run
 
 Playwright's full Chrome for Testing can load the unpacked extension. Run it outside the sandbox:

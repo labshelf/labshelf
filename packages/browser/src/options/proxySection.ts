@@ -24,14 +24,14 @@ function createRow(proxy: LibraryProxy, onRemove: (row: HTMLElement) => void): H
   const name = textField({ id: `${id}-name`, type: "text", placeholder: "Library name" });
   const template = textField({ id: `${id}-template`, type: "text", placeholder: "https://login.ezproxy.uni.edu/login?url=$@" });
   const enabled = checkboxField({ id: `${id}-enabled`, label: "Enabled", checked: proxy.enabled });
-  const status = el("span", { id: `${id}-status`, class: "proxy-status", "aria-live": "polite" });
+  const status = el("span", { id: `${id}-status`, class: "editable-status", "aria-live": "polite" });
   const remove = actionButton({ label: "Remove", icon: "trash", onClick: () => onRemove(row) });
   name.control.setAttribute("aria-label", "Proxy name");
   template.control.setAttribute("aria-label", "Proxy address");
   name.control.value = proxy.name;
   template.control.value = proxy.template;
   template.control.setAttribute("aria-describedby", status.id);
-  const row = el("div", { class: "proxy-row", role: "group" }, name.element, template.element, enabled.element, remove, status);
+  const row = el("div", { class: "editable-row", role: "group" }, name.element, template.element, enabled.element, remove, status);
   row.addEventListener("input", () => showVerdict(template.control, status));
   showVerdict(template.control, status);
   return row;
@@ -40,12 +40,12 @@ function createRow(proxy: LibraryProxy, onRemove: (row: HTMLElement) => void): H
 function showVerdict(template: HTMLInputElement, status: HTMLElement): void {
   const verdict = judgeTemplate(template.value);
   status.textContent = !verdict ? "" : "error" in verdict ? verdict.error : verdict.label;
-  status.classList.toggle("proxy-status-error", verdict !== undefined && "error" in verdict);
+  status.classList.toggle("editable-status-error", verdict !== undefined && "error" in verdict);
   template.setAttribute("aria-invalid", String(verdict !== undefined && "error" in verdict));
 }
 
 export function createProxySection(onChange: () => void): ProxySection {
-  const list = el("div", { class: "proxy-list" });
+  const list = el("div", { class: "editable-list" });
   const labelRows = (): void => {
     [...list.children].forEach((row, i) => row.setAttribute("aria-label", `Proxy ${i + 1}`));
   };

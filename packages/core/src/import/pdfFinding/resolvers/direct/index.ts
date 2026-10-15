@@ -5,4 +5,4 @@ export { pmcResolver } from "./pmc.js";
 export { publisherResolver } from "./publisher.js";
 export { crossrefResolver } from "./crossref.js";
 export { unpaywallResolver } from "./unpaywall.js";
-export { sciHubResolver } from "./sciHub.js";
+export { customResolver, isCustomResolverTemplate } from "./customResolver.js";

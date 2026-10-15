@@ -1,7 +1,7 @@
 /** Lists the lookups in download rank (page, publisher, open-access copies, user resolvers) and what each waits for. */
 import {
   arxivResolver, crossrefResolver, europePmcResolver, openalexResolver, pageHintResolver, pmcResolver,
-  publisherResolver, sciHubResolver, semanticScholarResolver, unpaywallResolver,
+  publisherResolver, customResolver, semanticScholarResolver, unpaywallResolver,
 } from "../resolvers/index.js";
 import type { PdfResolver } from "../types.js";
 
@@ -27,6 +27,6 @@ export function lookupPlan(landing: PdfResolver): LookupStep[] {
     { resolver: pmcResolver, after: LEARNERS },
     { resolver: crossrefResolver },
     { resolver: unpaywallResolver },
-    { resolver: sciHubResolver },
+    { resolver: customResolver },
   ];
 }

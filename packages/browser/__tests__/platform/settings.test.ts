@@ -1,4 +1,4 @@
-/** Settings read what storage holds, and drop proxy entries that storage cannot be trusted to have shaped right. */
+/** Settings read what storage holds, drop proxy and custom resolver entries that storage cannot be trusted to have shaped right, and migrate old mirror keys. */
 const store: Record<string, unknown> = {};
 jest.mock("webextension-polyfill", () => ({
   storage: {
@@ -48,5 +48,43 @@ describe("settings proxies", () => {
       ],
     };
     expect((await getSettings()).proxies).toEqual([proxy]);
+  });
+});
+
+const resolver = { name: "Mirror", template: "https://host.example/find/{doi}", enabled: true };
+
+describe("settings custom resolvers", () => {
+  it("defaults to none and reads back the list it saved, in order", async () => {
+    expect((await getSettings()).customResolvers).toEqual([]);
+    const list = [resolver, { name: "Second", template: "http://other.example/?q={doi}", enabled: false }];
+    await updateSettings({ customResolvers: list });
+    expect((await getSettings()).customResolvers).toEqual(list);
+  });
+
+  it("keeps the usable entries of a stored list and drops the rest", async () => {
+    store[SETTINGS_STORAGE_KEY] = {
+      customResolvers: [
+        resolver,
+        { name: "no placeholder", template: "https://host.example/find", enabled: true },
+        { name: "not http", template: "ftp://host.example/{doi}", enabled: true },
+        { name: "flag", template: "https://host.example/{doi}", enabled: "yes" },
+        null,
+      ],
+    };
+    expect((await getSettings()).customResolvers).toEqual([resolver]);
+  });
+
+  it("drops a stored value that is not a list", async () => {
+    store[SETTINGS_STORAGE_KEY] = { customResolvers: "x" };
+    expect((await getSettings()).customResolvers).toEqual([]);
+  });
+
+  it("migrates the old mirror keys once and writes the result back", async () => {
+    store[SETTINGS_STORAGE_KEY] = { enableSciHub: true, sciHubMirror: "https://mirror.example/", contactEmail: "me@uni.edu" };
+    const settings = await getSettings();
+    expect(settings.customResolvers).toEqual([{ name: "Custom resolver", template: "https://mirror.example/{doi}", enabled: true }]);
+    expect(store[SETTINGS_STORAGE_KEY]).not.toHaveProperty("enableSciHub");
+    expect(store[SETTINGS_STORAGE_KEY]).not.toHaveProperty("sciHubMirror");
+    expect((await getSettings()).customResolvers).toEqual(settings.customResolvers);
   });
 });

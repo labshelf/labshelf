@@ -3,12 +3,12 @@ import type { DetectedIds } from "../identifiers/index.js";
 import { arxivIdFromDoi } from "../identifiers/index.js";
 import type { PdfCandidate } from "../landing/index.js";
 import type { ResolvedMetadata } from "../metadata/index.js";
-import type { ResolveContext } from "./types.js";
+import type { CustomResolver, ResolveContext } from "./types.js";
 
 export interface ResolveOptions {
   contactEmail: string;
-  /** Sci-Hub mirror base URL; passing it is the user's opt-in. */
-  sciHubMirror?: string | undefined;
+  /** Passing any is the user's opt-in; without them no custom host is contacted. */
+  customResolvers?: readonly CustomResolver[] | undefined;
 }
 
 export function makeResolveContext(
@@ -23,7 +23,7 @@ export function makeResolveContext(
   return {
     pageCandidates,
     contactEmail: options.contactEmail,
-    ...(options.sciHubMirror ? { sciHubMirror: options.sciHubMirror } : {}),
+    ...(options.customResolvers?.length ? { customResolvers: options.customResolvers } : {}),
     ...(landingUrl ? { landingUrl } : {}),
     ...(doi ? { doi } : {}),
     ...(arxivId ? { arxivId } : {}),

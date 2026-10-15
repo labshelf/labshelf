@@ -64,7 +64,6 @@ describe("identifier import", () => {
       "https://repo.example.org/nature12373.pdf",
       expect.objectContaining({ headers: { "User-Agent": "LabShelf-Terminal/0.1" } }),
     );
-    expect(h.fetch.mock.calls.some(([url]) => /sci-?hub/i.test(url))).toBe(false);
     expect(h.logs.find((l) => l.message === "PDF found")).toMatchObject({ level: "INFO", context: { source: "unpaywall" } });
   });
 

@@ -29,7 +29,7 @@ function setup(metadata: ResolvedMetadata | undefined = ATTENTION): Setup {
 const added = (outcome: ImportOutcome): void => expect(outcome.status).toBe("added");
 
 describe("importNetworkInput with an identifier", () => {
-  it("saves the PDF the chain finds for a DOI, asking with the default contact email and never Sci-Hub", async () => {
+  it("saves the PDF the chain finds for a DOI, asking with the default contact email", async () => {
     const { h, net, env } = setup();
     net.routes[unpaywall("10.1000/abc")] = () => json({ best_oa_location: { url_for_pdf: "https://repo.example.org/a.pdf" } });
     net.routes["https://repo.example.org/a.pdf"] = pdf;
@@ -37,7 +37,6 @@ describe("importNetworkInput with an identifier", () => {
     added(await importNetworkInput(env, "10.1000/abc", PAPERS));
 
     expect(await h.fs.readFile(`${PAPER_DIR}/paper.pdf`)).toEqual(PDF);
-    expect(net.calls.some((url) => /sci-?hub/i.test(url))).toBe(false);
     expect(h.logs.find((l) => l.message === "PDF found")).toMatchObject({ level: "INFO", context: { source: "unpaywall" } });
   });
 

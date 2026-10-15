@@ -31,7 +31,7 @@ export async function findPaperPdf(
   const context = {
     ...makeResolveContext(search.ids, search.metadata, search.landingUrl, search.pageCandidates ?? [], {
       contactEmail: search.contactEmail ?? DEFAULT_CONTACT_EMAIL,
-      sciHubMirror: search.sciHubMirror,
+      customResolvers: search.customResolvers,
     }),
     ...(search.pmcid ? { pmcid: search.pmcid } : {}),
   };

@@ -32,6 +32,13 @@ export interface LibraryProxy {
   enabled: boolean;
 }
 
+/** A page the user knows may hold a paper's PDF: `template` is a URL with `{doi}` where the DOI goes. */
+export interface CustomResolver {
+  name: string;
+  template: string;
+  enabled: boolean;
+}
+
 export interface PdfFetchOptions {
   fetch?: FetchFn;
   /** "include" sends the user's cookies, so a paper the user can open through an institutional login downloads too. */
@@ -66,8 +73,8 @@ export interface ResolveContext {
   pageCandidates: PdfCandidate[];
   /** Contact email for the polite pools of Unpaywall, OpenAlex and CrossRef. */
   contactEmail: string;
-  /** Sci-Hub mirror base URL. Its presence is the user's opt-in; without it Sci-Hub is never contacted. */
-  sciHubMirror?: string;
+  /** The user's custom resolvers; the enabled ones propose addresses built from the DOI. */
+  customResolvers?: readonly CustomResolver[];
 }
 
 /** What a resolver runs with: the host's network and logger. */

@@ -66,12 +66,19 @@ describe("resolvePdf", () => {
     expect((await resolvePdf(makeContext({ doi: "10.9999/oa" }), h.opts()))?.source).toBe("unpaywall");
   });
 
-  it("never contacts the Sci-Hub mirror unless a mirror is configured", async () => {
+  it("contacts no custom host unless a resolver is configured", async () => {
     const h = makeFindingHarness();
     await resolvePdf(makeContext({ doi: "10.9999/closed" }), h.opts());
     expect(h.calls.some((u) => u.startsWith("https://mirror.example"))).toBe(false);
-    await resolvePdf(makeContext({ doi: "10.9999/closed", sciHubMirror: "https://mirror.example" }), h.opts());
-    expect(h.calls).toContain("https://mirror.example/10.9999/closed");
+  });
+
+  it("attaches the PDF a configured resolver's page links when no other source has the paper", async () => {
+    const h = makeFindingHarness();
+    h.routes["https://mirror.example/find/10.9999/closed"] = () => html('<embed type="application/pdf" src="//files.example/x.pdf#navpanes=0">');
+    h.routes["https://files.example/x.pdf#navpanes=0"] = pdf;
+    const customResolvers = [{ name: "Mirror", template: "https://mirror.example/find/{doi}", enabled: true }];
+    const got = await resolvePdf(makeContext({ doi: "10.9999/closed", customResolvers }), h.opts());
+    expect(got).toMatchObject({ source: "custom", url: "https://files.example/x.pdf#navpanes=0" });
   });
 
   it("returns undefined when nothing downloads as a PDF", async () => {

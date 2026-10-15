@@ -11,7 +11,7 @@ const SOURCE_LABELS: Record<string, string> = {
   crossref: "CrossRef",
   unpaywall: "Unpaywall (open access)",
   pubmed: "PubMed",
-  "sci-hub": "Sci-Hub",
+  custom: "Custom resolver",
 };
 
 const BOT_CHECK_HINT = " Some links were behind a bot check — opening the PDF once in a tab can let LabShelf through.";

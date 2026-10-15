@@ -5,6 +5,7 @@ import { StorageRingLogSink, createBrowserLogger, getSettings, updateSettings } 
 import { loadReaderPrefs, saveReaderPrefs } from "../reader/access";
 import { applyTheme } from "../ui";
 import { createAppearanceSection } from "./appearanceSection";
+import { createResolverSection } from "./customResolvers";
 import { createDriveConnection } from "./driveConnection";
 import { createGeneralForm } from "./generalForm";
 import { createLogSection } from "./logSection";
@@ -37,6 +38,8 @@ async function init(): Promise<void> {
   const reader = createReaderForm();
   let scheduleProxySave = (): void => undefined;
   const proxies = createProxySection(() => scheduleProxySave());
+  let scheduleResolverSave = (): void => undefined;
+  const resolvers = createResolverSection(() => scheduleResolverSave());
   const log = createLogSection(ring);
   const drive = createDriveConnection(logger, () => log.refresh());
 
@@ -45,6 +48,7 @@ async function init(): Promise<void> {
     drive.section.element,
     ...general.sections,
     proxies.element,
+    resolvers.element,
     reader.section,
     createAppearanceSection(saved.flash),
     log.element,
@@ -54,6 +58,7 @@ async function init(): Promise<void> {
   general.fill(settings);
   reader.fill(await loadReaderPrefs());
   proxies.fill(settings.proxies);
+  resolvers.fill(settings.customResolvers);
   autosave(general.controls, async () => {
     const patch = general.read();
     await updateSettings(patch);
@@ -71,6 +76,12 @@ async function init(): Promise<void> {
     const list = proxies.read();
     await updateSettings({ proxies: list });
     await logger.log("INFO", "options", "library proxies saved", { count: list.length });
+    saved.flash();
+  });
+  scheduleResolverSave = autosave([], async () => {
+    const list = resolvers.read();
+    await updateSettings({ customResolvers: list });
+    await logger.log("INFO", "options", "custom resolvers saved", { count: list.length });
     saved.flash();
   });
   await drive.refresh();
