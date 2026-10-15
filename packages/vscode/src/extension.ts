@@ -1,74 +1,73 @@
 /** Extension entry point — wires services, commands, library folder tree, sync controller, and list panel on activation */
-import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { InMemoryResearchDatabase, PaperDataStore, PdfImportParser, BibTeXService, libraryChanged, libraryLayout, scanLibrary, exportAnnotations, type IFileSystem, type ILogger, type IResearchDatabase, type MutationContext, type SyncResult, type ReaderCommandId } from "@labshelf/core";
-import { NodePdfOpener, createNodeSidecarPort } from "@labshelf/core/node";
-import { PaperImporter, PaperService, PaperTextLayers, createExtensionLogger } from "./core/index.js";
-import { VscodeFileSystem } from "./storage/vscodeFileSystem.js";
-import {
-  resolveLibraryRoot,
-  runLibrarySetupWizard,
-  ensureLibraryStructure,
-  mirrorLibraryRoot,
-} from "./storage/paths/index.js";
-import { ExternalChangeWatcher } from "./storage/data/externalChangeWatcher.js";
-import { LibraryTreeDataProvider, LibraryDragAndDropController, createFolderReader } from "./ui/library/index.js";
-import type { LibraryNode } from "./ui/library/index.js";
+import { libraryChanged, libraryLayout } from "@labshelf/core";
+import { resolveLibraryRoot } from "./storage/paths/index.js";
 import { ListWebviewPanel } from "./ui/list/index.js";
-import { SettingsWebviewPanel } from "./ui/settings/index.js";
-import { PdfViewerPanel, ThemeManager, createVsCodeExportPorts } from "./pdf-viewer/index.js";
-import { registerCommands, resolvePaper, ensurePaperPdf } from "./commands/registerCommands.js";
-import { registerAiCommands } from "./commands/registerAiCommands.js";
-import { importPapers } from "./commands/importProgress.js";
-import { folderActions, moveFolders, registerFolderCommands, type FolderCommandHost } from "./commands/index.js";
-import type { ActiveServices } from "./commands/registerCommands.js";
-import { createAiService, AiService } from "./ai/service/index.js";
-import { SqliteResearchDatabase } from "./db/sqliteResearchDatabase.js";
-import { createOcrEngine, createTextLayerBuilder, hostPdfjs } from "./pdf/index.js";
-import { currentTextLayerJobs, onTextLayerJobsChanged, queueTextLayers } from "./commands/textLayerQueue.js";
-import { indexLibrary, reindexLibrary } from "./storage/data/reindexLibrary.js";
-import { SyncController } from "./sync/adapter/syncController.js";
-import { createVscodeDriveAuth } from "./sync/auth/index.js";
-import { findSimilarPapers } from "./ai/service/similarPapers.js";
+import {
+  registerCommands,
+  registerAiCommands,
+  type FolderCommandHost,
+  type ActiveServices,
+} from "./commands/index.js";
+import { AiService } from "./ai/service/index.js";
 import { EventBus } from "./events/index.js";
-
-// The adapter belongs to one library root: its temp folder for atomic writes sits inside that root.
-const createFileSystem = (root: vscode.Uri): VscodeFileSystem =>
-  new VscodeFileSystem(libraryLayout(root, vscode.Uri.joinPath).tmpDir().fsPath);
-
-const READER_COMMANDS: readonly ReaderCommandId[] = [
-  "zoomIn", "zoomOut", "zoomReset", "find", "historyBack", "historyForward", "toggleSidebar",
-];
+import {
+  startAiService,
+  LibraryRootController,
+  SyncControllerLifecycle,
+  ExternalChangeHandling,
+  registerLibraryTreeView,
+  registerLibraryCommands,
+  registerSettingsView,
+  registerPanelCommands,
+  registerSyncCommands,
+} from "./activation/index.js";
 
 /** Activates the extension, initializing services if a library is already configured */
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const eventBus = new EventBus();
 
-  let activeServices: ActiveServices | null = null;
-  let syncController: SyncController | null = null;
   // The settings page hears sync status through this, including from a controller created after the page opened.
   const driveStatusChanged = new vscode.EventEmitter<void>();
   context.subscriptions.push(driveStatusChanged);
   let aiService: AiService | null = null;
-  let libraryRoot: vscode.Uri | undefined = await resolveLibraryRoot(context);
 
-  const papersRootUri = (): vscode.Uri | null =>
-    libraryRoot ? libraryLayout(libraryRoot, vscode.Uri.joinPath).papersRoot() : null;
+  // Reassigned once the Library tree view is registered; the lifecycle modules below only ever
+  // call it after that point, so the forward reference is safe.
+  let refreshLibraryViews: () => void = () => {};
 
-  // Declared before the first await: ensureSyncController runs inside the progress callback and reaches it.
-  let externalWatcher: ExternalChangeWatcher | undefined;
+  const externalChangeHandling = new ExternalChangeHandling({
+    context,
+    getActiveServices: () => controller.currentServices(),
+    onRefresh: () => refreshLibraryViews(),
+  });
+  const syncLifecycle = new SyncControllerLifecycle({
+    context,
+    eventBus,
+    driveStatusChanged,
+    getActiveServices: () => controller.currentServices(),
+    // A sync that pulls files from Drive must surface in the list without a reload.
+    onSynced: async (result) => {
+      if (!libraryChanged(result)) { return; }
+      await externalChangeHandling.reindexAndRefresh("sync");
+    },
+  });
+  const controller = new LibraryRootController(context, eventBus, externalChangeHandling, syncLifecycle);
 
-  if (libraryRoot) {
+  const papersRootUri = (): vscode.Uri | null => {
+    const root = controller.currentRoot();
+    return root ? libraryLayout(root, vscode.Uri.joinPath).papersRoot() : null;
+  };
+
+  const initialRoot = await resolveLibraryRoot(context);
+  if (initialRoot) {
     // The Library tree is only registered once the index is open. Until then the view shows
     // "Loading your library…" (package.json viewsWelcome, keyed on labshelf.libraryLoaded) under
     // VS Code's own progress bar, never "No folders yet", which would read as a lost library.
-    const root = libraryRoot;
-    activeServices = await vscode.window.withProgress({ location: { viewId: "labshelf.library" } }, async () => {
-      const services = await buildServices(context, root, eventBus);
-      activeServices = services;
-      aiService = await maybeStartAi(context, eventBus, services);
-      await ensureSyncController(root, services);
+    await vscode.window.withProgress({ location: { viewId: "labshelf.library" } }, async () => {
+      const services = await controller.loadInitial(initialRoot);
+      aiService = await startAiService(context, eventBus, services);
       return services;
     });
   } else {
@@ -83,92 +82,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     });
   }
 
-  // Library folder tree mirrors the real directory structure under papers/.
-  const libraryProvider = new LibraryTreeDataProvider(papersRootUri(), activeServices?.folderReader ?? null, eventBus);
-
   // Returns current services or triggers the setup wizard and builds services from the chosen root.
-  async function requireServices(): Promise<ActiveServices | null> {
-    if (activeServices) {
-      return activeServices;
-    }
-
-    const root = await runLibrarySetupWizard(context, createFileSystem);
-    if (!root) {
-      return null;
-    }
-
-    libraryRoot = root;
-    activeServices = await buildServices(context, root, eventBus);
-    libraryProvider.setLibrary(libraryLayout(root, vscode.Uri.joinPath).papersRoot(), activeServices.folderReader);
-    await ensureSyncController(root, activeServices);
-
-    return activeServices;
-  }
-
-  // Creates the sync controller once, wiring the post-sync re-index. A sync that
-  // pulls files from Drive must surface in the list without a reload, so the
-  // controller's onDidSync triggers reindexLibrary.
-  async function ensureSyncController(root: vscode.Uri, services: ActiveServices): Promise<void> {
-    const fileSystem = services.fileSystem;
-    // Every path that activates a library root comes through here, so the watcher and the shared config follow it.
-    watchLibrary(root);
-    void mirrorLibraryRoot(root, services.logger);
-    if (syncController) {
-      syncController.setLibrary(libraryLayout(root, vscode.Uri.joinPath), fileSystem, services.logger);
-      return;
-    }
-    const controller = new SyncController({
-      createAuth: (logger) => createVscodeDriveAuth(context, logger),
-      paths: libraryLayout(root, vscode.Uri.joinPath),
-      localFs: fileSystem,
-      eventBus,
-      logger: services.logger,
-      listTitles: async () => (await activeServices!.paperService.listPapers()).map((p) => [p.id, p.title] as const),
-    });
-    controller.onDidChangeStatus(() => driveStatusChanged.fire());
-    controller.onDidSync((result) => { void onLibrarySynced(result); });
-    await controller.initialize();
-    context.subscriptions.push(controller);
-    syncController = controller;
-  }
-
-  // Re-indexes from disk after a sync that changed the library namespace, then
-  // refreshes the views. The list panel, tree and AI indexer update through the
-  // paper events reindexLibrary emits.
-  async function onLibrarySynced(result: SyncResult): Promise<void> {
-    if (!activeServices || !libraryChanged(result)) { return; }
-    try {
-      await activeServices.reindexLibrary();
-    } catch (error) {
-      await activeServices.logger.log("WARN", "extension", "Re-index after sync failed", {
-        message: error instanceof Error ? error.message : String(error),
-      });
-      return;
-    }
-    refreshLibraryViews();
-  }
-
-  // Changes made outside this window (the LabShelf terminal app, a sync it ran, another window) are picked up from
-  // disk: the re-index adds, updates and drops papers, then the views refresh.
-  function watchLibrary(root: vscode.Uri): void {
-    externalWatcher?.dispose();
-    externalWatcher = new ExternalChangeWatcher(libraryLayout(root, vscode.Uri.joinPath), () => { void onExternalChange(); });
-    context.subscriptions.push(externalWatcher);
-  }
-
-  async function onExternalChange(): Promise<void> {
-    if (!activeServices) { return; }
-    const services = activeServices;
-    try {
-      await services.reindexLibrary();
-    } catch (error) {
-      await services.logger.log("WARN", "extension", "Re-index after an external change failed", {
-        message: error instanceof Error ? error.message : String(error),
-      });
-      return;
-    }
-    refreshLibraryViews();
-  }
+  const requireServices = (): Promise<ActiveServices | null> => controller.require();
 
   const folderHost: FolderCommandHost = {
     requireServices,
@@ -177,209 +92,26 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     followFolderMove: async (from, to) => { await ListWebviewPanel.currentPanel?.followFolderMove(from, to); },
   };
 
-  const libraryDnD = new LibraryDragAndDropController(async (uris, targetDir) => {
-    const services = await requireServices();
-    if (services) { await importPapers(services, uris, targetDir); }
-  }, (sourceDirs, targetDir) => moveFolders(folderHost, sourceDirs, targetDir));
-
-  libraryProvider.setPaperPathSource(async () =>
-    activeServices ? (await activeServices.paperService.listPapers()).map((p) => p.path) : [],
-  );
-
-  const libraryTreeView = vscode.window.createTreeView("labshelf.library", {
-    treeDataProvider: libraryProvider,
-    dragAndDropController: libraryDnD,
-    showCollapseAll: true,
+  const { libraryProvider, syncTreeToPanel, refreshLibraryViews: refreshViews } = registerLibraryTreeView({
+    context, eventBus, controller, papersRootUri, folderHost,
   });
-  context.subscriptions.push(libraryTreeView);
-  // From here an empty Library view really is empty: switch its welcome text from loading to "No folders yet".
-  void vscode.commands.executeCommand("setContext", "labshelf.libraryLoaded", true);
+  refreshLibraryViews = refreshViews;
 
-  // Keeps the tree selection on the folder the list panel shows. reveal() would
-  // force the sidebar open, so a hidden tree is synced when it becomes visible instead.
-  const syncTreeToPanel = (folder?: LibraryNode): void => {
-    if (!folder || !libraryTreeView.visible) { return; }
-    libraryTreeView.reveal(folder, { select: true, focus: false, expand: true }).then(undefined, () => {
-      // The folder may have just been removed; a stale selection is harmless.
-    });
-  };
-  context.subscriptions.push(
-    libraryTreeView.onDidChangeVisibility((e) => {
-      if (e.visible) { syncTreeToPanel(ListWebviewPanel.currentPanel?.currentFolder); }
-    }),
-  );
+  registerSettingsView({ context, controller, driveStatusChanged });
 
-  // Folder structure changed on disk: refresh both the tree and the open panel.
-  const refreshLibraryViews = (): void => {
-    libraryProvider.refresh();
-    void ListWebviewPanel.currentPanel?.refresh();
-  };
+  registerPanelCommands({
+    context, eventBus, requireServices, papersRootUri, folderHost, syncTreeToPanel,
+    getAiService: () => aiService,
+  });
 
-  // Collapses tree items inside every LabShelf view at once — same effect as
-  // clicking each view's individual "collapse all" button. VS Code has no API to
-  // close the section panels themselves, so this is the closest equivalent.
-  context.subscriptions.push(
-    vscode.commands.registerCommand("labshelf.collapseAllSections", async () => {
-      const viewIds = [
-        "labshelf.library",
-      ];
-      for (const id of viewIds) {
-        await vscode.commands.executeCommand(`workbench.actions.treeView.${id}.collapseAll`);
-      }
-    }),
-  );
+  registerLibraryCommands({ context, controller, folderHost, libraryProvider });
 
-  // SETTINGS sidebar view — empty tree provider so viewsWelcome (defined in
-  // package.json) renders its "Open settings" link as the section content.
-  const emptyProvider: vscode.TreeDataProvider<never> = {
-    getTreeItem: (e: never) => e,
-    getChildren: () => [],
-  };
-  context.subscriptions.push(
-    vscode.window.createTreeView("labshelf.settings", { treeDataProvider: emptyProvider }),
-  );
-
-  // Settings webpanel — currently the only place to manage Drive, sync interval, etc.
-  context.subscriptions.push(
-    vscode.commands.registerCommand("labshelf.openSettings", () => {
-      SettingsWebviewPanel.createOrShow(context.extensionUri, {
-        getLibraryRoot: () => libraryRoot ?? null,
-        getDriveStatus: () => syncController?.driveStatus() ?? null,
-        onDidChangeDriveStatus: driveStatusChanged.event,
-        getLogger: () => activeServices?.logger,
-        reconfigureLibrary: async () => {
-          const root = await runLibrarySetupWizard(context, createFileSystem);
-          if (!root) { return undefined; }
-          libraryRoot = root;
-          activeServices = await buildServices(context, root, eventBus);
-          libraryProvider.setLibrary(libraryLayout(root, vscode.Uri.joinPath).papersRoot(), activeServices.folderReader);
-          await ensureSyncController(root, activeServices);
-          return root;
-        },
-      });
-    }),
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand("labshelf.openListTab", (node?: LibraryNode) => {
-      requireServices().then((services) => {
-        if (services) {
-          ListWebviewPanel.createOrShow(
-            {
-              extensionUri: context.extensionUri, paperService: services.paperService, eventBus, logger: services.logger,
-              getPapersRoot: () => papersRootUri()?.fsPath ?? null,
-              readFolders: services.folderReader, folders: folderActions(folderHost),
-              onDidNavigate: syncTreeToPanel,
-              textLayerJobs: { current: currentTextLayerJobs, onDidChange: onTextLayerJobsChanged },
-              loadSidecar: (paperId) => services.paperDataStore.load(paperId),
-              findSimilar: (paper) => findSimilarPapers(aiService, paper),
-            },
-            node,
-          );
-        }
-      });
-    }),
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand("labshelf.openPdfViewer", async (paperId?: string, page?: number) => {
-      const services = await requireServices();
-      if (!services) { return; }
-      // Without an id (command palette) the user picks the paper.
-      const paper = await resolvePaper(services.paperService, paperId, "Open paper in the reader");
-      if (!paper) { return; }
-      // One guard covers every reader entry point (double-click, Enter, child
-      // row, detail button, palette): a PDF-less paper warns and opens nothing.
-      if (!(await ensurePaperPdf(services, paper))) { return; }
-      PdfViewerPanel.createOrShow(
-        {
-          extensionUri: context.extensionUri,
-          eventBus,
-          themeManager: services.themeManager,
-          store: services.paperDataStore,
-          logger: services.logger,
-          onReadingEvent: (event) => aiService?.recordReadingEvent(event),
-        },
-        paper,
-        typeof page === "number" ? { page } : {},
-      );
-    }),
-    // The list passes "file": it copies the Markdown itself, so only saving is left to ask for.
-    vscode.commands.registerCommand("labshelf.exportAnnotations", async (paperId?: string, to?: "file") => {
-      const services = await requireServices();
-      if (!services) { return; }
-      const paper = await resolvePaper(services.paperService, paperId, "Export annotations to Markdown");
-      if (!paper) { return; }
-      const target = to ?? (await vscode.window.showQuickPick(
-        [{ label: "Copy to clipboard", target: "clipboard" as const }, { label: "Save as file...", target: "file" as const }],
-        { placeHolder: "Export annotations as Markdown" },
-      ))?.target;
-      if (target) { await exportAnnotations(createVsCodeExportPorts(paper, services.paperDataStore), target); }
-    }),
-    // Contributed keybindings (scoped to the focused reader panel) land here: VS Code resolves those chords
-    // before the webview sees them, so the reader cannot rely on its own keydown handler alone.
-    ...READER_COMMANDS.map((id) =>
-      vscode.commands.registerCommand(`labshelf.reader.${id}`, () => { PdfViewerPanel.postToActive(id); }),
-    ),
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand("labshelf.library.refresh", () => libraryProvider.refresh()),
-  );
-
-  registerFolderCommands(context, folderHost);
-
-  // Import papers into a specific folder selected via the tree context menu.
-  context.subscriptions.push(
-    vscode.commands.registerCommand("labshelf.addPaperHere", async (node?: LibraryNode) => {
-      const services = await requireServices();
-      if (!services) { return; }
-
-      const selected = await vscode.window.showOpenDialog({
-        canSelectMany: true,
-        canSelectFiles: true,
-        canSelectFolders: true,
-        filters: { PDF: ["pdf"] },
-        openLabel: "Add Paper",
-      });
-      if (!selected || selected.length === 0) { return; }
-
-      await importPapers(services, selected, node?.dirPath);
-    }),
-  );
-
-  // Configure or reconfigure the library root via the setup wizard.
-  context.subscriptions.push(
-    vscode.commands.registerCommand("labshelf.configureLibrary", async () => {
-      const root = await runLibrarySetupWizard(context, createFileSystem);
-      if (!root) { return; }
-
-      libraryRoot = root;
-      activeServices = await buildServices(context, root, eventBus);
-      libraryProvider.setLibrary(libraryLayout(root, vscode.Uri.joinPath).papersRoot(), activeServices.folderReader);
-      await ensureSyncController(root, activeServices);
-      vscode.window.showInformationMessage(`LabShelf: Library configured at ${root.fsPath}`);
-    }),
-  );
-
-  // Sync commands require the library to be configured before delegating to SyncController.
-  context.subscriptions.push(
-    vscode.commands.registerCommand("labshelf.sync.connect", async () => {
-      if (!(await requireServices())) { return; }
-      await syncController?.connect();
-    }),
-    vscode.commands.registerCommand("labshelf.sync.now", async () => {
-      if (!(await requireServices())) { return; }
-      await syncController?.sync();
-    }),
-    vscode.commands.registerCommand("labshelf.sync.disconnect", async () => {
-      await syncController?.disconnect();
-    }),
-  );
+  registerSyncCommands({ context, controller, requireServices });
 
   registerCommands(context, requireServices);
   registerAiCommands(context, () => aiService);
 
+  const activeServices = controller.currentServices();
   if (activeServices) {
     const services = activeServices;
     eventBus.on("paper:added", async (payload) => {
@@ -393,100 +125,3 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
 /** Called by VS Code on extension deactivation — cleanup is handled via disposables */
 export function deactivate(): void { return; }
-
-// Spins up the AI service when a library is configured. Resolution failures
-// degrade the AI subsystem instead of breaking activation; the rest of the
-// extension keeps working.
-async function maybeStartAi(
-  context: vscode.ExtensionContext,
-  eventBus: EventBus,
-  services: ActiveServices,
-): Promise<AiService | null> {
-  try {
-    if (!(services.database instanceof SqliteResearchDatabase)) return null;
-    const result = await createAiService({
-      context,
-      database: services.database,
-      fileSystem: services.fileSystem,
-      eventBus,
-      logger: services.logger,
-      pdfOpener: new NodePdfOpener(hostPdfjs),
-      resolvePdfUri: (paperId) => services.paperService.resolvePdfUri(paperId),
-    });
-    if (!result) return null;
-    context.subscriptions.push({ dispose: result.dispose });
-    return result.service;
-  } catch (error) {
-    void services.logger.log("WARN", "extension", "AI service failed to start", {
-      message: error instanceof Error ? error.message : String(error),
-    });
-    return null;
-  }
-}
-
-// Constructs and wires all application services for the given library root.
-async function buildServices(
-  context: vscode.ExtensionContext,
-  root: vscode.Uri,
-  eventBus: EventBus,
-): Promise<ActiveServices> {
-  const paths = libraryLayout(root, vscode.Uri.joinPath);
-  const fileSystem = createFileSystem(root);
-  await ensureLibraryStructure(root, fileSystem);
-  const database = await initializeDatabase(paths.indexPath(), fileSystem);
-  const logger = createExtensionLogger(paths.appLogPath().fsPath, { append: (entry) => database.appendLog(entry) });
-  const ocrEngine = createOcrEngine(context, logger);
-  const pdfImportParser = new PdfImportParser(new NodePdfOpener(hostPdfjs), { ocr: ocrEngine });
-  const bibTeXService = new BibTeXService(fileSystem);
-  const mutations: MutationContext = {
-    fs: fileSystem, paths: path, artifacts: bibTeXService, logger, papersRoot: paths.papersRoot().fsPath,
-  };
-  const parse = (bytes: Uint8Array, stem: string) => pdfImportParser.parse(bytes, stem);
-  const paperService = new PaperService(mutations, database, eventBus, parse);
-  const network = {
-    tmpDir: paths.tmpDir().fsPath,
-    download: { fetch: globalThis.fetch, headers: { "User-Agent": `LabShelf-VSCode/${context.extension.packageJSON.version}` } },
-  };
-  const importer = new PaperImporter(mutations, database, eventBus, parse, network);
-  const textLayers = new PaperTextLayers(mutations, paperService, createTextLayerBuilder(ocrEngine));
-  const paperDataStore = new PaperDataStore(createNodeSidecarPort(libraryLayout(root.fsPath, path.join), logger), { logger });
-  const scan = () => scanLibrary(fileSystem, path, paths.papersRoot().fsPath, logger);
-  await indexLibrary({ database, scan });
-  // Papers imported before text layers were tracked are classified once, in the
-  // background and without OCR; the verdict is saved in metadata.yaml. Papers
-  // saved without a PDF have nothing to read and are left out.
-  const indexed = await database.listPapers();
-  const toCheck = indexed.filter((paper) => paper.hasPdf !== false && !paper.textLayer);
-  if (toCheck.length > 0) {
-    void queueTextLayers(textLayers, toCheck, { mode: "check", logger });
-  }
-  const themeManager = new ThemeManager();
-  const reindex = () =>
-    reindexLibrary({
-      database,
-      scan,
-      eventBus,
-      queueCheck: (papers) => void queueTextLayers(textLayers, papers, { mode: "check", logger }),
-    });
-  return {
-    paperService, importer, textLayers, mutations, logger, themeManager, database, paperDataStore, fileSystem,
-    reindexLibrary: reindex,
-    folderReader: createFolderReader(fileSystem, logger),
-  };
-}
-
-// Tries to create the SQLite database; falls back to the in-memory implementation on failure.
-async function initializeDatabase(indexPath: vscode.Uri, fileSystem: IFileSystem): Promise<IResearchDatabase> {
-  try {
-    const { createSqliteResearchDatabase } = await import("./db/sqliteResearchDatabase.js");
-    const database = await createSqliteResearchDatabase(indexPath, fileSystem);
-    await database.initialize();
-    return database;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    vscode.window.showWarningMessage(`LabShelf SQLite unavailable, using in-memory fallback: ${message}`);
-    const fallback = new InMemoryResearchDatabase();
-    await fallback.initialize();
-    return fallback;
-  }
-}
