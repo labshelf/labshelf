@@ -24,7 +24,7 @@ After every Edit/Write, `.claude/hooks/check-rules.sh` reports regressions again
 
 ### Skills and agents
 
-Skills: `brainstorm` (think an idea through with the user; no files touched until approved; ends in a plan from `documents/plans/TEMPLATE.md`), `orchestrate` (also runs an approved plan: `/orchestrate documents/plans/<slug>.plan.md`), `finish`, `check`, `ship` (finish + commits), `verify` (run an app for real), `refactor-step` (advance the architecture refactor plan), `health` (repo-wide audit).
+Skills: `brainstorm` (think an idea through with the user in spar, grill or council mode; no files touched until approved; ends in a plan from `documents/plans/TEMPLATE.md`), `council` (four opposed personas and a judge on one hard-to-reverse fork; about 200k subagent tokens), `retro` (turns this session's mistakes into checks and rules after approval), `orchestrate` (also runs an approved plan: `/orchestrate documents/plans/<slug>.plan.md`), `finish`, `check`, `ship` (finish + commits), `verify` (run an app for real), `refactor-step` (advance the architecture refactor plan), `health` (repo-wide audit).
 
 Agents: `Explore`, `implementer`, `code-mapper`, `module-splitter`, `import-validator`, `dead-code-cleaner`, `comment-enforcer`, `doc-keeper`, `architecture-reviewer`, `test-writer`, `diagnose`, `commit-splitter`, `changelog-writer`. Each agent's model is set in its frontmatter. Agents without a model run on Sonnet (`CLAUDE_CODE_SUBAGENT_MODEL` in `.claude/settings.json`).
 
