@@ -1,5 +1,5 @@
 /** Runs manual sync (the sync key and :sync), reports the result it leaves in the status bar, and signing in to Google Drive. */
-import type { SyncOutcome } from "@labshelf/core";
+import { describeSyncOutcome, type SyncOutcome } from "@labshelf/core";
 
 import { copyToClipboard, openExternal } from "../../../platform/index.js";
 import type { App } from "../app.js";
@@ -21,27 +21,9 @@ export async function syncNow(app: App): Promise<void> {
 }
 
 export function reportSync(app: App, outcome: SyncOutcome, quiet: boolean): void {
-  switch (outcome.kind) {
-    case "synced": {
-      const r = outcome.record;
-      const moved = r.uploaded + r.downloaded + r.deletedLocal + r.deletedRemote;
-      if (r.conflicts.length) {
-        app.taskStatus.notify(`Synced with ${r.conflicts.length} conflict(s): both versions kept, the remote one renamed "(conflict …)"`, "warn");
-      } else if (moved || !quiet) {
-        const removed = r.deletedLocal + r.deletedRemote;
-        app.taskStatus.notify(moved ? `Synced: ${r.downloaded} down, ${r.uploaded} up${removed ? `, ${removed} removed` : ""}` : "Already in sync");
-      }
-      return;
-    }
-    case "busy":
-      if (!quiet) { app.taskStatus.notify(`${appName(outcome.holder?.app)} is syncing this library right now; its changes will show up here`, "warn"); }
-      return;
-    case "skipped":
-      if (!quiet) { app.taskStatus.notify(`Sync skipped: ${outcome.reason}`, "warn"); }
-      return;
-    case "failed":
-      app.taskStatus.notify(outcome.reauth ? "Drive access expired — run :login" : `Sync failed: ${outcome.error}`, "error");
-  }
+  const notice = describeSyncOutcome(outcome);
+  if (quiet && notice.routine) { return; }
+  app.taskStatus.notify(notice.needsSignIn ? `${notice.text} — run :login` : notice.text, notice.severity);
 }
 
 export async function login(app: App): Promise<void> {

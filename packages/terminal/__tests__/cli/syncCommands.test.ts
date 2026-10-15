@@ -20,13 +20,13 @@ describe("sync and auth (offline paths only)", () => {
   it("sync skips with exit 1 and a hint when not signed in", async () => {
     const s = await harness.session();
     expect(await s.run("sync")).toBe(1);
-    expect(s.errText()).toBe("sync skipped: not signed in to Google Drive — run `labshelf auth login`");
+    expect(s.errText()).toBe("Sync skipped: not signed in to Google Drive — run `labshelf auth login`");
   });
 
   it("sync skips without a hint when no OAuth client is configured", async () => {
     const s = await harness.session(PAPERS, { env: { LABSHELF_GOOGLE_CLIENT_ID: "YOUR_GOOGLE_OAUTH_CLIENT_ID" } });
     expect(await s.run("sync")).toBe(1);
-    expect(s.errText()).toBe("sync skipped: no Google OAuth client configured");
+    expect(s.errText()).toBe("Sync skipped: no Google OAuth client configured");
   });
 
   it("sync --json prints the outcome", async () => {
@@ -40,7 +40,7 @@ describe("sync and auth (offline paths only)", () => {
     const info = { app: "vscode", pid: 424242, host: "another-computer", token: "t", acquiredAt: new Date().toISOString(), heartbeatAt: new Date().toISOString() };
     const s = await harness.session(PAPERS, { prepare: async (lib) => { await fs.writeFile(lib.paths.layout.lockPath(), JSON.stringify(info)); } });
     expect(await s.run("sync")).toBe(1);
-    expect(s.errText()).toBe("VS Code is syncing this library right now.");
+    expect(s.errText()).toBe("VS Code is syncing this library right now; its changes will show up here");
     expect(s.ctx.sync.status().state).toBe("waiting");
     expect(JSON.parse(await fs.readFile(s.lib.paths.layout.lockPath(), "utf8"))).toMatchObject({ app: "vscode", token: "t" });
   });
@@ -50,7 +50,7 @@ describe("sync and auth (offline paths only)", () => {
     const info = { app: "browser", pid: 424242, host: "another-computer", token: "t", acquiredAt: new Date().toISOString(), heartbeatAt: new Date().toISOString() };
     const s = await harness.session(PAPERS, { prepare: async (lib) => { await fs.writeFile(lib.paths.layout.lockPath(), JSON.stringify(info)); } });
     expect(await s.run("sync")).toBe(1);
-    expect(s.errText()).toBe("Another LabShelf app is syncing this library right now.");
+    expect(s.errText()).toBe("Another LabShelf app is syncing this library right now; its changes will show up here");
   });
 
   it("auth status shows signed out / signed in and the last sync by any app", async () => {

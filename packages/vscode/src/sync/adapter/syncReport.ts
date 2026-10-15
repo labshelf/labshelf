@@ -1,39 +1,20 @@
 /** Shows a sync outcome in the status bar and, where the user should know, as a toast. */
 import * as vscode from "vscode";
 
-import type { SyncOutcome } from "@labshelf/core";
+import { describeSyncOutcome, type SyncOutcome } from "@labshelf/core";
 
 /**
- * Reports one outcome. Busy and signed-out runs stay quiet unless the user asked for the sync: another app's changes
- * arrive through the file watcher anyway.
+ * Reports one outcome. Routine ones (nothing changed, another app syncing, signed out) show only when the user asked
+ * for the sync: another app's changes arrive through the file watcher anyway.
  */
 export function reportSyncOutcome(statusBar: vscode.StatusBarItem, outcome: SyncOutcome, manual: boolean): void {
-  switch (outcome.kind) {
-    case "synced": {
-      const { record } = outcome;
-      const total = record.uploaded + record.downloaded + record.deletedLocal + record.deletedRemote;
-      statusBar.text = `$(cloud) LabShelf (${new Date().toLocaleTimeString()})`;
-      if (record.conflicts.length > 0) {
-        vscode.window.showWarningMessage(
-          `LabShelf Sync: ${record.conflicts.length} conflict(s) detected. Duplicate files saved with a "(conflict)" suffix.`,
-        );
-      } else if (total > 0) {
-        vscode.window.setStatusBarMessage(`LabShelf Sync: ${total} file(s) synced`, 4000);
-      }
-      return;
-    }
-    case "busy": {
-      statusBar.text = "$(cloud) LabShelf";
-      if (!manual) { return; }
-      const who = outcome.holder?.app === "terminal" ? "The LabShelf terminal app" : "Another LabShelf window";
-      vscode.window.setStatusBarMessage(`LabShelf Sync: ${who} is syncing this library right now.`, 6000);
-      return;
-    }
-    case "skipped":
-      if (manual) { vscode.window.showWarningMessage("LabShelf Sync: connect to Google Drive first."); }
-      return;
-    case "failed":
-      statusBar.text = "$(sync-ignored) LabShelf";
-      vscode.window.showErrorMessage(`LabShelf Sync: ${outcome.error}`);
-  }
+  if (outcome.kind === "synced") { statusBar.text = `$(cloud) LabShelf (${new Date().toLocaleTimeString()})`; }
+  if (outcome.kind === "busy") { statusBar.text = "$(cloud) LabShelf"; }
+  if (outcome.kind === "failed") { statusBar.text = "$(sync-ignored) LabShelf"; }
+  const notice = describeSyncOutcome(outcome);
+  if (notice.routine && !manual) { return; }
+  const text = `LabShelf: ${notice.needsSignIn ? `${notice.text} — connect to Google Drive from the status bar` : notice.text}`;
+  if (notice.severity === "error") { vscode.window.showErrorMessage(text); }
+  else if (notice.severity === "warn" && outcome.kind !== "busy") { vscode.window.showWarningMessage(text); }
+  else { vscode.window.setStatusBarMessage(text, 6000); }
 }
