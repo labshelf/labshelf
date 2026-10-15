@@ -8,43 +8,29 @@ import type {
 import { detectSections } from "./sectionDetector.js";
 import { charsForTokenBudget, estimateTokens } from "./tokenEstimator.js";
 
-export interface SectionChunkerOptions {
-  maxTokensPerChunk: number;
-}
-
-const DEFAULT_OPTIONS: SectionChunkerOptions = {
-  maxTokensPerChunk: 384,
-};
+const CHUNK_CHAR_BUDGET = charsForTokenBudget(384);
 
 /**
  * Produces section-scoped chunks ready for embedding.
  *
  * @returns Ordered list of PaperChunk records.
  */
-export function chunkBySection(
-  extracted: ExtractedPdfText,
-  options: SectionChunkerOptions = DEFAULT_OPTIONS,
-): PaperChunk[] {
+export function chunkBySection(extracted: ExtractedPdfText): PaperChunk[] {
   const sections = extracted.sections.length
     ? extracted.sections
     : detectSections(extracted.pages);
   if (sections.length === 0) {
-    return chunkByPage(extracted, options);
+    return chunkByPage(extracted);
   }
   const chunks: PaperChunk[] = [];
   for (const section of sections) {
-    chunks.push(...splitSection(extracted.paperId, section, options));
+    chunks.push(...splitSection(extracted.paperId, section));
   }
   return chunks;
 }
 
-function splitSection(
-  paperId: string,
-  section: PaperSection,
-  options: SectionChunkerOptions,
-): PaperChunk[] {
-  const budget = charsForTokenBudget(options.maxTokensPerChunk);
-  if (section.text.length <= budget) {
+function splitSection(paperId: string, section: PaperSection): PaperChunk[] {
+  if (section.text.length <= CHUNK_CHAR_BUDGET) {
     return [
       {
         paperId,
@@ -58,7 +44,7 @@ function splitSection(
       },
     ];
   }
-  return splitOnParagraphs(paperId, section, budget);
+  return splitOnParagraphs(paperId, section, CHUNK_CHAR_BUDGET);
 }
 
 function splitOnParagraphs(
@@ -123,15 +109,11 @@ function buildChunk(
   };
 }
 
-function chunkByPage(
-  extracted: ExtractedPdfText,
-  options: SectionChunkerOptions,
-): PaperChunk[] {
-  const budget = charsForTokenBudget(options.maxTokensPerChunk);
+function chunkByPage(extracted: ExtractedPdfText): PaperChunk[] {
   let offset = 0;
   const out: PaperChunk[] = [];
   for (const p of extracted.pages) {
-    const text = p.text.length > budget ? p.text.slice(0, budget) : p.text;
+    const text = p.text.length > CHUNK_CHAR_BUDGET ? p.text.slice(0, CHUNK_CHAR_BUDGET) : p.text;
     out.push({
       paperId: extracted.paperId,
       kind: "section",

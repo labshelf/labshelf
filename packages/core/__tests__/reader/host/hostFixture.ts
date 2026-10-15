@@ -45,7 +45,6 @@ export function setupHost(options: { seed?: string; page?: number; prefs?: typeo
     saveAnnotations: jest.fn(async (_markdown: string) => undefined),
     logger: { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) },
     sidecarChanged: (change: SidecarChange) => { changes.push(change); },
-    activity: { opened: jest.fn(), pageChanged: jest.fn(), annotated: jest.fn() },
     now: () => clock,
   } satisfies ReaderHostPorts;
   const host = new ReaderHostController(ports, options.page !== undefined ? { page: options.page } : {});

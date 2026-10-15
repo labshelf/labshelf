@@ -10,7 +10,7 @@ export const METADATA_FILE = "metadata.yaml";
 export const BIB_FILE = "bib.bib";
 export const SIDECAR_FILE = "data.json";
 
-// Holds only VS Code's AI stores (embeddings, AI metadata, reading events). The on-disk name stays "index.sqlite"
+// Holds only VS Code's text index (embeddings and content hashes). The on-disk name stays "index.sqlite"
 // so no existing file needs renaming.
 export const AI_DATABASE_FILE = "index.sqlite";
 export const APP_LOG_FILE = "app.log";

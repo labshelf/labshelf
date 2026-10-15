@@ -8,11 +8,8 @@ jest.mock("../../../src/ai/pdf/pdfTextExtractor", () => ({ PdfTextExtractor: jes
 jest.mock("../../../src/ai/indexer/aiIndexer", () => ({
   AiIndexer: jest.fn(() => ({ attach: () => () => {} })),
 }));
-jest.mock("../../../src/ai/indexer/indexerQueue", () => ({
-  IndexerQueue: jest.fn(() => ({ size: () => 0, isRunning: () => false })),
-}));
 
-const STORES = { vectorStore: { tag: 'vectors' }, metadataStore: { tag: 'metadata' }, readingEvents: { tag: 'events' } };
+const STORES = { vectorStore: { tag: 'vectors' }, hashes: { tag: 'hashes' } };
 
 function makeDeps() {
   return {
@@ -33,13 +30,10 @@ describe("createAiService", () => {
 
     const result = await createAiService(deps);
 
+    expect(result?.service).toBeDefined();
     const hashModelId = new HashEmbeddingProvider().modelId;
     expect(deps.storage.createStores).toHaveBeenCalledWith(hashModelId);
-    expect(AiIndexer).toHaveBeenCalledWith(expect.objectContaining({ vectorStore: STORES.vectorStore, metadataStore: STORES.metadataStore }));
-    expect(result?.service.status()).toMatchObject({
-      embeddingModelId: hashModelId,
-      embeddingDimensions: 384,
-    });
+    expect(AiIndexer).toHaveBeenCalledWith(expect.objectContaining({ vectorStore: STORES.vectorStore, hashes: STORES.hashes }));
     expect(deps.eventBus.emit).not.toHaveBeenCalled();
     expect(deps.logger.error).not.toHaveBeenCalled();
   });

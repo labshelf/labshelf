@@ -1,24 +1,16 @@
 // Declares the AI stores the service and indexer read and write, so a host supplies them with whatever storage it has.
-import type { AiPaperMetadata, IFileSystem, IVectorStore, ReadingEvent } from "@labshelf/core";
+import type { IFileSystem, IVectorStore } from "@labshelf/core";
 
-/** Per-paper AI metadata and the content hash of the PDF it was derived from. */
-export interface IAiMetadataStore {
-  get(paperId: string): AiPaperMetadata | null;
-  upsert(metadata: AiPaperMetadata, contentHash?: string): void;
-  /** @returns every indexed paper id with the hash its metadata was derived from */
-  listIndexed(): Map<string, string | null>;
+/** The content hash of each paper's PDF as last indexed, so unchanged files are not embedded again. */
+export interface IIndexedHashes {
+  get(paperId: string): string | null;
+  set(paperId: string, hash: string): void;
   delete(paperId: string): void;
-}
-
-/** Where the reading analytics land. */
-interface IReadingEventsStore {
-  append(event: ReadingEvent): void;
 }
 
 export interface AiStores {
   vectorStore: IVectorStore;
-  metadataStore: IAiMetadataStore;
-  readingEvents: IReadingEventsStore;
+  hashes: IIndexedHashes;
 }
 
 /** An opened AI database; the vector rows are keyed by the model that embedded them, which is known later. */

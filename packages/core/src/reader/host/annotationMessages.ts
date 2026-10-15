@@ -38,7 +38,6 @@ export const annotationHandlers: Pick<
       ? store.addHighlight(paper.id, msg.pageNumber, msg.content, msg.color ?? "yellow", msg.position ?? undefined)
       : store.addNote(paper.id, msg.pageNumber, msg.content));
     if (!result.ok) { return; }
-    ctx.ports.activity?.annotated(msg.pageNumber);
     await pushStoredAnnotations(ctx);
     ctx.ports.sidecarChanged?.({ kind: "annotationCreated", annotation: result.value });
   },

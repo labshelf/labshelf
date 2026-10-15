@@ -1,52 +1,31 @@
-// Extracts per-page text and detected sections from a paper's PDF for ingestion.
+// Extracts per-page text and detected sections from a paper's PDF bytes for ingestion.
 // Falls back to per-page chunks when no headings are detected.
-import * as vscode from "vscode";
-import type { ExtractedPdfText, LocalFileSystem, PdfDocumentLike, PdfDocumentOpener } from "@labshelf/core";
-import { detectSections } from "@labshelf/core";
+import type { ExtractedPdfText, ILogger, PdfDocumentOpener } from "@labshelf/core";
+import { detectSections, extractPageTexts } from "@labshelf/core";
 
 export class PdfTextExtractor {
   constructor(
     private readonly opener: PdfDocumentOpener,
-    private readonly fileSystem: Pick<LocalFileSystem, "readFile">,
+    private readonly logger: ILogger,
   ) {}
 
   /**
-   * Reads the PDF at `pdfUri` and returns its per-page text plus detected
-   * sections, packaged for the @labshelf/core pipeline.
+   * Opens the PDF and returns its per-page text plus detected sections,
+   * packaged for the @labshelf/core pipeline.
    *
    * @returns Extracted text with paperId metadata.
    */
-  async extract(paperId: string, pdfUri: vscode.Uri): Promise<ExtractedPdfText> {
-    const bytes = await this.fileSystem.readFile(pdfUri.fsPath);
+  async extract(paperId: string, bytes: Uint8Array): Promise<ExtractedPdfText> {
     const document = await this.opener.open(bytes);
     try {
-      const pages = await collectPageTexts(document);
-      const sections = detectSections(pages);
-      return { paperId, pages, sections };
+      const pages = await extractPageTexts(document, document.numPages, this.logger);
+      return { paperId, pages, sections: detectSections(pages) };
     } finally {
       try {
         await document.destroy();
-      } catch {
-        // pdfjs cleanup failures must not block ingestion.
+      } catch (error) {
+        await this.logger.error("ai/pdf", error, { paperId, message: "PDF cleanup failed" });
       }
     }
   }
-}
-
-async function collectPageTexts(
-  document: PdfDocumentLike,
-): Promise<{ page: number; text: string }[]> {
-  const out: { page: number; text: string }[] = [];
-  const total = document.numPages ?? 0;
-  for (let page = 1; page <= total; page += 1) {
-    const handle = await document.getPage(page);
-    const content = await handle.getTextContent({ normalizeWhitespace: true });
-    const text = content.items
-      .map((item) => item.str ?? "")
-      .join(" ")
-      .replace(/\s+/g, " ")
-      .trim();
-    if (text) out.push({ page, text });
-  }
-  return out;
 }

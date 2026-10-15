@@ -1,3 +1,2 @@
-// Exports the AI indexer and its job queue.
+// Exports the AI indexer.
 export { AiIndexer } from "./aiIndexer.js";
-export { IndexerQueue } from "./indexerQueue.js";

@@ -16,7 +16,7 @@ A LabShelf library is a folder that the user owns. Every app reads and writes th
         bib.bib                    BibTeX entry generated from metadata.yaml
   .research/                       hidden, owned by the apps
     papers/<paper id>/data.json    the sidecar (synced, namespace "appdata")
-    index.sqlite                   VS Code's AI stores: embeddings, AI metadata, reading events (never synced)
+    index.sqlite                   VS Code's text index for the Related tab: chunk embeddings and the content hash of each indexed PDF (never synced)
     logs/app.log                   VS Code log (JSON lines)
     logs/terminal.log              terminal log (JSON lines)
     sync/google-drive.*            sync coordination (see sync.md, never synced)

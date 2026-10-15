@@ -20,30 +20,10 @@ const SCHEMA = `
   CREATE INDEX IF NOT EXISTS idx_chunk_embeddings_paper ON chunk_embeddings(paper_id);
   CREATE INDEX IF NOT EXISTS idx_chunk_embeddings_kind ON chunk_embeddings(kind);
 
-  CREATE TABLE IF NOT EXISTS paper_metadata_ai (
+  CREATE TABLE IF NOT EXISTS indexed_papers (
     paper_id TEXT PRIMARY KEY,
-    methods TEXT NOT NULL,
-    datasets TEXT NOT NULL,
-    code_repos TEXT NOT NULL,
-    reproducibility TEXT NOT NULL,
-    compute TEXT,
-    limitations TEXT NOT NULL,
-    difficulty_profile TEXT NOT NULL,
-    indexed_at INTEGER NOT NULL,
-    content_hash TEXT
+    content_hash TEXT NOT NULL
   );
-
-  CREATE TABLE IF NOT EXISTS reading_events (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    paper_id TEXT NOT NULL,
-    kind TEXT NOT NULL,
-    page INTEGER,
-    duration_ms INTEGER,
-    topic_cluster TEXT,
-    occurred_at INTEGER NOT NULL
-  );
-  CREATE INDEX IF NOT EXISTS idx_reading_events_paper ON reading_events(paper_id);
-  CREATE INDEX IF NOT EXISTS idx_reading_events_time ON reading_events(occurred_at);
 `;
 
 /** Applies the AI subsystem schema. Safe to call multiple times. */

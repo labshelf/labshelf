@@ -8,7 +8,7 @@ LabShelf ships as three apps of one product:
 
 | App | Where it runs | What it is for |
 |---|---|---|
-| VS Code extension | VS Code | the full workspace: library, reader, import with OCR, AI indexing |
+| VS Code extension | VS Code | the full workspace: library, reader, import with OCR, similar-paper indexing |
 | Browser extension | Chrome, Firefox | capture papers from the web, read and annotate them, browse the library without VS Code |
 | Terminal app (`labshelf`) | any terminal | a keyboard-driven explorer and scriptable CLI over the same library |
 

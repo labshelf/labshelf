@@ -5,7 +5,7 @@ import type { ILogger, LocalFileSystem, PaperRecord, PdfDocumentOpener } from "@
 import type { AiStorage } from "../ports.js";
 import { PdfTextExtractor } from "../pdf/index.js";
 import { HashEmbeddingProvider } from "../runtime/index.js";
-import { AiIndexer, IndexerQueue } from "../indexer/index.js";
+import { AiIndexer } from "../indexer/index.js";
 import { AiService } from "./aiService.js";
 import type { EventBus } from "../../events/index.js";
 
@@ -31,31 +31,20 @@ export async function createAiService(
   if (config.get<boolean>("enabled") === false) return null;
 
   const embedder = new HashEmbeddingProvider();
-  const { vectorStore, metadataStore, readingEvents } = deps.storage.createStores(embedder.modelId);
-  const extractor = new PdfTextExtractor(deps.pdfOpener, deps.fileSystem);
-  const queue = new IndexerQueue(deps.logger);
+  const { vectorStore, hashes } = deps.storage.createStores(embedder.modelId);
+  const extractor = new PdfTextExtractor(deps.pdfOpener, deps.logger);
   const indexer = new AiIndexer({
     listPapers: deps.listPapers,
     eventBus: deps.eventBus,
     logger: deps.logger,
     embedder,
     vectorStore,
-    metadataStore,
+    hashes,
     extractor,
     resolvePdfUri: deps.resolvePdfUri,
     fileSystem: deps.fileSystem,
-    enqueue: (job) => queue.enqueue(job),
   });
   const detach = indexer.attach();
-  const service = new AiService({
-    embedder,
-    vectorStore,
-    metadataStore,
-    readingEvents,
-    indexer,
-    queue,
-    eventBus: deps.eventBus,
-    logger: deps.logger,
-  });
+  const service = new AiService({ embedder, vectorStore, indexer });
   return { service, dispose: detach };
 }

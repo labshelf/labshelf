@@ -18,12 +18,12 @@ describe("chunkBySection", () => {
   });
 
   it("splits oversized sections on paragraph boundaries", () => {
-    const para = "lorem ipsum ".repeat(200);
+    const para = "lorem ipsum ".repeat(300);
     const extracted = makeExtracted(`1 Big\n${para}\n\n${para}\n\n${para}`);
-    const chunks = chunkBySection(extracted, { maxTokensPerChunk: 64 });
+    const chunks = chunkBySection(extracted);
     expect(chunks.length).toBeGreaterThan(1);
     for (const c of chunks) {
-      expect(c.tokenCount).toBeLessThanOrEqual(64 * 2);
+      expect(c.tokenCount).toBeLessThanOrEqual(384 * 2);
     }
   });
 

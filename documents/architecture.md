@@ -52,7 +52,7 @@ Domains:
 | `reader/` | the PDF reader: protocol, preferences, citation formats, and the host controller that answers reader messages for every host ([contracts/reader-host.md](contracts/reader-host.md)); `sidecar/` has the per-paper data store and reading state; `logic/` has the pure logic in `navigation/`, `text/` and `presentation/`; `dom/` has the reader UI and its styles, grouped into `elements/`, `session/`, `navigation/`, `text/`, `chrome/`, `sidebar/`, `hover/` and `startup/`; `node/` has the Node sidecar port (VS Code and the terminal) |
 | `library-ui/` | the library surface a host mounts once: the host message protocol and its in-page loopback channel ([contracts/library-ui-host.md](contracts/library-ui-host.md)), the view store and prefs in `state/`, list rows, scope, counts and sorting in `derive/`, the list keymap and the PDF wording; `dom/` has the frame, header, filter bar, list, detail pane, drag-and-drop, the dialogs in `flows/`, and its stylesheet |
 | `ui/` | the design system: tokens, base styles, components (button, menu, dialog, toast, quick input), the settings page components in `dom/settings/` (page, section, row, fields, Drive connection) that the VS Code settings webview and the browser options page share, icons |
-| `ai/` | embeddings contracts, chunking, retrieval, heuristics; runtimes stay in the VS Code app |
+| `ai/` | embeddings contracts, chunking, retrieval; runtimes stay in the VS Code app |
 | `logging/` | the JSON-lines log format and a logger over a port; `node/` has the file log sink |
 
 Each domain folder has an `index.ts`. Inside a domain, related files are grouped in subfolders once there are more than eight (for example `import/registries/`, `reader/dom/sidebar/`).

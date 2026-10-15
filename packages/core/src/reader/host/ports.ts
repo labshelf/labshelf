@@ -20,13 +20,6 @@ export type SidecarChange =
   | { kind: "annotationDeleted"; annotationId: string }
   | { kind: "theme" };
 
-/** Reading analytics hooks; a host without analytics leaves them out. */
-export interface ReaderActivityPort {
-  opened(): void;
-  pageChanged(page: number): void;
-  annotated(page: number): void;
-}
-
 export interface ReaderHostPorts {
   paper: PaperRecord;
   store: ReaderSidecarStore;
@@ -42,7 +35,6 @@ export interface ReaderHostPorts {
   saveAnnotations(markdown: string): Promise<void>;
   logger: ILogger;
   sidecarChanged?(change: SidecarChange): void;
-  activity?: ReaderActivityPort;
   now?: () => number;
 }
 

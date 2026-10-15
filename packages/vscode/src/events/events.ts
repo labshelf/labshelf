@@ -9,9 +9,6 @@ export const EVENTS = {
   ANNOTATION_CREATED: "annotation:created",
   ANNOTATION_UPDATED: "annotation:updated",
   ANNOTATION_DELETED: "annotation:deleted",
-  AI_INDEX_STARTED: "ai:index:started",
-  AI_INDEXED: "ai:indexed",
-  AI_INDEX_FAILED: "ai:index:failed",
 } as const;
 
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS];

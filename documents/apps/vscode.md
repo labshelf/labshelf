@@ -8,7 +8,7 @@ The full LabShelf workspace inside VS Code:
 - the paper list and detail pane in an editor tab;
 - the PDF reader;
 - import with OCR;
-- AI indexing;
+- similar-paper indexing;
 - Drive sync.
 
 ## Build and run
@@ -22,7 +22,7 @@ pnpm dev:vscode                        # watches the host and the webview bundle
 
 - Open the repository in VS Code and press F5. This launches an Extension Development Host. On first run, use **LabShelf: Configure Library**.
 - Drive needs the Desktop OAuth client ([README.md](README.md#google-oauth-clients)). Tokens live in `SecretStorage` under `labshelf.gdrive.tokens`; **LabShelf: Disconnect from Google Drive** clears them.
-- The paper list is an in-memory library store rebuilt from the library files on activation. `.research/index.sqlite` holds only the AI stores; deleting it drops embeddings and reading events.
+- The paper list is an in-memory library store rebuilt from the library files on activation. `.research/index.sqlite` holds the embeddings and the content hash of each indexed PDF; deleting it drops them and papers re-index on rebuild.
 
 ## Adding papers
 

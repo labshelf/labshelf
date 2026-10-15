@@ -53,7 +53,7 @@ function registerOpenListTabCommand(deps: PanelCommandsDeps): void {
 }
 
 function registerReaderPanelCommands(deps: PanelCommandsDeps): void {
-  const { context, eventBus, requireServices, getAiService, adapters } = deps;
+  const { context, eventBus, requireServices, adapters } = deps;
 
   context.subscriptions.push(
     vscode.commands.registerCommand("labshelf.openPdfViewer", async (paperId?: string, page?: number) => {
@@ -74,7 +74,6 @@ function registerReaderPanelCommands(deps: PanelCommandsDeps): void {
           logger: services.logger,
           locatePdfjs: adapters.reader.locatePdfjs,
           isMac: adapters.reader.isMac,
-          onReadingEvent: (event) => getAiService()?.recordReadingEvent(event),
         },
         paper,
         typeof page === "number" ? { page } : {},

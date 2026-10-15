@@ -1,3 +1,2 @@
-// Exports PDF text extraction and content hashing for the AI indexer.
-export { hashFile } from "./contentHash.js";
+// Exports PDF text extraction for the AI indexer.
 export { PdfTextExtractor } from "./pdfTextExtractor.js";

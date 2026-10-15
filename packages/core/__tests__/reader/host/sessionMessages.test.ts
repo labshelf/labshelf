@@ -28,11 +28,10 @@ describe("reader session messages", () => {
   });
 
   describe("ready", () => {
-    it("logs the page count and reports the open to the activity port", async () => {
+    it("logs the page count", async () => {
       const { host, ports } = setupHost();
       await host.handle({ command: "ready", totalPages: 12 });
       expect(ports.logger.log).toHaveBeenCalledWith("INFO", "reader", "Reader ready", { paperId: "p1", totalPages: 12 });
-      expect(ports.activity.opened).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -43,20 +42,6 @@ describe("reader session messages", () => {
     expect(ports.logger.log).toHaveBeenCalledWith("INFO", "reader", "PDF open timeline", {
       paperId: "p1", hostMs: 750, timeline: { scriptStart: 1 }, theme: "dark", dpr: 2, canvas: "10x10",
     });
-  });
-
-  it("reports page changes to the activity port", async () => {
-    const { host, ports } = setupHost();
-    await host.handle({ command: "pageChanged", pageNumber: 9 });
-    expect(ports.activity.pageChanged).toHaveBeenCalledWith(9);
-  });
-
-  it("accepts zoomChanged without doing anything", async () => {
-    const { host, posted, files, ports } = setupHost();
-    await host.handle({ command: "zoomChanged", zoomLevel: 1.5 });
-    expect(posted).toHaveLength(0);
-    expect(files).toEqual({});
-    expect(ports.notify).not.toHaveBeenCalled();
   });
 
   describe("selectTheme", () => {

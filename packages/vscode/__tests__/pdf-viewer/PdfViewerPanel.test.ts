@@ -51,7 +51,6 @@ describe('PdfViewerPanel', () => {
     const eventBus = new EventBus();
     const themeManager = new ThemeManager();
     const logger = { log: jest.fn(async () => {}), error: jest.fn(async () => {}) } as any;
-    const onReadingEvent = jest.fn();
     const deps: PdfViewerDeps = {
       extensionUri: vscode.Uri.file(extensionDir),
       eventBus,
@@ -60,10 +59,9 @@ describe('PdfViewerPanel', () => {
       logger,
       locatePdfjs: () => null,
       isMac: false,
-      onReadingEvent,
       ...overrides,
     };
-    return { deps, store, eventBus, themeManager, logger, onReadingEvent };
+    return { deps, store, eventBus, themeManager, logger };
   }
 
   function lastPanel() {
@@ -133,17 +131,15 @@ describe('PdfViewerPanel', () => {
       expect(html).toContain(path.join('dist', 'reader', 'reader.js'));
     });
 
-    it('emits PDF_VIEWER_CLOSED with the last page once when the panel closes', async () => {
+    it('emits PDF_VIEWER_CLOSED once when the panel closes', async () => {
       const ctx = makeDeps();
       const closed = jest.fn();
       ctx.eventBus.on(EVENTS.PDF_VIEWER_CLOSED, closed);
       const paper = makePaper();
       PdfViewerPanel.createOrShow(ctx.deps, paper);
-      lastPanel().webview._fireMessage({ command: 'pageChanged', pageNumber: 5 });
-      await flush();
       lastPanel().dispose();
       expect(closed).toHaveBeenCalledTimes(1);
-      expect(closed).toHaveBeenCalledWith(expect.objectContaining({ paperId: paper.id, currentPage: 5 }));
+      expect(closed).toHaveBeenCalledWith(expect.objectContaining({ paperId: paper.id }));
     });
 
     it('reveals the existing ready panel and scrolls it to a requested page', async () => {
@@ -280,41 +276,6 @@ describe('PdfViewerPanel', () => {
       panel._fireViewState({ active: true, visible: true });
       panel.dispose();
       expect(PdfViewerPanel.postToActive('zoomOut')).toBe(false);
-    });
-  });
-
-  describe('reading events', () => {
-    afterEach(() => { jest.useRealTimers(); });
-
-    it('records open, page dwell of at least five seconds, annotate and close', async () => {
-      jest.useFakeTimers({ doNotFake: ['setImmediate', 'nextTick'] });
-      jest.setSystemTime(new Date('2026-01-01T00:00:00Z'));
-      const { panel, onReadingEvent, paper } = open();
-
-      panel.webview._fireMessage({ command: 'ready', totalPages: 9 });
-      await flush();
-      jest.setSystemTime(new Date('2026-01-01T00:00:02Z'));
-      panel.webview._fireMessage({ command: 'pageChanged', pageNumber: 2 }); // 2 s on page 1: skimmed
-      await flush();
-      jest.setSystemTime(new Date('2026-01-01T00:00:10Z'));
-      panel.webview._fireMessage({ command: 'pageChanged', pageNumber: 3 }); // 8 s on page 2: read
-      await flush();
-      panel.webview._fireMessage({ command: 'createAnnotation', type: 'highlight', pageNumber: 3, content: 'x', color: 'red' });
-      await flush();
-      await flush();
-      panel.dispose();
-
-      const events = onReadingEvent.mock.calls.map((c) => c[0]);
-      expect(events.map((e) => e.kind)).toEqual(['open', 'scroll', 'annotate', 'close']);
-      expect(events[1]).toMatchObject({ paperId: paper.id, page: 2, durationMs: 8000 });
-      expect(events[3]).toMatchObject({ kind: 'close', page: 3 });
-    });
-
-    it('survives a throwing analytics sink', async () => {
-      const { panel } = open({ onReadingEvent: () => { throw new Error('db closed'); } });
-      panel.webview._fireMessage({ command: 'ready', totalPages: 1 });
-      await flush();
-      expect(vscode.window.showErrorMessage).not.toHaveBeenCalled();
     });
   });
 });

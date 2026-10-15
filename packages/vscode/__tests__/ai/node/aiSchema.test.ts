@@ -28,4 +28,12 @@ describeIfSqlite("ensureAiSchema", () => {
     ensureAiSchema(db);
     expect(() => ensureAiSchema(db)).not.toThrow();
   });
+
+  it("keeps one content hash per paper", () => {
+    const db = makeDb();
+    ensureAiSchema(db);
+    const insert = db.prepare("INSERT INTO indexed_papers (paper_id, content_hash) VALUES ('p1', ?)");
+    insert.run("a");
+    expect(() => insert.run("b")).toThrow();
+  });
 });

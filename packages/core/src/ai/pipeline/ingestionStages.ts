@@ -1,32 +1,28 @@
-// Runs the ordered paper-ingestion stages; without an embedder or vector store it runs heuristics only.
+// Chunks a paper and embeds the chunks into the vector store when both are supplied.
 import type {
   ExtractedPdfText,
   PaperChunk,
   IEmbeddingProvider,
   IVectorStore,
   VectorRecord,
-  AiPaperMetadata,
 } from "../types/index.js";
 import { chunkBySection } from "../chunking/index.js";
-import { extractMetadata } from "./extractMetadata.js";
 
 export interface IngestionContext {
   embedder?: IEmbeddingProvider;
   vectorStore?: IVectorStore;
-  knownVocab?: Set<string>;
 }
 
 export interface IngestionResult {
   paperId: string;
   chunkCount: number;
   embeddedChunks: number;
-  metadata: AiPaperMetadata;
 }
 
 /**
  * Runs the ingestion pipeline end-to-end for a single paper.
  *
- * @returns A summary including counts and the persisted metadata snapshot.
+ * @returns Counts of the chunks produced and embedded.
  */
 export async function runIngestion(
   extracted: ExtractedPdfText,
@@ -34,16 +30,10 @@ export async function runIngestion(
 ): Promise<IngestionResult> {
   const chunks = chunkBySection(extracted);
   const embeddedChunks = await embedAndStore(chunks, context);
-  const knownVocab = context.knownVocab;
-  const metadata = extractMetadata(
-    extracted,
-    knownVocab !== undefined ? { knownVocab } : {},
-  );
   return {
     paperId: extracted.paperId,
     chunkCount: chunks.length,
     embeddedChunks,
-    metadata,
   };
 }
 

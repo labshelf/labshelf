@@ -1,10 +1,10 @@
-// Ingests added or updated papers into the AI index through a single-worker queue.
-// Skips papers whose contentHash matches the last indexed run.
+// Ingests added or updated papers into the AI index, one paper at a time.
+// Skips papers whose PDF content hash matches the last indexed run.
 import * as vscode from "vscode";
 import type { IEmbeddingProvider, ILogger, IVectorStore, LocalFileSystem, PaperRecord } from "@labshelf/core";
-import { runIngestion } from "@labshelf/core";
-import type { IAiMetadataStore } from "../ports.js";
-import { PdfTextExtractor, hashFile } from "../pdf/index.js";
+import { runIngestion, sha256Hex } from "@labshelf/core";
+import type { IIndexedHashes } from "../ports.js";
+import type { PdfTextExtractor } from "../pdf/index.js";
 import { EventBus, EVENTS } from "../../events/index.js";
 
 export interface AiIndexerDependencies {
@@ -13,15 +13,18 @@ export interface AiIndexerDependencies {
   logger: ILogger;
   embedder: IEmbeddingProvider;
   vectorStore: IVectorStore;
-  metadataStore: IAiMetadataStore;
+  hashes: IIndexedHashes;
   extractor: PdfTextExtractor;
   // Async because a paper's folder is only known to the index: papers live in any collection folder under papers/.
   resolvePdfUri: (paperId: string) => Promise<vscode.Uri | null>;
   fileSystem: Pick<LocalFileSystem, "readFile">;
-  enqueue: (job: () => Promise<void>) => void;
 }
 
 export class AiIndexer {
+  // PLATFORM: embedding is CPU-bound, so one job runs at a time; parallel pipelines would only thrash the model.
+  // INVARIANT: a job never rejects, so one failure cannot stall the jobs behind it.
+  private tail: Promise<void> = Promise.resolve();
+
   constructor(private readonly deps: AiIndexerDependencies) {}
 
   /**
@@ -33,7 +36,7 @@ export class AiIndexer {
   attach(): () => void {
     const onAdded = (payload: unknown): void => this.scheduleByPayload(payload);
     const onUpdated = (payload: unknown): void => this.scheduleByPayload(payload);
-    const onDeleted = (payload: unknown): void => this.handleDeleted(payload);
+    const onDeleted = (payload: unknown): void => this.scheduleDelete(payload);
     this.deps.eventBus.on(EVENTS.PAPER_ADDED, onAdded);
     this.deps.eventBus.on(EVENTS.PAPER_UPDATED, onUpdated);
     this.deps.eventBus.on(EVENTS.PAPER_DELETED, onDeleted);
@@ -46,52 +49,51 @@ export class AiIndexer {
 
   /**
    * Re-runs ingestion for every known paper. Used by the rebuild command.
-   *
+   * Resolves once every queued job, including earlier ones, has finished.
    */
   async rebuildAll(): Promise<void> {
     const papers = await this.deps.listPapers();
-    for (const paper of papers) this.scheduleIndex(paper.id);
+    for (const paper of papers) this.schedule(() => this.runIndex(paper.id));
+    await this.tail;
+  }
+
+  private schedule(job: () => Promise<void>): void {
+    this.tail = this.tail.then(job);
   }
 
   private scheduleByPayload(payload: unknown): void {
     const paperId = readPaperId(payload);
-    if (paperId) this.scheduleIndex(paperId);
+    if (paperId) this.schedule(() => this.runIndex(paperId));
   }
 
-  private scheduleIndex(paperId: string): void {
-    this.deps.enqueue(() => this.runIndex(paperId));
+  private scheduleDelete(payload: unknown): void {
+    const paperId = readPaperId(payload);
+    if (paperId) this.schedule(() => this.runDelete(paperId));
   }
 
   private async runIndex(paperId: string): Promise<void> {
-    const pdfUri = await this.deps.resolvePdfUri(paperId);
-    if (!pdfUri) return;
-    this.deps.eventBus.emit(EVENTS.AI_INDEX_STARTED, { paperId });
     try {
-      const hash = await hashFile(pdfUri, this.deps.fileSystem);
-      const indexed = this.deps.metadataStore.listIndexed();
-      if (indexed.get(paperId) === hash) return;
-      const extracted = await this.deps.extractor.extract(paperId, pdfUri);
-      const result = await runIngestion(extracted, {
-        embedder: this.deps.embedder,
-        vectorStore: this.deps.vectorStore,
-      });
-      this.deps.metadataStore.upsert(result.metadata, hash);
-      this.deps.eventBus.emit(EVENTS.AI_INDEXED, {
-        paperId,
-        chunkCount: result.chunkCount,
-        embeddedChunks: result.embeddedChunks,
-      });
+      const pdfUri = await this.deps.resolvePdfUri(paperId);
+      if (!pdfUri) return;
+      const bytes = await this.deps.fileSystem.readFile(pdfUri.fsPath);
+      const hash = await sha256Hex(bytes);
+      if (this.deps.hashes.get(paperId) === hash) return;
+      const extracted = await this.deps.extractor.extract(paperId, bytes);
+      await runIngestion(extracted, { embedder: this.deps.embedder, vectorStore: this.deps.vectorStore });
+      this.deps.hashes.set(paperId, hash);
     } catch (error) {
-      void this.deps.logger.error("ai/indexer", error, { paperId });
-      this.deps.eventBus.emit(EVENTS.AI_INDEX_FAILED, { paperId });
+      await this.deps.logger.error("ai/indexer", error, { paperId });
     }
   }
 
-  private handleDeleted(payload: unknown): void {
-    const paperId = readPaperId(payload);
-    if (!paperId) return;
-    void this.deps.vectorStore.deleteByPaper(paperId);
-    this.deps.metadataStore.delete(paperId);
+  // The hash goes first: a hash left without its vectors would make a later re-add skip indexing.
+  private async runDelete(paperId: string): Promise<void> {
+    try {
+      this.deps.hashes.delete(paperId);
+      await this.deps.vectorStore.deleteByPaper(paperId);
+    } catch (error) {
+      await this.deps.logger.error("ai/indexer", error, { paperId });
+    }
   }
 }
 

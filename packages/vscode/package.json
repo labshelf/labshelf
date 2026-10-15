@@ -162,16 +162,6 @@
         "category": "LabShelf"
       },
       {
-        "command": "labshelf.ai.searchByClaim",
-        "title": "AI: Search by Claim",
-        "category": "LabShelf"
-      },
-      {
-        "command": "labshelf.ai.searchByText",
-        "title": "AI: Semantic Search",
-        "category": "LabShelf"
-      },
-      {
         "command": "labshelf.ai.openSettings",
         "title": "AI: Open Settings",
         "category": "LabShelf"
@@ -357,7 +347,7 @@
         "labshelf.ai.enabled": {
           "type": "boolean",
           "default": true,
-          "description": "Enable the AI subsystem (semantic search, metadata extraction, paraphrase guard)."
+          "description": "Index paper text so the Related tab can list similar papers."
         },
         "labshelf.ocr.enabled": {
           "type": "boolean",

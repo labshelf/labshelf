@@ -7,7 +7,6 @@ import { ThemeManager } from "./ThemeManager.js";
 import { PdfRenderer, getReaderBundleDirectory, type PdfjsFiles, type PdfjsLocator } from "./renderer/index.js";
 import { READER_CONFIG_SECTION, getReaderPrefs, getReaderViewColumn } from "./readerPrefs.js";
 import { createVsCodeOutputPorts, emitSidecarChanges } from "./readerHostPorts.js";
-import { ReadingActivityTracker, type ReadingEventSink } from "./readingActivity.js";
 import { labshelfTabIcon } from "../ui/index.js";
 import { EventBus, EVENTS } from "../events/index.js";
 
@@ -25,7 +24,6 @@ export interface PdfViewerDeps {
   /** Whether the host is macOS, which picks the reader's modifier key. */
   isMac: boolean;
   /** Reading analytics sink (the AI subsystem's reading_events), absent when AI is disabled. */
-  onReadingEvent?: ReadingEventSink;
 }
 
 export interface OpenOptions {
@@ -41,7 +39,6 @@ export class PdfViewerPanel {
 
   private readonly _panel: vscode.WebviewPanel;
   private readonly _controller: ReaderHostController;
-  private readonly _activity: ReadingActivityTracker;
   private _disposables: vscode.Disposable[] = [];
   private _disposed = false;
   private _closed = false;
@@ -108,7 +105,6 @@ export class PdfViewerPanel {
     pdfjs: PdfjsFiles | null,
   ) {
     this._panel = panel;
-    this._activity = new ReadingActivityTracker(paper.id, deps.onReadingEvent);
     this._controller = new ReaderHostController({
       paper,
       store: deps.store,
@@ -118,7 +114,6 @@ export class PdfViewerPanel {
       ...createVsCodeOutputPorts(paper),
       logger: deps.logger,
       sidecarChanged: emitSidecarChanges(deps.eventBus, paper.id),
-      activity: this._activity,
     }, options.page !== undefined ? { page: options.page } : {});
     openPanels.set(paper.id, this);
     if (panel.active) { PdfViewerPanel.activePanel = this; }
@@ -159,15 +154,13 @@ export class PdfViewerPanel {
       } else if (PdfViewerPanel.activePanel === this) {
         PdfViewerPanel.activePanel = undefined;
       }
-      this._activity.visibilityChanged(e.webviewPanel.visible);
     }, null, this._disposables);
 
     this._panel.onDidDispose(() => {
       // dispose() below re-enters panel.dispose(); close-out must happen exactly once.
       if (this._closed) { return; }
       this._closed = true;
-      const currentPage = this._activity.closed();
-      deps.eventBus.emit(EVENTS.PDF_VIEWER_CLOSED, { paperId: paper.id, currentPage, timestamp: new Date().toISOString() });
+      deps.eventBus.emit(EVENTS.PDF_VIEWER_CLOSED, { paperId: paper.id, timestamp: new Date().toISOString() });
       openPanels.delete(paper.id);
       if (PdfViewerPanel.activePanel === this) { PdfViewerPanel.activePanel = undefined; }
       this.dispose();

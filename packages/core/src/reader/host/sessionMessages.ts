@@ -1,5 +1,5 @@
 /**
- * Handles the reader session messages: the init handshake, readiness, open timing, page and zoom reports, and theme choice.
+ * Handles the reader session messages: the init handshake, readiness, open timing, and theme choice.
  */
 import { isPdfTheme } from "../../model/index.js";
 import { byPageThenCreated } from "../sidecar/index.js";
@@ -7,7 +7,7 @@ import { READER_LOG_MODULE, type MessageHandlers } from "./hostContext.js";
 
 export const sessionHandlers: Pick<
   MessageHandlers,
-  "ready-for-init" | "ready" | "perf" | "pageChanged" | "zoomChanged" | "selectTheme"
+  "ready-for-init" | "ready" | "perf" | "selectTheme"
 > = {
   "ready-for-init": async (ctx) => {
     const { ports, state } = ctx;
@@ -29,7 +29,6 @@ export const sessionHandlers: Pick<
     const { ports, state } = ctx;
     state.ready = true;
     void ports.logger.log("INFO", READER_LOG_MODULE, "Reader ready", { paperId: ports.paper.id, totalPages: msg.totalPages });
-    ports.activity?.opened();
     if (state.pendingPage !== undefined) {
       ports.post({ type: "scrollToPage", pageNumber: state.pendingPage });
       state.pendingPage = undefined;
@@ -47,13 +46,6 @@ export const sessionHandlers: Pick<
       canvas: msg.canvas,
     });
   },
-
-  pageChanged: (ctx, msg) => {
-    ctx.ports.activity?.pageChanged(msg.pageNumber);
-  },
-
-  // The reading position arrives through saveReadingState; the protocol keeps this message accepted.
-  zoomChanged: () => undefined,
 
   selectTheme: async (ctx, msg) => {
     if (!isPdfTheme(msg.theme)) { return; }

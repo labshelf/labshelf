@@ -5,7 +5,7 @@ const stored = (files: Record<string, string>) => JSON.parse(files.p1!).annotati
 
 describe("reader annotation messages", () => {
   describe("createAnnotation", () => {
-    it("stores a highlight, pushes the list, reports the activity and the change", async () => {
+    it("stores a highlight, pushes the list and reports the change", async () => {
       const { host, posted, files, changes, ports } = setupHost();
       await host.handle({
         command: "createAnnotation", type: "highlight", pageNumber: 1, content: "quote", color: "green",
@@ -13,7 +13,6 @@ describe("reader annotation messages", () => {
       });
       expect(stored(files)[0]).toMatchObject({ id: "a1", type: "highlight", color: "green", pageNumber: 1, position: { x: 0.1 } });
       expect(posted).toEqual([{ type: "updateAnnotations", annotations: [expect.objectContaining({ id: "a1" })] }]);
-      expect(ports.activity.annotated).toHaveBeenCalledWith(1);
       expect(changes).toEqual([{ kind: "annotationCreated", annotation: expect.objectContaining({ id: "a1", content: "quote" }) }]);
     });
 
@@ -44,7 +43,6 @@ describe("reader annotation messages", () => {
       expect(ports.logger.error).toHaveBeenCalledWith("reader", expect.any(Error), { paperId: "p1", command: "createAnnotation" });
       expect(posted).toHaveLength(0);
       expect(changes).toHaveLength(0);
-      expect(ports.activity.annotated).not.toHaveBeenCalled();
     });
   });
 

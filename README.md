@@ -4,7 +4,7 @@ A local-first research paper manager. Your library is an ordinary folder of PDFs
 
 It ships as three apps of one product:
 
-- **VS Code extension:** library tree, paper list and detail pane, PDF reader, import with OCR, AI indexing.
+- **VS Code extension:** library tree, paper list and detail pane, PDF reader, import with OCR, similar-paper indexing.
 - **Browser extension** (Chrome, Firefox): capture papers from any page or from Google Scholar, read them with the same reader, browse the library.
 - **Terminal app** (`labshelf`): a keyboard-driven explorer and scriptable CLI over the same library.
 
