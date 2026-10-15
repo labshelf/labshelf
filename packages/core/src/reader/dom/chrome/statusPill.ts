@@ -3,10 +3,11 @@
  */
 import { formatZoomLabel } from "../../logic/index.js";
 import type { ReaderContext } from "../session/index.js";
-import { byId, h, iconButton } from "../elements/index.js";
+import { iconButton } from "../elements/index.js";
 import { icon } from "../../../ui/index.js";
 import { buildMenu, togglePopover, type MenuItem } from "../elements/index.js";
 import type { ZoomController } from "../navigation/index.js";
+import { $, el } from "../../../ui/dom/index.js";
 
 const PERCENT_CHOICES = [50, 75, 100, 125, 150, 200, 300, 400];
 
@@ -20,7 +21,7 @@ export class StatusPill {
     private readonly goToPage: (page: number) => void,
   ) {
     const total = ctx.pdfDocument.numPages;
-    this.pageInput = h("input", {
+    this.pageInput = el("input", {
       class: "rd-page-input",
       type: "text",
       inputmode: "numeric",
@@ -28,7 +29,7 @@ export class StatusPill {
       title: "Go to page",
       size: String(total).length,
     });
-    this.zoomBtn = h("button", { class: "rd-zoom-label", type: "button", title: "Zoom options", "aria-haspopup": "menu" });
+    this.zoomBtn = el("button", { class: "rd-zoom-label", type: "button", title: "Zoom options", "aria-haspopup": "menu" });
     const out = iconButton(icon("minus"), "Zoom out", "rd-btn-sm");
     const inn = iconButton(icon("plus"), "Zoom in", "rd-btn-sm");
     out.addEventListener("click", () => zoom.zoomOut());
@@ -42,10 +43,10 @@ export class StatusPill {
     });
     this.pageInput.addEventListener("blur", () => this.sync());
 
-    byId("status-pill").append(
-      h("div", { class: "rd-pill-group" }, this.pageInput, h("span", { class: "rd-page-total" }, `/ ${total}`)),
-      h("div", { class: "rd-pill-sep" }),
-      h("div", { class: "rd-pill-group" }, out, this.zoomBtn, inn),
+    $("status-pill").append(
+      el("div", { class: "rd-pill-group" }, this.pageInput, el("span", { class: "rd-page-total" }, `/ ${total}`)),
+      el("div", { class: "rd-pill-sep" }),
+      el("div", { class: "rd-pill-group" }, out, this.zoomBtn, inn),
     );
 
     ctx.eventBus.on("pagechanging", () => this.sync());

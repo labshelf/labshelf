@@ -3,13 +3,13 @@
  */
 import { activeOutlineIndex, flattenOutline, visibleRows, type OutlineRow, type RawOutlineNode } from "../../logic/index.js";
 import type { ReaderContext } from "../session/index.js";
-import { h } from "../elements/index.js";
 import { icon } from "../../../ui/index.js";
 import type { SidebarPanel } from "./sidebar.js";
+import { el } from "../../../ui/dom/index.js";
 
 export class OutlineTab implements SidebarPanel {
-  readonly el = h("div", { class: "rd-panel rd-outline", role: "tabpanel" });
-  private readonly list = h("div", { class: "rd-outline-list", role: "tree" });
+  readonly el = el("div", { class: "rd-panel rd-outline", role: "tabpanel" });
+  private readonly list = el("div", { class: "rd-outline-list", role: "tree" });
   private rows: OutlineRow[] = [];
   private rowPages: Array<number | null> = [];
   private readonly collapsed = new Set<number>();
@@ -17,7 +17,7 @@ export class OutlineTab implements SidebarPanel {
   private visible = false;
 
   constructor(private readonly ctx: ReaderContext) {
-    this.el.append(h("div", { class: "rd-panel-header" }, h("span", {}, "Outline")), this.list);
+    this.el.append(el("div", { class: "rd-panel-header" }, el("span", {}, "Outline")), this.list);
     ctx.eventBus.on("pagechanging", () => { if (this.visible) { this.highlightActive(); } });
   }
 
@@ -70,13 +70,13 @@ export class OutlineTab implements SidebarPanel {
 
   private render(): void {
     if (this.rows.length === 0) {
-      this.list.replaceChildren(h("div", { class: "rd-empty" }, "This PDF has no outline."));
+      this.list.replaceChildren(el("div", { class: "rd-empty" }, "This PDF has no outline."));
       return;
     }
     const frag = document.createDocumentFragment();
     for (const row of visibleRows(this.rows, this.collapsed)) {
       const isCollapsed = this.collapsed.has(row.id);
-      const twisty = h("span", {
+      const twisty = el("span", {
         class: `rd-twisty${row.hasChildren ? "" : " rd-twisty-leaf"}`,
         html: row.hasChildren ? icon(isCollapsed ? "chevron-right" : "chevron-down") : "",
       });
@@ -88,7 +88,7 @@ export class OutlineTab implements SidebarPanel {
         });
       }
       const page = this.rowPages[row.id];
-      const item = h(
+      const item = el(
         "div",
         {
           class: `rd-outline-item${row.bold ? " rd-outline-bold" : ""}`,
@@ -100,8 +100,8 @@ export class OutlineTab implements SidebarPanel {
           ...(row.hasChildren ? { "aria-expanded": isCollapsed ? "false" : "true" } : {}),
         },
         twisty,
-        h("span", { class: "rd-outline-title" }, row.title),
-        page ? h("span", { class: "rd-outline-page" }, String(page)) : null,
+        el("span", { class: "rd-outline-title" }, row.title),
+        page ? el("span", { class: "rd-outline-page" }, String(page)) : null,
       );
       const go = (): void => this.activate(row);
       item.addEventListener("click", go);

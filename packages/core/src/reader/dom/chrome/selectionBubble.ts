@@ -3,8 +3,9 @@
  */
 import { ANNOTATION_COLORS, type AnnotationColor } from "../../../model/index.js";
 import type { ReaderContext } from "../session/index.js";
-import { byId, clamp, h, iconButton } from "../elements/index.js";
+import { clamp, iconButton } from "../elements/index.js";
 import { icon } from "../../../ui/index.js";
+import { $, el } from "../../../ui/dom/index.js";
 
 const HIDE_GRACE_MS = 150;
 
@@ -14,19 +15,19 @@ export interface SelectionInfo {
 }
 
 export class SelectionBubble {
-  private readonly el = byId("selection-toolbar");
+  private readonly el = $("selection-toolbar");
   private hideTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private readonly ctx: ReaderContext) {
     const mod = ctx.boot.isMac ? "Cmd" : "Ctrl";
     for (const color of ANNOTATION_COLORS) {
-      const btn = h("button", { class: `rd-color-btn rd-color-${color}`, type: "button", title: `Highlight ${color}`, "aria-label": `Highlight ${color}` });
+      const btn = el("button", { class: `rd-color-btn rd-color-${color}`, type: "button", title: `Highlight ${color}`, "aria-label": `Highlight ${color}` });
       btn.addEventListener("click", () => this.highlight(color));
       this.el.append(btn);
     }
     const cite = iconButton(icon("quote"), `Copy with citation (${mod}+Shift+C)`, "rd-btn-sm");
     cite.addEventListener("click", () => this.copyWithCitation());
-    this.el.append(h("div", { class: "rd-pill-sep" }), cite);
+    this.el.append(el("div", { class: "rd-pill-sep" }), cite);
 
     // Keep the selection alive while the bubble is being clicked.
     this.el.addEventListener("mousedown", (e) => {

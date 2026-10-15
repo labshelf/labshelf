@@ -140,11 +140,12 @@ kbd {
 .ls-empty-hint { font-size: 11px; opacity: .6; margin-top: 2px; max-width: 360px; line-height: 1.5; }
 
 /* ── Overlay widgets: menu, quick pick, dialog, toast ─────────── */
-.ls-menu {
-  position: fixed; z-index: 1000; min-width: 160px; padding: 4px;
+.ls-menu, .ls-quick, .ls-dialog {
+  position: fixed;
   background: var(--ls-widget-bg); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg);
   box-shadow: var(--ls-widget-shadow); animation: ls-pop var(--ls-fast) ease-out;
 }
+.ls-menu { z-index: 1000; min-width: 160px; padding: 4px; }
 .ls-menu-item {
   display: flex; align-items: center; gap: 8px; width: 100%; height: 26px; padding: 0 10px 0 8px;
   border: 0; border-radius: var(--ls-radius); background: none; text-align: left; font-size: 12px; cursor: pointer; white-space: nowrap;
@@ -165,10 +166,8 @@ kbd {
 
 /* Quick pick / input box — VS Code's quick input widget, centred at the top. */
 .ls-quick {
-  position: fixed; z-index: 1001; left: 50%; top: 12vh; transform: translateX(-50%);
+  z-index: 1001; left: 50%; top: 12vh; transform: translateX(-50%);
   width: min(600px, 92vw); padding: 6px; display: flex; flex-direction: column; gap: 6px;
-  background: var(--ls-widget-bg); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg);
-  box-shadow: var(--ls-widget-shadow); animation: ls-pop var(--ls-fast) ease-out;
 }
 .ls-quick-title { padding: 2px 6px 0; font-size: 11px; color: var(--ls-desc); }
 .ls-quick .ls-input { height: 26px; }
@@ -189,10 +188,8 @@ kbd {
 
 /* Dialog — VS Code custom modal. */
 .ls-dialog {
-  position: fixed; z-index: 1001; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  z-index: 1001; left: 50%; top: 50%; transform: translate(-50%, -50%);
   width: min(460px, 92vw); padding: 18px 20px 16px;
-  background: var(--ls-widget-bg); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg);
-  box-shadow: var(--ls-widget-shadow); animation: ls-pop var(--ls-fast) ease-out;
 }
 .ls-dialog-head { display: flex; align-items: flex-start; gap: 12px; }
 .ls-dialog-head svg { width: 22px; height: 22px; flex-shrink: 0; color: var(--ls-yellow); }
@@ -206,7 +203,6 @@ kbd {
 @keyframes ls-pop-menu { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
 .ls-dialog { animation-name: ls-pop-dialog; }
 @keyframes ls-pop-dialog { from { opacity: 0; transform: translate(-50%, -50%) scale(.98); } to { opacity: 1; transform: translate(-50%, -50%); } }
-@keyframes ls-slide { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

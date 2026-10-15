@@ -2,10 +2,10 @@
  * Renders the theme picker: the five persisted presets plus session-only custom page colours.
  */
 import { PDF_THEMES, type PdfTheme } from "../../../model/index.js";
-import { h } from "../elements/index.js";
 import type { HostBridge } from "../session/index.js";
 import { togglePopover } from "../elements/index.js";
 import type { ThemeController } from "./theme.js";
+import { el } from "../../../ui/dom/index.js";
 
 const THEME_LABELS: Record<PdfTheme, string> = {
   auto: "Auto",
@@ -19,12 +19,12 @@ const THEME_LABELS: Record<PdfTheme, string> = {
  * A preset is persisted per paper by the host; custom colours apply to this session only.
  */
 export function openThemePopover(anchor: HTMLElement, theme: ThemeController, host: HostBridge): void {
-  const list = h("div", { class: "rd-theme-list", role: "radiogroup", "aria-label": "Page theme" });
+  const list = el("div", { class: "rd-theme-list", role: "radiogroup", "aria-label": "Page theme" });
   for (const value of PDF_THEMES) {
-    const btn = h(
+    const btn = el(
       "button",
       { class: "rd-theme-item", type: "button", role: "radio", "aria-checked": theme.preference === value ? "true" : "false" },
-      h("span", { class: `rd-theme-swatch rd-theme-swatch-${value}` }),
+      el("span", { class: `rd-theme-swatch rd-theme-swatch-${value}` }),
       THEME_LABELS[value],
     );
     btn.addEventListener("click", () => {
@@ -36,21 +36,21 @@ export function openThemePopover(anchor: HTMLElement, theme: ThemeController, ho
   }
 
   const { bg, text } = theme.colors;
-  const bgInput = h("input", { type: "color", value: bg, "aria-label": "Page background colour" });
-  const textInput = h("input", { type: "color", value: text, "aria-label": "Text colour" });
+  const bgInput = el("input", { type: "color", value: bg, "aria-label": "Page background colour" });
+  const textInput = el("input", { type: "color", value: text, "aria-label": "Text colour" });
   const applyCustom = (): void => theme.applyPageColors(bgInput.value, textInput.value);
   bgInput.addEventListener("change", applyCustom);
   textInput.addEventListener("change", applyCustom);
 
-  const content = h(
+  const content = el(
     "div",
     { class: "rd-theme-popover" },
     list,
-    h("div", { class: "rd-menu-sep" }),
-    h("div", { class: "rd-theme-custom" },
-      h("span", { class: "rd-theme-custom-title" }, "Custom"),
-      h("label", {}, "Page", bgInput),
-      h("label", {}, "Text", textInput),
+    el("div", { class: "rd-menu-sep" }),
+    el("div", { class: "rd-theme-custom" },
+      el("span", { class: "rd-theme-custom-title" }, "Custom"),
+      el("label", {}, "Page", bgInput),
+      el("label", {}, "Text", textInput),
     ),
   );
   togglePopover(anchor, content, "below");

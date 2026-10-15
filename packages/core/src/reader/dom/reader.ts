@@ -16,7 +16,6 @@ import {
   type PerfMarks,
   createViewer,
 } from "./session/index.js";
-import { byId } from "./elements/index.js";
 import { Keyboard } from "./navigation/index.js";
 import {
   DeferredHover,
@@ -27,6 +26,7 @@ import {
   interceptExternalLinks,
   reportFirstRender,
 } from "./startup/index.js";
+import { $ } from "../../ui/dom/index.js";
 
 export interface ReaderStartOptions {
   boot: ReaderBootParams;
@@ -46,16 +46,16 @@ export function startReader({ boot, transport, perf, pdf }: ReaderStartOptions):
   installTextLayerFocusGuard();
 
   const host = new HostBridge(transport);
-  const container = byId<HTMLDivElement>("viewerContainer");
-  const loadingMsg = byId("loading-msg");
-  const errorMsg = byId("error-msg");
+  const container = $<HTMLDivElement>("viewerContainer");
+  const loadingMsg = $("loading-msg");
+  const errorMsg = $("error-msg");
   const restore = new PositionRestore(host);
   const theme = new ThemeController(container, boot.themePreference, boot.effectiveTheme);
   host.on("applyTheme", (msg) => theme.apply(msg.theme, msg.effectiveTheme));
 
   async function start(): Promise<void> {
     const loaded = await loadPdf(boot.assets, perf, pdf);
-    const parts = createViewer(loaded.viewerLib, loaded.pdfDocument, container, byId<HTMLDivElement>("viewer"), theme.effective);
+    const parts = createViewer(loaded.viewerLib, loaded.pdfDocument, container, $<HTMLDivElement>("viewer"), theme.effective);
     const ctx: ReaderContext = { boot, host, container, prefs: boot.prefs, ...loaded, ...parts };
     theme.attach(ctx.pdfViewer);
     wireReader(ctx, theme, perf, restore, loadingMsg);
@@ -75,7 +75,7 @@ function wireReader(ctx: ReaderContext, theme: ThemeController, perf: PerfMarks,
   const hover = new DeferredHover(ctx, theme);
   const keyboard = new Keyboard(ctx, createActionRunner({ ctx, ui, hover }));
   bindHostMessages(ctx, ui, keyboard, hover);
-  interceptExternalLinks(byId("viewer"), ctx.host);
+  interceptExternalLinks($("viewer"), ctx.host);
   restore.attach({ ctx, ui, theme, perf, loadingMsg });
   reportFirstRender(ctx, theme, perf, hover);
 }

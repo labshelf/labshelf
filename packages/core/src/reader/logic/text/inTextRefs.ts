@@ -1,5 +1,6 @@
 // Finds numeric, author–year and figure/table/equation references in running text without PDF link annotations.
 // PLATFORM: OCR text arrives one word per text run, so detection works on a visual line re-joined from its runs.
+import { fold } from "../../../library/index.js";
 
 export type FloatKind = "figure" | "table" | "equation";
 
@@ -103,15 +104,10 @@ const NOT_AUTHORS = new Set([
   "copyright", "received", "accepted", "published", "vol", "volume", "no", "pp",
 ]);
 
-/** Lower-cased, accent-free form used to compare names: OCR with English language data usually drops diacritics. */
-export function foldText(s: string): string {
-  return s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
-}
-
 function authorNames(chunk: string): string[] {
   const names: string[] = [];
   for (const m of chunk.matchAll(NAME_RE)) {
-    const folded = foldText(m[0]);
+    const folded = fold(m[0]);
     if (folded.length >= 2 && !NOT_AUTHORS.has(folded)) { names.push(m[0]); }
   }
   return names;
@@ -159,7 +155,7 @@ function narrativeRefs(text: string): InTextRef[] {
   const refs: InTextRef[] = [];
   for (const m of text.matchAll(NARRATIVE)) {
     const surname = m[1]!;
-    if (NOT_AUTHORS.has(foldText(surname))) { continue; }
+    if (NOT_AUTHORS.has(fold(surname))) { continue; }
     const years = [...m[3]!.matchAll(YEAR_RE)].map((y) => y[0]);
     if (years.length === 0) { continue; }
     refs.push({
@@ -191,7 +187,7 @@ const FLOAT = new RegExp(
  * @returns the kind of float a label word ("Fig.", "Tabela", "Eq") denotes.
  */
 export function floatKindOf(word: string): FloatKind {
-  const w = foldText(word);
+  const w = fold(word);
   if (w.startsWith("tab") || w.startsWith("quadro") || w.startsWith("cuadro")) { return "table"; }
   if (w.startsWith("eq")) { return "equation"; }
   return "figure";

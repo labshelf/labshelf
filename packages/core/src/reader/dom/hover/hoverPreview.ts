@@ -1,7 +1,6 @@
 // Opens one hover popup for a PDF link annotation or a text reference under the pointer.
 // Owns the timers, targets and the `attempt` token that drops stale async work.
 import type { CitationResolver, FloatResolver } from "../text/index.js";
-import { byId } from "../elements/index.js";
 import type { ReaderContext } from "../session/index.js";
 import type { DestPreview } from "./destPreview.js";
 import { sameTarget, type HoverTarget, type PopupContent } from "./hoverTarget.js";
@@ -9,6 +8,7 @@ import { findLink, LinkContent, linkHoverTarget } from "./linkTarget.js";
 import { HoverPopup } from "./popup.js";
 import { ReferenceContent } from "./referenceContent.js";
 import { runUnderPointer, TextTargets } from "./textTarget.js";
+import { $ } from "../../../ui/dom/index.js";
 
 const CLOSE_GRACE_MS = 150;
 
@@ -35,7 +35,7 @@ export class HoverPreview {
   ) {
     this.links = new LinkContent(ctx, resolver, preview);
     this.references = new ReferenceContent(ctx, resolver, floats, preview);
-    const viewer = byId("viewer");
+    const viewer = $("viewer");
     viewer.addEventListener("mouseover", (e) => this.onOver(e));
     viewer.addEventListener("mouseout", (e) => this.onOut(e));
     viewer.addEventListener("mousemove", (e) => this.onTextMove(e), { passive: true });

@@ -9,16 +9,9 @@ interface PagePreset {
   text: string;
 }
 
-export const THEME_PRESETS: Record<EffectiveTheme, PagePreset> = {
-  "light": pagePreset("light"),
-  "dark": pagePreset("dark"),
-  "sepia": pagePreset("sepia"),
-  "high-contrast": pagePreset("high-contrast"),
-};
-
-function pagePreset(theme: EffectiveTheme): PagePreset {
-  return { bg: READER_THEMES[theme].page, text: READER_THEMES[theme].ink };
-}
+export const THEME_PRESETS = Object.fromEntries(
+  Object.entries(READER_THEMES).map(([name, theme]) => [name, { bg: theme.page, text: theme.ink }]),
+) as Record<EffectiveTheme, PagePreset>;
 
 /**
  * Looks up a preset, falling back to light for an unknown theme name.

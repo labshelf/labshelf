@@ -1,11 +1,13 @@
 /**
- * Tests that createNonce returns 32 random hex characters.
+ * Tests that createNonce returns a CSP-valid base64 nonce carrying 128 random bits.
  */
 import { createNonce } from "../../src/ui/createNonce";
 
 describe("createNonce", () => {
-  it("returns 32 lowercase hex characters", () => {
-    expect(createNonce()).toMatch(/^[0-9a-f]{32}$/);
+  it("returns base64 that decodes to 16 bytes", () => {
+    const nonce = createNonce();
+    expect(nonce).toMatch(/^[A-Za-z0-9+/]{22}==$/);
+    expect(atob(nonce)).toHaveLength(16);
   });
 
   it("returns a different value on every call", () => {

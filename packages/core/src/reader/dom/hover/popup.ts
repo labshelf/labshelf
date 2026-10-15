@@ -1,14 +1,15 @@
 /** Drives the #hover-popup element: fills it with a title, actions and body, places it next to its anchor and hides it. */
-import { byId, clamp, h, iconButton } from "../elements/index.js";
+import { clamp, iconButton } from "../elements/index.js";
 import { icon } from "../../../ui/index.js";
 import type { PopupContent } from "./hoverTarget.js";
+import { $, el } from "../../../ui/dom/index.js";
 
 export function textContent(texts: string[], jump: () => void): PopupContent {
-  return { title: "Reference", body: h("div", { class: "rd-hover-text" }, ...texts.map((t) => h("p", {}, t))), copyText: texts.join("\n\n"), jump };
+  return { title: "Reference", body: el("div", { class: "rd-hover-text" }, ...texts.map((t) => el("p", {}, t))), copyText: texts.join("\n\n"), jump };
 }
 
 export class HoverPopup {
-  private readonly el = byId("hover-popup");
+  private readonly el = $("hover-popup");
 
   onEnter(handler: () => void): void { this.el.addEventListener("mouseenter", handler); }
 
@@ -22,7 +23,7 @@ export class HoverPopup {
   }
 
   show(content: PopupContent, anchor: DOMRect, onCopy: (text: string) => void, onJump: () => void): void {
-    const actions = h("div", { class: "rd-hover-actions" });
+    const actions = el("div", { class: "rd-hover-actions" });
     const { copyText } = content;
     if (copyText) {
       const copy = iconButton(icon("copy"), "Copy reference", "rd-btn-sm");
@@ -33,7 +34,7 @@ export class HoverPopup {
     go.addEventListener("click", onJump);
     actions.append(go);
 
-    this.el.replaceChildren(h("div", { class: "rd-hover-header" }, h("span", {}, content.title), actions), content.body);
+    this.el.replaceChildren(el("div", { class: "rd-hover-header" }, el("span", {}, content.title), actions), content.body);
     this.el.classList.add("rd-visible");
     const p = this.el.getBoundingClientRect();
     const below = anchor.bottom + 8;

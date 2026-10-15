@@ -2,7 +2,6 @@
 import {
   findInTextRefs,
   floatKindOf,
-  foldText,
   joinLineParts,
   refAtOffset,
   type InTextRef,
@@ -153,10 +152,6 @@ describe('refAtOffset', () => {
 });
 
 describe('helpers', () => {
-  it('folds case and accents', () => {
-    expect(foldText('REFERÊNCIAS Bibliográficas')).toBe('referencias bibliograficas');
-  });
-
   it('classifies float label words', () => {
     expect(floatKindOf('Tabela')).toBe('table');
     expect(floatKindOf('Quadro')).toBe('table');

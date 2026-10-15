@@ -2,6 +2,7 @@
  * Handles the reader messages that write the paper's sidecar: annotation create, update and delete, and the reading position.
  */
 import type { WebviewToHost } from "../protocol.js";
+import { errorMessage } from "../../logging/index.js";
 import { normalizeReadingState } from "../sidecar/index.js";
 import { READER_LOG_MODULE, type HostContext, type MessageHandlers } from "./hostContext.js";
 
@@ -18,7 +19,7 @@ async function writeAnnotation<T>(
     return { ok: true, value: await write() };
   } catch (err) {
     void ctx.ports.logger.error(READER_LOG_MODULE, err, { paperId: ctx.ports.paper.id, command });
-    ctx.ports.notify(`Failed to ${verb} annotation: ${err instanceof Error ? err.message : String(err)}`, "error");
+    ctx.ports.notify(`Failed to ${verb} annotation: ${errorMessage(err)}`, "error");
     return { ok: false };
   }
 }
