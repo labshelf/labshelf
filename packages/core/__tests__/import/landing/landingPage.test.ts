@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { fetchLandingPage } from "@labshelf/core";
+import { fetchLandingPage, type ILogger } from "@labshelf/core";
 
 const springer = readFileSync(join(__dirname, "..", "..", "fixtures", "springerArticle.html"), "utf8");
 const URL_OF_PAGE = "https://link.springer.com/article/10.1007/s10107-023-01234-5";
@@ -22,5 +22,12 @@ describe("fetchLandingPage", () => {
     expect(await fetchLandingPage(URL_OF_PAGE, { fetch: respond("nope", "text/html", 404), timeoutMs: 1000 })).toBeUndefined();
     const failing = jest.fn(async () => { throw new Error("offline"); }) as unknown as typeof fetch;
     expect(await fetchLandingPage(URL_OF_PAGE, { fetch: failing, timeoutMs: 1000 })).toBeUndefined();
+  });
+
+  it("logs the url and the reason when the fetch fails", async () => {
+    const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
+    const failing = jest.fn(async () => { throw new Error("offline"); }) as unknown as typeof fetch;
+    await fetchLandingPage(URL_OF_PAGE, { fetch: failing, timeoutMs: 1000, logger });
+    expect(logger.log).toHaveBeenCalledWith("WARN", "landing", "Landing page fetch failed", { url: URL_OF_PAGE, message: "offline" });
   });
 });

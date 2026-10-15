@@ -16,7 +16,7 @@ import { registerMessageRouter } from "./router";
 
 const log = new BrowserLogger("background");
 const mutations = createLibraryMutations(log);
-const auth = new BrowserDriveAuth();
+const auth = new BrowserDriveAuth(log);
 const timers = new AlarmSyncTimers(log);
 const sync = createBrowserSync({
   auth,

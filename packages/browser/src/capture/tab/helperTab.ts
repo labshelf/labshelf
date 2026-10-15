@@ -34,7 +34,9 @@ export async function fetchViaHelperTab(urls: string[]): Promise<FetchedPdf | un
     }
     return undefined;
   } finally {
-    await bx.tabs.remove(tab.id).catch(() => undefined);
+    await bx.tabs.remove(tab.id).catch((error: unknown) =>
+      log.warn("Helper tab did not close", { tabId: tab.id, message: error instanceof Error ? error.message : String(error) }),
+    );
   }
 }
 

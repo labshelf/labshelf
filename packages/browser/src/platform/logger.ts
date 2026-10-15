@@ -11,6 +11,8 @@ const RING_CAPACITY = 200;
 // overwrite each other's entries in storage.
 const ring: { buffer: LogEntry[]; hydrated: boolean; hydration?: Promise<void> } = { buffer: [], hydrated: false };
 
+const errorText = (error: unknown): string => (error instanceof Error ? error.message : String(error));
+
 export class BrowserLogger implements ILogger {
   constructor(private readonly defaultModule: string = "browser") {}
 
@@ -60,8 +62,10 @@ export class BrowserLogger implements ILogger {
     }
     try {
       await bx.storage.local.set({ [STORAGE_KEY]: ring.buffer });
-    } catch {
-      // Storage may be quota-restricted; in-memory copy is still valid.
+    } catch (error) {
+      // Storage may be quota-restricted; in-memory copy is still valid. Console only: this is the logger.
+      // eslint-disable-next-line no-console
+      console.warn("[labshelf:logger] Could not persist the log ring", errorText(error));
     }
   }
 
@@ -90,8 +94,10 @@ export class BrowserLogger implements ILogger {
           // Entries logged while hydrating stay after the stored ones.
           ring.buffer = [...(raw as LogEntry[]), ...ring.buffer];
         }
-      } catch {
-        // ignore — fresh buffer is fine
+      } catch (error) {
+        // A fresh buffer is fine. Console only: this is the logger.
+        // eslint-disable-next-line no-console
+        console.warn("[labshelf:logger] Could not read the stored log ring", errorText(error));
       }
       ring.hydrated = true;
     })();

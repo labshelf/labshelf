@@ -1,5 +1,6 @@
 // Authorizes Google Drive through bx.identity.launchWebAuthFlow and implements core's IAuthProvider.
 // One "Web application" OAuth client has the chromiumapp.org and allizom.org redirect URIs; getRedirectURL() picks one.
+import type { ILogger } from "@labshelf/core";
 import { BUILT_IN_GOOGLE_CLIENT, GOOGLE_AUTH_URL, GOOGLE_DRIVE_SCOPES, GOOGLE_REVOKE_URL, type IAuthProvider } from "@labshelf/core";
 import { bx } from "../../platform";
 import { clearToken, loadToken, saveToken, type StoredToken } from "./tokenStore";
@@ -7,6 +8,9 @@ import { clearToken, loadToken, saveToken, type StoredToken } from "./tokenStore
 // INVARIANT: the implicit response_type=token flow ships no client secret and returns no refresh token, so the token
 // is renewed by re-running the flow with `interactive: false` before it expires.
 const REFRESH_LEEWAY_MS = 60_000;
+const AUTH_MODULE = "drive-auth";
+
+const errorText = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
 function buildAuthUrl(redirectUri: string, prompt: "none" | "consent"): string {
   const url = new URL(GOOGLE_AUTH_URL);
@@ -39,6 +43,8 @@ export class BrowserDriveAuth implements IAuthProvider {
   private hydrated = false;
   private refreshing: Promise<void> | null = null;
 
+  constructor(private readonly logger: ILogger) {}
+
   isAuthenticated(): boolean {
     return this.token !== null && this.token.expiryMs > Date.now();
   }
@@ -70,8 +76,9 @@ export class BrowserDriveAuth implements IAuthProvider {
     if (previous) {
       try {
         await fetch(`${GOOGLE_REVOKE_URL}?token=${encodeURIComponent(previous.accessToken)}`, { method: "POST" });
-      } catch {
-        // best effort — local state is already cleared
+      } catch (error) {
+        // Best effort — local state is already cleared. The message never carries the token.
+        await this.logger.log("WARN", AUTH_MODULE, "Drive token revoke request failed", { message: errorText(error) });
       }
     }
   }
@@ -97,9 +104,10 @@ export class BrowserDriveAuth implements IAuthProvider {
       try {
         this.token = await this.runFlow(false);
         await saveToken(this.token);
-      } catch {
+      } catch (error) {
         // Silent refresh refused (e.g. user revoked consent) — drop the token
         // so the next call surfaces the need to re-authenticate.
+        await this.logger.log("WARN", AUTH_MODULE, "Silent token refresh failed; token dropped", { message: errorText(error) });
         this.token = null;
         await clearToken();
       } finally {
