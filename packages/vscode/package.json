@@ -218,6 +218,49 @@
         "command": "labshelf.reader.toggleSidebar",
         "title": "Reader: Toggle Sidebar",
         "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.newProject",
+        "title": "Research: New Project…",
+        "category": "LabShelf",
+        "icon": "$(add)"
+      },
+      {
+        "command": "labshelf.writing.addExistingFolder",
+        "title": "Research: Add Existing Folder as Project…",
+        "category": "LabShelf",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "labshelf.writing.refresh",
+        "title": "Research: Refresh Projects",
+        "category": "LabShelf",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "labshelf.writing.openMain",
+        "title": "Research: Open Main Document",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.reveal",
+        "title": "Research: Reveal Project Folder",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.removeProject",
+        "title": "Research: Remove Project from LabShelf",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.setMain",
+        "title": "Set as Main Document",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.pickMain",
+        "title": "Research: Choose Main Document",
+        "category": "LabShelf"
       }
     ],
     "viewsContainers": {
@@ -237,6 +280,11 @@
           "type": "tree"
         },
         {
+          "id": "labshelf.writing",
+          "name": "Writing",
+          "type": "tree"
+        },
+        {
           "id": "labshelf.settings",
           "name": "Settings",
           "type": "tree"
@@ -253,6 +301,10 @@
         "view": "labshelf.library",
         "contents": "No folders yet.\n[New folder](command:labshelf.newFolder)\nYou can also drag PDFs here.",
         "when": "labshelf.libraryLoaded"
+      },
+      {
+        "view": "labshelf.writing",
+        "contents": "No projects yet.\n[New project](command:labshelf.writing.newProject)\n[Add existing folder](command:labshelf.writing.addExistingFolder)"
       },
       {
         "view": "labshelf.settings",
@@ -294,6 +346,21 @@
           "command": "labshelf.library.refresh",
           "when": "view == labshelf.library",
           "group": "navigation@4"
+        },
+        {
+          "command": "labshelf.writing.newProject",
+          "when": "view == labshelf.writing",
+          "group": "navigation@1"
+        },
+        {
+          "command": "labshelf.writing.addExistingFolder",
+          "when": "view == labshelf.writing",
+          "group": "navigation@2"
+        },
+        {
+          "command": "labshelf.writing.refresh",
+          "when": "view == labshelf.writing",
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [
@@ -316,6 +383,21 @@
           "command": "labshelf.deleteFolder",
           "when": "view == labshelf.library && viewItem == labshelfFolder",
           "group": "1_modify@3"
+        },
+        {
+          "command": "labshelf.writing.openMain",
+          "when": "view == labshelf.writing && viewItem =~ /^labshelfProject(External)?$/",
+          "group": "1_open@1"
+        },
+        {
+          "command": "labshelf.writing.reveal",
+          "when": "view == labshelf.writing && viewItem =~ /^labshelfProject/",
+          "group": "1_open@2"
+        },
+        {
+          "command": "labshelf.writing.removeProject",
+          "when": "view == labshelf.writing && viewItem =~ /External$/",
+          "group": "2_remove@1"
         }
       ],
       "commandPalette": [
@@ -346,6 +428,33 @@
         {
           "command": "labshelf.reader.toggleSidebar",
           "when": "activeWebviewPanelId == 'labshelfPdf'"
+        },
+        {
+          "command": "labshelf.writing.openMain",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.reveal",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.removeProject",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.setMain",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.pickMain",
+          "when": "false"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "labshelf.writing.setMain",
+          "when": "resourceExtname =~ /^\\.(tex|typ)$/",
+          "group": "2_workspace@9"
         }
       ]
     },

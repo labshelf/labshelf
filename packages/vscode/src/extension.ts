@@ -23,6 +23,7 @@ import {
   registerSettingsWelcomeView,
   registerPanelCommands,
   registerSyncCommands,
+  registerWritingView,
 } from "./activation/index.js";
 
 /** Activates the extension, initializing services if a library is already configured */
@@ -58,6 +59,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   refreshLibraryViews = refreshViews;
 
   registerSettingsWelcomeView(context, controller);
+  registerWritingView(context, controller);
 
   registerPanelCommands({
     context, events, requireServices, papersRootUri, folderHost, syncTreeToPanel, adapters,

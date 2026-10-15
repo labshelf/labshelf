@@ -9,7 +9,8 @@ The full LabShelf workspace inside VS Code:
 - the PDF reader;
 - import with OCR;
 - similar-paper indexing;
-- Drive sync.
+- Drive sync;
+- a Writing view of LaTeX and Typst projects.
 
 ## Build and run
 
@@ -23,6 +24,11 @@ pnpm dev:vscode                        # watches the host and the webview bundle
 - Open the repository in VS Code and press F5. This launches an Extension Development Host. On first run, use **LabShelf: Configure Library**.
 - Drive needs the Desktop OAuth client ([README.md](README.md#google-oauth-clients)). Tokens live in `SecretStorage` under `labshelf.gdrive.tokens`; **LabShelf: Disconnect from Google Drive** clears them.
 - The paper list is an in-memory library store rebuilt from the library files on activation. `.research/index.sqlite` holds the embeddings and the content hash of each indexed PDF; deleting it drops them and papers re-index on rebuild.
+
+## Writing projects
+
+- The **Writing** view in the activity bar lists the projects of the library and the external folders added on this device ([contract](../contracts/library-format.md)). **New Project** creates one in the library; **Add Existing Folder as Project** registers any folder; **Remove Project from LabShelf** never deletes files.
+- The main document is chosen with **Set as Main Document** (explorer context menu on `.tex` and `.typ` files) or from the status bar item. The item appears on the left while the active editor's file belongs to a project, shows the main file, and opens a quick pick on click.
 
 ## Adding papers
 

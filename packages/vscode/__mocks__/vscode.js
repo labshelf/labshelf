@@ -287,6 +287,17 @@ window.createStatusBarItem = jest.fn(() => ({
   text: '', tooltip: '', command: undefined, show: jest.fn(), hide: jest.fn(), dispose: jest.fn(),
 }));
 
+// ─── Active editor ────────────────────────────────────────────────────────────
+
+// Tests set `window.activeTextEditor` and call `window._fireActiveEditorChange()`.
+const _activeEditorListeners = [];
+window.activeTextEditor = undefined;
+window.onDidChangeActiveTextEditor = jest.fn((handler) => {
+  _activeEditorListeners.push(handler);
+  return { dispose: () => {} };
+});
+window._fireActiveEditorChange = () => _activeEditorListeners.forEach((l) => l(window.activeTextEditor));
+
 // ─── CancellationToken ────────────────────────────────────────────────────────
 
 const CancellationToken = { None: { isCancellationRequested: false } };
