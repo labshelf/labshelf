@@ -1,5 +1,6 @@
 /** Checks papers for a text layer and gives scans one by OCR, recording the verdict on the paper. */
 import {
+  errorMessage,
   paperFiles,
   shouldRecordVerdict,
   verdictForDetection,
@@ -41,7 +42,7 @@ export class PaperTextLayers {
     try {
       outcome = await this.builder.build(await this.readPdf(paper), hooks);
     } catch (error) {
-      outcome = { status: "unavailable", reason: error instanceof Error ? error.message : String(error) };
+      outcome = { status: "unavailable", reason: errorMessage(error) };
     }
     if (outcome.status !== "added") {
       await this.record(paperId, verdictForOutcome(outcome, this.ctx.now));

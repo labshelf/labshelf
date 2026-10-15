@@ -1,6 +1,6 @@
 /** Implements the LibraryFileSystem port over vscode.workspace.fs, the extension's only file-system adapter. */
 import * as vscode from "vscode";
-import type { LibraryFileSystem, LocalStat, PathOps } from "@labshelf/core";
+import { errorMessage, type LibraryFileSystem, type LocalStat, type PathOps } from "@labshelf/core";
 
 const uriOf = (target: string): vscode.Uri => vscode.Uri.file(target);
 
@@ -14,7 +14,7 @@ export class VscodeFileSystem implements LibraryFileSystem {
     try {
       await vscode.workspace.fs.createDirectory(uriOf(dirPath));
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = errorMessage(error);
       throw new Error(`Failed to ensure directory ${dirPath}: ${message}`, { cause: error });
     }
   }
@@ -34,7 +34,7 @@ export class VscodeFileSystem implements LibraryFileSystem {
     } catch (error) {
       // Best effort: the write error below is the one the caller needs, and a stray temp file is harmless.
       await Promise.resolve(vscode.workspace.fs.delete(tmp, { useTrash: false })).catch(() => undefined);
-      const message = error instanceof Error ? error.message : String(error);
+      const message = errorMessage(error);
       throw new Error(`Failed to write ${filePath}: ${message}`, { cause: error });
     }
   }

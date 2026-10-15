@@ -16,14 +16,14 @@ export function registerMetadataCommands(context: vscode.ExtensionContext, requi
           ? (await services.paperService.listPapers()).find((entry) => entry.id === paperId)
           : await resolvePaper(services.paperService, undefined, "Select the paper to look up");
         if (!paper) { return; }
-        await fetchMetadataForPaper(services.paperService, paper);
+        await fetchMetadataForPaper(services.paperService, paper, services.logger);
       });
     }),
     vscode.commands.registerCommand("labshelf.resolveMissingMetadata", async () => {
       const services = await requireServices();
       if (!services) { return; }
       await executeSafely(services.logger, "labshelf.resolveMissingMetadata", async () => {
-        await resolveMissingMetadata(services.paperService);
+        await resolveMissingMetadata(services.paperService, services.logger);
       });
     }),
     vscode.commands.registerCommand("labshelf.deletePaper", async (paperId?: string) => {

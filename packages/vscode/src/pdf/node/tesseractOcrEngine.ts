@@ -1,6 +1,6 @@
 // Recovers text from scans and broken-font PDFs by rendering pages with pdfjs and reading them with Tesseract.
 // INVARIANT: both dependencies load lazily and their absence is non-fatal; callers fall back to the text layer.
-import type { PdfOcrEngine } from "@labshelf/core";
+import { errorMessage, type PdfOcrEngine } from "@labshelf/core";
 import { loadNativeCanvas, nativeRenderOptions, renderPagePng, type PdfjsLoader, type PdfViewport } from "@labshelf/core/node";
 
 // Tesseract wants roughly 300 DPI; PDF user space is 72 DPI.
@@ -56,7 +56,7 @@ export class TesseractOcrEngine implements PdfOcrEngine {
             chunks.push(text);
           }
         } catch (error) {
-          this.options.onDiagnostic?.(`OCR failed on page ${pageNumber}: ${describe(error)}`);
+          this.options.onDiagnostic?.(`OCR failed on page ${pageNumber}: ${errorMessage(error)}`);
         }
       }
     } finally {
@@ -125,7 +125,7 @@ export class TesseractOcrEngine implements PdfOcrEngine {
       this.worker = await tesseract.createWorker(languages, undefined, workerOptions);
       return this.worker;
     } catch (error) {
-      this.options.onDiagnostic?.(`OCR unavailable: ${describe(error)}`);
+      this.options.onDiagnostic?.(`OCR unavailable: ${errorMessage(error)}`);
       return undefined;
     }
   }
@@ -252,8 +252,4 @@ interface PdfRenderPage {
 interface PdfRenderDocument {
   numPages: number;
   getPage(pageNumber: number): Promise<PdfRenderPage>;
-}
-
-function describe(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

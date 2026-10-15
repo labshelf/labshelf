@@ -82,15 +82,16 @@ describe('renderReaderShell', () => {
     it('keeps the CSP that pdf.js needs (nonce, wasm, blob worker)', async () => {
       const html = await renderReaderShell(makeParams());
       expect(html).toContain('Content-Security-Policy');
-      expect(html).toMatch(/script-src 'nonce-[0-9a-f]{32}' 'wasm-unsafe-eval' vscode-resource:/);
+      expect(html).toMatch(/script-src 'nonce-[A-Za-z0-9+/]{22}==' 'wasm-unsafe-eval' vscode-resource:/);
       expect(html).toContain('worker-src vscode-resource: blob:');
       expect(html).toContain("default-src 'none'");
     });
 
     it('loads the bundled runtime as a nonce-tagged module script and its stylesheet', async () => {
       const html = await renderReaderShell(makeParams());
-      const nonce = html.match(/nonce-([0-9a-f]{32})/)?.[1];
-      expect(html).toMatch(new RegExp(`<script nonce="${nonce}" type="module" src="[^"]*dist/reader/reader\\.js"></script>`));
+      const nonce = html.match(/nonce-([A-Za-z0-9+/]{22}==)/)?.[1];
+      expect(html).toContain(`<script nonce="${nonce}" type="module" src=`);
+      expect(html).toMatch(/<script [^>]*src="[^"]*dist\/reader\/reader\.js"><\/script>/);
       expect(html).toMatch(/<link rel="stylesheet" href="[^"]*dist\/reader\/reader\.css"\/>/);
       expect(html).toMatch(/<link rel="modulepreload" href="[^"]*reader\.js"\/>/);
     });
@@ -152,8 +153,8 @@ describe('renderReaderShell', () => {
     it('generates different nonces on each call', async () => {
       const html1 = await renderReaderShell(makeParams());
       const html2 = await renderReaderShell(makeParams());
-      const nonce1 = html1.match(/nonce-([0-9a-f]{32})/)?.[1];
-      const nonce2 = html2.match(/nonce-([0-9a-f]{32})/)?.[1];
+      const nonce1 = html1.match(/nonce-([A-Za-z0-9+/]{22}==)/)?.[1];
+      const nonce2 = html2.match(/nonce-([A-Za-z0-9+/]{22}==)/)?.[1];
       expect(nonce1).toBeTruthy();
       expect(nonce2).toBeTruthy();
       expect(nonce1).not.toBe(nonce2);

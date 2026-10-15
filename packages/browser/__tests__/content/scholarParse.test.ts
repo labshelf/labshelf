@@ -1,5 +1,5 @@
-import { isScholarUrl, lookupItemFor, parseAuthorsLine } from "../../src/content/scholarParse";
-import { idsFromHit, metadataFromHit } from "../../src/capture/scholarCapture";
+import { idsFromHit, isScholarUrl, lookupItemFor, parseAuthorsLine } from "../../src/content/scholarParse";
+import { metadataFromHit } from "../../src/capture/scholarCapture";
 import type { ScholarHit } from "../../src/platform/runtimeMessages";
 
 jest.mock("webextension-polyfill", () => ({ storage: { local: { get: async () => ({}), set: async () => undefined } } }));

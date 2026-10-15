@@ -1,7 +1,7 @@
 // Draws OCR text layers onto the pages of a pdf-lib copy of a scanned PDF.
 // Page content is never re-encoded; each layer is embedded as a transparent overlay.
 import type { PDFDocument } from "pdf-lib";
-import type { TextLayerOutcome } from "@labshelf/core";
+import { errorMessage, type TextLayerOutcome } from "@labshelf/core";
 
 import type { TextLayerHooks } from "../textLayerBuilder.js";
 import type { OcrDocument, TesseractOcrEngine } from "./tesseractOcrEngine.js";
@@ -25,9 +25,9 @@ export async function openRewriteTarget(pdfBytes: Uint8Array, expectedPages: num
   } catch (error) {
     // Encrypted or structurally unusual files: leave the paper untouched.
     // Publisher DRM is the usual cause, and pdf-lib's own wording is about its API.
-    const reason = /encrypted/i.test(describe(error))
+    const reason = /encrypted/i.test(errorMessage(error))
       ? "the PDF is encrypted by its publisher, so text cannot be added to it"
-      : `the PDF cannot be rewritten (${describe(error)})`;
+      : `the PDF cannot be rewritten (${errorMessage(error)})`;
     return { status: "unavailable", reason };
   }
   if (target.getPageCount() !== expectedPages) {
@@ -61,7 +61,7 @@ export async function overlayTextLayers(
       }
     } catch (error) {
       pagesFailed += 1;
-      engine.report(`Text layer failed on page ${pageNumber}: ${describe(error)}`);
+      engine.report(`Text layer failed on page ${pageNumber}: ${errorMessage(error)}`);
     }
   }
   return { cancelled: false, pagesAdded, pagesFailed };
@@ -90,8 +90,4 @@ async function overlayPage(
   const box = page.getCropBox();
   page.drawPage(embedded!, { x: box.x, y: box.y, width: box.width, height: box.height });
   return "added";
-}
-
-function describe(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

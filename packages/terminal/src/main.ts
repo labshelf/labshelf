@@ -3,7 +3,7 @@
 import * as path from "node:path";
 import { createInterface } from "node:readline/promises";
 
-import { PAPERS_DIR, RESEARCH_DIR } from "@labshelf/core";
+import { PAPERS_DIR, RESEARCH_DIR, errorMessage } from "@labshelf/core";
 import { sharedConfigPath, updateSharedConfig } from "@labshelf/core/node";
 
 import { loadTerminalConfig, resolveLibraryRoot, type TerminalConfig } from "./app/index.js";
@@ -106,7 +106,7 @@ async function runOpenedLibrary(ctx: AppContext, args: ParsedArgs, tuiWanted: bo
       io.err(error.message);
       return 2;
     }
-    io.err(error instanceof Error ? error.message : String(error));
+    io.err(errorMessage(error));
     await ctx.logger.error("terminal/cli", error);
     return 1;
   } finally {

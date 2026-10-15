@@ -2,7 +2,7 @@
 // Pending jobs are published so the library list can show them per row.
 import * as vscode from "vscode";
 
-import type { ILogger, PaperRecord } from "@labshelf/core";
+import { errorMessage, type ILogger, type PaperRecord } from "@labshelf/core";
 import type { MakeSearchableResult, PaperTextLayers } from "../core/index.js";
 import type { TextLayerProgress } from "../pdf/index.js";
 
@@ -137,7 +137,7 @@ async function runOcr(textLayers: PaperTextLayers, paper: PaperRecord, options: 
       isCancelled: () => progress.cancelled,
     });
   } catch (error) {
-    result = { status: "unavailable", reason: error instanceof Error ? error.message : String(error) };
+    result = { status: "unavailable", reason: errorMessage(error) };
   } finally {
     progress.finish();
   }

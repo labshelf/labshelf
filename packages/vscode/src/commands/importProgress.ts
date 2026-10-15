@@ -33,7 +33,7 @@ export async function importPapers(
   const outcomes = await importWithProgress(services, uris, targetDir);
   announceImport(outcomes);
   const unconfirmed = outcomes.flatMap((outcome) => (outcome.status === "added" && outcome.needsReview ? [outcome.record] : []));
-  await offerMetadataFetch(services.paperService, unconfirmed);
+  await offerMetadataFetch(services.paperService, unconfirmed, services.logger);
   return outcomes;
 }
 

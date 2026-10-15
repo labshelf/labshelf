@@ -7,7 +7,7 @@ import {
   resolveFirstIdentifier,
   searchOnlineCandidates,
 } from "@labshelf/core";
-import type { PaperRecord, ResolvedMetadata } from "@labshelf/core";
+import type { ILogger, PaperRecord, ResolvedMetadata } from "@labshelf/core";
 import type { PaperService } from "../core/index.js";
 import { enterMetadataManually, truncate } from "./manualMetadataEntry.js";
 
@@ -19,6 +19,7 @@ import { enterMetadataManually, truncate } from "./manualMetadataEntry.js";
 export async function fetchMetadataForPaper(
   paperService: PaperService,
   paper: PaperRecord,
+  logger: ILogger,
 ): Promise<PaperRecord | undefined> {
   const query = await askForQuery(paper);
   if (!query) {
@@ -27,7 +28,7 @@ export async function fetchMetadataForPaper(
 
   const found = await vscode.window.withProgress(
     { location: vscode.ProgressLocation.Notification, title: "LabShelf: looking up metadata…" },
-    () => lookupUserQuery(query),
+    () => lookupUserQuery(query, logger),
   );
 
   if (found.length === 0) {
@@ -40,7 +41,7 @@ export async function fetchMetadataForPaper(
       "Cancel",
     );
     if (choice === "Try again") {
-      return fetchMetadataForPaper(paperService, paper);
+      return fetchMetadataForPaper(paperService, paper, logger);
     }
     if (choice === "Enter manually") {
       return enterMetadataManually(paperService, paper, query);
@@ -78,16 +79,16 @@ async function askForQuery(paper: PaperRecord): Promise<string | undefined> {
  * it can confirm over a title it can only search for.
  * @returns One confirmed record, several candidates, or an empty list.
  */
-export async function lookupUserQuery(query: string): Promise<ResolvedMetadata[]> {
+export async function lookupUserQuery(query: string, logger: ILogger): Promise<ResolvedMetadata[]> {
   const identifiers = identifiersFromInput(query);
   if (identifiers.length > 0) {
-    const confirmed = await resolveFirstIdentifier(identifiers).catch(() => undefined);
+    const confirmed = await resolveFirstIdentifier(identifiers, { logger }).catch(() => undefined);
     if (confirmed) {
       return [confirmed.metadata];
     }
   }
 
-  return searchOnlineCandidates(query).catch(() => []);
+  return searchOnlineCandidates(query, undefined, { logger }).catch(() => []);
 }
 
 // Shows the matches so the user can confirm which work this PDF actually is.
@@ -109,7 +110,7 @@ async function pickCandidate(candidates: ResolvedMetadata[]): Promise<ResolvedMe
  * a manual lookup for whatever is still unidentified. This is the recovery
  * path after importing offline or before the pipeline could resolve a source.
  */
-export async function resolveMissingMetadata(paperService: PaperService): Promise<void> {
+export async function resolveMissingMetadata(paperService: PaperService, logger: ILogger): Promise<void> {
   const pending = await paperService.listUnresolvedPapers();
   if (pending.length === 0) {
     await vscode.window.showInformationMessage("LabShelf: every paper already has a confirmed record.");
@@ -146,7 +147,7 @@ export async function resolveMissingMetadata(paperService: PaperService): Promis
       `LabShelf: recovered metadata for ${recovered.length} of ${pending.length} paper${pending.length === 1 ? "" : "s"}.`,
     );
   }
-  await offerMetadataFetch(paperService, stillUnknown);
+  await offerMetadataFetch(paperService, stillUnknown, logger);
 }
 
 /**
@@ -155,6 +156,7 @@ export async function resolveMissingMetadata(paperService: PaperService): Promis
 export async function offerMetadataFetch(
   paperService: PaperService,
   papers: PaperRecord[],
+  logger: ILogger,
 ): Promise<void> {
   if (papers.length === 0) {
     return;
@@ -176,7 +178,7 @@ export async function offerMetadataFetch(
 
   for (const paper of papers) {
     await (choice === "Look up"
-      ? fetchMetadataForPaper(paperService, paper)
+      ? fetchMetadataForPaper(paperService, paper, logger)
       : enterMetadataManually(paperService, paper));
   }
 }

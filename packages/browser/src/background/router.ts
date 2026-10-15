@@ -69,11 +69,11 @@ async function handle(msg: RuntimeMessage, { log, mutations, syncMessages, sched
     case "capture.findPdf":
       return handleCaptureFindPdf(log, msg);
     case "capture.save":
-      return handleCaptureSave(log, msg, scheduleSync);
+      return handleCaptureSave(log, mutations, msg, scheduleSync);
     case "capture.tab":
-      return handleCaptureTab(log, msg, scheduleSync);
+      return handleCaptureTab(log, mutations, msg, scheduleSync);
     case "scholar.save":
-      return handleScholarSave(log, msg, scheduleSync);
+      return handleScholarSave(log, mutations, msg, scheduleSync);
     case "capture.attachPdf":
       return handleCaptureAttachPdf(log, mutations, msg, scheduleSync);
     case "paper.findPdf":

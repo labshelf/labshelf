@@ -4,7 +4,7 @@
  */
 import * as vscode from "vscode";
 
-import { libraryLayout, type IFileSystem } from "@labshelf/core";
+import { errorMessage, libraryLayout, type IFileSystem } from "@labshelf/core";
 import type { SharedLibraryConfig } from "./sharedLibraryConfig.js";
 
 /**
@@ -84,7 +84,7 @@ export async function runLibrarySetupWizard(
     await sharedConfig.recordRoot(libraryRoot.fsPath);
     return libraryRoot;
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
     await vscode.window.showErrorMessage(`LabShelf: Failed to create library at ${libraryRoot.fsPath}: ${message}`);
     return undefined;
   }

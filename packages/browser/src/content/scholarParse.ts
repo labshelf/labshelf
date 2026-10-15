@@ -1,6 +1,6 @@
 // Reads Google Scholar result blocks (div.gs_r.gs_or) into ScholarHit records.
 // The green line "A Aggarwal, M Klawe… - Proceedings of the …, 1986 - dl.acm.org" splits into authors, venue, year.
-import { arxivIdFromUrl, extractDoi } from "@labshelf/core";
+import { arxivIdFromUrl, extractDoi, pmidFromUrl, type DetectedIds } from "@labshelf/core";
 import type { LookupItem, ScholarHit } from "../platform";
 
 // Google Scholar's own hosts: scholar.google.com and its country domains
@@ -82,12 +82,21 @@ export function readResult(el: Element): ScholarHit | undefined {
 }
 
 /**
- * What the library lookup needs to recognise a result.
+ * Identifiers a result's links reveal (publisher URLs embed the DOI).
  */
-export function lookupItemFor(hit: ScholarHit): LookupItem {
+export function idsFromHit(hit: ScholarHit): DetectedIds {
   const urls = [hit.url, hit.pdfUrl].filter((u): u is string => !!u);
   const doi = urls.map((u) => extractDoi(u)).find(Boolean);
   const arxivId = urls.map(arxivIdFromUrl).find(Boolean);
+  const pmid = urls.map(pmidFromUrl).find(Boolean);
+  return { ...(doi ? { doi } : {}), ...(arxivId ? { arxivId } : {}), ...(pmid ? { pmid } : {}) };
+}
+
+/**
+ * What the library lookup needs to recognise a result.
+ */
+export function lookupItemFor(hit: ScholarHit): LookupItem {
+  const { doi, arxivId } = idsFromHit(hit);
   return {
     key: hit.key,
     title: hit.title,

@@ -6,9 +6,9 @@ import "@labshelf/core/styles/tokens.css";
 import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/reader.css";
 import type { ReaderBootParams } from "@labshelf/core";
-import { PerfMarks, byId, startReader } from "@labshelf/core/dom";
+import { PerfMarks, $, startReader } from "@labshelf/core/dom";
 import { createVsCodeTransport } from "./index.js";
 
 const perf = new PerfMarks();
-const boot = JSON.parse(byId("labshelf-boot").textContent ?? "{}") as ReaderBootParams;
+const boot = JSON.parse($("labshelf-boot").textContent ?? "{}") as ReaderBootParams;
 startReader({ boot, transport: createVsCodeTransport(), perf }).catch(() => { /* already shown in #error-msg */ });

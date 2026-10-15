@@ -2,7 +2,7 @@
  * Answers the library UI in the list webview: validates each message (the webview is untrusted), maps its paths to
  * disk, and dispatches it. A failure is logged and shown as an error notice.
  */
-import { parseUiMessage, type UiToHost } from '@labshelf/core';
+import { errorMessage, parseUiMessage, type UiToHost } from '@labshelf/core';
 import { LOG_MODULE, type ListHostContext } from './hostContext.js';
 import { movePapers, removePapers, revealPaper, runCommand, setNote, setStatus, setTags, writeClipboard } from './paperHandlers.js';
 import { sendDetails, sendSimilar } from './paperData.js';
@@ -62,7 +62,7 @@ export async function handleListMessage(ctx: ListHostContext, raw: unknown): Pro
     // Find PDF, Attach PDF and adding from a source are browser capabilities this panel does not declare.
     await ctx.deps.logger.log('WARN', LOG_MODULE, 'List webview sent a message this host does not offer', { type: m.type });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
     await ctx.deps.logger.log('ERROR', LOG_MODULE, 'List action failed', { type: m.type, message });
     ctx.notice('error', `${FAILURE[m.type] ?? 'The action failed'} — ${message}`);
   }
