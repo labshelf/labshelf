@@ -33,7 +33,7 @@ beforeEach(() => jest.clearAllMocks());
 describe("registerWritingView", () => {
   it("registers every labshelf.writing command of package.json and no other", () => {
     setup("/lib");
-    const registered = (vscode.commands.registerCommand as jest.Mock).mock.calls.map(([id]) => id as string).sort();
+    const registered = (vscode.commands.registerCommand as jest.Mock).mock.calls.map(([id]) => id as string).filter((id) => id.startsWith("labshelf.writing.")).sort();
     const contributed = manifest.contributes.commands.map((c) => c.command).filter((id) => id.startsWith("labshelf.writing.")).sort();
     expect(registered).toEqual(contributed);
   });

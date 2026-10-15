@@ -1,10 +1,11 @@
-// Registers the Writing sidebar view, its project commands and the main-document status bar item, and reloads the project list when the library root changes.
+// Registers the Writing sidebar view, its commands, the main-document status bar item and the citation providers, and reloads the project list when the library root changes.
 import * as vscode from "vscode";
 
 import {
   WritingProjects, WritingTreeProvider, registerMainCommands, registerMainStatusBar, registerProjectCommands,
   registerProjectItemCommands, type WritingHost,
 } from "../../writing/index.js";
+import { registerCitationProviders } from "../../writing/citations/index.js";
 import type { LibraryRootController } from "../libraryLifecycle/index.js";
 
 export function registerWritingView(context: vscode.ExtensionContext, controller: LibraryRootController): void {
@@ -31,5 +32,12 @@ export function registerWritingView(context: vscode.ExtensionContext, controller
   registerProjectItemCommands({ context, host, projects });
   registerMainCommands({ context, host, projects });
   registerMainStatusBar(context, projects);
+  registerCitationProviders(context, {
+    projects,
+    session: () => {
+      const services = controller.currentServices();
+      return services ? { listPapers: () => services.paperService.listPapers(), logger: services.logger } : undefined;
+    },
+  });
   void projects.reload();
 }

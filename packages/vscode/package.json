@@ -11,6 +11,11 @@
     "Other"
   ],
   "main": "./out/extension.js",
+  "activationEvents": [
+    "workspaceContains:**/labshelf.yaml",
+    "onLanguage:latex",
+    "onLanguage:typst"
+  ],
   "contributes": {
     "commands": [
       {

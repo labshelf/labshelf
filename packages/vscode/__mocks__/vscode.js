@@ -302,7 +302,64 @@ window._fireActiveEditorChange = () => _activeEditorListeners.forEach((l) => l(w
 
 const CancellationToken = { None: { isCancellationRequested: false } };
 
+// ─── Text positions, edits and language features ──────────────────────────────
+
+class Position {
+  constructor(line, character) { this.line = line; this.character = character; }
+}
+
+class Range {
+  constructor(a, b, c, d) {
+    const [start, end] = typeof a === 'number' ? [new Position(a, b), new Position(c, d)] : [a, b];
+    this.start = start;
+    this.end = end;
+  }
+}
+
+class WorkspaceEdit {
+  constructor() { this.replacements = []; }
+  replace(uri, range, text) { this.replacements.push({ uri, range, text }); }
+}
+
+class MarkdownString {
+  constructor(value) { this.value = value || ''; this.isTrusted = undefined; }
+  appendMarkdown(text) { this.value += text; return this; }
+}
+
+class Hover {
+  constructor(contents, range) { this.contents = contents; this.range = range; }
+}
+
+class DocumentLink {
+  constructor(range, target) { this.range = range; this.target = target; }
+}
+
+class CompletionItem {
+  constructor(label, kind) { this.label = label; this.kind = kind; }
+}
+
+const CompletionItemKind = { Reference: 17 };
+
+workspace.textDocuments = [];
+workspace.applyEdit = jest.fn(async () => true);
+workspace.onDidSaveTextDocument = jest.fn(() => ({ dispose: () => {} }));
+
+const languages = {
+  registerCompletionItemProvider: jest.fn(() => ({ dispose: () => {} })),
+  registerHoverProvider: jest.fn(() => ({ dispose: () => {} })),
+  registerDocumentLinkProvider: jest.fn(() => ({ dispose: () => {} })),
+};
+
 module.exports = {
+  Position,
+  Range,
+  WorkspaceEdit,
+  MarkdownString,
+  Hover,
+  DocumentLink,
+  CompletionItem,
+  CompletionItemKind,
+  languages,
   Uri,
   FileType,
   workspace,

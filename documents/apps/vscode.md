@@ -28,6 +28,7 @@ pnpm dev:vscode                        # watches the host and the webview bundle
 ## Writing projects
 
 - The **Writing** view in the activity bar lists the projects of the library and the external folders added on this device ([contract](../contracts/library-format.md)). **New Project** creates one in the library; **Add Existing Folder as Project** registers any folder; **Remove Project from LabShelf** never deletes files.
+- The extension activates on a folder with `labshelf.yaml` and on LaTeX and Typst files. In a project's sources, citation keys complete from the library, show the paper on hover, and open it in the reader on Ctrl+click. `labshelf.bib` is regenerated from the keys the sources cite ([contract](../contracts/library-format.md#labshelfbib)).
 - The main document is chosen with **Set as Main Document** (explorer context menu on `.tex` and `.typ` files) or from the status bar item. The item appears on the left while the active editor's file belongs to a project, shows the main file, and opens a quick pick on click.
 
 ## Adding papers
