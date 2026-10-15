@@ -14,7 +14,7 @@ The recipes live in `documents/apps/`. Pick the one for the change:
 |---|---|
 | import, OCR, text layer, pdf.js in the extension host | `documents/apps/vscode.md` → "Extension host run" |
 | reader UI, list panel, any VS Code webview | `documents/apps/vscode.md` → "Webview harness" |
-| browser pages, popup, Scholar button, capture | `documents/apps/browser.md` → "Headless run" |
+| browser pages, popup, Scholar button, capture | `documents/apps/browser.md` → "Headless run", or its "Chrome DevTools MCP" subsection |
 | TUI layout, keys, terminal output | `documents/apps/terminal.md` → "Verification" |
 
 Always:

@@ -53,3 +53,17 @@ Playwright's full Chrome for Testing can load the unpacked extension. Run it out
 - To test the Scholar content script on a fixture, `Fetch.enable` for `https://scholar.google.com/scholar*` and fulfil the request with the fixture HTML.
 - To test the popup against an article tab, open `popup/index.html` in a 340 px target, overriding `chrome.tabs.query` through `Page.addScriptToEvaluateOnNewDocument`.
 - For reader parity with VS Code, render both readers on the same real paper and pixel-diff the toolbar and sidebar. CDP drags do not create text selections in either reader; select with a `Range` plus a synthetic `mouseup` instead.
+
+### Chrome DevTools MCP
+
+The project-scope `.mcp.json` registers `chrome-devtools-mcp` (version pinned, headless, isolated profile, extension tools on, usage statistics and CrUX lookups off). An agent loads and inspects the unpacked extension without a hand-written CDP harness:
+
+1. `pnpm --filter @labshelf/browser build:chrome`.
+2. `install_extension` with `path` = the absolute `packages/browser/dist/chrome`; the result carries the extension id.
+3. `new_page` with `chrome-extension://<id>/popup/index.html` (or `library-page/index.html`, `options/index.html`), then `take_snapshot` and `take_screenshot` with the page id that `new_page` lists. `list_extensions`, `reload_extension` (after a rebuild), `trigger_extension_action`, and the console and network tools work on the same session.
+
+- Extension tools need the launched-browser (pipe) connection, so `--browserUrl`, `--wsEndpoint` and `--autoConnect` cannot be used with them.
+- File arguments must lie under the client's workspace roots (the repo) or the OS temp directory; write screenshots to the scratchpad.
+- Branded Google Chrome works headless through this server because the extension is installed over the protocol and not with `--load-extension`. To use Chrome for Testing instead, add `--executablePath=<path>` through a local override (`claude mcp add --scope local chrome-devtools -- npx -y chrome-devtools-mcp@<version> ...`), not in `.mcp.json`.
+- A server added to `.mcp.json` becomes available after the next session start. Project-scope servers ask for approval on first use.
+- Without a configured MCP client, the server can be driven over stdio: spawn the `.mcp.json` command, send `initialize` (declaring the `roots` capability and answering `roots/list`), `notifications/initialized`, then `tools/call`.
