@@ -1,7 +1,7 @@
 import * as path from "node:path";
 
 import {
-  APPDATA_DIR, APP_LOG_FILE, BIB_FILE, BROWSER_SYNC_ROOTS, INDEX_FILE, METADATA_FILE, PAPERS_DIR, PDF_FILE,
+  AI_DATABASE_FILE, APPDATA_DIR, APP_LOG_FILE, BIB_FILE, BROWSER_SYNC_ROOTS, METADATA_FILE, PAPERS_DIR, PDF_FILE,
   RESEARCH_DIR, SIDECAR_FILE, SYNC_PROVIDER_ID, TERMINAL_LOG_FILE,
   joinWith, libraryLayout, paperFiles, syncRoots,
 } from "@labshelf/core";
@@ -10,7 +10,7 @@ describe("layout constants", () => {
   it("pin the on-disk names", () => {
     expect([PAPERS_DIR, RESEARCH_DIR, APPDATA_DIR]).toEqual(["papers", ".research", "appdata"]);
     expect([PDF_FILE, METADATA_FILE, BIB_FILE, SIDECAR_FILE]).toEqual(["paper.pdf", "metadata.yaml", "bib.bib", "data.json"]);
-    expect([INDEX_FILE, APP_LOG_FILE, TERMINAL_LOG_FILE]).toEqual(["index.sqlite", "app.log", "terminal.log"]);
+    expect([AI_DATABASE_FILE, APP_LOG_FILE, TERMINAL_LOG_FILE]).toEqual(["index.sqlite", "app.log", "terminal.log"]);
     expect(SYNC_PROVIDER_ID).toBe("google-drive");
   });
 });
@@ -32,7 +32,7 @@ describe.each([
     expect(l.logsDir()).toBe(at(".research", "logs"));
     expect(l.appLogPath()).toBe(at(".research", "logs", "app.log"));
     expect(l.terminalLogPath()).toBe(at(".research", "logs", "terminal.log"));
-    expect(l.indexPath()).toBe(at(".research", "index.sqlite"));
+    expect(l.aiDatabasePath()).toBe(at(".research", "index.sqlite"));
     expect(l.tmpDir()).toBe(at(".research", "tmp"));
   });
 

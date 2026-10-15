@@ -21,7 +21,7 @@ VS Code and the terminal open the same local folder and share its manifest, so e
 
 Dot files are synced like any other file. The browser marks an empty folder with a `.keep` file.
 
-Nothing else is uploaded. The SQLite index, logs and the files in `.research/sync/` stay on the device ([library-format.md](library-format.md)).
+Nothing else is uploaded. The VS Code AI database, logs and the files in `.research/sync/` stay on the device ([library-format.md](library-format.md)).
 
 An app only sees, through these scopes, the files that its own Google Cloud project created. All three apps therefore use OAuth clients from one Google Cloud project. VS Code and the terminal share the same Desktop client, and the browser uses a Web client.
 

@@ -10,7 +10,9 @@ export const METADATA_FILE = "metadata.yaml";
 export const BIB_FILE = "bib.bib";
 export const SIDECAR_FILE = "data.json";
 
-export const INDEX_FILE = "index.sqlite";
+// Holds only VS Code's AI stores (embeddings, AI metadata, reading events). The on-disk name stays "index.sqlite"
+// so no existing file needs renaming.
+export const AI_DATABASE_FILE = "index.sqlite";
 export const APP_LOG_FILE = "app.log";
 export const TERMINAL_LOG_FILE = "terminal.log";
 
@@ -30,7 +32,7 @@ export interface LibraryLayout<T> {
   logsDir(): T;
   appLogPath(): T;
   terminalLogPath(): T;
-  indexPath(): T;
+  aiDatabasePath(): T;
   /** Scratch space for atomic writes: same volume as the library, outside both synced roots. */
   tmpDir(): T;
   paperDataRoot(): T;
@@ -59,7 +61,7 @@ export function libraryLayout<T>(root: T, join: Join<T>): LibraryLayout<T> {
     logsDir,
     appLogPath: () => join(logsDir(), APP_LOG_FILE),
     terminalLogPath: () => join(logsDir(), TERMINAL_LOG_FILE),
-    indexPath: () => join(research(), INDEX_FILE),
+    aiDatabasePath: () => join(research(), AI_DATABASE_FILE),
     tmpDir: () => join(research(), "tmp"),
     paperDataRoot,
     paperDataDir,

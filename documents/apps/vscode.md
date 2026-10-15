@@ -22,7 +22,7 @@ pnpm dev:vscode                        # watches the host and the webview bundle
 
 - Open the repository in VS Code and press F5. This launches an Extension Development Host. On first run, use **LabShelf: Configure Library**.
 - Drive needs the Desktop OAuth client ([README.md](README.md#google-oauth-clients)). Tokens live in `SecretStorage` under `labshelf.gdrive.tokens`; **LabShelf: Disconnect from Google Drive** clears them.
-- The SQLite index (`.research/index.sqlite`) is a cache that can be rebuilt from the library files. Deleting it is always safe.
+- The paper list is an in-memory library store rebuilt from the library files on activation. `.research/index.sqlite` holds only the AI stores; deleting it drops embeddings and reading events.
 
 ## Adding papers
 

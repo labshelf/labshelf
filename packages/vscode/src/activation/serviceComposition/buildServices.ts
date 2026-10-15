@@ -78,7 +78,7 @@ export async function buildServices(
   return {
     paperService, importer, textLayers, mutations, logger, themeManager, library: store, paperDataStore, fileSystem,
     reindexLibrary: reindex,
-    aiDatabasePath: paths.indexPath().fsPath,
+    aiDatabasePath: paths.aiDatabasePath().fsPath,
     folderReader: createFolderReader(fileSystem, logger),
   };
 }

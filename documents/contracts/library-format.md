@@ -16,7 +16,7 @@ A LabShelf library is a folder that the user owns. Every app reads and writes th
         bib.bib                    BibTeX entry generated from metadata.yaml
   .research/                       hidden, owned by the apps
     papers/<paper id>/data.json    the sidecar (synced, namespace "appdata")
-    index.sqlite                   VS Code's index, a rebuildable cache (never synced)
+    index.sqlite                   VS Code's AI stores: embeddings, AI metadata, reading events (never synced)
     logs/app.log                   VS Code log (JSON lines)
     logs/terminal.log              terminal log (JSON lines)
     sync/google-drive.*            sync coordination (see sync.md, never synced)
@@ -36,7 +36,7 @@ IndexedDB holds only files, so an empty folder is a zero-byte `.keep` file insid
 
 ## metadata.yaml
 
-`metadata.yaml` is the source of truth for a paper's record. Every index (SQLite, IndexedDB, the terminal's in-memory snapshot) is rebuilt from it.
+`metadata.yaml` is the source of truth for a paper's record. Every paper list (the in-memory library store in VS Code and the terminal, IndexedDB in the browser) is rebuilt from it.
 
 | Key | Type | Notes |
 |---|---|---|
