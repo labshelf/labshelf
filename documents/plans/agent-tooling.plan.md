@@ -1,6 +1,6 @@
 # Plan: Agent tooling, comment standard and codebase reduction
 
-Status: in progress (session 7 of 8)
+Status: done
 Size: GG — 8 sessions across rules, hooks, agents, skills, docs, every source file and a repo-wide audit; the reduction work it finds runs as its own plan
 Pending decisions: 0
 
@@ -48,7 +48,7 @@ Resolved:
 - [x] **A9** `documents/README.md` is a routing table; every doc's first line after the title is "Read when …"; `health` reports any doc without it.
 - [x] **A10** Every source file's header line 1 is a capability sentence; `check-rules.sh` flags new files without one; `rg -m1 '^// ' packages/core/src/<domain>` reads as a map.
 - [x] **A11** The core contrast test passes for both themes and fails if a listed pair drops below 4.5:1.
-- [ ] **A12** `codebase-reduction.plan.md` exists with findings ranked by lines saved and risk, each tagged with its ladder rung.
+- [x] **A12** `codebase-reduction.plan.md` exists with findings ranked by lines saved and risk, each tagged with its ladder rung.
 
 ## 5. Design
 
@@ -105,10 +105,10 @@ Resolved:
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S35 | knip + jscpd + depcruise reports | S7 | L · check skill (haiku) | raw findings saved to scratchpad | [ ] |
-| S36 | Ladder review per package, in parallel | S35 | H · implementer (opus) ×4, read-only | each returns ranked findings with rung + lines saved | [ ] |
-| S37 | Council on the top 5 structural findings | S36 | `council` skill | verdicts recorded | [ ] |
-| S38 | Write `codebase-reduction.plan.md` | S36–S37 | H · main thread | A12 | [ ] |
+| S35 | knip + jscpd + depcruise reports | S7 | L · check skill (haiku) | raw findings saved to scratchpad | [x] |
+| S36 | Ladder review per package, in parallel | S35 | H · implementer (opus) ×4, read-only | each returns ranked findings with rung + lines saved | [x] |
+| S37 | Council on the top 5 structural findings | S36 | `council` skill | verdicts recorded | [x] |
+| S38 | Write `codebase-reduction.plan.md` | S36–S37 | H · main thread | A12 | [x] |
 
 ### Step blocks
 
@@ -145,3 +145,5 @@ Resolved:
 - 2026-10-14 22:08 (session 6) deviations: the contrast test found sepia `--ls-reader-desc` at 4.14:1 on the reader surface; it is 11–12px text, so it is darkened to #72604e (4.82:1) in `tokens.css` and `readerThemeTokens.ts`. `--ls-warning` colours only icons, so the test checks banner text (`--ls-fg`) on `--ls-warning-bg` instead; the light warning icon is 2.81:1, below the 3:1 non-text minimum, and is left open. The test lives in `__tests__/ui/dom/`, mirroring `src/ui/dom/tokens.css`, not `__tests__/ui/tokens/` as §5 says.
 - 2026-10-15 10:08 (session 7): S31 six comment-enforcer agents (Sonnet), one per core folder group, rewrote about 330 noun-phrase headers to capability sentences; barrels read "Exports the <area>'s public API."; sync gained `CONTRACT:` tags against `sync.md` anchors, and pdf.js, Drive and MV3 quirks gained `PLATFORM:`/`TRAP:` tags. The token generators emit capability headers into `tokens.css` and `vscodeHost.css`. S32 the same for vscode, browser and terminal (about 140 headers). `check-rules.sh` flags a new file whose header line 1 does not start with a third-person verb, accepts `/* */` CSS headers, and its fixtures cover noun-phrase, plural-noun, CSS and JSDoc headers (16/16). A repo-wide scan of 859 files finds no header that fails the rule.
 - 2026-10-15 10:08 (session 7) S33: a 20-file random sample had no vague headers. The standard was tightened on one point: 123 `@returns void` lines were deleted mechanically, and `comment-enforcer` names `@returns` lines that restate the signature as removable; about 500 other `@returns` lines remain for case-by-case review. S34 `finish` gate: PASS (core 1785, vscode 352, browser 105, terminal 859 tests). Its one judgment item, `void result;` in `googleDriveProvider.ts`, became a bare `await`.
+- 2026-10-15 11:16 (session 8): S35 knip 0 issues, depcruise 0 violations, jscpd 30 clones at minTokens 40 / minLines 4 (raw, not the gate). S36 five read-only Opus reviewers (core domain, core UI, vscode, browser, terminal) returned 86 findings; merged and de-duplicated into 70 ranked rows (about 2,430 lines, about 2,300 planned). S37 gate applied to the top structural findings: the Node file-system adapters and the cite-key/root-storage questions went to Explore fact checks, the AI layer and the settings webview went to the user (delete unread AI parts; replace the webview with viewsWelcome), and two councils ran (LibraryOperations → one core `resolvePaperRefs` with an injected lookup; cite-key → `makeCiteKey` with trusted authors only). S38 `codebase-reduction.plan.md` written (6 sessions, GG) with the findings table in §9 (A12).
+- 2026-10-15 11:16 (session 8) deviations: S36 used five reviewers, because core (24k lines) split into domain and UI halves. Subagents cannot write report files, so the main thread saved their tables. S37 ran two councils instead of five, because the other top findings were facts or product calls, which the council gate excludes. The audit found a data-loss bug, which is session 1 of the reduction plan: the terminal sync's `NodeLocalFileSystem.listDir` returns [] on any error, so a read error deletes unchanged remote copies. `knip --production` gives only noise, because the knip entries are not marked as production entries.
