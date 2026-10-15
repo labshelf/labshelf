@@ -213,6 +213,14 @@ describe("App trash (d) asks for confirmation", () => {
     expect(mocked.moveToTrash).not.toHaveBeenCalled();
   });
 
+  it("names the removed paper after y", async () => {
+    mocked.moveToTrash.mockResolvedValue("trashed");
+    press(app, "d", "y");
+    await idle(app);
+    expect(app.message).toMatchObject({ text: 'Removed "Attention Is All You Need"' });
+    expect(app.message?.level).not.toBe("error");
+  });
+
   it("cancels with Esc too", () => {
     press(app, "d", "esc");
     expect(app.overlay).toBeUndefined();

@@ -1,4 +1,4 @@
-import { breadcrumbFor, countPapersUnder, folderLabel, parentDir, relativeFolder, baseName } from "@labshelf/core";
+import { breadcrumbFor, countPapersUnder, folderLabel, folderPathLabel, parentDir, relativeFolder, baseName } from "@labshelf/core";
 
 describe("folder navigation", () => {
   describe.each([
@@ -32,6 +32,12 @@ describe("folder navigation", () => {
       const papers = [join(root, "ML", "a"), join(root, "ML", "Vision", "b"), join(root, "MLX", "c")];
       expect(countPapersUnder(papers, join(root, "ML"), sep)).toBe(2);
       expect(countPapersUnder(papers, root, sep)).toBe(3);
+    });
+
+    it("labels a folder by its path inside the library, the root as All Papers", () => {
+      expect(folderPathLabel(root, deep, sep)).toBe("ML / Vision");
+      expect(folderPathLabel(root, root, sep)).toBe("All Papers");
+      expect(folderPathLabel(root, join(root + "-other", "x"), sep)).toBe("All Papers");
     });
 
     it("names the holder folder relative to the open one, joined with ' / '", () => {

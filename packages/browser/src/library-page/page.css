@@ -1,10 +1,7 @@
 /*
- * Styles the library page around the shared library UI: the full-height frame, the status bar along the bottom and the
- * folder tree in the sidebar slot, drawn like VS Code's. Requires tokens.css, base.css and the library UI sheets.
+ * Styles the library page around the shared library UI: the status bar along the bottom and the folder tree in the
+ * sidebar slot, drawn like VS Code's. Requires tokens.css, base.css and the library UI sheets.
  */
-html, body { height: 100%; overflow: hidden; }
-body, #root { display: flex; flex-direction: column; }
-#root { height: 100%; min-height: 0; }
 
 /* ── Status bar (22px, VS Code) ─────────────────────────────────── */
 .status-bar {

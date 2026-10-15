@@ -3,7 +3,7 @@
  * device, and papers with similar content from the AI index.
  */
 import * as vscode from 'vscode';
-import { PDF_FILE, paperDetailsOf, paperFiles, type PaperDetails, type SidecarSummarySource, type SimilarPaper } from '@labshelf/core';
+import { PDF_FILE, createSidecarReader, paperDetailsOf, paperFiles, type PaperDetails, type SimilarPaper } from '@labshelf/core';
 import { LOG_MODULE, type ListHostContext } from './hostContext.js';
 
 async function pdfOnDevice(ctx: ListHostContext, paperPath: string, hasPdf: boolean | undefined): Promise<PaperDetails['pdf']> {
@@ -22,14 +22,8 @@ async function pdfOnDevice(ctx: ListHostContext, paperPath: string, hasPdf: bool
 export async function sendDetails(ctx: ListHostContext, id: string): Promise<void> {
   const [paper] = await ctx.papers([id]);
   if (!paper) { return; }
-  let sidecar: SidecarSummarySource = { annotations: [] };
-  if (ctx.deps.loadSidecar) {
-    try {
-      sidecar = await ctx.deps.loadSidecar(id);
-    } catch (error) {
-      await ctx.deps.logger.log('WARN', LOG_MODULE, 'Sidecar could not be read; showing no annotations', { paperId: id, message: String(error) });
-    }
-  }
+  const load = ctx.deps.loadSidecar;
+  const sidecar = load ? await createSidecarReader(load, ctx.deps.logger, LOG_MODULE).summaryOf(id) : { annotations: [] };
   const details = paperDetailsOf(sidecar, await pdfOnDevice(ctx, paper.path, paper.hasPdf));
   await ctx.post({ type: 'details', id, details });
 }

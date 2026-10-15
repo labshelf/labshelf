@@ -5,7 +5,8 @@
 import { CITE_FORMATS } from "../../../state/index.js";
 import { PAPERS_DIR, folderLabel } from "../../../../library/index.js";
 import { escapeHtml, icon } from "../../../../ui/index.js";
-import { CITE_LABEL, citationText } from "../../flows/index.js";
+import { citationText } from "../../../citeText.js";
+import { CITE_LABEL } from "../../flows/index.js";
 import { copyBtn, iconBtn, kv, muted, section } from "../detailMarkup.js";
 import type { PaneState, PaperView } from "../paneState.js";
 import { fileSectionHtml } from "./fileSection.js";

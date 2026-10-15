@@ -1,4 +1,5 @@
 /** Cuts and pastes papers (x, p), moves them to a picked folder (M), and the trash confirmation (d). */
+import { removeNotice } from "@labshelf/core";
 import { trashSupported } from "../../../platform/index.js";
 import { truncate } from "../../../tui/index.js";
 import { ALL, folderTitle, parentFolder } from "../types.js";
@@ -90,7 +91,8 @@ export function confirmTrash(app: App): void {
       app.selection.clear();
       void app.taskStatus.task("trash", "moving to trash", async () => {
         const outcome = await app.ctx.papers.trashPapers(papers.map((p) => p.record.id));
-        app.taskStatus.notifyBatch(outcome.done.length, outcome.failed, "moved to the trash");
+        const notice = removeNotice(outcome.done, outcome.failed, (id) => papers.find((p) => p.record.id === id)?.record.title ?? id);
+        if (notice) { app.taskStatus.notify(notice.text, notice.kind === "error" ? "error" : undefined); }
       });
     },
   };

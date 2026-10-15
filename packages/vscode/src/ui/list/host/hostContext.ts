@@ -22,7 +22,3 @@ export interface ListHostContext {
 
 export const LOG_MODULE = 'ui/list';
 
-/** "1 paper" / "3 papers". */
-export function papersLabel(n: number): string {
-  return `${n} paper${n === 1 ? '' : 's'}`;
-}

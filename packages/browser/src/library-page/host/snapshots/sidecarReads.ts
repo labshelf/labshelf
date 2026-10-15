@@ -3,10 +3,8 @@
  * the row marks and the details the detail pane shows.
  */
 import {
-  PAPERS_DIR, PDF_FILE, PaperDataStore, paperDetailsOf, paperStatsOf, type PaperDetails, type PaperRecord, type PaperStats,
-  type SidecarSummarySource,
+  PAPERS_DIR, PDF_FILE, PaperDataStore, createSidecarReader, paperDetailsOf, type ILogger, type PaperDetails, type PaperRecord, type PaperStats,
 } from "@labshelf/core";
-import type { BrowserLogger } from "../../../platform";
 import { IndexedDbFileSystem, createIdbSidecarPort } from "../../../storage";
 
 export interface SidecarReads {
@@ -18,18 +16,10 @@ export interface SidecarReads {
   details(paper: PaperRecord): Promise<PaperDetails>;
 }
 
-export function createSidecarReads(log: BrowserLogger): SidecarReads {
+export function createSidecarReads(log: ILogger): SidecarReads {
   const fs = new IndexedDbFileSystem();
   const store = new PaperDataStore(createIdbSidecarPort(fs), { logger: log });
-
-  const statsFor = async (paperId: string): Promise<PaperStats | undefined> => {
-    try {
-      return paperStatsOf(await store.load(paperId));
-    } catch (err) {
-      void log.warn("Sidecar could not be read for the list", { paperId, message: String(err) });
-      return undefined;
-    }
-  };
+  const reader = createSidecarReader((id) => store.load(id), log, "library-page/sidecars");
 
   async function pdfOnDevice(paper: PaperRecord): Promise<PaperDetails["pdf"]> {
     const file = `${paper.path}/${PDF_FILE}`;
@@ -39,23 +29,10 @@ export function createSidecarReads(log: BrowserLogger): SidecarReads {
   }
 
   return {
-    statsFor,
-    async statsOf(papers) {
-      const stats: Record<string, PaperStats> = {};
-      await Promise.all(papers.map(async (p) => {
-        const one = await statsFor(p.id);
-        if (one) stats[p.id] = one;
-      }));
-      return stats;
-    },
+    statsFor: reader.statsFor,
+    statsOf: reader.statsOf,
     async details(paper) {
-      let data: SidecarSummarySource = { annotations: [] };
-      try {
-        data = await store.load(paper.id);
-      } catch (err) {
-        void log.warn("Sidecar could not be read; showing no annotations", { paperId: paper.id, message: String(err) });
-      }
-      return paperDetailsOf(data, await pdfOnDevice(paper));
+      return paperDetailsOf(await reader.summaryOf(paper.id), await pdfOnDevice(paper));
     },
   };
 }

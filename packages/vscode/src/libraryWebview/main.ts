@@ -10,7 +10,6 @@ import "@labshelf/core/styles/library-ui.css";
 import "@labshelf/core/styles/library-list.css";
 import "@labshelf/core/styles/library-detail.css";
 import "@labshelf/core/styles/library-tabs.css";
-import "./page.css";
 import { $, mountLibraryUi } from "@labshelf/core/dom";
 import { createWebviewChannel } from "./index.js";
 

@@ -2,10 +2,10 @@
 export {
   attachPdf, changeTags, findPdf, fixableIds, hostFileAction, makeSearchable, openPaper, saveNote, setPaperStatus,
 } from "./paperCommands.js";
-export { CITE_LABEL, citationText, copyCitation, copyText } from "./citeCopy.js";
+export { CITE_LABEL, copyCitation, copyText } from "./citeCopy.js";
 export { confirmRemove } from "./confirmRemove.js";
 export { pickMoveTarget } from "./pickMoveTarget.js";
 export { revealPaper } from "./revealPaper.js";
 export { confirmDeleteFolder, promptNewFolder, promptRenameFolder } from "./folderPrompts.js";
-export { onFindMiss, onPdfMissing } from "./pdfDialogs.js";
+export { askNoPdf, onFindMiss, onPdfMissing } from "./pdfDialogs.js";
 export { onAddNoPdf, onAddSources, requestAddPaper } from "./addPaper.js";

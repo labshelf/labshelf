@@ -3,50 +3,45 @@
  * extension commands. Every outcome the user should know about comes back as a notice.
  */
 import * as vscode from 'vscode';
-import { ROOT_LABEL, type PaperStatus } from '@labshelf/core';
-import { LOG_MODULE, papersLabel, type ListHostContext } from './hostContext.js';
+import { cleanTags, keptFieldNotice, moveNotice, removeNotice, type PaperStatus } from '@labshelf/core';
+import { LOG_MODULE, type ListHostContext } from './hostContext.js';
 
 export async function setStatus(ctx: ListHostContext, ids: string[], status: PaperStatus): Promise<void> {
   const failed: string[] = [];
   for (const id of ids) {
     if (!(await ctx.deps.paperService.updatePaperStatus(id, status))) { failed.push(id); }
   }
-  if (failed.length) { ctx.notice('error', `${papersLabel(failed.length)} kept their status — not found in the library`); }
+  if (failed.length) { ctx.notice('error', keptFieldNotice('status', failed.length, 'not found in the library')); }
 }
 
 export async function setTags(ctx: ListHostContext, ids: string[], add: string[], remove: string[]): Promise<void> {
-  const clean = (tags: string[]): string[] => tags.map((t) => t.trim()).filter(Boolean);
-  const outcome = await ctx.deps.paperService.editTags(ids, clean(add), clean(remove));
+  const outcome = await ctx.deps.paperService.editTags(ids, cleanTags(add), cleanTags(remove));
   const first = outcome.failed[0];
-  if (first) { ctx.notice('error', `${papersLabel(outcome.failed.length)} kept their tags — ${first.error}`); }
+  if (first) { ctx.notice('error', keptFieldNotice('tags', outcome.failed.length, first.error)); }
 }
 
 export async function setNote(ctx: ListHostContext, id: string, note: string): Promise<void> {
   if (!(await ctx.deps.paperService.updatePaperFields(id, { note }))) { ctx.notice('error', 'The note could not be saved — the paper is not in the library'); }
 }
 
+async function titleLookup(ctx: ListHostContext, ids: string[]): Promise<(id: string) => string> {
+  const papers = await ctx.papers(ids);
+  return (id) => papers.find((p) => p.id === id)?.title ?? id;
+}
+
 export async function movePapers(ctx: ListHostContext, ids: string[], targetDir: string): Promise<void> {
   const result = await ctx.deps.paperService.movePapers(ids, targetDir);
-  const first = result.failed[0];
-  if (first) {
-    ctx.notice('error', `${result.done.length} moved, ${result.failed.length} failed — ${first.error}`);
-  } else if (result.done.length > 0) {
-    const where = targetDir === ctx.paths()?.root ? ROOT_LABEL : ctx.deps.pathOps.basename(targetDir);
-    ctx.notice('ok', `${papersLabel(result.done.length)} moved to ${where}`);
-  }
+  const where = targetDir === ctx.paths()?.root ? undefined : ctx.deps.pathOps.basename(targetDir);
+  const notice = moveNotice(result.done.length, result.failed, where, await titleLookup(ctx, ids));
+  if (notice) { ctx.notice(notice.kind, notice.text); }
 }
 
 export async function removePapers(ctx: ListHostContext, ids: string[]): Promise<void> {
   const papers = await ctx.papers(ids);
   const outcome = await ctx.deps.paperService.trashPapers(papers.map((p) => p.id));
-  const first = outcome.failed[0];
-  if (first) {
-    const title = papers.find((p) => p.id === first.id)?.title ?? first.id;
-    const others = outcome.failed.length > 1 ? ` (and ${outcome.failed.length - 1} more)` : '';
-    ctx.notice('error', `Could not move "${title}"${others} to the trash — ${first.error}`);
-  } else if (outcome.done.length > 0) {
-    ctx.notice('ok', outcome.done.length === 1 ? `Removed "${papers[0]?.title ?? ''}"` : `Removed ${papersLabel(outcome.done.length)}`);
-  }
+  const titleOf = (id: string): string => papers.find((p) => p.id === id)?.title ?? id;
+  const notice = removeNotice(outcome.done, outcome.failed, titleOf);
+  if (notice) { ctx.notice(notice.kind, notice.text); }
 }
 
 export async function writeClipboard(ctx: ListHostContext, text: string, label: string | undefined): Promise<void> {

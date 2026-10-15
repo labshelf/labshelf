@@ -1,9 +1,9 @@
 /**
- * Opens the dialogs around a missing PDF: opening a paper that has none, and a search that came back empty. Both
- * offer to attach a file or to search (again).
+ * Opens the dialogs around a missing PDF: opening a paper that has none, a search that came back empty, and a capture
+ * that found no PDF. The first two offer to attach a file or to search (again); the capture asks whether to save the reference alone.
  */
 import { showDialog } from "../../../ui/dom/index.js";
-import { findMissMessage } from "../../pdfCopy.js";
+import { findMissMessage, noPdfDialogCopy } from "../../pdfCopy.js";
 import type { PdfMiss } from "../../protocol/index.js";
 import type { UiContext } from "../uiContext.js";
 import { attachPdf, findPdf } from "./paperCommands.js";
@@ -29,4 +29,14 @@ export async function onFindMiss(ctx: UiContext, id: string, miss: PdfMiss): Pro
   });
   if (choice === "attach") attachPdf(ctx, id);
   else if (choice === "retry") findPdf(ctx, id);
+}
+
+/** Asks whether a capture without a PDF saves the reference alone or searches again; undefined when cancelled. `root` mounts the dialog inside a content script's shadow root. */
+export function askNoPdf(title: string, miss: PdfMiss, root?: ShadowRoot): Promise<"save" | "retry" | undefined> {
+  return showDialog<"save" | "retry">({
+    ...noPdfDialogCopy(title, miss),
+    severity: "warning",
+    buttons: [{ id: "retry", label: "Search again" }, { id: "save", label: "Save without PDF", primary: true }],
+    ...(root ? { root } : {}),
+  });
 }

@@ -14,7 +14,7 @@ export const popupState: {
   pdfStatus: PdfStatusData | undefined;
 } = {
   tabId: -1,
-  folders: { folders: [{ path: PAPERS_DIR, label: "Library", depth: 0 }], lastFolder: PAPERS_DIR },
+  folders: { folders: [{ path: PAPERS_DIR, depth: 0 }], lastFolder: PAPERS_DIR },
   saved: undefined,
   pdfStatus: undefined,
 };

@@ -1,4 +1,4 @@
-import { folderName, folderPathLabel, metaLine, parseTags } from "../../src/popup/format";
+import { folderName, metaLine, parseTags } from "../../src/popup/format";
 
 describe("popup format", () => {
   it("writes the byline with surnames, et al. past two", () => {
@@ -14,12 +14,9 @@ describe("popup format", () => {
     expect(parseTags("")).toEqual([]);
   });
 
-  it("labels folders", () => {
-    const folders = { folders: [{ path: "papers", label: "Library", depth: 0 }, { path: "papers/Thesis", label: "Thesis", depth: 1 }], lastFolder: "papers" };
-    expect(folderName("papers", folders)).toBe("Library");
-    expect(folderName("papers/Thesis", folders)).toBe("Thesis");
-    expect(folderName("papers/Gone/Deep", folders)).toBe("Gone / Deep");
-    expect(folderPathLabel("papers")).toBe("Library");
-    expect(folderPathLabel("papers/Thesis/Chapter 2")).toBe("Thesis / Chapter 2");
+  it("names folders by their path inside the library, the root as All Papers", () => {
+    expect(folderName("papers")).toBe("All Papers");
+    expect(folderName("papers/Thesis")).toBe("Thesis");
+    expect(folderName("papers/Thesis/Chapter 2")).toBe("Thesis / Chapter 2");
   });
 });

@@ -1,6 +1,6 @@
 /** Handles clipboard yanks, sort order and what B (export BibTeX) exports. */
 import type { PaperRecord } from "@labshelf/core";
-import { formatAnnotationsMarkdown, paperComparator, paperFiles, paperLink, papersUnder } from "@labshelf/core";
+import { formatAnnotationsMarkdown, joinCitations, paperComparator, paperFiles, paperLink, papersUnder } from "@labshelf/core";
 import * as path from "node:path";
 
 import { copyToClipboard } from "../../../platform/index.js";
@@ -15,7 +15,7 @@ export async function yank(app: App, kind: string): Promise<void> {
   let text: string;
   let what: string;
   switch (kind) {
-    case "cite": text = `\\cite{${records.map((r) => r.citeKey).join(",")}}`; what = "\\cite"; break;
+    case "cite": text = `\\cite{${joinCitations(records, "key")}}`; what = "\\cite"; break;
     case "bibtex": text = app.ctx.papers.bibtexFor(records); what = "BibTeX"; break;
     case "link": {
       const links = records.map(paperLink).filter((l): l is string => Boolean(l));

@@ -161,7 +161,7 @@ describe('ListWebviewPanel — paper actions', () => {
     expect(h.last('notice')).toEqual({ type: 'notice', kind: 'ok', text: '1 paper moved to B' });
     h.paperService.movePapers.mockResolvedValue({ done: [], failed: [{ id: 'p1', error: 'exists' }], moves: [] });
     await h.fire({ type: 'paper.move', ids: ['p1'], target: 'papers' });
-    expect(h.last('notice')).toEqual({ type: 'notice', kind: 'error', text: '0 moved, 1 failed — exists' });
+    expect(h.last('notice')).toEqual({ type: 'notice', kind: 'error', text: '0 moved, 1 failed — "Title p1" — exists' });
   });
 
   it('moves removed papers to the trash and keeps a paper whose trash failed', async () => {
@@ -172,7 +172,7 @@ describe('ListWebviewPanel — paper actions', () => {
     expect(h.last('notice')).toEqual({ type: 'notice', kind: 'ok', text: 'Removed "Title p1"' });
     h.paperService.trashPapers.mockResolvedValue({ done: [], failed: [{ id: 'p1', error: 'EPERM' }] });
     await h.fire({ type: 'paper.remove', ids: ['p1'] });
-    expect(h.last('notice')).toEqual({ type: 'notice', kind: 'error', text: 'Could not move "Title p1" to the trash — EPERM' });
+    expect(h.last('notice')).toEqual({ type: 'notice', kind: 'error', text: '0 removed, 1 failed — "Title p1" — EPERM' });
   });
 
   it('routes status, tags and notes to the paper service', async () => {

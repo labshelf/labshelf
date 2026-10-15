@@ -38,6 +38,12 @@ export function folderLabel(root: string, path: string, sep: string): string {
   return path === root || path === "" ? ROOT_LABEL : baseName(path, sep);
 }
 
+/** @returns the folder's location inside the library as the UI shows it: "Thesis / Chapter 2", or "All Papers" for the root */
+export function folderPathLabel(root: string, path: string, sep: string): string {
+  if (path === root || !isUnderDir(path, root, sep)) { return ROOT_LABEL; }
+  return path.slice(root.length + sep.length).split(sep).join(" / ");
+}
+
 /** @returns how many of `paperPaths` sit at any depth under `dir` */
 export function countPapersUnder(paperPaths: readonly string[], dir: string, sep: string): number {
   let count = 0;

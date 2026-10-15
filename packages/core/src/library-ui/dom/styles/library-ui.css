@@ -15,6 +15,10 @@
 .ls-library .muted-note { color: var(--ls-desc); font-style: italic; font-size: var(--ls-text-sm); line-height: 1.5; }
 
 /* ── Frame and sashes ───────────────────────────────────────────── */
+/* The page around .ls-library fills the window; the host's #root is the flex column that holds it. */
+html, body { height: 100%; overflow: hidden; }
+body, #root { display: flex; flex-direction: column; }
+#root { height: 100%; min-height: 0; }
 .ls-library .sash { width: var(--ls-space-2); flex-shrink: 0; cursor: col-resize; background: transparent; transition: background var(--ls-fast); z-index: 5; }
 .ls-library .sash-sidebar { margin-left: calc(-1 * var(--ls-space-1)); }
 .ls-library .sash-detail { margin-right: calc(-1 * var(--ls-space-1)); }
