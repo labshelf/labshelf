@@ -10,6 +10,7 @@ import {
 } from "../../writing/build/index.js";
 import { BuildPreviews, registerShowInPreview, registerShowPreview } from "../../writing/preview/index.js";
 import { registerCitationProviders } from "../../writing/citations/index.js";
+import { registerLatexCommandCompletion } from "../../writing/latexEditing/index.js";
 import type { LibraryRootController } from "../libraryLifecycle/index.js";
 import type { HostAdapters } from "../serviceComposition/index.js";
 
@@ -51,5 +52,6 @@ export function registerWritingView(context: vscode.ExtensionContext, controller
       return services ? { listPapers: () => services.paperService.listPapers(), logger: services.logger } : undefined;
     },
   });
+  registerLatexCommandCompletion(context);
   void projects.reload();
 }

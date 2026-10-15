@@ -329,6 +329,7 @@ class WorkspaceEdit {
 class MarkdownString {
   constructor(value) { this.value = value || ''; this.isTrusted = undefined; }
   appendMarkdown(text) { this.value += text; return this; }
+  appendText(text) { this.value += text; return this; }
 }
 
 class Hover {
@@ -343,11 +344,50 @@ class CompletionItem {
   constructor(label, kind) { this.label = label; this.kind = kind; }
 }
 
-const CompletionItemKind = { Reference: 17 };
+const CompletionItemKind = { Function: 2, Snippet: 14, Reference: 17 };
+
+class SnippetString {
+  constructor(value) { this.value = value || ''; }
+}
+
+class Selection {
+  constructor(anchor, active) { this.anchor = anchor; this.active = active; }
+}
+
+// Handlers registered with workspace.onDidChangeTextDocument; tests call workspace._fireTextDocumentChange(event).
+const _textChangeListeners = [];
+workspace.onDidChangeTextDocument = jest.fn((handler) => {
+  _textChangeListeners.push(handler);
+  return { dispose: () => { _textChangeListeners.splice(_textChangeListeners.indexOf(handler), 1); } };
+});
+workspace._fireTextDocumentChange = (event) => _textChangeListeners.forEach((l) => l(event));
+window.visibleTextEditors = [];
 
 workspace.textDocuments = [];
 workspace.applyEdit = jest.fn(async () => true);
-workspace.onDidSaveTextDocument = jest.fn(() => ({ dispose: () => {} }));
+
+// Handlers per document event; tests call workspace._fireDocumentEvent("save" | "open" | "close", document).
+const _documentListeners = { save: [], open: [], close: [] };
+const onDocumentEvent = (kind) => jest.fn((handler) => {
+  _documentListeners[kind].push(handler);
+  return { dispose: () => { _documentListeners[kind].splice(_documentListeners[kind].indexOf(handler), 1); } };
+});
+workspace.onDidSaveTextDocument = onDocumentEvent('save');
+workspace.onDidOpenTextDocument = onDocumentEvent('open');
+workspace.onDidCloseTextDocument = onDocumentEvent('close');
+workspace._fireDocumentEvent = (kind, document) => _documentListeners[kind].forEach((l) => l(document));
+
+class Location {
+  constructor(uri, range) { this.uri = uri; this.range = range; }
+}
+
+class DocumentSymbol {
+  constructor(name, detail, kind, range, selectionRange) {
+    Object.assign(this, { name, detail, kind, range, selectionRange, children: [] });
+  }
+}
+
+const SymbolKind = { Module: 1, Namespace: 2, Class: 4, Property: 6, Field: 7, Struct: 22, Constant: 13 };
 
 class Diagnostic {
   constructor(range, message, severity) { this.range = range; this.message = message; this.severity = severity; }
@@ -360,6 +400,8 @@ const languages = {
   registerCompletionItemProvider: jest.fn(() => ({ dispose: () => {} })),
   registerHoverProvider: jest.fn(() => ({ dispose: () => {} })),
   registerDocumentLinkProvider: jest.fn(() => ({ dispose: () => {} })),
+  registerDefinitionProvider: jest.fn(() => ({ dispose: () => {} })),
+  registerDocumentSymbolProvider: jest.fn(() => ({ dispose: () => {} })),
 };
 
 module.exports = {
@@ -371,8 +413,13 @@ module.exports = {
   MarkdownString,
   Hover,
   DocumentLink,
+  Location,
+  DocumentSymbol,
+  SymbolKind,
   CompletionItem,
   CompletionItemKind,
+  SnippetString,
+  Selection,
   languages,
   Uri,
   FileType,
