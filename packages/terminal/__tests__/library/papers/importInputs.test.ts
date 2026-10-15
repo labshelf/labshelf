@@ -21,4 +21,15 @@ describe("planImports", () => {
 
     expect(items).toEqual([{ kind: "network", value: "https://example.org/files/paper.pdf" }]);
   });
+
+  it("names a skipped file by its resolved path, not by what was typed", async () => {
+    const skipping = {
+      fs: { exists: async () => true, stat: async () => undefined },
+    } as unknown as MutationContext;
+    const home = process.env["HOME"] ?? "~";
+
+    const items = await planImports(skipping, ["~/gone/../link"]);
+
+    expect(items).toEqual([{ kind: "skipped", value: `${home}/link` }]);
+  });
 });

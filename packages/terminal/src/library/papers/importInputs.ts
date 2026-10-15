@@ -18,7 +18,7 @@ export async function planImports(ctx: MutationContext, inputs: string[]): Promi
     if (await ctx.fs.exists(local)) {
       const found = await discoverPdfs(ctx, [local]);
       items.push(...found.pdfs.map((value): ImportItem => ({ kind: "pdf", value })));
-      items.push(...found.skipped.map((value): ImportItem => ({ kind: "skipped", value: input })));
+      items.push(...found.skipped.map((value): ImportItem => ({ kind: "skipped", value })));
     } else {
       items.push({ kind: "network", value: input });
     }
