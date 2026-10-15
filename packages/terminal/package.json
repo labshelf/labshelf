@@ -22,7 +22,8 @@
   "dependencies": {
     "@labshelf/core": "workspace:*",
     "@napi-rs/canvas": "^1.0.9",
-    "pdfjs-dist": "~6.3.289"
+    "pdfjs-dist": "~6.3.289",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

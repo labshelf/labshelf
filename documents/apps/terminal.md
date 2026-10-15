@@ -16,6 +16,7 @@ labshelf doctor                             # checks library, config, Drive and 
 - Drive: `labshelf auth login`, or `:login` in the explorer.
 - Thumbnails need kitty, Ghostty, iTerm2 or WezTerm. In the VS Code terminal, set `terminal.integrated.enableImages` and `LABSHELF_IMAGES=iterm`. Inside tmux, images are off unless forced.
 - Thumbnails are faster with `brew install poppler` (pdftoppm). Without it, pdf.js renders them through `@napi-rs/canvas`.
+- Imports read scans and broken-font PDFs with Tesseract (English). The first such import downloads the language data into the cache folder, so it needs the network once.
 - PDFs open in the system viewer, or in `LABSHELF_PDF_VIEWER` or `terminal.pdfViewer` from the config.
 
 ## Adding papers over the network

@@ -3,7 +3,7 @@
 import * as path from "node:path";
 
 import { BUILT_IN_GOOGLE_CLIENT, BibTeXService, Logger, PdfImportParser, errorMessage, resolveOAuthClient, type ILogger, type LibraryStore, type SyncCoordinator } from "@labshelf/core";
-import { FileLogSink, NodeLibraryFileSystem, NodePdfOpener, createPdfjsLoader } from "@labshelf/core/node";
+import { FileLogSink, NodeLibraryFileSystem, NodePdfOpener, TesseractOcrEngine, createPdfjsLoader, type PdfjsLoader } from "@labshelf/core/node";
 
 import type { TerminalConfig } from "./config.js";
 import {
@@ -51,22 +51,36 @@ async function openSync(paths: LibraryRoot, store: LibraryStore, logger: ILogger
   return { sync, drive: createDriveAccount(auth, sync, logger) };
 }
 
-function createPaperService(paths: LibraryRoot, store: LibraryStore, logger: ILogger, sync: SyncCoordinator): TerminalPaperService {
+/** Builds the OCR fallback for scans and broken-font PDFs; it shares the parser's pdf.js and caches language data. */
+function createOcrEngine(env: NodeJS.ProcessEnv, pdfjs: PdfjsLoader, logger: ILogger): TesseractOcrEngine {
+  return new TesseractOcrEngine({
+    pdfjs,
+    cachePath: path.join(cacheDir(env), "ocr-cache"),
+    onDiagnostic: (message) => void logger.log("INFO", "ocr", message),
+  });
+}
+
+function createPaperService(
+  paths: LibraryRoot, store: LibraryStore, logger: ILogger, sync: SyncCoordinator, env: NodeJS.ProcessEnv,
+): { papers: TerminalPaperService; ocr: TesseractOcrEngine } {
+  const pdfjs = createPdfjsLoader();
+  const ocr = createOcrEngine(env, pdfjs, logger);
   let parser: PdfImportParser | undefined;
-  return new TerminalPaperService({
+  const papers = new TerminalPaperService({
     paths,
     store,
     bibtex: new BibTeXService(new NodeLibraryFileSystem(paths.layout.tmpDir())),
     logger,
     pdfParser: async () => {
       if (!parser) {
-        parser = new PdfImportParser(new NodePdfOpener(createPdfjsLoader()), { logger });
+        parser = new PdfImportParser(new NodePdfOpener(pdfjs), { logger, ocr });
       }
       return parser;
     },
     trash: moveToTrash,
     onLocalChange: () => sync.scheduleLocalChange(),
   });
+  return { papers, ocr };
 }
 
 function createThumbnails(env: NodeJS.ProcessEnv, workerUrl: URL, logger: ILogger) {
@@ -101,7 +115,7 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
   await store.reload();
 
   const { sync, drive } = await openSync(paths, store, logger, env);
-  const papers = createPaperService(paths, store, logger, sync);
+  const { papers, ocr } = createPaperService(paths, store, logger, sync, env);
 
   const sidecars = new SidecarReader(paths, logger);
   const { thumbnails, renderer } = createThumbnails(env, options.thumbnailWorkerUrl, logger);
@@ -136,8 +150,7 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
     annotationsReady,
     async dispose() {
       watcher?.stop();
-      const pending = sync.stop();
-      if (pending) { await pending.catch(() => undefined); }
+      await Promise.all([ocr.dispose(), sync.stop()?.catch(() => undefined)]);
     },
   };
 }

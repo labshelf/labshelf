@@ -120,6 +120,9 @@ importers:
       pdfjs-dist:
         specifier: ~6.3.289
         version: 6.3.289
+      tesseract.js:
+        specifier: ^7.0.0
+        version: 7.0.0
     devDependencies:
       '@types/jest':
         specifier: ^29.5.14

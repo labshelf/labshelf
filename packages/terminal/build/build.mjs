@@ -1,4 +1,4 @@
-/** Bundles @labshelf/terminal into dist/labshelf.mjs (the `labshelf` command) and dist/thumbnailWorker.mjs. @labshelf/core is bundled from source; pdfjs-dist and the native canvas stay external and are loaded from node_modules at run time, only when a PDF is parsed or rendered. */
+/** Bundles @labshelf/terminal into dist/labshelf.mjs (the `labshelf` command) and dist/thumbnailWorker.mjs. @labshelf/core is bundled from source; pdfjs-dist, Tesseract and the native canvas stay external and are loaded from node_modules at run time, only when a PDF is parsed, read by OCR or rendered. */
 import { build, context } from "esbuild";
 import { chmod } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
