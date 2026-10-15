@@ -16,6 +16,7 @@ export {
   europePmcSearch,
   dblpSearch,
   googleBooksByIsbn,
+  DEFAULT_CONTACT_EMAIL,
 } from "./registries/index.js";
 export type { RegistryEnv, RegistryRecord } from "./registries/index.js";
 export * from "./lookup/index.js";

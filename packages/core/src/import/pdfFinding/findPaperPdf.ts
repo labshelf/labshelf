@@ -2,7 +2,7 @@
 import type { DetectedIds } from "../identifiers/index.js";
 import type { PdfCandidate } from "../landing/index.js";
 import type { ResolvedMetadata } from "../metadata/index.js";
-import { DEFAULT_CONTACT_EMAIL } from "./contactEmail.js";
+import { DEFAULT_CONTACT_EMAIL } from "../registries/index.js";
 import { makeEnv } from "./env.js";
 import { makeResolveContext, type ResolveOptions } from "./resolveContext.js";
 import { resolvePdf } from "./resolvePdf.js";
