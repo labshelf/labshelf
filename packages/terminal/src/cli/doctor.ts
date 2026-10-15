@@ -2,13 +2,13 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { libraryLayout, relativeTime } from "@labshelf/core";
+import { libraryLayout, readSyncRunRecord, relativeTime } from "@labshelf/core";
 
 import type { TerminalConfig } from "../app/index.js";
 import { hasCommand } from "../platform/index.js";
 import { createTokenStore, resolveTerminalOAuthClient } from "../sync/index.js";
 import { detectImageProtocol } from "../tui/index.js";
-import { sharedConfigDir, sharedConfigPath } from "@labshelf/core/node";
+import { NodeLocalFileSystem, sharedConfigDir, sharedConfigPath } from "@labshelf/core/node";
 import type { Output } from "./usage.js";
 
 /**
@@ -33,8 +33,8 @@ export async function runDoctor(root: string | undefined, rootSource: string, co
     if (!exists) { essentialMissing = true; }
     const lock = await fs.readFile(layout.lockPath(), "utf8").catch(() => undefined);
     if (lock) { line("warn", "sync lock", `held: ${lock.replace(/\s+/g, " ").slice(0, 120)}`); }
-    const last = await fs.readFile(layout.lastRunPath(), "utf8").then((t) => JSON.parse(t) as { finishedAt?: string; app?: string }, () => undefined);
-    line(last ? true : "warn", "last sync", last?.finishedAt ? `${relativeTime(last.finishedAt) || "never"} by ${last.app}` : "never (by an app that records it)");
+    const last = await readSyncRunRecord(new NodeLocalFileSystem(), layout.lastRunPath());
+    line(last ? true : "warn", "last sync", last ? `${relativeTime(last.finishedAt) || "never"} by ${last.app}` : "never (by an app that records it)");
   }
   const client = resolveTerminalOAuthClient();
   line(client ? true : "warn", "drive client", client ? `configured (${client.clientId.slice(0, 12)}…)` : "missing: set up credentials/google-desktop.json and rebuild, or set LABSHELF_GOOGLE_CLIENT_ID/SECRET to a client of the same Google Cloud project");

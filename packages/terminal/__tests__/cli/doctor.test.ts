@@ -47,6 +47,19 @@ describe("runDoctor", () => {
     expect(text()).toMatch(/^FAIL\s+library/m);
   });
 
+  it("reads a malformed last-run record as never synced instead of crashing", async () => {
+    const lib = await createTempLibrary();
+    await fs.writeFile(lib.paths.layout.lastRunPath(), "{ not json");
+    const { io, text } = capture();
+    expect(await runDoctor(lib.root, "config", { version: 1 }, io)).toBe(0);
+    expect(text()).toMatch(/^warn\s+last sync\s+never/m);
+
+    await fs.writeFile(lib.paths.layout.lastRunPath(), JSON.stringify({ app: "vscode", finishedAt: 42 }));
+    const second = capture();
+    await runDoctor(lib.root, "config", { version: 1 }, second.io);
+    expect(second.text()).toMatch(/^warn\s+last sync\s+never/m);
+  });
+
   it("warns about a held sync lock and shows the last sync", async () => {
     const lib = await createTempLibrary();
     await fs.writeFile(lib.paths.layout.lockPath(), JSON.stringify({ app: "vscode", pid: 1 }));
