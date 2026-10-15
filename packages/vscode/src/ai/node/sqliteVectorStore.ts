@@ -29,7 +29,6 @@ export class SqliteVectorStore implements IVectorStore {
 
   /**
    * Inserts or replaces vector records for the given chunks.
-   * @returns void
    */
   async upsert(
     records: { record: VectorRecord; embedding: Float32Array }[],
@@ -85,7 +84,6 @@ export class SqliteVectorStore implements IVectorStore {
 
   /**
    * Removes all chunks for a given paper.
-   * @returns void
    */
   async deleteByPaper(paperId: string): Promise<void> {
     this.db.prepare(`DELETE FROM chunk_embeddings WHERE paper_id = ?`).run(paperId);

@@ -47,7 +47,6 @@ export class AiIndexer {
   /**
    * Re-runs ingestion for every known paper. Used by the rebuild command.
    *
-   * @returns void
    */
   async rebuildAll(): Promise<void> {
     const papers = await this.deps.listPapers();

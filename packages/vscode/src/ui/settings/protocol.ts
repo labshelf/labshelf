@@ -1,6 +1,6 @@
 /**
- * The messages between the settings webview and the extension host. Compiled by both tsconfigs, so it holds only
- * types and the guard that validates what the webview sends.
+ * Declares the messages between the settings webview and the extension host, plus the guard that validates what the
+ * webview sends. Compiled by both tsconfigs, so it holds only types and that guard.
  */
 import type { DriveStatus } from "@labshelf/core";
 

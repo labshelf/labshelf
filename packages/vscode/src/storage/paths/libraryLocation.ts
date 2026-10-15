@@ -31,14 +31,13 @@ export async function resolveLibraryRoot(
     }
     return uri;
   } catch {
-    // Path no longer accessible
+    // Path is not accessible
     return undefined;
   }
 }
 
 /**
  * Saves the given library root URI to globalState so it persists across sessions.
- * @returns void
  */
 export async function persistLibraryRoot(context: vscode.ExtensionContext, uri: vscode.Uri): Promise<void> {
   await context.globalState.update(LIBRARY_ROOT_KEY, uri.fsPath);
@@ -49,7 +48,6 @@ export async function persistLibraryRoot(context: vscode.ExtensionContext, uri: 
  * libraries configured before the shared file existed are recorded too. A failure only costs the terminal its default,
  * so it is logged and VS Code keeps working from globalState. Without a shared config (a host with no file system
  * to share) nothing is recorded.
- * @returns void
  */
 export async function mirrorLibraryRoot(uri: vscode.Uri, logger: ILogger, sharedConfig?: SharedLibraryConfig): Promise<void> {
   if (!sharedConfig) { return; }
@@ -62,7 +60,6 @@ export async function mirrorLibraryRoot(uri: vscode.Uri, logger: ILogger, shared
 
 /**
  * Creates all required LabShelf subdirectories under root if they do not already exist.
- * @returns void
  */
 export async function ensureLibraryStructure(root: vscode.Uri, fileSystem: IFileSystem): Promise<void> {
   for (const dir of libraryLayout(root, vscode.Uri.joinPath).requiredDirs()) {

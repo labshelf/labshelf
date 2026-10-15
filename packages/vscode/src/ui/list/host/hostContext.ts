@@ -1,5 +1,5 @@
 /**
- * What the list panel's message handlers share: the extension services, the path mapping, the channel to the
+ * Declares what the list panel's message handlers share: the extension services, the path mapping, the channel to the
  * webview, notices, paper lookup, and the panel's own reactions to the UI's ready and navigate messages.
  */
 import type { HostToUi, PaperRecord } from '@labshelf/core';

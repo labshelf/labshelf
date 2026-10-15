@@ -1,5 +1,5 @@
 /**
- * The list webview's HTML shell: a strict CSP (the bundle's script by nonce, styles and assets only from the
+ * Builds the list webview's HTML shell: a strict CSP (the bundle's script by nonce, styles and assets only from the
  * extension), the bundled stylesheet and script, and the mount point. The UI arrives with the bundle.
  */
 import * as vscode from 'vscode';

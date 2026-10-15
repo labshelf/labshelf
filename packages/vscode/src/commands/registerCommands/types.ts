@@ -1,5 +1,5 @@
-// Types shared by the command-registration groups: the services a command needs and how to fetch
-// them, plus executeSafely, the error-handling wrapper every group's commands run through.
+// Declares what the command-registration groups share: the services a command needs and how to fetch them.
+// Also provides executeSafely, the error-handling wrapper every group's commands run through.
 import * as vscode from "vscode";
 
 import type { PaperImporter, PaperService, PaperTextLayers } from "../../core/index.js";

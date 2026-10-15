@@ -1,5 +1,5 @@
 /**
- * The paper work the list UI asks for: paper service changes, move, remove to the trash, the clipboard and the
+ * Does the paper work the list UI asks for: paper service changes, move, remove to the trash, the clipboard and the
  * extension commands. Every outcome the user should know about comes back as a notice.
  */
 import * as vscode from 'vscode';

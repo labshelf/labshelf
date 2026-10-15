@@ -1,4 +1,4 @@
-/** The one file-system adapter of the VS Code extension: the LibraryFileSystem port over vscode.workspace.fs. */
+/** Implements the LibraryFileSystem port over vscode.workspace.fs, the extension's only file-system adapter. */
 import * as vscode from "vscode";
 import type { LibraryFileSystem, LocalStat, PathOps } from "@labshelf/core";
 

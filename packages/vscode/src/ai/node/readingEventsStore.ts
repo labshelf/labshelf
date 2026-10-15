@@ -17,7 +17,6 @@ export class ReadingEventsStore {
 
   /**
    * Appends a single reading event.
-   * @returns void
    */
   append(event: ReadingEvent): void {
     this.db.prepare(

@@ -1,4 +1,4 @@
-/** Reader transport over the VS Code webview messaging API. */
+/** Implements the reader transport over the VS Code webview messaging API. */
 import type { ReaderTransport } from "@labshelf/core/dom";
 
 interface VsCodeApi {

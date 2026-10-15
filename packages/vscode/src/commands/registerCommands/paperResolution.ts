@@ -1,4 +1,4 @@
-// Shared "find or guard a paper" helpers every command-registration group calls.
+// Finds a paper for a command, or guards the command when none is selected; every registration group calls it.
 import * as vscode from "vscode";
 
 import { type PaperRecord, type PaperStatus, isSafeExternalUrl, paperLink } from "@labshelf/core";

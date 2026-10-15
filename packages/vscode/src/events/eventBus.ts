@@ -10,7 +10,6 @@ export class EventBus {
 
   /**
    * Broadcasts a named event with an arbitrary payload to all registered listeners.
-   * @returns void
    */
   emit(eventName: EventName, payload: unknown): void {
     const set = this.listeners.get(eventName);
@@ -28,7 +27,6 @@ export class EventBus {
 
   /**
    * Registers a listener for a named event.
-   * @returns void
    */
   on(eventName: EventName, listener: EventListener): void {
     let set = this.listeners.get(eventName);
@@ -41,7 +39,6 @@ export class EventBus {
 
   /**
    * Removes a previously registered listener.
-   * @returns void
    */
   off(eventName: EventName, listener: EventListener): void {
     this.listeners.get(eventName)?.delete(listener);

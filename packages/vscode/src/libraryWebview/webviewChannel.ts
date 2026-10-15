@@ -1,6 +1,6 @@
 /**
- * The library UI's channel and prefs over the VS Code webview API: messages go through postMessage and the window
- * "message" event, prefs live in the webview state, which survives a hidden panel and a window reload.
+ * Connects the library UI's channel and prefs to the VS Code webview API: messages go through postMessage and the
+ * window "message" event, prefs live in the webview state, which survives a hidden panel and a window reload.
  */
 import { sanitizePrefs, type HostToUi, type LibraryTransport, type LibraryUiPrefs, type PrefsPort } from "@labshelf/core";
 

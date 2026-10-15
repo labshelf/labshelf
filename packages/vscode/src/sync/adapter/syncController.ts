@@ -156,7 +156,7 @@ export class SyncController implements vscode.Disposable {
     };
   }
 
-  // Periodic syncs run only while signed in, at the interval the setting holds now.
+  // Periodic syncs run only while signed in, at the interval the setting currently holds.
   private applyInterval(): void {
     const minutes = vscode.workspace.getConfiguration("labshelf").get<number>(INTERVAL_SETTING, 15);
     this.coordinator.startPeriodic(this.auth.isAuthenticated() ? minutes : 0);

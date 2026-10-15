@@ -162,7 +162,7 @@ export class PaperService {
     await this.reindex();
   }
 
-  /** Drops the records of every paper under a folder that was trashed; a fresh disk scan finds every id that is now gone. */
+  /** Drops the records of every paper under a folder that was trashed; a fresh disk scan finds every id that is gone. */
   async removePapersUnder(dirPath: string): Promise<void> {
     void dirPath;
     await this.reindex();

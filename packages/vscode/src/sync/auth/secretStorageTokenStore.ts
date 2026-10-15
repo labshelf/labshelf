@@ -1,4 +1,4 @@
-/** Google tokens in VS Code's SecretStorage, as JSON under the fixed key that signed-in users already hold. */
+/** Stores Google tokens in VS Code's SecretStorage, as JSON under a fixed key that existing sign-ins rely on. */
 import type * as vscode from "vscode";
 
 import { parseTokens, type TokenData, type TokenStore } from "@labshelf/core";

@@ -1,6 +1,6 @@
 /**
- * VS Code entry of the reader bundle (dist/reader/reader.js): reads the boot block the extension host wrote into the
- * HTML shell and starts the shared reader over the VS Code webview messaging API.
+ * Starts the shared reader over the VS Code webview messaging API (entry of dist/reader/reader.js), using the boot
+ * block the extension host wrote into the HTML shell.
  */
 import "@labshelf/core/styles/tokens.css";
 import "@labshelf/core/styles/vscodeHost.css";

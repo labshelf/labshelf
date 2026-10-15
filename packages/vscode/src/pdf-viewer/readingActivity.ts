@@ -16,27 +16,23 @@ export class ReadingActivityTracker implements ReaderActivityPort {
 
   constructor(private readonly paperId: string, private readonly sink: ReadingEventSink | undefined) {}
 
-  /** @returns void */
   opened(): void {
     this.pageEnteredAt = Date.now();
     this.emit({ kind: "open" });
   }
 
-  /** @returns void */
   pageChanged(page: number): void {
     if (page === this.currentPage) { return; }
     this.recordDwell();
     this.currentPage = page;
   }
 
-  /** @returns void */
   annotated(page: number): void {
     this.emit({ kind: "annotate", page });
   }
 
   /**
    * Time spent with the panel in the background is not reading time.
-   * @returns void
    */
   visibilityChanged(visible: boolean): void {
     if (visible && !this.visible) {

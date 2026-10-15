@@ -1,6 +1,6 @@
 /**
- * The page a webview shows when its bundle is not in dist/. Text only, with no style or script, so the strictest CSP
- * holds; a dev checkout compiled without the webview build says so instead of showing a blank panel.
+ * Builds the page a webview shows when its bundle is not in dist/. Text only, with no style or script, so the
+ * strictest CSP holds; it tells a dev checkout compiled without the webview build, instead of a blank panel.
  */
 import { escapeHtml } from "@labshelf/core";
 

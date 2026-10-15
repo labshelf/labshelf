@@ -1,5 +1,5 @@
 /**
- * The settings webview's HTML shell: a strict CSP (scripts and styles only from the bundle folder, the script also
+ * Builds the settings webview's HTML shell: a strict CSP (scripts and styles only from the bundle folder, the script also
  * by nonce), the bundled stylesheet and script, and the mount point. The page arrives with the bundle.
  */
 import * as vscode from "vscode";

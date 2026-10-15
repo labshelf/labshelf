@@ -1,4 +1,4 @@
-/** "Add Paper by DOI or Link…": asks for an identifier or link and imports the paper it names into papers/. */
+/** Asks for a DOI or link ("Add Paper by DOI or Link…") and imports the paper it names into papers/. */
 import * as vscode from "vscode";
 
 import { announceImport, queueTextLayersOfAdded, type ImportServices } from "./importProgress.js";

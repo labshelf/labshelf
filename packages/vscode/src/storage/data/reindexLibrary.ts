@@ -7,7 +7,7 @@ import { EVENTS, EventBus } from "../../events/index.js";
 export interface ReindexLibraryDeps {
   store: LibraryStore;
   eventBus: EventBus;
-  // Queues a text-layer check for papers that now have a PDF but no verdict.
+  // Queues a text-layer check for papers that have a PDF but no verdict.
   queueCheck?: (papers: PaperRecord[]) => void;
 }
 

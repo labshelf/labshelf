@@ -1,4 +1,4 @@
-/** The VS Code settings page: the library folder, Google Drive sync and a link to VS Code's own settings, on the core settings components. */
+/** Renders the VS Code settings page (library folder, Google Drive sync, link to VS Code's own settings) on the core settings components. */
 import { actionButton, driveSection, el, settingsPage, settingsSection } from "@labshelf/core/dom";
 import type { SettingsAction, SettingsState } from "../protocol.js";
 

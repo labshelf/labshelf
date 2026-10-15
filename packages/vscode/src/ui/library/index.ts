@@ -1,4 +1,4 @@
-/** Public API of the library tree: data provider, drag-and-drop, folder reading and the folder node it shares with the list panel. */
+/** Exports the library tree: data provider, drag-and-drop, folder reading and the folder node it shares with the list panel. */
 export { LibraryTreeDataProvider, LibraryDragAndDropController } from './libraryTreeDataProvider.js';
 export { createFolderReader, listAllCollectionFolders } from './folderReader.js';
 export type { FolderReader } from './folderReader.js';

@@ -1,5 +1,5 @@
 /**
- * The editor tab that browses the library: a webview running the shared library UI, which this panel feeds with
+ * Opens the editor tab that browses the library: a webview running the shared library UI, which this panel feeds with
  * snapshots, the open folder and OCR jobs, and answers through the typed message handlers.
  */
 import * as vscode from 'vscode';

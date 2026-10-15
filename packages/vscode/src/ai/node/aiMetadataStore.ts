@@ -21,7 +21,6 @@ export class AiMetadataStore {
 
   /**
    * Inserts or replaces the AI metadata record for a paper.
-   * @returns void
    */
   upsert(metadata: AiPaperMetadata, contentHash?: string): void {
     this.db.prepare(
@@ -81,7 +80,6 @@ export class AiMetadataStore {
   /**
    * Removes the metadata row for a paper. Vector rows go through
    * SqliteVectorStore.deleteByPaper.
-   * @returns void
    */
   delete(paperId: string): void {
     this.db.prepare(`DELETE FROM paper_metadata_ai WHERE paper_id = ?`).run(paperId);

@@ -1,5 +1,5 @@
 /**
- * The LabShelf settings editor tab. The shell is set once; the host sends the page its state when it says ready and
+ * Opens the LabShelf settings editor tab. The shell is set once; the host sends the page its state when it says ready and
  * on every change, and the page posts the actions back.
  */
 import * as vscode from "vscode";

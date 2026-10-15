@@ -13,7 +13,6 @@ async function offerSignInLink(url: string): Promise<void> {
 
 /**
  * A failure of openExternal propagates (the auth logs it and keeps waiting); the link is offered either way.
- * @returns void
  */
 export async function openAuthorizationUrl(url: string): Promise<void> {
   let opened = false;

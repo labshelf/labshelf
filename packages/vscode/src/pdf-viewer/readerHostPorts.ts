@@ -1,5 +1,5 @@
 /**
- * VS Code implementations of the reader host ports: notices, clipboard, links, the annotation file save and sidecar events.
+ * Implements the reader host ports in VS Code: notices, clipboard, links, the annotation file save and sidecar events.
  */
 import * as vscode from "vscode";
 import type { ExportAnnotationsPorts, NoticeKind, PaperRecord, ReaderHostPorts, SidecarChange } from "@labshelf/core";
@@ -9,7 +9,6 @@ export type VsCodeOutputPorts = Pick<ReaderHostPorts, "writeClipboard" | "notify
 
 /**
  * Confirmations go to the status bar so they never steal focus from the reader.
- * @returns void
  */
 export function notifyInVsCode(message: string, kind: NoticeKind): void {
   if (kind === "ok") {

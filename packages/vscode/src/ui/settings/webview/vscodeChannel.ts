@@ -1,4 +1,4 @@
-/** The settings page's channel to the extension host over the VS Code webview messaging API. */
+/** Connects the settings page to the extension host over the VS Code webview messaging API. */
 import type { SettingsHostMessage, SettingsWebviewMessage } from "../protocol.js";
 
 interface VsCodeApi {

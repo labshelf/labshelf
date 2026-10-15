@@ -48,7 +48,6 @@ export class PdfViewerPanel {
 
   /**
    * Clears the map of open panels — intended for use in tests only.
-   * @returns void
    */
   static _clearAllForTesting(): void {
     openPanels.clear();
@@ -68,7 +67,6 @@ export class PdfViewerPanel {
 
   /**
    * Reveals an existing panel for the paper if one is open, or creates and initializes a new webview panel.
-   * @returns void
    */
   static createOrShow(deps: PdfViewerDeps, paper: PaperRecord, options: OpenOptions = {}): void {
     const existing = openPanels.get(paper.id);
@@ -183,7 +181,6 @@ export class PdfViewerPanel {
 
   /**
    * Disposes all disposables and the underlying webview panel, guarded against double-disposal.
-   * @returns void
    */
   dispose(): void {
     if (this._disposed) { return; }

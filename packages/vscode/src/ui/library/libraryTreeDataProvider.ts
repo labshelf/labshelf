@@ -40,7 +40,6 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryN
 
   /**
    * Points the tree at a library's papers root and its folder reader, then refreshes; called after workspace setup completes.
-   * @returns void
    */
   setLibrary(papersRoot: vscode.Uri, readFolders: FolderReader): void {
     this._papersRoot = papersRoot;
@@ -50,7 +49,6 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryN
 
   /**
    * Registers where the provider reads stored paper paths from, used for the per-folder counts.
-   * @returns void
    */
   setPaperPathSource(source: () => Promise<string[]>): void {
     this._paperPathSource = source;
@@ -58,7 +56,6 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryN
 
   /**
    * Drops cached counts and fires onDidChangeTreeData so VS Code re-reads the tree.
-   * @returns void
    */
   refresh(): void {
     this._paperPaths = null;
@@ -174,7 +171,6 @@ export class LibraryDragAndDropController implements vscode.TreeDragAndDropContr
 
   /**
    * Puts the dragged folders on the transfer. "All Papers" is not a real folder and cannot be dragged.
-   * @returns void
    */
   handleDrag(source: readonly LibraryNode[], dataTransfer: vscode.DataTransfer): void {
     const dirs = source.filter((n) => !n.isRoot).map((n) => n.dirPath);
@@ -185,7 +181,6 @@ export class LibraryDragAndDropController implements vscode.TreeDragAndDropContr
 
   /**
    * Routes a drop: folders dragged within the tree are moved, OS files are imported. A drop on "All Papers" or on the empty area targets papers/.
-   * @returns void
    */
   async handleDrop(target: LibraryNode | undefined, dataTransfer: vscode.DataTransfer): Promise<void> {
     const targetDir = target?.dirPath;

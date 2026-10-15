@@ -1,2 +1,2 @@
-/** Public API of the list panel. */
+/** Exports the list panel. */
 export { ListWebviewPanel } from './listWebviewPanel.js';

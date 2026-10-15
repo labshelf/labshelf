@@ -84,7 +84,6 @@ export class TesseractOcrEngine implements PdfOcrEngine {
   /**
    * Reports a one-line diagnostic through the engine's channel, so everything
    * OCR-related lands in the same log module.
-   * @returns void
    */
   report(message: string): void {
     this.options.onDiagnostic?.(message);
@@ -92,7 +91,6 @@ export class TesseractOcrEngine implements PdfOcrEngine {
 
   /**
    * Shuts the Tesseract worker down. Safe to call when none was started.
-   * @returns void
    */
   async dispose(): Promise<void> {
     const worker = this.worker;

@@ -1,2 +1,2 @@
-/** Public surface of the VS Code library webview code. */
+/** Exports the VS Code library webview channel. */
 export { createWebviewChannel } from "./webviewChannel.js";

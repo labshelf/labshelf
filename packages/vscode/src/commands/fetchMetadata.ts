@@ -108,7 +108,6 @@ async function pickCandidate(candidates: ResolvedMetadata[]): Promise<ResolvedMe
  * Re-runs extraction over every paper no registry ever confirmed, then offers
  * a manual lookup for whatever is still unidentified. This is the recovery
  * path after importing offline or before the pipeline could resolve a source.
- * @returns void
  */
 export async function resolveMissingMetadata(paperService: PaperService): Promise<void> {
   const pending = await paperService.listUnresolvedPapers();
@@ -152,7 +151,6 @@ export async function resolveMissingMetadata(paperService: PaperService): Promis
 
 /**
  * Offers to look metadata up for papers the importer could not identify.
- * @returns void
  */
 export async function offerMetadataFetch(
   paperService: PaperService,

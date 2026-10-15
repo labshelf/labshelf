@@ -1,5 +1,5 @@
 /**
- * What the list panel needs from the extension: the paper service, events, the library root, folder reading and
+ * Declares what the list panel needs from the extension: the paper service, events, the library root, folder reading and
  * folder changes, OCR jobs, reader sidecars and the AI index.
  */
 import type * as vscode from 'vscode';

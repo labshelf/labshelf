@@ -1,4 +1,4 @@
-/** Extension entry point — wires services, commands, library folder tree, sync controller, and list panel on activation */
+/** Activates the extension: wires services, commands, library folder tree, sync controller and list panel. */
 import * as vscode from "vscode";
 
 import { libraryChanged, libraryLayout } from "@labshelf/core";

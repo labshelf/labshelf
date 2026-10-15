@@ -1,6 +1,6 @@
 /**
- * VS Code entry of the library list bundle (dist/library/library.js): mounts the shared library UI over the webview
- * messaging API with the extension's capabilities. The extension host answers in ui/list.
+ * Mounts the shared library UI over the webview messaging API (entry of dist/library/library.js), with the
+ * extension's capabilities. The extension host answers in ui/list.
  */
 import "@labshelf/core/styles/tokens.css";
 import "@labshelf/core/styles/vscodeHost.css";

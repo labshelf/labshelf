@@ -57,7 +57,6 @@ export class AiService {
   /**
    * Appends a reading event to the analytics store.
    *
-   * @returns void
    */
   recordReadingEvent(event: ReadingEvent): void {
     this.deps.readingEvents.append(event);
@@ -66,7 +65,6 @@ export class AiService {
   /**
    * Triggers a full reindex of every paper in the library.
    *
-   * @returns void
    */
   async rebuildAll(): Promise<void> {
     await this.deps.indexer.rebuildAll();

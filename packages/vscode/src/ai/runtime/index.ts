@@ -1,4 +1,4 @@
 /**
- * Embedding provider used by the AI subsystem.
+ * Exports the embedding provider used by the AI subsystem.
  */
 export { HashEmbeddingProvider } from "./hashEmbeddingProvider.js";

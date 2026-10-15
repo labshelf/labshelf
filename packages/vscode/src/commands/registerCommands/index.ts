@@ -1,4 +1,4 @@
-// Public API of the registerCommands module used outside this folder.
+// Exports the command registration entry point and paper resolution used outside this folder.
 export { registerCommands } from "./commandRegistration.js";
 export { resolvePaper } from "./paperResolution.js";
 export { ensurePaperPdf } from "./paperResolution.js";

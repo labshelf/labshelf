@@ -1,5 +1,5 @@
 /**
- * The folder node the Library tree and the list panel share: a collection folder under papers/, or papers/ itself.
+ * Declares the folder node the Library tree and the list panel share: a collection folder under papers/, or papers/ itself.
  */
 import { ROOT_LABEL } from '@labshelf/core';
 
