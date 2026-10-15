@@ -23,14 +23,6 @@ describe('isWebviewMessage', () => {
       ).toBe(true);
     });
 
-    it('pageChanged', () => {
-      expect(isWebviewMessage({ command: 'pageChanged', pageNumber: 3 })).toBe(true);
-    });
-
-    it('zoomChanged', () => {
-      expect(isWebviewMessage({ command: 'zoomChanged', zoomLevel: 1.5 })).toBe(true);
-    });
-
     it('selectTheme', () => {
       expect(isWebviewMessage({ command: 'selectTheme', theme: 'sepia' })).toBe(true);
     });
@@ -101,14 +93,6 @@ describe('isWebviewMessage', () => {
       expect(isWebviewMessage({ command: 'perf', timeline: 'nope', pageNumber: 1, theme: 'dark', dpr: 1, canvas: null })).toBe(false);
     });
 
-    it('rejects "pageChanged" with a string page', () => {
-      expect(isWebviewMessage({ command: 'pageChanged', pageNumber: '3' })).toBe(false);
-    });
-
-    it('rejects "zoomChanged" with a non-numeric zoomLevel', () => {
-      expect(isWebviewMessage({ command: 'zoomChanged', zoomLevel: '150%' })).toBe(false);
-    });
-
     it('rejects "selectTheme" without a theme string', () => {
       expect(isWebviewMessage({ command: 'selectTheme' })).toBe(false);
       expect(isWebviewMessage({ command: 'selectTheme', theme: 5 })).toBe(false);
@@ -151,8 +135,8 @@ describe('isWebviewMessage', () => {
     });
 
     it('rejects NaN numeric fields', () => {
-      expect(isWebviewMessage({ command: 'pageChanged', pageNumber: NaN })).toBe(false);
-      expect(isWebviewMessage({ command: 'zoomChanged', zoomLevel: NaN })).toBe(false);
+      expect(isWebviewMessage({ command: 'ready', totalPages: NaN })).toBe(false);
+      expect(isWebviewMessage({ command: 'copyWithCitation', text: 'x', pageNumber: NaN })).toBe(false);
     });
   });
 });

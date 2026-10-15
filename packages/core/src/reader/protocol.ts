@@ -98,8 +98,6 @@ export type WebviewToHost =
       dpr: number;
       canvas: string | null;
     }
-  | { command: "pageChanged"; pageNumber: number }
-  | { command: "zoomChanged"; zoomLevel: number }
   | { command: "selectTheme"; theme: string }
   | {
       command: "createAnnotation";
@@ -136,10 +134,6 @@ export function isWebviewMessage(raw: unknown): raw is WebviewToHost {
       return isNum(m["totalPages"]);
     case "perf":
       return isObj(m["timeline"]);
-    case "pageChanged":
-      return isNum(m["pageNumber"]);
-    case "zoomChanged":
-      return isNum(m["zoomLevel"]);
     case "selectTheme":
       return isStr(m["theme"]);
     case "createAnnotation":

@@ -8,7 +8,7 @@ describe("ReaderHostController", () => {
     await host.handle({ command: "deleteAnnotation", id: "" });
     await host.handle({ command: "saveReadingState" });
     await host.handle({ command: "nope" });
-    await host.handle({ command: "pageChanged", pageNumber: "three" });
+    await host.handle({ command: "ready", totalPages: "three" });
     await host.handle("garbage");
     expect(posted).toHaveLength(0);
     expect(files).toEqual({});

@@ -76,9 +76,6 @@ function wireReader(ctx: ReaderContext, theme: ThemeController, perf: PerfMarks,
   const keyboard = new Keyboard(ctx, createActionRunner({ ctx, ui, hover }));
   bindHostMessages(ctx, ui, keyboard, hover);
   interceptExternalLinks(byId("viewer"), ctx.host);
-  ctx.eventBus.on("pagechanging", ({ pageNumber }: { pageNumber: number }) => {
-    ctx.host.post({ command: "pageChanged", pageNumber });
-  });
   restore.attach({ ctx, ui, theme, perf, loadingMsg });
   reportFirstRender(ctx, theme, perf, hover);
 }

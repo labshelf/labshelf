@@ -62,7 +62,7 @@ describe("in-page channel", () => {
     const channel = createInPageChannel((m) => received.push(m));
     const toReader: unknown[] = [];
     channel.send({ type: "scrollToPage", pageNumber: 2 });
-    const msg = { command: "pageChanged" as const, pageNumber: 1 };
+    const msg = { command: "ready" as const, totalPages: 1 };
     channel.transport.post(msg);
     expect(received).toHaveLength(0);
     channel.transport.listen((m) => toReader.push(m));
