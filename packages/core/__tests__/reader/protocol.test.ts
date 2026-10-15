@@ -141,6 +141,21 @@ describe('isWebviewMessage', () => {
   });
 });
 
+describe('isWebviewMessage preview requests', () => {
+  it('accepts showBuildProblem and a showSource point on a page', () => {
+    expect(isWebviewMessage({ command: 'showBuildProblem' })).toBe(true);
+    expect(isWebviewMessage({ command: 'showSource', point: { page: 2, x: 72.5, y: 300 } })).toBe(true);
+  });
+
+  it('rejects a showSource point without a positive integer page or finite coordinates', () => {
+    expect(isWebviewMessage({ command: 'showSource' })).toBe(false);
+    expect(isWebviewMessage({ command: 'showSource', point: { page: 0, x: 1, y: 1 } })).toBe(false);
+    expect(isWebviewMessage({ command: 'showSource', point: { page: 1.5, x: 1, y: 1 } })).toBe(false);
+    expect(isWebviewMessage({ command: 'showSource', point: { page: 1, x: Number.NaN, y: 1 } })).toBe(false);
+    expect(isWebviewMessage({ command: 'showSource', point: { page: 1, x: 1 } })).toBe(false);
+  });
+});
+
 describe('isSafeExternalUrl', () => {
   it('accepts http, https and mailto', () => {
     expect(isSafeExternalUrl('http://example.com')).toBe(true);

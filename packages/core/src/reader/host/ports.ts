@@ -4,7 +4,7 @@
 import type { Annotation, PaperRecord } from "../../model/index.js";
 import type { ILogger } from "../../ports/index.js";
 import type { PaperDataStore } from "../sidecar/index.js";
-import type { EffectiveTheme, HostToWebview, ReaderPrefs } from "../protocol.js";
+import type { EffectiveTheme, HostToWebview, PagePoint, ReaderPrefs } from "../protocol.js";
 
 export type NoticeKind = "info" | "ok" | "error";
 
@@ -19,6 +19,14 @@ export type SidecarChange =
   | { kind: "annotationUpdated"; annotation: Annotation }
   | { kind: "annotationDeleted"; annotationId: string }
   | { kind: "theme" };
+
+/** What a host that shows a build's output as a preview does with the reader's requests. */
+export interface PreviewPorts {
+  /** Opens the source at the failed build's first error. */
+  showBuildProblem(): Promise<void>;
+  /** Opens the source behind a point of the PDF. */
+  showSource(point: PagePoint): Promise<void>;
+}
 
 export interface ReaderHostPorts {
   paper: PaperRecord;
@@ -35,6 +43,8 @@ export interface ReaderHostPorts {
   saveAnnotations(markdown: string): Promise<void>;
   logger: ILogger;
   sidecarChanged?(change: SidecarChange): void;
+  /** Present only when the reader previews a build. */
+  preview?: PreviewPorts;
   now?: () => number;
 }
 

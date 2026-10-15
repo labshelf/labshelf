@@ -16,13 +16,22 @@ One host controller in core answers every message the reader sends. Each host im
 ## Rules
 
 - **Every message has one handler.** Adding a message means adding its handler to the shared host controller; a host changes only when the message needs a port it does not implement yet.
-- **A requested page waits for `ready`.** The reader drops `scrollToPage` before the document is laid out, so the controller holds a page asked for earlier and sends it on `ready`.
+- **Messages wait for `ready`.** The reader drops host messages other than `init` and `applyTheme` before the document is laid out. The controller holds the latest of each type and sends them on `ready`.
 - **Every failure is logged and shown.** A handler that throws is logged with the paper and command and becomes a `Reader action failed` notice; a rejected annotation write becomes a `Failed to create|update|delete annotation` notice and the reader keeps its list.
 - **The host validates untrusted input.** Messages from the reader go through `isWebviewMessage`, so a malformed message is rejected and never half-applied. External links go through `isSafeExternalUrl`, which allows only `http:`, `https:` and `mailto:`, so a crafted PDF cannot open `file:`, `command:` or `vscode:` URIs.
 - **Preferences are validated once.** Both hosts pass stored preferences through the shared `normalizeReaderPrefs`. VS Code reads them from settings; the browser reads them from extension storage.
 - **The sidecar format is shared.** The host persists annotations, theme and reading position through the shared `PaperDataStore` over a `SidecarPort`, which keeps the bytes identical everywhere ([library-format.md](library-format.md#sidecar-datajson)).
 - **Reading position is saved only after restore.** The reader does not report a position until it has restored the stored one, so the initial page-1 layout never overwrites it.
 - **`PROTOCOL_VERSION` changes whenever a message changes shape.**
+
+## Preview
+
+A host can show a build's output in the reader, e.g. a writing project's compiled PDF. It then implements the controller's preview ports and drives the reader through the controller:
+
+- **Reload in place.** After a build replaces the PDF, the host asks for a reload. The reader re-reads the bytes and keeps the page, the offset on it and the zoom. A failed build leaves the file and the reader untouched.
+- **Build status.** The host reports `building`, `succeeded`, or `failed` with the error count. The reader shows a banner while a build runs and while the last one failed; clicking a failed banner asks the host to open the first error.
+- **Source and preview positions.** Points travel in PDF user space: page number and points from the page's top-left corner. Only a preview reader (`ReaderBootParams.preview`) reports a double-click, as `showSource`; a library reader leaves double-clicks alone. The host reveals a point, e.g. the editor cursor, and the reader scrolls to it and marks it; a page number past the document's last page is clamped to it.
+- **The browser previews nothing yet.** Its host has no preview ports, so the controller logs a preview request from its reader and ignores it.
 
 ## Host-specific constraints
 

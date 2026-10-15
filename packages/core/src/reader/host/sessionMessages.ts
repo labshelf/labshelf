@@ -29,10 +29,8 @@ export const sessionHandlers: Pick<
     const { ports, state } = ctx;
     state.ready = true;
     void ports.logger.log("INFO", READER_LOG_MODULE, "Reader ready", { paperId: ports.paper.id, totalPages: msg.totalPages });
-    if (state.pendingPage !== undefined) {
-      ports.post({ type: "scrollToPage", pageNumber: state.pendingPage });
-      state.pendingPage = undefined;
-    }
+    for (const held of state.held.values()) { ports.post(held); }
+    state.held.clear();
   },
 
   perf: (ctx, msg) => {

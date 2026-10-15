@@ -5,7 +5,7 @@
 import type { Annotation, AnnotationColor, PdfTheme } from "../model/index.js";
 import type { ReadingState } from "./sidecar/index.js";
 
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2;
 
 export type EffectiveTheme = Exclude<PdfTheme, "auto">;
 export type ZoomPreset = "page-width" | "page-fit" | "page-actual" | "auto";
@@ -48,6 +48,8 @@ export interface ReaderBootParams {
   assets: ReaderAssets;
   paperId: string;
   paperTitle: string;
+  /** True when the reader shows a build's output (see the Preview section of the reader-host contract). */
+  preview: boolean;
   themePreference: PdfTheme;
   effectiveTheme: EffectiveTheme;
   prefs: ReaderPrefs;
@@ -64,6 +66,16 @@ export type ReaderCommandId =
   | "historyForward"
   | "toggleSidebar";
 
+/** The state of the build whose output a preview reader shows. */
+export type BuildState = "building" | "succeeded" | "failed";
+
+/** A point on a page in PDF user space: points from the page's top-left corner, y growing downwards. */
+export interface PagePoint {
+  page: number;
+  x: number;
+  y: number;
+}
+
 /* ── host → webview (discriminant: `type`) ───────────────────────── */
 
 export type HostToWebview =
@@ -79,7 +91,13 @@ export type HostToWebview =
   | { type: "updateAnnotations"; annotations: Annotation[] }
   | { type: "scrollToPage"; pageNumber: number }
   | { type: "prefsChanged"; prefs: ReaderPrefs }
-  | { type: "command"; id: ReaderCommandId };
+  | { type: "command"; id: ReaderCommandId }
+  /** Re-reads the PDF in place, keeping page, offset and zoom; sent after a preview's build replaced the file. */
+  | { type: "reloadDocument" }
+  /** `errors` counts the failed build's errors; it is 0 for the other states. */
+  | { type: "buildStatus"; state: BuildState; errors: number }
+  /** Scrolls the reader to a point and marks it, e.g. the editor cursor's position found through SyncTeX. */
+  | { type: "revealPoint"; point: PagePoint };
 
 /* ── webview → host (discriminant: `command`) ────────────────────── */
 
@@ -113,12 +131,19 @@ export type WebviewToHost =
   | { command: "copyWithCitation"; text: string; pageNumber: number }
   | { command: "copyText"; text: string }
   | { command: "exportAnnotations"; target: "clipboard" | "file" }
-  | { command: "openExternalLink"; url: string };
+  | { command: "openExternalLink"; url: string }
+  /** The reader clicked a failed build's banner. */
+  | { command: "showBuildProblem" }
+  /** The reader double-clicked this point; a preview host opens the source behind it. */
+  | { command: "showSource"; point: PagePoint };
 
 const isStr = (v: unknown): v is string => typeof v === "string";
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 const isObj = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
+
+const isPagePoint = (v: unknown): v is PagePoint =>
+  isObj(v) && isNum(v["page"]) && Number.isInteger(v["page"]) && v["page"] >= 1 && isNum(v["x"]) && isNum(v["y"]);
 
 /**
  * Validates an untrusted webview message against the protocol; anything malformed is rejected so host handlers never see partial payloads.
@@ -153,6 +178,10 @@ export function isWebviewMessage(raw: unknown): raw is WebviewToHost {
       return m["target"] === "clipboard" || m["target"] === "file";
     case "openExternalLink":
       return isStr(m["url"]);
+    case "showBuildProblem":
+      return true;
+    case "showSource":
+      return isPagePoint(m["point"]);
     default:
       return false;
   }

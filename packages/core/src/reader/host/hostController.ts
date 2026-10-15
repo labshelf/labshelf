@@ -3,14 +3,15 @@
  */
 import type { Annotation, PdfTheme } from "../../model/index.js";
 import { errorMessage } from "../../logging/index.js";
-import { isWebviewMessage, type EffectiveTheme, type WebviewToHost } from "../protocol.js";
+import { isWebviewMessage, type BuildState, type EffectiveTheme, type HostToWebview, type PagePoint, type WebviewToHost } from "../protocol.js";
 import { annotationHandlers } from "./annotationMessages.js";
 import { READER_LOG_MODULE, type HostContext, type HostState, type MessageHandler, type MessageHandlers } from "./hostContext.js";
 import type { ReaderHostPorts } from "./ports.js";
+import { previewHandlers } from "./previewMessages.js";
 import { sessionHandlers } from "./sessionMessages.js";
 import { shareHandlers } from "./shareMessages.js";
 
-const HANDLERS: MessageHandlers = { ...sessionHandlers, ...annotationHandlers, ...shareHandlers };
+const HANDLERS: MessageHandlers = { ...sessionHandlers, ...annotationHandlers, ...shareHandlers, ...previewHandlers };
 
 export interface ReaderHostOptions {
   /** Page to show once the reader has laid out the document. */
@@ -23,7 +24,7 @@ export class ReaderHostController {
 
   constructor(private readonly ports: ReaderHostPorts, options: ReaderHostOptions = {}) {
     const now = ports.now ?? Date.now;
-    this.state = { themePreference: "auto", ready: false, pendingPage: undefined, lastAnnotationsKey: "", openedAt: now() };
+    this.state = { themePreference: "auto", ready: false, held: new Map(), lastAnnotationsKey: "", openedAt: now() };
     this.ctx = {
       ports,
       state: this.state,
@@ -70,15 +71,32 @@ export class ReaderHostController {
   }
 
   /**
-   * Jumps to a page now if the document is laid out, or as soon as it is, because the reader drops scrollToPage before that.
+   * Jumps to a page now if the document is laid out, or as soon as it is.
    */
   requestPage(page: number): void {
     if (!Number.isInteger(page) || page < 1) { return; }
-    if (this.state.ready) {
-      this.ports.post({ type: "scrollToPage", pageNumber: page });
-    } else {
-      this.state.pendingPage = page;
-    }
+    this.postWhenReady({ type: "scrollToPage", pageNumber: page });
+  }
+
+  /**
+   * Re-reads the PDF in place after the host replaced the file.
+   */
+  reloadDocument(): void {
+    this.postWhenReady({ type: "reloadDocument" });
+  }
+
+  /**
+   * Shows the state of the build behind a preview; `errors` is ignored unless the build failed.
+   */
+  setBuildStatus(state: BuildState, errors = 0): void {
+    this.postWhenReady({ type: "buildStatus", state, errors: state === "failed" ? errors : 0 });
+  }
+
+  /**
+   * Scrolls the reader to a point of the PDF and marks it.
+   */
+  revealPoint(point: PagePoint): void {
+    this.postWhenReady({ type: "revealPoint", point });
   }
 
   /**
@@ -88,6 +106,15 @@ export class ReaderHostController {
   async refreshAnnotations(): Promise<void> {
     if (!this.state.ready) { return; }
     this.pushAnnotations(await this.ports.store.getAnnotations(this.ports.paper.id), false);
+  }
+
+  // The reader drops these before it has laid out the document, so they wait for `ready`; only the latest of a type matters.
+  private postWhenReady(msg: HostToWebview): void {
+    if (this.state.ready) {
+      this.ports.post(msg);
+    } else {
+      this.state.held.set(msg.type, msg);
+    }
   }
 
   private pushAnnotations(annotations: Annotation[], force: boolean): void {
