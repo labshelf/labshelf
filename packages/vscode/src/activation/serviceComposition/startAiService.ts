@@ -16,7 +16,7 @@ export async function startAiService(
   adapters: HostAdapters,
 ): Promise<AiService | null> {
   try {
-    const storage = await adapters.openAiStorage(services.aiDatabasePath, services.fileSystem);
+    const storage = await adapters.openAiStorage(services.aiDatabasePath, services.fileSystem, services.logger);
     const result = await createAiService({
       context,
       storage,

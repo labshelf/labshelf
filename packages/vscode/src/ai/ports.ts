@@ -1,5 +1,5 @@
 // Declares the AI stores the service and indexer read and write, so a host supplies them with whatever storage it has.
-import type { IFileSystem, IVectorStore } from "@labshelf/core";
+import type { IFileSystem, ILogger, IVectorStore } from "@labshelf/core";
 
 /** The content hash of each paper's PDF as last indexed, so unchanged files are not embedded again. */
 export interface IIndexedHashes {
@@ -19,4 +19,8 @@ export interface AiStorage {
 }
 
 /** Opens (and creates) the AI database at a path. */
-export type OpenAiStorage = (databasePath: string, fileSystem: Pick<IFileSystem, "ensureDir">) => Promise<AiStorage>;
+export type OpenAiStorage = (
+  databasePath: string,
+  fileSystem: Pick<IFileSystem, "ensureDir">,
+  logger: ILogger,
+) => Promise<AiStorage>;

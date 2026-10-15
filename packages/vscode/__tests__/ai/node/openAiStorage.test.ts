@@ -13,7 +13,7 @@ describeIfSqlite("openAiStorage", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "labshelf-ai-"));
     try {
       const ensureDir = jest.fn(async (target: string) => { fs.mkdirSync(target, { recursive: true }); });
-      const storage = await openAiStorage(path.join(dir, "ai", "ai.sqlite"), { ensureDir });
+      const storage = await openAiStorage(path.join(dir, "ai", "ai.sqlite"), { ensureDir }, { log: jest.fn(), error: jest.fn() });
       const { hashes, vectorStore } = storage.createStores("model-a");
 
       hashes.set("p1", "hash");
