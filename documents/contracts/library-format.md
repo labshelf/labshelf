@@ -31,7 +31,11 @@ IndexedDB holds only files, so an empty folder is a zero-byte `.keep` file insid
 ## Paper identity
 
 - The paper id is the name of its folder and equals its cite key. It never changes when the paper moves between folders.
-- A new id is generated from the paper's metadata and must not collide, case-insensitively, with an id already in the library.
+- A new id is generated from the paper's metadata and must not collide, case-insensitively, with an id already in the library. Existing ids are never regenerated.
+- The id has the form authorYearWord: the first author's surname, the year and the first title word that is not a stopword, each reduced to lowercase ASCII letters and digits (`vaswani2017attention`).
+- The surname comes only from trusted authors: a registry record or the PDF's XMP packet. Authors guessed from the page layout or the Info dictionary give no surname, so the id is yearWord (`1986downloaded`). A missing year or title word is left out the same way.
+- When nothing is left, the id is `paper` followed by the import's millisecond timestamp.
+- On a collision, the id takes BibTeX's suffixes: `a` to `z`, then `aa`, `ab`, and so on. A folder that exists on disk without being a known paper counts as taken.
 - The sidecar is keyed by id, not by folder path, so moving a paper never orphans its annotations.
 
 ## metadata.yaml

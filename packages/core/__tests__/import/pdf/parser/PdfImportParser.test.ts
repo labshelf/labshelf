@@ -94,7 +94,7 @@ describe('PdfImportParser.parse', () => {
       doi: '10.1109/cvpr.2016.90',
       journal: 'CVPR',
       confidence: 'high',
-      citeKey: '101109cvpr2016902016',
+      citeKey: 'he2016deep',
     });
     expect(result.source).toMatch(/^doi:10\.1109\/cvpr\.2016\.90 \(\d+ sources?\)$/);
   });
@@ -150,7 +150,7 @@ describe('PdfImportParser.parse', () => {
       'my_scan-2020',
     );
 
-    expect(result).toMatchObject({ title: 'my scan 2020', citeKey: 'myscan2020', confidence: 'low', authors: [] });
+    expect(result).toMatchObject({ title: 'my scan 2020', citeKey: 'my', confidence: 'low', authors: [] });
   });
 
   it('reads the front matter optically when the text layer is sparse and confirms the DOI found there', async () => {

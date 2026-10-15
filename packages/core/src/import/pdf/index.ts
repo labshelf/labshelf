@@ -13,7 +13,6 @@ export type {
 export { extractTitleBlocks, extractPageTexts, extractLinkUrls } from "./textExtraction.js";
 export { titleFromBlocks, authorsFromBlocks } from "./frontPageLayout.js";
 export { normalizeAuthors } from "./authors.js";
-export { buildCiteKey } from "./citeKey.js";
 export { metadataFromXmp } from "./xmp.js";
 export { publisherMetadataFromInfo, timestampsAreTrustworthy } from "./infoDictionary.js";
 export { journalFromRunningHead } from "./runningHead.js";

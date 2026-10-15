@@ -1,8 +1,8 @@
 /** Builds the ParsedPdfImport record from the merged metadata of every source. */
-import { mergeMetadata, type MetadataSource } from "../../metadata/index.js";
+import { makeCiteKey } from "../../../library/index.js";
+import { mergeMetadata, SOURCE_TRUST, type MetadataSource } from "../../metadata/index.js";
 import type { DetectedIdentifier } from "../../identifiers/index.js";
 import { normalizeAuthors } from "../authors.js";
-import { buildCiteKey } from "../citeKey.js";
 import { yearFromText } from "../frontMatter/index.js";
 import { normalizeTitle } from "../quality/index.js";
 import type { ParsedPdfImport } from "../types.js";
@@ -25,12 +25,15 @@ export function buildParsedRecord(input: RecordInput): ParsedPdfImport {
   const metadata = merged.metadata;
   const title = normalizeTitle(metadata.title ?? input.fileStem);
   const year = metadata.year ?? (input.textIsReadable ? yearFromText(input.frontMatter) : undefined);
-  const citeKey = buildCiteKey(input.fileStem, title, year, metadata.doi ?? input.identifiers[0]?.value);
+  const authors = normalizeAuthors(metadata.authors);
+  // CONTRACT: documents/contracts/library-format.md#paper-identity (the key names the folder for good, so a guessed surname stays wrong)
+  const keyAuthors = authorTrust(input.sources, merged.fieldSources["authors"]) >= SOURCE_TRUST.xmp ? authors : [];
+  const citeKey = makeCiteKey({ authors: keyAuthors, year, title }, title);
 
   return {
     title,
     citeKey,
-    authors: normalizeAuthors(metadata.authors),
+    authors,
     confidence: gradeConfidence(input.identifierConfirmed, input.resolvedOnline, metadata),
     ...optional("source", describeOrigin(input.origin, merged.fieldSources, input.usedOcr)),
     ...(year ? { year } : {}),
@@ -46,6 +49,10 @@ export function buildParsedRecord(input: RecordInput): ParsedPdfImport {
     ...optional("summary", metadata.summary),
     ...(metadata.keywords?.length ? { keywords: metadata.keywords } : {}),
   };
+}
+
+function authorTrust(sources: MetadataSource[], winner: string | undefined): number {
+  return sources.find((source) => source.name === winner)?.trust ?? 0;
 }
 
 // Names the winning route plus how many distinct sources contributed, which is
