@@ -1,5 +1,5 @@
 /**
- * Ports a reader host implements so the shared host controller can answer the reader's messages on any platform.
+ * Declares the ports a reader host implements so the shared host controller can answer the reader's messages on any platform.
  */
 import type { Annotation, PaperRecord } from "../../model/index.js";
 import type { ILogger } from "../../ports/index.js";

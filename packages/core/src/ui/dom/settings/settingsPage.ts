@@ -1,4 +1,4 @@
-/** The frame of a settings page: the brand mark, the title, an optional slot at the right of the title, and the sections. */
+/** Builds the frame of a settings page: the brand mark, the title, an optional slot at the right of the title, and the sections. */
 import { icon } from "../../icons/index.js";
 import { el } from "../dom.js";
 

@@ -1,4 +1,4 @@
-/** One sync run, stateless: takes the lock, names Drive folders from titles, runs the engine and records the run. */
+/** Runs one stateless sync: takes the lock, names Drive folders from titles, runs the engine and records the run. */
 import { SYNC_PROVIDER_ID } from "../../library/index.js";
 import type { ILogger } from "../../ports/index.js";
 import type { RemoteProvider } from "../provider/index.js";

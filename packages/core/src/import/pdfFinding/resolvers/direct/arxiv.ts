@@ -1,4 +1,4 @@
-/** arXiv's canonical PDF address, a fixed function of the id, so no lookup is needed. */
+/** Builds arXiv's canonical PDF address, a fixed function of the id, so no lookup is needed. */
 import type { PdfResolver } from "../../types.js";
 
 export const arxivResolver: PdfResolver = {

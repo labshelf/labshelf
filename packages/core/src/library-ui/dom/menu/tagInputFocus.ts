@@ -1,5 +1,5 @@
 /**
- * "Add Tag…" from the paper menu: shows the detail pane if it is folded away and puts the cursor in its tag field.
+ * Handles "Add Tag…" from the paper menu: shows the detail pane if it is folded away and focuses its tag field.
  */
 import { showPane } from "../shell/index.js";
 import type { UiContext } from "../uiContext.js";

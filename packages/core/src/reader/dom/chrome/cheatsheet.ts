@@ -1,5 +1,5 @@
 /**
- * `?` overlay listing every active shortcut, generated from the keymap so it can never drift from the real bindings.
+ * Shows the `?` overlay listing every active shortcut, generated from the keymap so it can never drift from the real bindings.
  */
 import { cheatsheetRows } from "../../logic/index.js";
 import type { ReaderContext } from "../session/index.js";
@@ -16,7 +16,6 @@ export class Cheatsheet {
 
   /**
    * Opens the overlay if closed, closes it if open.
-   * @returns void
    */
   toggle(): void {
     if (this.isOpen) { this.close(); } else { this.open(); }
@@ -24,7 +23,6 @@ export class Cheatsheet {
 
   /**
    * Closes the overlay and clears its content.
-   * @returns void
    */
   close(): void {
     this.el.classList.remove("rd-open");

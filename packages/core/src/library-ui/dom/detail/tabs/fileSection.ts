@@ -1,5 +1,5 @@
 /**
- * The File section: the PDF with its size and the host's open and reveal actions (or Find and Attach PDF when there
+ * Renders the File section: the PDF with its size and the host's open and reveal actions (or Find and Attach PDF when there
  * is none), the text-layer state, and when the paper was last read.
  */
 import { PDF_FILE, formatBytes, formatDateTime, relativeTime } from "../../../../library/index.js";

@@ -1,6 +1,6 @@
 /**
- * Pure keyboard-binding resolution for the reader: a conventional table that is always active and a vim layer gated by `labshelf.reader.vimKeys`.
- * DOM-free so jest (node env) can cover it; ui/keyboard.ts adapts KeyboardEvent into KeyInput.
+ * Resolves keyboard bindings for the reader: a conventional table that is always active and a vim layer gated by `labshelf.reader.vimKeys`.
+ * DOM-free so jest (node env) can cover it; dom/navigation/keyboard.ts adapts KeyboardEvent into KeyInput.
  */
 
 export type ReaderAction =

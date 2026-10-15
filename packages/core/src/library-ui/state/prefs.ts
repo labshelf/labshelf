@@ -1,6 +1,6 @@
 /**
- * The library UI preferences a host persists (sort, panes, folded sections, detail tab, citation style), the port it
- * persists them through, and `sanitizePrefs`, which turns whatever storage returns into valid prefs.
+ * Declares the library UI preferences a host persists (sort, panes, folded sections, detail tab, citation style),
+ * the port it persists them through, and `sanitizePrefs`, which turns whatever storage returns into valid prefs.
  */
 import type { SortDir, SortKey } from "./viewState.js";
 

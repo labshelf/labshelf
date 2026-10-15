@@ -1,4 +1,4 @@
-/** Public surface of the sync coordinator every app drives. */
+/** Exports the public API of the sync coordinator every app drives. */
 export { SyncCoordinator } from "./syncCoordinator.js";
 export { libraryChanged } from "./libraryChanged.js";
 export type { SyncStatusListener } from "./syncStatus.js";

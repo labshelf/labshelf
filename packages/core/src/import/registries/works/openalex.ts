@@ -1,4 +1,4 @@
-/** OpenAlex client: free-text work search. */
+/** Searches OpenAlex for works by free text. */
 import { fetchJson } from "../http.js";
 import { trimmed } from "../text.js";
 import type { RegistryRecord } from "../types.js";

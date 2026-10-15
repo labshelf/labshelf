@@ -1,6 +1,6 @@
 /**
- * The filter bar: the status tabs with their counts, the No text filter when the host knows text layers, and the
- * subfolder chips, which open their folder and accept dropped papers.
+ * Renders the filter bar: status tabs with their counts, the No text filter when the host knows text layers, and
+ * the subfolder chips, which open their folder and accept dropped papers.
  */
 import { PAPERS_DIR, subfoldersOf } from "../../../library/index.js";
 import { PAPER_STATUSES, STATUS_LABEL } from "../../../model/index.js";

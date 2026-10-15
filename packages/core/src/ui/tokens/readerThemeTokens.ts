@@ -1,5 +1,5 @@
 /**
- * The reader's page themes: the page colours pdf.js paints and the chrome colours around them, one row per theme.
+ * Declares the reader's page themes: the page colours pdf.js paints and the chrome colours around them, one row per theme.
  */
 
 const READER_THEME_NAMES = ["dark", "light", "sepia", "high-contrast"] as const;

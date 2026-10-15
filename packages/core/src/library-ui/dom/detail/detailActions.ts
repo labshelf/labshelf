@@ -1,5 +1,5 @@
 /**
- * What a click on a `data-action` element in the detail pane does: paper commands and host actions, copying, search
+ * Handles a click on a `data-action` element in the detail pane: paper commands and host actions, copying, search
  * shortcuts, and the pane's own toggles (tab, citation style, folds, annotation filters, note tools).
  */
 import { parentDir } from "../../../library/index.js";

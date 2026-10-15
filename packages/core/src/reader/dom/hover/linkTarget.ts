@@ -1,4 +1,4 @@
-/** Hover targets for PDF link annotations: finds the link under the pointer and prepares the popup for its destination. */
+/** Builds hover targets for PDF link annotations: finds the link under the pointer and prepares the popup for its destination. */
 import { destPoint } from "../../logic/index.js";
 import type { CitationResolver } from "../text/index.js";
 import type { ReaderContext } from "../session/index.js";

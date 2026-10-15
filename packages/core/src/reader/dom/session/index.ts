@@ -1,4 +1,4 @@
-/** Public surface of the reader session group. */
+/** Exports the reader session group's public API. */
 export type { PdfLocation, ReaderContext } from "./context.js";
 export { installTextLayerFocusGuard } from "./focusGuard.js";
 export { HostBridge, type ReaderTransport } from "./hostBridge.js";

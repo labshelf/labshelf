@@ -1,6 +1,6 @@
 /**
- * Modal overlay shared by the dialog and the quick input widgets: a dimmed scrim with Escape
- * dismissal and a focus trap, mounted on the body or inside a shadow root.
+ * Mounts the modal overlay shared by the dialog and quick input widgets: a dimmed scrim with Escape
+ * dismissal and a focus trap, on the body or inside a shadow root.
  */
 import { el } from "../dom.js";
 

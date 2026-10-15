@@ -1,4 +1,4 @@
-/** Public API of PDF downloading: proving bytes are a PDF, following interstitials, recognising bot checks. */
+/** Exports PDF downloading's public API: proving bytes are a PDF, following interstitials, recognising bot checks. */
 export { isPdfBytes } from "./pdfBytes.js";
 export { isBotCheck } from "./botCheck.js";
 export { isSupplementaryUrl } from "./supplementary.js";

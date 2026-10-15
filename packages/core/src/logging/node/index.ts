@@ -1,2 +1,2 @@
-/** Node log sinks. */
+/** Exports the Node log sinks. */
 export { FileLogSink, type FileLogSinkOptions } from "./fileLogSink.js";

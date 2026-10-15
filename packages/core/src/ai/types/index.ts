@@ -1,5 +1,5 @@
 /**
- * Barrel re-export for the AI types.
+ * Exports the AI types' public API.
  */
 export * from "./chunk.js";
 export * from "./embeddingProvider.js";

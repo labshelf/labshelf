@@ -1,5 +1,5 @@
 /**
- * Where a platform keeps one sidecar (data.json) per paper.
+ * Declares where a platform keeps one sidecar (data.json) per paper.
  */
 export interface SidecarPort {
   /** The sidecar text, or null when the paper has none yet. */

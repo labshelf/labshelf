@@ -1,4 +1,4 @@
-/** The Google OAuth client each app's build injects from `credentials/` (empty in tests and unconfigured builds). */
+/** Exposes the Google OAuth client each app's build injects from `credentials/` (empty in tests and unconfigured builds). */
 import type { OAuthClient } from "./oauthClient.js";
 
 declare const __LABSHELF_GOOGLE_CLIENT_ID__: string | undefined;

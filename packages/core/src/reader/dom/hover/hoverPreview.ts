@@ -49,7 +49,6 @@ export class HoverPreview {
 
   /**
    * Cancels any pending open, hides the popup and discards in-flight preview work.
-   * @returns void
    */
   close(): void {
     this.cancelPending();

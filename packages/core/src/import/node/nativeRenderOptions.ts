@@ -1,4 +1,4 @@
-/** getDocument options that rasterize pages onto the native canvas instead of a DOM one. */
+/** Builds getDocument options that rasterize pages onto the native canvas instead of a DOM one. */
 import type { NativeCanvas, NativeCanvasContext, NativeCanvasModule } from "./nativeCanvas.js";
 
 /**

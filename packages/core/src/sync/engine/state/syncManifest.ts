@@ -1,5 +1,5 @@
-// Persist and query the per-provider sync manifest — the three-way merge base
-// mapping relative paths to their last-synced state.
+// Persists and queries the per-provider sync manifest, the three-way merge base.
+// It maps relative paths to their last-synced state.
 import type { LocalFileSystem } from "../../../ports/index.js";
 import type {
   ManifestData,
@@ -7,7 +7,6 @@ import type {
 } from "../syncTypes.js";
 import type { RemoteNamespace } from "../../provider/index.js";
 
-// Returns a fresh empty ManifestData for a given providerId.
 function emptyData(providerId: string): ManifestData {
   return { providerId, namespaces: { library: {}, appdata: {} } };
 }
@@ -29,7 +28,6 @@ export class SyncManifest {
 
   /**
    * Loads the manifest from disk, or starts empty when absent or corrupt.
-   * @returns SyncManifest
    */
   static async load(
     fs: LocalFileSystem,
@@ -54,75 +52,47 @@ export class SyncManifest {
     return new SyncManifest(fs, filePath, data);
   }
 
-  /**
-   * Returns the entry for a path, or undefined.
-   * @returns ManifestEntry | undefined
-   */
   get(ns: RemoteNamespace, path: string): ManifestEntry | undefined {
     return this.data.namespaces[ns][path];
   }
 
-  /**
-   * Returns all relative paths recorded for a namespace.
-   * @returns string[]
-   */
   paths(ns: RemoteNamespace): string[] {
     return Object.keys(this.data.namespaces[ns]);
   }
 
-  /**
-   * Inserts or replaces the entry for a path.
-   * @returns void
-   */
   set(ns: RemoteNamespace, path: string, entry: ManifestEntry): void {
     this.data.namespaces[ns][path] = entry;
   }
 
-  /**
-   * Removes the entry for a path, if present.
-   * @returns void
-   */
   delete(ns: RemoteNamespace, path: string): void {
     delete this.data.namespaces[ns][path];
   }
 
   /**
    * The remote root folder id the namespace was last synced against, when recorded.
-   * @returns the id, or undefined (manifests written before roots were recorded)
+   * @returns the id, or undefined when no root was recorded
    */
   rootId(ns: RemoteNamespace): string | undefined {
     return this.data.roots?.[ns];
   }
 
-  /**
-   * Records the remote root folder id of a namespace.
-   * @returns void
-   */
   setRootId(ns: RemoteNamespace, id: string): void {
     this.data.roots = { ...(this.data.roots ?? {}), [ns]: id };
   }
 
   /**
-   * Forgets every entry of a namespace, so the next diff treats both sides as new (nothing is deleted).
-   * @returns void
+   * Forgets every entry of a namespace, so the next diff treats both sides as first-seen (nothing is deleted).
    */
   clearNamespace(ns: RemoteNamespace): void {
     this.data.namespaces[ns] = {};
   }
 
-  /**
-   * Persists the manifest to disk.
-   * @returns void
-   */
   async save(): Promise<void> {
     const json = JSON.stringify(this.data, null, 2);
     await this.fs.writeFile(this.filePath, new TextEncoder().encode(json));
   }
 
-  /**
-   * Returns a deep-copy snapshot of the underlying data (for tests/inspection).
-   * @returns ManifestData
-   */
+  /** A deep copy of the data, so callers cannot mutate the manifest. */
   snapshot(): ManifestData {
     return JSON.parse(JSON.stringify(this.data)) as ManifestData;
   }

@@ -40,7 +40,6 @@ export class Keyboard {
 
   /**
    * Runs an action unless it is the same chord arriving a second time through the other route (keydown vs. host keybinding).
-   * @returns void
    */
   dispatch(action: ReaderAction, source: ActionSource): void {
     // A contributed keybinding fires no matter where the focus is inside the webview; keydown already applies this rule in resolveKey.

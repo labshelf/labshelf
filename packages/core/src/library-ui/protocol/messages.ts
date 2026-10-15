@@ -1,5 +1,5 @@
 /**
- * The messages the library UI and its host exchange. Every payload is plain JSON so the same union crosses a
+ * Declares the messages the library UI and its host exchange. Every payload is plain JSON so the same union crosses a
  * webview postMessage boundary or an in-page loopback unchanged.
  */
 import type { PaperStatus } from "../../model/index.js";

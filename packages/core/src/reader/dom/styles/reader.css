@@ -1,4 +1,4 @@
-/* LabShelf reader chrome on the --ls-* tokens, which tokens.css defines with the reader themes.
+/* Styles the reader chrome on the --ls-* tokens, which tokens.css defines with the reader themes.
    Loaded after pdf.js' pdf_viewer.css so these rules win. */
 
 /* ── Reset & layout ─────────────────────────────────────────── */

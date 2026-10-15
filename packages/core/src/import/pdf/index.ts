@@ -1,4 +1,4 @@
-/** Barrel for the PDF import pipeline: text extraction, front-matter readers, quality checks and the parser. */
+/** Exports the PDF import pipeline's public API: text extraction, front-matter readers, quality checks and the parser. */
 export type {
   ParsedPdfImport,
   TextBlock,

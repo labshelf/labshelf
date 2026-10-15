@@ -1,5 +1,5 @@
 /**
- * Column sorting for the list on the core record order, and the direction a column starts in when first clicked.
+ * Sorts the list by column on the core record order and gives the direction a column starts in when first clicked.
  */
 import { recordComparator, type PaperSortKey } from "../../library/index.js";
 import type { PaperStats } from "../protocol/index.js";

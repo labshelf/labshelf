@@ -1,5 +1,5 @@
 /**
- * Annotations on a paper's PDF with their types and colours.
+ * Declares annotations on a paper's PDF with their types and colours.
  */
 export interface AnnotationPosition {
   x: number;

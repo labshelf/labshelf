@@ -1,6 +1,6 @@
 /**
- * The reader's DOM skeleton: every container the reader UI looks up by id. Both hosts emit exactly this markup inside
- * <body> (VS Code from PdfRenderer, the browser from its static reader/index.html), so the UI sees the same document.
+ * Declares the reader's DOM skeleton: every container the reader UI looks up by id.
+ * Both hosts emit exactly this markup inside <body>, so the UI sees the same document.
  */
 
 /** Markup of <body> before the boot block and scripts. */

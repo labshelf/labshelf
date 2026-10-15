@@ -8,7 +8,6 @@ import type { DeferredHover } from "./deferredHover.js";
 
 /**
  * Subscribes the open reader to the host messages it acts on.
- * @returns void
  */
 export function bindHostMessages(ctx: ReaderContext, ui: ReaderUi, keyboard: Keyboard, hover: DeferredHover): void {
   const { host } = ctx;

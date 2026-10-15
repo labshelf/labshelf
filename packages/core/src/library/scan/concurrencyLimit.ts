@@ -1,4 +1,4 @@
-/** A promise pool, so scanning a large library never has thousands of file operations in flight at once. */
+/** Pools promises, so scanning a large library never has thousands of file operations in flight at once. */
 export type Limiter = <T>(task: () => Promise<T>) => Promise<T>;
 
 /** @returns a function that runs at most `max` of the tasks passed to it at a time */

@@ -1,4 +1,4 @@
-/** Public API of the library domain: collection folders, paper metadata and the on-disk layout. */
+/** Exports the library domain's public API: collection folders, paper metadata and the on-disk layout. */
 export {
   FolderService,
   isUnderDir,

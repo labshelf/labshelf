@@ -1,5 +1,5 @@
 /**
- * Small DOM helpers shared by every DOM surface: element lookup that fails loudly, search-term
+ * Provides the DOM helpers every DOM surface shares: element lookup that fails loudly, search-term
  * highlighting, and a terse element factory. Framework-free on purpose.
  */
 import { escapeHtml } from "../escapeHtml.js";

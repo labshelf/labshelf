@@ -1,4 +1,4 @@
-/** What a text-layer check or OCR job reports about a PDF, before it becomes the verdict stored on the paper. */
+/** Declares what a text-layer check or OCR job reports about a PDF, before it becomes the verdict stored on the paper. */
 
 /** Where the text of a PDF that has some comes from. */
 export type ExistingLayer = "native" | "ocr";

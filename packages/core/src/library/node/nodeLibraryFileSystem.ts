@@ -1,4 +1,4 @@
-/** The LibraryFileSystem port over node:fs, for VS Code and the terminal; the trash comes from the app. */
+/** Implements the LibraryFileSystem port over node:fs, for VS Code and the terminal; the trash comes from the app. */
 import { promises as fs } from "node:fs";
 
 import type { LibraryFileSystem, LocalStat } from "../../ports/index.js";

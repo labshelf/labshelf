@@ -1,6 +1,6 @@
 /**
- * One paper row: twistie and PDF child row, type icon, title with tags, location chip and marks, creator, year,
- * publication, Last read and a status badge that cycles; a right-click opens the paper menu.
+ * Builds one paper row: twistie and PDF child row, type icon, title with tags, location chip and marks, creator,
+ * year, publication, Last read and a status badge that cycles; a right-click opens the paper menu.
  */
 import { PDF_FILE, formatAuthors } from "../../../library/index.js";
 import { STATUS_LABEL, nextStatus } from "../../../model/index.js";

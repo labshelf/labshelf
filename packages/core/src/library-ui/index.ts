@@ -1,4 +1,4 @@
-/** Public API of the runtime-neutral library UI: the host protocol and configuration, the view state, the list derivations and keymap, and the PDF copy. */
+/** Exports the runtime-neutral library UI's public API: host protocol and configuration, view state, list derivations and keymap, PDF copy. */
 export * from "./protocol/index.js";
 export * from "./state/index.js";
 export * from "./derive/index.js";

@@ -1,5 +1,5 @@
 /**
- * The searches the list runs for a click on a tag, an author or a keyword, in the core search language.
+ * Builds the searches the list runs for a click on a tag, an author or a keyword, in the core search language.
  */
 
 const fieldTerms = (field: string, text: string): string =>

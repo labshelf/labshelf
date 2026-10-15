@@ -1,6 +1,6 @@
 /**
- * A paper as a ready-to-paste reference in APA 7, MLA 9 and Chicago author-date, and as an in-text marker, from
- * whatever bibliographic fields the record has. Missing fields are left out rather than guessed.
+ * Formats a paper as a ready-to-paste reference in APA 7, MLA 9 and Chicago author-date, and as an in-text marker,
+ * from whatever bibliographic fields the record has. Missing fields are left out rather than guessed.
  */
 import type { PaperRecord } from "../../model/index.js";
 import { formatAuthors, splitName, type PersonName } from "./authors.js";

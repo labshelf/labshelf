@@ -1,5 +1,5 @@
 /**
- * Annotations tab: the paper's highlights and notes grouped by page, with jump, delete and Markdown export.
+ * Renders the Annotations tab: the paper's highlights and notes grouped by page, with jump, delete and Markdown export.
  */
 import type { Annotation } from "../../../model/index.js";
 import { byPageThenCreated } from "../../sidecar/index.js";
@@ -32,7 +32,6 @@ export class AnnotationsTab implements SidebarPanel {
 
   /**
    * Replaces the displayed annotations and re-renders the list.
-   * @returns void
    */
   setAnnotations(annotations: Annotation[]): void {
     this.annotations = annotations;

@@ -1,5 +1,5 @@
 /**
- * The page-pixel colours each reader theme hands to pdf.js `pageColors`, read from the reader theme tokens.
+ * Supplies the page-pixel colours each reader theme hands to pdf.js `pageColors`, read from the reader theme tokens.
  */
 import { READER_THEMES } from "../ui/index.js";
 import type { EffectiveTheme } from "./protocol.js";

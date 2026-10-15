@@ -1,6 +1,6 @@
 /**
- * The parts of a paper row that say more than the record: the type icon (PDF, no PDF, no text layer, OCR running),
- * tag chips, the annotation and note marks, and the Last read cell.
+ * Renders the parts of a paper row that say more than the record: the type icon (PDF, no PDF, no text layer, OCR
+ * running), tag chips, the annotation and note marks, and the Last read cell.
  */
 import { formatDateTime, relativeTime } from "../../../library/index.js";
 import { escapeHtml, icon } from "../../../ui/index.js";

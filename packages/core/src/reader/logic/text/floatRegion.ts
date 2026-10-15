@@ -1,4 +1,4 @@
-/** Region to preview for a caption or equation label: the caption block plus the float it describes. */
+/** Computes the region to preview for a caption or equation label: the caption block plus the float it describes. */
 import { columnBounds, type CaptionHit } from "./captions.js";
 import type { TextLine } from "./textLines.js";
 

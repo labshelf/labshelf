@@ -1,5 +1,5 @@
 /**
- * Zoom interactions: cursor-anchored ctrl/cmd+wheel and pinch, ladder steps, fit modes, and refit on resize.
+ * Handles zoom interactions: cursor-anchored ctrl/cmd+wheel and pinch, ladder steps, fit modes, and refit on resize.
  */
 import type { ZoomPreset } from "../../index.js";
 import {
@@ -45,25 +45,15 @@ export class ZoomController {
   get scale(): number { return this.ctx.pdfViewer.currentScale; }
   get scaleValue(): string { return this.ctx.pdfViewer.currentScaleValue; }
 
-  /**
-   * @returns void
-   */
   zoomIn(): void { this.setScale(nextZoomStep(this.scale, 1)); }
-  /**
-   * @returns void
-   */
   zoomOut(): void { this.setScale(nextZoomStep(this.scale, -1)); }
 
-  /**
-   * @returns void
-   */
   setPreset(preset: ZoomPreset): void {
     this.ctx.pdfViewer.currentScaleValue = preset;
   }
 
   /**
    * Steps keep the viewport centre fixed, which is what a reader expects from a button or a key.
-   * @returns void
    */
   setScale(scale: number): void {
     const target = clampScale(scale);

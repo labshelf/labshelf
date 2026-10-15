@@ -1,4 +1,4 @@
-// Barrel re-export for all sync/engine public symbols.
+// Exports the sync engine's public API.
 export type {
   ManifestEntry,
   ManifestData,

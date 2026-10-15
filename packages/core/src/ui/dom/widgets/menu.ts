@@ -1,5 +1,5 @@
 /**
- * Context and dropdown menu after VS Code's: at a point or under an anchor, clamped to the viewport, closed by an
+ * Shows context and dropdown menus after VS Code's: at a point or under an anchor, clamped to the viewport, closed by an
  * outside click or Escape, arrow keys to move; one at a time, on document.body or inside a shadow root.
  */
 import { escapeHtml } from "../../escapeHtml.js";

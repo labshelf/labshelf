@@ -1,2 +1,2 @@
-/** Public API of external-change detection helpers. */
+/** Exports the external-change detection helpers' public API. */
 export { isExternalChangeNoise } from "./noiseFilter.js";

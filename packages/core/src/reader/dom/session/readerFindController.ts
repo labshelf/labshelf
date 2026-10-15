@@ -1,5 +1,5 @@
 /**
- * pdf.js' find controller with a scroll step that keeps an already-readable hit in place and parks others below the overlay chrome.
+ * Extends pdf.js' find controller with a scroll step that keeps an already-readable hit in place and parks others below the overlay chrome.
  */
 import type { EventBus, PDFFindController, PDFLinkService } from "pdfjs-dist/web/pdf_viewer.mjs" with { "resolution-mode": "import" };
 import { decideMatchScroll, freshOrigin, type FindOrigin } from "../../logic/index.js";

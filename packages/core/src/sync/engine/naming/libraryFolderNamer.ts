@@ -12,14 +12,12 @@ export interface LibraryFolderNamerDeps {
   titles?: Map<string, string>;
 }
 
-/**
- * Whether a cite key can be used as a folder name on every platform the library syncs to.
- * @returns true when safe
- */
+/** Whether a cite key can be used as a folder name on every platform the library syncs to. */
 export function isSafeFolderName(name: string): boolean {
   return name.length > 0 && name.length <= 255 && name !== "." && name !== ".." && !/[\x00-\x1f\x7f/\\]/.test(name);
 }
 
+// CONTRACT: documents/contracts/sync.md#folder-names
 // TRAP: Drive names papers by title but locally they are named by id; a device that does not know a title yet (or
 // knows an older one) would bring the folder down under its title, giving the paper a second id and orphaning its
 // sidecar. Rules, in order:
@@ -29,10 +27,6 @@ export function isSafeFolderName(name: string): boolean {
 //     equal to the paper id (preferred over the title, which two papers may share).
 //  3. A title this device knows maps to its paper id.
 //  4. Otherwise the display name is kept (collections, foreign folders).
-/**
- * Builds the namer for one sync run.
- * @returns the namer passed to scanRemoteTree
- */
 export function createLibraryFolderNamer(deps: LibraryFolderNamerDeps): RemoteFolderNamer {
   const pathByRemoteId = new Map<string, string>();
   for (const path of deps.manifest.paths("library")) {

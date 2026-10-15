@@ -1,6 +1,6 @@
 /**
- * The detail pane's own state (open tab, citation style, folded sections, what is expanded or filtered) and the
- * bundle of data one paper's views render from.
+ * Holds the detail pane's own state (open tab, citation style, folded sections, what is expanded or filtered) and
+ * the bundle of data one paper's views render from.
  */
 import { PAPERS_DIR } from "../../../library/index.js";
 import type { AnnotationColor, PaperRecord } from "../../../model/index.js";

@@ -1,4 +1,4 @@
-/** Public surface of the reader navigation group. */
+/** Exports the reader navigation group's public API. */
 export { FindBar } from "./findBar.js";
 export { Keyboard } from "./keyboard.js";
 export { NavHistory } from "./navHistory.js";

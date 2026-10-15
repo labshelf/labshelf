@@ -1,5 +1,5 @@
 /**
- * The papers of the open folder as the list sees them: scoped to the folder, decorated with where each one sits,
+ * Lists the open folder's papers as the list sees them: scoped to the folder, decorated with where each one sits,
  * narrowed by the search and the subfolder toggle, and counted per status.
  */
 import { isUnderDir, parentDir, relativeFolder } from "../../library/index.js";

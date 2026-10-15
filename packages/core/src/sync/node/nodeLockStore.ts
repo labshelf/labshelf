@@ -1,4 +1,4 @@
-/** The sync lock's file store over node:fs, shared by every app that syncs a library. */
+/** Stores the sync lock file over node:fs, shared by every app that syncs a library. */
 import { randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
@@ -8,6 +8,7 @@ import type { LockStore } from "../../ports/index.js";
 export class NodeLockStore implements LockStore {
   async createExclusive(filePath: string, text: string): Promise<boolean> {
     await fs.mkdir(path.dirname(filePath), { recursive: true });
+    // CONTRACT: documents/contracts/sync.md#coordination-between-local-apps
     // Written whole to a private temp file, then hard-linked into place: link() fails if the lock exists, and the
     // other app can never read it empty (an O_EXCL create would be visible before its content).
     const tmp = `${filePath}.${randomUUID()}.tmp`;

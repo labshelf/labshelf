@@ -1,4 +1,4 @@
-/** One setting: a label, a description and the control that edits it. */
+/** Builds one setting row: a label, a description and the control that edits it. */
 import { el } from "../dom.js";
 import { contentNodes, type SettingsContent } from "./settingsSection.js";
 

@@ -1,6 +1,5 @@
 /**
- * Public surface of @labshelf/core — shared domain model, platform-abstracting
- * ports, and the cross-runtime event bus.
+ * Exports the public surface of @labshelf/core: every runtime-neutral domain folder.
  */
 export * from "./model/index.js";
 export * from "./ports/index.js";

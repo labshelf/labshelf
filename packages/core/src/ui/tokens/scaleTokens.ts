@@ -1,5 +1,5 @@
 /**
- * The type scale, spacing, radii, elevation and motion shared by every LabShelf UI.
+ * Declares the type scale, spacing, radii, elevation and motion shared by every LabShelf UI.
  */
 import { token, type DesignToken } from "./designToken.js";
 

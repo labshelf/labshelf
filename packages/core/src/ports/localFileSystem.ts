@@ -1,7 +1,6 @@
 /**
- * Local filesystem port used by sync and library scans; the app supplies the adapter.
+ * Declares the local filesystem port used by sync and library scans; the app supplies the adapter.
  */
-/** Stat of a local file. */
 export interface LocalStat {
   isFile: boolean;
   isDirectory: boolean;

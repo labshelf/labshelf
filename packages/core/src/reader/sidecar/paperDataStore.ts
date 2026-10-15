@@ -1,4 +1,4 @@
-/** Load-modify-save store over the per-paper sidecar, serialized per paper. */
+/** Loads, modifies and saves the per-paper sidecar, serializing the work per paper. */
 import type { Annotation, PdfTheme } from "../../model/index.js";
 import type { ILogger, SidecarPort } from "../../ports/index.js";
 import { validateAnnotationColor, validateAnnotationPosition, validatePageNumber } from "./annotationValidation.js";
@@ -149,9 +149,6 @@ export class PaperDataStore {
     return (await this.load(paperId)).theme;
   }
 
-  /**
-   * @returns void
-   */
   async setTheme(paperId: string, theme: PdfTheme): Promise<void> {
     await this.mutate(paperId, (data) => { data.theme = theme; return true; });
   }
@@ -163,9 +160,6 @@ export class PaperDataStore {
     return (await this.load(paperId)).reading ?? null;
   }
 
-  /**
-   * @returns void
-   */
   async setReadingState(paperId: string, reading: ReadingState): Promise<void> {
     await this.mutate(paperId, (data) => { data.reading = reading; return true; });
   }

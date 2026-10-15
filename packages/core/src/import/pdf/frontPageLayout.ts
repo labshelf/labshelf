@@ -1,4 +1,4 @@
-/** Layout heuristics that infer the title and authors from font-grouped text blocks of page 1. */
+/** Infers the title and authors from the font-grouped text blocks of page 1. */
 import { normalizeAuthors } from "./authors.js";
 import type { TextBlock } from "./types.js";
 

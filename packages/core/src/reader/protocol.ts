@@ -1,5 +1,5 @@
 /**
- * Typed message protocol and boot parameters shared by the reader's extension-host side and its bundled webview.
+ * Declares the typed messages and boot parameters shared by the reader's extension-host side and its bundled webview.
  * DOM-free and vscode-free so both TypeScript programs (and jest) can compile it.
  */
 import type { Annotation, AnnotationColor, PdfTheme } from "../model/index.js";

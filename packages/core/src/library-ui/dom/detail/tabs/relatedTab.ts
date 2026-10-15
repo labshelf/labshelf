@@ -1,5 +1,5 @@
 /**
- * The Related tab: papers with similar content (when the host finds them), the same authors, shared tags and
+ * Renders the Related tab: papers with similar content (when the host finds them), the same authors, shared tags and
  * keywords, and the same venue. A click selects the paper where it lives; a double-click opens it.
  */
 import { formatAuthors } from "../../../../library/index.js";

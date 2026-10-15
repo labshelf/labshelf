@@ -1,4 +1,5 @@
-// Barrel for the scan → diff → apply → orchestrate sync run pipeline.
+// Exports the sync run pipeline's public API.
+// The pipeline scans, diffs and applies, orchestrated by SyncEngine.
 export { scanLocalTree, scanRemoteTree } from "./treeScan.js";
 export type { RemoteFolderNamer, FolderNaming } from "./treeScan.js";
 export { diffNamespace } from "./syncDiff.js";

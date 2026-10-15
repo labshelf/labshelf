@@ -1,4 +1,4 @@
-/** The structured form of a search query, and the test for a query without conditions. */
+/** Declares the structured form of a search query and tests for a query without conditions. */
 import type { PaperStatus } from "../../model/index.js";
 
 /** Document fields an operator such as `author:` or `kw:` restricts a substring match to. */

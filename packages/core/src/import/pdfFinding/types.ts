@@ -1,4 +1,4 @@
-/** Shapes of the PDF finder: what a resolver knows, what it proposes, and the ports a host supplies for downloading. */
+/** Declares the PDF finder's shapes: what a resolver knows, what it proposes, and the ports a host supplies for downloading. */
 import type { ILogger } from "../../ports/index.js";
 import type { PdfCandidate } from "../landing/index.js";
 

@@ -1,4 +1,4 @@
-/** Section-heading patterns that bound the abstract and keyword runs in front matter. */
+/** Declares the section-heading patterns that bound the abstract and keyword runs in front matter. */
 
 // Headings that end the abstract. Matched case-sensitively — "since the
 // introduction of the method" is prose, not a new section — and allowing the

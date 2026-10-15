@@ -1,4 +1,4 @@
-/** Types of the sync coordinator: what an app injects into it and what it reports back. */
+/** Declares the sync coordinator's types: what an app injects into it and what it reports back. */
 import type { ILogger, LocalFileSystem, LockStore } from "../../ports/index.js";
 import type { RemoteProvider } from "../provider/index.js";
 import type { NamespaceRoots, SyncLockInfo, SyncResult, SyncRunRecord } from "../engine/index.js";

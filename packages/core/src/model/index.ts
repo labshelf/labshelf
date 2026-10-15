@@ -1,5 +1,5 @@
 /**
- * Shared domain model: paper records, statuses, text layers, annotations, themes, log entries.
+ * Exports the shared domain model: paper records, statuses, text layers, annotations, themes, log entries.
  */
 export type { PaperRecord } from "./paperRecord.js";
 export { PAPER_STATUSES, STATUS_LABEL, isPaperStatus, nextStatus } from "./paperStatus.js";

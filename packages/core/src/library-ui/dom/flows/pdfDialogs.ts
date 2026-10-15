@@ -1,6 +1,6 @@
 /**
- * The dialogs around a missing PDF: opening a paper that has none, and a search that came back empty. Both offer to
- * attach a file or to search (again).
+ * Opens the dialogs around a missing PDF: opening a paper that has none, and a search that came back empty. Both
+ * offer to attach a file or to search (again).
  */
 import { showDialog } from "../../../ui/dom/index.js";
 import { findMissMessage } from "../../pdfCopy.js";

@@ -1,6 +1,6 @@
 /**
- * The library UI's state: the library from the last snapshot, what the host sent about single papers, the open
- * folder, the list controls and the selection.
+ * Declares the library UI's state: the library from the last snapshot, what the host sent about single papers,
+ * the open folder, the list controls and the selection.
  */
 import { PAPERS_DIR, type FolderTreeNode } from "../../library/index.js";
 import type { PaperRecord, PaperStatus } from "../../model/index.js";

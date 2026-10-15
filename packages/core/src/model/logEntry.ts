@@ -1,5 +1,5 @@
 /**
- * Structured log record shape consumed by file and database log sinks.
+ * Declares the structured log record shape consumed by file and database log sinks.
  */
 export interface LogEntry {
   timestamp: string;

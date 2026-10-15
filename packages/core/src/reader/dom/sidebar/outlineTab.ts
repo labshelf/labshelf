@@ -1,5 +1,5 @@
 /**
- * Outline tab: the PDF's table of contents as a collapsible tree whose active entry follows the current page.
+ * Renders the Outline tab: the PDF's table of contents as a collapsible tree whose active entry follows the current page.
  */
 import { activeOutlineIndex, flattenOutline, visibleRows, type OutlineRow, type RawOutlineNode } from "../../logic/index.js";
 import type { ReaderContext } from "../session/index.js";
@@ -23,16 +23,12 @@ export class OutlineTab implements SidebarPanel {
 
   /**
    * Loads the outline on first show and re-highlights the active entry on later shows.
-   * @returns void
    */
   onShow(): void {
     this.visible = true;
     if (!this.loaded) { void this.load(); } else { this.highlightActive(); }
   }
 
-  /**
-   * @returns void
-   */
   onHide(): void { this.visible = false; }
 
   private async load(): Promise<void> {

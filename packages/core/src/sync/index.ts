@@ -1,4 +1,4 @@
-/** Public surface of the sync layer: engine, provider port, Drive provider, helpers and the coordinator. */
+/** Exports the sync layer's public API: engine, provider port, Drive provider, helpers and the coordinator. */
 export * from "./provider/index.js";
 export * from "./engine/index.js";
 export * from "./drive/index.js";

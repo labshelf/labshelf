@@ -1,5 +1,5 @@
 /**
- * Shows a paper wherever it lives: in the open folder it clears the filters that hide it, elsewhere it opens the
+ * Reveals a paper wherever it lives: in the open folder it clears the filters that hide it, elsewhere it opens the
  * paper's folder first; then it selects the paper and scrolls it into view.
  */
 import { PAPERS_DIR, isUnderDir, parentDir } from "../../../library/index.js";

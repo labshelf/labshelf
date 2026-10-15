@@ -24,7 +24,6 @@ export class HostBridge {
 
   /**
    * Sends a message to the host.
-   * @returns void
    */
   post(msg: WebviewToHost): void {
     this.transport.post(msg);
@@ -32,7 +31,6 @@ export class HostBridge {
 
   /**
    * Registers a handler invoked whenever the host sends a message of the given type.
-   * @returns void
    */
   on<T extends HostToWebview["type"]>(type: T, handler: Handler<T>): void {
     const list = this.handlers.get(type) ?? [];

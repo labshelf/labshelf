@@ -1,4 +1,4 @@
-/** The folded, per-field text of a paper that queries match against. */
+/** Builds the folded, per-field text of a paper that queries match against. */
 import type { PaperRecord } from "../../model/index.js";
 import { fold } from "./text/index.js";
 import type { SearchField } from "./query.js";

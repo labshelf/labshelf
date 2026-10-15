@@ -1,4 +1,4 @@
-/** Barrel for the registries that describe articles and preprints. */
+/** Exports the clients of the registries that describe articles and preprints. */
 export { crossRefByDoi, crossRefSearch } from "./crossref.js";
 export { arxivById } from "./arxiv.js";
 export { pubMedByPmid, pmidFromPmcid } from "./pubmed.js";

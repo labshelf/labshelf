@@ -1,5 +1,5 @@
 /**
- * Runtime polyfills for the reader: what pdf.js 6 needs inside the VS Code webview's Chromium, and the caret API the
+ * Polyfills for the reader runtime: what pdf.js 6 needs inside the VS Code webview's Chromium, and the caret API the
  * hover previews use, which Firefox (before 150) only offers in its standard form.
  */
 
@@ -15,7 +15,6 @@ interface CaretDocument {
 
 /**
  * Must run before pdf.js is imported.
- * @returns void
  */
 export function installPolyfills(): void {
   const proto = Map.prototype as UpsertMap<unknown, unknown>;

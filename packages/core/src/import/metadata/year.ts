@@ -1,4 +1,4 @@
-/** Four-digit year extraction from date strings. */
+/** Extracts a four-digit year from a date string. */
 
 /**
  * Extracts a four-digit year (1900–2099) from a raw date string such as a PDF creation date.

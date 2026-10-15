@@ -86,7 +86,6 @@ export class BibTeXService {
 
   /**
    * Writes metadata.yaml and bib.bib into the paper folder.
-   * @returns void
    */
   async writePaperArtifacts(paperFolder: string, paper: PaperRecord, sourceFileName: string): Promise<void> {
     const { metadata: metadataPath, bib: bibPath } = paperFiles(paperFolder, posixJoin);

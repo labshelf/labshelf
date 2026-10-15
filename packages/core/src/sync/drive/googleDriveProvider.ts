@@ -16,7 +16,6 @@ const FOLDER_MIME = "application/vnd.google-apps.folder";
 const LIST_FIELDS = "files(id,name,mimeType,modifiedTime,size)";
 const APPDATA_ROOT_ID = "appDataFolder";
 
-// Converts a raw DriveFile response to the provider-agnostic RemoteFile shape.
 function toRemoteFile(f: DriveFile): RemoteFile {
   const file: RemoteFile = {
     id: f.id,
@@ -35,7 +34,7 @@ export class GoogleDriveProvider implements RemoteProvider {
   readonly id = SYNC_PROVIDER_ID;
   readonly displayName = "Google Drive";
 
-  // Folders that live in the hidden appDataFolder space. Drive only returns their children when the
+  // PLATFORM: folders live in the hidden appDataFolder space. Drive only returns their children when the
   // query names that space, so every folder discovered or created under the appdata root is recorded here.
   private readonly appdataFolderIds = new Set<string>([APPDATA_ROOT_ID]);
 
@@ -63,7 +62,6 @@ export class GoogleDriveProvider implements RemoteProvider {
     return this.resolveLibraryRoot();
   }
 
-  // Finds or creates the top-level "LabShelf Library" folder in Drive.
   private async resolveLibraryRoot(): Promise<RemoteFile> {
     const result = await this.client.listFiles({
       q: "name='LabShelf Library' and mimeType='application/vnd.google-apps.folder' and trashed=false",
@@ -77,17 +75,14 @@ export class GoogleDriveProvider implements RemoteProvider {
     return toRemoteFile(created);
   }
 
-  // Returns the synthetic RemoteFile for the Drive appDataFolder namespace.
   private async resolveAppdataRoot(): Promise<RemoteFile> {
-    // appDataFolder is a Drive special alias — list to confirm access is granted.
-    const result = await this.client.listFiles({
+    // PLATFORM: appDataFolder is a Drive special alias; listing it confirms access is granted.
+    await this.client.listFiles({
       q: "trashed=false",
       spaces: "appDataFolder",
       fields: LIST_FIELDS,
     });
-    // The appDataFolder itself is virtual; return a synthetic RemoteFile for it.
-    // Any child creation uses parents: ['appDataFolder'].
-    void result; // we only need to confirm access
+    // The appDataFolder itself is virtual, so the root is synthetic; children are created with parents: ['appDataFolder'].
     return {
       id: APPDATA_ROOT_ID,
       name: APPDATA_ROOT_ID,
@@ -98,9 +93,9 @@ export class GoogleDriveProvider implements RemoteProvider {
 
   /**
    * Lists the direct children of a folder in the Drive space that holds it.
-   * The parent clause is required for the appdata root too: a bare "trashed=false" query over the
-   * appDataFolder space returns files at every depth, which flattened "<paperId>/data.json" into
-   * "data.json" and made the diff delete the per-paper sidecars locally.
+   * TRAP: the parent clause is required for the appdata root too: a bare "trashed=false" query over the
+   * appDataFolder space returns files at every depth, which flattens "<paperId>/data.json" into
+   * "data.json" and makes the diff delete the per-paper sidecars locally.
    * @returns the folder's direct children, every page concatenated.
    */
   async list(folderId: string): Promise<RemoteFile[]> {

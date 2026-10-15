@@ -1,5 +1,5 @@
 /**
- * What LabShelf says about a paper's PDF on every surface: resolver labels and the "No PDF found" texts.
+ * Defines the wording of a paper's PDF status on every surface: resolver labels and the "No PDF found" texts.
  */
 import type { PdfMiss } from "./protocol/index.js";
 

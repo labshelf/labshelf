@@ -1,6 +1,6 @@
 /**
- * Structured AI-extracted metadata for a paper. Persisted by the consumer
- * (VSCode: paper_metadata_ai table) and produced by heuristics in this package.
+ * Declares the structured AI-extracted metadata of a paper, produced by heuristics in this package.
+ * The consumer persists it (VS Code: paper_metadata_ai table).
  */
 
 export interface CodeRepoRef {

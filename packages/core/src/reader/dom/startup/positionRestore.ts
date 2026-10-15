@@ -32,7 +32,6 @@ export class PositionRestore {
 
   /**
    * Connects the restore to the open document; an init that arrives from here on is applied at once.
-   * @returns void
    */
   attach(target: RestoreTarget): void {
     const markMoved = (): void => { this.readerMoved = true; };

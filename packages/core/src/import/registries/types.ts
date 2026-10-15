@@ -1,4 +1,4 @@
-/** The record shape every registry client returns. */
+/** Declares the record shape every registry client returns. */
 import type { ResolvedMetadata } from "../metadata/index.js";
 
 /** A registry record plus the kind of work it describes. */

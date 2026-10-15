@@ -1,4 +1,4 @@
-/** Form controls for settings: checkbox, number, text and select over the shared input styles. */
+/** Builds the form controls for settings: checkbox, number, text and select over the shared input styles. */
 import { el } from "../dom.js";
 
 /** `element` goes into the page; `control` is what code reads and writes. */

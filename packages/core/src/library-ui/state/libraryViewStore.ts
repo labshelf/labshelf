@@ -1,5 +1,5 @@
 /**
- * Reactive store behind the library UI. Views subscribe to slices with {@link LibraryViewStore.select} and repaint
+ * Holds the reactive store behind the library UI. Views subscribe to slices with {@link LibraryViewStore.select} and repaint
  * only when their slice changes; the host's snapshots go through {@link LibraryViewStore.applySnapshot}.
  */
 import { editedTags } from "../../library/index.js";

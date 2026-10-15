@@ -1,5 +1,5 @@
 /**
- * The per-reader state and helpers the message handlers share, and the shape of the handler table.
+ * Declares the per-reader state and helpers the message handlers share, and the shape of the handler table.
  */
 import type { Annotation, PdfTheme } from "../../model/index.js";
 import type { EffectiveTheme, WebviewToHost } from "../protocol.js";

@@ -1,4 +1,4 @@
-/** Small string and payload-shape helpers the registry mappers share. */
+/** Cleans strings and reads payload shapes for the registry mappers. */
 
 export function firstNonEmpty(values: string[] | undefined): string | undefined {
   return values?.map((value) => value.trim()).find((value) => value.length > 0);

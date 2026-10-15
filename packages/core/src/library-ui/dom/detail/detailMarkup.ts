@@ -1,6 +1,6 @@
 /**
- * Markup pieces every part of the detail pane uses: collapsible sections drawn like a native pane header, label and
- * value rows, icon buttons, copy buttons, muted notes, a loading line and the status segment.
+ * Builds the markup pieces every part of the detail pane uses: collapsible sections drawn like a native pane header,
+ * label and value rows, icon buttons, copy buttons, muted notes, a loading line and the status segment.
  */
 import { PAPER_STATUSES, STATUS_LABEL, type PaperStatus } from "../../../model/index.js";
 import { escapeHtml, icon, type IconName } from "../../../ui/index.js";

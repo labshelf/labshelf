@@ -1,6 +1,6 @@
 /**
- * The detail pane: the selected paper (head, tabs) or a multi-selection, rebuilt from the store on every change.
- * Scroll, focus and caret survive a rebuild, and nothing is rebuilt under a note being typed or a button being pressed.
+ * Renders the detail pane for the selected paper (head, tabs) or a multi-selection, rebuilt from the store on every
+ * change. Scroll, focus and caret survive a rebuild, and nothing is rebuilt under a note being typed or a button being pressed.
  */
 import { escapeHtml, icon } from "../../../ui/index.js";
 import type { UiContext } from "../uiContext.js";

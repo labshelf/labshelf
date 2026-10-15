@@ -1,5 +1,5 @@
 /**
- * Reader page themes and their runtime list.
+ * Declares the reader page themes and their runtime list.
  */
 export const PDF_THEMES = ["auto", "light", "dark", "sepia", "high-contrast"] as const;
 export type PdfTheme = (typeof PDF_THEMES)[number];

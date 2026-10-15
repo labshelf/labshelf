@@ -1,4 +1,4 @@
-/** The shapes a landing page passes through: raw evidence from the page, then the facts read from it. */
+/** Declares the shapes a landing page passes through: raw evidence from the page, then the facts read from it. */
 import type { DetectedIds } from "../identifiers/index.js";
 import type { ResolvedMetadata } from "../metadata/index.js";
 

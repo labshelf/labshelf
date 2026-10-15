@@ -1,4 +1,4 @@
-/** What a network import needs from its app: the mutation ports, the app's index and the network it downloads through. */
+/** Declares what a network import needs from its app: the mutation ports, the app's index and the network it downloads through. */
 import type { DetectedIdentifier } from "../identifiers/index.js";
 import type { ImportDeps, MutationContext } from "../../library/index.js";
 import type { PaperRecord } from "../../model/index.js";

@@ -36,7 +36,6 @@ export class DestPreview {
 
   /**
    * Cancels any in-flight page render.
-   * @returns void
    */
   cancel(): void {
     this.task?.cancel();

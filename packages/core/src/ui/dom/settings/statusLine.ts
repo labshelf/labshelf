@@ -1,4 +1,4 @@
-/** A status line: a coloured dot, a text and, after it, an error message in the error colour. */
+/** Builds a status line: a coloured dot, a text and, after it, an error message in the error colour. */
 import { el } from "../dom.js";
 
 export type StatusTone = "ok" | "error" | "idle";

@@ -26,7 +26,6 @@ export class ReadingStateReporter {
 
   /**
    * Reporting starts only after restore, so the initial page-1 layout never overwrites the stored position.
-   * @returns void
    */
   start(): void {
     this.enabled = true;

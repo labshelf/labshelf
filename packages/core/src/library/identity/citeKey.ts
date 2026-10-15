@@ -1,4 +1,4 @@
-/** Cite keys: "authorYearWord" generation and collision-free claiming (the key is the paper id and folder name). */
+/** Generates "authorYearWord" cite keys and claims them without collisions (the key is the paper id and folder name). */
 
 // Title words that make a poor cite-key suffix.
 const STOPWORDS = new Set(["a", "an", "the", "on", "of", "in", "for", "and", "to", "with", "from", "by", "at", "is", "are"]);

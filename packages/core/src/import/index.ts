@@ -1,4 +1,4 @@
-/** Barrel for importing papers: identifier detection, metadata sources, the PDF pipeline, landing pages, PDF finding, network imports and the BibTeX generator. */
+/** Exports the paper import's public API: identifier detection, metadata sources, the PDF pipeline, landing pages, PDF finding, network imports and BibTeX. */
 export * from "./identifiers/index.js";
 export type { ResolvedMetadata, MetadataConfidence, MetadataSource, MergedMetadata } from "./metadata/index.js";
 export { mergeMetadata, completeness, tidyCitationFields, SOURCE_TRUST, extractYear, asString } from "./metadata/index.js";

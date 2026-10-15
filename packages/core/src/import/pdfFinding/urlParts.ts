@@ -1,4 +1,4 @@
-/** The origin and hostname of an absolute http(s) URL, read without the URL class so the module stays runtime-neutral. */
+/** Reads the origin and hostname of an absolute http(s) URL without the URL class, so the module stays runtime-neutral. */
 
 const ORIGIN = /^(https?:\/\/[^/?#]+)/i;
 

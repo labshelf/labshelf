@@ -1,5 +1,5 @@
 /**
- * SVG bodies of every LabShelf icon, keyed by name. Stroke bodies are drawn on a 24x24 grid, codicon bodies on a 16x16 grid.
+ * Declares the SVG bodies of every LabShelf icon, keyed by name. Stroke bodies are drawn on a 24x24 grid, codicon bodies on a 16x16 grid.
  */
 
 const FOLDER = '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>';

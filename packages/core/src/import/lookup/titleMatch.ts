@@ -1,4 +1,4 @@
-/** Title comparison used to accept or reject a registry hit against what the PDF itself says. */
+/** Compares titles to accept or reject a registry hit against what the PDF itself says. */
 
 // A search hit is accepted only when this much of its title also appears in the
 // text we searched with, which keeps a plausible-but-wrong paper out.

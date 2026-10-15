@@ -1,5 +1,5 @@
 /**
- * Adding a paper: the user picks one of the sources the host offers (an open tab in the browser), and when the
+ * Adds a paper: the user picks one of the sources the host offers (an open tab in the browser), and when the
  * capture finds no PDF, decides between searching again and saving the reference alone.
  */
 import { quickPick, showDialog } from "../../../ui/dom/index.js";

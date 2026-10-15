@@ -1,4 +1,4 @@
-/** The bibliographic fields a stored paper record states, in the shape metadata resolution and PDF finding read. */
+/** Reads the bibliographic fields a stored paper record states, in the shape metadata resolution and PDF finding read. */
 import type { PaperRecord } from "../../model/index.js";
 import type { ResolvedMetadata } from "../metadata/index.js";
 

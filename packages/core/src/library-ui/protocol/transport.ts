@@ -1,5 +1,5 @@
 /**
- * The two ends of the library UI channel: the UI posts UiToHost and hears HostToUi, the host the other way round.
+ * Declares the two ends of the library UI channel: the UI posts UiToHost and hears HostToUi, the host the other way round.
  */
 import type { HostToUi, UiToHost } from "./messages.js";
 

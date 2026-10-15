@@ -1,4 +1,4 @@
-/** Process-liveness check the sync lock uses to take over a lock left by a dead process. */
+/** Checks whether a process is alive, so the sync lock can take over a lock left by a dead one. */
 
 /**
  * Whether a process with this pid runs on this machine (EPERM means it exists under another user).

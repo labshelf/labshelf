@@ -1,5 +1,5 @@
 /**
- * Theme picker: the five persisted presets plus session-only custom page colours.
+ * Renders the theme picker: the five persisted presets plus session-only custom page colours.
  */
 import { PDF_THEMES, type PdfTheme } from "../../../model/index.js";
 import { h } from "../elements/index.js";
@@ -17,7 +17,6 @@ const THEME_LABELS: Record<PdfTheme, string> = {
 
 /**
  * A preset is persisted per paper by the host; custom colours apply to this session only.
- * @returns void
  */
 export function openThemePopover(anchor: HTMLElement, theme: ThemeController, host: HostBridge): void {
   const list = h("div", { class: "rd-theme-list", role: "radiogroup", "aria-label": "Page theme" });

@@ -1,4 +1,4 @@
-/** The one message every app shows after an import, worded from its outcomes. */
+/** Words the one message every app shows after an import, from its outcomes. */
 import type { ImportOutcome } from "./paperImport.js";
 
 export interface ImportSummary {

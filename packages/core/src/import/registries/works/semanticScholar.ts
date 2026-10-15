@@ -1,4 +1,4 @@
-/** Semantic Scholar client: title match and DOI lookup. */
+/** Looks up Semantic Scholar records by title match or DOI. */
 import { encodeDoiPathSegment } from "../../identifiers/index.js";
 import { fetchJson } from "../http.js";
 import { stripHtml, trimmed } from "../text.js";

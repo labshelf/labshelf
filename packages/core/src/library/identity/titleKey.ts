@@ -1,4 +1,4 @@
-/** Accent-, case- and punctuation-insensitive form of a title, for matching the same paper across sources. */
+/** Reduces a title to an accent-, case- and punctuation-insensitive key, for matching the same paper across sources. */
 
 export function titleKey(title: string): string {
   return title

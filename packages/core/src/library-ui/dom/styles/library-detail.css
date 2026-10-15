@@ -1,6 +1,6 @@
 /*
- * The detail pane's frame under .ls-library: the placeholder, the head (title, authors, venue line, toolbar, status
- * segment, tag row, text-layer banner), the sticky tab bar and the collapsible sections drawn like native pane headers.
+ * Styles the detail pane's frame under .ls-library: the placeholder, the head (title, authors, venue line, toolbar,
+ * status segment, tag row, text-layer banner), the sticky tab bar and the collapsible sections like native pane headers.
  */
 .ls-library .detail-placeholder {
   display: flex; flex-direction: column; align-items: center; gap: var(--ls-space-5);

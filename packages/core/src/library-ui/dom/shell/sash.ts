@@ -1,6 +1,6 @@
 /**
- * The drag handles beside the side panes: dragging resizes a pane, dragging below its threshold collapses it, and a
- * double-click restores a collapsed one (and, when the pane has a default width, returns to it).
+ * Drags the handles beside the side panes: dragging resizes a pane, dragging below its threshold collapses it, and
+ * a double-click restores a collapsed one (and, when the pane has a default width, returns to it).
  */
 export interface SashOptions {
   root: HTMLElement;

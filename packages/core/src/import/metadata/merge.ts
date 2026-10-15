@@ -6,7 +6,7 @@ import type { ResolvedMetadata } from "./types.js";
 
 /**
  * How much a source is trusted, relative to the others. Higher wins a field.
- * The scale is deliberately sparse so new sources can slot between these.
+ * The scale is deliberately sparse so further sources can slot between these.
  */
 export const SOURCE_TRUST = {
   /** A registry record reached through an identifier printed in the PDF. */
@@ -17,7 +17,7 @@ export const SOURCE_TRUST = {
   search: 70,
   /** The PDF's own XMP packet. */
   xmp: 60,
-  /** Publisher-specific keys in the legacy Info dictionary. */
+  /** Publisher-specific keys in the Info dictionary. */
   publisherInfo: 50,
   /** Text read off the page: abstract, keywords, running head. */
   pdfText: 30,

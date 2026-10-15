@@ -1,4 +1,4 @@
-/** DBLP client: publication search for computer-science work. */
+/** Searches DBLP for computer-science publications. */
 import { extractYear } from "../../metadata/index.js";
 import { fetchJson } from "../http.js";
 import { asArray, firstNonEmpty, trimmed } from "../text.js";

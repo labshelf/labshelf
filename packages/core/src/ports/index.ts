@@ -1,5 +1,5 @@
 /**
- * Platform-abstracting ports that apps implement and inject.
+ * Exports the platform-abstracting ports that apps implement and inject.
  */
 export type { IFileSystem } from "./fileSystem.js";
 export type { ILogger } from "./logger.js";

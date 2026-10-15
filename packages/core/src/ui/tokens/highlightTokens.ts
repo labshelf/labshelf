@@ -1,5 +1,5 @@
 /**
- * The one highlight palette, keyed by the annotation colour names stored in `data.json`.
+ * Declares the one highlight palette, keyed by the annotation colour names stored in `data.json`.
  */
 import type { AnnotationColor } from "../../model/index.js";
 

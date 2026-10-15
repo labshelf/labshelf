@@ -1,4 +1,4 @@
-/** The one-line publication summary of a paper: venue, year, volume(issue), pages. */
+/** Builds the one-line publication summary of a paper: venue, year, volume(issue), pages. */
 import type { PaperRecord } from "../../model/index.js";
 
 type VenueFields = Pick<PaperRecord, "journal" | "publisher" | "year" | "volume" | "issue" | "pages">;

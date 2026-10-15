@@ -1,11 +1,10 @@
-// Enumerate the local and remote file trees of a namespace into path-keyed maps consumed by the diff.
+// Enumerates the local and remote file trees of a namespace into path-keyed maps consumed by the diff.
 import type { ILogger, LocalFileSystem } from "../../../ports/index.js";
 import type { TreeNode } from "../syncTypes.js";
 import type { RemoteFile, RemoteProvider } from "../../provider/index.js";
 import type { RemotePathResolver } from "../../provider/index.js";
 import { sha256Hex } from "../../util/index.js";
 
-// Joins a relative directory prefix and a child name into a POSIX path.
 function joinPath(prefix: string, name: string): string {
   return prefix ? `${prefix}/${name}` : name;
 }
@@ -13,7 +12,6 @@ function joinPath(prefix: string, name: string): string {
 /**
  * Recursively scans a local directory tree, hashing every file for comparison against the manifest base. A folder
  * that cannot be read is left out of this sync, with a warning, rather than failing the whole sync.
- * @returns Map<string, TreeNode>
  */
 export async function scanLocalTree(
   fs: LocalFileSystem,
@@ -77,7 +75,6 @@ const RANK_DISPLAY = 4;
  * Recursively scans a remote folder tree, registering discovered folders on the
  * resolver; folderNameMap translates remote display names to local names, and
  * nameFolder (when given) decides first, from the folder's contents.
- * @returns Map<string, TreeNode>
  */
 export async function scanRemoteTree(
   provider: RemoteProvider,
@@ -126,6 +123,7 @@ async function rankedFolderNames(
   return ranked.sort((a, b) => a.naming.rank - b.naming.rank);
 }
 
+// CONTRACT: documents/contracts/sync.md#folder-names
 // Two remote folders must never share a local name — their files would be merged and one paper would overwrite the
 // other — so a later claimant falls back to its display name, then to the display name plus part of its id.
 function claimLocalName(naming: FolderNaming, folder: RemoteFile, taken: Set<string>): string {

@@ -1,4 +1,4 @@
-/** Collections as a tree of "/"-separated paths, derived from the file paths of a store that has no directory listing. */
+/** Derives collections as a tree of "/"-separated paths from the file paths of a store that has no directory listing. */
 import { METADATA_FILE, PAPERS_DIR, PDF_FILE } from "../layout.js";
 import { countPapersUnder } from "./folderNavigation.js";
 import { isUnderDir } from "../folderService.js";

@@ -1,8 +1,8 @@
-/** Validation of annotation fields (page number, color, normalized position) before they are stored. */
+/** Validates annotation fields (page number, color, normalized position) before they are stored. */
 import { ANNOTATION_COLORS, type AnnotationColor, type AnnotationPosition } from "../../model/index.js";
 
 /**
- * @returns void; throws when the page number is not a positive integer.
+ * Throws when the page number is not a positive integer.
  */
 export function validatePageNumber(pageNumber: number): void {
   if (!Number.isInteger(pageNumber) || pageNumber < 1) {

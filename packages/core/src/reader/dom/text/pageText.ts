@@ -1,5 +1,5 @@
 /**
- * Lazy, cached text extraction per page: reading-order lines plus the column split. Shared by the citation and float
+ * Extracts page text lazily and caches it per page: reading-order lines plus the column split. Shared by the citation and float
  * resolvers so a page is extracted and analysed once.
  */
 import { detectColumns, groupItemsIntoLines, readableItems, runOrientation, type TextItemBox, type TextLine } from "../../logic/index.js";

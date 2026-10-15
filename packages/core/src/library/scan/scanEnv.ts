@@ -1,4 +1,4 @@
-/** What a scan runs over: the file-system port, path style, logger and the cap on parallel file operations. */
+/** Declares what a scan runs over: the file-system port, path style, logger and the cap on parallel file operations. */
 import type { ILogger, LibraryFileSystem } from "../../ports/index.js";
 import type { PathOps } from "../mutations/index.js";
 import { concurrencyLimit, type Limiter } from "./concurrencyLimit.js";

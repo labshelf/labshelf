@@ -1,4 +1,4 @@
-/** The one rule for the name of a collection folder, shared by every app. */
+/** Validates the name of a collection folder by the one rule every app shares. */
 
 export const FOLDER_NAME_MAX_LENGTH = 255;
 

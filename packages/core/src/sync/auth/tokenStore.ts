@@ -1,4 +1,4 @@
-/** The Google token record every app persists, and the port a token store implements. */
+/** Declares the Google token record every app persists, and the port a token store implements. */
 
 export interface TokenData {
   access_token: string;

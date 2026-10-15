@@ -29,7 +29,6 @@ export class FloatResolver {
 
   /**
    * Builds the caption index in the background so the first hover does not pay for it.
-   * @returns void
    */
   warmUp(): void {
     void this.getIndex();

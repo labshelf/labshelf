@@ -1,4 +1,4 @@
-/** arXiv client: preprint lookup by identifier. */
+/** Looks up arXiv preprints by identifier. */
 import { extractYear } from "../../metadata/index.js";
 import { fetchText } from "../http.js";
 import { matchTag, xmlText } from "../text.js";

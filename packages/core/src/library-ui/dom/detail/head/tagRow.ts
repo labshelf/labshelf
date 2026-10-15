@@ -1,6 +1,6 @@
 /**
- * The tag row: chips that search their tag, an x that removes one, and a field that adds (Enter or a comma adds,
- * Backspace on an empty field takes back the last tag); read-only chips when the host cannot write tags.
+ * Renders the tag row: chips that search their tag, an x that removes one, and a field that adds (Enter or a comma
+ * adds, Backspace on an empty field takes back the last tag); read-only chips when the host cannot write tags.
  */
 import { escapeHtml, icon } from "../../../../ui/index.js";
 import { changeTags } from "../../flows/index.js";

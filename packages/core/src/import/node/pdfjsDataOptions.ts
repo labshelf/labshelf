@@ -1,4 +1,4 @@
-/** getDocument options shared by every Node caller: quiet, eval-free, and data files read from disk. */
+/** Builds the getDocument options every Node caller shares: quiet, eval-free, and data files read from disk. */
 import { join, sep } from "node:path";
 
 import { pdfjsPackageRoot } from "./pdfjsPackage.js";

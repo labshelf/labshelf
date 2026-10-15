@@ -1,4 +1,4 @@
-/** PdfDocumentOpener that parses PDFs with pdf.js in the current Node process. */
+/** Opens PDFs by parsing them with pdf.js in the current Node process. */
 import type { PdfDocumentLike, PdfDocumentOpener } from "../pdf/index.js";
 import type { PdfjsLoader } from "./loadPdfjs.js";
 

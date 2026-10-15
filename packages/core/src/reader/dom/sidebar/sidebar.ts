@@ -1,5 +1,5 @@
 /**
- * The reader's single left sidebar: a tab strip (Thumbnails / Outline / Annotations), a drag-resizable width, and open/tab/width state reported for persistence.
+ * Renders the reader's single left sidebar: a tab strip (Thumbnails / Outline / Annotations), a drag-resizable width, and open/tab/width state reported for persistence.
  */
 import { MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, type SidebarState, type SidebarTab } from "../../index.js";
 import { byId, clamp, h } from "../elements/index.js";
@@ -51,7 +51,6 @@ export class Sidebar {
 
   /**
    * Registers a callback invoked whenever the open/tab/width state changes.
-   * @returns void
    */
   onChange(fn: (state: SidebarState) => void): void { this.listeners.push(fn); }
   get state(): SidebarState { return { open: this.open, tab: this.tab, width: this.width }; }
@@ -59,7 +58,6 @@ export class Sidebar {
 
   /**
    * Applies persisted state without echoing it back as a change.
-   * @returns void
    */
   restore(state: SidebarState): void {
     this.tab = state.tab;
@@ -69,13 +67,11 @@ export class Sidebar {
 
   /**
    * Opens the sidebar if closed, closes it if open.
-   * @returns void
    */
   toggle(): void { this.setOpen(!this.open, true); }
 
   /**
    * Switches to the given tab, opening the sidebar first if needed.
-   * @returns void
    */
   select(tab: SidebarTab): void {
     if (this.open && this.tab === tab) { return; }

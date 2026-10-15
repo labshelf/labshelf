@@ -1,5 +1,5 @@
 /**
- * The Annotations tab: highlights and notes by page, each opening the PDF at its page and copyable as a quote, with a
+ * Renders the Annotations tab: highlights and notes by page, each opening the PDF at its page and copyable as a quote, with a
  * filter field past four, colour filters, Copy as Markdown and Export.
  */
 import { relativeTime } from "../../../../library/index.js";

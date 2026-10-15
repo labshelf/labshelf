@@ -1,5 +1,5 @@
 /**
- * Overlay toolbar. It floats above the page (never part of the layout) so showing or hiding it cannot resize the viewer and trigger a re-raster.
+ * Renders the overlay toolbar. It floats above the page (never part of the layout) so showing or hiding it cannot resize the viewer and trigger a re-raster.
  */
 import { initialAutohide, toolbarVisibility, type AutohideEvent, type AutohideState } from "../../logic/index.js";
 import { byId, h, iconButton, isPopoverOpen, onPopoverToggle } from "../elements/index.js";
@@ -63,7 +63,6 @@ export class Toolbar {
 
   /**
    * Enables or disables the back/forward buttons.
-   * @returns void
    */
   setHistoryState(canGoBack: boolean, canGoForward: boolean): void {
     this.backBtn.disabled = !canGoBack;
@@ -72,7 +71,6 @@ export class Toolbar {
 
   /**
    * Reflects the sidebar's open state on the toggle button.
-   * @returns void
    */
   setSidebarOpen(open: boolean): void {
     this.sidebarBtn.setAttribute("aria-pressed", open ? "true" : "false");
@@ -80,7 +78,6 @@ export class Toolbar {
 
   /**
    * Pins the toolbar visible while the find bar is open.
-   * @returns void
    */
   setFindOpen(open: boolean): void {
     this.findOpen = open;
@@ -89,7 +86,6 @@ export class Toolbar {
 
   /**
    * Applies the `labshelf.reader.toolbarAutoHide` setting.
-   * @returns void
    */
   setAutoHide(enabled: boolean): void {
     this.autoHide = enabled;

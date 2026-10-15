@@ -1,4 +1,4 @@
-/** SyncTimers over setTimeout and setInterval, for hosts whose process stays alive between syncs. */
+/** Implements SyncTimers over setTimeout and setInterval, for hosts whose process stays alive between syncs. */
 import type { SyncTimerId, SyncTimers } from "./types.js";
 
 // Every JS runtime has these timers, but the runtime-neutral lib carries no typings for them.

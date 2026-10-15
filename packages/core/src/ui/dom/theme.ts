@@ -1,6 +1,6 @@
 /**
- * Storage-free theme logic for DOM surfaces: resolving "auto" against the OS colour scheme, writing the
- * result to <html data-theme> (where the design tokens read it), and the auto → light → dark cycle.
+ * Resolves "auto" against the OS colour scheme and writes the theme to <html data-theme>, where the design tokens read it.
+ * Holds no storage; it also defines the auto → light → dark cycle.
  */
 
 export type ThemePref = "auto" | "light" | "dark";

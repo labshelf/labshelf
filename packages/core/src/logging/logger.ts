@@ -1,4 +1,4 @@
-/** Logger that fans each entry out to every sink independently and never rejects. */
+/** Fans each log entry out to every sink independently and never rejects. */
 import type { LogEntry } from "../model/index.js";
 import type { ILogger, LogSink } from "../ports/index.js";
 import { createLogEntry, describeError } from "./logEntry.js";

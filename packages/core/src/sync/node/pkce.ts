@@ -1,4 +1,4 @@
-/** Random PKCE verifier, its S256 challenge and the OAuth state for one sign-in. */
+/** Generates a random PKCE verifier, its S256 challenge and the OAuth state for one sign-in. */
 import * as crypto from "node:crypto";
 
 function base64url(buf: Buffer): string {

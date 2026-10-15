@@ -1,4 +1,4 @@
-/** CrossRef's publisher-supplied "link" entries: the ones typed as PDF, or ending in .pdf. */
+/** Proposes CrossRef's publisher-supplied "link" entries that are typed as PDF or end in .pdf. */
 import { lookupJson } from "../timedFetch.js";
 import type { PdfResolver } from "../../types.js";
 

@@ -52,7 +52,6 @@ export class SyncCoordinator {
 
   /**
    * Re-reads the shared last-run record (another app may have synced) and ends "waiting" once that app's lock is gone.
-   * @returns void
    */
   async refreshLastRun(): Promise<void> {
     const lastRun = await this.readLastRun();

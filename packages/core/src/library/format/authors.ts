@@ -1,4 +1,4 @@
-/** Author names: the one family-name rule, a short label ("Silva", "Silva & Costa", "Silva et al.") and a person key. */
+/** Formats author names: the one family-name rule, a short label ("Silva", "Silva & Costa", "Silva et al.") and a person key. */
 
 export interface PersonName {
   given: string;

@@ -1,4 +1,4 @@
-/** The sync engine's LocalFileSystem over node:fs; writes are atomic through the library's temp folder. */
+/** Implements the sync engine's LocalFileSystem over node:fs; writes are atomic through the library's temp folder. */
 import { promises as fs } from "node:fs";
 
 import type { LocalFileSystem, LocalStat } from "../../ports/index.js";

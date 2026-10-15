@@ -1,4 +1,4 @@
-/** Sci-Hub, only for a user who opted in by configuring a mirror. Mirror markup shifts, so any surprise is a soft miss. */
+/** Proposes Sci-Hub copies, only for a user who opted in by configuring a mirror. Mirror markup shifts, so any surprise is a soft miss. */
 import { timedFetch } from "../timedFetch.js";
 import type { PdfResolver } from "../../types.js";
 

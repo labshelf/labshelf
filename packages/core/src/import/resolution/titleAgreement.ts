@@ -1,4 +1,4 @@
-/** Whether a registry's title-search hit contradicts what the page states, and the surname rule that decides it. */
+/** Tells whether a registry's title-search hit contradicts what the page states, by a surname rule. */
 import type { ResolvedMetadata } from "../metadata/index.js";
 import { familyName } from "../../library/index.js";
 

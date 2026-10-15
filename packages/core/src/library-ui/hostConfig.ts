@@ -1,6 +1,6 @@
 /**
- * What a host tells the library UI at mount: the actions it can perform beyond the shared ones, and the few texts that
- * name its own way of adding papers. A capability left out hides every control that would send its message.
+ * Declares what a host tells the library UI at mount: the actions it can perform beyond the shared ones, and the
+ * few texts that name its own way of adding papers. A capability left out hides every control that would send its message.
  */
 export interface LibraryUiCapabilities {
   /** Answers `paper.details` with annotations, the reading position and the file, and sends `sidecarChanged`. */

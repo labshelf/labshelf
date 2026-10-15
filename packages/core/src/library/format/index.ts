@@ -1,4 +1,4 @@
-/** Public API of the paper formatters: authors, citations, venue, link, dates and file size. */
+/** Exports the paper formatters' public API: authors, citations, venue, link, dates and file size. */
 export { authorKey, familyName, formatAuthors, splitName } from "./authors.js";
 export type { PersonName } from "./authors.js";
 export { formatCitations, inTextCitation } from "./citationStyles.js";

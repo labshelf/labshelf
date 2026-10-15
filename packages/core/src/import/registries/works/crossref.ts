@@ -1,4 +1,4 @@
-/** CrossRef client: DOI lookup and fuzzy bibliographic search. */
+/** Looks up CrossRef records by DOI and by fuzzy bibliographic search. */
 import { fetchJson } from "../http.js";
 import { firstNonEmpty, stripHtml, trimmed } from "../text.js";
 import type { RegistryRecord } from "../types.js";

@@ -1,5 +1,5 @@
 /**
- * Public API of the design tokens.
+ * Exports the design tokens' public API.
  */
 export type { DesignToken } from "./designToken.js";
 export { COLOR_TOKENS, STATUS_TOKENS } from "./colorTokens.js";

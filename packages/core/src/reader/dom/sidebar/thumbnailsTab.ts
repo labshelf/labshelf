@@ -1,5 +1,6 @@
 /**
- * Thumbnails tab. pdf.js' own thumbnail viewer is not exported from pdf_viewer.mjs, so this is a small lazy renderer: placeholders for every page, canvases only for the ones on screen.
+ * Renders the Thumbnails tab lazily: placeholders for every page, canvases only for the ones on screen.
+ * PLATFORM: pdf.js' own thumbnail viewer is not exported from pdf_viewer.mjs.
  */
 import type { RenderTask } from "pdfjs-dist";
 import type { ReaderContext } from "../session/index.js";
@@ -43,7 +44,6 @@ export class ThumbnailsTab implements SidebarPanel {
 
   /**
    * Builds the thumbnail list on first show; cancels the pending teardown otherwise.
-   * @returns void
    */
   onShow(): void {
     this.visible = true;
@@ -53,7 +53,6 @@ export class ThumbnailsTab implements SidebarPanel {
 
   /**
    * Cancels in-flight renders and schedules canvas teardown after the tab has been hidden a while.
-   * @returns void
    */
   onHide(): void {
     this.visible = false;

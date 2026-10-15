@@ -1,4 +1,4 @@
-/** Path arithmetic for browsing the folder tree: breadcrumbs, labels and recursive counts. Every function takes the
+/** Computes paths for browsing the folder tree: breadcrumbs, labels and recursive counts. Every function takes the
  * separator, so absolute file paths (VS Code) and "papers/..." store keys (browser) share one implementation. */
 import { isUnderDir } from "../folderService.js";
 

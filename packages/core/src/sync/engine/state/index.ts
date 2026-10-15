@@ -1,4 +1,5 @@
-// Barrel for persisted sync bookkeeping: the manifest, the last-run record, and the cross-process lock.
+// Exports the persisted sync bookkeeping API.
+// It covers the manifest, the last-run record and the cross-process lock.
 export { SyncManifest } from "./syncManifest.js";
 export { summarizeSyncResult, writeSyncRunRecord, readSyncRunRecord } from "./syncRunRecord.js";
 export type { SyncRunRecord } from "./syncRunRecord.js";

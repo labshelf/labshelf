@@ -1,4 +1,4 @@
-/** Google Books client: book lookup by ISBN. */
+/** Looks up Google Books volumes by ISBN. */
 import { extractYear } from "../../metadata/index.js";
 import { fetchJson } from "../http.js";
 import { stripHtml, trimmed } from "../text.js";

@@ -1,5 +1,5 @@
 /**
- * One-level equality for store slices: primitives, arrays and plain objects; Sets compare by reference.
+ * Compares store slices one level deep: primitives, arrays and plain objects; Sets compare by reference.
  */
 export function shallowEqual(a: unknown, b: unknown): boolean {
   if (Object.is(a, b)) return true;

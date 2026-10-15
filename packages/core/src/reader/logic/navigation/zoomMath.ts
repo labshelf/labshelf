@@ -1,5 +1,5 @@
 /**
- * Pure zoom arithmetic for the reader: scale clamping, button steps, wheel/pinch deltas and the cursor-anchored origin pdf.js expects.
+ * Computes the reader's zoom: scale clamping, button steps, wheel/pinch deltas and the cursor-anchored origin pdf.js expects.
  */
 
 // Beyond 8x a HiDPI page canvas costs hundreds of megapixels even with pdf.js' detail canvas.

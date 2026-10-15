@@ -1,6 +1,6 @@
 /**
- * Where a find hit should sit on screen. pdf.js always scrolls the hit to 50px below the container top, which is
- * underneath the reader's overlay toolbar and find bar, and it re-scrolls even when the next hit is already in view.
+ * Computes where a find hit should sit on screen.
+ * PLATFORM: pdf.js scrolls a hit to 50px below the container top, under the overlay toolbar and find bar, even when the next hit is in view.
  */
 
 /** Toolbar + find bar + breathing room, in CSS px. */

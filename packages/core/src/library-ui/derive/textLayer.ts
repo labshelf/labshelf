@@ -1,6 +1,6 @@
 /**
- * What the list says about a PDF's text layer: whether a paper lacks one (search and selection fail in it), and the
- * words for its OCR job and its text-layer state.
+ * Tells whether a paper's PDF lacks a text layer (search and selection fail in it) and words its OCR job and
+ * text-layer state.
  */
 import type { TextLayerInfo } from "../../model/index.js";
 import type { TextLayerJobView } from "../protocol/index.js";

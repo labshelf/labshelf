@@ -1,4 +1,4 @@
-/** The operator keys of the query language and the names each one accepts. */
+/** Declares the operator keys of the query language and the names each one accepts. */
 import type { PaperStatus } from "../../model/index.js";
 import type { HasKey, SearchField } from "./query.js";
 

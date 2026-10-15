@@ -1,5 +1,5 @@
 /**
- * Per-paper reading position persisted in the sidecar, plus the defensive normalizer applied to anything read from disk or received from the webview.
+ * Defines the per-paper reading position persisted in the sidecar and normalizes anything read from disk or received from the webview.
  */
 
 export type SidebarTab = "thumbnails" | "outline" | "annotations";

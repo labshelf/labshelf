@@ -1,4 +1,4 @@
-/** Shared type definitions for the PDF import pipeline: the parsed record and the pdf.js shapes it reads. */
+/** Declares the PDF import pipeline's types: the parsed record and the pdf.js shapes it reads. */
 import type { MetadataConfidence } from "../metadata/index.js";
 
 export interface ParsedPdfImport {
@@ -50,7 +50,7 @@ export interface PdfDocumentLike {
 }
 
 /**
- * The two metadata containers a PDF can carry: the legacy Info dictionary and
+ * The two metadata containers a PDF can carry: the Info dictionary and
  * the XMP packet. Publishers put real bibliographic data (journal, volume,
  * DOI, ISSN) in XMP, so it is a far better source than Info.
  */

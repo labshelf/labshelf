@@ -1,4 +1,4 @@
-/** The one wording of the Google Drive connection state, shared by every app that shows it. */
+/** Words the Google Drive connection state once, for every app that shows it. */
 import { formatDateTime } from "../../library/format/index.js";
 
 export interface DriveStatus {

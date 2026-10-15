@@ -1,5 +1,5 @@
 /**
- * The paper list's keymap as a pure function from a key press to a list action, so every host gets the same keys.
+ * Maps a key press to a list action as a pure function, so every host gets the same keys.
  */
 import type { PaperStatus } from "../model/index.js";
 

@@ -2,7 +2,8 @@
 // A holder refreshes its heartbeat; a lock whose heartbeat stopped (crash, killed process) is taken over.
 import type { LockStore } from "../../../ports/index.js";
 
-// INVARIANT: apps syncing the same library share one manifest, so two simultaneous runs would race on it and on files.
+// CONTRACT: documents/contracts/sync.md#coordination-between-local-apps
+// Apps syncing the same library share one manifest, so two simultaneous runs would race on it and on files.
 
 /** Who is syncing: shown to the other app while it waits. */
 export interface SyncLockOwner {
@@ -130,6 +131,7 @@ export class SyncLock {
    * @returns true when the lock can be taken over
    */
   isAbandoned(holder: SyncLockInfo): boolean {
+    // CONTRACT: documents/contracts/sync.md#coordination-between-local-apps
     // On this host the process table is the truth: a holder that is stopped (Ctrl-Z) or was asleep has a stale
     // heartbeat but is still mid-run, and would resume writing the manifest after a takeover.
     if (holder.host === this.owner.host && this.options.isProcessAlive) {
@@ -174,10 +176,7 @@ export class HeldSyncLock {
     return true;
   }
 
-  /**
-   * Removes the lock file if it is still ours.
-   * @returns void
-   */
+  /** Removes the lock file if it is still ours. */
   async release(): Promise<void> {
     const current = parseSyncLock(await this.store.read(this.path));
     if (current?.token === this.info.token) {

@@ -1,5 +1,5 @@
 /**
- * Handlers that move text out of the reader: clipboard copies, the Markdown export and external links.
+ * Handles the messages that move text out of the reader: clipboard copies, the Markdown export and external links.
  */
 import { formatQuoteWithCitation } from "../citationFormat.js";
 import { isSafeExternalUrl } from "../protocol.js";

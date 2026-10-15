@@ -1,4 +1,4 @@
-/** Shapes shared by every identifier detector: the kinds of identifier and the ids found on a page. */
+/** Declares the shapes every identifier detector shares: the kinds of identifier and the ids found on a page. */
 
 export type IdentifierType = "doi" | "arxiv" | "pmid" | "pmcid" | "isbn";
 

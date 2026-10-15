@@ -1,6 +1,6 @@
 /**
- * The paper actions that need no dialog. Each asks the host; status, tag and note changes and queued OCR also show at
- * once, before the host confirms them.
+ * Runs the paper actions that need no dialog. Each asks the host; status, tag and note changes and queued OCR also
+ * show at once, before the host confirms them.
  */
 import type { PaperStatus } from "../../../model/index.js";
 import { hasNoText, listPapersUnder } from "../../derive/index.js";

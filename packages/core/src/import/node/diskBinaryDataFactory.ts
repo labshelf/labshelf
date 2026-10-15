@@ -1,4 +1,4 @@
-/** pdf.js BinaryDataFactory that reads CMaps, standard fonts and wasm from disk, for hosts pdf.js does not recognise as Node. */
+/** Reads pdf.js CMaps, standard fonts and wasm from disk, for hosts pdf.js does not recognise as Node. */
 import { readFile } from "node:fs/promises";
 
 // Mirrors pdf.js' BaseBinaryDataFactory, which it does not export.

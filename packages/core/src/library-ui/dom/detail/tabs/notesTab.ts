@@ -1,5 +1,5 @@
 /**
- * The Notes tab: the paper's own note, saved as you type, with Insert highlights and Copy note, and the notes made
+ * Renders the Notes tab: the paper's own note, saved as you type, with Insert highlights and Copy note, and the notes made
  * in the PDF below it. Read-only when the host cannot write notes.
  */
 import { escapeHtml, icon } from "../../../../ui/index.js";

@@ -1,5 +1,5 @@
 /**
- * Floating bubble over a text selection: five highlight colours and "copy with citation".
+ * Shows a floating bubble over a text selection: five highlight colours and "copy with citation".
  */
 import { ANNOTATION_COLORS, type AnnotationColor } from "../../../model/index.js";
 import type { ReaderContext } from "../session/index.js";
@@ -63,7 +63,6 @@ export class SelectionBubble {
 
   /**
    * Sends the current selection to the host to be copied with a citation.
-   * @returns void
    */
   copyWithCitation(): void {
     const info = this.currentSelection();
@@ -74,7 +73,6 @@ export class SelectionBubble {
 
   /**
    * Hides the bubble.
-   * @returns void
    */
   hide(): void {
     this.el.classList.remove("rd-visible");

@@ -1,7 +1,8 @@
 // Builds the paperId ↔ Drive folder name maps for the "library" namespace.
 import type { FolderNameMaps } from "../pipeline/index.js";
 
-// INVARIANT: every app syncing the same library must name Drive folders identically, or one reads the other's
+// CONTRACT: documents/contracts/sync.md#folder-names
+// Every app syncing the same library must name Drive folders identically, or one reads the other's
 // folders as new remote papers.
 
 // Drive accepts almost any name, but control characters and path separators would break the local mapping back.

@@ -1,4 +1,4 @@
-/** What changed between two readings of the library, by structural comparison of the records. */
+/** Finds what changed between two readings of the library, by structural comparison of the records. */
 import type { PaperRecord } from "../../model/index.js";
 
 export interface PaperDiff {

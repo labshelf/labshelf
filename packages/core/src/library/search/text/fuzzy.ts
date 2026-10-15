@@ -1,5 +1,5 @@
 /**
- * fzf-style subsequence matching for the jump pickers (collections, papers). Consecutive characters, word starts
+ * Matches fzf-style subsequences for the jump pickers (collections, papers). Consecutive characters, word starts
  * and early matches score higher, so "atn" finds "Attention Is All You Need" before "Data anonymisation".
  */
 import { fold } from "./fold.js";

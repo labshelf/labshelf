@@ -1,4 +1,4 @@
-/** Public API of metadata resolution: merge a page's facts with registry records, match papers against the library and decide whether two records are the same work. */
+/** Exports metadata resolution's public API: merging page facts with registry records, library matching and same-work checks. */
 export { PAGE_TRUST, resolveMetadata, withAbstract } from "./resolveMetadata.js";
 export type { MetadataOrigin } from "./resolveMetadata.js";
 export { surname } from "./titleAgreement.js";

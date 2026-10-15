@@ -1,6 +1,6 @@
 /**
- * The folder path in the list header: one crumb per level from the library root, the count badge after it. Every
- * crumb but the current one opens its folder and accepts dropped papers.
+ * Draws the folder path in the list header: one crumb per level from the library root, then the count badge.
+ * Every crumb but the current one opens its folder and accepts dropped papers.
  */
 import { PAPERS_DIR, breadcrumbFor } from "../../../library/index.js";
 import { el } from "../../../ui/dom/index.js";

@@ -1,5 +1,5 @@
 /**
- * The host side of the reader protocol: validates each reader message and answers it through the host's ports.
+ * Answers the reader's messages on the host side: validates each one and replies through the host's ports.
  */
 import type { Annotation, PdfTheme } from "../../model/index.js";
 import { isWebviewMessage, type EffectiveTheme, type WebviewToHost } from "../protocol.js";
@@ -54,7 +54,6 @@ export class ReaderHostController {
 
   /**
    * Papers whose reader theme is "auto" follow the host's theme.
-   * @returns void
    */
   onAutoThemeChange(effective: EffectiveTheme): void {
     if (this.state.themePreference === "auto") {
@@ -64,7 +63,6 @@ export class ReaderHostController {
 
   /**
    * Pushes the host's current reader preferences to the reader.
-   * @returns void
    */
   onPrefsChange(): void {
     this.ports.post({ type: "prefsChanged", prefs: this.ports.getPrefs() });
@@ -72,7 +70,6 @@ export class ReaderHostController {
 
   /**
    * Jumps to a page now if the document is laid out, or as soon as it is, because the reader drops scrollToPage before that.
-   * @returns void
    */
   requestPage(page: number): void {
     if (!Number.isInteger(page) || page < 1) { return; }

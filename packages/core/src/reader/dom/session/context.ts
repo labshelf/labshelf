@@ -1,5 +1,5 @@
 /**
- * Shared handles every reader UI module works against once the document is open.
+ * Declares the shared handles every reader UI module works against once the document is open.
  */
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import type { EventBus, PDFFindController, PDFLinkService, PDFViewer } from "pdfjs-dist/web/pdf_viewer.mjs" with { "resolution-mode": "import" };

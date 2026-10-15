@@ -1,4 +1,4 @@
-/** A paper as one BibTeX @article entry, for bib.bib files and for copying. */
+/** Formats a paper as one BibTeX @article entry, for bib.bib files and for copying. */
 import { joinWith, paperFiles } from "../../library/index.js";
 import type { PaperRecord } from "../../model/index.js";
 

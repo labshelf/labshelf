@@ -1,5 +1,5 @@
 /**
- * Reading status of a paper: the runtime list, the UI label of each status and the click-to-cycle order.
+ * Declares the reading status of a paper: the runtime list, the UI label of each status and the click-to-cycle order.
  */
 export const PAPER_STATUSES = ["unread", "reading", "done"] as const;
 export type PaperStatus = (typeof PAPER_STATUSES)[number];

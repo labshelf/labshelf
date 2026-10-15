@@ -1,5 +1,5 @@
 /**
- * Reader entry point: boots pdf.js, builds the chrome around it and connects it to a host. The VS Code webview and the
+ * Starts the reader: boots pdf.js, builds the chrome around it and connects it to a host. The VS Code webview and the
  * browser extension page both call startReader with their own boot parameters and transport.
  */
 import type { ReaderBootParams } from "../index.js";

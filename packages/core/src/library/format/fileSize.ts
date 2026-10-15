@@ -1,4 +1,4 @@
-/** A byte count as text: "812 B", "812 KB", "2.4 MB". */
+/** Formats a byte count as text: "812 B", "812 KB", "2.4 MB". */
 
 /** @returns the size text, rounded for display */
 export function formatBytes(bytes: number): string {

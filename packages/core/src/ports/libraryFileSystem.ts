@@ -1,4 +1,4 @@
-/** The file-system port library mutations write through: text and byte access plus folder rename, creation and trash. */
+/** Declares the file-system port library mutations write through: text and byte access plus folder rename, creation and trash. */
 import type { IFileSystem } from "./fileSystem.js";
 import type { LocalFileSystem } from "./localFileSystem.js";
 

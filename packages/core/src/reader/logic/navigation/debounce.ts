@@ -1,5 +1,5 @@
 /**
- * Trailing debouncer with an explicit flush, used for reading-state saves that must not be lost when the panel hides.
+ * Debounces calls on the trailing edge with an explicit flush, used for reading-state saves that must not be lost when the panel hides.
  */
 
 export interface Timers {

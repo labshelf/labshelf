@@ -1,4 +1,4 @@
-/** Sidecar data of one paper: annotations, theme and reading position, with the store over them. */
+/** Exports the paper sidecar's public API: annotations, theme and reading position, with the store over them. */
 export { byPageThenCreated, emptyPaperData, normalizePaperData, serializePaperData, type PaperData } from "./paperData.js";
 export { PaperDataStore, type PaperDataStoreOptions } from "./paperDataStore.js";
 export {

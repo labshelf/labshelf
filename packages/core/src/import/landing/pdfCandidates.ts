@@ -1,4 +1,4 @@
-/** The PDF links a page offers, ranked: the page itself, embedded viewers, citation_pdf_url, alternates, then own anchors. */
+/** Ranks the PDF links a page offers: the page itself, embedded viewers, citation_pdf_url, alternates, then own anchors. */
 import type { DetectedIds } from "../identifiers/index.js";
 import type { PdfCandidate, RawPage } from "./types.js";
 

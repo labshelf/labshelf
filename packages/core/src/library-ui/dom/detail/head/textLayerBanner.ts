@@ -1,6 +1,6 @@
 /**
- * The detail pane's text-layer banner: the call to make a scanned PDF searchable, or the progress of the OCR running
- * on it; for a selection, how many papers lack text or are being read.
+ * Renders the detail pane's text-layer banner: the call to make a scanned PDF searchable, or the progress of the
+ * OCR running on it; for a selection, how many papers lack text or are being read.
  */
 import { escapeHtml, icon } from "../../../../ui/index.js";
 import { hasNoText, jobProgress, jobText } from "../../../derive/index.js";

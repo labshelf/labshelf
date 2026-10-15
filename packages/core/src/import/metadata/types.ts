@@ -1,4 +1,4 @@
-/** The metadata record every source (registry, XMP, PDF text) produces, and how far the parser trusts it. */
+/** Declares the metadata record every source (registry, XMP, PDF text) produces, and how far the parser trusts it. */
 
 export interface ResolvedMetadata {
   title?: string | undefined;

@@ -1,4 +1,4 @@
 /**
- * Public API of the icon set.
+ * Exports the icon set's public API.
  */
 export { icon, type IconName } from "./icon.js";

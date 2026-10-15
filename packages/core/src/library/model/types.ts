@@ -1,4 +1,4 @@
-/** The shapes of the in-memory library: what a scan finds, the snapshot built from it, sorting and filtering. */
+/** Declares the shapes of the in-memory library: what a scan finds, the snapshot built from it, sorting and filtering. */
 import type { PaperRecord } from "../../model/index.js";
 
 export interface PaperEntry {

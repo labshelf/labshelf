@@ -1,14 +1,11 @@
 /**
- * One-at-a-time anchored popover used for the theme picker and the zoom menu.
+ * Shows one anchored popover at a time, used for the theme picker and the zoom menu.
  */
 import { clamp, h } from "./dom.js";
 
 let current: { el: HTMLElement; anchor: HTMLElement; cleanup: () => void } | null = null;
 const openListeners: Array<(open: boolean) => void> = [];
 
-/**
- * @returns void
- */
 export function onPopoverToggle(fn: (open: boolean) => void): void { openListeners.push(fn); }
 /**
  * @returns true while a popover is on screen.
@@ -17,7 +14,6 @@ export function isPopoverOpen(): boolean { return current !== null; }
 
 /**
  * Closes the open popover, if any, and restores its anchor's aria-expanded state.
- * @returns void
  */
 export function closePopover(): void {
   if (!current) { return; }
@@ -31,7 +27,6 @@ export function closePopover(): void {
 
 /**
  * Opens `content` next to `anchor`; clicking the same anchor again closes it.
- * @returns void
  */
 export function togglePopover(anchor: HTMLElement, content: HTMLElement, placement: "below" | "above"): void {
   const wasSameAnchor = current?.anchor === anchor;

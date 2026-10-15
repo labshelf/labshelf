@@ -84,7 +84,7 @@ const VSCODE_HOST_MAP: Partial<Record<MappedToken, string>> = {
 export function renderVscodeHostCss(): string {
   const lines = Object.entries(VSCODE_HOST_MAP).map(([name, value]) => `  --ls-${name}: ${value};`);
   return [
-    "/* Generated from packages/core/src/ui/tokens by `pnpm --filter @labshelf/core tokens`. Do not edit. */",
+    "/* Maps the --ls-* tokens to VS Code theme variables. Generated from packages/core/src/ui/tokens by `pnpm --filter @labshelf/core tokens`. Do not edit. */",
     ":root {",
     ...lines,
     "}",

@@ -13,7 +13,6 @@ export class DeferredHover {
 
   /**
    * Closes the popup if the preview exists yet.
-   * @returns void
    */
   close(): void {
     this.preview?.close();
@@ -21,7 +20,6 @@ export class DeferredHover {
 
   /**
    * Builds the preview once the browser is idle.
-   * @returns void
    */
   createWhenIdle(): void {
     requestIdleCallback(() => {

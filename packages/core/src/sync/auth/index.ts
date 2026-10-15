@@ -1,4 +1,4 @@
-/** Google sign-in building blocks that run in any runtime: endpoints, token records, the OAuth client and token requests. */
+/** Exports the Google sign-in building blocks that run in any runtime: endpoints, token records, the OAuth client and token requests. */
 export {
   DRIVE_API_BASE, DRIVE_UPLOAD_BASE, GOOGLE_AUTH_URL, GOOGLE_DRIVE_SCOPES, GOOGLE_REVOKE_URL, GOOGLE_TOKEN_URL,
 } from "./googleEndpoints.js";

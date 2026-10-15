@@ -1,5 +1,5 @@
 /**
- * Toast stack styles, self-contained so pages that skip base.css (the reader) get the same look.
+ * Styles the toast stack, self-contained so pages that skip base.css (the reader) get the same look.
  * Pages set --ls-toast-bottom to clear their own bottom bar. Requires tokens.css.
  */
 .ls-toasts {

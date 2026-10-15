@@ -1,4 +1,5 @@
-/** Runtime-neutral reader modules: host protocol, host controller, sidecar data store, reading state, preferences, themes and citation formats. The reader UI is exported from `dom/`. */
+/** Exports the reader's runtime-neutral public API: protocol, host controller, sidecar store, preferences, themes and citation formats.
+ * The reader UI is exported from `dom/`. */
 export * from "./protocol.js";
 export * from "./sidecar/index.js";
 export * from "./themePresets.js";

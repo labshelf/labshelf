@@ -1,6 +1,6 @@
 /*
- * The detail tabs' contents under .ls-library: label and value rows, the abstract, keywords and citation box, the
- * annotation cards and filters, the note editor, related papers and the list of a multi-selection.
+ * Styles the detail tabs' contents under .ls-library: label and value rows, abstract, keywords and citation box,
+ * annotation cards and filters, note editor, related papers and the list of a multi-selection.
  */
 .ls-library .kv-grid { display: grid; grid-template-columns: minmax(64px, max-content) minmax(0, 1fr); gap: 5px var(--ls-space-6); align-items: baseline; }
 .ls-library .kv-label { color: var(--ls-desc); font-size: var(--ls-text-sm); white-space: nowrap; }

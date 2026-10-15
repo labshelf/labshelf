@@ -1,4 +1,4 @@
-/** The config file LabShelf apps share on this computer: its shape, parsing, merging and serialization. */
+/** Defines the config file LabShelf apps share on this computer: its shape, parsing, merging and serialization. */
 
 export const SHARED_CONFIG_VERSION = 1;
 

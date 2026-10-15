@@ -1,4 +1,4 @@
-/** The one definition of a LabShelf library on disk: folder and file names, and every well-known path built from them.
+/** Defines the one layout of a LabShelf library on disk: folder and file names, and every well-known path built from them.
  * Runtime-neutral; each app passes its own path type and join function. */
 
 export const PAPERS_DIR = "papers";

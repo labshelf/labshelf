@@ -1,5 +1,5 @@
 /**
- * Barrel re-export for chunking utilities.
+ * Exports the chunking public API.
  */
 export { detectSections } from "./sectionDetector.js";
 export { chunkBySection } from "./sectionChunker.js";

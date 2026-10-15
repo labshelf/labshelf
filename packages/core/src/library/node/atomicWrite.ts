@@ -5,7 +5,6 @@ import * as path from "node:path";
 
 /**
  * Writes a file atomically: temp file in tmpDir (same volume as the library), then rename over the target.
- * @returns void
  */
 export async function writeFileAtomic(target: string, content: string | Uint8Array, tmpDir?: string): Promise<void> {
   await fs.mkdir(path.dirname(target), { recursive: true });

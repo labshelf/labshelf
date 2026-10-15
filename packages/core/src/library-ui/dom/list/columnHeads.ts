@@ -1,5 +1,5 @@
 /**
- * The sortable column heads above the list. A click on the sorted column flips its direction; a click on another
+ * Renders the sortable column heads above the list. A click on the sorted column flips its direction; a click on another
  * column sorts by it in that column's first direction (dates newest first).
  */
 import { icon } from "../../../ui/index.js";

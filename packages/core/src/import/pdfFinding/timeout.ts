@@ -1,4 +1,4 @@
-/** A deadline for one network operation: an abort signal that fires after `ms`, and a way to stop the clock. */
+/** Sets a deadline for one network operation: an abort signal that fires after `ms`, and a way to stop the clock. */
 
 export interface Deadline {
   signal: AbortSignal;

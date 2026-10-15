@@ -1,6 +1,6 @@
 /**
- * The paper list: column heads and one row per paper in scope, kept in step by id so a refresh rebuilds only the rows
- * that changed. Selection changes repaint classes only, so scroll position and focus survive.
+ * Renders the paper list: column heads and one row per paper in scope, kept in step by id so a refresh rebuilds
+ * only the rows that changed. Selection changes repaint classes only, so scroll position and focus survive.
  */
 import { PAPERS_DIR, folderLabel } from "../../../library/index.js";
 import { nextStatus, type PaperRecord } from "../../../model/index.js";

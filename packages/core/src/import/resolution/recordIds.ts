@@ -1,4 +1,4 @@
-/** The identifiers a stored paper record reveals. */
+/** Reads the identifiers a stored paper record reveals. */
 import type { PaperRecord } from "../../model/index.js";
 import { arxivIdFromDoi, arxivIdFromUrl, extractDoi, pmidFromUrl } from "../identifiers/index.js";
 import type { DetectedIds } from "../identifiers/index.js";

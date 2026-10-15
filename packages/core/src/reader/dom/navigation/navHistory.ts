@@ -1,5 +1,5 @@
 /**
- * Back/forward navigation. Installed into PDFLinkService through its duck-typed `setHistory()`, so every internal link, outline click and named destination records the place the reader left.
+ * Records back/forward navigation. Installed into PDFLinkService through its duck-typed `setHistory()`, so every internal link, outline click and named destination records the place the reader left.
  */
 import { HistoryStack, type ViewLocation } from "../../logic/index.js";
 import type { PdfLocation, ReaderContext } from "../session/index.js";
@@ -26,7 +26,6 @@ export class NavHistory {
 
   /**
    * Registers a callback invoked whenever the back/forward availability changes.
-   * @returns void
    */
   onChange(fn: () => void): void { this.listeners.push(fn); }
   get canGoBack(): boolean { return this.stack.canGoBack; }
@@ -34,7 +33,6 @@ export class NavHistory {
 
   /**
    * Call before any programmatic jump that does not go through the link service (go-to-page, thumbnails, annotations, far find hits).
-   * @returns void
    */
   recordDeparture(): void {
     this.visit(this.current());
@@ -42,7 +40,6 @@ export class NavHistory {
 
   /**
    * Records an explicit departure point, for jumps only recognised after they happened.
-   * @returns void
    */
   visit(from: ViewLocation): void {
     this.stack.visit(from);
@@ -51,7 +48,6 @@ export class NavHistory {
 
   /**
    * Jumps to the previous departure point, if any.
-   * @returns void
    */
   back(): void {
     const target = this.stack.back(this.current());
@@ -60,7 +56,6 @@ export class NavHistory {
 
   /**
    * Jumps to the next forward target, if any.
-   * @returns void
    */
   forward(): void {
     const target = this.stack.forward(this.current());
@@ -68,8 +63,8 @@ export class NavHistory {
   }
 
   /**
-   * pdf.js refreshes its location one animation frame after a scroll. Two jumps inside that frame (chained commands,
-   * key repeat) would record the first jump's departure point twice and lose the second; update() recomputes it now.
+   * PLATFORM: pdf.js refreshes its location one animation frame after a scroll. Two jumps inside that frame (chained commands,
+   * key repeat) would record the first jump's departure point twice and lose the second; update() recomputes it on the spot.
    * @returns the reader's current view location.
    */
   current(): ViewLocation {

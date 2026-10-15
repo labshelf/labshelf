@@ -5,7 +5,6 @@ import type { HostBridge } from "../session/index.js";
 
 /**
  * Intercepts http(s) and mailto link clicks inside `viewer` in the capture phase.
- * @returns void
  */
 export function interceptExternalLinks(viewer: HTMLElement, host: HostBridge): void {
   viewer.addEventListener("click", (e) => {

@@ -1,4 +1,4 @@
-/** PathOps for "/"-separated paths, for runtimes without node:path (the browser's relative store keys). */
+/** Implements PathOps for "/"-separated paths, for runtimes without node:path (the browser's relative store keys). */
 import type { PathOps } from "./context.js";
 
 function join(...parts: string[]): string {

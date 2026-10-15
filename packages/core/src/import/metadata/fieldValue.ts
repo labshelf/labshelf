@@ -1,4 +1,4 @@
-/** Coercion of untyped values into clean strings. */
+/** Coerces untyped values into clean strings. */
 
 /**
  * Coerces an unknown value to a non-empty trimmed string, returning undefined for blanks and non-strings.

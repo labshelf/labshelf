@@ -1,4 +1,4 @@
-/** Public API of PDF finding: the resolver chain, the context every app builds for it, and the download rule. */
+/** Exports PDF finding's public API: the resolver chain, the context every app builds for it, and the download rule. */
 export type {
   FetchedPdf, InTabAnswer, PdfAttempt, PdfFetchOptions, PdfResolver, ResolveContext, ResolvedPdf, TabPort,
 } from "./types.js";

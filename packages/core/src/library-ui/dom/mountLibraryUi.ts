@@ -1,6 +1,6 @@
 /**
- * Mounts the library UI once into a host element: the frame, the header, the filter bar, the list and the detail
- * pane, wired to a host through a transport. The host fills the optional sidebar slot with its own folder view.
+ * Mounts the library UI once into a host element (frame, header, filter bar, list, detail pane) wired to a host
+ * through a transport. The host fills the optional sidebar slot with its own folder view.
  */
 import type { LibraryUiCapabilities, LibraryUiLabels } from "../hostConfig.js";
 import type { LibraryTransport } from "../protocol/index.js";

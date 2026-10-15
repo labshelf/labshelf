@@ -1,6 +1,5 @@
 /**
- * Shared types for the sync engine — manifest entries, three-way diff classes,
- * sync results, and the local filesystem abstraction.
+ * Declares the sync engine's shared types: manifest entries, three-way diff classes and sync results.
  */
 import type { RemoteNamespace } from "../provider/index.js";
 
@@ -19,6 +18,7 @@ export interface ManifestData {
   providerId: string;
   namespaces: Record<RemoteNamespace, Record<string, ManifestEntry>>;
   /**
+   * CONTRACT: documents/contracts/sync.md#remote-identity
    * Remote root folder id each namespace was synced against. A different root (another account or OAuth client, or a
    * Drive folder that was replaced) means the entries describe some other remote and must not drive deletions.
    */

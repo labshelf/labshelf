@@ -1,6 +1,5 @@
 /**
- * Folder lists and checks the library UI needs: every folder flattened for a picker, and the name rule for a new or
- * renamed folder.
+ * Flattens every folder for a picker and checks the name of a new or renamed folder.
  */
 import { PAPERS_DIR, findNode, validateFolderName, type FolderTreeNode } from "../../library/index.js";
 import type { PaperRecord } from "../../model/index.js";

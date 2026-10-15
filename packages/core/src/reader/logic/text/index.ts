@@ -1,4 +1,4 @@
-/** Pure page-text logic: line grouping, in-text reference detection, captions, float regions and the reference list. */
+/** Exports the pure page-text logic: line grouping, in-text reference detection, captions, float regions and the reference list. */
 export * from "./textLines.js";
 export * from "./inTextRefs.js";
 export { findCaptionLines, pickCaption } from "./captions.js";

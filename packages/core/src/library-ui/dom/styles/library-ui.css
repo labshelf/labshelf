@@ -1,6 +1,6 @@
 /*
- * The library UI frame and sashes, list header and filter bar, under .ls-library on the --ls-* tokens. Requires tokens.css
- * and base.css; the list and the detail pane have their own sheets.
+ * Styles the library UI frame and sashes, list header and filter bar under .ls-library on the --ls-* tokens.
+ * Requires tokens.css and base.css; the list and the detail pane have their own sheets.
  */
 .ls-library {
   --cols: 28px 22px minmax(0, 1fr) 150px 52px 170px 84px 86px;

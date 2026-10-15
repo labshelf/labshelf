@@ -1,4 +1,4 @@
-/** Thin HTTP wrapper around the Google Drive REST API v3, token-agnostic: the caller supplies a token callback. */
+/** Wraps the Google Drive REST API v3 over HTTP; the caller supplies a token callback. */
 import { DRIVE_API_BASE as BASE, DRIVE_UPLOAD_BASE as UPLOAD_BASE } from "../auth/index.js";
 
 export interface DriveFile {

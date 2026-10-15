@@ -1,5 +1,5 @@
 /**
- * Barrel re-export for RAG primitives.
+ * Exports the RAG primitives' public API.
  */
 export { cosine } from "./cosine.js";
 export { retrieveTopK } from "./retrieve.js";

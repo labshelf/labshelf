@@ -1,5 +1,5 @@
 /**
- * Validation of reader preferences coming from user-editable storage (VS Code settings, browser storage) into the ReaderPrefs shape.
+ * Validates reader preferences coming from user-editable storage (VS Code settings, browser storage) into the ReaderPrefs shape.
  */
 import { DEFAULT_READER_PREFS, type CitationStyle, type ReaderPrefs, type ZoomPreset } from "./protocol.js";
 

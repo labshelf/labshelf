@@ -1,5 +1,5 @@
 /**
- * The detail tabs: Details, Annotations with their count (when the host sends annotations), Notes with a dot when
+ * Renders the detail tabs: Details, Annotations with their count (when the host sends annotations), Notes with a dot when
  * the paper has a note, and Related with its count. The bar stays in reach while a long tab scrolls.
  */
 import { relatedGroups } from "../../../derive/index.js";

@@ -1,5 +1,5 @@
 /**
- * Handlers that write the paper's sidecar from the reader: annotation create, update and delete, and the reading position.
+ * Handles the reader messages that write the paper's sidecar: annotation create, update and delete, and the reading position.
  */
 import type { WebviewToHost } from "../protocol.js";
 import { normalizeReadingState } from "../sidecar/index.js";

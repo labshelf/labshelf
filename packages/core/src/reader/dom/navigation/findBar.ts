@@ -1,5 +1,5 @@
 /**
- * Find bar driving pdf.js' PDFFindController through the EventBus. "Highlight all" is always on: seeing every hit at once is the point of searching a paper.
+ * Renders the find bar and drives pdf.js' PDFFindController through the EventBus. "Highlight all" is always on: seeing every hit at once is the point of searching a paper.
  */
 import type { ReaderContext } from "../session/index.js";
 import { byId, h, iconButton } from "../elements/index.js";
@@ -52,13 +52,11 @@ export class FindBar {
 
   /**
    * Registers a callback invoked whenever the find bar opens or closes.
-   * @returns void
    */
   onToggle(fn: (open: boolean) => void): void { this.toggleListeners.push(fn); }
 
   /**
    * Opens the find bar, pre-filling it with the current text selection.
-   * @returns void
    */
   show(): void {
     if (!this.open) {
@@ -76,7 +74,6 @@ export class FindBar {
 
   /**
    * Closes the find bar and clears the match count.
-   * @returns void
    */
   close(): void {
     if (!this.open) { return; }
@@ -91,7 +88,6 @@ export class FindBar {
 
   /**
    * Next/previous hit; opens the bar instead when there is nothing to repeat.
-   * @returns void
    */
   again(previous: boolean): void {
     if (!this.input.value) { this.show(); return; }

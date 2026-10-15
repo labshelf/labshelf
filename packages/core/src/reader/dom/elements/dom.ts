@@ -1,5 +1,5 @@
 /**
- * Tiny DOM helpers for the reader webview; no framework, the UI is a handful of overlays around pdf.js.
+ * Builds and queries DOM nodes for the reader webview; no framework, the UI is a handful of overlays around pdf.js.
  */
 
 /**

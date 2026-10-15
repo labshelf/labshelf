@@ -1,6 +1,6 @@
 /**
- * Paper drag-and-drop: rows are drag sources, folder surfaces (crumbs, chips, a host's folder tree) are drop
- * targets that ask the host to move the dragged papers. While a drag runs, the root lights up every target.
+ * Drags papers: rows are drag sources, folder surfaces (crumbs, chips, a host's folder tree) are drop targets
+ * that ask the host to move the dragged papers. While a drag runs, the root lights up every target.
  */
 import type { UiContext } from "../uiContext.js";
 

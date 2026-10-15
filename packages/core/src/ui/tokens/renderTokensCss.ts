@@ -25,7 +25,7 @@ export function renderTokensCss(tokens: Record<string, DesignToken> = ALL_TOKENS
   const dark = entries.map(([name, t]) => `  --ls-${name}: ${t.value};`);
   const light = entries.flatMap(([name, t]) => (t.light === undefined ? [] : [`  --ls-${name}: ${t.light};`]));
   return [
-    "/* Generated from packages/core/src/ui/tokens by `pnpm --filter @labshelf/core tokens`. Do not edit. */",
+    "/* Declares the --ls-* design tokens for both themes. Generated from packages/core/src/ui/tokens by `pnpm --filter @labshelf/core tokens`. Do not edit. */",
     ":root {",
     "  color-scheme: dark;",
     ...dark,

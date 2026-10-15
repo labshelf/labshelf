@@ -1,5 +1,5 @@
 /**
- * The data shapes the library UI protocol carries: the library snapshot, the per-paper reading stats and details,
+ * Declares the data shapes the library UI protocol carries: library snapshot, per-paper reading stats and details,
  * text-layer jobs, similar papers, and the PDF and add-paper replies. All plain JSON.
  */
 import type { FolderTreeNode } from "../../library/index.js";

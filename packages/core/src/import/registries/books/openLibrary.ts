@@ -1,4 +1,4 @@
-/** OpenLibrary client: book lookup by ISBN. */
+/** Looks up OpenLibrary books by ISBN. */
 import { extractYear } from "../../metadata/index.js";
 import { fetchJson } from "../http.js";
 import type { RegistryRecord } from "../types.js";

@@ -1,6 +1,6 @@
 /**
- * What every library UI component shares: the view store, the host channel and configuration, the prefs port and the
- * root element, with lookups scoped to that root so two mounts on one page never touch each other.
+ * Shares with every library UI component the view store, host channel and configuration, prefs port and root
+ * element, with lookups scoped to that root so two mounts on one page never touch each other.
  */
 import type { LibraryUiCapabilities, LibraryUiLabels } from "../hostConfig.js";
 import type { LibraryTransport } from "../protocol/index.js";

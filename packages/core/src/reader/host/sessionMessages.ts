@@ -1,5 +1,5 @@
 /**
- * Handlers for the reader session: the init handshake, readiness, open timing, page and zoom reports, and theme choice.
+ * Handles the reader session messages: the init handshake, readiness, open timing, page and zoom reports, and theme choice.
  */
 import { isPdfTheme } from "../../model/index.js";
 import { byPageThenCreated } from "../sidecar/index.js";

@@ -1,4 +1,4 @@
-/** Public API of the resolvers that build or look up a PDF address from what the context already knows. */
+/** Exports the resolvers that build or look up a PDF address from what the context already knows. */
 export { pageHintResolver } from "./pageHint.js";
 export { arxivResolver } from "./arxiv.js";
 export { pmcResolver } from "./pmc.js";

@@ -1,4 +1,4 @@
-/** Node file-system adapters for the core ports. */
+/** Exports the library's Node file-system adapters for the core ports. */
 export { writeFileAtomic } from "./atomicWrite.js";
 export { NodeFileSystem } from "./nodeFileSystem.js";
 export { NodeLibraryFileSystem } from "./nodeLibraryFileSystem.js";

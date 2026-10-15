@@ -1,6 +1,6 @@
 /**
- * The detail pane for several papers: how many, Move to and the copy and menu actions, their common status and
- * tags, the OCR banner, and the list of the selected papers.
+ * Renders the detail pane for several papers: how many, Move to and the copy and menu actions, their common
+ * status and tags, the OCR banner, and the list of the selected papers.
  */
 import type { PaperRecord } from "../../../model/index.js";
 import { escapeHtml, icon } from "../../../ui/index.js";

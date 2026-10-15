@@ -1,5 +1,5 @@
 /**
- * Everything the header, the filter bar and the list derive from one state: the folder's papers, the search scope,
+ * Derives from one state everything the header, filter bar and list show: the folder's papers, the search scope,
  * the status and No text counts, and the sorted rows.
  */
 import { parseQuery } from "../../library/search/index.js";

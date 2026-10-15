@@ -29,7 +29,6 @@ export class ThemeController {
 
   /**
    * Supplies the PDFViewer instance once it exists, so later theme changes can push pageColors into it.
-   * @returns void
    */
   attach(pdfViewer: PDFViewer): void {
     this.pdfViewer = pdfViewer;
@@ -40,13 +39,11 @@ export class ThemeController {
 
   /**
    * Fires after the page colours actually changed, so thumbnails and previews can re-render.
-   * @returns void
    */
   onPageColorsChange(fn: () => void): void { this.listeners.push(fn); }
 
   /**
    * Applies a theme preference/effective pair: updates the chrome's data attribute and the page preset colours.
-   * @returns void
    */
   apply(preference: PdfTheme | undefined, effective: EffectiveTheme | undefined): void {
     if (preference) { this.preference = preference; }
@@ -59,7 +56,6 @@ export class ThemeController {
 
   /**
    * Pushes explicit background/text colours into the container and, once changed, into pdf.js' pageColors.
-   * @returns void
    */
   applyPageColors(bg: string, text: string): void {
     this.bg = bg;

@@ -1,5 +1,5 @@
 /**
- * Floating page/zoom pill at the bottom-right: the only always-visible chrome. The page number is an editable go-to-page field; the zoom label opens the fit menu.
+ * Shows the floating page/zoom pill at the bottom-right: the only always-visible chrome. The page number is an editable go-to-page field; the zoom label opens the fit menu.
  */
 import { formatZoomLabel } from "../../logic/index.js";
 import type { ReaderContext } from "../session/index.js";
@@ -55,7 +55,6 @@ export class StatusPill {
 
   /**
    * Focuses the page-number field for a keyboard-driven go-to-page.
-   * @returns void
    */
   focusPageInput(): void {
     this.pageInput.focus();

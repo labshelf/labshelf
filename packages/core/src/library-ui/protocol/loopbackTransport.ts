@@ -1,5 +1,5 @@
 /**
- * An in-page channel for a host that runs in the same page as the UI. Delivery is synchronous, so a message posted
+ * Connects the UI to a host that runs in the same page. Delivery is synchronous, so a message posted
  * from a click handler reaches the host inside the same user gesture (a file picker opened there is allowed).
  */
 import type { HostToUi, UiToHost } from "./messages.js";

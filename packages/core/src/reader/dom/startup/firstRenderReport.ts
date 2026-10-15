@@ -12,7 +12,6 @@ interface PageRenderedEvent {
 
 /**
  * Reports the first `pagerendered` once, then lets the hover preview build itself.
- * @returns void
  */
 export function reportFirstRender(ctx: ReaderContext, theme: ThemeController, perf: PerfMarks, hover: DeferredHover): void {
   let reported = false;

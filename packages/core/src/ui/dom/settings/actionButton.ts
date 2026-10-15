@@ -1,4 +1,4 @@
-/** A settings action: an icon and a label on the shared button, disabled while its handler runs. */
+/** Builds a settings action: an icon and a label on the shared button, disabled while its handler runs. */
 import { icon, type IconName } from "../../icons/index.js";
 import { el } from "../dom.js";
 

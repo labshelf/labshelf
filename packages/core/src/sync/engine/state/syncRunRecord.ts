@@ -17,10 +17,7 @@ export interface SyncRunRecord {
   conflicts: string[];
 }
 
-/**
- * Flattens a SyncResult into the shared record.
- * @returns the record
- */
+/** Flattens a SyncResult into the shared record. */
 export function summarizeSyncResult(result: SyncResult, app: string, host: string): SyncRunRecord {
   const sum = (key: "uploaded" | "downloaded" | "deletedLocal" | "deletedRemote"): number =>
     result.namespaces.reduce((acc, ns) => acc + ns[key], 0);
@@ -38,10 +35,7 @@ export function summarizeSyncResult(result: SyncResult, app: string, host: strin
   };
 }
 
-/**
- * Writes the record next to the manifest.
- * @returns void
- */
+/** Writes the record next to the manifest. */
 export async function writeSyncRunRecord(fs: LocalFileSystem, path: string, record: SyncRunRecord): Promise<void> {
   await fs.writeFile(path, new TextEncoder().encode(JSON.stringify(record, null, 2)));
 }

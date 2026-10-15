@@ -1,6 +1,6 @@
 /**
- * What the list shows instead of rows: "Loading…" before the first snapshot, otherwise the empty state that fits (no
- * PDF lacks text, nothing matches, every paper is in a subfolder, the folder is empty) with its way out.
+ * Renders what the list shows instead of rows: "Loading…" before the first snapshot, otherwise the empty state
+ * that fits (no PDF lacks text, nothing matches, every paper is in a subfolder, the folder is empty) with its way out.
  */
 import { el } from "../../../ui/dom/index.js";
 import { escapeHtml, icon } from "../../../ui/index.js";

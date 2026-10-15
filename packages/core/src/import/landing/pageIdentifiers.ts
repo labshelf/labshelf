@@ -1,4 +1,4 @@
-/** The DOI, arXiv id and PMID a page states in its meta tags, links and URL. */
+/** Reads the DOI, arXiv id and PMID a page states in its meta tags, links and URL. */
 import { arxivIdFromDoi, arxivIdFromUrl, extractDoi, pmidFromUrl } from "../identifiers/index.js";
 import type { DetectedIds } from "../identifiers/index.js";
 import type { RawPage } from "./types.js";

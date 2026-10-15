@@ -1,4 +1,4 @@
-/** A timestamp as short relative text: "just now", "5m ago", "yesterday", "Mar 4", "Mar 2023". */
+/** Formats a timestamp as short relative text: "just now", "5m ago", "yesterday", "Mar 4", "Mar 2023". */
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
 const MINUTE = 60;

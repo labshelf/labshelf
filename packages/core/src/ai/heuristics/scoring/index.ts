@@ -1,5 +1,5 @@
 /**
- * Heuristic scorers for reproducibility and reading difficulty.
+ * Exports the heuristic scorers' public API: reproducibility and reading difficulty.
  */
 export { scoreReproducibility } from "./reproScorer.js";
 export { scoreDifficultyProfile } from "./difficultyScorer.js";

@@ -1,4 +1,4 @@
-/** The operators of the query language with an example each, for help overlays and tooltips. */
+/** Lists the operators of the query language with an example each, for help overlays and tooltips. */
 
 export interface SyntaxHelpRow {
   syntax: string;

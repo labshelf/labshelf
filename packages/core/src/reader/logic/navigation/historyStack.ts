@@ -1,5 +1,6 @@
 /**
- * Browser-style back/forward stack of reading positions. pdf.js' own PDFHistory rides on window.history and the URL hash, neither of which is usable inside a VS Code webview.
+ * Keeps a browser-style back/forward stack of reading positions.
+ * PLATFORM: pdf.js' PDFHistory rides on window.history and the URL hash, neither usable inside a VS Code webview.
  */
 
 export interface ViewLocation {
@@ -31,7 +32,6 @@ export class HistoryStack {
 
   /**
    * Records the position being left by a jump; any forward branch is discarded, as in a browser.
-   * @returns void
    */
   visit(from: ViewLocation): void {
     this.forwardStack = [];
@@ -68,7 +68,6 @@ export class HistoryStack {
 
   /**
    * Empties both the back and forward stacks.
-   * @returns void
    */
   clear(): void {
     this.backStack = [];

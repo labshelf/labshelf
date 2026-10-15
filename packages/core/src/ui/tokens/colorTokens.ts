@@ -1,5 +1,5 @@
 /**
- * The colour roles of every LabShelf UI, valued after VS Code Dark Modern (default) and Light Modern.
+ * Declares the colour roles of every LabShelf UI, valued after VS Code Dark Modern (default) and Light Modern.
  */
 import { token, type DesignToken } from "./designToken.js";
 

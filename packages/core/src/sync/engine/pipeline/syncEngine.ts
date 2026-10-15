@@ -1,5 +1,4 @@
-// Provider-agnostic orchestration of a sync run — scan local and remote trees,
-// diff against the manifest, apply operations, and persist.
+// Orchestrates a provider-agnostic sync run: scans both trees, diffs against the manifest, applies and persists.
 import type { RemoteProvider, RemoteNamespace } from "../../provider/index.js";
 import type { ILogger, LocalFileSystem } from "../../../ports/index.js";
 import type {
@@ -40,20 +39,14 @@ export interface SyncEngineDeps {
 
 const NAMESPACES: RemoteNamespace[] = ["library", "appdata"];
 
-/**
- * Runs a full bidirectional sync using only injected RemoteProvider and
- * LocalFileSystem — no concrete backend dependency.
- * @returns SyncResult
- */
+/** Runs a bidirectional sync using only the injected RemoteProvider and LocalFileSystem. */
 export class SyncEngine {
   constructor(private readonly deps: SyncEngineDeps) {}
 
-  // Returns the current clock time, using the injected clock override if provided.
   private now(): Date {
     return this.deps.clock ? this.deps.clock() : new Date();
   }
 
-  // Syncs a single namespace and returns its per-namespace result.
   private async syncNamespace(ns: RemoteNamespace): Promise<NamespaceResult> {
     const { provider, fs, manifest, roots, libraryFolderNames } = this.deps;
     const root = await provider.resolveRoot(ns);
@@ -67,9 +60,10 @@ export class SyncEngine {
     const remoteTree = await scanRemoteTree(provider, root.id, resolver, names?.remoteToLocal, namer);
     const localTree = await scanLocalTree(fs, roots[ns], this.deps.logger);
 
+    // CONTRACT: documents/contracts/sync.md#remote-identity
     // The manifest only means "deleted on the other side" for the remote it was built against. Another account or
     // OAuth client (Drive's drive.file and appDataFolder are private to each) or a replaced Drive folder shows up as a
-    // different root id; a manifest from before roots were recorded falls back to "the remote is suddenly empty".
+    // different root id; a manifest with no recorded root falls back to "the remote is suddenly empty".
     // Either would otherwise turn every synced file into a local deletion.
     const knownRoot = manifest.rootId(ns);
     const rebased = knownRoot !== undefined
@@ -94,10 +88,7 @@ export class SyncEngine {
     return rebased ? { ...result, rebased: true } : result;
   }
 
-  /**
-   * Runs the full sync across both namespaces and persists the manifest.
-   * @returns SyncResult
-   */
+  /** Syncs both namespaces, then persists the manifest only if no namespace threw. */
   async run(): Promise<SyncResult> {
     if (!this.deps.provider.isConnected()) {
       throw new Error("Sync provider is not connected");

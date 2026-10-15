@@ -1,4 +1,4 @@
-/** One download attempt: proves a response is the PDF by its bytes, or hands back the HTML to follow, or reports a bot check. */
+/** Makes one download attempt: proves a response is the PDF by its bytes, or hands back the HTML to follow, or reports a bot check. */
 import { startTimeout } from "../timeout.js";
 import { warn } from "../env.js";
 import type { FetchedPdf, PdfFetchOptions, ResolverEnv } from "../types.js";

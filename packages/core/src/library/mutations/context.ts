@@ -1,4 +1,4 @@
-/** What every library mutation runs over: the injected ports and the shapes of its results. */
+/** Declares what every library mutation runs over: the injected ports and the shapes of its results. */
 import type { PaperRecord } from "../../model/index.js";
 import type { ILogger, LibraryFileSystem } from "../../ports/index.js";
 

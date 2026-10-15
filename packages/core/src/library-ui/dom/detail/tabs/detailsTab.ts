@@ -1,6 +1,6 @@
 /**
- * The Details tab: Abstract (folded past a length, copyable), Keywords that search, Info (publication, volume,
- * pages, DOI and URL links with copy, ISSN, language, cite key, folder), Cite in the chosen style, and File.
+ * Renders the Details tab: Abstract (folded past a length, copyable), Keywords that search, Info (publication,
+ * volume, pages, DOI and URL links with copy, ISSN, language, cite key, folder), Cite in the chosen style, and File.
  */
 import { CITE_FORMATS } from "../../../state/index.js";
 import { PAPERS_DIR, folderLabel } from "../../../../library/index.js";

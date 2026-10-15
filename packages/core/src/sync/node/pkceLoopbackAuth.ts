@@ -1,5 +1,5 @@
 /**
- * Google Drive sign-in for apps that can run a local server: OAuth 2.0 Authorization Code + PKCE with a loopback
+ * Signs in to Google Drive for apps that can run a local server: OAuth 2.0 Authorization Code + PKCE with a loopback
  * redirect, tokens in an injected TokenStore. The app supplies the browser launcher and the token storage.
  */
 import { describeError } from "../../logging/index.js";
@@ -60,7 +60,6 @@ export class PkceLoopbackAuth implements IAuthProvider {
 
   /**
    * Loads the stored tokens once.
-   * @returns void
    */
   async load(): Promise<void> {
     if (this.loaded) { return; }
@@ -94,7 +93,6 @@ export class PkceLoopbackAuth implements IAuthProvider {
   /**
    * Runs the PKCE loopback flow and stores the tokens.
    * @param prompt overrides the construction-time prompt for this login only
-   * @returns void
    */
   async login(prompt: Partial<LoginPrompt> = {}): Promise<void> {
     const client = this.requireClient();
@@ -126,7 +124,6 @@ export class PkceLoopbackAuth implements IAuthProvider {
 
   /**
    * Revokes the refresh token (best effort) and forgets the tokens.
-   * @returns void
    */
   async revoke(): Promise<void> {
     await this.load();

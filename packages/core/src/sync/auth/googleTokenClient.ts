@@ -1,4 +1,4 @@
-/** Requests to Google's token and revoke endpoints: authorization-code exchange, refresh and revocation. */
+/** Calls Google's token and revoke endpoints: authorization-code exchange, refresh and revocation. */
 import { GOOGLE_REVOKE_URL, GOOGLE_TOKEN_URL } from "./googleEndpoints.js";
 import type { OAuthClient } from "./oauthClient.js";
 import { ReauthRequiredError } from "./reauthRequiredError.js";
@@ -84,7 +84,6 @@ export async function refreshTokens(
 /**
  * Revokes a token at Google.
  * @throws when Google cannot be reached or answers with an error status
- * @returns void
  */
 export async function revokeToken(fetchImpl: FetchFn, token: string): Promise<void> {
   const res = await fetchImpl(`${GOOGLE_REVOKE_URL}?token=${encodeURIComponent(token)}`, { method: "POST" });

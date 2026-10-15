@@ -1,6 +1,6 @@
 /**
- * The Related tab's groups for one paper: papers with similar content (from the host), the same authors, shared tags
- * or keywords, and the same venue, each drawn from the whole library.
+ * Groups the papers related to one paper for the Related tab: similar content (from the host), same authors,
+ * shared tags or keywords, and the same venue, each drawn from the whole library.
  */
 import { authorKey } from "../../library/index.js";
 import type { PaperRecord } from "../../model/index.js";

@@ -1,5 +1,5 @@
 /**
- * The metadata of one paper as the library, the databases and the apps exchange it.
+ * Declares the metadata of one paper as the library, the databases and the apps exchange it.
  */
 import type { PaperStatus } from "./paperStatus.js";
 import type { TextLayerInfo } from "./textLayer.js";

@@ -8,13 +8,11 @@ export class PerfMarks {
 
   /**
    * Records the current time under `name`.
-   * @returns void
    */
   mark(name: string): void { this.timeline[name] = Math.round(performance.now()); }
 
   /**
    * Records an explicit value under `name` (e.g. a byte count, not a timestamp).
-   * @returns void
    */
   set(name: string, value: number): void { this.timeline[name] = value; }
 }

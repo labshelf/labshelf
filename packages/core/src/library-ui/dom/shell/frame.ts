@@ -1,6 +1,6 @@
 /**
- * The library UI frame, built once: an optional sidebar slot, the list pane (header, filter bar, list) and the detail
- * pane, with a sash beside each side pane. Navigation never rebuilds it; each view repaints its own slice.
+ * Builds the library UI frame once: an optional sidebar slot, the list pane (header, filter bar, list) and the
+ * detail pane, with a sash beside each side pane. Navigation never rebuilds it; each view repaints its own slice.
  */
 import { el } from "../../../ui/dom/index.js";
 import { DEFAULT_PREFS, PANE_LIMITS, type PrefsPort } from "../../state/index.js";

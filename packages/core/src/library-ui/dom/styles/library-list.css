@@ -1,6 +1,6 @@
 /*
- * The paper list: sortable column heads and paper rows (type icon, tags, location chip, marks, Last read, status
- * badge, the PDF child row), under .ls-library. Narrow windows drop Last read, then the publication.
+ * Styles the paper list under .ls-library: sortable column heads and paper rows (type icon, tags, location chip,
+ * marks, Last read, status badge, the PDF child row). Narrow windows drop Last read, then the publication.
  */
 /* ── Column heads ───────────────────────────────────────────────── */
 .ls-library .col-heads {

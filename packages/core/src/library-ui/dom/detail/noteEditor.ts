@@ -1,5 +1,5 @@
 /**
- * The Notes tab's autosave: what the user types is kept as a draft and saved after a pause, on blur, before the
+ * Autosaves the Notes tab: what the user types is kept as a draft and saved after a pause, on blur, before the
  * selection or folder changes and when the page hides. A draft wins over the copy the host echoes back.
  */
 import type { PaperRecord } from "../../../model/index.js";

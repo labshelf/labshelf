@@ -1,8 +1,8 @@
-/** The error for a Google Drive session that only a new sign-in can restore. */
+/** Defines the error for a Google Drive session that only another sign-in can restore. */
 
 export const DEFAULT_SIGN_IN_HINT = "Sign in to continue.";
 
-/** Raised when there are no tokens or the stored refresh token no longer works. */
+/** Raised when there are no tokens or the stored refresh token is rejected. */
 export class ReauthRequiredError extends Error {
   /**
    * @param signInHint how this app signs in, e.g. the command to run

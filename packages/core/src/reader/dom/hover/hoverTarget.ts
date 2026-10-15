@@ -1,4 +1,4 @@
-/** What a pending or visible hover popup belongs to, and what it shows. */
+/** Declares what a pending or visible hover popup belongs to, and what it shows. */
 import type { InTextRef } from "../../logic/index.js";
 import type { ReaderContext } from "../session/index.js";
 

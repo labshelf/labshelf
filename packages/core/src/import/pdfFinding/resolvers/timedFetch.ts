@@ -1,4 +1,4 @@
-/** One bounded lookup against a service: a deadline, a read of the body, and a single WARN when it fails. */
+/** Runs one bounded lookup against a service: a deadline, a read of the body, and a single WARN when it fails. */
 import { warn } from "../env.js";
 import { startTimeout } from "../timeout.js";
 import type { FetchFn, ResolverEnv } from "../types.js";

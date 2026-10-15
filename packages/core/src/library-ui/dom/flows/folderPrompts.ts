@@ -1,6 +1,6 @@
 /**
- * The folder prompts: a name for a new or renamed folder, checked as the user types, and the confirmation before a
- * folder and its papers are deleted. The host does the work once the user agrees.
+ * Prompts for a new or renamed folder's name, checked as the user types, and confirms before a folder and its
+ * papers are deleted. The host does the work once the user agrees.
  */
 import { PAPERS_DIR, baseName, countPapersUnder, parentDir } from "../../../library/index.js";
 import { confirmDialog, inputBox } from "../../../ui/dom/index.js";

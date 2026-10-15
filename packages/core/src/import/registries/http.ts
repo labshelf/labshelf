@@ -1,4 +1,4 @@
-/** HTTP transport shared by the registry clients: bounded wait, JSON parsing, and undefined on any failure. */
+/** Fetches registry responses over HTTP for every client: bounded wait, JSON parsing, and undefined on any failure. */
 
 const USER_AGENT = "LabShelf/0.1 (research paper manager; mailto:contact@labshelf.dev)";
 const REQUEST_TIMEOUT_MS = 12_000;

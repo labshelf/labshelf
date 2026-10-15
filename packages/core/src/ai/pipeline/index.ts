@@ -1,5 +1,5 @@
 /**
- * Barrel re-export for ingestion pipeline.
+ * Exports the ingestion pipeline's public API.
  */
 export { extractMetadata } from "./extractMetadata.js";
 export type { ExtractMetadataOptions } from "./extractMetadata.js";

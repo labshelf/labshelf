@@ -1,4 +1,4 @@
-/** Unpaywall's legal open-access copies (publisher, repository, preprint server) for a DOI. */
+/** Proposes the legal open-access copies (publisher, repository, preprint server) Unpaywall lists for a DOI. */
 import { lookupJson } from "../timedFetch.js";
 import type { PdfResolver } from "../../types.js";
 

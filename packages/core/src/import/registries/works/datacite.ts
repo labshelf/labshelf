@@ -1,4 +1,4 @@
-/** DataCite client: DOI lookup for datasets, theses and preprints. */
+/** Looks up DataCite records by DOI, for datasets, theses and preprints. */
 import { fetchJson } from "../http.js";
 import type { RegistryRecord } from "../types.js";
 

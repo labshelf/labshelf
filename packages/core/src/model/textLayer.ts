@@ -1,5 +1,5 @@
 /**
- * Text-layer verdict of a paper's PDF and the parser that validates it.
+ * Declares the text-layer verdict of a paper's PDF and the parser that validates it.
  */
 /**
  * Whether a paper's PDF carries text that can be searched and selected:

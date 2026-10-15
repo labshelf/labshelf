@@ -1,4 +1,4 @@
-/** Public surface of the reader startup group: the steps startReader runs to bring an open document to life. */
+/** Exports the reader startup group's public API: the steps startReader runs to bring an open document to life. */
 export { buildReaderUi } from "./buildReaderUi.js";
 export { DeferredHover } from "./deferredHover.js";
 export { interceptExternalLinks } from "./externalLinks.js";

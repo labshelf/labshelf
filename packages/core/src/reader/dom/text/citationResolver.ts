@@ -41,7 +41,6 @@ export class CitationResolver {
 
   /**
    * Finds the References section in the background so the first citation hover does not pay for it.
-   * @returns void
    */
   warmUp(): void {
     void this.getRegion().catch(() => null);

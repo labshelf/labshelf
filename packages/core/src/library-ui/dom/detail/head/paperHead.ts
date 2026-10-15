@@ -1,6 +1,6 @@
 /**
- * The head of a single paper's detail: what it is (title, authors that search their name, the venue line), what you
- * reach for most (open or continue, copy key, copy citation, move, the paper menu), its status and its tags.
+ * Renders the head of a single paper's detail: what it is (title, authors that search their name, the venue line),
+ * what you reach for most (open or continue, copy key, copy citation, move, the paper menu), its status and tags.
  */
 import { familyName, venueLine } from "../../../../library/index.js";
 import { escapeHtml, icon } from "../../../../ui/index.js";

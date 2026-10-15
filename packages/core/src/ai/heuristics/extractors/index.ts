@@ -1,5 +1,5 @@
 /**
- * Extractors that pull structured facts (methods, datasets, repos, compute, limitations, citations) from paper text.
+ * Exports the extractors that pull structured facts (methods, datasets, repos, compute, limitations, citations) from paper text.
  */
 export { detectMethods } from "./methodDetector.js";
 export { detectDatasets } from "./datasetExtractor.js";

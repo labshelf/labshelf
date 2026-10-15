@@ -1,4 +1,4 @@
-/** Europe PMC client: free-text article search. */
+/** Searches Europe PMC for articles by free text. */
 import { extractYear } from "../../metadata/index.js";
 import { fetchJson } from "../http.js";
 import { trimmed } from "../text.js";

@@ -1,4 +1,4 @@
-/** A one-shot HTTP server on 127.0.0.1 that captures the OAuth redirect, rejecting any request whose state differs. */
+/** Captures the OAuth redirect on a one-shot HTTP server on 127.0.0.1, rejecting any request whose state differs. */
 import * as http from "node:http";
 
 export const LOGIN_TIMEOUT_MS = 5 * 60_000;

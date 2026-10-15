@@ -1,4 +1,4 @@
-/** The Google Drive section of a settings page: the connection status and Connect, or Sync now and Disconnect. */
+/** Builds the Google Drive section of a settings page: the connection status and Connect, or Sync now and Disconnect. */
 import { driveStatusText, type DriveStatus } from "../../../sync/status/index.js";
 import { el } from "../dom.js";
 import { actionButton } from "./actionButton.js";

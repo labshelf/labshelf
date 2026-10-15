@@ -1,5 +1,5 @@
 /**
- * SidecarPort over the library's .research/papers folder, for the Node apps (VS Code and the terminal).
+ * Implements SidecarPort over the library's .research/papers folder, for the Node apps (VS Code and the terminal).
  * Writes go through the library temp folder so a crash never leaves a half-written sidecar.
  */
 import { promises as fs } from "node:fs";

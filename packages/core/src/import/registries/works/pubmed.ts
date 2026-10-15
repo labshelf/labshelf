@@ -1,4 +1,4 @@
-/** PubMed client: record lookup by PMID and PMC-to-PMID conversion. */
+/** Looks up PubMed records by PMID and converts PMC ids to PMIDs. */
 import { extractYear } from "../../metadata/index.js";
 import { fetchJson } from "../http.js";
 import { stripHtml } from "../text.js";

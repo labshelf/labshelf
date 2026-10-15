@@ -1,4 +1,4 @@
-/** Tag list normalisation shared by every app. */
+/** Normalises tag lists the same way for every app. */
 
 /** Trimmed, inner whitespace collapsed, blanks dropped, de-duplicated case-insensitively (first spelling wins), order kept. */
 export function normalizeTags(tags: readonly string[]): string[] {

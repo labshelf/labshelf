@@ -1,5 +1,5 @@
 /**
- * The list header: the sidebar toggle, the folder path with its count, the search box, and the toolbar (subfolder
+ * Renders the list header: sidebar toggle, folder path with its count, search box, and toolbar (subfolder
  * toggle, new subfolder, Add, details toggle).
  */
 import { PAPERS_DIR, SYNTAX_HELP, subfoldersOf } from "../../../library/index.js";

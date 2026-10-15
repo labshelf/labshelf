@@ -1,4 +1,4 @@
-/** The link a paper opens: its DOI resolver address, else its stored URL. */
+/** Picks the link a paper opens: its DOI resolver address, else its stored URL. */
 import type { PaperRecord } from "../../model/index.js";
 
 const DOI_RESOLVER_PREFIX = /^https?:\/\/(?:dx\.)?doi\.org\//i;

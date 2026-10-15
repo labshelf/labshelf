@@ -1,6 +1,6 @@
 /**
- * The paper menu: everything you can do to one paper or a selection, in the order you reach for it. Host-only actions
- * appear only when the host has the capability.
+ * Builds the paper menu: everything you can do to one paper or a selection, in the order you reach for it.
+ * Host-only actions appear only when the host has the capability.
  */
 import { PAPERS_DIR } from "../../../library/index.js";
 import { PAPER_STATUSES, STATUS_LABEL } from "../../../model/index.js";

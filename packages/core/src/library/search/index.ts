@@ -1,4 +1,4 @@
-/** Public API of library search: the query language, matching and ranking, and the text helpers behind them. */
+/** Exports library search's public API: the query language, matching and ranking, and the text helpers behind them. */
 export { isEmptyQuery } from "./query.js";
 export type { FieldFilter, HasKey, Query, SearchField } from "./query.js";
 export { tokenize } from "./tokenize.js";

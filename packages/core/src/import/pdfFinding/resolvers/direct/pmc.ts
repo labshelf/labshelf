@@ -1,4 +1,4 @@
-/** The PMC open-data bucket on AWS, which serves many PMC PDFs without the bot check that guards pmc.ncbi.nlm.nih.gov. */
+/** Proposes PMC PDFs from the open-data bucket on AWS, which skips the bot check that guards pmc.ncbi.nlm.nih.gov. */
 import { normalizePmcid } from "../../../identifiers/index.js";
 import { lookupText } from "../timedFetch.js";
 import type { PdfResolver } from "../../types.js";

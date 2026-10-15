@@ -1,5 +1,5 @@
 /**
- * Authentication contract of a RemoteProvider. Each app implements it with its own sign-in: PkceLoopbackAuth in
+ * Declares the authentication contract of a RemoteProvider. Each app implements it with its own sign-in: PkceLoopbackAuth in
  * VS Code and the terminal, the identity API in the browser.
  */
 export interface IAuthProvider {

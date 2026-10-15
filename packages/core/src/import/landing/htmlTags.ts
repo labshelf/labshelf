@@ -1,4 +1,4 @@
-/** Tolerant regex helpers for HTML tags: entity decoding, tag attributes and absolute http(s) URLs. */
+/** Reads HTML tags tolerantly with regexes: decodes entities and extracts tag attributes and absolute http(s) URLs. */
 
 const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
 

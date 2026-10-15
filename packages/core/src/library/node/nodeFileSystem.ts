@@ -1,4 +1,4 @@
-/** IFileSystem over node:fs; writes are atomic through the library's temp folder. */
+/** Implements IFileSystem over node:fs; writes are atomic through the library's temp folder. */
 import { promises as fs } from "node:fs";
 
 import type { IFileSystem } from "../../ports/index.js";
