@@ -57,6 +57,25 @@ describeIfSqlite("dropForeignKeyEmbeddings through openAiStorage", () => {
     check.close();
   });
 
+  it("opens a database written before the indexed_papers table existed", async () => {
+    const old = new DatabaseSync(databasePath);
+    old.exec(`
+      CREATE TABLE papers (id TEXT PRIMARY KEY);
+      CREATE TABLE chunk_embeddings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        paper_id TEXT NOT NULL REFERENCES papers(id) ON DELETE CASCADE,
+        kind TEXT NOT NULL, section TEXT, page INTEGER, start_offset INTEGER, end_offset INTEGER, text TEXT,
+        embedding BLOB NOT NULL, dim INTEGER NOT NULL, model_id TEXT NOT NULL, created_at INTEGER NOT NULL
+      );
+    `);
+    old.close();
+
+    const storage = await openAiStorage(databasePath, { ensureDir }, logger);
+    const { vectorStore } = storage.createStores("model-a");
+
+    await expect(vectorStore.upsert([chunk("unknown")])).resolves.toBeUndefined();
+  });
+
   it("leaves a current-schema database untouched", async () => {
     const first = await openAiStorage(databasePath, { ensureDir }, logger);
     const firstStores = first.createStores("model-a");
