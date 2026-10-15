@@ -45,7 +45,7 @@ export async function buildServices(
   await ensureLibraryStructure(root, fileSystem);
   const logger = adapters.createLogger(paths.appLogPath().fsPath);
   const { ocr, textLayerBuilder } = adapters.createPdfTextServices(logger);
-  const pdfImportParser = new PdfImportParser(adapters.pdfOpener, { ocr });
+  const pdfImportParser = new PdfImportParser(adapters.pdfOpener, { ocr, logger });
   const bibTeXService = new BibTeXService(fileSystem);
   const mutations: MutationContext = {
     fs: fileSystem, paths: adapters.paths, artifacts: bibTeXService, logger, papersRoot: paths.papersRoot().fsPath,

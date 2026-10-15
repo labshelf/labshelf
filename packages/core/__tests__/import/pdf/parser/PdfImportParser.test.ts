@@ -201,6 +201,14 @@ describe('PdfImportParser.parse', () => {
     );
   });
 
+  it('rejects a PDF header that is not the first bytes of the file', async () => {
+    const parser = new PdfImportParser(opener({ pages: [] }));
+
+    await expect(parser.parse(new TextEncoder().encode('\n%PDF-1.7 body'), 'x')).rejects.toThrow(
+      'File is not a valid PDF (missing %PDF- header).',
+    );
+  });
+
   it('maps pdf.js open failures to messages a user can act on', async () => {
     const failing = (error: unknown): PdfDocumentOpener => ({ open: async () => Promise.reject(error) });
     const named = (name: string): Error => Object.assign(new Error('boom'), { name });

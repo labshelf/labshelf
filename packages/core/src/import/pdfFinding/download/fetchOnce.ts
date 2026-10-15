@@ -1,9 +1,9 @@
 /** Makes one download attempt: proves a response is the PDF by its bytes, or hands back the HTML to follow, or reports a bot check. */
+import { isPdfBytes } from "../../../library/index.js";
 import { startTimeout } from "../timeout.js";
 import { warn } from "../env.js";
 import type { FetchedPdf, PdfFetchOptions, ResolverEnv } from "../types.js";
 import { isBotCheck } from "./botCheck.js";
-import { isPdfBytes } from "./pdfBytes.js";
 
 const MAX_PDF_BYTES = 200 * 1024 * 1024;
 const MAX_HTML_BYTES = 4 * 1024 * 1024;

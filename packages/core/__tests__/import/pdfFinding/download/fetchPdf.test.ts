@@ -13,15 +13,6 @@ const fixture = (name: string): string => readFileSync(join(__dirname, "..", "..
 const refresh = (target: string): string => `<html><head><meta http-equiv="refresh" content="0; url=${target}"></head></html>`;
 const challenge = "<!DOCTYPE html><html><head><title>Just a moment...</title></head><body>cf_chl_opt</body></html>";
 
-describe("isPdfBytes", () => {
-  it("accepts a PDF header anywhere in the first KiB and rejects HTML", () => {
-    expect(isPdfBytes(PDF)).toBe(true);
-    expect(isPdfBytes(new TextEncoder().encode("\n\n%PDF-1.4"))).toBe(true);
-    expect(isPdfBytes(new TextEncoder().encode(`${" ".repeat(1100)}%PDF-1.4`))).toBe(false);
-    expect(isPdfBytes(new TextEncoder().encode("<!DOCTYPE html><title>Login</title>"))).toBe(false);
-  });
-});
-
 describe("nextHopsFromHtml", () => {
   it("follows an interstitial's redirect to the real file", () => {
     const hops = nextHopsFromHtml(fixture("sciencedirectInterstitial.html"), "https://www.sciencedirect.com/science/article/pii/X/pdfft");
@@ -40,6 +31,12 @@ describe("fetchPdf", () => {
     const got = await fetchPdf("https://a.example/p.pdf", h.opts());
     expect(got?.url).toBe("https://a.example/p.pdf");
     expect(isPdfBytes(got!.bytes)).toBe(true);
+  });
+
+  it("does not take a response with bytes before the PDF header for a PDF", async () => {
+    const h = makeFindingHarness();
+    h.routes["https://a.example/p.pdf"] = () => new Response(new TextEncoder().encode("\n\n%PDF-1.4"));
+    expect(await fetchPdf("https://a.example/p.pdf", h.opts())).toBeUndefined();
   });
 
   it("walks through an interstitial page to the file", async () => {

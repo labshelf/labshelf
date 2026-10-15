@@ -94,6 +94,14 @@ describe("importNetworkInput with a link", () => {
     expect(await h.fs.readFile(`${PAPERS}/lee2020study/paper.pdf`)).toEqual(PDF);
   });
 
+  it("fails a link whose bytes have something before the PDF header, writing nothing", async () => {
+    const { h, net, env } = setup();
+    net.routes["https://example.org/p.pdf"] = () => new Response(new TextEncoder().encode("\n%PDF-1.5 body"));
+
+    expect(await importNetworkInput(env, "https://example.org/p.pdf", PAPERS)).toMatchObject({ status: "failed" });
+    expect(await h.fs.exists(PAPER_DIR)).toBe(false);
+  });
+
   it("fails a link that is neither a PDF nor a page", async () => {
     const { net, env } = setup();
     net.routes["https://example.org/data"] = () => new Response("just text");

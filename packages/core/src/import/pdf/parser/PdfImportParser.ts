@@ -3,6 +3,9 @@
  * Pdfjs bootstrap lives in the consumer package; core only sees the injected opener.
  */
 import { detectIdentifiers, type DetectedIdentifier } from "../../identifiers/index.js";
+import { isPdfBytes } from "../../../library/index.js";
+import type { ILogger } from "../../../ports/index.js";
+import { describeError } from "../../../logging/index.js";
 import { resolveFirstIdentifier } from "../../lookup/index.js";
 import { asString } from "../../metadata/index.js";
 import { abstractFromText, titleFromPlainText } from "../frontMatter/index.js";
@@ -14,7 +17,7 @@ import { buildParsedRecord } from "./parsedRecord.js";
 import { readPdf, type PdfSignals } from "./readPdf.js";
 import { localSources } from "./signalSources.js";
 
-const PDF_HEADER = "%PDF-";
+const PDF_PARSER_MODULE = "import/pdf";
 // OCR is expensive, so only the pages that carry the masthead are read.
 const OCR_PAGES = [1, 2];
 
@@ -22,6 +25,8 @@ export interface PdfImportParserOptions {
   // Optional: enables recovery of PDFs whose text layer is scanned or whose
   // fonts carry a broken character map.
   ocr?: PdfOcrEngine | undefined;
+  /** Where a failed registry lookup is reported; the lookup then degrades to "no confirmed identifier". */
+  logger?: ILogger | undefined;
 }
 
 // The text identifiers and registry searches work from, and whether OCR supplied part of it.
@@ -45,12 +50,14 @@ interface Identification {
  */
 export class PdfImportParser {
   private readonly ocr: PdfOcrEngine | undefined;
+  private readonly logger: ILogger | undefined;
 
   constructor(
     private readonly opener: PdfDocumentOpener,
     options: PdfImportParserOptions = {},
   ) {
     this.ocr = options.ocr;
+    this.logger = options.logger;
   }
 
   /**
@@ -58,14 +65,14 @@ export class PdfImportParser {
    * @returns A fully populated ParsedPdfImport object.
    */
   async parse(pdfBytes: Uint8Array, fileStem: string): Promise<ParsedPdfImport> {
-    assertPdfHeader(pdfBytes);
+    if (!isPdfBytes(pdfBytes)) { throw new Error("File is not a valid PDF (missing %PDF- header)."); }
     const signals = await readPdf(this.opener, pdfBytes);
 
     // Fonts without a usable character map yield scrambled text. Such text can
     // still hide an identifier by luck, but must never become a title or name.
     const embeddedIsReadable = looksLikeNaturalText(signals.frontMatter);
     let front = await this.readFrontMatter(pdfBytes, signals, embeddedIsReadable);
-    let identification = await identify(signals, front.text);
+    let identification = await identify(signals, front.text, this.logger);
 
     const layoutTitle = embeddedIsReadable ? titleFromBlocks(signals.titleBlocks) : undefined;
     let localTitle: string | undefined = usableTitle(signals.xmp?.title) ?? usableTitle(asString(signals.info["Title"])) ?? layoutTitle;
@@ -116,7 +123,7 @@ export class PdfImportParser {
       return undefined;
     }
     const rescued = withOcr(front, ocrText, true);
-    return { front: rescued, identification: await identify(signals, rescued.text) };
+    return { front: rescued, identification: await identify(signals, rescued.text, this.logger) };
   }
 
   // Reads the front matter optically; failures degrade to no OCR text at all.
@@ -163,13 +170,6 @@ async function assemble(input: AssembleInput): Promise<ParsedPdfImport> {
   });
 }
 
-function assertPdfHeader(pdfBytes: Uint8Array): void {
-  const header = new TextDecoder("utf-8").decode(pdfBytes.slice(0, 5));
-  if (header !== PDF_HEADER) {
-    throw new Error(`File is not a valid PDF (missing %PDF- header).`);
-  }
-}
-
 function withOcr(front: FrontMatterText, ocrText: string, keepEmbedded: boolean): FrontMatterText {
   return {
     text: keepEmbedded ? `${ocrText}\n${front.text}`.trim() : ocrText,
@@ -178,8 +178,13 @@ function withOcr(front: FrontMatterText, ocrText: string, keepEmbedded: boolean)
   };
 }
 
-async function identify(signals: PdfSignals, frontMatter: string): Promise<Identification> {
+async function identify(signals: PdfSignals, frontMatter: string, logger: ILogger | undefined): Promise<Identification> {
   const identifiers = detectIdentifiers(signals.info, frontMatter, signals.linkUrls);
-  const confirmed = await resolveFirstIdentifier(identifiers).catch(() => undefined);
+  const confirmed = await resolveFirstIdentifier(identifiers).catch(async (error: unknown) => {
+    await logger?.log("WARN", PDF_PARSER_MODULE, "Identifier lookup failed; continuing without a confirmed identifier", {
+      identifiers: identifiers.map((found) => found.value), message: describeError(error).message,
+    });
+    return undefined;
+  });
   return { identifiers, confirmed };
 }

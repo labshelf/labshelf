@@ -61,7 +61,7 @@ function createPaperService(paths: LibraryRoot, store: LibraryStore, logger: ILo
     logger,
     pdfParser: async () => {
       if (!parser) {
-        parser = new PdfImportParser(new NodePdfOpener(createPdfjsLoader()));
+        parser = new PdfImportParser(new NodePdfOpener(createPdfjsLoader()), { logger });
       }
       return parser;
     },

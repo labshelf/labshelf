@@ -1,7 +1,6 @@
 /** Imports what a URL serves: a PDF under the name in the URL, or the paper a landing page describes. */
-import { importPdf, type ImportOutcome } from "../../library/index.js";
+import { importPdf, isPdfBytes, type ImportOutcome } from "../../library/index.js";
 import { describeError } from "../../logging/index.js";
-import { isPdfBytes } from "../pdfFinding/index.js";
 import { fetchBytes, isHtml } from "./downloads.js";
 import { NETWORK_IMPORT_MODULE, type NetworkImportEnv } from "./env.js";
 import { importLandingPage } from "./importLandingPage.js";

@@ -89,6 +89,14 @@ describe("importPdf", () => {
     expect(libraryFiles(h)).toEqual([]);
   });
 
+  it("fails on a PDF header that is not the first bytes of the file", async () => {
+    const h = makeHarness();
+    const deps = makeImportDeps();
+    const outcome = await importPdf(h.ctx, deps, await writePdf(h, "junk.pdf", "\n%PDF-1.4 body"), PAPERS);
+    expect(outcome).toMatchObject({ status: "failed", error: "Not a PDF file" });
+    expect(deps.parse).not.toHaveBeenCalled();
+  });
+
   it("fails on a missing file", async () => {
     const h = makeHarness();
     const outcome = await importPdf(h.ctx, makeImportDeps(), `${INBOX}/missing.pdf`, PAPERS);

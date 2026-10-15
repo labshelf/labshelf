@@ -4,6 +4,7 @@ import { citeKeySlug, claimCiteKey } from "../../identity/index.js";
 import { PDF_FILE } from "../../layout.js";
 import { describeError, MUTATIONS_MODULE, type MutationContext } from "../context.js";
 import { importedRecord, needsReview, type ParsedImport } from "./importedRecord.js";
+import { isPdfBytes } from "./pdfBytes.js";
 
 export type PdfParse = (bytes: Uint8Array, fileStem: string) => Promise<ParsedImport>;
 
@@ -27,8 +28,6 @@ export interface ImportOptions {
   sourceName?: string;
 }
 
-const PDF_MAGIC = "%PDF-";
-
 /** @returns a findByDoi over the papers an app knows, ignoring case */
 export function doiLookup(papers: Iterable<Pick<PaperRecord, "id" | "doi">>): (doi: string) => string | undefined {
   const byDoi = new Map<string, string>();
@@ -49,7 +48,7 @@ export async function importPdf(
   const input = options.sourceName ?? file;
   try {
     const bytes = await ctx.fs.readFile(file);
-    if (!startsWithPdfMagic(bytes)) { throw new Error("Not a PDF file"); }
+    if (!isPdfBytes(bytes)) { throw new Error("Not a PDF file"); }
     const stem = fileStem(ctx.paths.basename(input));
     const parsed = await deps.parse(bytes, stem);
     // A PDF backend that transfers the buffer it parses leaves it empty: writing it would store a zero-byte paper.pdf.
@@ -79,10 +78,6 @@ export async function importPdf(
     await ctx.logger.log("WARN", MUTATIONS_MODULE, "PDF import failed", { file, message: describeError(error) });
     return { status: "failed", error: describeError(error), input };
   }
-}
-
-function startsWithPdfMagic(bytes: Uint8Array): boolean {
-  return [...PDF_MAGIC].every((char, index) => bytes[index] === char.charCodeAt(0));
 }
 
 // The name without its extension; a leading dot belongs to the name.
