@@ -17,8 +17,9 @@ const window = vscode.window as unknown as Record<string, jest.Mock>;
 function setup(over: Parameters<typeof readyEntry>[1] = {}) {
   const projects = fakeProjects([readyEntry("/p/paper", over)]);
   const diagnostics = { publish: jest.fn() };
-  const builds = new LatexBuilds({ storageDir: "/storage", host: fakeHost(), projects: projects as never, diagnostics });
-  return { builds, diagnostics };
+  const previews = { building: jest.fn(), finished: jest.fn() };
+  const builds = new LatexBuilds({ storageDir: "/storage", host: fakeHost(), projects: projects as never, diagnostics, previews });
+  return { builds, diagnostics, previews };
 }
 
 beforeEach(() => {
@@ -55,6 +56,22 @@ describe("LatexBuilds", () => {
     expect(run).toHaveBeenCalledTimes(2);
     expect(diagnostics.publish).toHaveBeenCalledTimes(1);
     expect(diagnostics.publish).toHaveBeenCalledWith("/p/paper", []);
+  });
+
+  it("tells the preview a build started and what it produced, and says nothing about a cancelled build", async () => {
+    const { builds, previews } = setup();
+    const order: string[] = [];
+    previews.building.mockImplementation(() => order.push("building"));
+    run.mockImplementation(async () => { order.push("run"); return { status: "succeeded", pdf: "/p/paper/main.pdf", problems: [] }; });
+    previews.finished.mockImplementation(() => order.push("finished"));
+    await builds.request("/p/paper", "command");
+    expect(order).toEqual(["building", "run", "finished"]);
+    expect(previews.finished).toHaveBeenCalledWith(expect.objectContaining({ folder: "/p/paper" }), expect.objectContaining({ status: "succeeded" }), "command");
+
+    previews.finished.mockClear();
+    run.mockResolvedValue({ status: "cancelled" });
+    await builds.request("/p/paper", "save");
+    expect(previews.finished).not.toHaveBeenCalled();
   });
 
   it("stops asking on save after the toolchain prompt is dismissed, and asks again on the command", async () => {

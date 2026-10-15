@@ -277,6 +277,16 @@
         "title": "Research: Build Project",
         "category": "LabShelf",
         "icon": "$(play)"
+      },
+      {
+        "command": "labshelf.writing.showPreview",
+        "title": "Research: Show Preview",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.showInPreview",
+        "title": "Research: Show in Preview",
+        "category": "LabShelf"
       }
     ],
     "viewsContainers": {
@@ -418,6 +428,10 @@
       ],
       "commandPalette": [
         {
+          "command": "labshelf.writing.showInPreview",
+          "when": "editorLangId == latex"
+        },
+        {
           "command": "labshelf.reader.zoomIn",
           "when": "activeWebviewPanelId == 'labshelfPdf'"
         },
@@ -468,6 +482,13 @@
         {
           "command": "labshelf.writing.pickCompiler",
           "when": "false"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "labshelf.writing.showInPreview",
+          "when": "editorLangId == latex",
+          "group": "navigation@9"
         }
       ],
       "explorer/context": [
@@ -639,6 +660,12 @@
         "key": "alt+right",
         "mac": "cmd+]",
         "when": "activeWebviewPanelId == 'labshelfPdf'"
+      },
+      {
+        "command": "labshelf.writing.showInPreview",
+        "key": "ctrl+alt+j",
+        "mac": "cmd+alt+j",
+        "when": "editorLangId == latex"
       }
     ]
   },

@@ -3,7 +3,7 @@
 import * as vscode from "vscode";
 
 import { exportAnnotations, findSimilarPapers, type AiService, type ReaderCommandId } from "@labshelf/core";
-import { PdfViewerPanel, createVsCodeExportPorts } from "../../pdf-viewer/index.js";
+import { PdfViewerPanel, ReaderPanel, createVsCodeExportPorts } from "../../pdf-viewer/index.js";
 import { ListWebviewPanel } from "../../ui/list/index.js";
 import type { LibraryNode } from "../../ui/library/index.js";
 import { resolvePaper, ensurePaperPdf, folderActions, type FolderCommandHost, type ActiveServices, currentTextLayerJobs, onTextLayerJobsChanged } from "../../commands/index.js";
@@ -91,7 +91,7 @@ function registerReaderPanelCommands(deps: PanelCommandsDeps): void {
     // Contributed keybindings (scoped to the focused reader panel) land here: VS Code resolves those chords
     // before the webview sees them, so the reader cannot rely on its own keydown handler alone.
     ...READER_COMMANDS.map((id) =>
-      vscode.commands.registerCommand(`labshelf.reader.${id}`, () => { PdfViewerPanel.postToActive(id); }),
+      vscode.commands.registerCommand(`labshelf.reader.${id}`, () => { ReaderPanel.postToActive(id); }),
     ),
   );
 }

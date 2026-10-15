@@ -4,6 +4,7 @@ import * as vscode from "vscode";
 
 import { owningProject } from "../mainDocument.js";
 import type { WritingHost, WritingProjects } from "../projectStore.js";
+import type { BuildPreviews } from "../preview/index.js";
 import { BuildDiagnostics } from "./buildDiagnostics.js";
 import { LatexBuilds } from "./latexBuilds.js";
 
@@ -17,6 +18,7 @@ interface LatexBuildDeps {
   context: vscode.ExtensionContext;
   host: WritingHost;
   projects: Pick<WritingProjects, "list" | "reload">;
+  previews: Pick<BuildPreviews, "building" | "finished">;
 }
 
 function latexProjectOf(projects: LatexBuildDeps["projects"], file: vscode.Uri): string | undefined {
@@ -42,7 +44,7 @@ async function buildActive(deps: LatexBuildDeps, builds: LatexBuilds): Promise<v
 
 export function registerLatexBuild(deps: LatexBuildDeps): void {
   const diagnostics = new BuildDiagnostics();
-  const builds = new LatexBuilds({ storageDir: deps.context.globalStorageUri.fsPath, host: deps.host, projects: deps.projects, diagnostics });
+  const builds = new LatexBuilds({ storageDir: deps.context.globalStorageUri.fsPath, host: deps.host, projects: deps.projects, diagnostics, previews: deps.previews });
   const timers = new Map<string, NodeJS.Timeout>();
 
   const onSave = (document: vscode.TextDocument): void => {

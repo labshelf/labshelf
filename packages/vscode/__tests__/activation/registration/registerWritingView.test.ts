@@ -27,7 +27,7 @@ function setup(root: string | undefined) {
     globalStorageUri: vscode.Uri.file("/storage"),
     workspaceState: { get: () => undefined, update: jest.fn(async () => {}) },
   };
-  registerWritingView(context as unknown as vscode.ExtensionContext, controller);
+  registerWritingView(context as unknown as vscode.ExtensionContext, controller, { locatePdfjs: () => null, isMac: false });
   return { emitter };
 }
 

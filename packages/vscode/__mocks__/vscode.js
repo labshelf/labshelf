@@ -167,7 +167,7 @@ const window = {
   showInputBox: jest.fn(async () => undefined),
   showQuickPick: jest.fn(async () => undefined),
   showSaveDialog: jest.fn(async () => undefined),
-  showTextDocument: jest.fn(async () => undefined),
+  showTextDocument: jest.fn(async () => ({ revealRange: jest.fn() })),
   createWebviewPanel: jest.fn((viewType, title, column, options) => makeWebviewPanel(viewType, title, column, options)),
   activeColorTheme: { kind: ColorThemeKind.Dark },
   onDidChangeActiveColorTheme: jest.fn((handler) => {
@@ -396,6 +396,7 @@ module.exports = {
   extensions,
   _fileWatchers,
   ViewColumn: { One: 1, Two: 2, Active: -1, Beside: -2 },
+  TextEditorRevealType: { Default: 0, InCenter: 1, InCenterIfOutsideViewport: 2, AtTop: 3 },
   WebviewPanel: class {},
   makeWebviewPanel,
   _themeChangeListeners,

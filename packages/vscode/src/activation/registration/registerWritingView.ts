@@ -1,4 +1,4 @@
-// Registers the Writing sidebar view, its commands, the main-document and compiler status bar items, the LaTeX build with its notice and the citation providers, and reloads the project list when the library root changes.
+// Registers the Writing sidebar view, its commands, the main-document and compiler status bar items, the LaTeX build with its notice and preview and the citation providers, and reloads the project list when the library root changes.
 import * as vscode from "vscode";
 
 import {
@@ -8,10 +8,12 @@ import {
 import {
   registerCompilerStatusBar, registerLatexBuild, registerLatexWorkshopNotice, registerPickCompiler,
 } from "../../writing/build/index.js";
+import { BuildPreviews, registerShowInPreview, registerShowPreview } from "../../writing/preview/index.js";
 import { registerCitationProviders } from "../../writing/citations/index.js";
 import type { LibraryRootController } from "../libraryLifecycle/index.js";
+import type { HostAdapters } from "../serviceComposition/index.js";
 
-export function registerWritingView(context: vscode.ExtensionContext, controller: LibraryRootController): void {
+export function registerWritingView(context: vscode.ExtensionContext, controller: LibraryRootController, reader: HostAdapters["reader"]): void {
   const current = (): ReturnType<WritingHost["current"]> => {
     const root = controller.currentRoot();
     const services = controller.currentServices();
@@ -35,7 +37,10 @@ export function registerWritingView(context: vscode.ExtensionContext, controller
   registerProjectItemCommands({ context, host, projects });
   registerMainCommands({ context, host, projects });
   registerMainStatusBar(context, projects);
-  registerLatexBuild({ context, host, projects });
+  const previews = new BuildPreviews({ host, extensionUri: context.extensionUri, ...reader });
+  registerLatexBuild({ context, host, projects, previews });
+  registerShowPreview({ context, projects, previews });
+  registerShowInPreview({ context, projects, previews });
   registerPickCompiler({ context, host, projects });
   registerCompilerStatusBar(context, projects);
   registerLatexWorkshopNotice({ context, host, projects });

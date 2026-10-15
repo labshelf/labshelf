@@ -9,9 +9,18 @@ import { ensureToolchain, type ToolchainDeps } from "./toolchain/index.js";
 
 export type BuildTrigger = "command" | "save";
 
+export type FinishedBuild = Exclude<LatexBuildResult, { status: "cancelled" }>;
+
+/** Told when a project's compile starts and when it ends; a cancelled compile never ends, the next one replaces it. */
+export interface BuildListener {
+  building(projectFolder: string): void;
+  finished(project: ReadyProject, result: FinishedBuild, trigger: BuildTrigger): void;
+}
+
 export interface LatexBuildsDeps extends ToolchainDeps {
   projects: ToolchainDeps["projects"] & { list: () => readonly ProjectEntry[] };
   diagnostics: Pick<BuildDiagnostics, "publish">;
+  previews: BuildListener;
 }
 
 interface ProjectBuilds {
@@ -22,7 +31,7 @@ interface ProjectBuilds {
 
 const MODULE = "writing/build";
 
-function summary(result: Exclude<LatexBuildResult, { status: "cancelled" }>, main: string): string {
+function summary(result: FinishedBuild, main: string): string {
   if (result.status === "succeeded") { return `$(check) Built ${path.basename(result.pdf)}`; }
   const errors = result.problems.filter((problem) => problem.severity === "error").length;
   return `$(error) Build of ${main} failed: ${errors} ${errors === 1 ? "error" : "errors"}`;
@@ -75,6 +84,7 @@ export class LatexBuilds {
       const controller = new AbortController();
       state.running = controller;
       const building = vscode.window.setStatusBarMessage(`$(sync~spin) Building ${project.main}`);
+      this.deps.previews.building(projectFolder);
       const result = await runLatexBuild({
         toolchain, projectFolder, main: project.main, outDir: latexBuildDir(project.settings.id),
         signal: controller.signal, logger: session.logger,
@@ -82,6 +92,7 @@ export class LatexBuilds {
       if (state.running === controller) { state.running = undefined; }
       if (result.status === "cancelled") { return; }
       this.deps.diagnostics.publish(projectFolder, result.problems);
+      this.deps.previews.finished(project, result, trigger);
       vscode.window.setStatusBarMessage(summary(result, project.main), 5000);
     } catch (error) {
       await session.logger.error(MODULE, error, { projectFolder, trigger });

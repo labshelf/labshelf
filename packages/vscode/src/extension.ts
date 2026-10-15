@@ -59,7 +59,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   refreshLibraryViews = refreshViews;
 
   registerSettingsWelcomeView(context, controller);
-  registerWritingView(context, controller);
+  registerWritingView(context, controller, adapters.reader);
 
   registerPanelCommands({
     context, events, requireServices, papersRootUri, folderHost, syncTreeToPanel, adapters,

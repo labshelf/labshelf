@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { PdfViewerPanel, type PdfViewerDeps } from '../../src/pdf-viewer/PdfViewerPanel';
+import { ReaderPanel } from '../../src/pdf-viewer/ReaderPanel';
 import { makeMemoryPaperDataStore } from '../support/memorySidecarPort';
 import { statFromDisk } from '../support/diskStat';
 import { createLibraryEvents } from '../../src/events/index.js';
@@ -39,7 +40,7 @@ describe('PdfViewerPanel', () => {
   afterAll(() => { fs.rmSync(extensionDir, { recursive: true, force: true }); });
 
   beforeEach(() => {
-    PdfViewerPanel._clearAllForTesting();
+    ReaderPanel._clearAllForTesting();
     jest.clearAllMocks();
     vscode.window.activeColorTheme = { kind: 2 };
     for (const key of Object.keys(vscode.workspace._config)) { delete vscode.workspace._config[key]; }
@@ -258,19 +259,19 @@ describe('PdfViewerPanel', () => {
       const second = open();
       first.panel._fireViewState({ active: false, visible: true });
       second.panel._fireViewState({ active: true, visible: true });
-      expect(PdfViewerPanel.postToActive('zoomIn')).toBe(true);
+      expect(ReaderPanel.postToActive('zoomIn')).toBe(true);
       expect(posted(second.panel, 'command')).toEqual([{ type: 'command', id: 'zoomIn' }]);
       expect(posted(first.panel, 'command')).toHaveLength(0);
 
       second.panel._fireViewState({ active: false, visible: true });
-      expect(PdfViewerPanel.postToActive('find')).toBe(false);
+      expect(ReaderPanel.postToActive('find')).toBe(false);
     });
 
     it('returns false after the focused panel is closed', () => {
       const { panel } = open();
       panel._fireViewState({ active: true, visible: true });
       panel.dispose();
-      expect(PdfViewerPanel.postToActive('zoomOut')).toBe(false);
+      expect(ReaderPanel.postToActive('zoomOut')).toBe(false);
     });
   });
 });
