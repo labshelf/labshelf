@@ -1,6 +1,6 @@
 # Plan: writing in VS Code
 
-Status: in progress (session 3 of 7 done)
+Status: in progress (session 4 of 7 done)
 Size: GG — a new domain in core (projects, citations, LaTeX build, SyncTeX, Typst in WASM) plus a new VS Code surface and a reader-host contract change; 7 sessions. Grows if the Typst SVG layer needs its own spike session.
 Pending decisions: 0
 
@@ -43,10 +43,10 @@ Answered:
 
 - [x] **A1** "New project" in the Writing view creates `<library>/projects/<id>/` with `labshelf.yaml` and a template main file; "Add existing folder" registers a folder and lists it without creating anything but `labshelf.yaml`.
 - [x] **A2** On a machine without TeX, the first build offers Tectonic, downloads it, and produces `main.pdf`; the project folder then holds only the sources, `labshelf.yaml`, `labshelf.bib` and `main.pdf`.
-- [ ] **A3** A build with an undefined control sequence shows one Problems entry on the right line in plain words; the reader keeps the previous PDF with the failure banner.
+- [x] **A3** A build with an undefined control sequence shows one Problems entry on the right line in plain words; the reader keeps the previous PDF with the failure banner.
 - [x] **A4** Picking pdfLaTeX while on Tectonic fails with the TeX Live message and the guide link; a missing `.sty` on TeX Live names the package and the `tlmgr` command.
 - [x] **A5** Switching compiler and main is one click each in the status bar and persists in `labshelf.yaml`.
-- [ ] **A6** Double-click in the reader jumps to the source line; "Show in preview" scrolls the reader to the cursor.
+- [x] **A6** Double-click in the reader jumps to the source line; "Show in preview" scrolls the reader to the cursor.
 - [x] **A7** Typing `\cite{` lists library papers; accepting one inserts the key and adds the entry to `labshelf.bib`; the same works with `@` in Typst.
 - [ ] **A8** `\ref{` completes labels, an undefined label is a warning, the outline lists sections, hovering `$\alpha^2$` renders it, and the word count shows in the status bar.
 - [ ] **A9** In a Typst project the reader updates while typing, without reloading or losing the scroll position; "Export PDF" writes `main.pdf`.
@@ -127,9 +127,9 @@ typst: 0.13.1            # written on build, Typst projects only
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S13 | Reader-host messages: reload keeping position, build status banner | S10 | H · main thread | contract updated, both hosts handle them | [ ] |
-| S14 | SyncTeX reader and both directions | S13 | M · implementer (sonnet) | A6 | [ ] |
-| S15 | Finish, plus a `verify` run | S13–S14 | `finish` + `verify` skills | gate passes | [ ] |
+| S13 | Reader-host messages: reload keeping position, build status banner | S10 | H · main thread | contract updated, both hosts handle them | [x] |
+| S14 | SyncTeX reader and both directions | S13 | M · implementer (sonnet) | A6 | [x] |
+| S15 | Finish, plus a `verify` run | S13–S14 | `finish` + `verify` skills | gate passes | [x] |
 
 ### Session 5 — LaTeX editing features
 
@@ -277,3 +277,7 @@ typst: 0.13.1            # written on build, Typst projects only
 - 2026-10-15 18:25 — S10: `core/src/writing/latex/build/` (command line) and `node/` (cancellable run that kills the process tree, problem locating, PDF copied atomically on success). `cacheDir` moved from the terminal to `core/src/library/node`. VS Code: `writing/build/` queues one build per project, a newer save cancels the running one, and a dismissed toolchain prompt stops save builds from asking until Build Project runs.
 - 2026-10-15 18:25 — S11: compiler item at priority 49 with `labshelf.writing.pickCompiler`; LaTeX Workshop notice once per workspace (`workspaceState`), button writes `latex-workshop.latex.autoBuild.run: never`. Toolchain files grouped in `writing/build/toolchain/`.
 - 2026-10-15 18:25 — S12: finish gate passes (core 2056, vscode 361, terminal 862); `documents/apps/vscode.md` gains the build. The extension host confirms A2, A3 (Problems entry; the banner is S13), A4 first half, A5 and A11 (with a stand-in LaTeX Workshop). A4 second half confirmed by a real `latexmk` build. Not checked: the TeX Live guide link opening, the Turn off button's setting write in a real host, Windows and Linux Tectonic installs.
+- 2026-10-15 19:28 — Session 4 runs in the `labshelf-writing-core` worktree.
+- 2026-10-15 19:28 — S13: `PROTOCOL_VERSION` 2 with `reloadDocument`, `buildStatus`, `revealPoint`, `showBuildProblem`, `showSource` and `ReaderBootParams.preview`; S14's messages are part of the same bump. The controller holds the latest message of each type until `ready` (replaces `pendingPage`); optional `preview` ports, logged and ignored where absent (browser). The reader swaps the pdf.js document in place (`DocumentReloader`, `DOCUMENT_REPLACED`), not a webview re-render: no flash, sidebar and find survive; outline, thumbnails, page total and hover caches reset on the event. VS Code: `ReaderPanel` shared by library papers and previews; previews use an in-memory store that refuses annotations with a notice; Build Project opens the preview beside the editor, saves only update an open one; a preview opened later shows the last failed or running build.
+- 2026-10-15 19:28 — S14: `core/src/writing/synctex/` and `node/`, cross-checked against the `synctex` CLI on a real pdfTeX build (46 of 47 inverse points, 16 of 16 forward lines). Double-click to source only in previews; Show in Preview on `ctrl/cmd+alt+j`, which is also LaTeX Workshop's key (D3 notice covers that); revealing an open preview keeps editor focus.
+- 2026-10-15 19:28 — S15: finish gate passes (core 2117, vscode 392, browser 124). The extension host confirms A3 (banner, click to the error, clears on fix) and A6 both ways, plus in-place reload keeping scroll and zoom over three saves and outline, thumbnails and page total growing. Open: `lint:deps` reports 28 Node imports outside `node/` folders in `vscode/src/writing/` (22 from sessions 1–3, 6 from this one) — needs a move into `writing/node/` or a rule exception for the domain; two jscpd clones (`projectFolder.ts`/`projectRegistryFile.ts`, `tokens.css`). Not checked: Tectonic and XeTeX/LuaTeX SyncTeX, the banner's no-wrap CSS fix on screen, webview errors at first open.
