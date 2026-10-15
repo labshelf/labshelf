@@ -1,5 +1,7 @@
 # Apps: setup and verification
 
+Read when you set up the toolchain, configure Google OAuth or verify any app for real.
+
 This folder explains how to build, run and verify each app. App-specific details are in [vscode.md](vscode.md), [browser.md](browser.md) and [terminal.md](terminal.md).
 
 ## Prerequisites

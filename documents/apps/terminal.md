@@ -1,5 +1,7 @@
 # Terminal app (`labshelf`)
 
+Read when you build, change or verify the terminal app.
+
 A keyboard-driven explorer and a scriptable CLI over the local library. It works with or without VS Code, and it syncs with Drive on its own. Its layout uses yazi's columns and keys with Zotero's pane model: folders | papers | preview ([product.md](../product.md)). Press `?` in the app for every binding; the help is generated from the keymap.
 
 ## Build and run

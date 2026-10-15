@@ -1,5 +1,7 @@
 # Archive
 
+Read when you consider keeping a finished document instead of deleting it.
+
 A finished plan or document is deleted by default. Git keeps it, and a current document describes the result.
 
 A document is archived here only if all three of these are true:

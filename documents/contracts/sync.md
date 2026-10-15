@@ -1,5 +1,7 @@
 # Contract: sync and several apps on one library
 
+Read when you change sync, Drive access or how two apps share one library.
+
 Every app that syncs must follow this contract. Breaking it can delete or duplicate a user's papers on another device. The sync engine and the coordinator that drives it live in core and are the same in every app. The coordinator runs one sync at a time, syncs 30 s after the last local change and runs periodic syncs. Apps supply only storage adapters, authentication, timers and the triggers that start a sync.
 
 ## Topology

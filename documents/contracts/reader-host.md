@@ -1,5 +1,7 @@
 # Contract: PDF reader and its hosts
 
+Read when you change the PDF reader or the code that hosts it.
+
 The PDF reader is one UI that runs inside two hosts: the VS Code webview and a browser extension page. Hosts own persistence, clipboard, files, external links and settings. The reader owns everything on screen. They talk only through the typed message protocol in the reader's `protocol` module, which is the single source of truth for message shapes.
 
 One host controller in core answers every message the reader sends. Each host implements the controller's ports (sidecar store, posting to the reader, preferences, the auto theme, clipboard, notices, external links, saving the Markdown export, logging, and optional hooks for sidecar changes and reading activity) and keeps only its own lifecycle: creating the view, forwarding theme and preference changes, and asking for a page.

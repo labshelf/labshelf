@@ -1,5 +1,7 @@
 # VS Code extension
 
+Read when you build, change or verify the VS Code extension.
+
 The full LabShelf workspace inside VS Code:
 
 - a folder tree in the activity bar;

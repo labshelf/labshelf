@@ -1,5 +1,7 @@
 # Contract: library UI and its hosts
 
+Read when you change the library UI or the code that hosts it.
+
 The library UI (folder header, filter bar, paper list, paper menu, detail pane) is one UI in core that a host mounts once. The host owns the library data, every mutation, files, the clipboard and the reader. The UI owns everything on screen, including every dialog, menu, picker and prompt, and builds every text it shows or copies (citations, BibTeX, annotation Markdown) from the records. They talk only through the typed message unions in core's `library-ui/protocol` module, which is the single source of truth for message shapes. Every payload is plain JSON: arrays, never Sets.
 
 Two hosts mount it:

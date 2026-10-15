@@ -1,5 +1,7 @@
 # Contract: library format
 
+Read when you change a file the library stores on disk or the shared configuration.
+
 A LabShelf library is a folder that the user owns. Every app reads and writes this format, and the sync engine moves it between devices. Changing a file name, a key or a serialization rule here changes the contract for every app and for libraries already on disk.
 
 ## Layout

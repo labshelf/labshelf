@@ -1,5 +1,7 @@
 # Architecture
 
+Read when you add, move or split code, or add a port, an adapter or a UI piece.
+
 > The code is being moved into this layout by [plans/architecture-refactor.plan.md](plans/architecture-refactor.plan.md). Until that plan is done, the plan lists where the code still differs from this document. Delete this note when the plan is done.
 
 ## Packages

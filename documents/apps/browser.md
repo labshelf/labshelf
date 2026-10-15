@@ -1,5 +1,7 @@
 # Browser extension
 
+Read when you build, load, change or verify the browser extension.
+
 A Chrome and Firefox MV3 extension. It captures papers from any tab or from Google Scholar, keeps its own copy of the library in IndexedDB, reads PDFs with the same reader as VS Code, and meets the other apps on Drive ([contracts/sync.md](../contracts/sync.md)).
 
 ## Build

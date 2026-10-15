@@ -1,5 +1,7 @@
 # Product
 
+Read when you design or change any UI, wording or user-facing behaviour.
+
 LabShelf is a local-first manager for research papers. The library is an ordinary folder of PDFs and text files that the user owns; every app reads and writes that same format, and Google Drive sync is optional.
 
 LabShelf ships as three apps of one product:

@@ -1,21 +1,41 @@
 # LabShelf documentation
 
-This folder holds what the code cannot say by itself. The rules for every change live in [../AGENTS.md](../AGENTS.md).
+Read when you look for the document that answers a question about LabShelf; the rules for every change are in [../AGENTS.md](../AGENTS.md).
 
-| Read | When |
+| Question | Go to |
 |---|---|
-| [product.md](product.md) | before any UI or UX work: what LabShelf is and the principles every app follows |
-| [architecture.md](architecture.md) | before adding or moving code: packages, where code goes, runtimes, ports, design system |
-| [contracts/library-format.md](contracts/library-format.md) | before touching files on disk: library layout, `metadata.yaml`, the sidecar, shared config |
-| [contracts/sync.md](contracts/sync.md) | before touching sync, Drive or anything that coordinates apps |
-| [contracts/reader-host.md](contracts/reader-host.md) | before touching the PDF reader or a host of it |
-| [contracts/library-ui-host.md](contracts/library-ui-host.md) | before touching the library UI or a host of it |
-| [apps/](apps/README.md) | to build, run or verify an app; OAuth setup |
-| [plans/](plans/) | active plans, all written from [plans/TEMPLATE.md](plans/TEMPLATE.md); each one is deleted when it is done. [plans/CALIBRATION.md](plans/CALIBRATION.md) compares past estimates with reality |
-| [archive/](archive/README.md) | the rare finished document worth keeping |
+| What is LabShelf and which UX principles apply? | [product.md](product.md#ux-principles) |
+| Which product words does the UI use? | [product.md](product.md#one-product-three-surfaces) |
+| Where does new code go? | [architecture.md](architecture.md#packages) |
+| What does an app package contain? | [architecture.md](architecture.md#what-an-app-contains) |
+| How does core split by runtime? | [architecture.md](architecture.md#core) |
+| How do ports and composition roots work? | [architecture.md](architecture.md#ports-and-composition-roots) |
+| Where do design tokens and shared UI live? | [architecture.md](architecture.md#design-system) |
+| How do I build and test? | [architecture.md](architecture.md#build-and-test) |
+| What is the library folder layout? | [contracts/library-format.md](contracts/library-format.md#layout) |
+| How is a paper identified? | [contracts/library-format.md](contracts/library-format.md#paper-identity) |
+| What does `metadata.yaml` hold? | [contracts/library-format.md](contracts/library-format.md#metadatayaml) |
+| What does the `data.json` sidecar hold? | [contracts/library-format.md](contracts/library-format.md#sidecar-datajson) |
+| Which configuration do apps share? | [contracts/library-format.md](contracts/library-format.md#shared-configuration) |
+| How do apps share a Drive folder? | [contracts/sync.md](contracts/sync.md#topology) |
+| What is the sync conflict rule? | [contracts/sync.md](contracts/sync.md#three-way-diff) |
+| How are folder names mapped on Drive? | [contracts/sync.md](contracts/sync.md#folder-names) |
+| How do local apps coordinate on one library? | [contracts/sync.md](contracts/sync.md#coordination-between-local-apps) |
+| How does an app authenticate with Drive? | [contracts/sync.md](contracts/sync.md#authentication) |
+| How does a host start the PDF reader? | [contracts/reader-host.md](contracts/reader-host.md#startup) |
+| Which rules bind the reader and its host? | [contracts/reader-host.md](contracts/reader-host.md#rules) |
+| Which messages does the library UI exchange with its host? | [contracts/library-ui-host.md](contracts/library-ui-host.md#messages) |
+| Which rules bind the library UI and its host? | [contracts/library-ui-host.md](contracts/library-ui-host.md#rules) |
+| How do I set up the toolchain or Google OAuth? | [apps/README.md](apps/README.md#prerequisites) |
+| How do I verify an app for real? | [apps/README.md](apps/README.md#verifying-changes) |
+| How do I build and run the VS Code extension? | [apps/vscode.md](apps/vscode.md#build-and-run) |
+| How do I verify the VS Code extension? | [apps/vscode.md](apps/vscode.md#extension-host-run) |
+| How do I build and load the browser extension? | [apps/browser.md](apps/browser.md#build) |
+| How do I verify the browser extension? | [apps/browser.md](apps/browser.md#headless-run) |
+| What constrains the browser extension? | [apps/browser.md](apps/browser.md#platform-constraints) |
+| How do I build and run the terminal app? | [apps/terminal.md](apps/terminal.md#build-and-run) |
+| How do I verify the terminal app? | [apps/terminal.md](apps/terminal.md#verification) |
+| What is the plan template and where are active plans? | [plans/TEMPLATE.md](plans/TEMPLATE.md) |
+| When is a finished document archived? | [archive/README.md](archive/README.md) |
 
-What does not belong here:
-
-- file or function listings, constants, and anything else the code already states;
-- user manuals (the website and each app's built-in help cover them);
-- the history of how something changed (git keeps it).
+Documents hold only what the code cannot say: no file or function listings, no constants, no user manuals, no history.
