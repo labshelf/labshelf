@@ -5,12 +5,12 @@ import type { PdfAttempt } from "@labshelf/core";
 import { PDF, html, json, makeContext, makeFindingHarness, pdf } from "../../support/pdfFindingHarness";
 
 describe("resolvePdf", () => {
-  it("prefers the page's own link and labels it with whoever offered it", async () => {
+  it("prefers the page's own link over lookups that start at once, and labels it with whoever offered it", async () => {
     const h = makeFindingHarness();
     h.routes["https://scholar-pdf.example/p.pdf"] = pdf;
     const got = await resolvePdf(makeContext({ pageCandidates: [{ url: "https://scholar-pdf.example/p.pdf", source: "scholar" }], doi: "10.1145/1.2" }), h.opts());
-    expect(got?.source).toBe("scholar");
-    expect(h.calls).toEqual(["https://scholar-pdf.example/p.pdf"]);
+    expect(got).toMatchObject({ source: "scholar", url: "https://scholar-pdf.example/p.pdf" });
+    expect(h.calls).toContain("https://doi.org/10.1145/1.2");
   });
 
   it("skips a supplementary file an aggregator lists as the paper's PDF", async () => {
@@ -96,32 +96,36 @@ describe("the order of the chain", () => {
   const EPMC = "https://www.ebi.ac.uk/";
   const firstIndex = (calls: string[], prefix: string): number => calls.findIndex((u) => u.startsWith(prefix));
 
-  it("tries the page, arXiv, the three learners, arXiv again for a learned id, PMC, the publisher, CrossRef, Unpaywall and Sci-Hub", async () => {
+  it("downloads candidates in rank order whatever order the lookups answer in", async () => {
     const h = makeFindingHarness();
-    h.routes[`${OPENALEX}works/doi:10.1145%2F1.2?select=id,doi,title,publication_year,ids,open_access,best_oa_location,locations&mailto=me%40uni.edu`] = () => json({
+    const delayed = (ms: number, body: () => Response) => () => new Promise<Response>((resolve) => setTimeout(() => resolve(body()), ms));
+    h.routes[`${OPENALEX}works/doi:10.1145%2F1.2?select=id,doi,title,publication_year,ids,open_access,best_oa_location,locations&mailto=me%40uni.edu`] = delayed(60, () => json({
       title: "Attention is all you need",
-      ids: { pmcid: "PMC5586528" },
+      best_oa_location: { pdf_url: "https://repo.example/openalex.pdf" },
       locations: [{ landing_page_url: "https://arxiv.org/abs/1706.03762v7" }],
-    });
-    const ctx = makeContext({
-      doi: "10.1145/1.2", title: "Attention is all you need", sciHubMirror: "https://mirror.example",
-      pageCandidates: [{ url: "https://page.example/p.pdf", source: "page" }],
-    });
-    expect(await resolvePdf(ctx, h.opts())).toBeUndefined();
-    const order = [
-      "https://page.example/p.pdf", OPENALEX, S2, EPMC, "https://arxiv.org/pdf/1706.03762", "https://pmc-oa-opendata.s3.amazonaws.com/",
-      "https://dl.acm.org/doi/pdf/10.1145/1.2", "https://api.crossref.org/", "https://api.unpaywall.org/", "https://mirror.example/",
-    ];
-    const positions = order.map((prefix) => firstIndex(h.calls, prefix));
-    expect(positions).toEqual([...positions].sort((a, b) => a - b));
-    expect(positions.every((p) => p >= 0)).toBe(true);
+    }));
+    h.routes["https://api.unpaywall.org/v2/10.1145%2F1.2?email=me%40uni.edu"] = () => json({ best_oa_location: { url_for_pdf: "https://oa.example/unpaywall.pdf" } });
+    const attempts: PdfAttempt[] = [];
+    const ctx = makeContext({ doi: "10.1145/1.2", title: "Attention is all you need", pageCandidates: [{ url: "https://page.example/p.pdf", source: "page" }] });
+    expect(await resolvePdf(ctx, h.opts(), attempts)).toBeUndefined();
+    expect(attempts.map((a) => [a.source, a.url])).toEqual([
+      ["page", "https://page.example/p.pdf"],
+      ["publisher", "https://dl.acm.org/doi/pdf/10.1145/1.2"],
+      ["openalex", "https://repo.example/openalex.pdf"],
+      ["arxiv", "https://arxiv.org/pdf/1706.03762"],
+      ["unpaywall", "https://oa.example/unpaywall.pdf"],
+    ]);
   });
 
-  it("downloads each resolver's candidates before asking the next resolver", async () => {
+  it("keeps the better-ranked PDF when a lower-ranked one arrives first", async () => {
     const h = makeFindingHarness();
-    h.routes["https://arxiv.org/pdf/2301.00001"] = pdf;
-    expect((await resolvePdf(makeContext({ arxivId: "2301.00001", doi: "10.1/x" }), h.opts()))?.source).toBe("arxiv");
-    expect(h.calls).toEqual(["https://arxiv.org/pdf/2301.00001"]);
+    h.routes["https://arxiv.org/pdf/2301.00001"] = () => new Promise<Response>((resolve) => setTimeout(() => resolve(pdf()), 60));
+    h.routes["https://api.unpaywall.org/v2/10.1%2Fx?email=me%40uni.edu"] = () => json({ best_oa_location: { url_for_pdf: "https://repo.example/oa.pdf" } });
+    h.routes["https://repo.example/oa.pdf"] = pdf;
+    const attempts: PdfAttempt[] = [];
+    const got = await resolvePdf(makeContext({ arxivId: "2301.00001", doi: "10.1/x" }), h.opts(), attempts);
+    expect(got?.source).toBe("arxiv");
+    expect(attempts.map((a) => [a.source, a.outcome])).toEqual([["arxiv", "pdf"], ["unpaywall", "pdf"]]);
   });
 
   it("downloads an arXiv paper the learners revealed, labelled arxiv", async () => {

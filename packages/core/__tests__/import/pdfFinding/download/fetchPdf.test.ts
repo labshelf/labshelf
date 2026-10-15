@@ -6,11 +6,13 @@ import { fetchPdf, isBotCheck, isPdfBytes, nextHopsFromHtml } from "@labshelf/co
 import type { InTabAnswer } from "@labshelf/core";
 
 import { downloadPdf } from "../../../../src/import/pdfFinding/download/index";
+import type { HopSettings } from "../../../../src/import/pdfFinding/download/fetchOnce";
 import { makeEnv } from "../../../../src/import/pdfFinding/env";
 import { PDF, html, makeFindingHarness, pdf } from "../../../support/pdfFindingHarness";
 
 const fixture = (name: string): string => readFileSync(join(__dirname, "..", "..", "..", "fixtures", name), "utf8");
 const refresh = (target: string): string => `<html><head><meta http-equiv="refresh" content="0; url=${target}"></head></html>`;
+const hopSettings = (referer?: string): HopSettings => ({ signal: AbortSignal.timeout(5_000), firstByteMs: 5_000, ...(referer ? { referer } : {}) });
 const challenge = "<!DOCTYPE html><html><head><title>Just a moment...</title></head><body>cf_chl_opt</body></html>";
 
 describe("nextHopsFromHtml", () => {
@@ -103,14 +105,14 @@ describe("fetchPdf", () => {
   describe("timeout", () => {
     afterEach(() => jest.restoreAllMocks());
 
-    it("abandons a download that has not answered in 45 s", async () => {
+    it("abandons a download that has not answered in 30 s", async () => {
       const deadline = new AbortController();
       const timeout = jest.spyOn(AbortSignal, "timeout").mockReturnValue(deadline.signal);
       const hostFetch = ((_url: unknown, init: { signal: AbortSignal }) => new Promise<Response>((_, reject) => {
         init.signal.addEventListener("abort", () => reject(new Error("aborted")));
       })) as typeof fetch;
       const pending = fetchPdf("https://slow.example/p.pdf", { fetch: hostFetch });
-      expect(timeout).toHaveBeenCalledWith(45_000);
+      expect(timeout).toHaveBeenCalledWith(30_000);
       deadline.abort();
       expect(await pending).toBeUndefined();
     });
@@ -133,9 +135,48 @@ describe("bot checks", () => {
     const h = makeFindingHarness();
     const url = "https://dl.acm.org/doi/pdf/10.1145/1";
     h.routes[url] = () => html(challenge, 403);
-    const outcome = await downloadPdf(url, h.opts(), makeEnv(h.opts()));
+    const outcome = await downloadPdf(url, h.opts(), makeEnv(h.opts()), hopSettings());
     expect(outcome).toEqual({ blocked: [url], outcome: "bot", status: 403 });
     expect(h.logs).toEqual([expect.objectContaining({ level: "WARN", message: "bot check", context: expect.objectContaining({ url }) })]);
+  });
+});
+
+describe("downloadPdf hops", () => {
+  const seenReferers = (): { seen: Array<string | undefined>; opts: () => Parameters<typeof downloadPdf>[1]; routes: Record<string, () => Response> } => {
+    const routes: Record<string, () => Response> = {};
+    const seen: Array<string | undefined> = [];
+    const fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      seen.push((init?.headers as Record<string, string> | undefined)?.["Referer"]);
+      return routes[String(input)]?.() ?? new Response("nope", { status: 404 });
+    }) as typeof globalThis.fetch;
+    return { seen, routes, opts: () => ({ fetch }) };
+  };
+
+  it("sends the landing URL as Referer on every hop", async () => {
+    const net = seenReferers();
+    net.routes["https://a.example/start"] = () => html(refresh("https://a.example/real.pdf"));
+    net.routes["https://a.example/real.pdf"] = pdf;
+    const landing = "https://publisher.example/article/1";
+    const outcome = await downloadPdf("https://a.example/start", net.opts(), makeEnv(net.opts()), hopSettings(landing));
+    expect(outcome.outcome).toBe("pdf");
+    expect(net.seen).toEqual([landing, landing]);
+  });
+
+  it("sends no Referer when none is given", async () => {
+    const net = seenReferers();
+    net.routes["https://a.example/p.pdf"] = pdf;
+    await downloadPdf("https://a.example/p.pdf", net.opts(), makeEnv(net.opts()), hopSettings());
+    expect(net.seen).toEqual([undefined]);
+  });
+
+  it("reports login, with the login hop's status, when a login hop is followed by a failed hop", async () => {
+    const net = seenReferers();
+    net.routes["https://a.example/start"] = () => html(fixture("loginWall.html"));
+    // The tab's session sees a page that points on to a URL that fails.
+    const fetchInTab = async (): Promise<InTabAnswer> => ({ finalUrl: "https://a.example/start", html: refresh("https://a.example/gone") });
+    const opts = { ...net.opts(), tab: { url: "https://a.example/article", fetchInTab } };
+    const outcome = await downloadPdf("https://a.example/start", opts, makeEnv(opts), hopSettings());
+    expect(outcome).toEqual({ blocked: [], outcome: "login", status: 200 });
   });
 });
 

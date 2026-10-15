@@ -41,6 +41,18 @@ describe("importNetworkInput with an identifier", () => {
     expect(h.logs.find((l) => l.message === "PDF found")).toMatchObject({ level: "INFO", context: { source: "unpaywall" } });
   });
 
+  it("saves the PDF a DOI's landing page names in citation_pdf_url", async () => {
+    const { h, net, env } = setup();
+    net.routes["https://doi.org/10.1000/abc"] = () => html('<html><head><meta name="citation_pdf_url" content="https://cdn.example.org/paper.pdf"></head></html>');
+    net.routes["https://cdn.example.org/paper.pdf"] = pdf;
+
+    added(await importNetworkInput(env, "10.1000/abc", PAPERS));
+
+    expect(net.calls).toContain("https://doi.org/10.1000/abc");
+    expect(await h.fs.readFile(`${PAPER_DIR}/paper.pdf`)).toEqual(PDF);
+    expect(h.logs.find((l) => l.message === "PDF found")).toMatchObject({ context: { source: "landing" } });
+  });
+
   it("keeps arXiv's source name and saves a reference when no PDF downloads, logging the attempts", async () => {
     const { h, net, env } = setup();
     net.routes["https://arxiv.org/pdf/1706.03762"] = () => html("<html>log in</html>");

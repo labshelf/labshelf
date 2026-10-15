@@ -37,7 +37,7 @@ The minimum versions are the floor for pdf.js 6.3.
 
 ## Capture structure
 
-Identifier detection, landing-page parsing, metadata resolution and the PDF resolver chain live in core `import/` and are shared with the other apps. `src/capture/` keeps only what needs the browser: the page probe content script, the helper tab and tab fetch (`capture/tab/`), the capture and Scholar flows, and mapping a draft to a record.
+Identifier detection, landing-page parsing, metadata resolution and the PDF finder live in core `import/` and are shared with the other apps. `src/capture/` keeps only what needs the browser: the page probe content script, the helper tab and tab fetch (`capture/tab/`), the capture and Scholar flows, and mapping a draft to a record.
 
 ## Headless run
 

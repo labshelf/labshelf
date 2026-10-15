@@ -7,7 +7,6 @@ import { errorMessage } from "../../../logging/index.js";
 
 const MAX_PDF_BYTES = 200 * 1024 * 1024;
 const MAX_HTML_BYTES = 4 * 1024 * 1024;
-const TIMEOUT_MS = 45_000;
 
 export interface FetchAnswer {
   finalUrl: string;
@@ -18,17 +17,27 @@ export interface FetchAnswer {
   html?: string;
 }
 
-type RequestSettings = Pick<PdfFetchOptions, "credentials" | "headers">;
+/** How one candidate's hops are sent: its deadline, the wait for response headers, and the article page as Referer. */
+export interface HopSettings {
+  signal: AbortSignal;
+  firstByteMs: number;
+  referer?: string;
+}
+
+type RequestSettings = Pick<PdfFetchOptions, "credentials" | "headers"> & HopSettings;
 
 /** @returns what the URL answered and how that answer classifies; an `error` outcome for a network failure or an unusable response */
 export async function fetchOnce(url: string, env: ResolverEnv, settings: RequestSettings): Promise<FetchAnswer> {
+  const firstByte = new AbortController();
+  const timer = setTimeout(() => firstByte.abort(new DOMException("No response headers in time", "TimeoutError")), settings.firstByteMs);
   try {
     const res = await env.fetch(url, {
       redirect: "follow",
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      signal: AbortSignal.any([settings.signal, firstByte.signal]),
       ...(settings.credentials ? { credentials: settings.credentials } : {}),
-      ...(settings.headers ? { headers: settings.headers } : {}),
+      ...requestHeaders(settings),
     });
+    clearTimeout(timer);
     const finalUrl = res.url || url;
     const { status } = res;
     if (!res.ok || status === 202) {
@@ -48,7 +57,16 @@ export async function fetchOnce(url: string, env: ResolverEnv, settings: Request
       ...(html !== undefined ? { html } : {}),
     };
   } catch (error) {
-    warn(env, "download failed", { url, error: errorMessage(error) });
+    // A download the run cancelled because another one won is not a failure worth a line.
+    if ((error as { name?: unknown } | null)?.name !== "AbortError") warn(env, "download failed", { url, error: errorMessage(error) });
     return { finalUrl: url, outcome: "error" };
+  } finally {
+    clearTimeout(timer);
   }
+}
+
+// PLATFORM: browsers drop a Referer header set through fetch (a forbidden header name); Node sends it.
+function requestHeaders({ headers, referer }: RequestSettings): { headers?: Record<string, string> } {
+  if (!referer) return headers ? { headers } : {};
+  return { headers: { ...headers, Referer: referer } };
 }

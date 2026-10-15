@@ -247,7 +247,9 @@ describe("URL import", () => {
     h.routes.set("https://arxiv.org/pdf/1706.03762", pdfResponse());
     const outcomes = await h.service.importAny(["https://arxiv.org/abs/1706.03762"], "");
     expect(outcomes[0]!.status).toBe("added");
-    expect(h.fetch.mock.calls.map(([url]) => url)).toEqual(["https://arxiv.org/pdf/1706.03762"]);
+    const urls = h.fetch.mock.calls.map(([url]) => url);
+    expect(urls).toContain("https://arxiv.org/pdf/1706.03762");
+    expect(urls).not.toContain("https://arxiv.org/abs/1706.03762");
   });
 
   it("resolves a PubMed link as a PMID, not a download", async () => {

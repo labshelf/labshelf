@@ -1,12 +1,11 @@
 /**
- * Runs the resolvers in order and downloads each one's candidate URLs before asking the next, until one really is a
- * PDF. Candidates a bot check refused are retried at the end through a real tab, when the host offers one.
+ * Finds a paper's PDF in two stages: every lookup runs at once under a short cap, then the ranked candidates download a
+ * few at a time. Candidates a bot check refused are retried at the end through a real tab, when the host offers one.
  */
-import { downloadPdf, isSupplementaryUrl } from "./download/index.js";
-import { makeEnv, reportError, warn } from "./env.js";
-import { RESOLVER_ORDER } from "./resolverOrder.js";
+import { DEFAULT_LIMITS, downloadBest, rankedCandidates, startLookups } from "./engine/index.js";
+import { makeEnv, warn } from "./env.js";
 import { originOf } from "./urlParts.js";
-import type { FetchedPdf, PdfAttempt, PdfFetchOptions, PdfResolver, ResolveContext, ResolvedPdf, ResolverEnv } from "./types.js";
+import type { FetchedPdf, PdfAttempt, PdfFetchOptions, ResolveContext, ResolvedPdf, ResolverEnv } from "./types.js";
 import { errorMessage } from "../../logging/index.js";
 
 // A background tab costs seconds: one tab, for the site of the first blocked candidate, which then tries that
@@ -15,8 +14,8 @@ const HELPER_TAB_URLS = 3;
 const VIA_TAB = "(via tab)";
 
 /**
- * Walks the chain and returns the first candidate that downloads as a PDF. `attempts` collects every URL tried, so
- * a failure can be explained.
+ * Returns the best-ranked candidate that downloads as a PDF. `attempts` collects every URL tried, so a failure can be
+ * explained.
  */
 export async function resolvePdf(
   ctx: ResolveContext,
@@ -24,36 +23,14 @@ export async function resolvePdf(
   attempts: PdfAttempt[] = [],
 ): Promise<ResolvedPdf | undefined> {
   const env = makeEnv(opts);
-  const blocked: string[] = [];
-  const tried = new Set<string>();
-  for (const resolver of RESOLVER_ORDER) {
-    for (const url of await candidatesOf(resolver, ctx, env)) {
-      if (tried.has(url)) continue;
-      tried.add(url);
-      // An aggregator can list a supplement as the paper's PDF; it would download fine and be the wrong document.
-      if (isSupplementaryUrl(url)) continue;
-      const source = sourceLabel(resolver, ctx, url);
-      const download = await downloadPdf(url, opts, env);
-      attempts.push({ source, url, outcome: download.outcome, ...(download.status !== undefined ? { status: download.status } : {}) });
-      blocked.push(...download.blocked);
-      if (download.pdf) return { bytes: download.pdf.bytes, url: download.pdf.url, source };
-    }
-  }
+  const lookups = new AbortController();
+  const steps = startLookups(ctx, opts, env, DEFAULT_LIMITS.lookupCapMs, lookups.signal);
+  const run = { opts, env, limits: DEFAULT_LIMITS };
+  const { found, blocked } = await downloadBest(ctx, rankedCandidates(steps), run, attempts);
+  // Lookups still running once a PDF won would only cost requests.
+  lookups.abort();
+  if (found) return found;
   return opts.viaHelperTab && blocked.length ? retryThroughTab(opts.viaHelperTab, blocked, attempts, env) : undefined;
-}
-
-async function candidatesOf(resolver: PdfResolver, ctx: ResolveContext, env: ResolverEnv): Promise<string[]> {
-  try {
-    return await resolver.resolve(ctx, env);
-  } catch (error) {
-    reportError(env, error, { resolver: resolver.name });
-    return [];
-  }
-}
-
-// Page links keep the label of whoever offered them ("page", "scholar").
-function sourceLabel(resolver: PdfResolver, ctx: ResolveContext, url: string): string {
-  return resolver.name === "page" ? ctx.pageCandidates.find((c) => c.url === url)?.source ?? resolver.name : resolver.name;
 }
 
 async function retryThroughTab(

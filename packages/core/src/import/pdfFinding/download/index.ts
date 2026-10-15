@@ -2,4 +2,4 @@
 export { isBotCheck } from "./botCheck.js";
 export { isSupplementaryUrl } from "./supplementary.js";
 export { nextHopsFromHtml } from "./nextHops.js";
-export { downloadPdf, fetchPdf } from "./fetchPdf.js";
+export { DOWNLOAD_LIMITS, downloadPdf, fetchPdf, type DownloadOutcome } from "./fetchPdf.js";
