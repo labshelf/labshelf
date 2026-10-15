@@ -2,21 +2,20 @@
  * Creates and manages the PDF reader webview panels and connects each one to the shared reader host controller.
  */
 import * as vscode from "vscode";
-import { ReaderHostController, paperFiles, type EffectiveTheme, type HostToWebview, type ILogger, type PaperDataStore, type PaperRecord, type ReaderCommandId } from "@labshelf/core";
-import { ThemeManager } from "./ThemeManager.js";
-import { PdfRenderer, getReaderBundleDirectory, type PdfjsFiles, type PdfjsLocator } from "./renderer/index.js";
+import { ReaderHostController, paperFiles, type HostToWebview, type ILogger, type PaperDataStore, type PaperRecord, type ReaderCommandId } from "@labshelf/core";
+import { autoReaderTheme, onAutoReaderThemeChange } from "./vscodeTheme.js";
+import { renderReaderShell, getReaderBundleDirectory, type PdfjsFiles, type PdfjsLocator } from "./renderer/index.js";
 import { READER_CONFIG_SECTION, getReaderPrefs, getReaderViewColumn } from "./readerPrefs.js";
 import { createVsCodeOutputPorts, emitSidecarChanges } from "./readerHostPorts.js";
 import { labshelfTabIcon } from "../ui/index.js";
-import { EventBus, EVENTS } from "../events/index.js";
+import type { LibraryEvents } from "../events/index.js";
 
 // The contributed reader keybindings match this id in their `activeWebviewPanelId` when-clauses.
 const READER_VIEW_TYPE = "labshelfPdf";
 
 export interface PdfViewerDeps {
   extensionUri: vscode.Uri;
-  eventBus: EventBus;
-  themeManager: ThemeManager;
+  events: LibraryEvents;
   store: PaperDataStore;
   logger: ILogger;
   /** Finds the installed pdf.js the webview loads. */
@@ -109,10 +108,10 @@ export class PdfViewerPanel {
       store: deps.store,
       post: (msg) => this._post(msg),
       getPrefs: getReaderPrefs,
-      autoTheme: () => deps.themeManager.getEffectiveTheme("auto") as EffectiveTheme,
+      autoTheme: autoReaderTheme,
       ...createVsCodeOutputPorts(paper),
       logger: deps.logger,
-      sidecarChanged: emitSidecarChanges(deps.eventBus, paper.id),
+      sidecarChanged: emitSidecarChanges(deps.events, paper.id),
     }, options.page !== undefined ? { page: options.page } : {});
     openPanels.set(paper.id, this);
     if (panel.active) { PdfViewerPanel.activePanel = this; }
@@ -121,14 +120,12 @@ export class PdfViewerPanel {
 
     // The shell is assigned as soon as the bundle check returns so the webview starts fetching pdf.js and the PDF;
     // everything that needs disk (theme, annotations, reading position) follows in the `init` reply.
-    void new PdfRenderer().generateHtml({
+    void renderReaderShell({
       webview: panel.webview,
       extensionUri: deps.extensionUri,
       pdfUri,
       paperId: paper.id,
       paperTitle: paper.title,
-      themeManager: deps.themeManager,
-      themePreference: "auto",
       prefs: getReaderPrefs(),
       pdfjs,
       isMac: deps.isMac,
@@ -140,8 +137,8 @@ export class PdfViewerPanel {
   }
 
   private _subscribe(deps: PdfViewerDeps, paper: PaperRecord): void {
-    this._disposables.push(deps.themeManager.onVsCodeThemeChange((theme) => {
-      this._controller.onAutoThemeChange(theme as EffectiveTheme);
+    this._disposables.push(onAutoReaderThemeChange((theme) => {
+      this._controller.onAutoThemeChange(theme);
     }));
     this._disposables.push(vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration(READER_CONFIG_SECTION)) { this._controller.onPrefsChange(); }
@@ -159,7 +156,7 @@ export class PdfViewerPanel {
       // dispose() below re-enters panel.dispose(); close-out must happen exactly once.
       if (this._closed) { return; }
       this._closed = true;
-      deps.eventBus.emit(EVENTS.PDF_VIEWER_CLOSED, { paperId: paper.id, timestamp: new Date().toISOString() });
+      deps.events.pdfViewerClosed.fire({ paperId: paper.id });
       openPanels.delete(paper.id);
       if (PdfViewerPanel.activePanel === this) { PdfViewerPanel.activePanel = undefined; }
       this.dispose();

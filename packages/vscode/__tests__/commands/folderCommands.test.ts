@@ -4,7 +4,7 @@ import { moveFolders, registerFolderCommands, type FolderCommandHost } from '../
 import { makeGlue, PAPERS_ROOT, type Glue } from '../core/paperServiceHarness';
 
 function host(g: Glue): FolderCommandHost & { refreshViews: jest.Mock; followFolderMove: jest.Mock } {
-  const services = { mutations: g.ctx, paperService: g.service, logger: { log: jest.fn(async () => {}), error: jest.fn() } };
+  const services = { mutations: g.ctx, paperService: g.service, reindexLibrary: g.reindex, logger: { log: jest.fn(async () => {}), error: jest.fn() } };
   return {
     requireServices: jest.fn(async () => services as never),
     papersRoot: () => PAPERS_ROOT,
@@ -46,6 +46,7 @@ describe('folder commands', () => {
 
     expect(await g.fs.exists(`${PAPERS_ROOT}/ML`)).toBe(false);
     expect(g.emitted).toEqual([['paper:deleted', { id: 'p1' }]]);
+    expect(g.reindexCalls()).toBe(1);
   });
 
   it('renames a folder and re-points its papers', async () => {
@@ -58,7 +59,21 @@ describe('folder commands', () => {
     await command('labshelf.renameFolder')(node(`${PAPERS_ROOT}/ml`));
 
     expect(g.rows[0]!.path).toBe(`${PAPERS_ROOT}/Learning/p1`);
+    expect(g.reindexCalls()).toBe(1);
     expect(h.followFolderMove).toHaveBeenCalledWith(`${PAPERS_ROOT}/ml`, `${PAPERS_ROOT}/Learning`);
+  });
+
+  it('moves a folder with its papers and reindexes once', async () => {
+    const g = makeGlue();
+    await g.seed('p1', {}, `${PAPERS_ROOT}/ML`);
+    await g.fs.mkdir(`${PAPERS_ROOT}/A`);
+    const h = host(g);
+
+    await moveFolders(h, [`${PAPERS_ROOT}/ML`], `${PAPERS_ROOT}/A`);
+
+    expect(g.rows[0]!.path).toBe(`${PAPERS_ROOT}/A/ML/p1`);
+    expect(g.reindexCalls()).toBe(1);
+    expect(h.followFolderMove).toHaveBeenCalledWith(`${PAPERS_ROOT}/ML`, `${PAPERS_ROOT}/A/ML`);
   });
 
   it('does nothing when a folder is dropped on the folder it is already in', async () => {

@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import { createAiService, AiService } from "../../ai/service/index.js";
 import type { ActiveServices } from "../../commands/index.js";
-import type { EventBus } from "../../events/index.js";
+import type { LibraryEvents } from "../../events/index.js";
 import type { HostAdapters } from "./hostAdapters.js";
 
 // Spins up the AI service when a library is configured. Resolution failures
@@ -11,7 +11,7 @@ import type { HostAdapters } from "./hostAdapters.js";
 // extension keeps working.
 export async function startAiService(
   context: vscode.ExtensionContext,
-  eventBus: EventBus,
+  events: LibraryEvents,
   services: ActiveServices,
   adapters: HostAdapters,
 ): Promise<AiService | null> {
@@ -22,7 +22,7 @@ export async function startAiService(
       storage,
       listPapers: () => services.paperService.listPapers(),
       fileSystem: services.fileSystem,
-      eventBus,
+      events,
       logger: services.logger,
       pdfOpener: adapters.pdfOpener,
       resolvePdfUri: (paperId) => services.paperService.resolvePdfUri(paperId),

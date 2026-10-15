@@ -4,6 +4,7 @@
  */
 import { LibraryStore } from '@labshelf/core';
 import type { LibraryScan, PaperRecord } from '@labshelf/core';
+import { createLibraryEvents } from '../../src/events/index';
 import { reindexLibrary } from '../../src/storage/data/reindexLibrary';
 
 const rec = (over: Partial<PaperRecord>): PaperRecord => ({
@@ -25,9 +26,13 @@ async function freshStore(seed: PaperRecord[] = []): Promise<{ store: LibrarySto
 
 function run(store: LibraryStore, setNext: (records: PaperRecord[]) => void, next: PaperRecord[]) {
   setNext(next);
+  const events = createLibraryEvents();
   const emit = jest.fn();
+  events.paperAdded.event((paper) => emit('paper:added', paper));
+  events.paperUpdated.event((paper) => emit('paper:updated', paper));
+  events.paperDeleted.event((paper) => emit('paper:deleted', paper));
   const queueCheck = jest.fn();
-  const summary = reindexLibrary({ store, eventBus: { emit } as never, queueCheck });
+  const summary = reindexLibrary({ store, events, queueCheck });
   return { summary, emit, queueCheck };
 }
 

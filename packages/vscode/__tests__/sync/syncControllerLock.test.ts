@@ -13,7 +13,7 @@ const provider = new FakeRemoteProvider();
 import { SyncController } from '../../src/sync/adapter/syncController';
 import { reportSyncOutcome } from '../../src/sync/adapter/syncReport';
 import { VscodeFileSystem } from '../../src/storage/vscodeFileSystem';
-import { EventBus } from '../../src/events/index.js';
+import { createLibraryEvents } from '../../src/events/index.js';
 
 // Plays the user's browser: follows the authorization URL back to the loopback redirect with a code.
 function approveInBrowser(url: string): Promise<void> {
@@ -46,7 +46,7 @@ async function makeController(root: string, timers?: SyncTimers, auth?: PkceLoop
     createAuth: () => signedIn,
     paths: libraryLayout(vscode.Uri.file(root), vscode.Uri.joinPath),
     localFs: new VscodeFileSystem(path.join(root, '.research', 'tmp'), path),
-    eventBus: new EventBus(),
+    events: createLibraryEvents(),
     logger,
     host: { name: os.hostname(), pid: process.pid },
     lock: { store: new NodeLockStore(), isProcessAlive },
@@ -90,7 +90,6 @@ describe('SyncController and the cross-app sync lock', () => {
       expect.stringContaining('terminal app is syncing'), expect.any(Number),
     );
     expect(JSON.parse(fs.readFileSync(lockFile(root), 'utf8')).token).toBe('terminal-token');
-    expect(controller.isSyncing()).toBe(false);
     controller.dispose();
   });
 
@@ -122,18 +121,10 @@ describe('SyncController and the cross-app sync lock', () => {
     controller.dispose();
   });
 
-  it('reports the last error and clears it after the next successful sync', async () => {
+  it('tells the Settings view whether Drive is connected', async () => {
     const controller = await makeController(root);
-    expect(controller.driveStatus()).toEqual({ connected: true, syncing: false, lastSyncTime: null, lastError: null });
-
-    jest.spyOn(provider, 'resolveRoot').mockRejectedValueOnce(new Error('Drive is down'));
-    await controller.sync();
-    expect(controller.driveStatus()).toMatchObject({ connected: true, lastError: 'Drive is down' });
-
-    await controller.sync();
-    const status = controller.driveStatus();
-    expect(status.lastError).toBeNull();
-    expect(Number.isNaN(Date.parse(status.lastSyncTime ?? ''))).toBe(false);
+    await controller.initialize();
+    expect(vscode.commands.executeCommand).toHaveBeenLastCalledWith('setContext', 'labshelf.driveConnected', true);
     controller.dispose();
   });
 
@@ -184,7 +175,7 @@ describe('SyncController and the cross-app sync lock', () => {
 
     expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(expect.stringContaining('Run the connect command.'));
     expect(tokens.tokens).toBeNull();
-    expect(controller.isConnected()).toBe(false);
+    expect(vscode.commands.executeCommand).toHaveBeenLastCalledWith('setContext', 'labshelf.driveConnected', false);
     const statusBar = (vscode.window.createStatusBarItem as jest.Mock).mock.results.at(-1)!.value as vscode.StatusBarItem;
     expect(statusBar.command).toBe('labshelf.sync.connect');
     controller.dispose();

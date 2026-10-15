@@ -9,7 +9,7 @@ import type { LibraryNode } from "../../ui/library/index.js";
 import { resolvePaper, ensurePaperPdf, folderActions, type FolderCommandHost, type ActiveServices, currentTextLayerJobs, onTextLayerJobsChanged } from "../../commands/index.js";
 import { findSimilarPapers } from "../../ai/service/index.js";
 import type { AiService } from "../../ai/service/index.js";
-import type { EventBus } from "../../events/index.js";
+import type { LibraryEvents } from "../../events/index.js";
 import type { HostAdapters } from "../serviceComposition/index.js";
 
 const READER_COMMANDS: readonly ReaderCommandId[] = [
@@ -18,7 +18,7 @@ const READER_COMMANDS: readonly ReaderCommandId[] = [
 
 export interface PanelCommandsDeps {
   context: vscode.ExtensionContext;
-  eventBus: EventBus;
+  events: LibraryEvents;
   requireServices: () => Promise<ActiveServices | null>;
   papersRootUri: () => vscode.Uri | null;
   folderHost: FolderCommandHost;
@@ -28,7 +28,7 @@ export interface PanelCommandsDeps {
 }
 
 function registerOpenListTabCommand(deps: PanelCommandsDeps): void {
-  const { context, eventBus, requireServices, papersRootUri, folderHost, syncTreeToPanel, getAiService, adapters } = deps;
+  const { context, events, requireServices, papersRootUri, folderHost, syncTreeToPanel, getAiService, adapters } = deps;
 
   context.subscriptions.push(
     vscode.commands.registerCommand("labshelf.openListTab", (node?: LibraryNode) => {
@@ -36,9 +36,9 @@ function registerOpenListTabCommand(deps: PanelCommandsDeps): void {
         if (services) {
           ListWebviewPanel.createOrShow(
             {
-              extensionUri: context.extensionUri, paperService: services.paperService, eventBus, logger: services.logger, pathOps: adapters.paths,
+              extensionUri: context.extensionUri, paperService: services.paperService, events, logger: services.logger, pathOps: adapters.paths,
               getPapersRoot: () => papersRootUri()?.fsPath ?? null,
-              readFolders: services.folderReader, folders: folderActions(folderHost),
+              getSnapshot: () => services.library.snapshot, folders: folderActions(folderHost),
               onDidNavigate: syncTreeToPanel,
               textLayerJobs: { current: currentTextLayerJobs, onDidChange: onTextLayerJobsChanged },
               loadSidecar: (paperId) => services.paperDataStore.load(paperId),
@@ -53,7 +53,7 @@ function registerOpenListTabCommand(deps: PanelCommandsDeps): void {
 }
 
 function registerReaderPanelCommands(deps: PanelCommandsDeps): void {
-  const { context, eventBus, requireServices, adapters } = deps;
+  const { context, events, requireServices, adapters } = deps;
 
   context.subscriptions.push(
     vscode.commands.registerCommand("labshelf.openPdfViewer", async (paperId?: string, page?: number) => {
@@ -68,8 +68,7 @@ function registerReaderPanelCommands(deps: PanelCommandsDeps): void {
       PdfViewerPanel.createOrShow(
         {
           extensionUri: context.extensionUri,
-          eventBus,
-          themeManager: services.themeManager,
+          events,
           store: services.paperDataStore,
           logger: services.logger,
           locatePdfjs: adapters.reader.locatePdfjs,

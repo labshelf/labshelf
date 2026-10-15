@@ -3,7 +3,7 @@
  */
 import * as vscode from "vscode";
 import type { ExportAnnotationsPorts, NoticeKind, PaperRecord, ReaderHostPorts, SidecarChange } from "@labshelf/core";
-import { EventBus, EVENTS } from "../events/index.js";
+import type { LibraryEvents } from "../events/index.js";
 
 export type VsCodeOutputPorts = Pick<ReaderHostPorts, "writeClipboard" | "notify" | "openExternal" | "saveAnnotations">;
 
@@ -56,14 +56,14 @@ export function createVsCodeExportPorts(paper: PaperRecord, store: ExportAnnotat
 
 /**
  * The list webview and the sync controller listen for annotation events; theme changes concern only the reader.
- * @returns a sidecarChanged port that republishes annotation changes on the event bus.
+ * @returns a sidecarChanged port that republishes annotation changes as an annotationChanged event.
  */
-export function emitSidecarChanges(eventBus: EventBus, paperId: string): (change: SidecarChange) => void {
+export function emitSidecarChanges(events: LibraryEvents, paperId: string): (change: SidecarChange) => void {
   return (change) => {
     switch (change.kind) {
-      case "annotationCreated": eventBus.emit(EVENTS.ANNOTATION_CREATED, change.annotation); break;
-      case "annotationUpdated": eventBus.emit(EVENTS.ANNOTATION_UPDATED, change.annotation); break;
-      case "annotationDeleted": eventBus.emit(EVENTS.ANNOTATION_DELETED, { annotationId: change.annotationId, paperId }); break;
+      case "annotationCreated":
+      case "annotationUpdated":
+      case "annotationDeleted": events.annotationChanged.fire({ paperId }); break;
       case "theme": break;
     }
   };

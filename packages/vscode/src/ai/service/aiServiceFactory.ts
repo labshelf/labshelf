@@ -1,4 +1,4 @@
-// Builds the AI service from the extension's storage, event bus and logger.
+// Builds the AI service from the extension's storage, library events and logger.
 // Returns null when AI is disabled in settings.
 import * as vscode from "vscode";
 import type { ILogger, LocalFileSystem, PaperRecord, PdfDocumentOpener } from "@labshelf/core";
@@ -7,14 +7,14 @@ import { PdfTextExtractor } from "../pdf/index.js";
 import { HashEmbeddingProvider } from "../runtime/index.js";
 import { AiIndexer } from "../indexer/index.js";
 import { AiService } from "./aiService.js";
-import type { EventBus } from "../../events/index.js";
+import type { LibraryEvents } from "../../events/index.js";
 
 export interface AiServiceFactoryDependencies {
   context: vscode.ExtensionContext;
   storage: AiStorage;
   listPapers: () => Promise<PaperRecord[]>;
   fileSystem: Pick<LocalFileSystem, "readFile">;
-  eventBus: EventBus;
+  events: LibraryEvents;
   logger: ILogger;
   pdfOpener: PdfDocumentOpener;
   resolvePdfUri: (paperId: string) => Promise<vscode.Uri | null>;
@@ -35,7 +35,7 @@ export async function createAiService(
   const extractor = new PdfTextExtractor(deps.pdfOpener, deps.logger);
   const indexer = new AiIndexer({
     listPapers: deps.listPapers,
-    eventBus: deps.eventBus,
+    events: deps.events,
     logger: deps.logger,
     embedder,
     vectorStore,

@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 import { type PaperRecord } from "@labshelf/core";
 import type { PaperService } from "../../core/index.js";
 import { queueTextLayers } from "../textLayerQueue.js";
-import { pickPaper } from "./paperResolution.js";
+import { resolvePaper } from "./paperResolution.js";
 import { executeSafely, type RequireServices } from "./types.js";
 
 export function registerTextLayerCommands(context: vscode.ExtensionContext, requireServices: RequireServices): void {
@@ -16,7 +16,7 @@ export function registerTextLayerCommands(context: vscode.ExtensionContext, requ
       await executeSafely(services.logger, "labshelf.makeSearchable", async () => {
         const papers = target !== undefined
           ? await papersByIds(services.paperService, Array.isArray(target) ? target : [target])
-          : [await pickPaper(services.paperService, "Make a scanned paper searchable (OCR)")].filter(isPaper);
+          : [await resolvePaper(services.paperService, undefined, "Make a scanned paper searchable (OCR)")].filter(isPaper);
         if (papers.length > 0) {
           await queueTextLayers(services.textLayers, papers, { logger: services.logger, announceAll: true });
         }

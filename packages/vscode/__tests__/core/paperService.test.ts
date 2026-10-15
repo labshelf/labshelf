@@ -34,8 +34,22 @@ describe('PaperService field edits', () => {
   it('does not re-announce a patch that changes nothing', async () => {
     const g = makeGlue();
     await g.seed('p1');
-    await g.service.updatePaperStatus('p1', 'unread');
+    await g.service.updatePapersStatus(['p1'], 'unread');
     expect(g.emitted).toEqual([]);
+  });
+
+  it('sets one status on several papers with a single reindex and reports unknown ids', async () => {
+    const g = makeGlue();
+    await g.seed('p1');
+    await g.seed('p2');
+    await g.seed('p3');
+
+    const failed = await g.service.updatePapersStatus(['p1', 'p2', 'ghost'], 'done');
+
+    expect(failed).toEqual(['ghost']);
+    expect(g.reindexCalls()).toBe(1);
+    expect(g.rows.map((row) => row.status)).toEqual(['done', 'done', 'unread']);
+    expect(g.emitted.map(([name]) => name)).toEqual(['paper:updated', 'paper:updated']);
   });
 
   it('edits tags on several papers and reports unknown ids', async () => {

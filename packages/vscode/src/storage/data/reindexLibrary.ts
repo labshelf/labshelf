@@ -2,11 +2,11 @@
 // Local mutations and external changes share this single reindex path; it lives outside extension.ts, which tests exclude.
 import { diffPapers } from "@labshelf/core";
 import type { LibraryStore, PaperRecord } from "@labshelf/core";
-import { EVENTS, EventBus } from "../../events/index.js";
+import type { LibraryEvents } from "../../events/index.js";
 
 export interface ReindexLibraryDeps {
   store: LibraryStore;
-  eventBus: EventBus;
+  events: LibraryEvents;
   // Queues a text-layer check for papers that have a PDF but no verdict.
   queueCheck?: (papers: PaperRecord[]) => void;
 }
@@ -31,9 +31,9 @@ export async function reindexLibrary(deps: ReindexLibraryDeps): Promise<ReindexS
   await deps.store.reload();
   const after = papersOf(deps.store);
   const diff = diffPapers(before, after);
-  for (const paper of diff.added) { deps.eventBus.emit(EVENTS.PAPER_ADDED, paper); }
-  for (const paper of diff.updated) { deps.eventBus.emit(EVENTS.PAPER_UPDATED, paper); }
-  for (const paper of diff.removed) { deps.eventBus.emit(EVENTS.PAPER_DELETED, { id: paper.id }); }
+  for (const paper of diff.added) { deps.events.paperAdded.fire(paper); }
+  for (const paper of diff.updated) { deps.events.paperUpdated.fire(paper); }
+  for (const paper of diff.removed) { deps.events.paperDeleted.fire({ id: paper.id }); }
 
   // A PDF that just arrived has no verdict yet, so let it be classified.
   const toCheck = [...diff.added, ...diff.gainedPdf].filter((paper) => paper.hasPdf !== false && !paper.textLayer);

@@ -2,7 +2,7 @@
 // importing into a folder, and configuring the library root.
 import * as vscode from "vscode";
 
-import { importPapers, registerFolderCommands, type FolderCommandHost } from "../../commands/index.js";
+import { importPapersFromDialog, registerFolderCommands, type FolderCommandHost } from "../../commands/index.js";
 import type { LibraryNode } from "../../ui/library/index.js";
 import type { LibraryTreeDataProvider } from "../../ui/library/index.js";
 import type { LibraryRootController } from "../libraryLifecycle/index.js";
@@ -15,7 +15,7 @@ export interface LibraryCommandsDeps {
 }
 
 function registerLibraryViewCommands(deps: LibraryCommandsDeps): void {
-  const { context, folderHost, libraryProvider } = deps;
+  const { context, controller, folderHost, libraryProvider } = deps;
 
   // Collapses tree items inside every LabShelf view at once — same effect as
   // clicking each view's individual "collapse all" button. VS Code has no API to
@@ -32,7 +32,10 @@ function registerLibraryViewCommands(deps: LibraryCommandsDeps): void {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("labshelf.library.refresh", () => libraryProvider.refresh()),
+    vscode.commands.registerCommand("labshelf.library.refresh", async () => {
+      await controller.currentServices()?.reindexLibrary();
+      libraryProvider.refresh();
+    }),
   );
 
   registerFolderCommands(context, folderHost);
@@ -47,16 +50,7 @@ function registerAddPaperAndConfigureCommands(deps: LibraryCommandsDeps): void {
       const services = await folderHost.requireServices();
       if (!services) { return; }
 
-      const selected = await vscode.window.showOpenDialog({
-        canSelectMany: true,
-        canSelectFiles: true,
-        canSelectFolders: true,
-        filters: { PDF: ["pdf"] },
-        openLabel: "Add Paper",
-      });
-      if (!selected || selected.length === 0) { return; }
-
-      await importPapers(services, selected, node?.dirPath);
+      await importPapersFromDialog(services, node?.dirPath);
     }),
   );
 

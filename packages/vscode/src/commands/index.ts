@@ -6,5 +6,5 @@ export type { FolderCommandHost } from "./folderCommands";
 export { registerCommands, resolvePaper, ensurePaperPdf } from "./registerCommands/index.js";
 export type { ActiveServices } from "./registerCommands/index.js";
 export { registerAiCommands } from "./registerAiCommands";
-export { importPapers } from "./importProgress";
+export { importPapers, importPapersFromDialog } from "./importProgress";
 export { currentTextLayerJobs, onTextLayerJobsChanged, queueTextLayers } from "./textLayerQueue.js";

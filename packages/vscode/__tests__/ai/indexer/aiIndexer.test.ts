@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 import { sha256Hex } from "@labshelf/core";
 import { AiIndexer } from "../../../src/ai/indexer/aiIndexer";
 import type { AiIndexerDependencies } from "../../../src/ai/indexer/aiIndexer";
+import { createLibraryEvents } from "../../../src/events/index.js";
 
 jest.mock("@labshelf/core", () => ({
   ...jest.requireActual("@labshelf/core"),
@@ -19,7 +20,7 @@ function makeIndexer(options: {
   const stored = new Map(Object.entries(options.stored ?? {}));
   const deps = {
     listPapers: jest.fn(async () => options.papers ?? [{ id: "p1" }]),
-    eventBus: { emit: jest.fn(), on: jest.fn(), off: jest.fn() },
+    events: createLibraryEvents(),
     logger: { error: jest.fn(async () => {}), log: jest.fn(async () => {}) },
     embedder: {},
     vectorStore: { deleteByPaper: jest.fn(async () => {}) },
@@ -102,15 +103,11 @@ describe("AiIndexer indexing", () => {
 });
 
 describe("AiIndexer paper deletion", () => {
-  function deletedHandler(deps: ReturnType<typeof makeIndexer>["deps"]) {
-    return (deps.eventBus.on.mock.calls as Array<[string, (payload: unknown) => void]>).find(([event]) => event.includes("deleted"))![1];
-  }
-
   it("removes the paper's vectors and hash row", async () => {
     const { indexer, deps, stored, flush } = makeIndexer({ stored: { p1: "h" } });
     indexer.attach();
 
-    deletedHandler(deps)({ paperId: "p1" });
+    deps.events.paperDeleted.fire({ id: "p1" });
     await flush();
 
     expect(deps.vectorStore.deleteByPaper).toHaveBeenCalledWith("p1");
@@ -122,9 +119,25 @@ describe("AiIndexer paper deletion", () => {
     deps.vectorStore.deleteByPaper.mockRejectedValueOnce(new Error("db closed"));
     indexer.attach();
 
-    deletedHandler(deps)({ paperId: "p1" });
+    deps.events.paperDeleted.fire({ id: "p1" });
     await flush();
 
     expect(deps.logger.error).toHaveBeenCalledWith("ai/indexer", expect.objectContaining({ message: "db closed" }), { paperId: "p1" });
+  });
+});
+
+describe("AiIndexer paper events", () => {
+  it("indexes a paper announced as added and stops listening once detached", async () => {
+    const { indexer, deps, stored, flush } = makeIndexer();
+    const detach = indexer.attach();
+
+    deps.events.paperAdded.fire({ id: "p1" } as never);
+    await flush();
+    expect(stored.has("p1")).toBe(true);
+
+    detach();
+    deps.events.paperAdded.fire({ id: "p2" } as never);
+    await flush();
+    expect(stored.has("p2")).toBe(false);
   });
 });

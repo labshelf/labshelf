@@ -5,13 +5,12 @@
 import * as vscode from "vscode";
 import {
   createNonce,
-  type PdfTheme,
   PROTOCOL_VERSION,
   type EffectiveTheme,
   type ReaderBootParams,
   type ReaderPrefs,
 } from "@labshelf/core";
-import { ThemeManager } from "../ThemeManager.js";
+import { autoReaderTheme } from "../vscodeTheme.js";
 import { readerDocument } from "./readerDocument.js";
 import { bundleExists, bundleMissingHtml } from "../../ui/bundleMissing/index.js";
 
@@ -21,8 +20,6 @@ export interface RenderParams {
   pdfUri: vscode.Uri;
   paperId: string;
   paperTitle: string;
-  themeManager: ThemeManager;
-  themePreference: PdfTheme;
   prefs: ReaderPrefs;
   pdfjs: PdfjsFiles | null;
   isMac: boolean;
@@ -101,34 +98,32 @@ export async function resolveReaderBundleUris(
   };
 }
 
-export class PdfRenderer {
-  /**
-   * Generates the reader's HTML shell. The document carries no behaviour of its own: the bundle reads the JSON boot block and builds the UI.
-   * @returns An HTML string ready to assign to webview.html.
-   */
-  async generateHtml(params: RenderParams): Promise<string> {
-    const { webview, extensionUri, pdfUri, paperTitle, themeManager, themePreference } = params;
+/**
+ * Generates the reader's HTML shell. The document carries no behaviour of its own: the bundle reads the JSON boot block and builds the UI.
+ * @returns An HTML string ready to assign to webview.html.
+ */
+export async function renderReaderShell(params: RenderParams): Promise<string> {
+  const { webview, extensionUri, pdfUri, paperTitle } = params;
 
-    const bundle = await resolveReaderBundleUris(webview, extensionUri);
-    if (!bundle) { return bundleMissingHtml({ title: paperTitle, heading: "Reader bundle not built", file: "dist/reader/reader.js", reopen: "the PDF" }); }
+  const bundle = await resolveReaderBundleUris(webview, extensionUri);
+  if (!bundle) { return bundleMissingHtml({ title: paperTitle, heading: "Reader bundle not built", file: "dist/reader/reader.js", reopen: "the PDF" }); }
 
-    const nonce = createNonce();
-    const resolved = resolvePdfjsUris(webview, params.pdfjs);
-    const effectiveTheme = themeManager.getEffectiveTheme(themePreference) as EffectiveTheme;
-    const boot = buildBootParams(params, resolved, webview.asWebviewUri(pdfUri).toString(), effectiveTheme);
+  const nonce = createNonce();
+  const resolved = resolvePdfjsUris(webview, params.pdfjs);
+  const effectiveTheme = autoReaderTheme();
+  const boot = buildBootParams(params, resolved, webview.asWebviewUri(pdfUri).toString(), effectiveTheme);
 
-    return readerDocument({
-      nonce,
-      cspSource: webview.cspSource,
-      title: paperTitle,
-      effectiveTheme,
-      assets: boot.assets,
-      bootJson: serializeBoot(boot),
-      viewerCssUrl: resolved?.viewerCssWebviewUri.toString() ?? "",
-      scriptUrl: bundle.scriptUri.toString(),
-      styleUrl: bundle.styleUri.toString(),
-    });
-  }
+  return readerDocument({
+    nonce,
+    cspSource: webview.cspSource,
+    title: paperTitle,
+    effectiveTheme,
+    assets: boot.assets,
+    bootJson: serializeBoot(boot),
+    viewerCssUrl: resolved?.viewerCssWebviewUri.toString() ?? "",
+    scriptUrl: bundle.scriptUri.toString(),
+    styleUrl: bundle.styleUri.toString(),
+  });
 }
 
 function buildBootParams(
@@ -151,7 +146,7 @@ function buildBootParams(
     },
     paperId: params.paperId,
     paperTitle: params.paperTitle,
-    themePreference: params.themePreference,
+    themePreference: "auto",
     effectiveTheme,
     prefs: params.prefs,
     isMac: params.isMac,

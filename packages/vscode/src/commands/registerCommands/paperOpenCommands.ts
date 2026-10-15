@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import { type PaperRecord, paperFiles } from "@labshelf/core";
-import { ensurePaperPdf, pickPaper, resolvePaper } from "./paperResolution.js";
+import { ensurePaperPdf, resolvePaper } from "./paperResolution.js";
 import { executeSafely, type RequireServices } from "./types.js";
 
 function registerReaderOpenCommands(context: vscode.ExtensionContext, requireServices: RequireServices): void {
@@ -11,7 +11,7 @@ function registerReaderOpenCommands(context: vscode.ExtensionContext, requireSer
       const services = await requireServices();
       if (!services) { return; }
       await executeSafely(services.logger, "labshelf.openPaper", async () => {
-        const paper = await pickPaper(services.paperService, "Open paper");
+        const paper = await resolvePaper(services.paperService, undefined, "Open paper");
         if (paper) {
           await openPaperPdf(paper);
         }
@@ -21,7 +21,7 @@ function registerReaderOpenCommands(context: vscode.ExtensionContext, requireSer
       const services = await requireServices();
       if (!services) { return; }
       await executeSafely(services.logger, "labshelf.searchLibrary", async () => {
-        const paper = await pickPaper(services.paperService, "Search library");
+        const paper = await resolvePaper(services.paperService, undefined, "Search library");
         if (paper) {
           await openPaperPdf(paper);
         }

@@ -38,7 +38,8 @@ export async function moveFolders(host: FolderCommandHost, sourceDirs: string[],
     await guarded(services, `Could not move "${services.mutations.paths.basename(sourceDir)}"`, { sourceDir, target }, async () => {
       const movedTo = await moveFolder(services.mutations, sourceDir, target);
       if (movedTo === sourceDir) { return; }
-      await services.paperService.relocatePapersUnder(sourceDir, movedTo);
+      // The ids and new paths come from a fresh disk scan; a diff-based reindex re-derives every nested path change.
+      await services.reindexLibrary();
       await host.followFolderMove(sourceDir, movedTo);
     });
   }
@@ -63,6 +64,8 @@ async function createFolderIn(host: FolderCommandHost, parent: string, name: str
   const services = await host.requireServices();
   if (!services) { return; }
   await createFolder(services.mutations, parent, name);
+  // The tree reads the snapshot, so a folder without papers shows only after a reload.
+  await services.reindexLibrary();
   host.refreshViews();
 }
 
@@ -71,7 +74,7 @@ async function renameFolderTo(host: FolderCommandHost, dir: string, name: string
   const services = await host.requireServices();
   if (!services) { return; }
   const renamed = await renameFolder(services.mutations, dir, name);
-  await services.paperService.relocatePapersUnder(dir, renamed);
+  await services.reindexLibrary();
   host.refreshViews();
   await host.followFolderMove(dir, renamed);
 }
@@ -82,7 +85,7 @@ async function trashFolderAt(host: FolderCommandHost, dir: string): Promise<void
   if (!services) { return; }
   // The index follows the disk: its papers leave the list only once the folder is really in the trash.
   await trashFolder(services.mutations, dir);
-  await services.paperService.removePapersUnder(dir);
+  await services.reindexLibrary();
   host.refreshViews();
 }
 
@@ -93,7 +96,6 @@ async function newFolder(host: FolderCommandHost, node?: LibraryNode): Promise<v
   const name = await vscode.window.showInputBox({ prompt: "Folder name", placeHolder: "My Folder", validateInput: validateFolderNameInput });
   if (!name?.trim()) { return; }
   await guarded(services, "Could not create the folder", { parent, name }, () => createFolderIn(host, parent, name));
-  host.refreshViews();
 }
 
 async function renameFolderNode(host: FolderCommandHost, node?: LibraryNode): Promise<void> {
@@ -116,7 +118,6 @@ async function trashFolderNode(host: FolderCommandHost, node?: LibraryNode): Pro
   );
   if (choice !== "Delete") { return; }
   await guarded(services, `Could not delete "${node.label}"`, { dir: node.dirPath }, () => trashFolderAt(host, node.dirPath));
-  host.refreshViews();
 }
 
 async function guarded(

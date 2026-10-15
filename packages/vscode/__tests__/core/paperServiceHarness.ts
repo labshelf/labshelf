@@ -7,7 +7,7 @@ import { PaperService } from '../../src/core/paperService';
 import { PaperTextLayers } from '../../src/core/paperTextLayers';
 import { reindexLibrary, type ReindexSummary } from '../../src/storage/data/reindexLibrary';
 import { MemoryLibraryFs } from '../support/memoryLibraryFs';
-import type { EventBus } from '../../src/events/index.js';
+import { createLibraryEvents } from '../../src/events/index.js';
 
 export const PAPERS_ROOT = '/lib/papers';
 
@@ -25,6 +25,8 @@ export interface Glue {
   emitted: Array<[string, unknown]>;
   /** How many times the index was rebuilt from disk; a no-op change does not reindex. */
   reindexCalls: () => number;
+  /** The reindexer the services share: reloads the store from disk and announces the changes. */
+  reindex: () => Promise<ReindexSummary>;
   service: PaperService;
   importer: PaperImporter;
   textLayers: (builder?: { build?: jest.Mock; detect?: jest.Mock }) => PaperTextLayers;
@@ -36,7 +38,10 @@ export interface Glue {
 export function makeGlue(): Glue {
   const fs = new MemoryLibraryFs();
   const emitted: Array<[string, unknown]> = [];
-  const eventBus = { emit: jest.fn((name: string, payload: unknown) => { emitted.push([name, payload]); }) } as unknown as EventBus;
+  const events = createLibraryEvents();
+  events.paperAdded.event((paper) => emitted.push(['paper:added', paper]));
+  events.paperUpdated.event((paper) => emitted.push(['paper:updated', paper]));
+  events.paperDeleted.event((paper) => emitted.push(['paper:deleted', paper]));
   const logger: ILogger = { log: jest.fn(async () => {}), error: jest.fn(async () => {}) };
   const bibtex = new BibTeXService(fs);
   const ctx: MutationContext = { fs, paths: path, artifacts: bibtex, logger, papersRoot: PAPERS_ROOT, now: () => '2026-01-01T00:00:00.000Z' };
@@ -47,10 +52,10 @@ export function makeGlue(): Glue {
   let reindexCalls = 0;
   const reindex = (): Promise<ReindexSummary> => {
     reindexCalls += 1;
-    return reindexLibrary({ store, eventBus });
+    return reindexLibrary({ store, events });
   };
 
-  const service = new PaperService(ctx, store, reindex, eventBus, parse);
+  const service = new PaperService(ctx, store, reindex, events, parse);
   const importer = new PaperImporter(
     ctx, store, reindex, parse,
     { tmpDir: '/lib/tmp', download: { fetch: jest.fn() as unknown as typeof fetch, headers: { 'User-Agent': 'LabShelf-VSCode/test' } } },
@@ -60,7 +65,7 @@ export function makeGlue(): Glue {
     fs, ctx, store, emitted, parse,
     get rows() { return [...store.snapshot.papers.values()].map((entry) => entry.record); },
     reindexCalls: () => reindexCalls,
-    service, importer,
+    reindex, service, importer,
     textLayers: (builder) => new PaperTextLayers(ctx, service, builder as never),
     async seed(id, meta = {}, dir = PAPERS_ROOT) {
       const { hasPdf = true, ...rest } = meta;

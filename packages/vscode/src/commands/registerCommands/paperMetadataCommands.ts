@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import { fetchMetadataForPaper, resolveMissingMetadata } from "../fetchMetadata.js";
 import { removePapers } from "../removePapers.js";
-import { pickPaper, resolvePaper } from "./paperResolution.js";
+import { resolvePaper } from "./paperResolution.js";
 import { executeSafely, type RequireServices } from "./types.js";
 
 export function registerMetadataCommands(context: vscode.ExtensionContext, requireServices: RequireServices): void {
@@ -14,7 +14,7 @@ export function registerMetadataCommands(context: vscode.ExtensionContext, requi
       await executeSafely(services.logger, "labshelf.fetchMetadata", async () => {
         const paper = paperId
           ? (await services.paperService.listPapers()).find((entry) => entry.id === paperId)
-          : await pickPaper(services.paperService, "Select the paper to look up");
+          : await resolvePaper(services.paperService, undefined, "Select the paper to look up");
         if (!paper) { return; }
         await fetchMetadataForPaper(services.paperService, paper);
       });

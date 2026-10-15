@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { exportAnnotations } from '@labshelf/core';
 import { createVsCodeExportPorts, createVsCodeOutputPorts, emitSidecarChanges, notifyInVsCode } from '../../src/pdf-viewer/readerHostPorts';
 import { makeMemoryPaperDataStore } from '../support/memorySidecarPort';
-import { EventBus, EVENTS } from '../../src/events/index.js';
+import { createLibraryEvents } from '../../src/events/index.js';
 
 const vscode = require('vscode');
 
@@ -67,22 +67,16 @@ describe('VS Code reader host ports', () => {
   describe('emitSidecarChanges', () => {
     const annotation = { id: 'a1', paperId: 'p1' } as any;
 
-    it('republishes annotation changes on the event bus and ignores theme changes', () => {
-      const bus = new EventBus();
-      const seen: Array<[string, unknown]> = [];
-      for (const name of [EVENTS.ANNOTATION_CREATED, EVENTS.ANNOTATION_UPDATED, EVENTS.ANNOTATION_DELETED]) {
-        bus.on(name, (payload) => { seen.push([name, payload]); });
-      }
+    it('republishes annotation changes as annotationChanged and ignores theme changes', () => {
+      const bus = createLibraryEvents();
+      const seen: unknown[] = [];
+      bus.annotationChanged.event((payload) => { seen.push(payload); });
       const emit = emitSidecarChanges(bus, 'p1');
       emit({ kind: 'annotationCreated', annotation });
       emit({ kind: 'annotationUpdated', annotation });
       emit({ kind: 'annotationDeleted', annotationId: 'a1' });
       emit({ kind: 'theme' });
-      expect(seen).toEqual([
-        [EVENTS.ANNOTATION_CREATED, annotation],
-        [EVENTS.ANNOTATION_UPDATED, annotation],
-        [EVENTS.ANNOTATION_DELETED, { annotationId: 'a1', paperId: 'p1' }],
-      ]);
+      expect(seen).toEqual([{ paperId: 'p1' }, { paperId: 'p1' }, { paperId: 'p1' }]);
     });
   });
 });

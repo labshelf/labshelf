@@ -1,10 +1,10 @@
 /** Drives the core sync coordinator from VS Code: Drive sign-in, library events, the interval setting and the status bar. */
 import * as vscode from "vscode";
 
-import { createGoogleDriveProvider, diskSyncTarget, driveStatusOf, ReauthRequiredError, SyncCoordinator, type LibraryLayout } from "@labshelf/core";
-import type { DriveStatus, IAuthProvider, ILogger, LocalFileSystem, LockStore, RemoteProvider, SyncOutcome, SyncResult, SyncTarget, SyncTimers } from "@labshelf/core";
+import { createGoogleDriveProvider, diskSyncTarget, ReauthRequiredError, SyncCoordinator, type LibraryLayout } from "@labshelf/core";
+import type { IAuthProvider, ILogger, LocalFileSystem, LockStore, RemoteProvider, SyncOutcome, SyncResult, SyncTarget, SyncTimers } from "@labshelf/core";
 import { reportSyncOutcome } from "./syncReport.js";
-import type { EventBus } from "../../events/index.js";
+import { onPaperChange, type LibraryEvents } from "../../events/index.js";
 
 /** The Drive sign-in the controller drives: tokens for the provider, plus the user-facing sign-in steps. */
 export type DriveSignIn = IAuthProvider & {
@@ -29,7 +29,7 @@ export interface SyncLock {
 export interface SyncControllerDeps {
   paths: LibraryLayout<vscode.Uri>;
   localFs: LocalFileSystem;
-  eventBus: EventBus;
+  events: LibraryEvents;
   logger: ILogger;
   host: SyncHost;
   lock: SyncLock;
@@ -53,12 +53,11 @@ export class SyncController implements vscode.Disposable {
   private localFs: LocalFileSystem;
   private logger: ILogger;
   private readonly statusBar: vscode.StatusBarItem;
-  private readonly _onDidChangeStatus = new vscode.EventEmitter<void>();
-  readonly onDidChangeStatus: vscode.Event<void> = this._onDidChangeStatus.event;
   // Fired after a successful sync so the host can re-index when Drive pulled files in.
   private readonly _onDidSync = new vscode.EventEmitter<SyncResult>();
   readonly onDidSync: vscode.Event<SyncResult> = this._onDidSync.event;
   private readonly configListener: vscode.Disposable;
+  private readonly eventListeners: vscode.Disposable;
 
   constructor(deps: SyncControllerDeps) {
     this.paths = deps.paths;
@@ -86,12 +85,9 @@ export class SyncController implements vscode.Disposable {
     });
     this.coordinator.onStatus((status) => {
       if (status.state === "syncing") { this.statusBar.text = "$(sync~spin) LabShelf Sync"; }
-      this._onDidChangeStatus.fire();
     });
     const schedule = (): void => this.coordinator.scheduleLocalChange();
-    for (const event of ["paper:added", "paper:deleted", "paper:updated", "annotation:created", "annotation:updated", "annotation:deleted"] as const) {
-      deps.eventBus.on(event, schedule);
-    }
+    this.eventListeners = vscode.Disposable.from(onPaperChange(deps.events, schedule), deps.events.annotationChanged.event(schedule));
     this.configListener = vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration(`labshelf.${INTERVAL_SETTING}`)) { this.applyInterval(); }
     });
@@ -137,19 +133,6 @@ export class SyncController implements vscode.Disposable {
     await this.coordinator.syncNow("manual");
   }
 
-  isConnected(): boolean {
-    return this.auth.isAuthenticated();
-  }
-
-  isSyncing(): boolean {
-    return this.coordinator.status().state === "syncing";
-  }
-
-  /** @returns what the settings page shows: the sign-in, a running sync, the last successful sync by any app and the last error */
-  driveStatus(): DriveStatus {
-    return driveStatusOf(this.coordinator.status(), this.isConnected());
-  }
-
   // Periodic syncs run only while signed in, at the interval the setting currently holds.
   private applyInterval(): void {
     const minutes = vscode.workspace.getConfiguration("labshelf").get<number>(INTERVAL_SETTING, 15);
@@ -170,7 +153,7 @@ export class SyncController implements vscode.Disposable {
     }
   }
 
-  // Updates the status bar item to reflect the current auth state.
+  // Updates the status bar item and the context key that picks the Settings view's Drive buttons to reflect the auth state.
   private updateStatusBar(): void {
     const connected = this.auth.isAuthenticated();
     this.statusBar.text = connected ? "$(cloud) LabShelf" : "$(cloud-upload) LabShelf";
@@ -179,13 +162,13 @@ export class SyncController implements vscode.Disposable {
       : "LabShelf: not synced. Click to connect to Drive.";
     this.statusBar.command = connected ? "labshelf.sync.now" : "labshelf.sync.connect";
     this.statusBar.show();
-    this._onDidChangeStatus.fire();
+    void vscode.commands.executeCommand("setContext", "labshelf.driveConnected", connected);
   }
 
   dispose(): void {
     void this.coordinator.stop();
     this.configListener.dispose();
-    this._onDidChangeStatus.dispose();
+    this.eventListeners.dispose();
     this._onDidSync.dispose();
     this.statusBar.dispose();
   }

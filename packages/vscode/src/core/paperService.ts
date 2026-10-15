@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import { editPaperTags, movePapers, paperFiles, resolvePaperRefs, trashPapers, updatePaperFields, withResolvedMetadata, writePaperRecord } from "@labshelf/core";
 import type { BatchOutcome, LibraryStore, MoveOutcome, MutationContext, PaperFieldsPatch, PaperRecord, PdfParse, RecordMetadata } from "@labshelf/core";
-import { EVENTS, EventBus } from "../events/index.js";
+import type { LibraryEvents } from "../events/index.js";
 import type { ReindexSummary } from "../storage/data/index.js";
 
 export class PaperService {
@@ -11,7 +11,7 @@ export class PaperService {
     private readonly ctx: MutationContext,
     private readonly store: LibraryStore,
     private readonly reindex: () => Promise<ReindexSummary>,
-    private readonly eventBus: EventBus,
+    private readonly events: LibraryEvents,
     private readonly parse: PdfParse,
   ) {}
 
@@ -65,18 +65,23 @@ export class PaperService {
     return { paper: updated, hasPdf };
   }
 
-  updatePaperStatus(paperId: string, status: PaperRecord["status"]): Promise<PaperRecord | undefined> {
-    return this.updatePaperFields(paperId, { status });
-  }
-
   /** @returns the paper after the patch, or undefined when it is unknown or its folder holds no paper */
   async updatePaperFields(paperId: string, patch: PaperFieldsPatch): Promise<PaperRecord | undefined> {
-    const current = await this.findPaper(paperId);
-    const written = current && (await updatePaperFields(this.ctx, current.path, patch));
-    if (!current || !written) { return undefined; }
-    const { next, changed } = this.resolveOwnedFields(current, written);
-    if (changed) { await this.reindex(); }
-    return next;
+    const result = await this.writeFields(paperId, patch);
+    if (result?.changed) { await this.reindex(); }
+    return result?.next;
+  }
+
+  /** Sets one status on several papers with a single reindex. @returns the ids that are unknown or hold no paper */
+  async updatePapersStatus(paperIds: string[], status: PaperRecord["status"]): Promise<string[]> {
+    const failed: string[] = [];
+    let anyChanged = false;
+    for (const id of paperIds) {
+      const result = await this.writeFields(id, { status });
+      if (!result) { failed.push(id); } else if (result.changed) { anyChanged = true; }
+    }
+    if (anyChanged) { await this.reindex(); }
+    return failed;
   }
 
   /** Adds and removes tags on several papers. @returns the papers changed and the failures */
@@ -151,26 +156,9 @@ export class PaperService {
     return { ...outcome, failed: [...unknown, ...outcome.failed] };
   }
 
-  /**
-   * Re-points the records of every paper under a folder that was renamed or moved. The ids and new paths come from
-   * a fresh disk scan rather than from oldDir/newDir, since a diff-based reindex re-derives every nested path
-   * change on its own.
-   */
-  async relocatePapersUnder(oldDir: string, newDir: string): Promise<void> {
-    void oldDir;
-    void newDir;
-    await this.reindex();
-  }
-
-  /** Drops the records of every paper under a folder that was trashed; a fresh disk scan finds every id that is gone. */
-  async removePapersUnder(dirPath: string): Promise<void> {
-    void dirPath;
-    await this.reindex();
-  }
-
   // reconcilePdf's correction only ever changes hasPdf in memory; a reindex would undo the point of staying cheap.
   private announceUpdate(paper: PaperRecord): void {
-    this.eventBus.emit(EVENTS.PAPER_UPDATED, paper);
+    this.events.paperUpdated.fire(paper);
   }
 
   // The file's copy of the user's fields wins, but an unchanged paper is not re-announced: sync and the AI index
@@ -184,11 +172,16 @@ export class PaperService {
     return { next, changed: !same };
   }
 
+  private async writeFields(paperId: string, patch: PaperFieldsPatch): Promise<{ next: PaperRecord; changed: boolean } | undefined> {
+    const current = await this.findPaper(paperId);
+    const written = current && (await updatePaperFields(this.ctx, current.path, patch));
+    return current && written ? this.resolveOwnedFields(current, written) : undefined;
+  }
+
   private refsFor(paperIds: string[]): ReturnType<typeof resolvePaperRefs> {
     return resolvePaperRefs(paperIds, async (id) => {
       const record = this.store.snapshot.papers.get(id)?.record;
       return record && { path: record.path, record };
     });
   }
-
 }

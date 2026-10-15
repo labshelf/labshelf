@@ -5,12 +5,10 @@ import { LibraryStore, PaperDataStore, PdfImportParser, BibTeXService, libraryLa
 import { PaperImporter, PaperService, PaperTextLayers } from "../../core/index.js";
 import { ensureLibraryStructure } from "../../storage/paths/index.js";
 import { VscodeFileSystem } from "../../storage/index.js";
-import { createFolderReader } from "../../ui/library/index.js";
-import { ThemeManager } from "../../pdf-viewer/index.js";
 import { queueTextLayers } from "../../commands/index.js";
 import { reindexLibrary, type ReindexSummary } from "../../storage/data/index.js";
 import type { ActiveServices } from "../../commands/index.js";
-import type { EventBus } from "../../events/index.js";
+import type { LibraryEvents } from "../../events/index.js";
 import type { ILogger, PathOps } from "@labshelf/core";
 import type { HostAdapters } from "./hostAdapters.js";
 
@@ -22,13 +20,13 @@ export const createFileSystem = (root: vscode.Uri, paths: PathOps): VscodeFileSy
 // same reindexer before it exists yet.
 function createReindexer(
   store: LibraryStore,
-  eventBus: EventBus,
+  events: LibraryEvents,
   logger: ILogger,
   getTextLayers: () => PaperTextLayers,
 ): () => Promise<ReindexSummary> {
   return () => reindexLibrary({
     store,
-    eventBus,
+    events,
     queueCheck: (papers) => void queueTextLayers(getTextLayers(), papers, { mode: "check", logger }),
   });
 }
@@ -37,7 +35,7 @@ function createReindexer(
 export async function buildServices(
   context: vscode.ExtensionContext,
   root: vscode.Uri,
-  eventBus: EventBus,
+  events: LibraryEvents,
   adapters: HostAdapters,
 ): Promise<ActiveServices> {
   const paths = libraryLayout(root, vscode.Uri.joinPath);
@@ -57,9 +55,9 @@ export async function buildServices(
   // textLayers is assigned right below, once paperService exists; the first reindex run is the seed call further
   // down, after every const in this function is assigned, so the forward reference is safe.
   let textLayers!: PaperTextLayers;
-  const reindex = createReindexer(store, eventBus, logger, () => textLayers);
+  const reindex = createReindexer(store, events, logger, () => textLayers);
 
-  const paperService = new PaperService(mutations, store, reindex, eventBus, parse);
+  const paperService = new PaperService(mutations, store, reindex, events, parse);
   const network = {
     tmpDir: paths.tmpDir().fsPath,
     download: { fetch: globalThis.fetch, headers: { "User-Agent": `LabShelf-VSCode/${context.extension.packageJSON.version}` } },
@@ -68,16 +66,14 @@ export async function buildServices(
   textLayers = new PaperTextLayers(mutations, paperService, textLayerBuilder);
   const paperDataStore = new PaperDataStore(adapters.createSidecarPort(libraryLayout(root.fsPath, adapters.paths.join), logger), { logger });
 
-  // Seeds the store from disk. Nothing has subscribed to eventBus for this root yet — the AI service, the
+  // Seeds the store from disk. Nothing has subscribed to events for this root yet — the AI service, the
   // library tree and the list panel all attach after buildServices returns — so the paper:added events this
   // first reindex fires are not seen by anyone.
   await reindex();
 
-  const themeManager = new ThemeManager();
   return {
-    paperService, importer, textLayers, mutations, logger, themeManager, library: store, paperDataStore, fileSystem,
+    paperService, importer, textLayers, mutations, logger, library: store, paperDataStore, fileSystem,
     reindexLibrary: reindex,
     aiDatabasePath: paths.aiDatabasePath().fsPath,
-    folderReader: createFolderReader(fileSystem, adapters.paths, logger),
   };
 }

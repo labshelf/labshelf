@@ -37,6 +37,19 @@ export async function importPapers(
   return outcomes;
 }
 
+/** Asks which PDFs or folders to add, then imports them into targetDir (papers/ when absent). Does nothing when the dialog is cancelled. */
+export async function importPapersFromDialog(services: ImportServices, targetDir?: string): Promise<void> {
+  const selected = await vscode.window.showOpenDialog({
+    canSelectMany: true,
+    canSelectFiles: true,
+    canSelectFolders: true,
+    filters: { PDF: ["pdf"] },
+    openLabel: "Add Paper",
+  });
+  if (!selected || selected.length === 0) { return; }
+  await importPapers(services, selected, targetDir);
+}
+
 /**
  * Imports while a notification names the file in progress, plus the library view's own progress bar, since the
  * sidebar is where the user looks for the paper to appear.

@@ -1,7 +1,7 @@
 // Finds a paper for a command, or guards the command when none is selected; every registration group calls it.
 import * as vscode from "vscode";
 
-import { type PaperRecord, type PaperStatus, isSafeExternalUrl, paperLink } from "@labshelf/core";
+import { type PaperRecord, STATUS_LABEL, isSafeExternalUrl, paperLink } from "@labshelf/core";
 import type { PaperService } from "../../core/index.js";
 import type { ActiveServices } from "./types.js";
 
@@ -53,39 +53,15 @@ export async function resolvePaper(
     return undefined;
   }
 
-  if (paperId) {
-    const direct = papers.find((paper) => paper.id === paperId);
-    if (direct) {
-      return direct;
-    }
-  }
+  const direct = paperId ? papers.find((paper) => paper.id === paperId) : undefined;
+  if (direct) { return direct; }
 
-  return pickFrom(papers, placeholder);
-}
-
-// Lists all papers and presents a quick-pick with the given placeholder label.
-export async function pickPaper(paperService: PaperService, placeholder: string): Promise<PaperRecord | undefined> {
-  const papers = await paperService.listPapers();
-  if (papers.length === 0) {
-    await vscode.window.showInformationMessage("LabShelf library is empty.");
-    return undefined;
-  }
-  return pickFrom(papers, placeholder);
-}
-
-// Shows a VS Code quick-pick populated with all papers and returns the selected one.
-async function pickFrom(papers: PaperRecord[], placeholder: string): Promise<PaperRecord | undefined> {
   const items = papers.map((paper) => ({
     label: paper.title,
     description: `@${paper.citeKey}`,
-    detail: `${formatStatus(paper.status)}${paper.year ? ` · ${paper.year}` : ""}`,
+    detail: `${STATUS_LABEL[paper.status]}${paper.year ? ` · ${paper.year}` : ""}`,
     paper,
   }));
   const picked = await vscode.window.showQuickPick(items, { placeHolder: placeholder, matchOnDescription: true });
   return picked?.paper;
-}
-
-// Capitalizes the first letter of a paper status string for display.
-function formatStatus(status: PaperStatus): string {
-  return status.charAt(0).toUpperCase() + status.slice(1);
 }

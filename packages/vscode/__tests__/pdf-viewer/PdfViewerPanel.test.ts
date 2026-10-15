@@ -2,10 +2,9 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { PdfViewerPanel, type PdfViewerDeps } from '../../src/pdf-viewer/PdfViewerPanel';
-import { ThemeManager } from '../../src/pdf-viewer/ThemeManager';
 import { makeMemoryPaperDataStore } from '../support/memorySidecarPort';
 import { statFromDisk } from '../support/diskStat';
-import { EventBus, EVENTS } from '../../src/events/index.js';
+import { createLibraryEvents } from '../../src/events/index.js';
 
 const vscode = require('vscode');
 
@@ -48,20 +47,18 @@ describe('PdfViewerPanel', () => {
 
   function makeDeps(overrides: Partial<PdfViewerDeps> = {}) {
     const store = makeMemoryPaperDataStore();
-    const eventBus = new EventBus();
-    const themeManager = new ThemeManager();
+    const events = createLibraryEvents();
     const logger = { log: jest.fn(async () => {}), error: jest.fn(async () => {}) } as any;
     const deps: PdfViewerDeps = {
       extensionUri: vscode.Uri.file(extensionDir),
-      eventBus,
-      themeManager,
+      events,
       store,
       logger,
       locatePdfjs: () => null,
       isMac: false,
       ...overrides,
     };
-    return { deps, store, eventBus, themeManager, logger };
+    return { deps, store, events, logger };
   }
 
   function lastPanel() {
@@ -131,10 +128,10 @@ describe('PdfViewerPanel', () => {
       expect(html).toContain(path.join('dist', 'reader', 'reader.js'));
     });
 
-    it('emits PDF_VIEWER_CLOSED once when the panel closes', async () => {
+    it('announces pdfViewerClosed once when the panel closes', async () => {
       const ctx = makeDeps();
       const closed = jest.fn();
-      ctx.eventBus.on(EVENTS.PDF_VIEWER_CLOSED, closed);
+      ctx.events.pdfViewerClosed.event(closed);
       const paper = makePaper();
       PdfViewerPanel.createOrShow(ctx.deps, paper);
       lastPanel().dispose();
@@ -229,21 +226,19 @@ describe('PdfViewerPanel', () => {
       expect(vscode.window.setStatusBarMessage).toHaveBeenCalledWith('Copied with citation (@test2026, p. 12)', 2500);
     });
 
-    it('emits annotation events on the event bus for the list and sync', async () => {
-      const { panel, eventBus, store, paper } = open();
-      const created = jest.fn();
-      const deleted = jest.fn();
-      eventBus.on(EVENTS.ANNOTATION_CREATED, created);
-      eventBus.on(EVENTS.ANNOTATION_DELETED, deleted);
+    it('announces annotation changes for the list and sync', async () => {
+      const { panel, events, store, paper } = open();
+      const changed = jest.fn();
+      events.annotationChanged.event(changed);
       panel.webview._fireMessage({ command: 'createAnnotation', type: 'note', pageNumber: 2, content: 'a note' });
       await flush();
       await flush();
       const [stored] = await store.getAnnotations(paper.id);
-      expect(created).toHaveBeenCalledWith(stored);
+      expect(changed).toHaveBeenCalledWith({ paperId: paper.id });
       panel.webview._fireMessage({ command: 'deleteAnnotation', id: stored!.id });
       await flush();
       await flush();
-      expect(deleted).toHaveBeenCalledWith({ annotationId: stored!.id, paperId: paper.id });
+      expect(changed).toHaveBeenCalledTimes(2);
     });
 
     it('exports to the file chosen in the save dialog', async () => {

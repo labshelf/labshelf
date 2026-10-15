@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { createAiService } from "../../../src/ai/service/aiServiceFactory";
 import type { AiServiceFactoryDependencies } from "../../../src/ai/service/aiServiceFactory";
 import { HashEmbeddingProvider } from "../../../src/ai/runtime";
+import { createLibraryEvents } from "../../../src/events/index.js";
 import { AiIndexer } from "../../../src/ai/indexer/aiIndexer";
 
 jest.mock("../../../src/ai/pdf/pdfTextExtractor", () => ({ PdfTextExtractor: jest.fn() }));
@@ -17,7 +18,7 @@ function makeDeps() {
     storage: { createStores: jest.fn(() => STORES) },
     listPapers: async () => [],
     fileSystem: {},
-    eventBus: { emit: jest.fn(), on: jest.fn(), off: jest.fn() },
+    events: createLibraryEvents(),
     logger: { error: jest.fn(async () => {}), log: jest.fn(async () => {}) },
     pdfOpener: {},
     resolvePdfUri: async () => null,
@@ -34,7 +35,6 @@ describe("createAiService", () => {
     const hashModelId = new HashEmbeddingProvider().modelId;
     expect(deps.storage.createStores).toHaveBeenCalledWith(hashModelId);
     expect(AiIndexer).toHaveBeenCalledWith(expect.objectContaining({ vectorStore: STORES.vectorStore, hashes: STORES.hashes }));
-    expect(deps.eventBus.emit).not.toHaveBeenCalled();
     expect(deps.logger.error).not.toHaveBeenCalled();
   });
 

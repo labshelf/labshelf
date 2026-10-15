@@ -5,11 +5,11 @@ import type { IEmbeddingProvider, ILogger, IVectorStore, LocalFileSystem, PaperR
 import { runIngestion, sha256Hex } from "@labshelf/core";
 import type { IIndexedHashes } from "../ports.js";
 import type { PdfTextExtractor } from "../pdf/index.js";
-import { EventBus, EVENTS } from "../../events/index.js";
+import type { LibraryEvents } from "../../events/index.js";
 
 export interface AiIndexerDependencies {
   listPapers: () => Promise<PaperRecord[]>;
-  eventBus: EventBus;
+  events: LibraryEvents;
   logger: ILogger;
   embedder: IEmbeddingProvider;
   vectorStore: IVectorStore;
@@ -34,17 +34,12 @@ export class AiIndexer {
    * @returns Function that unsubscribes the indexer.
    */
   attach(): () => void {
-    const onAdded = (payload: unknown): void => this.scheduleByPayload(payload);
-    const onUpdated = (payload: unknown): void => this.scheduleByPayload(payload);
-    const onDeleted = (payload: unknown): void => this.scheduleDelete(payload);
-    this.deps.eventBus.on(EVENTS.PAPER_ADDED, onAdded);
-    this.deps.eventBus.on(EVENTS.PAPER_UPDATED, onUpdated);
-    this.deps.eventBus.on(EVENTS.PAPER_DELETED, onDeleted);
-    return () => {
-      this.deps.eventBus.off(EVENTS.PAPER_ADDED, onAdded);
-      this.deps.eventBus.off(EVENTS.PAPER_UPDATED, onUpdated);
-      this.deps.eventBus.off(EVENTS.PAPER_DELETED, onDeleted);
-    };
+    const subscriptions = vscode.Disposable.from(
+      this.deps.events.paperAdded.event((paper) => this.scheduleByPayload(paper)),
+      this.deps.events.paperUpdated.event((paper) => this.scheduleByPayload(paper)),
+      this.deps.events.paperDeleted.event((paper) => this.scheduleDelete(paper)),
+    );
+    return () => subscriptions.dispose();
   }
 
   /**

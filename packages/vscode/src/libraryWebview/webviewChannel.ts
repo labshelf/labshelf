@@ -4,13 +4,6 @@
  */
 import { sanitizePrefs, type HostToUi, type LibraryTransport, type LibraryUiPrefs, type PrefsPort } from "@labshelf/core";
 
-interface VsCodeApi {
-  postMessage(msg: unknown): void;
-  getState(): unknown;
-  setState(state: unknown): void;
-}
-declare function acquireVsCodeApi(): VsCodeApi;
-
 /** acquireVsCodeApi() may be called once per webview document, so one call serves both. */
 export function createWebviewChannel(): { transport: LibraryTransport; prefs: PrefsPort } {
   const api = acquireVsCodeApi();
