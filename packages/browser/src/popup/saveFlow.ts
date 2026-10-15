@@ -10,7 +10,7 @@ import { errorText, send } from "./runtimeSend";
 import { popupState, setState } from "./state";
 
 // A paper already saved without its PDF: the background searches this very page
-// for one, and the popup offers to attach it when found (Feature C).
+// for one, and the popup offers to attach it when found.
 async function showExisting(existing: LibraryRef): Promise<void> {
   showLibraryCopy(existing);
   if (existing.hasPdf) return;

@@ -111,7 +111,7 @@ export async function handleCaptureTab(
   const draft = await draftForTab(msg.tabId, await tabUrl(msg.tabId), msg.ifNoPdf !== "save");
   if (msg.retryPdf) resetPdfSearch(draft);
   await refreshExisting(draft);
-  // D4: the tab's paper may already be in the library — never write a duplicate.
+  // The tab's paper may already be in the library — never write a duplicate.
   if (draft.existing) return libraryCopy(draft);
   return outcome(draft, await saveOrAsk(draft, msg.targetFolder ? { folder: msg.targetFolder } : {}, msg.ifNoPdf ?? "ask"), scheduleSync);
 }

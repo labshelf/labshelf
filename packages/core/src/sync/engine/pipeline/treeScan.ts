@@ -136,8 +136,8 @@ function claimLocalName(naming: FolderNaming, folder: RemoteFile, taken: Set<str
   return localName;
 }
 
-// Drive allows two files with one name in a folder (left behind by the old appdata listing, which uploaded a
-// second data.json beside the first). Keep the newest, the last one written.
+// TRAP: Drive allows two files with one name in a folder, so a paper folder can hold two data.json files.
+// Keep the newest, the last one written.
 function collectFileNodes(children: RemoteFile[], relDir: string, tree: Map<string, TreeNode>): void {
   for (const child of children) {
     if (child.isFolder) { continue; }

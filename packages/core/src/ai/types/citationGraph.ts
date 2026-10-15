@@ -1,7 +1,4 @@
-/**
- * Types describing the citation graph and stance assignments used by F07
- * (search by claim) and F18 (field-of-influence graph).
- */
+// Describes the citation graph and the stance each citation takes toward the cited claim.
 
 export type Stance = "support" | "contradict" | "neutral";
 

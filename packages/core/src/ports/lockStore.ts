@@ -1,7 +1,5 @@
-/**
- * File operations the cross-process sync lock needs; the app supplies the adapter.
- */
-/** Minimal file operations the lock needs; the create must be atomic (O_EXCL). */
+// Declares the file operations the cross-process sync lock needs; the app supplies the adapter.
+// INVARIANT: createExclusive is atomic — it fails when the file exists, and no reader sees it half-written.
 export interface LockStore {
   /**
    * Creates the file with the given text, complete, in one step (e.g. write a temp file, then link() it into place);

@@ -93,7 +93,6 @@ describe("createTokenStore", () => {
     }
   });
 
-  // Regression: the file location used to come from process.env, ignoring the env passed in.
   it("uses XDG_CONFIG_HOME from the env it is given for the file store", async () => {
     const root = await makeTempDir();
     const store = createTokenStore({ LABSHELF_TOKEN_STORE: "file", XDG_CONFIG_HOME: root }) as FileTokenStore;
