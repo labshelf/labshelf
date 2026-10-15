@@ -7,6 +7,7 @@ import { makeEnv, reportError, warn } from "./env.js";
 import { RESOLVER_ORDER } from "./resolverOrder.js";
 import { originOf } from "./urlParts.js";
 import type { PdfAttempt, PdfFetchOptions, PdfResolver, ResolveContext, ResolvedPdf, ResolverEnv } from "./types.js";
+import { errorMessage } from "../../logging/index.js";
 
 // A background tab costs seconds: one tab, for the site of the first blocked candidate, which then tries that
 // site's blocked candidates in order.
@@ -68,7 +69,7 @@ async function retryThroughTab(
     const pdf = await viaHelperTab(urls);
     return pdf ? { bytes: pdf.bytes, url: pdf.url, source: sourceOf(attempts, pdf.url, urls) } : undefined;
   } catch (error) {
-    warn(env, "helper tab failed", { urls, error: error instanceof Error ? error.message : String(error) });
+    warn(env, "helper tab failed", { urls, error: errorMessage(error) });
     return undefined;
   }
 }

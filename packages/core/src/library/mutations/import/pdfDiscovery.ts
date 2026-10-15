@@ -1,5 +1,6 @@
 /** Expands what the user picked for import (files and folders) into the PDF files to import. */
-import { describeError, MUTATIONS_MODULE, type MutationContext } from "../context.js";
+import { errorMessage } from "../../../logging/index.js";
+import { MUTATIONS_MODULE, type MutationContext } from "../context.js";
 
 export interface PdfDiscovery {
   /** Files picked directly, whatever their extension, and the .pdf files inside picked folders. */
@@ -31,7 +32,7 @@ async function pdfsUnder(ctx: MutationContext, dir: string): Promise<string[]> {
     names = await ctx.fs.listDir(dir);
   } catch (error) {
     await ctx.logger.log("WARN", MUTATIONS_MODULE, "Import skipped a folder it could not read", {
-      dir, message: describeError(error),
+      dir, message: errorMessage(error),
     });
     return [];
   }

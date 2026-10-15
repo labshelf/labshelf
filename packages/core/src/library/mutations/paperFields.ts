@@ -1,7 +1,8 @@
 /** Changes the fields the user owns on papers (reading status, tags, note), reading each paper from disk first. */
 import type { PaperRecord, PaperStatus } from "../../model/index.js";
 import { editedTags, normalizeTags } from "../identity/index.js";
-import { describeError, MUTATIONS_MODULE, type BatchOutcome, type MutationContext, type PaperRef } from "./context.js";
+import { errorMessage } from "../../logging/index.js";
+import { MUTATIONS_MODULE, type BatchOutcome, type MutationContext, type PaperRef } from "./context.js";
 import { readPaperOnDisk } from "./paperOnDisk.js";
 import { writePaperRecord } from "./paperRecordWrite.js";
 
@@ -75,8 +76,8 @@ async function eachPaper(
       outcome.records.push(await run(current));
       outcome.done.push(paper.id);
     } catch (error) {
-      outcome.failed.push({ id: paper.id, error: describeError(error) });
-      await ctx.logger.log("WARN", MUTATIONS_MODULE, "Paper update failed", { id: paper.id, message: describeError(error) });
+      outcome.failed.push({ id: paper.id, error: errorMessage(error) });
+      await ctx.logger.log("WARN", MUTATIONS_MODULE, "Paper update failed", { id: paper.id, message: errorMessage(error) });
     }
   }
   return outcome;

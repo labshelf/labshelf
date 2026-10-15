@@ -1,5 +1,6 @@
 /** Moves paper folders between folders and sends them to the trash; sidecars stay, so a restored paper keeps its notes. */
-import { describeError, MUTATIONS_MODULE, type BatchOutcome, type MutationContext, type PaperRef } from "./context.js";
+import { errorMessage } from "../../logging/index.js";
+import { MUTATIONS_MODULE, type BatchOutcome, type MutationContext, type PaperRef } from "./context.js";
 
 export interface PaperMove {
   id: string;
@@ -33,8 +34,8 @@ export async function movePapers(ctx: MutationContext, papers: PaperRef[], targe
       outcome.done.push(paper.id);
       outcome.moves.push({ id: paper.id, from: paper.path, to: destination });
     } catch (error) {
-      outcome.failed.push({ id: paper.id, error: describeError(error) });
-      await ctx.logger.log("WARN", MUTATIONS_MODULE, "Paper move failed", { id: paper.id, targetDir, message: describeError(error) });
+      outcome.failed.push({ id: paper.id, error: errorMessage(error) });
+      await ctx.logger.log("WARN", MUTATIONS_MODULE, "Paper move failed", { id: paper.id, targetDir, message: errorMessage(error) });
     }
   }
   if (outcome.done.length) {
@@ -54,8 +55,8 @@ export async function trashPapers(ctx: MutationContext, papers: PaperRef[]): Pro
       await ctx.fs.trash(paper.path);
       outcome.done.push(paper.id);
     } catch (error) {
-      outcome.failed.push({ id: paper.id, error: describeError(error) });
-      await ctx.logger.log("WARN", MUTATIONS_MODULE, "Paper trash failed", { id: paper.id, message: describeError(error) });
+      outcome.failed.push({ id: paper.id, error: errorMessage(error) });
+      await ctx.logger.log("WARN", MUTATIONS_MODULE, "Paper trash failed", { id: paper.id, message: errorMessage(error) });
     }
   }
   if (outcome.done.length) {

@@ -3,7 +3,8 @@ import type { PaperRecord } from "../../model/index.js";
 import { METADATA_FILE } from "../layout.js";
 import { paperRecordFromMetadata, parsePaperMetadata } from "../paperMetadata.js";
 import type { PaperFolder } from "./folderLevel.js";
-import { errorMessage, warnSkipped, type ScanEnv } from "./scanEnv.js";
+import { errorMessage } from "../../logging/index.js";
+import { warnSkipped, type ScanEnv } from "./scanEnv.js";
 
 export interface PaperRead {
   record: PaperRecord;

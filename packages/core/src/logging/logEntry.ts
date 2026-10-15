@@ -1,4 +1,4 @@
-/** Builds and serialises structured log entries, the shape every sink stores. */
+/** Builds and serialises structured log entries, the shape every sink stores, and words a thrown value. */
 import type { LogEntry } from "../model/index.js";
 
 export function createLogEntry(
@@ -19,12 +19,17 @@ export function createLogEntry(
   };
 }
 
+/** The text of anything that can be thrown. */
+export function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 /** The stack is kept only for real errors; a thrown string has no stack worth recording. */
 export function describeError(error: unknown): { message: string; stack?: string } {
   if (error instanceof Error) {
     return error.stack ? { message: error.message, stack: error.stack } : { message: error.message };
   }
-  return { message: String(error) };
+  return { message: errorMessage(error) };
 }
 
 /** One JSON line, the on-disk log format. */

@@ -4,7 +4,8 @@ import type { LibraryScan, PaperEntry } from "../model/index.js";
 import type { PathOps } from "../mutations/index.js";
 import { readFolderLevel } from "./folderLevel.js";
 import { readPaperFolder } from "./paperFolderReader.js";
-import { createScanEnv, errorMessage, warnSkipped, type ScanEnv, type ScanFileSystem } from "./scanEnv.js";
+import { errorMessage } from "../../logging/index.js";
+import { createScanEnv, warnSkipped, type ScanEnv, type ScanFileSystem } from "./scanEnv.js";
 
 interface Found {
   folders: string[];

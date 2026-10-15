@@ -38,8 +38,3 @@ export interface BatchOutcome {
 }
 
 export const MUTATIONS_MODULE = "library/mutations";
-
-/** @returns the message of an error, or its string form */
-export function describeError(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}

@@ -3,6 +3,7 @@ import type { ILogger } from "../../ports/index.js";
 import { parseHtmlPage } from "./htmlPage.js";
 import { interpretPage } from "./pageFacts.js";
 import type { PageFacts } from "./types.js";
+import { errorMessage } from "../../logging/index.js";
 
 const LANDING_MODULE = "landing";
 
@@ -36,7 +37,7 @@ export async function fetchLandingPage(url: string, options: LandingFetchOptions
     return interpretPage(parseHtmlPage(await res.text(), res.url || url));
   } catch (error) {
     // A page that cannot be read is routine, so the failure is a warning that names the url.
-    await options.logger?.log("WARN", LANDING_MODULE, "Landing page fetch failed", { url, message: error instanceof Error ? error.message : String(error) });
+    await options.logger?.log("WARN", LANDING_MODULE, "Landing page fetch failed", { url, message: errorMessage(error) });
     return undefined;
   } finally {
     clearTimeout(timer);

@@ -1,6 +1,6 @@
 /** Imports what a URL serves: a PDF under the name in the URL, or the paper a landing page describes. */
 import { importPdf, isPdfBytes, type ImportOutcome } from "../../library/index.js";
-import { describeError } from "../../logging/index.js";
+import { errorMessage } from "../../logging/index.js";
 import { fetchBytes, isHtml } from "./downloads.js";
 import { NETWORK_IMPORT_MODULE, type NetworkImportEnv } from "./env.js";
 import { importLandingPage } from "./importLandingPage.js";
@@ -23,7 +23,7 @@ export async function importUrl(env: NetworkImportEnv, url: string, targetDir: s
       sourceName: name.toLowerCase().endsWith(".pdf") ? name : `${name}.pdf`,
     });
   } catch (error) {
-    const { message } = describeError(error);
+    const message = errorMessage(error);
     await ctx.logger.log("WARN", NETWORK_IMPORT_MODULE, "URL import failed", { url, message });
     return { status: "failed", error: message, input: url };
   } finally {

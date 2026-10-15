@@ -1,8 +1,9 @@
 /** Turns pdf.js' low-level parser errors into messages the user can act on. */
+import { errorMessage } from "../../../logging/index.js";
 
 export function describePdfError(error: unknown): Error {
   const name = (error as { name?: unknown })?.name;
-  const message = error instanceof Error ? error.message : String(error);
+  const message = errorMessage(error);
 
   if (name === "PasswordException") {
     return new Error("The PDF is password-protected and could not be read.");

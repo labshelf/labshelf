@@ -4,7 +4,8 @@
  */
 import type { PaperRecord, PaperStatus } from "../../model/index.js";
 import { PDF_FILE } from "../layout.js";
-import { describeError, MUTATIONS_MODULE, type MutationContext } from "./context.js";
+import { errorMessage } from "../../logging/index.js";
+import { MUTATIONS_MODULE, type MutationContext } from "./context.js";
 import { statusOnDisk } from "./paperOnDisk.js";
 
 export interface RecordWriteOptions {
@@ -42,7 +43,7 @@ async function keptStatus(ctx: MutationContext, record: PaperRecord): Promise<Pa
     if (status) { return status; }
     reason = "metadata.yaml holds no valid status";
   } catch (error) {
-    reason = describeError(error);
+    reason = errorMessage(error);
   }
   await ctx.logger.log("WARN", MUTATIONS_MODULE, "Status on disk unreadable, keeping the indexed status", {
     id: record.id, status: record.status, reason,

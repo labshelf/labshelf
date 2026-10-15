@@ -1,4 +1,4 @@
-import { createLogEntry, describeError, formatLogLine } from "../../src/logging/index";
+import { createLogEntry, describeError, errorMessage, formatLogLine } from "../../src/logging/index";
 
 describe("createLogEntry", () => {
   const now = () => new Date("2026-01-02T03:04:05.678Z");
@@ -34,6 +34,15 @@ describe("describeError", () => {
     expect(describeError("plain")).toEqual({ message: "plain" });
     expect(describeError({ code: 7 })).toEqual({ message: "[object Object]" });
     expect(describeError(undefined)).toEqual({ message: "undefined" });
+  });
+});
+
+describe("errorMessage", () => {
+  it("takes the message of an Error and the text of anything else", () => {
+    expect(errorMessage(new Error("boom"))).toBe("boom");
+    expect(errorMessage("plain")).toBe("plain");
+    expect(errorMessage(404)).toBe("404");
+    expect(errorMessage(null)).toBe("null");
   });
 });
 

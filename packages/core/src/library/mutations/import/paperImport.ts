@@ -2,7 +2,8 @@
 import type { PaperRecord } from "../../../model/index.js";
 import { citeKeySlug, claimCiteKey } from "../../identity/index.js";
 import { PDF_FILE } from "../../layout.js";
-import { describeError, MUTATIONS_MODULE, type MutationContext } from "../context.js";
+import { errorMessage } from "../../../logging/index.js";
+import { MUTATIONS_MODULE, type MutationContext } from "../context.js";
 import { importedRecord, needsReview, type ParsedImport } from "./importedRecord.js";
 import { isPdfBytes } from "./pdfBytes.js";
 
@@ -75,8 +76,8 @@ export async function importPdf(
     });
     return { status: "added", record, needsReview: needsReview(parsed), input };
   } catch (error) {
-    await ctx.logger.log("WARN", MUTATIONS_MODULE, "PDF import failed", { file, message: describeError(error) });
-    return { status: "failed", error: describeError(error), input };
+    await ctx.logger.log("WARN", MUTATIONS_MODULE, "PDF import failed", { file, message: errorMessage(error) });
+    return { status: "failed", error: errorMessage(error), input };
   }
 }
 

@@ -24,7 +24,3 @@ export function createScanEnv(fs: ScanFileSystem, ops: PathOps, logger: ILogger)
 export async function warnSkipped(env: ScanEnv, message: string, context: Record<string, unknown>): Promise<void> {
   await env.logger.log("WARN", SCAN_MODULE, message, context);
 }
-
-export function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}

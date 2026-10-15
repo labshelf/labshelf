@@ -1,7 +1,7 @@
 /** Reads every signal the PDF file itself carries, in one pass over the document. */
 import { extractLinkUrls, extractPageTexts, extractTitleBlocks } from "../textExtraction.js";
 import { metadataFromXmp } from "../xmp.js";
-import { describeError } from "../../../logging/index.js";
+import { errorMessage } from "../../../logging/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import type { ResolvedMetadata } from "../../metadata/index.js";
 import type { PdfDocumentLike, PdfDocumentOpener, TextBlock } from "../types.js";
@@ -49,7 +49,7 @@ async function optional<T>(read: Promise<T>, empty: T, signal: string, logger: I
     return await read;
   } catch (error) {
     await logger?.log("WARN", PDF_SIGNALS_MODULE, `PDF ${signal} unreadable; continuing without it`, {
-      message: describeError(error).message,
+      message: errorMessage(error),
     });
     return empty;
   }

@@ -5,7 +5,7 @@
 import { detectIdentifiers, type DetectedIdentifier } from "../../identifiers/index.js";
 import { isPdfBytes } from "../../../library/index.js";
 import type { ILogger } from "../../../ports/index.js";
-import { describeError } from "../../../logging/index.js";
+import { errorMessage } from "../../../logging/index.js";
 import { resolveFirstIdentifier } from "../../lookup/index.js";
 import { asString } from "../../metadata/index.js";
 import { abstractFromText, titleFromPlainText } from "../frontMatter/index.js";
@@ -182,7 +182,7 @@ async function identify(signals: PdfSignals, frontMatter: string, logger: ILogge
   const identifiers = detectIdentifiers(signals.info, frontMatter, signals.linkUrls);
   const confirmed = await resolveFirstIdentifier(identifiers).catch(async (error: unknown) => {
     await logger?.log("WARN", PDF_PARSER_MODULE, "Identifier lookup failed; continuing without a confirmed identifier", {
-      identifiers: identifiers.map((found) => found.value), message: describeError(error).message,
+      identifiers: identifiers.map((found) => found.value), message: errorMessage(error),
     });
     return undefined;
   });

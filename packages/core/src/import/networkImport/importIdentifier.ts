@@ -1,6 +1,6 @@
 /** Imports a paper from an identifier: resolves its record through the registries and looks for its PDF. */
 import type { ImportOutcome } from "../../library/index.js";
-import { describeError } from "../../logging/index.js";
+import { errorMessage } from "../../logging/index.js";
 import type { DetectedIdentifier, DetectedIds } from "../identifiers/index.js";
 import { identifiersFromInput } from "../identifiers/index.js";
 import type { ResolvedMetadata } from "../metadata/index.js";
@@ -47,7 +47,7 @@ export async function importIdentifier(env: NetworkImportEnv, input: string, tar
     });
     return { status: "added", record, needsReview: false, input };
   } catch (error) {
-    const { message } = describeError(error);
+    const message = errorMessage(error);
     await env.ctx.logger.log("WARN", NETWORK_IMPORT_MODULE, "Identifier import failed", { input, message });
     return { status: "failed", error: message, input };
   }
@@ -71,7 +71,7 @@ async function firstResolved(env: NetworkImportEnv, identifiers: DetectedIdentif
       const metadata = await resolve(identifier);
       if (metadata?.title) { return { metadata, identifier }; }
     } catch (error) {
-      await env.ctx.logger.log("WARN", NETWORK_IMPORT_MODULE, "Registry lookup failed", { identifier, message: describeError(error).message });
+      await env.ctx.logger.log("WARN", NETWORK_IMPORT_MODULE, "Registry lookup failed", { identifier, message: errorMessage(error) });
     }
   }
   return undefined;

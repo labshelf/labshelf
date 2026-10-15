@@ -2,6 +2,7 @@
 import { warn } from "../env.js";
 import { startTimeout } from "../timeout.js";
 import type { FetchFn, ResolverEnv } from "../types.js";
+import { errorMessage } from "../../../logging/index.js";
 
 const LOOKUP_TIMEOUT_MS = 8000;
 const JSON_HEADERS = { Accept: "application/json" };
@@ -27,7 +28,7 @@ export async function timedFetch<T>(
     }
     return await read(res);
   } catch (error) {
-    warn(env, "lookup failed", { url, error: error instanceof Error ? error.message : String(error) });
+    warn(env, "lookup failed", { url, error: errorMessage(error) });
     return undefined;
   } finally {
     timer.stop();

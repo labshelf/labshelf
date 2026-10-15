@@ -4,6 +4,7 @@ import { startTimeout } from "../timeout.js";
 import { warn } from "../env.js";
 import type { FetchedPdf, PdfFetchOptions, ResolverEnv } from "../types.js";
 import { isBotCheck } from "./botCheck.js";
+import { errorMessage } from "../../../logging/index.js";
 
 const MAX_PDF_BYTES = 200 * 1024 * 1024;
 const MAX_HTML_BYTES = 4 * 1024 * 1024;
@@ -43,7 +44,7 @@ export async function fetchOnce(url: string, env: ResolverEnv, settings: Request
     }
     return { finalUrl };
   } catch (error) {
-    warn(env, "download failed", { url, error: error instanceof Error ? error.message : String(error) });
+    warn(env, "download failed", { url, error: errorMessage(error) });
     return undefined;
   } finally {
     timer.stop();

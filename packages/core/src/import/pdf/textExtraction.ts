@@ -1,5 +1,5 @@
 // Reads title blocks, identifier-detection text and link annotation targets from a PdfDocumentLike.
-import { describeError } from "../../logging/index.js";
+import { errorMessage } from "../../logging/index.js";
 import type { ILogger } from "../../ports/index.js";
 import type { PageText, PdfDocumentLike, TextBlock } from "./types.js";
 
@@ -67,7 +67,7 @@ export async function extractPageTexts(
     } catch (error) {
       await logger?.log("WARN", PDF_TEXT_MODULE, "Page text unreadable; skipping the page", {
         page,
-        message: describeError(error).message,
+        message: errorMessage(error),
       });
     }
   }
@@ -96,7 +96,7 @@ export async function extractLinkUrls(
     const annotations = await page.getAnnotations().catch(async (error: unknown) => {
       await logger?.log("WARN", PDF_TEXT_MODULE, "Link annotations unreadable; skipping the page", {
         page: pageNumber,
-        message: describeError(error).message,
+        message: errorMessage(error),
       });
       return [];
     });

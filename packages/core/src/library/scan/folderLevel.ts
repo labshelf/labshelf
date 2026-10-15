@@ -3,7 +3,8 @@
 import { METADATA_FILE, PDF_FILE } from "../layout.js";
 import { nameCollator } from "../model/index.js";
 import type { LocalStat } from "../../ports/index.js";
-import { errorMessage, warnSkipped, type ScanEnv } from "./scanEnv.js";
+import { errorMessage } from "../../logging/index.js";
+import { warnSkipped, type ScanEnv } from "./scanEnv.js";
 
 export interface PaperFolder {
   path: string;
