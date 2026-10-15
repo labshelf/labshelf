@@ -26,4 +26,42 @@ else
     echo "  - $p: $open/$((open + done_)) open${state:+ · status: $state}${next:+ · next: $next}"
   done
 fi
+
+# Memory lint: flag memory entries whose linked file is missing, and backticked
+# path-looking tokens inside memory files that no longer exist in the repo.
+slug=$(printf '%s' "$root" | tr '/' '-')
+mem_dir="$HOME/.claude/projects/$slug/memory"
+mem_md="$mem_dir/MEMORY.md"
+if [ -f "$mem_md" ]; then
+  while IFS= read -r entry_line; do
+    case "$entry_line" in
+      "- ["*)
+        title=$(printf '%s' "$entry_line" | sed -E 's/^- \[([^]]*)\].*/\1/')
+        mdfile=$(printf '%s' "$entry_line" | sed -E 's/^- \[[^]]*\]\(([^)]*)\).*/\1/')
+        [ -n "$mdfile" ] || continue
+        [ -f "$mem_dir/$mdfile" ] || echo "STALE?: $title -> $mdfile (missing memory file)"
+        ;;
+    esac
+  done < "$mem_md"
+
+  for memfile in "$mem_dir"/*.md; do
+    [ -f "$memfile" ] || continue
+    [ "$(basename "$memfile")" = "MEMORY.md" ] && continue
+    while IFS= read -r token; do
+      [ -n "$token" ] || continue
+      case "$token" in
+        *" "*|"~"*|http://*|https://*|'$'*|@*|*'<'*|*'>'*|*'..'*|*'*'*|*'='*|*'"'*|*'{'*|*'}'*)
+          continue ;;
+      esac
+      # Only check tokens rooted at a real top-level directory; a shorthand
+      # fragment like `ui/styles/tokens.css` (relative to some package's src/)
+      # is not a repo-root path and would false-positive on every memory.
+      case "$token" in
+        packages/*|documents/*|scripts/*|website/*|credentials/*|test-workspace/*|.claude/*) ;;
+        *) continue ;;
+      esac
+      [ -e "$root/$token" ] || echo "STALE?: $(basename "$memfile") -> $token"
+    done < <(grep -oE '`[^`]+`' "$memfile" | tr -d '`' | grep '/')
+  done
+fi
 exit 0
