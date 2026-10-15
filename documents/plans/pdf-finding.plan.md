@@ -1,6 +1,6 @@
 # Plan: Find and download PDFs as well as Zotero and Paperpile
 
-Status: in progress (session 1 of 8 done)
+Status: in progress (session 2 of 8)
 Size: GG — a measurement harness, a reordered resolver engine, a publisher rule table, a bot-wall ladder, library proxies, PDF versions and two last-resort flows across core and the browser extension; grows past 8 sessions if the user's manual checks show session access failing for reasons the rules cannot fix
 Pending decisions: 0
 Branch: `feat/pdf-finding`, cut from `feat/reader-ux` (72b3dc0), in the worktree `../labshelf-pdf-finding` — `main` predates `import/pdfFinding/`
@@ -14,7 +14,7 @@ The browser extension finds and downloads the PDF of a paper as often as Zotero 
 Research (2026-10-15, Zotero source, the Paperpile Firefox add-on 1.0.132 source, Martín-Martín et al. 2018) shows that the gap is the order and the fetch context, not missing sources. Both tools start from the article page and the user's session, and they use site-specific PDF rules (Paperpile has about 430 drivers, Zotero about 700 translators). Open-access APIs come second. LabShelf starts from the APIs and has 22 rules.
 
 - [x] **D1** The target is the browser extension. The chain stays in core `import/pdfFinding/`. VS Code and the terminal run the same order, without any session features — saving files with a session happens only in the browser for now.
-- [x] **D2** Measure first. A Node harness on a 66-paper corpus measures open access and publisher rules. A 15-paper closed-access checklist, run by the user in Chrome with institutional access, measures session gains — Node has no session.
+- [x] **D2** Measure first. A Node harness on a 66-paper corpus measures open access and publisher rules. A 15-paper closed-access checklist, run by the user in Chrome and Firefox with institutional access, measures session gains — Node has no session.
 - [x] **D3** Page first. The article page (the user's tab, or the DOI landing page fetched in the background) is parsed before the aggregator results are downloaded, and every download sends the page as Referer — this is what Zotero and Paperpile do.
 - [x] **D4** Two stages: all lookups (the page, and the learning and direct resolvers) run concurrently with a 3 s cap, then the ranked candidates download with limited concurrency — this keeps the learners-feed-PMC invariant and makes "not found" fast.
 - [x] **D5** Polite per-domain pacing: 1 s between requests to a domain, and a domain is skipped for the run after 5 consecutive failures — publishers block bursts (Zotero's numbers).
@@ -29,7 +29,7 @@ Research (2026-10-15, Zotero source, the Paperpile Firefox add-on 1.0.132 source
 - [x] **D14** Every attached PDF records its version, `preprint`, `accepted` or `published`, when the source says so. The chain still prefers the published version, but it attaches a preprint or accepted manuscript when nothing better exists. Lists and the detail pane show a "Preprint" or "Accepted" badge. "Find PDF" on a labelled paper looks for the published version and asks before it replaces the file, warning when notes or highlights exist.
 - [x] **D15** "Ask the author" opens a prefilled `mailto:` in the user's own mail client, and LabShelf never sends mail itself. The paper records `pdfRequestedAt`, and the author's address is not stored. Addresses come, cheapest first, from the page's `citation_author_email`, from `mailto:` links near "Correspondence" or "Corresponding author", and from PubMed's "Electronic address:" in `efetch` affiliations. If none is found, the button opens the article page.
 
-- [x] **Q1** The manual checks (A7, A8, A11) run in Chrome only. Firefox gets its own check later.
+- [x] **Q1** The manual checks (A7, A8, A11) run in Chrome and in Firefox, logged separately, because Total Cookie Protection may keep publisher cookies out of background requests in Firefox.
 
 Coordination with the writing plans, which run in parallel:
 
@@ -56,15 +56,15 @@ Coordination with the writing plans, which run in parallel:
 
 - [x] **A1** `pnpm --filter @labshelf/core eval:pdf` runs the corpus in the "ids" and "landing" scenarios and prints, per category and in total, correct PDFs, wrong PDFs, misses by outcome, and median times. It writes a JSON report beside the corpus.
 - [ ] **A2** On the harness, the "landing" scenario reaches at least 40/66 correct PDFs and "ids" at least 37/66, with at most 2 wrong PDFs (session 1 baseline: landing 35, ids 34, 4 wrong in each).
-- [ ] **A3** On the harness, the median time to "not found" is at most 3 s and to a found PDF at most 2.5 s.
+- [x] **A3** On the harness, the median time to "not found" is at most 3 s and to a found PDF at most 2.5 s.
 - [ ] **A4** The rule table covers at least 36 publisher platforms. Every rule has a unit test with a verified example DOI or landing URL.
 - [ ] **A5** Unit tests classify saved fixtures: every wall in S10's table gives `bot` on any status; login pages from Springer, Elsevier, Wiley, IEEE and a CAFe/Shibboleth page give `login`.
 - [ ] **A6** The prefix, hostname and OpenAthens rewrites are pure and unit-tested, and an end-to-end engine test shows that a `login` candidate is retried through an enabled proxy and an open-access host is not.
-- [ ] **A7** Manual, by the user, in Chrome while signed in through the institution: from the closed-access checklist (15 papers), the toolbar popup attaches the correct PDF for at least 12 and the Google Scholar capture for at least 10. The session 1 baseline is in §8.
+- [ ] **A7** Manual, by the user, in Chrome and in Firefox while signed in through the institution: from the closed-access checklist (15 papers), the toolbar popup attaches the correct PDF for at least 12 and the Google Scholar capture for at least 10. The session 1 baseline is in §8.
 - [ ] **A8** Manual: when a capture ends in "PDF not found" because of a sign-in or bot wall, the dialog offers "Open to sign in" / "Open to pass the check". After the user signs in or solves it in that tab, the PDF attaches without another click.
 - [ ] **A9** With a custom resolver template configured, a DOI that no other source has attaches through it. With none, no request goes to any custom host. A profile that had `enableSciHub` and `sciHubMirror` set opens with one equivalent enabled entry.
-- [ ] **A10** `pnpm -r typecheck` and `pnpm -r test` pass. A unit test shows that an identifier import in core fetches the DOI landing page and uses its `citation_pdf_url`.
-- [ ] **A11** Manual: in Chrome, with a paper in the library that has no PDF, the user downloads its PDF from any site or opens it in a tab. The toolbar badge appears, the popup offers "Attach to <paper>", and one click attaches it. A PDF of an unrelated paper offers nothing.
+- [x] **A10** `pnpm -r typecheck` and `pnpm -r test` pass. A unit test shows that an identifier import in core fetches the DOI landing page and uses its `citation_pdf_url`.
+- [ ] **A11** Manual: in Chrome and in Firefox, with a paper in the library that has no PDF, the user downloads its PDF from any site or opens it in a tab. The toolbar badge appears, the popup offers "Attach to <paper>", and one click attaches it. A PDF of an unrelated paper offers nothing.
 - [ ] **A12** For a paper whose only free copy is on arXiv, capture attaches it with `pdfVersion: preprint`, and the badge shows in the browser library and in VS Code. A unit test shows that a published candidate outranks a preprint. "Find PDF" on that paper asks before it replaces the file.
 - [ ] **A13** `pdfVersion` and `pdfRequestedAt` round-trip through `metadata.yaml` in core tests. A library without them still loads, and VS Code shows the same badge and "requested on" line.
 - [ ] **A14** When a capture ends in "PDF not found" with an author address on the page, "Ask the author" opens the mail client with the subject, citation, DOI link and the requester's name and affiliation filled in. The `mailto:` URL is at most 1,800 characters. The detail pane then says "PDF requested from the author on <date>". Unit tests cover address extraction from 5 saved publisher pages, PubMed affiliation strings and `mailto:` encoding.
@@ -116,9 +116,9 @@ Each session ends with typecheck and tests green, the `finish` pass, a harness r
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S5 | Two-stage engine with a domain pacer | S2 | H · main thread | A3, engine tests | [ ] |
-| S6 | DOI landing page as page context in identifier import; Referer on downloads | S5 | M · implementer (sonnet) | A10 | [ ] |
-| S7 | Finish, harness run, and the user's 3-paper Chrome check (Elsevier, Springer, IEEE from `closed.json`) | S5–S6 | `finish` skill + main thread + user | gate passes, §8 | [ ] |
+| S5 | Two-stage engine with a domain pacer | S2 | H · main thread | A3, engine tests | [x] |
+| S6 | DOI landing page as page context in identifier import; Referer on downloads | S5 | M · implementer (sonnet) | A10 | [x] |
+| S7 | Finish, harness run, and the user's 3-paper check in Chrome and Firefox (Elsevier, Springer, IEEE from `closed.json`) | S5–S6 | `finish` skill + main thread + user | gate passes, §8 | [ ] |
 
 ### Session 3 — Publisher rules and wall signatures
 
@@ -226,7 +226,7 @@ Each session ends with typecheck and tests green, the `finish` pass, a harness r
 
 - **Do:**
   - Run `eval:pdf` and log the totals in §8.
-  - Ask the user to capture the 15 closed papers in Chrome while signed in through the institution, once from the popup and once from Scholar, and log the result.
+  - Ask the user to capture the 15 closed papers in Chrome and in Firefox while signed in through the institution, once from the popup and once from Scholar, and log the result.
 - **Done when:** both baselines are in §8.
 
 #### S5 — Two-stage engine
@@ -236,9 +236,9 @@ Each session ends with typecheck and tests green, the `finish` pass, a harness r
   - Stage B ranks the candidates (page hints, then publisher rules, then repository and open-access copies, then custom resolvers) and downloads at most 3 at a time. Limits: 10 s to first byte, 30 s per URL, 40 s in total.
   - Accept the first verified `%PDF-`, but hold up to 1 s for a better-ranked candidate that is still in flight.
   - The domain pacer waits 1 s between requests to one host and skips a host after 5 consecutive failures.
-- **Touch:** `core/src/import/pdfFinding/` (resolvePdf, resolverOrder, download). **Do not touch:** the resolvers' lookup logic.
+- **Touch:** `core/src/import/pdfFinding/` (resolvePdf, engine, download). **Do not touch:** the resolvers' lookup logic.
 - **Context:**
-  - The INVARIANT in `resolverOrder.ts`: learners reveal ids that PMC and the publisher use. Stage B runs after Stage A, so it holds.
+  - The INVARIANT in `engine/lookupPlan.ts`: learners reveal ids that PMC and the second arXiv step use, so those steps wait for them.
   - Keep the `resolvePdf(ctx, fetchOpts, attempts)` signature; the dialog reads `attempts`.
 - **Done when:** A3, and the engine tests cover ordering, the hold, the pacer and the global limit.
 
@@ -448,3 +448,7 @@ Each session ends with typecheck and tests green, the `finish` pass, a harness r
 - 2026-10-15 — S4: finish pass green (typecheck in all four packages; core and browser tests). Harness grouped into `report/` and `loader/`; `eval:pdf` added to `documents/apps/README.md`. ACM swapped for AIP in `closed.json`. Open for S5: an attempt keeps only the last hop's outcome, so a `login` hop followed by an `error` hop records `error`. The access stage (S15) needs the strongest outcome on the chain.
 - 2026-10-15 — S3: harness baseline logged above. The user's manual baseline is skipped. It stays reproducible from the `72b3dc0` build, so S14 runs the closed checklist on that build and on the new one, side by side. To catch R4 early, S7 ends with a 3-paper Chrome check (Elsevier, Springer, IEEE) by the user.
 - 2026-10-15 — Follow-up plan [google-search-capture.plan.md](google-search-capture.plan.md) (draft) puts the save button on Google search results. It starts after session 3, because it reads the publisher rule table.
+- 2026-10-15 18:20 — Q1 changed by the user: the manual checks (A7, A8, A11) run in Chrome and in Firefox. The S14 and S7 manual checks cover both browsers.
+- 2026-10-15 21:20 — S5: two-stage engine in `core/src/import/pdfFinding/engine/`. A candidate starts downloading once its lookup and every higher-ranked lookup have answered, so page links start at once instead of after the 3 s cap. Rank: page, landing, publisher, arXiv, learners, learned arXiv, PMC, CrossRef, Unpaywall, custom. An attempt reports the most telling outcome on its hop chain (S4's open item). Deadlines use plain timers, because `AbortSignal.timeout` let the Node harness exit with a run unsettled.
+- 2026-10-15 21:20 — S6: the DOI landing page is a lookup inside the engine (`engine/landingLookup.ts`), not a step in `importIdentifier`, so every app and the harness's "ids" scenario get it (D4 lists the page among the lookups). The A10 test is in `importNetworkInput.test.ts`. Known gap: the browser drops a Referer set through fetch, so background downloads in the extension send none; sending it needs `declarativeNetRequest`, a manifest change to decide in S12.
+- 2026-10-15 21:25 — S7 harness: ids 34/66 correct, 3 wrong; misses bot 13, error 6, login 4, html 3, none 3; medians found 1.9 s, not-found 1.4 s. Landing 33/66, 4 wrong; medians found 2.4 s, not-found 1.4 s. A3 met. Landing lost 2 against session 1, both external: ImageNet IJCV (Semantic Scholar 429, so no arXiv id; concurrent lookups raise S2 rate limits in the harness, which runs papers in parallel) and Hallmarks of Cancer (EPFL's repository answers 405 with or without Referer). Wrong copies unchanged (OpenAlex pre-review and Dialnet copies, the Nature supplement; ResNet's OpenAlex copy appears in landing). Finish pass green; `pnpm -r typecheck` and `pnpm -r test` pass. Browser lint fails on `libraryMutations.ts:36` (53-line function), which predates this branch.
