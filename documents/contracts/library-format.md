@@ -14,8 +14,12 @@ A LabShelf library is a folder that the user owns. Every app reads and writes th
         paper.pdf                  optional
         metadata.yaml              required: a folder holding it is a paper
         bib.bib                    BibTeX entry generated from metadata.yaml
+  projects/                        writing projects created by LabShelf (not synced)
+    <project id>/                  one folder per project; the folder name is the project id
+      labshelf.yaml                required: a folder holding it is a project
   .research/                       hidden, owned by the apps
     papers/<paper id>/data.json    the sidecar (synced, namespace "appdata")
+    projects.json                  project folders registered outside the library (never synced)
     index.sqlite                   VS Code's text index for the Related tab: chunk embeddings and the content hash of each indexed PDF (never synced)
     logs/app.log                   VS Code log (JSON lines)
     logs/terminal.log              terminal log (JSON lines)
@@ -64,6 +68,49 @@ Rules:
 - `hasPdf` is never written. Each app derives it from the presence of `paper.pdf`.
 - An app writes only the keys it owns in that action. A metadata refresh does not touch `status`, `tags` or `note` (see [sync.md](sync.md#coordination-between-local-apps)).
 - `bib.bib` is regenerated whenever `metadata.yaml` is written. One core service writes both. Its `file` field points at `paper.pdf` only when that file exists.
+
+## labshelf.yaml
+
+A writing project is a folder with `labshelf.yaml` at its root. It lives either under `projects/` or anywhere else on the device, registered in `.research/projects.json`.
+
+```yaml
+id: deep-nets-survey
+format: latex
+main: main.tex
+engine: tectonic
+bibliography: labshelf.bib
+typst: 0.13.1
+```
+
+| Key | Type | Notes |
+|---|---|---|
+| `id` | string | required; unique, case-insensitively, among the library's projects and the registered ones |
+| `format` | `latex` \| `typst` | required |
+| `main` | string | main file, relative to the project folder; when absent, the first root `.tex` file declaring `\documentclass` (`main.tex` first, then alphabetical), or `main.typ` |
+| `engine` | `tectonic` \| `xelatex` \| `pdflatex` \| `lualatex` | LaTeX only |
+| `bibliography` | string | the generated bibliography file |
+| `typst` | string | Typst compiler version of the last build; a YAML number reads as its text |
+
+Rules:
+
+- A new id is the title folded to lowercase ASCII, with every run of other characters turned into one hyphen; `project` when nothing is left. A registered folder takes its folder name as the title. Collisions take the paper suffixes (`a` to `z`, then `aa`, …).
+- Rewrites change only the keys being set and keep the user's comments, key order and unknown keys.
+- A `labshelf.yaml` that does not parse is never rewritten.
+- Registering a folder writes `labshelf.yaml` when the folder has none and touches nothing else in it. A folder inside the library cannot be registered.
+
+## .research/projects.json
+
+The device's list of project folders outside the library. Absolute paths differ per machine, so it is never synced.
+
+```json
+{
+  "folders": ["/abs/path/to/project"]
+}
+```
+
+- Paths are absolute, kept in the order they were added, each at most once.
+- Unknown keys are preserved on rewrite. A file that is not a JSON object is never overwritten: projects outside the library stay hidden until the user fixes or deletes it.
+- Removing a project from LabShelf removes its entry and never deletes the folder.
 
 ## Sidecar: `data.json`
 
