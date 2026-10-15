@@ -1,28 +1,16 @@
 /**
- * Keeps the SQLite papers cache equal to what is on disk: scans with core, diffs against the cache, upserts what
- * changed and deletes what is gone. `reindexLibrary` also emits the paper events the list panel, the sidebar tree
- * and the AI indexer listen for, so papers that arrived (or whose PDF just showed up) appear without a reload.
+ * Reloads the library store from disk, diffs the result against what it held before, and emits the paper events the
+ * list panel, the sidebar tree and the AI indexer listen for. Local mutations and external changes (sync, a file
+ * watcher) both call this, so there is exactly one reindex path.
  *
  * Kept out of extension.ts on purpose: extension.ts is excluded from unit tests.
  */
 import { diffPapers } from "@labshelf/core";
-import type { LibraryScan, PaperDiff, PaperRecord } from "@labshelf/core";
+import type { LibraryStore, PaperRecord } from "@labshelf/core";
 import { EVENTS, EventBus } from "../../events/index.js";
 
-/** The slice of the database the reindex reads and writes. */
-interface ReindexableDatabase {
-  listPapers(): Promise<PaperRecord[]>;
-  upsertPaper(paper: PaperRecord): Promise<void>;
-  deletePaper(id: string): Promise<void>;
-}
-
-export interface IndexLibraryDeps {
-  database: ReindexableDatabase;
-  /** Reads papers/ from disk. */
-  scan: () => Promise<LibraryScan>;
-}
-
-export interface ReindexLibraryDeps extends IndexLibraryDeps {
+export interface ReindexLibraryDeps {
+  store: LibraryStore;
   eventBus: EventBus;
   // Queues a text-layer check for papers that now have a PDF but no verdict.
   queueCheck?: (papers: PaperRecord[]) => void;
@@ -35,25 +23,19 @@ export interface ReindexSummary {
   removed: string[];
 }
 
-/**
- * Brings the cache in line with disk. A paper missing from the scan leaves the cache; its files are untouched.
- * @returns what changed
- */
-export async function indexLibrary(deps: IndexLibraryDeps): Promise<PaperDiff> {
-  const before = await deps.database.listPapers();
-  const scan = await deps.scan();
-  const diff = diffPapers(before, scan.papers.map((entry) => entry.record));
-  for (const paper of [...diff.added, ...diff.updated]) { await deps.database.upsertPaper(paper); }
-  for (const paper of diff.removed) { await deps.database.deletePaper(paper.id); }
-  return diff;
+function papersOf(store: LibraryStore): PaperRecord[] {
+  return [...store.snapshot.papers.values()].map((entry) => entry.record);
 }
 
 /**
- * Indexes the library, then announces each change and queues the text-layer checks.
+ * Reloads the store, then announces each change and queues the text-layer checks.
  * @returns the ids that were added, changed and removed
  */
 export async function reindexLibrary(deps: ReindexLibraryDeps): Promise<ReindexSummary> {
-  const diff = await indexLibrary(deps);
+  const before = papersOf(deps.store);
+  await deps.store.reload();
+  const after = papersOf(deps.store);
+  const diff = diffPapers(before, after);
   for (const paper of diff.added) { deps.eventBus.emit(EVENTS.PAPER_ADDED, paper); }
   for (const paper of diff.updated) { deps.eventBus.emit(EVENTS.PAPER_UPDATED, paper); }
   for (const paper of diff.removed) { deps.eventBus.emit(EVENTS.PAPER_DELETED, { id: paper.id }); }

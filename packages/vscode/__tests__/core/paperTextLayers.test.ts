@@ -45,8 +45,9 @@ describe('PaperTextLayers.makeSearchable', () => {
 
     expect(await layers.makeSearchable('p1')).toEqual({ status: 'not-needed', layer: 'native' });
     expect(g.rows[0]!.textLayer).toMatchObject({ state: 'native' });
+    expect(g.reindexCalls()).toBe(1);
     await layers.makeSearchable('p1');
-    expect(g.indexWrites).toEqual(['upsert:p1']);
+    expect(g.reindexCalls()).toBe(1);
   });
 
   it('skips a paper without a PDF and records nothing', async () => {
@@ -57,7 +58,7 @@ describe('PaperTextLayers.makeSearchable', () => {
 
     expect(await g.textLayers({ build }).makeSearchable('p1')).toEqual({ status: 'skipped', reason: 'it has no PDF' });
     expect(build).not.toHaveBeenCalled();
-    expect(g.indexWrites).toEqual([]);
+    expect(g.reindexCalls()).toBe(0);
   });
 
   it('records a builder crash as failed and reports a missing builder or paper', async () => {

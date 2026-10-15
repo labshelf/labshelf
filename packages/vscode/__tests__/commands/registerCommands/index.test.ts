@@ -17,10 +17,13 @@ function makeRequireServices(paperService?: Partial<PaperService>, logger?: Part
   const ps = paperService ?? { listPapers: jest.fn(async () => []), regenerateBibTeX: jest.fn(async () => 0), reconcilePdf: jest.fn(async () => undefined) };
   const lg = logger ?? { log: jest.fn(async () => {}), error: jest.fn(async () => {}) };
   const tm = { getEffectiveTheme: jest.fn(() => 'dark'), mapVsCodeTheme: jest.fn(() => 'dark'), onVsCodeThemeChange: jest.fn(() => ({ dispose: jest.fn() })) } as any;
-  const db = { listPapers: jest.fn(async () => []), upsertPaper: jest.fn(), deletePaper: jest.fn(), appendLog: jest.fn() } as any;
   const store = makeMemoryPaperDataStore();
   const reindexLibrary = jest.fn(async () => ({ added: [], updated: [], removed: [] }));
-  return jest.fn(async () => ({ paperService: ps as PaperService, logger: lg as ILogger, themeManager: tm, database: db, paperDataStore: store, fileSystem: {} as any, importer: {} as any, textLayers: {} as any, mutations: {} as any, reindexLibrary, folderReader: jest.fn() }));
+  return jest.fn(async () => ({
+    paperService: ps as PaperService, logger: lg as ILogger, themeManager: tm, library: {} as any, paperDataStore: store,
+    fileSystem: {} as any, importer: {} as any, textLayers: {} as any, mutations: {} as any, reindexLibrary,
+    aiDatabasePath: '/lib/.labshelf/index.sqlite', folderReader: jest.fn(),
+  }));
 }
 
 function makeNullRequireServices(): RequireServices {

@@ -8,9 +8,8 @@
 import type { PaperRecord } from "../model/index.js";
 
 /**
- * Minimal subset of {@link IResearchDatabase} that FolderService needs. Lets
- * the browser pass a tiny adapter over its IDB-backed paperRecordStore without
- * implementing the full database surface.
+ * Minimal index surface FolderService needs. Lets the browser pass a tiny adapter over its IDB-backed
+ * paperRecordStore without implementing a full database.
  */
 export interface IPaperRecordIndex {
   listPapers(): Promise<PaperRecord[]>;

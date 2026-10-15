@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import { NodePdfOpener } from "@labshelf/core/node";
 import { createAiService, AiService } from "../../ai/service/index.js";
-import { SqliteResearchDatabase } from "../../db/sqliteResearchDatabase.js";
+import { openAiDatabase } from "../../db/ai/index.js";
 import { hostPdfjs } from "../../pdf/index.js";
 import type { ActiveServices } from "../../commands/index.js";
 import type { EventBus } from "../../events/index.js";
@@ -17,10 +17,11 @@ export async function startAiService(
   services: ActiveServices,
 ): Promise<AiService | null> {
   try {
-    if (!(services.database instanceof SqliteResearchDatabase)) return null;
+    const connection = await openAiDatabase(services.aiDatabasePath, services.fileSystem);
     const result = await createAiService({
       context,
-      database: services.database,
+      connection,
+      listPapers: () => services.paperService.listPapers(),
       fileSystem: services.fileSystem,
       eventBus,
       logger: services.logger,

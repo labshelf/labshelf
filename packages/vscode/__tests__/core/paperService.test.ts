@@ -26,7 +26,7 @@ describe('PaperService field edits', () => {
 
     await expect(g.service.updatePaperFields('p1', { status: 'done' })).rejects.toThrow('EACCES');
 
-    expect(g.indexWrites).toEqual([]);
+    expect(g.reindexCalls()).toBe(0);
     expect(g.rows[0]!.status).toBe('unread');
     expect(g.emitted).toEqual([]);
   });

@@ -11,7 +11,7 @@ jest.mock("@labshelf/core", () => ({
 function makeIndexer(resolvePdfUri: AiIndexerDependencies["resolvePdfUri"]) {
   const jobs: Promise<void>[] = [];
   const deps = {
-    database: { listPapers: jest.fn(async () => [{ id: "p1" }]) },
+    listPapers: jest.fn(async () => [{ id: "p1" }]),
     eventBus: { emit: jest.fn(), on: jest.fn(), off: jest.fn() },
     logger: { error: jest.fn(async () => {}), log: jest.fn(async () => {}) },
     embedder: {},

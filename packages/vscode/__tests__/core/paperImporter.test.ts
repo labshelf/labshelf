@@ -40,7 +40,7 @@ describe('PaperImporter', () => {
 
   it('avoids ids the index already holds, ignoring case', async () => {
     const g = makeGlue();
-    g.rows.push({ id: 'TestPaper2024', title: 'Seeded', path: '/elsewhere/TestPaper2024', citeKey: 'x', status: 'unread' });
+    await g.seed('TestPaper2024');
     await g.fs.writeFile('/docs/a.pdf', pdfBytes());
 
     const [outcome] = await g.importer.importPaths(['/docs/a.pdf'], `${PAPERS_ROOT}/ML`);
@@ -55,6 +55,6 @@ describe('PaperImporter', () => {
     const outcomes = await g.importer.importPaths(['/docs/readme.pdf']);
 
     expect(outcomes).toEqual([{ status: 'failed', error: 'Not a PDF file', input: '/docs/readme.pdf' }]);
-    expect(g.indexWrites).toEqual([]);
+    expect(g.reindexCalls()).toBe(0);
   });
 });

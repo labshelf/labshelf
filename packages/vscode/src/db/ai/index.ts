@@ -1,10 +1,6 @@
-/**
- * Barrel re-export for AI-side persistence (schema + stores).
- *
- * @depends aiSchema.ts, embeddingCodec.ts, sqliteVectorStore.ts, aiMetadataStore.ts, readingEventsStore.ts
- * @dependents ai/aiIndexer, ai/aiService, extension.ts wiring
- */
+/** Public API of the AI subsystem's own SQLite persistence: its schema, stores and connection. */
 export { ensureAiSchema } from "./aiSchema.js";
+export { openAiDatabase } from "./openAiDatabase.js";
 export { encodeEmbedding, decodeEmbedding } from "./embeddingCodec.js";
 export { SqliteVectorStore } from "./sqliteVectorStore.js";
 export { AiMetadataStore } from "./aiMetadataStore.js";

@@ -5,7 +5,7 @@
  * last indexed run.
  */
 import * as vscode from "vscode";
-import type { IEmbeddingProvider, ILogger, IResearchDatabase, LocalFileSystem } from "@labshelf/core";
+import type { IEmbeddingProvider, ILogger, LocalFileSystem, PaperRecord } from "@labshelf/core";
 import { runIngestion } from "@labshelf/core";
 import type { AiMetadataStore } from "../../db/ai/aiMetadataStore.js";
 import type { SqliteVectorStore } from "../../db/ai/sqliteVectorStore.js";
@@ -14,7 +14,7 @@ import { hashFile } from "../pdf/contentHash.js";
 import { EventBus, EVENTS } from "../../events/index.js";
 
 export interface AiIndexerDependencies {
-  database: IResearchDatabase;
+  listPapers: () => Promise<PaperRecord[]>;
   eventBus: EventBus;
   logger: ILogger;
   embedder: IEmbeddingProvider;
@@ -56,7 +56,7 @@ export class AiIndexer {
    * @returns void
    */
   async rebuildAll(): Promise<void> {
-    const papers = await this.deps.database.listPapers();
+    const papers = await this.deps.listPapers();
     for (const paper of papers) this.scheduleIndex(paper.id);
   }
 

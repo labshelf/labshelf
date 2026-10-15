@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 
 import type { PaperImporter, PaperService, PaperTextLayers } from "../../core/index.js";
 import type { ThemeManager } from "../../pdf-viewer/index.js";
-import { type PaperDataStore, type IFileSystem, type ILogger, type IResearchDatabase, type LocalFileSystem, type MutationContext } from "@labshelf/core";
+import { type PaperDataStore, type IFileSystem, type ILogger, type LibraryStore, type LocalFileSystem, type MutationContext } from "@labshelf/core";
 import type { ReindexSummary } from "../../storage/data/reindexLibrary.js";
 import type { FolderReader } from "../../ui/library/index.js";
 
@@ -18,13 +18,16 @@ export type ActiveServices = {
   mutations: MutationContext;
   logger: ILogger;
   themeManager: ThemeManager;
-  database: IResearchDatabase;
+  library: LibraryStore;
   paperDataStore: PaperDataStore;
   // The adapter of this library root; its temp folder for atomic writes is inside the root.
   fileSystem: IFileSystem & LocalFileSystem;
   // Rebuilds the index from disk and emits the resulting paper events. Bound in
-  // extension.ts over the live database, file system and event bus.
+  // extension.ts over the live store, file system and event bus.
   reindexLibrary: () => Promise<ReindexSummary>;
+  // Where the AI subsystem's own SQLite file lives for this library root; startAiService opens it lazily,
+  // inside its own try/catch, so a failure there degrades the AI subsystem instead of breaking activation.
+  aiDatabasePath: string;
   // Lists the collection folders of this library root for the tree and the list panel.
   folderReader: FolderReader;
 };

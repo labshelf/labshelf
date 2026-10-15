@@ -1,15 +1,13 @@
 /** The glue around the core network import: the environment the extension hands it and what it does with the outcome. */
-import type { ImportOutcome, NetworkImportEnv, PaperRecord } from '@labshelf/core';
+import type { ImportOutcome, NetworkImportEnv } from '@labshelf/core';
 
-import { makeGlue, PAPERS_ROOT } from './paperServiceHarness';
+import { makeGlue, pdfBytes, PAPERS_ROOT } from './paperServiceHarness';
 
 const importNetworkInput = jest.fn<Promise<ImportOutcome>, [NetworkImportEnv, string, string]>();
 jest.mock('@labshelf/core', () => ({
   ...jest.requireActual('@labshelf/core'),
   importNetworkInput: (...args: [NetworkImportEnv, string, string]) => importNetworkInput(...args),
 }));
-
-const record = (id: string): PaperRecord => ({ id, title: id, path: `${PAPERS_ROOT}/${id}`, citeKey: id, status: 'unread', hasPdf: true });
 
 beforeEach(() => importNetworkInput.mockReset());
 
@@ -31,13 +29,20 @@ describe('PaperImporter.importFromNetwork', () => {
 
   it('indexes the added paper and announces it, like a local import', async () => {
     const g = makeGlue();
-    importNetworkInput.mockResolvedValue({ status: 'added', record: record('lee2020study'), needsReview: false, input: '10.1000/x' });
+    const folder = `${PAPERS_ROOT}/ML/lee2020study`;
+    // The real importNetworkInput writes the paper's files before returning "added"; the mock does the same so the
+    // reindex that follows (a real disk rescan) finds it.
+    importNetworkInput.mockImplementation(async () => {
+      await g.fs.writeText(`${folder}/metadata.yaml`, 'title: "Lee 2020 Study"\n');
+      await g.fs.writeFile(`${folder}/paper.pdf`, pdfBytes());
+      return { status: 'added', record: { id: 'lee2020study', title: 'Lee 2020 Study', path: folder, citeKey: 'lee2020study', status: 'unread', hasPdf: true }, needsReview: false, input: '10.1000/x' };
+    });
 
     const outcome = await g.importer.importFromNetwork('10.1000/x', `${PAPERS_ROOT}/ML`);
 
     expect(importNetworkInput.mock.calls[0]![2]).toBe(`${PAPERS_ROOT}/ML`);
     expect(outcome.status).toBe('added');
-    expect(g.indexWrites).toEqual(['upsert:lee2020study']);
+    expect(g.rows.map((row) => row.id)).toEqual(['lee2020study']);
     expect(g.emitted).toEqual([['paper:added', expect.objectContaining({ id: 'lee2020study' })]]);
   });
 
@@ -47,7 +52,7 @@ describe('PaperImporter.importFromNetwork', () => {
 
     await g.importer.importFromNetwork('10.1000/x');
 
-    expect(g.indexWrites).toEqual([]);
+    expect(g.reindexCalls()).toBe(0);
     expect(g.emitted).toEqual([]);
   });
 });

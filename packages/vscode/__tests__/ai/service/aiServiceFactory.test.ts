@@ -20,7 +20,8 @@ jest.mock("../../../src/ai/indexer/indexerQueue", () => ({
 function makeDeps() {
   return {
     context: {},
-    database: { rawConnection: () => ({}) },
+    connection: {},
+    listPapers: async () => [],
     fileSystem: {},
     eventBus: { emit: jest.fn(), on: jest.fn(), off: jest.fn() },
     logger: { error: jest.fn(async () => {}), log: jest.fn(async () => {}) },

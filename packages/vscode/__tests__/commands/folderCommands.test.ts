@@ -70,7 +70,7 @@ describe('folder commands', () => {
 
     expect(vscode.window.showErrorMessage).not.toHaveBeenCalled();
     expect(h.followFolderMove).not.toHaveBeenCalled();
-    expect(g.indexWrites).toEqual([]);
+    expect(g.reindexCalls()).toBe(0);
   });
 
   it('shows the shared clash wording when a folder of that name is already there', async () => {
