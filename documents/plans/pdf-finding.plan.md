@@ -1,348 +1,449 @@
-# Plan: Find PDFs as Well as Paperpile
+# Plan: Find and download PDFs as well as Zotero and Paperpile
 
-Date: 2026-10-08. Branch `feat/reader-ux`. Scope: the browser extension (`packages/browser`).
+Status: in progress (session 1 of 8 done)
+Size: GG — a measurement harness, a reordered resolver engine, a publisher rule table, a bot-wall ladder, library proxies, PDF versions and two last-resort flows across core and the browser extension; grows past 8 sessions if the user's manual checks show session access failing for reasons the rules cannot fix
+Pending decisions: 0
+Branch: `feat/pdf-finding`, cut from `feat/reader-ux` (72b3dc0), in the worktree `../labshelf-pdf-finding` — `main` predates `import/pdfFinding/`
 
-## TL;DR
+## 1. Goal
 
-- **Measured.** On 66 real papers, counting only PDFs whose text matches the paper:
-  - The current chain finds 21/66 from identifiers alone and 24/66 from the article page.
-  - Four open-access resolvers, now wired in, raise this to **27/66** and **29/66**.
-  - Without a browser session the ceiling is about 33/66.
-- **Most of the remaining gap is closed-access papers the user can already read.** The access comes through their institution (IP, single sign-on such as CAFe/Shibboleth, EZproxy, OpenAthens) or a personal subscription. Paperpile wins there by downloading through the user's own access and retrying through the library proxy. Section 4 says how LabShelf can do the same.
-- **For readers with no access at all**, section 5 adds a legal last step that Paperpile lacks: one click asks the paper's author for a copy by email.
-- **Where the code goes:** the resolver chain lives in core (`import/pdfFinding/`), so VS Code and the terminal get the same PDF search. Implement the steps below there; browser-only parts (helper tab, tab fetch) stay in `packages/browser/src/capture/`.
+The browser extension finds and downloads the PDF of a paper as often as Zotero and Paperpile do, including the closed papers the user can already read through their institution. "PDF not found" is rare, fast and actionable: one click lets the user sign in or pass a bot check, and the PDF attaches itself. When the user finds the file on their own, it attaches to the right paper without a hunt. When only a preprint exists, the user gets it, labelled as such. When nothing exists, one click drafts an email asking the author for a copy.
 
----
+## 2. Decisions
 
-## 1. Where things stand
+Research (2026-10-15, Zotero source, the Paperpile Firefox add-on 1.0.132 source, Martín-Martín et al. 2018) shows that the gap is the order and the fetch context, not missing sources. Both tools start from the article page and the user's session, and they use site-specific PDF rules (Paperpile has about 430 drivers, Zotero about 700 translators). Open-access APIs come second. LabShelf starts from the APIs and has 22 rules.
 
-### 1.1 Wired in (core `import/pdfFinding/`)
+- [x] **D1** The target is the browser extension. The chain stays in core `import/pdfFinding/`. VS Code and the terminal run the same order, without any session features — saving files with a session happens only in the browser for now.
+- [x] **D2** Measure first. A Node harness on a 66-paper corpus measures open access and publisher rules. A 15-paper closed-access checklist, run by the user in Chrome with institutional access, measures session gains — Node has no session.
+- [x] **D3** Page first. The article page (the user's tab, or the DOI landing page fetched in the background) is parsed before the aggregator results are downloaded, and every download sends the page as Referer — this is what Zotero and Paperpile do.
+- [x] **D4** Two stages: all lookups (the page, and the learning and direct resolvers) run concurrently with a 3 s cap, then the ranked candidates download with limited concurrency — this keeps the learners-feed-PMC invariant and makes "not found" fast.
+- [x] **D5** Polite per-domain pacing: 1 s between requests to a domain, and a domain is skipped for the run after 5 consecutive failures — publishers block bursts (Zotero's numbers).
+- [x] **D6** Publisher rules are a data table ported from the URL shapes in Zotero's translators and the earlier research, rewritten and not copied — Zotero is AGPL; URL shapes are facts. Each rule has a verified example and a unit test, and may carry paywall ("restricted") signatures.
+- [x] **D7** Every fetch has an outcome: `pdf`, `bot`, `login`, `html`, `error`. `bot` matches the wall signatures (§6, S10) on any status and on the final URL. `login` is a 401/403 without bot markers, or HTML with paywall or sign-in markers and no PDF candidate.
+- [x] **D8** Bot-wall ladder, browser only: background fetch with cookies → the inactive helper tab (it also passes the PMC proof-of-work, because the page's own script solves it) → on the user's click, a visible tab that is watched and attaches the PDF when it becomes reachable. The visible tab also serves institutional sign-in (CAFe/Shibboleth).
+- [x] **D9** Library proxies: an ordered list of `{ name, template, enabled }` in the options page. The kind follows from the template: a prefix with `$@` (Paperpile's convention), a hostname suffix (`.ezproxy.uni.edu`), or the OpenAthens redirector. Only candidates on publisher hosts that answered `login` are retried through them. No credentials are stored, and there is no preset database.
+- [x] **D10** The only manifest addition is Chrome's `offscreen` permission, which has no install warning and lets pdf.js read a downloaded PDF's first page (D13). `https://*/*` already covers fetching and reading tab URLs, and the helper tab replaces the `cookies` permission for PMC.
+- [x] **D11** A generic custom resolver (a URL template with `{doi}`, whose page goes through the hop parser) takes the place of `sciHub.ts`. It is off by default, and the user fills in any mirror, Sci-Hub or Anna's Archive SciDB included. The extension's code and UI name no shadow library. The stored `enableSciHub`/`sciHubMirror` settings move to one custom-resolver entry through a `migrations/` step.
+- [x] **D12** The attempt log records each URL's outcome and status. The "PDF not found" dialog uses it to offer the right action: sign in, pass the check, or ask the author.
+- [x] **D13** A PDF the user opens in a tab or downloads is matched against the papers that have no PDF: first by DOI or arXiv id in its URL or referrer, then by the title on page 1. A match offers "Attach to <paper>?" through the toolbar badge and popup, never a system notification, because that would need the `notifications` permission. The extension re-fetches the bytes from the download's final URL with the user's cookies, because extensions cannot read the downloads folder.
+- [x] **D14** Every attached PDF records its version, `preprint`, `accepted` or `published`, when the source says so. The chain still prefers the published version, but it attaches a preprint or accepted manuscript when nothing better exists. Lists and the detail pane show a "Preprint" or "Accepted" badge. "Find PDF" on a labelled paper looks for the published version and asks before it replaces the file, warning when notes or highlights exist.
+- [x] **D15** "Ask the author" opens a prefilled `mailto:` in the user's own mail client, and LabShelf never sends mail itself. The paper records `pdfRequestedAt`, and the author's address is not stored. Addresses come, cheapest first, from the page's `citation_author_email`, from `mailto:` links near "Correspondence" or "Corresponding author", and from PubMed's "Electronic address:" in `efetch` affiliations. If none is found, the button opens the article page.
 
-The four open-access resolvers run in every app's chain, with tests. The order is in `pdfFinding/resolverOrder.ts`. The browser keeps only tab glue in `capture/` (helper tab, tab fetch, page probe).
+- [x] **Q1** The manual checks (A7, A8, A11) run in Chrome only. Firefox gets its own check later.
 
-The PMC site's proof-of-work page (see 2.1) is not handled; step 5 restores that code from git history (`git log -- '*pmcResolver.ts'`).
+Coordination with the writing plans, which run in parallel:
 
-### 1.2 Measurement
+- **C1** Sessions 7 and 8 fetch and rebase onto the branch the writing plans land on before touching `documents/contracts/library-format.md` and the paper's YAML mapping. The contract change goes in a commit of its own.
+- **C2** The "does this preprint have a published version?" lookup (S21) is a reusable core function, because the linter in [writing/2-research-links.plan.md](writing/2-research-links.plan.md) (D6) needs the same lookup. Its path goes in §8.
+- **C3** OpenAlex calls reuse the existing clients: `core/src/import/registries/works/openalex.ts` and `core/src/import/pdfFinding/resolvers/learning/openalex.ts`. No third client.
+- **C4** S3, S14, S17 and S24 stop and hand the user an exact list of what to test.
 
-The method:
+## 3. Scope
 
-- **Corpus:** 66 real papers in 10 categories (CS/ML, biomedical, physics/maths, chemistry/engineering, Brazilian/SciELO, social science, preprints, pre-1990, book chapters, and paywalled papers with a free copy).
-- **Runner:** Node, Chrome User-Agent, no browser cookies, no helper tab.
-- **Counting:** a PDF counts only if `pdftotext` finds at least 60% of the title's words on pages 1–2.
-- **Scenarios:** "ids" knows only the DOI, arXiv id or PMID (like a Google Scholar result). "landing" also reads the article page (like the toolbar popup).
+- **In:** core `import/pdfFinding/` (engine, outcomes, rules, custom resolver), core landing parsing where the rules need it, the browser extension's capture flows, helper and visible tabs, options page and "PDF not found" dialog, a harness under `packages/core/tools/pdf-eval/`.
+- **Out:**
+  - Re-checking papers without a PDF in the background for copies that appear later — a reader who needs a paper will not wait months for an embargo to end.
+  - Interlibrary loan requests (COMUT, a library's request form) — forms differ per library, and asking the author works better.
+  - Google Scholar "All versions" and ResearchGate scraping — Google's ToS and CAPTCHAs, and many of those copies infringe; Paperpile does not automate it either.
+  - A server-side paper-to-URL map like Paperpile's `/match` — LabShelf is local-first; OpenAlex fills that role.
+  - Session access in VS Code and the terminal — they have no browser session (D1).
+  - LibKey and OpenURL link resolvers — they need a per-library token or setup and help few papers.
+  - Proxy auto-detection and a proxy preset list — the user pastes their library's template.
+  - Checking the downloaded PDF's text against the title — no text extraction in the service worker; the metadata `sameWork` check stays.
+- **Contracts touched:** [documents/contracts/library-format.md](../contracts/library-format.md), for two optional `metadata.yaml` keys: `pdfVersion` and `pdfRequestedAt`. Settings live in the browser's `storage.local`, not in the library format.
 
-| | Current chain | Current chain + 4 resolvers (sequential) |
+## 4. Acceptance criteria
+
+- [x] **A1** `pnpm --filter @labshelf/core eval:pdf` runs the corpus in the "ids" and "landing" scenarios and prints, per category and in total, correct PDFs, wrong PDFs, misses by outcome, and median times. It writes a JSON report beside the corpus.
+- [ ] **A2** On the harness, the "landing" scenario reaches at least 40/66 correct PDFs and "ids" at least 37/66, with at most 2 wrong PDFs (session 1 baseline: landing 35, ids 34, 4 wrong in each).
+- [ ] **A3** On the harness, the median time to "not found" is at most 3 s and to a found PDF at most 2.5 s.
+- [ ] **A4** The rule table covers at least 36 publisher platforms. Every rule has a unit test with a verified example DOI or landing URL.
+- [ ] **A5** Unit tests classify saved fixtures: every wall in S10's table gives `bot` on any status; login pages from Springer, Elsevier, Wiley, IEEE and a CAFe/Shibboleth page give `login`.
+- [ ] **A6** The prefix, hostname and OpenAthens rewrites are pure and unit-tested, and an end-to-end engine test shows that a `login` candidate is retried through an enabled proxy and an open-access host is not.
+- [ ] **A7** Manual, by the user, in Chrome while signed in through the institution: from the closed-access checklist (15 papers), the toolbar popup attaches the correct PDF for at least 12 and the Google Scholar capture for at least 10. The session 1 baseline is in §8.
+- [ ] **A8** Manual: when a capture ends in "PDF not found" because of a sign-in or bot wall, the dialog offers "Open to sign in" / "Open to pass the check". After the user signs in or solves it in that tab, the PDF attaches without another click.
+- [ ] **A9** With a custom resolver template configured, a DOI that no other source has attaches through it. With none, no request goes to any custom host. A profile that had `enableSciHub` and `sciHubMirror` set opens with one equivalent enabled entry.
+- [ ] **A10** `pnpm -r typecheck` and `pnpm -r test` pass. A unit test shows that an identifier import in core fetches the DOI landing page and uses its `citation_pdf_url`.
+- [ ] **A11** Manual: in Chrome, with a paper in the library that has no PDF, the user downloads its PDF from any site or opens it in a tab. The toolbar badge appears, the popup offers "Attach to <paper>", and one click attaches it. A PDF of an unrelated paper offers nothing.
+- [ ] **A12** For a paper whose only free copy is on arXiv, capture attaches it with `pdfVersion: preprint`, and the badge shows in the browser library and in VS Code. A unit test shows that a published candidate outranks a preprint. "Find PDF" on that paper asks before it replaces the file.
+- [ ] **A13** `pdfVersion` and `pdfRequestedAt` round-trip through `metadata.yaml` in core tests. A library without them still loads, and VS Code shows the same badge and "requested on" line.
+- [ ] **A14** When a capture ends in "PDF not found" with an author address on the page, "Ask the author" opens the mail client with the subject, citation, DOI link and the requester's name and affiliation filled in. The `mailto:` URL is at most 1,800 characters. The detail pane then says "PDF requested from the author on <date>". Unit tests cover address extraction from 5 saved publisher pages, PubMed affiliation strings and `mailto:` encoding.
+
+## 5. Design
+
+| Piece | Lives in | Notes |
 |---|---|---|
-| ids: correct PDF | 21/66 (31.8%) | **27/66 (40.9%)** |
-| landing: correct PDF | 24/66 (36.4%) | **29/66 (43.9%)** |
-| Any PDF, ids / landing | 23 / 27 | 30 / 31 |
-| Median time to "not found" | 0.3 s | 4.9 s |
-| Median time to a PDF | 1.3–1.7 s | 1.5–2.0 s |
-
-Gains by category:
-
-- **Biomedical:** 1 → 3, through PubMed Central.
-- **CS/ML:** 2 → 4 (ids) and 6 → 7 (landing), from arXiv and ACL twins found through Semantic Scholar.
-- **Paywalled papers with a free copy:** 3 → 5 with the right PDF. Before, two of the PDFs found were the wrong document.
-
-Two caveats:
-
-- OpenAlex supplied most of the hits, but it ran first in the test chain, so it also took credit for papers that later resolvers would have found.
-- With the four resolvers, "not found" takes longer because they run one after another. Section 3 step 2 fixes this.
-
-The ceiling:
-
-- 33/66 corpus papers have a free PDF that `curl` can download at all.
-- The rest is closed access or behind bot checks that only a real browser passes.
-- That remainder is the subject of section 4.
-
----
-
-## 2. What we know (live research, 2026-10-07)
-
-### 2.1 Open-access sources
-
-| Source | Use | Facts that matter |
-|---|---|---|
-| OpenAlex | `GET /works/doi:<doi>?mailto=<email>` | Lookups by DOI and PMID and `autocomplete` are free. `search=` and `filter=title.search:` cost 10 credits, against a budget of about 1,000 credits per IP per day, and core's `openAlexSearch` uses them. Read `best_oa_location`, `locations[].pdf_url`, `landing_page_url` and `ids.pmcid`. |
-| Semantic Scholar | `GET /graph/v1/paper/DOI:<doi>?fields=openAccessPdf,externalIds,title,year,authors` | About 55% of keyless calls get a 429 with no Retry-After. Use 1 call per capture, no retry, and treat 404 or 429 as "unknown". `externalIds` is the best way to find arXiv and ACL twins. |
-| Europe PMC | REST `search?query=DOI:"…"&resultType=core&format=json` | Use it for identifiers only: its PDF pages are behind Cloudflare. It has mapped the XGBoost DOI to an unrelated paper, so require a title match. |
-| PubMed Central | ID converter `pmc.ncbi.nlm.nih.gov/tools/idconv/api/v1/articles/?ids=…`, E-utilities `esummary` (`articleids` → `pmc`) | NCBI allows 3 requests/s and answers 429 above that, so queue NCBI calls globally. Legacy `www.ncbi.nlm.nih.gov/pmc/articles/…` URLs now redirect to a 404, so never emit them. |
-| PMC PDF | 1) AWS open-data bucket `pmc-oa-opendata` (no challenge). 2) `pmc.ncbi.nlm.nih.gov/articles/PMC<n>/pdf/` | The site answers 200 "Preparing to download" with `POW_CHALLENGE` and `POW_DIFFICULTY=4`. Find a nonce so that `sha256(challenge + nonce)` starts with `0000`; that takes about 65k hashes. Then send cookie `cloudpmc-viewer-pow = challenge + "," + nonce`. One cookie served 5 articles. Together with the bucket, this recovered 24 of 25 failed open-access papers. A service worker cannot set `Cookie` on `fetch`, so it needs the `cookies` permission, or the request has to run inside the helper tab. |
-| CrossRef | `/works/<doi>?mailto=` | `link[]` holds publisher PDFs, sometimes typed `unspecified`. `relation.has-preprint` points to preprints; drop targets with the same DOI prefix. |
-| Unpaywall | `/v2/<doi>?email=` | Returns the same open locations as OpenAlex, so it is only a fallback. When `url_for_pdf` is null, still follow `url_for_landing_page`. For example, HAL holds the full text of `10.1038/nature14539`, but Unpaywall lists only its landing page. |
-| arXiv API | `export.arxiv.org/api/query?search_query=ti:"…"+AND+au:<surname>` | Precise. The undocumented `doi:` search works. Old-style ids such as `hep-th/9711200` download fine, but LabShelf's regexes miss them. Answers can take 15–46 s under load, so use an 8 s timeout. |
-| bioRxiv / medRxiv | `api.biorxiv.org/details/<server>/<doi>` | 28% of calls return 500; retry once. Every PDF is behind Cloudflare, so use the helper tab. New preprints use the DOI prefix `10.64898`. |
-| HAL, Zenodo, DOAJ, ACL Anthology | HAL `q=doiId_s:"<doi>"&fl=fileMain_s`; Zenodo `api/records/<id>`; ACL `aclanthology.org/<id>.pdf` | ACL ids are case-sensitive (`N19-1423`). |
-
-Not worth it:
-
-- DBLP's API (blocked by an Anubis bot check, even for curl).
-- CORE (needs a key).
-- DataCite `contentUrl` (almost never filled).
-- Semantic Scholar title search without a key (rate-limited and often wrong).
-
-### 2.2 Most PDF links are behind bot walls
-
-- In a random open-access sample, only 40 of 88 of Unpaywall's best PDF links downloaded.
-- In a random CrossRef sample, only 3 of 19 did.
-
-Today `isBotCheck` looks only at status 403/429/503/202 plus a Cloudflare/Akamai regex. These walls slip through it, so they are never retried in the helper tab:
-
-| Wall | Status | Signature |
-|---|---|---|
-| F5 / Fastly "Client Challenge" (Springer, eLife, JSTOR) | 200 or 406 | `<title>Client Challenge</title>`, `/_fs-ch-` |
-| AWS WAF (IEEE, De Gruyter, figshare) | 202 | empty body, header `x-amzn-waf-action: challenge`, `token.awswaf.com` |
-| Anubis (HAL, DBLP) | 200 | `anubis_challenge`, "Making sure you're not a bot" |
-| PMC proof-of-work | 200 | `POW_CHALLENGE`, `cloudpmc-viewer-pow` (solve it instead, see 2.1) |
-| Radware (IOP) | 200 after a redirect | final host `validate.perfdrive.com` |
-| Imperva / Incapsula (Project Euclid, SPIE) | 200 | `_Incapsula_Resource`, header `x-iinfo` |
-| HighWire legacy JavaScript | 200 | `function leastFactor(` |
-
-Match these on **any** status and on the final URL as well as the body.
-
-### 2.3 The APIs sometimes point to the wrong paper
-
-Observed cases:
-
-- **ResNet (`10.1109/CVPR.2016.90`):** OpenAlex, Unpaywall and Semantic Scholar give a Colombian thesis as its best open copy.
-- **BWA:** OpenAlex attaches BWA-SW's PMC copy to BWA.
-- **XGBoost:** Europe PMC maps the DOI to an unrelated paper.
-- **Semantic Scholar title match:** returns the wrong BWA paper with a high score.
-
-The rule:
-
-- Before accepting a copy that an aggregator found, compare titles with `sameWork`. This is cheap: the metadata title first, then the landing page's `citation_title`.
-- Checking the PDF's first page would be the strongest test, but text extraction in the service worker is not available yet.
-
-### 2.4 Publisher PDF URLs
-
-Downloaded as real PDF bytes from this machine (no browser):
-
-- **Springer:** `link.springer.com/content/pdf/<doi>.pdf` (prefixes 10.1007, 10.1186, 10.1023).
-- **Nature:** `nature.com/articles/<id>.pdf`.
-- **IEEE:** `stampPDF/getPDF.jsp?arnumber=<n>`.
-- **Frontiers:** `frontiersin.org/articles/<doi>/pdf`.
-- **PLOS:** `journals.plos.org/plosone/article/file?id=<doi>&type=printable`, which works for every PLOS journal code.
-- **MDPI:** the CDN `mdpi-res.com/d_attachment/<slug>/<slug>-<vol>-<art>/article_deploy/<slug>-<vol>-<art>.pdf` (the main site is behind Akamai).
-- **eLife:** `api.elifesciences.org/articles/<id>` → `.pdf` on its CDN (the version number matters).
-- **MIT Press:** `mitpressjournals.org/doi/pdf/<doi>` (redirects to a signed PDF).
-
-Shape known, but behind Cloudflare or a login from here (these download for a subscriber's browser):
-
-- **Wiley:** `/doi/pdfdirect/<doi>`.
-- **ScienceDirect:** `pii/<PII>/pdfft`. The PII comes from the `linkinghub` redirect.
-- **Atypon `/doi/pdf/<doi>`:** ACM, SIAM, T&F, SAGE, ACS, PNAS, Science, NEJM, INFORMS. ASM and World Scientific add `?download=true`.
-- **De Gruyter:** `degruyterbrill.com/document/doi/<doi>/pdf`.
-- **Thieme:** `thieme-connect.com/products/ejournals/pdf/<doi>.pdf`.
-- **Project Euclid and SPIE:** the landing URL's `.full` becomes `.pdf`.
-- **BMJ:** `<landing>.full.pdf`.
-- **AMS:** `<landing>/<PII>.pdf`.
-- **RSC, Emerald and OUP:** the PDF id is not in the DOI, so use `citation_pdf_url` from the page.
-
-The full tables (36 platforms, each with a landing→PDF regex and a verified example) are in the research reports listed under Sources. Turn them into `import/pdfFinding/pdfUrlRules.ts`, with one unit test per rule.
-
----
-
-## 3. Implementation plan: open access
-
-Steps in order of return. Each is small enough to ship alone.
-
-2. **Run lookups in parallel.**
-   - Lookups (Stage A): run them concurrently with a 3 s cap.
-   - Downloads: at most 3–4 at a time, a 10 s time-to-first-byte limit, 30 s per URL and a global limit of about 40 s.
-   - Accept the first verified `%PDF-`. Prefer a better-ranked candidate that is still in flight, with a short hold.
-   - Target: "not found" in under 3 s when no candidate exists, which is what the instant pop-up needs.
-   - Keep `resolvePdf(ctx, fetchOpts, attempts)` and the `attempts` log unchanged, because the "not found" dialog reads them.
-3. **Bot-wall detection.**
-   - Extend `isBotCheck` with the signatures in 2.2, on any status.
-   - Route those URLs to the helper tab.
-   - In a real browser this is probably the largest single gain (chemistry, social science, Cloudflare publishers), but Node cannot measure it.
-4. **Publisher rules.**
-   - Create `import/pdfFinding/pdfUrlRules.ts` with `publisherPdfUrls(doi)`, `landingPdfUrls(url)` and `canonicalUrl(url)`.
-   - Apply `landingPdfUrls` to every landing URL: the tab, doi.org redirects and the aggregators' landing pages.
-5. **PMC.**
-   - The S3 bucket is already tried first.
-   - Restore `solvePmcPow()` from git history (it was deleted with the old browser resolver), then solve the proof-of-work, either with the `cookies` permission or inside the helper tab.
-   - Send all NCBI calls through one queue at no more than 3 requests/s.
-6. **Title-only twins.** For papers without a DOI (NeurIPS, ICML, ICLR):
-   - First try arXiv by title plus surname.
-   - Then OpenAlex `autocomplete`, which is free.
-   - Gate every hit with `sameWork`.
-7. **Old-style arXiv ids.** Recognise `hep-th/9711200` and similar ids in `doiDetector` and `pageFacts`.
-8. **Keep the measurement in the repo.**
-   - Move the corpus and runner into `packages/browser/tools/pdf-eval/` and add a `pnpm eval:pdf` script.
-   - Run it before and after each step above.
-
----
-
-## 4. Using access the user already has (Paperpile parity)
-
-### 4.1 What Paperpile and Zotero do
-
-- **Paperpile:**
-  - Downloads through the browser, so campus IP ranges and existing publisher logins apply.
-  - EZproxy support: the user enters a proxy URL with a `$@` placeholder where the target URL goes.
-  - Several proxies can be configured and switched on or off from a menu.
-  - When a PDF cannot be accessed, it retries the download through the active proxy.
-- **Zotero Connector:**
-  - Supports hostname-style EZproxy.
-  - Detects the proxy when the user signs in to it and offers to save it.
-  - Then rewrites known hosts through it automatically, and has a "Reload via Proxy" action.
-
-### 4.2 Types of access and how LabShelf can use each
-
-| Access | How it reaches the publisher | LabShelf today | To add |
-|---|---|---|---|
-| **IP** (campus network, institutional VPN, Periódicos CAPES on campus) | Any request from the user's machine | Works for background requests; no cookie is needed | Nothing specific. Missing publisher URL rules are what lose these PDFs today (steps 3.3 and 3.4). |
-| **Publisher login** (personal subscription, or "Access through your institution" via Shibboleth or CAFe) | Session cookies on the publisher's domain | Background `fetch` with `credentials: "include"`. Chrome and Firefox send SameSite=Lax cookies on extension requests to hosts the extension has permission for. A fetch from inside the user's tab (`fetchInTab`) is used only when the candidate is on the tab's own site. | (a) Classify a login or paywall page as a separate outcome (`login`). (b) Retry those candidates through the helper tab: a real page load uses the first-party cookie jar, unlike Firefox's partitioned background requests (UNVERIFIED, test it). (c) A manual test in both browsers (4.4). |
-| **EZproxy, prefix style** (`https://login.ezproxy.uni.edu/login?url=<target>`) | Proxy session cookie | Not supported | Settings, "Library proxy": a list of `{ name, template, enabled }`, where the template holds `$@` (the same convention as Paperpile, so users can copy their library's string). After a `login` or paywall outcome on a publisher host, retry `template.replace("$@", url)`. |
-| **EZproxy, hostname style** (`www-nature-com.ezproxy.uni.edu`) | Proxy session cookie | Not supported | Rewrite rule: replace dots in the host with hyphens and append the proxy suffix. Auto-detect: when `capture.inspect` sees a tab host ending in a proxy suffix (it contains `ezproxy`, or matches a saved suffix), offer to save it, as Zotero does. |
-| **OpenAthens** (`https://go.openathens.net/redirector/<domain>?url=<encoded target>`) | Single sign-on, then publisher cookies | Not supported | Same template mechanism as the prefix proxy. The first use is an interactive login, so it must open a visible tab. |
-| **Shibboleth / SAML** (CAFe in Brazil) | Interactive login at the user's identity provider; ends with publisher cookies | Not supported | Cannot run silently. In the "PDF not found" dialog, add **Sign in through your institution**: open the article page in a visible tab and watch it (`tabs.onUpdated`). When the tab shows the PDF, or a page whose `citation_pdf_url` now downloads, fetch it from inside the tab and attach it automatically. This is the popup's existing "Attach this PDF" flow, automated. |
-| **Library link resolver** (OpenURL: SFX, Alma, 360 Link) | The library's own page lists where the user has access | Not supported | Optional setting holding the resolver's base URL. A **Find via my library** button opens `<base>?rft_id=info:doi/<doi>&rft.atitle=…`. Cheap, and useful for the papers nothing else finds. |
-| **LibKey (Third Iron)** | API: library id + DOI → direct PDF link through the library's subscriptions | Not supported | Optional, only if the user's library subscribes; it needs a library-specific token. UNVERIFIED. |
-
-### 4.3 Proposed design
-
-- **Settings → "Institutional access"** (stored in `storage.local` only, never sent anywhere):
-  - a list of proxies (name, template with `$@` or hostname suffix, enabled);
-  - an optional OpenURL resolver base;
-  - "Retry through my proxy when a PDF needs a login" (on by default once a proxy exists).
-- **Engine:**
-  - A new fetch outcome `login`, meaning HTML that is neither a bot check nor a PDF. Signals: 401 or 403 without bot markers, or login markers such as a form posting a password, "Sign in", "Access through your institution", "Purchase" or "Get access".
-  - After the open-access stages, candidates on publisher hosts that answered `login` go through an **access stage**:
-    1. the helper tab (first-party cookies);
-    2. each enabled proxy (URL rewritten);
-    3. only then the "not found" verdict, whose dialog offers **Sign in through your institution** and **Find via my library**.
-- **Permissions:**
-  - `cookies` for the PMC proof-of-work, and to check whether a session exists before opening tabs.
-  - Optionally `webNavigation` to watch the sign-in tab; `tabs.onUpdated` may be enough.
-  - The existing `https://*/*` host permission already covers fetching.
-- **Tests:**
-  - The rewrite functions (prefix, hostname, OpenAthens) are pure; give each a unit test.
-  - Test the outcome classifier on saved login pages: Springer, Elsevier, Wiley, IEEE, CAFe/Shibboleth.
-
-### 4.4 Manual verification (needs a real browser and real access)
-
-1. Sign in to Springer through the institution (or with a personal account). Capture a closed article:
-   - from the toolbar popup (tab on the site);
-   - from a Google Scholar result (no tab on the site, which tests background cookies).
-2. Repeat in Firefox, which partitions cookies differently.
-3. Off campus, with an EZproxy template configured: capture a closed Elsevier and a closed Wiley article.
-4. CAFe: sign in through "Acesso CAFe" on one publisher, then capture from that publisher. Check that "Sign in through your institution" attaches the PDF without a second click.
-
----
-
-## 5. Ask the author for a copy
-
-When neither open access nor the user's own access yields the PDF, the remaining legal route is the author. Most publisher agreements let authors send a copy for someone's personal research, and authors usually answer. Paperpile has no such feature, so this is where LabShelf can do better for readers without any subscription.
-
-### 5.1 Where the author's address comes from (cheapest first)
-
-1. **The article page's own tags.**
-   - `citation_author_email` appears next to `citation_author` on many publisher pages.
-   - The probe (`pageProbeContentScript.probe`) and `htmlPage.parseHtmlPage` already collect every `<meta>`, so no new request is needed.
-2. **`mailto:` links on the page** near "Correspondence", "Corresponding author" or an `*` footnote.
-   - The probe does not collect these today.
-   - Add a `mailtoLinks` field to `RawPage`, filled by both the probe and `parseHtmlPage`.
-3. **PubMed.**
-   - The `efetch` XML (`db=pubmed&retmode=xml`) often carries "Electronic address: …" inside an `<Affiliation>`.
-   - The PMID is already known for biomedical papers, and it goes through the same NCBI queue as section 3 step 5.
-4. **Repository "Request a copy".**
-   - DSpace and EPrints repositories hosting an embargoed or closed item show a "Request a copy" link that emails the author through the repository.
-   - When a repository landing page found by OpenAlex or Unpaywall has one, offer that link instead of an address (UNVERIFIED across repositories).
-5. **None found.** Offer to open the article page, where the address is usually printed.
-
-For an existing paper (the library's "Find PDF"), the address comes from the same sources applied to its landing page. `capture/recordCapture.draftFromRecord` already fetches that page.
-
-### 5.2 Flow
-
-- **Two entry points:**
-  - the "PDF not found" dialog (popup, Google Scholar, library "Add");
-  - the library's "No PDF" detail pane.
-  
-  Both get an **Ask the author** button when an address or a request link exists.
-- **Clicking it opens a prefilled email in the user's own mail client** (a `mailto:` URL). The user reviews it and presses Send. LabShelf never sends mail by itself:
-  - no account access is needed;
-  - nothing can be sent in bulk;
-  - the user decides every time.
-- **The message** is short and editable:
-  - Subject: `Request for a copy of "<title>"`.
-  - Body: the full citation, the DOI link, "for my personal research", the user's name and affiliation (from Settings), and thanks.
-  - Default language English, with a Portuguese and Spanish template selectable in Settings.
-  - Stay under about 1,800 characters: some mail clients truncate long `mailto:` URLs.
-- **After the click**, the paper records when the request was made. The detail pane then says "PDF requested from the author on <date>", which prevents duplicate requests.
-- **When the reply arrives**, the user drops the PDF on **Attach PDF…**, which already exists.
-
-### 5.3 Data
-
-- `PaperRecord.pdfRequestedAt?: string` (ISO date), written to `metadata.yaml` and read back by `recordFromYaml`, so it syncs to VS Code.
-- The author's address is not stored. It is looked up again when needed, which avoids keeping third parties' personal data.
-- Settings: requester name, affiliation, template language. All stay in `storage.local`.
-
-### 5.4 Modules
-
-| Piece | Where | Kind |
-|---|---|---|
-| `authorEmails(raw: RawPage): AuthorContact[]` from meta tags and `mailto:` links | `capture/authorContact.ts` | pure, unit-tested |
-| `emailFromAffiliation(text)` for PubMed's "Electronic address:" | same file | pure, unit-tested |
-| `requestCopyMailto(paper, requester, lang)`, with correct encoding and the length cap | `capture/requestCopy.ts` | pure, unit-tested |
-| `paper.authorContact { id }` → `{ contacts, requestCopyUrl?, articleUrl? }` | `background/index.ts` | runtime message (extension pages only, like `paper.findPdf`) |
-| Ask the author button, "requested on" line | `core/src/library-ui/dom/detail/detailSections.ts`, popup, Scholar dialog | UI |
-| `pdfRequestedAt` round trip | `core/types/paperRecord.ts`, `storage/paperRecordStore.recordFromYaml`, `BibTeXService` | data |
-
-### 5.5 Tests and spec
-
-- **Unit tests:**
-  - address extraction from saved pages of 5 publishers;
-  - PubMed affiliation strings (single and multiple addresses, trailing punctuation);
-  - `mailto:` encoding of quotes, accents and line breaks, and the length cap.
-- **Spec:** extend `documents/specs/browser/capture.spec.yaml` and `library-page.spec.yaml` with the flow and the `pdfRequestedAt` key.
-
----
-
-## 6. Paperpile parity checklist
-
-| Capability | LabShelf |
-|---|---|
-| One-click save from any article page, PDF tab or Google Scholar | Have |
-| Metadata from registries (CrossRef, arXiv, PubMed) with page fallback | Have |
-| Honest "no PDF" state, retry later (Find PDF), attach a local file | Have (this branch) |
-| Ask before saving without a PDF | Have (this branch) |
-| Open-access discovery (Unpaywall, CrossRef) | Have |
-| OpenAlex, Semantic Scholar, Europe PMC, PMC bucket | Have (core chain); PMC proof-of-work and title twins missing (steps 5, 6) |
-| Publisher-specific PDF URL rules ("recipes") | Partial (about 20 DOI prefixes); research covers about 36 platforms (step 4) |
-| Background tab for bot checks | Partial (one site, Cloudflare/Akamai only) (step 3) |
-| Use the user's publisher login | Partial: works when cookies reach background requests; no fallback yet (4.2) |
-| Library proxy (EZproxy, OpenAthens) with automatic retry | Missing (4.2, 4.3) |
-| Guided institutional sign-in, then auto-attach | Missing (4.2) |
-| Library link resolver (OpenURL) | Missing (4.2) |
-| Ask the author for a copy (prefilled email, "requested on" state) | Missing; Paperpile has no equivalent (section 5) |
-
----
-
-## 7. Sci-Hub, LibGen, Anna's Archive
-
-- **What exists.** `import/pdfFinding/resolvers/direct/sciHub.ts` is the user's existing opt-in Sci-Hub source:
-  - off by default;
-  - controlled by `enableSciHub` and `sciHubMirror` in the options page;
-  - consulted last, only when a DOI is known.
-
-
----
-
-## 8. Open questions
-
-- Does Firefox attach the publisher's cookies to background-script requests with Total Cookie Protection on? The answer decides how often the helper tab is needed (4.4 item 2).
-- Is the `cookies` permission worth the extra install prompt? PMC can also be served from inside the helper tab.
-- Where should the evaluation corpus live in the repository, and should it run in CI? (It makes network calls, so probably manual only.)
-
-## Sources
-
-- Paperpile: [Access content off campus through your library proxy server](https://paperpile.notion.site/Access-content-off-campus-through-your-library-proxy-server-021013616c9046a2a10c8022137d244a), [Troubleshooting PDF downloads](https://paperpile.notion.site/Troubleshooting-PDF-downloads-0c84843b3fe14ae2a7293bf6e4eae25f), [Paperpile for Firefox](https://addons.mozilla.org/en-US/firefox/addon/paperpile-addon/)
-- Zotero proxy detection: [Zotero forums](https://forums.zotero.org/discussion/99900/zotero-proxy-detection-for-the-oclc-proxy), [Automatic proxy support](https://forums.zotero.org/discussion/4124/automatic-proxy-support)
-- EZproxy URL methods: [Aaron Tay, "Adding ezproxy to the url – 5 different methods"](https://aarontay.substack.com/p/adding-ezproxy-to-url-5-different)
-- OpenAthens: [How the redirector works](https://docs.openathens.net/libraries/how-the-redirector-works)
-- Cookies on extension requests: [WebKit bug 218002](https://bugs.webkit.org/show_bug.cgi?id=218002) (Chrome and Firefox send SameSite=Lax cookies with extension API calls; Safari does not)
-- LabShelf live research, 2026-10-07: open-access API reports A and B, and publisher pattern reports A and B (session scratchpad, not yet in the repository).
+| Harness: corpus JSON, Node runner, report | `packages/core/tools/pdf-eval/` | Manual script, not in `pnpm -r test` (network). Correct = at least 60% of the title's words on pages 1–2, with core's own pdf.js text extraction. |
+| Closed-access checklist | `packages/core/tools/pdf-eval/closed.json` | 15 DOIs, one per publisher: Elsevier, Wiley, Springer, IEEE, ACS, T&F, SAGE, APS, IOP, Nature, OUP, Cambridge, JSTOR, AIP, De Gruyter. ACM is left out because its Digital Library is fully open access. |
+| Fetch outcome classifier | `core/src/import/pdfFinding/download/` | `pdf / bot / login / html / error` from status, headers, final URL and body. |
+| Two-stage engine and domain pacer | `core/src/import/pdfFinding/` | `resolvePdf(ctx, fetchOpts, attempts)` keeps its signature. `PdfAttempt` gains `outcome` and `status`. |
+| Page-first context | `core/src/import/` (identifier import) | The DOI landing page becomes `landingUrl` and `pageCandidates` in every app. |
+| Publisher rule table | `core/src/import/pdfFinding/rules/` | `{ platform, match (DOI prefix or landing regex), pdfUrls(), restricted?: RegExp[] }`, one file per platform family, so that no folder holds more than 8 files. |
+| Proxy rewrite | `core/src/import/pdfFinding/access/` | Pure. The proxy list comes in through `fetchOpts`, so core never reads settings. |
+| Access stage | engine, after the open-access candidates | `login` candidates → helper tab → each enabled proxy → verdict. |
+| Helper tab and visible watched tab | `packages/browser/src/capture/tab/` | The visible tab opens only on a click in the dialog. It is watched through `tabs.onUpdated` for up to 5 minutes, one tab per paper. |
+| "PDF not found" dialog actions | `core/src/library-ui/` copy plus browser glue | Reads `outcome` from the attempts. |
+| Options: proxies, custom resolvers | `packages/browser/src/options/` | Stored in `storage.local`. The settings migration goes in `packages/browser/src/platform/migrations/`. |
+| Custom resolver | `core/src/import/pdfFinding/resolvers/direct/` | Runs last, with templates from `ResolveContext`. `sciHub.ts` is deleted. |
+| PDF-to-paper matcher | `core/src/import/` (pure) | Input: URL, referrer, page-1 text. Output: the best paper without a PDF, or nothing. Ids first, then `sameWork` on the title. |
+| Download and PDF-tab watcher | `packages/browser/src/background/` | Uses `downloads.onChanged` (state `complete`) and `tabs.onUpdated` on PDF URLs. Page-1 text comes from pdf.js in an offscreen document in Chrome and from the event page in Firefox. |
+| PDF version | `core` types, `metadata.yaml` reader and writer, candidate ranking, library-ui badge | Sources that set it: arXiv and bioRxiv/medRxiv → `preprint`; OpenAlex and Unpaywall `version`; publisher rules → `published`. Any other source leaves it unset. |
+| Author contacts | `core/src/import/landing/` (pure) | `RawPage` gains `mailtoLinks`, filled by the page probe and `parseHtmlPage`. PubMed `efetch` goes through the NCBI queue (at most 3 requests/s). |
+| Request email | `core/src/library-ui/` (pure builder) plus browser glue | Templates in English, Portuguese and Spanish. The requester's name, affiliation and language live in browser settings. |
+
+## 6. Sessions and steps
+
+Each session ends with typecheck and tests green, the `finish` pass, a harness run logged in §8, and a commit.
+
+### Session 1 — Harness and baseline
+
+- **Starts from:** clean tree on `feat/pdf-finding`
+- **Ends with:** A1, the baseline numbers and the user's A7 baseline in §8
+- **Commit:** yes
+
+| Id | Step | Depends on | Runner | Done when | OK |
+|---|---|---|---|---|---|
+| S1 | Corpus, closed checklist, runner, `eval:pdf` script | — | M · implementer (sonnet) | A1 | [x] |
+| S2 | Fetch outcomes in the attempt log | — | M · implementer (sonnet) | outcome unit tests | [x] |
+| S3 | Baseline run, plus the user's manual baseline | S1–S2 | H · main thread + user | numbers in §8 | [x] |
+| S4 | Finish | S1–S3 | `finish` skill | gate passes | [x] |
+
+### Session 2 — Page first, two stages, pacing
+
+- **Starts from:** session 1 committed
+- **Ends with:** A3, A10, harness logged
+- **Commit:** yes
+
+| Id | Step | Depends on | Runner | Done when | OK |
+|---|---|---|---|---|---|
+| S5 | Two-stage engine with a domain pacer | S2 | H · main thread | A3, engine tests | [ ] |
+| S6 | DOI landing page as page context in identifier import; Referer on downloads | S5 | M · implementer (sonnet) | A10 | [ ] |
+| S7 | Finish, harness run, and the user's 3-paper Chrome check (Elsevier, Springer, IEEE from `closed.json`) | S5–S6 | `finish` skill + main thread + user | gate passes, §8 | [ ] |
+
+### Session 3 — Publisher rules and wall signatures
+
+- **Starts from:** session 2 committed
+- **Ends with:** A4, A5, harness logged
+- **Commit:** yes
+
+| Id | Step | Depends on | Runner | Done when | OK |
+|---|---|---|---|---|---|
+| S8 | Rule table schema; move the 22 existing rules into it | S5 | H · main thread | existing tests pass | [ ] |
+| S9 | Port rules to at least 36 platforms | S8 | M · implementer (sonnet), 2 in parallel by platform family | A4 | [ ] |
+| S10 | Bot and login signatures with fixtures | S2 | M · implementer (sonnet) | A5 | [ ] |
+| S11 | Finish and harness run | S8–S10 | `finish` skill + main thread | A2 checked, §8 | [ ] |
+
+### Session 4 — Bot-wall ladder and guided sign-in
+
+- **Starts from:** session 3 committed
+- **Ends with:** A8, user check in §8
+- **Commit:** yes
+
+| Id | Step | Depends on | Runner | Done when | OK |
+|---|---|---|---|---|---|
+| S12 | Helper tab on every `bot` outcome; settle check for every wall | S10 | H · main thread | engine tests, PMC via helper tab | [ ] |
+| S13 | Visible watched tab with auto-attach; dialog actions | S12 | H · main thread | A8 | [ ] |
+| S14 | Finish; user runs the closed checklist | S12–S13 | `finish` skill + user | gate passes, §8 | [ ] |
+
+### Session 5 — Library proxies
+
+- **Starts from:** session 4 committed
+- **Ends with:** A6, A7
+- **Commit:** yes
+
+| Id | Step | Depends on | Runner | Done when | OK |
+|---|---|---|---|---|---|
+| S15 | Proxy rewrites and the access stage | S12 | H · main thread | A6 | [ ] |
+| S16 | Options section for proxies | S15 | M · implementer (sonnet) | settings round trip test | [ ] |
+| S17 | Finish; user runs A7 | S15–S16 | `finish` skill + user | A7 | [ ] |
+
+### Session 6 — Custom resolver and small sources
+
+- **Starts from:** session 5 committed
+- **Ends with:** A9, A2 re-checked
+- **Commit:** yes
+
+| Id | Step | Depends on | Runner | Done when | OK |
+|---|---|---|---|---|---|
+| S18 | Custom resolver, options section, settings migration; delete `sciHub.ts` | S5 | M · implementer (sonnet) | A9 | [ ] |
+| S19 | Title-only twins (arXiv title + surname, OpenAlex `autocomplete`) and old-style arXiv ids | S5 | M · implementer (sonnet) | unit tests, harness | [ ] |
+| S20 | Finish, final harness run, `documents/apps/browser.md` | S18–S19 | `finish` skill + main thread | A2, A10 | [ ] |
+
+### Session 7 — PDF versions and attaching what the user downloaded
+
+- **Starts from:** session 6 committed
+- **Ends with:** A11, A12, A13
+- **Commit:** yes
+
+| Id | Step | Depends on | Runner | Done when | OK |
+|---|---|---|---|---|---|
+| S21 | `pdfVersion` in the contract, types, YAML round trip, ranking and badge | S5 | H · main thread | A12, A13 | [ ] |
+| S22 | PDF-to-paper matcher in core | — | M · implementer (sonnet) | matcher unit tests | [ ] |
+| S23 | Download and PDF-tab watcher, offscreen text, badge and popup offer | S22 | H · main thread | A11 | [ ] |
+| S24 | Finish; user checks A11 | S21–S23 | `finish` skill + user | gate passes | [ ] |
+
+### Session 8 — Ask the author
+
+- **Starts from:** session 7 committed
+- **Ends with:** A14, plan done
+- **Commit:** yes
+
+| Id | Step | Depends on | Runner | Done when | OK |
+|---|---|---|---|---|---|
+| S25 | Author contacts: `mailtoLinks`, meta tags, PubMed affiliations | — | M · implementer (sonnet) | extraction tests | [ ] |
+| S26 | Request email builder, settings, `pdfRequestedAt` round trip | S21 | M · implementer (sonnet) | encoding and YAML tests | [ ] |
+| S27 | "Ask the author" in the dialog and the detail pane | S25–S26 | H · main thread | A14 | [ ] |
+| S28 | Finish, docs, delete this plan | S25–S27 | `finish` skill | gate passes | [ ] |
+
+### Step blocks
+
+#### S1 — Harness
+
+- **Do:**
+  - Build a 66-paper corpus in 10 categories: CS/ML, biomedical, physics/maths, chemistry/engineering, Brazilian/SciELO, social science, preprints, pre-1990, book chapters, and paywalled papers with a free copy.
+  - Each entry holds the DOI or other id, the title, the category, and the landing URL.
+  - Write a Node runner that calls core's `findPaperPdf` with Node fetch and a Chrome User-Agent, in two scenarios: "ids" (identifiers only) and "landing" (also the article page).
+  - A PDF is correct when at least 60% of the title's words appear on pages 1–2.
+  - Write `closed.json` with the 15 publishers in §5.
+- **Touch:** `packages/core/tools/pdf-eval/`, `packages/core/package.json` (script). **Do not touch:** `packages/core/src/`.
+- **Context:**
+  - The ResNet DOI `10.1109/CVPR.2016.90` is a known wrong-copy case and belongs in the corpus.
+- **Done when:** A1.
+
+#### S2 — Fetch outcomes
+
+- **Do:**
+  - Classify every fetch hop as `pdf / bot / login / html / error`.
+  - Record the outcome and status in each `PdfAttempt`.
+  - `summarizeAttempts` derives `blocked` and `needsLogin` from the outcomes.
+- **Touch:** `core/src/import/pdfFinding/download/`, `types.ts`, `resolvePdf.ts`, `packages/browser/src/capture/captureService.ts`. **Do not touch:** the resolver order.
+- **Context:**
+  - `botCheck.ts` matches only for statuses 202/403/429/503, with a Cloudflare-style regex.
+  - S10 widens the signatures. This step only adds the outcome type and the login markers: a password form, "Sign in", "Access through your institution", "Purchase", "Get access".
+- **Done when:** unit tests for each outcome pass.
+
+#### S3 — Baseline
+
+- **Do:**
+  - Run `eval:pdf` and log the totals in §8.
+  - Ask the user to capture the 15 closed papers in Chrome while signed in through the institution, once from the popup and once from Scholar, and log the result.
+- **Done when:** both baselines are in §8.
+
+#### S5 — Two-stage engine
+
+- **Do:**
+  - Stage A runs all lookups concurrently, with a 3 s cap. A lookup that answers late is dropped.
+  - Stage B ranks the candidates (page hints, then publisher rules, then repository and open-access copies, then custom resolvers) and downloads at most 3 at a time. Limits: 10 s to first byte, 30 s per URL, 40 s in total.
+  - Accept the first verified `%PDF-`, but hold up to 1 s for a better-ranked candidate that is still in flight.
+  - The domain pacer waits 1 s between requests to one host and skips a host after 5 consecutive failures.
+- **Touch:** `core/src/import/pdfFinding/` (resolvePdf, resolverOrder, download). **Do not touch:** the resolvers' lookup logic.
+- **Context:**
+  - The INVARIANT in `resolverOrder.ts`: learners reveal ids that PMC and the publisher use. Stage B runs after Stage A, so it holds.
+  - Keep the `resolvePdf(ctx, fetchOpts, attempts)` signature; the dialog reads `attempts`.
+- **Done when:** A3, and the engine tests cover ordering, the hold, the pacer and the global limit.
+
+#### S6 — Page first and Referer
+
+- **Do:**
+  - In core identifier import, fetch the DOI landing page and pass it as `landingUrl` and `pageCandidates`.
+  - Send the page URL as Referer on every download hop.
+- **Touch:** `core/src/import/` (importIdentifier, pdfFinding download). **Do not touch:** browser capture flows (they already pass the page).
+- **Context:** `importIdentifier.ts:65` passes no landing page today. `importLandingPage.ts:41` shows how the landing page is wired.
+- **Done when:** A10.
+
+#### S8 — Rule table
+
+- **Do:**
+  - Define the rule shape from §5.
+  - Move the existing DOI-prefix and landing rules from `resolvers/direct/publisher.ts` into the table, and delete the old code paths.
+  - Apply the landing rules to every landing URL: the tab, doi.org redirects, and the aggregators' landing pages.
+- **Touch:** `core/src/import/pdfFinding/rules/`, `resolvers/direct/publisher.ts`. **Do not touch:** the other resolvers.
+- **Done when:** the existing tests pass on the table.
+
+#### S9 — Port rules
+
+- **Do:** add rules until the table covers at least 36 platforms. Each rule gets a verified example and a test.
+- **Touch:** `core/src/import/pdfFinding/rules/`, its tests. **Do not touch:** the engine.
+- **Context:**
+  - Read Zotero's translators (`github.com/zotero/translators`) for URL shapes only. Write the code fresh, because the translators are AGPL.
+  - Shapes already verified (2026-10-07):
+    - Springer `link.springer.com/content/pdf/<doi>.pdf` (prefixes 10.1007, 10.1186, 10.1023)
+    - Nature `nature.com/articles/<id>.pdf`
+    - IEEE `stampPDF/getPDF.jsp?arnumber=<n>` (fallback `stamp.jsp` iframe)
+    - Frontiers `frontiersin.org/articles/<doi>/pdf`
+    - PLOS `journals.plos.org/plosone/article/file?id=<doi>&type=printable`
+    - MDPI CDN `mdpi-res.com/d_attachment/<slug>/<slug>-<vol>-<art>/article_deploy/<slug>-<vol>-<art>.pdf`
+    - eLife via `api.elifesciences.org/articles/<id>`
+    - MIT Press `/doi/pdf/<doi>`
+  - Shapes known, but behind a login or a wall from Node:
+    - Wiley `/doi/pdfdirect/<doi>`
+    - ScienceDirect `pii/<PII>/pdfft?download=true` (PII from the `linkinghub` redirect)
+    - Atypon `/doi/pdf/<doi>`, `/doi/pdfdirect/<doi>?download=true` (ACM, SIAM, T&F, SAGE, ACS, PNAS, Science, NEJM, INFORMS; ASM and World Scientific add `?download=true`)
+    - De Gruyter `degruyterbrill.com/document/doi/<doi>/pdf`
+    - Thieme `thieme-connect.com/products/ejournals/pdf/<doi>.pdf`
+    - Project Euclid and SPIE: `.full` becomes `.pdf`
+    - BMJ `<landing>.full.pdf`
+    - AMS `<landing>/<PII>.pdf`
+    - JSTOR `/stable/pdfplus/<id>.pdf?acceptTC=true`
+    - RSC, Emerald, OUP: use `citation_pdf_url`
+  - Split the work into two runners by platform family: Atypon and the Wiley family; everything else.
+- **Done when:** A4.
+
+#### S10 — Wall and login signatures
+
+- **Do:** match these on any status, on the final URL and on the headers as well as the body. Each gets a saved fixture and a test.
+
+  | Wall | Signature |
+  |---|---|
+  | Cloudflare / Akamai | the current regex |
+  | F5 / Fastly (Springer, eLife, JSTOR) | `<title>Client Challenge</title>`, `/_fs-ch-` |
+  | AWS WAF (IEEE, De Gruyter, figshare) | 202, header `x-amzn-waf-action: challenge`, `token.awswaf.com` |
+  | Anubis (HAL, DBLP) | `anubis_challenge` |
+  | PMC proof-of-work | `POW_CHALLENGE`, `cloudpmc-viewer-pow` |
+  | Radware (IOP) | final host `validate.perfdrive.com` |
+  | Imperva (Project Euclid, SPIE) | `_Incapsula_Resource`, header `x-iinfo` |
+  | HighWire JavaScript | `function leastFactor(` |
+  | MDPI interstitial | `/_sec/verify?provider=interstitial` |
+
+  Also add login fixtures for the five pages in A5, plus the per-rule `restricted` signatures.
+- **Touch:** `core/src/import/pdfFinding/download/`, `rules/`, tests. **Do not touch:** the browser.
+- **Done when:** A5.
+
+#### S12 — Helper tab for every wall
+
+- **Do:**
+  - Send every `bot` outcome to the inactive helper tab, not only the ones at the end of the chain. Run it as soon as the background fetch reports a wall, grouped by origin.
+  - The settle check waits until none of the S10 signatures is left in the page.
+  - For PMC, load the PDF URL in the helper tab, so that the page's own script solves the proof-of-work, then fetch it from inside the tab.
+- **Touch:** `packages/browser/src/capture/tab/`, the engine hook in core. **Do not touch:** the manifest.
+- **Context:** the helper tab today opens at the origin root and waits up to 15 s, with Cloudflare-only settle markers (`helperTab.ts:67-74`).
+- **Done when:** engine tests pass, and a PMC paper outside the open-access bucket downloads in the headless harness (`documents/apps/README.md#verifying-changes`).
+
+#### S13 — Visible watched tab
+
+- **Do:**
+  - When the attempts show `login` or an unsolved `bot`, the dialog offers "Open to sign in" or "Open to pass the check".
+  - The click opens the best candidate's page in a visible tab and watches it through `tabs.onUpdated` for up to 5 minutes.
+  - When the tab shows a PDF, or its page now yields a downloadable PDF candidate, fetch it from inside the tab, attach it with `attachPdfToPaper`, and say so in a toast.
+- **Touch:** `packages/browser/src/capture/`, `core/src/library-ui/pdfCopy.ts`, the dialog glue. **Do not touch:** the core engine.
+- **Context:** the dialog copy is in `core/src/library-ui/pdfCopy.ts:33-44`. Use the product vocabulary: paper, PDF.
+- **Done when:** A8.
+
+#### S15 — Proxies and the access stage
+
+- **Do:**
+  - Pure rewrites:
+    - prefix: `template.replace("$@", url)`;
+    - hostname: replace the host's dots with hyphens and append the suffix;
+    - OpenAthens: `go.openathens.net/redirector/<domain>?url=<encoded>`.
+  - Access stage: after the open-access candidates, every publisher-host candidate with a `login` outcome goes through the helper tab, then through each enabled proxy in order.
+  - A proxy that redirects to its own login page gives `login`, and S13's dialog offers to open it.
+- **Touch:** `core/src/import/pdfFinding/access/`, the engine. **Do not touch:** the options page.
+- **Done when:** A6.
+
+#### S16 — Proxy options
+
+- **Do:** add an options section that lists proxies (name, template, enabled), validates the template's kind and stores the list in `storage.local`. The background passes the list in `fetchOpts`.
+- **Touch:** `packages/browser/src/options/`, `platform/settings.ts`, `captureService.ts`. **Do not touch:** core.
+- **Done when:** a settings round-trip test passes.
+
+#### S18 — Custom resolver
+
+- **Do:**
+  - Write a core resolver that runs last and builds candidates from `{doi}` templates. Each result page goes through the hop parser.
+  - Add an options section for the templates (name, template, enabled), off by default. The help text names no site.
+  - Add a migration in `packages/browser/src/platform/migrations/` that turns `enableSciHub` and `sciHubMirror` into one entry. Its header says to delete it once no profile older than this release can exist.
+  - Delete `sciHub.ts` and its settings.
+- **Touch:** `core/src/import/pdfFinding/resolvers/direct/`, `packages/browser/src/options/`, `platform/settings.ts`. **Do not touch:** the engine.
+- **Context:**
+  - `sciHub.ts` has its own embed regexes. Keep the ones the generic parser misses, as hop-parser cases, with tests.
+  - Anna's Archive SciDB pages show a wait page behind DDoS-Guard. Their outcome is `bot`, and they go to the helper tab.
+- **Done when:** A9.
+
+#### S19 — Title-only twins and old-style arXiv ids
+
+- **Do:**
+  - For papers without a DOI, try arXiv `ti:"…"+AND+au:<surname>` (8 s timeout), then OpenAlex `autocomplete`, which is free. Gate every hit with `sameWork`.
+  - Recognise ids such as `hep-th/9711200` in `doiDetector` and `pageFacts`.
+- **Touch:** `core/src/import/`. **Do not touch:** the browser.
+- **Done when:** unit tests pass and the harness is logged.
+
+#### S21 — PDF version
+
+- **Do:**
+  - Add the optional `pdfVersion` key to `library-format.md` and to the paper record. Write and read it in `metadata.yaml`. A missing key means unknown.
+  - Each resolver tags its candidates with a version (the sources are in §5).
+  - Candidate ranking puts `published` and untagged copies above `accepted`, and `accepted` above `preprint`. The stage B hold covers this ordering.
+  - The shared library UI shows a badge in the list and in the detail pane.
+  - "Find PDF" on a labelled paper searches only for a better version. Before it replaces the file, it confirms with the user, and the confirmation warns when notes or highlights exist.
+- **Touch:** `documents/contracts/library-format.md`, core types and YAML mapping, `pdfFinding` ranking, `core/src/library-ui/`. **Do not touch:** sync logic, beyond carrying the key.
+- **Context:** arXiv and ACL twins found through Semantic Scholar are attached today with no label.
+- **Done when:** A12, A13.
+
+#### S22 — Matcher
+
+- **Do:** `matchPdfToPaper({ url, referrer, firstPageText }, papersWithoutPdf)`. Match DOI, arXiv and PMC ids in the URL or referrer first. Otherwise run `sameWork` on the title, taken from the longest early line of page 1 that matches a title. Return nothing on a tie.
+- **Touch:** `core/src/import/`. **Do not touch:** the browser.
+- **Done when:** unit tests cover id hits, title hits, an unrelated PDF and a tie.
+
+#### S23 — Watcher
+
+- **Do:**
+  - Background listeners:
+    - `downloads.onChanged` for a completed download that is a PDF (MIME type or `.pdf`);
+    - `tabs.onUpdated` for a tab showing a PDF.
+  - Re-fetch the bytes from `finalUrl` with credentials. If that fails, offer only the id match and say so in the popup.
+  - Get the page-1 text from pdf.js: an offscreen document in Chrome, the event page in Firefox.
+  - On a match, set the toolbar badge. The popup offers "Attach to <paper>", which uses `attachPdfToPaper`.
+- **Touch:** `packages/browser/src/background/`, `popup/`, `capture/attachPdfToPaper.ts`, `manifest.chrome.json` (`offscreen`). **Do not touch:** core.
+- **Context:** first check how the popup handles a PDF tab whose paper is already in the library, and extend that flow rather than adding a second one.
+- **Done when:** A11.
+
+#### S25 — Author contacts
+
+- **Do:**
+  - Add `authorContacts(raw: RawPage)`. It reads `citation_author_email` next to `citation_author`, and `mailto:` links near "Correspondence", "Corresponding author" or a `*` footnote.
+  - Add `emailFromAffiliation(text)` for PubMed's "Electronic address: …".
+  - Add `mailtoLinks` to `RawPage`, filled by the page probe and by `parseHtmlPage`.
+- **Touch:** `core/src/import/landing/`, `packages/browser/src/capture/pageProbeContentScript.ts`. **Do not touch:** the resolver chain.
+- **Done when:** the tests in A14 for 5 saved publisher pages and PubMed strings pass.
+
+#### S26 — Request email
+
+- **Do:**
+  - Write a pure `requestCopyMailto(paper, requester, lang)`:
+    - subject: `Request for a copy of "<title>"`;
+    - body: the citation, the DOI link, "for my personal research", the name and affiliation, and thanks;
+    - templates in English, Portuguese and Spanish;
+    - at most 1,800 characters.
+  - Add settings for the requester's name, affiliation and language.
+  - Add `pdfRequestedAt` (an ISO date) to `library-format.md` and the YAML mapping.
+- **Touch:** `core/src/library-ui/`, core types and YAML mapping, `packages/browser/src/options/`. **Do not touch:** the dialog.
+- **Done when:** the encoding tests (quotes, accents, line breaks, the cap) and the YAML round trip pass.
+
+#### S27 — Ask the author in the UI
+
+- **Do:**
+  - Add a runtime message `paper.authorContact { id }`, which returns `{ contacts, articleUrl? }` and is limited to extension pages, like `paper.findPdf`.
+  - Show the "Ask the author" button in the "PDF not found" dialog (popup, Scholar, library "Add") and in the "No PDF" detail pane.
+  - The click opens the `mailto:` and writes `pdfRequestedAt`. The pane shows "PDF requested from the author on <date>".
+- **Touch:** `packages/browser/src/background/`, `popup/`, `core/src/library-ui/dom/detail/`. **Do not touch:** the resolver chain.
+- **Done when:** A14.
+
+## 7. Risks
+
+- **R1** Publishers change URLs and walls, so the rules decay. Mitigation: every rule has an example and a test, the harness flags drops, and the decay is a known cost (Paperpile fixes "30+ publishers" every few months).
+- **R2** Parallel downloads trigger rate limits or account flags at publishers. Mitigation: the domain pacer (D5), at most 3 downloads at a time, and no bulk mode.
+- **R3** The visible-tab watcher attaches a wrong PDF (a supplement or another article). Mitigation: the supplement URL filter, plus the `sameWork` check on the page's `citation_title` before attaching.
+- **R4** Node results do not predict the browser. Mitigation: the user's closed checklist (A7) is the parity measure; the harness only guards open access and the rules.
+- **R5** Chrome Web Store review flags the custom resolver. Mitigation: it ships generic, empty and off (D11).
+- **R6** The download re-fetch fails for one-time signed URLs (for example ScienceDirect's `pdf.sciencedirectassets.com`). Mitigation: the id match still works without bytes; the popup then offers "Attach PDF…" with the paper preselected.
+- **R7** Replacing a preprint with the published version breaks highlights anchored to the old pages. Mitigation: replacement always asks first and warns when notes exist (D14).
+
+## 8. Log
+
+- 2026-10-15 — Plan approved. Q1: Chrome only. Branch `feat/pdf-finding` cut from `feat/reader-ux` (72b3dc0), because `main` predates `import/pdfFinding/`. Coordination C1–C4 recorded in §2.
+- 2026-10-15 — S2: `FetchOutcome` and the outcome classifier in `download/fetchOutcome.ts`; `PdfMiss.needsLogin` added. Known gap for S10: any HTML page with no PDF candidate and a "Sign in" or "Purchase" link gives `login`, a navbar included.
+- 2026-10-15 — S1: harness in `packages/core/tools/pdf-eval/`. Baseline: ids 34/66 correct, 4 wrong, misses by outcome bot 14, html 4, login 3, error 2, timeout 1, none 4; medians found 2.0 s, not-found 2.6 s. Landing 35/66, 4 wrong, misses bot 13, html 5, login 4, error 2, none 3; medians 2.9 s and 2.8 s. Wrong in both: ResNet (OpenAlex copy), graphene RMP (pre-review copy), Braun & Clarke (Dialnet), Nature DQN (supplement). Zero correct in chemistry/engineering and pre-1990. A2 re-based on this corpus.
+- 2026-10-15 — S4: finish pass green (typecheck in all four packages; core and browser tests). Harness grouped into `report/` and `loader/`; `eval:pdf` added to `documents/apps/README.md`. ACM swapped for AIP in `closed.json`. Open for S5: an attempt keeps only the last hop's outcome, so a `login` hop followed by an `error` hop records `error`. The access stage (S15) needs the strongest outcome on the chain.
+- 2026-10-15 — S3: harness baseline logged above. The user's manual baseline is skipped. It stays reproducible from the `72b3dc0` build, so S14 runs the closed checklist on that build and on the new one, side by side. To catch R4 early, S7 ends with a 3-paper Chrome check (Elsevier, Springer, IEEE) by the user.
