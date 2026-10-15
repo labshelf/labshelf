@@ -18,9 +18,9 @@ function missingPdf(pane: PaneState): string {
 function pdfLine(pane: PaneState, v: PaperView): string {
   const caps = pane.ctx.caps;
   const pdf = v.details?.pdf;
-  if (caps.paperData && v.details && !pdf) return `<span class="muted-text">Not on this device yet</span>`;
+  if (v.details && !pdf) return `<span class="muted-text">Not on this device yet</span>`;
   const link = `<button class="link-btn" type="button" data-action="open" title="${escapeHtml(pdf?.relPath ?? PDF_FILE)}">${PDF_FILE}</button>`;
-  const size = pdf ? `<span class="muted-text">${formatBytes(pdf.size)}</span>` : caps.paperData ? `<span class="muted-text">…</span>` : "";
+  const size = pdf ? `<span class="muted-text">${formatBytes(pdf.size)}</span>` : `<span class="muted-text">…</span>`;
   return `<span class="kv-line">${link}${size}` +
     (caps.openExternal ? iconBtn("openExternal", "external", "Open in the default PDF app") : "") +
     (caps.reveal ? iconBtn("reveal", "folder", pane.ctx.labels.revealPaper ?? "Reveal folder") : "") + `</span>`;
@@ -36,6 +36,6 @@ export function fileSectionHtml(pane: PaneState, v: PaperView): string {
   if (!v.p.hasPdf) return missingPdf(pane);
   let html = kv("PDF", pdfLine(pane, v));
   if (pane.ctx.caps.textLayer) html += kv("Text", `<span class="tl-field">${escapeHtml(textLayerSummary(v.p, v.job))}</span>`);
-  if (pane.ctx.caps.paperData) html += kv("Last read", lastRead(v));
+  html += kv("Last read", lastRead(v));
   return `<div class="kv-grid">${html}</div>`;
 }

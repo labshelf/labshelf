@@ -1,6 +1,6 @@
 /**
- * Tracks the sync state the status bar shows: read from the background at start, polled while a sync runs (then the library
- * is read again), and a "sync now" that runs one.
+ * Tracks the sync state the status bar shows: read from the background at start, polled while a sync runs, and a "sync now"
+ * that runs one. The background's library.changed broadcast refreshes the library when a sync ends.
  */
 import { toast } from "@labshelf/core/dom";
 import type { SyncStatusData } from "../../platform";
@@ -14,8 +14,7 @@ export interface SyncStatus {
   syncNow(): Promise<void>;
 }
 
-/** `onSettled` runs when a sync this page watched finishes, to read the library again. */
-export function createSyncStatus(onSettled: () => Promise<void>): SyncStatus {
+export function createSyncStatus(): SyncStatus {
   let status: SyncStatusData | null = null;
   let polling = false;
   const listeners = new Set<(s: SyncStatusData | null) => void>();
@@ -32,7 +31,6 @@ export function createSyncStatus(onSettled: () => Promise<void>): SyncStatus {
         const sync = await send<SyncStatusData>({ type: "sync.status" });
         set(sync);
         if (sync.syncing) continue;
-        await onSettled();
         if (sync.lastError) toast(`Sync failed — ${sync.lastError}`, "error");
         return;
       }

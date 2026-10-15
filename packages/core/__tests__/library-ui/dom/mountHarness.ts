@@ -12,8 +12,8 @@ export function paper(id: string, dir: string, extra: Partial<PaperRecord> = {})
 
 /** Every capability a host can declare. */
 export const ALL_CAPABILITIES: LibraryUiCapabilities = {
-  paperData: true, editTags: true, editNote: true, textLayer: true, similar: true, reveal: true, openExternal: true,
-  fetchMetadata: true, exportAnnotations: true,
+  textLayer: true, similar: true, reveal: true, openExternal: true,
+  fetchMetadata: true,
 };
 
 export const LABELS = { addTooltip: "Add a paper", emptyHint: "Papers come in through the Add button.", revealPaper: "Reveal in Explorer" };

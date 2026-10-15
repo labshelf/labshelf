@@ -3,9 +3,7 @@ import { DEFAULT_CONTACT_EMAIL } from "@labshelf/core";
 import {
   checkboxField, inlineCode, numberField, setRowDisabled, settingRow, settingsSection, textField,
 } from "@labshelf/core/dom";
-import type { LabShelfSettings } from "../platform";
-
-const DEFAULT_MIRROR = "https://sci-hub.se";
+import { DEFAULT_SCI_HUB_MIRROR, type LabShelfSettings } from "../platform";
 
 export interface GeneralForm {
   sections: HTMLElement[];
@@ -19,7 +17,7 @@ export function createGeneralForm(): GeneralForm {
   const interval = numberField({ id: "sync-interval", min: 0, max: 240, step: 1, width: "sm" });
   const email = textField({ id: "contact-email", type: "email", placeholder: "you@example.com" });
   const sciHub = checkboxField({ id: "enable-scihub", label: "Enable the Sci-Hub fallback" });
-  const mirror = textField({ id: "scihub-mirror", type: "url", placeholder: DEFAULT_MIRROR });
+  const mirror = textField({ id: "scihub-mirror", type: "url", placeholder: DEFAULT_SCI_HUB_MIRROR });
   const mirrorRow = settingRow({ label: "Sci-Hub mirror", labelFor: "scihub-mirror" }, mirror.element);
   const dimMirror = (): void => setRowDisabled(mirrorRow, !sciHub.control.checked);
   sciHub.control.addEventListener("change", dimMirror);
@@ -53,7 +51,7 @@ export function createGeneralForm(): GeneralForm {
       autoSyncMinutes: Math.min(240, Math.max(0, Number(interval.control.value) || 0)),
       contactEmail: email.control.value.trim() || DEFAULT_CONTACT_EMAIL,
       enableSciHub: sciHub.control.checked,
-      sciHubMirror: (mirror.control.value.trim() || DEFAULT_MIRROR).replace(/\/+$/, ""),
+      sciHubMirror: (mirror.control.value.trim() || DEFAULT_SCI_HUB_MIRROR).replace(/\/+$/, ""),
     }),
     fill(settings) {
       interval.control.value = String(settings.autoSyncMinutes);

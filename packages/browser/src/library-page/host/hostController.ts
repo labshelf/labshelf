@@ -55,11 +55,10 @@ function dispatch(ctx: HostContext, pdf: PdfHandlers, m: UiToHost, options: Libr
   }
 }
 
-/** Starts answering the UI on `endpoint`; returns the host context for page glue (sync, status bar). */
-export function attachLibraryHost(endpoint: HostEndpoint, options: LibraryHostOptions = {}): HostContext {
+/** Starts answering the UI on `endpoint`. */
+export function attachLibraryHost(endpoint: HostEndpoint, options: LibraryHostOptions = {}): void {
   const ctx = createHostContext(endpoint);
   const pdf = createPdfHandlers(ctx);
   endpoint.subscribe((m) => dispatch(ctx, pdf, m, options));
   watchLibraryChanges(ctx.snapshots, ctx.log);
-  return ctx;
 }

@@ -51,8 +51,6 @@ export function registerMessageRouter(deps: MessageRouterDeps): void {
 
 async function handle(msg: RuntimeMessage, { log, mutations, syncMessages, scheduleSync }: MessageRouterDeps): Promise<unknown> {
   switch (msg.type) {
-    case "ping":
-      return { pong: true, at: new Date().toISOString() };
     case "auth.status":
       return syncMessages.authStatus();
     case "auth.connect":

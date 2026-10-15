@@ -16,8 +16,8 @@ function annotation(id: string, page: number, content: string, type: Annotation[
   return { id, paperId: "a", type, pageNumber: page, content, color: "yellow", createdAt: "2024-01-01T00:00:00Z", updatedAt: "2024-01-01T00:00:00Z" };
 }
 
-function showA(caps = ALL_CAPABILITIES, prefs = {}) {
-  const t = mountForTest(prefs, caps);
+function showA(prefs = {}) {
+  const t = mountForTest(prefs, ALL_CAPABILITIES);
   t.snapshot(library, ["papers/a"], [{ name: "B", path: "papers/B", children: [] }], { a: { annotations: 2, lastPage: 4 } });
   t.host.post({ type: "select", id: "a" });
   return t;
@@ -41,12 +41,6 @@ describe("detail pane head", () => {
     t.click('[data-action="removeTag"][data-tag="nlp"]', t.detail());
     expect(t.sent).toContainEqual({ type: "paper.setTags", ids: ["a"], add: [], remove: ["nlp"] });
   });
-
-  it("shows tags read-only to a host that cannot write them", () => {
-    const t = showA({});
-    expect(t.detail().querySelector(".tag-input")).toBeNull();
-    expect(t.detail().querySelector(".tag-name")?.textContent).toBe("nlp");
-  });
 });
 
 describe("detail data from the host", () => {
@@ -58,17 +52,11 @@ describe("detail data from the host", () => {
     t.host.post({ type: "sidecarChanged", id: "a" });
     expect(t.sent.filter((m) => m.type === "paper.details")).toHaveLength(2);
   });
-
-  it("asks nothing of a host without paper data and has no Annotations tab there", () => {
-    const t = showA({});
-    expect(t.sent.some((m) => m.type === "paper.details")).toBe(false);
-    expect(t.detail().querySelector('[data-tab="annotations"]')).toBeNull();
-  });
 });
 
 describe("detail tabs", () => {
   it("lists annotations by page and copies them as the core Markdown", () => {
-    const t = showA(ALL_CAPABILITIES, { detailTab: "annotations" });
+    const t = showA({ detailTab: "annotations" });
     t.host.post({ type: "details", id: "a", details: { annotations: [annotation("2", 5, "later"), annotation("1", 2, "first")], reading: null, pdf: null } });
     expect([...t.detail().querySelectorAll(".ann-page")].map((e) => e.textContent)).toEqual(["Page 2", "Page 5"]);
     t.click('[data-action="copyAnnotations"]', t.detail());
@@ -83,7 +71,7 @@ describe("detail tabs", () => {
   it("saves the note after a pause and keeps the field while typing", () => {
     jest.useFakeTimers();
     try {
-      const t = showA(ALL_CAPABILITIES, { detailTab: "notes" });
+      const t = showA({ detailTab: "notes" });
       const note = t.detail().querySelector<HTMLTextAreaElement>(".note-input")!;
       note.focus();
       note.value = "Key idea";
@@ -98,7 +86,7 @@ describe("detail tabs", () => {
   });
 
   it("finds related papers by the same author and shared tags across folders, and reveals one", () => {
-    const t = showA(ALL_CAPABILITIES, { detailTab: "related" });
+    const t = showA({ detailTab: "related" });
     expect(t.sent).toContainEqual({ type: "paper.similar", id: "a" });
     t.host.post({ type: "similar", id: "a", items: [] });
     const titles = [...t.detail().querySelectorAll(".sec-title")].map((e) => e.textContent);

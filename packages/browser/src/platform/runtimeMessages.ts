@@ -4,7 +4,6 @@
 import type { IfNoPdf, PdfMiss } from "@labshelf/core";
 
 export type RuntimeMessage =
-  | { type: "ping" }
   | { type: "auth.status" }
   | { type: "auth.connect" }
   | { type: "auth.disconnect" }
@@ -64,9 +63,6 @@ export interface DraftView {
   authors: string[];
   year?: number;
   venue?: string;
-  doi?: string;
-  /** registry | search | page | none — how sure the record is. */
-  origin: string;
   existing?: LibraryRef;
 }
 
@@ -81,7 +77,6 @@ export interface PdfStatusData {
 export interface SavedPaperData extends LibraryRef {
   status: "saved";
   title: string;
-  citeKey: string;
   /** Resolver that supplied the PDF, or null when the paper was saved without one. */
   pdfSource: string | null;
   /** True when nothing was written because the library already had it. */
@@ -92,8 +87,6 @@ export interface SavedPaperData extends LibraryRef {
 interface NoPdfData {
   status: "no-pdf";
   title: string;
-  /** The article's landing page, when known (a dialog may offer "Open the article page"). */
-  pageUrl?: string;
   miss: PdfMiss;
 }
 
@@ -165,5 +158,4 @@ export interface TabSummary {
   id: number;
   title: string;
   url: string;
-  active: boolean;
 }

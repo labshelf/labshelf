@@ -34,7 +34,7 @@ export function createPaperData({ store, transport, caps }: Parts): PaperDataReq
   };
   return {
     ensureDetails(id) {
-      if (caps.paperData && !store.get().details[id] && !pending.has(id)) ask(id);
+      if (!store.get().details[id] && !pending.has(id)) ask(id);
     },
     ensureSimilar(id) {
       if (!caps.similar || store.get().similar[id] !== undefined) return;
@@ -43,7 +43,6 @@ export function createPaperData({ store, transport, caps }: Parts): PaperDataReq
     },
     received(id) { pending.delete(id); },
     invalidate(id) {
-      if (!caps.paperData) return;
       const s = store.get();
       const shown = s.selected.size === 1 ? [...s.selected][0]! : null;
       const kept = shown && s.details[shown] ? { [shown]: s.details[shown] } : {};

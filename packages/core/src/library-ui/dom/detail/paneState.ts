@@ -50,7 +50,3 @@ export function paperView(ctx: UiContext, id: string): PaperView | null {
   };
 }
 
-/** The tab to show: a tab whose data the host cannot give falls back to Details. */
-export function shownTab(pane: PaneState): DetailTab {
-  return pane.tab === "annotations" && !pane.ctx.caps.paperData ? "details" : pane.tab;
-}

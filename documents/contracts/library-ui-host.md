@@ -22,17 +22,13 @@ The UI names folders and papers by "/"-separated paths that start at `papers` (t
 
 ## Capabilities and labels
 
-Shared actions (open, status, move, remove, copy, folders, tags and keywords as searches, Related without similar content) work on every host. Everything else is a capability the host declares at mount; a capability left out hides every control that would send its message:
+Shared actions (open, status, move, remove, copy, folders, tags, notes, annotations and their export, keywords as searches, Related without similar content) work on every host, and every host answers `paper.details`, `paper.setTags`, `paper.setNote` and `annotations.export` and sends `sidecarChanged`. Everything else is a capability the host declares at mount; a capability left out hides every control that would send its message:
 
 | Capability | Host answers | VS Code | Browser |
 |---|---|---|---|
-| `paperData` | `paper.details`; sends `sidecarChanged`; its stats fill Last read and the row marks | yes | yes |
-| `editTags` | `paper.setTags` | yes | yes |
-| `editNote` | `paper.setNote` | yes | yes |
 | `textLayer` | `paper.makeSearchable`; sends `jobs`; the UI shows the No text filter and banners | yes | no |
 | `similar` | `paper.similar` | yes | no |
 | `reveal`, `openExternal`, `fetchMetadata` | the message of the same name | yes | no |
-| `exportAnnotations` | `annotations.export`: saves the annotations as a Markdown file | yes | yes |
 | `findPdf`, `attachPdf` | `paper.findPdf`, `paper.attachPdf` | no | yes |
 
 Labels are the few texts that name a host's own way of working: the Add button's tooltip, the empty folder's hint, and the name of the reveal action.

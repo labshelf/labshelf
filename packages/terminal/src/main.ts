@@ -149,7 +149,7 @@ async function main(argv: string[]): Promise<number> {
   }
 
   const ctx = await openLibrary(resolved.root, {
-    config: await loadTerminalConfig(),
+    config,
     watch: tuiWanted,
     thumbnailWorkerUrl: new URL("./thumbnailWorker.mjs", import.meta.url),
   });

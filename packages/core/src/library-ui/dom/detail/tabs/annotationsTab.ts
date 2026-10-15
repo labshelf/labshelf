@@ -54,7 +54,7 @@ function toolbar(pane: PaneState, all: readonly Annotation[]): string {
   const swatches = colors.length > 1 ? colors.map((c) =>
     `<button class="ann-color c-${c}${pane.annColor === c ? " on" : ""}" type="button" data-action="annColor" data-color="${c}" title="Only ${c} highlights" aria-pressed="${pane.annColor === c}"></button>`).join("") : "";
   return `<div class="tab-toolbar">${count}${swatches}` + iconBtn("copyAnnotations", "copy", "Copy these as Markdown") +
-    (pane.ctx.caps.exportAnnotations ? iconBtn("exportAnnotations", "download", "Export to a Markdown file…") : "") + `</div>`;
+    iconBtn("exportAnnotations", "download", "Export to a Markdown file…") + `</div>`;
 }
 
 export function annotationsTabHtml(pane: PaneState, v: PaperView): string {

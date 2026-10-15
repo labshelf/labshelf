@@ -50,8 +50,7 @@ export function mountLibraryUi(host: HTMLElement, options: LibraryUiOptions): Li
   const saved = options.prefs.load();
   const store = new LibraryViewStore({ sortKey: saved.sortKey, sortDir: saved.sortDir, includeSub: saved.includeSub });
   const { transport, prefs, capabilities: caps, labels } = options;
-  // Without reading stats the Last read column has nothing to say, so it is not drawn.
-  const frame = buildFrame(host, prefs, options.withSidebar ?? false, caps.paperData ? [] : ["no-reading"]);
+  const frame = buildFrame(host, prefs, options.withSidebar ?? false);
   const ctx = createUiContext(frame.root, { store, transport, prefs, caps, labels });
   const offs = [
     attachHostMessages(ctx),

@@ -1,9 +1,9 @@
 /**
  * Renders the Notes tab: the paper's own note, saved as you type, with Insert highlights and Copy note, and the notes made
- * in the PDF below it. Read-only when the host cannot write notes.
+ * in the PDF below it.
  */
 import { escapeHtml, icon } from "../../../../ui/index.js";
-import { iconBtn, muted, section } from "../detailMarkup.js";
+import { iconBtn, section } from "../detailMarkup.js";
 import type { PaneState, PaperView } from "../paneState.js";
 import { annotationCard } from "./annotationsTab.js";
 
@@ -17,13 +17,8 @@ function editor(pane: PaneState, v: PaperView): string {
     `</div>`;
 }
 
-function readOnly(v: PaperView): string {
-  const note = v.p.note?.trim();
-  return note ? `<div class="detail-note">${escapeHtml(note)}</div>${`<div class="tab-toolbar"><span class="tb-spacer"></span>${iconBtn("copyNote", "copy", "Copy note")}</div>`}` : muted("No note.");
-}
-
 export function notesTabHtml(pane: PaneState, v: PaperView): string {
   const pdfNotes = v.details?.annotations.filter((a) => a.type !== "highlight") ?? [];
-  return `<div class="notes-tab">${pane.ctx.caps.editNote ? editor(pane, v) : readOnly(v)}</div>` +
+  return `<div class="notes-tab">${editor(pane, v)}</div>` +
     (pdfNotes.length ? section("pdfnotes", "Notes in the PDF", pdfNotes.map(annotationCard).join(""), pane.collapsed, { count: pdfNotes.length }) : "");
 }

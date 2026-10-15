@@ -38,7 +38,7 @@ describe("paper menu", () => {
     rightClick(t, "b");
     expect(menuLabels()).toEqual([
       "Open PDF", "Copy Cite Key", "Copy BibTeX", "Copy APA Reference",
-      "Mark as Unread", "Mark as Reading", "Mark as Done", "Move to…", "Remove from Library…",
+      "Mark as Unread", "Mark as Reading", "Mark as Done", "Add Tag…", "Move to…", "Remove from Library…",
     ]);
     expect(item("Open PDF").disabled).toBe(true);
   });

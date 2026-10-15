@@ -26,10 +26,8 @@ async function draftView(d: CaptureDraft): Promise<DraftView> {
     isPaper: d.isPaper,
     title: m.title ?? "",
     authors: m.authors ?? [],
-    origin: d.origin,
     ...(m.year ? { year: m.year } : {}),
     ...(venue ? { venue } : {}),
-    ...(d.ids.doi ? { doi: d.ids.doi } : {}),
     ...(d.existing ? { existing: ref(d.existing.id, d.existing.path, await pdfExists(d.existing.path)) } : {}),
   };
 }
@@ -41,7 +39,6 @@ function outcome(draft: CaptureDraft, decision: SaveDecision, scheduleSync: Sche
     status: "no-pdf",
     title: draft.metadata.title ?? "Untitled",
     miss: decision.miss,
-    ...(draft.pageUrl ? { pageUrl: draft.pageUrl } : {}),
   };
 }
 
@@ -54,7 +51,6 @@ function saved(result: SavedPaper, scheduleSync: ScheduleSync): SavedPaperData {
     ...ref(paper.id, paper.path, result.pdfSource !== null),
     status: "saved",
     title: paper.title,
-    citeKey: paper.citeKey,
     pdfSource: result.pdfSource,
   };
 }
@@ -65,7 +61,6 @@ async function libraryCopy(d: CaptureDraft): Promise<SavedPaperData> {
     ...ref(paper.id, paper.path, await pdfExists(paper.path)),
     status: "saved",
     title: paper.title,
-    citeKey: paper.citeKey,
     pdfSource: null,
     alreadyInLibrary: true,
   };

@@ -6,7 +6,6 @@
   --cols: 28px 22px minmax(0, 1fr) 150px 52px 170px 84px 86px;
   display: flex; flex: 1; min-height: 0; overflow: hidden;
 }
-.ls-library.no-reading { --cols: 28px 22px minmax(0, 1fr) 150px 52px 170px 86px; }
 .ls-library.resizing, .ls-library.resizing * { cursor: col-resize !important; user-select: none !important; }
 @keyframes ls-spin { to { transform: rotate(360deg); } }
 .ls-library .spin { display: inline-flex; animation: ls-spin 1s linear infinite; }

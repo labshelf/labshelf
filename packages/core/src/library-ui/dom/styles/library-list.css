@@ -75,7 +75,6 @@
 .ls-library .child-row:hover { background: var(--ls-list-hover); color: var(--ls-fg); }
 .ls-library .child-row .paper-type-icon { opacity: .6; }
 .ls-library .list-loading { padding: 32px var(--ls-space-7); color: var(--ls-desc); font-size: var(--ls-text-md); text-align: center; }
-.ls-library.no-reading .col-read { display: none !important; }
 
 /* Narrow windows drop columns before the title gets squeezed: Last read first, then the publication. */
 @media (max-width: 1080px) {
@@ -83,6 +82,6 @@
   .ls-library .col-read { display: none !important; }
 }
 @media (max-width: 860px) {
-  .ls-library, .ls-library.no-reading { --cols: 28px 22px minmax(0, 1fr) 130px 52px 86px; }
+  .ls-library { --cols: 28px 22px minmax(0, 1fr) 130px 52px 86px; }
   .ls-library .col-pub { display: none !important; }
 }

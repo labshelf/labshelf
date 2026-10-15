@@ -9,7 +9,7 @@ import { runDetailAction } from "./detailActions.js";
 import { onTagInput, onTagKey, paperHeadHtml } from "./head/index.js";
 import { commonTags, multiDetailHtml, selectedPapers } from "./multiDetail.js";
 import { createNoteEditor } from "./noteEditor.js";
-import { paperView, shownTab, type PaneState } from "./paneState.js";
+import { paperView, type PaneState } from "./paneState.js";
 import { annotationListHtml, annotationsTabHtml, detailsTabHtml, notesTabHtml, relatedTabHtml, tabBarHtml } from "./tabs/index.js";
 
 const PLACEHOLDER = `<div class="detail-placeholder"><div class="ls-empty-icon">${icon("book")}</div>` +
@@ -19,7 +19,7 @@ const PLACEHOLDER = `<div class="detail-placeholder"><div class="ls-empty-icon">
 
 function singleHtml(pane: PaneState, id: string): string {
   pane.ctx.data.ensureDetails(id);
-  const tab = shownTab(pane);
+  const tab = pane.tab;
   if (tab === "related") pane.ctx.data.ensureSimilar(id);
   const v = paperView(pane.ctx, id);
   if (!v) return "";

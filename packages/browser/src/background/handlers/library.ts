@@ -92,5 +92,5 @@ export async function handleListTabs(): Promise<TabSummary[]> {
   const tabs = await bx.tabs.query({ currentWindow: true });
   return tabs
     .filter((t) => t.id !== undefined && /^https?:/.test(t.url ?? ""))
-    .map((t) => ({ id: t.id!, title: t.title ?? "", url: t.url ?? "", active: t.active }) satisfies TabSummary);
+    .map((t) => ({ id: t.id!, title: t.title ?? "", url: t.url ?? "" }) satisfies TabSummary);
 }

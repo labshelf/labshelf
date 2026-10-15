@@ -1,51 +1,28 @@
 // Tests the debouncer for trailing call execution.
-import { createDebouncer, type Timers } from '../../../../src/reader/logic/navigation/debounce';
-
-/** In-memory Timers implementation so tests do not depend on real wall-clock time. */
-function fakeTimers(): Timers & { run(handle: unknown): void; pendingHandles(): unknown[] } {
-  let nextId = 1;
-  const pending = new Map<number, () => void>();
-  return {
-    set(fn) {
-      const id = nextId++;
-      pending.set(id, fn);
-      return id;
-    },
-    clear(handle) {
-      pending.delete(handle as number);
-    },
-    run(handle) {
-      const fn = pending.get(handle as number);
-      if (fn) { fn(); }
-    },
-    pendingHandles() {
-      return [...pending.keys()];
-    },
-  };
-}
+import { createDebouncer } from '../../../../src/reader/logic/navigation/debounce';
 
 describe('createDebouncer', () => {
+  beforeEach(() => { jest.useFakeTimers(); });
+  afterEach(() => { jest.useRealTimers(); });
+
   it('fires the trailing call with the latest arguments once the timer runs', () => {
-    const timers = fakeTimers();
     const fn = jest.fn();
-    const debouncer = createDebouncer(fn, 800, timers);
+    const debouncer = createDebouncer(fn, 800);
 
     debouncer.call('first');
     debouncer.call('second');
     debouncer.call('third');
     expect(fn).not.toHaveBeenCalled();
 
-    const [handle] = timers.pendingHandles();
-    timers.run(handle);
+    jest.advanceTimersByTime(800);
 
     expect(fn).toHaveBeenCalledTimes(1);
     expect(fn).toHaveBeenCalledWith('third');
   });
 
   it('flush runs a pending call immediately, exactly once', () => {
-    const timers = fakeTimers();
     const fn = jest.fn();
-    const debouncer = createDebouncer(fn, 800, timers);
+    const debouncer = createDebouncer(fn, 800);
 
     debouncer.call('value');
     debouncer.flush();
@@ -57,18 +34,16 @@ describe('createDebouncer', () => {
   });
 
   it('flush with nothing pending is a no-op', () => {
-    const timers = fakeTimers();
     const fn = jest.fn();
-    const debouncer = createDebouncer(fn, 800, timers);
+    const debouncer = createDebouncer(fn, 800);
 
     debouncer.flush();
     expect(fn).not.toHaveBeenCalled();
   });
 
   it('cancel drops the pending call without invoking fn', () => {
-    const timers = fakeTimers();
     const fn = jest.fn();
-    const debouncer = createDebouncer(fn, 800, timers);
+    const debouncer = createDebouncer(fn, 800);
 
     debouncer.call('value');
     debouncer.cancel();
@@ -79,8 +54,7 @@ describe('createDebouncer', () => {
   });
 
   it('exposes a pending getter that reflects whether a call is scheduled', () => {
-    const timers = fakeTimers();
-    const debouncer = createDebouncer(jest.fn(), 800, timers);
+    const debouncer = createDebouncer(jest.fn(), 800);
 
     expect(debouncer.pending).toBe(false);
     debouncer.call('x');
@@ -88,18 +62,8 @@ describe('createDebouncer', () => {
     debouncer.flush();
     expect(debouncer.pending).toBe(false);
   });
-});
 
-describe('createDebouncer with real (fake) jest timers', () => {
-  beforeEach(() => {
-    jest.useFakeTimers();
-  });
-
-  afterEach(() => {
-    jest.useRealTimers();
-  });
-
-  it('debounces trailing calls using the default setTimeout-based timers', () => {
+  it('restarts the quiet period on every call', () => {
     const fn = jest.fn();
     const debouncer = createDebouncer(fn, 800);
 

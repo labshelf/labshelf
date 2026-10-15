@@ -46,13 +46,13 @@ function statusEntries(ctx: UiContext, ids: string[]): MenuEntry[] {
 
 function organizeEntries(ctx: UiContext, ids: string[], one: ListPaper | null): MenuEntry[] {
   const entries: MenuEntry[] = [];
-  if (ctx.caps.editTags) entries.push({ icon: "tag", label: ids.length > 1 ? `Tag ${ids.length} Papers…` : "Add Tag…", onSelect: () => focusTagInput(ctx) });
+  entries.push({ icon: "tag", label: ids.length > 1 ? `Tag ${ids.length} Papers…` : "Add Tag…", onSelect: () => focusTagInput(ctx) });
   entries.push({ icon: "folder-move", label: "Move to…", onSelect: () => { void pickMoveTarget(ctx, ids); } });
   if (one && ctx.caps.reveal) entries.push({ icon: "folder", label: ctx.labels.revealPaper ?? "Reveal Folder", onSelect: () => hostFileAction(ctx, "paper.reveal", one.id) });
   const fix = ctx.caps.textLayer ? fixableIds(ctx, ids) : [];
   if (fix.length) entries.push({ icon: "file-no-text", label: ids.length > 1 ? `Make ${fix.length} Searchable` : "Make Searchable (OCR)", onSelect: () => makeSearchable(ctx, fix) });
   if (one && ctx.caps.fetchMetadata) entries.push({ icon: "refresh", label: "Fetch Metadata Online", onSelect: () => hostFileAction(ctx, "paper.fetchMetadata", one.id) });
-  if (one && ctx.caps.exportAnnotations && (ctx.store.get().stats[one.id]?.annotations ?? 0) > 0) {
+  if (one && (ctx.store.get().stats[one.id]?.annotations ?? 0) > 0) {
     entries.push({ icon: "download", label: "Export Annotations…", onSelect: () => hostFileAction(ctx, "annotations.export", one.id) });
   }
   return [...entries, "separator"];

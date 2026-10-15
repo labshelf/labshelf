@@ -2,11 +2,7 @@
  * Keeps the periodic sync interval in step with the autoSyncMinutes setting, so an edit in the options page takes
  * effect without an extension reload.
  */
-import { bx } from "../platform";
-import { getSettings } from "../platform";
-import type { BrowserLogger } from "../platform";
-
-const SETTINGS_KEY = "labshelf.settings";
+import { SETTINGS_STORAGE_KEY, bx, getSettings, type BrowserLogger } from "../platform";
 
 export interface AutoSyncSchedulerOptions {
   sync: { startPeriodic(minutes: number): void };
@@ -18,7 +14,7 @@ export async function installAutoSyncScheduler(opts: AutoSyncSchedulerOptions): 
   await applyInterval(opts);
   bx.storage.onChanged.addListener((changes, areaName) => {
     if (areaName !== "local") return;
-    if (!(SETTINGS_KEY in changes)) return;
+    if (!(SETTINGS_STORAGE_KEY in changes)) return;
     void applyInterval(opts);
   });
 }

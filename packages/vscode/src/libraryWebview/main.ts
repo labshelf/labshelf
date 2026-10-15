@@ -19,8 +19,8 @@ mountLibraryUi($("root"), {
   transport,
   prefs,
   capabilities: {
-    paperData: true, editTags: true, editNote: true, textLayer: true, similar: true, reveal: true, openExternal: true,
-    fetchMetadata: true, exportAnnotations: true,
+    textLayer: true, similar: true, reveal: true, openExternal: true,
+    fetchMetadata: true,
   },
   labels: {
     addTooltip: "Add PDF or folder here",

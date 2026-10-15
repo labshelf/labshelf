@@ -1,17 +1,6 @@
 /**
  * Debounces calls on the trailing edge with an explicit flush, used for reading-state saves that must not be lost when the panel hides.
  */
-
-export interface Timers {
-  set(fn: () => void, ms: number): unknown;
-  clear(handle: unknown): void;
-}
-
-const defaultTimers: Timers = {
-  set: (fn, ms) => setTimeout(fn, ms),
-  clear: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
-};
-
 export interface Debouncer<A extends unknown[]> {
   call(...args: A): void;
   /** Runs the pending call now, if any. */
@@ -26,9 +15,8 @@ export interface Debouncer<A extends unknown[]> {
 export function createDebouncer<A extends unknown[]>(
   fn: (...args: A) => void,
   ms: number,
-  timers: Timers = defaultTimers,
 ): Debouncer<A> {
-  let handle: unknown = null;
+  let handle: ReturnType<typeof setTimeout> | null = null;
   let lastArgs: A | null = null;
 
   const run = (): void => {
@@ -41,16 +29,16 @@ export function createDebouncer<A extends unknown[]>(
   return {
     call(...args: A): void {
       lastArgs = args;
-      if (handle !== null) { timers.clear(handle); }
-      handle = timers.set(run, ms);
+      if (handle !== null) { clearTimeout(handle); }
+      handle = setTimeout(run, ms);
     },
     flush(): void {
       if (handle === null) { return; }
-      timers.clear(handle);
+      clearTimeout(handle);
       run();
     },
     cancel(): void {
-      if (handle !== null) { timers.clear(handle); }
+      if (handle !== null) { clearTimeout(handle); }
       handle = null;
       lastArgs = null;
     },

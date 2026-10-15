@@ -17,11 +17,12 @@ export interface LabShelfSettings {
   lastFolder: string;
 }
 
-const STORAGE_KEY = "labshelf.settings";
+export const SETTINGS_STORAGE_KEY = "labshelf.settings";
+export const DEFAULT_SCI_HUB_MIRROR = "https://sci-hub.se";
 
 const DEFAULTS: LabShelfSettings = {
   enableSciHub: false,
-  sciHubMirror: "https://sci-hub.se",
+  sciHubMirror: DEFAULT_SCI_HUB_MIRROR,
   contactEmail: DEFAULT_CONTACT_EMAIL,
   autoSyncMinutes: 15,
   lastFolder: PAPERS_DIR,
@@ -32,8 +33,8 @@ const DEFAULTS: LabShelfSettings = {
  * @returns LabShelfSettings
  */
 export async function getSettings(): Promise<LabShelfSettings> {
-  const raw = (await bx.storage.local.get(STORAGE_KEY)) as Record<string, unknown>;
-  const stored = (raw[STORAGE_KEY] ?? {}) as Partial<LabShelfSettings>;
+  const raw = (await bx.storage.local.get(SETTINGS_STORAGE_KEY)) as Record<string, unknown>;
+  const stored = (raw[SETTINGS_STORAGE_KEY] ?? {}) as Partial<LabShelfSettings>;
   return { ...DEFAULTS, ...stored };
 }
 
@@ -43,5 +44,5 @@ export async function getSettings(): Promise<LabShelfSettings> {
 export async function updateSettings(patch: Partial<LabShelfSettings>): Promise<void> {
   const current = await getSettings();
   const next = { ...current, ...patch };
-  await bx.storage.local.set({ [STORAGE_KEY]: next });
+  await bx.storage.local.set({ [SETTINGS_STORAGE_KEY]: next });
 }

@@ -22,18 +22,18 @@ function boot(): void {
   const { ui: transport, host } = createLoopbackTransport();
   // The host listens before the UI mounts, so the UI's ready message finds it. Opened from the popup or a Scholar
   // button, the page selects the paper just saved.
-  const hostCtx = attachLibraryHost(host, { initialPaper: new URLSearchParams(location.search).get("paper") });
+  attachLibraryHost(host, { initialPaper: new URLSearchParams(location.search).get("paper") });
   attachRouter(host);
   const ui = mountLibraryUi(root, {
     transport, prefs, withSidebar: true,
-    capabilities: { paperData: true, editTags: true, editNote: true, exportAnnotations: true, findPdf: true, attachPdf: true },
+    capabilities: { findPdf: true, attachPdf: true },
     labels: {
       addTooltip: "Add a paper from an open tab",
       emptyHint: "Open the paper's page in a tab and use the LabShelf toolbar button, or click Add to pick one of your open tabs.",
     },
   });
   if (ui.sidebar) mountSidebarTree(ui, ui.sidebar, prefs);
-  const sync = createSyncStatus(() => hostCtx.snapshots.reload());
+  const sync = createSyncStatus();
   mountStatusBar(root, sync, (listener) => ui.store.select((s) => s.papers.length, listener));
   void log.info("library page mounted");
 }

@@ -1,6 +1,6 @@
 /**
  * Renders the tag row: chips that search their tag, an x that removes one, and a field that adds (Enter or a comma
- * adds, Backspace on an empty field takes back the last tag); read-only chips when the host cannot write tags.
+ * adds, Backspace on an empty field takes back the last tag).
  */
 import { escapeHtml, icon } from "../../../../ui/index.js";
 import { changeTags } from "../../flows/index.js";
@@ -8,11 +8,9 @@ import type { UiContext } from "../../uiContext.js";
 
 const TAG_OPTIONS_ID = "ls-tag-options";
 
-function chip(tag: string, editable: boolean): string {
+function chip(tag: string): string {
   const name = `<button class="tag-name" type="button" data-action="searchTag" data-tag="${escapeHtml(tag)}" title="Show papers tagged ${escapeHtml(tag)}">${escapeHtml(tag)}</button>`;
-  const remove = editable
-    ? `<button class="tag-x" type="button" data-action="removeTag" data-tag="${escapeHtml(tag)}" title="Remove tag" aria-label="Remove tag ${escapeHtml(tag)}">${icon("x")}</button>`
-    : "";
+  const remove = `<button class="tag-x" type="button" data-action="removeTag" data-tag="${escapeHtml(tag)}" title="Remove tag" aria-label="Remove tag ${escapeHtml(tag)}">${icon("x")}</button>`;
   return `<span class="tag-chip">${name}${remove}</span>`;
 }
 
@@ -24,13 +22,9 @@ function libraryTags(ctx: UiContext): string[] {
 }
 
 export function tagRowHtml(ctx: UiContext, tags: readonly string[]): string {
-  const editable = !!ctx.caps.editTags;
-  if (!editable && tags.length === 0) return "";
-  const input = editable
-    ? `<input class="tag-input" list="${TAG_OPTIONS_ID}" placeholder="${tags.length ? "+ Tag" : "+ Add tag"}" title="Type a tag and press Enter; commas add several" spellcheck="false" autocomplete="off" aria-label="Add tag"/>` +
-      `<datalist id="${TAG_OPTIONS_ID}">${libraryTags(ctx).map((t) => `<option value="${escapeHtml(t)}"></option>`).join("")}</datalist>`
-    : "";
-  return `<div class="tag-row">${tags.map((t) => chip(t, editable)).join("")}${input}</div>`;
+  const input = `<input class="tag-input" list="${TAG_OPTIONS_ID}" placeholder="${tags.length ? "+ Tag" : "+ Add tag"}" title="Type a tag and press Enter; commas add several" spellcheck="false" autocomplete="off" aria-label="Add tag"/>` +
+    `<datalist id="${TAG_OPTIONS_ID}">${libraryTags(ctx).map((t) => `<option value="${escapeHtml(t)}"></option>`).join("")}</datalist>`;
+  return `<div class="tag-row">${tags.map(chip).join("")}${input}</div>`;
 }
 
 /** Handles a key in the tag field; `ids` are the papers the row edits, `tags` the ones it shows. */

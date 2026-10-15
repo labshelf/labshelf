@@ -18,18 +18,13 @@ describe("row marks", () => {
   });
 
   it("marks annotations and a note, and says when the paper was last read", () => {
-    const t = mountForTest({}, { paperData: true });
+    const t = mountForTest();
     t.snapshot([paper("a", "papers", { note: "check eq. 3" })], [], [], { a: { annotations: 4, lastPage: 7, lastRead: hoursAgo(3) } });
     const marks = [...t.container.querySelectorAll<HTMLElement>(".row-mark")];
     expect(marks.map((m) => m.title)).toEqual(["4 annotations", "Has a note"]);
     const read = t.container.querySelector<HTMLElement>(".paper-row .col-read")!;
     expect(read.textContent).toBe("3h ago");
     expect(read.title).toMatch(/^Last read .*, page 7$/);
-  });
-
-  it("hides the Last read column from a host that has no reading stats", () => {
-    expect(mountForTest().container.querySelector(".ls-library")!.classList.contains("no-reading")).toBe(true);
-    expect(mountForTest({}, { paperData: true }).container.querySelector(".ls-library")!.classList.contains("no-reading")).toBe(false);
   });
 
   it("draws the type icon for no text layer and for OCR in progress", () => {
@@ -44,7 +39,7 @@ describe("row marks", () => {
   });
 
   it("sorts by Last read newest first on the first click", () => {
-    const t = mountForTest({}, { paperData: true });
+    const t = mountForTest();
     t.snapshot([paper("a", "papers"), paper("b", "papers"), paper("c", "papers")], [], [], {
       a: { annotations: 0, lastRead: hoursAgo(30) }, c: { annotations: 0, lastRead: hoursAgo(1) },
     });

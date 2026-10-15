@@ -32,10 +32,10 @@ function sidePane(root: HTMLElement, pane: HTMLElement, which: PaneName, prefs: 
   return { sash, dispose };
 }
 
-/** Builds the frame inside `host` and applies the saved pane widths and collapsed states; `classes` mark host features. */
-export function buildFrame(host: HTMLElement, prefs: PrefsPort, withSidebar: boolean, classes: string[] = []): FrameSlots {
+/** Builds the frame inside `host` and applies the saved pane widths and collapsed states. */
+export function buildFrame(host: HTMLElement, prefs: PrefsPort, withSidebar: boolean): FrameSlots {
   const saved = prefs.load();
-  const root = el("div", { class: ["ls-library", ...(withSidebar ? ["has-sidebar"] : []), ...classes].join(" ") });
+  const root = el("div", { class: ["ls-library", ...(withSidebar ? ["has-sidebar"] : [])].join(" ") });
   const header = el("div", { class: "list-header" });
   const filterBar = el("div", { class: "filter-bar" });
   const list = el("div", { class: "list-body" });
