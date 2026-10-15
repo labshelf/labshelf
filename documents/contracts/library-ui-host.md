@@ -55,6 +55,7 @@ UI to host:
 | `paper.findPdf` | Find PDF | `pdf.busy`, `progress`, then `snapshot` with a `notice`, or `pdf.findResult` when nothing was found |
 | `paper.attachPdf` | Attach PDF | opens a file picker in the same call; `snapshot` and a `notice` once a file is attached |
 | `paper.add` | Add | `add.sources`, or opens the host's own import, or a `notice` when there is nothing to add from |
+| `paper.openForPdf` | Open page, in the PDF dialogs, when the miss carries an `access` page | opens that page in a visible tab and attaches the PDF once it yields one; only a host with a browser session sets `access` |
 | `paper.addFrom` | the user picked a source, or answered the "No PDF found" dialog | `progress`, then `snapshot`, `select` and a `notice`, or `add.noPdf` |
 | `clipboard.write` | any copy; `label` names what was copied | a `notice` |
 

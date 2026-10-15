@@ -1,6 +1,6 @@
-// Handles the UI's PDF requests: open in the reader, search the web, attach a local file.
+// Handles the UI's PDF requests: open in the reader, search the web, attach a local file, open the page in the way.
 // INVARIANT: PDF bytes never cross runtime messaging; the page and the background write IndexedDB themselves.
-import { PDF_FILE, errorMessage, isPdfBytes, pdfSourceLabel } from "@labshelf/core";
+import { PDF_FILE, errorMessage, isPdfBytes, pdfSourceLabel, type PdfAccess } from "@labshelf/core";
 import { attachPdfToPaper } from "../../../capture";
 import { sendRuntime, type AttachPdfData } from "../../../platform";
 import { openReader } from "../../../reader/access";
@@ -16,6 +16,8 @@ export interface PdfHandlers {
   find(id: string): Promise<void>;
   /** Opens the file picker synchronously, so it must be called inside the user's click. */
   attach(id: string): void;
+  /** Opens the sign-in or bot-check page in a tab the background watches for the PDF. */
+  openForPdf(id: string, access: PdfAccess): Promise<void>;
 }
 
 async function ingestLocalPdf(ctx: HostContext, id: string, file: File): Promise<void> {
@@ -78,6 +80,11 @@ export function createPdfHandlers(ctx: HostContext): PdfHandlers {
         if (file) void ingestLocalPdf(ctx, id, file).catch((err: unknown) => ctx.notice("error", errorMessage(err)));
       });
       input.click();
+    },
+    async openForPdf(id, access) {
+      await sendRuntime<{ opened: true }>({ type: "paper.openForPdf", id, access });
+      const step = access.kind === "login" ? "sign in" : "pass the check";
+      ctx.notice("info", `When you ${step} in the new tab, LabShelf attaches the PDF on its own.`);
     },
   };
 }

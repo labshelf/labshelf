@@ -9,7 +9,7 @@ import type { createSyncMessages } from "./syncMessages";
 import {
   handleCaptureAttachPdf, handleCaptureFindPdf, handleCaptureInspect, handleCaptureSave, handleCaptureTab,
   handleFindPdfForPaper, handleLibraryFolders, handleLibraryLookup, handleLibraryOpen, handleListTabs,
-  handleRemovePaper, handleScholarSave,
+  handleOpenForPdf, handleRemovePaper, handleScholarSave, accessTabDeps,
 } from "./handlers/index";
 
 // Web pages reach the background only through the Scholar content script,
@@ -78,6 +78,8 @@ async function handle(msg: RuntimeMessage, { log, mutations, syncMessages, sched
       return handleCaptureAttachPdf(log, mutations, msg, scheduleSync);
     case "paper.findPdf":
       return handleFindPdfForPaper(log, mutations, msg.id, scheduleSync);
+    case "paper.openForPdf":
+      return handleOpenForPdf(accessTabDeps(log, mutations, scheduleSync), msg);
     case "paper.remove":
       return handleRemovePaper(msg.id, mutations, log, scheduleSync);
     case "library.folders":

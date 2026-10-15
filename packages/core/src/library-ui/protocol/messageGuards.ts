@@ -16,6 +16,10 @@ const isTexts = (v: unknown): v is string[] => Array.isArray(v) && v.every(isTex
 const isStatus = (v: unknown): v is PaperStatus => (PAPER_STATUSES as readonly unknown[]).includes(v);
 const isPage = (v: unknown): boolean => v === undefined || (typeof v === "number" && Number.isInteger(v) && v > 0);
 const isBool = (v: unknown): boolean => typeof v === "boolean";
+const isWebUrl = (v: unknown): boolean => typeof v === "string" && /^https?:\/\//i.test(v) && URL.canParse(v);
+// The page a host opens in a browser tab: only a web address, never a script or extension URL.
+const isAccess = (v: unknown): boolean =>
+  !!v && typeof v === "object" && ((v as Raw)["kind"] === "login" || (v as Raw)["kind"] === "bot") && isWebUrl((v as Raw)["url"]);
 
 /** A "/"-separated library path: "papers" or below it, with no empty, "." or ".." segment and no backslash. */
 export function isLibraryPath(v: unknown): v is string {
@@ -38,6 +42,7 @@ const SHAPES: Record<UiToHost["type"], Record<string, FieldCheck>> = {
   "paper.similar": { id: isId },
   "paper.findPdf": { id: isId },
   "paper.attachPdf": { id: isId },
+  "paper.openForPdf": { id: isId, access: isAccess },
   "paper.fetchMetadata": { id: isId },
   "paper.makeSearchable": { ids: isIds },
   "paper.setStatus": { ids: isIds, status: isStatus },
@@ -46,7 +51,7 @@ const SHAPES: Record<UiToHost["type"], Record<string, FieldCheck>> = {
   "paper.move": { ids: isIds, target: isLibraryPath },
   "paper.remove": { ids: isIds },
   "paper.add": { folder: isLibraryPath },
-  "paper.addFrom": { folder: isLibraryPath, sourceId: isId, ifNoPdf: (v) => v === "ask" || v === "save", retryPdf: isBool },
+  "paper.addFrom": { folder: isLibraryPath, sourceId: isId, ifNoPdf: (v) => v === "ask" || v === "save" || v === "open", retryPdf: isBool },
   "annotations.export": { id: isId },
   "clipboard.write": { text: isText, label: (v) => v === undefined || isText(v) },
 };

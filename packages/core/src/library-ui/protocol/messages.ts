@@ -4,7 +4,7 @@
  */
 import type { PaperStatus } from "../../model/index.js";
 import type {
-  AddSource, IfNoPdf, LibraryUiSnapshot, PaperDetails, PdfMiss, SimilarPaper, TextLayerJobView,
+  AddSource, IfNoPdf, LibraryUiSnapshot, PaperDetails, PdfAccess, PdfMiss, SimilarPaper, TextLayerJobView,
 } from "./payloads.js";
 
 export type UiToHost =
@@ -20,6 +20,8 @@ export type UiToHost =
   | { type: "paper.similar"; id: string }
   | { type: "paper.findPdf"; id: string }
   | { type: "paper.attachPdf"; id: string }
+  /** Opens the page that stood in the way of the paper's PDF, and attaches the PDF once the user gets through. */
+  | { type: "paper.openForPdf"; id: string; access: PdfAccess }
   | { type: "paper.fetchMetadata"; id: string }
   | { type: "paper.makeSearchable"; ids: string[] }
   | { type: "paper.setStatus"; ids: string[]; status: PaperStatus }

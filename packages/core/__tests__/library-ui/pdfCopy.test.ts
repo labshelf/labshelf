@@ -32,6 +32,12 @@ describe("noPdfDialogCopy", () => {
     expect(message).not.toContain("Tried");
   });
 
+  it("tells the user to open the page and sign in or pass the check when the miss has an access page", () => {
+    const url = "https://publisher.example/x.pdf";
+    expect(noPdfDialogCopy("X", miss({ tried: 1, needsLogin: true, access: { kind: "login", url } })).message).toContain("sign in there");
+    expect(findMissMessage("X", miss({ tried: 1, blocked: true, access: { kind: "bot", url } }))).toContain("pass the check there");
+  });
+
   it("adds the bot-check hint when some links were blocked", () => {
     expect(noPdfDialogCopy("X", miss({ tried: 3, sources: ["publisher"], blocked: true })).message)
       .toContain("behind a bot check");

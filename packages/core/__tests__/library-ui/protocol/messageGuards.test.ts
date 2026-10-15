@@ -27,6 +27,8 @@ describe("parseUiMessage", () => {
       { type: "paper.makeSearchable", ids: ["p1"] },
       { type: "clipboard.write", text: "key", label: "cite key" },
       { type: "folder.create", parent: "papers", name: "New" },
+      { type: "paper.openForPdf", id: "p1", access: { kind: "bot", url: "https://pmc.ncbi.nlm.nih.gov/x.pdf" } },
+      { type: "paper.addFrom", folder: "papers", sourceId: "t1", ifNoPdf: "open", retryPdf: false },
     ];
     for (const m of messages) expect(parseUiMessage(m)).toEqual(m);
   });
@@ -42,6 +44,9 @@ describe("parseUiMessage", () => {
       { type: "paper.open", id: "" },
       { type: "paper.setNote", id: "p1" },
       { type: "clipboard.write", text: 3 },
+      { type: "paper.openForPdf", id: "p1", access: { kind: "login", url: "javascript:alert(1)" } },
+      { type: "paper.openForPdf", id: "p1", access: { kind: "admin", url: "https://a.example/" } },
+      { type: "paper.openForPdf", id: "p1" },
     ];
     for (const m of bad) expect(parseUiMessage(m)).toBeNull();
   });

@@ -13,6 +13,7 @@ import { draftForTab, scholarDraftFor } from "../draftCache";
 import { broadcastChanged } from "../broadcast";
 import type { LibraryMutations } from "../../storage";
 import { pdfExists, ref } from "./libraryRef";
+import { accessTabDeps, openAccessAfterCapture } from "./access";
 
 type ScheduleSync = (reason: string) => void;
 
@@ -94,11 +95,23 @@ export async function handleCaptureSave(
 ): Promise<SaveOutcome> {
   const draft = await draftForTab(log, msg.tabId, await tabUrl(msg.tabId));
   if (msg.retryPdf) resetPdfSearch(draft);
-  return outcome(draft, await saveOrAsk(log, mutations, draft, {
+  const ifNoPdf = msg.ifNoPdf ?? "ask";
+  const decision = await saveOrAsk(log, mutations, draft, {
     ...(msg.folder ? { folder: msg.folder } : {}),
     ...(msg.tags ? { tags: msg.tags } : {}),
     ...(msg.note ? { note: msg.note } : {}),
-  }, msg.ifNoPdf ?? "ask"), scheduleSync);
+  }, ifNoPdf);
+  const reply = outcome(draft, decision, scheduleSync);
+  if (ifNoPdf === "open") await openIfPdfMissing(log, mutations, scheduleSync, draft, reply);
+  return reply;
+}
+
+// The "open" choice: the reference is saved (or was already there) without a PDF, so the page in the way opens now.
+async function openIfPdfMissing(
+  log: ILogger, mutations: LibraryMutations, scheduleSync: ScheduleSync, draft: CaptureDraft, reply: SaveOutcome | SavedPaperData,
+): Promise<void> {
+  if (reply.status !== "saved" || reply.hasPdf) return;
+  await openAccessAfterCapture(accessTabDeps(log, mutations, scheduleSync), draft, { id: reply.id, title: reply.title });
 }
 
 interface UnlessSaved {
@@ -117,8 +130,12 @@ async function saveUnlessInLibrary(
 ): Promise<SaveOutcome | SavedPaperData> {
   if (request.retryPdf) resetPdfSearch(draft);
   await refreshExisting(draft);
-  if (draft.existing) return libraryCopy(draft);
-  return outcome(draft, await saveOrAsk(log, mutations, draft, request.folder ? { folder: request.folder } : {}, request.ifNoPdf ?? "ask"), scheduleSync);
+  const ifNoPdf = request.ifNoPdf ?? "ask";
+  const reply = draft.existing
+    ? await libraryCopy(draft)
+    : outcome(draft, await saveOrAsk(log, mutations, draft, request.folder ? { folder: request.folder } : {}, ifNoPdf), scheduleSync);
+  if (ifNoPdf === "open") await openIfPdfMissing(log, mutations, scheduleSync, draft, reply);
+  return reply;
 }
 
 export async function handleCaptureTab(

@@ -1,6 +1,7 @@
 /**
  * Adds a paper: the user picks one of the sources the host offers (an open tab in the browser), and when the
- * capture finds no PDF, decides between searching again and saving the reference alone.
+ * capture finds no PDF, decides between searching again, saving the reference alone, and saving it while opening the
+ * page that stood in the way.
  */
 import { quickPick } from "../../../ui/dom/index.js";
 import type { AddSource, PdfMiss } from "../../protocol/index.js";
@@ -20,6 +21,6 @@ export async function onAddSources(ctx: UiContext, folder: string, sources: AddS
 
 export async function onAddNoPdf(ctx: UiContext, folder: string, sourceId: string, title: string, miss: PdfMiss): Promise<void> {
   const choice = await askNoPdf(title, miss);
-  if (choice === "save") ctx.transport.post({ type: "paper.addFrom", folder, sourceId, ifNoPdf: "save", retryPdf: false });
+  if (choice === "save" || choice === "open") ctx.transport.post({ type: "paper.addFrom", folder, sourceId, ifNoPdf: choice, retryPdf: false });
   else if (choice === "retry") ctx.transport.post({ type: "paper.addFrom", folder, sourceId, ifNoPdf: "ask", retryPdf: true });
 }

@@ -1,9 +1,10 @@
 /**
  * Opens the dialogs around a missing PDF: opening a paper that has none, a search that came back empty, and a capture
  * that found no PDF. The first two offer to attach a file or to search (again); the capture asks whether to save the reference alone.
+ * When a sign-in or a bot check stood in the way, the last two also offer to open that page.
  */
-import { showDialog } from "../../../ui/dom/index.js";
-import { findMissMessage, noPdfDialogCopy } from "../../pdfCopy.js";
+import { showDialog, type DialogButton } from "../../../ui/dom/index.js";
+import { findMissMessage, noPdfDialogCopy, pdfAccessLabel } from "../../pdfCopy.js";
 import type { PdfMiss } from "../../protocol/index.js";
 import type { UiContext } from "../uiContext.js";
 import { attachPdf, findPdf } from "./paperCommands.js";
@@ -21,22 +22,31 @@ export async function onPdfMissing(ctx: UiContext, id: string): Promise<void> {
 
 export async function onFindMiss(ctx: UiContext, id: string, miss: PdfMiss): Promise<void> {
   const title = ctx.store.get().papers.find((p) => p.id === id)?.title ?? id;
+  const { access } = miss;
   const choice = await showDialog({
     title: "No PDF found",
     message: findMissMessage(title, miss),
     severity: "warning",
-    buttons: [{ id: "attach", label: "Attach PDF…" }, { id: "retry", label: "Search again", primary: true }],
+    buttons: [
+      { id: "attach", label: "Attach PDF…" },
+      { id: "retry", label: "Search again", primary: !access },
+      ...(access ? [{ id: "open", label: pdfAccessLabel(access), primary: true }] : []),
+    ],
   });
   if (choice === "attach") attachPdf(ctx, id);
   else if (choice === "retry") findPdf(ctx, id);
+  else if (choice === "open" && access) ctx.transport.post({ type: "paper.openForPdf", id, access });
 }
 
-/** Asks whether a capture without a PDF saves the reference alone or searches again; undefined when cancelled. `root` mounts the dialog inside a content script's shadow root. */
-export function askNoPdf(title: string, miss: PdfMiss, root?: ShadowRoot): Promise<"save" | "retry" | undefined> {
-  return showDialog<"save" | "retry">({
-    ...noPdfDialogCopy(title, miss),
-    severity: "warning",
-    buttons: [{ id: "retry", label: "Search again" }, { id: "save", label: "Save without PDF", primary: true }],
-    ...(root ? { root } : {}),
-  });
+/**
+ * Asks whether a capture without a PDF saves the reference alone, saves it and opens the page that stood in the way
+ * ("open"), or searches again; undefined when cancelled. `root` mounts the dialog inside a content script's shadow root.
+ */
+export function askNoPdf(title: string, miss: PdfMiss, root?: ShadowRoot): Promise<"save" | "open" | "retry" | undefined> {
+  const buttons: Array<DialogButton<"save" | "open" | "retry">> = [
+    { id: "retry", label: "Search again" },
+    { id: "save", label: "Save without PDF", primary: !miss.access },
+    ...(miss.access ? [{ id: "open" as const, label: pdfAccessLabel(miss.access), primary: true }] : []),
+  ];
+  return showDialog({ ...noPdfDialogCopy(title, miss), severity: "warning", buttons, ...(root ? { root } : {}) });
 }

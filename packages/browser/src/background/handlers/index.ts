@@ -5,3 +5,4 @@ export {
 export {
   handleFindPdfForPaper, handleRemovePaper, handleLibraryFolders, handleLibraryLookup, handleLibraryOpen, handleListTabs,
 } from "./library";
+export { accessTabDeps, handleOpenForPdf } from "./access";

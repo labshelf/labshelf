@@ -66,7 +66,7 @@ export async function inspect(): Promise<void> {
 
 // The shared "No PDF found" dialog. Returns the chosen action, or undefined on
 // Cancel (nothing is written). The modal-open class guards the popup height.
-async function confirmNoPdf(title: string, miss: PdfMiss): Promise<"save" | "retry" | undefined> {
+async function confirmNoPdf(title: string, miss: PdfMiss): Promise<"save" | "open" | "retry" | undefined> {
   document.body.classList.add("modal-open");
   try {
     return await askNoPdf(title, miss);
@@ -84,7 +84,8 @@ async function confirmThen(title: string, miss: PdfMiss, from: string | undefine
     renderPdf("searching");
     return save("ask", true);
   }
-  return save("save");
+  // "open" saves too; the background then opens the page in the way, which closes the popup.
+  return save(choice);
 }
 
 export async function save(ifNoPdf: IfNoPdf = "ask", retryPdf = false): Promise<void> {

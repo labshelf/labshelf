@@ -141,15 +141,15 @@ async function saveDraft(log: ILogger, mutations: LibraryMutations, draft: Captu
 }
 
 /**
- * Pure summary of what a failed search tried, for the "No PDF found" dialog.
- * Entries labelled "<source> (via tab)" (core resolvePdf) are a bot-check retry,
- * so they are not counted as links tried or sources consulted.
+ * Pure summary of what a failed search tried, for the "No PDF found" dialog. Its access page is the best-ranked
+ * candidate that answered a sign-in or a bot check: attempts arrive in rank order.
  */
 export function summarizeAttempts(attempts: PdfAttempt[]): PdfMiss {
-  const direct = attempts.filter((a) => !a.source.endsWith("(via tab)"));
+  const wall = attempts.find((a) => a.outcome === "login" || a.outcome === "bot");
   return {
-    tried: new Set(direct.map((a) => a.url)).size,
-    sources: [...new Set(direct.map((a) => a.source))],
+    ...(wall ? { access: { kind: wall.outcome === "login" ? "login" : "bot", url: wall.url } } : {}),
+    tried: new Set(attempts.map((a) => a.url)).size,
+    sources: [...new Set(attempts.map((a) => a.source))],
     blocked: attempts.some((a) => a.outcome === "bot"),
     needsLogin: attempts.some((a) => a.outcome === "login"),
   };
@@ -181,8 +181,8 @@ export async function saveOrAsk(
     void log.log("INFO", MODULE, "no pdf: asking before saving", { page: draft.pageUrl, tried: draft.pdfAttempts.length });
     return { kind: "no-pdf", miss: summarizeAttempts(draft.pdfAttempts) };
   }
-  if (ifNoPdf === "save" && draft.isPaper && !(await findPdf(log, draft))) {
-    void log.log("INFO", MODULE, "saved without pdf (confirmed)", { page: draft.pageUrl, tried: draft.pdfAttempts.length });
+  if (ifNoPdf !== "ask" && draft.isPaper && !(await findPdf(log, draft))) {
+    void log.log("INFO", MODULE, "saved without pdf (confirmed)", { page: draft.pageUrl, tried: draft.pdfAttempts.length, ifNoPdf });
   }
   return { kind: "saved", saved: await saveDraft(log, mutations, draft, opts) };
 }

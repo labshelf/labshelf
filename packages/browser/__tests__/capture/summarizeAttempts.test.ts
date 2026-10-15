@@ -20,17 +20,15 @@ describe("summarizeAttempts", () => {
       .toMatchObject({ blocked: true, needsLogin: false });
   });
 
+  it("offers the best-ranked sign-in or bot-check page as the page to open", () => {
+    const walled = "https://pub.example/pdf/1";
+    const attempts = [attempt({ outcome: "html" }), attempt({ url: walled, outcome: "bot", status: 403 }), attempt({ url: "https://c.example/p", outcome: "login" })];
+    expect(summarizeAttempts(attempts).access).toEqual({ kind: "bot", url: walled });
+    expect(summarizeAttempts([attempt()]).access).toBeUndefined();
+  });
+
   it("sets needsLogin when any attempt ended in a login or paywall page", () => {
     expect(summarizeAttempts([attempt({ outcome: "login", status: 401 }), attempt({ url: "https://b.example/p.pdf" })]))
       .toMatchObject({ blocked: false, needsLogin: true });
-  });
-
-  it("does not double-count the helper-tab retry of a blocked link", () => {
-    const attempts = [attempt({ outcome: "bot", status: 403 }), attempt({ source: "page (via tab)", outcome: "bot" })];
-    expect(summarizeAttempts(attempts)).toEqual({ tried: 1, sources: ["page"], blocked: true, needsLogin: false });
-  });
-
-  it("is not blocked just because a tab retry exists without a bot outcome", () => {
-    expect(summarizeAttempts([attempt({ outcome: "html" }), attempt({ source: "page (via tab)", outcome: "html" })]).blocked).toBe(false);
   });
 });

@@ -12,6 +12,8 @@ import { AlarmSyncTimers } from "./alarmSyncTimers";
 import { installBadgeUpdater } from "./badgeUpdater";
 import { broadcastChanged } from "./broadcast";
 import { registerMessageRouter } from "./router";
+import { accessTabDeps } from "./handlers/index";
+import { dropWatch, onTabLoaded } from "../capture/index";
 
 const log = createBrowserLogger();
 const MODULE = "background";
@@ -48,4 +50,14 @@ bx.runtime.onStartup.addListener(() => {
   void log.log("INFO", MODULE, "browser startup");
 });
 
-bx.tabs.onRemoved.addListener((tabId) => forgetDraft(tabId));
+// PLATFORM: registered at the top level, so a service worker that slept while the user signed in wakes for the load.
+const accessDeps = accessTabDeps(log, mutations, scheduleSync);
+bx.tabs.onUpdated.addListener((tabId, change, tab) => {
+  if (change.status !== "complete" || !tab.url) return;
+  void onTabLoaded(accessDeps, tabId, tab.url).catch((error: unknown) => log.error(MODULE, error, { op: "onTabLoaded", tabId }));
+});
+
+bx.tabs.onRemoved.addListener((tabId) => {
+  forgetDraft(tabId);
+  void dropWatch(tabId).catch((error: unknown) => log.error(MODULE, error, { op: "dropWatch", tabId }));
+});

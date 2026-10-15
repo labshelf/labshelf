@@ -7,6 +7,7 @@ import {
   captureTab, createFolder, createPdfHandlers, deleteFolder, exportAnnotations, movePapers, offerOpenTabs, removePapers,
   renameFolder, sendDetails, setNote, setStatus, setTags, writeClipboard, type PdfHandlers,
 } from "./handlers";
+import { watchChangeNotices } from "./changeNotices";
 import { createHostContext, type HostContext } from "./hostContext";
 import { watchLibraryChanges } from "./snapshots";
 
@@ -38,6 +39,7 @@ function dispatch(ctx: HostContext, pdf: PdfHandlers, m: UiToHost, options: Libr
     case "paper.open": run(ctx, () => pdf.open(m.id)); return;
     case "paper.findPdf": run(ctx, () => pdf.find(m.id)); return;
     case "paper.attachPdf": pdf.attach(m.id); return;
+    case "paper.openForPdf": run(ctx, () => pdf.openForPdf(m.id, m.access)); return;
     case "paper.setStatus": run(ctx, () => setStatus(ctx, m.ids, m.status)); return;
     case "paper.details": run(ctx, () => sendDetails(ctx, m.id)); return;
     case "paper.setTags": run(ctx, () => setTags(ctx, m.ids, m.add, m.remove)); return;
@@ -61,4 +63,5 @@ export function attachLibraryHost(endpoint: HostEndpoint, options: LibraryHostOp
   const pdf = createPdfHandlers(ctx);
   endpoint.subscribe((m) => dispatch(ctx, pdf, m, options));
   watchLibraryChanges(ctx.snapshots, ctx.log);
+  watchChangeNotices(ctx);
 }

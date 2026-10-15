@@ -1,7 +1,7 @@
 /**
  * Declares the runtime messages between the background and the extension pages and content script, in one typed envelope.
  */
-import type { IfNoPdf, PdfMiss } from "@labshelf/core";
+import type { IfNoPdf, PdfAccess, PdfMiss } from "@labshelf/core";
 
 export type RuntimeMessage =
   | { type: "auth.status" }
@@ -24,6 +24,8 @@ export type RuntimeMessage =
   | { type: "capture.attachPdf"; tabId: number }
   /** Library page "Find PDF": run the resolver chain for a saved paper and attach what it finds. */
   | { type: "paper.findPdf"; id: string }
+  /** Library page: opens the page that stood in the way of a saved paper's PDF and attaches the PDF once the user gets through. */
+  | { type: "paper.openForPdf"; id: string; access: PdfAccess }
   /** Removes a paper just saved (the popup's undo). */
   | { type: "paper.remove"; id: string }
   /** Collections a paper can be saved into, plus the last one used. */
@@ -107,6 +109,8 @@ export interface LibraryChangedBroadcast {
   type: "library.changed";
   reason: "capture" | "attach" | "remove" | "sync" | "annotations";
   paperId?: string;
+  /** A sentence for open library pages to show, for a change the user did not start there (a watched tab's PDF). */
+  notice?: string;
 }
 
 export interface FolderOption {
