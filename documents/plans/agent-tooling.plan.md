@@ -1,6 +1,6 @@
 # Plan: Agent tooling, comment standard and codebase reduction
 
-Status: in progress (session 5 of 8)
+Status: in progress (session 6 of 8)
 Size: GG — 8 sessions across rules, hooks, agents, skills, docs, every source file and a repo-wide audit; the reduction work it finds runs as its own plan
 Pending decisions: 0
 
@@ -45,9 +45,9 @@ Resolved:
 - [x] **A6** Every agent file states its model and a return format of ≤40 lines; `orchestrate` states the routing rule and the escalation rule of D5.
 - [x] **A7** A dry run of `/brainstorm` in grill mode on a sample idea asks numbered frontier questions, each with a recommendation, and sends fact questions to a scout.
 - [x] **A8** `/council` on a sample fork runs two rounds and a judge; the main thread receives ≤2k tokens.
-- [ ] **A9** `documents/README.md` is a routing table; every doc's first line after the title is "Read when …"; `health` reports any doc without it.
+- [x] **A9** `documents/README.md` is a routing table; every doc's first line after the title is "Read when …"; `health` reports any doc without it.
 - [ ] **A10** Every source file's header line 1 is a capability sentence; `check-rules.sh` flags new files without one; `rg -m1 '^// ' packages/core/src/<domain>` reads as a map.
-- [ ] **A11** The core contrast test passes for both themes and fails if a listed pair drops below 4.5:1.
+- [x] **A11** The core contrast test passes for both themes and fails if a listed pair drops below 4.5:1.
 - [ ] **A12** `codebase-reduction.plan.md` exists with findings ranked by lines saved and risk, each tagged with its ladder rung.
 
 ## 5. Design
@@ -64,79 +64,10 @@ Resolved:
 | Retro | `.claude/skills/retro/SKILL.md` | Writes checks/rules only after user approval |
 | Diagnose | `.claude/agents/bug-tracer.md` → `diagnose` | Red loop before hypotheses, 3–5 ranked hypotheses, `[DEBUG-xxxx]` logs |
 | Tool baselines | repo root (`knip.json`, `.jscpd.json`, baselines) | Ratchet: baselines only shrink |
-| Contrast test | `packages/core/__tests__/ui/tokens/` | WCAG formula over a list of role pairs |
+| Contrast test | `packages/core/__tests__/ui/dom/` | WCAG formula over a list of role pairs |
 | Website sheet-fit | `.claude/skills/verify/` recipe | Playwright, per `.page` scroll vs client size |
 
 ## 6. Sessions and steps
-
-### Session 1 — Rules and standards
-
-- **Starts from:** clean tree 
-- **Ends with:** A6 (rules part), the comment standard written down
-- **Commit:** yes
-
-| Id | Step | Depends on | Runner | Done when | OK |
-|---|---|---|---|---|---|
-| S1 | Ladder, never-cut, no-speculation, no-small-deps in AGENTS.md | — | H · main thread | D2 text in place | [x] |
-| S2 | Comment standard (header line 1, four tags) in AGENTS.md §5 | — | H · main thread | D3 text in place | [x] |
-| S3 | Routing + escalation rule in CLAUDE.md; remove no-op lines | — | H · main thread | A6 (rules part) | [x] |
-| S4 | Finish | S1–S3 | `finish` skill | gate passes | [x] |
-
-### Session 2 — Deterministic gates and hooks
-
-- **Starts from:** session 1 committed
-- **Ends with:** A1, A2, A3, A4, A5
-- **Commit:** yes
-
-| Id | Step | Depends on | Runner | Done when | OK |
-|---|---|---|---|---|---|
-| S5 | Diff guards + tag/header lint in `check-rules.sh` | S2 | M · implementer (sonnet) | A1 | [x] |
-| S6 | `git-guardrails.sh` wired in settings | — | M · implementer (sonnet) | A2 | [x] |
-| S7 | knip config + jscpd + baselines; wire into `check`/`health` | — | M · implementer (sonnet) | A3 | [x] |
-| S8 | `edit-context.sh`, memory lint, PreCompact reminder | S2 | M · implementer (sonnet) | A4, A5 | [x] |
-| S9 | Finish | S5–S8 | `finish` skill | gate passes | [x] |
-
-### Session 3 — Agents
-
-- **Starts from:** session 2 committed
-- **Ends with:** A6
-- **Commit:** yes
-
-| Id | Step | Depends on | Runner | Done when | OK |
-|---|---|---|---|---|---|
-| S10 | Rewrite implementer, test-writer, Explore with D5/D10 guards | S1, S7 | H · main thread | A6 | [x] |
-| S11 | bug-tracer → diagnose; architecture-reviewer adversarial + two axes | — | H · main thread | A6 | [x] |
-| S12 | dead-code-cleaner on knip/jscpd output; comment-enforcer applies D3; Chesterton's fence | S7 | H · main thread | A6 | [x] |
-| S13 | Return-format pass on the other agents | S10–S12 | M · implementer (sonnet) | A6 | [x] |
-| S14 | Finish | S10–S13 | `finish` skill | gate passes | [x] |
-
-### Session 4 — Brainstorm, council, retro
-
-- **Starts from:** session 3 committed
-- **Ends with:** A7, A8
-- **Commit:** yes
-
-| Id | Step | Depends on | Runner | Done when | OK |
-|---|---|---|---|---|---|
-| S15 | `council` skill + personas reference | Q1 | H · main thread | A8 | [x] |
-| S16 | `brainstorm` modes + techniques reference | S15 | H · main thread | A7 | [x] |
-| S17 | `retro` skill | — | H · main thread | dry run proposes one check and one rule | [x] |
-| S18 | Dry runs of A7 and A8 on a real pending idea | S15–S16 | H · main thread | A7, A8 | [x] |
-| S19 | Finish | S15–S18 | `finish` skill | gate passes | [x] |
-
-### Session 5 — Workflow skills and MCP
-
-- **Starts from:** session 4 committed
-- **Ends with:** A6 (skills part), DevTools MCP loading the extension
-- **Commit:** yes
-
-| Id | Step | Depends on | Runner | Done when | OK |
-|---|---|---|---|---|---|
-| S20 | `orchestrate`: routing, escalation, doubt step via council, pointer prompts, handoff template to its own file | S15 | H · main thread | A6 | [x] |
-| S21 | `check` fingerprint; `finish` skips a matching gate, two-axis review | S7 | M · implementer (sonnet) | finish reuses a matching check | [x] |
-| S22 | `ship` PR body (evidence, one-way/two-way door); `health` deepening + skill lint | — | M · implementer (sonnet) | — | [x] |
-| S23 | Chrome DevTools MCP (project scope, pinned, `--categoryExtensions`, no telemetry); `verify` recipe for the extension | — | M · implementer (sonnet) | extension popup loads headless, or the recipe documents the headed fallback | [x] |
-| S24 | Finish | S20–S23 | `finish` skill | gate passes | [x] |
 
 ### Session 6 — Docs, memory, design checks
 
@@ -146,12 +77,12 @@ Resolved:
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S25 | README routing table, "Read when" lines, contract anchors | — | M · doc-keeper (sonnet) | A9 | [ ] |
-| S26 | Trim finished sessions out of active plans | — | M · doc-keeper (sonnet) | plans hold open work only | [ ] |
-| S27 | Memory index: kind tags, ≤150-char lines, fix stale entries | S8 | H · main thread | A5 prints nothing | [ ] |
-| S28 | Core contrast test | — | M · test-writer (sonnet) | A11 | [ ] |
-| S29 | Website sheet-fit recipe in `verify` | S23 | M · implementer (sonnet) | recipe reports per-sheet overflow | [ ] |
-| S30 | Finish | S25–S29 | `finish` skill | gate passes | [ ] |
+| S25 | README routing table, "Read when" lines, contract anchors | — | M · doc-keeper (sonnet) | A9 | [x] |
+| S26 | Trim finished sessions out of active plans | — | M · doc-keeper (sonnet) | plans hold open work only | [x] |
+| S27 | Memory index: kind tags, ≤150-char lines, fix stale entries | S8 | H · main thread | A5 prints nothing | [x] |
+| S28 | Core contrast test | — | M · test-writer (sonnet) | A11 | [x] |
+| S29 | Website sheet-fit recipe in `verify` | S23 | M · implementer (sonnet) | recipe reports per-sheet overflow | [x] |
+| S30 | Finish | S25–S29 | `finish` skill | gate passes | [x] |
 
 ### Session 7 — Comment migration (after architecture-refactor is done)
 
@@ -180,79 +111,6 @@ Resolved:
 | S38 | Write `codebase-reduction.plan.md` | S36–S37 | H · main thread | A12 | [ ] |
 
 ### Step blocks
-
-#### S1 — Ladder in AGENTS.md
-- **Do:** add the six rungs and the never-cut list as one short subsection of §3; add "no speculative abstraction, option or config" and "no dependency for a few lines" to §4; add "replies end with what was not checked" to §6.
-- **Touch:** `AGENTS.md`. **Do not touch:** other sections' meaning.
-- **Context:** Ponytail `AGENTS.md` (github.com/DietrichGebert/ponytail); keep the repo's structure rules (ports, barrels) explicitly above the ladder.
-- **Done when:** ≤15 added lines; hook quiet.
-
-#### S2 — Comment standard
-- **Do:** define header line 1 (capability, verb + object, no file name) and the four tags with one example each; state that tags are only for why-comments.
-- **Touch:** `AGENTS.md` §5.
-- **Done when:** D3 text in place.
-
-#### S3 — Routing and CLAUDE.md
-- **Do:** replace the division-of-labour table with the D5 rule and the escalation rule; delete lines the model follows by default (Pocock `writing-for-agents`: hunt no-ops).
-- **Touch:** `CLAUDE.md`.
-- **Done when:** A6 rules part.
-
-#### S5 — Diff guards
-- **Do:** in added lines of `git diff HEAD`, flag `@ts-ignore`, `@ts-expect-error` without reason, `eslint-disable`, `.skip(`, `xit(`, empty `catch {}`; flag deleted `__tests__` files; flag `CONTRACT:` whose `#anchor` has no heading in the target doc; flag source files added without a header comment.
-- **Touch:** `.claude/hooks/check-rules.sh`, a fixture-driven test script next to it.
-- **Done when:** A1.
-
-#### S6 — Guardrails
-- **Do:** port `misc/git-guardrails-claude-code` from mattpocock/skills (keep MIT notice); block `git push`, `reset --hard`, `clean -f`, `branch -D`, `checkout .`.
-- **Touch:** `.claude/hooks/`, `.claude/settings.json`.
-- **Done when:** A2.
-
-#### S7 — knip and jscpd
-- **Do:** knip config for the pnpm workspace (entry points per package: extension main, MV3 manifest entries, terminal bin, website js); add jscpd with a min-token threshold and ignore for tests; commit baselines; add both to `check` and `health`; baselines may only shrink.
-- **Touch:** root `package.json`, `knip.json`, `.jscpd.json`, baseline files, the two SKILL.md files.
-- **Done when:** A3.
-
-#### S8 — Memory and edit hooks
-- **Do:** `edit-context.sh`: read `.tool_input.file_path`, print the file's tagged lines and ≤3 memory titles whose body names the path or its folder, once per file per session (marker keyed on session id). Memory lint in `session-context.sh`: index↔file mismatches and backticked paths that do not exist. `precompact.sh`: a ≤8-line reminder of what is worth saving and what is not.
-- **Touch:** `.claude/hooks/`, `.claude/settings.json`.
-- **Context:** memory dir `~/.claude/projects/-Users-lucanasser-Developer-pessoal-labshelf/memory/`.
-- **Done when:** A4, A5.
-
-#### S10 — Implementer, test-writer, Explore
-- **Do:** implementer: ladder, read callers before editing, rationalizations table (re-export "for safety", "pre-existing violation", "docs later", "tests pass so done"), CHANGES / NOT TOUCHED / CONCERNS report, escalate instead of a third retry. test-writer: Prove-It, test only at agreed seams. Explore: start from root and domain barrels and header lines, `depcruise --reaches` for importers, a "Reuse candidates" section first in the brief.
-- **Touch:** the three agent files.
-- **Done when:** A6.
-
-#### S11 — Diagnose and reviewer
-- **Do:** rename bug-tracer to diagnose with Pocock's `diagnosing-bugs` loop (no hypothesis before a red command; minimise; 3–5 ranked falsifiable hypotheses; `[DEBUG-xxxx]` logs; regression test at a real seam). architecture-reviewer: receives diff + contract only, "do not validate; find issues or state none", reports Standards and Spec separately, smell baseline.
-- **Touch:** the two agent files and every reference to `bug-tracer`.
-- **Done when:** A6.
-
-#### S12 — Cleanup agents
-- **Do:** dead-code-cleaner works from knip/jscpd output and checks `git log -S` before deleting quirk code; comment-enforcer applies D3 and never deletes a tagged comment.
-- **Done when:** A6.
-
-#### S15 — Council
-- **Do:** implement D7 with Q1's answer; personas in `references/personas.md` with presets for feature, UX/navigation and visual design; judge prompt; budget and stop rules; failure modes (conformity, verbosity, anchoring).
-- **Context:** karpathy/llm-council, aiwithremy/claude-skills-llm-council, BMAD party-mode; evidence: debate rarely beats self-consistency on facts (arxiv 2502.08788), conformity (2509.05396), heterogeneity helps (2309.13007).
-- **Done when:** A8.
-
-#### S16 — Brainstorm modes
-- **Do:** implement D6; keep the tags and recap; move techniques to `references/techniques.md` grouped frame → diverge → challenge → converge → decide.
-- **Context:** mattpocock `grilling`, `domain-modeling`; addyosmani `interview-me`, `idea-refine`; superpowers `brainstorming`.
-- **Done when:** A7.
-
-#### S17 — Retro
-- **Do:** at the end of a session, list mistakes, sort into mechanical (→ a `check-rules.sh` line) and judgment (→ a rule in the right file), add a CALIBRATION row when a plan finished; apply only after approval.
-- **Done when:** a dry run on this conversation proposes at least one check and one rule.
-
-#### S20 — Orchestrate
-- **Do:** D5 routing and escalation per package; council as the doubt step for packages touching contracts, sync, manifest or Drive writes; delegated prompts point to files instead of pasting; each open question carries a default; move the handoff template to `references/handoff.md`.
-- **Done when:** A6.
-
-#### S23 — Chrome DevTools MCP
-- **Do:** add to project `.mcp.json` pinned, with `--categoryExtensions --headless --no-usage-statistics --no-performance-crux`; test `install_extension` on the built browser extension; record the working recipe in `verify`.
-- **Done when:** the popup loads headless, or the recipe states the headed fallback.
 
 #### S25–S26 — Docs
 - **Do:** routing table; "Read when" line per doc; stable `{#anchor}`-style headings in contracts; delete finished-session blocks from active plans, keeping the log lines.
@@ -283,3 +141,5 @@ Resolved:
 - 2026-10-14 21:56 (session 4) S18 dry runs: grill on pdf-finding §4 (institutional access) asked 6 numbered frontier questions, each with a recommendation; a Haiku scout answered the code facts (tab fetch already uses `credentials: "include"`; no proxy code), and its answers came back marked verified (A7). The council on architecture-refactor Q1 ran two rounds and a judge: 4/4 seats chose in-memory after round 2 (the Contrarian changed, citing P5's fallback fact). Two new gates were recorded under refactor Q1, and the main thread took in about 1.7k tokens (A8). The retro dry run on this conversation proposed 1 check and 2 rules (S17). Deviation: the council costs about 200k subagent tokens, not 30k. R2, the council skill and CLAUDE.md state the measured figure. Finish could not call the council itself (forked skills cannot launch agents), so a council is run on a fork that finish reports. `finish` gate: PASS.
 - 2026-10-14 22:00 (session 5): S20 `orchestrate`: open questions carry a default and two-way defaults are applied rather than asked; each package names its model and its door (one-way: contracts or on-disk formats, sync, Drive writes, manifest or permissions); a one-way package with two viable designs goes to `council` first; delegated prompts point to files instead of pasting; the handoff template lives in `references/handoff.md`. S21 `check/fingerprint.sh` hashes HEAD plus the uncommitted change; `check` writes it with the result to `.git/labshelf-check`, and `finish` reuses a matching PASS and reports Standards and Spec review axes. S22 `ship` writes a PR body (evidence, not checked, door) without pushing; `health` uses depcruise for boundaries and runs `health/lint-skills.sh` (frontmatter, agent ≤65 and SKILL ≤110 lines, referenced paths exist, history language). S23 `.mcp.json` pins `chrome-devtools-mcp@1.10.1` headless, isolated, extensions on, telemetry off; driven over stdio, `install_extension` loaded the built Chrome extension and the popup rendered headless (recipe in `documents/apps/browser.md`). `finish` gate: PASS.
 - 2026-10-14 22:00 (session 5) deviations: the skill lint caught history language in `changelog-writer.md` and `doc-keeper.md`, so both were reworded. `pnpm lint:deps` currently fails: 62 violations are outside its baseline and 27 baseline entries are stale. This predates the session and is left for the architecture-refactor plan. MCP extension paths must lie inside the client's workspace roots, and whether Claude Code sends the project directory as a root is not yet verified in a live session. If `install_extension` is denied, add `--workspace` args.
+- 2026-10-14 22:08 (session 6): S25 `documents/README.md` is a routing table (34 question rows → `doc.md#anchor`, every target checked); every doc outside `plans/` opens with a "Read when" line; contract anchors stay GitHub slugs, which `check-rules.sh` resolves; `health/lint-docs.sh` reports a doc without the line (A9). S26 the agent-tooling plan keeps sessions 6–8 (285 → 143 lines), architecture-refactor keeps sessions 7, 12, 13 plus the S0.4 and S4.3 blocks that open steps cite (823 → 375), pdf-finding loses its done step; open-item and log-line counts unchanged. S27 memory lint checks every repo-rooted path, not only backticked ones, and found 3 stale paths, now fixed; index lines carry a kind tag and stay ≤150 chars. S28 `packages/core/__tests__/ui/dom/tokenContrast.test.ts` checks 24 UI pairs in dark and light and 4 reader pairs in 4 reader themes against 4.5:1 (A11). S29 `verify/website-sheet-fit.mjs` checks 10 sheets × 3 widths × 4 themes over CDP: 0 overflowing, and an injected overflow exits 1. `finish` gate: PASS.
+- 2026-10-14 22:08 (session 6) deviations: the contrast test found sepia `--ls-reader-desc` at 4.14:1 on the reader surface; it is 11–12px text, so it is darkened to #72604e (4.82:1) in `tokens.css` and `readerThemeTokens.ts`. `--ls-warning` colours only icons, so the test checks banner text (`--ls-fg`) on `--ls-warning-bg` instead; the light warning icon is 2.81:1, below the 3:1 non-text minimum, and is left open. The test lives in `__tests__/ui/dom/`, mirroring `src/ui/dom/tokens.css`, not `__tests__/ui/tokens/` as §5 says.
