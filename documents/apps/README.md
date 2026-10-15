@@ -39,6 +39,7 @@ Unit tests do not cover webview DOM, the real extension host or a real terminal.
 | webview or reader UI, list panel | [vscode.md → webview harness](vscode.md#webview-harness) |
 | browser extension pages, popup, capture | [browser.md → headless run](browser.md#headless-run) |
 | TUI layout, keys, terminal output | [terminal.md → verification](terminal.md#verification) |
+| PDF finding: resolvers, download, miss reasons | `pnpm --filter @labshelf/core eval:pdf` runs the corpus in `packages/core/tools/pdf-eval/` against the live network (needs network; reports are git-ignored) |
 
 Rules for every recipe:
 

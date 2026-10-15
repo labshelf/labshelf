@@ -1,0 +1,92 @@
+[
+  {
+    "publisher": "Elsevier",
+    "id": "10.1016/0022-2836(81)90087-5",
+    "title": "Identification of common molecular subsequences",
+    "landingUrl": "https://doi.org/10.1016/0022-2836(81)90087-5"
+  },
+  {
+    "publisher": "Wiley",
+    "id": "10.1002/jcc.20035",
+    "title": "Development and testing of a general amber force field",
+    "landingUrl": "https://doi.org/10.1002/jcc.20035"
+  },
+  {
+    "publisher": "Springer",
+    "id": "10.1007/BF00994018",
+    "title": "Support-vector networks",
+    "landingUrl": "https://doi.org/10.1007/BF00994018"
+  },
+  {
+    "publisher": "IEEE",
+    "id": "10.1109/TIT.1967.1053964",
+    "title": "Nearest neighbor pattern classification",
+    "landingUrl": "https://doi.org/10.1109/TIT.1967.1053964"
+  },
+  {
+    "publisher": "ACS",
+    "id": "10.1021/ja809598r",
+    "title": "Organometal Halide Perovskites as Visible-Light Sensitizers for Photovoltaic Cells",
+    "landingUrl": "https://doi.org/10.1021/ja809598r"
+  },
+  {
+    "publisher": "Taylor & Francis",
+    "id": "10.1080/01621459.1958.10501452",
+    "title": "Nonparametric Estimation from Incomplete Observations",
+    "landingUrl": "https://doi.org/10.1080/01621459.1958.10501452"
+  },
+  {
+    "publisher": "SAGE",
+    "id": "10.1177/0956797611417632",
+    "title": "False-Positive Psychology",
+    "landingUrl": "https://doi.org/10.1177/0956797611417632"
+  },
+  {
+    "publisher": "APS",
+    "id": "10.1103/PhysRev.140.A1133",
+    "title": "Self-Consistent Equations Including Exchange and Correlation Effects",
+    "landingUrl": "https://doi.org/10.1103/PhysRev.140.A1133"
+  },
+  {
+    "publisher": "IOP",
+    "id": "10.1088/0953-8984/21/39/395502",
+    "title": "QUANTUM ESPRESSO: a modular and open-source software project for quantum simulations of materials",
+    "landingUrl": "https://doi.org/10.1088/0953-8984/21/39/395502"
+  },
+  {
+    "publisher": "Nature",
+    "id": "10.1038/nature14236",
+    "title": "Human-level control through deep reinforcement learning",
+    "landingUrl": "https://doi.org/10.1038/nature14236"
+  },
+  {
+    "publisher": "OUP",
+    "id": "10.1093/biomet/57.1.97",
+    "title": "Monte Carlo sampling methods using Markov chains and their applications",
+    "landingUrl": "https://doi.org/10.1093/biomet/57.1.97"
+  },
+  {
+    "publisher": "Cambridge",
+    "id": "10.1017/S0140525X0999152X",
+    "title": "The weirdest people in the world?",
+    "landingUrl": "https://doi.org/10.1017/S0140525X0999152X"
+  },
+  {
+    "publisher": "JSTOR",
+    "id": "10.2307/2325486",
+    "title": "Efficient Capital Markets: A Review of Theory and Empirical Work",
+    "landingUrl": "https://doi.org/10.2307/2325486"
+  },
+  {
+    "publisher": "AIP",
+    "id": "10.1063/1.464913",
+    "title": "Density-functional thermochemistry. III. The role of exact exchange",
+    "landingUrl": "https://doi.org/10.1063/1.464913"
+  },
+  {
+    "publisher": "De Gruyter",
+    "id": "10.1515/text.1.1988.8.3.243",
+    "title": "Rhetorical Structure Theory: Toward a functional theory of text organization",
+    "landingUrl": "https://doi.org/10.1515/text.1.1988.8.3.243"
+  }
+]
