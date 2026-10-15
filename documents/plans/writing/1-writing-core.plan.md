@@ -1,8 +1,8 @@
 # Plan: writing in VS Code
 
-Status: draft
+Status: in progress (session 1 of 7 done)
 Size: GG — a new domain in core (projects, citations, LaTeX build, SyncTeX, Typst in WASM) plus a new VS Code surface and a reader-host contract change; 7 sessions. Grows if the Typst SVG layer needs its own spike session.
-Pending decisions: 2
+Pending decisions: 0
 
 ## 1. Goal
 
@@ -12,26 +12,26 @@ This plan is the base for [writing-sync](2-writing-sync.plan.md), [writing-brows
 
 ## 2. Decisions
 
-- [ ] **D1** A project is a folder with a `labshelf.yaml` at its root (format, main file, engine, bibliography file). "New project" creates it under `<library>/projects/<id>/`; "Add existing folder" registers a folder anywhere, for example inside a code repository, without touching its git. — Writing lives with the code, and the library still knows every project.
-- [ ] **D2** The registry of external project folders is device-local (`.research/projects.json`, never synced). — Absolute paths differ per machine.
-- [ ] **D3** LabShelf replaces LaTeX Workshop: it owns build, preview, errors and the editing features below. Little configuration, opinionated defaults. When LaTeX Workshop is installed, LabShelf says so once and offers to turn off its auto build for the workspace. — The pain is in exactly the parts LaTeX Workshop makes configurable.
-- [ ] **D4** On the first LaTeX build, LabShelf asks which toolchain to use: Tectonic (recommended, downloaded on consent into the extension's storage, pinned version, checksum verified) or TeX Live (preselected when `latexmk` is on `PATH`; otherwise a per-OS install guide). The choice is saved in `labshelf.yaml` and shown in the status bar. — Zero-install by default, full TeX Live when the user needs it.
-- [ ] **D5** Tectonic runs only XeLaTeX. Choosing pdfLaTeX or LuaLaTeX requires TeX Live; the error says so and links the guide. — An honest limit instead of a silent failure.
-- [ ] **D6** Every auxiliary file goes to `<OS cache>/labshelf/builds/<project id>/`. Only `<main>.pdf` lands next to the main file, and only when the build succeeds. — The project folder stays clean; the PDF never disappears on a failed build.
-- [ ] **D7** The status bar shows two one-click items: the main file and the compiler. "Set as main document" is also in the explorer context menu. Without a main in `labshelf.yaml`, the file with `\documentclass` is detected. Any build, from any file, builds the main. — Overleaf's model.
-- [ ] **D8** Build log lines become diagnostics in the Problems panel in plain language. A missing package says which one and how to install it (`tlmgr install <pkg>` on TeX Live; Tectonic fetches it). — The Overleaf error experience.
-- [ ] **D9** The LabShelf reader is the only preview, for both formats. On a failed build it keeps the last good PDF with a banner "Build failed: N errors" that jumps to the first. LaTeX gets SyncTeX in both directions. — One preview with the reader's features everywhere.
-- [ ] **D10** LaTeX editing features: `\ref`/`\label` completion, go-to and broken-label warnings; document outline; math preview on hover (with the user's `\newcommand` macros); word count; completion for about 200 common commands and environments; `\begin{x}` closes itself. Not built: formatter (call `latexindent` when installed), linter, snippets beyond the catalog. — The useful 40% of LaTeX Workshop.
-- [ ] **D11** Typst editing stays with Tinymist (completion, hover, diagnostics). LabShelf offers to install it when a Typst project opens and passes the main file to it. — Tinymist is good and needs no replacement.
-- [ ] **D12** Typst compiles inside the reader webview with `typst.ts` (WASM): a live SVG page layer while typing, about 0.3–0.5 s behind, and PDF export for review. Tinymist's own preview stays available for users who want it instant. — The same code runs in the browser editor later.
-- [ ] **D13** LabShelf pins one Typst compiler version per release and records the version in `labshelf.yaml` on build; a mismatch shows a warning. — The same document renders the same in every app.
-- [ ] **D14** Citations: completion offers every paper in the library (title, authors, year), not only those already in a `.bib`; hover shows the abstract; Ctrl+click opens the paper in the reader. Choosing a paper adds its entry to `labshelf.bib`, which LabShelf owns and regenerates from the keys the project cites. The user's own `.bib` files stay untouched. — The library is the feature no other tool has.
-- [ ] **D15** Review mode: in the reader, hovering a citation in the compiled PDF shows the cited library paper and a click opens it. LaTeX uses hyperref's `cite.<key>` destinations; without hyperref, SyncTeX. — A preview feature only LabShelf can offer.
+- [x] **D1** A project is a folder with a `labshelf.yaml` at its root (format, main file, engine, bibliography file). "New project" creates it under `<library>/projects/<id>/`; "Add existing folder" registers a folder anywhere, for example inside a code repository, without touching its git. — Writing lives with the code, and the library still knows every project.
+- [x] **D2** The registry of external project folders is device-local (`.research/projects.json`, never synced). — Absolute paths differ per machine.
+- [x] **D3** LabShelf replaces LaTeX Workshop: it owns build, preview, errors and the editing features below. Little configuration, opinionated defaults. When LaTeX Workshop is installed, LabShelf says so once and offers to turn off its auto build for the workspace. — The pain is in exactly the parts LaTeX Workshop makes configurable.
+- [x] **D4** On the first LaTeX build, LabShelf asks which toolchain to use: Tectonic (recommended, downloaded on consent into the extension's storage, pinned version, checksum verified) or TeX Live (preselected when `latexmk` is on `PATH`; otherwise a per-OS install guide). The choice is saved in `labshelf.yaml` and shown in the status bar. — Zero-install by default, full TeX Live when the user needs it.
+- [x] **D5** Tectonic runs only XeLaTeX. Choosing pdfLaTeX or LuaLaTeX requires TeX Live; the error says so and links the guide. — An honest limit instead of a silent failure.
+- [x] **D6** Every auxiliary file goes to `<OS cache>/labshelf/builds/<project id>/`. Only `<main>.pdf` lands next to the main file, and only when the build succeeds. — The project folder stays clean; the PDF never disappears on a failed build.
+- [x] **D7** The status bar shows two one-click items: the main file and the compiler. "Set as main document" is also in the explorer context menu. Without a main in `labshelf.yaml`, the file with `\documentclass` is detected. Any build, from any file, builds the main. — Overleaf's model.
+- [x] **D8** Build log lines become diagnostics in the Problems panel in plain language. A missing package says which one and how to install it (`tlmgr install <pkg>` on TeX Live; Tectonic fetches it). — The Overleaf error experience.
+- [x] **D9** The LabShelf reader is the only preview, for both formats. On a failed build it keeps the last good PDF with a banner "Build failed: N errors" that jumps to the first. LaTeX gets SyncTeX in both directions. — One preview with the reader's features everywhere.
+- [x] **D10** LaTeX editing features: `\ref`/`\label` completion, go-to and broken-label warnings; document outline; math preview on hover (with the user's `\newcommand` macros); word count; completion for about 200 common commands and environments; `\begin{x}` closes itself. Not built: formatter (call `latexindent` when installed), linter, snippets beyond the catalog. — The useful 40% of LaTeX Workshop.
+- [x] **D11** Typst editing stays with Tinymist (completion, hover, diagnostics). LabShelf offers to install it when a Typst project opens and passes the main file to it. — Tinymist is good and needs no replacement.
+- [x] **D12** Typst compiles inside the reader webview with `typst.ts` (WASM): a live SVG page layer while typing, about 0.3–0.5 s behind, and PDF export for review. Tinymist's own preview stays available for users who want it instant. — The same code runs in the browser editor later.
+- [x] **D13** LabShelf pins one Typst compiler version per release and records the version in `labshelf.yaml` on build; a mismatch shows a warning. — The same document renders the same in every app.
+- [x] **D14** Citations: completion offers every paper in the library (title, authors, year), not only those already in a `.bib`; hover shows the abstract; Ctrl+click opens the paper in the reader. Choosing a paper adds its entry to `labshelf.bib`, which LabShelf owns and regenerates from the keys the project cites. The user's own `.bib` files stay untouched. — The library is the feature no other tool has.
+- [x] **D15** Review mode: in the reader, hovering a citation in the compiled PDF shows the cited library paper and a click opens it. LaTeX uses hyperref's `cite.<key>` destinations; without hyperref, SyncTeX. — A preview feature only LabShelf can offer.
 
-Open (blocks approval):
+Answered:
 
-- **Q1** Source of the LaTeX command catalog — options: curate it by hand / derive it from LaTeX Workshop's MIT-licensed data with attribution; recommendation: derive, because it is maintained and covers the popular packages.
-- **Q2** Project templates in "New project" — options: one blank article per format / also a report and a beamer/touying deck; recommendation: one article per format to start.
+- **Q1** Source of the LaTeX command catalog — derived from LaTeX Workshop's MIT-licensed data, with attribution.
+- **Q2** Project templates in "New project" — one blank article per format.
 
 ## 3. Scope
 
@@ -41,7 +41,7 @@ Open (blocks approval):
 
 ## 4. Acceptance criteria
 
-- [ ] **A1** "New project" in the Writing view creates `<library>/projects/<id>/` with `labshelf.yaml` and a template main file; "Add existing folder" registers a folder and lists it without creating anything but `labshelf.yaml`.
+- [x] **A1** "New project" in the Writing view creates `<library>/projects/<id>/` with `labshelf.yaml` and a template main file; "Add existing folder" registers a folder and lists it without creating anything but `labshelf.yaml`.
 - [ ] **A2** On a machine without TeX, the first build offers Tectonic, downloads it, and produces `main.pdf`; the project folder then holds only the sources, `labshelf.yaml`, `labshelf.bib` and `main.pdf`.
 - [ ] **A3** A build with an undefined control sequence shows one Problems entry on the right line in plain words; the reader keeps the previous PDF with the failure banner.
 - [ ] **A4** Picking pdfLaTeX while on Tectonic fails with the TeX Live message and the guide link; a missing `.sty` on TeX Live names the package and the `tlmgr` command.
@@ -88,10 +88,10 @@ typst: 0.13.1            # written on build, Typst projects only
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S1 | Project model, `labshelf.yaml`, registry, main detection | — | H · main thread | core tests | [ ] |
-| S2 | Writing view, New project, Add existing folder, templates | S1 | M · implementer (sonnet) | A1 | [ ] |
-| S3 | Main item in the status bar and explorer menu | S2 | M · implementer (sonnet) | A5 (main) | [ ] |
-| S4 | Finish: gate, contract, review | S1–S3 | `finish` skill | gate passes | [ ] |
+| S1 | Project model, `labshelf.yaml`, registry, main detection | — | H · main thread | core tests | [x] |
+| S2 | Writing view, New project, Add existing folder, templates | S1 | M · implementer (sonnet) | A1 | [x] |
+| S3 | Main item in the status bar and explorer menu | S2 | M · implementer (sonnet) | A5 (main) | [x] |
+| S4 | Finish: gate, contract, review | S1–S3 | `finish` skill | gate passes | [x] |
 
 ### Session 2 — citations from the library
 
@@ -169,6 +169,7 @@ typst: 0.13.1            # written on build, Typst projects only
 | S25 | Citation targets in the PDF (hyperref destinations, SyncTeX fallback, Typst links) | S14, S22 | H · main thread | core tests on sample PDFs | [ ] |
 | S26 | Reader hover and click for citations in review mode | S25 | M · implementer (sonnet) | A10 | [ ] |
 | S27 | Finish, plus a `verify` run | S25–S26 | `finish` + `verify` skills | gate passes | [ ] |
+| S28 | Fix [research-links](2-research-links.plan.md) before any other writing plan starts | S27 | H · main thread | plan 2 reuses the existing OpenAlex client and the PDF plan's published-version lookup | [ ] |
 
 ### Step blocks
 
@@ -248,6 +249,10 @@ typst: 0.13.1            # written on build, Typst projects only
 
 - **Do:** map citation link targets in the compiled PDF to cite keys (hyperref `cite.<key>` named destinations; else SyncTeX to the source `\cite`; Typst: link targets to the bibliography entry); reader hover card and click to open, through a new host message that looks up a key in the library.
 
+#### S28 — Fix research-links
+
+- **Do:** in [2-research-links.plan.md](2-research-links.plan.md), replace the new `core/src/import/openalex/` with the existing client in `core/src/import/registries/works/openalex.ts`; rewrite its D6 to reuse the published-version lookup that [pdf-finding](../pdf-finding.plan.md) creates (the path is in that plan's §8 log, or in the code once it is merged).
+
 ## 7. Risks
 
 - **R1** Tectonic lacks a package or feature a template needs. — D5 message and the TeX Live path; log it with the template name.
@@ -256,3 +261,9 @@ typst: 0.13.1            # written on build, Typst projects only
 - **R4** Log parsing misses error formats. — Fixture corpus from real logs; unknown errors still show the raw line.
 
 ## 8. Log
+
+- 2026-10-15 17:05 — Base is `feat/reader-ux` (72b3dc0), not `main`: `main` is 194 commits behind and lacks this plan and the contracts. Q1: derive the catalog from LaTeX Workshop; Q2: one article per format. S28 added at the user's request.
+- 2026-10-15 17:15 — Contract: `projects/`, `labshelf.yaml` and `.research/projects.json` in library-format.md, in its own commit (905f9de).
+- 2026-10-15 17:20 — S1: `core/src/writing/project/` and `node/`; project ids keep hyphens (`projectIdSlug`) with the cite-key collision suffixes; a corrupt registry or `labshelf.yaml` is never rewritten; templates carry no bibliography line until the first citation (S5/S6 adds it). 64 tests (e3331f2).
+- 2026-10-15 17:35 — S2/S3: `packages/vscode/src/writing/`; the active project is the one owning the active editor's file; tree icons are ThemeIcons, like the Library view. A5 holds for the main item only; the compiler item is S11.
+- 2026-10-15 17:40 — S4: finish gate passes (core 1955, vscode 302 tests); extension-host run confirms A1 and the main item and Set as Main Document.
