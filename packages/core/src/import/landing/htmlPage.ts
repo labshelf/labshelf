@@ -5,11 +5,19 @@ import type { RawPage, RawPdfLink } from "./types.js";
 // PLATFORM: the MV3 service worker and the terminal have no DOMParser, so a tolerant regex reader handles the few tags that matter.
 /** @returns the meta tags, PDF links and viewers, and DOI links of an HTML document */
 export function parseHtmlPage(html: string, pageUrl: string): RawPage {
-  const title = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1];
   const raw: RawPage = { pageUrl, meta: metaTags(html), pdfLinks: pdfLinksOf(html, pageUrl).slice(0, 40), doiLinks: doiLinksOf(html) };
-  const documentTitle = title ? decodeEntities(title.replace(/\s+/g, " ").trim()) : "";
+  const documentTitle = firstNonEmptyTitle(html);
   if (documentTitle) raw.documentTitle = documentTitle;
   return raw;
+}
+
+// TRAP: IEEE Xplore's Angular shell ships `<title><!----><!----></title>` ahead of the real title.
+function firstNonEmptyTitle(html: string): string {
+  for (const m of html.matchAll(/<title[^>]*>([\s\S]*?)<\/title>/gi)) {
+    const text = decodeEntities(m[1]!.replace(/<!--[\s\S]*?-->/g, "").replace(/\s+/g, " ").trim());
+    if (text) return text;
+  }
+  return "";
 }
 
 function metaTags(html: string): Record<string, string[]> {

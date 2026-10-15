@@ -21,6 +21,17 @@ describe("parseHtmlPage", () => {
   });
 });
 
+describe("parseHtmlPage title", () => {
+  it("skips an empty or comment-only title and uses the first non-empty one", () => {
+    const html = "<head><title><!----><!----></title><title>Real paper title | IEEE Xplore</title></head>";
+    expect(parseHtmlPage(html, "https://ieeexplore.ieee.org/document/1").documentTitle).toBe("Real paper title | IEEE Xplore");
+  });
+
+  it("leaves documentTitle unset when every title is empty", () => {
+    expect(parseHtmlPage("<title><!----></title><title> </title>", "https://example.org/").documentTitle).toBeUndefined();
+  });
+});
+
 describe("redirectTargets", () => {
   it("reads meta refresh and scripted location changes, de-duplicated", () => {
     const targets = redirectTargets(fixture("sciencedirectInterstitial.html"), "https://www.sciencedirect.com/science/article/pii/0196677482900074/pdfft");
