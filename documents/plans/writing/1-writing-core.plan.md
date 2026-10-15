@@ -1,6 +1,6 @@
 # Plan: writing in VS Code
 
-Status: in progress (session 5 of 7 done)
+Status: in progress (session 6 of 7 done)
 Size: GG — a new domain in core (projects, citations, LaTeX build, SyncTeX, Typst in WASM) plus a new VS Code surface and a reader-host contract change; 7 sessions. Grows if the Typst SVG layer needs its own spike session.
 Pending decisions: 0
 
@@ -23,7 +23,7 @@ This plan is the base for [writing-sync](2-writing-sync.plan.md), [writing-brows
 - [x] **D9** The LabShelf reader is the only preview, for both formats. On a failed build it keeps the last good PDF with a banner "Build failed: N errors" that jumps to the first. LaTeX gets SyncTeX in both directions. — One preview with the reader's features everywhere.
 - [x] **D10** LaTeX editing features: `\ref`/`\label` completion, go-to and broken-label warnings; document outline; math preview on hover (with the user's `\newcommand` macros); word count; completion for about 200 common commands and environments; `\begin{x}` closes itself. Not built: formatter (call `latexindent` when installed), linter, snippets beyond the catalog. — The useful 40% of LaTeX Workshop.
 - [x] **D11** Typst editing stays with Tinymist (completion, hover, diagnostics). LabShelf offers to install it when a Typst project opens and passes the main file to it. — Tinymist is good and needs no replacement.
-- [x] **D12** Typst compiles inside the reader webview with `typst.ts` (WASM): a live SVG page layer while typing, about 0.3–0.5 s behind, and PDF export for review. Tinymist's own preview stays available for users who want it instant. — The same code runs in the browser editor later.
+- [x] **D12** Typst compiles with `typst.ts` (WASM) through a runtime-neutral core session; VS Code runs it in the extension host. While a preview is open, every pause in typing (150 ms) compiles the unsaved text to PDF and the reader swaps it in place; a save or Build Project writes `main.pdf`. No separate SVG layer: the reader keeps text, find, links and hover while writing. Tinymist's own preview stays available. — S21 measured 5–7 ms per PDF compile of 10 pages, so the PDF path costs nothing and keeps every reader feature; the core session runs unchanged in the browser editor later.
 - [x] **D13** LabShelf pins one Typst compiler version per release and records the version in `labshelf.yaml` on build; a mismatch shows a warning. — The same document renders the same in every app.
 - [x] **D14** Citations: completion offers every paper in the library (title, authors, year), not only those already in a `.bib`; hover shows the abstract; Ctrl+click opens the paper in the reader. Choosing a paper adds its entry to `labshelf.bib`, which LabShelf owns and regenerates from the keys the project cites. The user's own `.bib` files stay untouched. — The library is the feature no other tool has.
 - [x] **D15** Review mode: in the reader, hovering a citation in the compiled PDF shows the cited library paper and a click opens it. LaTeX uses hyperref's `cite.<key>` destinations; without hyperref, SyncTeX. — A preview feature only LabShelf can offer.
@@ -37,7 +37,7 @@ Answered:
 
 - **In:** core `writing/` domain, the VS Code Writing view, status bar, language providers, LaTeX build, the reader as preview, Typst in the reader.
 - **Out:** sync of projects and collaboration ([writing-sync](2-writing-sync.plan.md)); the browser and terminal; TeXpresso live LaTeX (deferred); AI features; Word and Google Docs beyond copying a formatted citation.
-- **Contracts touched:** [library-format.md](../../contracts/library-format.md) (`projects/`, `labshelf.yaml`, `labshelf.bib`, `.research/projects.json`); [reader-host.md](../../contracts/reader-host.md) (preview messages: reload, build status, SyncTeX, citation lookup, page source).
+- **Contracts touched:** [library-format.md](../../contracts/library-format.md) (`projects/`, `labshelf.yaml`, `labshelf.bib`, `.research/projects.json`); [reader-host.md](../../contracts/reader-host.md) (preview messages: reload, build status, SyncTeX, citation lookup).
 
 ## 4. Acceptance criteria
 
@@ -49,7 +49,7 @@ Answered:
 - [x] **A6** Double-click in the reader jumps to the source line; "Show in preview" scrolls the reader to the cursor.
 - [x] **A7** Typing `\cite{` lists library papers; accepting one inserts the key and adds the entry to `labshelf.bib`; the same works with `@` in Typst.
 - [x] **A8** `\ref{` completes labels, an undefined label is a warning, the outline lists sections, hovering `$\alpha^2$` renders it, and the word count shows in the status bar.
-- [ ] **A9** In a Typst project the reader updates while typing, without reloading or losing the scroll position; "Export PDF" writes `main.pdf`.
+- [x] **A9** In a Typst project the reader updates while typing, without reloading or losing the scroll position; a save or Build Project writes `main.pdf`.
 - [ ] **A10** In review mode, hovering a citation in the PDF shows the library paper; clicking opens it.
 - [x] **A11** With LaTeX Workshop installed, LabShelf shows the duplication notice once per workspace.
 
@@ -63,7 +63,8 @@ Answered:
 | LaTeX log parser, label/outline/macro parser, word count, command catalog | `core/src/writing/latex/` | neutral, pure functions with fixture tests |
 | toolchain detection, Tectonic download, build runner | `core/src/writing/latex/node/` | spawns `tectonic -X compile --synctex --outdir <cache>` or `latexmk -<engine> -auxdir/-outdir <cache> -synctex=1`; copies the PDF on success |
 | SyncTeX reader | `core/src/writing/synctex/` | parses `.synctex.gz` (decompressed by the host) |
-| page source port, Typst live layer | `core/src/reader/` + `core/src/reader/dom/` | `PdfPageSource` (pdf.js) and `TypstSvgPageSource` (`typst.ts`); annotations only on PDF |
+| Typst compile session, pinned version and fonts | `core/src/writing/typst/` (`@labshelf/core/typst`) | `typst.ts` 0.7.0 = Typst 0.14.2; its own entry so `typst.ts` stays out of other bundles |
+| Typst file access, fonts store, packages, build | `core/src/writing/typst/node/` (`@labshelf/core/typst/node`) | fonts from the `typst-assets` tag with SHA-256; packages in the Typst CLI's folders |
 | Writing view, status bar, commands, providers | `packages/vscode/src/writing/` | CompletionItemProvider, HoverProvider, DefinitionProvider, DocumentSymbolProvider, DiagnosticCollection |
 | Tinymist and LaTeX Workshop detection | `packages/vscode/src/writing/` | `vscode.extensions.getExtension` |
 
@@ -75,7 +76,7 @@ format: latex            # latex | typst
 main: main.tex
 engine: tectonic         # tectonic | xelatex | pdflatex | lualatex (the last three via latexmk)
 bibliography: labshelf.bib
-typst: 0.13.1            # written on build, Typst projects only
+typst: 0.14.2            # written on build, Typst projects only
 ```
 
 ## 6. Sessions and steps
@@ -153,10 +154,10 @@ typst: 0.13.1            # written on build, Typst projects only
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S21 | Spike: `typst.ts` in the reader webview under the VS Code CSP, fonts, Typst Universe packages fetched by the host | — | H · main thread | a Typst file renders as SVG in the webview | [ ] |
-| S22 | Page source port in the reader; SVG live layer; PDF export | S21 | H · main thread | A9 | [ ] |
-| S23 | Tinymist detection, install offer, main passed to Tinymist, version pin | S22 | M · implementer (sonnet) | A9, D13 warning | [ ] |
-| S24 | Finish, plus a `verify` run | S21–S23 | `finish` + `verify` skills | gate passes | [ ] |
+| S21 | Spike: `typst.ts` compile cost, fonts, Typst Universe packages | — | H · main thread | go/no-go in §8 | [x] |
+| S22 | Core Typst session and Node build; live compile into the preview; build on save and Build Project | S21 | H · main thread | A9 | [x] |
+| S23 | Tinymist detection, install offer, main passed to Tinymist, version pin | S22 | M · implementer (sonnet) | A9, D13 warning | [x] |
+| S24 | Finish, plus a `verify` run | S21–S23 | `finish` + `verify` skills | gate passes | [x] |
 
 ### Session 7 — review mode
 
@@ -233,13 +234,13 @@ typst: 0.13.1            # written on build, Typst projects only
 
 #### S21 — Typst spike
 
-- **Do:** load the `typst.ts` compiler and renderer in the reader webview; confirm CSP (`wasm-unsafe-eval`), bundle size, default fonts, and that the host can fetch Typst Universe packages and hand them over.
-- **Done when:** a go/no-go note in §8 with measured render latency on a 10-page document.
+- **Do:** measure `typst.ts` compile cost, check fonts and Typst Universe packages, and pick where the compiler runs.
+- **Done when:** a go/no-go note in §8 with measured latency on a 10-page document.
 
-#### S22 — Page source and SVG layer
+#### S22 — Typst build and live preview
 
-- **Do:** a page source port in the reader; the Typst source compiles in the webview on every change sent by the host (debounced), renders only changed pages, swaps after rendering; "Export PDF" compiles to PDF and writes `main.pdf` through the host.
-- **Context:** annotations and text selection stay on the PDF source; the SVG source is for writing.
+- **Do:** core session (`@labshelf/core/typst`) and Node build (`@labshelf/core/typst/node`); VS Code compiles unsaved text into the preview PDF in the build folder while a preview is open, and writes `main.pdf` on save and Build Project. Problems go to the Problems panel unless Tinymist is installed.
+- **Context:** D12 as revised by S21; the reader and its protocol do not change.
 
 #### S23 — Tinymist bridge and version pin
 
@@ -256,7 +257,7 @@ typst: 0.13.1            # written on build, Typst projects only
 ## 7. Risks
 
 - **R1** Tectonic lacks a package or feature a template needs. — D5 message and the TeX Live path; log it with the template name.
-- **R2** `typst.ts` is heavy in the webview (size, fonts) or lags. — The S21 spike decides; fallback is Tinymist's PDF export plus reload.
+- **R2** `typst.ts` is heavy (28 MB WASM in `node_modules`, 9 MB of fonts downloaded once). — Runs in the extension host, never in a webview bundle. System fonts are not loaded: a document naming a font outside Typst's defaults falls back, unlike the Typst CLI.
 - **R3** Citation completion collides with Tinymist's or LaTeX Workshop's. — S6 orders items and the D3 notice covers LaTeX Workshop.
 - **R4** Log parsing misses error formats. — Fixture corpus from real logs; unknown errors still show the raw line.
 
@@ -287,3 +288,8 @@ typst: 0.13.1            # written on build, Typst projects only
 - 2026-10-15 20:16 — S18: `core/src/writing/latex/math/` with `mathjax-full` 3.2.2 (bundles statically; v4 loads fonts at run time). It is the `@labshelf/core/math` entry, not in the root barrel: from the root, MathJax (about 2.5 MB of CommonJS with import-time side effects) landed in every browser and webview bundle. Parse errors show TeX's message; unknown commands keep MathJax's red name, recoloured with the error token. Hover with project macros, or the file's own outside a project.
 - 2026-10-15 20:16 — S19: `core/src/writing/latex/catalog/` (about 205 commands and 50 environments from LaTeX Workshop's data; MIT notice as a `/*! */` comment in its index, kept by esbuild) and `latexEditing/commands/`. Auto-close fires on `}` and on Enter after `\begin{x}`: with VS Code's default bracket pairing, typing `}` overtypes and changes no text.
 - 2026-10-15 20:16 — S20: finish gate passes (core 2175, vscode 447); architecture.md gains the `math` entry, apps/vscode.md the editing features. The extension host confirms A8 in full (ref completion and go-to across files, the warning, nested outline, α² and ℝⁿ hovers in Dark Modern, word count, catalog, `\end` on Enter). Not checked: light theme hover colours, a run repeated after the clean one, the browser and terminal gates, the session-4 `lint:deps` item.
+- 2026-10-15 20:20 — Session 6 runs in the `labshelf-writing-core` worktree.
+- 2026-10-15 20:58 — S21: go. `typst.ts` 0.7.0 bundles Typst 0.14.2; a 10-page PDF compiles in 5–7 ms per edit (Node, warm), 74 ms cold in the extension host. The 28 MB compiler WASM embeds no fonts, so Typst's 17 default text fonts (9 MB) come from the `typst-assets` v0.14.2 tag with pinned SHA-256s. The reader is pdf.js throughout (find, selection, links, hover, outline, SyncTeX), so D12 is revised: compile to PDF in the extension host and reuse the in-place reload; no SVG layer, no page source port, no protocol change. Jest needs `--experimental-vm-modules` for typst.ts's dynamic import of its ESM compiler package.
+- 2026-10-15 20:58 — S22: `core/src/writing/typst/` (`@labshelf/core/typst`: session, pins, problems; hints dropped) and `node/` (`@labshelf/core/typst/node`: sync file access, fonts store, packages in the Typst CLI's data and cache folders with name/version checks before any path is built, `runTypstBuild` that downloads missing Universe packages and compiles once more). `latexBuildDir` became `projectBuildDir` in `project/node`. VS Code: `writing/typst/` compiles unsaved text 150 ms after typing pauses into the build-folder PDF while a preview is open; a failed live compile leaves preview and banner alone; save and Build Project write `main.pdf` too. `registerBuildCommand` dispatches by format. Typst previews answer double-click with a message instead of SyncTeX.
+- 2026-10-15 20:58 — S23: `writing/typst/tinymist/` offers Tinymist once per workspace and pins the main through the server's `tinymist.pinMain` (takes a path, writes no settings); Typst problems go to the Problems panel only without Tinymist. `typstVersionPin.ts` writes `typst:` after a successful build and warns once per project on a different recorded version.
+- 2026-10-15 20:58 — S24: finish gate passes (core 2219, vscode 497); architecture.md gains both entries, apps/vscode.md the Typst build, library-format.md the `typst:` write. The extension host confirms A9 (unsaved edits in the preview about 200 ms after the last key, scroll and webview kept, `main.pdf` unchanged until save; error unsaved keeps the last PDF, saved shows Problems and banner, fix clears), A7 for Typst, package download, the version write, the Tinymist offer and a pin without error (Tinymist 0.15.8). Not checked: that Tinymist's main actually changed, live preview beside Tinymist's diagnostics, offline font download, Windows paths, system fonts (R2).
