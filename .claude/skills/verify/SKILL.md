@@ -16,6 +16,7 @@ The recipes live in `documents/apps/`. Pick the one for the change:
 | reader UI, list panel, any VS Code webview | `documents/apps/vscode.md` → "Webview harness" |
 | browser pages, popup, Scholar button, capture | `documents/apps/browser.md` → "Headless run", or its "Chrome DevTools MCP" subsection |
 | TUI layout, keys, terminal output | `documents/apps/terminal.md` → "Verification" |
+| website sheets (text overflow at 1440/768/390, every theme) | run `node .claude/skills/verify/website-sheet-fit.mjs` outside the sandbox; prints one `OVERFLOW` line per sheet, exits 1 on any |
 
 Always:
 1. Rebuild the app first; a stale bundle shows old behavior.
