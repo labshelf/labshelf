@@ -1,6 +1,6 @@
 # Plan: Codebase reduction
 
-Status: in progress (session 4 of 6)
+Status: in progress (session 5 of 6)
 Size: GG — about 2,300 lines across core and all three apps, two contract edits (cite-key scheme, VS Code AI store) and one user-data migration (library root); grows past 6 sessions if S24's adapter fold finds callers that rely on today's divergent semantics
 Pending decisions: 0
 
@@ -122,10 +122,10 @@ Every session starts from the previous one committed on a clean tree. Every sess
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S20 | Core-domain reductions (F6, F11, F12, F25 incl. logging `http.ts` failures, F42, F51, F52, F53) | — | M · implementer (sonnet) | gate passes | [ ] |
-| S21 | Import paths (F7, F22, F35, F49, F59, F61) | S20 | H · implementer (opus) | browser capture and terminal import unchanged in verify | [ ] |
-| S22 | Platform / stdlib / one-line rungs (F5, F10, F19, F21, F30, F43, F44, F47, F50, F54, F55, F56, F58, F60, F65) | — | M · implementer (sonnet) ×2 | gate passes | [ ] |
-| S23 | Finish | S20–S22 | `finish` skill | gate passes | [ ] |
+| S20 | Core-domain reductions (F6, F11, F12, F25 incl. logging `http.ts` failures, F42, F51, F52, F53) | — | M · implementer (sonnet) | gate passes | [x] |
+| S21 | Import paths (F7, F22, F35, F49, F59, F61) | S20 | H · implementer (opus) | browser capture and terminal import unchanged in verify | [x] |
+| S22 | Platform / stdlib / one-line rungs (F5, F10, F19, F21, F30, F43, F44, F47, F50, F54, F55, F56, F58, F60, F65) | — | M · implementer (sonnet) ×2 | gate passes | [x] |
+| S23 | Finish | S20–S22 | `finish` skill | gate passes | [x] |
 
 ### Session 6 — High-risk structure and close
 
@@ -224,6 +224,10 @@ Every session starts from the previous one committed on a clean tree. Every sess
 - 2026-10-15 14:38 session 4 · S17 (sonnet): F4 ThemeManager/PdfRenderer → functions; F9 eventBus → typed `vscode.EventEmitter`s with disposal; F14 incl. require/reconfigure; F15 batched `updatePapersStatus` (one reindex); F41 one `webviewGlobals.d.ts`.
 - 2026-10-15 14:38 session 4 · S18 verify: all pass on a library copy (Settings buttons + path, tree = list incl. empty folders, folder ops, 2-paper status, reader theme, globalState-only start migrates, browser tree identical). Found: a pre-session-2 `index.sqlite` with no `indexed_papers` failed the AI service on first start — fixed with `DROP TABLE IF EXISTS` + test. The verify run's pkill also closed the user's own VS Code window.
 - 2026-10-15 14:38 session 4 · S19 finish: gate PASS (core 1810, vscode 305, browser 119, terminal 862; knip, jscpd, lint:deps, lint:dirs pass). Session net: src −505 (+443/−948), tests −435. Plan net so far: src −1,584.
+- 2026-10-15 15:31 session 5 · S20 (sonnet): one `BibliographicFields` + field lists in model/; `AbortSignal.timeout` for every deadline; FolderService → `relocatePapersUnder`/`removePapersUnder`; registry client takes `RegistryEnv` (fetch, logger, contact e-mail) and logs failures; every inline error-message copy → core `errorMessage`; `fold` everywhere; F72 swallows log; F73 title half fixed (access stamps are not title candidates), DOI half open; F75 added.
+- 2026-10-15 15:31 session 5 · S21 (opus): core `resolvePagePaper` + `findPaperPdf` + exported `writeImportedPaper` on shared `writeNewPaper` (D12); browser capture keeps only draft cache, consent split and tab fetch; terminal `add` uses core `importPaths`/`importNetworkInput` (outcomes now grouped local → skipped → network, same set); search index built into `LibraryStore`; registry env wired on network import and capture. thumbnailWorker keeps an inline error line (TRAP: core import adds ~300 KB).
+- 2026-10-15 15:31 session 5 · S22 (sonnet ×2): parseArgs, fs.cp builds, badge paints on `onStatus` (orchestrator had the spinner kept, timer only while syncing), reader on ui/dom `el`/`$`, base64 nonce, preset/CSS dedup; F30 kept (orchestrator: app-themed menu would change the reader look).
+- 2026-10-15 15:31 session 5 · S23 finish + verify: gate PASS (core 1834, vscode 305, browser 124, terminal 862; knip, lint:deps, lint:dirs pass, jscpd 1 vs baseline 9). Verify on a library copy: browser inspect/save/no-PDF dialog/library page, terminal add (path, `~/`, arXiv, DOI), frames, both readers (pill, zoom menu, sidebar, find, theme, cheatsheet) pass; badge spinner not reachable (no Drive). Session net: src −92 (+1,039/−1,131), tests +400. Plan net so far: src −1,676.
 
 ## 9. Findings
 
@@ -260,7 +264,7 @@ Ranked by lines saved × risk weight (low 3, med 2, high 1). Rung: 1 needs to ex
 | F27 | DOM page probe ≈ core parseHtmlPage, drifted | browser capture/pageProbeContentScript.ts | 2 | 45 | high | S25 |
 | F28 | SyncStatusData ≡ DriveStatus, mapping in both apps → core driveStatusOf | browser sync/browserSync.ts:47-55, runtimeMessages.ts:41-46; vscode syncController.ts:149-157 | 2 | 14 | low | S12 |
 | F29 | Folder label written 3×; browser "Library" vs core ROOT_LABEL "All Papers"; FolderOption.label read only for root | browser popup/format.ts:19-29, content/scholar.ts:125-129, handlers/library.ts:62-68 | 2 | 14 | low | S11 |
-| F30 | Zoom menu re-implements showMenu | core reader/dom/elements/popover.ts:56-81, reader.css:169-179 | 2 | 20 | med | S22 |
+| F30 | Zoom menu re-implements showMenu — KEPT (S22): showMenu is app-themed and its CSS lives in base.css, which reader pages cannot load | core reader/dom/elements/popover.ts:56-81, reader.css:169-179 | 2 | 20 | med | S22 |
 | F31 | Sidecar stats/details reads hand-written in both library hosts → core helper with load(id)+ILogger | vscode ui/list/listSnapshots.ts:27-40, list/host/paperData.ts:22-35; browser library-page/host/snapshots/sidecarReads.ts:25-59 | 2 | 20 | med | S11 |
 | F32 | Batch outcome notices (tag/move/remove, plural, tag cleaning) drifted between hosts → core notice copy | vscode ui/list/host/paperHandlers.ts:9-49; browser library-page/host/handlers/paperHandlers.ts:14-56 | 2 | 20 | med | S11 |
 | F33 | Cite-key: two schemes → makeCiteKey everywhere, trusted authors only (council) | core import/pdf/citeKey.ts, parser/parsedRecord.ts, library/identity/citeKey.ts | 2 | 20 | med | S10 |
@@ -303,5 +307,6 @@ Ranked by lines saved × risk weight (low 3, med 2, high 1). Rung: 1 needs to ex
 | F70 | VscodeFileSystem duplicates core NodeLibraryFileSystem — REJECTED: VS Code FS layer serves remote workspaces and rename uses overwrite:false | vscode storage/vscodeFileSystem.ts | 2 | 0 | high | — |
 | F71 | Silent catches outside S2's list (found by session 1's finish pass): `run.catch(() => undefined)`, broadcast and draftCache catches | browser background/handlers/library.ts:41, broadcast.ts, draftCache.ts | 2 | 0 | low | S12 |
 | F72 | Silent catches outside S2's list (found by S6): OCR `.recognize(...).catch(() => "")` and an online-record swallow | core import/pdf/parser/PdfImportParser.ts:134, onlineRecord.ts:36 | 1 | 2 | low | S20 |
-| F73 | SIAM 1986 PDF: download stamp "Downloaded 12/25/12 to …" wins the title and the printed DOI is not confirmed; the library holds it under its DOI key, so an earlier run did confirm it | core import/pdf/frontPageLayout.ts, parser/PdfImportParser.ts identify | — | — | med | S20 |
+| F73 | SIAM 1986 PDF: download stamp "Downloaded 12/25/12 to …" wins the title and the printed DOI is not confirmed; the library holds it under its DOI key, so an earlier run did confirm it | core import/pdf/frontPageLayout.ts, parser/PdfImportParser.ts identify | — | — | med | S20 (title); DOI half open — needs the real PDF and network |
 | F74 | Inline `instanceof Error ? error.message : String(error)` left outside core import/**: sync coordinator/syncRun/treeScan, textLayerVerdict, reader host and pdfLoader → core `errorMessage` (`describeError` where the stack is wanted) | core sync/**, library/mutations/textLayer, reader/** | 2 | 8 | low | S20 |
+| F75 | An all-caps byline ("HIROSHI IMAI AND TAKAO ASANO") yields no authors: `looksLikeAuthorLine` needs a mixed-case word (found by S20) | core import/pdf/frontPageLayout.ts | — | — | low | open |
