@@ -3,16 +3,17 @@
 import * as path from "node:path";
 
 import {
-  bibtexEntry,
   createFolder,
   doiLookup,
   editPaperTags,
   importNetworkInput,
   importPdf,
   METADATA_FILE,
+  joinCitations,
   moveFolder,
   movePapers,
   renameFolder,
+  resolvePaperRefs,
   setPaperStatus,
   trashFolder,
   trashPapers,
@@ -29,7 +30,6 @@ import {
   type NetworkImportEnv,
   type PaperFieldsPatch,
   type PaperRecord,
-  type PaperRef,
   type PaperStatus,
   type PdfImportParser,
   type ResolvedMetadata,
@@ -108,15 +108,13 @@ export class TerminalPaperService {
     return this.deps.store.paper(id)?.record.path;
   }
 
-  private async refs(ids: string[], rescan: boolean): Promise<{ refs: PaperRef[]; missing: BatchOutcome["failed"] }> {
-    const refs: PaperRef[] = [];
-    const missing: BatchOutcome["failed"] = [];
-    for (const id of ids) {
-      const folder = rescan ? await this.folderOf(id) : this.deps.store.paper(id)?.record.path;
-      if (folder) { refs.push({ id, path: folder }); } else { missing.push({ id, error: "Paper not found" }); }
-    }
-    return { refs, missing };
+  private refs(ids: string[]): ReturnType<typeof resolvePaperRefs> {
+    return resolvePaperRefs(ids, async (id) => {
+      const folder = await this.folderOf(id);
+      return folder ? { path: folder } : undefined;
+    });
   }
+
 
   private async finish(outcome: BatchOutcome, missing: BatchOutcome["failed"]): Promise<BatchOutcome> {
     await this.changed();
@@ -136,26 +134,26 @@ export class TerminalPaperService {
 
   /** @returns ids changed and failures */
   async setStatus(ids: string[], status: PaperStatus): Promise<BatchOutcome> {
-    const { refs, missing } = await this.refs(ids, true);
-    return this.finish(await setPaperStatus(this.ctx, refs, status), missing);
+    const { refs, failed } = await this.refs(ids);
+    return this.finish(await setPaperStatus(this.ctx, refs, status), failed);
   }
 
   /** @returns ids changed and failures */
   async editTags(ids: string[], add: string[], remove: string[]): Promise<BatchOutcome> {
-    const { refs, missing } = await this.refs(ids, true);
-    return this.finish(await editPaperTags(this.ctx, refs, add, remove), missing);
+    const { refs, failed } = await this.refs(ids);
+    return this.finish(await editPaperTags(this.ctx, refs, add, remove), failed);
   }
 
   /** @returns ids moved and failures */
   async movePapers(ids: string[], targetRel: string): Promise<BatchOutcome> {
-    const { refs, missing } = await this.refs(ids, false);
-    return this.finish(await movePapers(this.ctx, refs, this.paths.collectionDir(targetRel)), missing);
+    const { refs, failed } = await this.refs(ids);
+    return this.finish(await movePapers(this.ctx, refs, this.paths.collectionDir(targetRel)), failed);
   }
 
   /** @returns ids trashed and failures */
   async trashPapers(ids: string[]): Promise<BatchOutcome> {
-    const { refs, missing } = await this.refs(ids, false);
-    return this.finish(await trashPapers(this.ctx, refs), missing);
+    const { refs, failed } = await this.refs(ids);
+    return this.finish(await trashPapers(this.ctx, refs), failed);
   }
 
   /** @returns the new collection's path relative to papers/ */
@@ -219,6 +217,6 @@ export class TerminalPaperService {
    * @returns the entries separated by blank lines
    */
   bibtexFor(records: PaperRecord[]): string {
-    return records.map((r) => bibtexEntry(r, { includeFile: false })).join("\n\n") + "\n";
+    return joinCitations(records, "bibtex") + "\n";
   }
 }

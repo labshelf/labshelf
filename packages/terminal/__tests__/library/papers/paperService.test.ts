@@ -106,6 +106,13 @@ describe("movePapers", () => {
     const missing = await h.service.movePapers(["a"], "Nowhere");
     expect(missing.failed).toEqual([{ id: "a", error: 'The folder "Nowhere" does not exist' }]);
   });
+
+  it("finds a paper another app moved since the scan", async () => {
+    const h = await harness([{ id: "p1", collection: "ML" }], ["Bio", "Dest"]);
+    await fs.rename(h.lib.paperDir("p1", "ML"), h.lib.paperDir("p1", "Bio"));
+    expect(await h.service.movePapers(["p1"], "Dest")).toEqual({ done: ["p1"], failed: [] });
+    expect(h.store.paper("p1")!.collection).toBe("Dest");
+  });
 });
 
 describe("trashPapers", () => {
@@ -126,6 +133,13 @@ describe("trashPapers", () => {
     expect(outcome.done).toEqual(["b"]);
     expect(outcome.failed).toEqual([{ id: "ghost", error: "Paper not found" }, { id: "a", error: "trash is full" }]);
     expect(await pathExists(h.lib.paperDir("a"))).toBe(true);
+  });
+
+  it("finds a paper another app moved since the scan", async () => {
+    const h = await harness([{ id: "p1", collection: "ML" }], ["Bio"]);
+    await fs.rename(h.lib.paperDir("p1", "ML"), h.lib.paperDir("p1", "Bio"));
+    expect(await h.service.trashPapers(["p1"])).toEqual({ done: ["p1"], failed: [] });
+    expect(h.trashed).toEqual([h.lib.paperDir("p1", "Bio")]);
   });
 });
 

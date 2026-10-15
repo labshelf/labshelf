@@ -1,8 +1,8 @@
 /** Changes and reads papers already in the library: disk first through the core mutations, then the index and its events. */
 import * as vscode from "vscode";
 
-import { editPaperTags, movePapers, paperFiles, trashPapers, updatePaperFields, withResolvedMetadata, writePaperRecord } from "@labshelf/core";
-import type { BatchOutcome, LibraryStore, MoveOutcome, MutationContext, PaperFieldsPatch, PaperRecord, PaperRef, PdfParse, RecordMetadata } from "@labshelf/core";
+import { editPaperTags, movePapers, paperFiles, resolvePaperRefs, trashPapers, updatePaperFields, withResolvedMetadata, writePaperRecord } from "@labshelf/core";
+import type { BatchOutcome, LibraryStore, MoveOutcome, MutationContext, PaperFieldsPatch, PaperRecord, PdfParse, RecordMetadata } from "@labshelf/core";
 import { EVENTS, EventBus } from "../events/index.js";
 import type { ReindexSummary } from "../storage/data/index.js";
 
@@ -81,11 +81,11 @@ export class PaperService {
 
   /** Adds and removes tags on several papers. @returns the papers changed and the failures */
   async editTags(paperIds: string[], add: string[], remove: string[]): Promise<BatchOutcome> {
-    const { refs, unknown } = this.refsFor(paperIds);
-    const outcome = await editPaperTags(this.ctx, refs.map(({ paper }) => paper), add, remove);
+    const { refs, failed: unknown } = await this.refsFor(paperIds);
+    const outcome = await editPaperTags(this.ctx, refs, add, remove);
     let anyChanged = false;
     for (const written of outcome.records) {
-      const current = refs.find(({ paper }) => paper.id === written.id)?.record;
+      const current = refs.find((ref) => ref.id === written.id)?.record;
       if (current && this.resolveOwnedFields(current, written).changed) { anyChanged = true; }
     }
     // One reindex for the whole batch, not one per paper.
@@ -137,16 +137,16 @@ export class PaperService {
 
   /** Sends paper folders to the trash; a paper whose trash fails stays in the index. @returns what was trashed and the failures */
   async trashPapers(paperIds: string[]): Promise<BatchOutcome> {
-    const { refs, unknown } = this.refsFor(paperIds);
-    const outcome = await trashPapers(this.ctx, refs.map(({ paper }) => paper));
+    const { refs, failed: unknown } = await this.refsFor(paperIds);
+    const outcome = await trashPapers(this.ctx, refs);
     if (outcome.done.length > 0) { await this.reindex(); }
     return { done: outcome.done, failed: [...unknown, ...outcome.failed] };
   }
 
   /** Moves paper folders into targetDir and re-points their records. @returns the moves made and the failures */
   async movePapers(paperIds: string[], targetDir: string): Promise<MoveOutcome> {
-    const { refs, unknown } = this.refsFor(paperIds);
-    const outcome = await movePapers(this.ctx, refs.map(({ paper }) => paper), targetDir);
+    const { refs, failed: unknown } = await this.refsFor(paperIds);
+    const outcome = await movePapers(this.ctx, refs, targetDir);
     if (outcome.moves.length > 0) { await this.reindex(); }
     return { ...outcome, failed: [...unknown, ...outcome.failed] };
   }
@@ -184,16 +184,11 @@ export class PaperService {
     return { next, changed: !same };
   }
 
-  private refsFor(paperIds: string[]): {
-    refs: Array<{ paper: PaperRef; record: PaperRecord }>;
-    unknown: Array<{ id: string; error: string }>;
-  } {
-    const refs: Array<{ paper: PaperRef; record: PaperRecord }> = [];
-    const unknown: Array<{ id: string; error: string }> = [];
-    for (const id of paperIds) {
+  private refsFor(paperIds: string[]): ReturnType<typeof resolvePaperRefs> {
+    return resolvePaperRefs(paperIds, async (id) => {
       const record = this.store.snapshot.papers.get(id)?.record;
-      if (record) { refs.push({ paper: { id, path: record.path }, record }); } else { unknown.push({ id, error: "Paper not found" }); }
-    }
-    return { refs, unknown };
+      return record && { path: record.path, record };
+    });
   }
+
 }
