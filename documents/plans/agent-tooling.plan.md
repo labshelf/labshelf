@@ -1,6 +1,6 @@
 # Plan: Agent tooling, comment standard and codebase reduction
 
-Status: in progress (session 1 of 8)
+Status: in progress (session 2 of 8)
 Size: GG — 8 sessions across rules, hooks, agents, skills, docs, every source file and a repo-wide audit; the reduction work it finds runs as its own plan
 Pending decisions: 0
 
@@ -37,11 +37,11 @@ Resolved:
 
 ## 4. Acceptance criteria
 
-- [ ] **A1** `check-rules.sh`, fed a diff adding `@ts-ignore`, `.skip(`, an empty `catch {}`, a deleted test file or a `CONTRACT:` with a missing anchor, prints one line per issue; a clean diff prints nothing.
-- [ ] **A2** `git push` and `git reset --hard` run by the agent are blocked by the guardrails hook with a reason.
-- [ ] **A3** `pnpm knip` and `pnpm jscpd` run inside `check` and `health` against committed baselines; a fresh duplicate block or unused export fails the gate.
-- [ ] **A4** The Edit hook, given a sample payload for a file with a `TRAP:` line and a memory naming that path, injects both in ≤10 lines; for other files it prints nothing.
-- [ ] **A5** Session start prints `STALE?: <memory> -> <path>` for a memory that names a missing path, and nothing when memory is clean.
+- [x] **A1** `check-rules.sh`, fed a diff adding `@ts-ignore`, `.skip(`, an empty `catch {}`, a deleted test file or a `CONTRACT:` with a missing anchor, prints one line per issue; a clean diff prints nothing.
+- [x] **A2** `git push` and `git reset --hard` run by the agent are blocked by the guardrails hook with a reason.
+- [x] **A3** `pnpm knip` and `pnpm jscpd` run inside `check` and `health` against committed baselines; a fresh duplicate block or unused export fails the gate.
+- [x] **A4** The Edit hook, given a sample payload for a file with a `TRAP:` line and a memory naming that path, injects both in ≤10 lines; for other files it prints nothing.
+- [x] **A5** Session start prints `STALE?: <memory> -> <path>` for a memory that names a missing path, and nothing when memory is clean.
 - [ ] **A6** Every agent file states its model and a return format of ≤40 lines; `orchestrate` states the routing rule and the escalation rule of D5.
 - [ ] **A7** A dry run of `/brainstorm` in grill mode on a sample idea asks numbered frontier questions, each with a recommendation, and sends fact questions to a scout.
 - [ ] **A8** `/council` on a sample fork runs two rounds and a judge; the main thread receives ≤2k tokens.
@@ -90,11 +90,11 @@ Resolved:
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S5 | Diff guards + tag/header lint in `check-rules.sh` | S2 | M · implementer (sonnet) | A1 | [ ] |
-| S6 | `git-guardrails.sh` wired in settings | — | M · implementer (sonnet) | A2 | [ ] |
-| S7 | knip config + jscpd + baselines; wire into `check`/`health` | — | M · implementer (sonnet) | A3 | [ ] |
-| S8 | `edit-context.sh`, memory lint, PreCompact reminder | S2 | M · implementer (sonnet) | A4, A5 | [ ] |
-| S9 | Finish | S5–S8 | `finish` skill | gate passes | [ ] |
+| S5 | Diff guards + tag/header lint in `check-rules.sh` | S2 | M · implementer (sonnet) | A1 | [x] |
+| S6 | `git-guardrails.sh` wired in settings | — | M · implementer (sonnet) | A2 | [x] |
+| S7 | knip config + jscpd + baselines; wire into `check`/`health` | — | M · implementer (sonnet) | A3 | [x] |
+| S8 | `edit-context.sh`, memory lint, PreCompact reminder | S2 | M · implementer (sonnet) | A4, A5 | [x] |
+| S9 | Finish | S5–S8 | `finish` skill | gate passes | [x] |
 
 ### Session 3 — Agents
 
@@ -277,3 +277,4 @@ Resolved:
 ## 8. Log
 
 - 2026-10-14: Session 1 done. All D1–D14 approved, Q1 resolved as participant. S1 (ladder + never-cut in AGENTS.md §3, no-speculation + no-small-deps in §4, "what was not checked" in §6), S2 (header-line-1 and four-tag comment standard in AGENTS.md §5), S3 (CLAUDE.md "Division of labour" table replaced with the D5 routing rule and escalation rule) done. `finish` gate: PASS. Committed.
+- 2026-10-14 (session 2): S5 (check-rules.sh gained 7 new diff guards — ts-ignore/eslint-disable/skip/empty-catch via now-vs-HEAD counts, deleted-test-file and CONTRACT-anchor checks, new-file-header check; fixture test `check-rules.test.sh`, 12/12 pass) done. S6 (`git-guardrails.sh`, PreToolUse on Bash, unconditionally blocks git push/reset --hard/clean -f/branch -D/checkout ., wired in settings.json) done. S7 (jscpd added alongside the already-installed knip; both turned into a ratchet gate against committed baselines — `scripts/knip-baseline.json` (79), `scripts/jscpd-baseline.json` (9) — wired into root `knip`/`jscpd` scripts and into `check`/`health` SKILL.md; regression simulated and reverted for both, confirming the gate fails) done. S8 (`edit-context.sh`, PreToolUse on Edit/Write, injects TRAP/INVARIANT/PLATFORM/CONTRACT lines + up to 3 matching memory titles, deduped per session via `/tmp` marker; memory lint added to `session-context.sh`, printing `STALE?:` for missing memory files or broken repo paths) done. `finish` surfaced two real deviations, fixed in this session: (1) the real memory index had two genuinely stale paths (`packages/reader`, old browser `tokens.css` location) from the architecture-refactor's phases 8-9 landing — updated `shared-reader-package.md` and `browser-extension-vscode-parity.md` to the current `packages/core/src/reader` / `packages/core/src/ui/dom/tokens.css` layout; (2) the memory-lint heuristic flagged ~15 false positives from pre-existing memory files' relative path shorthand — tightened it to only check tokens rooted at a real top-level directory (`packages/`, `documents/`, `scripts/`, etc.), verified it still catches a genuinely broken path via an isolated fixture; (3) `package.json` had `lint:unused`/`knip` and `lint:dup`/`jscpd` as duplicate names for the same script (AGENTS.md §4) — collapsed `lint` to call `knip`/`jscpd` directly. Deviation: unrelated, pre-existing uncommitted work in `packages/terminal` (a different in-progress task) triggered the new deleted-test-file check as expected noise — left untouched, out of scope for this session. `finish` gate (session-2 files only): PASS. A1–A5 all verified and ticked.
