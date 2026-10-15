@@ -30,6 +30,10 @@ pnpm dev:vscode                        # watches the host and the webview bundle
 - The **Writing** view in the activity bar lists the projects of the library and the external folders added on this device ([contract](../contracts/library-format.md)). **New Project** creates one in the library; **Add Existing Folder as Project** registers any folder; **Remove Project from LabShelf** never deletes files.
 - The extension activates on a folder with `labshelf.yaml` and on LaTeX and Typst files. In a project's sources, citation keys complete from the library, show the paper on hover, and open it in the reader on Ctrl+click. `labshelf.bib` is regenerated from the keys the sources cite ([contract](../contracts/library-format.md#labshelfbib)).
 - The main document is chosen with **Set as Main Document** (explorer context menu on `.tex` and `.typ` files) or from the status bar item. The item appears on the left while the active editor's file belongs to a project, shows the main file, and opens a quick pick on click.
+- **Research: Build Project** compiles the active LaTeX project, and every save of one of its sources builds it too. A newer request cancels the running compile and queues one fresh build. Errors, warnings and bad boxes appear in the Problems panel in plain language, located in the source file and line, and the next build of the project replaces them.
+- Build output goes to `<cache>/labshelf/builds/<project id>/`, so the project folder holds no auxiliary files. The PDF is copied next to the main file only when the build succeeds.
+- The compiler item in the status bar and **Research: Choose LaTeX Compiler** pick the engine (`tectonic`, `xelatex`, `pdflatex` or `lualatex`), stored in `labshelf.yaml` ([contract](../contracts/library-format.md#labshelfyaml)). The first build offers an installed TeX Live and otherwise Tectonic. Tectonic 0.17.0 is pinned: after consent it is downloaded, checked against its SHA-256 and installed under the extension's `globalStorage`.
+- When LaTeX Workshop is installed, a one-time notice per workspace says it builds on save too and offers to turn that off.
 
 ## Adding papers
 
