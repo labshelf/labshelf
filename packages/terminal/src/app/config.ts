@@ -4,12 +4,18 @@
  */
 import * as path from "node:path";
 
-import type { SharedConfig } from "@labshelf/core";
+import type { SharedConfig, SortSpec } from "@labshelf/core";
 import { loadSharedConfig } from "@labshelf/core/node";
 
 import { expandHome } from "../platform/index.js";
 
-export type SortKey = "title" | "year" | "author" | "status" | "modified";
+/** The sort keys the terminal offers, a subset of the core ones. */
+export const SORT_KEYS = ["title", "year", "author", "status", "modified"] as const satisfies readonly SortSpec["key"][];
+export type SortKey = (typeof SORT_KEYS)[number];
+
+export function isSortKey(value: string): value is SortKey {
+  return (SORT_KEYS as readonly string[]).includes(value);
+}
 
 interface TerminalPreferences {
   /** Command used to open PDFs instead of the system default, e.g. "zathura" or "open -a Skim". */

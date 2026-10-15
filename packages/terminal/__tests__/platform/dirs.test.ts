@@ -14,5 +14,6 @@ describe("cache directory and home expansion", () => {
     expect(expandHome("/abs/~/papers")).toBe("/abs/~/papers");
     expect(expandHome("~other/x")).toBe("~other/x");
     expect(expandHome("relative/path")).toBe("relative/path");
+    expect(expandHome("~/")).toBe(`${os.homedir()}/`);
   });
 });

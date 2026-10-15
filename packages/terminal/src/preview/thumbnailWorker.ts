@@ -30,6 +30,7 @@ async function render(pdfPath: string, widthPx: number): Promise<Uint8Array> {
 }
 
 const { pdfPath, widthPx } = workerData as { pdfPath: string; widthPx: number };
+// TRAP: importing errorMessage from @labshelf/core here would bundle about 300 KB into the worker.
 render(pdfPath, widthPx).then(
   (png) => parentPort?.postMessage({ png }, [png.buffer as ArrayBuffer]),
   (error: unknown) => parentPort?.postMessage({ error: error instanceof Error ? error.message : String(error) }),

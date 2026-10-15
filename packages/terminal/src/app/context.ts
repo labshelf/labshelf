@@ -2,16 +2,16 @@
 // INVARIANT: the TUI and the CLI both start here; nothing else instantiates adapters.
 import * as path from "node:path";
 
-import { BibTeXService, Logger, PdfImportParser, type ILogger, type LibraryStore, type SyncCoordinator } from "@labshelf/core";
+import { BUILT_IN_GOOGLE_CLIENT, BibTeXService, Logger, PdfImportParser, errorMessage, resolveOAuthClient, type ILogger, type LibraryStore, type SyncCoordinator } from "@labshelf/core";
 import { FileLogSink, NodeFileSystem, NodePdfOpener, createPdfjsLoader } from "@labshelf/core/node";
 
 import type { TerminalConfig } from "./config.js";
 import {
-  LibraryRoot, LibraryWatcher, PaperSearchIndex, SidecarReader, TerminalPaperService, createLibraryStore, ensureLibraryStructure,
+  LibraryRoot, LibraryWatcher, SidecarReader, TerminalPaperService, createLibraryStore, ensureLibraryStructure,
 } from "../library/index.js";
 import { cacheDir, moveToTrash, openExternal } from "../platform/index.js";
 import { defaultRenderer, ThumbnailService } from "../preview/index.js";
-import { createTerminalAuth, createTerminalSync, createTokenStore, DriveAccount, resolveTerminalOAuthClient } from "../sync/index.js";
+import { createDriveAccount, createTerminalAuth, createTerminalSync, createTokenStore, type DriveAccount } from "../sync/index.js";
 import { detectImageProtocol, type ImageProtocol } from "../tui/index.js";
 
 export interface AppContext {
@@ -20,7 +20,6 @@ export interface AppContext {
   logger: ILogger;
   store: LibraryStore;
   /** The terminal's query language over the store; it also holds the annotation text that searches see. */
-  search: PaperSearchIndex;
   papers: TerminalPaperService;
   sidecars: SidecarReader;
   sync: SyncCoordinator;
@@ -44,12 +43,12 @@ export interface OpenOptions {
 }
 
 async function openSync(paths: LibraryRoot, store: LibraryStore, logger: ILogger, env: NodeJS.ProcessEnv) {
-  const auth = createTerminalAuth(resolveTerminalOAuthClient(env), createTokenStore(env), logger, {
+  const auth = createTerminalAuth(resolveOAuthClient(env, BUILT_IN_GOOGLE_CLIENT), createTokenStore(env), logger, {
     openBrowser: (url) => openExternal(url),
   });
   const sync = createTerminalSync({ paths, auth, store, logger });
   await sync.init();
-  return { sync, drive: new DriveAccount(auth, sync, logger) };
+  return { sync, drive: createDriveAccount(auth, sync, logger) };
 }
 
 function createPaperService(paths: LibraryRoot, store: LibraryStore, logger: ILogger, sync: SyncCoordinator): TerminalPaperService {
@@ -98,8 +97,7 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
   await ensureLibraryStructure(paths);
   // The TUI owns the terminal, so the log file is the only channel and there is nowhere else to report a failure.
   const logger = new Logger([new FileLogSink(paths.layout.terminalLogPath())], { onSinkError: () => undefined });
-  const search = new PaperSearchIndex();
-  const store = createLibraryStore(paths, logger, search);
+  const store = createLibraryStore(paths, logger);
   await store.reload();
 
   const { sync, drive } = await openSync(paths, store, logger, env);
@@ -111,7 +109,10 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
 
   // Highlights and notes become searchable; refreshed in the background whenever the library changes.
   const indexAnnotations = (): Promise<void> =>
-    sidecars.annotationIndex(store.snapshot.papers.keys()).then((index) => search.setAnnotationText(index), () => undefined);
+    sidecars.annotationIndex(store.snapshot.papers.keys()).then(
+      (index) => store.setAnnotationText(index),
+      (error: unknown) => logger.log("WARN", "terminal/app", "Annotation text not indexed for search", { message: errorMessage(error) }),
+    );
   const annotationsReady = indexAnnotations();
 
   const watcher = options.watch ? startWatcher(paths, store, sync, logger, indexAnnotations) : undefined;
@@ -125,7 +126,6 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
     config: options.config,
     logger,
     store,
-    search,
     papers,
     sidecars,
     sync,

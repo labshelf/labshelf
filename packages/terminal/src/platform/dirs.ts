@@ -15,11 +15,9 @@ export function cacheDir(env: NodeJS.ProcessEnv = process.env): string {
 }
 
 /**
- * Expands a leading ~ to the home directory.
+ * Expands a leading ~ to the home directory and leaves the rest as typed, so a trailing slash survives for completion.
  * @returns the expanded path
  */
 export function expandHome(p: string): string {
-  if (p === "~") { return os.homedir(); }
-  if (p.startsWith("~/")) { return path.join(os.homedir(), p.slice(2)); }
-  return p;
+  return p.replace(/^~(?=$|\/)/, os.homedir());
 }

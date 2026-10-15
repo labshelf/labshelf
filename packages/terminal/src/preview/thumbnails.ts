@@ -6,7 +6,7 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 import { Worker } from "node:worker_threads";
 
-import type { ILogger } from "@labshelf/core";
+import { errorMessage, type ILogger } from "@labshelf/core";
 
 import { hasCommand } from "../platform/index.js";
 
@@ -123,7 +123,7 @@ export class ThumbnailService {
         } catch (error) {
           this.failed.add(key);
           await this.logger?.log("WARN", "terminal/thumbnails", "Thumbnail render failed", {
-            pdfPath: request.pdfPath, message: error instanceof Error ? error.message : String(error),
+            pdfPath: request.pdfPath, message: errorMessage(error),
           });
           return undefined;
         }

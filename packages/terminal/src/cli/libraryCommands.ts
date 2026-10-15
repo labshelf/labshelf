@@ -7,8 +7,7 @@ import {
   formatBytes, paperComparator, paperFiles, paperLink, papersUnder, venueLine, type PaperEntry, type PaperRecord, type PaperStatus, type SortSpec,
 } from "@labshelf/core";
 
-import type { TerminalConfig } from "../app/index.js";
-import type { AppContext } from "../app/index.js";
+import { isSortKey, type AppContext, type TerminalConfig } from "../app/index.js";
 import { copyToClipboard, openExternal } from "../platform/index.js";
 import { fit, stringWidth } from "../tui/index.js";
 import { STATUS_GLYPH } from "../ui/index.js";
@@ -22,7 +21,7 @@ function sortSpec(flags: ParsedArgs["flags"], config: TerminalConfig): SortSpec 
   const raw = stringFlag(flags, "sort") ?? config.terminal?.sort ?? "title";
   const reverse = raw.endsWith("!") || flags["reverse"] === true;
   const key = raw.replace(/!$/, "");
-  return { key: (["title", "year", "author", "status", "modified"].includes(key) ? key : "title") as SortSpec["key"], reverse };
+  return { key: isSortKey(key) ? key : "title", reverse };
 }
 
 function asJson(entry: PaperEntry): Record<string, unknown> {
@@ -167,14 +166,19 @@ async function runOpen(ctx: AppContext, positionals: string[], io: Output): Prom
   return 0;
 }
 
+/** Prints each failed id and @returns the exit code: 1 when any failed. */
+function reportFailures(failed: ReadonlyArray<{ id: string; error: string }>, io: Output): number {
+  for (const failure of failed) { io.err(`${failure.id}: ${failure.error}`); }
+  return failed.length ? 1 : 0;
+}
+
 async function runStatus(ctx: AppContext, positionals: string[], io: Output): Promise<number> {
   const word = positionals[positionals.length - 1] ?? "";
   const status = STATUS_WORDS[word.toLowerCase()];
   if (!status || positionals.length < 2) { throw new UsageError("Usage: labshelf status <id…> <unread|reading|done>"); }
   const ids = positionals.slice(0, -1).map((id) => requirePaper(ctx, id).record.id);
   const outcome = await ctx.papers.setStatus(ids, status);
-  for (const failure of outcome.failed) { io.err(`${failure.id}: ${failure.error}`); }
-  return outcome.failed.length ? 1 : 0;
+  return reportFailures(outcome.failed, io);
 }
 
 async function runTag(ctx: AppContext, positionals: string[], io: Output): Promise<number> {
@@ -186,8 +190,7 @@ async function runTag(ctx: AppContext, positionals: string[], io: Output): Promi
   }
   if (!ids.length || (!add.length && !remove.length)) { throw new UsageError("Usage: labshelf tag <id…> +tag -tag"); }
   const outcome = await ctx.papers.editTags(ids, add, remove);
-  for (const failure of outcome.failed) { io.err(`${failure.id}: ${failure.error}`); }
-  return outcome.failed.length ? 1 : 0;
+  return reportFailures(outcome.failed, io);
 }
 
 async function runMv(ctx: AppContext, positionals: string[], io: Output): Promise<number> {
@@ -195,8 +198,7 @@ async function runMv(ctx: AppContext, positionals: string[], io: Output): Promis
   const target = requireCollection(ctx, positionals[positionals.length - 1]);
   const ids = positionals.slice(0, -1).map((id) => requirePaper(ctx, id).record.id);
   const outcome = await ctx.papers.movePapers(ids, target);
-  for (const failure of outcome.failed) { io.err(`${failure.id}: ${failure.error}`); }
-  return outcome.failed.length ? 1 : 0;
+  return reportFailures(outcome.failed, io);
 }
 
 async function runCopy(ctx: AppContext, positionals: string[], io: Output): Promise<number> {

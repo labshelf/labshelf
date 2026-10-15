@@ -1,7 +1,7 @@
 // Builds the preview pane content as styled lines: a paper's tabs or a summary of the hovered folder.
 // Pure functions of the snapshot and the sidecar, so tests render them without a terminal.
 import {
-  type Annotation, type CollectionNode, type LibrarySnapshot, type PaperEntry, type PaperRecord, cleanQuote, formatAuthors, formatBytes, textLayerSummary, venueLine, type PaperData,
+  type Annotation, type CollectionNode, type LibrarySnapshot, type PaperEntry, type PaperRecord, cleanQuote, formatAuthors, formatBytes, papersUnder, textLayerSummary, venueLine, type PaperData,
 } from "@labshelf/core";
 
 import type { Style } from "../tui/index.js";
@@ -161,6 +161,12 @@ export function tabBar(active: PreviewTab, annotationCount: number): Line {
   return line;
 }
 
+function countByStatus(entries: Iterable<PaperEntry>): Record<PaperRecord["status"], number> {
+  const counts = { unread: 0, reading: 0, done: 0 };
+  for (const { record } of entries) { counts[record.status]++; }
+  return counts;
+}
+
 /**
  * Preview of a hovered folder: how many papers it holds by status, its subfolders, and its papers.
  * @returns the lines
@@ -181,10 +187,7 @@ export function folderPreview(
     { text: `${total} paper${total === 1 ? "" : "s"}`, style: theme.dim },
     { text: subs ? ` · ${subs} subfolder${subs === 1 ? "" : "s"}` : "", style: theme.dim },
   ]);
-  const counts = { unread: 0, reading: 0, done: 0 };
-  const scope = options.directOnly ? papers : [...snapshot.papers.values()].filter((entry) =>
-    !node.rel || entry.collection === node.rel || entry.collection.startsWith(node.rel + "/"));
-  for (const entry of scope) { counts[entry.record.status]++; }
+  const counts = countByStatus(options.directOnly ? papers : papersUnder(snapshot, node.rel));
   if (total) {
     lines.push([
       { text: `${STATUS_GLYPH.reading} ${counts.reading} reading  `, style: theme.status.reading },
@@ -214,12 +217,8 @@ export function folderPreview(
  * @returns the lines
  */
 export function libraryOverview(snapshot: LibrarySnapshot): Line[] {
-  const counts = { unread: 0, reading: 0, done: 0 };
-  let withPdf = 0;
-  for (const { record } of snapshot.papers.values()) {
-    counts[record.status]++;
-    if (record.hasPdf !== false) { withPdf++; }
-  }
+  const counts = countByStatus(snapshot.papers.values());
+  const withPdf = [...snapshot.papers.values()].filter(({ record }) => record.hasPdf !== false).length;
   const lines: Line[] = [
     [{ text: "Library", style: theme.bold }],
     [{ text: `${snapshot.papers.size} papers`, style: theme.dim }],

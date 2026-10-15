@@ -2,11 +2,11 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { libraryLayout, readSyncRunRecord, relativeTime } from "@labshelf/core";
+import { BUILT_IN_GOOGLE_CLIENT, libraryLayout, readSyncRunRecord, relativeTime, resolveOAuthClient } from "@labshelf/core";
 
 import type { TerminalConfig } from "../app/index.js";
 import { hasCommand } from "../platform/index.js";
-import { createTokenStore, resolveTerminalOAuthClient } from "../sync/index.js";
+import { createTokenStore } from "../sync/index.js";
 import { detectImageProtocol } from "../tui/index.js";
 import { NodeLocalFileSystem, sharedConfigDir, sharedConfigPath } from "@labshelf/core/node";
 import type { Output } from "./usage.js";
@@ -36,7 +36,7 @@ export async function runDoctor(root: string | undefined, rootSource: string, co
     const last = await readSyncRunRecord(new NodeLocalFileSystem(), layout.lastRunPath());
     line(last ? true : "warn", "last sync", last ? `${relativeTime(last.finishedAt) || "never"} by ${last.app}` : "never (by an app that records it)");
   }
-  const client = resolveTerminalOAuthClient();
+  const client = resolveOAuthClient(process.env, BUILT_IN_GOOGLE_CLIENT);
   line(client ? true : "warn", "drive client", client ? `configured (${client.clientId.slice(0, 12)}…)` : "missing: set up credentials/google-desktop.json and rebuild, or set LABSHELF_GOOGLE_CLIENT_ID/SECRET to a client of the same Google Cloud project");
   const store = createTokenStore();
   const tokens = await store.load().catch(() => null);

@@ -4,7 +4,6 @@ import type { PkceLoopbackAuth } from "@labshelf/core/node";
 import { MemoryTokenStore } from "@labshelf/core/test-support/sync-fakes";
 
 import { createLibraryStore } from "../../src/library/libraryModel";
-import { PaperSearchIndex } from "../../src/library/paperSearchIndex";
 import { createTerminalAuth, createTerminalSync } from "../../src/sync/index";
 import { FakeRemoteProvider } from "./fakeRemote";
 import { createTempLibrary, type PaperFixture, type TempLibrary } from "./library";
@@ -40,7 +39,7 @@ export interface DeviceOptions {
 export async function device(options: DeviceOptions = {}): Promise<Device> {
   const lib = await createTempLibrary(options.papers ?? []);
   await options.prepare?.(lib);
-  const store = createLibraryStore(lib.paths, SILENT_LOGGER, new PaperSearchIndex());
+  const store = createLibraryStore(lib.paths, SILENT_LOGGER);
   await store.reload();
   const tokens = options.tokens ?? new MemoryTokenStore(VALID_TOKENS());
   const noNetwork = (async () => { throw new Error("unexpected network call from the auth layer"); }) as typeof fetch;

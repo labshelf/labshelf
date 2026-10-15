@@ -102,6 +102,17 @@ describe("parseArgs", () => {
     expect(parseArgs(["tag", "vaswani2017attention", "+nlp", "-survey"]).positionals).toEqual(["vaswani2017attention", "+nlp", "-survey"]);
   });
 
+  it("keeps unknown long flags: boolean alone, string with =", () => {
+    expect(parseArgs(["ls", "--all", "--foo=bar"])).toEqual({ command: "ls", positionals: [], flags: { all: true, foo: "bar" } });
+  });
+
+  it("keeps a grouped or attached short argument as a positional and leaves its neighbours alone", () => {
+    expect(parseArgs(["tag", "p1", "-rv", "+b"]).positionals).toEqual(["p1", "-rv", "+b"]);
+    expect(parseArgs(["tag", "p1", "-rv"]).flags).toEqual({});
+    expect(parseArgs(["ls", "-L/lib"])).toEqual({ command: "ls", positionals: ["-L/lib"], flags: {} });
+    expect(parseArgs(["ls", "-rL", "/lib"])).toEqual({ command: "ls", positionals: ["-rL", "/lib"], flags: {} });
+  });
+
   it("lets the last occurrence of a repeated flag win", () => {
     expect(parseArgs(["--to", "A", "--to", "B"]).flags).toEqual({ to: "B" });
   });

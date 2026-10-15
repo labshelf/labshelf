@@ -14,7 +14,6 @@ import {
 import { NodeFileSystem } from "@labshelf/core/node";
 
 import { createLibraryStore } from "../../src/library/libraryModel";
-import { PaperSearchIndex } from "../../src/library/paperSearchIndex";
 import { TerminalPaperService } from "../../src/library/papers/paperService";
 import {
   createTempLibrary,
@@ -60,7 +59,7 @@ export interface Harness {
 export async function harness(papers: PaperFixture[] = [], collections: string[] = []): Promise<Harness> {
   const lib = await createTempLibrary(papers);
   for (const rel of collections) { await lib.addCollection(rel); }
-  const store = createLibraryStore(lib.paths, { log: async () => undefined, error: async () => undefined }, new PaperSearchIndex());
+  const store = createLibraryStore(lib.paths, { log: async () => undefined, error: async () => undefined });
   await store.reload();
   const trashDir = await makeTempDir("labshelf-trash-");
   const inbox = await makeTempDir("labshelf-inbox-");
