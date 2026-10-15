@@ -4,6 +4,7 @@
 export const PAPERS_DIR = "papers";
 export const RESEARCH_DIR = ".research";
 export const APPDATA_DIR = "appdata";
+export const PROJECTS_DIR = "projects";
 
 export const PDF_FILE = "paper.pdf";
 export const METADATA_FILE = "metadata.yaml";
@@ -15,6 +16,7 @@ export const SIDECAR_FILE = "data.json";
 export const AI_DATABASE_FILE = "index.sqlite";
 export const APP_LOG_FILE = "app.log";
 export const TERMINAL_LOG_FILE = "terminal.log";
+export const PROJECT_REGISTRY_FILE = "projects.json";
 
 export const SYNC_PROVIDER_ID = "google-drive";
 
@@ -28,6 +30,10 @@ export function joinWith(sep: "/" | "\\"): Join<string> {
 export interface LibraryLayout<T> {
   readonly root: T;
   papersRoot(): T;
+  /** Writing projects created by LabShelf, one folder each. */
+  projectsRoot(): T;
+  /** Device-local list of project folders that live outside the library. */
+  projectRegistryPath(): T;
   researchRoot(): T;
   logsDir(): T;
   appLogPath(): T;
@@ -57,6 +63,8 @@ export function libraryLayout<T>(root: T, join: Join<T>): LibraryLayout<T> {
   return {
     root,
     papersRoot: () => join(root, PAPERS_DIR),
+    projectsRoot: () => join(root, PROJECTS_DIR),
+    projectRegistryPath: () => join(research(), PROJECT_REGISTRY_FILE),
     researchRoot: research,
     logsDir,
     appLogPath: () => join(logsDir(), APP_LOG_FILE),
