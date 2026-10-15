@@ -4,7 +4,7 @@ export { LibraryRootController, SyncControllerLifecycle, ExternalChangeHandling 
 export {
   registerLibraryTreeView,
   registerLibraryCommands,
-  registerSettingsView,
+  registerSettingsWelcomeView,
   registerPanelCommands,
   registerSyncCommands,
 } from "./registration/index.js";

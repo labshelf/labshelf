@@ -256,7 +256,21 @@
       },
       {
         "view": "labshelf.settings",
-        "contents": "Library, Drive sync, preferences.\n[Open settings](command:labshelf.openSettings)"
+        "contents": "Library, Drive sync, preferences.\n[Change library folder](command:labshelf.configureLibrary)"
+      },
+      {
+        "view": "labshelf.settings",
+        "contents": "[Connect to Google Drive](command:labshelf.sync.connect)",
+        "when": "!labshelf.driveConnected"
+      },
+      {
+        "view": "labshelf.settings",
+        "contents": "[Sync now](command:labshelf.sync.now)\n[Disconnect from Google Drive](command:labshelf.sync.disconnect)",
+        "when": "labshelf.driveConnected"
+      },
+      {
+        "view": "labshelf.settings",
+        "contents": "Sync interval and AI options live in the VS Code settings.\n[Open settings](command:labshelf.openSettings)"
       }
     ],
     "menus": {

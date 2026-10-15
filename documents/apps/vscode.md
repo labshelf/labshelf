@@ -14,7 +14,7 @@ The full LabShelf workspace inside VS Code:
 ## Build and run
 
 ```bash
-pnpm --filter @labshelf/vscode build   # host → out/extension.js, reader → dist/reader/, list → dist/library/, settings → dist/settings/
+pnpm --filter @labshelf/vscode build   # host → out/extension.js, reader → dist/reader/, list → dist/library/
 pnpm dev:vscode                        # watches the host and the webview bundles
 ```
 
@@ -53,7 +53,7 @@ To test scans, render a real paper's pages to PNG and rebuild an image-only PDF 
 
 ## Webview harness
 
-Webview UI (the reader, the list panel and the settings page) can only be verified in a real browser:
+Webview UI (the reader and the list panel) can only be verified in a real browser:
 
 1. Stub `vscode` through `Module._load`, and bundle and call the HTML builders (the reader shell renderer, the list panel shell) to get the real HTML.
 2. Map `asWebviewUri` to a local static server that serves the repository and `pdfjs-dist`.

@@ -1,5 +1,5 @@
 /**
- * Provides the icon every LabShelf editor tab carries (list, reader, settings): the extension's ">" mark in blue.
+ * Provides the icon every LabShelf editor tab carries (list, reader): the extension's ">" mark in blue.
  * PLATFORM: webview tabs take no ThemeIcon or currentColor, so the colour is baked into a light and a dark SVG.
  */
 import * as vscode from 'vscode';

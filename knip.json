@@ -28,7 +28,6 @@
       "entry": [
         "src/extension.ts",
         "src/reader/main.ts",
-        "src/ui/settings/webview/main.ts",
         "src/libraryWebview/main.ts",
         "build/*.mjs",
         "__tests__/**/*.ts"
