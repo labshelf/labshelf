@@ -27,6 +27,21 @@ describe("summarizeAttempts", () => {
     expect(summarizeAttempts([attempt()]).access).toBeUndefined();
   });
 
+  it("prefers the library proxy's sign-in page over an earlier publisher wall", () => {
+    const proxyLogin = "https://login.ezproxy.uni.edu/login?url=x";
+    const attempts = [
+      attempt({ url: "https://pub.example/pdf/1", outcome: "login" }),
+      attempt({ url: "https://pub.example/pdf/2", outcome: "bot", status: 403 }),
+      attempt({ url: proxyLogin, outcome: "login", proxy: "Uni library" }),
+    ];
+    expect(summarizeAttempts(attempts).access).toEqual({ kind: "login", url: proxyLogin });
+  });
+
+  it("falls back to the first wall when a proxy attempt did not reach a sign-in page", () => {
+    const attempts = [attempt({ url: "https://pub.example/pdf/1", outcome: "bot", status: 403 }), attempt({ outcome: "html", proxy: "Uni library" })];
+    expect(summarizeAttempts(attempts).access).toEqual({ kind: "bot", url: "https://pub.example/pdf/1" });
+  });
+
   it("sets needsLogin when any attempt ended in a login or paywall page", () => {
     expect(summarizeAttempts([attempt({ outcome: "login", status: 401 }), attempt({ url: "https://b.example/p.pdf" })]))
       .toMatchObject({ blocked: false, needsLogin: true });

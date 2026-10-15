@@ -97,7 +97,7 @@ export function findPdf(log: ILogger, draft: CaptureDraft): Promise<ResolvedPdf 
   draft.pdf ??= (async () => {
     const settings = await getSettings();
     return findPaperPdf(
-      { ...draft.fetchOpts, credentials: "include", logger: log, viaHelperTab: (urls, signal) => fetchViaHelperTab(log, urls, signal) },
+      { ...draft.fetchOpts, credentials: "include", logger: log, proxies: settings.proxies, viaHelperTab: (urls, signal) => fetchViaHelperTab(log, urls, signal) },
       {
         ids: draft.ids,
         metadata: draft.metadata,
@@ -141,11 +141,13 @@ async function saveDraft(log: ILogger, mutations: LibraryMutations, draft: Captu
 }
 
 /**
- * Pure summary of what a failed search tried, for the "No PDF found" dialog. Its access page is the best-ranked
- * candidate that answered a sign-in or a bot check: attempts arrive in rank order.
+ * Pure summary of what a failed search tried, for the "No PDF found" dialog. Its access page is the library proxy's
+ * sign-in page when a proxy redirected to one, because signing in there grants access to every publisher; otherwise
+ * the best-ranked candidate that answered a sign-in or a bot check, as attempts arrive in rank order.
  */
 export function summarizeAttempts(attempts: PdfAttempt[]): PdfMiss {
-  const wall = attempts.find((a) => a.outcome === "login" || a.outcome === "bot");
+  const wall = attempts.find((a) => a.outcome === "login" && a.proxy !== undefined)
+    ?? attempts.find((a) => a.outcome === "login" || a.outcome === "bot");
   return {
     ...(wall ? { access: { kind: wall.outcome === "login" ? "login" : "bot", url: wall.url } } : {}),
     tried: new Set(attempts.map((a) => a.url)).size,

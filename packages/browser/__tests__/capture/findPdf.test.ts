@@ -4,7 +4,10 @@ import type { ILogger, PdfFetchOptions, PdfSearch } from "@labshelf/core";
 jest.mock("webextension-polyfill", () => ({ storage: { local: { get: async () => ({}), set: async () => undefined } } }));
 jest.mock("../../src/storage/paperRecordStore", () => ({ listAllRecords: async () => [], upsertRecord: async () => undefined }));
 
-const mockSettings = { enableSciHub: false, sciHubMirror: "https://sci-hub.se", contactEmail: "me@uni.edu" };
+const mockSettings = {
+  enableSciHub: false, sciHubMirror: "https://sci-hub.se", contactEmail: "me@uni.edu",
+  proxies: [{ name: "Uni library", template: ".ezproxy.uni.edu", enabled: true }],
+};
 jest.mock("../../src/platform/settings", () => ({ getSettings: async () => mockSettings, updateSettings: async () => undefined }));
 
 const mockFindPaperPdf = jest.fn(async (_opts: PdfFetchOptions, _search: PdfSearch, _attempts: unknown[]) => undefined);
@@ -59,6 +62,11 @@ describe("findPdf", () => {
     const tab = { url: "https://pub.example/article/1", fetchInTab: async () => undefined };
     await findPdf(log, draft({ fetchOpts: { tab } }));
     expect(mockFindPaperPdf.mock.calls[0]![0]).toMatchObject({ credentials: "include", tab, viaHelperTab: expect.any(Function), logger: expect.anything() });
+  });
+
+  it("hands the search the user's library proxies", async () => {
+    await findPdf(log, draft());
+    expect(mockFindPaperPdf.mock.calls[0]![0]).toMatchObject({ proxies: mockSettings.proxies });
   });
 
   it("runs the search once per draft", async () => {

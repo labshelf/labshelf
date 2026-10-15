@@ -39,7 +39,7 @@ The minimum versions are the floor for pdf.js 6.3.
 
 Identifier detection, landing-page parsing, metadata resolution and the PDF finder live in core `import/` and are shared with the other apps. `src/capture/` keeps only what needs the browser: the page probe content script, the helper tab and tab fetch (`capture/tab/`), the watched sign-in tab (`capture/watch/`), the capture and Scholar flows, and mapping a draft to a record.
 
-When the PDF finder stops at a sign-in page or a bot check, the helper tab loads candidate pages in a background tab to pass what a script can pass. When the user chooses to open the page, a visible tab is opened and watched: each time a page in it finishes loading, the extension looks for a PDF and attaches it to the paper. The watch is kept in `storage.session`, so it survives the service worker sleeping, and ends after 5 minutes, when the tab closes, or when the PDF is attached.
+When the PDF finder stops at a sign-in page or a bot check, the helper tab loads candidate pages in a background tab to pass what a script can pass. When the user chooses to open the page, a visible tab is opened and watched: each time a page in it finishes loading, the extension looks for a PDF and attaches it to the paper. The watch is kept in `storage.session`, so it survives the service worker sleeping, and ends after 5 minutes, when the tab closes, or when the PDF is attached. After that, publisher pages that asked for a sign-in are retried through the Library proxies listed in the options page (a prefix with `$@`, a hostname suffix or an OpenAthens redirector), top to bottom; when a proxy answers with its own sign-in page, that page is the one the dialog offers to open.
 
 ## Headless run
 
