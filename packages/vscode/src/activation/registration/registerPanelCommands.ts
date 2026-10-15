@@ -2,13 +2,11 @@
 // annotation export and the reader's own contributed keybindings.
 import * as vscode from "vscode";
 
-import { exportAnnotations, type ReaderCommandId } from "@labshelf/core";
+import { exportAnnotations, findSimilarPapers, type AiService, type ReaderCommandId } from "@labshelf/core";
 import { PdfViewerPanel, createVsCodeExportPorts } from "../../pdf-viewer/index.js";
 import { ListWebviewPanel } from "../../ui/list/index.js";
 import type { LibraryNode } from "../../ui/library/index.js";
 import { resolvePaper, ensurePaperPdf, folderActions, type FolderCommandHost, type ActiveServices, currentTextLayerJobs, onTextLayerJobsChanged } from "../../commands/index.js";
-import { findSimilarPapers } from "../../ai/service/index.js";
-import type { AiService } from "../../ai/service/index.js";
 import type { LibraryEvents } from "../../events/index.js";
 import type { HostAdapters } from "../serviceComposition/index.js";
 

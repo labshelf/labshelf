@@ -29,12 +29,12 @@ export class PaperService {
   }
 
   /** @returns the paper's paper.pdf, or null when the id is unknown or the paper has no PDF */
-  async resolvePdfUri(paperId: string): Promise<vscode.Uri | null> {
+  async resolvePdfPath(paperId: string): Promise<string | null> {
     const paper = await this.findPaper(paperId);
     if (!paper || paper.hasPdf === false || !(await this.pdfExists(paper))) {
       return null;
     }
-    return vscode.Uri.file(paperFiles(paper.path, this.ctx.paths.join).pdf);
+    return paperFiles(paper.path, this.ctx.paths.join).pdf;
   }
 
   // Asked at action time rather than trusting the indexed flag. FileType is a bit flag and the indexer counts a

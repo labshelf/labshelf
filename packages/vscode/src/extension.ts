@@ -1,7 +1,7 @@
 /** Activates the extension: wires services, commands, library folder tree, sync controller and list panel. */
 import * as vscode from "vscode";
 
-import { libraryChanged, libraryLayout } from "@labshelf/core";
+import { libraryChanged, libraryLayout, type AiService } from "@labshelf/core";
 import { resolveLibraryRoot } from "./storage/paths/index.js";
 import { migrateLibraryRootFromGlobalState } from "./storage/migrations/index.js";
 import { createNodeAdapters } from "./activation/node/index.js";
@@ -12,7 +12,6 @@ import {
   type FolderCommandHost,
   type ActiveServices,
 } from "./commands/index.js";
-import { AiService } from "./ai/service/index.js";
 import { createLibraryEvents, type LibraryEvents } from "./events/index.js";
 import {
   startAiService,

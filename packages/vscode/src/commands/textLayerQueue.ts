@@ -2,9 +2,8 @@
 // Pending jobs are published so the library list can show them per row.
 import * as vscode from "vscode";
 
-import { errorMessage, type ILogger, type PaperRecord } from "@labshelf/core";
+import { errorMessage, type ILogger, type PaperRecord, type TextLayerProgress } from "@labshelf/core";
 import type { MakeSearchableResult, PaperTextLayers } from "../core/index.js";
-import type { TextLayerProgress } from "../pdf/index.js";
 
 const LOG_MODULE = "commands/textLayerQueue";
 

@@ -2,10 +2,7 @@
 import * as vscode from "vscode";
 
 import type { ILogger } from "@labshelf/core";
-import { createPdfjsLoader } from "@labshelf/core/node";
-
-import { SearchablePdfBuilder } from "./searchablePdfBuilder.js";
-import { TesseractOcrEngine } from "./tesseractOcrEngine.js";
+import { createPdfjsLoader, SearchablePdfBuilder, TesseractOcrEngine } from "@labshelf/core/node";
 
 /** The one pdf.js of the extension host: the PDF parser, the AI service and OCR all open PDFs through it. */
 export const hostPdfjs = createPdfjsLoader({ electronShims: true });

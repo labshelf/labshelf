@@ -1,14 +1,14 @@
 // Starts the AI subsystem for an already-built set of library services.
 import * as vscode from "vscode";
 
-import { errorMessage } from "@labshelf/core";
+import { createAiService, errorMessage } from "@labshelf/core";
+import type { AiService } from "@labshelf/core";
 
-import { createAiService, AiService } from "../../ai/service/index.js";
 import type { ActiveServices } from "../../commands/index.js";
 import type { LibraryEvents } from "../../events/index.js";
 import type { HostAdapters } from "./hostAdapters.js";
 
-// Spins up the AI service when a library is configured. Resolution failures
+// Spins up the AI service when a library is configured and AI is enabled in settings. Resolution failures
 // degrade the AI subsystem instead of breaking activation; the rest of the
 // extension keeps working.
 export async function startAiService(
@@ -17,19 +17,25 @@ export async function startAiService(
   services: ActiveServices,
   adapters: HostAdapters,
 ): Promise<AiService | null> {
+  if (vscode.workspace.getConfiguration("labshelf.ai").get<boolean>("enabled") === false) return null;
   try {
     const storage = await adapters.openAiStorage(services.aiDatabasePath, services.fileSystem, services.logger);
-    const result = await createAiService({
-      context,
+    const result = createAiService({
       storage,
       listPapers: () => services.paperService.listPapers(),
       fileSystem: services.fileSystem,
-      events,
       logger: services.logger,
       pdfOpener: adapters.pdfOpener,
-      resolvePdfUri: (paperId) => services.paperService.resolvePdfUri(paperId),
+      resolvePdfPath: (paperId) => services.paperService.resolvePdfPath(paperId),
+      subscribe: (onUpsert, onRemove) => {
+        const subscriptions = vscode.Disposable.from(
+          events.paperAdded.event((paper) => onUpsert(paper.id)),
+          events.paperUpdated.event((paper) => onUpsert(paper.id)),
+          events.paperDeleted.event((paper) => onRemove(paper.id)),
+        );
+        return () => subscriptions.dispose();
+      },
     });
-    if (!result) return null;
     context.subscriptions.push({ dispose: result.dispose });
     return result.service;
   } catch (error) {

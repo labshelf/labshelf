@@ -74,9 +74,15 @@ importers:
       '@napi-rs/canvas':
         specifier: ^1.0.9
         version: 1.0.9
+      pdf-lib:
+        specifier: ^1.17.1
+        version: 1.17.1
       pdfjs-dist:
         specifier: ~6.3.289
         version: 6.3.289
+      tesseract.js:
+        specifier: ^7.0.0
+        version: 7.0.0
       yaml:
         specifier: ^2.7.1
         version: 2.9.1

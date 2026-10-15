@@ -135,9 +135,9 @@ describe('PaperService PDF lookups', () => {
     const g = makeGlue();
     await g.seed('p1', {}, `${PAPERS_ROOT}/Project`);
     await g.seed('p2', { hasPdf: false });
-    expect((await g.service.resolvePdfUri('p1'))?.fsPath).toBe(`${PAPERS_ROOT}/Project/p1/paper.pdf`);
-    expect(await g.service.resolvePdfUri('p2')).toBeNull();
-    expect(await g.service.resolvePdfUri('ghost')).toBeNull();
+    expect(await g.service.resolvePdfPath('p1')).toBe(`${PAPERS_ROOT}/Project/p1/paper.pdf`);
+    expect(await g.service.resolvePdfPath('p2')).toBeNull();
+    expect(await g.service.resolvePdfPath('ghost')).toBeNull();
   });
 
   it('reconcilePdf corrects a stale flag in the index only', async () => {

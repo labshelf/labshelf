@@ -3,8 +3,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import type * as vscode from "vscode";
 
-import { NodeLockStore, NodePdfOpener, createNodeSidecarPort, isProcessAlive } from "@labshelf/core/node";
-import { openAiStorage } from "../../ai/node/index.js";
+import { NodeLockStore, NodePdfOpener, createNodeSidecarPort, isProcessAlive, openAiStorage } from "@labshelf/core/node";
 import { createExtensionLogger } from "../../core/node/index.js";
 import { createOcrEngine, createTextLayerBuilder, hostPdfjs } from "../../pdf/node/index.js";
 import { locatePdfjs } from "../../pdf-viewer/node/index.js";

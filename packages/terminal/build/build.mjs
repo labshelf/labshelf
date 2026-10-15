@@ -23,7 +23,7 @@ const common = {
   sourcemap: true,
   logLevel: "info",
   // Loaded lazily from node_modules: pdfjs reads its data files next to itself, the canvas is a native module.
-  external: ["pdfjs-dist", "pdfjs-dist/*", "@napi-rs/canvas"],
+  external: ["pdfjs-dist", "pdfjs-dist/*", "@napi-rs/canvas", "pdf-lib", "tesseract.js"],
   banner: { js: banner },
   define: googleCredentialDefines("desktop"),
 };

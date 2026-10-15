@@ -42,7 +42,9 @@
       ],
       "ignoreDependencies": [
         "@napi-rs/canvas",
-        "pdfjs-dist"
+        "pdf-lib",
+        "pdfjs-dist",
+        "tesseract.js"
       ]
     },
     "packages/browser": {
