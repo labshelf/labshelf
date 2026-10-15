@@ -3,6 +3,7 @@ import type { RemoteProvider, RemoteNamespace } from "../../provider/index.js";
 import type { ILogger, LocalFileSystem } from "../../../ports/index.js";
 import type {
   NamespaceResult,
+  SyncOperation,
   SyncResult,
 } from "../syncTypes.js";
 import type { SyncManifest } from "../state/index.js";
@@ -33,7 +34,7 @@ export interface SyncEngineDeps {
   clock?: () => Date;
   /** Optional name translation for the 'library' namespace. */
   libraryFolderNames?: FolderNameMaps;
-  /** Receives warnings about local folders the scan had to skip. */
+  /** Receives warnings about local folders the scan could not read and the paths held back under them. */
   logger?: ILogger;
 }
 
@@ -58,7 +59,7 @@ export class SyncEngine {
       ? createLibraryFolderNamer({ provider, manifest, ...(names ? { titles: names.remoteToLocal } : {}) })
       : undefined;
     const remoteTree = await scanRemoteTree(provider, root.id, resolver, names?.remoteToLocal, namer);
-    const localTree = await scanLocalTree(fs, roots[ns], this.deps.logger);
+    const { tree: localTree, unreadable } = await scanLocalTree(fs, roots[ns], this.deps.logger);
 
     // CONTRACT: documents/contracts/sync.md#remote-identity
     // The manifest only means "deleted on the other side" for the remote it was built against. Another account or
@@ -72,7 +73,7 @@ export class SyncEngine {
     if (rebased) { manifest.clearNamespace(ns); }
     manifest.setRootId(ns, root.id);
 
-    const ops = diffNamespace(ns, localTree, remoteTree, manifest);
+    const ops = await this.holdBackUnreadable(ns, diffNamespace(ns, localTree, remoteTree, manifest), unreadable);
     const result = await applyOperations(
       {
         namespace: ns,
@@ -86,6 +87,26 @@ export class SyncEngine {
       ops,
     );
     return rebased ? { ...result, rebased: true } : result;
+  }
+
+  // CONTRACT: documents/contracts/sync.md#three-way-diff
+  // A folder the scan could not read looks locally deleted to the diff; acting on that would remove its files from
+  // the remote. Its paths sit out the run, so their manifest entries stay as they were.
+  private async holdBackUnreadable(
+    ns: RemoteNamespace,
+    ops: SyncOperation[],
+    unreadable: string[],
+  ): Promise<SyncOperation[]> {
+    let kept = ops;
+    for (const prefix of unreadable) {
+      const under = (path: string): boolean => prefix === "" || path.startsWith(`${prefix}/`);
+      const held = kept.filter((op) => under(op.path)).length;
+      kept = kept.filter((op) => !under(op.path));
+      await this.deps.logger?.log("WARN", "sync/engine", "Sync held back the paths under an unreadable folder", {
+        namespace: ns, folder: prefix, heldBack: held,
+      });
+    }
+    return kept;
   }
 
   /** Syncs both namespaces, then persists the manifest only if no namespace threw. */

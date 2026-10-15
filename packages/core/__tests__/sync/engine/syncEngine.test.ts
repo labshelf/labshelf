@@ -75,4 +75,50 @@ describe("SyncEngine.run", () => {
     expect(result.startedAt).toBe("2026-05-16T00:00:00.000Z");
     expect(result.finishedAt).toBe("2026-05-16T00:00:00.000Z");
   });
+
+  it("holds back every path under a local folder it cannot read: no remote remove, manifest entry kept", async () => {
+    const { engine, fs, provider, manifest } = await build();
+    fs.seed("/lib/papers/a/paper.pdf", "PDF");
+    fs.seed("/lib/papers/b/paper.pdf", "PDF-B");
+    await engine.run();
+    const before = manifest.get("library", "papers/a/paper.pdf");
+    expect(before).toBeDefined();
+
+    jest.spyOn(fs, "listDir").mockImplementation(async function (this: MemoryFileSystem, dir: string) {
+      if (dir === "/lib/papers/a") { throw Object.assign(new Error(`EACCES: ${dir}`), { code: "EACCES" }); }
+      return MemoryFileSystem.prototype.listDir.call(this, dir);
+    });
+    await fs.deleteFile("/lib/papers/b/paper.pdf");
+    const remove = jest.spyOn(provider, "remove");
+
+    const result = await engine.run();
+
+    const lib = result.namespaces.find((n) => n.namespace === "library")!;
+    expect(lib.deletedRemote).toBe(1);
+    expect(remove).toHaveBeenCalledTimes(1);
+    expect(manifest.get("library", "papers/a/paper.pdf")).toEqual(before);
+    expect(manifest.get("library", "papers/b/paper.pdf")).toBeUndefined();
+  });
+
+  it("holds back the whole namespace when its local root cannot be read", async () => {
+    const { engine, fs, provider, manifest } = await build();
+    fs.seed("/lib/a.md", "content");
+    await engine.run();
+    const before = manifest.get("library", "a.md");
+
+    jest.spyOn(fs, "listDir").mockImplementation(async function (this: MemoryFileSystem, dir: string) {
+      if (dir === "/lib") { throw Object.assign(new Error(`EACCES: ${dir}`), { code: "EACCES" }); }
+      return MemoryFileSystem.prototype.listDir.call(this, dir);
+    });
+    provider.seedFile("library", "remote.md", "from-remote");
+    const remove = jest.spyOn(provider, "remove");
+
+    const result = await engine.run();
+
+    const lib = result.namespaces.find((n) => n.namespace === "library")!;
+    expect(remove).not.toHaveBeenCalled();
+    expect(lib.downloaded).toBe(0);
+    expect(lib.rebased).toBeUndefined();
+    expect(manifest.get("library", "a.md")).toEqual(before);
+  });
 });

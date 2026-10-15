@@ -16,6 +16,18 @@ describe("NodeLocalFileSystem (the sync engine's file system)", () => {
     expect(await local.listDir(path.join(dir, "missing"))).toEqual([]);
   });
 
+  it("throws for a folder it may not read, unlike a missing one", async () => {
+    const dir = await makeTempDir();
+    const locked = path.join(dir, "locked");
+    await fs.mkdir(locked);
+    await fs.chmod(locked, 0o000);
+    try {
+      await expect(new NodeLocalFileSystem().listDir(locked)).rejects.toMatchObject({ code: "EACCES" });
+    } finally {
+      await fs.chmod(locked, 0o755);
+    }
+  });
+
   it("lists every name, like VS Code's adapter (both apps must see one tree through the shared manifest)", async () => {
     const dir = await makeTempDir();
     await fs.writeFile(path.join(dir, "paper.pdf"), "x");

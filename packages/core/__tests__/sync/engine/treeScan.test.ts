@@ -3,7 +3,7 @@ import { scanLocalTree, type ILogger } from "@labshelf/core";
 import { MemoryLibraryFs } from "../../support/memoryLibraryFs";
 
 describe("scanLocalTree", () => {
-  it("skips a folder it cannot read and logs it, keeping the rest of the tree", async () => {
+  it("skips a folder it cannot read, reports and logs it, keeping the rest of the tree", async () => {
     const fs = new MemoryLibraryFs();
     await fs.writeText("/lib/papers/a/metadata.yaml", "title: A\n");
     await fs.writeText("/lib/papers/locked/metadata.yaml", "title: B\n");
@@ -14,15 +14,18 @@ describe("scanLocalTree", () => {
       error: async () => {},
     };
 
-    const tree = await scanLocalTree(fs, "/lib/papers", logger);
+    const { tree, unreadable } = await scanLocalTree(fs, "/lib/papers", logger);
 
     expect([...tree.keys()]).toEqual(["a/metadata.yaml"]);
+    expect(unreadable).toEqual(["locked"]);
     expect(logs).toEqual([
       ["WARN", "Sync skipped a folder it could not read", { dir: "/lib/papers/locked", message: "EACCES: /lib/papers/locked" }],
     ]);
   });
 
   it("lists a missing root as empty", async () => {
-    expect((await scanLocalTree(new MemoryLibraryFs(), "/nowhere")).size).toBe(0);
+    const { tree, unreadable } = await scanLocalTree(new MemoryLibraryFs(), "/nowhere");
+    expect(tree.size).toBe(0);
+    expect(unreadable).toEqual([]);
   });
 });

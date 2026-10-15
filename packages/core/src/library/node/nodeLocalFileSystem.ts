@@ -12,8 +12,9 @@ export class NodeLocalFileSystem implements LocalFileSystem {
   async listDir(dirPath: string): Promise<string[]> {
     try {
       return await fs.readdir(dirPath);
-    } catch {
-      return [];
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") { return []; }
+      throw error;
     }
   }
 

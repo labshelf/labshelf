@@ -9,16 +9,23 @@ function joinPath(prefix: string, name: string): string {
   return prefix ? `${prefix}/${name}` : name;
 }
 
+/** A scanned local tree, plus the relative paths of the folders that could not be read ("" for the root). */
+export interface LocalScan {
+  tree: Map<string, TreeNode>;
+  unreadable: string[];
+}
+
 /**
  * Recursively scans a local directory tree, hashing every file for comparison against the manifest base. A folder
- * that cannot be read is left out of this sync, with a warning, rather than failing the whole sync.
+ * that cannot be read is reported in `unreadable`, with a warning, rather than failing the whole sync.
  */
 export async function scanLocalTree(
   fs: LocalFileSystem,
   rootPath: string,
   logger?: ILogger,
-): Promise<Map<string, TreeNode>> {
+): Promise<LocalScan> {
   const tree = new Map<string, TreeNode>();
+  const unreadable: string[] = [];
 
   async function walk(absDir: string, relDir: string): Promise<void> {
     let names: string[];
@@ -28,6 +35,7 @@ export async function scanLocalTree(
       await logger?.log("WARN", "sync/treeScan", "Sync skipped a folder it could not read", {
         dir: absDir, message: error instanceof Error ? error.message : String(error),
       });
+      unreadable.push(relDir);
       return;
     }
     for (const name of names) {
@@ -52,7 +60,7 @@ export async function scanLocalTree(
   }
 
   await walk(rootPath, "");
-  return tree;
+  return { tree, unreadable };
 }
 
 /** A proposed local name for a remote folder; a lower rank is a stronger claim on the name. */

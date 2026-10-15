@@ -40,6 +40,8 @@ For each path the engine compares the manifest (the last agreed state), the loca
 | present | unchanged | missing | delete local |
 | present | changed or missing | changed or missing | conflict, unless both are missing |
 
+A local folder that cannot be read is left out of the run: nothing under it is deleted, uploaded or downloaded, and its manifest entries stay as they were.
+
 **Conflicts keep both copies.** The remote file is renamed to `<name> (conflict YYYY-MM-DD).<ext>` and the local file is uploaded. A conflict never deletes anything.
 
 The manifest is saved only after a run completes without a fatal error.
