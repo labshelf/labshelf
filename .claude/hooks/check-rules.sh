@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # PostToolUse hook for Edit/Write: reports AGENTS.md rule violations the edit introduces —
-# size/shape, history language, ts-ignore/eslint-disable/skip/empty-catch, deleted tests, bad CONTRACT anchors, headerless new files.
+# size/shape, history language, ts-ignore/eslint-disable/skip/empty-catch, deleted tests, bad CONTRACT anchors, new files without a capability header.
 set -u
 root="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 file=$(jq -r '.tool_input.file_path // empty')
@@ -102,13 +102,22 @@ if [ "$code_scope" = true ]; then
   fi
 fi
 
-# New source file with no header comment.
+# New source file: a header comment whose first sentence starts with a third-person verb.
 case "$rel" in
   packages/*/src/*.ts|packages/*/src/*.tsx|packages/*/src/*.css|packages/*/build/*.mjs)
     if ! in_head; then
       first_line=$(grep -m1 -vE '^[[:space:]]*$' "$file")
-      if ! printf '%s' "$first_line" | grep -qE '^[[:space:]]*//'; then
+      if ! printf '%s' "$first_line" | grep -qE '^[[:space:]]*(//|/\*)'; then
         problems+=("$rel: new source file has no header comment (AGENTS.md §3/§5).")
+      else
+        # The sentence may start on the line after a bare `/**`.
+        first_word=$(grep -vE '^[[:space:]]*(/\*\*?|\*)?[[:space:]]*$' "$file" | head -1 \
+          | sed -E 's#^[[:space:]]*(//|/\*\*?|\*)[[:space:]]*##' | awk '{print $1}')
+        # TRAP: a plural noun ("Handlers", "Settings") also ends in s, so known ones are listed.
+        if ! printf '%s' "$first_word" | grep -qE '^[A-Z][a-z]+(-[a-z]+)?[^s]s,?$' \
+          || printf '%s' "$first_word" | grep -qxE 'Handlers|Settings|Types|Thumbnails|Annotations|Collections|Stylesheets|Extractors|Helpers|Utils'; then
+          problems+=("$rel: header line 1 must be a capability sentence starting with a verb, e.g. \"// Searches papers by title.\" (AGENTS.md §5).")
+        fi
       fi
     fi
     ;;

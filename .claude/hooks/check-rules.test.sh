@@ -227,6 +227,40 @@ export const x = 1;
 " \
   0 ""
 
+run_case "new file with a noun-phrase header" \
+  "packages/core/src/newfile.ts" \
+  "" \
+  "// PubMed client: record lookup by PMID.
+export const x = 1;
+" \
+  2 "capability sentence"
+
+run_case "new file with a plural-noun header" \
+  "packages/core/src/newfile.ts" \
+  "" \
+  "// Handlers for the popup messages.
+export const x = 1;
+" \
+  2 "capability sentence"
+
+run_case "new CSS file with a capability header is not flagged" \
+  "packages/core/src/newfile.css" \
+  "" \
+  "/* Styles the library list rows. */
+.row { display: flex; }
+" \
+  0 ""
+
+run_case "new file with a JSDoc capability header is not flagged" \
+  "packages/core/src/newfile.ts" \
+  "" \
+  "/**
+ * Parses BibTeX entries into paper records.
+ */
+export const x = 1;
+" \
+  0 ""
+
 # Baseline: a clean diff reports nothing.
 run_case "clean diff" \
   "packages/core/src/sample.ts" \
