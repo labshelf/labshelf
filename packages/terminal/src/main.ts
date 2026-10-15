@@ -14,13 +14,12 @@ import { sharedConfigPath, updateSharedConfig } from "@labshelf/core/node";
 import { loadTerminalConfig, resolveLibraryRoot, type TerminalConfig } from "./app/config.js";
 import { openLibrary, type AppContext } from "./app/context.js";
 import { parseArgs, stringFlag } from "./cli/args.js";
-import { runDoctor, runLibraryCommand, USAGE, UsageError, type Output } from "./cli/commands.js";
+import { runDoctor, runLibraryCommand, USAGE, UsageError, type Output } from "./cli/index.js";
+import { dumpFrame } from "./cli/dumpFrame.js";
 import { ensureLibraryStructure, LibraryRoot, looksLikeLibrary } from "./library/index.js";
 import { expandHome } from "./platform/index.js";
-import { App, type TerminalLike } from "./ui/app/index.js";
-import { InputDecoder } from "./tui/input.js";
+import { App } from "./ui/app/index.js";
 import { sanitizeForTerminal } from "./tui/text.js";
-import type { Screen } from "./tui/screen.js";
 import { Terminal } from "./tui/terminal.js";
 
 const VERSION = "0.1.0";
@@ -76,48 +75,6 @@ async function resolveRoot(flag: string | undefined, config: TerminalConfig, int
   return answer ? { root: await adoptLibrary(answer), source: "config" } : undefined;
 }
 
-// A terminal that renders into memory, for --dump-frame.
-class MemoryTerminal implements TerminalLike {
-  frame: Screen | undefined;
-  constructor(private readonly cols: number, private readonly rows: number) {}
-  size() { return { cols: this.cols, rows: this.rows }; }
-  listen(): void { /* input comes from --keys */ }
-  enter(): void { /* nothing to take over */ }
-  leave(): void { /* nothing to restore */ }
-  draw(frame: Screen): void { this.frame = frame; }
-  invalidate(): void { /* no previous frame kept */ }
-  writeRaw(): void { /* no images in text output */ }
-  suspend<T>(run: () => T): T { return run(); }
-  stopJob(): void { /* not a job */ }
-}
-
-// "jj<enter><C-d>" → key events, through the real decoder.
-function keysToInput(spec: string): string {
-  const names: Record<string, string> = {
-    enter: "\r", esc: "\x1b", tab: "\t", space: " ", bs: "\x7f", up: "\x1b[A", down: "\x1b[B", right: "\x1b[C", left: "\x1b[D",
-  };
-  return spec.replace(/<([^>]+)>/g, (_, name: string) => {
-    if (/^C-[a-z]$/.test(name)) { return String.fromCharCode(name.charCodeAt(2) - 96); }
-    return names[name] ?? `<${name}>`;
-  });
-}
-
-async function dumpFrame(ctx: AppContext, size: string, keys: string | undefined): Promise<void> {
-  const [cols, rows] = size.split("x").map(Number);
-  const term = new MemoryTerminal(cols || 120, rows || 36);
-  const app = new App({ ...ctx, imageProtocol: "none" }, term);
-  const decoder = new InputDecoder();
-  // Let the async sidecar loads settle before the snapshot is taken.
-  for (const event of [...decoder.feed(keysToInput(keys ?? "")), ...decoder.flush()]) {
-    app.handle(event);
-    await new Promise((resolve) => setTimeout(resolve, 5));
-  }
-  // A frame starts the async loads (sidecars, thumbnails) the final frame shows.
-  app.frame();
-  await new Promise((resolve) => setTimeout(resolve, 80));
-  io.out(app.frame().screen.toText());
-}
-
 async function main(argv: string[]): Promise<number> {
   const args = parseArgs(argv);
   if (args.flags["version"] === true) {
@@ -164,7 +121,7 @@ async function main(argv: string[]): Promise<number> {
   try {
     const dump = stringFlag(args.flags, "dump-frame");
     if (dump) {
-      await dumpFrame(ctx, dump, stringFlag(args.flags, "keys"));
+      await dumpFrame(ctx, dump, stringFlag(args.flags, "keys"), io.out);
       return 0;
     }
     if (tuiWanted) {
