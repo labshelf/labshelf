@@ -1,6 +1,6 @@
 # Plan: Agent tooling, comment standard and codebase reduction
 
-Status: in progress (session 4 of 8)
+Status: in progress (session 5 of 8)
 Size: GG — 8 sessions across rules, hooks, agents, skills, docs, every source file and a repo-wide audit; the reduction work it finds runs as its own plan
 Pending decisions: 0
 
@@ -132,11 +132,11 @@ Resolved:
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S20 | `orchestrate`: routing, escalation, doubt step via council, pointer prompts, handoff template to its own file | S15 | H · main thread | A6 | [ ] |
-| S21 | `check` fingerprint; `finish` skips a matching gate, two-axis review | S7 | M · implementer (sonnet) | finish reuses a matching check | [ ] |
-| S22 | `ship` PR body (evidence, one-way/two-way door); `health` deepening + skill lint | — | M · implementer (sonnet) | — | [ ] |
-| S23 | Chrome DevTools MCP (project scope, pinned, `--categoryExtensions`, no telemetry); `verify` recipe for the extension | — | M · implementer (sonnet) | extension popup loads headless, or the recipe documents the headed fallback | [ ] |
-| S24 | Finish | S20–S23 | `finish` skill | gate passes | [ ] |
+| S20 | `orchestrate`: routing, escalation, doubt step via council, pointer prompts, handoff template to its own file | S15 | H · main thread | A6 | [x] |
+| S21 | `check` fingerprint; `finish` skips a matching gate, two-axis review | S7 | M · implementer (sonnet) | finish reuses a matching check | [x] |
+| S22 | `ship` PR body (evidence, one-way/two-way door); `health` deepening + skill lint | — | M · implementer (sonnet) | — | [x] |
+| S23 | Chrome DevTools MCP (project scope, pinned, `--categoryExtensions`, no telemetry); `verify` recipe for the extension | — | M · implementer (sonnet) | extension popup loads headless, or the recipe documents the headed fallback | [x] |
+| S24 | Finish | S20–S23 | `finish` skill | gate passes | [x] |
 
 ### Session 6 — Docs, memory, design checks
 
@@ -281,3 +281,5 @@ Resolved:
 - 2026-10-14 (session 3) deviations: the orchestrate D5 routing and escalation lines are added here to close A6, and the rest of S20 stays in session 5. R5 is amended from "+30%" to an absolute cap (≤65 lines per file, ≤40-line return block), because the required tables and return blocks pushed six files to +50–105%. `finish` gate: PASS. Uncommitted `packages/vscode` work from another session was left out of scope.
 - 2026-10-14 21:56 (session 4): S15 `council` skill: a gate (fork? hard to reverse? neutral brief, Position H), round 1 with four isolated seats, round 2 via SendMessage with `sort -R`-shuffled labels and HOLD/CHANGE citing an argument, an Opus judge, and the hand-back to Open items; Feature, UX/navigation and Visual presets in `references/personas.md`. S16 `brainstorm`: spar/grill/council modes, a hypothesis with confidence, mandatory "Not doing", the predictable-answers stop, a list of non-approvals and a Sonnet builder check; techniques in `references/techniques.md` (frame → diverge → challenge → converge → decide). SKILL.md is 67 lines. S17 `retro` skill: collect → sort (mechanical/judgment/estimate) → propose ≤40 lines → apply only approved items, with a fixture test per check.
 - 2026-10-14 21:56 (session 4) S18 dry runs: grill on pdf-finding §4 (institutional access) asked 6 numbered frontier questions, each with a recommendation; a Haiku scout answered the code facts (tab fetch already uses `credentials: "include"`; no proxy code), and its answers came back marked verified (A7). The council on architecture-refactor Q1 ran two rounds and a judge: 4/4 seats chose in-memory after round 2 (the Contrarian changed, citing P5's fallback fact). Two new gates were recorded under refactor Q1, and the main thread took in about 1.7k tokens (A8). The retro dry run on this conversation proposed 1 check and 2 rules (S17). Deviation: the council costs about 200k subagent tokens, not 30k. R2, the council skill and CLAUDE.md state the measured figure. Finish could not call the council itself (forked skills cannot launch agents), so a council is run on a fork that finish reports. `finish` gate: PASS.
+- 2026-10-14 22:00 (session 5): S20 `orchestrate`: open questions carry a default and two-way defaults are applied rather than asked; each package names its model and its door (one-way: contracts or on-disk formats, sync, Drive writes, manifest or permissions); a one-way package with two viable designs goes to `council` first; delegated prompts point to files instead of pasting; the handoff template lives in `references/handoff.md`. S21 `check/fingerprint.sh` hashes HEAD plus the uncommitted change; `check` writes it with the result to `.git/labshelf-check`, and `finish` reuses a matching PASS and reports Standards and Spec review axes. S22 `ship` writes a PR body (evidence, not checked, door) without pushing; `health` uses depcruise for boundaries and runs `health/lint-skills.sh` (frontmatter, agent ≤65 and SKILL ≤110 lines, referenced paths exist, history language). S23 `.mcp.json` pins `chrome-devtools-mcp@1.10.1` headless, isolated, extensions on, telemetry off; driven over stdio, `install_extension` loaded the built Chrome extension and the popup rendered headless (recipe in `documents/apps/browser.md`). `finish` gate: PASS.
+- 2026-10-14 22:00 (session 5) deviations: the skill lint caught history language in `changelog-writer.md` and `doc-keeper.md`, so both were reworded. `pnpm lint:deps` currently fails: 62 violations are outside its baseline and 27 baseline entries are stale. This predates the session and is left for the architecture-refactor plan. MCP extension paths must lie inside the client's workspace roots, and whether Claude Code sends the project directory as a root is not yet verified in a live session. If `install_extension` is denied, add `--workspace` args.
