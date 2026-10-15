@@ -143,14 +143,15 @@ async function saveDraft(log: ILogger, mutations: LibraryMutations, draft: Captu
 /**
  * Pure summary of what a failed search tried, for the "No PDF found" dialog.
  * Entries labelled "<source> (via tab)" (core resolvePdf) are a bot-check retry,
- * so they are not double-counted but do set `blocked`.
+ * so they are not counted as links tried or sources consulted.
  */
 export function summarizeAttempts(attempts: PdfAttempt[]): PdfMiss {
   const direct = attempts.filter((a) => !a.source.endsWith("(via tab)"));
   return {
     tried: new Set(direct.map((a) => a.url)).size,
     sources: [...new Set(direct.map((a) => a.source))],
-    blocked: direct.length !== attempts.length,
+    blocked: attempts.some((a) => a.outcome === "bot"),
+    needsLogin: attempts.some((a) => a.outcome === "login"),
   };
 }
 

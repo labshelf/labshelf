@@ -134,7 +134,7 @@ describe("bot checks", () => {
     const url = "https://dl.acm.org/doi/pdf/10.1145/1";
     h.routes[url] = () => html(challenge, 403);
     const outcome = await downloadPdf(url, h.opts(), makeEnv(h.opts()));
-    expect(outcome).toEqual({ blocked: [url] });
+    expect(outcome).toEqual({ blocked: [url], outcome: "bot", status: 403 });
     expect(h.logs).toEqual([expect.objectContaining({ level: "WARN", message: "bot check", context: expect.objectContaining({ url }) })]);
   });
 });

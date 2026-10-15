@@ -55,6 +55,8 @@ export interface PdfMiss {
   sources: string[];
   /** At least one candidate answered with a bot check. */
   blocked: boolean;
+  /** At least one candidate answered with a login or paywall page. */
+  needsLogin: boolean;
 }
 
 /** Something the host can add a paper from, such as an open browser tab. */

@@ -6,7 +6,7 @@ import { downloadPdf, isSupplementaryUrl } from "./download/index.js";
 import { makeEnv, reportError, warn } from "./env.js";
 import { RESOLVER_ORDER } from "./resolverOrder.js";
 import { originOf } from "./urlParts.js";
-import type { PdfAttempt, PdfFetchOptions, PdfResolver, ResolveContext, ResolvedPdf, ResolverEnv } from "./types.js";
+import type { FetchedPdf, PdfAttempt, PdfFetchOptions, PdfResolver, ResolveContext, ResolvedPdf, ResolverEnv } from "./types.js";
 import { errorMessage } from "../../logging/index.js";
 
 // A background tab costs seconds: one tab, for the site of the first blocked candidate, which then tries that
@@ -33,10 +33,10 @@ export async function resolvePdf(
       // An aggregator can list a supplement as the paper's PDF; it would download fine and be the wrong document.
       if (isSupplementaryUrl(url)) continue;
       const source = sourceLabel(resolver, ctx, url);
-      attempts.push({ source, url });
-      const outcome = await downloadPdf(url, opts, env);
-      blocked.push(...outcome.blocked);
-      if (outcome.pdf) return { bytes: outcome.pdf.bytes, url: outcome.pdf.url, source };
+      const download = await downloadPdf(url, opts, env);
+      attempts.push({ source, url, outcome: download.outcome, ...(download.status !== undefined ? { status: download.status } : {}) });
+      blocked.push(...download.blocked);
+      if (download.pdf) return { bytes: download.pdf.bytes, url: download.pdf.url, source };
     }
   }
   return opts.viaHelperTab && blocked.length ? retryThroughTab(opts.viaHelperTab, blocked, attempts, env) : undefined;
@@ -64,14 +64,16 @@ async function retryThroughTab(
 ): Promise<ResolvedPdf | undefined> {
   const site = originOf(blocked[0]!);
   const urls = [...new Set(blocked)].filter((u) => originOf(u) === site).slice(0, HELPER_TAB_URLS);
-  attempts.push(...urls.map((url) => ({ source: `${sourceOf(attempts, url)} ${VIA_TAB}`, url })));
+  let pdf: FetchedPdf | undefined;
   try {
-    const pdf = await viaHelperTab(urls);
-    return pdf ? { bytes: pdf.bytes, url: pdf.url, source: sourceOf(attempts, pdf.url, urls) } : undefined;
+    pdf = await viaHelperTab(urls);
   } catch (error) {
     warn(env, "helper tab failed", { urls, error: errorMessage(error) });
-    return undefined;
   }
+  // The tab reports one PDF for the whole batch; the rest were still refused.
+  const winner = pdf ? urls.find((u) => u === pdf.url) ?? urls[0] : undefined;
+  attempts.push(...urls.map((url) => ({ source: `${sourceOf(attempts, url)} ${VIA_TAB}`, url, outcome: url === winner ? "pdf" as const : "bot" as const })));
+  return pdf ? { bytes: pdf.bytes, url: pdf.url, source: sourceOf(attempts, pdf.url, urls) } : undefined;
 }
 
 // The resolver that first proposed `url` (or, for a redirected download, the first of the URLs handed to the tab).

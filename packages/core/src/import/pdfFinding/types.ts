@@ -78,8 +78,14 @@ export interface ResolvedPdf {
   source: string;
 }
 
-/** One URL the chain tried, for the capture log and the "No PDF found" dialog. */
+/** How a download hop ended: the PDF, a bot check, a login or paywall, an HTML page without a PDF, or a failure. */
+export type FetchOutcome = "pdf" | "bot" | "login" | "html" | "error";
+
+/** One URL the chain tried and how its last hop ended, for the capture log and the "No PDF found" dialog. */
 export interface PdfAttempt {
   source: string;
   url: string;
+  outcome: FetchOutcome;
+  /** HTTP status of that hop; absent on a network error or a tab fetch. */
+  status?: number;
 }

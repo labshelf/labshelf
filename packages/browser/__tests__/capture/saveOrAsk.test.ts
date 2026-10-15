@@ -12,7 +12,7 @@ let mockPdf: ResolvedPdf | undefined;
 jest.mock("@labshelf/core", () => ({
   ...jest.requireActual("@labshelf/core"),
   findPaperPdf: async (_opts: PdfFetchOptions, _search: PdfSearch, attempts: unknown[]) => {
-    attempts.push({ source: "page", url: "https://pub.example/a.pdf" });
+    attempts.push({ source: "page", url: "https://pub.example/a.pdf", outcome: "html", status: 200 });
     return mockPdf;
   },
 }));
@@ -38,7 +38,7 @@ beforeEach(() => {
 
 describe("saveOrAsk", () => {
   it("asks before saving a paper whose PDF cannot be reached, writing nothing", async () => {
-    expect(await saveOrAsk(log, mutations, draft())).toEqual({ kind: "no-pdf", miss: { tried: 1, sources: ["page"], blocked: false } });
+    expect(await saveOrAsk(log, mutations, draft())).toEqual({ kind: "no-pdf", miss: { tried: 1, sources: ["page"], blocked: false, needsLogin: false } });
     expect(importPaper).not.toHaveBeenCalled();
   });
 

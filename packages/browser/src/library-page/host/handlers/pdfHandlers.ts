@@ -38,7 +38,7 @@ async function reportFind(ctx: HostContext, id: string, result: AttachPdfData): 
     else ctx.notice("info", "This paper already has a PDF.");
     return;
   }
-  ctx.endpoint.post({ type: "pdf.findResult", id, miss: result.miss ?? { tried: 0, sources: [], blocked: false } });
+  ctx.endpoint.post({ type: "pdf.findResult", id, miss: result.miss ?? { tried: 0, sources: [], blocked: false, needsLogin: false } });
 }
 
 export function createPdfHandlers(ctx: HostContext): PdfHandlers {

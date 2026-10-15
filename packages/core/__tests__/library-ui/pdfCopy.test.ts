@@ -1,7 +1,7 @@
 import { findMissMessage, noPdfDialogCopy, pdfSourceLabel } from "../../src/library-ui/pdfCopy";
 import type { PdfMiss } from "../../src/library-ui/protocol";
 
-const miss = (over: Partial<PdfMiss> = {}): PdfMiss => ({ tried: 0, sources: [], blocked: false, ...over });
+const miss = (over: Partial<PdfMiss> = {}): PdfMiss => ({ tried: 0, sources: [], blocked: false, needsLogin: false, ...over });
 
 describe("pdfSourceLabel", () => {
   it("labels known resolvers, passes through unknown ones, falls back to the web", () => {

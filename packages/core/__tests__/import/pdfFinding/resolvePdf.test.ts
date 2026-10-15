@@ -38,6 +38,26 @@ describe("resolvePdf", () => {
     expect(attempts.map((a) => a.source)).toEqual(["page", "publisher"]);
   });
 
+  it("records each candidate's outcome and HTTP status, from the hop that decided it", async () => {
+    const h = makeFindingHarness();
+    const wall = "https://wall.example/p.pdf";
+    const missing = "https://gone.example/p.pdf";
+    const down = "https://down.example/p.pdf";
+    const good = "https://good.example/p.pdf";
+    h.routes[wall] = () => html("<form><input type=password></form>");
+    h.routes[down] = () => { throw new TypeError("Failed to fetch"); };
+    h.routes[good] = pdf;
+    const attempts: PdfAttempt[] = [];
+    const pageCandidates = [wall, missing, down, good].map((url) => ({ url, source: "page" }));
+    await resolvePdf(makeContext({ pageCandidates }), h.opts(), attempts);
+    expect(attempts).toEqual([
+      { source: "page", url: wall, outcome: "login", status: 200 },
+      { source: "page", url: missing, outcome: "error", status: 404 },
+      { source: "page", url: down, outcome: "error" },
+      { source: "page", url: good, outcome: "pdf", status: 200 },
+    ]);
+  });
+
   it("asks Unpaywall with the contact email and uses its open-access copy", async () => {
     const h = makeFindingHarness();
     h.routes["https://api.unpaywall.org/v2/10.9999%2Foa?email=me%40uni.edu"] = () =>
@@ -154,7 +174,7 @@ describe("a bot-checked candidate", () => {
     expect(got?.source).toBe("scholar");
     expect(viaHelperTab).toHaveBeenCalledTimes(1);
     expect(viaHelperTab).toHaveBeenCalledWith([url]);
-    expect(attempts.at(-1)).toEqual({ source: "scholar (via tab)", url });
+    expect(attempts.at(-1)).toEqual({ source: "scholar (via tab)", url, outcome: "pdf" });
   });
 
   it("is not retried when the host has no tab, and the miss is still explained", async () => {
@@ -162,7 +182,7 @@ describe("a bot-checked candidate", () => {
     h.routes[url] = challenge;
     const attempts: PdfAttempt[] = [];
     expect(await resolvePdf(makeContext({ pageCandidates: [{ url, source: "scholar" }] }), h.opts(), attempts)).toBeUndefined();
-    expect(attempts).toEqual([{ source: "scholar", url }]);
+    expect(attempts).toEqual([{ source: "scholar", url, outcome: "bot", status: 403 }]);
   });
 
   it("logs a failing tab instead of throwing", async () => {
