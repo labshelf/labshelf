@@ -1,26 +1,14 @@
 /** Declares the PDF import pipeline's types: the parsed record and the pdf.js shapes it reads. */
+import type { BibliographicFields } from "../../model/index.js";
 import type { MetadataConfidence } from "../metadata/index.js";
 
-export interface ParsedPdfImport {
+export interface ParsedPdfImport extends BibliographicFields {
   title: string;
   citeKey: string;
   confidence?: MetadataConfidence;
   // How the winning record was obtained, for logs and the import report.
   source?: string;
-  year?: number;
   authors: string[];
-  // Bibliographic fields returned by CrossRef / arXiv
-  journal?: string;
-  publisher?: string;
-  volume?: string;
-  issue?: string;
-  pages?: string;
-  doi?: string;
-  url?: string;
-  issn?: string;
-  language?: string;
-  summary?: string;
-  keywords?: string[];
 }
 
 /**

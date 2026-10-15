@@ -1,6 +1,6 @@
 /** Tells whether a registry's title-search hit contradicts what the page states, by a surname rule. */
 import type { ResolvedMetadata } from "../metadata/index.js";
-import { familyName } from "../../library/index.js";
+import { familyName, fold } from "../../library/index.js";
 
 /**
  * A title search hit is accepted only when it does not contradict the page: same year (±1, for online-first vs
@@ -17,6 +17,6 @@ export function agrees(found: ResolvedMetadata, page: ResolvedMetadata): boolean
 
 /** The author's family name, accent-folded and lower-cased; truncation marks ("Shor…") are dropped. */
 export function surname(name: string): string {
-  const folded = familyName(name).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const folded = fold(familyName(name));
   return folded.replace(/[^a-z\s-]/g, " ").trim().split(/\s+/).pop() ?? "";
 }

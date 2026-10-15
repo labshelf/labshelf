@@ -1,6 +1,8 @@
 /**
  * Exports the shared domain model: paper records, statuses, text layers, annotations, themes, log entries.
  */
+export { BIBLIOGRAPHIC_FIELDS, BIBLIOGRAPHIC_STRING_FIELDS } from "./bibliographicFields.js";
+export type { BibliographicFields } from "./bibliographicFields.js";
 export type { PaperRecord } from "./paperRecord.js";
 export { PAPER_STATUSES, STATUS_LABEL, isPaperStatus, nextStatus } from "./paperStatus.js";
 export type { PaperStatus } from "./paperStatus.js";

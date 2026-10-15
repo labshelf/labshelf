@@ -1,8 +1,11 @@
 /** Computes paths for browsing the folder tree: breadcrumbs, labels and recursive counts. Every function takes the
  * separator, so absolute file paths (VS Code) and "papers/..." store keys (browser) share one implementation. */
-import { isUnderDir } from "../folderService.js";
-
 export const ROOT_LABEL = "All Papers";
+
+/** @returns whether `paperPath` is `dirPath` or lies beneath it, for the given separator */
+export function isUnderDir(paperPath: string, dirPath: string, sep: string): boolean {
+  return paperPath === dirPath || paperPath.startsWith(dirPath + sep);
+}
 
 export interface Crumb {
   label: string;

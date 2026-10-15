@@ -1,5 +1,7 @@
 /** Generates "authorYearWord" cite keys and claims them without collisions (the key is the paper id and folder name). */
 
+import { fold } from "../search/index.js";
+
 // Title words that make a poor cite-key suffix.
 const STOPWORDS = new Set(["a", "an", "the", "on", "of", "in", "for", "and", "to", "with", "from", "by", "at", "is", "are"]);
 
@@ -11,7 +13,7 @@ export interface CiteKeyMetadata {
 
 /** Lower-cased text reduced to ASCII letters and digits. */
 export function citeKeySlug(text: string): string {
-  return text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  return fold(text).replace(/[^a-z0-9]/g, "");
 }
 
 /** "authorYearWord" cite key (vaswani2017attention); a timestamp key when the metadata has nothing to build from. */

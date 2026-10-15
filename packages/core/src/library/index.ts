@@ -1,13 +1,6 @@
 /** Exports the library domain's public API: collection folders, paper metadata and the on-disk layout. */
-export {
-  FolderService,
-  isUnderDir,
-} from "./folderService.js";
-export type {
-  IPaperRecordIndex,
-  FolderRelocation,
-  FolderRemoval,
-} from "./folderService.js";
+export { relocatePapersUnder, removePapersUnder } from "./paperRecordReindex.js";
+export type { IPaperRecordIndex } from "./paperRecordReindex.js";
 export { paperRecordFromMetadata, parsePaperMetadata } from "./paperMetadata.js";
 export type { PaperLocation } from "./paperMetadata.js";
 export {

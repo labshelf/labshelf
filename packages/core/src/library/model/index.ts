@@ -1,5 +1,5 @@
 /** Exports the library model's public API: what a scan finds, the snapshot and store built on it, folder navigation, sorting and diffing. */
-export { breadcrumbFor, baseName, countPapersUnder, folderLabel, folderPathLabel, parentDir, relativeFolder, ROOT_LABEL } from "./folderNavigation.js";
+export { breadcrumbFor, baseName, isUnderDir, countPapersUnder, folderLabel, folderPathLabel, parentDir, relativeFolder, ROOT_LABEL } from "./folderNavigation.js";
 export type { Crumb } from "./folderNavigation.js";
 export { collectionsFromFilePaths, findNode, papersUnder, pdfDirsFromFilePaths, subfoldersOf } from "./collectionTree.js";
 export type { FolderTreeNode, SubfolderEntry } from "./collectionTree.js";

@@ -1,5 +1,6 @@
 /** Turns text-layer checks and OCR jobs into the verdict stored on a paper, and decides when a new verdict is worth writing. */
 import type { TextLayerInfo } from "../../../model/index.js";
+import { errorMessage } from "../../../logging/index.js";
 import type { TextLayerDetection, TextLayerOutcome } from "./textLayerTypes.js";
 
 /** @returns the current time as an ISO timestamp */
@@ -44,7 +45,7 @@ export function verdictForDetection(detection: TextLayerDetection, now: () => st
 
 /** @returns the verdict for a check that threw */
 export function verdictForError(error: unknown, now: () => string = wallClock): TextLayerInfo {
-  return { state: "failed", reason: error instanceof Error ? error.message : String(error), checkedAt: now() };
+  return { state: "failed", reason: errorMessage(error), checkedAt: now() };
 }
 
 /**

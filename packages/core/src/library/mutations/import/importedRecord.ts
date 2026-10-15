@@ -1,22 +1,9 @@
 /** Builds paper records from bibliographic metadata, whether parsed from a PDF or resolved from a registry. */
-import type { PaperRecord } from "../../../model/index.js";
+import { BIBLIOGRAPHIC_STRING_FIELDS, type BibliographicFields, type PaperRecord } from "../../../model/index.js";
 
 /** The bibliographic fields a record takes; the io PDF parser's and registries' results satisfy it. */
-export interface RecordMetadata {
+export interface RecordMetadata extends BibliographicFields {
   title?: string | undefined;
-  authors?: string[] | undefined;
-  year?: number | undefined;
-  summary?: string | undefined;
-  journal?: string | undefined;
-  publisher?: string | undefined;
-  volume?: string | undefined;
-  issue?: string | undefined;
-  pages?: string | undefined;
-  doi?: string | undefined;
-  url?: string | undefined;
-  issn?: string | undefined;
-  language?: string | undefined;
-  keywords?: string[] | undefined;
 }
 
 /** What an import needs from parsing a PDF; `PdfImportParser.parse` returns a superset. */
@@ -27,26 +14,17 @@ export interface ParsedImport extends RecordMetadata {
   source?: string | undefined;
 }
 
-const STRING_FIELDS = [
-  "summary", "journal", "publisher", "volume", "issue", "pages", "doi", "url", "issn", "language",
-] as const;
-
 /** @returns the non-empty bibliographic fields of `meta`, without the title */
 export function metadataFields(meta: RecordMetadata): Partial<PaperRecord> {
   const out: Partial<PaperRecord> = {};
   if (meta.authors?.length) { out.authors = meta.authors; }
   if (meta.year) { out.year = meta.year; }
-  for (const key of STRING_FIELDS) {
+  for (const key of BIBLIOGRAPHIC_STRING_FIELDS) {
     const value = meta[key];
     if (value) { out[key] = value; }
   }
   if (meta.keywords?.length) { out.keywords = meta.keywords; }
   return out;
-}
-
-/** @returns the record of a PDF just copied into `folder`, so it always has one */
-export function importedRecord(id: string, folder: string, parsed: ParsedImport): PaperRecord {
-  return { id, title: parsed.title, path: folder, citeKey: id, status: "unread", hasPdf: true, ...metadataFields(parsed) };
 }
 
 /**

@@ -1,20 +1,8 @@
 /** Declares the metadata record every source (registry, XMP, PDF text) produces, and how far the parser trusts it. */
+import type { BibliographicFields } from "../../model/index.js";
 
-export interface ResolvedMetadata {
+export interface ResolvedMetadata extends BibliographicFields {
   title?: string | undefined;
-  authors?: string[] | undefined;
-  year?: number | undefined;
-  journal?: string | undefined;
-  publisher?: string | undefined;
-  volume?: string | undefined;
-  issue?: string | undefined;
-  pages?: string | undefined;
-  doi?: string | undefined;
-  url?: string | undefined;
-  issn?: string | undefined;
-  language?: string | undefined;
-  summary?: string | undefined;
-  keywords?: string[] | undefined;
 }
 
 /**

@@ -1,6 +1,7 @@
 import type { DetectedIdentifier, ResolvedMetadata } from "@labshelf/core";
 import { PAGE_TRUST, resolveMetadata, withAbstract } from "@labshelf/core";
 import { agrees } from "../../../src/import/resolution/titleAgreement";
+import { makeFindingHarness } from "../../support/pdfFindingHarness";
 
 const resolveIdentifier = jest.fn<Promise<ResolvedMetadata | undefined>, [DetectedIdentifier]>();
 const searchByTitle = jest.fn<Promise<ResolvedMetadata | undefined>, [string]>();
@@ -71,5 +72,12 @@ describe("withAbstract", () => {
     expect(enrich).not.toHaveBeenCalled();
     enrich.mockRejectedValue(new Error("down"));
     expect(await withAbstract({ title: "T", doi: "10.1/x" }, { enrich })).toEqual({ title: "T", doi: "10.1/x" });
+  });
+
+  it("asks the abstract registries on the given network and logs their failures there", async () => {
+    const net = makeFindingHarness();
+    expect(await withAbstract({ title: "T", doi: "10.1/x" }, { registry: { fetch: net.opts().fetch!, logger: net.logger } })).toEqual({ title: "T", doi: "10.1/x" });
+    expect(net.calls.length).toBeGreaterThan(0);
+    expect(net.logs.some((l) => l.module === "registries" && l.level === "WARN")).toBe(true);
   });
 });

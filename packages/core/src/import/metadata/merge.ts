@@ -1,6 +1,7 @@
 /**
  * Combines every source into one record, field by field, each field taken from the most trustworthy source that has it.
  */
+import { BIBLIOGRAPHIC_FIELDS } from "../../model/index.js";
 import { tidyCitationFields } from "./tidyCitationFields.js";
 import type { ResolvedMetadata } from "./types.js";
 
@@ -39,21 +40,8 @@ export interface MergedMetadata {
   fieldSources: Record<string, string>;
 }
 
-const MERGE_FIELDS = [
-  "title",
-  "authors",
-  "year",
-  "journal",
-  "publisher",
-  "volume",
-  "issue",
-  "pages",
-  "doi",
-  "url",
-  "issn",
-  "language",
-  "summary",
-] as const;
+// Keywords stay out of the merge; resolveMetadata takes them whole from the best source that has any.
+const MERGE_FIELDS: Array<keyof ResolvedMetadata> = ["title", ...BIBLIOGRAPHIC_FIELDS.filter((field) => field !== "keywords")];
 
 /**
  * Merges every source into one record, taking each field from the most

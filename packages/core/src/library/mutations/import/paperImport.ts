@@ -1,10 +1,10 @@
 /** Imports one PDF file as a paper: <targetDir>/<citeKey>/paper.pdf with metadata.yaml and bib.bib beside it. */
 import type { PaperRecord } from "../../../model/index.js";
-import { citeKeySlug, claimCiteKey } from "../../identity/index.js";
-import { PDF_FILE } from "../../layout.js";
+import { citeKeySlug } from "../../identity/index.js";
 import { errorMessage } from "../../../logging/index.js";
 import { MUTATIONS_MODULE, type MutationContext } from "../context.js";
-import { importedRecord, needsReview, type ParsedImport } from "./importedRecord.js";
+import { metadataFields, needsReview, type ParsedImport } from "./importedRecord.js";
+import { writeNewPaper } from "./newPaper.js";
 import { isPdfBytes } from "./pdfBytes.js";
 
 export type PdfParse = (bytes: Uint8Array, fileStem: string) => Promise<ParsedImport>;
@@ -59,18 +59,13 @@ export async function importPdf(
     const existingId = parsed.doi ? deps.findByDoi(parsed.doi) : undefined;
     if (existingId) { return { status: "duplicate", existingId, input }; }
 
-    // The id is also the folder name: a taken one would overwrite another paper's PDF.
-    const id = await claimCiteKey(
-      parsed.citeKey || citeKeySlug(stem) || `paper${Date.now()}`,
-      deps.takenIds(),
-      (key) => ctx.fs.exists(ctx.paths.join(targetDir, key)),
-    );
-    const folder = ctx.paths.join(targetDir, id);
-    await ctx.fs.mkdir(folder);
-    await ctx.fs.writeFile(ctx.paths.join(folder, PDF_FILE), bytes);
-    const record = importedRecord(id, folder, parsed);
-    const { hasPdf: _hasPdf, ...stored } = record;
-    await ctx.artifacts.writePaperArtifacts(folder, stored, input);
+    const record = await writeNewPaper(ctx, deps.takenIds(), targetDir, {
+      citeKey: parsed.citeKey || citeKeySlug(stem) || `paper${Date.now()}`,
+      fields: { title: parsed.title, ...metadataFields(parsed) },
+      pdf: bytes,
+      sourceName: input,
+    });
+    const { id } = record;
     await ctx.logger.log("INFO", MUTATIONS_MODULE, "Paper imported from PDF", {
       id, source: parsed.source, confidence: parsed.confidence, targetDir,
     });

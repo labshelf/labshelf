@@ -2,11 +2,7 @@
 // INVARIANT: hasPdf comes from the folder listing, never from the file.
 import YAML from "yaml";
 
-import { isPaperStatus, parseTextLayerInfo, type PaperRecord } from "../model/index.js";
-
-const OPTIONAL_STRING_FIELDS = [
-  "summary", "journal", "publisher", "volume", "issue", "pages", "doi", "url", "issn", "language",
-] as const;
+import { BIBLIOGRAPHIC_STRING_FIELDS, isPaperStatus, parseTextLayerInfo, type PaperRecord } from "../model/index.js";
 
 export interface PaperLocation {
   /** Folder name, which is the paper id. */
@@ -50,7 +46,7 @@ export function paperRecordFromMetadata(meta: Record<string, unknown>, location:
   };
   if (authors.length) { record.authors = authors; }
   if (typeof meta["year"] === "number") { record.year = meta["year"]; }
-  for (const key of OPTIONAL_STRING_FIELDS) {
+  for (const key of BIBLIOGRAPHIC_STRING_FIELDS) {
     const value = meta[key];
     if (typeof value === "string") { record[key] = value; }
   }

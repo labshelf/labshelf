@@ -17,7 +17,7 @@ export {
   dblpSearch,
   googleBooksByIsbn,
 } from "./registries/index.js";
-export type { RegistryRecord } from "./registries/index.js";
+export type { RegistryEnv, RegistryRecord } from "./registries/index.js";
 export * from "./lookup/index.js";
 export * from "./pdf/index.js";
 export * from "./bibtex/index.js";
