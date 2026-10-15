@@ -25,6 +25,13 @@ export interface TabPort {
   fetchInTab(url: string): Promise<InTabAnswer | undefined>;
 }
 
+/** A library's proxy as the user pasted it; `template` decides how a URL goes through it (see `proxyKind`). */
+export interface LibraryProxy {
+  name: string;
+  template: string;
+  enabled: boolean;
+}
+
 export interface PdfFetchOptions {
   fetch?: FetchFn;
   /** "include" sends the user's cookies, so a paper the user can open through an institutional login downloads too. */
@@ -37,6 +44,8 @@ export interface PdfFetchOptions {
    * the first that is a PDF. The run aborts `signal` once it no longer needs the answer.
    */
   viaHelperTab?: (urls: string[], signal: AbortSignal) => Promise<FetchedPdf | undefined>;
+  /** The user's library proxies, in the order to try them; a publisher page that asks for a sign-in is retried through each enabled one. */
+  proxies?: readonly LibraryProxy[];
 }
 
 /** Everything a resolver may know about the paper; learning resolvers fill in `pmcid` and `arxivId`. */
@@ -91,4 +100,6 @@ export interface PdfAttempt {
   outcome: FetchOutcome;
   /** HTTP status of that hop; absent on a network error or a tab fetch. */
   status?: number;
+  /** Name of the library proxy `url` went through, when it did. */
+  proxy?: string;
 }

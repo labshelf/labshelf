@@ -12,6 +12,8 @@ export interface PublisherRule {
   platform: string;
   /** Hostnames the platform serves pages from; landing shapes apply only there. */
   hosts: RegExp;
+  /** Set when every paper on the platform is free to read, so a sign-in there never needs a library's access. */
+  openAccess?: true;
   /** DOI prefixes the platform owns outright, and the PDF URLs a DOI gives. */
   doi?: {
     prefixes: readonly string[];

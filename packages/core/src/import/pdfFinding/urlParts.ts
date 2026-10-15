@@ -1,6 +1,7 @@
 /** Reads the origin and site of an absolute http(s) URL. */
 
-function httpUrl(url: string): URL | undefined {
+/** `url` parsed, or undefined when it is not an absolute http(s) URL. */
+export function httpUrl(url: string): URL | undefined {
   try {
     const parsed = new URL(url);
     return parsed.protocol === "http:" || parsed.protocol === "https:" ? parsed : undefined;

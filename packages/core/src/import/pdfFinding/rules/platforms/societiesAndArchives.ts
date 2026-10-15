@@ -10,6 +10,7 @@ const amsPdf = (journal: string, issue: string, pii: string): string =>
 export const SOCIETY_AND_ARCHIVE_RULES: PublisherRule[] = [
   {
     platform: "ACL Anthology",
+    openAccess: true,
     hosts: /^aclanthology\.org$/i,
     // ACL DOIs are 10.18653/v1/<anthology id>.
     doi: { prefixes: ["10.18653"], pdfUrls: (doi) => (doi.startsWith("10.18653/v1/") ? [aclPdf(doi.slice(12))] : []) },
@@ -71,6 +72,7 @@ export const SOCIETY_AND_ARCHIVE_RULES: PublisherRule[] = [
   },
   {
     platform: "bioRxiv and medRxiv",
+    openAccess: true,
     hosts: /(^|\.)(biorxiv|medrxiv)\.org$/i,
     // 10.1101 DOIs do not say which server holds the preprint, and a wrong server answers with an error.
     // Without a version the server sends the latest one.

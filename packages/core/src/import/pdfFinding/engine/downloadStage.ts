@@ -48,7 +48,7 @@ export async function downloadBest(
       // INVARIANT: the iterator answers queued calls in order, so `taken` stays in rank order.
       const entry: Taken = { candidate: next.value };
       taken.push(entry);
-      const outcome = await download(next.value.url, ctx, opts, pacedEnv, limits, signal);
+      const outcome = await downloadCandidate(next.value.url, ctx.landingUrl, opts, pacedEnv, limits, signal);
       if (retry && outcome.outcome === "bot" && outcome.blocked.length) void throughTab(entry, outcome);
       else entry.outcome = outcome;
       wake();
@@ -99,15 +99,16 @@ async function pickWinner(taken: Taken[], running: () => boolean, { changed, wak
   return best();
 }
 
-async function download(
-  url: string, ctx: ResolveContext, opts: PdfFetchOptions, env: ResolverEnv, limits: EngineLimits, signal: AbortSignal,
+/** Downloads one candidate URL under its own deadline; a failure is logged and reported as an `error` outcome. */
+export async function downloadCandidate(
+  url: string, referer: string | undefined, opts: PdfFetchOptions, env: ResolverEnv, limits: EngineLimits, signal: AbortSignal,
 ): Promise<DownloadOutcome> {
   const perUrl = deadline(limits.perUrlMs, "Candidate over its limit");
   try {
     return await downloadPdf(url, opts, env, {
       signal: AbortSignal.any([signal, perUrl.signal]),
       firstByteMs: limits.firstByteMs,
-      ...(ctx.landingUrl ? { referer: ctx.landingUrl } : {}),
+      ...(referer ? { referer } : {}),
     });
   } catch (error) {
     reportError(env, error, { url });

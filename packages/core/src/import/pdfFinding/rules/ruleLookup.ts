@@ -18,6 +18,13 @@ export function pdfUrlsForLanding(url: string): string[] {
   });
 }
 
+/** Whether `hostname` is a platform in the table that gives its papers away or sells access, or undefined when no rule knows it. */
+export function hostAccess(hostname: string): "open" | "paywalled" | undefined {
+  const rule = PUBLISHER_RULES.find((r) => r.hosts.test(hostname));
+  if (!rule) return undefined;
+  return rule.openAccess ? "open" : "paywalled";
+}
+
 function rulesOn(page: URL): PublisherRule[] {
   return PUBLISHER_RULES.filter((r) => r.hosts.test(page.hostname));
 }

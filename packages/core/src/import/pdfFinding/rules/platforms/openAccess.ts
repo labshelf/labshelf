@@ -9,12 +9,14 @@ const peerjPdf = (id: string): string => `https://peerj.com/articles/${id}.pdf`;
 export const OPEN_ACCESS_RULES: PublisherRule[] = [
   {
     platform: "Frontiers",
+    openAccess: true,
     hosts: /(^|\.)frontiersin\.org$/i,
     doi: { prefixes: ["10.3389"], pdfUrls: (doi) => [`https://www.frontiersin.org/articles/${doi}/pdf`] },
     examples: [{ from: "10.3389/fpsyg.2013.00863", pdf: "https://www.frontiersin.org/articles/10.3389/fpsyg.2013.00863/pdf" }],
   },
   {
     platform: "PLOS",
+    openAccess: true,
     hosts: /^journals\.plos\.org$/i,
     doi: { prefixes: ["10.1371"], pdfUrls: (doi) => [`https://journals.plos.org/plosone/article/file?id=${doi}&type=printable`] },
     examples: [{
@@ -24,6 +26,7 @@ export const OPEN_ACCESS_RULES: PublisherRule[] = [
   },
   {
     platform: "MDPI",
+    openAccess: true,
     hosts: /(^|\.)mdpi\.com$/i,
     // The DOI does not carry the journal's ISSN, so only the landing page gives the PDF.
     landing: {
@@ -34,6 +37,7 @@ export const OPEN_ACCESS_RULES: PublisherRule[] = [
   },
   {
     platform: "eLife",
+    openAccess: true,
     hosts: /(^|\.)elifesciences\.org$/i,
     // The CDN names a PDF by the article's version: revised articles have a v2, and v1 stays.
     doi: {
@@ -54,6 +58,7 @@ export const OPEN_ACCESS_RULES: PublisherRule[] = [
   },
   {
     platform: "PeerJ",
+    openAccess: true,
     hosts: /(^|\.)peerj\.com$/i,
     // "peerj.4375" is article 4375; "peerj-cs.55" is article cs-55.
     doi: {
@@ -72,6 +77,7 @@ export const OPEN_ACCESS_RULES: PublisherRule[] = [
   },
   {
     platform: "Copernicus",
+    openAccess: true,
     hosts: /(^|\.)copernicus\.org$/i,
     // Each journal has its own subdomain, named by the code that opens the DOI suffix.
     doi: {
@@ -92,6 +98,7 @@ export const OPEN_ACCESS_RULES: PublisherRule[] = [
   },
   {
     platform: "SciELO",
+    openAccess: true,
     hosts: /(^|\.)scielo\.(?:[a-z]{2,3}|org\.[a-z]{2})$/i,
     // The DOI does not carry the article id. A PDF URL ("?format=pdf") never counts as a landing page.
     landing: {
