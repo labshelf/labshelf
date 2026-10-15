@@ -45,6 +45,10 @@ Split the work into packages. Each package states:
 | L | running gates, import fixes, commits, changelog | `check` skill, `import-validator`, `commit-splitter` on Haiku |
 | Docs | `documents/` updates, comment standard, dead code | the `finish` skill on Sonnet, once at the end |
 
+Routing: pick the tier by the kind of judgment, not the size. Haiku only when the output is machine-checkable; Sonnet when explicit acceptance checks exist; Opus/Fable for contracts, new abstractions, cross-app work, prompt writing, and a bug that survived one Sonnet attempt.
+
+Escalation: a Sonnet package that fails its acceptance checks twice, or returns CONCERNS instead of a result, moves to `model: "opus"`. Never start a third Sonnet attempt.
+
 Rules for the plan:
 - If the user named models ("Fable does the visual"), follow them.
 - Packages that touch the same files run in sequence. Only packages with disjoint files run in parallel.

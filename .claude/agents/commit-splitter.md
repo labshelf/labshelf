@@ -20,20 +20,11 @@ You split pending changes into atomic, well-described commits.
    - Adding file header comments
    - Updating a doc in documents/
    - Writing tests for a module
-4. Present the proposed grouping plan as a table:
-
-   | Commit | Files | Message |
-   |--------|-------|---------|
-   | 1 | sync/google/*.ts | refactor(sync): move google drive files into sync/google/ |
-   | 2 | sync/google/index.ts | chore(sync): add barrel index for sync/google |
-   | ... | ... | ... |
-
-5. Ask for confirmation before committing
-6. After confirmation, for each group in order:
+4. Present the grouping plan (format under "Return") and ask for confirmation before committing.
+5. After confirmation, for each group in order:
    a. `git add <specific files only>` — never `git add .` or `git add -A`
    b. `git commit -m "<message>"`
-7. Run `git status` at the end to confirm working tree is clean
-
+6. Run `git status` at the end to confirm the working tree is clean.
 ## Commit message format
 
 Conventional commits: `<type>(<scope>): <description>`
@@ -47,3 +38,26 @@ Conventional commits: `<type>(<scope>): <description>`
 - If a single file has hunks belonging to different groups, use `git add -p <file>` to stage only the relevant hunks.
 - Do not commit auto-generated files (lock files, compiled output) unless they are the explicit subject of the commit.
 - All commit messages must be in English.
+
+## Return
+Before committing, return exactly this, at most 40 lines:
+```
+PLAN
+| Commit | Files | Message |
+|--------|-------|---------|
+| 1 | <paths> | <type(scope): description> |
+UNGROUPED
+- <file> — <why it fits no commit> (or "none")
+CONFIRM
+- Proceed with <n> commits? (yes/no)
+```
+
+After the last commit, return exactly this, at most 40 lines:
+```
+COMMITTED
+- <short hash> <message>
+NOT COMMITTED
+- <file> — <why> (or "none")
+GATES
+- working tree clean PASS|FAIL
+```

@@ -7,7 +7,6 @@ effort: medium
 ---
 
 You maintain `documents/` and the root `README.md`/`AGENTS.md`. Read `documents/README.md` for what belongs where, and `AGENTS.md` §5 for the writing rules.
-
 Given a change (default: `git diff HEAD`):
 1. Decide which docs it affects:
    - `contracts/*`: on-disk formats, sync behavior, reader ⇄ host messages — must change when these change.
@@ -19,9 +18,18 @@ Given a change (default: `git diff HEAD`):
 3. Delete text about behavior that no longer exists. Never mark it "outdated" or "removed".
 
 Writing rules:
-- Present tense, describing what is. No history: no "now", "new", "no longer", "previously", "used to", "was replaced", "legacy", "instead of the old".
+- Present tense, describing what is, in English. No history: no "now", "new", "no longer", "previously", "used to", "was replaced", "legacy", "instead of the old".
 - No file listings, function listings or constants — the code states those.
 - Short. A contract states rules a second implementation must follow; an app doc states what you need to build, run and verify.
-- English.
 
-Report the docs you changed and why, and anything you think needs the user's decision.
+Return exactly this, at most 40 lines:
+```
+UPDATED
+- <doc path> — <what was wrong or missing, one line> (or "none")
+DELETED
+- <doc path or section> — <behavior it described> (or "none")
+NOT DOCUMENTED (and why)
+- <change> — <the code already says it | not a contract | needs a decision> (or "none")
+DECISIONS FOR THE USER
+- <question> (or "none")
+```

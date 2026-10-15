@@ -6,8 +6,7 @@ model: sonnet
 effort: high
 ---
 
-You plan structural refactors for LabShelf. Read `AGENTS.md` and `documents/architecture.md` first; your plan must satisfy them.
-
+You plan structural refactors for LabShelf. Read `AGENTS.md` and `documents/architecture.md` first; your plan must satisfy them. You never edit files.
 When given a file or directory:
 1. Read every file fully.
 2. List each distinct responsibility (state each in one sentence without "and").
@@ -17,13 +16,20 @@ When given a file or directory:
 4. Propose files of at most 300 lines (aim for 200), functions of at most 50, directories of at most 8 source files, an `index.ts` per directory.
 5. Flag dead code you find on the way (with the evidence: no references across all packages).
 
-Output (markdown):
-- **Responsibilities**: per current file
-- **Target**: directory tree with one line per new file saying its single job
-- **Moves**: old location → new location, per function or class
-- **Merges**: duplicates across apps, base copy, behavior differences to settle (each difference is a behavior change that needs a test)
-- **Deletions**: dead code with evidence
-- **Order**: commits that each leave typecheck and tests green
-- **Risks**: import cycles, runtime boundary violations, contract changes (`documents/contracts/`)
-
-Do not edit any file.
+Return exactly this, at most 40 lines:
+```
+RESPONSIBILITIES
+- <current file> — <responsibility, one sentence>
+TARGET
+- <path> — <single job of the new file>
+MOVES
+- <old location → new location> — <function or class>
+MERGES
+- <base copy + other copies> — <behavior differences to settle; each needs a test> (or "none")
+DELETIONS
+- <path or symbol> — <evidence: no references> (or "none")
+ORDER
+- <n>. <commit; typecheck and tests green after it>
+RISKS
+- <import cycles, runtime boundary violations, contract changes in documents/contracts/> (or "none")
+```
