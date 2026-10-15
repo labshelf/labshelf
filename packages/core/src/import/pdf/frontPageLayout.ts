@@ -2,12 +2,16 @@
 import { normalizeAuthors } from "./authors.js";
 import type { TextBlock } from "./types.js";
 
+// A publisher's access stamp ("Downloaded 12/25/12 to 134.76.1.1. Redistribution subject to SIAM license…") can be set
+// in a larger font than the title, so it must not compete for it.
+const ACCESS_STAMP = /^(downloaded|accessed)\b|redistribution subject to/i;
+
 /**
- * Returns the title by picking the largest-font text run from the first eight blocks of page 1.
+ * Returns the title by picking the largest-font text run from the first eight blocks of page 1, skipping access stamps.
  * @returns The inferred title string, or undefined if no suitable block is found.
  */
 export function titleFromBlocks(blocks: TextBlock[]): string | undefined {
-  const head = blocks.slice(0, 8);
+  const head = blocks.filter((block) => !ACCESS_STAMP.test(block.text)).slice(0, 8);
   if (head.length === 0) {
     return undefined;
   }

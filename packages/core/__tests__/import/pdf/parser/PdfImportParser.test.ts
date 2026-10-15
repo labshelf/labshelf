@@ -3,7 +3,7 @@
  * in which order, and how it grades and reports the record it builds.
  */
 
-import { PdfImportParser, type PdfDocumentOpener, type PdfOcrEngine } from '@labshelf/core';
+import { PdfImportParser, type ILogger, type PdfDocumentOpener, type PdfOcrEngine } from '@labshelf/core';
 
 interface FakePage {
   items: Array<{ str: string; size?: number }>;
@@ -191,6 +191,17 @@ describe('PdfImportParser.parse', () => {
     );
 
     expect(result).toMatchObject({ title: 'scan', confidence: 'low' });
+  });
+
+  it('logs the OCR failure with its message before degrading', async () => {
+    stubRegistries({});
+    const log = jest.fn(async () => undefined);
+    const logger = { log, error: jest.fn(async () => undefined) } as unknown as ILogger;
+    const ocr: PdfOcrEngine = { recognize: jest.fn(async () => Promise.reject(new Error('engine down'))) };
+
+    await new PdfImportParser(opener({ pages: [{ items: [{ str: 'stamp' }] }] }), { ocr, logger }).parse(PDF_BYTES, 'scan');
+
+    expect(log).toHaveBeenCalledWith('WARN', 'import/pdf', expect.stringContaining('OCR failed'), { message: 'engine down' });
   });
 
   it('rejects bytes without a PDF header', async () => {

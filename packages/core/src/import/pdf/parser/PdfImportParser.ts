@@ -88,7 +88,7 @@ export class PdfImportParser {
       }
     }
 
-    return assemble({ fileStem, signals, front, identification, embeddedIsReadable, layoutTitle, localTitle });
+    return assemble({ fileStem, signals, front, identification, embeddedIsReadable, layoutTitle, localTitle, logger: this.logger });
   }
 
   // A near-empty text layer passes the readability test for lack of evidence,
@@ -131,7 +131,10 @@ export class PdfImportParser {
     if (!this.ocr) {
       return "";
     }
-    return this.ocr.recognize(pdfBytes, OCR_PAGES).catch(() => "");
+    return this.ocr.recognize(pdfBytes, OCR_PAGES).catch(async (error: unknown) => {
+      await this.logger?.log("WARN", PDF_PARSER_MODULE, "OCR failed; reading the PDF without it", { message: errorMessage(error) });
+      return "";
+    });
   }
 }
 
@@ -143,6 +146,7 @@ interface AssembleInput {
   embeddedIsReadable: boolean;
   layoutTitle: string | undefined;
   localTitle: string | undefined;
+  logger: ILogger | undefined;
 }
 
 // Asks the registries about the paper, merges their answer with everything the file says itself, and grades it.
@@ -155,7 +159,7 @@ async function assemble(input: AssembleInput): Promise<ParsedPdfImport> {
 
   const frontMatter = front.text;
   const { confirmed } = identification;
-  const online = await resolveOnline({ confirmed, signals, localTitle, frontMatter, abstract, usedOcr: front.usedOcr, textIsReadable });
+  const online = await resolveOnline({ confirmed, signals, localTitle, frontMatter, abstract, usedOcr: front.usedOcr, textIsReadable, logger: input.logger });
   const local = localSources({ signals, frontMatter, abstract, layoutTitle: input.layoutTitle, ocrTitle: front.ocrTitle, embeddedIsReadable, textIsReadable });
   return buildParsedRecord({
     sources: [...online.sources, ...local],
@@ -180,7 +184,7 @@ function withOcr(front: FrontMatterText, ocrText: string, keepEmbedded: boolean)
 
 async function identify(signals: PdfSignals, frontMatter: string, logger: ILogger | undefined): Promise<Identification> {
   const identifiers = detectIdentifiers(signals.info, frontMatter, signals.linkUrls);
-  const confirmed = await resolveFirstIdentifier(identifiers).catch(async (error: unknown) => {
+  const confirmed = await resolveFirstIdentifier(identifiers, { logger }).catch(async (error: unknown) => {
     await logger?.log("WARN", PDF_PARSER_MODULE, "Identifier lookup failed; continuing without a confirmed identifier", {
       identifiers: identifiers.map((found) => found.value), message: errorMessage(error),
     });
