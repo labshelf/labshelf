@@ -97,4 +97,4 @@ The sidecar holds per-paper state from the reader: annotations, the reader theme
 { "version": 1, "libraryRoot": "/abs/path/to/library", "terminal": { … } }
 ```
 
-The terminal resolves the library in this order: `--library`, then `LABSHELF_LIBRARY`, then `libraryRoot`. VS Code writes `libraryRoot` whenever a library is configured or opened, and falls back to it when it has none of its own. Every writer keeps the keys it does not own and writes atomically (temporary file, then rename).
+`libraryRoot` is the single store of the library root. The terminal resolves the library in this order: `--library`, then `LABSHELF_LIBRARY`, then `libraryRoot`. VS Code reads only `libraryRoot` and writes it when a library is configured. Every writer keeps the keys it does not own and writes atomically (temporary file, then rename).

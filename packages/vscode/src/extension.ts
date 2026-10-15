@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 
 import { libraryChanged, libraryLayout } from "@labshelf/core";
 import { resolveLibraryRoot } from "./storage/paths/index.js";
+import { migrateLibraryRootFromGlobalState } from "./storage/migrations/index.js";
 import { createNodeAdapters } from "./activation/node/index.js";
 import { ListWebviewPanel } from "./ui/list/index.js";
 import {
@@ -12,7 +13,7 @@ import {
   type ActiveServices,
 } from "./commands/index.js";
 import { AiService } from "./ai/service/index.js";
-import { EventBus } from "./events/index.js";
+import { createLibraryEvents, type LibraryEvents } from "./events/index.js";
 import {
   startAiService,
   LibraryRootController,
@@ -20,30 +21,27 @@ import {
   ExternalChangeHandling,
   registerLibraryTreeView,
   registerLibraryCommands,
-  registerSettingsView,
+  registerSettingsWelcomeView,
   registerPanelCommands,
   registerSyncCommands,
 } from "./activation/index.js";
 
 /** Activates the extension, initializing services if a library is already configured */
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-  const eventBus = new EventBus();
+  const events = createLibraryEvents();
+  context.subscriptions.push(...Object.values(events));
   const adapters = createNodeAdapters(context);
-
-  // The settings page hears sync status through this, including from a controller created after the page opened.
-  const driveStatusChanged = new vscode.EventEmitter<void>();
-  context.subscriptions.push(driveStatusChanged);
 
   // Reassigned once the Library tree view is registered; the lifecycle modules below only ever
   // call it after that point, so the forward reference is safe.
   let refreshLibraryViews: () => void = () => {};
 
   const controller = createLibraryController({
-    context, eventBus, adapters, driveStatusChanged, refreshViews: () => refreshLibraryViews(),
+    context, events, adapters, refreshViews: () => refreshLibraryViews(),
   });
 
   const papersRootUri = papersRootResolver(controller);
-  const aiService = await loadConfiguredLibrary(context, eventBus, controller, adapters);
+  const aiService = await loadConfiguredLibrary(context, events, controller, adapters);
 
   // Returns current services or triggers the setup wizard and builds services from the chosen root.
   const requireServices = (): Promise<ActiveServices | null> => controller.require();
@@ -56,14 +54,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   };
 
   const { libraryProvider, syncTreeToPanel, refreshLibraryViews: refreshViews } = registerLibraryTreeView({
-    context, eventBus, controller, papersRootUri, folderHost, adapters,
+    context, events, controller, papersRootUri, folderHost, adapters,
   });
   refreshLibraryViews = refreshViews;
 
-  registerSettingsView({ context, controller, driveStatusChanged });
+  registerSettingsWelcomeView(context, controller);
 
   registerPanelCommands({
-    context, eventBus, requireServices, papersRootUri, folderHost, syncTreeToPanel, adapters,
+    context, events, requireServices, papersRootUri, folderHost, syncTreeToPanel, adapters,
     getAiService: () => aiService,
   });
 
@@ -74,7 +72,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   registerCommands(context, requireServices);
   registerAiCommands(context, () => aiService);
 
-  logPaperEvents(eventBus, controller.currentServices());
+  logPaperEvents(events, controller.currentServices());
 }
 
 function papersRootResolver(controller: LibraryRootController): () => vscode.Uri | null {
@@ -86,14 +84,13 @@ function papersRootResolver(controller: LibraryRootController): () => vscode.Uri
 
 interface LibraryControllerDeps {
   context: vscode.ExtensionContext;
-  eventBus: EventBus;
+  events: LibraryEvents;
   adapters: ReturnType<typeof createNodeAdapters>;
-  driveStatusChanged: vscode.EventEmitter<void>;
   refreshViews: () => void;
 }
 
 function createLibraryController(deps: LibraryControllerDeps): LibraryRootController {
-  const { context, eventBus, adapters, driveStatusChanged, refreshViews } = deps;
+  const { context, events, adapters, refreshViews } = deps;
   const externalChangeHandling = new ExternalChangeHandling({
     context,
     getActiveServices: () => controller.currentServices(),
@@ -101,9 +98,8 @@ function createLibraryController(deps: LibraryControllerDeps): LibraryRootContro
   });
   const syncLifecycle = new SyncControllerLifecycle({
     context,
-    eventBus,
+    events,
     adapters,
-    driveStatusChanged,
     getActiveServices: () => controller.currentServices(),
     // A sync that pulls files from Drive must surface in the list without a reload.
     onSynced: async (result) => {
@@ -111,18 +107,21 @@ function createLibraryController(deps: LibraryControllerDeps): LibraryRootContro
       await externalChangeHandling.reindexAndRefresh("sync");
     },
   });
-  const controller = new LibraryRootController(context, eventBus, externalChangeHandling, syncLifecycle, adapters);
+  const controller = new LibraryRootController(context, events, externalChangeHandling, syncLifecycle, adapters);
   return controller;
 }
 
 /** Opens the configured library, or tells the user to configure one. @returns the AI service, when one started. */
 async function loadConfiguredLibrary(
   context: vscode.ExtensionContext,
-  eventBus: EventBus,
+  events: LibraryEvents,
   controller: LibraryRootController,
   adapters: ReturnType<typeof createNodeAdapters>,
 ): Promise<AiService | null> {
-  const initialRoot = await resolveLibraryRoot(context, adapters.sharedLibraryConfig);
+  const unmigratedRoot = await migrateLibraryRootFromGlobalState(context.globalState, adapters.sharedLibraryConfig, (root) =>
+    adapters.createLogger(libraryLayout(vscode.Uri.file(root), vscode.Uri.joinPath).appLogPath().fsPath));
+  const initialRoot = await resolveLibraryRoot(adapters.sharedLibraryConfig)
+    ?? (unmigratedRoot ? vscode.Uri.file(unmigratedRoot) : undefined);
   if (!initialRoot) {
     // Library not configured — inform the user without blocking activation.
     vscode.window.showInformationMessage(
@@ -142,18 +141,18 @@ async function loadConfiguredLibrary(
   let aiService: AiService | null = null;
   await vscode.window.withProgress({ location: { viewId: "labshelf.library" } }, async () => {
     const services = await controller.loadInitial(initialRoot);
-    aiService = await startAiService(context, eventBus, services, adapters);
+    aiService = await startAiService(context, events, services, adapters);
     return services;
   });
   return aiService;
 }
 
-function logPaperEvents(eventBus: EventBus, services: ActiveServices | null): void {
+function logPaperEvents(events: LibraryEvents, services: ActiveServices | null): void {
   if (!services) { return; }
-  eventBus.on("paper:added", async (payload) => {
+  events.paperAdded.event(async (payload) => {
     await services.logger.log("INFO", "extension", "Paper added", { payload });
   });
-  eventBus.on("paper:updated", async (payload) => {
+  events.paperUpdated.event(async (payload) => {
     await services.logger.log("INFO", "extension", "Paper updated", { payload });
   });
 }

@@ -1,24 +1,19 @@
 /**
- * Persists, resolves, and sets up the central LabShelf library directory using VS Code globalState, mirrored in the
- * config file shared with the terminal app so both open the same library.
+ * Resolves and sets up the central LabShelf library directory, whose root lives in the config file shared with the
+ * terminal app so both open the same library.
  */
 import * as vscode from "vscode";
 
-import { libraryLayout, type IFileSystem, type ILogger } from "@labshelf/core";
+import { libraryLayout, type IFileSystem } from "@labshelf/core";
 import type { SharedLibraryConfig } from "./sharedLibraryConfig.js";
 
-const LIBRARY_ROOT_KEY = "labshelf.libraryRoot";
-
 /**
- * Reads the stored library root path from globalState and validates that it still exists on disk.
+ * Reads the library root from the shared config and validates that it still exists on disk.
  * @returns URI of the library root, or undefined if unset or inaccessible
  */
-export async function resolveLibraryRoot(
-  context: vscode.ExtensionContext,
-  sharedConfig?: SharedLibraryConfig,
-): Promise<vscode.Uri | undefined> {
-  // A library set up in the terminal app first is adopted from the shared config.
-  const stored = context.globalState.get<string>(LIBRARY_ROOT_KEY) ?? (await sharedConfig?.readRoot());
+export async function resolveLibraryRoot(sharedConfig: SharedLibraryConfig): Promise<vscode.Uri | undefined> {
+  // CONTRACT: documents/contracts/library-format.md#shared-configuration
+  const stored = await sharedConfig.readRoot();
   if (!stored) {
     return undefined;
   }
@@ -37,28 +32,6 @@ export async function resolveLibraryRoot(
 }
 
 /**
- * Saves the given library root URI to globalState so it persists across sessions.
- */
-export async function persistLibraryRoot(context: vscode.ExtensionContext, uri: vscode.Uri): Promise<void> {
-  await context.globalState.update(LIBRARY_ROOT_KEY, uri.fsPath);
-}
-
-/**
- * Records the library root in the shared config for the terminal app. Every activated library goes through here, so
- * libraries configured before the shared file existed are recorded too. A failure only costs the terminal its default,
- * so it is logged and VS Code keeps working from globalState. Without a shared config (a host with no file system
- * to share) nothing is recorded.
- */
-export async function mirrorLibraryRoot(uri: vscode.Uri, logger: ILogger, sharedConfig?: SharedLibraryConfig): Promise<void> {
-  if (!sharedConfig) { return; }
-  try {
-    await sharedConfig.recordRoot(uri.fsPath, logger);
-  } catch (error) {
-    await logger.error("storage/libraryLocation", error, { file: sharedConfig.path(), libraryRoot: uri.fsPath });
-  }
-}
-
-/**
  * Creates all required LabShelf subdirectories under root if they do not already exist.
  */
 export async function ensureLibraryStructure(root: vscode.Uri, fileSystem: IFileSystem): Promise<void> {
@@ -68,12 +41,12 @@ export async function ensureLibraryStructure(root: vscode.Uri, fileSystem: IFile
 }
 
 /**
- * Runs the first-use folder-picker wizard and creates the library structure at the chosen location, through the
- * file system the factory returns for the chosen root.
+ * Runs the first-use folder-picker wizard, creates the library structure at the chosen location through the file
+ * system the factory returns for it, and records the root in the shared config.
  * @returns the configured library root URI, or undefined if the user cancelled
  */
 export async function runLibrarySetupWizard(
-  context: vscode.ExtensionContext,
+  sharedConfig: SharedLibraryConfig,
   createFileSystem: (root: vscode.Uri) => IFileSystem,
 ): Promise<vscode.Uri | undefined> {
   const folders = await vscode.window.showOpenDialog({
@@ -108,7 +81,7 @@ export async function runLibrarySetupWizard(
     const fileSystem = createFileSystem(libraryRoot);
     await fileSystem.ensureDir(libraryRoot.fsPath);
     await ensureLibraryStructure(libraryRoot, fileSystem);
-    await persistLibraryRoot(context, libraryRoot);
+    await sharedConfig.recordRoot(libraryRoot.fsPath);
     return libraryRoot;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

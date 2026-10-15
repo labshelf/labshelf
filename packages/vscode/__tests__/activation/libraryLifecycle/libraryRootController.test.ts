@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { EventBus } from '../../../src/events/index.js';
+import { createLibraryEvents } from '../../../src/events/index.js';
 import type { ActiveServices } from '../../../src/commands/index.js';
 
 const buildServices = jest.fn();
@@ -10,10 +10,8 @@ jest.mock('../../../src/activation/serviceComposition/index.js', () => ({
 }));
 
 const runLibrarySetupWizard = jest.fn();
-const mirrorLibraryRoot = jest.fn(async () => undefined);
 jest.mock('../../../src/storage/paths/index.js', () => ({
   runLibrarySetupWizard: (...args: unknown[]) => runLibrarySetupWizard(...args),
-  mirrorLibraryRoot: (...args: unknown[]) => (mirrorLibraryRoot as (...a: unknown[]) => unknown)(...args),
 }));
 
 import type { HostAdapters } from '../../../src/activation/serviceComposition/index.js';
@@ -33,7 +31,6 @@ describe('LibraryRootController', () => {
   beforeEach(() => {
     buildServices.mockReset();
     runLibrarySetupWizard.mockReset();
-    mirrorLibraryRoot.mockClear();
   });
 
   // The watcher and the sync lifecycle are stubbed: this suite is about one rebuild path, not their wiring.
@@ -42,10 +39,10 @@ describe('LibraryRootController', () => {
 
   function makeController(): LibraryRootController {
     const context = fakeContext();
-    const eventBus = new EventBus();
+    const events = createLibraryEvents();
     const externalChangeHandling = { watch: jest.fn() } as unknown as ExternalChangeHandling;
     const syncLifecycle = { ensure: jest.fn(async () => undefined) } as unknown as SyncControllerLifecycle;
-    return new LibraryRootController(context, eventBus, externalChangeHandling, syncLifecycle, adapters);
+    return new LibraryRootController(context, events, externalChangeHandling, syncLifecycle, adapters);
   }
 
   it('require() builds services once and caches the result', async () => {
@@ -61,6 +58,7 @@ describe('LibraryRootController', () => {
     expect(second).toBe(services);
     expect(buildServices).toHaveBeenCalledTimes(1);
     expect(runLibrarySetupWizard).toHaveBeenCalledTimes(1);
+    expect(runLibrarySetupWizard).toHaveBeenCalledWith(sharedLibraryConfig, expect.any(Function));
   });
 
   it('reconfigure() always rebuilds, even when services are already cached', async () => {
@@ -77,14 +75,13 @@ describe('LibraryRootController', () => {
     expect(buildServices).toHaveBeenCalledTimes(2);
   });
 
-  it('builds services over the host adapters and mirrors the root through the shared config', async () => {
+  it('builds services over the host adapters', async () => {
     buildServices.mockResolvedValue(fakeServices());
     const root = vscode.Uri.file('/library');
 
     await makeController().loadInitial(root);
 
     expect(buildServices).toHaveBeenCalledWith(expect.anything(), root, expect.anything(), adapters);
-    expect(mirrorLibraryRoot).toHaveBeenCalledWith(root, expect.anything(), sharedLibraryConfig);
   });
 
   it('never starts the AI service itself', async () => {

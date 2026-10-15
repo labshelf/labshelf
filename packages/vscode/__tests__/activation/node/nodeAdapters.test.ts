@@ -15,7 +15,7 @@ describe('createNodeAdapters', () => {
   });
 
   it('shares the library root with the terminal app and reports the platform', () => {
-    expect(adapters.sharedLibraryConfig?.path()).toContain('labshelf');
+    expect(adapters.sharedLibraryConfig.path()).toContain('labshelf');
     expect(adapters.reader.isMac).toBe(process.platform === 'darwin');
     expect(adapters.reader.locatePdfjs()).not.toBeNull();
   });

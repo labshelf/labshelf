@@ -25,8 +25,7 @@ export interface HostAdapters {
     lock: SyncLock;
     createDriveAuth(logger: ILogger): DriveSignIn;
   };
-  /** Absent in a host with no file system to share with the terminal app. */
-  sharedLibraryConfig?: SharedLibraryConfig;
+  sharedLibraryConfig: SharedLibraryConfig;
   reader: {
     locatePdfjs: PdfjsLocator;
     isMac: boolean;
