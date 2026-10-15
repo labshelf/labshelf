@@ -1,13 +1,9 @@
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { cacheDir, expandHome } from "../../src/platform/dirs";
+import { expandHome } from "../../src/platform/expandHome";
 
-describe("cache directory and home expansion", () => {
-  it("puts caches in $XDG_CACHE_HOME/labshelf when set", () => {
-    expect(cacheDir({ XDG_CACHE_HOME: "/xdg/cache" })).toBe(path.join("/xdg/cache", "labshelf"));
-  });
-
+describe("home expansion", () => {
   it("expands a leading ~ to the home directory", () => {
     expect(expandHome("~")).toBe(os.homedir());
     expect(expandHome("~/papers")).toBe(path.join(os.homedir(), "papers"));
