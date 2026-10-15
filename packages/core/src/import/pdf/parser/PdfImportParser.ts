@@ -66,7 +66,7 @@ export class PdfImportParser {
    */
   async parse(pdfBytes: Uint8Array, fileStem: string): Promise<ParsedPdfImport> {
     if (!isPdfBytes(pdfBytes)) { throw new Error("File is not a valid PDF (missing %PDF- header)."); }
-    const signals = await readPdf(this.opener, pdfBytes);
+    const signals = await readPdf(this.opener, pdfBytes, this.logger);
 
     // Fonts without a usable character map yield scrambled text. Such text can
     // still hide an identifier by luck, but must never become a title or name.

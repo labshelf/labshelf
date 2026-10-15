@@ -1,5 +1,9 @@
 // Reads title blocks, identifier-detection text and link annotation targets from a PdfDocumentLike.
-import type { PdfDocumentLike, TextBlock } from "./types.js";
+import { describeError } from "../../logging/index.js";
+import type { ILogger } from "../../ports/index.js";
+import type { PageText, PdfDocumentLike, TextBlock } from "./types.js";
+
+const PDF_TEXT_MODULE = "import/pdf";
 
 // TRAP: link annotation targets often carry the DOI even when the text layer is unreadable.
 
@@ -35,27 +39,36 @@ export async function extractTitleBlocks(document: PdfDocumentLike): Promise<Tex
 }
 
 /**
- * Returns the first `pageCount` pages as separate strings. Keeping pages apart
- * is what makes a repeated running header detectable.
+ * Returns the text of the first `pageCount` pages, one entry per page, with its page number.
+ * Keeping pages apart is what makes a repeated running header detectable. A page that
+ * cannot be read is logged and skipped, so one bad page does not cost the others.
  * @returns One entry per page that yielded text.
  */
-export async function extractPageTexts(document: PdfDocumentLike, pageCount: number): Promise<string[]> {
-  const pages: string[] = [];
+export async function extractPageTexts(
+  document: PdfDocumentLike,
+  pageCount: number,
+  logger: ILogger | undefined,
+): Promise<PageText[]> {
+  const pages: PageText[] = [];
   const limit = Math.min(document.numPages ?? pageCount, pageCount);
 
-  for (let pageNumber = 1; pageNumber <= limit; pageNumber += 1) {
+  for (let page = 1; page <= limit; page += 1) {
     try {
-      const page = await document.getPage(pageNumber);
-      const textContent = await page.getTextContent({ normalizeWhitespace: true });
-      const pageText = textContent.items
+      const handle = await document.getPage(page);
+      const textContent = await handle.getTextContent({ normalizeWhitespace: true });
+      const text = textContent.items
         .map((item) => item.str ?? "")
         .join(" ")
+        .replace(/\s+/g, " ")
         .trim();
-      if (pageText) {
-        pages.push(pageText);
+      if (text) {
+        pages.push({ page, text });
       }
-    } catch {
-      // One unreadable page must not cost us the others.
+    } catch (error) {
+      await logger?.log("WARN", PDF_TEXT_MODULE, "Page text unreadable; skipping the page", {
+        page,
+        message: describeError(error).message,
+      });
     }
   }
 
@@ -66,7 +79,11 @@ export async function extractPageTexts(document: PdfDocumentLike, pageCount: num
  * Collects the target URLs of every link annotation on the first `pageCount` pages.
  * @returns Deduplicated list of annotation URLs; empty when the backend exposes none.
  */
-export async function extractLinkUrls(document: PdfDocumentLike, pageCount: number): Promise<string[]> {
+export async function extractLinkUrls(
+  document: PdfDocumentLike,
+  pageCount: number,
+  logger: ILogger | undefined,
+): Promise<string[]> {
   const urls = new Set<string>();
   const limit = Math.min(document.numPages ?? pageCount, pageCount);
 
@@ -76,7 +93,13 @@ export async function extractLinkUrls(document: PdfDocumentLike, pageCount: numb
       break;
     }
 
-    const annotations = await page.getAnnotations().catch(() => []);
+    const annotations = await page.getAnnotations().catch(async (error: unknown) => {
+      await logger?.log("WARN", PDF_TEXT_MODULE, "Link annotations unreadable; skipping the page", {
+        page: pageNumber,
+        message: describeError(error).message,
+      });
+      return [];
+    });
     for (const annotation of annotations) {
       for (const candidate of [annotation.url, annotation.unsafeUrl]) {
         if (typeof candidate === "string" && candidate.trim()) {

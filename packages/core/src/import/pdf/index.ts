@@ -2,6 +2,7 @@
 export type {
   ParsedPdfImport,
   TextBlock,
+  PageText,
   PdfDocumentLike,
   PdfMetadataLike,
   XmpMetadataLike,

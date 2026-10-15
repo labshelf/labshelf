@@ -38,6 +38,12 @@ export interface TextBlock {
   text: string;
 }
 
+// The text of one PDF page, 1-based.
+export interface PageText {
+  page: number;
+  text: string;
+}
+
 /**
  * Minimal pdfjs-like document surface required by the extractor. Concrete
  * pdfjs documents satisfy this shape; consumers may pass mocks in tests.
