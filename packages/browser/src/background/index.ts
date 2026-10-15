@@ -5,28 +5,17 @@
  */
 import { bx } from "../platform/browserApi";
 import { BrowserLogger } from "../platform/logger";
-import type {
-  AttachPdfData, DraftView, FolderOption, FoldersData, LibraryChangedBroadcast, LibraryRef, LookupData,
-  LookupItem, PdfStatusData, RuntimeMessage, RuntimeResponse, SaveOutcome, SavedPaperData, TabSummary,
-} from "../platform/runtimeMessages";
-import { getSettings } from "../platform/settings";
 import { BrowserDriveAuth } from "../sync/auth/browserDriveAuth";
 import { createBrowserSync } from "../sync";
-import {
-  attachPdfToPaper, draftFromRecord, findPdf, refreshExisting, resetPdfSearch,
-  safeFolder, saveOrAsk, summarizeAttempts,
-} from "../capture/index";
-import type { CaptureDraft, SaveDecision, SavedPaper } from "../capture/index";
-import { IndexedDbFileSystem, buildFolderTree, createLibraryMutations, listAllRecords, pdfDirs, rebuildFromFiles } from "../storage";
-import { hashForFolder } from "../library-page";
-import { draftForTab, forgetDraft, forgetPaper, scholarDraftFor } from "./draftCache";
-import { isScholarUrl } from "../content/scholarParse";
+import { createLibraryMutations, rebuildFromFiles } from "../storage";
+import { forgetDraft } from "./draftCache";
 import { installAutoSyncScheduler } from "./autoSyncScheduler";
 import { installIdleSyncTrigger } from "./syncOnIdle";
 import { createSyncMessages } from "./syncMessages";
 import { AlarmSyncTimers } from "./alarmSyncTimers";
 import { installBadgeUpdater } from "./badgeUpdater";
-import { PAPERS_DIR, PDF_FILE, findInLibrary, parentDir, type FolderTreeNode } from "@labshelf/core";
+import { broadcastChanged } from "./broadcast";
+import { registerMessageRouter } from "./router";
 
 const log = new BrowserLogger("background");
 const mutations = createLibraryMutations(log);
@@ -52,6 +41,8 @@ void installAutoSyncScheduler({ sync, logger: log });
 installIdleSyncTrigger({ trigger: syncMessages.trigger, logger: log });
 installBadgeUpdater(syncMessages.snapshot);
 
+registerMessageRouter({ log, mutations, syncMessages, scheduleSync });
+
 bx.runtime.onInstalled.addListener((details) => {
   void log.info("extension installed", { reason: details.reason });
 });
@@ -60,262 +51,4 @@ bx.runtime.onStartup.addListener(() => {
   void log.info("browser startup");
 });
 
-// Web pages reach the background only through the Scholar content script,
-// and only for what its buttons need; everything else is for extension pages.
-const PAGE_MESSAGES: ReadonlySet<RuntimeMessage["type"]> = new Set(["scholar.save", "library.lookup", "library.folders", "library.open"]);
-
-function allowedFrom(msg: RuntimeMessage, sender: { url?: string }): boolean {
-  if (sender.url?.startsWith(bx.runtime.getURL(""))) return true;
-  return PAGE_MESSAGES.has(msg?.type) && isScholarUrl(sender.url);
-}
-
-bx.runtime.onMessage.addListener(async (message: unknown, sender: { url?: string }) => {
-  const msg = message as RuntimeMessage;
-  // The background's own library.changed broadcast is not a request; if the
-  // runtime delivers it back here, ignore it before the exhaustive switch.
-  if ((message as LibraryChangedBroadcast | undefined)?.type === "library.changed") return undefined;
-  if (!allowedFrom(msg, sender)) {
-    void log.warn("message refused", { type: msg?.type ?? null, from: sender.url ?? null });
-    return { ok: false, error: "Not allowed from this page" } satisfies RuntimeResponse;
-  }
-  try {
-    const data = await handle(msg);
-    return { ok: true, data } satisfies RuntimeResponse;
-  } catch (err: unknown) {
-    const error = err instanceof Error ? err.message : String(err);
-    void log.error("background", err, { type: msg?.type });
-    return { ok: false, error } satisfies RuntimeResponse;
-  }
-});
-
-async function handle(msg: RuntimeMessage): Promise<unknown> {
-  switch (msg.type) {
-    case "ping":
-      return { pong: true, at: new Date().toISOString() };
-    case "auth.status":
-      return syncMessages.authStatus();
-    case "auth.connect":
-      return syncMessages.connect();
-    case "auth.disconnect":
-      return syncMessages.disconnect();
-    case "sync.status":
-      return syncMessages.status();
-    case "sync.now":
-      return syncMessages.syncNow();
-    case "sync.scheduleSoon":
-      scheduleSync(msg.reason);
-      return { scheduled: true };
-    case "capture.inspect": {
-      const draft = await draftForTab(msg.tabId, await tabUrl(msg.tabId));
-      const view = await draftView(draft);
-      // Start the PDF search now; also for a library copy that still has no PDF,
-      // so the popup can offer to attach what this page yields. The popup asks
-      // for the result separately.
-      if (draft.isPaper && !view.existing?.hasPdf) void findPdf(draft);
-      return view;
-    }
-    case "capture.findPdf": {
-      const draft = await draftForTab(msg.tabId, await tabUrl(msg.tabId));
-      const pdf = await findPdf(draft);
-      return (pdf
-        ? { found: true, source: pdf.source }
-        : { found: false, miss: summarizeAttempts(draft.pdfAttempts) }) satisfies PdfStatusData;
-    }
-    case "capture.save": {
-      const draft = await draftForTab(msg.tabId, await tabUrl(msg.tabId));
-      if (msg.retryPdf) resetPdfSearch(draft);
-      return outcome(draft, await saveOrAsk(draft, {
-        ...(msg.folder ? { folder: msg.folder } : {}),
-        ...(msg.tags ? { tags: msg.tags } : {}),
-        ...(msg.note ? { note: msg.note } : {}),
-      }, msg.ifNoPdf ?? "ask"));
-    }
-    case "capture.tab": {
-      // Fresh look on the first call; the "Save without PDF" confirmation reuses
-      // the cached draft (and its finished search).
-      const draft = await draftForTab(msg.tabId, await tabUrl(msg.tabId), msg.ifNoPdf !== "save");
-      if (msg.retryPdf) resetPdfSearch(draft);
-      await refreshExisting(draft);
-      // D4: the tab's paper may already be in the library — never write a duplicate.
-      if (draft.existing) return libraryCopy(draft);
-      return outcome(draft, await saveOrAsk(draft, msg.targetFolder ? { folder: msg.targetFolder } : {}, msg.ifNoPdf ?? "ask"));
-    }
-    case "scholar.save": {
-      const draft = await scholarDraftFor(msg.hit);
-      if (msg.retryPdf) resetPdfSearch(draft);
-      await refreshExisting(draft);
-      if (draft.existing) return libraryCopy(draft);
-      return outcome(draft, await saveOrAsk(draft, msg.folder ? { folder: msg.folder } : {}, msg.ifNoPdf ?? "ask"));
-    }
-    case "capture.attachPdf": {
-      const draft = await draftForTab(msg.tabId, await tabUrl(msg.tabId));
-      if (!draft.existing) throw new Error("This paper is not in your library.");
-      const id = draft.existing.id;
-      // The search already ran at inspect; findPdf returns the memoised result.
-      const pdf = await findPdf(draft);
-      if (!pdf) return { id, attached: false, miss: summarizeAttempts(draft.pdfAttempts) } satisfies AttachPdfData;
-      const { written } = await attachPdfToPaper(id, pdf.bytes);
-      if (written) {
-        scheduleSync("capture.attachPdf");
-        broadcastChanged("attach", id);
-      }
-      return { id, attached: written, ...(written ? { source: pdf.source } : { alreadyHadPdf: true }) } satisfies AttachPdfData;
-    }
-    case "paper.findPdf":
-      return findPdfForPaper(msg.id);
-    case "paper.remove": {
-      const record = (await listAllRecords()).find((r) => r.id === msg.id);
-      if (!record) return { removed: false };
-      const { done, failed } = await mutations.trashPapers([{ id: record.id, path: record.path }]);
-      if (!done.length) throw new Error(failed[0]?.error ?? "The paper could not be removed.");
-      forgetPaper(record.id);
-      scheduleSync("paper.remove");
-      broadcastChanged("remove", record.id);
-      await log.info("paper removed from popup", { id: record.id });
-      return { removed: true };
-    }
-    case "library.folders":
-      return libraryFolders();
-    case "library.lookup":
-      return lookup(msg.items);
-    case "library.open": {
-      const folder = safeFolder(msg.folder);
-      const query = msg.paperId ? `?paper=${encodeURIComponent(msg.paperId)}` : "";
-      await bx.tabs.create({ url: `${bx.runtime.getURL("library-page/index.html")}${query}${hashForFolder(folder)}` });
-      return { opened: true };
-    }
-    case "tabs.list": {
-      const tabs = await bx.tabs.query({ currentWindow: true });
-      return tabs
-        .filter((t) => t.id !== undefined && /^https?:/.test(t.url ?? ""))
-        .map((t) => ({ id: t.id!, title: t.title ?? "", url: t.url ?? "", active: t.active }) satisfies TabSummary);
-    }
-    default: {
-      const exhaustive: never = msg;
-      throw new Error(`Unhandled message type: ${JSON.stringify(exhaustive)}`);
-    }
-  }
-}
-
 bx.tabs.onRemoved.addListener((tabId) => forgetDraft(tabId));
-
-async function tabUrl(tabId: number): Promise<string> {
-  const tab = await bx.tabs.get(tabId);
-  return tab.url ?? "";
-}
-
-function ref(id: string, path: string, hasPdf: boolean): LibraryRef {
-  return { id, path, folder: parentDir(path, "/"), hasPdf };
-}
-
-/** Whether `<path>/paper.pdf` exists (one stat; library.lookup uses a bulk scan). */
-async function pdfExists(path: string): Promise<boolean> {
-  return (await new IndexedDbFileSystem().stat(`${path}/${PDF_FILE}`)) !== undefined;
-}
-
-async function draftView(d: CaptureDraft): Promise<DraftView> {
-  const m = d.metadata;
-  const venue = m.journal ?? m.publisher;
-  return {
-    isPaper: d.isPaper,
-    title: m.title ?? "",
-    authors: m.authors ?? [],
-    origin: d.origin,
-    ...(m.year ? { year: m.year } : {}),
-    ...(venue ? { venue } : {}),
-    ...(d.ids.doi ? { doi: d.ids.doi } : {}),
-    ...(d.existing ? { existing: ref(d.existing.id, d.existing.path, await pdfExists(d.existing.path)) } : {}),
-  };
-}
-
-/** Turns a consent-gated save decision into the reply the surfaces switch on. */
-function outcome(draft: CaptureDraft, decision: SaveDecision): SaveOutcome {
-  if (decision.kind === "saved") return saved(decision.saved);
-  return {
-    status: "no-pdf",
-    title: draft.metadata.title ?? "Untitled",
-    miss: decision.miss,
-    ...(draft.pageUrl ? { pageUrl: draft.pageUrl } : {}),
-  };
-}
-
-// A capture wrote to IDB; coalesce the follow-up sync and tell open pages.
-function saved(result: SavedPaper): SavedPaperData {
-  scheduleSync("capture");
-  const { paper } = result;
-  broadcastChanged("capture", paper.id);
-  return {
-    ...ref(paper.id, paper.path, result.pdfSource !== null),
-    status: "saved",
-    title: paper.title,
-    citeKey: paper.citeKey,
-    pdfSource: result.pdfSource,
-  };
-}
-
-async function libraryCopy(d: CaptureDraft): Promise<SavedPaperData> {
-  const paper = d.existing!;
-  return {
-    ...ref(paper.id, paper.path, await pdfExists(paper.path)),
-    status: "saved",
-    title: paper.title,
-    citeKey: paper.citeKey,
-    pdfSource: null,
-    alreadyInLibrary: true,
-  };
-}
-
-/** Notifies extension pages (the library page) that the library changed. */
-function broadcastChanged(reason: LibraryChangedBroadcast["reason"], paperId?: string): void {
-  const b: LibraryChangedBroadcast = { type: "library.changed", reason, ...(paperId ? { paperId } : {}) };
-  // Chrome rejects when no page is listening; that is not an error here.
-  void bx.runtime.sendMessage(b).catch(() => undefined);
-}
-
-// "Find PDF" for a paper already saved (no tab). One run per id is kept in
-// flight so repeated clicks share the search, and paper.pdf is written at the
-// record's CURRENT path (attachPdfToPaper re-reads it).
-const findingPdf = new Map<string, Promise<AttachPdfData>>();
-
-async function findPdfForPaper(id: string): Promise<AttachPdfData> {
-  const inflight = findingPdf.get(id);
-  if (inflight) return inflight;
-  const run = (async (): Promise<AttachPdfData> => {
-    const record = (await listAllRecords()).find((r) => r.id === id);
-    if (!record) throw new Error("This paper is no longer in your library.");
-    const draft = await draftFromRecord(record);
-    const pdf = await findPdf(draft);
-    if (!pdf) return { id, attached: false, miss: summarizeAttempts(draft.pdfAttempts) };
-    const { written } = await attachPdfToPaper(id, pdf.bytes);
-    if (written) {
-      scheduleSync("paper.findPdf");
-      broadcastChanged("attach", id);
-    }
-    return { id, attached: written, ...(written ? { source: pdf.source } : { alreadyHadPdf: true }) };
-  })();
-  findingPdf.set(id, run);
-  void run.catch(() => undefined).finally(() => { if (findingPdf.get(id) === run) findingPdf.delete(id); });
-  return run;
-}
-
-async function libraryFolders(): Promise<FoldersData> {
-  const [tree, settings] = await Promise.all([buildFolderTree(PAPERS_DIR), getSettings()]);
-  const folders: FolderOption[] = [{ path: PAPERS_DIR, label: "Library", depth: 0 }];
-  const walk = (nodes: FolderTreeNode[], depth: number): void => {
-    for (const n of nodes) { folders.push({ path: n.path, label: n.name, depth }); walk(n.children, depth + 1); }
-  };
-  walk(tree, 1);
-  // A remembered folder that was since deleted or renamed falls back to the root.
-  const lastFolder = folders.some((f) => f.path === settings.lastFolder) ? settings.lastFolder : PAPERS_DIR;
-  return { folders, lastFolder };
-}
-
-async function lookup(items: LookupItem[]): Promise<LookupData> {
-  const [records, dirs] = await Promise.all([listAllRecords(), pdfDirs()]);
-  const out: LookupData = {};
-  for (const item of items) {
-    const hit = findInLibrary(records, item);
-    if (hit) out[item.key] = ref(hit.id, hit.path, dirs.has(hit.path));
-  }
-  return out;
-}
