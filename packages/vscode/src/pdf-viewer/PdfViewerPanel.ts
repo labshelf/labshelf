@@ -23,7 +23,6 @@ export interface PdfViewerDeps {
   locatePdfjs: PdfjsLocator;
   /** Whether the host is macOS, which picks the reader's modifier key. */
   isMac: boolean;
-  /** Reading analytics sink (the AI subsystem's reading_events), absent when AI is disabled. */
 }
 
 export interface OpenOptions {
