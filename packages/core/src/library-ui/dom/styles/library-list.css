@@ -1,6 +1,6 @@
 /*
  * Styles the paper list under .ls-library: sortable column heads and paper rows (type icon, tags, location chip,
- * marks, Last read, status badge, the PDF child row). Narrow windows drop Last read, then the publication.
+ * marks, Last read, status badge, the PDF child row). A narrow list pane drops Last read, then the publication.
  */
 /* ── Column heads ───────────────────────────────────────────────── */
 .ls-library .col-heads {
@@ -76,12 +76,17 @@
 .ls-library .child-row .paper-type-icon { opacity: .6; }
 .ls-library .list-loading { padding: 32px var(--ls-space-7); color: var(--ls-desc); font-size: var(--ls-text-md); text-align: center; }
 
-/* Narrow windows drop columns before the title gets squeezed: Last read first, then the publication. */
-@media (max-width: 1080px) {
-  .ls-library { --cols: 28px 22px minmax(0, 1fr) 150px 52px 170px 86px; }
+/* A narrow list pane drops columns before the title gets squeezed: Last read first, then the publication, then the creator. The pane
+   shares the window with the sidebar and the detail pane, so its own width decides, not the window's. */
+@container list-pane (max-width: 820px) {
+  .ls-library .list-body { --cols: 28px 22px minmax(0, 1fr) 150px 52px 170px 86px; }
   .ls-library .col-read { display: none !important; }
 }
-@media (max-width: 860px) {
-  .ls-library { --cols: 28px 22px minmax(0, 1fr) 130px 52px 86px; }
+@container list-pane (max-width: 720px) {
+  .ls-library .list-body { --cols: 28px 22px minmax(0, 1fr) 130px 52px 86px; }
   .ls-library .col-pub { display: none !important; }
+}
+@container list-pane (max-width: 460px) {
+  .ls-library .list-body { --cols: 28px 22px minmax(0, 1fr) 52px 86px; }
+  .ls-library .col-creator { display: none !important; }
 }

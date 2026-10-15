@@ -45,14 +45,14 @@ function rowHtml(p: ListPaper, v: RowView, expanded: boolean): string {
     : `<div class="expand-btn leaf" aria-hidden="true"></div>`;
   const badge = `<button class="ls-badge ls-badge-${escapeHtml(p.status)}" data-cycle="1" title="Click to mark as ${STATUS_LABEL[nextStatus(p.status)]}">${escapeHtml(STATUS_LABEL[p.status] ?? p.status)}</button>`;
   return `<div class="paper-row-main">` + twistie + typeIconHtml(p, v.job, v.textLayer) + titleCell(p, v) +
-      `<div class="col-meta" title="${escapeHtml((p.authors ?? []).join(", "))}">${highlight(formatAuthors(p.authors), v.terms)}</div>` +
+      `<div class="col-meta col-creator" title="${escapeHtml((p.authors ?? []).join(", "))}">${highlight(formatAuthors(p.authors), v.terms)}</div>` +
       `<div class="col-meta">${p.year ? highlight(p.year, v.terms) : ""}</div>` +
       `<div class="col-meta col-pub" title="${escapeHtml(venue)}">${highlight(venue, v.terms)}</div>` +
       lastReadHtml(v.stats) +
       `<div class="col-meta">${badge}</div>` +
     `</div>` +
     (p.hasPdf
-      ? `<div class="paper-children"><div class="child-row"><div></div><div class="paper-type-icon">${icon("file")}</div><div>${PDF_FILE}</div><div></div><div></div><div class="col-pub"></div><div class="col-read"></div><div></div></div></div>`
+      ? `<div class="paper-children"><div class="child-row"><div></div><div class="paper-type-icon">${icon("file")}</div><div>${PDF_FILE}</div><div class="col-creator"></div><div></div><div class="col-pub"></div><div class="col-read"></div><div></div></div></div>`
       : "");
 }
 

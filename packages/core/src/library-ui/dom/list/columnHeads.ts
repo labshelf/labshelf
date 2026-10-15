@@ -8,7 +8,7 @@ import type { SortDir, SortKey } from "../../state/index.js";
 import type { UiContext } from "../uiContext.js";
 
 const COLUMNS: Array<{ key: SortKey; label: string; cls?: string; title?: string }> = [
-  { key: "title", label: "Title" }, { key: "creator", label: "Creator" }, { key: "year", label: "Year" },
+  { key: "title", label: "Title" }, { key: "creator", label: "Creator", cls: "col-creator" }, { key: "year", label: "Year" },
   { key: "publication", label: "Publication", cls: "col-pub" },
   { key: "lastRead", label: "Last read", cls: "col-read", title: "When you last had the paper open in the reader" },
   { key: "status", label: "Status" },
