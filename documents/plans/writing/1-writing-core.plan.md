@@ -1,6 +1,6 @@
 # Plan: writing in VS Code
 
-Status: in progress (session 1 of 7 done)
+Status: in progress (session 2 of 7 done)
 Size: GG — a new domain in core (projects, citations, LaTeX build, SyncTeX, Typst in WASM) plus a new VS Code surface and a reader-host contract change; 7 sessions. Grows if the Typst SVG layer needs its own spike session.
 Pending decisions: 0
 
@@ -47,7 +47,7 @@ Answered:
 - [ ] **A4** Picking pdfLaTeX while on Tectonic fails with the TeX Live message and the guide link; a missing `.sty` on TeX Live names the package and the `tlmgr` command.
 - [ ] **A5** Switching compiler and main is one click each in the status bar and persists in `labshelf.yaml`.
 - [ ] **A6** Double-click in the reader jumps to the source line; "Show in preview" scrolls the reader to the cursor.
-- [ ] **A7** Typing `\cite{` lists library papers; accepting one inserts the key and adds the entry to `labshelf.bib`; the same works with `@` in Typst.
+- [x] **A7** Typing `\cite{` lists library papers; accepting one inserts the key and adds the entry to `labshelf.bib`; the same works with `@` in Typst.
 - [ ] **A8** `\ref{` completes labels, an undefined label is a warning, the outline lists sections, hovering `$\alpha^2$` renders it, and the word count shows in the status bar.
 - [ ] **A9** In a Typst project the reader updates while typing, without reloading or losing the scroll position; "Export PDF" writes `main.pdf`.
 - [ ] **A10** In review mode, hovering a citation in the PDF shows the library paper; clicking opens it.
@@ -101,9 +101,9 @@ typst: 0.13.1            # written on build, Typst projects only
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S5 | Citation scan and `labshelf.bib` generation | S1 | H · main thread | core tests | [ ] |
-| S6 | Completion, hover, open paper for LaTeX and Typst | S5 | M · implementer (sonnet) | A7 | [ ] |
-| S7 | Finish | S5–S6 | `finish` skill | gate passes | [ ] |
+| S5 | Citation scan and `labshelf.bib` generation | S1 | H · main thread | core tests | [x] |
+| S6 | Completion, hover, open paper for LaTeX and Typst | S5 | M · implementer (sonnet) | A7 | [x] |
+| S7 | Finish | S5–S6 | `finish` skill | gate passes | [x] |
 
 ### Session 3 — the LaTeX build
 
@@ -267,3 +267,7 @@ typst: 0.13.1            # written on build, Typst projects only
 - 2026-10-15 17:20 — S1: `core/src/writing/project/` and `node/`; project ids keep hyphens (`projectIdSlug`) with the cite-key collision suffixes; a corrupt registry or `labshelf.yaml` is never rewritten; templates carry no bibliography line until the first citation (S5/S6 adds it). 64 tests (e3331f2).
 - 2026-10-15 17:35 — S2/S3: `packages/vscode/src/writing/`; the active project is the one owning the active editor's file; tree icons are ThemeIcons, like the Library view. A5 holds for the main item only; the compiler item is S11.
 - 2026-10-15 17:40 — S4: finish gate passes (core 1955, vscode 302 tests); extension-host run confirms A1 and the main item and Set as Main Document.
+- 2026-10-15 18:10 — Session 2 runs in the `labshelf-writing-core` worktree, where session 1 is committed.
+- 2026-10-15 18:25 — S5: `core/src/writing/citations/` and `node/`. Entries come from `bibtexEntry(record, {includeFile: false})`, not from each `bib.bib`: the same text without the library path. Keys match `citeKey` case-sensitively; on a duplicate key the smallest id wins. The bibliography line goes into the main file with the first resolved citation (Typst: only when no other `#bibliography` exists, else a conflict for the user). An `OpenSources` port lets the host supply unsaved text and edit an open main file in the editor. 33 tests.
+- 2026-10-15 18:45 — S6: `packages/vscode/src/writing/citations/`. Ctrl+click is a DocumentLink to `labshelf.openPdfViewer`, not a DefinitionProvider, which must return a source location. Library items carry `sortText` "0…" to lead other providers. The extension activates on `workspaceContains:**/labshelf.yaml`, `onLanguage:latex` and `onLanguage:typst`. Key positions and the completion context moved into core (`citedKeys`, `partialKeyStart`), so the app holds no copy of the regexes. `bibliography:` is recorded only once the main loads the file, so a Typst conflict is retried.
+- 2026-10-15 19:05 — S7: finish gate passes (core 2012, vscode 326 tests); contract gains `labshelf.bib`. The extension host confirms A7 for LaTeX and Typst: completion, accept, `labshelf.bib`, the main line in the unsaved editor, `labshelf.yaml`, the reader link, and shrinking on save. Not checked: ordering beside Tinymist, real keystroke auto-trigger.
