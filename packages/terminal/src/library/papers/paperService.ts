@@ -63,7 +63,7 @@ export class TerminalPaperService {
 
   constructor(private readonly deps: PaperServiceDeps) {
     this.ctx = {
-      fs: new NodeLibraryFileSystem(deps.trash, deps.paths.layout.tmpDir()),
+      fs: new NodeLibraryFileSystem(deps.paths.layout.tmpDir(), deps.trash),
       paths: path,
       artifacts: deps.bibtex,
       logger: deps.logger,

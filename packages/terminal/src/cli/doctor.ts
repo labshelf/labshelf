@@ -8,7 +8,7 @@ import type { TerminalConfig } from "../app/index.js";
 import { hasCommand } from "../platform/index.js";
 import { createTokenStore } from "../sync/index.js";
 import { detectImageProtocol } from "../tui/index.js";
-import { NodeLocalFileSystem, sharedConfigDir, sharedConfigPath } from "@labshelf/core/node";
+import { NodeLibraryFileSystem, sharedConfigDir, sharedConfigPath } from "@labshelf/core/node";
 import type { Output } from "./usage.js";
 
 /**
@@ -33,7 +33,7 @@ export async function runDoctor(root: string | undefined, rootSource: string, co
     if (!exists) { essentialMissing = true; }
     const lock = await fs.readFile(layout.lockPath(), "utf8").catch(() => undefined);
     if (lock) { line("warn", "sync lock", `held: ${lock.replace(/\s+/g, " ").slice(0, 120)}`); }
-    const last = await readSyncRunRecord(new NodeLocalFileSystem(), layout.lastRunPath());
+    const last = await readSyncRunRecord(new NodeLibraryFileSystem(), layout.lastRunPath());
     line(last ? true : "warn", "last sync", last ? `${relativeTime(last.finishedAt) || "never"} by ${last.app}` : "never (by an app that records it)");
   }
   const client = resolveOAuthClient(process.env, BUILT_IN_GOOGLE_CLIENT);

@@ -12,7 +12,7 @@ import {
   type RemoteProvider,
   type SyncTimers,
 } from "@labshelf/core";
-import { isProcessAlive, NodeLocalFileSystem, NodeLockStore, type PkceLoopbackAuth } from "@labshelf/core/node";
+import { isProcessAlive, NodeLibraryFileSystem, NodeLockStore, type PkceLoopbackAuth } from "@labshelf/core/node";
 
 import { scanLibraryOnDisk, type LibraryRoot } from "../library/index.js";
 
@@ -32,7 +32,7 @@ export interface TerminalSyncDeps {
 /** @returns the coordinator that syncs this library from the terminal */
 export function createTerminalSync(deps: TerminalSyncDeps): SyncCoordinator {
   const { paths, auth, logger } = deps;
-  const localFs = new NodeLocalFileSystem(paths.layout.tmpDir());
+  const localFs = new NodeLibraryFileSystem(paths.layout.tmpDir());
   const target = diskSyncTarget({ files: localFs, layout: paths.layout, toPath: (p) => p, lock: { store: new NodeLockStore(), isProcessAlive } });
   return new SyncCoordinator({
     app: "terminal",

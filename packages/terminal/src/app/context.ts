@@ -3,7 +3,7 @@
 import * as path from "node:path";
 
 import { BUILT_IN_GOOGLE_CLIENT, BibTeXService, Logger, PdfImportParser, errorMessage, resolveOAuthClient, type ILogger, type LibraryStore, type SyncCoordinator } from "@labshelf/core";
-import { FileLogSink, NodeFileSystem, NodePdfOpener, createPdfjsLoader } from "@labshelf/core/node";
+import { FileLogSink, NodeLibraryFileSystem, NodePdfOpener, createPdfjsLoader } from "@labshelf/core/node";
 
 import type { TerminalConfig } from "./config.js";
 import {
@@ -56,7 +56,7 @@ function createPaperService(paths: LibraryRoot, store: LibraryStore, logger: ILo
   return new TerminalPaperService({
     paths,
     store,
-    bibtex: new BibTeXService(new NodeFileSystem(paths.layout.tmpDir())),
+    bibtex: new BibTeXService(new NodeLibraryFileSystem(paths.layout.tmpDir())),
     logger,
     pdfParser: async () => {
       if (!parser) {

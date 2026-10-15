@@ -7,7 +7,7 @@ import { NodeLibraryFileSystem } from "@labshelf/core/node";
 import type { LibraryRoot } from "./libraryRoot.js";
 
 // A scan only reads, so the trash is never reached.
-const scanFileSystem = new NodeLibraryFileSystem(async () => { throw new Error("The library scan does not trash files"); });
+const scanFileSystem = new NodeLibraryFileSystem();
 
 /** @returns what is on disk under papers/ right now */
 export function scanLibraryOnDisk(paths: LibraryRoot, logger: ILogger): Promise<LibraryScan> {

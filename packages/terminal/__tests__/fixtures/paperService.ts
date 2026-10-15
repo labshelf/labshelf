@@ -11,7 +11,7 @@ import {
   type PdfImportParser,
   type ResolvedMetadata,
 } from "@labshelf/core";
-import { NodeFileSystem } from "@labshelf/core/node";
+import { NodeLibraryFileSystem } from "@labshelf/core/node";
 
 import { createLibraryStore } from "../../src/library/libraryModel";
 import { TerminalPaperService } from "../../src/library/papers/paperService";
@@ -88,7 +88,7 @@ export async function harness(papers: PaperFixture[] = [], collections: string[]
   const service = new TerminalPaperService({
     paths: lib.paths,
     store,
-    bibtex: new BibTeXService(new NodeFileSystem(lib.paths.layout.tmpDir())),
+    bibtex: new BibTeXService(new NodeLibraryFileSystem(lib.paths.layout.tmpDir())),
     logger,
     pdfParser: parserFactory,
     trash,
