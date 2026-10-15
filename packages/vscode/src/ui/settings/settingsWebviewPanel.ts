@@ -43,11 +43,18 @@ export class SettingsWebviewPanel {
       localResourceRoots: [settingsBundleDirectory(extensionUri)],
     });
     panel.iconPath = labshelfTabIcon(extensionUri);
-    panel.webview.html = settingsShellHtml(panel.webview, extensionUri);
-    SettingsWebviewPanel.currentPanel = new SettingsWebviewPanel(panel, options);
+    SettingsWebviewPanel.currentPanel = new SettingsWebviewPanel(panel, extensionUri, options);
   }
 
-  private constructor(private readonly panel: vscode.WebviewPanel, private readonly options: SettingsPanelOptions) {
+  private constructor(
+    private readonly panel: vscode.WebviewPanel,
+    extensionUri: vscode.Uri,
+    private readonly options: SettingsPanelOptions,
+  ) {
+    // The shell is rendered once the bundle check returns; a panel closed meanwhile keeps its blank page.
+    void settingsShellHtml(panel.webview, extensionUri).then((html) => {
+      if (SettingsWebviewPanel.currentPanel === this) { panel.webview.html = html; }
+    });
     panel.webview.onDidReceiveMessage((raw: unknown) => this.receive(raw), null, this.disposables);
     panel.onDidDispose(() => this.dispose(), null, this.disposables);
     this.disposables.push(options.onDidChangeDriveStatus(() => this.postState()));

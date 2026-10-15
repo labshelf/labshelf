@@ -3,8 +3,6 @@
  * The body skeleton is the shared READER_SHELL_BODY, which the browser extension's reader page uses too.
  */
 import * as vscode from "vscode";
-import * as fs from "node:fs";
-import * as path from "node:path";
 import {
   createNonce,
   escapeHtml,
@@ -16,7 +14,7 @@ import {
   type ReaderPrefs,
 } from "@labshelf/core";
 import { ThemeManager } from "../ThemeManager.js";
-import { bundleMissingHtml } from "../../ui/bundleMissing/index.js";
+import { bundleExists, bundleMissingHtml } from "../../ui/bundleMissing/index.js";
 
 export interface RenderParams {
   webview: vscode.Webview;
@@ -27,6 +25,8 @@ export interface RenderParams {
   themeManager: ThemeManager;
   themePreference: PdfTheme;
   prefs: ReaderPrefs;
+  pdfjs: PdfjsFiles | null;
+  isMac: boolean;
 }
 
 export interface ResolvedUris {
@@ -40,68 +40,36 @@ export interface ResolvedUris {
   iccWebviewUrl: string;
 }
 
-/**
- * Resolves pdfjs-dist file paths (including cmaps, fonts, wasm, iccs) and converts them to webview-safe URIs.
- * @returns A ResolvedUris object with all webview URIs, or null if pdfjs-dist cannot be located.
- */
-export function resolvePdfjsUris(webview: vscode.Webview): ResolvedUris | null {
-  try {
-    let pdfjsPath: string;
-    let workerPath: string;
-    let viewerPath: string;
-    let viewerCssPath: string;
-    try {
-      pdfjsPath    = require.resolve("pdfjs-dist/legacy/build/pdf.min.mjs");
-      workerPath   = require.resolve("pdfjs-dist/legacy/build/pdf.worker.min.mjs");
-      viewerPath   = require.resolve("pdfjs-dist/legacy/web/pdf_viewer.mjs");
-      viewerCssPath = require.resolve("pdfjs-dist/legacy/web/pdf_viewer.css");
-    } catch {
-      pdfjsPath    = require.resolve("pdfjs-dist/build/pdf.min.mjs");
-      workerPath   = require.resolve("pdfjs-dist/build/pdf.worker.min.mjs");
-      viewerPath   = require.resolve("pdfjs-dist/web/pdf_viewer.mjs");
-      viewerCssPath = require.resolve("pdfjs-dist/web/pdf_viewer.css");
-    }
-    // pdfjs-dist root holds cmaps/, standard_fonts/, wasm/, iccs/ which the
-    // worker fetches at runtime so embedded CJK fonts, Type-1 fonts, JBIG2,
-    // and ICC colour profiles render at full fidelity instead of falling back.
-    const root = getPdfjsDirectory();
-    const rootUri = root ? webview.asWebviewUri(root).toString().replace(/\/?$/, '/') : '';
-    return {
-      pdfjsWebviewUri:    webview.asWebviewUri(vscode.Uri.file(pdfjsPath)),
-      workerWebviewUri:   webview.asWebviewUri(vscode.Uri.file(workerPath)),
-      viewerWebviewUri:   webview.asWebviewUri(vscode.Uri.file(viewerPath)),
-      viewerCssWebviewUri: webview.asWebviewUri(vscode.Uri.file(viewerCssPath)),
-      cMapWebviewUrl:        rootUri ? `${rootUri}cmaps/`          : '',
-      standardFontWebviewUrl: rootUri ? `${rootUri}standard_fonts/` : '',
-      wasmWebviewUrl:        rootUri ? `${rootUri}wasm/`           : '',
-      iccWebviewUrl:         rootUri ? `${rootUri}iccs/`           : '',
-    };
-  } catch {
-    return null;
-  }
+/** The pdf.js files the reader webview loads, and the package root that holds its cmaps, fonts, wasm and ICC profiles. */
+export interface PdfjsFiles {
+  pdfjs: vscode.Uri;
+  worker: vscode.Uri;
+  viewer: vscode.Uri;
+  viewerCss: vscode.Uri;
+  root: vscode.Uri;
 }
 
+/** Finds the installed pdf.js; null when it is not installed. */
+export type PdfjsLocator = () => PdfjsFiles | null;
+
 /**
- * Locates and returns the pdfjs-dist package root directory as a vscode.Uri for use in webview localResourceRoots.
- * @returns A vscode.Uri pointing to the pdfjs-dist root, or null if the package cannot be resolved.
+ * Converts the located pdf.js files to webview-safe URIs. The root serves cmaps/, standard_fonts/, wasm/ and iccs/,
+ * which the worker fetches at runtime so CJK fonts, Type-1 fonts, JBIG2 and ICC profiles render at full fidelity.
+ * @returns A ResolvedUris object with all webview URIs, or null if pdf.js was not located.
  */
-export function getPdfjsDirectory(): vscode.Uri | null {
-  try {
-    let pdfjsPath: string;
-    try {
-      pdfjsPath = require.resolve("pdfjs-dist/legacy/build/pdf.min.mjs");
-    } catch {
-      pdfjsPath = require.resolve("pdfjs-dist/build/pdf.min.mjs");
-    }
-    const maybeRoot = path.resolve(path.dirname(pdfjsPath), "..");
-    const pdfjsRoot =
-      path.basename(maybeRoot) === "pdfjs-dist"
-        ? maybeRoot
-        : path.resolve(path.dirname(pdfjsPath), "..", "..");
-    return vscode.Uri.file(pdfjsRoot);
-  } catch {
-    return null;
-  }
+export function resolvePdfjsUris(webview: vscode.Webview, files: PdfjsFiles | null): ResolvedUris | null {
+  if (!files) { return null; }
+  const rootUri = webview.asWebviewUri(files.root).toString().replace(/\/?$/, "/");
+  return {
+    pdfjsWebviewUri: webview.asWebviewUri(files.pdfjs),
+    workerWebviewUri: webview.asWebviewUri(files.worker),
+    viewerWebviewUri: webview.asWebviewUri(files.viewer),
+    viewerCssWebviewUri: webview.asWebviewUri(files.viewerCss),
+    cMapWebviewUrl: `${rootUri}cmaps/`,
+    standardFontWebviewUrl: `${rootUri}standard_fonts/`,
+    wasmWebviewUrl: `${rootUri}wasm/`,
+    iccWebviewUrl: `${rootUri}iccs/`,
+  };
 }
 
 export interface ReaderBundleUris {
@@ -121,13 +89,13 @@ export function getReaderBundleDirectory(extensionUri: vscode.Uri): vscode.Uri {
  * Resolves the bundled reader runtime to webview URIs.
  * @returns the script and stylesheet URIs, or null when the bundle has not been built (dev checkout before `pnpm build`).
  */
-export function resolveReaderBundleUris(
+export async function resolveReaderBundleUris(
   webview: vscode.Webview,
   extensionUri: vscode.Uri,
-): ReaderBundleUris | null {
+): Promise<ReaderBundleUris | null> {
   const dir = getReaderBundleDirectory(extensionUri);
   const script = vscode.Uri.joinPath(dir, "reader.js");
-  if (!fs.existsSync(script.fsPath)) { return null; }
+  if (!(await bundleExists(script))) { return null; }
   return {
     scriptUri: webview.asWebviewUri(script),
     styleUri: webview.asWebviewUri(vscode.Uri.joinPath(dir, "reader.css")),
@@ -139,15 +107,15 @@ export class PdfRenderer {
    * Generates the reader's HTML shell. The document carries no behaviour of its own: the bundle reads the JSON boot block and builds the UI.
    * @returns An HTML string ready to assign to webview.html.
    */
-  generateHtml(params: RenderParams): string {
-    const { webview, extensionUri, pdfUri, paperId, paperTitle, themeManager, themePreference, prefs } = params;
+  async generateHtml(params: RenderParams): Promise<string> {
+    const { webview, extensionUri, pdfUri, paperId, paperTitle, themeManager, themePreference, prefs, pdfjs, isMac } = params;
 
-    const bundle = resolveReaderBundleUris(webview, extensionUri);
+    const bundle = await resolveReaderBundleUris(webview, extensionUri);
     if (!bundle) { return bundleMissingHtml({ title: paperTitle, heading: "Reader bundle not built", file: "dist/reader/reader.js", reopen: "the PDF" }); }
 
     const n = createNonce();
     const cspSource = webview.cspSource;
-    const resolved = resolvePdfjsUris(webview);
+    const resolved = resolvePdfjsUris(webview, pdfjs);
     const pdfjsUrl     = resolved?.pdfjsWebviewUri.toString()     ?? "";
     const workerUrl    = resolved?.workerWebviewUri.toString()    ?? "";
     const viewerUrl    = resolved?.viewerWebviewUri.toString()    ?? "";
@@ -174,7 +142,7 @@ export class PdfRenderer {
       themePreference,
       effectiveTheme,
       prefs,
-      isMac: process.platform === "darwin",
+      isMac,
     };
 
     return `<!doctype html>

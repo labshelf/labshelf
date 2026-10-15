@@ -1,3 +1,4 @@
+import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { LibraryDragAndDropController, LibraryTreeDataProvider } from '../../src/ui/library/libraryTreeDataProvider';
 
@@ -10,7 +11,7 @@ const readFolders = async (dir: string) => (FOLDERS[dir] ?? []).map((label) => (
 
 function makeProvider(): { provider: LibraryTreeDataProvider; bus: { on: jest.Mock } } {
   const bus = { on: jest.fn() };
-  const provider = new LibraryTreeDataProvider(vscode.Uri.file(ROOT), readFolders, bus as never);
+  const provider = new LibraryTreeDataProvider(vscode.Uri.file(ROOT), readFolders, bus as never, path);
   provider.setPaperPathSource(async () => [`${ROOT}/A/p1`, `${ROOT}/A/B/p2`, `${ROOT}/loose-paper`]);
   return { provider, bus };
 }
@@ -25,7 +26,7 @@ describe('LibraryTreeDataProvider', () => {
   });
 
   it('returns nothing while no library is configured', async () => {
-    const provider = new LibraryTreeDataProvider(null, null, { on: jest.fn() } as never);
+    const provider = new LibraryTreeDataProvider(null, null, { on: jest.fn() } as never, path);
     expect(await provider.getChildren()).toEqual([]);
   });
 

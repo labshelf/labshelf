@@ -1,4 +1,5 @@
 import * as fs from 'node:fs';
+import * as path from 'node:path';
 import * as vscode from 'vscode';
 import type { ILogger } from '@labshelf/core';
 import { readSharedLibraryRoot, sharedConfigPath, updateSharedConfig } from '@labshelf/core/node';
@@ -10,6 +11,7 @@ import {
   runLibrarySetupWizard,
 } from '../../src/storage/paths/libraryLocation';
 import { VscodeFileSystem } from '../../src/storage/vscodeFileSystem';
+import { nodeSharedLibraryConfig as shared } from '../../src/storage/node/index';
 
 function makeUri(fsPath: string): vscode.Uri {
   return vscode.Uri.file(fsPath);
@@ -29,7 +31,7 @@ function makeLogger(): ILogger & { error: jest.Mock } {
   return { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
 }
 
-const fsService = new VscodeFileSystem('/tmp/mylib/.research/tmp');
+const fsService = new VscodeFileSystem('/tmp/mylib/.research/tmp', path);
 const createFileSystem = () => fsService;
 
 beforeEach(() => {
@@ -72,14 +74,20 @@ describe('resolveLibraryRoot and the shared config', () => {
   it('adopts a library set up in the terminal app when VS Code has none', async () => {
     await updateSharedConfig({ libraryRoot: '/Users/me/FromTerminal' });
     (vscode.workspace.fs.stat as jest.Mock).mockResolvedValue({ type: vscode.FileType.Directory });
-    const root = await resolveLibraryRoot(makeContext());
+    const root = await resolveLibraryRoot(makeContext(), shared);
     expect(root?.fsPath).toBe('/Users/me/FromTerminal');
+  });
+
+  it('adopts nothing without a shared config', async () => {
+    await updateSharedConfig({ libraryRoot: '/Users/me/FromTerminal' });
+    (vscode.workspace.fs.stat as jest.Mock).mockResolvedValue({ type: vscode.FileType.Directory });
+    expect(await resolveLibraryRoot(makeContext())).toBeUndefined();
   });
 
   it('prefers the root VS Code stored itself', async () => {
     await updateSharedConfig({ libraryRoot: '/Users/me/FromTerminal' });
     (vscode.workspace.fs.stat as jest.Mock).mockResolvedValue({ type: vscode.FileType.Directory });
-    const root = await resolveLibraryRoot(makeContext('/Users/me/FromVscode'));
+    const root = await resolveLibraryRoot(makeContext('/Users/me/FromVscode'), shared);
     expect(root?.fsPath).toBe('/Users/me/FromVscode');
   });
 });
@@ -93,9 +101,14 @@ describe('mirrorLibraryRoot', () => {
 
   it('records the root for the terminal app and keeps the keys it wrote', async () => {
     await updateSharedConfig({ terminal: { sort: 'year' } });
-    await mirrorLibraryRoot(makeUri('/Users/me/NewLibrary'), makeLogger());
+    await mirrorLibraryRoot(makeUri('/Users/me/NewLibrary'), makeLogger(), shared);
     expect(await readSharedLibraryRoot()).toBe('/Users/me/NewLibrary');
     expect(JSON.parse(fs.readFileSync(sharedConfigPath(), 'utf8')).terminal).toEqual({ sort: 'year' });
+  });
+
+  it('records nothing without a shared config', async () => {
+    await mirrorLibraryRoot(makeUri('/Users/me/NewLibrary'), makeLogger());
+    expect(fs.existsSync(sharedConfigPath())).toBe(false);
   });
 
   it('logs a failed write with the config path and does not throw', async () => {
@@ -103,7 +116,7 @@ describe('mirrorLibraryRoot', () => {
     fs.rmSync(sharedConfigPath(), { force: true, recursive: true });
     fs.mkdirSync(sharedConfigPath(), { recursive: true });
     const logger = makeLogger();
-    await expect(mirrorLibraryRoot(makeUri('/Users/me/NewLibrary'), logger)).resolves.toBeUndefined();
+    await expect(mirrorLibraryRoot(makeUri('/Users/me/NewLibrary'), logger, shared)).resolves.toBeUndefined();
     expect(logger.error).toHaveBeenCalledWith(
       'storage/libraryLocation',
       expect.anything(),

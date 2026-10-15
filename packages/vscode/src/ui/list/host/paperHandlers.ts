@@ -2,7 +2,6 @@
  * The paper work the list UI asks for: paper service changes, move, remove to the trash, the clipboard and the
  * extension commands. Every outcome the user should know about comes back as a notice.
  */
-import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { ROOT_LABEL, type PaperStatus } from '@labshelf/core';
 import { LOG_MODULE, papersLabel, type ListHostContext } from './hostContext.js';
@@ -32,7 +31,7 @@ export async function movePapers(ctx: ListHostContext, ids: string[], targetDir:
   if (first) {
     ctx.notice('error', `${result.done.length} moved, ${result.failed.length} failed — ${first.error}`);
   } else if (result.done.length > 0) {
-    const where = targetDir === ctx.paths()?.root ? ROOT_LABEL : path.basename(targetDir);
+    const where = targetDir === ctx.paths()?.root ? ROOT_LABEL : ctx.deps.pathOps.basename(targetDir);
     ctx.notice('ok', `${papersLabel(result.done.length)} moved to ${where}`);
   }
 }

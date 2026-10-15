@@ -2,18 +2,17 @@
  * Answers the detail pane's requests for per-paper data: annotations, the reading position and the PDF on this
  * device, and papers with similar content from the AI index.
  */
-import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { PDF_FILE, paperDetailsOf, paperFiles, type PaperDetails, type SidecarSummarySource, type SimilarPaper } from '@labshelf/core';
 import { LOG_MODULE, type ListHostContext } from './hostContext.js';
 
 async function pdfOnDevice(ctx: ListHostContext, paperPath: string, hasPdf: boolean | undefined): Promise<PaperDetails['pdf']> {
   if (hasPdf === false) { return null; }
-  const file = paperFiles(paperPath, path.join).pdf;
+  const file = paperFiles(paperPath, ctx.deps.pathOps.join).pdf;
   try {
     const { size } = await vscode.workspace.fs.stat(vscode.Uri.file(file));
     const root = ctx.paths()?.root;
-    return { size, relPath: root ? path.relative(root, file) : PDF_FILE };
+    return { size, relPath: root ? file.slice(root.length + ctx.deps.pathOps.sep.length) : PDF_FILE };
   } catch {
     // Not synced to this device yet; the pane says so.
     return null;

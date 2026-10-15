@@ -1,3 +1,4 @@
+import * as path from 'node:path';
 import type { ILogger, LocalStat } from '@labshelf/core';
 import { createFolderReader, listAllCollectionFolders } from '../../../src/ui/library/folderReader';
 
@@ -28,13 +29,13 @@ const logger = (): ILogger & { log: jest.Mock } => ({ log: jest.fn(async () => u
 
 describe('createFolderReader', () => {
   it('lists collection folders by name as tree nodes, skipping paper folders and dot folders', async () => {
-    const read = createFolderReader(fakeFs(), logger());
+    const read = createFolderReader(fakeFs(), path, logger());
     expect(await read(ROOT)).toEqual([{ label: 'A', dirPath: `${ROOT}/A` }, { label: 'Z', dirPath: `${ROOT}/Z` }]);
   });
 
   it('returns an empty list and logs a warning for a directory it cannot list', async () => {
     const log = logger();
-    const read = createFolderReader(fakeFs([ROOT]), log);
+    const read = createFolderReader(fakeFs([ROOT]), path, log);
     expect(await read(ROOT)).toEqual([]);
     expect(log.log).toHaveBeenCalledWith('WARN', expect.any(String), 'Folder could not be listed', expect.objectContaining({ dirPath: ROOT }));
   });
@@ -42,7 +43,7 @@ describe('createFolderReader', () => {
 
 describe('listAllCollectionFolders', () => {
   it('walks every depth, parents before children', async () => {
-    const all = await listAllCollectionFolders(createFolderReader(fakeFs(), logger()), ROOT);
+    const all = await listAllCollectionFolders(createFolderReader(fakeFs(), path, logger()), ROOT);
     expect(all.map((f) => f.dirPath)).toEqual([`${ROOT}/A`, `${ROOT}/A/B`, `${ROOT}/Z`]);
   });
 });

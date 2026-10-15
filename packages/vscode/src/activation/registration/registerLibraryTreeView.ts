@@ -9,6 +9,7 @@ import { ListWebviewPanel } from "../../ui/list/index.js";
 import { importPapers, moveFolders, type FolderCommandHost } from "../../commands/index.js";
 import type { EventBus } from "../../events/index.js";
 import type { LibraryRootController } from "../libraryLifecycle/index.js";
+import type { HostAdapters } from "../serviceComposition/index.js";
 
 export interface LibraryTreeViewDeps {
   context: vscode.ExtensionContext;
@@ -16,6 +17,7 @@ export interface LibraryTreeViewDeps {
   controller: LibraryRootController;
   papersRootUri: () => vscode.Uri | null;
   folderHost: FolderCommandHost;
+  adapters: HostAdapters;
 }
 
 export interface LibraryTreeViewHandles {
@@ -25,10 +27,10 @@ export interface LibraryTreeViewHandles {
 }
 
 export function registerLibraryTreeView(deps: LibraryTreeViewDeps): LibraryTreeViewHandles {
-  const { context, eventBus, controller, papersRootUri, folderHost } = deps;
+  const { context, eventBus, controller, papersRootUri, folderHost, adapters } = deps;
 
   // Library folder tree mirrors the real directory structure under papers/.
-  const libraryProvider = new LibraryTreeDataProvider(papersRootUri(), controller.currentServices()?.folderReader ?? null, eventBus);
+  const libraryProvider = new LibraryTreeDataProvider(papersRootUri(), controller.currentServices()?.folderReader ?? null, eventBus, adapters.paths);
   controller.onDidChangeRoot(({ root, services }) => {
     libraryProvider.setLibrary(libraryLayout(root, vscode.Uri.joinPath).papersRoot(), services.folderReader);
   });

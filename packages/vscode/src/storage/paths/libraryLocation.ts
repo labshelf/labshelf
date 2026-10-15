@@ -5,7 +5,7 @@
 import * as vscode from "vscode";
 
 import { libraryLayout, type IFileSystem, type ILogger } from "@labshelf/core";
-import { readSharedLibraryRoot, sharedConfigPath, updateSharedConfig } from "@labshelf/core/node";
+import type { SharedLibraryConfig } from "./sharedLibraryConfig.js";
 
 const LIBRARY_ROOT_KEY = "labshelf.libraryRoot";
 
@@ -13,9 +13,12 @@ const LIBRARY_ROOT_KEY = "labshelf.libraryRoot";
  * Reads the stored library root path from globalState and validates that it still exists on disk.
  * @returns URI of the library root, or undefined if unset or inaccessible
  */
-export async function resolveLibraryRoot(context: vscode.ExtensionContext): Promise<vscode.Uri | undefined> {
+export async function resolveLibraryRoot(
+  context: vscode.ExtensionContext,
+  sharedConfig?: SharedLibraryConfig,
+): Promise<vscode.Uri | undefined> {
   // A library set up in the terminal app first is adopted from the shared config.
-  const stored = context.globalState.get<string>(LIBRARY_ROOT_KEY) ?? (await readSharedLibraryRoot());
+  const stored = context.globalState.get<string>(LIBRARY_ROOT_KEY) ?? (await sharedConfig?.readRoot());
   if (!stored) {
     return undefined;
   }
@@ -44,14 +47,16 @@ export async function persistLibraryRoot(context: vscode.ExtensionContext, uri: 
 /**
  * Records the library root in the shared config for the terminal app. Every activated library goes through here, so
  * libraries configured before the shared file existed are recorded too. A failure only costs the terminal its default,
- * so it is logged and VS Code keeps working from globalState.
+ * so it is logged and VS Code keeps working from globalState. Without a shared config (a host with no file system
+ * to share) nothing is recorded.
  * @returns void
  */
-export async function mirrorLibraryRoot(uri: vscode.Uri, logger: ILogger): Promise<void> {
+export async function mirrorLibraryRoot(uri: vscode.Uri, logger: ILogger, sharedConfig?: SharedLibraryConfig): Promise<void> {
+  if (!sharedConfig) { return; }
   try {
-    await updateSharedConfig({ libraryRoot: uri.fsPath }, undefined, logger);
+    await sharedConfig.recordRoot(uri.fsPath, logger);
   } catch (error) {
-    await logger.error("storage/libraryLocation", error, { file: sharedConfigPath(), libraryRoot: uri.fsPath });
+    await logger.error("storage/libraryLocation", error, { file: sharedConfig.path(), libraryRoot: uri.fsPath });
   }
 }
 

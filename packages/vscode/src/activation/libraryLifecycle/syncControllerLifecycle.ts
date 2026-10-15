@@ -2,14 +2,15 @@
 import * as vscode from "vscode";
 
 import { libraryLayout, type SyncResult } from "@labshelf/core";
-import { SyncController } from "../../sync/adapter/syncController.js";
-import { createVscodeDriveAuth } from "../../sync/auth/index.js";
+import { SyncController } from "../../sync/adapter/index.js";
+import type { HostAdapters } from "../serviceComposition/index.js";
 import type { ActiveServices } from "../../commands/index.js";
 import type { EventBus } from "../../events/index.js";
 
 export interface SyncControllerLifecycleDeps {
   context: vscode.ExtensionContext;
   eventBus: EventBus;
+  adapters: HostAdapters;
   driveStatusChanged: vscode.EventEmitter<void>;
   getActiveServices: () => ActiveServices | null;
   onSynced: (result: SyncResult) => Promise<void>;
@@ -34,7 +35,9 @@ export class SyncControllerLifecycle {
       return;
     }
     const controller = new SyncController({
-      createAuth: (logger) => createVscodeDriveAuth(this.deps.context, logger),
+      createAuth: (logger) => this.deps.adapters.sync.createDriveAuth(logger),
+      host: this.deps.adapters.sync.host,
+      lock: this.deps.adapters.sync.lock,
       paths: libraryLayout(root, vscode.Uri.joinPath),
       localFs: fileSystem,
       eventBus: this.deps.eventBus,

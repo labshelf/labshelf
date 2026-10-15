@@ -3,7 +3,6 @@
  * unchanged inputs across reruns. Hash is over the raw bytes; tiny but enough
  * to detect any modification.
  */
-import { createHash } from "node:crypto";
 import * as vscode from "vscode";
 import type { LocalFileSystem } from "@labshelf/core";
 
@@ -17,5 +16,6 @@ export async function hashFile(
   fileSystem: Pick<LocalFileSystem, "readFile">,
 ): Promise<string> {
   const bytes = await fileSystem.readFile(uri.fsPath);
-  return createHash("sha1").update(bytes).digest("hex");
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-1", bytes));
+  return Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }

@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { PdfViewerPanel, type PdfViewerDeps } from '../../src/pdf-viewer/PdfViewerPanel';
 import { ThemeManager } from '../../src/pdf-viewer/ThemeManager';
 import { makeMemoryPaperDataStore } from '../support/memorySidecarPort';
+import { statFromDisk } from '../support/diskStat';
 import { EventBus, EVENTS } from '../../src/events/index.js';
 
 const vscode = require('vscode');
@@ -31,6 +32,7 @@ describe('PdfViewerPanel', () => {
   let extensionDir: string;
 
   beforeAll(() => {
+    statFromDisk();
     extensionDir = fs.mkdtempSync(path.join(os.tmpdir(), 'labshelf-panel-'));
     fs.mkdirSync(path.join(extensionDir, 'dist', 'reader'), { recursive: true });
     fs.writeFileSync(path.join(extensionDir, 'dist', 'reader', 'reader.js'), '// bundle');
@@ -56,6 +58,8 @@ describe('PdfViewerPanel', () => {
       themeManager,
       store,
       logger,
+      locatePdfjs: () => null,
+      isMac: false,
       onReadingEvent,
       ...overrides,
     };
@@ -111,10 +115,19 @@ describe('PdfViewerPanel', () => {
       expect(roots).not.toContain(extensionDir);
     });
 
-    it('assigns the HTML shell synchronously, before any disk access', () => {
+    it('lets the webview read the located pdf.js package root', () => {
+      const pdfjs = vscode.Uri.file('/pdfjs');
+      open({ locatePdfjs: () => ({ pdfjs, worker: pdfjs, viewer: pdfjs, viewerCss: pdfjs, root: pdfjs }) });
+      const roots: string[] = (vscode.window.createWebviewPanel as jest.Mock).mock.calls.at(-1)[3]
+        .localResourceRoots.map((u: any) => u.fsPath);
+      expect(roots).toContain('/pdfjs');
+    });
+
+    it('assigns the HTML shell without waiting for the sidecar or any other disk read', async () => {
       const ctx = makeDeps();
       jest.spyOn(ctx.store, 'load').mockImplementation(() => new Promise(() => {}));
       PdfViewerPanel.createOrShow(ctx.deps, makePaper());
+      await flush();
       const html: string = lastPanel().webview.html;
       expect(html).toContain('data-pdf-theme="dark"');
       expect(html).toContain(path.join('dist', 'reader', 'reader.js'));
@@ -165,6 +178,7 @@ describe('PdfViewerPanel', () => {
 
     it('applies the effective theme without rebuilding the webview when VS Code theme changes in auto mode', async () => {
       const { panel } = open();
+      await flush();
       const html = panel.webview.html;
       (vscode.window as any)._fireThemeChange(vscode.ColorThemeKind.Light);
       await flush();

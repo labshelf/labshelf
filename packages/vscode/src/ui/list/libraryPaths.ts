@@ -2,8 +2,7 @@
  * Maps the library's folders on disk to the "/"-separated paths the library UI uses, which start at "papers", and
  * back. The UI never sees an absolute path.
  */
-import * as path from 'node:path';
-import { PAPERS_DIR, isUnderDir } from '@labshelf/core';
+import { PAPERS_DIR, isUnderDir, type PathOps } from '@labshelf/core';
 
 export interface LibraryPaths {
   /** The absolute papers/ folder. */
@@ -14,8 +13,7 @@ export interface LibraryPaths {
   fromUi(ui: string): string;
 }
 
-export function libraryPaths(root: string, sep: string = path.sep): LibraryPaths {
-  const join = sep === '/' ? path.posix.join : path.join;
+export function libraryPaths(root: string, { sep, join }: PathOps): LibraryPaths {
   return {
     root,
     toUi(abs) {

@@ -3,7 +3,7 @@
  * folder changes, OCR jobs, reader sidecars and the AI index.
  */
 import type * as vscode from 'vscode';
-import type { Annotation, ILogger, PaperRecord, SimilarPaper, TextLayerJobView } from '@labshelf/core';
+import type { Annotation, ILogger, PaperRecord, PathOps, SimilarPaper, TextLayerJobView } from '@labshelf/core';
 import type { PaperService } from '../../core/index.js';
 import type { EventBus } from '../../events/index.js';
 import type { FolderReader, LibraryNode } from '../library/index.js';
@@ -26,6 +26,7 @@ export interface ListPanelDeps {
   paperService: PaperService;
   eventBus: EventBus;
   logger: ILogger;
+  pathOps: PathOps;
   /** Absolute path of papers/, or null while no library is configured. */
   getPapersRoot: () => string | null;
   /** Lists the collection folders inside a directory. */

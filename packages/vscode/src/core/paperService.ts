@@ -1,5 +1,4 @@
 /** Changes and reads papers already in the library: disk first through the core mutations, then the index and its events. */
-import * as path from "node:path";
 import * as vscode from "vscode";
 
 import { editPaperTags, movePapers, paperFiles, trashPapers, updatePaperFields, withResolvedMetadata, writePaperRecord } from "@labshelf/core";
@@ -35,14 +34,14 @@ export class PaperService {
     if (!paper || paper.hasPdf === false || !(await this.pdfExists(paper))) {
       return null;
     }
-    return vscode.Uri.file(paperFiles(paper.path, path.join).pdf);
+    return vscode.Uri.file(paperFiles(paper.path, this.ctx.paths.join).pdf);
   }
 
   // Asked at action time rather than trusting the indexed flag. FileType is a bit flag and the indexer counts a
   // symlinked PDF (File|SymbolicLink) as present, so this does too; otherwise reconcilePdf would undo the indexer.
   async pdfExists(paper: PaperRecord): Promise<boolean> {
     try {
-      const stat = await vscode.workspace.fs.stat(vscode.Uri.file(paperFiles(paper.path, path.join).pdf));
+      const stat = await vscode.workspace.fs.stat(vscode.Uri.file(paperFiles(paper.path, this.ctx.paths.join).pdf));
       return (stat.type & vscode.FileType.File) !== 0;
     } catch {
       return false;
@@ -109,7 +108,7 @@ export class PaperService {
     if (!paper) { return undefined; }
     let bytes: Uint8Array;
     try {
-      bytes = await this.ctx.fs.readFile(paperFiles(paper.path, path.join).pdf);
+      bytes = await this.ctx.fs.readFile(paperFiles(paper.path, this.ctx.paths.join).pdf);
     } catch {
       return undefined;
     }

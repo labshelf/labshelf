@@ -1,9 +1,8 @@
 /**
  * Provides the VS Code tree view for the LabShelf library: an "All Papers" entry plus the collection folders under papers/. Every row opens in the list panel, shows its paper count, and accepts PDF drops and folder drags.
  */
-import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { countPapersUnder } from '@labshelf/core';
+import { countPapersUnder, type PathOps } from '@labshelf/core';
 import type { FolderReader } from './folderReader.js';
 import { rootNode } from './libraryNode.js';
 import type { LibraryNode } from './libraryNode.js';
@@ -24,7 +23,12 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryN
   private _paperPaths: Promise<string[]> | null = null;
   private _refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(papersRoot: vscode.Uri | null, readFolders: FolderReader | null, eventBus: EventBus) {
+  constructor(
+    papersRoot: vscode.Uri | null,
+    readFolders: FolderReader | null,
+    eventBus: EventBus,
+    private readonly _paths: PathOps,
+  ) {
     this._papersRoot = papersRoot;
     this._readFolders = readFolders;
     // A folder move emits one paper:updated per paper, so event refreshes are coalesced.
@@ -87,7 +91,7 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryN
       item.resourceUri = vscode.Uri.file(node.dirPath);
     }
 
-    const count = countPapersUnder(await this._readPaperPaths(), node.dirPath, path.sep);
+    const count = countPapersUnder(await this._readPaperPaths(), node.dirPath, this._paths.sep);
     if (count > 0) {
       item.description = String(count);
     }
@@ -123,11 +127,11 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryN
     if (!root || node.isRoot) {
       return null;
     }
-    const parent = path.dirname(node.dirPath);
-    if (parent === root || !parent.startsWith(root + path.sep)) {
+    const parent = this._paths.dirname(node.dirPath);
+    if (parent === root || !parent.startsWith(root + this._paths.sep)) {
       return null;
     }
-    return { label: path.basename(parent), dirPath: parent };
+    return { label: this._paths.basename(parent), dirPath: parent };
   }
 
   private async _children(dirPath: string): Promise<LibraryNode[]> {

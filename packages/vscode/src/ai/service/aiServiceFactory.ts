@@ -1,13 +1,12 @@
 /**
- * Wires the AI subsystem together from the dependencies that extension.ts
- * already constructs (its own SQLite connection, event bus, logger, paths).
+ * Wires the AI subsystem together from the dependencies the extension
+ * already constructs (its opened AI storage, event bus, logger, paths).
  * Returns null when AI is disabled in settings. Embeddings come from the
  * hash provider.
  */
 import * as vscode from "vscode";
-import { DatabaseSync } from "node:sqlite";
 import type { ILogger, LocalFileSystem, PaperRecord, PdfDocumentOpener } from "@labshelf/core";
-import { AiMetadataStore, ReadingEventsStore, SqliteVectorStore } from "../../db/ai/index.js";
+import type { AiStorage } from "../ports.js";
 import { PdfTextExtractor } from "../pdf/pdfTextExtractor.js";
 import { HashEmbeddingProvider } from "../runtime/index.js";
 import { AiIndexer } from "../indexer/aiIndexer.js";
@@ -17,7 +16,7 @@ import type { EventBus } from "../../events/index.js";
 
 export interface AiServiceFactoryDependencies {
   context: vscode.ExtensionContext;
-  connection: DatabaseSync;
+  storage: AiStorage;
   listPapers: () => Promise<PaperRecord[]>;
   fileSystem: Pick<LocalFileSystem, "readFile">;
   eventBus: EventBus;
@@ -37,9 +36,7 @@ export async function createAiService(
   if (config.get<boolean>("enabled") === false) return null;
 
   const embedder = new HashEmbeddingProvider();
-  const vectorStore = new SqliteVectorStore(deps.connection, embedder.modelId);
-  const metadataStore = new AiMetadataStore(deps.connection);
-  const readingEvents = new ReadingEventsStore(deps.connection);
+  const { vectorStore, metadataStore, readingEvents } = deps.storage.createStores(embedder.modelId);
   const extractor = new PdfTextExtractor(deps.pdfOpener, deps.fileSystem);
   const queue = new IndexerQueue(deps.logger);
   const indexer = new AiIndexer({

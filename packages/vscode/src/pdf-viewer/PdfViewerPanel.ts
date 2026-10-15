@@ -4,7 +4,7 @@
 import * as vscode from "vscode";
 import { ReaderHostController, paperFiles, type EffectiveTheme, type HostToWebview, type ILogger, type PaperDataStore, type PaperRecord, type ReaderCommandId } from "@labshelf/core";
 import { ThemeManager } from "./ThemeManager.js";
-import { PdfRenderer, getPdfjsDirectory, getReaderBundleDirectory } from "./renderer/PdfRenderer.js";
+import { PdfRenderer, getReaderBundleDirectory, type PdfjsFiles, type PdfjsLocator } from "./renderer/index.js";
 import { READER_CONFIG_SECTION, getReaderPrefs, getReaderViewColumn } from "./readerPrefs.js";
 import { createVsCodeOutputPorts, emitSidecarChanges } from "./readerHostPorts.js";
 import { ReadingActivityTracker, type ReadingEventSink } from "./readingActivity.js";
@@ -20,6 +20,10 @@ export interface PdfViewerDeps {
   themeManager: ThemeManager;
   store: PaperDataStore;
   logger: ILogger;
+  /** Finds the installed pdf.js the webview loads. */
+  locatePdfjs: PdfjsLocator;
+  /** Whether the host is macOS, which picks the reader's modifier key. */
+  isMac: boolean;
   /** Reading analytics sink (the AI subsystem's reading_events), absent when AI is disabled. */
   onReadingEvent?: ReadingEventSink;
 }
@@ -76,9 +80,9 @@ export class PdfViewerPanel {
 
     const paperDirUri = vscode.Uri.file(paper.path);
     const pdfUri = paperFiles(paperDirUri, vscode.Uri.joinPath).pdf;
-    const pdfjsDir = getPdfjsDirectory();
+    const pdfjs = deps.locatePdfjs();
     const resourceRoots: vscode.Uri[] = [getReaderBundleDirectory(deps.extensionUri), paperDirUri];
-    if (pdfjsDir) { resourceRoots.push(pdfjsDir); }
+    if (pdfjs) { resourceRoots.push(pdfjs.root); }
 
     const panel = vscode.window.createWebviewPanel(
       READER_VIEW_TYPE,
@@ -94,7 +98,7 @@ export class PdfViewerPanel {
     );
     panel.iconPath = labshelfTabIcon(deps.extensionUri);
 
-    new PdfViewerPanel(panel, deps, pdfUri, paper, options);
+    new PdfViewerPanel(panel, deps, pdfUri, paper, options, pdfjs);
   }
 
   private constructor(
@@ -103,6 +107,7 @@ export class PdfViewerPanel {
     pdfUri: vscode.Uri,
     paper: PaperRecord,
     options: OpenOptions,
+    pdfjs: PdfjsFiles | null,
   ) {
     this._panel = panel;
     this._activity = new ReadingActivityTracker(paper.id, deps.onReadingEvent);
@@ -122,9 +127,9 @@ export class PdfViewerPanel {
 
     panel.webview.onDidReceiveMessage((msg: unknown) => { void this._controller.handle(msg); }, null, this._disposables);
 
-    // The shell is assigned synchronously so the webview starts fetching pdf.js and the PDF at once;
+    // The shell is assigned as soon as the bundle check returns so the webview starts fetching pdf.js and the PDF;
     // everything that needs disk (theme, annotations, reading position) follows in the `init` reply.
-    panel.webview.html = new PdfRenderer().generateHtml({
+    void new PdfRenderer().generateHtml({
       webview: panel.webview,
       extensionUri: deps.extensionUri,
       pdfUri,
@@ -133,6 +138,10 @@ export class PdfViewerPanel {
       themeManager: deps.themeManager,
       themePreference: "auto",
       prefs: getReaderPrefs(),
+      pdfjs,
+      isMac: deps.isMac,
+    }).then((html) => {
+      if (!this._disposed) { panel.webview.html = html; }
     });
 
     this._subscribe(deps, paper);

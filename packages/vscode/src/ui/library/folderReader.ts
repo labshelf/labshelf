@@ -1,6 +1,5 @@
 /** Reads the collection folders under papers/ through core's folder-level reader, as the nodes the tree and the list panel show. */
-import * as path from 'node:path';
-import type { ILogger } from '@labshelf/core';
+import type { ILogger, PathOps } from '@labshelf/core';
 import { createScanEnv, readFolderLevel, type ScanFileSystem } from '@labshelf/core';
 import type { LibraryNode } from './libraryNode.js';
 
@@ -13,12 +12,12 @@ export type FolderReader = (dirPath: string) => Promise<LibraryNode[]>;
  * An unreadable directory yields an empty list and a warning, so one bad folder does not blank the tree.
  * @returns a reader over the given file system
  */
-export function createFolderReader(fs: ScanFileSystem, logger: ILogger): FolderReader {
-  const env = createScanEnv(fs, path, logger);
+export function createFolderReader(fs: ScanFileSystem, paths: PathOps, logger: ILogger): FolderReader {
+  const env = createScanEnv(fs, paths, logger);
   return async (dirPath) => {
     try {
       const level = await readFolderLevel(env, dirPath);
-      return level.collections.map((dir) => ({ label: path.basename(dir), dirPath: dir }));
+      return level.collections.map((dir) => ({ label: paths.basename(dir), dirPath: dir }));
     } catch (error) {
       await logger.log('WARN', LOG_MODULE, 'Folder could not be listed', {
         dirPath,

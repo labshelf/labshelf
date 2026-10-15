@@ -1,6 +1,4 @@
 /** Checks papers for a text layer and gives scans one by OCR, recording the verdict on the paper. */
-import * as path from "node:path";
-
 import {
   paperFiles,
   shouldRecordVerdict,
@@ -53,7 +51,7 @@ export class PaperTextLayers {
     // Reading a scan takes the better part of a minute, in which the paper may have been moved or removed.
     const current = await this.papers.findPaper(paperId);
     if (!current) { return { status: "unavailable", reason: "the paper was removed while it was being read" }; }
-    await this.ctx.fs.writeFile(paperFiles(current.path, path.join).pdf, outcome.bytes);
+    await this.ctx.fs.writeFile(paperFiles(current.path, this.ctx.paths.join).pdf, outcome.bytes);
     const updated = await this.record(paperId, verdictForOutcome(outcome, this.ctx.now), { force: true });
     return { status: "added", paper: updated ?? current, pagesAdded: outcome.pagesAdded, pagesFailed: outcome.pagesFailed };
   }
@@ -86,6 +84,6 @@ export class PaperTextLayers {
   }
 
   private readPdf(paper: PaperRecord): Promise<Uint8Array> {
-    return this.ctx.fs.readFile(paperFiles(paper.path, path.join).pdf);
+    return this.ctx.fs.readFile(paperFiles(paper.path, this.ctx.paths.join).pdf);
   }
 }

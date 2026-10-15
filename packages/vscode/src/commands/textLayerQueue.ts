@@ -12,7 +12,7 @@ import * as vscode from "vscode";
 
 import type { ILogger, PaperRecord } from "@labshelf/core";
 import type { MakeSearchableResult, PaperTextLayers } from "../core/index.js";
-import type { TextLayerProgress } from "../pdf/searchablePdfBuilder.js";
+import type { TextLayerProgress } from "../pdf/index.js";
 
 const LOG_MODULE = "commands/textLayerQueue";
 

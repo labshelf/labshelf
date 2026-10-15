@@ -74,7 +74,7 @@ Core never reaches the platform directly. It declares a port, and each app imple
 
 Each app has exactly one composition root, and only that root instantiates adapters:
 
-- VS Code: `packages/vscode/src/extension.ts`
+- VS Code: `packages/vscode/src/extension.ts`; it takes the Node adapters from `activation/node/` and hands the rest of the extension the neutral `HostAdapters` interface
 - Browser: the background worker entry, plus one bootstrap per page (library, reader, popup, options)
 - Terminal: `packages/terminal/src/app/context.ts`
 
@@ -93,7 +93,7 @@ The design system gives the three apps one look:
 - Tests live next to the package they test (`packages/<pkg>/__tests__/` mirrors `src/`). Core has its own jest suite, and app suites test only app code.
 - Lint enforces the rules in [AGENTS.md](../AGENTS.md) that a machine can check:
   - ESLint `max-lines` and `max-lines-per-function`;
-  - import boundaries (dependency-cruiser): no app-to-app imports, no neutral → `node/` or `dom/` imports, no deep imports past an `index.ts`;
+  - import boundaries (dependency-cruiser): no app-to-app imports, no neutral → `node/` or `dom/` imports, no deep imports past an `index.ts`, and in VS Code no `node:*`, core `node/` or Node-only package (Tesseract, native canvas, pdfjs-dist) outside a `node/` folder, so the extension can run as a web extension;
   - unused files, exports and dependencies (knip);
   - directory size and per-runtime tsconfigs in core (`scripts/check-directory-size.mjs`, `scripts/check-runtime-tsconfigs.mjs`).
 

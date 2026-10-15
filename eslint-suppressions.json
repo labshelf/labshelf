@@ -109,7 +109,7 @@
       "count": 1
     }
   },
-  "packages/vscode/src/pdf/searchablePdfBuilder.ts": {
+  "packages/vscode/src/pdf/node/searchablePdfBuilder.ts": {
     "max-lines-per-function": {
       "count": 1
     }

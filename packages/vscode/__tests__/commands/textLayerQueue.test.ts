@@ -15,7 +15,7 @@ import {
 } from '../../src/commands/textLayerQueue';
 import type { TextLayerJob } from '../../src/commands/textLayerQueue';
 import type { MakeSearchableResult, PaperTextLayers } from '../../src/core';
-import type { TextLayerHooks } from '../../src/pdf/searchablePdfBuilder';
+import type { TextLayerHooks } from '../../src/pdf/index';
 
 const paper = (id: string): PaperRecord => ({ id, title: `Paper ${id}`, path: `/lib/${id}`, citeKey: id, status: 'unread' });
 

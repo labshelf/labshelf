@@ -1,5 +1,4 @@
 /** Creates, renames, moves and trashes library folders through the core mutations, then brings the index and views along. */
-import * as path from "node:path";
 import * as vscode from "vscode";
 
 import { createFolder, moveFolder, renameFolder, trashFolder } from "@labshelf/core";
@@ -36,7 +35,7 @@ export async function moveFolders(host: FolderCommandHost, sourceDirs: string[],
   const target = targetDir ?? host.papersRoot();
   if (!services || !target) { return; }
   for (const sourceDir of sourceDirs) {
-    await guarded(services, `Could not move "${path.basename(sourceDir)}"`, { sourceDir, target }, async () => {
+    await guarded(services, `Could not move "${services.mutations.paths.basename(sourceDir)}"`, { sourceDir, target }, async () => {
       const movedTo = await moveFolder(services.mutations, sourceDir, target);
       if (movedTo === sourceDir) { return; }
       await services.paperService.relocatePapersUnder(sourceDir, movedTo);

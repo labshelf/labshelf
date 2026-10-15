@@ -1,24 +1,44 @@
 /** Drives the core sync coordinator from VS Code: Drive sign-in, library events, the interval setting and the status bar. */
-import * as os from "node:os";
 import * as vscode from "vscode";
 
 import { createGoogleDriveProvider, ReauthRequiredError, SyncCoordinator, syncRoots, type LibraryLayout } from "@labshelf/core";
-import type { DriveStatus, ILogger, LocalFileSystem, RemoteProvider, SyncOutcome, SyncResult, SyncTarget, SyncTimers } from "@labshelf/core";
-import { isProcessAlive, NodeLockStore, type PkceLoopbackAuth } from "@labshelf/core/node";
+import type { DriveStatus, IAuthProvider, ILogger, LocalFileSystem, LockStore, RemoteProvider, SyncOutcome, SyncResult, SyncTarget, SyncTimers } from "@labshelf/core";
 import { reportSyncOutcome } from "./syncReport.js";
 import type { EventBus } from "../../events/index.js";
+
+/** The Drive sign-in the controller drives: tokens for the provider, plus the user-facing sign-in steps. */
+export type DriveSignIn = IAuthProvider & {
+  load(): Promise<void>;
+  login(): Promise<void>;
+  revoke(): Promise<void>;
+  isAuthenticated(): boolean;
+};
+
+/** The machine and process that hold the sync lock. */
+export interface SyncHost {
+  name: string;
+  pid: number;
+}
+
+/** Where the cross-app sync lock lives and how a holder's process is checked for life. */
+export interface SyncLock {
+  store: LockStore;
+  isProcessAlive(pid: number): boolean;
+}
 
 export interface SyncControllerDeps {
   paths: LibraryLayout<vscode.Uri>;
   localFs: LocalFileSystem;
   eventBus: EventBus;
   logger: ILogger;
+  host: SyncHost;
+  lock: SyncLock;
   /** Paper id → title pairs used to name Drive folders. */
   listTitles?: () => Promise<Iterable<readonly [string, string]>>;
   /** Builds the Drive sign-in; the logger follows the library the controller points at. */
-  createAuth: (logger: ILogger) => PkceLoopbackAuth;
+  createAuth: (logger: ILogger) => DriveSignIn;
   /** Injectable for tests; defaults to the Drive provider. */
-  createProvider?: (auth: PkceLoopbackAuth) => RemoteProvider;
+  createProvider?: (auth: DriveSignIn) => RemoteProvider;
   /** Injectable for tests; defaults to setTimeout and setInterval. */
   timers?: SyncTimers;
 }
@@ -26,7 +46,8 @@ export interface SyncControllerDeps {
 const INTERVAL_SETTING = "sync.autoSyncIntervalMinutes";
 
 export class SyncController implements vscode.Disposable {
-  private readonly auth: PkceLoopbackAuth;
+  private readonly auth: DriveSignIn;
+  private readonly lock: SyncLock;
   private readonly coordinator: SyncCoordinator;
   private paths: LibraryLayout<vscode.Uri>;
   private localFs: LocalFileSystem;
@@ -43,6 +64,7 @@ export class SyncController implements vscode.Disposable {
     this.paths = deps.paths;
     this.localFs = deps.localFs;
     this.logger = deps.logger;
+    this.lock = deps.lock;
     // The logger follows setLibrary: each library writes its own log.
     const followingLogger: ILogger = { log: (...args) => this.logger.log(...args), error: (...args) => this.logger.error(...args) };
     this.auth = deps.createAuth(followingLogger);
@@ -51,8 +73,8 @@ export class SyncController implements vscode.Disposable {
     const createProvider = deps.createProvider ?? createGoogleDriveProvider;
     this.coordinator = new SyncCoordinator({
       app: "vscode",
-      host: os.hostname(),
-      pid: process.pid,
+      host: deps.host.name,
+      pid: deps.host.pid,
       getTarget: () => this.target(),
       auth: { isAuthenticated: () => this.auth.isAuthenticated() },
       createProvider: () => createProvider(this.auth),
@@ -146,7 +168,7 @@ export class SyncController implements vscode.Disposable {
       files: this.localFs,
       roots: { library: roots.library.fsPath, appdata: roots.appdata.fsPath },
       state: { fs: this.localFs, manifestPath: this.paths.manifestPath().fsPath, lastRunPath: this.paths.lastRunPath().fsPath },
-      lock: { store: new NodeLockStore(), path: this.paths.lockPath().fsPath, isProcessAlive },
+      lock: { store: this.lock.store, path: this.paths.lockPath().fsPath, isProcessAlive: this.lock.isProcessAlive },
     };
   }
 

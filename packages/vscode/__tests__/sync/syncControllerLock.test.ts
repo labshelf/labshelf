@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 
 import { libraryLayout, type ILogger, type SyncTimerId, type SyncTimers } from '@labshelf/core';
-import { PkceLoopbackAuth } from '@labshelf/core/node';
+import { NodeLockStore, PkceLoopbackAuth, isProcessAlive } from '@labshelf/core/node';
 import { FakeRemoteProvider, MemoryTokenStore } from '@labshelf/core/test-support/sync-fakes';
 
 const provider = new FakeRemoteProvider();
@@ -45,9 +45,11 @@ async function makeController(root: string, timers?: SyncTimers, auth?: PkceLoop
     ...(timers ? { timers } : {}),
     createAuth: () => signedIn,
     paths: libraryLayout(vscode.Uri.file(root), vscode.Uri.joinPath),
-    localFs: new VscodeFileSystem(path.join(root, '.research', 'tmp')),
+    localFs: new VscodeFileSystem(path.join(root, '.research', 'tmp'), path),
     eventBus: new EventBus(),
     logger,
+    host: { name: os.hostname(), pid: process.pid },
+    lock: { store: new NodeLockStore(), isProcessAlive },
     listTitles: async () => [],
     createProvider: () => provider,
   });
@@ -100,7 +102,7 @@ describe('SyncController and the cross-app sync lock', () => {
       const listSpy = jest.spyOn(provider, 'list');
       const controller = await makeController(root);
 
-      controller.setLibrary(libraryLayout(vscode.Uri.file(other), vscode.Uri.joinPath), new VscodeFileSystem(path.join(other, '.research', 'tmp')), logger);
+      controller.setLibrary(libraryLayout(vscode.Uri.file(other), vscode.Uri.joinPath), new VscodeFileSystem(path.join(other, '.research', 'tmp'), path), logger);
       await controller.sync();
 
       expect(listSpy).toHaveBeenCalled();

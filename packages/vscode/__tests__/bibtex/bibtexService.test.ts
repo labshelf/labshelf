@@ -1,3 +1,4 @@
+import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { BibTeXService, bibtexEntry } from '@labshelf/core';
 import { VscodeFileSystem } from '../../src/storage/vscodeFileSystem';
@@ -20,7 +21,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   (vscode.workspace.fs.writeFile as jest.Mock).mockResolvedValue(undefined);
   (vscode.workspace.fs.createDirectory as jest.Mock).mockResolvedValue(undefined);
-  svc = new BibTeXService(new VscodeFileSystem('/tmp/labshelf-test/.research/tmp'));
+  svc = new BibTeXService(new VscodeFileSystem('/tmp/labshelf-test/.research/tmp', path));
 });
 
 describe('bibtexEntry', () => {

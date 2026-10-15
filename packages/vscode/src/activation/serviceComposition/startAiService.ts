@@ -1,12 +1,10 @@
 // Starts the AI subsystem for an already-built set of library services.
 import * as vscode from "vscode";
 
-import { NodePdfOpener } from "@labshelf/core/node";
 import { createAiService, AiService } from "../../ai/service/index.js";
-import { openAiDatabase } from "../../db/ai/index.js";
-import { hostPdfjs } from "../../pdf/index.js";
 import type { ActiveServices } from "../../commands/index.js";
 import type { EventBus } from "../../events/index.js";
+import type { HostAdapters } from "./hostAdapters.js";
 
 // Spins up the AI service when a library is configured. Resolution failures
 // degrade the AI subsystem instead of breaking activation; the rest of the
@@ -15,17 +13,18 @@ export async function startAiService(
   context: vscode.ExtensionContext,
   eventBus: EventBus,
   services: ActiveServices,
+  adapters: HostAdapters,
 ): Promise<AiService | null> {
   try {
-    const connection = await openAiDatabase(services.aiDatabasePath, services.fileSystem);
+    const storage = await adapters.openAiStorage(services.aiDatabasePath, services.fileSystem);
     const result = await createAiService({
       context,
-      connection,
+      storage,
       listPapers: () => services.paperService.listPapers(),
       fileSystem: services.fileSystem,
       eventBus,
       logger: services.logger,
-      pdfOpener: new NodePdfOpener(hostPdfjs),
+      pdfOpener: adapters.pdfOpener,
       resolvePdfUri: (paperId) => services.paperService.resolvePdfUri(paperId),
     });
     if (!result) return null;

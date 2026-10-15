@@ -1,4 +1,5 @@
 /** Import feedback: the progress shown while a paper is read and identified, and the one summary of what happened. */
+import * as path from 'node:path';
 import * as vscode from 'vscode';
 
 import type { ImportOutcome, ImportProgress, PaperRecord } from '@labshelf/core';
@@ -17,6 +18,7 @@ function services(outcomes: ImportOutcome[], run?: (onProgress: (step: ImportPro
     importer: { importPaths: jest.fn(async (_inputs, _target, onProgress) => { run?.(onProgress); return outcomes; }) },
     textLayers: { makeSearchable: jest.fn(async () => ({ status: 'not-needed' })), checkTextLayer: jest.fn(async () => undefined) },
     paperService: {},
+    mutations: { paths: path },
     logger: { log: jest.fn(async () => {}), error: jest.fn(async () => {}) },
   } as never;
 }
@@ -55,7 +57,7 @@ describe('importWithProgress', () => {
 
 describe('describeStep', () => {
   it('omits the counter for a single file', () => {
-    expect(describeStep({ index: 1, total: 1, input: '/docs/artigo-1.pdf' })).toBe(
+    expect(describeStep({ index: 1, total: 1, input: '/docs/artigo-1.pdf' }, path)).toBe(
       'Importing: "artigo-1.pdf" — reading and identifying the paper…',
     );
   });

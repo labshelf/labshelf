@@ -5,10 +5,9 @@
  * last indexed run.
  */
 import * as vscode from "vscode";
-import type { IEmbeddingProvider, ILogger, LocalFileSystem, PaperRecord } from "@labshelf/core";
+import type { IEmbeddingProvider, ILogger, IVectorStore, LocalFileSystem, PaperRecord } from "@labshelf/core";
 import { runIngestion } from "@labshelf/core";
-import type { AiMetadataStore } from "../../db/ai/aiMetadataStore.js";
-import type { SqliteVectorStore } from "../../db/ai/sqliteVectorStore.js";
+import type { IAiMetadataStore } from "../ports.js";
 import { PdfTextExtractor } from "../pdf/pdfTextExtractor.js";
 import { hashFile } from "../pdf/contentHash.js";
 import { EventBus, EVENTS } from "../../events/index.js";
@@ -18,8 +17,8 @@ export interface AiIndexerDependencies {
   eventBus: EventBus;
   logger: ILogger;
   embedder: IEmbeddingProvider;
-  vectorStore: SqliteVectorStore;
-  metadataStore: AiMetadataStore;
+  vectorStore: IVectorStore;
+  metadataStore: IAiMetadataStore;
   extractor: PdfTextExtractor;
   // Async because a paper's folder is only known to the index: papers live in any collection folder under papers/.
   resolvePdfUri: (paperId: string) => Promise<vscode.Uri | null>;

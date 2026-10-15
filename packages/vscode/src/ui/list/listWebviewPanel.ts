@@ -2,7 +2,6 @@
  * The editor tab that browses the library: a webview running the shared library UI, which this panel feeds with
  * snapshots, the open folder and OCR jobs, and answers through the typed message handlers.
  */
-import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { isUnderDir, type HostToUi, type PaperRecord, type TextLayerJobView } from '@labshelf/core';
 import { rootNode, type LibraryNode } from '../library/index.js';
@@ -58,7 +57,9 @@ export class ListWebviewPanel {
     this._folder = folder;
     this._host = this._hostContext();
     // The shell is rendered once; folder changes and paper events arrive as messages, so the UI keeps its state.
-    this._panel.webview.html = listPanelHtml(this._panel.webview, _deps.extensionUri);
+    void listPanelHtml(this._panel.webview, _deps.extensionUri).then((html) => {
+      if (!this._disposed) { this._panel.webview.html = html; }
+    });
     this._panel.webview.onDidReceiveMessage((raw: unknown) => handleListMessage(this._host, raw), null, this._disposables);
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
     for (const event of PAPER_EVENTS) { _deps.eventBus.on(event, this._onPaperEvent); }
@@ -88,16 +89,16 @@ export class ListWebviewPanel {
   /** Keeps the panel on the same folder after it (or one of its ancestors) moved from oldDir to newDir. */
   public async followFolderMove(oldDir: string, newDir: string): Promise<void> {
     const current = this._folder;
-    if (current && !current.isRoot && isUnderDir(current.dirPath, oldDir, path.sep)) {
+    if (current && !current.isRoot && isUnderDir(current.dirPath, oldDir, this._deps.pathOps.sep)) {
       const dirPath = newDir + current.dirPath.slice(oldDir.length);
-      this._folder = { label: path.basename(dirPath), dirPath };
+      this._folder = { label: this._deps.pathOps.basename(dirPath), dirPath };
     }
     await this._pushState();
   }
 
   private _paths(): LibraryPaths | null {
     const root = this._deps.getPapersRoot();
-    return root ? libraryPaths(root) : null;
+    return root ? libraryPaths(root, this._deps.pathOps) : null;
   }
 
   private _hostContext(): ListHostContext {
@@ -132,16 +133,16 @@ export class ListWebviewPanel {
   }
 
   private _nodeFor(dirPath: string): LibraryNode {
-    return dirPath === this._deps.getPapersRoot() ? rootNode(dirPath) : { label: path.basename(dirPath), dirPath };
+    return dirPath === this._deps.getPapersRoot() ? rootNode(dirPath) : { label: this._deps.pathOps.basename(dirPath), dirPath };
   }
 
   // The folder to show, guarding against deleted folders and paths outside papers/.
   private async _resolveFolder(root: string): Promise<LibraryNode> {
     const wanted = this._folder;
-    if (!wanted || wanted.isRoot || wanted.dirPath === root || !isUnderDir(wanted.dirPath, root, path.sep)) { return rootNode(root); }
+    if (!wanted || wanted.isRoot || wanted.dirPath === root || !isUnderDir(wanted.dirPath, root, this._deps.pathOps.sep)) { return rootNode(root); }
     try {
       const stat = await vscode.workspace.fs.stat(vscode.Uri.file(wanted.dirPath));
-      if (stat.type & vscode.FileType.Directory) { return { label: path.basename(wanted.dirPath), dirPath: wanted.dirPath }; }
+      if (stat.type & vscode.FileType.Directory) { return { label: this._deps.pathOps.basename(wanted.dirPath), dirPath: wanted.dirPath }; }
     } catch {
       // The folder is gone: fall through to the root.
     }

@@ -2,13 +2,8 @@ import * as vscode from "vscode";
 import { createAiService } from "../../../src/ai/service/aiServiceFactory";
 import type { AiServiceFactoryDependencies } from "../../../src/ai/service/aiServiceFactory";
 import { HashEmbeddingProvider } from "../../../src/ai/runtime";
-import { SqliteVectorStore } from "../../../src/db/ai/index";
+import { AiIndexer } from "../../../src/ai/indexer/aiIndexer";
 
-jest.mock("../../../src/db/ai/index", () => ({
-  AiMetadataStore: jest.fn(),
-  ReadingEventsStore: jest.fn(),
-  SqliteVectorStore: jest.fn(),
-}));
 jest.mock("../../../src/ai/pdf/pdfTextExtractor", () => ({ PdfTextExtractor: jest.fn() }));
 jest.mock("../../../src/ai/indexer/aiIndexer", () => ({
   AiIndexer: jest.fn(() => ({ attach: () => () => {} })),
@@ -17,10 +12,12 @@ jest.mock("../../../src/ai/indexer/indexerQueue", () => ({
   IndexerQueue: jest.fn(() => ({ size: () => 0, isRunning: () => false })),
 }));
 
+const STORES = { vectorStore: { tag: 'vectors' }, metadataStore: { tag: 'metadata' }, readingEvents: { tag: 'events' } };
+
 function makeDeps() {
   return {
     context: {},
-    connection: {},
+    storage: { createStores: jest.fn(() => STORES) },
     listPapers: async () => [],
     fileSystem: {},
     eventBus: { emit: jest.fn(), on: jest.fn(), off: jest.fn() },
@@ -31,13 +28,14 @@ function makeDeps() {
 }
 
 describe("createAiService", () => {
-  it("embeds with the hash provider and keys vector rows by its model id", async () => {
+  it("embeds with the hash provider, keys vector rows by its model id and hands the stores to the indexer", async () => {
     const deps = makeDeps();
 
     const result = await createAiService(deps);
 
     const hashModelId = new HashEmbeddingProvider().modelId;
-    expect(SqliteVectorStore).toHaveBeenCalledWith({}, hashModelId);
+    expect(deps.storage.createStores).toHaveBeenCalledWith(hashModelId);
+    expect(AiIndexer).toHaveBeenCalledWith(expect.objectContaining({ vectorStore: STORES.vectorStore, metadataStore: STORES.metadataStore }));
     expect(result?.service.status()).toMatchObject({
       embeddingModelId: hashModelId,
       embeddingDimensions: 384,

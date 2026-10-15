@@ -5,3 +5,4 @@ export {
   resolveLibraryRoot,
   runLibrarySetupWizard,
 } from "./libraryLocation.js";
+export type { SharedLibraryConfig } from "./sharedLibraryConfig.js";

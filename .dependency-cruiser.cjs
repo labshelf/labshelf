@@ -78,6 +78,26 @@ module.exports = {
       from: { path: "^packages/browser/" },
       to: { path: ["^packages/core/src/node/", "^packages/core/src/.*/node/"] },
     },
+    {
+      name: "vscode-no-node-builtins-outside-node-folder",
+      comment: "VS Code code outside a node/ folder uses no Node built-in, so the extension can run as a web extension.",
+      severity: "error",
+      from: { path: "^packages/vscode/src/", pathNot: "/node/" },
+      to: { dependencyTypes: BUILTINS },
+    },
+    {
+      name: "vscode-no-node-packages-outside-node-folder",
+      comment: "Core's node/ code and Node-only packages are imported only from VS Code node/ folders.",
+      severity: "error",
+      from: { path: "^packages/vscode/src/", pathNot: "/node/" },
+      to: {
+        path: [
+          "^packages/core/src/node/",
+          "^packages/core/src/.*/node/",
+          "node_modules/(tesseract\\.js|@napi-rs/canvas|pdfjs-dist)/",
+        ],
+      },
+    },
     ...indexOnlyRules(),
   ],
   options: {

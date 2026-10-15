@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 
 import { libraryChanged, libraryLayout } from "@labshelf/core";
 import { resolveLibraryRoot } from "./storage/paths/index.js";
+import { createNodeAdapters } from "./activation/node/index.js";
 import { ListWebviewPanel } from "./ui/list/index.js";
 import {
   registerCommands,
@@ -27,6 +28,7 @@ import {
 /** Activates the extension, initializing services if a library is already configured */
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const eventBus = new EventBus();
+  const adapters = createNodeAdapters(context);
 
   // The settings page hears sync status through this, including from a controller created after the page opened.
   const driveStatusChanged = new vscode.EventEmitter<void>();
@@ -45,6 +47,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const syncLifecycle = new SyncControllerLifecycle({
     context,
     eventBus,
+    adapters,
     driveStatusChanged,
     getActiveServices: () => controller.currentServices(),
     // A sync that pulls files from Drive must surface in the list without a reload.
@@ -53,21 +56,21 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await externalChangeHandling.reindexAndRefresh("sync");
     },
   });
-  const controller = new LibraryRootController(context, eventBus, externalChangeHandling, syncLifecycle);
+  const controller = new LibraryRootController(context, eventBus, externalChangeHandling, syncLifecycle, adapters);
 
   const papersRootUri = (): vscode.Uri | null => {
     const root = controller.currentRoot();
     return root ? libraryLayout(root, vscode.Uri.joinPath).papersRoot() : null;
   };
 
-  const initialRoot = await resolveLibraryRoot(context);
+  const initialRoot = await resolveLibraryRoot(context, adapters.sharedLibraryConfig);
   if (initialRoot) {
     // The Library tree is only registered once the index is open. Until then the view shows
     // "Loading your library…" (package.json viewsWelcome, keyed on labshelf.libraryLoaded) under
     // VS Code's own progress bar, never "No folders yet", which would read as a lost library.
     await vscode.window.withProgress({ location: { viewId: "labshelf.library" } }, async () => {
       const services = await controller.loadInitial(initialRoot);
-      aiService = await startAiService(context, eventBus, services);
+      aiService = await startAiService(context, eventBus, services, adapters);
       return services;
     });
   } else {
@@ -93,14 +96,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   };
 
   const { libraryProvider, syncTreeToPanel, refreshLibraryViews: refreshViews } = registerLibraryTreeView({
-    context, eventBus, controller, papersRootUri, folderHost,
+    context, eventBus, controller, papersRootUri, folderHost, adapters,
   });
   refreshLibraryViews = refreshViews;
 
   registerSettingsView({ context, controller, driveStatusChanged });
 
   registerPanelCommands({
-    context, eventBus, requireServices, papersRootUri, folderHost, syncTreeToPanel,
+    context, eventBus, requireServices, papersRootUri, folderHost, syncTreeToPanel, adapters,
     getAiService: () => aiService,
   });
 

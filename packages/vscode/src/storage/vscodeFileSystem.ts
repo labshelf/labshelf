@@ -1,9 +1,6 @@
 /** The one file-system adapter of the VS Code extension: the LibraryFileSystem port over vscode.workspace.fs. */
-import { randomUUID } from "node:crypto";
-import * as path from "node:path";
-
 import * as vscode from "vscode";
-import type { LibraryFileSystem, LocalStat } from "@labshelf/core";
+import type { LibraryFileSystem, LocalStat, PathOps } from "@labshelf/core";
 
 const uriOf = (target: string): vscode.Uri => vscode.Uri.file(target);
 
@@ -11,7 +8,7 @@ const isNotFound = (error: unknown): boolean => (error as { code?: string }).cod
 
 export class VscodeFileSystem implements LibraryFileSystem {
   /** tmpDir holds the temp files of atomic writes; it lives outside the synced roots. */
-  constructor(private readonly tmpDir: string) {}
+  constructor(private readonly tmpDir: string, private readonly paths: PathOps) {}
 
   async ensureDir(dirPath: string): Promise<void> {
     try {
@@ -23,14 +20,14 @@ export class VscodeFileSystem implements LibraryFileSystem {
   }
 
   async writeText(filePath: string, content: string): Promise<void> {
-    await this.writeFile(filePath, Buffer.from(content, "utf8"));
+    await this.writeFile(filePath, new TextEncoder().encode(content));
   }
 
   // Written to a temp file and renamed into place, so a reader, a sync scan or the other app never sees half a file.
   async writeFile(filePath: string, content: Uint8Array): Promise<void> {
-    await this.ensureDir(path.dirname(filePath));
+    await this.ensureDir(this.paths.dirname(filePath));
     await this.ensureDir(this.tmpDir);
-    const tmp = uriOf(path.join(this.tmpDir, `.${path.basename(filePath)}.${randomUUID()}.tmp`));
+    const tmp = uriOf(this.paths.join(this.tmpDir, `.${this.paths.basename(filePath)}.${globalThis.crypto.randomUUID()}.tmp`));
     try {
       await vscode.workspace.fs.writeFile(tmp, content);
       await vscode.workspace.fs.rename(tmp, uriOf(filePath), { overwrite: true });
@@ -43,7 +40,7 @@ export class VscodeFileSystem implements LibraryFileSystem {
   }
 
   async readText(filePath: string): Promise<string> {
-    return Buffer.from(await this.readFile(filePath)).toString("utf8");
+    return new TextDecoder("utf-8", { ignoreBOM: true }).decode(await this.readFile(filePath));
   }
 
   async readFile(filePath: string): Promise<Uint8Array> {

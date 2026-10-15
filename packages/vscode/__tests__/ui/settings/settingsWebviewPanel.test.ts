@@ -48,7 +48,9 @@ beforeEach(() => {
 
 describe('SettingsWebviewPanel', () => {
   it('sets the shell once and restricts resources to the settings bundle folder', async () => {
+    (vscode.workspace.fs.stat as jest.Mock).mockRejectedValueOnce(new Error('FileNotFound'));
     const h = open();
+    await flush();
     const html = h.created.webview.html;
     expect(html).toContain('Settings bundle not built');
     expect(h.created.options.localResourceRoots.map((u: vscode.Uri) => u.fsPath)).toEqual(['/ext/dist/settings']);

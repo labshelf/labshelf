@@ -1,3 +1,4 @@
+import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { VscodeFileSystem } from '../../src/storage/vscodeFileSystem';
 
@@ -5,7 +6,7 @@ const TMP = '/lib/.research/tmp';
 const wfs = vscode.workspace.fs as unknown as Record<string, jest.Mock>;
 
 function makeFs(): VscodeFileSystem {
-  return new VscodeFileSystem(TMP);
+  return new VscodeFileSystem(TMP, path);
 }
 
 function notFound(): Error {
@@ -68,6 +69,16 @@ describe('VscodeFileSystem atomic writes', () => {
 });
 
 describe('VscodeFileSystem reads', () => {
+  it('readText keeps a leading byte-order mark, as the Node decoder did', async () => {
+    wfs['readFile']!.mockResolvedValue(Buffer.from('\uFEFFname: x', 'utf8'));
+    expect(await makeFs().readText('/lib/a.yaml')).toBe('\uFEFFname: x');
+  });
+
+  it('writeText stores UTF-8 bytes', async () => {
+    await makeFs().writeText('/lib/a.txt', 'wörld');
+    expect([...(wfs['writeFile']!.mock.calls[0] as [vscode.Uri, Uint8Array])[1]]).toEqual([...Buffer.from('wörld', 'utf8')]);
+  });
+
   it('readText decodes UTF-8 and readFile returns the bytes', async () => {
     wfs['readFile']!.mockResolvedValue(Buffer.from('wörld', 'utf8'));
     expect(await makeFs().readText('/lib/a.txt')).toBe('wörld');

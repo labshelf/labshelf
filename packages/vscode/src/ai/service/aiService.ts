@@ -6,9 +6,7 @@
  */
 import type { AiPaperMetadata, ClaimSearchResult, IEmbeddingProvider, ILogger, ReadingEvent, VectorFilter, VectorMatch } from "@labshelf/core";
 import { retrieveTopK, searchByClaim as runSearchByClaim } from "@labshelf/core";
-import type { SqliteVectorStore } from "../../db/ai/sqliteVectorStore.js";
-import type { AiMetadataStore } from "../../db/ai/aiMetadataStore.js";
-import type { ReadingEventsStore } from "../../db/ai/readingEventsStore.js";
+import type { AiStores } from "../ports.js";
 import type { AiIndexer } from "../indexer/aiIndexer.js";
 import type { IndexerQueue } from "../indexer/indexerQueue.js";
 import type { EventBus } from "../../events/index.js";
@@ -20,11 +18,8 @@ export interface AiServiceStatus {
   running: boolean;
 }
 
-export interface AiServiceDependencies {
+export interface AiServiceDependencies extends AiStores {
   embedder: IEmbeddingProvider;
-  vectorStore: SqliteVectorStore;
-  metadataStore: AiMetadataStore;
-  readingEvents: ReadingEventsStore;
   indexer: AiIndexer;
   queue: IndexerQueue;
   eventBus: EventBus;

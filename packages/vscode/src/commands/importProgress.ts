@@ -2,11 +2,10 @@
  * Runs every way of adding papers (command, sidebar drop, "Add here") with visible progress and one summary: reading a
  * PDF, running OCR and asking the registries can take ten seconds or more per file, indistinguishable from a hang.
  */
-import * as path from "node:path";
 import * as vscode from "vscode";
 
 import { summarizeImport } from "@labshelf/core";
-import type { ILogger, ImportOutcome, ImportProgress } from "@labshelf/core";
+import type { ILogger, ImportOutcome, ImportProgress, MutationContext, PathOps } from "@labshelf/core";
 import type { PaperImporter, PaperService, PaperTextLayers } from "../core/index.js";
 import { offerMetadataFetch } from "./fetchMetadata.js";
 import { queueTextLayers } from "./textLayerQueue.js";
@@ -17,6 +16,7 @@ export interface ImportServices {
   importer: PaperImporter;
   textLayers: PaperTextLayers;
   paperService: PaperService;
+  mutations: Pick<MutationContext, "paths">;
   logger: ILogger;
 }
 
@@ -43,11 +43,11 @@ export async function importPapers(
  * @returns the outcome of each input
  */
 export async function importWithProgress(
-  services: Pick<ImportServices, "importer" | "textLayers" | "logger">,
+  services: Pick<ImportServices, "importer" | "textLayers" | "logger" | "mutations">,
   uris: vscode.Uri[],
   targetDir?: string,
 ): Promise<ImportOutcome[]> {
-  const outcomes = await runImport(services.importer, uris, targetDir);
+  const outcomes = await runImport(services.importer, services.mutations.paths, uris, targetDir);
   queueTextLayersOfAdded(services, outcomes);
   return outcomes;
 }
@@ -62,7 +62,7 @@ export function queueTextLayersOfAdded(services: Pick<ImportServices, "textLayer
   void queueTextLayers(services.textLayers, added, { logger: services.logger, mode: autoOcr ? "ocr" : "check" });
 }
 
-function runImport(importer: PaperImporter, uris: vscode.Uri[], targetDir?: string): Thenable<ImportOutcome[]> {
+function runImport(importer: PaperImporter, paths: PathOps, uris: vscode.Uri[], targetDir?: string): Thenable<ImportOutcome[]> {
   return vscode.window.withProgress({ location: { viewId: LIBRARY_VIEW_ID } }, () =>
     vscode.window.withProgress(
       { location: vscode.ProgressLocation.Notification, title: "LabShelf", cancellable: false },
@@ -72,7 +72,7 @@ function runImport(importer: PaperImporter, uris: vscode.Uri[], targetDir?: stri
           // No increment for the first file: reporting one, even zero, turns the spinner into a bar stuck at 0% for
           // the whole of a single import.
           progress.report({
-            message: describeStep(step),
+            message: describeStep(step, paths),
             ...(step.index > 1 ? { increment: 100 / step.total } : {}),
           });
         });
@@ -89,7 +89,7 @@ export function announceImport(outcomes: ImportOutcome[]): void {
 }
 
 /** @returns the progress line for one step, e.g. `Importing 2 of 5: "paper.pdf" — reading and identifying…` */
-export function describeStep(step: ImportProgress): string {
+export function describeStep(step: ImportProgress, paths: PathOps): string {
   const counter = step.total > 1 ? ` ${step.index} of ${step.total}` : "";
-  return `Importing${counter}: "${path.basename(step.input)}" — reading and identifying the paper…`;
+  return `Importing${counter}: "${paths.basename(step.input)}" — reading and identifying the paper…`;
 }

@@ -44,6 +44,35 @@
   },
   {
     "type": "dependency",
+    "from": "packages/browser/src/background/broadcast.ts",
+    "to": "packages/browser/src/platform/browserApi.ts",
+    "unresolvedTo": "../platform/browserApi",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/browser/src/background/broadcast.ts",
+    "to": "packages/browser/src/platform/runtimeMessages.ts",
+    "unresolvedTo": "../platform/runtimeMessages",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
     "from": "packages/browser/src/background/draftCache.ts",
     "to": "packages/browser/src/platform/runtimeMessages.ts",
     "unresolvedTo": "../platform/runtimeMessages",
@@ -59,11 +88,99 @@
   },
   {
     "type": "dependency",
-    "from": "packages/browser/src/background/index.ts",
-    "to": "packages/browser/src/content/scholarParse.ts",
-    "unresolvedTo": "../content/scholarParse",
+    "from": "packages/browser/src/background/handlers/capture.ts",
+    "to": "packages/browser/src/platform/browserApi.ts",
+    "unresolvedTo": "../../platform/browserApi",
     "dependencyTypes": [
       "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/browser/src/background/handlers/capture.ts",
+    "to": "packages/browser/src/platform/runtimeMessages.ts",
+    "unresolvedTo": "../../platform/runtimeMessages",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/browser/src/background/handlers/library.ts",
+    "to": "packages/browser/src/platform/browserApi.ts",
+    "unresolvedTo": "../../platform/browserApi",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/browser/src/background/handlers/library.ts",
+    "to": "packages/browser/src/platform/logger.ts",
+    "unresolvedTo": "../../platform/logger",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/browser/src/background/handlers/library.ts",
+    "to": "packages/browser/src/platform/runtimeMessages.ts",
+    "unresolvedTo": "../../platform/runtimeMessages",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/browser/src/background/handlers/library.ts",
+    "to": "packages/browser/src/platform/settings.ts",
+    "unresolvedTo": "../../platform/settings",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/browser/src/background/handlers/libraryRef.ts",
+    "to": "packages/browser/src/platform/runtimeMessages.ts",
+    "unresolvedTo": "../../platform/runtimeMessages",
+    "dependencyTypes": [
+      "local",
+      "type-only",
       "import"
     ],
     "rule": {
@@ -102,8 +219,50 @@
   {
     "type": "dependency",
     "from": "packages/browser/src/background/index.ts",
-    "to": "packages/browser/src/platform/runtimeMessages.ts",
-    "unresolvedTo": "../platform/runtimeMessages",
+    "to": "packages/browser/src/sync/auth/browserDriveAuth.ts",
+    "unresolvedTo": "../sync/auth/browserDriveAuth",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/browser/src/background/router.ts",
+    "to": "packages/browser/src/content/scholarParse.ts",
+    "unresolvedTo": "../content/scholarParse",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/browser/src/background/router.ts",
+    "to": "packages/browser/src/platform/browserApi.ts",
+    "unresolvedTo": "../platform/browserApi",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/browser/src/background/router.ts",
+    "to": "packages/browser/src/platform/logger.ts",
+    "unresolvedTo": "../platform/logger",
     "dependencyTypes": [
       "local",
       "type-only",
@@ -116,25 +275,12 @@
   },
   {
     "type": "dependency",
-    "from": "packages/browser/src/background/index.ts",
-    "to": "packages/browser/src/platform/settings.ts",
-    "unresolvedTo": "../platform/settings",
+    "from": "packages/browser/src/background/router.ts",
+    "to": "packages/browser/src/platform/runtimeMessages.ts",
+    "unresolvedTo": "../platform/runtimeMessages",
     "dependencyTypes": [
       "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/browser/src/background/index.ts",
-    "to": "packages/browser/src/sync/auth/browserDriveAuth.ts",
-    "unresolvedTo": "../sync/auth/browserDriveAuth",
-    "dependencyTypes": [
-      "local",
+      "type-only",
       "import"
     ],
     "rule": {
@@ -374,6 +520,35 @@
   {
     "type": "dependency",
     "from": "packages/browser/src/popup/index.ts",
+    "to": "packages/browser/src/ui/theme.ts",
+    "unresolvedTo": "../ui/theme",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/browser/src/popup/render.ts",
+    "to": "packages/browser/src/platform/runtimeMessages.ts",
+    "unresolvedTo": "../platform/runtimeMessages",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/browser/src/popup/render.ts",
     "to": "packages/browser/src/ui/pdfCopy.ts",
     "unresolvedTo": "../ui/pdfCopy",
     "dependencyTypes": [
@@ -387,11 +562,71 @@
   },
   {
     "type": "dependency",
-    "from": "packages/browser/src/popup/index.ts",
-    "to": "packages/browser/src/ui/theme.ts",
-    "unresolvedTo": "../ui/theme",
+    "from": "packages/browser/src/popup/runtimeSend.ts",
+    "to": "packages/browser/src/platform/browserApi.ts",
+    "unresolvedTo": "../platform/browserApi",
     "dependencyTypes": [
       "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/browser/src/popup/runtimeSend.ts",
+    "to": "packages/browser/src/platform/runtimeMessages.ts",
+    "unresolvedTo": "../platform/runtimeMessages",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/browser/src/popup/saveFlow.ts",
+    "to": "packages/browser/src/platform/runtimeMessages.ts",
+    "unresolvedTo": "../platform/runtimeMessages",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/browser/src/popup/state.ts",
+    "to": "packages/browser/src/platform/runtimeMessages.ts",
+    "unresolvedTo": "../platform/runtimeMessages",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/browser/src/popup/syncButton.ts",
+    "to": "packages/browser/src/platform/runtimeMessages.ts",
+    "unresolvedTo": "../platform/runtimeMessages",
+    "dependencyTypes": [
+      "local",
+      "type-only",
       "import"
     ],
     "rule": {
@@ -486,196 +721,6 @@
   },
   {
     "type": "dependency",
-    "from": "packages/core/src/sync/core/libraryFolderNamer.ts",
-    "to": "packages/core/src/sync/provider/remoteProvider.ts",
-    "unresolvedTo": "../provider/remoteProvider.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/core/src/sync/core/syncApply.ts",
-    "to": "packages/core/src/sync/provider/remotePathResolver.ts",
-    "unresolvedTo": "../provider/remotePathResolver.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/core/src/sync/core/syncApply.ts",
-    "to": "packages/core/src/sync/provider/remoteProvider.ts",
-    "unresolvedTo": "../provider/remoteProvider.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/core/src/sync/core/syncApply.ts",
-    "to": "packages/core/src/sync/util/conflictName.ts",
-    "unresolvedTo": "../util/conflictName.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/core/src/sync/core/syncApply.ts",
-    "to": "packages/core/src/sync/util/contentHash.ts",
-    "unresolvedTo": "../util/contentHash.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/core/src/sync/core/syncDiff.ts",
-    "to": "packages/core/src/sync/provider/remoteProvider.ts",
-    "unresolvedTo": "../provider/remoteProvider.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/core/src/sync/core/syncEngine.ts",
-    "to": "packages/core/src/sync/provider/remotePathResolver.ts",
-    "unresolvedTo": "../provider/remotePathResolver.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/core/src/sync/core/syncEngine.ts",
-    "to": "packages/core/src/sync/provider/remoteProvider.ts",
-    "unresolvedTo": "../provider/remoteProvider.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/core/src/sync/core/syncManifest.ts",
-    "to": "packages/core/src/sync/provider/remoteProvider.ts",
-    "unresolvedTo": "../provider/remoteProvider.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/core/src/sync/core/syncTypes.ts",
-    "to": "packages/core/src/sync/provider/remoteProvider.ts",
-    "unresolvedTo": "../provider/remoteProvider.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/core/src/sync/core/treeScan.ts",
-    "to": "packages/core/src/sync/provider/remotePathResolver.ts",
-    "unresolvedTo": "../provider/remotePathResolver.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/core/src/sync/core/treeScan.ts",
-    "to": "packages/core/src/sync/provider/remoteProvider.ts",
-    "unresolvedTo": "../provider/remoteProvider.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/core/src/sync/core/treeScan.ts",
-    "to": "packages/core/src/sync/util/contentHash.ts",
-    "unresolvedTo": "../util/contentHash.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "packages/core/src/sync/drive/googleDriveProvider.ts",
     "to": "packages/core/src/sync/provider/authProvider.ts",
     "unresolvedTo": "../provider/authProvider.js",
@@ -692,6 +737,196 @@
   {
     "type": "dependency",
     "from": "packages/core/src/sync/drive/googleDriveProvider.ts",
+    "to": "packages/core/src/sync/provider/remoteProvider.ts",
+    "unresolvedTo": "../provider/remoteProvider.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/core/src/sync/engine/naming/libraryFolderNamer.ts",
+    "to": "packages/core/src/sync/provider/remoteProvider.ts",
+    "unresolvedTo": "../../provider/remoteProvider.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/core/src/sync/engine/pipeline/syncApply.ts",
+    "to": "packages/core/src/sync/provider/remotePathResolver.ts",
+    "unresolvedTo": "../../provider/remotePathResolver.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/core/src/sync/engine/pipeline/syncApply.ts",
+    "to": "packages/core/src/sync/provider/remoteProvider.ts",
+    "unresolvedTo": "../../provider/remoteProvider.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/core/src/sync/engine/pipeline/syncApply.ts",
+    "to": "packages/core/src/sync/util/conflictName.ts",
+    "unresolvedTo": "../../util/conflictName.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/core/src/sync/engine/pipeline/syncApply.ts",
+    "to": "packages/core/src/sync/util/contentHash.ts",
+    "unresolvedTo": "../../util/contentHash.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/core/src/sync/engine/pipeline/syncDiff.ts",
+    "to": "packages/core/src/sync/provider/remoteProvider.ts",
+    "unresolvedTo": "../../provider/remoteProvider.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/core/src/sync/engine/pipeline/syncEngine.ts",
+    "to": "packages/core/src/sync/provider/remotePathResolver.ts",
+    "unresolvedTo": "../../provider/remotePathResolver.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/core/src/sync/engine/pipeline/syncEngine.ts",
+    "to": "packages/core/src/sync/provider/remoteProvider.ts",
+    "unresolvedTo": "../../provider/remoteProvider.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/core/src/sync/engine/pipeline/treeScan.ts",
+    "to": "packages/core/src/sync/provider/remotePathResolver.ts",
+    "unresolvedTo": "../../provider/remotePathResolver.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/core/src/sync/engine/pipeline/treeScan.ts",
+    "to": "packages/core/src/sync/provider/remoteProvider.ts",
+    "unresolvedTo": "../../provider/remoteProvider.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/core/src/sync/engine/pipeline/treeScan.ts",
+    "to": "packages/core/src/sync/util/contentHash.ts",
+    "unresolvedTo": "../../util/contentHash.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/core/src/sync/engine/state/syncManifest.ts",
+    "to": "packages/core/src/sync/provider/remoteProvider.ts",
+    "unresolvedTo": "../../provider/remoteProvider.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/core/src/sync/engine/syncTypes.ts",
     "to": "packages/core/src/sync/provider/remoteProvider.ts",
     "unresolvedTo": "../provider/remoteProvider.js",
     "dependencyTypes": [
@@ -734,7 +969,7 @@
   },
   {
     "type": "dependency",
-    "from": "packages/terminal/src/cli/commands.ts",
+    "from": "packages/terminal/src/cli/doctor.ts",
     "to": "packages/terminal/src/app/config.ts",
     "unresolvedTo": "../app/config.js",
     "dependencyTypes": [
@@ -749,7 +984,21 @@
   },
   {
     "type": "dependency",
-    "from": "packages/terminal/src/cli/commands.ts",
+    "from": "packages/terminal/src/cli/doctor.ts",
+    "to": "packages/terminal/src/tui/graphics.ts",
+    "unresolvedTo": "../tui/graphics.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/cli/dumpFrame.ts",
     "to": "packages/terminal/src/app/context.ts",
     "unresolvedTo": "../app/context.js",
     "dependencyTypes": [
@@ -764,9 +1013,9 @@
   },
   {
     "type": "dependency",
-    "from": "packages/terminal/src/cli/commands.ts",
-    "to": "packages/terminal/src/tui/graphics.ts",
-    "unresolvedTo": "../tui/graphics.js",
+    "from": "packages/terminal/src/cli/dumpFrame.ts",
+    "to": "packages/terminal/src/tui/input.ts",
+    "unresolvedTo": "../tui/input.js",
     "dependencyTypes": [
       "local",
       "import"
@@ -778,7 +1027,52 @@
   },
   {
     "type": "dependency",
-    "from": "packages/terminal/src/cli/commands.ts",
+    "from": "packages/terminal/src/cli/dumpFrame.ts",
+    "to": "packages/terminal/src/tui/screen.ts",
+    "unresolvedTo": "../tui/screen.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/cli/libraryCommands.ts",
+    "to": "packages/terminal/src/app/config.ts",
+    "unresolvedTo": "../app/config.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/cli/libraryCommands.ts",
+    "to": "packages/terminal/src/app/context.ts",
+    "unresolvedTo": "../app/context.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/cli/libraryCommands.ts",
     "to": "packages/terminal/src/tui/text.ts",
     "unresolvedTo": "../tui/text.js",
     "dependencyTypes": [
@@ -792,11 +1086,26 @@
   },
   {
     "type": "dependency",
-    "from": "packages/terminal/src/cli/commands.ts",
+    "from": "packages/terminal/src/cli/libraryCommands.ts",
     "to": "packages/terminal/src/ui/theme.ts",
     "unresolvedTo": "../ui/theme.js",
     "dependencyTypes": [
       "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/cli/syncCommands.ts",
+    "to": "packages/terminal/src/app/context.ts",
+    "unresolvedTo": "../app/context.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
       "import"
     ],
     "rule": {
@@ -849,39 +1158,10 @@
   {
     "type": "dependency",
     "from": "packages/terminal/src/main.ts",
-    "to": "packages/terminal/src/cli/commands.ts",
-    "unresolvedTo": "./cli/commands.js",
+    "to": "packages/terminal/src/cli/dumpFrame.ts",
+    "unresolvedTo": "./cli/dumpFrame.js",
     "dependencyTypes": [
       "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/main.ts",
-    "to": "packages/terminal/src/tui/input.ts",
-    "unresolvedTo": "./tui/input.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/main.ts",
-    "to": "packages/terminal/src/tui/screen.ts",
-    "unresolvedTo": "./tui/screen.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
       "import"
     ],
     "rule": {
@@ -919,9 +1199,9 @@
   },
   {
     "type": "dependency",
-    "from": "packages/terminal/src/main.ts",
-    "to": "packages/terminal/src/ui/app.ts",
-    "unresolvedTo": "./ui/app.js",
+    "from": "packages/terminal/src/ui/app/actions/commandLine.ts",
+    "to": "packages/terminal/src/ui/app/input/promptSubmit.ts",
+    "unresolvedTo": "../input/promptSubmit.js",
     "dependencyTypes": [
       "local",
       "import"
@@ -933,99 +1213,575 @@
   },
   {
     "type": "dependency",
-    "from": "packages/terminal/src/ui/app.ts",
-    "to": "packages/terminal/src/app/config.ts",
-    "unresolvedTo": "../app/config.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/ui/app.ts",
-    "to": "packages/terminal/src/app/context.ts",
-    "unresolvedTo": "../app/context.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/ui/app.ts",
-    "to": "packages/terminal/src/tui/graphics.ts",
-    "unresolvedTo": "../tui/graphics.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/ui/app.ts",
-    "to": "packages/terminal/src/tui/input.ts",
-    "unresolvedTo": "../tui/input.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/ui/app.ts",
-    "to": "packages/terminal/src/tui/screen.ts",
-    "unresolvedTo": "../tui/screen.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/ui/app.ts",
-    "to": "packages/terminal/src/tui/terminal.ts",
-    "unresolvedTo": "../tui/terminal.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/ui/app.ts",
+    "from": "packages/terminal/src/ui/app/actions/createAndRename.ts",
     "to": "packages/terminal/src/tui/text.ts",
-    "unresolvedTo": "../tui/text.js",
+    "unresolvedTo": "../../../tui/text.js",
     "dependencyTypes": [
       "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/actions/createAndRename.ts",
+    "to": "packages/terminal/src/ui/app/input/overlayInput.ts",
+    "unresolvedTo": "../input/overlayInput.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/actions/moveAndTrash.ts",
+    "to": "packages/terminal/src/tui/text.ts",
+    "unresolvedTo": "../../../tui/text.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/actions/moveAndTrash.ts",
+    "to": "packages/terminal/src/ui/app/input/overlayPickers.ts",
+    "unresolvedTo": "../input/overlayPickers.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/actions/moveAndTrash.ts",
+    "to": "packages/terminal/src/ui/app/state/taskStatus.ts",
+    "unresolvedTo": "../state/taskStatus.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/actions/paperFieldActions.ts",
+    "to": "packages/terminal/src/tui/text.ts",
+    "unresolvedTo": "../../../tui/text.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/actions/paperFieldActions.ts",
+    "to": "packages/terminal/src/ui/app/input/overlayInput.ts",
+    "unresolvedTo": "../input/overlayInput.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/app.ts",
+    "to": "packages/terminal/src/app/config.ts",
+    "unresolvedTo": "../../app/config.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/app.ts",
+    "to": "packages/terminal/src/app/context.ts",
+    "unresolvedTo": "../../app/context.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/app.ts",
+    "to": "packages/terminal/src/tui/graphics.ts",
+    "unresolvedTo": "../../tui/graphics.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/app.ts",
+    "to": "packages/terminal/src/tui/input.ts",
+    "unresolvedTo": "../../tui/input.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/app.ts",
+    "to": "packages/terminal/src/tui/screen.ts",
+    "unresolvedTo": "../../tui/screen.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/app.ts",
+    "to": "packages/terminal/src/tui/terminal.ts",
+    "unresolvedTo": "../../tui/terminal.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/app.ts",
+    "to": "packages/terminal/src/ui/app/actions/driveSync.ts",
+    "unresolvedTo": "./actions/driveSync.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/drawing/folders.ts",
+    "to": "packages/terminal/src/tui/screen.ts",
+    "unresolvedTo": "../../../tui/screen.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/drawing/frame.ts",
+    "to": "packages/terminal/src/tui/screen.ts",
+    "unresolvedTo": "../../../tui/screen.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/drawing/header.ts",
+    "to": "packages/terminal/src/tui/screen.ts",
+    "unresolvedTo": "../../../tui/screen.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/drawing/header.ts",
+    "to": "packages/terminal/src/tui/text.ts",
+    "unresolvedTo": "../../../tui/text.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/drawing/papers.ts",
+    "to": "packages/terminal/src/tui/screen.ts",
+    "unresolvedTo": "../../../tui/screen.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/drawing/preview.ts",
+    "to": "packages/terminal/src/tui/graphics.ts",
+    "unresolvedTo": "../../../tui/graphics.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/drawing/preview.ts",
+    "to": "packages/terminal/src/tui/screen.ts",
+    "unresolvedTo": "../../../tui/screen.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/drawing/status.ts",
+    "to": "packages/terminal/src/tui/screen.ts",
+    "unresolvedTo": "../../../tui/screen.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/drawing/status.ts",
+    "to": "packages/terminal/src/tui/text.ts",
+    "unresolvedTo": "../../../tui/text.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/drawing/status.ts",
+    "to": "packages/terminal/src/ui/app/actions/driveSync.ts",
+    "unresolvedTo": "../actions/driveSync.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/input/keyDispatch.ts",
+    "to": "packages/terminal/src/ui/app/actions/createAndRename.ts",
+    "unresolvedTo": "../actions/createAndRename.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/input/keyDispatch.ts",
+    "to": "packages/terminal/src/ui/app/actions/driveSync.ts",
+    "unresolvedTo": "../actions/driveSync.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/input/keyDispatch.ts",
+    "to": "packages/terminal/src/ui/app/actions/moveAndTrash.ts",
+    "unresolvedTo": "../actions/moveAndTrash.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/input/keyDispatch.ts",
+    "to": "packages/terminal/src/ui/app/actions/paperExportActions.ts",
+    "unresolvedTo": "../actions/paperExportActions.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/input/keyDispatch.ts",
+    "to": "packages/terminal/src/ui/app/actions/paperFieldActions.ts",
+    "unresolvedTo": "../actions/paperFieldActions.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/input/liveQuery.ts",
+    "to": "packages/terminal/src/tui/input.ts",
+    "unresolvedTo": "../../../tui/input.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/input/mouseInput.ts",
+    "to": "packages/terminal/src/tui/input.ts",
+    "unresolvedTo": "../../../tui/input.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/input/overlayInput.ts",
+    "to": "packages/terminal/src/tui/input.ts",
+    "unresolvedTo": "../../../tui/input.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/input/promptSubmit.ts",
+    "to": "packages/terminal/src/ui/app/actions/commandLine.ts",
+    "unresolvedTo": "../actions/commandLine.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/input/promptSubmit.ts",
+    "to": "packages/terminal/src/ui/app/actions/createAndRename.ts",
+    "unresolvedTo": "../actions/createAndRename.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/input/promptSubmit.ts",
+    "to": "packages/terminal/src/ui/app/actions/paperExportActions.ts",
+    "unresolvedTo": "../actions/paperExportActions.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/types.ts",
+    "to": "packages/terminal/src/app/config.ts",
+    "unresolvedTo": "../../app/config.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/types.ts",
+    "to": "packages/terminal/src/tui/graphics.ts",
+    "unresolvedTo": "../../tui/graphics.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/types.ts",
+    "to": "packages/terminal/src/tui/input.ts",
+    "unresolvedTo": "../../tui/input.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/types.ts",
+    "to": "packages/terminal/src/tui/screen.ts",
+    "unresolvedTo": "../../tui/screen.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/terminal/src/ui/app/types.ts",
+    "to": "packages/terminal/src/tui/terminal.ts",
+    "unresolvedTo": "../../tui/terminal.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
       "import"
     ],
     "rule": {
@@ -1151,6 +1907,90 @@
   },
   {
     "type": "dependency",
+    "from": "packages/vscode/src/activation/libraryLifecycle/externalChangeHandling.ts",
+    "to": "packages/vscode/src/storage/data/externalChangeWatcher.ts",
+    "unresolvedTo": "../../storage/data/externalChangeWatcher.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/vscode/src/activation/registration/registerPanelCommands.ts",
+    "to": "packages/vscode/src/ai/service/similarPapers.ts",
+    "unresolvedTo": "../../ai/service/similarPapers.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/vscode/src/activation/registration/registerPanelCommands.ts",
+    "to": "packages/vscode/src/commands/textLayerQueue.ts",
+    "unresolvedTo": "../../commands/textLayerQueue.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/vscode/src/activation/serviceComposition/buildServices.ts",
+    "to": "packages/vscode/src/commands/textLayerQueue.ts",
+    "unresolvedTo": "../../commands/textLayerQueue.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/vscode/src/activation/serviceComposition/buildServices.ts",
+    "to": "packages/vscode/src/storage/data/reindexLibrary.ts",
+    "unresolvedTo": "../../storage/data/reindexLibrary.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/vscode/src/activation/serviceComposition/buildServices.ts",
+    "to": "packages/vscode/src/storage/vscodeFileSystem.ts",
+    "unresolvedTo": "../../storage/vscodeFileSystem.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
     "from": "packages/vscode/src/ai/indexer/aiIndexer.ts",
     "to": "packages/vscode/src/ai/pdf/contentHash.ts",
     "unresolvedTo": "../pdf/contentHash.js",
@@ -1179,36 +2019,6 @@
   },
   {
     "type": "dependency",
-    "from": "packages/vscode/src/ai/indexer/aiIndexer.ts",
-    "to": "packages/vscode/src/db/ai/aiMetadataStore.ts",
-    "unresolvedTo": "../../db/ai/aiMetadataStore.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/ai/indexer/aiIndexer.ts",
-    "to": "packages/vscode/src/db/ai/sqliteVectorStore.ts",
-    "unresolvedTo": "../../db/ai/sqliteVectorStore.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "packages/vscode/src/ai/service/aiService.ts",
     "to": "packages/vscode/src/ai/indexer/aiIndexer.ts",
     "unresolvedTo": "../indexer/aiIndexer.js",
@@ -1227,51 +2037,6 @@
     "from": "packages/vscode/src/ai/service/aiService.ts",
     "to": "packages/vscode/src/ai/indexer/indexerQueue.ts",
     "unresolvedTo": "../indexer/indexerQueue.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/ai/service/aiService.ts",
-    "to": "packages/vscode/src/db/ai/aiMetadataStore.ts",
-    "unresolvedTo": "../../db/ai/aiMetadataStore.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/ai/service/aiService.ts",
-    "to": "packages/vscode/src/db/ai/readingEventsStore.ts",
-    "unresolvedTo": "../../db/ai/readingEventsStore.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/ai/service/aiService.ts",
-    "to": "packages/vscode/src/db/ai/sqliteVectorStore.ts",
-    "unresolvedTo": "../../db/ai/sqliteVectorStore.js",
     "dependencyTypes": [
       "local",
       "type-only",
@@ -1326,20 +2091,6 @@
   },
   {
     "type": "dependency",
-    "from": "packages/vscode/src/ai/service/aiServiceFactory.ts",
-    "to": "packages/vscode/src/db/sqliteResearchDatabase.ts",
-    "unresolvedTo": "../../db/sqliteResearchDatabase.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "packages/vscode/src/commands/registerAiCommands.ts",
     "to": "packages/vscode/src/ai/service/aiService.ts",
     "unresolvedTo": "../ai/service/aiService.js",
@@ -1355,7 +2106,22 @@
   },
   {
     "type": "dependency",
-    "from": "packages/vscode/src/commands/registerCommands.ts",
+    "from": "packages/vscode/src/commands/registerCommands/types.ts",
+    "to": "packages/vscode/src/storage/data/reindexLibrary.ts",
+    "unresolvedTo": "../../storage/data/reindexLibrary.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-import-past-index"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "packages/vscode/src/core/paperImporter.ts",
     "to": "packages/vscode/src/storage/data/reindexLibrary.ts",
     "unresolvedTo": "../storage/data/reindexLibrary.js",
     "dependencyTypes": [
@@ -1370,180 +2136,12 @@
   },
   {
     "type": "dependency",
-    "from": "packages/vscode/src/commands/textLayerQueue.ts",
-    "to": "packages/vscode/src/pdf/searchablePdfBuilder.ts",
-    "unresolvedTo": "../pdf/searchablePdfBuilder.js",
+    "from": "packages/vscode/src/core/paperService.ts",
+    "to": "packages/vscode/src/storage/data/reindexLibrary.ts",
+    "unresolvedTo": "../storage/data/reindexLibrary.js",
     "dependencyTypes": [
       "local",
       "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/db/sqliteResearchDatabase.ts",
-    "to": "packages/vscode/src/db/ai/aiSchema.ts",
-    "unresolvedTo": "./ai/aiSchema.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/extension.ts",
-    "to": "packages/vscode/src/ai/service/similarPapers.ts",
-    "unresolvedTo": "./ai/service/similarPapers.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/extension.ts",
-    "to": "packages/vscode/src/commands/importProgress.ts",
-    "unresolvedTo": "./commands/importProgress.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/extension.ts",
-    "to": "packages/vscode/src/commands/registerAiCommands.ts",
-    "unresolvedTo": "./commands/registerAiCommands.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/extension.ts",
-    "to": "packages/vscode/src/commands/registerCommands.ts",
-    "unresolvedTo": "./commands/registerCommands.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/extension.ts",
-    "to": "packages/vscode/src/commands/textLayerQueue.ts",
-    "unresolvedTo": "./commands/textLayerQueue.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/extension.ts",
-    "to": "packages/vscode/src/db/sqliteResearchDatabase.ts",
-    "unresolvedTo": "./db/sqliteResearchDatabase.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/extension.ts",
-    "to": "packages/vscode/src/storage/data/externalChangeWatcher.ts",
-    "unresolvedTo": "./storage/data/externalChangeWatcher.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/extension.ts",
-    "to": "packages/vscode/src/storage/data/reindexLibrary.ts",
-    "unresolvedTo": "./storage/data/reindexLibrary.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/extension.ts",
-    "to": "packages/vscode/src/storage/vscodeFileSystem.ts",
-    "unresolvedTo": "./storage/vscodeFileSystem.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/extension.ts",
-    "to": "packages/vscode/src/sync/adapter/syncController.ts",
-    "unresolvedTo": "./sync/adapter/syncController.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/pdf-viewer/PdfViewerPanel.ts",
-    "to": "packages/vscode/src/pdf-viewer/renderer/PdfRenderer.ts",
-    "unresolvedTo": "./renderer/PdfRenderer.js",
-    "dependencyTypes": [
-      "local",
       "import"
     ],
     "rule": {

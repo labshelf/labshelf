@@ -2,20 +2,19 @@
  * The settings webview's HTML shell: a strict CSP (scripts and styles only from the bundle folder, the script also
  * by nonce), the bundled stylesheet and script, and the mount point. The page arrives with the bundle.
  */
-import * as fs from "node:fs";
 import * as vscode from "vscode";
 import { createNonce } from "@labshelf/core";
-import { bundleMissingHtml } from "../bundleMissing/index.js";
+import { bundleExists, bundleMissingHtml } from "../bundleMissing/index.js";
 
 /** <extension>/dist/settings, for localResourceRoots. */
 export function settingsBundleDirectory(extensionUri: vscode.Uri): vscode.Uri {
   return vscode.Uri.joinPath(extensionUri, "dist", "settings");
 }
 
-export function settingsShellHtml(webview: vscode.Webview, extensionUri: vscode.Uri): string {
+export async function settingsShellHtml(webview: vscode.Webview, extensionUri: vscode.Uri): Promise<string> {
   const dir = settingsBundleDirectory(extensionUri);
   const script = vscode.Uri.joinPath(dir, "settings.js");
-  if (!fs.existsSync(script.fsPath)) {
+  if (!(await bundleExists(script))) {
     return bundleMissingHtml({ title: "LabShelf Settings", heading: "Settings bundle not built", file: "dist/settings/settings.js", reopen: "the settings" });
   }
   const nonce = createNonce();

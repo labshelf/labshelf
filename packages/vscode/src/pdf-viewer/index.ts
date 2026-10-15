@@ -2,3 +2,4 @@
 export { PdfViewerPanel } from "./PdfViewerPanel.js";
 export { ThemeManager } from "./ThemeManager.js";
 export { createVsCodeExportPorts } from "./readerHostPorts.js";
+export type { PdfjsLocator } from "./renderer/index.js";

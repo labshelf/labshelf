@@ -1,3 +1,4 @@
+import * as path from 'node:path';
 import * as vscode from 'vscode';
 import type { HostToUi, LibraryUiSnapshot } from '@labshelf/core';
 import { ListWebviewPanel } from '../../src/ui/list/listWebviewPanel';
@@ -29,7 +30,7 @@ function open(folder?: LibraryNode, extra: Partial<ListPanelDeps> = {}) {
   const readFolders = async (dir: string) =>
     dir === ROOT ? [{ label: 'A', dirPath: `${ROOT}/A` }] : dir === `${ROOT}/A` ? [{ label: 'B', dirPath: `${ROOT}/A/B` }] : [];
   const deps = {
-    extensionUri: vscode.Uri.file('/ext'), paperService, eventBus: bus, logger, folders, onDidNavigate, readFolders,
+    extensionUri: vscode.Uri.file('/ext'), paperService, eventBus: bus, logger, pathOps: path, folders, onDidNavigate, readFolders,
     getPapersRoot: () => ROOT, ...extra,
   } as unknown as ListPanelDeps;
 
