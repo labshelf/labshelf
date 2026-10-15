@@ -1,6 +1,6 @@
 # Plan: Codebase reduction
 
-Status: in progress (session 1 of 6)
+Status: in progress (session 2 of 6)
 Size: GG — about 2,300 lines across core and all three apps, two contract edits (cite-key scheme, VS Code AI store) and one user-data migration (library root); grows past 6 sessions if S24's adapter fold finds callers that rely on today's divergent semantics
 Pending decisions: 0
 
@@ -11,7 +11,7 @@ Remove the code the minimal-code ladder (AGENTS.md §3) says should not exist: d
 ## 2. Decisions
 
 - [x] **D1** Bugs first: session 1 fixes the terminal sync data-loss path, the silent swallows and the split trust-boundary checks before any reduction — reductions must not move buggy code around.
-- [x] **D2** Delete the unread AI layer: reading events, the AI metadata store, the heuristics that feed only it, the stance detector and the `ai.searchByText` / `ai.searchByClaim` commands. Keep the text indexing the reader needs. Existing `index.sqlite` files keep their dead tables (never synced, never read); no migration. (User, 2026-10-15.)
+- [x] **D2** Delete the unread AI layer: reading events, the AI metadata store, the heuristics that feed only it, the stance detector and the `ai.searchByText` / `ai.searchByClaim` commands. Keep the text indexing the reader needs. Existing `index.sqlite` files keep their dead tables (never synced, never read); no migration. (User, 2026-10-15.) S5 found the reader uses none of the index; its one reader is Related → "Similar content", which stays: indexer, vector store, chunker and hash embedder are kept (user, session 2). Papers re-index once after the upgrade (new hash table, SHA-256).
 - [x] **D3** Replace the VS Code settings webview with `viewsWelcome` buttons, the status bar and native settings. The browser options page stays (no native equivalent). (User, 2026-10-15.)
 - [x] **D4** Council (LibraryOperations fork): one runtime-neutral core `resolvePaperRefs(ids, lookup)`; each app injects an async lookup, so rescan and no-op-suppression policy stay in the app. The outcome merge stays an inline spread. No shared `LibraryOperations` service — the three apps refresh in three incompatible ways.
 - [x] **D5** Batch-outcome and sync-outcome wording moves to core: three reviewers found it already drifted ("Paper removed" vs `Removed "<title>"`). This settles the council's open notice-text clash.
@@ -34,7 +34,7 @@ Remove the code the minimal-code ladder (AGENTS.md §3) says should not exist: d
 - [x] **A1** A terminal sync whose local `listDir` fails with EACCES logs the error and deletes nothing remote; a test proves it and fails without the fix.
 - [x] **A2** None of the silent catches listed in S2 remains; each failure is logged through `ILogger` with context.
 - [x] **A3** One `isPdfBytes` and one `isLibraryPath` guard every listed trust boundary; tests cover a rejected input at each.
-- [ ] **A4** The AI pieces in D2 are gone from code, `package.json` contributions and docs; the reader still opens, searches text and OCRs a scanned PDF.
+- [x] **A4** The AI pieces in D2 are gone from code, `package.json` contributions and docs; the reader still opens, searches text and OCRs a scanned PDF.
 - [ ] **A5** One cite-key builder exists. A local import whose authors come only from layout heuristics gets a surname-free key; one with XMP or lookup authors gets `authorYearWord`.
 - [ ] **A6** `resolvePaperRefs` lives in core and is used by vscode and terminal; jscpd finds no copy of the id-to-ref loop.
 - [ ] **A7** Batch and sync outcome notices read the same in all three apps, from one core module.
@@ -80,10 +80,10 @@ Every session starts from the previous one committed on a clean tree. Every sess
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S5 | Map the AI deletion set | — | M · code-mapper (sonnet) | keep/delete list per file | [ ] |
-| S6 | Delete the AI layer (F1, F20, F26) | S5 | M · implementer (sonnet) | A4 | [ ] |
-| S7 | Rung-1 deletions (F13, F16, F36, F38, F48, F63, F68, F69) | — | M · dead-code-cleaner (sonnet) | gate passes | [ ] |
-| S8 | Finish | S5–S7 | `finish` skill | gate passes | [ ] |
+| S5 | Map the AI deletion set | — | M · code-mapper (sonnet) | keep/delete list per file | [x] |
+| S6 | Delete the AI layer (F1, F20, F26) | S5 | M · implementer (sonnet) | A4 | [x] |
+| S7 | Rung-1 deletions (F13, F16, F36, F38, F48, F63, F68, F69) | — | M · dead-code-cleaner (sonnet) | gate passes | [x] |
+| S8 | Finish | S5–S7 | `finish` skill | gate passes | [x] |
 
 ### Session 3 — Cross-app copies into core
 
@@ -208,6 +208,10 @@ Every session starts from the previous one committed on a clean tree. Every sess
 - 2026-10-15 session 1 · S2 (sonnet): five sites log; `registries/http.ts` deferred to S20 (F25 rebuilds that client with an injected logger).
 - 2026-10-15 session 1 · S3 (sonnet): one strict `isPdfBytes` (header at byte 0) in library/mutations/import; downloads with junk before the header now fail at download, not at import. Browser read-back of such a hand-copied PDF reports it missing.
 - 2026-10-15 session 1 · S4 finish: gate PASS (core 1795, browser 112, terminal 861, vscode 352 tests); F71 added, F42 widened.
+- 2026-10-15 12:39 session 2 · S5 (sonnet): reader search/OCR use nothing from ai/**; the index's only reader is Related "Similar content" — user kept it (D2 note). Indexer, vector store, chunker, hash embedder stay.
+- 2026-10-15 12:39 session 2 · S6 (sonnet): 22 source + 13 test files deleted; hash gate → `indexed_papers` + SHA-256, PDF read once, promise tail; core `extractPageTexts` returns `PageText[]` and logs failing pages. Orchestrator added: reader `pageChanged`/`zoomChanged` removed end to end (dead after S6); F72 logged for S20.
+- 2026-10-15 12:39 session 2 · S7 (sonnet): all eight rows; F13 removed only the 4 flags true in both hosts (7 others differ per host and stay).
+- 2026-10-15 12:39 session 2 · S8 finish + verify: gate PASS (core 1768, vscode 349, browser 112, terminal 859; knip 0, jscpd 9). Verify on a library copy found pre-ef39315 `index.sqlite` files keep a `chunk_embeddings → papers` FK that fails every new upsert; fixed with `ai/node/migrations/dropForeignKeyEmbeddings.ts`. Session net: src −1,139, tests −245.
 
 ## 9. Findings
 
@@ -286,3 +290,4 @@ Ranked by lines saved × risk weight (low 3, med 2, high 1). Rung: 1 needs to ex
 | F69 | Stale comment in escapeHtml | core ui/escapeHtml.ts:4 | 1 | 1 | low | S7 |
 | F70 | VscodeFileSystem duplicates core NodeLibraryFileSystem — REJECTED: VS Code FS layer serves remote workspaces and rename uses overwrite:false | vscode storage/vscodeFileSystem.ts | 2 | 0 | high | — |
 | F71 | Silent catches outside S2's list (found by session 1's finish pass): `run.catch(() => undefined)`, broadcast and draftCache catches | browser background/handlers/library.ts:41, broadcast.ts, draftCache.ts | 2 | 0 | low | S12 |
+| F72 | Silent catches outside S2's list (found by S6): OCR `.recognize(...).catch(() => "")` and an online-record swallow | core import/pdf/parser/PdfImportParser.ts:134, onlineRecord.ts:36 | 1 | 2 | low | S20 |
