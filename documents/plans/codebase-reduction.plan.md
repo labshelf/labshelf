@@ -1,6 +1,6 @@
 # Plan: Codebase reduction
 
-Status: in progress (session 3 of 6)
+Status: in progress (session 4 of 6)
 Size: GG — about 2,300 lines across core and all three apps, two contract edits (cite-key scheme, VS Code AI store) and one user-data migration (library root); grows past 6 sessions if S24's adapter fold finds callers that rely on today's divergent semantics
 Pending decisions: 0
 
@@ -38,8 +38,8 @@ Remove the code the minimal-code ladder (AGENTS.md §3) says should not exist: d
 - [x] **A5** One cite-key builder exists. A local import whose authors come only from layout heuristics gets a surname-free key; one with XMP or lookup authors gets `authorYearWord`.
 - [x] **A6** `resolvePaperRefs` lives in core and is used by vscode and terminal; jscpd finds no copy of the id-to-ref loop.
 - [x] **A7** Batch and sync outcome notices read the same in all three apps, from one core module.
-- [ ] **A8** VS Code shows the Settings view's welcome buttons; every action the webview offered is reachable by command; the webview code is gone.
-- [ ] **A9** An install whose root exists only in globalState opens the same library after the upgrade (test), and the shared config then holds it.
+- [x] **A8** VS Code shows the Settings view's welcome buttons; every action the webview offered is reachable by command; the webview code is gone.
+- [x] **A9** An install whose root exists only in globalState opens the same library after the upgrade (test), and the shared config then holds it.
 - [ ] **A10** `pnpm knip`, `pnpm lint:deps` and `pnpm jscpd` pass; the jscpd baseline drops below its current value; `packages/*/src` loses at least 1,500 net lines (measured with `git diff --shortstat` from the plan's first commit).
 - [ ] **A11** All packages typecheck and test; `verify` passes for the VS Code reader and library, the browser popup and library page, and the terminal frames.
 
@@ -107,12 +107,12 @@ Every session starts from the previous one committed on a clean tree. Every sess
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S14 | Settings webview → `viewsWelcome` (F2) | — | M · implementer (sonnet) | A8 | [ ] |
-| S15 | Folder tree from the snapshot, vscode and browser (F3, F45) | — | M · implementer (sonnet) | tree and list match before/after | [ ] |
-| S16 | Library root in the shared config only (F24) | — | H · implementer (opus) | A9 | [ ] |
-| S17 | VS Code internals (F4, F9, F14, F15, F41) | S14 | M · implementer (sonnet) | gate passes | [ ] |
-| S18 | Verify VS Code and browser library | S14–S17 | `verify` skill | screenshots match | [ ] |
-| S19 | Finish | S14–S18 | `finish` skill | gate passes | [ ] |
+| S14 | Settings webview → `viewsWelcome` (F2) | — | M · implementer (sonnet) | A8 | [x] |
+| S15 | Folder tree from the snapshot, vscode and browser (F3, F45) | — | M · implementer (sonnet) | tree and list match before/after | [x] |
+| S16 | Library root in the shared config only (F24) | — | H · implementer (opus) | A9 | [x] |
+| S17 | VS Code internals (F4, F9, F14, F15, F41) | S14 | M · implementer (sonnet) | gate passes | [x] |
+| S18 | Verify VS Code and browser library | S14–S17 | `verify` skill | screenshots match | [x] |
+| S19 | Finish | S14–S18 | `finish` skill | gate passes | [x] |
 
 ### Session 5 — Core domain, import paths, platform rungs
 
@@ -218,6 +218,12 @@ Every session starts from the previous one committed on a clean tree. Every sess
 - 2026-10-15 14:05 session 3 · S10 (opus): core `resolvePaperRefs` used by vscode `refsFor` and terminal `refs` (terminal rescans on a miss for move and trash too); `parsedRecord` keys with `makeCiteKey` behind the trust ≥ 60 author gate, `import/pdf/citeKey.ts` deleted, scheme in `library-format.md`. Open: no trusted authors and no year gives a one-word key ("my scan" → `my`).
 - 2026-10-15 14:05 session 3 · S12 (sonnet): browser `platform/logging/` (storage-ring + console sinks on core `Logger`, created in background, options, library page, reader; popup and Scholar content script never logged), one `sendRuntime`, core `errorMessage`, core `driveStatusOf` in browser and vscode.
 - 2026-10-15 14:20 session 3 · S13 finish: gate PASS (core 1801, vscode 350, browser 119, terminal 862; knip 0, lint:deps 0, lint:dirs 0, jscpd 5); folded core's two other `errorMessage` copies and the import/** inline ones; F74 added. Session net: src +6 (842/836), tests +394. Plan net so far: src −1,079 of the −1,500 A10 needs.
+- 2026-10-15 14:38 session 4 · S14 (sonnet): Settings view is viewsWelcome only (change folder, Drive connect/sync/disconnect on `labshelf.driveConnected`, open settings); ui/settings/** and its bundle gone; orchestrator added the library path as the view's header description (welcome text is static).
+- 2026-10-15 14:38 session 4 · S15 (sonnet): core `folderTreeFromSnapshot` (empty folders are in collections); vscode tree and list read the snapshot, `folderReader.ts` deleted, folder create/rename/move/trash reindex once; browser has no snapshot, so F45 only folded its key range onto `belowDir` (its tree already comes from core).
+- 2026-10-15 14:38 session 4 · S16 (opus): root only in the shared config; `storage/migrations/libraryRootFromGlobalState` copies a globalState-only root once (shared config wins on conflict); orchestrator changed a failed write to open the globalState root for that session and retry next start.
+- 2026-10-15 14:38 session 4 · S17 (sonnet): F4 ThemeManager/PdfRenderer → functions; F9 eventBus → typed `vscode.EventEmitter`s with disposal; F14 incl. require/reconfigure; F15 batched `updatePapersStatus` (one reindex); F41 one `webviewGlobals.d.ts`.
+- 2026-10-15 14:38 session 4 · S18 verify: all pass on a library copy (Settings buttons + path, tree = list incl. empty folders, folder ops, 2-paper status, reader theme, globalState-only start migrates, browser tree identical). Found: a pre-session-2 `index.sqlite` with no `indexed_papers` failed the AI service on first start — fixed with `DROP TABLE IF EXISTS` + test. The verify run's pkill also closed the user's own VS Code window.
+- 2026-10-15 14:38 session 4 · S19 finish: gate PASS (core 1810, vscode 305, browser 119, terminal 862; knip, jscpd, lint:deps, lint:dirs pass). Session net: src −505 (+443/−948), tests −435. Plan net so far: src −1,584.
 
 ## 9. Findings
 
