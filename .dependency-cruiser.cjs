@@ -1,6 +1,4 @@
-// Architecture rules from AGENTS.md section 1 and 3 (acceptance criterion A2).
-// Violations that exist today are recorded in .dependency-cruiser-known-violations.json
-// (regenerate with `pnpm run lint:deps:baseline`); anything else fails the run.
+// Enforces the import boundaries from AGENTS.md sections 1 and 3; any violation fails the run.
 const { readdirSync } = require("node:fs");
 const { join } = require("node:path");
 

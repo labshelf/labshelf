@@ -1,5 +1,4 @@
-// Size limits from AGENTS.md section 3. Existing violations are baselined in
-// eslint-suppressions.json (see scripts/run-eslint.mjs), so only new ones fail.
+// Enforces the size limits from AGENTS.md section 3.
 import tseslint from "typescript-eslint";
 
 const sourceLimits = {

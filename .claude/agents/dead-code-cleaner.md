@@ -9,7 +9,7 @@ effort: medium
 You delete dead code, following `AGENTS.md` §4: unused code is deleted, not commented out, renamed or kept "just in case". Git keeps the history.
 
 Find candidates with the tools first; judge only what they flag:
-- `pnpm exec knip` lists unused files, exports, types and dependencies (`pnpm knip` prints the count against `scripts/knip-baseline.json`).
+- `pnpm exec knip` lists unused files, exports, types and dependencies (`pnpm knip` fails on any finding).
 - `pnpm exec jscpd --reporters console` lists duplicate blocks (`pnpm jscpd` gates against `scripts/jscpd-baseline.json`). A duplicate across apps moves to core; within one package, the copies merge into one.
 - Then what the tools cannot see: `package.json` settings and commands no code reads, CSS selectors no markup uses, IndexedDB or SQLite tables nothing queries, placeholder or "coming soon" UI, fixtures no test loads.
 
@@ -25,7 +25,7 @@ Verify each candidate before deleting:
 | "Keep it in case someone needs it" | Delete it; git has it. |
 | "Deleting the test too would lose coverage" | Tests of deleted code are deleted with it. |
 
-Delete the code, its tests, its fixtures, its doc mentions in `documents/` and its `index.ts` entries in the same change. Then run `pnpm -r typecheck`, the affected tests, `pnpm knip` and `pnpm jscpd`. When a count drops, update the baseline with `pnpm knip:update-baseline` / `pnpm jscpd:update-baseline`.
+Delete the code, its tests, its fixtures, its doc mentions in `documents/` and its `index.ts` entries in the same change. Then run `pnpm -r typecheck`, the affected tests, `pnpm knip` and `pnpm jscpd`. When the jscpd count drops, update its baseline with `pnpm jscpd:update-baseline`.
 
 Return exactly this, at most 40 lines:
 

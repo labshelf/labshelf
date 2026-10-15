@@ -2,8 +2,6 @@
 
 Read when you add, move or split code, or add a port, an adapter or a UI piece.
 
-> The code is being moved into this layout by [plans/architecture-refactor.plan.md](plans/architecture-refactor.plan.md). Until that plan is done, the plan lists where the code still differs from this document. Delete this note when the plan is done.
-
 ## Packages
 
 ```
@@ -97,4 +95,4 @@ The design system gives the three apps one look:
   - unused files, exports and dependencies (knip);
   - directory size and per-runtime tsconfigs in core (`scripts/check-directory-size.mjs`, `scripts/check-runtime-tsconfigs.mjs`).
 
-  Existing violations are recorded in baselines (`.dependency-cruiser-known-violations.json`, `scripts/directory-size-baseline.json`, `packages/core/runtime-baseline.json`). A baselined violation is debt to remove; a new one fails `pnpm lint`.
+  Any violation fails `pnpm lint`. Neutral core compiles against the `ES2022` and `WebWorker` libs: the web-platform globals every runtime has (`fetch`, `URL`, timers, `TextEncoder`, Web Crypto) and no DOM.

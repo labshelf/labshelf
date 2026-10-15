@@ -82,7 +82,7 @@ typst: 0.13.1            # written on build, Typst projects only
 
 ### Session 1 — projects and the Writing view
 
-- **Starts from:** [architecture-refactor.plan.md](../architecture-refactor.plan.md) done; clean tree on a new branch.
+- **Starts from:** the architecture refactor done (2026-10-15); clean tree on a new branch.
 - **Ends with:** A1, A5 (main only); the contract updated.
 - **Commit:** yes, one per step
 

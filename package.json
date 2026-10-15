@@ -8,11 +8,9 @@
     "dev:vscode": "pnpm --filter @labshelf/vscode dev",
     "build:vscode": "pnpm --filter @labshelf/vscode build",
     "lint": "pnpm -r lint && pnpm run lint:deps && pnpm run knip && pnpm run jscpd && pnpm run lint:dirs",
-    "lint:deps": "depcruise packages/*/src --config .dependency-cruiser.cjs --ignore-known",
+    "lint:deps": "depcruise packages/*/src --config .dependency-cruiser.cjs",
     "lint:dirs": "node scripts/check-directory-size.mjs",
-    "lint:deps:baseline": "depcruise-baseline packages/*/src --config .dependency-cruiser.cjs",
-    "knip": "node scripts/summarize-knip.mjs",
-    "knip:update-baseline": "node scripts/summarize-knip.mjs --update",
+    "knip": "knip",
     "jscpd": "node scripts/summarize-jscpd.mjs",
     "jscpd:update-baseline": "node scripts/summarize-jscpd.mjs --update"
   },

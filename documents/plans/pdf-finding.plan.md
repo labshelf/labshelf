@@ -10,7 +10,7 @@ Date: 2026-10-08. Branch `feat/reader-ux`. Scope: the browser extension (`packag
   - Without a browser session the ceiling is about 33/66.
 - **Most of the remaining gap is closed-access papers the user can already read.** The access comes through their institution (IP, single sign-on such as CAFe/Shibboleth, EZproxy, OpenAthens) or a personal subscription. Paperpile wins there by downloading through the user's own access and retrying through the library proxy. Section 4 says how LabShelf can do the same.
 - **For readers with no access at all**, section 5 adds a legal last step that Paperpile lacks: one click asks the paper's author for a copy by email.
-- **Where the code goes:** the resolver chain moved to core (`import/pdfFinding/`) in [architecture-refactor.plan.md](architecture-refactor.plan.md) step 6.3, so VS Code and the terminal get the same PDF search. Implement the steps below there; browser-only parts (helper tab, tab fetch) stay in `packages/browser/src/capture/`.
+- **Where the code goes:** the resolver chain lives in core (`import/pdfFinding/`), so VS Code and the terminal get the same PDF search. Implement the steps below there; browser-only parts (helper tab, tab fetch) stay in `packages/browser/src/capture/`.
 
 ---
 

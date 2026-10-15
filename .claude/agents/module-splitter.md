@@ -1,6 +1,6 @@
 ---
 name: module-splitter
-description: Executes a move or split planned by code-mapper (or a step of documents/plans/architecture-refactor.plan.md). Creates the new files, moves code, updates every importer, deletes the old code. No behavior changes.
+description: Executes a move or split planned by code-mapper. Creates the new files, moves code, updates every importer, deletes the old code. No behavior changes.
 tools: Read, Edit, Write, Grep, Glob, Bash
 model: sonnet
 effort: medium
