@@ -1,6 +1,6 @@
 // Opens a paper in the reader page, one tab per paper, focusing an existing tab instead of opening a copy.
 // PLATFORM: open tabs are found through extension.getViews, so no "tabs" permission is needed.
-import { bx } from "../platform/browserApi";
+import { bx } from "../../platform";
 
 export const READER_PAGE = "reader/index.html";
 

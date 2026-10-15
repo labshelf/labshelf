@@ -3,7 +3,7 @@
 import { $ } from "@labshelf/core/dom";
 import { PAPERS_DIR, icon } from "@labshelf/core";
 
-import type { FoldersData, PdfStatusData, SavedPaperData } from "../platform/runtimeMessages";
+import type { FoldersData, PdfStatusData, SavedPaperData } from "../platform";
 
 export type PopupState = "loading" | "form" | "library" | "empty" | "saving" | "saved";
 

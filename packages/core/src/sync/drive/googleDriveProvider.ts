@@ -6,9 +6,9 @@ import type {
   RemoteProvider,
   RemoteFile,
   RemoteNamespace,
-} from "../provider/remoteProvider.js";
+} from "../provider/index.js";
 import { SYNC_PROVIDER_ID } from "../../library/index.js";
-import type { IAuthProvider } from "../provider/authProvider.js";
+import type { IAuthProvider } from "../provider/index.js";
 import type { DriveFile } from "./googleDriveClient.js";
 import { DriveClient } from "./googleDriveClient.js";
 

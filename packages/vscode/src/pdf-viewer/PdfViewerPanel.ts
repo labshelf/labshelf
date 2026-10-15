@@ -8,7 +8,7 @@ import { PdfRenderer, getReaderBundleDirectory, type PdfjsFiles, type PdfjsLocat
 import { READER_CONFIG_SECTION, getReaderPrefs, getReaderViewColumn } from "./readerPrefs.js";
 import { createVsCodeOutputPorts, emitSidecarChanges } from "./readerHostPorts.js";
 import { ReadingActivityTracker, type ReadingEventSink } from "./readingActivity.js";
-import { labshelfTabIcon } from "../ui/tabIcon.js";
+import { labshelfTabIcon } from "../ui/index.js";
 import { EventBus, EVENTS } from "../events/index.js";
 
 // The contributed reader keybindings match this id in their `activeWebviewPanelId` when-clauses.

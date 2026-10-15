@@ -7,9 +7,9 @@ import type { PaperEntry, PaperStatus } from "@labshelf/core";
 import { paperFiles, paperLink } from "@labshelf/core";
 
 import { openExternal, runEditor } from "../../../platform/index.js";
-import { truncate } from "../../../tui/text.js";
+import { truncate } from "../../../tui/index.js";
 import type { App } from "../app.js";
-import { openPrompt } from "../input/overlayInput.js";
+import { openPrompt } from "../input/index.js";
 
 export function openPdf(app: App, paper: PaperEntry): void {
   if (paper.record.hasPdf === false) {

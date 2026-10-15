@@ -10,7 +10,7 @@ jest.mock("../../../src/storage", () => ({
   createIdbSidecarPort: () => ({}),
 }));
 jest.mock("../../../src/capture", () => ({ attachPdfToPaper: jest.fn() }));
-jest.mock("../../../src/reader/readerTabs", () => ({ openReader: jest.fn() }));
+jest.mock("../../../src/reader/access", () => ({ openReader: jest.fn() }));
 
 import { createLoopbackTransport } from "@labshelf/core";
 import { attachLibraryHost } from "../../../src/library-page/host";

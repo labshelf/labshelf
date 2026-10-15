@@ -1,6 +1,6 @@
 // Provider-agnostic orchestration of a sync run — scan local and remote trees,
 // diff against the manifest, apply operations, and persist.
-import type { RemoteProvider, RemoteNamespace } from "../../provider/remoteProvider.js";
+import type { RemoteProvider, RemoteNamespace } from "../../provider/index.js";
 import type { ILogger, LocalFileSystem } from "../../../ports/index.js";
 import type {
   NamespaceResult,
@@ -10,7 +10,7 @@ import type { SyncManifest } from "../state/index.js";
 import { diffNamespace } from "./syncDiff.js";
 import { applyOperations } from "./syncApply.js";
 import { scanLocalTree, scanRemoteTree } from "./treeScan.js";
-import { RemotePathResolver } from "../../provider/remotePathResolver.js";
+import { RemotePathResolver } from "../../provider/index.js";
 import { createLibraryFolderNamer } from "../naming/index.js";
 
 /** Maps each namespace to its absolute local root directory. */

@@ -6,16 +6,16 @@ import { createInterface } from "node:readline/promises";
 import { PAPERS_DIR, RESEARCH_DIR } from "@labshelf/core";
 import { sharedConfigPath, updateSharedConfig } from "@labshelf/core/node";
 
-import { loadTerminalConfig, resolveLibraryRoot, type TerminalConfig } from "./app/config.js";
-import { openLibrary, type AppContext } from "./app/context.js";
-import { parseArgs, stringFlag, type ParsedArgs } from "./cli/args.js";
+import { loadTerminalConfig, resolveLibraryRoot, type TerminalConfig } from "./app/index.js";
+import { openLibrary, type AppContext } from "./app/index.js";
+import { parseArgs, stringFlag, type ParsedArgs } from "./cli/index.js";
 import { runDoctor, runLibraryCommand, USAGE, UsageError, type Output } from "./cli/index.js";
-import { dumpFrame } from "./cli/dumpFrame.js";
+import { dumpFrame } from "./cli/index.js";
 import { ensureLibraryStructure, LibraryRoot, looksLikeLibrary } from "./library/index.js";
 import { expandHome } from "./platform/index.js";
 import { App } from "./ui/app/index.js";
-import { sanitizeForTerminal } from "./tui/text.js";
-import { Terminal } from "./tui/terminal.js";
+import { sanitizeForTerminal } from "./tui/index.js";
+import { Terminal } from "./tui/index.js";
 
 const VERSION = "0.1.0";
 const DEFAULT_LIBRARY = "~/LabShelfLibrary";

@@ -1,9 +1,9 @@
 // Handles the capture.* and scholar.save runtime messages: inspecting a tab, searching for its
 // PDF, saving the draft and attaching a PDF to an already-saved paper.
-import { bx } from "../../platform/browserApi";
+import { bx } from "../../platform";
 import type {
   AttachPdfData, DraftView, PdfStatusData, RuntimeMessage, SaveOutcome, SavedPaperData,
-} from "../../platform/runtimeMessages";
+} from "../../platform";
 import {
   attachPdfToPaper, findPdf, refreshExisting, resetPdfSearch, saveOrAsk, summarizeAttempts,
 } from "../../capture/index";

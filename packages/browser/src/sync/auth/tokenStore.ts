@@ -1,5 +1,5 @@
 // Persists the Google Drive access token and its absolute expiry in `bx.storage.local`.
-import { bx } from "../../platform/browserApi";
+import { bx } from "../../platform";
 
 // TRAP: never `bx.storage.sync`; the token must not leave the local profile. The expiry is stored because the
 // implicit flow returns no refresh token.

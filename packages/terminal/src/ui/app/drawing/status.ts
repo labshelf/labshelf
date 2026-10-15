@@ -1,6 +1,6 @@
 /** The status bar: mode, position, selection/cut counts, pending keys or the latest message, and the sync segment. */
-import type { Screen, Style } from "../../../tui/screen.js";
-import { stringWidth, truncate } from "../../../tui/text.js";
+import type { Screen, Style } from "../../../tui/index.js";
+import { stringWidth, truncate } from "../../../tui/index.js";
 import type { SyncStatus } from "@labshelf/core";
 import { relativeTime } from "@labshelf/core";
 
@@ -10,7 +10,7 @@ import { drawSegments, type Rect } from "../../render.js";
 import { theme } from "../../theme.js";
 import { SORT_LABEL } from "../types.js";
 import type { App } from "../app.js";
-import { appName } from "../actions/driveSync.js";
+import { appName } from "../actions/index.js";
 
 export function drawStatus(app: App, screen: Screen, rect: Rect): void {
   const y = rect.y;

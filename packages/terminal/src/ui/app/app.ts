@@ -2,15 +2,15 @@
 // Holds UI state only; library changes go through TerminalPaperService, syncs through the core SyncCoordinator.
 import type { PaperData, PaperEntry } from "@labshelf/core";
 
-import type { SortKey } from "../../app/config.js";
-import type { AppContext } from "../../app/context.js";
-import { clearImages, drawImage, type CellRect } from "../../tui/graphics.js";
-import type { InputEvent } from "../../tui/input.js";
-import type { Screen } from "../../tui/screen.js";
-import type { TerminalSize } from "../../tui/terminal.js";
+import type { SortKey } from "../../app/index.js";
+import type { AppContext } from "../../app/index.js";
+import { clearImages, drawImage, type CellRect } from "../../tui/index.js";
+import type { InputEvent } from "../../tui/index.js";
+import type { Screen } from "../../tui/index.js";
+import type { TerminalSize } from "../../tui/index.js";
 import type { InlineInput, Overlay } from "../overlays.js";
 import { computeLayout, type Layout } from "../render.js";
-import { reportSync } from "./actions/driveSync.js";
+import { reportSync } from "./actions/index.js";
 import { frame } from "./drawing/index.js";
 import { handleInline, handleKey, handleMouse, handleOverlay } from "./input/index.js";
 import { HistoryNav, ListModel, SelectionState, TaskStatus } from "./state/index.js";

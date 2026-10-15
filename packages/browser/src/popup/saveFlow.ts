@@ -3,7 +3,7 @@
 import { $, showDialog } from "@labshelf/core/dom";
 import { noPdfDialogCopy, pdfSourceLabel, type IfNoPdf, type PdfMiss } from "@labshelf/core";
 
-import type { AttachPdfData, DraftView, LibraryRef, PdfStatusData, SaveOutcome } from "../platform/runtimeMessages";
+import type { AttachPdfData, DraftView, LibraryRef, PdfStatusData, SaveOutcome } from "../platform";
 import { folderName, parseTags } from "./format";
 import { renderPaper, renderPdf, showError, showLibraryCopy, showStatus } from "./render";
 import { errorText, send } from "./runtimeSend";

@@ -4,9 +4,9 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 import type { PromptOverlay } from "../../overlays.js";
-import { importInputs, targetFolder } from "../actions/createAndRename.js";
-import { targetsForExport } from "../actions/paperExportActions.js";
-import { runCommand } from "../actions/commandLine.js";
+import { importInputs, targetFolder } from "../actions/index.js";
+import { targetsForExport } from "../actions/index.js";
+import { runCommand } from "../actions/index.js";
 import type { App } from "../app.js";
 import { looksLikePath } from "./promptCompletion.js";
 

@@ -4,5 +4,6 @@ export { BrowserLogger } from "./logger";
 export { downloadTextFile } from "./downloadTextFile";
 export { getSettings, updateSettings, type LabShelfSettings } from "./settings";
 export type {
-  AttachPdfData, LibraryChangedBroadcast, RuntimeMessage, RuntimeResponse, SaveOutcome, SyncStatusData, TabSummary,
+  AttachPdfData, DraftView, FolderOption, FoldersData, LibraryChangedBroadcast, LibraryRef, LookupData, LookupItem,
+  PdfStatusData, RuntimeMessage, RuntimeResponse, SaveOutcome, SavedPaperData, ScholarHit, SyncStatusData, TabSummary,
 } from "./runtimeMessages";

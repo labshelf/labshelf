@@ -5,7 +5,7 @@ import * as vscode from "vscode";
 import type { PaperImporter, PaperService, PaperTextLayers } from "../../core/index.js";
 import type { ThemeManager } from "../../pdf-viewer/index.js";
 import { type PaperDataStore, type IFileSystem, type ILogger, type LibraryStore, type LocalFileSystem, type MutationContext } from "@labshelf/core";
-import type { ReindexSummary } from "../../storage/data/reindexLibrary.js";
+import type { ReindexSummary } from "../../storage/data/index.js";
 import type { FolderReader } from "../../ui/library/index.js";
 
 const LOG_MODULE = "commands/registerCommands";

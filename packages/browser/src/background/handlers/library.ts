@@ -1,9 +1,9 @@
 // Handles the library.folders/library.lookup/library.open, paper.findPdf/paper.remove and tabs.list runtime messages.
-import { bx } from "../../platform/browserApi";
+import { bx } from "../../platform";
 import type {
   AttachPdfData, FolderOption, FoldersData, LookupData, LookupItem, RuntimeMessage, TabSummary,
-} from "../../platform/runtimeMessages";
-import { getSettings } from "../../platform/settings";
+} from "../../platform";
+import { getSettings } from "../../platform";
 import { attachPdfToPaper, draftFromRecord, findPdf, safeFolder, summarizeAttempts } from "../../capture/index";
 import { listAllRecords, buildFolderTree, pdfDirs } from "../../storage";
 import type { LibraryMutations } from "../../storage";
@@ -12,7 +12,7 @@ import { broadcastChanged } from "../broadcast";
 import { hashForFolder } from "../../library-page";
 import { ref } from "./libraryRef";
 import { PAPERS_DIR, findInLibrary, type FolderTreeNode } from "@labshelf/core";
-import type { BrowserLogger } from "../../platform/logger";
+import type { BrowserLogger } from "../../platform";
 
 type ScheduleSync = (reason: string) => void;
 

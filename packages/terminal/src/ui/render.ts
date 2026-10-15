@@ -3,9 +3,9 @@
  * lines, the header breadcrumb and the status bar segments. Stateless; the App decides what to draw.
  */
 import type { PaperEntry } from "@labshelf/core";
-import type { Screen, Style } from "../tui/screen.js";
-import { mergeStyle } from "../tui/screen.js";
-import { stringWidth, truncate } from "../tui/text.js";
+import type { Screen, Style } from "../tui/index.js";
+import { mergeStyle } from "../tui/index.js";
+import { stringWidth, truncate } from "../tui/index.js";
 import type { Line } from "./preview.js";
 import { STATUS_GLYPH, theme } from "./theme.js";
 

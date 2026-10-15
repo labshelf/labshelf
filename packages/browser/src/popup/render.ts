@@ -3,9 +3,9 @@
 import { $ } from "@labshelf/core/dom";
 import { escapeHtml, icon, type IconName } from "@labshelf/core";
 
-import type { DraftView, LibraryRef, PdfStatusData } from "../platform/runtimeMessages";
+import type { DraftView, LibraryRef, PdfStatusData } from "../platform";
 import { folderName, metaLine } from "./format";
-import { pdfLineText } from "../ui/pdfCopy";
+import { pdfLineText } from "../ui";
 import { popupState, setState } from "./state";
 
 export function showStatus(opts: { glyph: IconName; tone: "ok" | "muted" | "warn"; title: string; detail: string; open?: string; attach?: string; undo?: boolean; tryAnyway?: boolean }): void {

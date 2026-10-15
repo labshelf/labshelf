@@ -2,9 +2,9 @@
  * Keeps the periodic sync interval in step with the autoSyncMinutes setting, so an edit in the options page takes
  * effect without an extension reload.
  */
-import { bx } from "../platform/browserApi";
-import { getSettings } from "../platform/settings";
-import type { BrowserLogger } from "../platform/logger";
+import { bx } from "../platform";
+import { getSettings } from "../platform";
+import type { BrowserLogger } from "../platform";
 
 const SETTINGS_KEY = "labshelf.settings";
 

@@ -2,7 +2,7 @@
  * Shared types for the sync engine — manifest entries, three-way diff classes,
  * sync results, and the local filesystem abstraction.
  */
-import type { RemoteNamespace } from "../provider/remoteProvider.js";
+import type { RemoteNamespace } from "../provider/index.js";
 
 /** One manifest entry: state of a path at the last successful sync. */
 export interface ManifestEntry {

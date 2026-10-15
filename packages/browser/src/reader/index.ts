@@ -14,11 +14,11 @@ import { PDF_FILE } from "@labshelf/core";
 import { startReader, PerfMarks, resolveTheme, toast } from "@labshelf/core/dom";
 import { BrowserLogger, bx, downloadTextFile } from "../platform";
 import { IndexedDbFileSystem, createIdbSidecarPort, getRecord } from "../storage";
-import { getThemePref, onThemeChange } from "../ui/theme";
+import { getThemePref, onThemeChange } from "../ui";
 import { createInPageChannel } from "./inPageTransport";
-import { loadReaderPrefs, onReaderPrefsChange } from "./readerPrefsStore";
+import { loadReaderPrefs, onReaderPrefsChange } from "./access";
 import { installPageGuards, isMacPlatform } from "./pageGuards";
-import { parseReaderQuery } from "./readerTabs";
+import { parseReaderQuery } from "./access";
 import { announceSidecarChange } from "./sidecarChangeNotice";
 
 // First statement, so scriptStart measures the whole open like in VS Code.

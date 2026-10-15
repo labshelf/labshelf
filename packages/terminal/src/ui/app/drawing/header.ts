@@ -1,8 +1,8 @@
 /** The header: the brand mark, the breadcrumb of the hovered folder or the search query, and the library name. */
 import * as path from "node:path";
 
-import type { Screen, Style } from "../../../tui/screen.js";
-import { stringWidth } from "../../../tui/text.js";
+import type { Screen, Style } from "../../../tui/index.js";
+import { stringWidth } from "../../../tui/index.js";
 import { drawSegments, type Rect } from "../../render.js";
 import { theme } from "../../theme.js";
 import { ALL, folderTitle } from "../types.js";

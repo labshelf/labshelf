@@ -3,8 +3,7 @@
 import type { AiPaperMetadata, ClaimSearchResult, IEmbeddingProvider, ILogger, ReadingEvent, VectorFilter, VectorMatch } from "@labshelf/core";
 import { retrieveTopK, searchByClaim as runSearchByClaim } from "@labshelf/core";
 import type { AiStores } from "../ports.js";
-import type { AiIndexer } from "../indexer/aiIndexer.js";
-import type { IndexerQueue } from "../indexer/indexerQueue.js";
+import type { AiIndexer, IndexerQueue } from "../indexer/index.js";
 import type { EventBus } from "../../events/index.js";
 
 export interface AiServiceStatus {

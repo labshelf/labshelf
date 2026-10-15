@@ -1,5 +1,5 @@
 /** Builds the next frame: header, folders, papers, preview, separators, status bar and, if open, the overlay. */
-import { Screen } from "../../../tui/screen.js";
+import { Screen } from "../../../tui/index.js";
 import { drawOverlay } from "../../overlays.js";
 import { drawSeparators } from "../../render.js";
 import type { ImagePlan } from "../types.js";

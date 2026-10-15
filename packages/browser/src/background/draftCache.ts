@@ -2,7 +2,7 @@
 // Lets the second call reuse the record and the PDF search already run.
 import { draftFromScholarHit, inspectTab } from "../capture/index";
 import type { CaptureDraft } from "../capture/index";
-import type { ScholarHit } from "../platform/runtimeMessages";
+import type { ScholarHit } from "../platform";
 
 // PLATFORM: both caches live in memory; a suspended MV3 service worker drops them and the next call rebuilds.
 const TTL_MS = 10 * 60_000;

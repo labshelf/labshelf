@@ -4,8 +4,8 @@ import {
   type Annotation, type CollectionNode, type LibrarySnapshot, type PaperEntry, type PaperRecord, cleanQuote, formatAuthors, formatBytes, venueLine, type PaperData,
 } from "@labshelf/core";
 
-import type { Style } from "../tui/screen.js";
-import { wrap } from "../tui/text.js";
+import type { Style } from "../tui/index.js";
+import { wrap } from "../tui/index.js";
 import { STATUS_GLYPH, theme } from "./theme.js";
 
 export interface Segment {

@@ -1,5 +1,5 @@
 /** The folders pane: the hovered row, the scroll window around it, and which rows are cut. */
-import type { Screen } from "../../../tui/screen.js";
+import type { Screen } from "../../../tui/index.js";
 import { drawFolderRow, type Rect } from "../../render.js";
 import type { App } from "../app.js";
 

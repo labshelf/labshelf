@@ -7,11 +7,11 @@ import {
   formatBytes, paperComparator, paperFiles, paperLink, papersUnder, venueLine, type PaperEntry, type PaperRecord, type PaperStatus, type SortSpec,
 } from "@labshelf/core";
 
-import type { TerminalConfig } from "../app/config.js";
-import type { AppContext } from "../app/context.js";
+import type { TerminalConfig } from "../app/index.js";
+import type { AppContext } from "../app/index.js";
 import { copyToClipboard, openExternal } from "../platform/index.js";
-import { fit, stringWidth } from "../tui/text.js";
-import { STATUS_GLYPH } from "../ui/theme.js";
+import { fit, stringWidth } from "../tui/index.js";
+import { STATUS_GLYPH } from "../ui/index.js";
 import { stringFlag, type ParsedArgs } from "./args.js";
 import { runAuth, runSync } from "./syncCommands.js";
 import { Output, UsageError } from "./usage.js";

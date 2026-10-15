@@ -6,7 +6,7 @@ import type {
   TreeNode,
 } from "../syncTypes.js";
 import type { SyncManifest } from "../state/index.js";
-import type { RemoteNamespace } from "../../provider/remoteProvider.js";
+import type { RemoteNamespace } from "../../provider/index.js";
 
 // Returns true when a local node's hash differs from the manifest base.
 function localChanged(node: TreeNode, baseHash: string): boolean {

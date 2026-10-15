@@ -1,7 +1,7 @@
 // Authorizes Google Drive through bx.identity.launchWebAuthFlow and implements core's IAuthProvider.
 // One "Web application" OAuth client has the chromiumapp.org and allizom.org redirect URIs; getRedirectURL() picks one.
 import { BUILT_IN_GOOGLE_CLIENT, GOOGLE_AUTH_URL, GOOGLE_DRIVE_SCOPES, GOOGLE_REVOKE_URL, type IAuthProvider } from "@labshelf/core";
-import { bx } from "../../platform/browserApi";
+import { bx } from "../../platform";
 import { clearToken, loadToken, saveToken, type StoredToken } from "./tokenStore";
 
 // INVARIANT: the implicit response_type=token flow ships no client secret and returns no refresh token, so the token

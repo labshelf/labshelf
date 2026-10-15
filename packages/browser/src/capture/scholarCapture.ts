@@ -5,7 +5,7 @@ import type { DetectedIds, MetadataSource, PageFacts, PdfCandidate, ResolvedMeta
 import { draftFromFacts } from "./captureService";
 import type { CaptureDraft } from "./captureService";
 import { landingFacts } from "./landingFacts";
-import type { ScholarHit } from "../platform/runtimeMessages";
+import type { ScholarHit } from "../platform";
 
 // Scholar's own line is abbreviated ("OH Ibarra", "Proceedings of the …"), so
 // it only fills what nothing better states.

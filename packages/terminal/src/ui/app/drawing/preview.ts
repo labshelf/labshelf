@@ -3,8 +3,8 @@ import type { PaperData, PaperEntry } from "@labshelf/core";
 import { paperComparator, paperFiles } from "@labshelf/core";
 import * as path from "node:path";
 
-import { fitImage, pngSize, type CellRect } from "../../../tui/graphics.js";
-import type { Screen } from "../../../tui/screen.js";
+import { fitImage, pngSize, type CellRect } from "../../../tui/index.js";
+import type { Screen } from "../../../tui/index.js";
 import { drawLines, type Rect } from "../../render.js";
 import { folderPreview, libraryOverview, paperPreview, PREVIEW_TABS, tabBar } from "../../preview.js";
 import { ALL, folderTitle, type ImagePlan } from "../types.js";

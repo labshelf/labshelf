@@ -3,7 +3,7 @@
 import { PDF_FILE, isPdfBytes, pdfSourceLabel } from "@labshelf/core";
 import { attachPdfToPaper } from "../../../capture";
 import type { AttachPdfData } from "../../../platform";
-import { openReader } from "../../../reader/readerTabs";
+import { openReader } from "../../../reader/access";
 import { IndexedDbFileSystem } from "../../../storage";
 import type { HostContext } from "../hostContext";
 import { errorMessage, scheduleSyncSoon, send } from "../runtimeRequests";

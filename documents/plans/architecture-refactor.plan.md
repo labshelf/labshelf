@@ -204,8 +204,8 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 | S11.1 | File headers per package | S10.9, S10.10 | M · comment-enforcer | A9 (headers) | [x] |
 | S11.2 | History language and stale references | S11.1 | M · comment-enforcer | A9 | [x] |
 | S11.3a | Functions and test files under the size limits | S11.2 | M · implementer | ESLint passes with no suppressions | [x] |
-| S11.3b | knip findings resolved | S11.3a | M · dead-code-cleaner | `pnpm exec knip` reports nothing | [ ] |
-| S11.3c | Imports go through each directory's `index.ts` | S11.3b | M · module-splitter | dependency-cruiser passes without known violations | [ ] |
+| S11.3b | Imports go through each directory's `index.ts` | S11.3a | M · module-splitter | dependency-cruiser passes without known violations | [x] |
+| S11.3c | knip findings resolved | S11.3b | M · dead-code-cleaner | `pnpm exec knip` reports nothing | [ ] |
 | S11.3d | Docs paths, checks as errors, close the plan | S11.3c | H · main thread | A2, A3, A4 as errors | [ ] |
 
 ### Step blocks
@@ -307,7 +307,7 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 
 #### S11.3 — Close the plan
 
-- **Context:** on 2026-10-15 the baselines hold 12 ESLint size violations (11 functions, one test file), 150 `no-import-past-index` imports and 46 knip findings, so S11.3a–c clear them before S11.3d removes the baselines.
+- **Context:** on 2026-10-15 the baselines hold 12 ESLint size violations (11 functions, one test file), 150 `no-import-past-index` imports and 46 knip findings, so S11.3a–c clear them before S11.3d removes the baselines. The imports go first, because knip counts a barrel that importers bypass as unused.
 - **Do (S11.3d):** update the changed paths in `documents/`, delete the note at the top of `architecture.md`, and switch every check from S0.4 to error. Add a row to [CALIBRATION.md](CALIBRATION.md), then delete this plan.
 
 ## 7. Risks
@@ -387,3 +387,4 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 - 2026-10-15 09:38 S11.1 done: 140 source files across the four packages have a header of at most two lines, line 1 a capability sentence, and no `@depends`/`@dependents`/`@usedBy` list remains in `src/` or `__tests__/`. Rationale the long headers carried moved next to the code as tagged why-comments (the text-layer focus guard, folder-naming rules, sync-lock and folder-name invariants, MV3 and pdf.js quirks); plain descriptions were dropped. Only comments changed. Typecheck, tests, lint, knip and jscpd pass.
 - 2026-10-15 09:40 S11.2 done: planning tags (D4, Feature C, F07/F18) and history wording (the duplicate `data.json` note in the Drive tree scan, a "used to" in a terminal test) are gone from comments. The lock-store port states its atomic-create invariant instead of naming O_EXCL, which the Node adapter does not use. The other listed stale references (`ThemeManager`, `fileSystemService`, `embeddingCodec`, the options-page resolver order) no longer appear in comments. A scan of every comment in `src/` and `__tests__/` for the hook's history words, planning tags and step ids finds only present-tense uses of "now".
 - 2026-10-15 09:45 S11.3a done: the 11 functions over 50 lines split by sub-responsibility (VS Code `activate`, the two Fetch Metadata flows, `registerAiCommands`, the reader HTML and the text-layer overlay; terminal `openLibrary`, `main` and the input decoder's `feed`; core `writePaperArtifacts`; the browser reader's `main`). New siblings: `manualMetadataEntry.ts`, `readerDocument.ts`, `textLayerOverlay.ts`, browser `reader/pageGuards.ts`. The terminal preview test splits off `previewFolder.test.ts` with a shared `fixtures/previewEntries.ts`, keeping 859 tests. `eslint-suppressions.json` is empty. The order of awaits, logs and listener registration is unchanged; one random call (`createNonce`) now runs before the pdf.js URIs resolve. Gate passes; the apps were not run.
+- 2026-10-15 09:48 S11.3b done: the 150 imports past another directory's `index.ts` (core 15, VS Code 18, browser 50, terminal 67) go through the index, and `.dependency-cruiser-known-violations.json` is empty. New indexes: VS Code `storage/`, `storage/data/`, `ai/pdf/`, `ai/indexer/`, `ui/`; terminal `app/`, `tui/`, `preview/`, `ui/`; browser `content/`, `sync/auth/`. The browser `reader/index.ts` is the reader bundle's entry and runs on import, so the reader-tab and reader-prefs files other pages use move to `reader/access/` with their own index. Browser bundles grow by at most 14 bytes; the content script and service worker are unchanged. The terminal prints a `--dump-frame` frame. Gate, `lint:deps` and both builds pass; the browser extension and the VS Code host were not run.

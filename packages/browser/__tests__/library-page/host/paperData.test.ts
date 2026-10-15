@@ -14,7 +14,7 @@ jest.mock("../../../src/platform", () => ({
   BrowserLogger: class { error = jest.fn(async () => undefined); info = jest.fn(async () => undefined); warn = jest.fn(async () => undefined); log = jest.fn(async () => undefined); },
 }));
 jest.mock("../../../src/capture", () => ({ attachPdfToPaper: jest.fn() }));
-jest.mock("../../../src/reader/readerTabs", () => ({ openReader: jest.fn() }));
+jest.mock("../../../src/reader/access", () => ({ openReader: jest.fn() }));
 
 import { createLoopbackTransport } from "@labshelf/core";
 import { downloadTextFile } from "../../../src/platform";

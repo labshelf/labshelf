@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import { libraryLayout } from "@labshelf/core";
-import { ExternalChangeWatcher } from "../../storage/data/externalChangeWatcher.js";
+import { ExternalChangeWatcher } from "../../storage/data/index.js";
 import type { ActiveServices } from "../../commands/index.js";
 
 export interface ExternalChangeHandlingDeps {

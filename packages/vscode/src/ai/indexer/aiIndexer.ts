@@ -4,8 +4,7 @@ import * as vscode from "vscode";
 import type { IEmbeddingProvider, ILogger, IVectorStore, LocalFileSystem, PaperRecord } from "@labshelf/core";
 import { runIngestion } from "@labshelf/core";
 import type { IAiMetadataStore } from "../ports.js";
-import { PdfTextExtractor } from "../pdf/pdfTextExtractor.js";
-import { hashFile } from "../pdf/contentHash.js";
+import { PdfTextExtractor, hashFile } from "../pdf/index.js";
 import { EventBus, EVENTS } from "../../events/index.js";
 
 export interface AiIndexerDependencies {

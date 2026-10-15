@@ -2,7 +2,7 @@
 import { textInput } from "../../textInput.js";
 import { ALL, SORT_LABEL } from "../types.js";
 import type { App } from "../app.js";
-import { submitPrompt } from "../input/promptSubmit.js";
+import { submitPrompt } from "../input/index.js";
 import { importInputs, targetFolder } from "./createAndRename.js";
 import { login, syncNow } from "./driveSync.js";
 import { setSort } from "./paperExportActions.js";

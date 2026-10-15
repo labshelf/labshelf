@@ -2,8 +2,8 @@
 // State types live with their drawing code; the App owns the instances and decides what happens on submit.
 import { SYNTAX_HELP } from "@labshelf/core";
 
-import type { Screen, Style } from "../tui/screen.js";
-import { fit, stringWidth, truncate, wrap } from "../tui/text.js";
+import type { Screen, Style } from "../tui/index.js";
+import { fit, stringWidth, truncate, wrap } from "../tui/index.js";
 import { BINDINGS, keyLabel, type BindingGroup } from "./keymap.js";
 import type { TextInputState } from "./textInput.js";
 import { theme } from "./theme.js";

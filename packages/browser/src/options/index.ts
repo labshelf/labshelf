@@ -2,7 +2,7 @@
 // Reader preferences mirror VS Code's labshelf.reader.* settings.
 import { $, settingsPage } from "@labshelf/core/dom";
 import { BrowserLogger, getSettings, updateSettings } from "../platform";
-import { loadReaderPrefs, saveReaderPrefs } from "../reader/readerPrefsStore";
+import { loadReaderPrefs, saveReaderPrefs } from "../reader/access";
 import { applyTheme } from "../ui";
 import { createAppearanceSection } from "./appearanceSection";
 import { createDriveConnection } from "./driveConnection";

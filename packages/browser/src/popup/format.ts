@@ -4,7 +4,7 @@
  */
 import { formatAuthors, normalizeTags, venueLine } from "@labshelf/core";
 
-import type { DraftView, FoldersData } from "../platform/runtimeMessages";
+import type { DraftView, FoldersData } from "../platform";
 
 /** "Edelman et al. · SIAM J. Matrix Anal. Appl. · 1998" — surnames, et al. past two. */
 export function metaLine(d: Pick<DraftView, "authors" | "venue" | "year">): string {

@@ -2,11 +2,11 @@
  * Shared types of the App: what it needs from the real terminal, plus the small value types its state, input,
  * actions and drawing modules pass around.
  */
-import type { SortKey } from "../../app/config.js";
-import type { CellRect } from "../../tui/graphics.js";
-import type { InputEvent } from "../../tui/input.js";
-import type { Screen } from "../../tui/screen.js";
-import type { TerminalSize } from "../../tui/terminal.js";
+import type { SortKey } from "../../app/index.js";
+import type { CellRect } from "../../tui/index.js";
+import type { InputEvent } from "../../tui/index.js";
+import type { Screen } from "../../tui/index.js";
+import type { TerminalSize } from "../../tui/index.js";
 import type { FolderRowData } from "../render.js";
 
 /** What the App needs from the real terminal; tests and --dump-frame pass a fake. */

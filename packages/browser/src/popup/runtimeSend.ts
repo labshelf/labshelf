@@ -1,6 +1,6 @@
 // Popup's typed request to the background that unwraps the reply envelope, and an error-to-text helper.
-import { bx } from "../platform/browserApi";
-import type { RuntimeMessage, RuntimeResponse } from "../platform/runtimeMessages";
+import { bx } from "../platform";
+import type { RuntimeMessage, RuntimeResponse } from "../platform";
 
 export async function send<T = unknown>(message: RuntimeMessage): Promise<T> {
   const reply = (await bx.runtime.sendMessage(message)) as RuntimeResponse;

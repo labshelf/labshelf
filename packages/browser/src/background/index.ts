@@ -1,8 +1,8 @@
 // Wires Drive auth, sync, capture and the badge into the runtime message channel the UI pages use.
 // Runs as an MV3 service worker in Chrome and a non-persistent background script in Firefox.
-import { bx } from "../platform/browserApi";
-import { BrowserLogger } from "../platform/logger";
-import { BrowserDriveAuth } from "../sync/auth/browserDriveAuth";
+import { bx } from "../platform";
+import { BrowserLogger } from "../platform";
+import { BrowserDriveAuth } from "../sync/auth";
 import { createBrowserSync } from "../sync";
 import { createLibraryMutations, rebuildFromFiles } from "../storage";
 import { forgetDraft } from "./draftCache";

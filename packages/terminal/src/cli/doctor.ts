@@ -4,10 +4,10 @@ import * as path from "node:path";
 
 import { libraryLayout, relativeTime } from "@labshelf/core";
 
-import type { TerminalConfig } from "../app/config.js";
+import type { TerminalConfig } from "../app/index.js";
 import { hasCommand } from "../platform/index.js";
 import { createTokenStore, resolveTerminalOAuthClient } from "../sync/index.js";
-import { detectImageProtocol } from "../tui/graphics.js";
+import { detectImageProtocol } from "../tui/index.js";
 import { sharedConfigDir, sharedConfigPath } from "@labshelf/core/node";
 import type { Output } from "./usage.js";
 

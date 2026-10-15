@@ -1,5 +1,5 @@
 /** Inline text editing for the filter, find and search modes: every keystroke updates the live result. */
-import type { InputEvent } from "../../../tui/input.js";
+import type { InputEvent } from "../../../tui/index.js";
 import { editText } from "../../textInput.js";
 import type { App } from "../app.js";
 

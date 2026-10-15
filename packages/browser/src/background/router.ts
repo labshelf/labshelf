@@ -1,9 +1,9 @@
 // Routes runtime messages from the popup, options, library page and Google Scholar buttons to the
 // capture/library handlers, gating which message types a Scholar content script may send.
-import { bx } from "../platform/browserApi";
-import type { LibraryChangedBroadcast, RuntimeMessage, RuntimeResponse } from "../platform/runtimeMessages";
-import { isScholarUrl } from "../content/scholarParse";
-import type { BrowserLogger } from "../platform/logger";
+import { bx } from "../platform";
+import type { LibraryChangedBroadcast, RuntimeMessage, RuntimeResponse } from "../platform";
+import { isScholarUrl } from "../content";
+import type { BrowserLogger } from "../platform";
 import type { LibraryMutations } from "../storage";
 import type { createSyncMessages } from "./syncMessages";
 import {

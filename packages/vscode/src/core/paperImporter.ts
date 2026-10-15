@@ -1,7 +1,7 @@
 /** Imports picked PDFs and folders, and papers named by an identifier or link, through the core imports, putting each added paper in the index as it lands. */
 import { doiLookup, importNetworkInput, importPaths } from "@labshelf/core";
 import type { ImportDeps, ImportOutcome, ImportProgress, LibraryStore, MutationContext, NetworkImportEnv, PaperRecord, PdfParse } from "@labshelf/core";
-import type { ReindexSummary } from "../storage/data/reindexLibrary.js";
+import type { ReindexSummary } from "../storage/data/index.js";
 
 /** How the extension reaches the network for an import, and where a download waits while it is read. */
 interface NetworkTransport {

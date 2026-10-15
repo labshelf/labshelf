@@ -1,7 +1,7 @@
 // Decides the local folder name of each Drive folder in the "library" namespace.
 // The rank of each answer lets scanRemoteTree settle two folders claiming one name: the stronger claim keeps it.
 import { METADATA_FILE, parsePaperMetadata } from "../../../library/index.js";
-import type { RemoteProvider } from "../../provider/remoteProvider.js";
+import type { RemoteProvider } from "../../provider/index.js";
 import type { SyncManifest } from "../state/index.js";
 import type { FolderNaming, RemoteFolderNamer } from "../pipeline/index.js";
 

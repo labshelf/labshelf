@@ -5,7 +5,7 @@ import type {
   ManifestData,
   ManifestEntry,
 } from "../syncTypes.js";
-import type { RemoteNamespace } from "../../provider/remoteProvider.js";
+import type { RemoteNamespace } from "../../provider/index.js";
 
 // Returns a fresh empty ManifestData for a given providerId.
 function emptyData(providerId: string): ManifestData {

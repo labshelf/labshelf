@@ -4,8 +4,8 @@ import { summarizeImport } from "@labshelf/core";
 
 import { ALL, folderTitle } from "../types.js";
 import type { App } from "../app.js";
-import { openPrompt } from "../input/overlayInput.js";
-import { truncate } from "../../../tui/text.js";
+import { openPrompt } from "../input/index.js";
+import { truncate } from "../../../tui/index.js";
 
 // Where new papers and pasted items go: the hovered folder; All papers and search results mean the library root.
 export function targetFolder(app: App): string {

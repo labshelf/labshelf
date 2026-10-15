@@ -10,9 +10,9 @@ import {
   LibraryRoot, LibraryWatcher, PaperSearchIndex, SidecarReader, TerminalPaperService, createLibraryStore, ensureLibraryStructure,
 } from "../library/index.js";
 import { cacheDir, moveToTrash, openExternal } from "../platform/index.js";
-import { defaultRenderer, ThumbnailService } from "../preview/thumbnails.js";
+import { defaultRenderer, ThumbnailService } from "../preview/index.js";
 import { createTerminalAuth, createTerminalSync, createTokenStore, DriveAccount, resolveTerminalOAuthClient } from "../sync/index.js";
-import { detectImageProtocol, type ImageProtocol } from "../tui/graphics.js";
+import { detectImageProtocol, type ImageProtocol } from "../tui/index.js";
 
 export interface AppContext {
   paths: LibraryRoot;

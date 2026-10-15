@@ -1,7 +1,7 @@
 // Stores the reader preferences (VS Code's labshelf.reader.* settings) in bx.storage.local.
 // Values pass through the shared normalizer; open reader tabs follow changes live.
 import { normalizeReaderPrefs, type ReaderPrefs } from "@labshelf/core";
-import { bx } from "../platform/browserApi";
+import { bx } from "../../platform";
 
 export const READER_PREFS_KEY = "labshelf.readerPrefs";
 

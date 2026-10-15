@@ -7,3 +7,4 @@ export { registerCommands, resolvePaper, ensurePaperPdf } from "./registerComman
 export type { ActiveServices } from "./registerCommands/index.js";
 export { registerAiCommands } from "./registerAiCommands";
 export { importPapers } from "./importProgress";
+export { currentTextLayerJobs, onTextLayerJobsChanged, queueTextLayers } from "./textLayerQueue.js";

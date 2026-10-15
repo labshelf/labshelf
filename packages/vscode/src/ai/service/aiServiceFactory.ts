@@ -3,10 +3,9 @@
 import * as vscode from "vscode";
 import type { ILogger, LocalFileSystem, PaperRecord, PdfDocumentOpener } from "@labshelf/core";
 import type { AiStorage } from "../ports.js";
-import { PdfTextExtractor } from "../pdf/pdfTextExtractor.js";
+import { PdfTextExtractor } from "../pdf/index.js";
 import { HashEmbeddingProvider } from "../runtime/index.js";
-import { AiIndexer } from "../indexer/aiIndexer.js";
-import { IndexerQueue } from "../indexer/indexerQueue.js";
+import { AiIndexer, IndexerQueue } from "../indexer/index.js";
 import { AiService } from "./aiService.js";
 import type { EventBus } from "../../events/index.js";
 

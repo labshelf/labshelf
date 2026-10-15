@@ -1,7 +1,7 @@
 /** Key routing while an overlay (prompt, picker, confirm or help) is open. */
 import { rankFuzzy } from "@labshelf/core";
 
-import type { InputEvent } from "../../../tui/input.js";
+import type { InputEvent } from "../../../tui/index.js";
 import { editText, textInput } from "../../textInput.js";
 import { helpRows, type ConfirmOverlay, type HelpOverlay, type PickerOverlay, type PromptOverlay, type PromptPurpose } from "../../overlays.js";
 import type { App } from "../app.js";

@@ -1,9 +1,9 @@
 // Saves the paper on the current tab from the toolbar popup.
 // States (data-state on #popup): loading, form | library | empty, saving, saved.
-import { bx } from "../platform/browserApi";
-import type { FoldersData } from "../platform/runtimeMessages";
+import { bx } from "../platform";
+import type { FoldersData } from "../platform";
 import { $ } from "@labshelf/core/dom";
-import { applyTheme } from "../ui/theme";
+import { applyTheme } from "../ui";
 import { icon } from "@labshelf/core";
 import { renderFolders, showStatus, autoGrow } from "./render";
 import { attachPdf, inspect, save, undo } from "./saveFlow";

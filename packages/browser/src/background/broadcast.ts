@@ -1,6 +1,6 @@
 // Notifies extension pages (the library page) that the library changed.
-import { bx } from "../platform/browserApi";
-import type { LibraryChangedBroadcast } from "../platform/runtimeMessages";
+import { bx } from "../platform";
+import type { LibraryChangedBroadcast } from "../platform";
 
 export function broadcastChanged(reason: LibraryChangedBroadcast["reason"], paperId?: string): void {
   const b: LibraryChangedBroadcast = { type: "library.changed", reason, ...(paperId ? { paperId } : {}) };

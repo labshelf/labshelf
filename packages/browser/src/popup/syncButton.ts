@@ -2,7 +2,7 @@
 import { $, shortTime } from "@labshelf/core/dom";
 import { icon } from "@labshelf/core";
 
-import type { SyncStatusData } from "../platform/runtimeMessages";
+import type { SyncStatusData } from "../platform";
 import { send } from "./runtimeSend";
 
 export async function renderSync(): Promise<void> {

@@ -1,7 +1,7 @@
 // Fires the sync trigger whenever the browser idle state flips to "idle".
 // A minimum gap stops quick lock/unlock cycles from queuing a flurry of syncs.
-import { bx } from "../platform/browserApi";
-import { BrowserLogger } from "../platform/logger";
+import { bx } from "../platform";
+import { BrowserLogger } from "../platform";
 
 /** Starts a sync for the given reason. */
 export type SyncTrigger = (reason: string) => void;

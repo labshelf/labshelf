@@ -1,7 +1,7 @@
 // `labshelf sync` and `labshelf auth`: drives one Drive sync and manages the Google sign-in used for it.
 import { relativeTime } from "@labshelf/core";
 
-import type { AppContext } from "../app/context.js";
+import type { AppContext } from "../app/index.js";
 import { openExternal } from "../platform/index.js";
 import type { Output } from "./usage.js";
 import { UsageError } from "./usage.js";

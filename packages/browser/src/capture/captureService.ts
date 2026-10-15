@@ -8,9 +8,9 @@ import type {
 import { fetchInTab, fetchViaHelperTab } from "./tab";
 import { probeTab } from "./tabProbe";
 import { addPaper } from "./addPaperFlow";
-import { getSettings, updateSettings } from "../platform/settings";
-import { BrowserLogger } from "../platform/logger";
-import { listAllRecords } from "../storage/paperRecordStore";
+import { getSettings, updateSettings } from "../platform";
+import { BrowserLogger } from "../platform";
+import { listAllRecords } from "../storage";
 import type { IfNoPdf, PdfMiss } from "@labshelf/core";
 import { PAPERS_DIR } from "@labshelf/core";
 

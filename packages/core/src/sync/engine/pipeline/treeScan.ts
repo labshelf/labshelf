@@ -1,9 +1,9 @@
 // Enumerate the local and remote file trees of a namespace into path-keyed maps consumed by the diff.
 import type { ILogger, LocalFileSystem } from "../../../ports/index.js";
 import type { TreeNode } from "../syncTypes.js";
-import type { RemoteFile, RemoteProvider } from "../../provider/remoteProvider.js";
-import type { RemotePathResolver } from "../../provider/remotePathResolver.js";
-import { sha256Hex } from "../../util/contentHash.js";
+import type { RemoteFile, RemoteProvider } from "../../provider/index.js";
+import type { RemotePathResolver } from "../../provider/index.js";
+import { sha256Hex } from "../../util/index.js";
 
 // Joins a relative directory prefix and a child name into a POSIX path.
 function joinPath(prefix: string, name: string): string {

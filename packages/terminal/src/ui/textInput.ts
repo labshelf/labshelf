@@ -1,6 +1,6 @@
 // Edits a single-line text field with readline/emacs keys and bracketed paste.
 // Pure state, so prompts, filter and pickers share it and tests drive it directly.
-import type { InputEvent } from "../tui/input.js";
+import type { InputEvent } from "../tui/index.js";
 
 export interface TextInputState {
   value: string;

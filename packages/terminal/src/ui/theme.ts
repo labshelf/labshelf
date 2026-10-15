@@ -8,7 +8,7 @@ import {
   type STATUS_TOKENS,
 } from "@labshelf/core";
 
-import type { Style } from "../tui/screen.js";
+import type { Style } from "../tui/index.js";
 
 const noColor = Boolean(process.env["NO_COLOR"]);
 

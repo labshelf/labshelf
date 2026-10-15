@@ -1,7 +1,7 @@
 // Registers the labshelf.ai.* commands.
 // INVARIANT: handlers resolve the AiService lazily, because it can be created after activation.
 import * as vscode from "vscode";
-import type { AiService } from "../ai/service/aiService.js";
+import type { AiService } from "../ai/service/index.js";
 
 export type AiServiceProvider = () => AiService | null;
 

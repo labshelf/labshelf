@@ -4,26 +4,26 @@ import { READER_SHELL_BODY } from "@labshelf/core";
 
 jest.mock("webextension-polyfill", () => ({ runtime: { getURL: (p: string) => `chrome-extension://ext/${p}` } }));
 
-import { createIdbSidecarPort, sidecarPath } from "../../src/storage/idbSidecarPort";
-import { createInPageChannel } from "../../src/reader/inPageTransport";
-import { parseReaderQuery, readerUrl } from "../../src/reader/readerTabs";
+import { createIdbSidecarPort, sidecarPath } from "../../../src/storage/idbSidecarPort";
+import { createInPageChannel } from "../../../src/reader/inPageTransport";
+import { parseReaderQuery, readerUrl } from "../../../src/reader/access/readerTabs";
 
 describe("reader page shell", () => {
   it("embeds exactly the shared skeleton the VS Code shell uses", () => {
-    const html = readFileSync(join(__dirname, "../../src/reader/index.html"), "utf8");
+    const html = readFileSync(join(__dirname, "../../../src/reader/index.html"), "utf8");
     const body = html.slice(html.indexOf("<body>") + "<body>".length, html.indexOf("<script type=\"module\"")).trim();
     expect(body).toBe(READER_SHELL_BODY);
   });
 
   it("does not load base.css, whose box-sizing reset misaligns the pdf.js text layer", () => {
-    const html = readFileSync(join(__dirname, "../../src/reader/index.html"), "utf8");
+    const html = readFileSync(join(__dirname, "../../../src/reader/index.html"), "utf8");
     expect(html).not.toContain("base.css");
     expect(html.indexOf("pdf_viewer.css")).toBeLessThan(html.indexOf("reader.css"));
   });
 
   it("links toast.css and lifts the toasts above the reader's bottom bar", () => {
-    const html = readFileSync(join(__dirname, "../../src/reader/index.html"), "utf8");
-    const host = readFileSync(join(__dirname, "../../src/reader/host.css"), "utf8");
+    const html = readFileSync(join(__dirname, "../../../src/reader/index.html"), "utf8");
+    const host = readFileSync(join(__dirname, "../../../src/reader/host.css"), "utf8");
     expect(html).toContain('href="../ui/styles/toast.css"');
     expect(host).toContain("--ls-toast-bottom: 54px");
   });

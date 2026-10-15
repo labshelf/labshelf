@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 import { editPaperTags, movePapers, paperFiles, trashPapers, updatePaperFields, withResolvedMetadata, writePaperRecord } from "@labshelf/core";
 import type { BatchOutcome, LibraryStore, MoveOutcome, MutationContext, PaperFieldsPatch, PaperRecord, PaperRef, PdfParse, RecordMetadata } from "@labshelf/core";
 import { EVENTS, EventBus } from "../events/index.js";
-import type { ReindexSummary } from "../storage/data/reindexLibrary.js";
+import type { ReindexSummary } from "../storage/data/index.js";
 
 export class PaperService {
   constructor(

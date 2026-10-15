@@ -1,7 +1,7 @@
 // Reads Google Scholar result blocks (div.gs_r.gs_or) into ScholarHit records.
 // The green line "A Aggarwal, M Klawe… - Proceedings of the …, 1986 - dl.acm.org" splits into authors, venue, year.
 import { arxivIdFromUrl, extractDoi } from "@labshelf/core";
-import type { LookupItem, ScholarHit } from "../platform/runtimeMessages";
+import type { LookupItem, ScholarHit } from "../platform";
 
 // Google Scholar's own hosts: scholar.google.com and its country domains
 // (.com.br, .co.uk, .de, …). The manifest glob "scholar.google.*" alone would

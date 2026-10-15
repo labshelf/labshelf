@@ -1,8 +1,8 @@
 // Adds a "Save to LabShelf" split button to each Google Scholar result and renders its saved state.
 // PLATFORM: the button lives in a shadow root so Scholar's stylesheet cannot reshape it; all saving runs in the background.
-import { bx } from "../platform/browserApi";
+import { bx } from "../platform";
 import type { IfNoPdf } from "@labshelf/core";
-import type { FoldersData, LookupData, RuntimeMessage, RuntimeResponse, SaveOutcome, ScholarHit } from "../platform/runtimeMessages";
+import type { FoldersData, LookupData, RuntimeMessage, RuntimeResponse, SaveOutcome, ScholarHit } from "../platform";
 import { showDialog, closeMenu, showMenu } from "@labshelf/core/dom";
 import { noPdfDialogCopy, pdfSourceLabel } from "@labshelf/core";
 import { isScholarUrl, lookupItemFor, readResult } from "./scholarParse";

@@ -1,11 +1,11 @@
 /** Cut and paste (x, p), moving to a picked folder (M), and the trash confirmation (d). */
 import { trashSupported } from "../../../platform/index.js";
-import { truncate } from "../../../tui/text.js";
+import { truncate } from "../../../tui/index.js";
 import { ALL, folderTitle, parentFolder } from "../types.js";
 import type { App } from "../app.js";
 import { needPapers } from "./paperFieldActions.js";
-import { describe } from "../state/taskStatus.js";
-import { openFolderPicker } from "../input/overlayPickers.js";
+import { describe } from "../state/index.js";
+import { openFolderPicker } from "../input/index.js";
 
 export function cutTargets(app: App): void {
   const folder = app.listModel.hoveredFolderRel();
