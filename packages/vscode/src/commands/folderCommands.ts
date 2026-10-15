@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 
 import { createFolder, moveFolder, renameFolder, trashFolder } from "@labshelf/core";
 import { validateFolderNameInput, type LibraryNode } from "../ui/library/index.js";
-import type { ActiveServices, RequireServices } from "./registerCommands.js";
+import type { ActiveServices, RequireServices } from "./registerCommands/index.js";
 
 const LOG_MODULE = "commands/folderCommands";
 

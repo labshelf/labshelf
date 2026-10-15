@@ -1,17 +1,17 @@
 import * as vscode from 'vscode';
-import { describeLibraryTextLayers, ensurePaperPdf, registerCommands } from '../../src/commands/registerCommands';
-import type { ActiveServices, RequireServices } from '../../src/commands/registerCommands';
-import type { PaperService } from '../../src/core';
+import { describeLibraryTextLayers, ensurePaperPdf, registerCommands } from '../../../src/commands/registerCommands/index.js';
+import type { ActiveServices, RequireServices } from '../../../src/commands/registerCommands/index.js';
+import type { PaperService } from '../../../src/core';
 import type { ILogger, PaperRecord } from '@labshelf/core';
-import { makeMemoryPaperDataStore } from '../support/memorySidecarPort';
+import { makeMemoryPaperDataStore } from '../../support/memorySidecarPort';
 
 // The OCR queue is driven by its own unit test; here we only need to observe
 // which papers a command hands it, so stub it and keep the rest real.
-jest.mock('../../src/commands/textLayerQueue', () => ({
-  ...jest.requireActual('../../src/commands/textLayerQueue'),
+jest.mock('../../../src/commands/textLayerQueue', () => ({
+  ...jest.requireActual('../../../src/commands/textLayerQueue'),
   queueTextLayers: jest.fn(async () => undefined),
 }));
-import { queueTextLayers } from '../../src/commands/textLayerQueue';
+import { queueTextLayers } from '../../../src/commands/textLayerQueue';
 
 function makeRequireServices(paperService?: Partial<PaperService>, logger?: Partial<ILogger>): RequireServices {
   const ps = paperService ?? { listPapers: jest.fn(async () => []), regenerateBibTeX: jest.fn(async () => 0), reconcilePdf: jest.fn(async () => undefined) };
