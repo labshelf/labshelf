@@ -61,7 +61,7 @@ Every session starts from the previous one committed on a clean tree. Every sess
 
 ### Session 1 — Bugs found by the audit
 
-- **Starts from:** `agent-tooling.plan.md` session 8 committed
+- **Starts from:** clean tree after commit 14507d1 (ladder audit)
 - **Ends with:** A1, A2, A3
 - **Commit:** yes
 
