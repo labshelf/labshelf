@@ -28,6 +28,30 @@ beforeEach(() => {
   mockCache.clear();
 });
 
+describe("importPaper", () => {
+  const imported = { metadata: { authors: ["Ann Lee"], year: 2020, title: "Attention" }, log: { message: "Paper captured", context: {} } };
+
+  it("writes the paper's files without a folder marker and caches its record", async () => {
+    const record = await mutations.importPaper("papers", { ...imported, extra: { tags: ["NLP"] } });
+
+    expect(record).toMatchObject({ id: "lee2020attention", path: "papers/lee2020attention", title: "Attention", tags: ["NLP"], hasPdf: false });
+    expect([...fakeFiles.keys()].sort()).toEqual(["papers/lee2020attention/bib.bib", "papers/lee2020attention/metadata.yaml"]);
+    expect(mockCache.get("lee2020attention")).toEqual(record);
+  });
+
+  it("skips an id taken in another casing", async () => {
+    mockCache.set("Lee2020Attention", paper("Lee2020Attention"));
+    const record = await mutations.importPaper("papers", imported);
+    expect(record.id).toBe("lee2020attentiona");
+    expect(record.path).toBe("papers/lee2020attentiona");
+  });
+
+  it("skips a folder that exists without a cached record", async () => {
+    putFile("papers/lee2020attention/metadata.yaml", "");
+    expect((await mutations.importPaper("papers", imported)).id).toBe("lee2020attentiona");
+  });
+});
+
 describe("setStatus", () => {
   it("keeps keys of metadata.yaml that the browser does not own", async () => {
     const record = paper("a2020");

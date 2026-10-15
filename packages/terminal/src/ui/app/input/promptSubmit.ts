@@ -1,8 +1,8 @@
 /** Submits each overlay prompt purpose on Enter: add, tags, tagsBatch, rename, export and command. */
 import { promises as fs } from "node:fs";
-import * as os from "node:os";
 import * as path from "node:path";
 
+import { expandHome } from "../../../platform/index.js";
 import type { PromptOverlay } from "../../overlays.js";
 import { importInputs, targetFolder } from "../actions/index.js";
 import { targetsForExport } from "../actions/index.js";
@@ -76,7 +76,7 @@ function submitExport(app: App, value: string): void {
   if (!value) { return; }
   const records = targetsForExport(app);
   void app.taskStatus.task("export", "exporting", async () => {
-    const file = path.resolve(value.replace(/^~(?=$|\/)/, os.homedir()));
+    const file = path.resolve(expandHome(value));
     await fs.writeFile(file, app.ctx.papers.bibtexFor(records));
     app.taskStatus.notify(`${records.length} BibTeX entries written to ${file}`);
   });

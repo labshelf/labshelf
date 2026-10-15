@@ -3,7 +3,8 @@
 import { snapshotFromScan, emptySnapshot } from "./snapshot.js";
 import { papersUnder } from "./collectionTree.js";
 import { nameCollator, paperComparator } from "./paperSort.js";
-import type { CollectionNode, LibraryScan, LibrarySnapshot, PaperEntry, PaperFilter, SortSpec } from "./types.js";
+import { PaperSearchIndex } from "./paperSearchIndex.js";
+import type { CollectionNode, LibraryScan, LibrarySnapshot, PaperEntry, SortSpec } from "./types.js";
 
 export type LibraryEntry =
   | { kind: "collection"; node: CollectionNode }
@@ -13,7 +14,7 @@ export interface ListOptions {
   sort: SortSpec;
   /** Show every paper below the collection, without sub-collections. */
   flatten?: boolean;
-  /** Query text, turned into a filter by the store's `filterFor`. */
+  /** Query text in the core query language. */
   filter?: string;
 }
 
@@ -21,8 +22,6 @@ export interface LibraryStoreOptions {
   root: string;
   /** Reads the library from disk. */
   scan: () => Promise<LibraryScan>;
-  /** Parses query text into a filter; undefined when the query selects everything. */
-  filterFor: (query: string) => PaperFilter | undefined;
 }
 
 type Listener = (snapshot: LibrarySnapshot) => void;
@@ -32,6 +31,7 @@ export class LibraryStore {
   private readonly listeners = new Set<Listener>();
   private reloading: Promise<LibrarySnapshot> | undefined;
   private reloadAgain = false;
+  private readonly searchIndex = new PaperSearchIndex();
 
   constructor(private readonly options: LibraryStoreOptions) {
     this.current = emptySnapshot(options.root);
@@ -79,7 +79,7 @@ export class LibraryStore {
   listCollection(rel: string, options: ListOptions): LibraryEntry[] {
     const node = this.current.collections.get(rel);
     if (!node) { return []; }
-    const filter = this.options.filterFor(options.filter ?? "");
+    const filter = this.searchIndex.filterFor(options.filter ?? "");
     const entries: LibraryEntry[] = [];
     if (!options.flatten) {
       for (const childRel of node.children) {
@@ -97,7 +97,7 @@ export class LibraryStore {
 
   /** @returns matching papers, best match first (ties by the sort spec); every paper for an empty query */
   search(query: string, sort: SortSpec): PaperEntry[] {
-    const filter = this.options.filterFor(query);
+    const filter = this.searchIndex.filterFor(query);
     const all = [...this.current.papers.values()];
     const compare = paperComparator(sort);
     if (!filter) { return all.sort(compare); }
@@ -106,6 +106,16 @@ export class LibraryStore {
       .filter((result) => result.score > 0)
       .sort((a, b) => b.score - a.score || compare(a.paper, b.paper))
       .map((result) => result.paper);
+  }
+
+  /** Annotation text per paper id, so a query finds a paper by its highlights and notes. */
+  setAnnotationText(text: Map<string, string>): void {
+    this.searchIndex.setAnnotationText(text);
+  }
+
+  /** @returns a test for whether a paper matches the query; every paper matches a query without conditions */
+  matcher(query: string): (entry: PaperEntry) => boolean {
+    return this.searchIndex.matcher(query);
   }
 
   /** @returns every tag in use with its count, most used first */

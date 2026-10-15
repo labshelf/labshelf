@@ -4,7 +4,7 @@ import { formatAnnotationsMarkdown, joinCitations, paperComparator, paperFiles, 
 import * as path from "node:path";
 
 import { copyToClipboard } from "../../../platform/index.js";
-import { ALL, SORT_LABEL } from "../types.js";
+import { ALL } from "../types.js";
 import type { App } from "../app.js";
 import { needPapers } from "./paperFieldActions.js";
 
@@ -47,7 +47,7 @@ export function setSort(app: App, arg: string): void {
   const reverse = arg.endsWith("!");
   const key = arg.replace(/!$/, "") as App["sort"]["key"];
   app.sort = { key, reverse };
-  app.taskStatus.notify(`Sorted by ${SORT_LABEL[key]}${reverse ? ", reversed" : ""}`);
+  app.taskStatus.notify(`Sorted by ${key}${reverse ? ", reversed" : ""}`);
 }
 
 export function exportName(app: App): string {

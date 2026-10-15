@@ -5,7 +5,7 @@ import type { App } from "../app.js";
 
 export function findStep(app: App, direction: 1 | -1, from = app.listModel.cursor()): void {
   if (!app.findQuery) { return; }
-  const isMatch = app.ctx.search.matcher(app.findQuery);
+  const isMatch = app.ctx.store.matcher(app.findQuery);
   const matches: number[] = [];
   app.listModel.papers().forEach((p, i) => { if (isMatch(p)) { matches.push(i); } });
   if (!matches.length) {

@@ -49,7 +49,7 @@ describe("importNetworkInput with an identifier", () => {
 
     expect(h.fs.fileList().filter((f) => f.startsWith(PAPER_DIR))).toEqual([`${PAPER_DIR}/bib.bib`, `${PAPER_DIR}/metadata.yaml`]);
     expect((await h.readMeta(PAPER_DIR))["source"]).toBe("1706.03762.pdf");
-    expect(h.logs.find((l) => l.message === "No PDF found; saving the reference only")).toMatchObject({
+    expect(h.logs.find((l) => l.message === "No PDF found")).toMatchObject({
       level: "INFO", context: { attempts: ["arxiv: https://arxiv.org/pdf/1706.03762"] },
     });
   });
@@ -69,9 +69,52 @@ describe("importNetworkInput with an identifier", () => {
     expect(await importNetworkInput(env, "10.1000/abc", PAPERS)).toEqual({ status: "failed", error: "Could not find DOI 10.1000/abc", input: "10.1000/abc" });
     expect(h.logs.find((l) => l.message === "Registry lookup failed")).toMatchObject({ level: "WARN", context: { message: "registry down" } });
   });
+  it("asks the registries on the app's network and logs one that fails", async () => {
+    const { h, net, env } = setup();
+    delete env.resolveIdentifier;
+
+    expect(await importNetworkInput(env, "10.1000/abc", PAPERS)).toMatchObject({ status: "failed" });
+
+    expect(net.calls.some((url) => url.startsWith("https://api.crossref.org/works/"))).toBe(true);
+    expect(h.logs.find((l) => l.message === "Registry lookup failed")).toMatchObject({ level: "WARN", context: { status: 404 } });
+  });
 });
 
 describe("importNetworkInput with a link", () => {
+  it("stores an article page's title tidied, its DOI, and no PDF when none downloads", async () => {
+    const { h, net, env } = setup();
+    const page = `<html><head><meta name="citation_title" content="Self-attention_at   scale"><meta name="citation_author" content="Lee, Ann">
+      <meta name="citation_publication_date" content="2020"><meta name="citation_doi" content="10.1000/page"></head></html>`;
+    net.routes["https://example.org/article/2"] = () => html(page);
+    env.resolveIdentifier = async () => undefined;
+
+    added(await importNetworkInput(env, "https://example.org/article/2", PAPERS));
+
+    const meta = await h.readMeta(`${PAPERS}/lee2020self`);
+    expect(meta).toMatchObject({ title: "Self attention at scale", doi: "10.1000/page" });
+    expect(await h.fs.exists(`${PAPERS}/lee2020self/paper.pdf`)).toBe(false);
+  });
+
+  it("reports an article page already in the library as a duplicate, writing nothing", async () => {
+    const { h, net, env } = setup();
+    const page = `<html><head><meta name="citation_title" content="A Study of Things"><meta name="citation_doi" content="10.1000/have"></head></html>`;
+    net.routes["https://example.org/article/3"] = () => html(page);
+    env.resolveIdentifier = async () => undefined;
+    env.records = () => [{ id: "have", title: "Other", citeKey: "have", path: `${PAPERS}/have`, status: "unread", doi: "10.1000/HAVE" }];
+
+    expect(await importNetworkInput(env, "https://example.org/article/3", PAPERS)).toEqual({ status: "duplicate", existingId: "have", input: "https://example.org/article/3" });
+    expect(h.fs.fileList().filter((f) => f.startsWith(`${PAPERS}/`))).toEqual([]);
+  });
+
+  it("fails a web page that names no paper without asking the registries", async () => {
+    const { h, net, env } = setup();
+    net.routes["https://example.org/blog"] = () => html("<html><head><title>My holiday</title></head><body>hi</body></html>");
+
+    expect(await importNetworkInput(env, "https://example.org/blog", PAPERS)).toEqual({ status: "failed", error: "No paper found on the page", input: "https://example.org/blog" });
+    expect(net.calls).toEqual(["https://example.org/blog"]);
+    expect(h.logs.find((l) => l.message === "Landing page describes no paper")).toBeDefined();
+  });
+
   it("imports a PDF link under the name in the URL and removes the download", async () => {
     const { h, net, env } = setup();
     net.routes["https://example.org/files/My%20Paper.pdf"] = pdf;

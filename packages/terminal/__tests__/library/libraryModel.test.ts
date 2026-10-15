@@ -4,7 +4,6 @@ import * as path from "node:path";
 import type { LibraryEntry, LibraryStore, SortSpec } from "@labshelf/core";
 
 import { createLibraryStore } from "../../src/library/libraryModel";
-import { PaperSearchIndex } from "../../src/library/paperSearchIndex";
 import { cleanupTempDirs, createTempLibrary, setMtime, type PaperFixture, type TempLibrary } from "../fixtures/library";
 
 afterEach(cleanupTempDirs);
@@ -15,13 +14,12 @@ const silentLogger = { log: async () => undefined, error: async () => undefined 
 const paperIds = (entries: LibraryEntry[]): string[] => entries.flatMap((e) => (e.kind === "paper" ? [e.paper.record.id] : []));
 const collectionNames = (entries: LibraryEntry[]): string[] => entries.flatMap((e) => (e.kind === "collection" ? [e.node.name] : []));
 
-async function openStore(papers: PaperFixture[] = [], collections: string[] = []): Promise<{ lib: TempLibrary; store: LibraryStore; search: PaperSearchIndex }> {
+async function openStore(papers: PaperFixture[] = [], collections: string[] = []): Promise<{ lib: TempLibrary; store: LibraryStore }> {
   const lib = await createTempLibrary(papers);
   for (const rel of collections) { await lib.addCollection(rel); }
-  const search = new PaperSearchIndex();
-  const store = createLibraryStore(lib.paths, silentLogger, search);
+  const store = createLibraryStore(lib.paths, silentLogger);
   await store.reload();
-  return { lib, store, search };
+  return { lib, store };
 }
 
 describe("the store over a library on disk", () => {
@@ -132,17 +130,17 @@ describe("search", () => {
   });
 
   it("finds a paper through its annotation text, and forgets it when the text is replaced", async () => {
-    const { store, search } = await openStore([{ id: "p1", title: "Plain title" }, { id: "p2", title: "Other" }]);
+    const { store } = await openStore([{ id: "p1", title: "Plain title" }, { id: "p2", title: "Other" }]);
     expect(store.search("entanglement", TITLE)).toEqual([]);
 
-    search.setAnnotationText(new Map([["p1", "A highlight about quantum entanglement"]]));
+    store.setAnnotationText(new Map([["p1", "A highlight about quantum entanglement"]]));
     expect(store.search("entanglement", TITLE).map((e) => e.record.id)).toEqual(["p1"]);
 
-    search.setAnnotationText(new Map([["p2", "Now it is about entanglement elsewhere"]]));
+    store.setAnnotationText(new Map([["p2", "Now it is about entanglement elsewhere"]]));
     expect(store.search("entanglement", TITLE).map((e) => e.record.id)).toEqual(["p2"]);
     expect(paperIds(store.listCollection("", { sort: TITLE, filter: "elsewhere" }))).toEqual(["p2"]);
 
-    search.setAnnotationText(new Map());
+    store.setAnnotationText(new Map());
     expect(store.search("entanglement", TITLE)).toEqual([]);
   });
 });

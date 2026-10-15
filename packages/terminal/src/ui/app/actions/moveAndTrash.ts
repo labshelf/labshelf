@@ -1,11 +1,10 @@
 /** Cuts and pastes papers (x, p), moves them to a picked folder (M), and the trash confirmation (d). */
-import { removeNotice } from "@labshelf/core";
+import { errorMessage, removeNotice } from "@labshelf/core";
 import { trashSupported } from "../../../platform/index.js";
 import { truncate } from "../../../tui/index.js";
 import { ALL, folderTitle, parentFolder } from "../types.js";
 import type { App } from "../app.js";
 import { needPapers } from "./paperFieldActions.js";
-import { describe } from "../state/index.js";
 import { openFolderPicker } from "../input/index.js";
 
 export function cutTargets(app: App): void {
@@ -50,7 +49,7 @@ async function moveKeys(app: App, keys: string[], target: string): Promise<void>
       app.folder = await app.ctx.papers.moveCollection(rel, target);
       moved++;
     } catch (error) {
-      failed.push({ id: rel, error: describe(error) });
+      failed.push({ id: rel, error: errorMessage(error) });
     }
   }
   app.taskStatus.notifyBatch(moved, failed, `moved to ${folderTitle(target)}`);

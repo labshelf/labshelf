@@ -62,7 +62,7 @@ export class ListModel {
     let papers: PaperEntry[];
     if (app.search !== undefined) {
       papers = app.ctx.store.search(app.search, app.sort);
-      if (app.filter) { papers = papers.filter(app.ctx.search.matcher(app.filter)); }
+      if (app.filter) { papers = papers.filter(app.ctx.store.matcher(app.filter)); }
     } else {
       const rel = app.folder === ALL ? "" : app.folder;
       papers = app.ctx.store.listCollection(rel, { sort: app.sort, flatten: app.folder === ALL || app.flatten, filter: app.filter })

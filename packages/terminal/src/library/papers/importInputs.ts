@@ -1,27 +1,24 @@
-/** Sorts what the user typed in "add" into PDF files, network inputs (identifiers and links) and inputs there is nothing to import from. */
+/** Sorts what the user typed in "add" into paths on this machine and inputs to import from the network (identifiers and links). */
 import * as path from "node:path";
 
-import { discoverPdfs, type MutationContext } from "@labshelf/core";
+import type { MutationContext } from "@labshelf/core";
 
-export interface ImportItem {
-  kind: "pdf" | "network" | "skipped";
-  value: string;
+import { expandHome } from "../../platform/index.js";
+
+export interface SortedInputs {
+  /** Absolute paths that exist: files, folders, or entries the import reports as skipped. */
+  local: string[];
+  network: string[];
 }
 
-/** @returns one item per PDF found under the inputs, per input to import from the network and per input that is not importable */
-export async function planImports(ctx: MutationContext, inputs: string[]): Promise<ImportItem[]> {
-  const items: ImportItem[] = [];
+/** @returns the non-blank inputs, local paths resolved against the working directory */
+export async function sortImportInputs(ctx: MutationContext, inputs: string[]): Promise<SortedInputs> {
+  const sorted: SortedInputs = { local: [], network: [] };
   for (const raw of inputs) {
     const input = raw.trim();
     if (!input) { continue; }
-    const local = path.resolve(input.replace(/^~(?=$|\/)/, process.env["HOME"] ?? "~"));
-    if (await ctx.fs.exists(local)) {
-      const found = await discoverPdfs(ctx, [local]);
-      items.push(...found.pdfs.map((value): ImportItem => ({ kind: "pdf", value })));
-      items.push(...found.skipped.map((value): ImportItem => ({ kind: "skipped", value })));
-    } else {
-      items.push({ kind: "network", value: input });
-    }
+    const local = path.resolve(expandHome(input));
+    if (await ctx.fs.exists(local)) { sorted.local.push(local); } else { sorted.network.push(input); }
   }
-  return items;
+  return sorted;
 }

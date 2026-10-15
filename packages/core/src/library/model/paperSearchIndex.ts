@@ -1,8 +1,7 @@
-/** Applies core's query language as a core PaperFilter: parses a query once and caches each paper's folded search text, annotation text included. */
-import {
-  isEmptyQuery, matchPaper, matchesTerms, parseQuery, searchDoc,
-  type PaperEntry, type PaperFilter, type PaperRecord, type SearchDoc,
-} from "@labshelf/core";
+/** Turns query-language text into a paper filter over cached search documents that include each paper's annotation text. */
+import type { PaperRecord } from "../../model/index.js";
+import { isEmptyQuery, matchPaper, matchesTerms, parseQuery, searchDoc, type SearchDoc } from "../search/index.js";
+import type { PaperEntry, PaperFilter } from "./types.js";
 
 interface CachedDoc { record: PaperRecord; annotations: string; doc: SearchDoc }
 

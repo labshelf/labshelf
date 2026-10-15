@@ -3,4 +3,4 @@ export { inspectTab, findPdf, safeFolder, summarizeAttempts, resetPdfSearch, sav
 export type { CaptureDraft, SavedPaper, SaveDecision } from "./captureService";
 export { draftFromScholarHit } from "./scholarCapture";
 export { draftFromRecord } from "./recordCapture";
-export { attachPdfToPaper } from "./addPaperFlow";
+export { attachPdfToPaper } from "./attachPdfToPaper";

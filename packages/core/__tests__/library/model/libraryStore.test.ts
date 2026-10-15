@@ -1,6 +1,6 @@
 import { LibraryStore, type LibraryEntry, type LibraryScan } from "@labshelf/core";
 
-import { entry, loadedStore, scanOf, substringFilter } from "../../support/libraryModelFixtures";
+import { entry, loadedStore, scanOf } from "../../support/libraryModelFixtures";
 
 const TITLE = { key: "title", reverse: false } as const;
 const paperIds = (entries: LibraryEntry[]): string[] => entries.flatMap((e) => (e.kind === "paper" ? [e.paper.record.id] : []));
@@ -14,7 +14,7 @@ const PAPERS = [
 describe("LibraryStore.reload", () => {
   it("publishes the scan as a snapshot and notifies listeners", async () => {
     const seen: number[] = [];
-    const store = new LibraryStore({ root: "/lib", scan: async () => scanOf(PAPERS), filterFor: substringFilter });
+    const store = new LibraryStore({ root: "/lib", scan: async () => scanOf(PAPERS) });
     store.onChange((s) => seen.push(s.papers.size));
     await store.reload();
     expect(store.snapshot.papers.size).toBe(4);
@@ -30,7 +30,7 @@ describe("LibraryStore.reload", () => {
       if (calls === 1) { await gate; }
       return scanOf(PAPERS);
     };
-    const store = new LibraryStore({ root: "/lib", scan, filterFor: substringFilter });
+    const store = new LibraryStore({ root: "/lib", scan });
     const first = store.reload();
     const second = store.reload();
     const third = store.reload();
@@ -41,7 +41,7 @@ describe("LibraryStore.reload", () => {
 
   it("can reload again after a failed scan", async () => {
     let fail = true;
-    const store = new LibraryStore({ root: "/lib", scan: async () => { if (fail) { throw new Error("disk"); } return scanOf(PAPERS); }, filterFor: substringFilter });
+    const store = new LibraryStore({ root: "/lib", scan: async () => { if (fail) { throw new Error("disk"); } return scanOf(PAPERS); } });
     await expect(store.reload()).rejects.toThrow("disk");
     fail = false;
     await store.reload();
@@ -49,7 +49,7 @@ describe("LibraryStore.reload", () => {
   });
 
   it("stops notifying an unsubscribed listener", async () => {
-    const store = new LibraryStore({ root: "/lib", scan: async () => scanOf(PAPERS), filterFor: substringFilter });
+    const store = new LibraryStore({ root: "/lib", scan: async () => scanOf(PAPERS) });
     const listener = jest.fn();
     store.onChange(listener)();
     await store.reload();
@@ -109,5 +109,23 @@ describe("LibraryStore.tagCounts", () => {
   it("counts tags case-insensitively, most used first", async () => {
     const store = await loadedStore([entry("a", "", { tags: ["NLP", "x"] }), entry("b", "", { tags: ["nlp"] }), entry("c")]);
     expect(store.tagCounts()).toEqual([{ tag: "NLP", count: 2 }, { tag: "x", count: 1 }]);
+  });
+});
+
+describe("LibraryStore.matcher", () => {
+  it("matches papers by the query language, annotation text included", async () => {
+    const store = await loadedStore([entry("p1", "", { title: "Plain title" })]);
+    const plain = store.paper("p1")!;
+    expect(store.matcher("entanglement")(plain)).toBe(false);
+    store.setAnnotationText(new Map([["p1", "A highlight about quantum entanglement"]]));
+    expect(store.matcher("entanglement")(plain)).toBe(true);
+    expect(store.search("entanglement", TITLE).map((e) => e.record.id)).toEqual(["p1"]);
+    expect(store.matcher("is:done")(plain)).toBe(false);
+  });
+
+  it("matches every paper when the query has no conditions", async () => {
+    const store = await loadedStore([entry("p1", "", { title: "Plain" })]);
+    expect(store.matcher("")(store.paper("p1")!)).toBe(true);
+    expect(store.matcher("author:")(store.paper("p1")!)).toBe(true);
   });
 });

@@ -43,7 +43,7 @@ describe("identifier import", () => {
     expect(yaml).toMatchObject({ citekey: "kucsko2013nanometre", status: "unread", source: "paper.pdf", doi: "10.1038/nature12373", authors: ["G. Kucsko", "P. C. Maurer"] });
     expect(yaml["title"]).toBe("Nanometre scale thermometry in a living cell");
     expect(await fs.readFile(path.join(folder, "bib.bib"), "utf8")).not.toContain("file =");
-    const notFound = h.logs.find((l) => l.message === "No PDF found; saving the reference only");
+    const notFound = h.logs.find((l) => l.message === "No PDF found");
     expect(notFound).toMatchObject({ level: "INFO", context: { input: "10.1038/nature12373" } });
     expect(notFound!.context!["attempts"]).toEqual(["unpaywall: https://repo.example.org/gone.pdf"]);
   });

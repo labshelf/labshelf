@@ -56,7 +56,7 @@ describe("landing-page import", () => {
 
     expect(outcome.status === "added" && outcome.record.hasPdf).toBe(false);
     expect(await listFiles(h.lib.paperDir("edelman2024optimization"))).toEqual(["bib.bib", "metadata.yaml"]);
-    const notFound = h.logs.find((l) => l.message === "No PDF found; saving the reference only");
+    const notFound = h.logs.find((l) => l.message === "No PDF found");
     expect(notFound).toMatchObject({ level: "INFO", context: { input: LANDING } });
     expect(notFound!.context!["attempts"]).toEqual(expect.arrayContaining([expect.stringContaining(PDF_URL)]));
   });

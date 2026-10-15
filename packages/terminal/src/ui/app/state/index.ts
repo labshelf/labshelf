@@ -2,4 +2,4 @@
 export { ListModel } from "./listModel.js";
 export { HistoryNav } from "./historyNav.js";
 export { SelectionState } from "./selectionState.js";
-export { TaskStatus, describe } from "./taskStatus.js";
+export { TaskStatus } from "./taskStatus.js";

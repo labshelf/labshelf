@@ -265,7 +265,7 @@ describe("App library search (s)", () => {
     await writeSidecar(root, ATTENTION, [highlight(ATTENTION, 2, "Compare with the RNN baseline")]);
     await ctx.store.reload();
     await eventually(async () => {
-      ctx.search.setAnnotationText(await ctx.sidecars.annotationIndex(ctx.store.snapshot.papers.keys()));
+      ctx.store.setAnnotationText(await ctx.sidecars.annotationIndex(ctx.store.snapshot.papers.keys()));
       return ctx.store.search("baseline", { key: "title", reverse: false }).length === 1;
     }, "the highlight to be indexed", app);
     press(app, "s");

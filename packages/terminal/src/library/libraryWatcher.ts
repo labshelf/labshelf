@@ -2,7 +2,7 @@
 // Uses recursive fs.watch and polls the papers folder when recursive watching is unavailable.
 import { watch, type FSWatcher } from "node:fs";
 
-import { isExternalChangeNoise, type ILogger } from "@labshelf/core";
+import { errorMessage, isExternalChangeNoise, type ILogger } from "@labshelf/core";
 
 import { LibraryRoot } from "./libraryRoot.js";
 
@@ -36,7 +36,7 @@ export class LibraryWatcher {
         this.watchers.push(watcher);
       } catch (error) {
         void this.logger?.log("WARN", "terminal/libraryWatcher", "Recursive watch unavailable, polling instead", {
-          dir, message: error instanceof Error ? error.message : String(error),
+          dir, message: errorMessage(error),
         });
         this.startPolling();
       }

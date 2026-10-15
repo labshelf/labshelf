@@ -11,36 +11,13 @@ jest.mock("../../src/storage/paperRecordStore", () => ({
   upsertRecord: async () => undefined,
 }));
 
-import { addPaper, attachPdfToPaper } from "../../src/capture/addPaperFlow";
+import { attachPdfToPaper } from "../../src/capture/attachPdfToPaper";
 import { safeFolder } from "../../src/capture/captureService";
 import { createLibraryMutations } from "../../src/storage/libraryMutations";
 import { fakeFiles, putFile, textAt } from "../support/fakeIdb";
 
 const log: ILogger = { log: async () => undefined, error: async () => undefined };
 const mutations = createLibraryMutations(log);
-
-describe("addPaper", () => {
-  const meta = { authors: ["Ann Lee"], year: 2020, title: "Attention" };
-  beforeEach(() => { fakeFiles.clear(); mockRecords = []; });
-
-  it("normalises the tags it stores", async () => {
-    const paper = await addPaper(undefined, meta, "x", "papers", { tags: ["NLP", "nlp", " Deep   Learning "] });
-    expect(paper.tags).toEqual(["NLP", "Deep Learning"]);
-  });
-
-  it("skips an id taken in another casing", async () => {
-    mockRecords = [{ id: "Lee2020Attention", title: "Other", citeKey: "Lee2020Attention", path: "papers/Lee2020Attention", status: "unread" }];
-    const paper = await addPaper(undefined, meta, "x");
-    expect(paper.id).toBe("lee2020attentiona");
-    expect(paper.path).toBe("papers/lee2020attentiona");
-  });
-
-  it("skips a folder that exists without a cached record", async () => {
-    putFile("papers/lee2020attention/metadata.yaml", "");
-    const paper = await addPaper(undefined, meta, "x");
-    expect(paper.id).toBe("lee2020attentiona");
-  });
-});
 
 describe("safeFolder", () => {
   it("accepts collections under papers/ and falls back to the root otherwise", () => {

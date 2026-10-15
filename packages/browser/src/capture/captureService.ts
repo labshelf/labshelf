@@ -1,15 +1,14 @@
 // Captures a paper in two steps, inspect then save, so the popup shows the paper before anything is written.
 // The PDF search starts once a draft exists, so Save is usually instant.
-import { PAGE_TRUST, findInLibrary, interpretPage, makeResolveContext, resolvePdf, resolveMetadata, withAbstract } from "@labshelf/core";
+import { findInLibrary, findPaperPdf, interpretPage, normalizeTags, resolvePagePaper, withAbstract } from "@labshelf/core";
 import type {
   DetectedIds, MetadataOrigin, MetadataSource, PageFacts, PaperRecord, PdfAttempt, PdfCandidate, PdfFetchOptions,
   ResolvedMetadata, ResolvedPdf,
 } from "@labshelf/core";
 import { fetchInTab, fetchViaHelperTab } from "./tab";
 import { probeTab } from "./tabProbe";
-import { addPaper } from "./addPaperFlow";
 import { getSettings, updateSettings } from "../platform";
-import { listAllRecords } from "../storage";
+import { listAllRecords, type LibraryMutations } from "../storage";
 import type { IfNoPdf, ILogger, PdfMiss } from "@labshelf/core";
 import { PAPERS_DIR, isLibraryPath } from "@labshelf/core";
 
@@ -66,18 +65,7 @@ export async function draftFromFacts(
   fetchOpts: CaptureDraft["fetchOpts"],
   extraSources: MetadataSource[] = [],
 ): Promise<CaptureDraft> {
-  const pageSource: MetadataSource = {
-    name: "page",
-    trust: facts.structured ? PAGE_TRUST.structured : PAGE_TRUST.titleOnly,
-    metadata: facts.metadata,
-  };
-  const resolved = facts.isPaper || extraSources.length
-    ? await resolveMetadata({ ids: facts.ids, sources: [pageSource, ...extraSources] })
-    : { metadata: facts.metadata, ids: facts.ids, origin: "none" as const };
-  const isPaper = facts.isPaper || resolved.origin === "registry" || resolved.origin === "search";
-  const existing = isPaper
-    ? findInLibrary(await listAllRecords(), { ...resolved.ids, title: resolved.metadata.title, year: resolved.metadata.year })
-    : undefined;
+  const { isPaper, existing, ...resolved } = await resolvePagePaper(facts, listAllRecords, { extraSources, deps: { registry: { logger: log } } });
 
   void log.log("INFO", MODULE, "capture inspected", {
     page: facts.pageUrl,
@@ -108,21 +96,19 @@ export async function draftFromFacts(
 export function findPdf(log: ILogger, draft: CaptureDraft): Promise<ResolvedPdf | undefined> {
   draft.pdf ??= (async () => {
     const settings = await getSettings();
-    const context = makeResolveContext(draft.ids, draft.metadata, draft.pageUrl || undefined, draft.pdfCandidates, {
-      contactEmail: settings.contactEmail,
-      ...(settings.enableSciHub ? { sciHubMirror: settings.sciHubMirror } : {}),
-    });
-    const pdf = await resolvePdf(
-      context,
+    return findPaperPdf(
       { ...draft.fetchOpts, credentials: "include", logger: log, viaHelperTab: (urls) => fetchViaHelperTab(log, urls) },
+      {
+        ids: draft.ids,
+        metadata: draft.metadata,
+        landingUrl: draft.pageUrl || undefined,
+        pageCandidates: draft.pdfCandidates,
+        input: draft.pageUrl,
+        contactEmail: settings.contactEmail,
+        ...(settings.enableSciHub ? { sciHubMirror: settings.sciHubMirror } : {}),
+      },
       draft.pdfAttempts,
     );
-    if (pdf) {
-      void log.log("INFO", MODULE, "pdf found", { page: draft.pageUrl, source: pdf.source, url: pdf.url, bytes: pdf.bytes.length });
-    } else {
-      void log.log("WARN", MODULE, "no pdf reachable", { page: draft.pageUrl, tried: draft.pdfAttempts.map((a) => `${a.source} ${a.url}`) });
-    }
-    return pdf;
   })().catch((err: unknown) => {
     void log.error(MODULE, err, { op: "findPdf", page: draft.pageUrl });
     return undefined;
@@ -134,21 +120,23 @@ export function findPdf(log: ILogger, draft: CaptureDraft): Promise<ResolvedPdf 
  * Saves a draft into the library. Refuses a page that is not a paper and has
  * no PDF either — there would be nothing worth keeping.
  */
-async function saveDraft(log: ILogger, draft: CaptureDraft, opts: SaveOptions = {}): Promise<SavedPaper> {
-  const [pdf, metadata] = await Promise.all([findPdf(log, draft), withAbstract(draft.metadata)]);
+async function saveDraft(log: ILogger, mutations: LibraryMutations, draft: CaptureDraft, opts: SaveOptions = {}): Promise<SavedPaper> {
+  const [pdf, metadata] = await Promise.all([findPdf(log, draft), withAbstract(draft.metadata, { registry: { logger: log } })]);
   if (!pdf && !draft.isPaper) {
     throw new Error("No paper found on this page — open the article's page, its PDF, or a Google Scholar result.");
   }
   const settings = await getSettings();
   const folder = safeFolder(opts.folder ?? settings.lastFolder);
-  const paper = await addPaper(pdf?.bytes, metadata, metadata.title ?? "Untitled", folder, {
-    ...(opts.tags ? { tags: opts.tags } : {}),
-    ...(opts.note ? { note: opts.note } : {}),
+  const tags = normalizeTags(opts.tags ?? []);
+  const note = opts.note?.trim();
+  const paper = await mutations.importPaper(folder, {
+    metadata: { ...metadata, title: metadata.title ?? "Untitled" },
+    pdf: pdf?.bytes,
+    extra: { ...(tags.length ? { tags } : {}), ...(note ? { note } : {}) },
+    log: { message: "Paper captured", context: { page: draft.pageUrl, pdfSource: pdf?.source ?? null, origin: draft.origin } },
   });
   if (folder !== settings.lastFolder) await updateSettings({ lastFolder: folder });
   draft.existing = paper;
-  if (!pdf) void log.log("WARN", MODULE, "saved without pdf", { id: paper.id, page: draft.pageUrl });
-  void log.log("INFO", MODULE, "paper captured", { id: paper.id, folder, pdfSource: pdf?.source ?? null, origin: draft.origin });
   return { paper, folder, pdfSource: pdf?.source ?? null };
 }
 
@@ -181,7 +169,13 @@ export type SaveDecision = { kind: "saved"; saved: SavedPaper } | { kind: "no-pd
  * re-sends with "save" to confirm. findPdf is memoised, so the confirming call
  * reuses the finished search rather than running it again.
  */
-export async function saveOrAsk(log: ILogger, draft: CaptureDraft, opts: SaveOptions = {}, ifNoPdf: IfNoPdf = "ask"): Promise<SaveDecision> {
+export async function saveOrAsk(
+  log: ILogger,
+  mutations: LibraryMutations,
+  draft: CaptureDraft,
+  opts: SaveOptions = {},
+  ifNoPdf: IfNoPdf = "ask",
+): Promise<SaveDecision> {
   if (ifNoPdf === "ask" && draft.isPaper && !(await findPdf(log, draft))) {
     void log.log("INFO", MODULE, "no pdf: asking before saving", { page: draft.pageUrl, tried: draft.pdfAttempts.length });
     return { kind: "no-pdf", miss: summarizeAttempts(draft.pdfAttempts) };
@@ -189,7 +183,7 @@ export async function saveOrAsk(log: ILogger, draft: CaptureDraft, opts: SaveOpt
   if (ifNoPdf === "save" && draft.isPaper && !(await findPdf(log, draft))) {
     void log.log("INFO", MODULE, "saved without pdf (confirmed)", { page: draft.pageUrl, tried: draft.pdfAttempts.length });
   }
-  return { kind: "saved", saved: await saveDraft(log, draft, opts) };
+  return { kind: "saved", saved: await saveDraft(log, mutations, draft, opts) };
 }
 
 /**

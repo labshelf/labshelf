@@ -1,8 +1,8 @@
 /** Completes Tab input in overlay prompts: filesystem paths in the add prompt, existing tags in the tag prompts. */
 import { promises as fs } from "node:fs";
-import * as os from "node:os";
 import * as path from "node:path";
 
+import { expandHome } from "../../../platform/index.js";
 import { textInput } from "../../textInput.js";
 import type { PromptOverlay } from "../../overlays.js";
 import type { App } from "../app.js";
@@ -45,7 +45,7 @@ function completeTag(app: App, prompt: PromptOverlay): void {
  * @returns the completed text and the other candidates
  */
 export async function completePath(value: string): Promise<{ completed: string; candidates: string[] }> {
-  const expanded = value.replace(/^~(?=$|\/)/, os.homedir());
+  const expanded = expandHome(value);
   const dir = expanded.endsWith("/") ? expanded : path.dirname(expanded || ".");
   const prefix = expanded.endsWith("/") ? "" : path.basename(expanded);
   let names: Array<{ name: string; dir: boolean }>;

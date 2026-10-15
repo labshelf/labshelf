@@ -2,7 +2,6 @@
  * Declares the App's shared types: what it needs from the real terminal, plus the small value types its state, input,
  * actions and drawing modules pass around.
  */
-import type { SortKey } from "../../app/index.js";
 import type { CellRect } from "../../tui/index.js";
 import type { InputEvent } from "../../tui/index.js";
 import type { Screen } from "../../tui/index.js";
@@ -53,8 +52,6 @@ export interface ImagePlan {
   rect: CellRect;
   png: Uint8Array;
 }
-
-export const SORT_LABEL: Record<SortKey, string> = { title: "title", year: "year", author: "author", status: "status", modified: "modified" };
 
 export function parentFolder(rel: string): string {
   if (rel === ALL || rel === "") { return ALL; }

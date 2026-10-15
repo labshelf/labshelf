@@ -73,4 +73,21 @@ describe("importAny with local files", () => {
     await h.service.importAny([await h.writePdf()], "");
     expect(await fs.readFile(metaFile(h, "vaswani2017attention"), "utf8")).toContain("Attention Is All You Need");
   });
+
+  it("imports local PDFs, then reports skipped paths, then imports network inputs, counting progress over both", async () => {
+    const h = await harness();
+    h.resolve.mockResolvedValue({ title: "Nanometre-scale thermometry in a living cell", authors: ["G. Kucsko"], year: 2013 });
+    const link = path.join(h.inbox, "link.pdf");
+    await fs.symlink(await h.writePdf("real.pdf"), link);
+    const progress: Array<[number, number, string]> = [];
+
+    const outcomes = await h.service.importAny(["10.1038/nature12373", link, await h.writePdf()], "", (p) => progress.push([p.index, p.total, p.input]));
+
+    expect(outcomes.map((o) => (o.status === "added" ? o.record.id : `${o.status} ${o.input}`))).toEqual([
+      "vaswani2017attention", `skipped ${link}`, "kucsko2013nanometre",
+    ]);
+    expect(progress).toEqual([[1, 2, path.join(h.inbox, "attention.pdf")], [2, 2, "10.1038/nature12373"]]);
+    expect(h.store.paper("kucsko2013nanometre")).toBeDefined();
+    expect(h.onLocalChange).toHaveBeenCalledTimes(1);
+  });
 });

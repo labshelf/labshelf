@@ -1,6 +1,7 @@
 /** Runs the : command line: a small set of ex-style commands over the same actions the keys trigger. */
+import { isSortKey, SORT_KEYS } from "../../../app/index.js";
 import { textInput } from "../../textInput.js";
-import { ALL, SORT_LABEL } from "../types.js";
+import { ALL } from "../types.js";
 import type { App } from "../app.js";
 import { submitPrompt } from "../input/index.js";
 import { importInputs, targetFolder } from "./createAndRename.js";
@@ -48,8 +49,8 @@ async function logout(app: App): Promise<void> {
 }
 
 function runSort(app: App, args: string[]): void {
-  const key = (args[0] ?? "title") as keyof typeof SORT_LABEL;
-  if (!(key in SORT_LABEL)) { app.taskStatus.notify(`Unknown sort key "${key}" (title, year, author, status, modified)`, "warn"); return; }
+  const key = args[0] ?? "title";
+  if (!isSortKey(key)) { app.taskStatus.notify(`Unknown sort key "${key}" (${SORT_KEYS.join(", ")})`, "warn"); return; }
   setSort(app, args[1] === "desc" || args[1] === "reverse" ? `${key}!` : key);
 }
 

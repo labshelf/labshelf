@@ -4,7 +4,8 @@ import type {
   AttachPdfData, FolderOption, FoldersData, LookupData, LookupItem, RuntimeMessage, TabSummary,
 } from "../../platform";
 import { getSettings } from "../../platform";
-import { attachPdfToPaper, draftFromRecord, findPdf, safeFolder, summarizeAttempts } from "../../capture/index";
+import { draftFromRecord, safeFolder } from "../../capture/index";
+import { attachFoundPdf } from "./capture";
 import { listAllRecords, buildFolderTree, pdfDirs } from "../../storage";
 import type { LibraryMutations } from "../../storage";
 import { forgetPaper } from "../draftCache";
@@ -26,15 +27,7 @@ export async function handleFindPdfForPaper(log: ILogger, mutations: LibraryMuta
   const run = (async (): Promise<AttachPdfData> => {
     const record = (await listAllRecords()).find((r) => r.id === id);
     if (!record) throw new Error("This paper is no longer in your library.");
-    const draft = await draftFromRecord(log, record);
-    const pdf = await findPdf(log, draft);
-    if (!pdf) return { id, attached: false, miss: summarizeAttempts(draft.pdfAttempts) };
-    const { written } = await attachPdfToPaper(mutations, id, pdf.bytes);
-    if (written) {
-      scheduleSync("paper.findPdf");
-      broadcastChanged("attach", id);
-    }
-    return { id, attached: written, ...(written ? { source: pdf.source } : { alreadyHadPdf: true }) };
+    return attachFoundPdf(log, mutations, await draftFromRecord(log, record), id, scheduleSync, "paper.findPdf");
   })();
   findingPdf.set(id, run);
   void run.catch(() => undefined).finally(() => { if (findingPdf.get(id) === run) findingPdf.delete(id); });

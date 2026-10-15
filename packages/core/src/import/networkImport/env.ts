@@ -4,6 +4,7 @@ import type { ImportDeps, MutationContext } from "../../library/index.js";
 import type { PaperRecord } from "../../model/index.js";
 import type { ResolvedMetadata } from "../metadata/index.js";
 import type { PdfFetchOptions } from "../pdfFinding/index.js";
+import type { RegistryEnv } from "../registries/index.js";
 
 export interface NetworkImportEnv {
   ctx: MutationContext;
@@ -24,4 +25,9 @@ export const NETWORK_IMPORT_MODULE = "import/networkImport";
 
 export function pdfFetchOptions(env: NetworkImportEnv): PdfFetchOptions {
   return { ...env.download, logger: env.ctx.logger };
+}
+
+/** Registry lookups go out on the app's fetch and log their failures through the app's logger. */
+export function registryEnv(env: NetworkImportEnv): RegistryEnv {
+  return { fetch: env.download.fetch, logger: env.ctx.logger };
 }

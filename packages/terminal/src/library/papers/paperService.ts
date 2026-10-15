@@ -7,7 +7,7 @@ import {
   doiLookup,
   editPaperTags,
   importNetworkInput,
-  importPdf,
+  importPaths,
   METADATA_FILE,
   joinCitations,
   moveFolder,
@@ -37,7 +37,7 @@ import {
 import { NodeLibraryFileSystem } from "@labshelf/core/node";
 
 import type { LibraryRoot } from "../libraryRoot.js";
-import { planImports, type ImportItem } from "./importInputs.js";
+import { sortImportInputs } from "./importInputs.js";
 
 const USER_AGENT = "LabShelf-Terminal/0.1";
 
@@ -185,31 +185,24 @@ export class TerminalPaperService {
   /**
    * Imports whatever the user typed or passed on the command line: a PDF, a folder of PDFs (recursively), a PDF URL,
    * an article page or an identifier. Changes are announced once at the end.
-   * @returns one outcome per imported item
+   * @returns one outcome per PDF found, then per local path that is neither file nor folder, then per network input
    */
   async importAny(inputs: string[], targetRel: string, onProgress?: (progress: ImportProgress) => void): Promise<ImportOutcome[]> {
     const targetDir = this.paths.collectionDir(targetRel);
-    const items = await planImports(this.ctx, inputs);
-    const total = items.filter((item) => item.kind !== "skipped").length;
-    const outcomes: ImportOutcome[] = [];
-    let index = 0;
-    for (const item of items) {
-      if (item.kind === "skipped") {
-        outcomes.push({ status: "skipped", input: item.value });
-        continue;
-      }
-      onProgress?.({ index: ++index, total, input: item.value });
-      outcomes.push(await this.importItem(item, targetDir));
-      // Later items must see the ids earlier ones took.
+    const { local, network } = await sortImportInputs(this.ctx, inputs);
+    const outcomes = await importPaths(this.ctx, this.importDeps(), local, targetDir, {
+      onProgress: (progress) => onProgress?.({ ...progress, total: progress.total + network.length }),
+    });
+    // A network import checks for duplicates against the store, so the store must hold what the earlier items added.
+    if (local.length) { await this.deps.store.reload(); }
+    const pdfCount = outcomes.filter((outcome) => outcome.status !== "skipped").length;
+    for (const [position, input] of network.entries()) {
+      onProgress?.({ index: pdfCount + position + 1, total: pdfCount + network.length, input });
+      outcomes.push(await importNetworkInput(this.network, input, targetDir));
       await this.deps.store.reload();
     }
     if (outcomes.some((outcome) => outcome.status === "added")) { this.deps.onLocalChange?.(); }
     return outcomes;
-  }
-
-  private importItem(item: ImportItem, targetDir: string): Promise<ImportOutcome> {
-    if (item.kind === "pdf") { return importPdf(this.ctx, this.importDeps(), item.value, targetDir); }
-    return importNetworkInput(this.network, item.value, targetDir);
   }
 
   /**

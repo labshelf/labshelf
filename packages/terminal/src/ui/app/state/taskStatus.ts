@@ -1,4 +1,6 @@
 /** Tracks background tasks (the status bar's "…ing" labels) and queues status-bar messages. */
+import { describeError } from "@labshelf/core";
+
 import type { Message } from "../types.js";
 import type { App } from "../app.js";
 
@@ -20,9 +22,9 @@ export class TaskStatus {
   }
 
   fail(error: unknown): void {
-    const message = describe(error);
+    const { message, stack } = describeError(error);
     this.notify(message, "error");
-    void this.app.ctx.logger.log("ERROR", "terminal/ui", message, {}, error instanceof Error ? error.stack : undefined);
+    void this.app.ctx.logger.log("ERROR", "terminal/ui", message, {}, stack);
   }
 
   // Runs async work with a status-bar label and error reporting.
@@ -47,8 +49,4 @@ export class TaskStatus {
       this.notify(`${done} ${verb}, ${failed.length} failed: ${failed[0]!.id} — ${failed[0]!.error}`, "error");
     }
   }
-}
-
-export function describe(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

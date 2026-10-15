@@ -1,7 +1,7 @@
 // Turns one Google Scholar result into a capture draft: DOI in its links, else landing page, else title search.
 // A title match must agree with the year and authors Scholar printed; Scholar's "[PDF]" link is the first candidate.
-import { arxivIdFromUrl, extractDoi, pmidFromUrl } from "@labshelf/core";
-import type { DetectedIds, ILogger, MetadataSource, PageFacts, PdfCandidate, ResolvedMetadata } from "@labshelf/core";
+import type { ILogger, MetadataSource, PageFacts, PdfCandidate, ResolvedMetadata } from "@labshelf/core";
+import { idsFromHit } from "../content";
 import { draftFromFacts } from "./captureService";
 import type { CaptureDraft } from "./captureService";
 import { landingFacts } from "./landingFacts";
@@ -10,17 +10,6 @@ import type { ScholarHit } from "../platform";
 // Scholar's own line is abbreviated ("OH Ibarra", "Proceedings of the …"), so
 // it only fills what nothing better states.
 const SCHOLAR_TRUST = 20;
-
-/**
- * Identifiers a result's links reveal (publisher URLs embed the DOI).
- */
-export function idsFromHit(hit: ScholarHit): DetectedIds {
-  const urls = [hit.url, hit.pdfUrl].filter((u): u is string => !!u);
-  const doi = urls.map((u) => extractDoi(u)).find(Boolean);
-  const arxivId = urls.map(arxivIdFromUrl).find(Boolean);
-  const pmid = urls.map(pmidFromUrl).find(Boolean);
-  return { ...(doi ? { doi } : {}), ...(arxivId ? { arxivId } : {}), ...(pmid ? { pmid } : {}) };
-}
 
 /**
  * What Scholar itself printed, as a low-trust metadata source.

@@ -8,7 +8,6 @@ import { keyLabel, resolveKeys } from "../../keymap.js";
 import { drawField, type InlineInput } from "../../overlays.js";
 import { drawSegments, type Rect } from "../../render.js";
 import { theme } from "../../theme.js";
-import { SORT_LABEL } from "../types.js";
 import type { App } from "../app.js";
 import { appName } from "../actions/index.js";
 
@@ -61,7 +60,7 @@ function pushPendingHints(app: App, left: Array<{ text: string; style?: Style }>
 function statusRight(app: App): Array<{ text: string; style?: Style }> {
   const out: Array<{ text: string; style?: Style }> = [];
   for (const label of app.tasks.values()) { out.push({ text: ` ${label}… `, style: theme.warn }); }
-  out.push({ text: ` ${SORT_LABEL[app.sort.key]}${app.sort.reverse ? "↓" : "↑"} `, style: theme.dim });
+  out.push({ text: ` ${app.sort.key}${app.sort.reverse ? "↓" : "↑"} `, style: theme.dim });
   out.push(syncSegment(app.ctx.sync.status(), app.taskStatus.now()));
   out.push({ text: " ? help ", style: theme.dim });
   return out;
