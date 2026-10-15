@@ -26,7 +26,7 @@ const ANSI = {
 const MAGENTA = 5;
 const CYAN = 6;
 
-// A new annotation colour in core fails the build until it has an ANSI index here.
+// An annotation colour added in core fails the build until it has an ANSI index here.
 const ANNOTATION_ANSI: Record<AnnotationColor, number> = {
   yellow: ANSI.yellow,
   green: ANSI.green,

@@ -50,7 +50,7 @@ export async function copyToClipboard(text: string, osc52?: (sequence: string) =
 
 /**
  * Opens a file or folder with the system's default app (or `viewer` when configured), without waiting for it.
- * @returns void; throws when the opener cannot start
+ * Throws when the opener cannot start.
  */
 export function openExternal(target: string, viewer?: string): void {
   let command: string;
@@ -76,7 +76,6 @@ export function openExternal(target: string, viewer?: string): void {
 
 /**
  * Reveals a folder in Finder / the file manager.
- * @returns void
  */
 export function revealInFileManager(target: string): void {
   if (process.platform === "darwin") {
@@ -117,7 +116,7 @@ async function moveAcrossVolumes(from: string, to: string): Promise<void> {
 /**
  * Moves a file or folder to the user's trash (macOS ~/.Trash, freedesktop ~/.local/share/Trash), the same thing the
  * VS Code extension does with useTrash.
- * @returns the path it now has in the trash
+ * @returns the path in the trash
  */
 export async function moveToTrash(target: string): Promise<string> {
   const name = path.basename(target);

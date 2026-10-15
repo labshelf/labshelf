@@ -18,7 +18,7 @@ export interface CellRect {
 export function detectImageProtocol(env: NodeJS.ProcessEnv, preference = "auto"): ImageProtocol {
   if (preference === "off" || preference === "none") { return "none"; }
   if (preference === "kitty" || preference === "iterm") { return preference; }
-  // Inside tmux or screen the escapes would need passthrough wrapping; stay safe unless forced.
+  // PLATFORM: inside tmux or screen the escapes would need passthrough wrapping; stay safe unless forced.
   if (env["TMUX"] || (env["TERM"] ?? "").startsWith("screen")) { return "none"; }
   const term = env["TERM"] ?? "";
   const program = env["TERM_PROGRAM"] ?? "";

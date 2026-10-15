@@ -87,7 +87,6 @@ export function drawBox(screen: Screen, box: Box, title: string): Box {
 
 /**
  * Draws a text field with a block cursor, scrolled so the cursor stays visible.
- * @returns void
  */
 export function drawField(screen: Screen, x: number, y: number, width: number, state: TextInputState, style: Style = theme.text): void {
   const before = state.value.slice(0, state.cursor);
@@ -111,7 +110,6 @@ function centered(screen: Screen, w: number, h: number): Box {
 
 /**
  * Draws whichever overlay is open.
- * @returns void
  */
 export function drawOverlay(screen: Screen, overlay: Overlay): void {
   switch (overlay.kind) {

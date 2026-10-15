@@ -1,2 +1,2 @@
-// Public API of PDF thumbnail rendering for the terminal preview pane.
+// Exports the preview module's public API: PDF thumbnail rendering for the preview pane.
 export { defaultRenderer, ThumbnailService } from "./thumbnails.js";

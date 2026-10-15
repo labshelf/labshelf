@@ -1,4 +1,4 @@
-/** The preview pane: the folder summary or the library overview, and the paper's Info/Abstract/Notes/BibTeX tabs. */
+/** Draws the preview pane: the folder summary or the library overview, and the paper's Info/Abstract/Notes/BibTeX tabs. */
 import type { PaperData, PaperEntry } from "@labshelf/core";
 import { paperComparator, paperFiles } from "@labshelf/core";
 import * as path from "node:path";

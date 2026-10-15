@@ -1,4 +1,4 @@
-/** The terminal's view of a library on disk: the resolved root with its layout, collection folders and the
+/** Resolves a library on disk: the root with its layout, collection folders and the
  * filesystem checks that create or recognise a library. */
 import { promises as fs } from "node:fs";
 import * as path from "node:path";

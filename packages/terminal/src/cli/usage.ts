@@ -1,4 +1,4 @@
-// Shared CLI vocabulary: the `Output` port commands write through, the usage error they throw, and the --help text.
+// Declares the CLI's shared vocabulary: the `Output` port commands write through, the usage error they throw, and the --help text.
 export interface Output {
   out: (text: string) => void;
   err: (text: string) => void;

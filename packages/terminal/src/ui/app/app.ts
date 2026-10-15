@@ -159,7 +159,6 @@ export class App {
 
   /**
    * Handles one input event (keys, paste, mouse).
-   * @returns void
    */
   handle(event: InputEvent): void {
     try {

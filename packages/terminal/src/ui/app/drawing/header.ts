@@ -1,4 +1,4 @@
-/** The header: the brand mark, the breadcrumb of the hovered folder or the search query, and the library name. */
+/** Draws the header: the brand mark, the breadcrumb of the hovered folder or the search query, and the library name. */
 import * as path from "node:path";
 
 import type { Screen, Style } from "../../../tui/index.js";

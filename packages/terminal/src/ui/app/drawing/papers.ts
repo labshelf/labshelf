@@ -1,4 +1,4 @@
-/** The papers pane: the rows, the scroll window around the cursor, and the empty-list hints. */
+/** Draws the papers pane: the rows, the scroll window around the cursor, and the empty-list hints. */
 import type { Screen } from "../../../tui/index.js";
 import { drawLines, drawPaperRow, type Rect } from "../../render.js";
 import type { Line } from "../../preview.js";

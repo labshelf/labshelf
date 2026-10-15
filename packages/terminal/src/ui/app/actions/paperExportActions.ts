@@ -1,4 +1,4 @@
-/** Clipboard yanks, sort order and what B (export BibTeX) exports. */
+/** Handles clipboard yanks, sort order and what B (export BibTeX) exports. */
 import type { PaperRecord } from "@labshelf/core";
 import { formatAnnotationsMarkdown, paperComparator, paperFiles, paperLink, papersUnder } from "@labshelf/core";
 import * as path from "node:path";

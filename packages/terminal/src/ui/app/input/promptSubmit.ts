@@ -1,4 +1,4 @@
-/** What Enter does for each overlay prompt purpose: add, tags, tagsBatch, rename, export and command. */
+/** Submits each overlay prompt purpose on Enter: add, tags, tagsBatch, rename, export and command. */
 import { promises as fs } from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";

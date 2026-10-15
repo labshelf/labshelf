@@ -1,4 +1,4 @@
-/** New folder and add-a-paper prompts (a), renaming a folder (r), and the import of what gets added. */
+/** Handles the new-folder and add-a-paper prompts (a), renaming a folder (r), and the import of what gets added. */
 import type { ImportOutcome } from "@labshelf/core";
 import { summarizeImport } from "@labshelf/core";
 

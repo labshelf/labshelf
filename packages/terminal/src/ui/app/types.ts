@@ -1,5 +1,5 @@
 /**
- * Shared types of the App: what it needs from the real terminal, plus the small value types its state, input,
+ * Declares the App's shared types: what it needs from the real terminal, plus the small value types its state, input,
  * actions and drawing modules pass around.
  */
 import type { SortKey } from "../../app/index.js";

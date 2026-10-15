@@ -1,5 +1,5 @@
 /**
- * Drawing primitives of the main screen: the column layout, list rows for collections and papers, styled preview
+ * Draws the main screen's primitives: the column layout, list rows for collections and papers, styled preview
  * lines, the header breadcrumb and the status bar segments. Stateless; the App decides what to draw.
  */
 import type { PaperEntry } from "@labshelf/core";
@@ -65,7 +65,6 @@ export function computeLayout(width: number, height: number, focus: "folders" | 
 
 /**
  * Draws the vertical separators between columns.
- * @returns void
  */
 export function drawSeparators(screen: Screen, layout: Layout): void {
   for (const rect of [layout.papers, layout.preview]) {
@@ -100,7 +99,6 @@ export interface FolderRowData {
 
 /**
  * One row of the folders pane: indentation by depth, the folder name and its paper count.
- * @returns void
  */
 export function drawFolderRow(screen: Screen, x: number, y: number, width: number, row: FolderRowData, marks: RowMarks): void {
   if (width <= 3) { return; }
@@ -115,7 +113,6 @@ export function drawFolderRow(screen: Screen, x: number, y: number, width: numbe
 /**
  * One row of the papers pane: a mark cell (selected / cut), the status glyph, the title and the year. Papers without a
  * PDF on this device are drawn in italics.
- * @returns void
  */
 export function drawPaperRow(screen: Screen, x: number, y: number, width: number, paper: PaperEntry, marks: RowMarks, detail?: string): void {
   if (width <= 4) { return; }

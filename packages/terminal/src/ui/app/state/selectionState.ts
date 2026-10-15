@@ -1,4 +1,4 @@
-/** The selection set and the visual-mode range it grows or shrinks around an anchor. */
+/** Tracks the selection set and the visual-mode range it grows or shrinks around an anchor. */
 import type { App } from "../app.js";
 
 export class SelectionState {

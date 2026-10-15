@@ -1,4 +1,4 @@
-/** What is shown: the hovered folder or search, flattening, filtering and sorting, and the papers and folders it yields. */
+/** Computes what is shown: the hovered folder or search, flattening, filtering and sorting, and the papers and folders it yields. */
 import type { PaperEntry } from "@labshelf/core";
 
 import { ALL, parentFolder, type FolderRow, type PaperCursor } from "../types.js";

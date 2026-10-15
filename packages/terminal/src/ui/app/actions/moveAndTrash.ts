@@ -1,4 +1,4 @@
-/** Cut and paste (x, p), moving to a picked folder (M), and the trash confirmation (d). */
+/** Cuts and pastes papers (x, p), moves them to a picked folder (M), and the trash confirmation (d). */
 import { trashSupported } from "../../../platform/index.js";
 import { truncate } from "../../../tui/index.js";
 import { ALL, folderTitle, parentFolder } from "../types.js";

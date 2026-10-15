@@ -1,4 +1,4 @@
-/** Public API of the App's input handling: keys, the mouse, overlays, pickers, Tab completion and prompt submission. */
+/** Exports the App input handling's public API: keys, the mouse, overlays, pickers, Tab completion and prompt submission. */
 export { handleKey } from "./keyDispatch.js";
 export { handleInline } from "./liveQuery.js";
 export { handleMouse } from "./mouseInput.js";

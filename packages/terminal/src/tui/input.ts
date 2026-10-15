@@ -51,7 +51,7 @@ function withModifiers(name: string, param: string | undefined): string {
 
 function controlKey(code: number): KeyEvent {
   switch (code) {
-    // Raw mode delivers Enter as CR; LF is Ctrl-J, which pickers use to move down.
+    // PLATFORM: raw mode delivers Enter as CR; LF is Ctrl-J, which pickers use to move down.
     case 0x0d: return { type: "key", id: "enter" };
     case 0x09: return { type: "key", id: "tab" };
     case 0x7f: case 0x08: return { type: "key", id: "backspace" };

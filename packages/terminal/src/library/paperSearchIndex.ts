@@ -1,4 +1,4 @@
-/** Core's query language as a core PaperFilter: parses a query once and caches each paper's folded search text, annotation text included. */
+/** Applies core's query language as a core PaperFilter: parses a query once and caches each paper's folded search text, annotation text included. */
 import {
   isEmptyQuery, matchPaper, matchesTerms, parseQuery, searchDoc,
   type PaperEntry, type PaperFilter, type PaperRecord, type SearchDoc,

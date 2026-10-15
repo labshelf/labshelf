@@ -1,4 +1,4 @@
-/** Display helpers specific to the terminal: the collection breadcrumb. */
+/** Formats the collection breadcrumb for display in the terminal. */
 
 /**
  * Collection path for display: "papers › ML › Transformers".

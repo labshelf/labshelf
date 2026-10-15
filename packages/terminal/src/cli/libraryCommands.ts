@@ -1,4 +1,4 @@
-// Non-interactive library subcommands (ls, search, show, add, bib, open, status, tag, mv, copy): each
+// Runs the non-interactive library subcommands (ls, search, show, add, bib, open, status, tag, mv, copy): each
 // opens the library through the same composition root as the TUI and writes plain text or --json to stdout.
 import { promises as fs } from "node:fs";
 import * as path from "node:path";

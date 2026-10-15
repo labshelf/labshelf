@@ -34,7 +34,7 @@ export class Terminal {
   private inputListener: ((event: InputEvent) => void) | undefined;
   private resizeListener: ((size: TerminalSize) => void) | undefined;
   private readonly restoreOnExit = (): void => this.leave();
-  // Node's default SIGTERM/SIGHUP handling exits without "exit" listeners, which would leave the shell in the
+  // PLATFORM: Node's default SIGTERM/SIGHUP handling exits without "exit" listeners, which would leave the shell in the
   // alternate screen with mouse reporting on.
   private readonly onTerminate = (signal: NodeJS.Signals): void => {
     this.leave();
@@ -53,7 +53,6 @@ export class Terminal {
 
   /**
    * Starts listening for input and resizes.
-   * @returns void
    */
   listen(onInput: (event: InputEvent) => void, onResize: (size: TerminalSize) => void): void {
     this.inputListener = onInput;
@@ -62,7 +61,6 @@ export class Terminal {
 
   /**
    * Switches to the alternate screen in raw mode.
-   * @returns void
    */
   enter(): void {
     if (this.active) { return; }
@@ -82,7 +80,6 @@ export class Terminal {
 
   /**
    * Restores the terminal exactly as it was found.
-   * @returns void
    */
   leave(): void {
     if (!this.active) { return; }
@@ -116,7 +113,6 @@ export class Terminal {
 
   /**
    * Stops the process like a shell job (Ctrl-Z); SIGCONT brings the TUI back.
-   * @returns void
    */
   stopJob(): void {
     this.leave();
@@ -126,7 +122,6 @@ export class Terminal {
 
   /**
    * Writes one frame (only the cells that changed) plus any raw extra output such as image escapes.
-   * @returns void
    */
   draw(frame: Screen, extra = ""): void {
     if (!this.active) { return; }
@@ -139,7 +134,6 @@ export class Terminal {
 
   /**
    * Forgets the last frame so the next draw repaints every cell (after an image was removed, or an editor ran).
-   * @returns void
    */
   invalidate(): void {
     this.previous = undefined;
@@ -147,7 +141,6 @@ export class Terminal {
 
   /**
    * Writes raw bytes (image protocol escapes) outside of a frame.
-   * @returns void
    */
   writeRaw(data: string): void {
     if (this.active && data) { this.output.write(data); }

@@ -1,4 +1,4 @@
-/** Key routing while an overlay (prompt, picker, confirm or help) is open. */
+/** Routes keys while an overlay (prompt, picker, confirm or help) is open. */
 import { rankFuzzy } from "@labshelf/core";
 
 import type { InputEvent } from "../../../tui/index.js";

@@ -1,4 +1,4 @@
-/** Back/forward folder history, the search's origin folder, and the jumps that make an entry into it. */
+/** Tracks back/forward folder history, the search's origin folder, and the jumps that make an entry into it. */
 import type { Place } from "../types.js";
 import type { App } from "../app.js";
 

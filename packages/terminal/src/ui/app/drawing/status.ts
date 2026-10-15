@@ -1,4 +1,4 @@
-/** The status bar: mode, position, selection/cut counts, pending keys or the latest message, and the sync segment. */
+/** Draws the status bar: mode, position, selection/cut counts, pending keys or the latest message, and the sync segment. */
 import type { Screen, Style } from "../../../tui/index.js";
 import { stringWidth, truncate } from "../../../tui/index.js";
 import type { SyncStatus } from "@labshelf/core";

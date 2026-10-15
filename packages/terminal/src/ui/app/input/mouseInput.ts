@@ -1,4 +1,4 @@
-/** Mouse routing: clicking a row in a pane, and the wheel scrolling the pane under the pointer. */
+/** Routes mouse input: clicking a row in a pane, and the wheel scrolling the pane under the pointer. */
 import type { MouseEvent } from "../../../tui/index.js";
 import type { Rect } from "../../render.js";
 import type { App } from "../app.js";

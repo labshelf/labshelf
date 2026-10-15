@@ -1,4 +1,4 @@
-// `labshelf sync` and `labshelf auth`: drives one Drive sync and manages the Google sign-in used for it.
+// Runs `labshelf sync` and `labshelf auth`: one Drive sync and the management of the Google sign-in used for it.
 import { relativeTime } from "@labshelf/core";
 
 import type { AppContext } from "../app/index.js";

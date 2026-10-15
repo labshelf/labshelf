@@ -1,4 +1,4 @@
-/** The : command line: a small set of ex-style commands over the same actions the keys trigger. */
+/** Runs the : command line: a small set of ex-style commands over the same actions the keys trigger. */
 import { textInput } from "../../textInput.js";
 import { ALL, SORT_LABEL } from "../types.js";
 import type { App } from "../app.js";

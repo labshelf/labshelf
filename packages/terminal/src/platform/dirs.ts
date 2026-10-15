@@ -1,5 +1,5 @@
 /**
- * Per-user cache directory for the terminal app, following XDG on every Unix (as yazi, gh and most CLIs do):
+ * Resolves the per-user cache directory for the terminal app, following XDG on every Unix (as yazi, gh and most CLIs do):
  * $XDG_CACHE_HOME/labshelf (default ~/Library/Caches/labshelf on macOS, ~/.cache/labshelf elsewhere).
  */
 import * as os from "node:os";

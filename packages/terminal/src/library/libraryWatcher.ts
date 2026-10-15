@@ -22,7 +22,6 @@ export class LibraryWatcher {
 
   /**
    * Starts watching papers/ and the sidecar folder.
-   * @returns void
    */
   start(): void {
     for (const dir of [this.paths.layout.papersRoot(), this.paths.layout.paperDataRoot()]) {
@@ -55,9 +54,6 @@ export class LibraryWatcher {
     this.timer = setTimeout(() => this.onChange(), DEBOUNCE_MS);
   }
 
-  /**
-   * @returns void
-   */
   stop(): void {
     clearTimeout(this.timer);
     if (this.poll) { clearInterval(this.poll); }

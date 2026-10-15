@@ -1,4 +1,4 @@
-/** Background-task bookkeeping (the status bar's "…ing" labels) and the status-bar message queue. */
+/** Tracks background tasks (the status bar's "…ing" labels) and queues status-bar messages. */
 import type { Message } from "../types.js";
 import type { App } from "../app.js";
 

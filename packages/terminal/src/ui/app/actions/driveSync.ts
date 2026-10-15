@@ -1,4 +1,4 @@
-/** Manual sync (the sync key and :sync), the report it leaves in the status bar, and signing in to Google Drive. */
+/** Runs manual sync (the sync key and :sync), reports the result it leaves in the status bar, and signing in to Google Drive. */
 import type { SyncOutcome } from "@labshelf/core";
 
 import { copyToClipboard, openExternal } from "../../../platform/index.js";

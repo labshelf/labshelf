@@ -1,4 +1,4 @@
-// `labshelf doctor`: checks everything the terminal app depends on, without needing a working library.
+// Runs `labshelf doctor`, checking everything the terminal app depends on without needing a working library.
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 

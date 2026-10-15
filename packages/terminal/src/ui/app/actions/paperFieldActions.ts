@@ -1,4 +1,4 @@
-/** Per-paper field edits: opening the PDF, marking status, editing tags and editing the note in $EDITOR. */
+/** Edits per-paper fields: opening the PDF, marking status, editing tags and editing the note in $EDITOR. */
 import { promises as fs } from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";

@@ -11,7 +11,6 @@ export class DriveAccount {
 
   /**
    * Signs in through the browser.
-   * @returns void
    */
   async login(prompt: LoginPrompt): Promise<void> {
     await this.auth.login(prompt);
@@ -21,7 +20,6 @@ export class DriveAccount {
 
   /**
    * Signs out and forgets the tokens. The library and the manifest stay.
-   * @returns void
    */
   async logout(): Promise<void> {
     await this.auth.revoke();

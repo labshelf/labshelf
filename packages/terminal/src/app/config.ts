@@ -1,5 +1,5 @@
 /**
- * The terminal's view of the shared config file (see core's sharedConfig): its preferences and how it picks the library.
+ * Reads the shared config file (see core's sharedConfig) for the terminal's preferences and picks the library.
  * Resolution order for the library: --library flag, LABSHELF_LIBRARY, config.json, none (the TUI then offers setup).
  */
 import * as path from "node:path";

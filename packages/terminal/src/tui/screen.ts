@@ -135,7 +135,6 @@ export class Screen {
 
   /**
    * Fills a rectangle with one character and style.
-   * @returns void
    */
   fill(x: number, y: number, w: number, h: number, style?: Style, ch = " "): void {
     const id = styleId(style);
