@@ -1,7 +1,7 @@
 /** Drives the core sync coordinator from VS Code: Drive sign-in, library events, the interval setting and the status bar. */
 import * as vscode from "vscode";
 
-import { createGoogleDriveProvider, ReauthRequiredError, SyncCoordinator, syncRoots, type LibraryLayout } from "@labshelf/core";
+import { createGoogleDriveProvider, diskSyncTarget, driveStatusOf, ReauthRequiredError, SyncCoordinator, type LibraryLayout } from "@labshelf/core";
 import type { DriveStatus, IAuthProvider, ILogger, LocalFileSystem, LockStore, RemoteProvider, SyncOutcome, SyncResult, SyncTarget, SyncTimers } from "@labshelf/core";
 import { reportSyncOutcome } from "./syncReport.js";
 import type { EventBus } from "../../events/index.js";
@@ -147,13 +147,7 @@ export class SyncController implements vscode.Disposable {
 
   /** @returns what the settings page shows: the sign-in, a running sync, the last successful sync by any app and the last error */
   driveStatus(): DriveStatus {
-    const status = this.coordinator.status();
-    return {
-      connected: this.isConnected(),
-      syncing: this.isSyncing(),
-      lastSyncTime: status.lastRun?.finishedAt ?? null,
-      lastError: status.lastError ?? null,
-    };
+    return driveStatusOf(this.coordinator.status(), this.isConnected());
   }
 
   // Periodic syncs run only while signed in, at the interval the setting currently holds.
@@ -163,13 +157,7 @@ export class SyncController implements vscode.Disposable {
   }
 
   private target(): SyncTarget {
-    const roots = syncRoots(this.paths);
-    return {
-      files: this.localFs,
-      roots: { library: roots.library.fsPath, appdata: roots.appdata.fsPath },
-      state: { fs: this.localFs, manifestPath: this.paths.manifestPath().fsPath, lastRunPath: this.paths.lastRunPath().fsPath },
-      lock: { store: this.lock.store, path: this.paths.lockPath().fsPath, isProcessAlive: this.lock.isProcessAlive },
-    };
+    return diskSyncTarget({ files: this.localFs, layout: this.paths, toPath: (uri) => uri.fsPath, lock: this.lock });
   }
 
   private onOutcome(outcome: SyncOutcome, reason: string): void {

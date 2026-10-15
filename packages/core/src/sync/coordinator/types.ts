@@ -1,7 +1,10 @@
-/** Declares the sync coordinator's types: what an app injects into it and what it reports back. */
+/** Declares the sync coordinator's types — what an app injects into it and what it reports back — and why it skips a run. */
 import type { ILogger, LocalFileSystem, LockStore } from "../../ports/index.js";
 import type { RemoteProvider } from "../provider/index.js";
 import type { NamespaceRoots, SyncLockInfo, SyncResult, SyncRunRecord } from "../engine/index.js";
+
+export const SKIP_NO_OAUTH_CLIENT = "no Google OAuth client configured";
+export const SKIP_NOT_SIGNED_IN = "not signed in to Google Drive";
 
 export type SyncState = "unconfigured" | "disconnected" | "idle" | "syncing" | "waiting" | "error";
 

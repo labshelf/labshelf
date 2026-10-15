@@ -7,7 +7,7 @@ import { runSyncOnce } from "./syncRun.js";
 import { LOCAL_CHANGE_DEBOUNCE_MS, syncedRecently } from "./syncSchedule.js";
 import { SyncStatusCell, type SyncStatusListener } from "./syncStatus.js";
 import { SystemSyncTimers } from "./systemTimers.js";
-import type { SyncCoordinatorDeps, SyncOutcome, SyncState, SyncStatus, SyncTimerId, SyncTimers } from "./types.js";
+import { SKIP_NO_OAUTH_CLIENT, SKIP_NOT_SIGNED_IN, type SyncCoordinatorDeps, type SyncOutcome, type SyncState, type SyncStatus, type SyncTimerId, type SyncTimers } from "./types.js";
 
 export class SyncCoordinator {
   private readonly cell = new SyncStatusCell();
@@ -142,11 +142,11 @@ export class SyncCoordinator {
     const { auth } = this.deps;
     if (auth.isConfigured && !auth.isConfigured()) {
       this.cell.set({ state: "unconfigured" });
-      return { kind: "skipped", reason: "no Google OAuth client configured" };
+      return { kind: "skipped", reason: SKIP_NO_OAUTH_CLIENT };
     }
     if (!auth.isAuthenticated()) {
       this.cell.set({ state: "disconnected" });
-      return { kind: "skipped", reason: "not signed in to Google Drive" };
+      return { kind: "skipped", reason: SKIP_NOT_SIGNED_IN };
     }
     return undefined;
   }

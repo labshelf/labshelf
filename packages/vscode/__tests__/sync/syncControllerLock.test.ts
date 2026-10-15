@@ -118,7 +118,7 @@ describe('SyncController and the cross-app sync lock', () => {
     jest.spyOn(provider, 'resolveRoot').mockRejectedValueOnce(new Error('Drive is down'));
     await controller.sync();
     expect(logs).toContainEqual({ level: 'ERROR', message: 'Sync failed' });
-    expect(vscode.window.showErrorMessage).toHaveBeenCalledWith('LabShelf Sync: Drive is down');
+    expect(vscode.window.showErrorMessage).toHaveBeenCalledWith('LabShelf: Sync failed: Drive is down');
     controller.dispose();
   });
 
@@ -196,6 +196,12 @@ describe('SyncController and the cross-app sync lock', () => {
     reportSyncOutcome(statusBar, { kind: 'skipped', reason: 'not signed in to Google Drive' }, false);
     expect(vscode.window.setStatusBarMessage).not.toHaveBeenCalled();
     expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
+  });
+
+  it('tells a user who asked for the sync why nothing ran', () => {
+    const statusBar = { text: '' } as vscode.StatusBarItem;
+    reportSyncOutcome(statusBar, { kind: 'skipped', reason: 'not signed in to Google Drive' }, true);
+    expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(expect.stringContaining('Sync skipped: not signed in to Google Drive'));
   });
 
   it('re-reads the interval setting on connect and on a change, and stops periodic syncs on disconnect', async () => {

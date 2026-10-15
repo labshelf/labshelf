@@ -3,14 +3,13 @@ import * as os from "node:os";
 
 import {
   createGoogleDriveProvider,
+  diskSyncTarget,
   libraryChanged,
   ReauthRequiredError,
   SyncCoordinator,
-  syncRoots,
   type ILogger,
   type LibraryStore,
   type RemoteProvider,
-  type SyncTarget,
   type SyncTimers,
 } from "@labshelf/core";
 import { isProcessAlive, NodeLocalFileSystem, NodeLockStore, type PkceLoopbackAuth } from "@labshelf/core/node";
@@ -34,12 +33,7 @@ export interface TerminalSyncDeps {
 export function createTerminalSync(deps: TerminalSyncDeps): SyncCoordinator {
   const { paths, auth, logger } = deps;
   const localFs = new NodeLocalFileSystem(paths.layout.tmpDir());
-  const target: SyncTarget = {
-    files: localFs,
-    roots: syncRoots(paths.layout),
-    state: { fs: localFs, manifestPath: paths.layout.manifestPath(), lastRunPath: paths.layout.lastRunPath() },
-    lock: { store: new NodeLockStore(), path: paths.layout.lockPath(), isProcessAlive },
-  };
+  const target = diskSyncTarget({ files: localFs, layout: paths.layout, toPath: (p) => p, lock: { store: new NodeLockStore(), isProcessAlive } });
   return new SyncCoordinator({
     app: "terminal",
     host: deps.host ?? os.hostname(),
