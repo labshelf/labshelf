@@ -50,7 +50,7 @@ export async function buildServices(
   };
   const parse = (bytes: Uint8Array, stem: string) => pdfImportParser.parse(bytes, stem);
   const scan = () => scanLibrary(fileSystem, adapters.paths, paths.papersRoot().fsPath, logger);
-  const store = new LibraryStore({ root: paths.papersRoot().fsPath, scan, filterFor: () => undefined });
+  const store = new LibraryStore({ root: paths.papersRoot().fsPath, scan });
 
   // textLayers is assigned right below, once paperService exists; the first reindex run is the seed call further
   // down, after every const in this function is assigned, so the forward reference is safe.

@@ -19,7 +19,7 @@ const scanOf = (records: PaperRecord[]): (() => Promise<LibraryScan>) => async (
 // A store whose scan reads from a mutable array, so a test can change what the "next" reload finds.
 async function freshStore(seed: PaperRecord[] = []): Promise<{ store: LibraryStore; setNext: (records: PaperRecord[]) => void }> {
   let records = seed;
-  const store = new LibraryStore({ root: '/lib/papers', scan: () => scanOf(records)(), filterFor: () => undefined });
+  const store = new LibraryStore({ root: '/lib/papers', scan: () => scanOf(records)() });
   await store.reload();
   return { store, setNext: (next) => { records = next; } };
 }

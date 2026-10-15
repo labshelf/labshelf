@@ -1,7 +1,7 @@
 // Watches the library for changes made outside this window and re-indexes from disk when one is seen.
 import * as vscode from "vscode";
 
-import { libraryLayout } from "@labshelf/core";
+import { errorMessage, libraryLayout } from "@labshelf/core";
 import { ExternalChangeWatcher } from "../../storage/data/index.js";
 import type { ActiveServices } from "../../commands/index.js";
 
@@ -37,7 +37,7 @@ export class ExternalChangeHandling {
       await services.reindexLibrary();
     } catch (error) {
       await services.logger.log("WARN", "extension", `Re-index after ${trigger} failed`, {
-        message: error instanceof Error ? error.message : String(error),
+        message: errorMessage(error),
       });
       return;
     }

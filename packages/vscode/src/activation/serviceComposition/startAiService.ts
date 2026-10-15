@@ -1,6 +1,8 @@
 // Starts the AI subsystem for an already-built set of library services.
 import * as vscode from "vscode";
 
+import { errorMessage } from "@labshelf/core";
+
 import { createAiService, AiService } from "../../ai/service/index.js";
 import type { ActiveServices } from "../../commands/index.js";
 import type { LibraryEvents } from "../../events/index.js";
@@ -32,7 +34,7 @@ export async function startAiService(
     return result.service;
   } catch (error) {
     void services.logger.log("WARN", "extension", "AI service failed to start", {
-      message: error instanceof Error ? error.message : String(error),
+      message: errorMessage(error),
     });
     return null;
   }

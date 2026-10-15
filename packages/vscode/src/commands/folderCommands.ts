@@ -1,7 +1,7 @@
 /** Creates, renames, moves and trashes library folders through the core mutations, then brings the index and views along. */
 import * as vscode from "vscode";
 
-import { createFolder, moveFolder, renameFolder, trashFolder } from "@labshelf/core";
+import { createFolder, errorMessage, moveFolder, renameFolder, trashFolder } from "@labshelf/core";
 import { validateFolderNameInput, type LibraryNode } from "../ui/library/index.js";
 import type { ActiveServices, RequireServices } from "./registerCommands/index.js";
 
@@ -129,7 +129,7 @@ async function guarded(
   try {
     await action();
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
     await services.logger.log("WARN", LOG_MODULE, failure, { ...context, message });
     void vscode.window.showErrorMessage(`LabShelf: ${failure} — ${message}`);
   }

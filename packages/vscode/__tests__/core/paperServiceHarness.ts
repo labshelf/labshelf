@@ -48,7 +48,7 @@ export function makeGlue(): Glue {
   const parse = jest.fn(async () => ({ title: 'Test Paper', citeKey: 'testpaper2024', authors: ['Alice'], year: 2024 }));
 
   const scan = () => scanLibrary(fs, path, PAPERS_ROOT, logger);
-  const store = new LibraryStore({ root: PAPERS_ROOT, scan, filterFor: () => undefined });
+  const store = new LibraryStore({ root: PAPERS_ROOT, scan });
   let reindexCalls = 0;
   const reindex = (): Promise<ReindexSummary> => {
     reindexCalls += 1;
