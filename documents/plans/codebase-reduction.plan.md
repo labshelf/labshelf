@@ -1,6 +1,6 @@
 # Plan: Codebase reduction
 
-Status: in progress (session 5 of 6)
+Status: done
 Size: GG — about 2,300 lines across core and all three apps, two contract edits (cite-key scheme, VS Code AI store) and one user-data migration (library root); grows past 6 sessions if S24's adapter fold finds callers that rely on today's divergent semantics
 Pending decisions: 0
 
@@ -19,7 +19,7 @@ Remove the code the minimal-code ladder (AGENTS.md §3) says should not exist: d
 - [x] **D7** The no-author fallback stays `makeCiteKey`'s current form unless S9's measurement on a copy of the user's library shows more than 5 % `claimCiteKey` suffixes among no-author keys; then it uses two title words. This settles the council's open fallback clash with a number. **S9: 0 % (0 of 1 no-author keys collide, library of 3 papers) — the fallback stays.**
 - [x] **D8** `VscodeFileSystem` stays (F70 rejected): it goes through VS Code's FS layer (remote workspaces) and its rename refuses to overwrite.
 - [x] **D9** The library root lives only in the shared config file; a `migrations/` reader copies a globalState-only root once. Its header: delete when no supported VS Code build predates the shared config.
-- [x] **D10** The browser page probe (F27) is replaced by core `parseHtmlPage(document.documentElement.outerHTML)` only if the S25 check on a script-rendered publisher page finds the same PDF candidates; otherwise it stays and the finding closes as "keep".
+- [x] **D10** The browser page probe (F27) is replaced by core `parseHtmlPage(document.documentElement.outerHTML)` only if the S25 check on a script-rendered publisher page finds the same PDF candidates; otherwise it stays and the finding closes as "keep". **S25: keep** — same interpreted facts on 8 rendered publisher pages, but HTML cannot carry `document.contentType` (PDF tab) and core has no printable-link rule.
 - [x] **D11** VS Code code with no `vscode` import that another app could run (OCR, text layers, what remains of the AI indexer) moves to `core/…/node/` (AGENTS.md §1, question 1).
 - [x] **D12** Capture pipeline (F7): core `importLandingPage` splits into a resolve step and a write step; the browser keeps only its inspect/save split and the tab-borrowing fetch.
 
@@ -40,8 +40,8 @@ Remove the code the minimal-code ladder (AGENTS.md §3) says should not exist: d
 - [x] **A7** Batch and sync outcome notices read the same in all three apps, from one core module.
 - [x] **A8** VS Code shows the Settings view's welcome buttons; every action the webview offered is reachable by command; the webview code is gone.
 - [x] **A9** An install whose root exists only in globalState opens the same library after the upgrade (test), and the shared config then holds it.
-- [ ] **A10** `pnpm knip`, `pnpm lint:deps` and `pnpm jscpd` pass; the jscpd baseline drops below its current value; `packages/*/src` loses at least 1,500 net lines (measured with `git diff --shortstat` from the plan's first commit).
-- [ ] **A11** All packages typecheck and test; `verify` passes for the VS Code reader and library, the browser popup and library page, and the terminal frames.
+- [x] **A10** `pnpm knip`, `pnpm lint:deps` and `pnpm jscpd` pass; the jscpd baseline drops below its current value; `packages/*/src` loses at least 1,500 net lines (measured with `git diff --shortstat` from the plan's first commit).
+- [x] **A11** All packages typecheck and test; `verify` passes for the VS Code reader and library, the browser popup and library page, and the terminal frames.
 
 ## 5. Design
 
@@ -135,11 +135,11 @@ Every session starts from the previous one committed on a clean tree. Every sess
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S24 | Fold the three core Node file-system adapters (F34) | — | H · implementer (opus) | behaviour-pinning tests pass before and after | [ ] |
-| S25 | Page probe check, then replace or keep (F27, D10) | — | M · implementer (sonnet) + `verify` | D10 resolved | [ ] |
-| S26 | Move vscode-free code to core node folders (D11) | S24 | M · code-mapper → module-splitter (sonnet) | depcruise passes; no `vscode` import moved | [ ] |
-| S27 | Ratchet: knip, jscpd and depcruise baselines down; measure net lines | S24–S26 | L · `check` skill (haiku) | A10 | [ ] |
-| S28 | Finish and verify every app | S27 | `finish` + `verify` | A11 | [ ] |
+| S24 | Fold the three core Node file-system adapters (F34) | — | H · implementer (opus) | behaviour-pinning tests pass before and after | [x] |
+| S25 | Page probe check, then replace or keep (F27, D10) | — | M · implementer (sonnet) + `verify` | D10 resolved | [x] |
+| S26 | Move vscode-free code to core node folders (D11) | S24 | M · code-mapper → module-splitter (sonnet) | depcruise passes; no `vscode` import moved | [x] |
+| S27 | Ratchet: knip, jscpd and depcruise baselines down; measure net lines | S24–S26 | L · `check` skill (haiku) | A10 | [x] |
+| S28 | Finish and verify every app | S27 | `finish` + `verify` | A11 | [x] |
 
 ### Step blocks
 
@@ -228,6 +228,11 @@ Every session starts from the previous one committed on a clean tree. Every sess
 - 2026-10-15 15:31 session 5 · S21 (opus): core `resolvePagePaper` + `findPaperPdf` + exported `writeImportedPaper` on shared `writeNewPaper` (D12); browser capture keeps only draft cache, consent split and tab fetch; terminal `add` uses core `importPaths`/`importNetworkInput` (outcomes now grouped local → skipped → network, same set); search index built into `LibraryStore`; registry env wired on network import and capture. thumbnailWorker keeps an inline error line (TRAP: core import adds ~300 KB).
 - 2026-10-15 15:31 session 5 · S22 (sonnet ×2): parseArgs, fs.cp builds, badge paints on `onStatus` (orchestrator had the spinner kept, timer only while syncing), reader on ui/dom `el`/`$`, base64 nonce, preset/CSS dedup; F30 kept (orchestrator: app-themed menu would change the reader look).
 - 2026-10-15 15:31 session 5 · S23 finish + verify: gate PASS (core 1834, vscode 305, browser 124, terminal 862; knip, lint:deps, lint:dirs pass, jscpd 1 vs baseline 9). Verify on a library copy: browser inspect/save/no-PDF dialog/library page, terminal add (path, `~/`, arXiv, DOI), frames, both readers (pill, zoom menu, sidebar, find, theme, cheatsheet) pass; badge spinner not reachable (no Drive). Session net: src −92 (+1,039/−1,131), tests +400. Plan net so far: src −1,676.
+- 2026-10-15 session 6 · S24 (opus): one `NodeLibraryFileSystem(tmpDir?, moveToTrash?)` for IFileSystem, LocalFileSystem and LibraryFileSystem; trash rejects when none is injected; rename refuses an existing target (lstat pre-check, same inode allowed for case-only renames, TRAP on the race); no caller relied on overwrite. src −41.
+- 2026-10-15 session 6 · S25 (sonnet): D10 keep (8 rendered pages identical after `interpretPage`; 11 publishers blocked by bot walls); F77 found.
+- 2026-10-15 16:10 session 6 · S26 (sonnet: code-mapper, module-splitter, implementer): OCR → core `import/node/ocr/` (tesseract engine split in three), text-layer builder → `library/mutations/textLayer/`, AI storage/embedder/extractor/indexer/service → core `ai/**` (`node:sqlite` loaded lazily for terminal's Node floor); indexer takes injected `subscribe` and `resolvePdfPath`; vscode keeps `startAiService.ts` (setting check, emitters) and `hostPdfServices.ts`; vscode `ai/**` gone. pdf-lib and tesseract.js stay in vscode's manifest (host build externalizes its dependencies). Batch 3 (PaperTextLayers port) skipped: it imports a VS Code type. F76 added.
+- 2026-10-15 16:20 session 6 · S27 (main): knip 0, lint:deps 0, jscpd 1 → baseline 9 → 1. Plan net from 95fb94c: src −1,727 (+3,177/−4,904), tests +603.
+- 2026-10-15 16:38 session 6 · S28 finish + verify: gate PASS (core 1885, vscode 254, browser 124, terminal 862). Verify on library copies: VS Code folder rename onto an existing name refused, add, OCR (2 pages), AI index + similar papers (message level), move, status; browser popup and library page; terminal frames, add, trash, doctor, signed-out sync. Not reached: reader text search in a webview, real Drive sync. F78 (browser "Title" header clipped on an empty library) found. Open F73 (DOI), F75, F76, F77, F78 carried to `open-findings.plan.md`.
 
 ## 9. Findings
 
@@ -261,7 +266,7 @@ Ranked by lines saved × risk weight (low 3, med 2, high 1). Rung: 1 needs to ex
 | F24 | Library root stored twice (globalState + shared config) → shared config only, globalState read once in migrations/ | vscode storage/paths/libraryLocation.ts:16-58, hostAdapters.ts:28-29, libraryRootController.ts:79 | 1 | 25 | med | S16 |
 | F25 | Two lookup clients; registry one ignores injected fetch, hard-codes contact e-mail, swallows failures | core import/registries/http.ts vs pdfFinding/resolvers/timedFetch.ts | 2 | 25 | med | S20 |
 | F26 | Hand-rolled SHA-1, PDF read twice per index | vscode ai/pdf/contentHash.ts, aiIndexer.ts:70-74 | 2 | 15 | low | S6 |
-| F27 | DOM page probe ≈ core parseHtmlPage, drifted | browser capture/pageProbeContentScript.ts | 2 | 45 | high | S25 |
+| F27 | DOM page probe ≈ core parseHtmlPage, drifted — KEPT (S25, D10): live DOM gives the PDF-tab content type and printable links that HTML text cannot | browser capture/pageProbeContentScript.ts | 2 | 45 | high | S25 |
 | F28 | SyncStatusData ≡ DriveStatus, mapping in both apps → core driveStatusOf | browser sync/browserSync.ts:47-55, runtimeMessages.ts:41-46; vscode syncController.ts:149-157 | 2 | 14 | low | S12 |
 | F29 | Folder label written 3×; browser "Library" vs core ROOT_LABEL "All Papers"; FolderOption.label read only for root | browser popup/format.ts:19-29, content/scholar.ts:125-129, handlers/library.ts:62-68 | 2 | 14 | low | S11 |
 | F30 | Zoom menu re-implements showMenu — KEPT (S22): showMenu is app-themed and its CSS lives in base.css, which reader pages cannot load | core reader/dom/elements/popover.ts:56-81, reader.css:169-179 | 2 | 20 | med | S22 |
@@ -310,3 +315,5 @@ Ranked by lines saved × risk weight (low 3, med 2, high 1). Rung: 1 needs to ex
 | F73 | SIAM 1986 PDF: download stamp "Downloaded 12/25/12 to …" wins the title and the printed DOI is not confirmed; the library holds it under its DOI key, so an earlier run did confirm it | core import/pdf/frontPageLayout.ts, parser/PdfImportParser.ts identify | — | — | med | S20 (title); DOI half open — needs the real PDF and network |
 | F74 | Inline `instanceof Error ? error.message : String(error)` left outside core import/**: sync coordinator/syncRun/treeScan, textLayerVerdict, reader host and pdfLoader → core `errorMessage` (`describeError` where the stack is wanted) | core sync/**, library/mutations/textLayer, reader/** | 2 | 8 | low | S20 |
 | F75 | An all-caps byline ("HIROSHI IMAI AND TAKAO ASANO") yields no authors: `looksLikeAuthorLine` needs a mixed-case word (found by S20) | core import/pdf/frontPageLayout.ts | — | — | low | open |
+| F76 | OCR skip reasons name VS Code settings ("(labshelf.ocr.enabled)", "(labshelf.ocr.maxPages)") in core text once OCR lives in core (S26) | core import/node/ocr/searchablePdfBuilder.ts | — | — | low | open |
+| F77 | `parseHtmlPage` takes the first `<title>`: on IEEE Xplore that is an Angular placeholder (`<!----><!---->`), used as title fallback when a page has no citation tags (S25) | core import/landing parseHtmlPage, pageFacts.ts:44 | — | — | med | open |
