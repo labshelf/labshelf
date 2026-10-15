@@ -1,6 +1,6 @@
 # Plan: Codebase reduction
 
-Status: draft
+Status: in progress (session 1 of 6)
 Size: GG — about 2,300 lines across core and all three apps, two contract edits (cite-key scheme, VS Code AI store) and one user-data migration (library root); grows past 6 sessions if S24's adapter fold finds callers that rely on today's divergent semantics
 Pending decisions: 0
 
@@ -31,9 +31,9 @@ Remove the code the minimal-code ladder (AGENTS.md §3) says should not exist: d
 
 ## 4. Acceptance criteria
 
-- [ ] **A1** A terminal sync whose local `listDir` fails with EACCES logs the error and deletes nothing remote; a test proves it and fails without the fix.
-- [ ] **A2** None of the silent catches listed in S2 remains; each failure is logged through `ILogger` with context.
-- [ ] **A3** One `isPdfBytes` and one `isLibraryPath` guard every listed trust boundary; tests cover a rejected input at each.
+- [x] **A1** A terminal sync whose local `listDir` fails with EACCES logs the error and deletes nothing remote; a test proves it and fails without the fix.
+- [x] **A2** None of the silent catches listed in S2 remains; each failure is logged through `ILogger` with context.
+- [x] **A3** One `isPdfBytes` and one `isLibraryPath` guard every listed trust boundary; tests cover a rejected input at each.
 - [ ] **A4** The AI pieces in D2 are gone from code, `package.json` contributions and docs; the reader still opens, searches text and OCRs a scanned PDF.
 - [ ] **A5** One cite-key builder exists. A local import whose authors come only from layout heuristics gets a surname-free key; one with XMP or lookup authors gets `authorYearWord`.
 - [ ] **A6** `resolvePaperRefs` lives in core and is used by vscode and terminal; jscpd finds no copy of the id-to-ref loop.
@@ -67,10 +67,10 @@ Every session starts from the previous one committed on a clean tree. Every sess
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S1 | Terminal sync `listDir` swallows every error | — | H · implementer (opus) | A1 | [ ] |
-| S2 | Silent catches → `ILogger` | — | M · implementer (sonnet) | A2 | [ ] |
-| S3 | Trust-boundary checks unified; small bugs | — | M · implementer (sonnet) | A3 | [ ] |
-| S4 | Finish | S1–S3 | `finish` skill | gate passes | [ ] |
+| S1 | Terminal sync `listDir` swallows every error | — | H · implementer (opus) | A1 | [x] |
+| S2 | Silent catches → `ILogger` | — | M · implementer (sonnet) | A2 | [x] |
+| S3 | Trust-boundary checks unified; small bugs | — | M · implementer (sonnet) | A3 | [x] |
+| S4 | Finish | S1–S3 | `finish` skill | gate passes | [x] |
 
 ### Session 2 — Delete what nothing reaches
 
@@ -122,7 +122,7 @@ Every session starts from the previous one committed on a clean tree. Every sess
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S20 | Core-domain reductions (F6, F11, F12, F25, F42, F51, F52, F53) | — | M · implementer (sonnet) | gate passes | [ ] |
+| S20 | Core-domain reductions (F6, F11, F12, F25 incl. logging `http.ts` failures, F42, F51, F52, F53) | — | M · implementer (sonnet) | gate passes | [ ] |
 | S21 | Import paths (F7, F22, F35, F49, F59, F61) | S20 | H · implementer (opus) | browser capture and terminal import unchanged in verify | [ ] |
 | S22 | Platform / stdlib / one-line rungs (F5, F10, F19, F21, F30, F43, F44, F47, F50, F54, F55, F56, F58, F60, F65) | — | M · implementer (sonnet) ×2 | gate passes | [ ] |
 | S23 | Finish | S20–S22 | `finish` skill | gate passes | [ ] |
@@ -146,11 +146,11 @@ Every session starts from the previous one committed on a clean tree. Every sess
 #### S1 — Terminal sync `listDir`
 - **Do:** write a failing test first: a local `LocalFileSystem` whose `listDir` throws EACCES for one folder, with that folder in the base manifest and unchanged on the remote, must produce no `remove`. Then make `NodeLocalFileSystem.listDir` return `[]` only on ENOENT and throw otherwise, as `NodeLibraryFileSystem.listDir` does; `scanLocalTree` already skips a throwing folder with a WARN.
 - **Touch:** `packages/core/src/library/node/nodeLocalFileSystem.ts`, its test. **Do not touch:** `syncDiff.ts`, `syncApply.ts` (door: sync — the fix is in the adapter).
-- **Context:** `nodeLocalFileSystem.ts:12-18` (bare catch) → `treeScan.ts:26-32` → `syncDiff.ts:43-44` (`local-deleted`) → `syncApply.ts:120-125` (`provider.remove`). Only the terminal uses this adapter (`terminalSync.ts:36`). Also log the error with the folder path.
+- **Context:** `nodeLocalFileSystem.ts:12-18` (bare catch) → `treeScan.ts:26-32` → `syncDiff.ts:43-44` (`local-deleted`) → `syncApply.ts:120-125` (`provider.remove`). The adapter fix alone does not close A1, because a skipped folder still diffs as `local-deleted`; `syncEngine` also holds back every op under a folder the scan could not read (contract: `sync.md#three-way-diff`). Only the terminal uses this adapter (`terminalSync.ts:36`). Also log the error with the folder path.
 - **Done when:** A1.
 
 #### S2 — Silent catches
-- **Do:** log with context through the injected `ILogger` at: core `import/registries/http.ts`, `fetchLandingPage`, `resolveFirstIdentifier(...).catch(() => undefined)` in `PdfImportParser`; browser `platform/logger.ts` `persist`/`hydrate` (console only — it is the logger), `BrowserDriveAuth.revoke`/`refreshSilently`, `scheduleSyncSoon(...).catch`, helperTab `tabs.remove`. Keep the fallback behaviour; add the log line.
+- **Do:** log with context through the injected `ILogger` at: core `fetchLandingPage`, `resolveFirstIdentifier(...).catch(() => undefined)` in `PdfImportParser`; browser `platform/logger.ts` `persist`/`hydrate` (console only — it is the logger), `BrowserDriveAuth.revoke`/`refreshSilently`, `scheduleSyncSoon(...).catch`, helperTab `tabs.remove`. Keep the fallback behaviour; add the log line. `import/registries/http.ts` moves to S20: its callers have no logger, and F25 rebuilds that client on the injected one.
 - **Done when:** A2; `rg 'catch \(\(\) => undefined\)|catch \{\s*\}'` over those files returns nothing.
 
 #### S3 — Trust boundaries and small bugs
@@ -204,6 +204,10 @@ Every session starts from the previous one committed on a clean tree. Every sess
 ## 8. Log
 
 - 2026-10-15 (agent-tooling session 8): plan written from the ladder audit (five Opus reviewers, two Explore fact checks, two councils). Raw counts: knip 0, depcruise 0, jscpd 30 clones at minTokens 40.
+- 2026-10-15 session 1 · S1 (opus): adapter fix alone left A1 failing; engine holds back ops under unreadable folders (orchestrator chose this over failing the whole sync), sync.md updated.
+- 2026-10-15 session 1 · S2 (sonnet): five sites log; `registries/http.ts` deferred to S20 (F25 rebuilds that client with an injected logger).
+- 2026-10-15 session 1 · S3 (sonnet): one strict `isPdfBytes` (header at byte 0) in library/mutations/import; downloads with junk before the header now fail at download, not at import. Browser read-back of such a hand-copied PDF reports it missing.
+- 2026-10-15 session 1 · S4 finish: gate PASS (core 1795, browser 112, terminal 861, vscode 352 tests); F71 added, F42 widened.
 
 ## 9. Findings
 
@@ -252,7 +256,7 @@ Ranked by lines saved × risk weight (low 3, med 2, high 1). Rung: 1 needs to ex
 | F39 | "No PDF found" dialog built 3× | browser popup/saveFlow.ts:68-80, content/scholar.ts:89-94; core flows/addPaper.ts:22-26 | 2 | 10 | low | S11 |
 | F40 | textLayerLabel duplicates core textLayerSummary | terminal ui/preview.ts:56-65 | 2 | 10 | low | S11 |
 | F41 | Webview VsCodeApi + listener redeclared per entry | vscode libraryWebview/webviewChannel.ts, reader/vsCodeTransport.ts | 2 | 8 | low | S17 |
-| F42 | describeError pattern: 2 helpers + ~10 inline copies | core library/mutations/context.ts:43-45, scan/scanEnv.ts:28-30 | 2 | 8 | low | S20 |
+| F42 | describeError pattern: 2 helpers + ~10 inline copies (5 more from session 1: browser logger.ts, browserDriveAuth.ts, helperTab.ts, runtimeRequests.ts; core landingPage.ts) | core library/mutations/context.ts:43-45, scan/scanEnv.ts:28-30 | 2 | 8 | low | S20 |
 | F43 | THEME_PRESETS re-tabulates READER_THEMES | core reader/themePresets.ts | 5 | 8 | low | S22 |
 | F44 | DriveAccount wraps login/logout only | terminal sync/driveAccount.ts | 5 | 8 | low | S22 |
 | F45 | Folder tree key range inline; pdfDirs ≈ scanLibrary | browser storage/folderTreeStore.ts, paperRecordStore.ts:44 | 6 | 8 | low | S15 |
@@ -281,3 +285,4 @@ Ranked by lines saved × risk weight (low 3, med 2, high 1). Rung: 1 needs to ex
 | F68 | Config file read twice | terminal main.ts:152 | 1 | 1 | low | S7 |
 | F69 | Stale comment in escapeHtml | core ui/escapeHtml.ts:4 | 1 | 1 | low | S7 |
 | F70 | VscodeFileSystem duplicates core NodeLibraryFileSystem — REJECTED: VS Code FS layer serves remote workspaces and rename uses overwrite:false | vscode storage/vscodeFileSystem.ts | 2 | 0 | high | — |
+| F71 | Silent catches outside S2's list (found by session 1's finish pass): `run.catch(() => undefined)`, broadcast and draftCache catches | browser background/handlers/library.ts:41, broadcast.ts, draftCache.ts | 2 | 0 | low | S12 |
