@@ -41,7 +41,7 @@ export const READER_THEMES: Record<ReaderThemeName, ReaderTheme> = {
   },
   sepia: {
     page: "#faf6ee", ink: "#3a2a1a", bg: "#e8dfc8",
-    surface: "#ede6d3", border: "#c8b89a", fg: "#4a3728", desc: "#7d6a58",
+    surface: "#ede6d3", border: "#c8b89a", fg: "#4a3728", desc: "#72604e",
     hover: "rgba(74, 55, 40, .1)", active: "rgba(74, 55, 40, .17)",
     shadow: "0 4px 18px rgba(74, 55, 40, .25)", ...DARK_FIND,
   },
