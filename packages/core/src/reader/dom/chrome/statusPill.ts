@@ -2,7 +2,7 @@
  * Shows the floating page/zoom pill at the bottom-right: the only always-visible chrome. The page number is an editable go-to-page field; the zoom label opens the fit menu.
  */
 import { formatZoomLabel } from "../../logic/index.js";
-import type { ReaderContext } from "../session/index.js";
+import { DOCUMENT_REPLACED, type ReaderContext } from "../session/index.js";
 import { iconButton } from "../elements/index.js";
 import { icon } from "../../../ui/index.js";
 import { buildMenu, togglePopover, type MenuItem } from "../elements/index.js";
@@ -14,21 +14,21 @@ const PERCENT_CHOICES = [50, 75, 100, 125, 150, 200, 300, 400];
 export class StatusPill {
   private readonly pageInput: HTMLInputElement;
   private readonly zoomBtn: HTMLButtonElement;
+  private readonly totalLabel: HTMLElement;
 
   constructor(
     private readonly ctx: ReaderContext,
     private readonly zoom: ZoomController,
     private readonly goToPage: (page: number) => void,
   ) {
-    const total = ctx.pdfDocument.numPages;
     this.pageInput = el("input", {
       class: "rd-page-input",
       type: "text",
       inputmode: "numeric",
       "aria-label": "Go to page",
       title: "Go to page",
-      size: String(total).length,
     });
+    this.totalLabel = el("span", { class: "rd-page-total" });
     this.zoomBtn = el("button", { class: "rd-zoom-label", type: "button", title: "Zoom options", "aria-haspopup": "menu" });
     const out = iconButton(icon("minus"), "Zoom out", "rd-btn-sm");
     const inn = iconButton(icon("plus"), "Zoom in", "rd-btn-sm");
@@ -44,14 +44,15 @@ export class StatusPill {
     this.pageInput.addEventListener("blur", () => this.sync());
 
     $("status-pill").append(
-      el("div", { class: "rd-pill-group" }, this.pageInput, el("span", { class: "rd-page-total" }, `/ ${total}`)),
+      el("div", { class: "rd-pill-group" }, this.pageInput, this.totalLabel),
       el("div", { class: "rd-pill-sep" }),
       el("div", { class: "rd-pill-group" }, out, this.zoomBtn, inn),
     );
 
     ctx.eventBus.on("pagechanging", () => this.sync());
     ctx.eventBus.on("scalechanging", () => this.sync());
-    this.sync();
+    ctx.eventBus.on(DOCUMENT_REPLACED, () => this.showTotal());
+    this.showTotal();
   }
 
   /**
@@ -59,6 +60,13 @@ export class StatusPill {
    */
   focusPageInput(): void {
     this.pageInput.focus();
+  }
+
+  private showTotal(): void {
+    const total = String(this.ctx.pdfDocument.numPages);
+    this.pageInput.size = total.length;
+    this.totalLabel.textContent = `/ ${total}`;
+    this.sync();
   }
 
   private sync(): void {

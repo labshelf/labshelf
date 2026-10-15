@@ -2,7 +2,7 @@
  * Builds the reader's chrome, sidebar and navigation around an open document and keeps the toolbar in step with them.
  */
 import { clampPage } from "../../index.js";
-import { Cheatsheet, SelectionBubble, StatusPill, type ThemeController, openThemePopover, Toolbar } from "../chrome/index.js";
+import { BuildBanner, Cheatsheet, SelectionBubble, StatusPill, type ThemeController, openThemePopover, Toolbar } from "../chrome/index.js";
 import { FindBar, NavHistory, ZoomController } from "../navigation/index.js";
 import type { ReaderContext } from "../session/index.js";
 import { AnnotationsTab, OutlineTab, Sidebar, ThumbnailsTab } from "../sidebar/index.js";
@@ -20,6 +20,7 @@ export interface ReaderUi {
   bubble: SelectionBubble;
   reporter: ReadingStateReporter;
   toolbar: Toolbar;
+  buildBanner: BuildBanner;
 }
 
 /**
@@ -51,7 +52,8 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
   history.onChange(() => toolbar.setHistoryState(history.canGoBack, history.canGoForward));
   sidebar.onChange((s) => toolbar.setSidebarOpen(s.open));
   findBar.onToggle((open) => toolbar.setFindOpen(open));
-  return { history, zoom, goToPage, annotationsTab, sidebar, findBar, cheatsheet, pill, bubble, reporter, toolbar };
+  const buildBanner = new BuildBanner(ctx.host);
+  return { history, zoom, goToPage, annotationsTab, sidebar, findBar, cheatsheet, pill, bubble, reporter, toolbar, buildBanner };
 }
 
 /** A jump records the departure first, so Back returns to where the reader was. */

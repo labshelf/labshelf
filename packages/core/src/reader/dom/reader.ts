@@ -11,12 +11,13 @@ import {
   HostBridge,
   type ReaderTransport,
   describeLoadError,
+  DocumentReloader,
   loadPdf,
   type PdfSourceHooks,
   type PerfMarks,
   createViewer,
 } from "./session/index.js";
-import { Keyboard } from "./navigation/index.js";
+import { Keyboard, SourceSync } from "./navigation/index.js";
 import {
   DeferredHover,
   PositionRestore,
@@ -58,7 +59,7 @@ export function startReader({ boot, transport, perf, pdf }: ReaderStartOptions):
     const parts = createViewer(loaded.viewerLib, loaded.pdfDocument, container, $<HTMLDivElement>("viewer"), theme.effective);
     const ctx: ReaderContext = { boot, host, container, prefs: boot.prefs, ...loaded, ...parts };
     theme.attach(ctx.pdfViewer);
-    wireReader(ctx, theme, perf, restore, loadingMsg);
+    wireReader(ctx, theme, perf, restore, loadingMsg, new DocumentReloader(ctx, pdf ?? {}));
   }
 
   return start().catch((err: unknown) => {
@@ -70,11 +71,18 @@ export function startReader({ boot, transport, perf, pdf }: ReaderStartOptions):
 }
 
 /** Connects the open document to its UI, keyboard and host traffic. */
-function wireReader(ctx: ReaderContext, theme: ThemeController, perf: PerfMarks, restore: PositionRestore, loadingMsg: HTMLElement): void {
+function wireReader(
+  ctx: ReaderContext,
+  theme: ThemeController,
+  perf: PerfMarks,
+  restore: PositionRestore,
+  loadingMsg: HTMLElement,
+  reloader: DocumentReloader,
+): void {
   const ui = buildReaderUi(ctx, theme);
   const hover = new DeferredHover(ctx, theme);
   const keyboard = new Keyboard(ctx, createActionRunner({ ctx, ui, hover }));
-  bindHostMessages(ctx, ui, keyboard, hover);
+  bindHostMessages({ ctx, ui, keyboard, hover, reloader, sourceSync: new SourceSync(ctx) });
   interceptExternalLinks($("viewer"), ctx.host);
   restore.attach({ ctx, ui, theme, perf, loadingMsg });
   reportFirstRender(ctx, theme, perf, hover);
