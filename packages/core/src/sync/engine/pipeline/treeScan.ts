@@ -1,5 +1,6 @@
 // Enumerates the local and remote file trees of a namespace into path-keyed maps consumed by the diff.
 import type { ILogger, LocalFileSystem } from "../../../ports/index.js";
+import { errorMessage } from "../../../logging/index.js";
 import type { TreeNode } from "../syncTypes.js";
 import type { RemoteFile, RemoteProvider } from "../../provider/index.js";
 import type { RemotePathResolver } from "../../provider/index.js";
@@ -33,7 +34,7 @@ export async function scanLocalTree(
       names = await fs.listDir(absDir);
     } catch (error) {
       await logger?.log("WARN", "sync/treeScan", "Sync skipped a folder it could not read", {
-        dir: absDir, message: error instanceof Error ? error.message : String(error),
+        dir: absDir, message: errorMessage(error),
       });
       unreadable.push(relDir);
       return;

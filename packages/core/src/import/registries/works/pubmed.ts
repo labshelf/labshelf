@@ -1,7 +1,7 @@
 /** Looks up PubMed records by PMID and converts PMC ids to PMIDs. */
 import { extractYear } from "../../metadata/index.js";
-import { fetchJson } from "../http.js";
-import { stripHtml } from "../text.js";
+import { fetchJson, type RegistryEnv } from "../http.js";
+import { xmlText } from "../text.js";
 import type { RegistryRecord } from "../types.js";
 
 interface PubMedSummary {
@@ -21,8 +21,9 @@ interface PubMedSummary {
  * Looks up a PubMed record by PMID via the E-utilities summary endpoint.
  * @returns Article metadata, or undefined when the PMID is unknown.
  */
-export async function pubMedByPmid(pmid: string): Promise<RegistryRecord | undefined> {
+export async function pubMedByPmid(env: RegistryEnv, pmid: string): Promise<RegistryRecord | undefined> {
   const payload = await fetchJson<{ result?: Record<string, PubMedSummary> }>(
+    env,
     `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&id=${encodeURIComponent(pmid)}`,
   );
   const record = payload?.result?.[pmid];
@@ -32,7 +33,7 @@ export async function pubMedByPmid(pmid: string): Promise<RegistryRecord | undef
 
   const doi = record.articleids?.find((id) => id.idtype === "doi")?.value;
   return {
-    title: stripHtml(record.title),
+    title: xmlText(record.title),
     authors: (record.authors ?? []).map((author) => author.name).filter(Boolean),
     year: extractYear(record.pubdate),
     journal: record.fulljournalname ?? record.source,
@@ -49,8 +50,9 @@ export async function pubMedByPmid(pmid: string): Promise<RegistryRecord | undef
  * Resolves a PMC identifier to its PMID so the PubMed record can be fetched.
  * @returns The matching PMID, or undefined.
  */
-export async function pmidFromPmcid(pmcid: string): Promise<string | undefined> {
+export async function pmidFromPmcid(env: RegistryEnv, pmcid: string): Promise<string | undefined> {
   const payload = await fetchJson<{ records?: Array<{ pmid?: string }> }>(
+    env,
     `https://www.ncbi.nlm.nih.gov/pmc/utils/idconv/v1.0/?format=json&ids=${encodeURIComponent(pmcid)}`,
   );
   return payload?.records?.[0]?.pmid;

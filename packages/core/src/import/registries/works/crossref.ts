@@ -1,6 +1,7 @@
 /** Looks up CrossRef records by DOI and by fuzzy bibliographic search. */
-import { fetchJson } from "../http.js";
-import { firstNonEmpty, stripHtml, trimmed } from "../text.js";
+import { fetchJson, type RegistryEnv } from "../http.js";
+import { firstNonEmpty, xmlText } from "../text.js";
+import { asString } from "../../metadata/index.js";
 import type { RegistryRecord } from "../types.js";
 
 interface CrossRefWork {
@@ -25,8 +26,9 @@ interface CrossRefWork {
  * Looks up a DOI in CrossRef.
  * @returns The work's metadata, or undefined when the DOI is unknown.
  */
-export async function crossRefByDoi(doi: string): Promise<RegistryRecord | undefined> {
+export async function crossRefByDoi(env: RegistryEnv, doi: string): Promise<RegistryRecord | undefined> {
   const payload = await fetchJson<{ message?: CrossRefWork }>(
+    env,
     `https://api.crossref.org/works/${encodeURIComponent(doi)}`,
   );
   return payload?.message ? mapCrossRefWork(payload.message) : undefined;
@@ -37,8 +39,9 @@ export async function crossRefByDoi(doi: string): Promise<RegistryRecord | undef
  * This is the workhorse for PDFs that state no identifier at all.
  * @returns Up to `rows` candidate works, best match first.
  */
-export async function crossRefSearch(query: string, rows = 3): Promise<RegistryRecord[]> {
+export async function crossRefSearch(env: RegistryEnv, query: string, rows = 3): Promise<RegistryRecord[]> {
   const payload = await fetchJson<{ message?: { items?: CrossRefWork[] } }>(
+    env,
     `https://api.crossref.org/works?rows=${rows}&query.bibliographic=${encodeURIComponent(query)}`,
   );
   return (payload?.message?.items ?? []).map(mapCrossRefWork);
@@ -52,16 +55,16 @@ function mapCrossRefWork(work: CrossRefWork): RegistryRecord {
       .filter((name): name is string => Boolean(name)),
     year: work.issued?.["date-parts"]?.[0]?.[0],
     journal: firstNonEmpty(work["container-title"]) ?? firstNonEmpty(work["short-container-title"]),
-    publisher: trimmed(work.publisher),
-    volume: trimmed(work.volume),
-    issue: trimmed(work.issue),
-    pages: trimmed(work.page),
-    doi: trimmed(work.DOI),
-    url: trimmed(work.URL),
-    issn: trimmed(work.ISSN?.[0]),
-    language: trimmed(work.language),
+    publisher: asString(work.publisher),
+    volume: asString(work.volume),
+    issue: asString(work.issue),
+    pages: asString(work.page),
+    doi: asString(work.DOI),
+    url: asString(work.URL),
+    issn: asString(work.ISSN?.[0]),
+    language: asString(work.language),
     // CrossRef abstracts carry JATS XML markup.
-    summary: work.abstract ? stripHtml(work.abstract) : undefined,
+    summary: work.abstract ? xmlText(work.abstract) : undefined,
     isComponent: work.type === "component",
   };
 }

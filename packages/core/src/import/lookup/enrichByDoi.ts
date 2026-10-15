@@ -1,6 +1,6 @@
 /** Fills fields the confirming registry left blank by asking the registries not yet used. */
 import { SOURCE_TRUST, type MetadataSource } from "../metadata/index.js";
-import { europePmcSearch, plainRecord, semanticScholarByDoi, type RegistryRecord } from "../registries/index.js";
+import { europePmcSearch, plainRecord, semanticScholarByDoi, type RegistryEnv, type RegistryRecord } from "../registries/index.js";
 
 /**
  * Queries the registries that were not used to confirm the identifier, to fill
@@ -8,10 +8,10 @@ import { europePmcSearch, plainRecord, semanticScholarByDoi, type RegistryRecord
  * omits for a large share of its records.
  * @returns One source entry per registry that answered.
  */
-export async function enrichByDoi(doi: string): Promise<MetadataSource[]> {
+export async function enrichByDoi(doi: string, env: RegistryEnv = {}): Promise<MetadataSource[]> {
   const [semanticScholar, europePmc] = await Promise.all([
-    semanticScholarByDoi(doi).catch(() => undefined),
-    europePmcSearch(`DOI:"${doi}"`, 1).catch((): RegistryRecord[] => []),
+    semanticScholarByDoi(env, doi).catch(() => undefined),
+    europePmcSearch(env, `DOI:"${doi}"`, 1).catch((): RegistryRecord[] => []),
   ]);
 
   const sources: MetadataSource[] = [];

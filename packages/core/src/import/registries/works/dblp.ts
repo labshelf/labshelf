@@ -1,7 +1,7 @@
 /** Searches DBLP for computer-science publications. */
-import { extractYear } from "../../metadata/index.js";
-import { fetchJson } from "../http.js";
-import { asArray, firstNonEmpty, trimmed } from "../text.js";
+import { asString, extractYear } from "../../metadata/index.js";
+import { fetchJson, type RegistryEnv } from "../http.js";
+import { asArray, firstNonEmpty } from "../text.js";
 import type { RegistryRecord } from "../types.js";
 
 interface DblpAuthor {
@@ -32,8 +32,9 @@ interface DblpHit {
  * source for a large part of the field.
  * @returns Up to `rows` candidate publications, best match first.
  */
-export async function dblpSearch(query: string, rows = 3): Promise<RegistryRecord[]> {
+export async function dblpSearch(env: RegistryEnv, query: string, rows = 3): Promise<RegistryRecord[]> {
   const payload = await fetchJson<{ result?: { hits?: { hit?: DblpHit[] } } }>(
+    env,
     `https://dblp.org/search/publ/api?format=json&h=${rows}&q=${encodeURIComponent(query)}`,
   );
   // DBLP drops `hit` entirely when the query matches nothing.
@@ -45,15 +46,15 @@ export async function dblpSearch(query: string, rows = 3): Promise<RegistryRecor
 
 function mapDblpInfo(info: DblpInfo): RegistryRecord {
   return {
-    title: trimmed(info.title),
+    title: asString(info.title),
     authors: asArray(info.authors?.author)
-      .map((author) => trimmed(author.text))
+      .map((author) => asString(author.text))
       .filter((name): name is string => Boolean(name)),
     year: extractYear(info.year),
     journal: firstNonEmpty(asArray(info.venue)),
-    volume: trimmed(info.volume),
-    pages: trimmed(info.pages),
-    doi: trimmed(info.doi),
-    url: firstNonEmpty(asArray(info.ee)) ?? trimmed(info.url),
+    volume: asString(info.volume),
+    pages: asString(info.pages),
+    doi: asString(info.doi),
+    url: firstNonEmpty(asArray(info.ee)) ?? asString(info.url),
   };
 }

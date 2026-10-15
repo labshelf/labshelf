@@ -1,7 +1,8 @@
 /** Looks up Semantic Scholar records by title match or DOI. */
 import { encodeDoiPathSegment } from "../../identifiers/index.js";
-import { fetchJson } from "../http.js";
-import { stripHtml, trimmed } from "../text.js";
+import { fetchJson, type RegistryEnv } from "../http.js";
+import { xmlText } from "../text.js";
+import { asString } from "../../metadata/index.js";
 import type { RegistryRecord } from "../types.js";
 
 // Requested explicitly, because the graph API returns only `paperId` otherwise.
@@ -27,8 +28,9 @@ interface SemanticScholarPaper {
  * — which `fetchJson` already turns into undefined.
  * @returns The matched paper, or undefined when nothing matches.
  */
-export async function semanticScholarByTitle(title: string): Promise<RegistryRecord | undefined> {
+export async function semanticScholarByTitle(env: RegistryEnv, title: string): Promise<RegistryRecord | undefined> {
   const payload = await fetchJson<{ data?: SemanticScholarPaper[] }>(
+    env,
     `https://api.semanticscholar.org/graph/v1/paper/search/match?query=${encodeURIComponent(title)}&fields=${SEMANTIC_SCHOLAR_FIELDS}`,
   );
   const paper = payload?.data?.[0];
@@ -41,8 +43,9 @@ export async function semanticScholarByTitle(title: string): Promise<RegistryRec
  * works CrossRef indexes without one.
  * @returns The paper's metadata, or undefined when the DOI is unknown.
  */
-export async function semanticScholarByDoi(doi: string): Promise<RegistryRecord | undefined> {
+export async function semanticScholarByDoi(env: RegistryEnv, doi: string): Promise<RegistryRecord | undefined> {
   const paper = await fetchJson<SemanticScholarPaper>(
+    env,
     `https://api.semanticscholar.org/graph/v1/paper/DOI:${encodeDoiPathSegment(doi)}?fields=${SEMANTIC_SCHOLAR_FIELDS}`,
   );
   return paper?.title ? mapSemanticScholarPaper(paper) : undefined;
@@ -50,18 +53,18 @@ export async function semanticScholarByDoi(doi: string): Promise<RegistryRecord 
 
 function mapSemanticScholarPaper(paper: SemanticScholarPaper): RegistryRecord {
   return {
-    title: trimmed(paper.title),
+    title: asString(paper.title),
     authors: (paper.authors ?? [])
-      .map((author) => trimmed(author.name))
+      .map((author) => asString(author.name))
       .filter((name): name is string => Boolean(name)),
     year: paper.year ?? undefined,
     journal:
-      trimmed(paper.venue) ?? trimmed(paper.journal?.name) ?? trimmed(paper.publicationVenue?.name),
-    volume: trimmed(paper.journal?.volume),
-    pages: trimmed(paper.journal?.pages),
-    doi: trimmed(paper.externalIds?.DOI ?? undefined),
+      asString(paper.venue) ?? asString(paper.journal?.name) ?? asString(paper.publicationVenue?.name),
+    volume: asString(paper.journal?.volume),
+    pages: asString(paper.journal?.pages),
+    doi: asString(paper.externalIds?.DOI ?? undefined),
     // Present but empty whenever no open-access copy is known.
-    url: trimmed(paper.openAccessPdf?.url),
-    summary: paper.abstract ? stripHtml(paper.abstract) : undefined,
+    url: asString(paper.openAccessPdf?.url),
+    summary: paper.abstract ? xmlText(paper.abstract) : undefined,
   };
 }

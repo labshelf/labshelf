@@ -1,5 +1,5 @@
 /** Looks up DataCite records by DOI, for datasets, theses and preprints. */
-import { fetchJson } from "../http.js";
+import { fetchJson, type RegistryEnv } from "../http.js";
 import type { RegistryRecord } from "../types.js";
 
 interface DataCiteAttributes {
@@ -17,8 +17,9 @@ interface DataCiteAttributes {
  * that CrossRef does not carry.
  * @returns The record's metadata, or undefined.
  */
-export async function dataCiteByDoi(doi: string): Promise<RegistryRecord | undefined> {
+export async function dataCiteByDoi(env: RegistryEnv, doi: string): Promise<RegistryRecord | undefined> {
   const payload = await fetchJson<{ data?: { attributes?: DataCiteAttributes } }>(
+    env,
     `https://api.datacite.org/dois/${encodeURIComponent(doi)}`,
   );
   const attributes = payload?.data?.attributes;

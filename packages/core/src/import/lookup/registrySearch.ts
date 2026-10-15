@@ -5,18 +5,19 @@ import {
   europePmcSearch,
   openAlexSearch,
   semanticScholarByTitle,
+  type RegistryEnv,
   type RegistryRecord,
 } from "../registries/index.js";
 
-export function searchAllRegistries(query: string, rows = 3): Array<Promise<RegistryRecord[]>> {
+export function searchAllRegistries(env: RegistryEnv, query: string, rows = 3): Array<Promise<RegistryRecord[]>> {
   const single = (promise: Promise<RegistryRecord | undefined>): Promise<RegistryRecord[]> =>
     promise.then((record) => (record ? [record] : [])).catch(() => []);
 
   return [
-    crossRefSearch(query, rows).catch((): RegistryRecord[] => []),
-    openAlexSearch(query, rows).catch((): RegistryRecord[] => []),
-    europePmcSearch(query, rows).catch((): RegistryRecord[] => []),
-    dblpSearch(query, rows).catch((): RegistryRecord[] => []),
-    single(semanticScholarByTitle(query)),
+    crossRefSearch(env, query, rows).catch((): RegistryRecord[] => []),
+    openAlexSearch(env, query, rows).catch((): RegistryRecord[] => []),
+    europePmcSearch(env, query, rows).catch((): RegistryRecord[] => []),
+    dblpSearch(env, query, rows).catch((): RegistryRecord[] => []),
+    single(semanticScholarByTitle(env, query)),
   ];
 }

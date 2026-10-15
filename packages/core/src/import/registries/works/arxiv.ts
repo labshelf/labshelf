@@ -1,6 +1,6 @@
 /** Looks up arXiv preprints by identifier. */
 import { extractYear } from "../../metadata/index.js";
-import { fetchText } from "../http.js";
+import { fetchText, type RegistryEnv } from "../http.js";
 import { matchTag, xmlText } from "../text.js";
 import type { RegistryRecord } from "../types.js";
 
@@ -8,8 +8,9 @@ import type { RegistryRecord } from "../types.js";
  * Looks up an arXiv preprint by its identifier.
  * @returns Preprint metadata, or undefined when the id is unknown.
  */
-export async function arxivById(arxivId: string): Promise<RegistryRecord | undefined> {
+export async function arxivById(env: RegistryEnv, arxivId: string): Promise<RegistryRecord | undefined> {
   const xml = await fetchText(
+    env,
     `https://export.arxiv.org/api/query?id_list=${encodeURIComponent(arxivId)}`,
   );
   const entry = xml?.match(/<entry>([\s\S]*?)<\/entry>/)?.[1];

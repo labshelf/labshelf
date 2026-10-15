@@ -1,6 +1,6 @@
 /** Lists every plausible registry match for a query so a human can choose between them. */
 import type { ResolvedMetadata } from "../metadata/index.js";
-import { plainRecord } from "../registries/index.js";
+import { plainRecord, type RegistryEnv } from "../registries/index.js";
 import { searchAllRegistries } from "./registrySearch.js";
 import { normalizeForMatch, titleOverlap } from "./titleMatch.js";
 
@@ -11,14 +11,14 @@ import { normalizeForMatch, titleOverlap } from "./titleMatch.js";
  * an interactive lookup should offer the options rather than pick one.
  * @returns Deduplicated candidates ordered by how well they match the query.
  */
-export async function searchOnlineCandidates(query: string, limit = 8): Promise<ResolvedMetadata[]> {
+export async function searchOnlineCandidates(query: string, limit = 8, env: RegistryEnv = {}): Promise<ResolvedMetadata[]> {
   const normalized = normalizeForMatch(query);
   if (normalized.length < 6) {
     return [];
   }
 
   const searchTerm = normalized.slice(0, 600);
-  const groups = await Promise.all(searchAllRegistries(searchTerm, limit));
+  const groups = await Promise.all(searchAllRegistries(env, searchTerm, limit));
 
   const byKey = new Map<string, { record: ResolvedMetadata; score: number }>();
   for (const record of groups.flat()) {

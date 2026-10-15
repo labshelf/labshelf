@@ -1,14 +1,20 @@
-/** Reads the origin and hostname of an absolute http(s) URL without the URL class, so the module stays runtime-neutral. */
+/** Reads the origin and site of an absolute http(s) URL. */
 
-const ORIGIN = /^(https?:\/\/[^/?#]+)/i;
+function httpUrl(url: string): URL | undefined {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "http:" || parsed.protocol === "https:" ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 /** "https://host:port" in lower case, or undefined when `url` is not an absolute http(s) URL. */
 export function originOf(url: string): string | undefined {
-  return ORIGIN.exec(url)?.[1]?.toLowerCase();
+  return httpUrl(url)?.origin;
 }
 
 /** The registrable part of the host ("www.nature.com" gives "nature.com"), or undefined when `url` has no host. */
 export function siteOf(url: string): string | undefined {
-  const host = originOf(url)?.replace(/^https?:\/\//, "").replace(/:\d+$/, "");
-  return host?.split(".").slice(-2).join(".");
+  return httpUrl(url)?.hostname.split(".").slice(-2).join(".");
 }

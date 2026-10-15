@@ -1,7 +1,7 @@
 /** Looks up Google Books volumes by ISBN. */
-import { extractYear } from "../../metadata/index.js";
-import { fetchJson } from "../http.js";
-import { stripHtml, trimmed } from "../text.js";
+import { asString, extractYear } from "../../metadata/index.js";
+import { fetchJson, type RegistryEnv } from "../http.js";
+import { xmlText } from "../text.js";
 import type { RegistryRecord } from "../types.js";
 
 interface GoogleBooksVolumeInfo {
@@ -21,8 +21,9 @@ interface GoogleBooksVolumeInfo {
  * page counts for many editions OpenLibrary has only a stub for.
  * @returns Book metadata, or undefined.
  */
-export async function googleBooksByIsbn(isbn: string): Promise<RegistryRecord | undefined> {
+export async function googleBooksByIsbn(env: RegistryEnv, isbn: string): Promise<RegistryRecord | undefined> {
   const payload = await fetchJson<{ items?: Array<{ volumeInfo?: GoogleBooksVolumeInfo }> }>(
+    env,
     `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(`isbn:${isbn}`)}`,
   );
   const volume = payload?.items?.[0]?.volumeInfo;
@@ -34,10 +35,10 @@ export async function googleBooksByIsbn(isbn: string): Promise<RegistryRecord | 
     title: volume.subtitle ? `${volume.title}: ${volume.subtitle}` : volume.title,
     authors: (volume.authors ?? []).filter((name): name is string => Boolean(name)),
     year: extractYear(volume.publishedDate),
-    publisher: trimmed(volume.publisher),
+    publisher: asString(volume.publisher),
     pages: volume.pageCount ? String(volume.pageCount) : undefined,
-    url: trimmed(volume.infoLink),
-    language: trimmed(volume.language),
-    summary: volume.description ? stripHtml(volume.description) : undefined,
+    url: asString(volume.infoLink),
+    language: asString(volume.language),
+    summary: volume.description ? xmlText(volume.description) : undefined,
   };
 }

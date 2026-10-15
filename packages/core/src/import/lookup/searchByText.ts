@@ -1,6 +1,6 @@
 /** Finds a paper in the online registries from noisy front-matter text or a title. */
 import { completeness, type ResolvedMetadata } from "../metadata/index.js";
-import { plainRecord, type RegistryRecord } from "../registries/index.js";
+import { plainRecord, type RegistryEnv, type RegistryRecord } from "../registries/index.js";
 import { searchAllRegistries } from "./registrySearch.js";
 import { normalizeForMatch, TITLE_MATCH_THRESHOLD, titleOverlap, titlePosition } from "./titleMatch.js";
 
@@ -22,6 +22,7 @@ interface Pick {
  */
 export async function searchOnlineByQueries(
   queries: Array<string | undefined>,
+  env: RegistryEnv = {},
 ): Promise<{ metadata: ResolvedMetadata; query: string } | undefined> {
   const tried = new Set<string>();
   for (const query of queries) {
@@ -35,7 +36,7 @@ export async function searchOnlineByQueries(
     }
     tried.add(key);
 
-    const metadata = await searchOnlineByText(candidate).catch(() => undefined);
+    const metadata = await searchOnlineByText(candidate, env).catch(() => undefined);
     if (metadata) {
       return { metadata, query: candidate };
     }
@@ -48,7 +49,7 @@ export async function searchOnlineByQueries(
  * state no identifier, and the only route for text recovered by OCR.
  * @returns A confidently matching record, or undefined.
  */
-export async function searchOnlineByText(query: string): Promise<ResolvedMetadata | undefined> {
+export async function searchOnlineByText(query: string, env: RegistryEnv = {}): Promise<ResolvedMetadata | undefined> {
   const normalized = normalizeForMatch(query);
   if (normalized.length < 20) {
     return undefined;
@@ -59,7 +60,7 @@ export async function searchOnlineByText(query: string): Promise<ResolvedMetadat
   // Scholar's match endpoint is the most tolerant of OCR noise. Asking them all
   // at once costs one round trip and rescues papers any single index would lose.
   const searchTerm = normalized.slice(0, 600);
-  const groups = await Promise.all(searchAllRegistries(searchTerm));
+  const groups = await Promise.all(searchAllRegistries(env, searchTerm));
   return plainRecord(bestMatch(groups.flat(), query, normalized));
 }
 
@@ -67,8 +68,8 @@ export async function searchOnlineByText(query: string): Promise<ResolvedMetadat
  * Looks a paper up by a title already believed to be correct.
  * @returns A confidently matching record, or undefined.
  */
-export async function searchOnlineByTitle(title: string): Promise<ResolvedMetadata | undefined> {
-  return title.trim().length >= 12 ? searchOnlineByText(title) : undefined;
+export async function searchOnlineByTitle(title: string, env: RegistryEnv = {}): Promise<ResolvedMetadata | undefined> {
+  return title.trim().length >= 12 ? searchOnlineByText(title, env) : undefined;
 }
 
 // Word overlap alone accepts far too much when the query is a page of front

@@ -1,6 +1,6 @@
 /** Looks up OpenLibrary books by ISBN. */
 import { extractYear } from "../../metadata/index.js";
-import { fetchJson } from "../http.js";
+import { fetchJson, type RegistryEnv } from "../http.js";
 import type { RegistryRecord } from "../types.js";
 
 interface OpenLibraryBook {
@@ -17,9 +17,10 @@ interface OpenLibraryBook {
  * Looks up a book by ISBN through OpenLibrary.
  * @returns Book metadata, or undefined.
  */
-export async function openLibraryByIsbn(isbn: string): Promise<RegistryRecord | undefined> {
+export async function openLibraryByIsbn(env: RegistryEnv, isbn: string): Promise<RegistryRecord | undefined> {
   const key = `ISBN:${isbn}`;
   const payload = await fetchJson<Record<string, OpenLibraryBook>>(
+    env,
     `https://openlibrary.org/api/books?format=json&jscmd=data&bibkeys=${encodeURIComponent(key)}`,
   );
   const book = payload?.[key];

@@ -1,5 +1,6 @@
 /** Runs one stateless sync: takes the lock, names Drive folders from titles, runs the engine and records the run. */
 import { SYNC_PROVIDER_ID } from "../../library/index.js";
+import { errorMessage } from "../../logging/index.js";
 import type { ILogger } from "../../ports/index.js";
 import type { RemoteProvider } from "../provider/index.js";
 import {
@@ -80,7 +81,7 @@ async function recordRun(input: SyncRunInput, record: SyncRunRecord): Promise<vo
     await writeSyncRunRecord(input.target.state.fs, path, record);
   } catch (error) {
     await input.logger.log("WARN", input.source, "Could not write the sync run record", {
-      path, message: error instanceof Error ? error.message : String(error),
+      path, message: errorMessage(error),
     });
   }
 }

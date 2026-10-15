@@ -24,12 +24,10 @@ export interface LandingFetchOptions {
 export async function fetchLandingPage(url: string, options: LandingFetchOptions): Promise<PageFacts | undefined> {
   // A bare reference: a browser's fetch throws "Illegal invocation" when called as a method of another object.
   const doFetch = options.fetch;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), options.timeoutMs);
   try {
     const res = await doFetch(url, {
       redirect: "follow",
-      signal: controller.signal,
+      signal: AbortSignal.timeout(options.timeoutMs),
       ...(options.credentials ? { credentials: options.credentials } : {}),
       ...(options.headers ? { headers: options.headers } : {}),
     });
@@ -39,7 +37,5 @@ export async function fetchLandingPage(url: string, options: LandingFetchOptions
     // A page that cannot be read is routine, so the failure is a warning that names the url.
     await options.logger?.log("WARN", LANDING_MODULE, "Landing page fetch failed", { url, message: errorMessage(error) });
     return undefined;
-  } finally {
-    clearTimeout(timer);
   }
 }

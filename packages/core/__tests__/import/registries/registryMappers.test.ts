@@ -17,7 +17,11 @@ import {
   pubMedByPmid,
   semanticScholarByDoi,
   semanticScholarByTitle,
+  type ILogger,
+  type RegistryEnv,
 } from '@labshelf/core';
+
+const env: RegistryEnv = {};
 
 function serve(body: string | object, ok = true): jest.Mock {
   const mock = jest.fn(async () => ({
@@ -38,7 +42,7 @@ describe('registry clients', () => {
     it('sends the product User-Agent and a JSON Accept header', async () => {
       const mock = serve({ message: {} });
 
-      await crossRefByDoi('10.1/x');
+      await crossRefByDoi(env, '10.1/x');
 
       const [url, init] = mock.mock.calls[0] as unknown as [string, RequestInit];
       expect(url).toBe('https://api.crossref.org/works/10.1%2Fx');
@@ -48,15 +52,44 @@ describe('registry clients', () => {
       });
     });
 
+    it('uses the injected fetch and the configured contact address, leaving the global fetch alone', async () => {
+      const global_ = jest.fn();
+      global.fetch = global_ as unknown as typeof fetch;
+      const injected = jest.fn(async () => ({ ok: true, text: async () => JSON.stringify({ message: {} }) }));
+
+      await crossRefByDoi({ fetch: injected as unknown as typeof fetch, contactEmail: 'me@uni.edu' }, '10.1/x');
+
+      expect(global_).not.toHaveBeenCalled();
+      const [, init] = injected.mock.calls[0] as unknown as [string, RequestInit];
+      expect(init.headers).toMatchObject({ 'User-Agent': 'LabShelf/0.1 (research paper manager; mailto:me@uni.edu)' });
+    });
+
+    it('logs a WARN with the url for an error status, a network failure and invalid JSON', async () => {
+      const logger = { log: jest.fn(async () => undefined), error: jest.fn() } as unknown as ILogger;
+      const logged = { logger };
+
+      serve({}, false);
+      await crossRefByDoi(logged, '10.1/x');
+      global.fetch = jest.fn(async () => Promise.reject(new Error('offline'))) as unknown as typeof fetch;
+      await crossRefByDoi(logged, '10.1/x');
+      serve('<html>not json</html>');
+      await crossRefByDoi(logged, '10.1/x');
+
+      const calls = (logger.log as unknown as jest.Mock).mock.calls;
+      expect(calls.map((call) => call[2])).toEqual(['Registry lookup failed', 'Registry lookup failed', 'Registry answered with invalid JSON']);
+      expect(calls[0][3]).toEqual({ url: 'https://api.crossref.org/works/10.1%2Fx', status: undefined });
+      expect(calls[1][3]).toMatchObject({ message: 'offline' });
+    });
+
     it('returns undefined on an error status, a network failure and invalid JSON', async () => {
       serve({}, false);
-      expect(await crossRefByDoi('10.1/x')).toBeUndefined();
+      expect(await crossRefByDoi(env, '10.1/x')).toBeUndefined();
 
       global.fetch = jest.fn(async () => Promise.reject(new Error('offline'))) as unknown as typeof fetch;
-      expect(await crossRefByDoi('10.1/x')).toBeUndefined();
+      expect(await crossRefByDoi(env, '10.1/x')).toBeUndefined();
 
       serve('<html>not json</html>');
-      expect(await crossRefByDoi('10.1/x')).toBeUndefined();
+      expect(await crossRefByDoi(env, '10.1/x')).toBeUndefined();
     });
   });
 
@@ -78,7 +111,7 @@ describe('registry clients', () => {
     it('maps a work, stripping JATS markup from the abstract', async () => {
       serve({ message: work });
 
-      expect(await crossRefByDoi('10.1/x')).toEqual({
+      expect(await crossRefByDoi(env, '10.1/x')).toEqual({
         title: 'A Title',
         authors: ['Ann Lee', 'Consortium'],
         year: 2020,
@@ -99,7 +132,7 @@ describe('registry clients', () => {
     it('flags component records and maps search items', async () => {
       const mock = serve({ message: { items: [{ ...work, type: 'component' }] } });
 
-      const records = await crossRefSearch('a query', 5);
+      const records = await crossRefSearch(env, 'a query', 5);
 
       expect(records[0]?.isComponent).toBe(true);
       expect((mock.mock.calls[0] as unknown as [string])[0]).toBe(
@@ -115,7 +148,7 @@ describe('registry clients', () => {
         '<author><name>Ashish Vaswani</name></author><author><name>Noam Shazeer</name></author></entry></feed>',
     );
 
-    expect(await arxivById('1706.03762')).toEqual({
+    expect(await arxivById(env, '1706.03762')).toEqual({
       title: 'Attention Is All You Need',
       authors: ['Ashish Vaswani', 'Noam Shazeer'],
       year: 2017,
@@ -126,7 +159,7 @@ describe('registry clients', () => {
     });
 
     serve('<feed><entry><title>Error</title></entry></feed>');
-    expect(await arxivById('0000.0000')).toBeUndefined();
+    expect(await arxivById(env, '0000.0000')).toBeUndefined();
   });
 
   it('maps a PubMed summary and resolves a PMC id to a PMID', async () => {
@@ -145,7 +178,7 @@ describe('registry clients', () => {
       },
     });
 
-    expect(await pubMedByPmid('123')).toMatchObject({
+    expect(await pubMedByPmid(env, '123')).toMatchObject({
       title: 'Gene study',
       authors: ['Lee A'],
       year: 2019,
@@ -156,7 +189,7 @@ describe('registry clients', () => {
     });
 
     serve({ records: [{ pmid: '123' }] });
-    expect(await pmidFromPmcid('PMC1')).toBe('123');
+    expect(await pmidFromPmcid(env, 'PMC1')).toBe('123');
   });
 
   it('maps OpenAlex works, dropping the DOI resolver prefix', async () => {
@@ -173,7 +206,7 @@ describe('registry clients', () => {
       ],
     });
 
-    expect((await openAlexSearch('q'))[0]).toMatchObject({
+    expect((await openAlexSearch(env, 'q'))[0]).toMatchObject({
       title: 'A Work',
       authors: ['Ann Lee'],
       year: 2021,
@@ -200,7 +233,7 @@ describe('registry clients', () => {
       },
     });
 
-    expect(await dataCiteByDoi('10.5/d')).toMatchObject({
+    expect(await dataCiteByDoi(env, '10.5/d')).toMatchObject({
       title: 'A Dataset',
       authors: ['Ann Lee', 'Lab'],
       year: 2022,
@@ -209,7 +242,7 @@ describe('registry clients', () => {
     });
 
     serve({ data: { attributes: {} } });
-    expect(await dataCiteByDoi('10.5/none')).toBeUndefined();
+    expect(await dataCiteByDoi(env, '10.5/none')).toBeUndefined();
   });
 
   it('maps Semantic Scholar papers by title and by DOI', async () => {
@@ -224,7 +257,7 @@ describe('registry clients', () => {
       openAccessPdf: { url: '' },
     };
     serve({ data: [paper] });
-    expect(await semanticScholarByTitle('Paper')).toEqual({
+    expect(await semanticScholarByTitle(env, 'Paper')).toEqual({
       title: 'Paper',
       authors: ['Ann Lee'],
       year: 2018,
@@ -237,7 +270,7 @@ describe('registry clients', () => {
     });
 
     const mock = serve(paper);
-    expect((await semanticScholarByDoi('10.1/p'))?.title).toBe('Paper');
+    expect((await semanticScholarByDoi(env, '10.1/p'))?.title).toBe('Paper');
     expect((mock.mock.calls[0] as unknown as [string])[0]).toContain('/paper/DOI:10.1');
   });
 
@@ -248,7 +281,7 @@ describe('registry clients', () => {
       },
     });
 
-    expect((await europePmcSearch('q', 1))[0]).toMatchObject({
+    expect((await europePmcSearch(env, 'q', 1))[0]).toMatchObject({
       title: 'T',
       authors: ['Doe J', 'Roe R'],
       year: 2015,
@@ -270,7 +303,7 @@ describe('registry clients', () => {
       },
     });
 
-    const records = await dblpSearch('q');
+    const records = await dblpSearch(env, 'q');
 
     expect(records).toHaveLength(2);
     expect(records[0]).toMatchObject({ title: 'One', authors: ['Ann Lee'], year: 2010, journal: 'ICML', url: 'https://e.org/1' });
@@ -280,7 +313,7 @@ describe('registry clients', () => {
   it('returns no DBLP records when the query matches nothing', async () => {
     serve({ result: { hits: {} } });
 
-    expect(await dblpSearch('nothing')).toEqual([]);
+    expect(await dblpSearch(env, 'nothing')).toEqual([]);
   });
 
   it('maps book records from OpenLibrary and Google Books', async () => {
@@ -295,7 +328,7 @@ describe('registry clients', () => {
         url: 'https://openlibrary.org/b',
       },
     });
-    expect(await openLibraryByIsbn('9780262033848')).toEqual({
+    expect(await openLibraryByIsbn(env, '9780262033848')).toEqual({
       title: 'Introduction to Algorithms: Third Edition',
       authors: ['Cormen'],
       year: 2009,
@@ -318,7 +351,7 @@ describe('registry clients', () => {
         },
       ],
     });
-    expect(await googleBooksByIsbn('9780262033848')).toMatchObject({
+    expect(await googleBooksByIsbn(env, '9780262033848')).toMatchObject({
       title: 'Algorithms',
       year: 2009,
       pages: '1312',

@@ -3,7 +3,7 @@ import { lookupJson } from "../../../../src/import/pdfFinding/resolvers/timedFet
 import { json, makeFindingHarness } from "../../../support/pdfFindingHarness";
 
 describe("lookupJson", () => {
-  afterEach(() => jest.useRealTimers());
+  afterEach(() => jest.restoreAllMocks());
 
   it("returns the parsed body", async () => {
     const h = makeFindingHarness();
@@ -27,13 +27,15 @@ describe("lookupJson", () => {
   });
 
   it("gives up after 8 s", async () => {
-    jest.useFakeTimers();
+    const deadline = new AbortController();
+    const timeout = jest.spyOn(AbortSignal, "timeout").mockReturnValue(deadline.signal);
     const h = makeFindingHarness();
     const env = { ...h.env, fetch: ((_u: unknown, init: { signal: AbortSignal }) => new Promise<Response>((_, reject) => {
       init.signal.addEventListener("abort", () => reject(new Error("aborted")));
     })) as typeof fetch };
     const pending = lookupJson(env, "https://slow.example/x");
-    await jest.advanceTimersByTimeAsync(8_000);
+    expect(timeout).toHaveBeenCalledWith(8_000);
+    deadline.abort();
     expect(await pending).toBeUndefined();
     expect(h.logs).toHaveLength(1);
   });

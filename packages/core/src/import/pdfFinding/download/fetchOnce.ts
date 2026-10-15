@@ -1,6 +1,5 @@
 /** Makes one download attempt: proves a response is the PDF by its bytes, or hands back the HTML to follow, or reports a bot check. */
 import { isPdfBytes } from "../../../library/index.js";
-import { startTimeout } from "../timeout.js";
 import { warn } from "../env.js";
 import type { FetchedPdf, PdfFetchOptions, ResolverEnv } from "../types.js";
 import { isBotCheck } from "./botCheck.js";
@@ -21,11 +20,10 @@ type RequestSettings = Pick<PdfFetchOptions, "credentials" | "headers">;
 
 /** @returns the answer, or undefined when the URL gave nothing usable (an HTTP error, a network error, a timeout) */
 export async function fetchOnce(url: string, env: ResolverEnv, settings: RequestSettings): Promise<FetchAnswer | undefined> {
-  const timer = startTimeout(TIMEOUT_MS);
   try {
     const res = await env.fetch(url, {
       redirect: "follow",
-      signal: timer.signal,
+      signal: AbortSignal.timeout(TIMEOUT_MS),
       ...(settings.credentials ? { credentials: settings.credentials } : {}),
       ...(settings.headers ? { headers: settings.headers } : {}),
     });
@@ -46,7 +44,5 @@ export async function fetchOnce(url: string, env: ResolverEnv, settings: Request
   } catch (error) {
     warn(env, "download failed", { url, error: errorMessage(error) });
     return undefined;
-  } finally {
-    timer.stop();
   }
 }

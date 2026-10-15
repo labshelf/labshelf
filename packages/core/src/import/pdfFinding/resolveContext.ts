@@ -1,4 +1,4 @@
-/** Builds the context every app hands to the PDF finder from what it knows about the paper, so the mapping exists once. */
+/** Builds the PDF finder's context from what is known about a paper, so the mapping exists once. */
 import type { DetectedIds } from "../identifiers/index.js";
 import { arxivIdFromDoi } from "../identifiers/index.js";
 import type { PdfCandidate } from "../landing/index.js";

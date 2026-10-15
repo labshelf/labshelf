@@ -1,6 +1,5 @@
 /** Runs one bounded lookup against a service: a deadline, a read of the body, and a single WARN when it fails. */
 import { warn } from "../env.js";
-import { startTimeout } from "../timeout.js";
 import type { FetchFn, ResolverEnv } from "../types.js";
 import { errorMessage } from "../../../logging/index.js";
 
@@ -19,9 +18,8 @@ export async function timedFetch<T>(
   read: (res: LookupResponse) => Promise<T>,
   headers?: Record<string, string>,
 ): Promise<T | undefined> {
-  const timer = startTimeout(LOOKUP_TIMEOUT_MS);
   try {
-    const res = await env.fetch(url, { signal: timer.signal, redirect: "follow", ...(headers ? { headers } : {}) });
+    const res = await env.fetch(url, { signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS), redirect: "follow", ...(headers ? { headers } : {}) });
     if (!res.ok) {
       warn(env, "lookup failed", { url, status: res.status });
       return undefined;
@@ -30,8 +28,6 @@ export async function timedFetch<T>(
   } catch (error) {
     warn(env, "lookup failed", { url, error: errorMessage(error) });
     return undefined;
-  } finally {
-    timer.stop();
   }
 }
 

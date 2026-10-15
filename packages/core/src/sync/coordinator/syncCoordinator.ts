@@ -3,6 +3,7 @@
  * keeps a status the app renders. Platform access (files, lock, auth, timers) is injected.
  */
 import { readSyncRunRecord } from "../engine/index.js";
+import { errorMessage } from "../../logging/index.js";
 import { runSyncOnce } from "./syncRun.js";
 import { LOCAL_CHANGE_DEBOUNCE_MS, syncedRecently } from "./syncSchedule.js";
 import { SyncStatusCell, type SyncStatusListener } from "./syncStatus.js";
@@ -173,7 +174,7 @@ export class SyncCoordinator {
       await deps.logger.log("INFO", this.source, "Sync finished", { reason, ...attempt.record });
       return { kind: "synced", record: attempt.record, result: attempt.result };
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = errorMessage(error);
       const reauth = deps.isReauthError?.(error) ?? false;
       this.cell.set({ state: reauth ? "disconnected" : "error", lastError: message });
       await deps.logger.log("ERROR", this.source, "Sync failed", { reason, message }, error instanceof Error ? error.stack : undefined);
@@ -187,7 +188,7 @@ export class SyncCoordinator {
       await this.deps.onOutcome(outcome, reason);
     } catch (error) {
       await this.deps.logger.log("WARN", this.source, "Handling the sync outcome failed", {
-        reason, outcome: outcome.kind, message: error instanceof Error ? error.message : String(error),
+        reason, outcome: outcome.kind, message: errorMessage(error),
       });
     }
   }

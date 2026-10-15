@@ -101,20 +101,17 @@ describe("fetchPdf", () => {
   });
 
   describe("timeout", () => {
-    afterEach(() => jest.useRealTimers());
+    afterEach(() => jest.restoreAllMocks());
 
     it("abandons a download that has not answered in 45 s", async () => {
-      jest.useFakeTimers();
+      const deadline = new AbortController();
+      const timeout = jest.spyOn(AbortSignal, "timeout").mockReturnValue(deadline.signal);
       const hostFetch = ((_url: unknown, init: { signal: AbortSignal }) => new Promise<Response>((_, reject) => {
         init.signal.addEventListener("abort", () => reject(new Error("aborted")));
       })) as typeof fetch;
       const pending = fetchPdf("https://slow.example/p.pdf", { fetch: hostFetch });
-      await jest.advanceTimersByTimeAsync(44_000);
-      let settled = false;
-      void pending.then(() => { settled = true; });
-      await jest.advanceTimersByTimeAsync(0);
-      expect(settled).toBe(false);
-      await jest.advanceTimersByTimeAsync(1_000);
+      expect(timeout).toHaveBeenCalledWith(45_000);
+      deadline.abort();
       expect(await pending).toBeUndefined();
     });
   });
