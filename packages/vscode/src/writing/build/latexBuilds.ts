@@ -2,7 +2,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { latexBuildDir, runLatexBuild, type LatexBuildResult, type ProjectEntry } from "@labshelf/core/node";
+import { projectBuildDir, runLatexBuild, type LatexBuildResult, type ProjectEntry } from "@labshelf/core/node";
 import type { ReadyProject } from "../mainDocument.js";
 import type { BuildDiagnostics } from "./buildDiagnostics.js";
 import { ensureToolchain, type ToolchainDeps } from "./toolchain/index.js";
@@ -86,7 +86,7 @@ export class LatexBuilds {
       const building = vscode.window.setStatusBarMessage(`$(sync~spin) Building ${project.main}`);
       this.deps.previews.building(projectFolder);
       const result = await runLatexBuild({
-        toolchain, projectFolder, main: project.main, outDir: latexBuildDir(project.settings.id),
+        toolchain, projectFolder, main: project.main, outDir: projectBuildDir(project.settings.id),
         signal: controller.signal, logger: session.logger,
       }).finally(() => building.dispose());
       if (state.running === controller) { state.running = undefined; }

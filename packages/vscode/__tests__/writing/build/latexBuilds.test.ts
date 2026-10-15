@@ -1,7 +1,7 @@
 // Tests the build queue: toolchain first, one build at a time per project, newer requests cancel, dismissed setups stay quiet on save.
 import * as vscode from "vscode";
 
-import { latexBuildDir, runLatexBuild } from "@labshelf/core/node";
+import { projectBuildDir, runLatexBuild } from "@labshelf/core/node";
 import { BuildDiagnostics } from "../../../src/writing/build/buildDiagnostics";
 import { LatexBuilds } from "../../../src/writing/build/latexBuilds";
 import { ensureToolchain } from "../../../src/writing/build/toolchain";
@@ -33,7 +33,7 @@ describe("LatexBuilds", () => {
     const { builds, diagnostics } = setup();
     await builds.request("/p/paper", "command");
     expect(run).toHaveBeenCalledWith(expect.objectContaining({
-      toolchain: TOOLCHAIN, projectFolder: "/p/paper", main: "main.tex", outDir: latexBuildDir("paper"),
+      toolchain: TOOLCHAIN, projectFolder: "/p/paper", main: "main.tex", outDir: projectBuildDir("paper"),
     }));
     expect(diagnostics.publish).toHaveBeenCalledWith("/p/paper", [expect.objectContaining({ message: "x" })]);
     expect(window["setStatusBarMessage"]).toHaveBeenLastCalledWith("$(error) Build of main.tex failed: 1 error", 5000);

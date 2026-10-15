@@ -2,7 +2,8 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { latexBuildDir, runLatexBuild, type LatexBuildRequest } from "../../../../../src/writing/latex/build/node/index";
+import { projectBuildDir } from "../../../../../src/writing/project/node/index";
+import { runLatexBuild, type LatexBuildRequest } from "../../../../../src/writing/latex/build/node/index";
 import { fakeLogger } from "../../../../support/fakeLogger";
 import { cleanupTempDirs, makeTempDir } from "../../../../support/tempDirs";
 
@@ -76,8 +77,8 @@ posixOnly("runLatexBuild", () => {
   });
 });
 
-describe("latexBuildDir", () => {
+describe("projectBuildDir", () => {
   it("keeps each project's build under the shared cache", () => {
-    expect(latexBuildDir("deep-nets", { XDG_CACHE_HOME: "/xdg" })).toBe(path.join("/xdg", "labshelf", "builds", "deep-nets"));
+    expect(projectBuildDir("deep-nets", { XDG_CACHE_HOME: "/xdg" })).toBe(path.join("/xdg", "labshelf", "builds", "deep-nets"));
   });
 });

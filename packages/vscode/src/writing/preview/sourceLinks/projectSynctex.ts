@@ -2,7 +2,7 @@
 import * as path from "node:path";
 
 import type { SyncIndex } from "@labshelf/core";
-import { latexBuildDir, readSynctexFile } from "@labshelf/core/node";
+import { projectBuildDir, readSynctexFile } from "@labshelf/core/node";
 import type { ReadyProject } from "../../mainDocument.js";
 import type { WritingHost } from "../../projectStore.js";
 import { PREVIEW_LOG_MODULE } from "../previewStrings.js";
@@ -38,7 +38,7 @@ export class ProjectSynctex {
     if (!project.main) { return { status: "missing", path: project.folder }; }
     const mainFile = path.join(project.folder, project.main);
     try {
-      return await readSynctexFile(latexBuildDir(project.settings.id), path.basename(mainFile, path.extname(mainFile)), path.dirname(mainFile));
+      return await readSynctexFile(projectBuildDir(project.settings.id), path.basename(mainFile, path.extname(mainFile)), path.dirname(mainFile));
     } catch (error) {
       await this.host.current()?.logger.error(PREVIEW_LOG_MODULE, error, { projectFolder: project.folder });
       return { status: "unreadable" };
