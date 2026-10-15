@@ -18,16 +18,9 @@ Date: 2026-10-08. Branch `feat/reader-ux`. Scope: the browser extension (`packag
 
 ### 1.1 Wired in (core `import/pdfFinding/`)
 
-The four resolvers run in every app's chain, with tests:
+The four open-access resolvers run in every app's chain, with tests. The order is in `pdfFinding/resolverOrder.ts`. The browser keeps only tab glue in `capture/` (helper tab, tab fetch, page probe).
 
-- `resolvers/learning/openalex.ts`: OpenAlex by DOI (free endpoint). Reads the PDF and landing locations and the PMCID. Landing copies are checked with `sameWork`.
-- `resolvers/learning/semanticScholar.ts`: one call per capture. Reads `openAccessPdf` and turns `externalIds` (ArXiv, ACL, PubMedCentral) into arXiv, ACL Anthology or PMC candidates.
-- `resolvers/learning/europePmc.ts`: REST search, used for identifiers only. Requires a title match.
-- `resolvers/direct/pmc.ts`: PMCID to PDF through the AWS open-data bucket. The PMC site's proof-of-work page (see 2.1) is not handled: that code was deleted in the refactor, and step 5 restores it from git history (`git log -- '*pmcResolver.ts'`).
-- `import/resolution/sameWork.ts`: `sameWork()`. Accepts a title equal after normalisation or with word-bigram Dice ≥ 0.9, a year within ±1 (±2 for preprints), and a shared surname.
-- `pdfFinding/resolveContext.ts`: the context carries `pmcid`, `title`, `authors` and `year`.
-
-The order is in `pdfFinding/resolverOrder.ts`. The browser keeps only tab glue in `capture/` (helper tab, tab fetch, page probe).
+The PMC site's proof-of-work page (see 2.1) is not handled; step 5 restores that code from git history (`git log -- '*pmcResolver.ts'`).
 
 ### 1.2 Measurement
 
@@ -155,7 +148,6 @@ The full tables (36 platforms, each with a landing→PDF regex and a verified ex
 
 Steps in order of return. Each is small enough to ship alone.
 
-1. **Wire in the four resolvers.** Done: core `import/pdfFinding/` runs OpenAlex, Semantic Scholar and Europe PMC before PMC and the publisher, passes `title`, `authors` and `year`, and has tests with mocked `fetch`. Measured gain: +6 correct PDFs on the corpus.
 2. **Run lookups in parallel.**
    - Lookups (Stage A): run them concurrently with a 3 s cap.
    - Downloads: at most 3–4 at a time, a 10 s time-to-first-byte limit, 30 s per URL and a global limit of about 40 s.
