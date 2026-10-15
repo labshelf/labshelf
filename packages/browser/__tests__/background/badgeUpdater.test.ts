@@ -22,13 +22,22 @@ import { installBadgeUpdater } from "../../src/background/badgeUpdater";
 
 const idle: DriveStatus = { connected: true, syncing: false, lastSyncTime: null, lastError: null };
 
-/** Installs the updater against a fixed status and returns the badge calls of its first tick. */
-function firstTick(status: DriveStatus): void {
-  installBadgeUpdater(() => status);
+let status: DriveStatus = idle;
+let notify: () => void = () => undefined;
+
+function install(): void {
+  installBadgeUpdater(() => status, (listener) => { notify = listener; });
+}
+
+/** Installs the updater against a fixed status; the first paint is what the assertions read. */
+function firstTick(fixed: DriveStatus): void {
+  status = fixed;
+  install();
 }
 
 beforeEach(() => {
   jest.useFakeTimers();
+  status = idle;
   mockAction.setBadgeBackgroundColor.mockClear();
   mockAction.setBadgeText.mockClear();
   mockAction.setTitle.mockClear();
@@ -56,5 +65,33 @@ describe("installBadgeUpdater", () => {
     firstTick(idle);
     expect(mockAction.setBadgeText).toHaveBeenCalledWith({ text: "" });
     expect(mockAction.setBadgeBackgroundColor).not.toHaveBeenCalled();
+  });
+
+  it("repaints when the coordinator reports a status change and not when nothing changed", () => {
+    install();
+    mockAction.setBadgeText.mockClear();
+    notify();
+    expect(mockAction.setBadgeText).not.toHaveBeenCalled();
+    status = { ...idle, syncing: true };
+    notify();
+    expect(mockAction.setBadgeText).toHaveBeenCalledTimes(1);
+    expect(mockAction.setBadgeBackgroundColor).toHaveBeenCalledWith({ color: COLOR_TOKENS.blue.value });
+  });
+
+  it("advances the spinner frames only while syncing and leaves no timer once the status moves on", () => {
+    expect(jest.getTimerCount()).toBe(0);
+    firstTick({ ...idle, syncing: true });
+    expect(jest.getTimerCount()).toBe(1);
+    const texts = (): string[] => mockAction.setBadgeText.mock.calls.map(([d]) => d.text);
+    expect(texts()).toEqual([".  "]);
+    jest.advanceTimersByTime(2000);
+    expect(texts()).toEqual([".  ", ".. ", "..."]);
+    notify();
+    expect(texts()).toHaveLength(3);
+
+    status = idle;
+    notify();
+    expect(jest.getTimerCount()).toBe(0);
+    expect(mockAction.setBadgeText).toHaveBeenLastCalledWith({ text: "" });
   });
 });

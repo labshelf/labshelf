@@ -36,7 +36,7 @@ const scheduleSync = syncMessages.scheduleSoon;
 
 void installAutoSyncScheduler({ sync, logger: log });
 installIdleSyncTrigger({ trigger: syncMessages.trigger, logger: log });
-installBadgeUpdater(syncMessages.snapshot);
+installBadgeUpdater(syncMessages.snapshot, (listener) => sync.onStatus(listener));
 
 registerMessageRouter({ log, mutations, syncMessages, scheduleSync });
 

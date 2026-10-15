@@ -4,10 +4,9 @@
  */
 import type { SidecarChange } from "@labshelf/core";
 import { bx, type LibraryChangedBroadcast, type RuntimeMessage } from "../platform";
-import { syncReasonFor } from "./readerSyncReason";
 
 export function announceSidecarChange(paperId: string, change: SidecarChange): void {
-  const sync: RuntimeMessage = { type: "sync.scheduleSoon", reason: syncReasonFor(change) };
+  const sync: RuntimeMessage = { type: "sync.scheduleSoon", reason: change.kind === "theme" ? "reader.theme" : "reader.annotation" };
   void bx.runtime.sendMessage(sync).catch(() => undefined);
   if (change.kind === "theme") return;
   const changed: LibraryChangedBroadcast = { type: "library.changed", reason: "annotations", paperId };

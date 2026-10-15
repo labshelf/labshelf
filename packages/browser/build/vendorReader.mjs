@@ -6,23 +6,15 @@
  * pdf_viewer.mjs goes through esbuild (es2023): its `v`-flag regex makes the addons-linter behind `web-ext lint` fail.
  */
 import { transform } from "esbuild";
-import { copyFile, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { copyFile, cp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 
 // pdf.sandbox.mjs is the only user of the QuickJS engine; the reader never loads it.
 const SKIP_WASM = new Set(["quickjs-eval.js", "quickjs-eval.wasm"]);
 
-async function copyDir(src, dst, skip = new Set()) {
-  await mkdir(dst, { recursive: true });
-  for (const entry of await readdir(src, { withFileTypes: true })) {
-    if (skip.has(entry.name)) continue;
-    const s = join(src, entry.name);
-    const d = join(dst, entry.name);
-    if (entry.isDirectory()) await copyDir(s, d, skip);
-    else await copyFile(s, d);
-  }
-}
+const copyDir = (src, dst, skip = new Set()) =>
+  cp(src, dst, { recursive: true, filter: (path) => !skip.has(basename(path)) });
 
 export async function vendorReader({ outDir, pkgRoot }) {
   const require = createRequire(join(pkgRoot, "package.json"));

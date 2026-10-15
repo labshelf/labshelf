@@ -13,7 +13,7 @@ export interface DriveSignIn {
 }
 
 export interface SyncMessages {
-  /** The status as it is now, without loading the token (for the badge's polling). */
+  /** The status as it is now, without loading the token (for the badge). */
   snapshot(): DriveStatus;
   authStatus(): Promise<{ connected: boolean }>;
   connect(): Promise<{ connected: boolean }>;

@@ -17,7 +17,6 @@ module.exports = {
     'src/capture/**/*.ts',
     'src/content/scholarParse.ts',
     'src/popup/format.ts',
-    'src/reader/readerSyncReason.ts',
     'src/reader/sidecarChangeNotice.ts',
     'src/storage/idbSidecarPort.ts',
     'src/reader/inPageTransport.ts',
