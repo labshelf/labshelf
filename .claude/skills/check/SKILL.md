@@ -26,6 +26,9 @@ Errors (max 15, most relevant first):
 - file:line — message
 Limits:
 - <violations, or "none">
+Fingerprint: <fp>
 ```
+
+Before returning, run `bash .claude/skills/check/fingerprint.sh` and write one line `<fp> <PASS|FAIL> <ISO time> <packages gated>` to `$(git rev-parse --git-dir)/labshelf-check` (overwrite; it lives inside `.git`, so it is never committed and is per worktree). `finish` reuses a PASS line when the fingerprint still matches the working tree.
 
 Do not include passing test names or full logs, and do not try to fix anything.
