@@ -2,10 +2,9 @@
  * Keeps the library UI's snapshot current from IndexedDB, reading again when the page becomes visible or the
  * background reports a change made elsewhere (popup or Scholar capture, attach, sync, reader annotation).
  */
-import { PAPERS_DIR, type HostEndpoint, type LibraryUiSnapshot, type PaperRecord, type PaperStats } from "@labshelf/core";
-import { bx, type BrowserLogger, type LibraryChangedBroadcast } from "../../../platform";
+import { PAPERS_DIR, errorMessage, type HostEndpoint, type ILogger, type LibraryUiSnapshot, type PaperRecord, type PaperStats } from "@labshelf/core";
+import { bx, type LibraryChangedBroadcast } from "../../../platform";
 import { listAllRecords, scanLibrary } from "../../../storage";
-import { errorMessage } from "../runtimeRequests";
 import type { SidecarReads } from "./sidecarReads";
 
 export interface LibrarySnapshots {
@@ -67,7 +66,7 @@ export function createLibrarySnapshots(endpoint: HostEndpoint, sidecars: Sidecar
 }
 
 /** Refreshes when the page shows again or the background broadcasts a library change; returns a disposer. */
-export function watchLibraryChanges(snapshots: LibrarySnapshots, log: BrowserLogger): () => void {
+export function watchLibraryChanges(snapshots: LibrarySnapshots, log: ILogger): () => void {
   const run = (why: string, work: Promise<void>): void => {
     void work.catch((err: unknown) => log.error("library-page", err, { refreshAfter: why }));
   };

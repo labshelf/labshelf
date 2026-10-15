@@ -1,9 +1,9 @@
 // Routes runtime messages from the popup, options, library page and Google Scholar buttons to the
 // capture/library handlers, gating which message types a Scholar content script may send.
+import { errorMessage, type ILogger } from "@labshelf/core";
 import { bx } from "../platform";
 import type { LibraryChangedBroadcast, RuntimeMessage, RuntimeResponse } from "../platform";
 import { isScholarUrl } from "../content";
-import type { BrowserLogger } from "../platform";
 import type { LibraryMutations } from "../storage";
 import type { createSyncMessages } from "./syncMessages";
 import {
@@ -22,7 +22,7 @@ function allowedFrom(msg: RuntimeMessage, sender: { url?: string }): boolean {
 }
 
 export interface MessageRouterDeps {
-  log: BrowserLogger;
+  log: ILogger;
   mutations: LibraryMutations;
   syncMessages: ReturnType<typeof createSyncMessages>;
   scheduleSync: (reason: string) => void;
@@ -35,14 +35,14 @@ export function registerMessageRouter(deps: MessageRouterDeps): void {
     // runtime delivers it back here, ignore it before the exhaustive switch.
     if ((message as LibraryChangedBroadcast | undefined)?.type === "library.changed") return undefined;
     if (!allowedFrom(msg, sender)) {
-      void deps.log.warn("message refused", { type: msg?.type ?? null, from: sender.url ?? null });
+      void deps.log.log("WARN", "background", "message refused", { type: msg?.type ?? null, from: sender.url ?? null });
       return { ok: false, error: "Not allowed from this page" } satisfies RuntimeResponse;
     }
     try {
       const data = await handle(msg, deps);
       return { ok: true, data } satisfies RuntimeResponse;
     } catch (err: unknown) {
-      const error = err instanceof Error ? err.message : String(err);
+      const error = errorMessage(err);
       void deps.log.error("background", err, { type: msg?.type });
       return { ok: false, error } satisfies RuntimeResponse;
     }
@@ -65,19 +65,19 @@ async function handle(msg: RuntimeMessage, { log, mutations, syncMessages, sched
       scheduleSync(msg.reason);
       return { scheduled: true };
     case "capture.inspect":
-      return handleCaptureInspect(msg);
+      return handleCaptureInspect(log, msg);
     case "capture.findPdf":
-      return handleCaptureFindPdf(msg);
+      return handleCaptureFindPdf(log, msg);
     case "capture.save":
-      return handleCaptureSave(msg, scheduleSync);
+      return handleCaptureSave(log, msg, scheduleSync);
     case "capture.tab":
-      return handleCaptureTab(msg, scheduleSync);
+      return handleCaptureTab(log, msg, scheduleSync);
     case "scholar.save":
-      return handleScholarSave(msg, scheduleSync);
+      return handleScholarSave(log, msg, scheduleSync);
     case "capture.attachPdf":
-      return handleCaptureAttachPdf(msg, scheduleSync);
+      return handleCaptureAttachPdf(log, mutations, msg, scheduleSync);
     case "paper.findPdf":
-      return handleFindPdfForPaper(msg.id, scheduleSync);
+      return handleFindPdfForPaper(log, mutations, msg.id, scheduleSync);
     case "paper.remove":
       return handleRemovePaper(msg.id, mutations, log, scheduleSync);
     case "library.folders":

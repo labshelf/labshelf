@@ -2,16 +2,16 @@
  * Hosts the library page: dispatches every library UI message to the IndexedDB and background handlers.
  * Attach PDF runs synchronously so its file picker opens inside the click that asked for it.
  */
-import type { HostEndpoint, UiToHost } from "@labshelf/core";
+import { errorMessage, type HostEndpoint, type ILogger, type UiToHost } from "@labshelf/core";
 import {
   captureTab, createFolder, createPdfHandlers, deleteFolder, exportAnnotations, movePapers, offerOpenTabs, removePapers,
   renameFolder, sendDetails, setNote, setStatus, setTags, writeClipboard, type PdfHandlers,
 } from "./handlers";
 import { createHostContext, type HostContext } from "./hostContext";
 import { watchLibraryChanges } from "./snapshots";
-import { errorMessage } from "./runtimeRequests";
 
 export interface LibraryHostOptions {
+  log: ILogger;
   /** A paper to select once the library has loaded (the page opened from the popup or Scholar). */
   initialPaper?: string | null;
 }
@@ -51,13 +51,13 @@ function dispatch(ctx: HostContext, pdf: PdfHandlers, m: UiToHost, options: Libr
     default:
       // The page declares none of the capabilities behind the other messages (text layer, similar content, reveal,
       // open in the default app, fetch metadata), so the UI never sends them.
-      void ctx.log.warn("Unhandled library UI message", { type: m.type });
+      void ctx.log.log("WARN", "library-page", "Unhandled library UI message", { type: m.type });
   }
 }
 
 /** Starts answering the UI on `endpoint`. */
-export function attachLibraryHost(endpoint: HostEndpoint, options: LibraryHostOptions = {}): void {
-  const ctx = createHostContext(endpoint);
+export function attachLibraryHost(endpoint: HostEndpoint, options: LibraryHostOptions): void {
+  const ctx = createHostContext(endpoint, options.log);
   const pdf = createPdfHandlers(ctx);
   endpoint.subscribe((m) => dispatch(ctx, pdf, m, options));
   watchLibraryChanges(ctx.snapshots, ctx.log);

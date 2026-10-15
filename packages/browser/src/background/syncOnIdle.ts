@@ -1,7 +1,7 @@
 // Fires the sync trigger whenever the browser idle state flips to "idle".
 // A minimum gap stops quick lock/unlock cycles from queuing a flurry of syncs.
+import type { ILogger } from "@labshelf/core";
 import { bx } from "../platform";
-import { BrowserLogger } from "../platform";
 
 /** Starts a sync for the given reason. */
 export type SyncTrigger = (reason: string) => void;
@@ -11,7 +11,7 @@ const MIN_GAP_MS = 60_000;
 
 export interface IdleSyncOptions {
   trigger: SyncTrigger;
-  logger?: BrowserLogger;
+  logger: ILogger;
 }
 
 /**
@@ -19,7 +19,7 @@ export interface IdleSyncOptions {
  * trigger.
  */
 export function installIdleSyncTrigger(opts: IdleSyncOptions): void {
-  const { trigger, logger = new BrowserLogger("idle") } = opts;
+  const { trigger, logger } = opts;
   try {
     bx.idle.setDetectionInterval(IDLE_DETECTION_SECONDS);
   } catch {
@@ -31,7 +31,7 @@ export function installIdleSyncTrigger(opts: IdleSyncOptions): void {
     const now = Date.now();
     if (now - lastTrigger < MIN_GAP_MS) return;
     lastTrigger = now;
-    void logger.info("idle transition — scheduling sync");
+    void logger.log("INFO", "idle", "idle transition — scheduling sync");
     trigger("idle");
   });
 }

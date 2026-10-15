@@ -17,14 +17,13 @@ jest.mock("../../src/platform", () => ({
   },
 }));
 
-import { COLOR_TOKENS } from "@labshelf/core";
+import { COLOR_TOKENS, type DriveStatus } from "@labshelf/core";
 import { installBadgeUpdater } from "../../src/background/badgeUpdater";
-import type { SyncStatusData } from "../../src/platform";
 
-const idle: SyncStatusData = { connected: true, syncing: false, lastSyncTime: null, lastError: null };
+const idle: DriveStatus = { connected: true, syncing: false, lastSyncTime: null, lastError: null };
 
 /** Installs the updater against a fixed status and returns the badge calls of its first tick. */
-function firstTick(status: SyncStatusData): void {
+function firstTick(status: DriveStatus): void {
   installBadgeUpdater(() => status);
 }
 

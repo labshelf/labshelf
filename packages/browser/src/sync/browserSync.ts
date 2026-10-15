@@ -1,10 +1,8 @@
 /**
- * Builds the browser's sync coordinator over the IndexedDB file store, and maps its status to what the popup, options
- * and library pages show. The browser keeps its own manifest and meets the other apps only on Drive, so no lock.
+ * Builds the browser's sync coordinator over the IndexedDB file store. The browser keeps its own manifest and meets the other apps only on Drive, so no lock.
  */
 import { BROWSER_SYNC_ROOTS, createGoogleDriveProvider, SYNC_PROVIDER_ID, SyncCoordinator } from "@labshelf/core";
-import type { IAuthProvider, ILogger, RemoteProvider, SyncStatus, SyncTimers } from "@labshelf/core";
-import type { SyncStatusData } from "../platform";
+import type { IAuthProvider, ILogger, RemoteProvider, SyncTimers } from "@labshelf/core";
 import { IdbManifestFileSystem, IndexedDbFileSystem, listAllRecords } from "../storage";
 
 // Kept beside the manifest so a restarted service worker still knows when it last synced.
@@ -42,14 +40,4 @@ export function createBrowserSync(deps: BrowserSyncDeps): SyncCoordinator {
       if (outcome.kind === "synced") { await deps.onSynced(); }
     },
   });
-}
-
-/** @returns the status the extension pages render */
-export function browserSyncStatus(status: SyncStatus, connected: boolean): SyncStatusData {
-  return {
-    connected,
-    syncing: status.state === "syncing",
-    lastSyncTime: status.lastRun?.finishedAt ?? null,
-    lastError: status.lastError ?? null,
-  };
 }

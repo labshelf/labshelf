@@ -2,15 +2,15 @@
  * Draws the bottom status bar like VS Code's: the sync item on the left (cloud when connected, spinning while a sync
  * runs, cloud-off when disconnected; a click syncs now), the paper count, the theme toggle and settings on the right.
  */
-import { icon } from "@labshelf/core";
+import { icon, type DriveStatus } from "@labshelf/core";
 import { $, el, shortTime, type ThemePref } from "@labshelf/core/dom";
-import { bx, type SyncStatusData } from "../../platform";
+import { bx } from "../../platform";
 import { cycleThemePref, onThemeChange } from "../../ui";
 import type { SyncStatus } from "./syncStatus";
 
 const THEME_LABEL: Record<ThemePref, string> = { auto: "Theme: follows the system", light: "Theme: light", dark: "Theme: dark" };
 
-function renderSync(item: HTMLButtonElement, sync: SyncStatusData | null): void {
+function renderSync(item: HTMLButtonElement, sync: DriveStatus | null): void {
   item.classList.remove("error");
   if (!sync) { item.innerHTML = `${icon("cloud-off")}<span>LabShelf</span>`; item.title = "Sync status unavailable"; return; }
   if (sync.syncing) { item.innerHTML = `<span class="spin">${icon("refresh")}</span><span>LabShelf Sync</span>`; item.title = "Syncing with Google Drive…"; return; }

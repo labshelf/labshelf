@@ -1,12 +1,10 @@
 // Fetches a bot-checked PDF from inside a background tab that passed the check, then closes the tab.
 // The tab is inactive so the user's focus and the popup stay put.
-import { fetchPdf, nextHopsFromHtml } from "@labshelf/core";
-import type { FetchedPdf } from "@labshelf/core";
-import { BrowserLogger, bx } from "../../platform";
+import { errorMessage, fetchPdf, nextHopsFromHtml, type FetchedPdf, type ILogger } from "@labshelf/core";
+import { bx } from "../../platform";
 import { scriptingApi } from "./scripting";
 import { fetchInTab } from "./tabFetch";
 
-const log = new BrowserLogger("capture");
 const SETTLE_TIMEOUT_MS = 15_000;
 const POLL_MS = 600;
 
@@ -15,7 +13,7 @@ const POLL_MS = 600;
  * first of `urls` on that site that is a PDF.
  * @returns The PDF, or undefined when the site still refuses.
  */
-export async function fetchViaHelperTab(urls: string[]): Promise<FetchedPdf | undefined> {
+export async function fetchViaHelperTab(log: ILogger, urls: string[]): Promise<FetchedPdf | undefined> {
   const origin = originOf(urls[0]);
   if (!origin) return undefined;
   const tab = await bx.tabs.create({ url: `${origin}/`, active: false });
@@ -35,7 +33,7 @@ export async function fetchViaHelperTab(urls: string[]): Promise<FetchedPdf | un
     return undefined;
   } finally {
     await bx.tabs.remove(tab.id).catch((error: unknown) =>
-      log.warn("Helper tab did not close", { tabId: tab.id, message: error instanceof Error ? error.message : String(error) }),
+      log.log("WARN", "capture", "Helper tab did not close", { tabId: tab.id, message: errorMessage(error) }),
     );
   }
 }

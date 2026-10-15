@@ -9,12 +9,11 @@ import { fetchInTab, fetchViaHelperTab } from "./tab";
 import { probeTab } from "./tabProbe";
 import { addPaper } from "./addPaperFlow";
 import { getSettings, updateSettings } from "../platform";
-import { BrowserLogger } from "../platform";
 import { listAllRecords } from "../storage";
-import type { IfNoPdf, PdfMiss } from "@labshelf/core";
+import type { IfNoPdf, ILogger, PdfMiss } from "@labshelf/core";
 import { PAPERS_DIR, isLibraryPath } from "@labshelf/core";
 
-const log = new BrowserLogger("capture");
+const MODULE = "capture";
 
 /** Everything known about one paper before it is saved. */
 export interface CaptureDraft {
@@ -51,10 +50,10 @@ export interface SavedPaper {
 /**
  * Probes a tab and settles what paper it shows.
  */
-export async function inspectTab(tabId: number, tabUrl: string): Promise<CaptureDraft> {
-  const raw = await probeTab(tabId, tabUrl);
+export async function inspectTab(log: ILogger, tabId: number, tabUrl: string): Promise<CaptureDraft> {
+  const raw = await probeTab(log, tabId, tabUrl);
   const facts = interpretPage(raw);
-  return draftFromFacts(facts, { tab: { url: tabUrl, fetchInTab: (url) => fetchInTab(tabId, url) } });
+  return draftFromFacts(log, facts, { tab: { url: tabUrl, fetchInTab: (url) => fetchInTab(tabId, url) } });
 }
 
 /**
@@ -62,6 +61,7 @@ export async function inspectTab(tabId: number, tabUrl: string): Promise<Capture
  * (a Scholar result's own line), resolving the record and checking the library.
  */
 export async function draftFromFacts(
+  log: ILogger,
   facts: PageFacts,
   fetchOpts: CaptureDraft["fetchOpts"],
   extraSources: MetadataSource[] = [],
@@ -79,7 +79,7 @@ export async function draftFromFacts(
     ? findInLibrary(await listAllRecords(), { ...resolved.ids, title: resolved.metadata.title, year: resolved.metadata.year })
     : undefined;
 
-  void log.info("capture inspected", {
+  void log.log("INFO", MODULE, "capture inspected", {
     page: facts.pageUrl,
     isPaper,
     origin: resolved.origin,
@@ -105,7 +105,7 @@ export async function draftFromFacts(
 /**
  * Starts (once) and returns the PDF search for a draft.
  */
-export function findPdf(draft: CaptureDraft): Promise<ResolvedPdf | undefined> {
+export function findPdf(log: ILogger, draft: CaptureDraft): Promise<ResolvedPdf | undefined> {
   draft.pdf ??= (async () => {
     const settings = await getSettings();
     const context = makeResolveContext(draft.ids, draft.metadata, draft.pageUrl || undefined, draft.pdfCandidates, {
@@ -114,17 +114,17 @@ export function findPdf(draft: CaptureDraft): Promise<ResolvedPdf | undefined> {
     });
     const pdf = await resolvePdf(
       context,
-      { ...draft.fetchOpts, credentials: "include", logger: log, viaHelperTab: fetchViaHelperTab },
+      { ...draft.fetchOpts, credentials: "include", logger: log, viaHelperTab: (urls) => fetchViaHelperTab(log, urls) },
       draft.pdfAttempts,
     );
     if (pdf) {
-      void log.info("pdf found", { page: draft.pageUrl, source: pdf.source, url: pdf.url, bytes: pdf.bytes.length });
+      void log.log("INFO", MODULE, "pdf found", { page: draft.pageUrl, source: pdf.source, url: pdf.url, bytes: pdf.bytes.length });
     } else {
-      void log.warn("no pdf reachable", { page: draft.pageUrl, tried: draft.pdfAttempts.map((a) => `${a.source} ${a.url}`) });
+      void log.log("WARN", MODULE, "no pdf reachable", { page: draft.pageUrl, tried: draft.pdfAttempts.map((a) => `${a.source} ${a.url}`) });
     }
     return pdf;
   })().catch((err: unknown) => {
-    void log.error("capture", err, { op: "findPdf", page: draft.pageUrl });
+    void log.error(MODULE, err, { op: "findPdf", page: draft.pageUrl });
     return undefined;
   });
   return draft.pdf;
@@ -134,8 +134,8 @@ export function findPdf(draft: CaptureDraft): Promise<ResolvedPdf | undefined> {
  * Saves a draft into the library. Refuses a page that is not a paper and has
  * no PDF either — there would be nothing worth keeping.
  */
-async function saveDraft(draft: CaptureDraft, opts: SaveOptions = {}): Promise<SavedPaper> {
-  const [pdf, metadata] = await Promise.all([findPdf(draft), withAbstract(draft.metadata)]);
+async function saveDraft(log: ILogger, draft: CaptureDraft, opts: SaveOptions = {}): Promise<SavedPaper> {
+  const [pdf, metadata] = await Promise.all([findPdf(log, draft), withAbstract(draft.metadata)]);
   if (!pdf && !draft.isPaper) {
     throw new Error("No paper found on this page — open the article's page, its PDF, or a Google Scholar result.");
   }
@@ -147,8 +147,8 @@ async function saveDraft(draft: CaptureDraft, opts: SaveOptions = {}): Promise<S
   });
   if (folder !== settings.lastFolder) await updateSettings({ lastFolder: folder });
   draft.existing = paper;
-  if (!pdf) void log.warn("saved without pdf", { id: paper.id, page: draft.pageUrl });
-  void log.info("paper captured", { id: paper.id, folder, pdfSource: pdf?.source ?? null, origin: draft.origin });
+  if (!pdf) void log.log("WARN", MODULE, "saved without pdf", { id: paper.id, page: draft.pageUrl });
+  void log.log("INFO", MODULE, "paper captured", { id: paper.id, folder, pdfSource: pdf?.source ?? null, origin: draft.origin });
   return { paper, folder, pdfSource: pdf?.source ?? null };
 }
 
@@ -181,15 +181,15 @@ export type SaveDecision = { kind: "saved"; saved: SavedPaper } | { kind: "no-pd
  * re-sends with "save" to confirm. findPdf is memoised, so the confirming call
  * reuses the finished search rather than running it again.
  */
-export async function saveOrAsk(draft: CaptureDraft, opts: SaveOptions = {}, ifNoPdf: IfNoPdf = "ask"): Promise<SaveDecision> {
-  if (ifNoPdf === "ask" && draft.isPaper && !(await findPdf(draft))) {
-    void log.info("no pdf: asking before saving", { page: draft.pageUrl, tried: draft.pdfAttempts.length });
+export async function saveOrAsk(log: ILogger, draft: CaptureDraft, opts: SaveOptions = {}, ifNoPdf: IfNoPdf = "ask"): Promise<SaveDecision> {
+  if (ifNoPdf === "ask" && draft.isPaper && !(await findPdf(log, draft))) {
+    void log.log("INFO", MODULE, "no pdf: asking before saving", { page: draft.pageUrl, tried: draft.pdfAttempts.length });
     return { kind: "no-pdf", miss: summarizeAttempts(draft.pdfAttempts) };
   }
-  if (ifNoPdf === "save" && draft.isPaper && !(await findPdf(draft))) {
-    void log.info("saved without pdf (confirmed)", { page: draft.pageUrl, tried: draft.pdfAttempts.length });
+  if (ifNoPdf === "save" && draft.isPaper && !(await findPdf(log, draft))) {
+    void log.log("INFO", MODULE, "saved without pdf (confirmed)", { page: draft.pageUrl, tried: draft.pdfAttempts.length });
   }
-  return { kind: "saved", saved: await saveDraft(draft, opts) };
+  return { kind: "saved", saved: await saveDraft(log, draft, opts) };
 }
 
 /**

@@ -39,13 +39,6 @@ export type RuntimeResponse =
   | { ok: true; data?: unknown }
   | { ok: false; error: string };
 
-export interface SyncStatusData {
-  connected: boolean;
-  syncing: boolean;
-  lastSyncTime: string | null;
-  lastError: string | null;
-}
-
 /** The library's copy of a paper. */
 export interface LibraryRef {
   id: string;
@@ -118,8 +111,6 @@ export interface LibraryChangedBroadcast {
 
 export interface FolderOption {
   path: string;
-  /** Folder name ("Library" for the root). */
-  label: string;
   /** 0 for the root, 1 for its children, … */
   depth: number;
 }

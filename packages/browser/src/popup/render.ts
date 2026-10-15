@@ -53,7 +53,7 @@ export function renderFolders(): void {
     const option = document.createElement("option");
     option.value = f.path;
     // <option> cannot be indented, so nesting reads as a path ("Thesis / Chapter 2").
-    option.textContent = folderName(f.path, popupState.folders);
+    option.textContent = folderName(f.path);
     select.append(option);
   }
   select.value = popupState.folders.lastFolder;
@@ -62,9 +62,9 @@ export function renderFolders(): void {
 export function showLibraryCopy(existing: LibraryRef): void {
   setState("library");
   if (existing.hasPdf) {
-    showStatus({ glyph: "check", tone: "ok", title: "Already in your library", detail: folderName(existing.folder, popupState.folders), open: "Open in library" });
+    showStatus({ glyph: "check", tone: "ok", title: "Already in your library", detail: folderName(existing.folder), open: "Open in library" });
   } else {
-    showStatus({ glyph: "warning", tone: "warn", title: "In your library — without its PDF", detail: folderName(existing.folder, popupState.folders), open: "Open in library" });
+    showStatus({ glyph: "warning", tone: "warn", title: "In your library — without its PDF", detail: folderName(existing.folder), open: "Open in library" });
   }
   $("open").dataset["folder"] = existing.folder;
   $("open").dataset["paper"] = existing.id;

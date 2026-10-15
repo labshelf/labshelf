@@ -10,8 +10,8 @@ const mockApi = {
 };
 jest.mock("../../../src/platform", () => ({
   bx: mockApi,
+  sendRuntime: async (message: never) => (mockApi.runtime.sendMessage as jest.Mock)(message),
   downloadTextFile: jest.fn(async () => undefined),
-  BrowserLogger: class { error = jest.fn(async () => undefined); info = jest.fn(async () => undefined); warn = jest.fn(async () => undefined); log = jest.fn(async () => undefined); },
 }));
 jest.mock("../../../src/capture", () => ({ attachPdfToPaper: jest.fn() }));
 jest.mock("../../../src/reader/access", () => ({ openReader: jest.fn() }));
@@ -45,7 +45,7 @@ function start() {
   const { ui, host } = createLoopbackTransport();
   const received: HostToUi[] = [];
   ui.subscribe((m) => received.push(m));
-  attachLibraryHost(host);
+  attachLibraryHost(host, { log: { log: async () => undefined, error: async () => undefined } });
   const send = async (m: UiToHost): Promise<void> => { ui.post(m); await flush(); };
   const last = <T extends HostToUi["type"]>(type: T) => received.filter((m): m is Extract<HostToUi, { type: T }> => m.type === type).at(-1);
   const runtime = (): ((msg: unknown) => void) => mockApi.runtime.onMessage.addListener.mock.calls.at(-1)![0] as (msg: unknown) => void;

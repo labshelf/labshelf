@@ -1,10 +1,10 @@
 // Adds a "Save to LabShelf" split button to each Google Scholar result and renders its saved state.
 // PLATFORM: the button lives in a shadow root so Scholar's stylesheet cannot reshape it; all saving runs in the background.
-import { bx } from "../platform";
+import { sendRuntime } from "../platform";
 import type { IfNoPdf } from "@labshelf/core";
-import type { FoldersData, LookupData, RuntimeMessage, RuntimeResponse, SaveOutcome, ScholarHit } from "../platform";
-import { showDialog, closeMenu, showMenu } from "@labshelf/core/dom";
-import { noPdfDialogCopy, pdfSourceLabel } from "@labshelf/core";
+import type { FoldersData, LookupData, SaveOutcome, ScholarHit } from "../platform";
+import { askNoPdf, closeMenu, showMenu } from "@labshelf/core/dom";
+import { PAPERS_DIR, errorMessage, folderPathLabel, pdfSourceLabel } from "@labshelf/core";
 import { isScholarUrl, lookupItemFor, readResult } from "./scholarParse";
 import { kitShadow } from "./shadowStyles";
 import { icon, type IconName } from "@labshelf/core";
@@ -56,12 +56,6 @@ const LABELS: Record<ButtonState, { glyph: IconName; text: string }> = {
   confirm: { glyph: "warning", text: "No PDF found" },
 };
 
-async function send<T>(message: RuntimeMessage): Promise<T> {
-  const reply = (await bx.runtime.sendMessage(message)) as RuntimeResponse;
-  if (!reply.ok) throw new Error(reply.error);
-  return reply.data as T;
-}
-
 function setState(m: Mounted, state: ButtonState, title: string): void {
   m.box.dataset["state"] = state;
   const { glyph, text } = LABELS[state];
@@ -87,19 +81,14 @@ async function save(m: Mounted, folder?: string, ifNoPdf: IfNoPdf = "ask", retry
   if (state === "saving" || state === "confirm") return;
   setState(m, "saving", "Saving to LabShelf — looking for the PDF…");
   try {
-    const r = await send<SaveOutcome>({
+    const r = await sendRuntime<SaveOutcome>({
       type: "scholar.save", hit: m.hit,
       ...(folder ? { folder } : {}), ifNoPdf, ...(retryPdf ? { retryPdf } : {}),
     });
     if (r.status === "no-pdf") {
       // Nothing was written: ask before saving the reference without its PDF.
       setState(m, "confirm", "No PDF found — choose whether to save the reference without it.");
-      const choice = await showDialog<"save" | "retry">({
-        ...noPdfDialogCopy(m.hit.title, r.miss),
-        severity: "warning",
-        buttons: [{ id: "retry", label: "Search again" }, { id: "save", label: "Save without PDF", primary: true }],
-        root: overlayRoot(),
-      });
+      const choice = await askNoPdf(m.hit.title, r.miss, overlayRoot());
       if (choice === "save") return save(m, folder, "save");
       if (choice === "retry") return save(m, folder, "ask", true);
       setState(m, "idle", "Not saved — no PDF was found. Click to try again.");
@@ -108,7 +97,7 @@ async function save(m: Mounted, folder?: string, ifNoPdf: IfNoPdf = "ask", retry
     const detail = r.alreadyInLibrary ? "it was already there" : r.pdfSource ? `PDF via ${pdfSourceLabel(r.pdfSource)}` : "saved without a PDF";
     markSaved(m, { folder: r.folder, id: r.id, hasPdf: r.hasPdf }, detail);
   } catch (err) {
-    setState(m, "error", `Could not save: ${err instanceof Error ? err.message : String(err)}. Click to retry.`);
+    setState(m, "error", `Could not save: ${errorMessage(err)}. Click to retry.`);
   }
 }
 
@@ -122,21 +111,15 @@ function overlayRoot(): ShadowRoot {
   return overlay;
 }
 
-// "papers/Thesis/Chapter 2" → "Thesis / Chapter 2", as in the popup's folder select.
-function folderLabel(path: string): string {
-  const rel = path.replace(/^papers\/?/, "");
-  return rel ? rel.split("/").join(" / ") : "Library";
-}
-
 async function openFolderMenu(m: Mounted): Promise<void> {
   let data: FoldersData;
   try {
-    data = await send<FoldersData>({ type: "library.folders" });
+    data = await sendRuntime<FoldersData>({ type: "library.folders" });
   } catch {
     return;
   }
   showMenu(m.caret, data.folders.map((f) => ({
-    label: folderLabel(f.path),
+    label: folderPathLabel(PAPERS_DIR, f.path, "/"),
     icon: f.depth === 0 ? ("library" as const) : ("folder" as const),
     ...(f.path === data.lastFolder ? { hint: "last used" } : {}),
     onSelect: () => { void save(m, f.path); },
@@ -175,7 +158,7 @@ function mount(result: Element): Mounted | undefined {
   setState(m, "idle", "Save to LabShelf, into the folder used last");
   m.main.addEventListener("click", (e) => {
     e.preventDefault();
-    if (m.saved) void send({ type: "library.open", folder: m.saved.folder, paperId: m.saved.id });
+    if (m.saved) void sendRuntime({ type: "library.open", folder: m.saved.folder, paperId: m.saved.id });
     else void save(m);
   });
   m.caret.addEventListener("click", (e) => {
@@ -192,7 +175,7 @@ async function scan(): Promise<void> {
   const fresh = [...document.querySelectorAll(".gs_r.gs_or")].map(mount).filter((m): m is Mounted => !!m);
   if (!fresh.length) return;
   try {
-    const known = await send<LookupData>({ type: "library.lookup", items: fresh.map((m) => lookupItemFor(m.hit)) });
+    const known = await sendRuntime<LookupData>({ type: "library.lookup", items: fresh.map((m) => lookupItemFor(m.hit)) });
     for (const [key, ref] of Object.entries(known)) {
       const m = mounted.get(key);
       if (m) markSaved(m, ref, "");

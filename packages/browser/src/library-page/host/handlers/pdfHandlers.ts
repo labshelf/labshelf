@@ -1,12 +1,12 @@
 // Handles the UI's PDF requests: open in the reader, search the web, attach a local file.
 // INVARIANT: PDF bytes never cross runtime messaging; the page and the background write IndexedDB themselves.
-import { PDF_FILE, isPdfBytes, pdfSourceLabel } from "@labshelf/core";
+import { PDF_FILE, errorMessage, isPdfBytes, pdfSourceLabel } from "@labshelf/core";
 import { attachPdfToPaper } from "../../../capture";
-import type { AttachPdfData } from "../../../platform";
+import { sendRuntime, type AttachPdfData } from "../../../platform";
 import { openReader } from "../../../reader/access";
 import { IndexedDbFileSystem } from "../../../storage";
 import type { HostContext } from "../hostContext";
-import { errorMessage, scheduleSyncSoon, send } from "../runtimeRequests";
+import { scheduleSyncSoon } from "../runtimeRequests";
 
 /** Local PDFs above this size are refused, matching the fetch layer's cap. */
 const MAX_PDF_BYTES = 120 * 1024 * 1024;
@@ -24,10 +24,10 @@ async function ingestLocalPdf(ctx: HostContext, id: string, file: File): Promise
   if (!isPdfBytes(bytes)) { ctx.notice("error", "That file does not look like a PDF."); return; }
   // attachPdfToPaper re-reads the record's current path, so a move during the pick cannot orphan the file, and it
   // refuses to overwrite a PDF that arrived by sync meanwhile.
-  const { written } = await attachPdfToPaper(id, bytes);
+  const { written } = await attachPdfToPaper(ctx.mutations, id, bytes);
   await ctx.snapshots.refresh();
   if (!written) { ctx.notice("info", "This paper already has a PDF."); return; }
-  scheduleSyncSoon("paper.attach");
+  scheduleSyncSoon(ctx.log, "paper.attach");
   ctx.notice("ok", "PDF attached");
 }
 
@@ -61,7 +61,7 @@ export function createPdfHandlers(ctx: HostContext): PdfHandlers {
       ctx.endpoint.post({ type: "progress", key: `find:${id}`, text: "Looking for the PDF…" });
       let result: AttachPdfData;
       try {
-        result = await send<AttachPdfData>({ type: "paper.findPdf", id });
+        result = await sendRuntime<AttachPdfData>({ type: "paper.findPdf", id });
       } finally {
         searching.delete(id);
         ctx.endpoint.post({ type: "progress", key: `find:${id}`, text: null });

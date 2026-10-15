@@ -10,9 +10,9 @@ import {
   type PaperRecord,
   type ReaderPrefs,
 } from "@labshelf/core";
-import { PDF_FILE } from "@labshelf/core";
+import { PDF_FILE, errorMessage } from "@labshelf/core";
 import { startReader, PerfMarks, resolveTheme, toast } from "@labshelf/core/dom";
-import { BrowserLogger, bx, downloadTextFile } from "../platform";
+import { bx, createBrowserLogger, downloadTextFile } from "../platform";
 import { IndexedDbFileSystem, createIdbSidecarPort, getRecord } from "../storage";
 import { getThemePref, onThemeChange } from "../ui";
 import { createInPageChannel } from "./inPageTransport";
@@ -23,7 +23,7 @@ import { announceSidecarChange } from "./sidecarChangeNotice";
 
 // First statement, so scriptStart measures the whole open like in VS Code.
 const perf = new PerfMarks();
-const logger = new BrowserLogger("reader");
+const logger = createBrowserLogger();
 const fs = new IndexedDbFileSystem();
 const PDFJS = "vendor/pdfjs/";
 
@@ -67,7 +67,7 @@ async function loadOpenablePaper(paperId: string): Promise<{ paper: PaperRecord;
   const [paper, prefs] = await Promise.all([getRecord(paperId), loadReaderPrefs()]);
   if (!paper) {
     showFatal("This paper is no longer in your LabShelf library. It may have been removed, or the library has not synced yet.");
-    void logger.warn("reader opened for an unknown paper", { paperId });
+    void logger.log("WARN", "reader", "reader opened for an unknown paper", { paperId });
     return undefined;
   }
   document.title = paper.title;
@@ -164,7 +164,7 @@ async function main(): Promise<void> {
   exposeReaderApi(paper, host);
   forwardChangesToHost(host, (next) => { currentPrefs = next; });
 
-  void logger.info("reader opened", { paperId: paper.id, page: page ?? null });
+  void logger.log("INFO", "reader", "reader opened", { paperId: paper.id, page: page ?? null });
   await startReader({
     boot,
     transport: channel.transport,
@@ -181,5 +181,5 @@ main().catch((err: unknown) => {
   void logger.error("reader", err, { op: "open" });
   // startReader already shows its own load errors; anything earlier (storage) lands here.
   const error = document.getElementById("error-msg");
-  if (error?.hidden) showFatal(`Failed to open the paper: ${err instanceof Error ? err.message : String(err)}`);
+  if (error?.hidden) showFatal(`Failed to open the paper: ${errorMessage(err)}`);
 });

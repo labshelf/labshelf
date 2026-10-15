@@ -1,7 +1,6 @@
 // Wires Drive auth, sync, capture and the badge into the runtime message channel the UI pages use.
 // Runs as an MV3 service worker in Chrome and a non-persistent background script in Firefox.
-import { bx } from "../platform";
-import { BrowserLogger } from "../platform";
+import { bx, createBrowserLogger } from "../platform";
 import { BrowserDriveAuth } from "../sync/auth";
 import { createBrowserSync } from "../sync";
 import { createLibraryMutations, rebuildFromFiles } from "../storage";
@@ -14,7 +13,8 @@ import { installBadgeUpdater } from "./badgeUpdater";
 import { broadcastChanged } from "./broadcast";
 import { registerMessageRouter } from "./router";
 
-const log = new BrowserLogger("background");
+const log = createBrowserLogger();
+const MODULE = "background";
 const mutations = createLibraryMutations(log);
 const auth = new BrowserDriveAuth(log);
 const timers = new AlarmSyncTimers(log);
@@ -41,11 +41,11 @@ installBadgeUpdater(syncMessages.snapshot);
 registerMessageRouter({ log, mutations, syncMessages, scheduleSync });
 
 bx.runtime.onInstalled.addListener((details) => {
-  void log.info("extension installed", { reason: details.reason });
+  void log.log("INFO", MODULE, "extension installed", { reason: details.reason });
 });
 
 bx.runtime.onStartup.addListener(() => {
-  void log.info("browser startup");
+  void log.log("INFO", MODULE, "browser startup");
 });
 
 bx.tabs.onRemoved.addListener((tabId) => forgetDraft(tabId));

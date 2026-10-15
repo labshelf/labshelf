@@ -1,6 +1,5 @@
 jest.mock("../../../src/platform", () => ({
   bx: { runtime: { sendMessage: jest.fn(), onMessage: { addListener: jest.fn(), removeListener: jest.fn() } } },
-  BrowserLogger: class { error = jest.fn(async () => undefined); info = jest.fn(async () => undefined); },
 }));
 jest.mock("../../../src/storage", () => ({
   createLibraryMutations: () => ({}),
@@ -33,7 +32,7 @@ describe("library page host", () => {
 
   it("opens the file picker for Attach PDF before the UI's post returns, inside the user's click", () => {
     const { ui, host } = createLoopbackTransport();
-    attachLibraryHost(host);
+    attachLibraryHost(host, { log: { log: async () => undefined, error: async () => undefined } });
     ui.post({ type: "paper.attachPdf", id: "p1" });
     expect(input.click).toHaveBeenCalledTimes(1);
     expect(input.accept).toBe(".pdf,application/pdf");

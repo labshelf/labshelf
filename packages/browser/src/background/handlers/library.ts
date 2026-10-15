@@ -11,8 +11,7 @@ import { forgetPaper } from "../draftCache";
 import { broadcastChanged } from "../broadcast";
 import { hashForFolder } from "../../library-page";
 import { ref } from "./libraryRef";
-import { PAPERS_DIR, findInLibrary, type FolderTreeNode } from "@labshelf/core";
-import type { BrowserLogger } from "../../platform";
+import { PAPERS_DIR, findInLibrary, type FolderTreeNode, type ILogger } from "@labshelf/core";
 
 type ScheduleSync = (reason: string) => void;
 
@@ -21,16 +20,16 @@ type ScheduleSync = (reason: string) => void;
 // record's CURRENT path (attachPdfToPaper re-reads it).
 const findingPdf = new Map<string, Promise<AttachPdfData>>();
 
-export async function handleFindPdfForPaper(id: string, scheduleSync: ScheduleSync): Promise<AttachPdfData> {
+export async function handleFindPdfForPaper(log: ILogger, mutations: LibraryMutations, id: string, scheduleSync: ScheduleSync): Promise<AttachPdfData> {
   const inflight = findingPdf.get(id);
   if (inflight) return inflight;
   const run = (async (): Promise<AttachPdfData> => {
     const record = (await listAllRecords()).find((r) => r.id === id);
     if (!record) throw new Error("This paper is no longer in your library.");
-    const draft = await draftFromRecord(record);
-    const pdf = await findPdf(draft);
+    const draft = await draftFromRecord(log, record);
+    const pdf = await findPdf(log, draft);
     if (!pdf) return { id, attached: false, miss: summarizeAttempts(draft.pdfAttempts) };
-    const { written } = await attachPdfToPaper(id, pdf.bytes);
+    const { written } = await attachPdfToPaper(mutations, id, pdf.bytes);
     if (written) {
       scheduleSync("paper.findPdf");
       broadcastChanged("attach", id);
@@ -45,7 +44,7 @@ export async function handleFindPdfForPaper(id: string, scheduleSync: ScheduleSy
 export async function handleRemovePaper(
   id: string,
   mutations: LibraryMutations,
-  log: BrowserLogger,
+  log: ILogger,
   scheduleSync: ScheduleSync,
 ): Promise<{ removed: boolean }> {
   const record = (await listAllRecords()).find((r) => r.id === id);
@@ -55,15 +54,15 @@ export async function handleRemovePaper(
   forgetPaper(record.id);
   scheduleSync("paper.remove");
   broadcastChanged("remove", record.id);
-  await log.info("paper removed from popup", { id: record.id });
+  await log.log("INFO", "background", "paper removed from popup", { id: record.id });
   return { removed: true };
 }
 
 export async function handleLibraryFolders(): Promise<FoldersData> {
   const [tree, settings] = await Promise.all([buildFolderTree(PAPERS_DIR), getSettings()]);
-  const folders: FolderOption[] = [{ path: PAPERS_DIR, label: "Library", depth: 0 }];
+  const folders: FolderOption[] = [{ path: PAPERS_DIR, depth: 0 }];
   const walk = (nodes: FolderTreeNode[], depth: number): void => {
-    for (const n of nodes) { folders.push({ path: n.path, label: n.name, depth }); walk(n.children, depth + 1); }
+    for (const n of nodes) { folders.push({ path: n.path, depth }); walk(n.children, depth + 1); }
   };
   walk(tree, 1);
   // A remembered folder that was since deleted or renamed falls back to the root.

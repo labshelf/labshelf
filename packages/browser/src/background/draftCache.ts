@@ -1,5 +1,6 @@
 // Keeps capture drafts (keyed by tab id or Scholar result identity) between the calls that confirm a save.
 // Lets the second call reuse the record and the PDF search already run.
+import type { ILogger } from "@labshelf/core";
 import { draftFromScholarHit, inspectTab } from "../capture/index";
 import type { CaptureDraft } from "../capture/index";
 import type { ScholarHit } from "../platform";
@@ -21,12 +22,12 @@ const scholarEntries = new Map<string, { at: number; draft: Promise<CaptureDraft
 /**
  * The tab's draft, inspected once per URL and reused for TTL_MS.
  */
-export function draftForTab(tabId: number, url: string, fresh = false): Promise<CaptureDraft> {
+export function draftForTab(log: ILogger, tabId: number, url: string, fresh = false): Promise<CaptureDraft> {
   const now = Date.now();
   for (const [id, e] of entries) if (now - e.at > TTL_MS) entries.delete(id);
   const hit = entries.get(tabId);
   if (!fresh && hit && hit.url === url) return hit.draft;
-  const draft = inspectTab(tabId, url);
+  const draft = inspectTab(log, tabId, url);
   entries.set(tabId, { url, at: now, draft });
   // A failed inspect must not be served again.
   draft.catch(() => { if (entries.get(tabId)?.draft === draft) entries.delete(tabId); });
@@ -52,13 +53,13 @@ export function scholarCacheKey(hit: ScholarHit): string {
  * "Save without PDF" confirmation reuses the finished search instead of
  * re-fetching the landing page and re-running the whole chain.
  */
-export function scholarDraftFor(hit: ScholarHit): Promise<CaptureDraft> {
+export function scholarDraftFor(log: ILogger, hit: ScholarHit): Promise<CaptureDraft> {
   const now = Date.now();
   for (const [k, e] of scholarEntries) if (now - e.at > TTL_MS) scholarEntries.delete(k);
   const key = scholarCacheKey(hit);
   const cached = scholarEntries.get(key);
   if (cached) return cached.draft;
-  const draft = draftFromScholarHit(hit);
+  const draft = draftFromScholarHit(log, hit);
   scholarEntries.set(key, { at: now, draft });
   // A failed build must not be served again.
   draft.catch(() => { if (scholarEntries.get(key)?.draft === draft) scholarEntries.delete(key); });

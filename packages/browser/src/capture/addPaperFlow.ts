@@ -4,10 +4,7 @@
  */
 import type { PaperRecord, ResolvedMetadata } from "@labshelf/core";
 import { BibTeXService, PDF_FILE, PAPERS_DIR, claimCiteKey, makeCiteKey, normalizeTags } from "@labshelf/core";
-import { BrowserLogger } from "../platform";
-import { IndexedDbFileSystem, createLibraryMutations, listAllRecords, upsertRecord } from "../storage";
-
-const mutations = createLibraryMutations(new BrowserLogger("capture"));
+import { IndexedDbFileSystem, listAllRecords, upsertRecord, type LibraryMutations } from "../storage";
 
 /** What the user attached while saving. */
 export interface PaperExtras {
@@ -78,6 +75,7 @@ export async function addPaper(
  * @returns The current record, and whether paper.pdf was written now.
  */
 export async function attachPdfToPaper(
+  mutations: LibraryMutations,
   paperId: string,
   bytes: Uint8Array,
 ): Promise<{ record: PaperRecord; written: boolean }> {

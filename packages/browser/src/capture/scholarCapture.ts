@@ -1,7 +1,7 @@
 // Turns one Google Scholar result into a capture draft: DOI in its links, else landing page, else title search.
 // A title match must agree with the year and authors Scholar printed; Scholar's "[PDF]" link is the first candidate.
 import { arxivIdFromUrl, extractDoi, pmidFromUrl } from "@labshelf/core";
-import type { DetectedIds, MetadataSource, PageFacts, PdfCandidate, ResolvedMetadata } from "@labshelf/core";
+import type { DetectedIds, ILogger, MetadataSource, PageFacts, PdfCandidate, ResolvedMetadata } from "@labshelf/core";
 import { draftFromFacts } from "./captureService";
 import type { CaptureDraft } from "./captureService";
 import { landingFacts } from "./landingFacts";
@@ -37,9 +37,9 @@ export function metadataFromHit(hit: ScholarHit): ResolvedMetadata {
 /**
  * Builds the draft for a Scholar result.
  */
-export async function draftFromScholarHit(hit: ScholarHit): Promise<CaptureDraft> {
+export async function draftFromScholarHit(log: ILogger, hit: ScholarHit): Promise<CaptureDraft> {
   const ids = idsFromHit(hit);
-  const landing = !ids.doi && !ids.arxivId && hit.url ? await landingFacts(hit.url) : undefined;
+  const landing = !ids.doi && !ids.arxivId && hit.url ? await landingFacts(log, hit.url) : undefined;
 
   const scholarPdf: PdfCandidate[] = hit.pdfUrl ? [{ url: hit.pdfUrl, source: "scholar" }] : [];
   const facts: PageFacts = landing
@@ -47,5 +47,5 @@ export async function draftFromScholarHit(hit: ScholarHit): Promise<CaptureDraft
     : { pageUrl: hit.url ?? hit.pdfUrl ?? "", ids, metadata: {}, structured: false, pdfCandidates: scholarPdf, isPaper: true };
 
   const scholarSource: MetadataSource = { name: "scholar", trust: SCHOLAR_TRUST, metadata: metadataFromHit(hit) };
-  return draftFromFacts(facts, {}, [scholarSource]);
+  return draftFromFacts(log, facts, {}, [scholarSource]);
 }

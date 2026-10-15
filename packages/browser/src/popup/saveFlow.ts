@@ -1,12 +1,11 @@
 // Runs the capture, save and undo flow: inspecting the current tab, the shared "No PDF found" dialog, saving the
 // draft, attaching a PDF to an already-saved copy, and undoing a save.
-import { $, showDialog } from "@labshelf/core/dom";
-import { noPdfDialogCopy, pdfSourceLabel, type IfNoPdf, type PdfMiss } from "@labshelf/core";
+import { $, askNoPdf } from "@labshelf/core/dom";
+import { errorMessage, pdfSourceLabel, type IfNoPdf, type PdfMiss } from "@labshelf/core";
 
-import type { AttachPdfData, DraftView, LibraryRef, PdfStatusData, SaveOutcome } from "../platform";
+import { sendRuntime, type AttachPdfData, type DraftView, type LibraryRef, type PdfStatusData, type SaveOutcome } from "../platform";
 import { folderName, parseTags } from "./format";
 import { renderPaper, renderPdf, showError, showLibraryCopy, showStatus } from "./render";
-import { errorText, send } from "./runtimeSend";
 import { popupState, setState } from "./state";
 
 // A paper already saved without its PDF: the background searches this very page
@@ -16,7 +15,7 @@ async function showExisting(existing: LibraryRef): Promise<void> {
   if (existing.hasPdf) return;
   renderPdf("searching");
   try {
-    popupState.pdfStatus = await send<PdfStatusData>({ type: "capture.findPdf", tabId: popupState.tabId });
+    popupState.pdfStatus = await sendRuntime<PdfStatusData>({ type: "capture.findPdf", tabId: popupState.tabId });
   } catch {
     $("pdf").hidden = true;
     return;
@@ -25,7 +24,7 @@ async function showExisting(existing: LibraryRef): Promise<void> {
     renderPdf(popupState.pdfStatus);
     showStatus({
       glyph: "warning", tone: "warn", title: "In your library — without its PDF",
-      detail: folderName(existing.folder, popupState.folders), open: "Open in library", attach: "Attach PDF",
+      detail: folderName(existing.folder), open: "Open in library", attach: "Attach PDF",
     });
   } else {
     $("pdf").hidden = true;
@@ -39,7 +38,7 @@ async function showExisting(existing: LibraryRef): Promise<void> {
 }
 
 export async function inspect(): Promise<void> {
-  const draft = await send<DraftView>({ type: "capture.inspect", tabId: popupState.tabId });
+  const draft = await sendRuntime<DraftView>({ type: "capture.inspect", tabId: popupState.tabId });
   renderPaper(draft);
   if (draft.existing) {
     await showExisting(draft.existing);
@@ -58,7 +57,7 @@ export async function inspect(): Promise<void> {
   $("save").focus();
   renderPdf("searching");
   try {
-    popupState.pdfStatus = await send<PdfStatusData>({ type: "capture.findPdf", tabId: popupState.tabId });
+    popupState.pdfStatus = await sendRuntime<PdfStatusData>({ type: "capture.findPdf", tabId: popupState.tabId });
     renderPdf(popupState.pdfStatus);
   } catch {
     $("pdf").hidden = true;
@@ -70,11 +69,7 @@ export async function inspect(): Promise<void> {
 async function confirmNoPdf(title: string, miss: PdfMiss): Promise<"save" | "retry" | undefined> {
   document.body.classList.add("modal-open");
   try {
-    return await showDialog<"save" | "retry">({
-      ...noPdfDialogCopy(title, miss),
-      severity: "warning",
-      buttons: [{ id: "retry", label: "Search again" }, { id: "save", label: "Save without PDF", primary: true }],
-    });
+    return await askNoPdf(title, miss);
   } finally {
     document.body.classList.remove("modal-open");
   }
@@ -108,7 +103,7 @@ export async function save(ifNoPdf: IfNoPdf = "ask", retryPdf = false): Promise<
   try {
     const tags = parseTags($<HTMLInputElement>("tags").value);
     const note = $<HTMLTextAreaElement>("note").value.trim();
-    const r = await send<SaveOutcome>({
+    const r = await sendRuntime<SaveOutcome>({
       type: "capture.save", tabId: popupState.tabId, folder: $<HTMLSelectElement>("folder").value, ifNoPdf,
       ...(tags.length ? { tags } : {}), ...(note ? { note } : {}), ...(retryPdf ? { retryPdf } : {}),
     });
@@ -124,7 +119,7 @@ export async function save(ifNoPdf: IfNoPdf = "ask", retryPdf = false): Promise<
     setState("saved");
     $("pdf").hidden = true;
     showStatus({
-      glyph: "check", tone: "ok", title: `Saved to ${folderName(popupState.saved.folder, popupState.folders)}`,
+      glyph: "check", tone: "ok", title: `Saved to ${folderName(popupState.saved.folder)}`,
       detail: popupState.saved.pdfSource ? `PDF via ${pdfSourceLabel(popupState.saved.pdfSource)} · syncs shortly` : "Saved without a PDF · syncs shortly",
       open: "Open in library", undo: true,
     });
@@ -133,10 +128,10 @@ export async function save(ifNoPdf: IfNoPdf = "ask", retryPdf = false): Promise<
   } catch (err) {
     if (from === "empty") {
       setState("empty");
-      showStatus({ glyph: "warning", tone: "muted", title: "Nothing could be saved", detail: errorText(err) });
+      showStatus({ glyph: "warning", tone: "muted", title: "Nothing could be saved", detail: errorMessage(err) });
     } else {
       setState("form");
-      showError(errorText(err));
+      showError(errorMessage(err));
     }
   }
 }
@@ -147,7 +142,7 @@ export async function attachPdf(): Promise<void> {
   const btn = $<HTMLButtonElement>("attachPdf");
   btn.disabled = true;
   try {
-    const r = await send<AttachPdfData>({ type: "capture.attachPdf", tabId: popupState.tabId });
+    const r = await sendRuntime<AttachPdfData>({ type: "capture.attachPdf", tabId: popupState.tabId });
     $("pdf").hidden = true;
     if (r.attached) {
       showStatus({ glyph: "check", tone: "ok", title: "PDF attached", detail: `via ${pdfSourceLabel(r.source)} · syncs shortly`, open: "Open in library" });
@@ -157,7 +152,7 @@ export async function attachPdf(): Promise<void> {
       showStatus({ glyph: "warning", tone: "warn", title: "No PDF found", detail: "No PDF could be downloaded for this paper.", open: "Open in library" });
     }
   } catch (err) {
-    showStatus({ glyph: "warning", tone: "warn", title: "Could not attach the PDF", detail: errorText(err), open: "Open in library" });
+    showStatus({ glyph: "warning", tone: "warn", title: "Could not attach the PDF", detail: errorMessage(err), open: "Open in library" });
   } finally {
     btn.disabled = false;
   }
@@ -167,12 +162,12 @@ export async function undo(): Promise<void> {
   if (!popupState.saved) return;
   $<HTMLButtonElement>("undo").disabled = true;
   try {
-    await send({ type: "paper.remove", id: popupState.saved.id });
+    await sendRuntime({ type: "paper.remove", id: popupState.saved.id });
     popupState.saved = undefined;
     setState("form");
     if (popupState.pdfStatus) renderPdf(popupState.pdfStatus);
   } catch (err) {
-    showStatus({ glyph: "warning", tone: "muted", title: "Could not remove the paper", detail: errorText(err), open: "Open in library" });
+    showStatus({ glyph: "warning", tone: "muted", title: "Could not remove the paper", detail: errorMessage(err), open: "Open in library" });
   } finally {
     $<HTMLButtonElement>("undo").disabled = false;
   }

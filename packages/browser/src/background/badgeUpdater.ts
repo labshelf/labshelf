@@ -1,7 +1,7 @@
 // Reflects sync state on the toolbar action badge: none, idle dot, spinner or "!".
 // Polls about once a second.
-import { COLOR_TOKENS } from "@labshelf/core";
-import { bx, type SyncStatusData } from "../platform";
+import { COLOR_TOKENS, type DriveStatus } from "@labshelf/core";
+import { bx } from "../platform";
 
 // Polling shows transient sync flips without bespoke event plumbing.
 const POLL_MS = 1000;
@@ -12,7 +12,7 @@ const COLOR_SYNC = COLOR_TOKENS.blue.value;
 const COLOR_ERROR = COLOR_TOKENS.error.value;
 
 /** Provided by background/index so the badge tracks the live controller. */
-export type GetSyncStatus = () => SyncStatusData;
+export type GetSyncStatus = () => DriveStatus;
 
 /**
  * Starts the polling loop. Has no teardown — the MV3 service worker handles
@@ -58,6 +58,6 @@ export function installBadgeUpdater(getStatus: GetSyncStatus): void {
   tick();
 }
 
-function signature(s: SyncStatusData): string {
+function signature(s: DriveStatus): string {
   return [s.connected, s.syncing, s.lastError ?? "", s.lastSyncTime ?? ""].join("|");
 }

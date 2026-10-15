@@ -1,8 +1,8 @@
 /** Answers the sign-in and sync runtime messages and starts syncs for the background triggers. */
-import type { SyncCoordinator } from "@labshelf/core";
-import type { BrowserLogger, SyncStatusData } from "../platform";
-import { browserSyncStatus } from "../sync";
+import { driveStatusOf, type DriveStatus, type ILogger, type SyncCoordinator } from "@labshelf/core";
 import type { SyncTrigger } from "./syncOnIdle";
+
+const MODULE = "background";
 
 /** The parts of BrowserDriveAuth the handlers use. */
 export interface DriveSignIn {
@@ -14,20 +14,20 @@ export interface DriveSignIn {
 
 export interface SyncMessages {
   /** The status as it is now, without loading the token (for the badge's polling). */
-  snapshot(): SyncStatusData;
+  snapshot(): DriveStatus;
   authStatus(): Promise<{ connected: boolean }>;
   connect(): Promise<{ connected: boolean }>;
   disconnect(): Promise<{ connected: boolean }>;
-  status(): Promise<SyncStatusData>;
-  syncNow(): Promise<SyncStatusData>;
+  status(): Promise<DriveStatus>;
+  syncNow(): Promise<DriveStatus>;
   /** A change in IDB: coalesces the follow-up sync (the coordinator skips it while signed out). */
   scheduleSoon(reason: string): void;
   trigger: SyncTrigger;
 }
 
 /** @returns the handlers, bound to one auth and one coordinator */
-export function createSyncMessages(auth: DriveSignIn, sync: SyncCoordinator, log: BrowserLogger): SyncMessages {
-  const current = (): SyncStatusData => browserSyncStatus(sync.status(), auth.isAuthenticated());
+export function createSyncMessages(auth: DriveSignIn, sync: SyncCoordinator, log: ILogger): SyncMessages {
+  const current = (): DriveStatus => driveStatusOf(sync.status(), auth.isAuthenticated());
   return {
     snapshot: current,
     async authStatus() {
@@ -37,13 +37,13 @@ export function createSyncMessages(auth: DriveSignIn, sync: SyncCoordinator, log
     async connect() {
       await auth.authenticate();
       sync.refreshAuth();
-      await log.info("authenticated to Google Drive");
+      await log.log("INFO", MODULE, "authenticated to Google Drive");
       return { connected: true };
     },
     async disconnect() {
       await auth.revoke();
       sync.refreshAuth();
-      await log.info("disconnected from Google Drive");
+      await log.log("INFO", MODULE, "disconnected from Google Drive");
       return { connected: false };
     },
     async status() {
@@ -63,11 +63,11 @@ export function createSyncMessages(auth: DriveSignIn, sync: SyncCoordinator, log
       return current();
     },
     scheduleSoon(reason) {
-      void log.info("sync scheduled", { reason });
+      void log.log("INFO", MODULE, "sync scheduled", { reason });
       sync.scheduleLocalChange();
     },
     trigger(reason) {
-      void log.info("sync trigger", { reason });
+      void log.log("INFO", MODULE, "sync trigger", { reason });
       void sync.syncNow(reason);
     },
   };

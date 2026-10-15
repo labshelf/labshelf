@@ -1,10 +1,10 @@
 jest.mock("webextension-polyfill", () => ({ storage: { local: { get: async () => ({}), set: async () => undefined } } }));
 jest.mock("../../src/storage/idb/db", () => ({ getDb: async () => require("../support/fakeIdb").fakeDb }));
 
-import type { ILogger, SyncTimers } from "@labshelf/core";
+import { driveStatusOf, type ILogger, type SyncTimers } from "@labshelf/core";
 import { FakeRemoteProvider } from "@labshelf/core/test-support/sync-fakes";
 
-import { browserSyncStatus, createBrowserSync } from "../../src/sync";
+import { createBrowserSync } from "../../src/sync";
 import { clearFakeDb, fakeRows, putFile, textAt } from "../support/fakeIdb";
 
 const timers: SyncTimers = { start: () => undefined, cancel: () => undefined };
@@ -26,7 +26,7 @@ describe("createBrowserSync", () => {
     const list = jest.spyOn(provider, "list");
 
     expect(await sync.syncNow("manual")).toEqual({ kind: "skipped", reason: "not signed in to Google Drive" });
-    expect(browserSyncStatus(sync.status(), false)).toEqual({ connected: false, syncing: false, lastSyncTime: null, lastError: null });
+    expect(driveStatusOf(sync.status(), false)).toEqual({ connected: false, syncing: false, lastSyncTime: null, lastError: null });
     expect(list).not.toHaveBeenCalled();
   });
 
@@ -41,7 +41,7 @@ describe("createBrowserSync", () => {
     const first = sync.syncNow("manual");
     const second = sync.syncNow("idle");
     while (calls.mock.calls.length === 0) await new Promise((resolve) => setImmediate(resolve));
-    expect(browserSyncStatus(sync.status(), true).syncing).toBe(true);
+    expect(driveStatusOf(sync.status(), true).syncing).toBe(true);
     release();
 
     expect(await second).toBe(await first);
@@ -53,7 +53,7 @@ describe("createBrowserSync", () => {
     const { sync, onSynced } = harness(true);
     const outcome = await sync.syncNow("manual");
     expect(onSynced).toHaveBeenCalledTimes(1);
-    expect(outcome.kind === "synced" && browserSyncStatus(sync.status(), true).lastSyncTime).toBe(outcome.kind === "synced" && outcome.record.finishedAt);
+    expect(outcome.kind === "synced" && driveStatusOf(sync.status(), true).lastSyncTime).toBe(outcome.kind === "synced" && outcome.record.finishedAt);
   });
 
   it("keeps the error of a failed sync for the badge, logs it, and skips the rebuild", async () => {
@@ -62,7 +62,7 @@ describe("createBrowserSync", () => {
 
     expect((await sync.syncNow("alarm")).kind).toBe("failed");
 
-    expect(browserSyncStatus(sync.status(), true)).toMatchObject({ syncing: false, lastError: expect.stringContaining("not connected") });
+    expect(driveStatusOf(sync.status(), true)).toMatchObject({ syncing: false, lastError: expect.stringContaining("not connected") });
     expect(logs).toContainEqual({ level: "ERROR", message: "Sync failed" });
     expect(onSynced).not.toHaveBeenCalled();
   });

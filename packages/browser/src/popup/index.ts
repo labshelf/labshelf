@@ -1,13 +1,12 @@
 // Saves the paper on the current tab from the toolbar popup.
 // States (data-state on #popup): loading, form | library | empty, saving, saved.
-import { bx } from "../platform";
+import { bx, sendRuntime } from "../platform";
 import type { FoldersData } from "../platform";
 import { $ } from "@labshelf/core/dom";
 import { applyTheme } from "../ui";
-import { icon } from "@labshelf/core";
+import { errorMessage, icon } from "@labshelf/core";
 import { renderFolders, showStatus, autoGrow } from "./render";
 import { attachPdf, inspect, save, undo } from "./saveFlow";
-import { errorText, send } from "./runtimeSend";
 import { renderSync } from "./syncButton";
 import { popupState, setState } from "./state";
 
@@ -23,15 +22,15 @@ function wire(): void {
   $("undo").addEventListener("click", () => { void undo(); });
   $("open").addEventListener("click", () => {
     const { folder, paper } = $("open").dataset;
-    void send({ type: "library.open", ...(folder ? { folder } : {}), ...(paper ? { paperId: paper } : {}) }).then(() => window.close());
+    void sendRuntime({ type: "library.open", ...(folder ? { folder } : {}), ...(paper ? { paperId: paper } : {}) }).then(() => window.close());
   });
   $("library").addEventListener("click", () => {
-    void send({ type: "library.open" }).then(() => window.close());
+    void sendRuntime({ type: "library.open" }).then(() => window.close());
   });
   $("settings").addEventListener("click", () => { void bx.runtime.openOptionsPage(); window.close(); });
   $("sync").addEventListener("click", () => {
     if ($("sync").dataset["action"] === "sync") {
-      void send({ type: "sync.now" }).then(renderSync).then(() => setTimeout(() => { void renderSync(); }, 4000));
+      void sendRuntime({ type: "sync.now" }).then(renderSync).then(() => setTimeout(() => { void renderSync(); }, 4000));
     } else {
       void bx.runtime.openOptionsPage();
       window.close();
@@ -63,7 +62,7 @@ async function init(): Promise<void> {
   }
   popupState.tabId = tab.id;
 
-  const foldersReady = send<FoldersData>({ type: "library.folders" })
+  const foldersReady = sendRuntime<FoldersData>({ type: "library.folders" })
     .then((f) => { popupState.folders = f; })
     .catch(() => undefined)
     .then(renderFolders);
@@ -72,7 +71,7 @@ async function init(): Promise<void> {
   } catch (err) {
     $("title").textContent = tab.title || "This page";
     setState("empty");
-    showStatus({ glyph: "warning", tone: "muted", title: "Could not read this page", detail: errorText(err), tryAnyway: true });
+    showStatus({ glyph: "warning", tone: "muted", title: "Could not read this page", detail: errorMessage(err), tryAnyway: true });
   }
 }
 

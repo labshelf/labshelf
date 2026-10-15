@@ -2,11 +2,12 @@
  * Keeps the periodic sync interval in step with the autoSyncMinutes setting, so an edit in the options page takes
  * effect without an extension reload.
  */
-import { SETTINGS_STORAGE_KEY, bx, getSettings, type BrowserLogger } from "../platform";
+import type { ILogger } from "@labshelf/core";
+import { SETTINGS_STORAGE_KEY, bx, getSettings } from "../platform";
 
 export interface AutoSyncSchedulerOptions {
   sync: { startPeriodic(minutes: number): void };
-  logger: BrowserLogger;
+  logger: ILogger;
 }
 
 /** Applies the interval now and whenever the setting changes. */
@@ -22,5 +23,5 @@ export async function installAutoSyncScheduler(opts: AutoSyncSchedulerOptions): 
 async function applyInterval({ sync, logger }: AutoSyncSchedulerOptions): Promise<void> {
   const { autoSyncMinutes } = await getSettings();
   sync.startPeriodic(autoSyncMinutes);
-  await logger.info(autoSyncMinutes > 0 ? "auto-sync scheduled" : "auto-sync disabled", { autoSyncMinutes });
+  await logger.log("INFO", "background", autoSyncMinutes > 0 ? "auto-sync scheduled" : "auto-sync disabled", { autoSyncMinutes });
 }
