@@ -91,6 +91,7 @@ Open questions (each one blocks only the steps named):
 
 - **Q1** (blocks S10.5) Keep the SQLite paper index in VS Code, or use the in-memory library store from S4.3 as the terminal does?
   - Answer: in-memory. The index is a cache rebuilt on every activation, and dropping it removes `IResearchDatabase`, the column migrations and a whole layer. SQLite stays only for the AI stores. It also keeps the extension close to running as a web extension, which the writing workflow needs.
+  - Council (2026-10-14) confirms in-memory with two gates for S10.5: time a cold activation scan of a library of thousands of papers against a 1 s budget before deleting the SQLite paper table (over budget → a core snapshot-cache port, never VS Code columns), and prune AI-store rows whose paper id leaves the reindex diff. The web-extension benefit arrives only when the AI stores move behind a core port, a separate step.
 - **Q2** (blocks S1.6, S6.3) The four unwired resolvers (OpenAlex, Semantic Scholar, Europe PMC, PMC) belong to [pdf-finding.plan.md](pdf-finding.plan.md).
   - Options: wire them in during S6.3 / delete them.
   - Answer: wire them in during S6.3, with `titleMatch.ts`. pdf-finding.plan.md is active and puts its resolver steps in S6.3; its proxy and author-request steps stay in that plan.

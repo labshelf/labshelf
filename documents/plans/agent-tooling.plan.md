@@ -1,6 +1,6 @@
 # Plan: Agent tooling, comment standard and codebase reduction
 
-Status: in progress (session 3 of 8)
+Status: in progress (session 4 of 8)
 Size: GG — 8 sessions across rules, hooks, agents, skills, docs, every source file and a repo-wide audit; the reduction work it finds runs as its own plan
 Pending decisions: 0
 
@@ -43,8 +43,8 @@ Resolved:
 - [x] **A4** The Edit hook, given a sample payload for a file with a `TRAP:` line and a memory naming that path, injects both in ≤10 lines; for other files it prints nothing.
 - [x] **A5** Session start prints `STALE?: <memory> -> <path>` for a memory that names a missing path, and nothing when memory is clean.
 - [x] **A6** Every agent file states its model and a return format of ≤40 lines; `orchestrate` states the routing rule and the escalation rule of D5.
-- [ ] **A7** A dry run of `/brainstorm` in grill mode on a sample idea asks numbered frontier questions, each with a recommendation, and sends fact questions to a scout.
-- [ ] **A8** `/council` on a sample fork runs two rounds and a judge; the main thread receives ≤2k tokens.
+- [x] **A7** A dry run of `/brainstorm` in grill mode on a sample idea asks numbered frontier questions, each with a recommendation, and sends fact questions to a scout.
+- [x] **A8** `/council` on a sample fork runs two rounds and a judge; the main thread receives ≤2k tokens.
 - [ ] **A9** `documents/README.md` is a routing table; every doc's first line after the title is "Read when …"; `health` reports any doc without it.
 - [ ] **A10** Every source file's header line 1 is a capability sentence; `check-rules.sh` flags new files without one; `rg -m1 '^// ' packages/core/src/<domain>` reads as a map.
 - [ ] **A11** The core contrast test passes for both themes and fails if a listed pair drops below 4.5:1.
@@ -118,11 +118,11 @@ Resolved:
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S15 | `council` skill + personas reference | Q1 | H · main thread | A8 | [ ] |
-| S16 | `brainstorm` modes + techniques reference | S15 | H · main thread | A7 | [ ] |
-| S17 | `retro` skill | — | H · main thread | dry run proposes one check and one rule | [ ] |
-| S18 | Dry runs of A7 and A8 on a real pending idea | S15–S16 | H · main thread | A7, A8 | [ ] |
-| S19 | Finish | S15–S18 | `finish` skill | gate passes | [ ] |
+| S15 | `council` skill + personas reference | Q1 | H · main thread | A8 | [x] |
+| S16 | `brainstorm` modes + techniques reference | S15 | H · main thread | A7 | [x] |
+| S17 | `retro` skill | — | H · main thread | dry run proposes one check and one rule | [x] |
+| S18 | Dry runs of A7 and A8 on a real pending idea | S15–S16 | H · main thread | A7, A8 | [x] |
+| S19 | Finish | S15–S18 | `finish` skill | gate passes | [x] |
 
 ### Session 5 — Workflow skills and MCP
 
@@ -269,7 +269,7 @@ Resolved:
 ## 7. Risks
 
 - **R1** Hooks add latency or noise on every edit — each hook exits fast when it has nothing to say and fires once per file per session.
-- **R2** Council costs ~30k tokens per run — only for hard-to-reverse forks; never automatic.
+- **R2** Council costs about 200k subagent tokens per run (measured in session 4: four seats of about 43k and a judge of about 36k, mostly repo context) and about 2k in the main thread — only for hard-to-reverse forks; never automatic.
 - **R3** Header migration touches ~600 files and collides with refactor moves — D12 orders it after the refactor; one commit per package.
 - **R4** knip false positives on dynamic entry points (manifest, webview scripts) — explicit entries in config; baseline instead of deleting blindly.
 - **R5** Tighter agent prompts grow context — every agent file stays at or under 65 lines, its return block at or under 40; detail goes to references.
@@ -279,3 +279,5 @@ Resolved:
 - 2026-10-14: Session 1 done. All D1–D14 approved, Q1 resolved as participant. S1 (ladder + never-cut in AGENTS.md §3, no-speculation + no-small-deps in §4, "what was not checked" in §6), S2 (header-line-1 and four-tag comment standard in AGENTS.md §5), S3 (CLAUDE.md "Division of labour" table replaced with the D5 routing rule and escalation rule) done. `finish` gate: PASS. Committed.
 - 2026-10-14 (session 2): S5 (check-rules.sh gained 7 new diff guards — ts-ignore/eslint-disable/skip/empty-catch via now-vs-HEAD counts, deleted-test-file and CONTRACT-anchor checks, new-file-header check; fixture test `check-rules.test.sh`, 12/12 pass) done. S6 (`git-guardrails.sh`, PreToolUse on Bash, unconditionally blocks git push/reset --hard/clean -f/branch -D/checkout ., wired in settings.json) done. S7 (jscpd added alongside the already-installed knip; both turned into a ratchet gate against committed baselines — `scripts/knip-baseline.json` (79), `scripts/jscpd-baseline.json` (9) — wired into root `knip`/`jscpd` scripts and into `check`/`health` SKILL.md; regression simulated and reverted for both, confirming the gate fails) done. S8 (`edit-context.sh`, PreToolUse on Edit/Write, injects TRAP/INVARIANT/PLATFORM/CONTRACT lines + up to 3 matching memory titles, deduped per session via `/tmp` marker; memory lint added to `session-context.sh`, printing `STALE?:` for missing memory files or broken repo paths) done. `finish` surfaced two real deviations, fixed in this session: (1) the real memory index had two genuinely stale paths (`packages/reader`, old browser `tokens.css` location) from the architecture-refactor's phases 8-9 landing — updated `shared-reader-package.md` and `browser-extension-vscode-parity.md` to the current `packages/core/src/reader` / `packages/core/src/ui/dom/tokens.css` layout; (2) the memory-lint heuristic flagged ~15 false positives from pre-existing memory files' relative path shorthand — tightened it to only check tokens rooted at a real top-level directory (`packages/`, `documents/`, `scripts/`, etc.), verified it still catches a genuinely broken path via an isolated fixture; (3) `package.json` had `lint:unused`/`knip` and `lint:dup`/`jscpd` as duplicate names for the same script (AGENTS.md §4) — collapsed `lint` to call `knip`/`jscpd` directly. Deviation: unrelated, pre-existing uncommitted work in `packages/terminal` (a different in-progress task) triggered the new deleted-test-file check as expected noise — left untouched, out of scope for this session. `finish` gate (session-2 files only): PASS. A1–A5 all verified and ticked.- 2026-10-14 (session 3): S10 implementer (ladder, read callers, shortcuts table, CHANGES/TESTS/ACCEPTANCE/NOT TOUCHED/CONCERNS), test-writer (public seam, Prove-It), Explore (barrels + header lines first, `depcruise --reaches`, Reuse candidates first). S11 bug-tracer renamed to `diagnose`: red → minimise → 3–5 falsifiable hypotheses → `[DEBUG-xxxx]` logs → failing regression test; it gains Edit/Write for those and never writes the fix. architecture-reviewer: adversarial, ignores author claims, Standards and Spec axes, block/fix/note. S12 dead-code-cleaner from knip/jscpd output with Chesterton's fence; comment-enforcer applies D3 and never deletes tagged comments. S13 (Sonnet): return blocks capped at 40 lines on the other six agents.
 - 2026-10-14 (session 3) deviations: the orchestrate D5 routing and escalation lines are added here to close A6, and the rest of S20 stays in session 5. R5 is amended from "+30%" to an absolute cap (≤65 lines per file, ≤40-line return block), because the required tables and return blocks pushed six files to +50–105%. `finish` gate: PASS. Uncommitted `packages/vscode` work from another session was left out of scope.
+- 2026-10-14 21:56 (session 4): S15 `council` skill: a gate (fork? hard to reverse? neutral brief, Position H), round 1 with four isolated seats, round 2 via SendMessage with `sort -R`-shuffled labels and HOLD/CHANGE citing an argument, an Opus judge, and the hand-back to Open items; Feature, UX/navigation and Visual presets in `references/personas.md`. S16 `brainstorm`: spar/grill/council modes, a hypothesis with confidence, mandatory "Not doing", the predictable-answers stop, a list of non-approvals and a Sonnet builder check; techniques in `references/techniques.md` (frame → diverge → challenge → converge → decide). SKILL.md is 67 lines. S17 `retro` skill: collect → sort (mechanical/judgment/estimate) → propose ≤40 lines → apply only approved items, with a fixture test per check.
+- 2026-10-14 21:56 (session 4) S18 dry runs: grill on pdf-finding §4 (institutional access) asked 6 numbered frontier questions, each with a recommendation; a Haiku scout answered the code facts (tab fetch already uses `credentials: "include"`; no proxy code), and its answers came back marked verified (A7). The council on architecture-refactor Q1 ran two rounds and a judge: 4/4 seats chose in-memory after round 2 (the Contrarian changed, citing P5's fallback fact). Two new gates were recorded under refactor Q1, and the main thread took in about 1.7k tokens (A8). The retro dry run on this conversation proposed 1 check and 2 rules (S17). Deviation: the council costs about 200k subagent tokens, not 30k. R2, the council skill and CLAUDE.md state the measured figure. Finish could not call the council itself (forked skills cannot launch agents), so a council is run on a fork that finish reports. `finish` gate: PASS.
