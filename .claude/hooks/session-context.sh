@@ -27,8 +27,8 @@ else
   done
 fi
 
-# Memory lint: flag memory entries whose linked file is missing, and backticked
-# path-looking tokens inside memory files that no longer exist in the repo.
+# Memory lint: flag memory entries whose linked file is missing, and repo paths
+# named in memory files that no longer exist.
 slug=$(printf '%s' "$root" | tr '/' '-')
 mem_dir="$HOME/.claude/projects/$slug/memory"
 mem_md="$mem_dir/MEMORY.md"
@@ -44,24 +44,16 @@ if [ -f "$mem_md" ]; then
     esac
   done < "$mem_md"
 
+  # Only tokens rooted at a real top-level directory are checked; a shorthand
+  # fragment like `ui/styles/tokens.css` (relative to some package's src/) is
+  # not a repo-root path and would false-positive on every memory.
   for memfile in "$mem_dir"/*.md; do
     [ -f "$memfile" ] || continue
-    [ "$(basename "$memfile")" = "MEMORY.md" ] && continue
     while IFS= read -r token; do
+      token=${token%%\**}; token=${token%.}; token=${token%/}
       [ -n "$token" ] || continue
-      case "$token" in
-        *" "*|"~"*|http://*|https://*|'$'*|@*|*'<'*|*'>'*|*'..'*|*'*'*|*'='*|*'"'*|*'{'*|*'}'*)
-          continue ;;
-      esac
-      # Only check tokens rooted at a real top-level directory; a shorthand
-      # fragment like `ui/styles/tokens.css` (relative to some package's src/)
-      # is not a repo-root path and would false-positive on every memory.
-      case "$token" in
-        packages/*|documents/*|scripts/*|website/*|credentials/*|test-workspace/*|.claude/*) ;;
-        *) continue ;;
-      esac
       [ -e "$root/$token" ] || echo "STALE?: $(basename "$memfile") -> $token"
-    done < <(grep -oE '`[^`]+`' "$memfile" | tr -d '`' | grep '/')
+    done < <(grep -oE '(packages|documents|scripts|website|credentials|test-workspace|\.claude)/[A-Za-z0-9_.*/-]+' "$memfile" | sort -u)
   done
 fi
 exit 0
