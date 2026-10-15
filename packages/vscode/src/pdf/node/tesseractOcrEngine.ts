@@ -1,7 +1,7 @@
 // Recovers text from scans and broken-font PDFs by rendering pages with pdfjs and reading them with Tesseract.
 // INVARIANT: both dependencies load lazily and their absence is non-fatal; callers fall back to the text layer.
 import type { PdfOcrEngine } from "@labshelf/core";
-import { loadNativeCanvas, nativeRenderOptions, type PdfjsLoader } from "@labshelf/core/node";
+import { loadNativeCanvas, nativeRenderOptions, renderPagePng, type PdfjsLoader, type PdfViewport } from "@labshelf/core/node";
 
 // Tesseract wants roughly 300 DPI; PDF user space is 72 DPI.
 const RENDER_SCALE = 300 / 72;
@@ -186,13 +186,7 @@ export async function openPdfForOcr(pdfjs: PdfjsLoader, pdfBytes: Uint8Array): P
     async renderPng(pageNumber) {
       const page = await document.getPage(pageNumber);
       const viewport = scaledViewport(page);
-      const canvas = canvasPkg.createCanvas(Math.ceil(viewport.width), Math.ceil(viewport.height));
-      const context = canvas.getContext("2d");
-      // Tesseract reads dark-on-light best, and PDF pages assume a white sheet.
-      context.fillStyle = "white";
-      context.fillRect(0, 0, canvas.width, canvas.height);
-      await page.render({ canvasContext: context, viewport, canvas }).promise;
-      return canvas.toBuffer("image/png");
+      return renderPagePng(canvasPkg, page, viewport);
     },
     async close() {
       // The loading task owns teardown; pdfjs 6 has no PDFDocumentProxy.destroy().
@@ -245,11 +239,6 @@ export function invisibleShare(ops: OperatorList, OPS: Record<string, number>): 
     }
   }
   return runs === 0 ? undefined : invisible / runs;
-}
-
-interface PdfViewport {
-  width: number;
-  height: number;
 }
 
 interface PdfRenderPage {

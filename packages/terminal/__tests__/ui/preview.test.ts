@@ -105,11 +105,11 @@ describe("infoLines", () => {
 
   it("describes the text layer", () => {
     const layer = (info: NonNullable<PaperRecord["textLayer"]>): string[] => text(infoLines(entry({ textLayer: info }), undefined, 60));
-    expect(layer({ state: "native", checkedAt: "" })).toContain("Text   searchable");
-    expect(layer({ state: "ocr", ocrPages: 12, checkedAt: "" })).toContain("Text   searchable (OCR, 12 pages)");
-    expect(layer({ state: "ocr", checkedAt: "" })).toContain("Text   searchable (OCR)");
-    expect(layer({ state: "missing", checkedAt: "" })).toContain("Text   scanned, not searchable");
-    expect(layer({ state: "failed", reason: "password protected", checkedAt: "" })).toContain("Text   unreadable (password protected)");
+    expect(layer({ state: "native", checkedAt: "" })).toContain("Text   Embedded in the PDF");
+    expect(layer({ state: "ocr", ocrPages: 12, checkedAt: "" })).toContain("Text   Added by OCR · 12 pages");
+    expect(layer({ state: "ocr", checkedAt: "" })).toContain("Text   Added by OCR");
+    expect(layer({ state: "missing", checkedAt: "" })).toContain("Text   None");
+    expect(layer({ state: "failed", reason: "password protected", checkedAt: "" })).toContain("Text   None (OCR failed)");
   });
 
   it("omits the text line for a PDF that was never checked", () => {

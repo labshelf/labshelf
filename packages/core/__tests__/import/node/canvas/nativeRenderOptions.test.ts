@@ -1,6 +1,6 @@
 /** The getDocument options that make pdf.js draw on the native canvas and never on a DOM one. */
-import { nativeRenderOptions } from '../../../src/import/node/nativeRenderOptions.js';
-import type { NativeCanvasModule } from '../../../src/import/node/index.js';
+import { nativeRenderOptions } from '../../../../src/import/node/canvas/nativeRenderOptions.js';
+import type { NativeCanvasModule } from '../../../../src/import/node/canvas/index.js';
 
 describe('nativeRenderOptions', () => {
   const context = { fillStyle: '', fillRect: jest.fn() };

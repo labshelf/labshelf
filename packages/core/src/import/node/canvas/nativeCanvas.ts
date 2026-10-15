@@ -1,7 +1,7 @@
 /** Loads the native Skia canvas pdf.js draws on in Node, and installs its geometry classes as globals. */
 import { createRequire } from "node:module";
 
-import { pdfjsPackageJson } from "./pdfjsPackage.js";
+import { pdfjsPackageJson } from "../pdfjsPackage.js";
 
 export interface NativeCanvasContext {
   fillStyle: string;

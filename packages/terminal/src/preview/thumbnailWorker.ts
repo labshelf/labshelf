@@ -3,7 +3,7 @@
 import { readFile } from "node:fs/promises";
 import { parentPort, workerData } from "node:worker_threads";
 
-import { createPdfjsLoader, loadNativeCanvas } from "@labshelf/core/node";
+import { createPdfjsLoader, loadNativeCanvas, nativeRenderOptions, renderPagePng } from "@labshelf/core/node";
 
 const pdfjs = createPdfjsLoader();
 
@@ -12,7 +12,7 @@ async function render(pdfPath: string, widthPx: number): Promise<Uint8Array> {
   if (!canvasModule) {
     throw new Error("@napi-rs/canvas could not be loaded, so PDFs cannot be rendered without poppler");
   }
-  const task = await pdfjs.getDocument({ data: new Uint8Array(await readFile(pdfPath)) });
+  const task = await pdfjs.getDocument({ data: new Uint8Array(await readFile(pdfPath)), ...nativeRenderOptions(canvasModule) });
   try {
     const document = (await task.promise) as unknown as {
       getPage(n: number): Promise<{
@@ -23,12 +23,7 @@ async function render(pdfPath: string, widthPx: number): Promise<Uint8Array> {
     const page = await document.getPage(1);
     const base = page.getViewport({ scale: 1 });
     const viewport = page.getViewport({ scale: widthPx / base.width });
-    const canvas = canvasModule.createCanvas(Math.ceil(viewport.width), Math.ceil(viewport.height));
-    const context = canvas.getContext("2d");
-    context.fillStyle = "white";
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    await page.render({ canvasContext: context, viewport, canvas }).promise;
-    return new Uint8Array(canvas.toBuffer("image/png"));
+    return new Uint8Array(await renderPagePng(canvasModule, page, viewport));
   } finally {
     await task.destroy().catch(() => undefined);
   }

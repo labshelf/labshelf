@@ -19,7 +19,7 @@ describe('loadNativeCanvas', () => {
   function isolatedLoader(): () => unknown {
     let load: () => unknown = () => undefined;
     jest.isolateModules(() => {
-      load = require('../../../src/import/node/nativeCanvas.js').loadNativeCanvas;
+      load = require('../../../../src/import/node/canvas/nativeCanvas.js').loadNativeCanvas;
     });
     return load;
   }

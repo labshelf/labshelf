@@ -1,7 +1,7 @@
 // Builds the preview pane content as styled lines: a paper's tabs or a summary of the hovered folder.
 // Pure functions of the snapshot and the sidecar, so tests render them without a terminal.
 import {
-  type Annotation, type CollectionNode, type LibrarySnapshot, type PaperEntry, type PaperRecord, cleanQuote, formatAuthors, formatBytes, venueLine, type PaperData,
+  type Annotation, type CollectionNode, type LibrarySnapshot, type PaperEntry, type PaperRecord, cleanQuote, formatAuthors, formatBytes, textLayerSummary, venueLine, type PaperData,
 } from "@labshelf/core";
 
 import type { Style } from "../tui/index.js";
@@ -53,17 +53,6 @@ function field(label: string, value: string, width: number, valueStyle?: Style):
   ]);
 }
 
-function textLayerLabel(record: PaperRecord): string | undefined {
-  const layer = record.textLayer;
-  if (!layer) { return undefined; }
-  switch (layer.state) {
-    case "native": return "searchable";
-    case "ocr": return `searchable (OCR${layer.ocrPages ? `, ${layer.ocrPages} pages` : ""})`;
-    case "missing": return "scanned, not searchable";
-    case "failed": return `unreadable${layer.reason ? ` (${layer.reason})` : ""}`;
-  }
-}
-
 /**
  * The Info tab: title, authors, venue, status and tags, identifiers, where it lives, PDF and reading state, note.
  * @returns the lines
@@ -91,8 +80,7 @@ export function infoLines(entry: PaperEntry, data: PaperData | undefined, width:
   lines.push(...field("In", entry.collection ? entry.collection.split("/").join(" › ") : "library root", width));
   lines.push(...field("PDF", r.hasPdf === false ? "not on this device" : entry.pdfBytes !== undefined ? formatBytes(entry.pdfBytes) : "yes", width,
     r.hasPdf === false ? theme.warn : undefined));
-  const layer = textLayerLabel(r);
-  if (layer) { lines.push(...field("Text", layer, width)); }
+  if (r.textLayer) { lines.push(...field("Text", textLayerSummary({ hasPdf: r.hasPdf !== false, textLayer: r.textLayer }, undefined), width)); }
   if (data) {
     const highlights = data.annotations.length;
     if (highlights) { lines.push(...field("Notes", `${highlights} highlight${highlights === 1 ? "" : "s"} — Tab to read`, width)); }
