@@ -22,7 +22,12 @@ function setup(root: string | undefined) {
     onDidChangeRoot: emitter.event,
     require: jest.fn(async () => null),
   } as unknown as LibraryRootController;
-  registerWritingView({ subscriptions: [] } as unknown as vscode.ExtensionContext, controller);
+  const context = {
+    subscriptions: [],
+    globalStorageUri: vscode.Uri.file("/storage"),
+    workspaceState: { get: () => undefined, update: jest.fn(async () => {}) },
+  };
+  registerWritingView(context as unknown as vscode.ExtensionContext, controller);
   return { emitter };
 }
 

@@ -73,11 +73,13 @@ const workspace = {
   fs: workspaceFs,
   workspaceFolders: undefined,
   _config,
+  _configUpdate: jest.fn(async () => {}),
   getConfiguration: jest.fn((section) => ({
     get: (key, fallback) => {
       const value = (_config[section] || {})[key];
       return value === undefined ? fallback : value;
     },
+    update: (...args) => workspace._configUpdate(section, ...args),
   })),
   onDidChangeConfiguration: jest.fn((handler) => {
     _configListeners.push(handler);
@@ -282,6 +284,9 @@ workspace.createFileSystemWatcher = jest.fn((pattern) => {
 
 // ─── Status bar ───────────────────────────────────────────────────────────────
 
+const ConfigurationTarget = { Global: 1, Workspace: 2, WorkspaceFolder: 3 };
+const extensions = { getExtension: jest.fn(() => undefined) };
+
 const StatusBarAlignment = { Left: 1, Right: 2 };
 window.createStatusBarItem = jest.fn(() => ({
   text: '', tooltip: '', command: undefined, show: jest.fn(), hide: jest.fn(), dispose: jest.fn(),
@@ -294,7 +299,7 @@ const _activeEditorListeners = [];
 window.activeTextEditor = undefined;
 window.onDidChangeActiveTextEditor = jest.fn((handler) => {
   _activeEditorListeners.push(handler);
-  return { dispose: () => {} };
+  return { dispose: () => { _activeEditorListeners.splice(_activeEditorListeners.indexOf(handler), 1); } };
 });
 window._fireActiveEditorChange = () => _activeEditorListeners.forEach((l) => l(window.activeTextEditor));
 
@@ -344,13 +349,22 @@ workspace.textDocuments = [];
 workspace.applyEdit = jest.fn(async () => true);
 workspace.onDidSaveTextDocument = jest.fn(() => ({ dispose: () => {} }));
 
+class Diagnostic {
+  constructor(range, message, severity) { this.range = range; this.message = message; this.severity = severity; }
+}
+
+const DiagnosticSeverity = { Error: 0, Warning: 1, Information: 2, Hint: 3 };
+
 const languages = {
+  createDiagnosticCollection: jest.fn(() => ({ set: jest.fn(), delete: jest.fn(), dispose: jest.fn() })),
   registerCompletionItemProvider: jest.fn(() => ({ dispose: () => {} })),
   registerHoverProvider: jest.fn(() => ({ dispose: () => {} })),
   registerDocumentLinkProvider: jest.fn(() => ({ dispose: () => {} })),
 };
 
 module.exports = {
+  Diagnostic,
+  DiagnosticSeverity,
   Position,
   Range,
   WorkspaceEdit,
@@ -378,6 +392,8 @@ module.exports = {
   ColorThemeKind,
   RelativePattern,
   StatusBarAlignment,
+  ConfigurationTarget,
+  extensions,
   _fileWatchers,
   ViewColumn: { One: 1, Two: 2, Active: -1, Beside: -2 },
   WebviewPanel: class {},

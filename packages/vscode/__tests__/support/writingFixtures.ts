@@ -31,3 +31,10 @@ export function commandHandler(id: string): (...args: unknown[]) => Promise<void
   if (!call) { throw new Error(`${id} is not registered`); }
   return call[1];
 }
+
+/** Makes the file the active editor and fires the active-editor event, as VS Code does when the user switches files. */
+export function openInEditor(fsPath: string, scheme = "file"): void {
+  const window = vscode.window as unknown as { activeTextEditor: unknown; _fireActiveEditorChange: () => void };
+  window.activeTextEditor = { document: { uri: Object.assign(vscode.Uri.file(fsPath), { scheme }) } };
+  window._fireActiveEditorChange();
+}

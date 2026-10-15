@@ -266,6 +266,17 @@
         "command": "labshelf.writing.pickMain",
         "title": "Research: Choose Main Document",
         "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.pickCompiler",
+        "title": "Research: Choose LaTeX Compiler",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.build",
+        "title": "Research: Build Project",
+        "category": "LabShelf",
+        "icon": "$(play)"
       }
     ],
     "viewsContainers": {
@@ -452,6 +463,10 @@
         },
         {
           "command": "labshelf.writing.pickMain",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.pickCompiler",
           "when": "false"
         }
       ],
