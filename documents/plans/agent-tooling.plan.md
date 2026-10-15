@@ -1,6 +1,6 @@
 # Plan: Agent tooling, comment standard and codebase reduction
 
-Status: in progress (session 6 of 8)
+Status: in progress (session 7 of 8)
 Size: GG — 8 sessions across rules, hooks, agents, skills, docs, every source file and a repo-wide audit; the reduction work it finds runs as its own plan
 Pending decisions: 0
 
@@ -46,7 +46,7 @@ Resolved:
 - [x] **A7** A dry run of `/brainstorm` in grill mode on a sample idea asks numbered frontier questions, each with a recommendation, and sends fact questions to a scout.
 - [x] **A8** `/council` on a sample fork runs two rounds and a judge; the main thread receives ≤2k tokens.
 - [x] **A9** `documents/README.md` is a routing table; every doc's first line after the title is "Read when …"; `health` reports any doc without it.
-- [ ] **A10** Every source file's header line 1 is a capability sentence; `check-rules.sh` flags new files without one; `rg -m1 '^// ' packages/core/src/<domain>` reads as a map.
+- [x] **A10** Every source file's header line 1 is a capability sentence; `check-rules.sh` flags new files without one; `rg -m1 '^// ' packages/core/src/<domain>` reads as a map.
 - [x] **A11** The core contrast test passes for both themes and fails if a listed pair drops below 4.5:1.
 - [ ] **A12** `codebase-reduction.plan.md` exists with findings ranked by lines saved and risk, each tagged with its ladder rung.
 
@@ -92,10 +92,10 @@ Resolved:
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S31 | Header line 1 + tags in core, one parallel comment-enforcer per domain | S12 | M · comment-enforcer (sonnet) ×N | A10 for core | [ ] |
-| S32 | Same for vscode, browser, terminal | S31 | M · comment-enforcer (sonnet) ×3 | A10 | [ ] |
-| S33 | Spot-check 20 random files; tighten the standard if needed | S31–S32 | H · main thread | no vague headers in the sample | [ ] |
-| S34 | Finish | S31–S33 | `finish` skill | gate passes | [ ] |
+| S31 | Header line 1 + tags in core, one parallel comment-enforcer per domain | S12 | M · comment-enforcer (sonnet) ×N | A10 for core | [x] |
+| S32 | Same for vscode, browser, terminal | S31 | M · comment-enforcer (sonnet) ×3 | A10 | [x] |
+| S33 | Spot-check 20 random files; tighten the standard if needed | S31–S32 | H · main thread | no vague headers in the sample | [x] |
+| S34 | Finish | S31–S33 | `finish` skill | gate passes | [x] |
 
 ### Session 8 — Ladder audit
 
@@ -143,3 +143,5 @@ Resolved:
 - 2026-10-14 22:00 (session 5) deviations: the skill lint caught history language in `changelog-writer.md` and `doc-keeper.md`, so both were reworded. `pnpm lint:deps` currently fails: 62 violations are outside its baseline and 27 baseline entries are stale. This predates the session and is left for the architecture-refactor plan. MCP extension paths must lie inside the client's workspace roots, and whether Claude Code sends the project directory as a root is not yet verified in a live session. If `install_extension` is denied, add `--workspace` args.
 - 2026-10-14 22:08 (session 6): S25 `documents/README.md` is a routing table (34 question rows → `doc.md#anchor`, every target checked); every doc outside `plans/` opens with a "Read when" line; contract anchors stay GitHub slugs, which `check-rules.sh` resolves; `health/lint-docs.sh` reports a doc without the line (A9). S26 the agent-tooling plan keeps sessions 6–8 (285 → 143 lines), architecture-refactor keeps sessions 7, 12, 13 plus the S0.4 and S4.3 blocks that open steps cite (823 → 375), pdf-finding loses its done step; open-item and log-line counts unchanged. S27 memory lint checks every repo-rooted path, not only backticked ones, and found 3 stale paths, now fixed; index lines carry a kind tag and stay ≤150 chars. S28 `packages/core/__tests__/ui/dom/tokenContrast.test.ts` checks 24 UI pairs in dark and light and 4 reader pairs in 4 reader themes against 4.5:1 (A11). S29 `verify/website-sheet-fit.mjs` checks 10 sheets × 3 widths × 4 themes over CDP: 0 overflowing, and an injected overflow exits 1. `finish` gate: PASS.
 - 2026-10-14 22:08 (session 6) deviations: the contrast test found sepia `--ls-reader-desc` at 4.14:1 on the reader surface; it is 11–12px text, so it is darkened to #72604e (4.82:1) in `tokens.css` and `readerThemeTokens.ts`. `--ls-warning` colours only icons, so the test checks banner text (`--ls-fg`) on `--ls-warning-bg` instead; the light warning icon is 2.81:1, below the 3:1 non-text minimum, and is left open. The test lives in `__tests__/ui/dom/`, mirroring `src/ui/dom/tokens.css`, not `__tests__/ui/tokens/` as §5 says.
+- 2026-10-15 10:08 (session 7): S31 six comment-enforcer agents (Sonnet), one per core folder group, rewrote about 330 noun-phrase headers to capability sentences; barrels read "Exports the <area>'s public API."; sync gained `CONTRACT:` tags against `sync.md` anchors, and pdf.js, Drive and MV3 quirks gained `PLATFORM:`/`TRAP:` tags. The token generators emit capability headers into `tokens.css` and `vscodeHost.css`. S32 the same for vscode, browser and terminal (about 140 headers). `check-rules.sh` flags a new file whose header line 1 does not start with a third-person verb, accepts `/* */` CSS headers, and its fixtures cover noun-phrase, plural-noun, CSS and JSDoc headers (16/16). A repo-wide scan of 859 files finds no header that fails the rule.
+- 2026-10-15 10:08 (session 7) S33: a 20-file random sample had no vague headers. The standard was tightened on one point: 123 `@returns void` lines were deleted mechanically, and `comment-enforcer` names `@returns` lines that restate the signature as removable; about 500 other `@returns` lines remain for case-by-case review. S34 `finish` gate: PASS (core 1785, vscode 352, browser 105, terminal 859 tests). Its one judgment item, `void result;` in `googleDriveProvider.ts`, became a bare `await`.
