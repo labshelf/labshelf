@@ -4,23 +4,23 @@ import { reportError, warn } from "../env.js";
 import type { PdfAttempt, PdfFetchOptions, ResolveContext, ResolvedPdf, ResolverEnv } from "../types.js";
 import { deadline } from "./deadline.js";
 import { pacedFetch } from "./domainPacer.js";
+import { helperTabRetry } from "./helperTabs.js";
 import type { EngineLimits } from "./limits.js";
 import type { Candidate } from "./lookupStage.js";
 
-export interface DownloadStageResult {
-  found?: ResolvedPdf;
-  /** URLs a bot check refused, best-ranked first, for a retry through a real tab. */
-  blocked: string[];
-}
-
-/** A candidate a worker took; `outcome` is unset while its download is in flight. */
+/**
+ * A candidate a worker took; `outcome` is unset while its download is in flight, and while a helper tab retries the
+ * wall it hit (`walled`).
+ */
 interface Taken {
   candidate: Candidate;
   outcome?: DownloadOutcome;
+  walled?: DownloadOutcome;
 }
 
 /**
- * Takes candidates in rank order, `limits.concurrency` at a time. The first PDF waits up to `limits.holdMs` for
+ * Takes candidates in rank order, `limits.concurrency` at a time. A candidate that hits a bot wall is retried through
+ * the host's helper tab at once, without holding a download slot. The first PDF waits up to `limits.holdMs` for
  * better-ranked downloads still in flight, then the best-ranked PDF wins and the rest are cancelled. `attempts`
  * receives every finished download, in rank order.
  */
@@ -29,17 +29,17 @@ export async function downloadBest(
   candidates: AsyncIterator<Candidate>,
   run: { opts: PdfFetchOptions; env: ResolverEnv; limits: EngineLimits },
   attempts: PdfAttempt[],
-): Promise<DownloadStageResult> {
+): Promise<ResolvedPdf | undefined> {
   const { opts, env, limits } = run;
   const stop = new AbortController();
   const total = deadline(limits.totalMs, "Download stage over its limit");
   const signal = AbortSignal.any([stop.signal, total.signal]);
   const pacedEnv: ResolverEnv = { ...env, fetch: pacedFetch(env.fetch, limits) };
   const taken: Taken[] = [];
+  const retry = opts.viaHelperTab ? helperTabRetry(opts.viaHelperTab, env, limits.helperTabSites) : undefined;
   let workersDone = false;
-  let wake = (): void => undefined;
-  const changed = (): Promise<void> => new Promise((resolve) => { wake = resolve; });
-  signal.addEventListener("abort", () => wake(), { once: true });
+  let inTabs = 0;
+  const { changed, wake } = wakeup(signal);
 
   const worker = async (): Promise<void> => {
     for (;;) {
@@ -48,27 +48,55 @@ export async function downloadBest(
       // INVARIANT: the iterator answers queued calls in order, so `taken` stays in rank order.
       const entry: Taken = { candidate: next.value };
       taken.push(entry);
-      entry.outcome = await download(next.value.url, ctx, opts, pacedEnv, limits, signal);
+      const outcome = await download(next.value.url, ctx, opts, pacedEnv, limits, signal);
+      if (retry && outcome.outcome === "bot" && outcome.blocked.length) void throughTab(entry, outcome);
+      else entry.outcome = outcome;
       wake();
     }
   };
+  const throughTab = async (entry: Taken, walled: DownloadOutcome): Promise<void> => {
+    entry.walled = walled;
+    inTabs++;
+    const pdf = await retry!(walled.blocked, signal);
+    entry.outcome = pdf ? { pdf, blocked: [], outcome: "pdf" } : walled;
+    inTabs--;
+    wake();
+  };
   void Promise.all(Array.from({ length: limits.concurrency }, worker)).then(() => { workersDone = true; wake(); });
 
+  const running = (): boolean => (!workersDone || inTabs > 0) && !signal.aborted;
+  const winner = await pickWinner(taken, running, { changed, wake }, limits.holdMs);
+  if (signal.aborted && !stop.signal.aborted) warn(env, "download stage reached its time limit", { totalMs: limits.totalMs });
+  stop.abort();
+  total.clear();
+  return settle(taken, winner, attempts);
+}
+
+interface Waker {
+  /** Resolves at the next report from a worker or a tab, or when the stage is aborted. */
+  changed(): Promise<void>;
+  wake(): void;
+}
+
+function wakeup(signal: AbortSignal): Waker {
+  let wake = (): void => undefined;
+  signal.addEventListener("abort", () => wake(), { once: true });
+  return { changed: () => new Promise((resolve) => { wake = resolve; }), wake: () => wake() };
+}
+
+// The first PDF in rank order, after waiting up to `holdMs` for better-ranked downloads still in flight.
+async function pickWinner(taken: Taken[], running: () => boolean, { changed, wake }: Waker, holdMs: number): Promise<Taken | undefined> {
   const best = (): Taken | undefined => taken.find((t) => t.outcome?.pdf);
   const betterInFlight = (winner: Taken): boolean => taken.slice(0, taken.indexOf(winner)).some((t) => !t.outcome);
-  const running = (): boolean => !workersDone && !signal.aborted;
   while (running() && !best()) await changed();
   const first = best();
   if (first && betterInFlight(first)) {
     let held = false;
-    const timer = setTimeout(() => { held = true; wake(); }, limits.holdMs);
+    const timer = setTimeout(() => { held = true; wake(); }, holdMs);
     while (running() && !held && betterInFlight(best()!)) await changed();
     clearTimeout(timer);
   }
-  if (signal.aborted && !stop.signal.aborted) warn(env, "download stage reached its time limit", { totalMs: limits.totalMs });
-  stop.abort();
-  total.clear();
-  return settle(taken, best(), attempts);
+  return best();
 }
 
 async function download(
@@ -89,13 +117,14 @@ async function download(
   }
 }
 
-// Downloads cut off by the winner or the time limit taught nothing, so they are not attempts.
-function settle(taken: Taken[], winner: Taken | undefined, attempts: PdfAttempt[]): DownloadStageResult {
-  const finished = taken.filter((t): t is Required<Taken> => t.outcome !== undefined);
-  for (const { candidate, outcome } of finished) {
-    attempts.push({ source: candidate.source, url: candidate.url, outcome: outcome.outcome, ...(outcome.status !== undefined ? { status: outcome.status } : {}) });
+// Downloads cut off by the winner or the time limit taught nothing, so they are not attempts; a wall whose tab was cut
+// off still counts, because it tells the user what stood in the way.
+function settle(taken: Taken[], winner: Taken | undefined, attempts: PdfAttempt[]): ResolvedPdf | undefined {
+  for (const { candidate, outcome, walled } of taken) {
+    const ended = outcome ?? walled;
+    if (!ended) continue;
+    attempts.push({ source: candidate.source, url: candidate.url, outcome: ended.outcome, ...(ended.status !== undefined ? { status: ended.status } : {}) });
   }
-  const blocked = finished.flatMap((t) => t.outcome.blocked);
   const pdf = winner?.outcome?.pdf;
-  return pdf ? { found: { bytes: pdf.bytes, url: pdf.url, source: winner.candidate.source }, blocked } : { blocked };
+  return pdf ? { bytes: pdf.bytes, url: pdf.url, source: winner.candidate.source } : undefined;
 }

@@ -169,7 +169,7 @@ describe("a bot-checked candidate", () => {
   const url = "https://dl.acm.org/doi/pdf/10.1145/1.2";
   const challenge = (): Response => html("<title>Just a moment...</title>", 403);
 
-  it("is retried through a real tab, once, after everything else failed", async () => {
+  it("is retried through a real tab, once, and the PDF it gets is credited to the candidate", async () => {
     const h = makeFindingHarness();
     h.routes[url] = challenge;
     const viaHelperTab = jest.fn(async (urls: string[]) => ({ bytes: PDF, url: urls[0]! }));
@@ -177,8 +177,8 @@ describe("a bot-checked candidate", () => {
     const got = await resolvePdf(makeContext({ pageCandidates: [{ url, source: "scholar" }] }), h.opts({ viaHelperTab }), attempts);
     expect(got?.source).toBe("scholar");
     expect(viaHelperTab).toHaveBeenCalledTimes(1);
-    expect(viaHelperTab).toHaveBeenCalledWith([url]);
-    expect(attempts.at(-1)).toEqual({ source: "scholar (via tab)", url, outcome: "pdf" });
+    expect(viaHelperTab).toHaveBeenCalledWith([url], expect.any(AbortSignal));
+    expect(attempts).toEqual([{ source: "scholar", url, outcome: "pdf" }]);
   });
 
   it("is not retried when the host has no tab, and the miss is still explained", async () => {

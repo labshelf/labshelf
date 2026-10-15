@@ -18,6 +18,8 @@ export interface EngineLimits {
   hostGapMs: number;
   /** Consecutive failed requests after which a host is skipped for the rest of the run. */
   hostMaxFailures: number;
+  /** Sites a run may open a helper tab for, when the host has one. */
+  helperTabSites: number;
 }
 
 // Publishers block bursts: one request per second per host, and a host that refused five times in a row is left alone.
@@ -29,4 +31,5 @@ export const DEFAULT_LIMITS: EngineLimits = {
   holdMs: 1_000,
   hostGapMs: 1_000,
   hostMaxFailures: 5,
+  helperTabSites: 2,
 };

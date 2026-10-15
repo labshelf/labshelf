@@ -11,8 +11,8 @@ const C = "https://c.example/p.pdf";
 async function run(urls: string[], net: ReturnType<typeof makeSlowNetwork>, limits: Partial<EngineLimits> = {}, ctx = makeContext()) {
   const attempts: PdfAttempt[] = [];
   const started = Date.now();
-  const result = await downloadBest(ctx, candidatesOf(...urls), { opts: {}, env: net.env, limits: { ...FAST_LIMITS, ...limits } }, attempts);
-  return { ...result, attempts, elapsed: Date.now() - started };
+  const found = await downloadBest(ctx, candidatesOf(...urls), { opts: {}, env: net.env, limits: { ...FAST_LIMITS, ...limits } }, attempts);
+  return { found, attempts, elapsed: Date.now() - started };
 }
 
 describe("downloadBest ordering", () => {
@@ -60,13 +60,6 @@ describe("downloadBest ordering", () => {
     const got = await run([A, B], net);
     expect(got.found).toBeUndefined();
     expect(got.attempts.map((a) => [a.url, a.outcome, a.status])).toEqual([[A, "error", 404], [B, "error", 404]]);
-  });
-
-  it("returns the URLs a bot check refused", async () => {
-    const net = makeSlowNetwork();
-    net.routes[A] = { res: () => html("<title>Just a moment...</title>", 403) };
-    const got = await run([A], net);
-    expect(got.blocked).toEqual([A]);
   });
 
   it("sends the landing URL as Referer", async () => {

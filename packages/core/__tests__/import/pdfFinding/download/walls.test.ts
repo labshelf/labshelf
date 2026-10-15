@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { isBotCheck } from "../../../../src/import/pdfFinding/download/botCheck";
+import { isBotCheck, isWallPage } from "../../../../src/import/pdfFinding/download/botCheck";
 import { classifyFetch } from "../../../../src/import/pdfFinding/download/fetchOutcome";
 
 const fixture = (name: string): string => readFileSync(join(__dirname, "..", "..", "..", "fixtures", name), "utf8");
@@ -86,5 +86,20 @@ describe("login pages", () => {
 
   it("does not take a wall page for a login, even with sign-in words in it", () => {
     expect(classifyFetch({ status: 200, finalUrl, html: `${fixture("walls/f5Fastly.html")}<a>Sign in</a>` })).toBe("bot");
+  });
+});
+
+describe("a page a tab rendered", () => {
+  it.each([...SPECIFIC_WALLS, ...GENERIC_WALLS].map(([name]) => name))("is still the %s wall", (name) => {
+    expect(isWallPage(fixture(`walls/${name}.html`), finalUrl)).toBe(true);
+  });
+
+  it("is still the Radware wall on Radware's host", () => {
+    expect(isWallPage(fixture("walls/radware.html"), "https://validate.perfdrive.com/?ssa=1")).toBe(true);
+  });
+
+  it("is the site's own page once the check passed, though Cloudflare's bot script is still in it", () => {
+    const article = fixture("springerArticle.html").replace("</head>", '<script src="/cdn-cgi/challenge-platform/scripts/jsd/main.js"></script></head>');
+    expect(isWallPage(article, "https://link.springer.com/article/10.1007/x")).toBe(false);
   });
 });

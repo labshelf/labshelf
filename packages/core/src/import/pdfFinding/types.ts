@@ -32,8 +32,11 @@ export interface PdfFetchOptions {
   headers?: Record<string, string>;
   logger?: ILogger;
   tab?: TabPort;
-  /** Loads URLs of one site through a real (background) tab, for candidates a bot check refused. */
-  viaHelperTab?: (urls: string[]) => Promise<FetchedPdf | undefined>;
+  /**
+   * Loads URLs of one site, best first, through a real background tab that passes the site's bot check, and returns
+   * the first that is a PDF. The run aborts `signal` once it no longer needs the answer.
+   */
+  viaHelperTab?: (urls: string[], signal: AbortSignal) => Promise<FetchedPdf | undefined>;
 }
 
 /** Everything a resolver may know about the paper; learning resolvers fill in `pmcid` and `arxivId`. */

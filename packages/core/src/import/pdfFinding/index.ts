@@ -6,5 +6,5 @@ export { resolvePdf } from "./resolvePdf.js";
 export { makeResolveContext } from "./resolveContext.js";
 export { findPaperPdf } from "./findPaperPdf.js";
 export type { PdfSearch } from "./findPaperPdf.js";
-export { fetchPdf, isBotCheck, nextHopsFromHtml } from "./download/index.js";
+export { fetchPdf, isBotCheck, isSupplementaryUrl, isWallPage, nextHopsFromHtml } from "./download/index.js";
 export { DEFAULT_CONTACT_EMAIL } from "./contactEmail.js";

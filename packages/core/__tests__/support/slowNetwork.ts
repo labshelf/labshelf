@@ -6,6 +6,7 @@ import { makeFindingHarness, type LogCall } from "./pdfFindingHarness";
 /** Tens of milliseconds instead of seconds; each test overrides the limit it exercises. */
 export const FAST_LIMITS: EngineLimits = {
   lookupCapMs: 2_000, concurrency: 3, firstByteMs: 2_000, perUrlMs: 2_000, totalMs: 5_000, holdMs: 200, hostGapMs: 0, hostMaxFailures: 5,
+  helperTabSites: 2,
 };
 
 export interface SlowRoute { ms?: number; res: () => Response }

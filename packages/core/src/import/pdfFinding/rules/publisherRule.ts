@@ -1,7 +1,7 @@
 /** Declares the shape of a publisher rule: where a platform serves its PDFs, from a DOI or from its landing page. */
 
 /** A DOI or landing page URL, and one PDF URL the rule must give for it. */
-export interface RuleExample {
+interface RuleExample {
   from: string;
   pdf: string;
 }

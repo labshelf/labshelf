@@ -97,7 +97,7 @@ export function findPdf(log: ILogger, draft: CaptureDraft): Promise<ResolvedPdf 
   draft.pdf ??= (async () => {
     const settings = await getSettings();
     return findPaperPdf(
-      { ...draft.fetchOpts, credentials: "include", logger: log, viaHelperTab: (urls) => fetchViaHelperTab(log, urls) },
+      { ...draft.fetchOpts, credentials: "include", logger: log, viaHelperTab: (urls, signal) => fetchViaHelperTab(log, urls, signal) },
       {
         ids: draft.ids,
         metadata: draft.metadata,
