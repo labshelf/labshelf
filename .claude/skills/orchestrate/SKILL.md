@@ -17,7 +17,7 @@ Rewrite the request as a brief:
 - **Scope**: which apps (VS Code, browser, terminal) and which visible surfaces.
 - **Acceptance criteria**: observable checks, one per line.
 - **Non-goals**: what is explicitly out.
-- **Open questions**: only those whose answer changes the design. Ask them now with AskUserQuestion, bundled in one call. Do not ask what the code or the docs can answer.
+- **Open questions**: only those whose answer changes the design, each with your default (the option you would pick and why). Ask them now with AskUserQuestion, bundled in one call, the default first and marked "(Recommended)". Do not ask what the code or the docs can answer. If you would bet on the default and the choice is two-way, apply it and say so instead of asking.
 
 ## 2. Scout (cheap, parallel)
 
@@ -35,7 +35,8 @@ Split the work into packages. Each package states:
 - **Id and goal**: one sentence.
 - **Files**: the files it creates or changes, and what it must not touch.
 - **Depends on**: other package ids.
-- **Tier and runner**: see the table below.
+- **Tier, runner and model**: see the table below.
+- **Door**: one-way if it touches `documents/contracts/` or an on-disk format, sync, Drive writes, or an extension manifest or its permissions; otherwise two-way.
 - **Acceptance**: the checks that prove it is done.
 
 | Tier | Work | Runner |
@@ -53,16 +54,18 @@ Rules for the plan:
 - If the user named models ("Fable does the visual"), follow them.
 - Packages that touch the same files run in sequence. Only packages with disjoint files run in parallel.
 - Shared logic lands in core first; app packages depend on it.
+- Doubt step: a one-way package that still has two viable designs goes to the `council` skill before it runs, and its verdict becomes the package's decision. It costs about 200k subagent tokens, so a one-way package with one obvious design only states why there is no fork.
 - Size the plan with the scale in `documents/plans/TEMPLATE.md` (P, M, G, GG in AI sessions). Read `documents/plans/CALIBRATION.md` first and correct for its bias. Between two sizes, pick the smaller and write what would make it grow.
-- If the plan is G or GG, or has more than about five packages, write it to `documents/plans/<slug>.plan.md` from the template, split into sessions. Then stop after approval and tell the user to start session 1 with the prompt from the handoff format below, in a fresh conversation. Otherwise, keep the plan in the conversation in the same shape, shortened, and run it here.
+- If the plan is G or GG, or has more than about five packages, write it to `documents/plans/<slug>.plan.md` from the template, split into sessions. Then stop after approval and tell the user to start session 1 in a fresh conversation with the prompt from `references/handoff.md`. Otherwise, keep the plan in the conversation in the same shape, shortened, and run it here.
 - Show the plan to the user and wait for approval before executing, unless they said to go ahead.
 
 ## 4. Execute
 
 - Do the tier-H packages that need this conversation's context yourself.
-- Launch delegated packages with the Agent tool. Their prompts must be **self-contained**: goal, the relevant brief excerpts, files, what not to touch, acceptance checks. Agents do not see this conversation.
+- Launch delegated packages with the Agent tool. Their prompts must be **self-contained**: goal, files, what not to touch, acceptance checks. Agents do not see this conversation.
+- Point instead of pasting: name the plan file and step id, the `AGENTS.md` section, and the files with line ranges, and let the agent read them. Paste only what is written nowhere, such as a decision taken in this conversation.
 - Launch independent packages in one message so they run in parallel.
-- After each package, run the `check` skill (Haiku) instead of reading test output yourself.
+- After each package, run the `check` skill (Haiku) instead of reading test output yourself. `finish` reuses the last `check` result when the tree has not changed since.
 - If a package's report shows a design problem, fix the plan. Do not patch around it.
 
 ## 5. Finish and commit
@@ -89,19 +92,4 @@ Report to the user: what was built, the acceptance criteria with pass/fail, what
    - add a row to `documents/plans/CALIBRATION.md` with the estimated size and sessions, the sessions used, the real time from the first log line to the last, the real size, and why they differed;
    - update its bias line;
    - delete the plan, or archive it only if it meets `documents/archive/README.md`.
-6. Reply with the handoff message below and stop. Never start the next session in this conversation; a fresh context is the point of splitting.
-
-Handoff message (in the user's language):
-
-```
-## Session <n> of <m> done — <plan title>
-Done: S<a>–S<b> · acceptance A<x>, A<y> pass
-Deviations: <one line each, or "none"> (also in the plan's §8 log)
-Commit: <short hash and message, or "not committed: why">
-Estimate: session planned as <…>, took <time>
-
-Next session: paste this into a new conversation:
-/orchestrate documents/plans/<slug>.plan.md session <n+1>
-```
-
-On the last session, replace the "Next session" part with a three-line summary of what the user now has, and the calibration row you added.
+6. Reply with the handoff message from `references/handoff.md` and stop. Never start the next session in this conversation; a fresh context is the point of splitting.
