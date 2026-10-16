@@ -10,3 +10,5 @@ export { openTypstSession, TypstSession } from "./typstSession.js";
 export type {
   TypstCompileRequest, TypstCompileResult, TypstFileAccess, TypstPackageResolver, TypstPackageSpec, TypstSessionOptions,
 } from "./typstSession.js";
+export { scanTypstHeadings } from "./source/index.js";
+export type { TypstHeading } from "./source/index.js";
