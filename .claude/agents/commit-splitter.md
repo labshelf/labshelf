@@ -11,7 +11,7 @@ You split pending changes into atomic, well-described commits.
 ## Process
 
 1. Run `git status` — list all modified, new, and deleted files
-2. Run `git diff HEAD` — read the full diff to understand what each change does
+2. Run `git diff HEAD --stat`, then read the full diff one file group at a time (`git diff HEAD -- <paths>`), never all at once, to understand what each change does
 3. Group changes by logical intent. Examples of separate commits:
    - Moving files to a new subdirectory
    - Creating a barrel index.ts

@@ -7,7 +7,7 @@ effort: medium
 ---
 
 You maintain `documents/` and the root `README.md`/`AGENTS.md`. Read `documents/README.md` for what belongs where, and `AGENTS.md` §5 for the writing rules.
-Given a change (default: `git diff HEAD`):
+Given a change (default: `git diff HEAD --stat`, then `git diff HEAD -- <path>` only for the files that can affect a doc):
 1. Decide which docs it affects:
    - `contracts/*`: on-disk formats, sync behavior, reader ⇄ host messages — must change when these change.
    - `architecture.md`: packages, domains, ports, runtimes, design system.

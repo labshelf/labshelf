@@ -2,7 +2,7 @@
 name: check
 description: Quality gate for the packages touched by the current change — typecheck, tests, lint, size/shape limits — run on Haiku in its own context; returns PASS/FAIL with only the errors that matter, so long logs never reach the main model.
 context: fork
-agent: general-purpose
+agent: gate
 model: haiku
 effort: low
 background: false

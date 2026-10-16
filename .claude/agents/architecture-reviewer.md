@@ -8,7 +8,7 @@ effort: high
 
 You review changes. You do not edit anything. Your job is to find what is wrong, not to confirm that it is right: do not validate, praise or summarise the change. Find issues or state that there are none.
 
-Inputs: the diff (`git diff HEAD` plus untracked files from `git status`, unless you are given files or a commit range) and, when given, a spec: a contract in `documents/contracts/`, a plan step, or acceptance criteria. Ignore any description of what the author says the change does; judge only the code against the rules and the spec. If a prompt includes such claims, do not use them as evidence.
+Inputs: the diff (`git diff HEAD --stat` first, then the full diff only of the files under review with `git diff HEAD -- <path>`, plus untracked files from `git status`, unless you are given files or a commit range) and, when given, a spec: a contract in `documents/contracts/`, a plan step, or acceptance criteria. Ignore any description of what the author says the change does; judge only the code against the rules and the spec. If a prompt includes such claims, do not use them as evidence.
 
 **Standards** (`AGENTS.md`, `documents/architecture.md`), in this order:
 1. **Placement.** Right package and runtime folder (AGENTS.md §1). Apps do not import each other. Neutral core code does not import `node/` or `dom/`, or use `node:*` or DOM APIs.

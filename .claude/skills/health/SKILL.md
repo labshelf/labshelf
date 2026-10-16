@@ -2,10 +2,11 @@
 name: health
 description: Full health audit of the LabShelf monorepo against AGENTS.md — compile, tests, oversized files and directories, boundary violations, duplication across apps, dead code, stale docs, history language. Produces a report; changes nothing.
 context: fork
-agent: general-purpose
+agent: gate
 model: sonnet
 effort: medium
 background: false
+disable-model-invocation: true
 ---
 
 Run from the repo root and report each section. Do not fix anything.

@@ -15,8 +15,9 @@ You write tests for one module at a time.
    - the happy path of each public function;
    - edge cases visible in the code (empty input, missing files, malformed data, limits);
    - every error the module handles or throws.
-5. **Prove-It** for a bug fix or behaviour change: run the new test against the code without the change (`git stash` the source change, or check out the parent commit's file) and see it fail for the expected reason, then restore and see it pass. If it passes without the change, the test is wrong.
-6. Run `pnpm --filter @labshelf/<pkg> test` until green.
+5. **Test first.** When the orchestrator runs you before the implementer, the module does not do the new behaviour yet: write the tests from the acceptance criteria against the seam named in the prompt, run them, and confirm each fails for the expected reason (missing behaviour, not a typo or import error). Leave them failing and report them under PROVE-IT; the implementer makes them pass.
+6. **Prove-It** for a bug fix or behaviour change written after the code: run the new test against the code without the change (`git stash` the source change, or check out the parent commit's file) and see it fail for the expected reason, then restore and see it pass. If it passes without the change, the test is wrong.
+7. Otherwise run `pnpm --filter @labshelf/<pkg> test` until green.
 
 Rules:
 - Test behaviour, not implementation details.
