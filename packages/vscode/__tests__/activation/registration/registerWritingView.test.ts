@@ -29,6 +29,7 @@ function setup(root: string | undefined, register: RegisterNodeWriting = fakeReg
   const context = {
     subscriptions: [],
     globalStorageUri: vscode.Uri.file("/storage"),
+    extension: { packageJSON: { version: "0.0.0" } },
     workspaceState: { get: () => undefined, update: jest.fn(async () => {}) },
   };
   registerWritingView(context as unknown as vscode.ExtensionContext, controller, { locatePdfjs: () => null, isMac: false }, { paths: path, createProjectData: () => data }, register);
@@ -47,10 +48,10 @@ describe("registerWritingView", () => {
     expect(registered).toEqual(contributed);
   });
 
-  it("creates the contributed Projects, Files, Outline, Checklist and Figures tree views", () => {
+  it("creates the contributed Projects, Files, Outline, Checklist, Figures and Versions tree views", () => {
     setup("/lib");
     const created = (vscode.window.createTreeView as jest.Mock).mock.calls.map(([id]) => id as string);
-    expect(created).toEqual(["labshelf.writing.figures", "labshelf.writing", "labshelf.writing.files", "labshelf.writing.outline", "labshelf.writing.checklist"]);
+    expect(created).toEqual(["labshelf.writing.figures", "labshelf.writing.versions", "labshelf.writing", "labshelf.writing.files", "labshelf.writing.outline", "labshelf.writing.checklist"]);
     expect(manifest.contributes.views.labshelfContainer.map((v) => v.id)).toEqual(expect.arrayContaining(created));
   });
 

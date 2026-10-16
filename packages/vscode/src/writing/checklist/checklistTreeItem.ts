@@ -2,7 +2,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { STATUS_LABEL, type ArcProgress, type ArcTone, type ChecklistItem, type ChecklistGrouping, type PaperStatus } from "@labshelf/core";
+import { STATUS_ARC, STATUS_LABEL, type ArcProgress, type ArcTone, type ChecklistItem, type ChecklistGrouping, type PaperStatus } from "@labshelf/core";
 import type { ArcIcon } from "../../ui/index.js";
 import type { ReadyProject } from "../figures/index.js";
 import { REVEAL_OUTLINE_COMMAND } from "../outline/index.js";
@@ -19,9 +19,7 @@ interface ChecklistItemContext {
   arcIcon: ArcIcon;
 }
 
-const STATUS_MARK: Record<PaperStatus, [ArcTone, ArcProgress]> = { unread: ["accent", "none"], reading: ["accent", "half"], done: ["ok", "full"] };
-
-function marked(label: string, tooltip: string, mark: [ArcTone, ArcProgress], context: ChecklistItemContext): vscode.TreeItem {
+function marked(label: string, tooltip: string, mark: readonly [ArcTone, ArcProgress], context: ChecklistItemContext): vscode.TreeItem {
   const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.None);
   item.tooltip = tooltip;
   item.iconPath = context.arcIcon(...mark);
@@ -38,7 +36,7 @@ function located(item: vscode.TreeItem, file: string, line: number, context: Che
 
 function readingItem(node: ChecklistNode, entry: Extract<ChecklistItem, { kind: "reading" }>, context: ChecklistItemContext): vscode.TreeItem {
   const { status, statusChangedAt } = entry.paper;
-  const item = marked(entry.paper.title, STATUS_LABEL[status], STATUS_MARK[status], context);
+  const item = marked(entry.paper.title, STATUS_LABEL[status], STATUS_ARC[status], context);
   if (status === "done" && statusChangedAt) { item.description = statusChangedAt.slice(0, 10); }
   item.command = { command: NEXT_STATUS_COMMAND, title: "Next status", arguments: [node] };
   return item;

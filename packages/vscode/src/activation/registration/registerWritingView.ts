@@ -15,7 +15,8 @@ import { registerEditorActions } from "../../writing/editorActions/index.js";
 import { registerMarkVersionCommand } from "../../writing/versions/index.js";
 import { registerTinymistBridge } from "../../writing/typst/index.js";
 import { BuildPreviews, FocusFollower, registerShowInPreview, registerShowPreview } from "../../writing/preview/index.js";
-import { registerCitationProviders, type CitationWorkspace } from "../../writing/citations/index.js";
+import { CiteSectionsCache, registerCitationProviders, type CitationWorkspace } from "../../writing/citations/index.js";
+import { readCiteSources } from "../../writing/citations/node/index.js";
 import { registerLabshelfLinks } from "../../writing/links/index.js";
 import { registerProjectSession, type ProjectSession } from "../../writing/session/index.js";
 import { registerProjectViews } from "../../writing/tree/index.js";
@@ -81,6 +82,7 @@ interface WritingParts {
   figures: ProjectFigures;
   readingLists: ProjectReadingLists;
   listPapers: () => Promise<PaperRecord[]>;
+  citeSections: CiteSectionsCache;
 }
 
 function registerProjectAndFigureCommands(parts: WritingParts): void {
@@ -107,11 +109,12 @@ async function recompileRoot(
 function registerBuildAndPreviewCommands(
   parts: WritingParts, reader: HostAdapters["reader"], registerNodeWriting: RegisterNodeWriting, outcomes: BuildOutcomes,
 ): { session: ProjectSession; previews: BuildPreviews } {
-  const { context, host, projects, figures, listPapers } = parts;
+  const { context, controller, host, projects, figures, listPapers, citeSections } = parts;
   // The node registrations need `previews`, and `previews` needs their builders, so it reaches them through this variable once assigned.
   let node: ReturnType<RegisterNodeWriting> | undefined;
   const previews = new BuildPreviews({
-    host, listPapers, paths: projects.paths, data: projects.data, extensionUri: context.extensionUri, ...reader,
+    host, listPapers, citeSections: (project, logger) => citeSections.get(project, logger), paths: projects.paths,
+    highlightsOf: async (paperId) => await controller.currentServices()?.paperDataStore.getAnnotations(paperId) ?? [], data: projects.data, extensionUri: context.extensionUri, ...reader,
     buildRootOf: async (...args) => (node ? await node.buildRootOf(...args) : args[1]),
     recompile: (folder, root) => recompileRoot(projects, () => node?.builders, folder, root),
   });
@@ -138,12 +141,14 @@ function registerBuildAndPreviewCommands(
   return { session, previews };
 }
 
-function registerEditingSupport(context: vscode.ExtensionContext, controller: Controller, projects: WritingProjects): void {
+function registerEditingSupport(parts: WritingParts): void {
+  const { context, controller, projects, citeSections } = parts;
   const session = (): ReturnType<CitationWorkspace["session"]> => {
     const services = controller.currentServices();
     return services ? {
       listPapers: () => services.paperService.listPapers(),
       highlightsOf: (paperId) => services.paperDataStore.getAnnotations(paperId),
+      citeSections: (project) => citeSections.get(project, services.logger),
       logger: services.logger,
     } : undefined;
   };
@@ -176,7 +181,11 @@ export function registerWritingView(
     controller.onDidChangeRoot(() => void projects.reload()),
   );
   const listPapers = async (): Promise<PaperRecord[]> => await controller.currentServices()?.paperService.listPapers() ?? [];
-  const parts: WritingParts = { context, controller, host, projects, figures, readingLists, listPapers };
+  const citeSections = new CiteSectionsCache({
+    readSources: readCiteSources, onDidSaveTextDocument: vscode.workspace.onDidSaveTextDocument, paths: projects.paths,
+  });
+  context.subscriptions.push(citeSections);
+  const parts: WritingParts = { context, controller, host, projects, figures, readingLists, listPapers, citeSections };
   registerProjectAndFigureCommands(parts);
   const outcomes = new BuildOutcomes();
   context.subscriptions.push(outcomes);
@@ -188,7 +197,7 @@ export function registerWritingView(
   registerProjectViews({
     context, projects, figures, session, logger, arcIcon, readingLists, outcomes, previews, onDidChangeBacklinks: backlinks.onDidChange, setStatus,
   });
-  registerEditingSupport(context, controller, projects);
+  registerEditingSupport(parts);
   void projects.reload();
   return { projects, backlinks };
 }

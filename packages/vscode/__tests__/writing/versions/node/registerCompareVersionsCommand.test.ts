@@ -52,7 +52,12 @@ function setup(entries = [readyEntry("/p/tex")]) {
     context: { subscriptions: [], extensionUri: vscode.Uri.file("/ext"), globalStorageUri: vscode.Uri.file("/storage") } as never,
     host, projects: fakeProjects(entries), builders, pdfjs: {} as never, reader: { locatePdfjs: jest.fn(), isMac: false },
   });
-  return { builders, order, host, run: commandHandler(COMPARE_VERSIONS_COMMAND) };
+  return {
+    builders, order, host, run: commandHandler(COMPARE_VERSIONS_COMMAND),
+    compareWithCurrent: () => commandHandler("labshelf.writing.compareWithCurrent"),
+    compareWith: () => commandHandler("labshelf.writing.compareWith"),
+    openVersion: () => commandHandler("labshelf.writing.openVersion"),
+  };
 }
 
 const panels = new Map<string, { controller: { showChanges: jest.Mock; reloadDocument: jest.Mock } }>();
@@ -226,5 +231,55 @@ describe("labshelf.writing.compareVersions", () => {
     await run();
     expect(compare).not.toHaveBeenCalled();
     expect(createOrShow).not.toHaveBeenCalled();
+  });
+});
+
+describe("version row commands", () => {
+  const row = () => ({ project: readyEntry("/p/tex"), version: VERSIONS[1]!, hasPdf: true });
+
+  it("compareWithCurrent saves, builds and compares the row's version with the current build without a side picker", async () => {
+    const { compareWithCurrent, order } = setup();
+    compare.mockImplementation(async () => { order.push("compare"); return CHANGES; });
+    await compareWithCurrent()(row());
+    expect(window["showQuickPick"]).not.toHaveBeenCalled();
+    expect(order).toEqual(["saveAll", "build", "compare"]);
+    expect(compare).toHaveBeenCalledWith({}, VERSIONS[1]!.pdfPath, "/p/tex/main.pdf", expect.anything());
+    expect(panels.get("compare:/p/tex:rebuttal")!.controller.showChanges).toHaveBeenCalledWith(CHANGES.before);
+    expect(panels.get("compare:/p/tex:current")!.controller.showChanges).toHaveBeenCalledWith(CHANGES.after);
+  });
+
+  it("compareWith asks only for the other side and uses the row's version as the base", async () => {
+    const { compareWith } = setup();
+    picks("submitted");
+    await compareWith()(row());
+    expect(window["showQuickPick"]).toHaveBeenCalledTimes(1);
+    const offered = window["showQuickPick"]!.mock.calls[0]![0].map((item: { label: string }) => item.label);
+    expect(offered).toEqual(["Current build", "submitted"]);
+    expect(compare).toHaveBeenCalledWith({}, VERSIONS[1]!.pdfPath, VERSIONS[0]!.pdfPath, expect.anything());
+    expect(panels.get("compare:/p/tex:rebuttal")!.controller.showChanges).toHaveBeenCalledWith(CHANGES.before);
+  });
+
+  it("compareWith does nothing when the other-side pick is cancelled", async () => {
+    const { compareWith } = setup();
+    picks();
+    await compareWith()(row());
+    expect(compare).not.toHaveBeenCalled();
+  });
+
+  it("openVersion opens the row's PDF in one reader without comparing or building", async () => {
+    const { openVersion, builders } = setup();
+    await openVersion()(row());
+    expect(createOrShow).toHaveBeenCalledTimes(1);
+    expect(createOrShow.mock.calls[0]![1]).toEqual(expect.objectContaining({ pdfUri: expect.objectContaining({ fsPath: VERSIONS[1]!.pdfPath }) }));
+    expect(compare).not.toHaveBeenCalled();
+    expect(builders.latex.request).not.toHaveBeenCalled();
+  });
+
+  it("compareVersions still takes a project entry and asks for both sides", async () => {
+    const { run } = setup();
+    picks("submitted", "Rebuttal");
+    await run(readyEntry("/p/tex"));
+    expect(window["showQuickPick"]).toHaveBeenCalledTimes(2);
+    expect(compare).toHaveBeenCalledWith({}, VERSIONS[0]!.pdfPath, VERSIONS[1]!.pdfPath, expect.anything());
   });
 });

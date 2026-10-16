@@ -30,15 +30,15 @@ export function versionSide(version: ProjectVersion): CompareSide {
   return { slug: version.slug, name: version.name, pdfPath: version.pdfPath, sourcesDir: version.sourcesDir };
 }
 
-/** @returns the base version and the version to compare it with (undefined for the current build), or undefined when the user cancels */
-export async function pickSides(versions: readonly ProjectVersion[]): Promise<{ base: ProjectVersion; other: ProjectVersion | undefined } | undefined> {
-  const base = await vscode.window.showQuickPick(versions.map(versionItem), { title: TITLE, placeHolder: "Compare version…" });
-  if (!base?.version) { return undefined; }
-  const baseSlug = base.version.slug;
+/** A preset base version skips the first pick.
+ * @returns the base version and the version to compare it with (undefined for the current build), or undefined when the user cancels */
+export async function pickSides(versions: readonly ProjectVersion[], preset?: ProjectVersion): Promise<{ base: ProjectVersion; other: ProjectVersion | undefined } | undefined> {
+  const base = preset ?? (await vscode.window.showQuickPick(versions.map(versionItem), { title: TITLE, placeHolder: "Compare version…" }))?.version;
+  if (!base) { return undefined; }
   const current: SideItem = { label: "Current build", description: "Builds the project first", version: undefined };
-  const others = [current, ...versions.filter((version) => version.slug !== baseSlug).map(versionItem)];
+  const others = [current, ...versions.filter((version) => version.slug !== base.slug).map(versionItem)];
   const other = await vscode.window.showQuickPick(others, { title: TITLE, placeHolder: "…with" });
-  return other ? { base: base.version, other: other.version } : undefined;
+  return other ? { base, other: other.version } : undefined;
 }
 
 interface ModeItem extends vscode.QuickPickItem {

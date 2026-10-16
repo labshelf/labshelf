@@ -345,6 +345,21 @@
         "category": "LabShelf"
       },
       {
+        "command": "labshelf.writing.compareWithCurrent",
+        "title": "Compare with current",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.compareWith",
+        "title": "Compare with…",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.openVersion",
+        "title": "Open Version",
+        "category": "LabShelf"
+      },
+      {
         "command": "labshelf.installProjectPapers",
         "title": "Install Project Papers",
         "category": "LabShelf"
@@ -463,6 +478,13 @@
           "name": "Figures",
           "type": "tree",
           "when": "labshelf.writing.projectOpen && labshelf.writing.hasFigures",
+          "visibility": "collapsed"
+        },
+        {
+          "id": "labshelf.writing.versions",
+          "name": "Versions",
+          "type": "tree",
+          "when": "labshelf.writing.projectOpen && labshelf.writing.hasVersions",
           "visibility": "collapsed"
         },
         {
@@ -656,6 +678,16 @@
           "group": "1_figure@1"
         },
         {
+          "command": "labshelf.writing.compareWithCurrent",
+          "when": "view == labshelf.writing.versions && viewItem == labshelfVersion",
+          "group": "1_compare@1"
+        },
+        {
+          "command": "labshelf.writing.compareWith",
+          "when": "view == labshelf.writing.versions && viewItem == labshelfVersion",
+          "group": "1_compare@2"
+        },
+        {
           "command": "labshelf.templates.saveProject",
           "when": "view == labshelf.writing && viewItem =~ /^labshelfProject(External)?$/",
           "group": "1_open@7"
@@ -687,6 +719,18 @@
         }
       ],
       "commandPalette": [
+        {
+          "command": "labshelf.writing.compareWithCurrent",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.compareWith",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.openVersion",
+          "when": "false"
+        },
         {
           "command": "labshelf.writing.revealOutline",
           "when": "false"

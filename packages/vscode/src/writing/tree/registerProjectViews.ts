@@ -1,14 +1,16 @@
-// Creates the Projects view, shown while no project is open, and the Files, Outline, Checklist and Figures views of the open project with their commands.
+// Creates the Projects view, shown while no project is open, and the Files, Outline, Checklist, Figures and Versions views of the open project with their commands.
+import { access } from "node:fs/promises";
 import * as vscode from "vscode";
 
 import type { ILogger, PaperStatus } from "@labshelf/core";
-import { readChecklistSignals } from "@labshelf/core/node";
+import { listVersions, readChecklistSignals } from "@labshelf/core/node";
 import type { ArcIcon } from "../../ui/index.js";
 import type { BuildOutcomes } from "../build/index.js";
 import { registerChecklistView } from "../checklist/index.js";
 import { OutlineTreeProvider, REVEAL_OUTLINE_COMMAND, registerTypstOutline, revealOutline } from "../outline/index.js";
 import { ProjectFiguresView, type ProjectFigures } from "../figures/index.js";
 import type { BuildPreviews } from "../preview/index.js";
+import { ProjectVersionsView } from "../versions/index.js";
 import type { ProjectReadingLists } from "../readingList/index.js";
 import type { ProjectSession, WritingProjects } from "../session/index.js";
 import { registerProjectFileCommands } from "./projectFileCommands.js";
@@ -46,10 +48,18 @@ export function registerProjectViews(deps: ProjectViewsDeps): void {
   const figuresView = new ProjectFiguresView({ session, figures, paths: projects.paths, arcIcon });
   const figuresTree = vscode.window.createTreeView("labshelf.writing.figures", { treeDataProvider: figuresView });
   figuresView.attach(figuresTree);
+  const versionsView = new ProjectVersionsView({
+    session, listVersions: (folder) => listVersions(folder, logger), pdfExists: (file) => access(file).then(() => true, () => false),
+  });
+  const versionsTree = vscode.window.createTreeView("labshelf.writing.versions", { treeDataProvider: versionsView });
+  versionsView.attach(versionsTree);
   context.subscriptions.push(
     list,
     files,
     figuresView,
+    versionsView,
+    versionsTree,
+    watchProjectFiles(session, () => void versionsView.refresh(), ".labshelf/versions/**"),
     watchProjectFiles(session, () => files.refresh()),
     vscode.window.createTreeView("labshelf.writing", { treeDataProvider: list }),
     vscode.window.createTreeView("labshelf.writing.files", { treeDataProvider: files }),
