@@ -3,7 +3,7 @@ import type { LatexBuildResult } from "@labshelf/core";
 import type { TypstBuildResult } from "@labshelf/core/typst";
 import type { ReadyProject } from "../mainDocument.js";
 
-export type BuildTrigger = "command" | "save";
+export type BuildTrigger = "command" | "save" | "focus";
 
 /** A Typst build's success also carries where it placed each citation. */
 export type FinishedBuild = Exclude<LatexBuildResult, { status: "cancelled" }> | TypstBuildResult;
