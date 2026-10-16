@@ -1,0 +1,20 @@
+# Log: Project template library
+
+- 2026-10-16 — Plan drafted: goal, decisions D1–D10, open Q1–Q3, acceptance A1–A6 from the conversation; scouts launched for Projects tab, build/auth/HTTP, plans overlap, Typst packages. §5–§6 and sessions/ left for the next session (main-thread context budget reached).
+- 2026-10-16 — Four scout briefs saved to research/ (typst-packages, plans-overlap, build-auth-http, projects-view). Key facts: the Projects view is a native tree (gallery = new webview); writing-project-workspace sessions 2 and 6 and writing-2-writing-sync S4 must land before the gallery UI; no GitHub auth, ETag cache or card component exists. Next: write §5, §6 and sessions/ from research, add Q4 (gallery host) and Q5 (My templates namespace), then ask for approval.
+- 2026-10-16 — Mockup source copied to research/mockup/ with research/mockup.md; §4 links it.
+- 2026-10-16 11:27 — §5 Design and §6 Sessions written; Q1–Q5 resolved as D11–D15 by the recommendations, Q6 (catalog owner) asked in session 4; Size G → GG, 6 sessions (contract, sync namespace, outside catalog repo). Waiting for approval.
+- 2026-10-16 11:30 — Universe facts checked live (research/typst-universe.md): index lists 854 templates, all with thumbnails served as webp; CORS open; 79 need a compiler newer than 0.14.2. S1.1 fact check done; the GG growth condition does not apply.
+- 2026-10-16 11:32 — User: My templates are personal, never shared through Drive; sharing goes through the Community catalog. D7 reworded, R3 (drive.file sharing) and its S6.3 check removed, Drive sharing added to Out.
+- 2026-10-16 11:45 — User approved D1–D10, D12–D15; D11 waits for an explanation. Q6: repo lucaanasser/labshelf-templates created with gh (orgs cannot be created through the API); move to an org before the first release. Main thread at 103k: hand off.
+- 2026-10-16 11:54 — S1.1 done: D11 ticked; research typst-packages and plans-overlap re-scouted; contracts/templates.md written (Other category for unmapped Universe categories, Community files pinned to the index commit); library-format layout and README index updated.
+- 2026-10-16 11:59 — S1.2 done: test-writer 151 tests, implementer (sonnet) core/src/writing/templates/ (manifest, paths, index, entry, filter, license shape, blankTemplates moved from project/templates.ts); core tests 3293 pass, pnpm -r typecheck and core lint pass (implementer report; check skill not run, main thread over budget). Contract: duplicate index id skipped.
+- 2026-10-16 11:59 — Main thread at ~101k: hand off before S1.3.
+- 2026-10-16 11:59 — Unfinished in session 1: S1.3 (catalog sources and ETag cache), S1.4 (finish, commit).
+- 2026-10-16 12:10 — S1.3 done: main thread wrote the sources port (sources/templateSource.ts); test-writers 74 tests; implementers (sonnet) sources/{fetchCachedIndex,communitySource,universeIndex}.ts and node/{readTemplateTree,fsTemplateCache,universeSource,mineSource}.ts; main thread made Universe files() list first and added 2 tests. templates suites 229 pass, core typecheck and lint pass (check skill not run).
+- 2026-10-16 12:10 — Q6: user created the labshelf org; catalog repo transferred to labshelf/labshelf-templates with gh; contract, communitySource, its test, plan Q6 and sessions/04 point there.
+- 2026-10-16 12:10 — Peaks: main thread 104.4k (over budget, hand off); largest subagent 48.9k (implementer, neutral sources).
+- 2026-10-16 12:10 — Unfinished in session 1: S1.4 (finish, commit).
+- 2026-10-16 12:12 — S1.4 done: finish (sonnet) gate PASS (core typecheck, 3392 tests), no fixes, standards and spec clean; commit-splitter (haiku) commits this session's files only.
+- 2026-10-16 12:12 — Peaks: main thread 61.8k; largest subagent 28.1k (finisher).
+- 2026-10-16 12:12 — Session 1 done; sessions/01.md deleted.
