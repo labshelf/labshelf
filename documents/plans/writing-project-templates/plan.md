@@ -1,6 +1,6 @@
 # Plan: Project template library
 
-Status: in progress (session 3 of 6)
+Status: in progress (session 3 of 6; session 4 done)
 Size: GG — a new contract, a fourth Drive namespace, a new UI surface, a GitHub client and an outside catalog repository; 6 sessions. It would grow if publishing needs a GitHub App of our own.
 Pending decisions: 0
 

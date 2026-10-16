@@ -25,3 +25,10 @@
 - 2026-10-16 12:28 — S2.4: finish (sonnet) gate PASS core (3431) and vscode (789); renamed test helper to createBlankProject. A3/A6 met in core only, A4 local half in core; plan acceptance boxes stay open until the UI.
 - 2026-10-16 12:28 — Peaks: main thread 98.7k; largest subagent 46.7k (implementer, S2.2).
 - 2026-10-16 12:28 — Session 2 done; sessions/02.md deleted.
+- 2026-10-16 — S4.1 done: test-writer then implementer (sonnet). core node/catalog validateCatalog + buildCatalogIndex; scripts/template-catalog.mjs bundles validate.mjs/build-index.mjs (esbuild root devDependency, createRequire banner for yaml). Core 3454 tests, tooling 35.
+- 2026-10-16 — S4.2 done: implementer (sonnet). ../labshelf-templates: README, CONTRIBUTING, LICENSE(S), CI workflow, seeds article/beamer-slides/cv (MIT-0, pdflatex, previews compiled locally). Main thread fixed the CI's first-build index.json check (untracked file).
+- 2026-10-16 — S4.3 open: push blocked by git-guardrails hook; user pushes by hand. Core URL constant already pointed at labshelf/labshelf-templates. Gallery read waits for session 3; live check is a jsDelivr fetch.
+- 2026-10-16 — S4.4 done: finish (sonnet) gate PASS core; templates.md Index names the bundled validator. Commits 9e7688e, 3824144, 4670a41 (commit-splitter).
+- 2026-10-16 — Peaks: main thread 85.7k; largest subagent 50.3k (implementer, S4.1). sessions/04.md kept until S4.3 is done.
+- 2026-10-16 15:52 — S4.3 done: user pushed labshelf/labshelf-templates; the first push skipped CI (paths filter on a branch-creating push), so the workflow gained workflow_dispatch and was run by hand. index.json committed (d509d04, commit 9f81ccf) and served by jsDelivr with article, beamer-slides, cv. The gallery read moves to S3.4.
+- 2026-10-16 15:52 — Session 4 done; sessions/04.md deleted.
