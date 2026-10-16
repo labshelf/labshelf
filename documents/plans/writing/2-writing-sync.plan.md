@@ -19,10 +19,11 @@ Builds on [writing-core.plan.md](../../archive/writing-core.plan.md).
 - [x] **D5** Live sessions use Open Collaboration Tools (MIT, public server run by TypeFox, end-to-end encrypted, cursors, follow and chat). LabShelf calls its `oct.createRoom` and `oct.joinRoom` commands and offers to install the extension. Embedding the OCT protocol library is out. — Real-time editing with no server of our own.
 - [x] **D6** Comments live in `<project>/.labshelf/comments.json`, shown with the VS Code Comments API (threads in the gutter, replies, resolve). Each comment is anchored to the quoted text with context, not to a line number, and re-anchored on load; an anchor that cannot be found becomes "detached" and stays listed. — Comments without touching the source, synced and merged like any file.
 - [x] **D7** In the reader's review mode, a highlight with a note on the compiled PDF becomes a comment at the source line (SyncTeX). — Reviewing the PDF feeds the same comment threads.
+- [x] **D8** Coauthors exchange a project through one exchange file on Drive that the owner's LabShelf creates and shares, and that the coauthor picks once in Google Picker; each sync merges the other author's changes from it. The exchange sits behind one core port so another transport (such as GitHub) can be added when users ask for it; only the Drive one is built. — Works for any number of users under `drive.file`, with no second account.
 
 Answered:
 
-- **Q1** How a coauthor's LabShelf gets access to a shared project under the `drive.file` scope — **neither option works as written.** `drive.file` grants are per person and per file: sharing a folder grants the coauthor's app nothing, picking the folder in Google Picker grants the folder alone (not its children, nor files added later), and a file one author's app creates in a shared folder stays invisible to the other's app. A file the coauthor picks once in Picker stays readable and writable across later updates by either side, and its `lastModifyingUser` names the other author. **Consequence:** per-file mirroring to a coauthor through Drive is not possible, and the full `drive` scope is out because the apps ship publicly (100-user cap, yearly security assessment). S9 opens with a `council` between two designs: (B) one exchange file per project that the owner's LabShelf creates and shares and the coauthor picks once, or (C) a GitHub repository per project with automatic commit, pull and push. Picker runs only in a browser page signed in to Google and needs an API key and the Picker API on the LabShelf Cloud project. Evidence: S1 in §8.
+- **Q1** How a coauthor's LabShelf gets access to a shared project under the `drive.file` scope — **neither option works as written.** `drive.file` grants are per person and per file: sharing a folder grants the coauthor's app nothing, picking the folder in Google Picker grants the folder alone (not its children, nor files added later), and a file one author's app creates in a shared folder stays invisible to the other's app. A file the coauthor picks once in Picker stays readable and writable across later updates by either side, and its `lastModifyingUser` names the other author. **Consequence:** per-file mirroring to a coauthor through Drive is not possible, and the full `drive` scope is out because the apps ship publicly (100-user cap, yearly security assessment). Decided in D8. Picker runs only in a browser page signed in to Google and needs an API key and the Picker API on the LabShelf Cloud project. Evidence: S1 in §8.
 
 ## 3. Scope
 
@@ -89,7 +90,7 @@ Text files are those with a known text extension (`.tex`, `.typ`, `.bib`, `.md`,
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S9 | Share project with a coauthor (per Q1: `council` on exchange file vs GitHub first) | Q1 | H · main thread | coauthor syncs the project | [ ] |
+| S9 | Share project with a coauthor through the exchange file (D8) | Q1 | H · main thread | coauthor syncs the project | [ ] |
 | S10 | Coauthor activity from Drive metadata; notice | S9 | M · implementer (sonnet) | A5 (notice) | [ ] |
 | S11 | OCT bridge | S10 | M · implementer (sonnet) | A5 | [ ] |
 | S12 | Finish | S9–S11 | `finish` skill | gate passes | [ ] |
