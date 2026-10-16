@@ -1,4 +1,4 @@
-// Registers the Writing sidebar view, its commands, the main-document and compiler status bar items, the LaTeX and Typst builds with the LaTeX Workshop notice, the Tinymist bridge and the preview, the citation providers, the labshelf: links, the figures with Regenerate Figure, the LaTeX command completion, the source-aware LaTeX editing and the value completion and hover, the backlink index and the reading list of each project, and reloads the project list when the library root changes.
+// Registers the Writing sidebar view, its commands, the main-document and compiler status bar items, the LaTeX and Typst builds with the LaTeX Workshop notice, the Tinymist bridge and the preview, the citation providers, the labshelf: links, the figures with Regenerate Figure, the LaTeX command completion, the source-aware LaTeX editing and the value completion and hover, the .bib diagnostics with their quick fixes, the backlink index and the reading list of each project, and reloads the project list when the library root changes.
 import * as vscode from "vscode";
 
 import type { PaperRecord } from "@labshelf/core";
@@ -18,6 +18,7 @@ import { registerLabshelfLinks } from "../../writing/links/index.js";
 import { ProjectFigures, registerRegenerateFigure, watchFigureFiles } from "../../writing/figures/index.js";
 import { registerLatexCommandCompletion, registerLatexEditing } from "../../writing/latexEditing/index.js";
 import { registerWritingValues } from "../../writing/values/index.js";
+import { registerBibliographyLint } from "../../writing/bibliography/index.js";
 import { onPaperChange, type LibraryEvents } from "../../events/index.js";
 import type { LibraryRootController } from "../libraryLifecycle/index.js";
 import type { HostAdapters } from "../serviceComposition/index.js";
@@ -106,6 +107,7 @@ export function registerWritingView(
   registerLatexCommandCompletion(context);
   registerLatexEditing(context, { projects, logger: () => controller.currentServices()?.logger });
   registerWritingValues(context, { projects, logger: () => controller.currentServices()?.logger });
+  registerBibliographyLint(context, { logger: () => controller.currentServices()?.logger });
   void projects.reload();
   return { projects, backlinks };
 }

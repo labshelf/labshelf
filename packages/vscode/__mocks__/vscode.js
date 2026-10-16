@@ -340,6 +340,12 @@ class WorkspaceEdit {
   replace(uri, range, text) { this.replacements.push({ uri, range, text }); }
 }
 
+class CodeAction {
+  constructor(title, kind) { this.title = title; this.kind = kind; }
+}
+
+const CodeActionKind = { QuickFix: 'quickfix' };
+
 class MarkdownString {
   constructor(value) { this.value = value || ''; this.isTrusted = undefined; }
   appendMarkdown(text) { this.value += text; return this; }
@@ -422,6 +428,7 @@ const languages = {
   registerDocumentLinkProvider: jest.fn(() => ({ dispose: () => {} })),
   registerDefinitionProvider: jest.fn(() => ({ dispose: () => {} })),
   registerDocumentSymbolProvider: jest.fn(() => ({ dispose: () => {} })),
+  registerCodeActionsProvider: jest.fn(() => ({ dispose: () => {} })),
 };
 
 module.exports = {
@@ -430,6 +437,8 @@ module.exports = {
   Position,
   Range,
   WorkspaceEdit,
+  CodeAction,
+  CodeActionKind,
   MarkdownString,
   Hover,
   DocumentLink,
