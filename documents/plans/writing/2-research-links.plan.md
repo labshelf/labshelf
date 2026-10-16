@@ -32,10 +32,10 @@ Builds on [writing-core.plan.md](../../archive/writing-core.plan.md). AI feature
 ## 4. Acceptance criteria
 
 - [x] **A1** `// see labshelf:vaswani2017#p5` in a `.py` file is a link; clicking opens the reader at page 5; `labshelf open labshelf:vaswani2017#p5` does the same from the terminal.
-- [ ] **A2** Typing `\cite[` on a paper with highlights lists them; picking one inserts `\cite[p.~4]{key}`.
+- [x] **A2** Typing `\cite[` on a paper with highlights lists them; picking one inserts `\cite[p.~4]{key}`.
 - [ ] **A3** A paper cited by a project shows "Cited in <project>" in VS Code and the browser.
-- [ ] **A4** The project's reading list shows its papers with status and the never-opened warning.
-- [ ] **A5** After reading in the browser, VS Code's library home offers "Continue: <paper>, page 6".
+- [x] **A4** The project's reading list shows its papers with status and the never-opened warning.
+- [x] **A5** After reading in the browser, VS Code's library home offers "Continue: <paper>, page 6".
 - [ ] **A6** A bib with an arXiv entry whose paper was published gets a linter warning and a quick fix with the published entry.
 - [ ] **A7** On a second machine, `labshelf install` in a cloned project adds the missing papers to the library.
 - [ ] **A8** The "often cited, missing" list shows papers cited by at least 3 library papers and imports one in a click.
@@ -74,11 +74,11 @@ Builds on [writing-core.plan.md](../../archive/writing-core.plan.md). AI feature
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S3 | Highlight-to-citation in completion | — | M · implementer (sonnet) | A2 | [ ] |
-| S4 | Backlink index and detail section | — | H · main thread | A3 | [ ] |
-| S5 | Reading list view and warning | S4 | M · implementer (sonnet) | A4 | [ ] |
-| S6 | Continue where you left off | — | M · implementer (sonnet) | A5 | [ ] |
-| S7 | Finish | S3–S6 | `finish` skill | gate passes | [ ] |
+| S3 | Highlight-to-citation in completion | — | M · implementer (sonnet) | A2 | [x] |
+| S4 | Backlink index and detail section | — | H · main thread | A3 | [x] |
+| S5 | Reading list view and warning | S4 | M · implementer (sonnet) | A4 | [x] |
+| S6 | Continue where you left off | — | M · implementer (sonnet) | A5 | [x] |
+| S7 | Finish | S3–S6 | `finish` skill | gate passes | [x] |
 
 ### Session 3 — bibliography linter
 
@@ -169,3 +169,7 @@ Builds on [writing-core.plan.md](../../archive/writing-core.plan.md). AI feature
 - 2026-10-15 21:20 — S1 core: `library/links` parser and contract `contracts/links.md` (main thread); VS Code, terminal and browser parts by three Sonnet implementers in parallel.
 - 2026-10-15 21:50 — S1 verified in a real extension host: link in a `.py` file without `labshelf.yaml` opens the reader at page 5, hover shows the title; `labshelf open <link>` passes the page to a `{page}` viewer. Not verified: the `vscode://` URI (the package name `@labshelf/vscode` gives no usable extension id yet), Chrome dispatching a `web+labshelf:` click to the extension, Firefox.
 - 2026-10-15 21:55 — S2 finish: gate passes in all four packages; `terminal/src/cli/libraryCommands.ts` stays at 217 lines (under the hard limit).
+- 2026-10-15 22:10 — S3 by a Sonnet implementer: highlights complete inside `\cite[…]` (also with no key yet) and Typst `@key[…]`, with a quote variant; `[` is a trigger. Committed in f9ea804 by the parallel submission-tools session.
+- 2026-10-15 22:20 — S4 core (main thread): `writing/backlinks` (citation sites with the heading above, index per project file and heading), Cited in section in the shared detail pane, `project.openSource` in the library UI contract. The heading title replaces "§3": numbers break across `\input` files.
+- 2026-10-15 22:35 — S4 VS Code and S5 by a Sonnet implementer: backlink index service, Cited in in the list panel, Reading list node with the never-opened warning, `papers:` in `labshelf.yaml`. S6 by a Sonnet implementer: Continue rows in the Library view, `.labshelf/state.json` (device-local, never synced: there is no user identity to key it by). Main thread made Continue share the Writing view's project list.
+- 2026-10-15 22:41 — S7 finish: gate passes in core and vscode. A2–A5 verified in a real extension host on a library copy. A3 stays open for the browser: it has no writing projects until writing-sync brings them; its host then fills `citedIn`. Not verified: Typst, Remove from Reading List, the browser-to-VS Code sidecar path for A5.
