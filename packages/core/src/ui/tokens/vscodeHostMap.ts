@@ -6,7 +6,7 @@ import type { TYPE_TOKENS, ELEVATION_TOKENS } from "./scaleTokens.js";
 
 type MappedToken = keyof typeof COLOR_TOKENS | keyof typeof STATUS_TOKENS | keyof typeof TYPE_TOKENS | keyof typeof ELEVATION_TOKENS;
 
-// Roles VS Code has no variable for (overlay, on-badge, the highlight palette, the
+// Roles VS Code has no variable for (overlay, the highlight palette, the
 // type and spacing scale) keep their token value in VS Code too.
 const VSCODE_HOST_MAP: Partial<Record<MappedToken, string>> = {
   bg: "var(--vscode-editor-background)",
@@ -47,6 +47,7 @@ const VSCODE_HOST_MAP: Partial<Record<MappedToken, string>> = {
   "button-bg": "var(--vscode-button-background)",
   "button-fg": "var(--vscode-button-foreground)",
   "button-hover": "var(--vscode-button-hoverBackground)",
+  "button-soft-fg": "color-mix(in srgb, var(--vscode-textLink-foreground) 80%, var(--vscode-foreground))",
   "button2-bg": "var(--vscode-button-secondaryBackground)",
   "button2-fg": "var(--vscode-button-secondaryForeground)",
   "button2-hover": "var(--vscode-button-secondaryHoverBackground)",

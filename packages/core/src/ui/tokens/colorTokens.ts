@@ -49,6 +49,12 @@ export const COLOR_TOKENS = {
   "button-bg": token("#0078d4", "#005fb8"),
   "button-fg": token("#ffffff", "#ffffff"),
   "button-hover": token("#026ec1", "#0258a8"),
+  "button-soft-fg": token("#66b1f3", "#0c589f"),
+  // Tints over the foreground and focus colours follow any host theme without a map entry.
+  "button-soft-bg": token("color-mix(in srgb, var(--ls-focus) 16%, transparent)"),
+  "button-soft-hover": token("color-mix(in srgb, var(--ls-focus) 24%, transparent)"),
+  "row-zebra": token("color-mix(in srgb, var(--ls-fg) 3%, transparent)"),
+  "row-open": token("color-mix(in srgb, var(--ls-fg) 7%, transparent)"),
   "button2-bg": token("#313131", "#e5e5e5"),
   "button2-fg": token("#cccccc", "#3b3b3b"),
   "button2-hover": token("#3c3c3c", "#cccccc"),
@@ -75,7 +81,6 @@ export const COLOR_TOKENS = {
   warning: token("#cca700", "#bf8803"),
   "warning-bg": token("#352a05", "#f6f5d2"),
   "warning-border": token("#b89500", "#b89500"),
-  "on-badge": token("#1e1e1e"),
 } satisfies Record<string, DesignToken>;
 
 // Unread follows the blue role, so it needs no light value of its own.
@@ -92,4 +97,13 @@ export const MARK_TOKENS = {
   "mark-warn": token("#c9ad4a", "#a8822f"),
   "mark-ok": token("#93c190", "#4d8a4a"),
   "mark-accent": token("#6ea3e0", "#3a78ad"),
+} satisfies Record<string, DesignToken>;
+
+// File types are brand colours in every host, so these have no VS Code mapping.
+// They are the error, reading and warning tones, kept opaque for 4.5:1 on the background.
+export const FILE_TYPE_TOKENS = {
+  "file-pdf": token("#d9837c", "#b84a42"),
+  "file-md": token("#7d9fe0", "#4069b8"),
+  "file-ref": token("#7d9fe0", "#4069b8"),
+  "file-dir": token("#d2a865", "#946618"),
 } satisfies Record<string, DesignToken>;

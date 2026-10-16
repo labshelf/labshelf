@@ -40,6 +40,11 @@
   --ls-button-bg: #0078d4;
   --ls-button-fg: #ffffff;
   --ls-button-hover: #026ec1;
+  --ls-button-soft-fg: #66b1f3;
+  --ls-button-soft-bg: color-mix(in srgb, var(--ls-focus) 16%, transparent);
+  --ls-button-soft-hover: color-mix(in srgb, var(--ls-focus) 24%, transparent);
+  --ls-row-zebra: color-mix(in srgb, var(--ls-fg) 3%, transparent);
+  --ls-row-open: color-mix(in srgb, var(--ls-fg) 7%, transparent);
   --ls-button2-bg: #313131;
   --ls-button2-fg: #cccccc;
   --ls-button2-hover: #3c3c3c;
@@ -65,7 +70,6 @@
   --ls-warning: #cca700;
   --ls-warning-bg: #352a05;
   --ls-warning-border: #b89500;
-  --ls-on-badge: #1e1e1e;
   --ls-status-unread: var(--ls-blue);
   --ls-status-reading: #e5c07b;
   --ls-status-done: #4ec994;
@@ -73,6 +77,10 @@
   --ls-mark-warn: #c9ad4a;
   --ls-mark-ok: #93c190;
   --ls-mark-accent: #6ea3e0;
+  --ls-file-pdf: #d9837c;
+  --ls-file-md: #7d9fe0;
+  --ls-file-ref: #7d9fe0;
+  --ls-file-dir: #d2a865;
   --ls-hl-yellow: #f5c518;
   --ls-hl-green: #4caf50;
   --ls-hl-blue: #2196f3;
@@ -148,6 +156,7 @@
   --ls-button-bg: #005fb8;
   --ls-button-fg: #ffffff;
   --ls-button-hover: #0258a8;
+  --ls-button-soft-fg: #0c589f;
   --ls-button2-bg: #e5e5e5;
   --ls-button2-fg: #3b3b3b;
   --ls-button2-hover: #cccccc;
@@ -178,6 +187,10 @@
   --ls-mark-warn: #a8822f;
   --ls-mark-ok: #4d8a4a;
   --ls-mark-accent: #3a78ad;
+  --ls-file-pdf: #b84a42;
+  --ls-file-md: #4069b8;
+  --ls-file-ref: #4069b8;
+  --ls-file-dir: #946618;
   --ls-widget-shadow: 0 0 8px 2px rgba(0, 0, 0, .16);
   --ls-popup-shadow: 0 4px 18px rgba(0, 0, 0, .18);
 }

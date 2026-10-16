@@ -79,6 +79,11 @@ const PAIRS: Record<string, [string, string]> = {
   "input placeholder": ["--ls-input-placeholder", "--ls-input-bg"],
   "badge text": ["--ls-badge-fg", "--ls-badge-bg"],
   "banner text on warning background": ["--ls-fg", "--ls-warning-bg"],
+  "soft button text on editor background": ["--ls-button-soft-fg", "--ls-bg"],
+  "PDF file type on editor background": ["--ls-file-pdf", "--ls-bg"],
+  "Markdown file type on editor background": ["--ls-file-md", "--ls-bg"],
+  "reference file type on editor background": ["--ls-file-ref", "--ls-bg"],
+  "folder file type on editor background": ["--ls-file-dir", "--ls-bg"],
 };
 
 const READER_PAIRS: Record<string, [string, string]> = {

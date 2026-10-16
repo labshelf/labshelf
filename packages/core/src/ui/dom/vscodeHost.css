@@ -38,6 +38,7 @@
   --ls-button-bg: var(--vscode-button-background);
   --ls-button-fg: var(--vscode-button-foreground);
   --ls-button-hover: var(--vscode-button-hoverBackground);
+  --ls-button-soft-fg: color-mix(in srgb, var(--vscode-textLink-foreground) 80%, var(--vscode-foreground));
   --ls-button2-bg: var(--vscode-button-secondaryBackground);
   --ls-button2-fg: var(--vscode-button-secondaryForeground);
   --ls-button2-hover: var(--vscode-button-secondaryHoverBackground);

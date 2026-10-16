@@ -7,8 +7,8 @@ import { COLOR_TOKENS, STATUS_TOKENS, renderVscodeHostCss } from "@labshelf/core
 
 const HOST_CSS = join(__dirname, "../../src/ui/dom/vscodeHost.css");
 
-// No VS Code variable stands for these, so VS Code uses the token value.
-const UNMAPPED = ["overlay", "on-badge", "status-unread"];
+// No VS Code variable stands for these, or they tint a mapped role, so VS Code uses the token value.
+const UNMAPPED = ["overlay", "status-unread", "button-soft-bg", "button-soft-hover", "row-zebra", "row-open"];
 
 describe("vscodeHost.css", () => {
   // `pnpm --filter @labshelf/core tokens` regenerates the file through this test.
@@ -20,7 +20,7 @@ describe("vscodeHost.css", () => {
   it("maps every colour role VS Code has a variable for", () => {
     const css = renderVscodeHostCss();
     const roles = [...Object.keys(COLOR_TOKENS), ...Object.keys(STATUS_TOKENS)].filter((r) => !UNMAPPED.includes(r));
-    for (const role of roles) expect(css).toMatch(new RegExp(`--ls-${role}: var\\(--vscode-`));
+    for (const role of roles) expect(css).toMatch(new RegExp(`--ls-${role}: [^;]*var\\(--vscode-`));
   });
 
   it("leaves status-unread on the blue role, which follows charts-blue", () => {
