@@ -31,6 +31,10 @@ A host can show a build's output in the reader, e.g. a writing project's compile
 - **Reload in place.** After a build replaces the PDF, the host asks for a reload. The reader re-reads the bytes and keeps the page, the offset on it and the zoom. A failed build leaves the file and the reader untouched.
 - **Build status.** The host reports `building`, `succeeded`, or `failed` with the error count. The reader shows a banner while a build runs and while the last one failed; clicking a failed banner asks the host to open the first error.
 - **Source and preview positions.** Points travel in PDF user space: page number and points from the page's top-left corner. Only a preview reader (`ReaderBootParams.preview`) reports a double-click, as `showSource`; a library reader leaves double-clicks alone. The host reveals a point, e.g. the editor cursor, and the reader scrolls to it and marks it; a page number past the document's last page is clamped to it.
+- **Citations.** A preview reader asks which cited papers stand behind a link, or behind text it reads as a citation, with `lookupCitation`: a request number, the place as a page area in the same space as points, whether it is a link, and the link's destination name when it has one. The host always answers with `citation` under the same number, also when it finds nothing or fails, so the reader never waits; each entry is a cite key with its library paper when the library has one.
+  - LaTeX: a destination named `cite.<key>` (hyperref; biblatex writes `cite.<n>@<key>`) names its key, and any other LaTeX link names none. Text without a link, from a build without hyperref, goes through SyncTeX to the keys cited on its source line.
+  - Typst: a link names the citation that the last build placed inside it.
+  - Hovering shows a card with the paper. Clicking a citation link whose key has a library paper opens that paper (`openCitedPaper`) instead of jumping to the bibliography; any other link keeps its jump.
 - **The browser previews nothing yet.** Its host has no preview ports, so the controller logs a preview request from its reader and ignores it.
 
 ## Host-specific constraints

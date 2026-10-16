@@ -35,6 +35,32 @@ describe("preview messages", () => {
     expect(preview.showSource).toHaveBeenCalledWith({ page: 1, x: 5, y: 6 });
   });
 
+  const query = { area: { page: 1, left: 1, top: 2, right: 3, bottom: 4 }, link: true, dest: "cite.smith2020" };
+
+  it("answers a citation lookup with the preview port's entries under the same request number", async () => {
+    const { host, ports, posted } = setupHost();
+    const entries = [{ key: "smith2020", paper: { id: "smith-2020", title: "A paper", authors: ["A. Smith"] } }];
+    const preview = { lookupCitation: jest.fn(async () => entries), openCitedPaper: jest.fn(async () => undefined) };
+    Object.assign(ports, { preview });
+    await host.handle({ command: "ready", totalPages: 1 });
+    await host.handle({ command: "lookupCitation", request: 7, query });
+    await host.handle({ command: "openCitedPaper", paperId: "smith-2020" });
+    expect(preview.lookupCitation).toHaveBeenCalledWith(query);
+    expect(posted).toContainEqual({ type: "citation", request: 7, entries });
+    expect(preview.openCitedPaper).toHaveBeenCalledWith("smith-2020");
+  });
+
+  it("still answers a citation lookup when the port fails or the reader previews nothing", async () => {
+    const { host, ports, posted } = setupHost();
+    await host.handle({ command: "ready", totalPages: 1 });
+    await host.handle({ command: "lookupCitation", request: 1, query });
+    Object.assign(ports, { preview: { lookupCitation: jest.fn(async () => { throw new Error("library closed"); }) } });
+    await host.handle({ command: "lookupCitation", request: 2, query });
+    expect(posted).toContainEqual({ type: "citation", request: 1, entries: [] });
+    expect(posted).toContainEqual({ type: "citation", request: 2, entries: [] });
+    expect(ports.notify).toHaveBeenCalledWith("Reader action failed: library closed", "error");
+  });
+
   it("logs a preview request in a reader without preview ports instead of failing", async () => {
     const { host, ports } = setupHost();
     await host.handle({ command: "showBuildProblem" });

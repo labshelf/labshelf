@@ -154,6 +154,28 @@ describe('isWebviewMessage preview requests', () => {
     expect(isWebviewMessage({ command: 'showSource', point: { page: 1, x: Number.NaN, y: 1 } })).toBe(false);
     expect(isWebviewMessage({ command: 'showSource', point: { page: 1, x: 1 } })).toBe(false);
   });
+
+  const area = { page: 1, left: 10, top: 20, right: 30, bottom: 40 };
+
+  it('accepts a citation lookup for a link with or without a destination name, and for text', () => {
+    expect(isWebviewMessage({ command: 'lookupCitation', request: 1, query: { area, link: true, dest: 'cite.smith2020' } })).toBe(true);
+    expect(isWebviewMessage({ command: 'lookupCitation', request: 2, query: { area, link: true } })).toBe(true);
+    expect(isWebviewMessage({ command: 'lookupCitation', request: 3, query: { area, link: false } })).toBe(true);
+  });
+
+  it('rejects a citation lookup without a request number, a whole area or a string destination', () => {
+    expect(isWebviewMessage({ command: 'lookupCitation', query: { area, link: true } })).toBe(false);
+    expect(isWebviewMessage({ command: 'lookupCitation', request: 1, query: { area: { ...area, page: 0 }, link: true } })).toBe(false);
+    expect(isWebviewMessage({ command: 'lookupCitation', request: 1, query: { area: { page: 1, left: 1, top: 1 }, link: true } })).toBe(false);
+    expect(isWebviewMessage({ command: 'lookupCitation', request: 1, query: { area, link: 'yes' } })).toBe(false);
+    expect(isWebviewMessage({ command: 'lookupCitation', request: 1, query: { area, link: true, dest: ['x'] } })).toBe(false);
+  });
+
+  it('accepts openCitedPaper only with a paper id', () => {
+    expect(isWebviewMessage({ command: 'openCitedPaper', paperId: 'smith-2020' })).toBe(true);
+    expect(isWebviewMessage({ command: 'openCitedPaper', paperId: '' })).toBe(false);
+    expect(isWebviewMessage({ command: 'openCitedPaper' })).toBe(false);
+  });
 });
 
 describe('isSafeExternalUrl', () => {

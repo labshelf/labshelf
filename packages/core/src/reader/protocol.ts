@@ -3,9 +3,11 @@
  * DOM-free and vscode-free so both TypeScript programs (and jest) can compile it.
  */
 import type { Annotation, AnnotationColor, PdfTheme } from "../model/index.js";
+import type { BuildState, CitationEntry, CitationQuery, PagePoint } from "./previewProtocol.js";
+import { isCitationQuery, isPagePoint } from "./previewProtocol.js";
 import type { ReadingState } from "./sidecar/index.js";
 
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 3;
 
 export type EffectiveTheme = Exclude<PdfTheme, "auto">;
 export type ZoomPreset = "page-width" | "page-fit" | "page-actual" | "auto";
@@ -66,16 +68,6 @@ export type ReaderCommandId =
   | "historyForward"
   | "toggleSidebar";
 
-/** The state of the build whose output a preview reader shows. */
-export type BuildState = "building" | "succeeded" | "failed";
-
-/** A point on a page in PDF user space: points from the page's top-left corner, y growing downwards. */
-export interface PagePoint {
-  page: number;
-  x: number;
-  y: number;
-}
-
 /* ── host → webview (discriminant: `type`) ───────────────────────── */
 
 export type HostToWebview =
@@ -97,7 +89,9 @@ export type HostToWebview =
   /** `errors` counts the failed build's errors; it is 0 for the other states. */
   | { type: "buildStatus"; state: BuildState; errors: number }
   /** Scrolls the reader to a point and marks it, e.g. the editor cursor's position found through SyncTeX. */
-  | { type: "revealPoint"; point: PagePoint };
+  | { type: "revealPoint"; point: PagePoint }
+  /** Answers `lookupCitation` with the same `request`; no entries when the place cites nothing the host can name. */
+  | { type: "citation"; request: number; entries: CitationEntry[] };
 
 /* ── webview → host (discriminant: `command`) ────────────────────── */
 
@@ -135,15 +129,16 @@ export type WebviewToHost =
   /** The reader clicked a failed build's banner. */
   | { command: "showBuildProblem" }
   /** The reader double-clicked this point; a preview host opens the source behind it. */
-  | { command: "showSource"; point: PagePoint };
+  | { command: "showSource"; point: PagePoint }
+  /** Asks a preview host which cited papers stand behind a link or a citation in the PDF. */
+  | { command: "lookupCitation"; request: number; query: CitationQuery }
+  /** Opens a library paper named by a `citation` answer. */
+  | { command: "openCitedPaper"; paperId: string };
 
 const isStr = (v: unknown): v is string => typeof v === "string";
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 const isObj = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
-
-const isPagePoint = (v: unknown): v is PagePoint =>
-  isObj(v) && isNum(v["page"]) && Number.isInteger(v["page"]) && v["page"] >= 1 && isNum(v["x"]) && isNum(v["y"]);
 
 /**
  * Validates an untrusted webview message against the protocol; anything malformed is rejected so host handlers never see partial payloads.
@@ -182,6 +177,10 @@ export function isWebviewMessage(raw: unknown): raw is WebviewToHost {
       return true;
     case "showSource":
       return isPagePoint(m["point"]);
+    case "lookupCitation":
+      return isNum(m["request"]) && isCitationQuery(m["query"]);
+    case "openCitedPaper":
+      return isStr(m["paperId"]) && m["paperId"].length > 0;
     default:
       return false;
   }

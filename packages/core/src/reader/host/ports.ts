@@ -4,7 +4,8 @@
 import type { Annotation, PaperRecord } from "../../model/index.js";
 import type { ILogger } from "../../ports/index.js";
 import type { PaperDataStore } from "../sidecar/index.js";
-import type { EffectiveTheme, HostToWebview, PagePoint, ReaderPrefs } from "../protocol.js";
+import type { CitationEntry, CitationQuery, PagePoint } from "../previewProtocol.js";
+import type { EffectiveTheme, HostToWebview, ReaderPrefs } from "../protocol.js";
 
 export type NoticeKind = "info" | "ok" | "error";
 
@@ -26,6 +27,10 @@ export interface PreviewPorts {
   showBuildProblem(): Promise<void>;
   /** Opens the source behind a point of the PDF. */
   showSource(point: PagePoint): Promise<void>;
+  /** The keys cited at a link or citation of the PDF, each with its library paper when there is one. */
+  lookupCitation(query: CitationQuery): Promise<CitationEntry[]>;
+  /** Opens a library paper in the reader. */
+  openCitedPaper(paperId: string): Promise<void>;
 }
 
 export interface ReaderHostPorts {
