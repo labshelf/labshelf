@@ -1,7 +1,6 @@
 /** Moves folders dragged inside the Library tree and imports PDFs dropped from the OS. */
 import * as vscode from 'vscode';
-import { isContinueNode } from './continueNode.js';
-import type { LibraryNode, LibraryTreeNode } from './libraryNode.js';
+import { isFolderNode, type LibraryTreeNode } from './libraryNode.js';
 
 // text/uri-list carries OS file drops (PDF import). The tree mime carries folders
 // dragged inside this tree; its name is fixed by VS Code from the view id.
@@ -18,21 +17,20 @@ export class LibraryDragAndDropController implements vscode.TreeDragAndDropContr
   ) {}
 
   /**
-   * Puts the dragged folders on the transfer. "All Papers" is not a real folder and cannot be dragged.
+   * Puts the dragged folders on the transfer. Only folder rows drag, and the papers/ root is not one.
    */
   handleDrag(source: readonly LibraryTreeNode[], dataTransfer: vscode.DataTransfer): void {
-    const dirs = source.flatMap((n) => (isContinueNode(n) || n.isRoot ? [] : [n.dirPath]));
+    const dirs = source.flatMap((n) => (isFolderNode(n) && !n.isRoot ? [n.dirPath] : []));
     if (dirs.length > 0) {
       dataTransfer.set(TREE_MIME, new vscode.DataTransferItem(dirs));
     }
   }
 
   /**
-   * Routes a drop: folders dragged within the tree are moved, OS files are imported. A drop on "All Papers" or on the empty area targets papers/.
+   * Routes a drop: folders dragged within the tree are moved, OS files are imported. A drop on a row that is not a folder, or on the empty area, targets papers/.
    */
   async handleDrop(target: LibraryTreeNode | undefined, dataTransfer: vscode.DataTransfer): Promise<void> {
-    // A Continue row is not a folder: dropping on it targets papers/ like the empty area.
-    const targetDir = target && !isContinueNode(target) ? target.dirPath : undefined;
+    const targetDir = target && isFolderNode(target) ? target.dirPath : undefined;
 
     const dragged = dataTransfer.get(TREE_MIME)?.value as unknown;
     if (Array.isArray(dragged) && dragged.length > 0) {

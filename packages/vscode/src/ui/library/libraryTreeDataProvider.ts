@@ -1,20 +1,20 @@
 /**
- * Provides the VS Code tree view for the LabShelf library: Continue rows for the paper read last and the project file edited last, an "All Papers" entry, and the collection folders under papers/. Folder rows open in the list panel and show their paper count.
+ * Provides the VS Code tree view for the LabShelf library: Continue rows, the status scope rows, then the collection folders under papers/ with their papers, from the core library tree.
  */
 import * as vscode from 'vscode';
-import { PAPERS_DIR, findNode, folderTreeFromSnapshot, type CountedFolder, type LibrarySnapshot, type PathOps } from '@labshelf/core';
-import { rootNode } from './libraryNode.js';
-import type { LibraryNode, LibraryTreeNode } from './libraryNode.js';
+import { PAPERS_DIR, folderTreeFromSnapshot, libraryTree, type LibrarySnapshot, type LibraryTree, type PathOps, type TreeChild } from '@labshelf/core';
+import { isFolderNode, type LibraryNode, type LibraryTreeNode, type PaperNode } from './libraryNode.js';
 import { onPaperChange, type LibraryEvents } from "../../events/index.js";
 import type { ContinueSource } from "../../continue/index.js";
+import { arcIcons, refIcon, type ArcIcon, type ThemedIcon } from "../index.js";
 import { continueTreeItem, isContinueNode } from './continueNode.js';
+import { folderTreeItem, paperTreeItem, scopeTreeItem } from './libraryTreeItems.js';
 
 export type { LibraryNode } from './libraryNode.js';
 
 /** The active library's current snapshot, or undefined while none is configured; read on every request, so a reload shows on the next refresh. */
 type SnapshotSource = () => LibrarySnapshot | undefined;
 
-const ROOT_ITEM_ID = 'labshelf:all-papers';
 const REFRESH_DEBOUNCE_MS = 60;
 
 export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryTreeNode> {
@@ -22,8 +22,10 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryT
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
   private _papersRoot: vscode.Uri | null;
-  private _tree: { snapshot: LibrarySnapshot; folders: CountedFolder[] } | null = null;
+  private _tree: { snapshot: LibrarySnapshot; tree: LibraryTree } | null = null;
   private _refreshTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly _arcIcon: ArcIcon;
+  private readonly _refIcon: ThemedIcon;
 
   constructor(
     papersRoot: vscode.Uri | null,
@@ -31,8 +33,11 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryT
     events: LibraryEvents,
     private readonly _paths: PathOps,
     private readonly _continue: ContinueSource,
+    extensionUri: vscode.Uri,
   ) {
     this._papersRoot = papersRoot;
+    this._arcIcon = arcIcons(extensionUri);
+    this._refIcon = refIcon(extensionUri);
     // A folder move emits one paper:updated per paper, so event refreshes are coalesced.
     const refresh = (): void => this._scheduleRefresh();
     onPaperChange(events, refresh);
@@ -56,106 +61,89 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryT
     this._onDidChangeTreeData.fire();
   }
 
-  /**
-   * Returns the node for papers/ itself, or null while no library is configured.
-   * @returns the root LibraryNode or null
-   */
-  rootNode(): LibraryNode | null {
-    return this._papersRoot ? rootNode(this._papersRoot.fsPath) : null;
-  }
-
-  /**
-   * Returns the VS Code TreeItem for a node. Every row, not just leaves, opens in the list panel on click.
-   * @returns A vscode.TreeItem configured for the given node.
-   */
   async getTreeItem(node: LibraryTreeNode): Promise<vscode.TreeItem> {
     if (isContinueNode(node)) { return continueTreeItem(node); }
-    const hasChildren = !node.isRoot && this._children(node.dirPath).length > 0;
-    const item = new vscode.TreeItem(
-      node.label,
-      hasChildren ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None,
-    );
-    item.id = node.isRoot ? ROOT_ITEM_ID : node.dirPath;
-    item.iconPath = node.isRoot ? new vscode.ThemeIcon('library') : vscode.ThemeIcon.Folder;
-    item.contextValue = node.isRoot ? 'labshelfRoot' : 'labshelfFolder';
-    item.tooltip = node.dirPath;
-    if (!node.isRoot) {
-      item.resourceUri = vscode.Uri.file(node.dirPath);
-    }
-
-    const count = this._countUnder(node);
-    if (count > 0) {
-      item.description = String(count);
-    }
-
-    item.command = { command: 'labshelf.openListTab', title: 'Open', arguments: [node] };
-    return item;
+    if ('scope' in node) { return scopeTreeItem(node, this._arcIcon); }
+    if ('paperId' in node) { return paperTreeItem(node, this._refIcon); }
+    const children = this._childrenAt(node.dirPath);
+    const count = this._folderChild(node.dirPath)?.count ?? 0;
+    return folderTreeItem(node, count, children.length > 0);
   }
 
   /**
-   * Returns the child folders of a node. The top level is the Continue rows, "All Papers", then the folders directly under papers/.
-   * @returns A promise resolving to an array of tree nodes.
+   * Returns a row's children: the top level is the Continue rows, the scope rows, then papers/ itself (its folders, then its papers); a folder holds its subfolders, then its papers.
    */
   async getChildren(node?: LibraryTreeNode): Promise<LibraryTreeNode[]> {
-    if (node && (isContinueNode(node) || node.isRoot)) {
-      return [];
-    }
     if (node) {
-      return this._children(node.dirPath);
+      return isFolderNode(node) ? this._childrenAt(node.dirPath).map((c) => this._toNode(c)) : [];
     }
-    const root = this.rootNode();
-    if (!root) {
-      return [];
-    }
+    const tree = this._currentTree();
+    if (!tree) { return []; }
     const rows = (await this._continue.targets()).map((target) => ({ target }));
-    return [...rows, root, ...this._children(root.dirPath)];
+    return [...rows, ...tree.scopes(), ...tree.children(PAPERS_DIR).map((c) => this._toNode(c))];
   }
 
   /**
-   * Returns the parent LibraryNode for a given node, or null when the node is at the top level.
-   * @returns The parent LibraryNode, or null.
+   * Returns the row that holds a row: a folder, or null at the top level.
    */
   getParent(node: LibraryTreeNode): vscode.ProviderResult<LibraryNode> {
-    const root = this._papersRoot?.fsPath;
-    if (!root || isContinueNode(node) || node.isRoot) {
-      return null;
-    }
-    const parent = this._paths.dirname(node.dirPath);
-    if (parent === root || !parent.startsWith(root + this._paths.sep)) {
-      return null;
-    }
-    return { label: this._paths.basename(parent), dirPath: parent };
+    const ui = isFolderNode(node) ? this._parentUi(node.dirPath)
+      : 'paperId' in node ? this._currentTree()?.parentOf(node.paperId) : undefined;
+    return ui && ui !== PAPERS_DIR ? this._folderNode(ui) : null;
   }
 
-  private _folders(): CountedFolder[] {
+  /** The row of a paper in the current tree, or undefined when the library has no paper with this id. */
+  paperNode(id: string): PaperNode | undefined {
+    const tree = this._currentTree();
+    const parent = tree?.parentOf(id);
+    const child = parent === undefined ? undefined : tree?.children(parent).find((c) => c.kind === 'paper' && c.id === id);
+    return child?.kind === 'paper' ? { paperId: child.id, title: child.title } : undefined;
+  }
+
+  private _currentTree(): LibraryTree | undefined {
     const snapshot = this._getSnapshot();
-    if (!snapshot) { return []; }
-    if (this._tree?.snapshot !== snapshot) { this._tree = { snapshot, folders: folderTreeFromSnapshot(snapshot) }; }
-    return this._tree.folders;
+    if (!snapshot || !this._papersRoot) { return undefined; }
+    if (this._tree?.snapshot !== snapshot) {
+      const papers = [...snapshot.papers.values()].map((entry) => entry.record);
+      this._tree = { snapshot, tree: libraryTree({ folders: folderTreeFromSnapshot(snapshot), papers }) };
+    }
+    return this._tree.tree;
   }
 
-  private _uiPath(dirPath: string, root: string): string {
-    return dirPath === root ? PAPERS_DIR : [PAPERS_DIR, ...dirPath.slice(root.length + 1).split(this._paths.sep)].join('/');
+  private _childrenAt(dirPath: string): TreeChild[] {
+    const ui = this._uiPath(dirPath);
+    return ui ? this._currentTree()?.children(ui) ?? [] : [];
   }
 
-  private _children(dirPath: string): LibraryNode[] {
+  /** The tree's entry for a folder, which carries its recursive count. */
+  private _folderChild(dirPath: string): Extract<TreeChild, { kind: 'folder' }> | undefined {
+    const ui = this._uiPath(dirPath);
+    const parent = this._parentUi(dirPath);
+    const match = parent ? this._currentTree()?.children(parent).find((c) => c.kind === 'folder' && c.path === ui) : undefined;
+    return match?.kind === 'folder' ? match : undefined;
+  }
+
+  private _toNode(child: TreeChild): LibraryTreeNode {
+    return child.kind === 'folder' ? this._folderNode(child.path) : { paperId: child.id, title: child.title };
+  }
+
+  private _folderNode(ui: string): LibraryNode {
+    const segments = ui.split('/').slice(1);
+    return { label: segments[segments.length - 1] ?? '', dirPath: this._paths.join(this._papersRoot?.fsPath ?? '', ...segments) };
+  }
+
+  /** Maps a folder's file-system path to its UI path ("papers/A/B"); undefined outside papers/. */
+  private _uiPath(dirPath: string): string | undefined {
     const root = this._papersRoot?.fsPath;
-    if (!root) { return []; }
-    const ui = this._uiPath(dirPath, root);
-    const folders = ui === PAPERS_DIR ? this._folders() : this._folderAt(ui)?.children ?? [];
-    return folders.map((f) => ({ label: f.name, dirPath: this._paths.join(root, ...f.path.split('/').slice(1)) }));
+    if (!root) { return undefined; }
+    if (dirPath === root) { return PAPERS_DIR; }
+    if (!dirPath.startsWith(root + this._paths.sep)) { return undefined; }
+    return [PAPERS_DIR, ...dirPath.slice(root.length + 1).split(this._paths.sep)].join('/');
   }
 
-  private _folderAt(ui: string): CountedFolder | undefined {
-    // The tree is built as CountedFolder nodes, so the node findNode returns carries its total.
-    return findNode(this._folders(), ui) as CountedFolder | undefined;
-  }
-
-  private _countUnder(node: LibraryNode): number {
-    const root = this._papersRoot?.fsPath;
-    if (!root) { return 0; }
-    if (node.isRoot) { return this._getSnapshot()?.papers.size ?? 0; }
-    return this._folderAt(this._uiPath(node.dirPath, root))?.total ?? 0;
+  private _parentUi(dirPath: string): string | undefined {
+    const ui = this._uiPath(dirPath);
+    return ui && ui !== PAPERS_DIR ? ui.slice(0, ui.lastIndexOf('/')) : undefined;
   }
 
   private _scheduleRefresh(): void {

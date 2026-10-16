@@ -1,17 +1,23 @@
-// Resolves the light/dark Arc mark icon files of a tone and progress for native tree items.
-// PLATFORM: TreeItem icons cannot read CSS variables, and the workbench CSP blocks icons served from globalStorage (vscode-userdata:); build/arcMarks.mjs bakes each tone's colour into SVG files under out/marks/ inside the extension folder.
+// Resolves the light/dark baked mark icon files (Arc marks and the REF glyph) for native tree items.
+// PLATFORM: TreeItem icons cannot read CSS variables, and the workbench CSP blocks icons served from globalStorage (vscode-userdata:); build/arcMarks.mjs bakes each colour into SVG files under out/marks/ inside the extension folder.
 import * as vscode from "vscode";
 import type { ArcProgress, ArcTone } from "@labshelf/core";
 
-export type ArcIcon = (tone: ArcTone, progress: ArcProgress) => { light: vscode.Uri; dark: vscode.Uri };
+export type ThemedIcon = { light: vscode.Uri; dark: vscode.Uri };
+export type ArcIcon = (tone: ArcTone, progress: ArcProgress) => ThemedIcon;
 
-function markFile(extensionUri: vscode.Uri, tone: ArcTone, progress: ArcProgress, theme: "light" | "dark"): vscode.Uri {
-  return vscode.Uri.joinPath(extensionUri, "out", "marks", `${tone}-${progress}-${theme}.svg`);
+function themedMark(extensionUri: vscode.Uri, name: string): ThemedIcon {
+  return {
+    light: vscode.Uri.joinPath(extensionUri, "out", "marks", `${name}-light.svg`),
+    dark: vscode.Uri.joinPath(extensionUri, "out", "marks", `${name}-dark.svg`),
+  };
 }
 
 export function arcIcons(extensionUri: vscode.Uri): ArcIcon {
-  return (tone, progress) => ({
-    light: markFile(extensionUri, tone, progress, "light"),
-    dark: markFile(extensionUri, tone, progress, "dark"),
-  });
+  return (tone, progress) => themedMark(extensionUri, `${tone}-${progress}`);
+}
+
+/** The REF glyph a paper row shows. */
+export function refIcon(extensionUri: vscode.Uri): ThemedIcon {
+  return themedMark(extensionUri, "ref");
 }

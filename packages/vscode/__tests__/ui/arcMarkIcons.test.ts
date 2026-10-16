@@ -6,6 +6,8 @@ import { join, resolve } from "node:path";
 import * as vscode from "vscode";
 import { ARC_PROGRESSES, ARC_TONES, ARC_TONE_COLORS, arcMark } from "@labshelf/core";
 
+// FILE_TYPE_TOKENS is not exported by the core index; the build step reads the same source file.
+import { FILE_TYPE_TOKENS } from "../../../core/src/ui/tokens/colorTokens";
 import { arcIcons } from "../../src/ui";
 
 describe("arcIcons", () => {
@@ -23,9 +25,24 @@ describe("build/arcMarks.mjs", () => {
       const script = `import("./build/arcMarks.mjs").then((m) => m.writeArcMarks(${JSON.stringify(outDir)}))`;
       execFileSync(process.execPath, ["-e", script], { cwd: resolve(__dirname, "../.."), stdio: "pipe" });
       const marks = join(outDir, "marks");
-      expect(readdirSync(marks)).toHaveLength(ARC_TONES.length * ARC_PROGRESSES.length * 2);
+      expect(readdirSync(marks)).toHaveLength(ARC_TONES.length * ARC_PROGRESSES.length * 2 + 2);
       expect(readFileSync(join(marks, "err-full-light.svg"), "utf8")).toBe(arcMark("err", "full", ARC_TONE_COLORS.err.light));
       expect(readFileSync(join(marks, "accent-none-dark.svg"), "utf8")).toBe(arcMark("accent", "none", ARC_TONE_COLORS.accent.dark));
+    } finally {
+      rmSync(outDir, { recursive: true, force: true });
+    }
+  });
+
+  it("writes the REF mark of each theme with the file-ref token colour", () => {
+    const outDir = mkdtempSync(join(tmpdir(), "labshelf-marks-"));
+    try {
+      const script = `import("./build/arcMarks.mjs").then((m) => m.writeArcMarks(${JSON.stringify(outDir)}))`;
+      execFileSync(process.execPath, ["-e", script], { cwd: resolve(__dirname, "../.."), stdio: "pipe" });
+      const marks = readdirSync(join(outDir, "marks"));
+      expect(marks).toEqual(expect.arrayContaining(["ref-light.svg", "ref-dark.svg"]));
+      const { value: dark, light } = FILE_TYPE_TOKENS["file-ref"];
+      expect(readFileSync(join(outDir, "marks", "ref-light.svg"), "utf8")).toContain(light);
+      expect(readFileSync(join(outDir, "marks", "ref-dark.svg"), "utf8")).toContain(dark);
     } finally {
       rmSync(outDir, { recursive: true, force: true });
     }
