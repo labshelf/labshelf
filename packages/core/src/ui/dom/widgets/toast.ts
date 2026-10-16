@@ -15,7 +15,7 @@ export function toast(message: string, kind: ToastKind = "info"): () => void {
   }
   const glyph = kind === "error" ? "warning" : kind === "ok" ? "check" : "info";
   const closeBtn = el("button", { class: "ls-icon-btn", type: "button", title: "Dismiss", html: icon("x") });
-  const node = el("div", { class: `ls-toast ${kind}` },
+  const node = el("div", { class: `ls-toast ${kind}`, role: kind === "error" ? "alert" : null },
     el("span", { html: icon(glyph) }),
     el("div", { class: "msg", text: message }),
     closeBtn,

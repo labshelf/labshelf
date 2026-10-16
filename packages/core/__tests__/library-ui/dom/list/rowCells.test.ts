@@ -31,7 +31,7 @@ describe("Status cell", () => {
     t.snapshot([paper("a", "papers", { status })]);
     const main = t.container.querySelector<HTMLElement>(".paper-row-main")!;
     expect(main.querySelector("[class*='ls-badge']")).toBeNull();
-    return main.querySelector<HTMLElement>("[role='img']")!;
+    return main.querySelector<HTMLElement>(".status-mark [role='img']")!;
   };
 
   it("draws a dot for an unread paper", () => {

@@ -1,6 +1,6 @@
 /** Computes paths for browsing the folder tree: breadcrumbs, labels and recursive counts. Every function takes the
  * separator, so absolute file paths (VS Code) and "papers/..." store keys (browser) share one implementation. */
-export const ROOT_LABEL = "All Papers";
+export const ROOT_LABEL = "All papers";
 
 /** @returns whether `paperPath` is `dirPath` or lies beneath it, for the given separator */
 export function isUnderDir(paperPath: string, dirPath: string, sep: string): boolean {
@@ -36,12 +36,12 @@ export function breadcrumbFor(root: string, path: string, sep: string): Crumb[] 
   return chain;
 }
 
-/** @returns the name the UI shows for a folder: "All Papers" for the root */
+/** @returns the name the UI shows for a folder: "All papers" for the root */
 export function folderLabel(root: string, path: string, sep: string): string {
   return path === root || path === "" ? ROOT_LABEL : baseName(path, sep);
 }
 
-/** @returns the folder's location inside the library as the UI shows it: "Thesis / Chapter 2", or "All Papers" for the root */
+/** @returns the folder's location inside the library as the UI shows it: "Thesis / Chapter 2", or "All papers" for the root */
 export function folderPathLabel(root: string, path: string, sep: string): string {
   if (path === root || !isUnderDir(path, root, sep)) { return ROOT_LABEL; }
   return path.slice(root.length + sep.length).split(sep).join(" / ");

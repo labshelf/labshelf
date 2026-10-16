@@ -23,6 +23,10 @@ describe("sanitizePrefs", () => {
     expect(sanitizePrefs({ detailTab: "bogus", citeFormat: 3 })).toMatchObject({ detailTab: "details", citeFormat: "bibtex" });
   });
 
+  it("falls back to the default sort when the saved key is a removed column", () => {
+    expect(sanitizePrefs({ sortKey: "publication" }).sortKey).toBe(DEFAULT_PREFS.sortKey);
+  });
+
   it("keeps valid values", () => {
     expect(sanitizePrefs({ sortKey: "lastRead", sortDir: 1, includeSub: false, secCollapsed: { info: true } }))
       .toMatchObject({ sortKey: "lastRead", sortDir: 1, includeSub: false, secCollapsed: { info: true } });

@@ -4,10 +4,10 @@
  */
 import { PAPERS_DIR, type FolderTreeNode } from "../../library/index.js";
 import type { PaperRecord, PaperStatus } from "../../model/index.js";
-import type { CitationMapState, PaperDetails, PaperStats, SimilarPaper, TextLayerJobView } from "../protocol/index.js";
+import type { CitationMapState, PaperDetails, PaperFilesState, PaperStats, SimilarPaper, TextLayerJobView } from "../protocol/index.js";
 
 export type StatusFilter = "all" | PaperStatus;
-export type SortKey = "title" | "creator" | "year" | "publication" | "lastRead" | "status";
+export type SortKey = "title" | "creator" | "year" | "lastRead" | "status";
 export type SortDir = 1 | -1;
 
 export interface LibraryViewState {
@@ -31,6 +31,8 @@ export interface LibraryViewState {
   cursor: string | null;
   /** The paper whose files are shown; null when none is open. */
   open: string | null;
+  /** File listings by paper id, as the host last sent them; loading until the reply arrives. */
+  files: Readonly<Record<string, PaperFilesState | { status: "loading" }>>;
   /** True until the host sends the first snapshot. */
   loading: boolean;
   /** Record paths whose folder holds the paper's PDF. */
@@ -64,6 +66,7 @@ export const INITIAL_VIEW_STATE: LibraryViewState = {
   anchor: null,
   cursor: null,
   open: null,
+  files: {},
   loading: true,
   pdfDirs: new Set(),
   pdfBusy: new Set(),

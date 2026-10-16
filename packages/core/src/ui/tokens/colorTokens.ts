@@ -55,6 +55,7 @@ export const COLOR_TOKENS = {
   "button-soft-hover": token("color-mix(in srgb, var(--ls-focus) 24%, transparent)"),
   "row-zebra": token("color-mix(in srgb, var(--ls-fg) 3%, transparent)"),
   "row-open": token("color-mix(in srgb, var(--ls-fg) 7%, transparent)"),
+  "row-selected": token("color-mix(in srgb, var(--ls-focus) 15%, transparent)"),
   "button2-bg": token("#313131", "#e5e5e5"),
   "button2-fg": token("#cccccc", "#3b3b3b"),
   "button2-hover": token("#3c3c3c", "#cccccc"),

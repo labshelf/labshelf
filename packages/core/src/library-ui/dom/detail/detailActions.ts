@@ -3,15 +3,15 @@
  * shortcuts, and the pane's own toggles (tab, citation style, folds, annotation filters, note tools).
  */
 import { parentDir } from "../../../library/index.js";
-import type { AnnotationColor, PaperStatus } from "../../../model/index.js";
+import type { AnnotationColor } from "../../../model/index.js";
 import { formatAnnotationsMarkdown, formatQuoteWithCitation } from "../../../reader/index.js";
 import { authorQuery, keywordQuery, tagQuery } from "../../searchQueries.js";
 import type { CiteFormat, DetailTab } from "../../state/index.js";
 import {
   askAuthor, attachPdf, changeTags, confirmFindBetterPdf, copyCitation, copyText, findPdf, fixableIds, hostFileAction,
-  makeSearchable, openPaper, openSource, pickMoveTarget, revealPaper, setPaperStatus,
+  makeSearchable, openPaper, openSource, pickMoveTarget, revealPaper,
 } from "../flows/index.js";
-import { showPaperMenu } from "../menu/index.js";
+import { runHeadMenu } from "./head/index.js";
 import type { PaneState } from "./paneState.js";
 import { filteredAnnotations } from "./tabs/index.js";
 
@@ -42,12 +42,9 @@ function paperAction(pane: PaneState, a: string, el: HTMLElement): boolean {
     case "findBetterPdf": void confirmFindBetterPdf(ctx, id); return true;
     case "askAuthor": askAuthor(ctx, id); return true;
     case "attachPdf": attachPdf(ctx, id); return true;
-    case "copyKey": copyCitation(ctx, sel, "key"); return true;
     case "copyCite": copyCitation(ctx, sel, (data["format"] as CiteFormat | undefined) ?? pane.citeFormat); return true;
     case "copyField": copyText(ctx, data["text"] ?? "", data["label"] ?? "text"); return true;
     case "move": void pickMoveTarget(ctx, sel); return true;
-    case "more": showPaperMenu(ctx, el); return true;
-    case "setStatus": setPaperStatus(ctx, sel, data["status"] as PaperStatus); return true;
     case "removeTag": changeTags(ctx, sel, [], [data["tag"] ?? ""]); return true;
     case "makeSearchable": makeSearchable(ctx, fixableIds(ctx, sel)); return true;
     case "openRelated": revealPaper(ctx, data["id"] ?? ""); return true;
@@ -118,6 +115,7 @@ function paneAction(pane: PaneState, a: string, el: HTMLElement, rerender: Reren
     case "citeFormat": pane.citeFormat = el.dataset["format"] as CiteFormat; ctx.prefs.save({ citeFormat: pane.citeFormat }); break;
     case "toggleAbstract": pane.abstractOpen = !pane.abstractOpen; break;
     case "toggleAuthors": pane.authorsOpen = !pane.authorsOpen; break;
+    case "addTag": pane.tagEditing = true; break;
     case "copyAbstract": copyText(ctx, paper(pane)?.summary ?? "", "abstract"); return true;
     case "copyNote": { const p = paper(pane); if (p) copyText(ctx, pane.notes.text(p).trim() ? pane.notes.text(p) : "", "note"); return true; }
     default: return false;
@@ -129,6 +127,6 @@ function paneAction(pane: PaneState, a: string, el: HTMLElement, rerender: Reren
 /** Runs the action of a clicked `data-action` element. */
 export function runDetailAction(pane: PaneState, el: HTMLElement, rerender: Rerender): void {
   const a = el.dataset["action"] ?? "";
-  if (paperAction(pane, a, el) || searchAction(pane, a, el) || paneAction(pane, a, el, rerender)) return;
+  if (runHeadMenu(pane, a, el) || paperAction(pane, a, el) || searchAction(pane, a, el) || paneAction(pane, a, el, rerender)) return;
   annotationAction(pane, a, el, rerender);
 }

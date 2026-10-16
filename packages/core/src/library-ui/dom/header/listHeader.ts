@@ -1,5 +1,5 @@
 /**
- * Renders the list header: sidebar toggle, folder path with its count, search box, and toolbar (subfolder
+ * Renders the list header: sidebar toggle, scope title with its count, search box, and toolbar (subfolder
  * toggle, new subfolder, Add, details toggle).
  */
 import { PAPERS_DIR, SYNTAX_HELP, subfoldersOf } from "../../../library/index.js";
@@ -15,7 +15,7 @@ const SEARCH_DEBOUNCE_MS = 80;
 
 const headerHtml = (addTooltip: string): string => `
   <button class="ls-icon-btn sidebar-toggle" data-act="sidebar" title="Show library sidebar">${icon("panel-left")}</button>
-  <nav class="breadcrumb" aria-label="Folder path"></nav>
+  <nav class="breadcrumb" aria-label="List scope"></nav>
   <div class="ls-search" title="${escapeHtml(SEARCH_SYNTAX_TIP)}">
     ${icon("search")}
     <input class="ls-library-search" type="text" placeholder="Search title, author, year, keyword  ( / )" spellcheck="false" autocomplete="off" aria-label="Search papers"/>
@@ -81,7 +81,7 @@ export function mountListHeader(ctx: UiContext, container: HTMLElement): () => v
       includeSubBtn.hidden = subfoldersOf(slice.folders, slice.folder, PAPERS_DIR, []).length === 0;
       const view = deriveScope(slice);
       const narrowed = slice.query.length > 0 || slice.status !== "all" || slice.noText;
-      renderCrumbs(ctx, crumbs, slice.folder, narrowed ? `${view.shown.length} / ${view.inFolder.length}` : view.scope.length ? String(view.scope.length) : "");
+      renderCrumbs(ctx, crumbs, slice.folder, slice.status, narrowed ? `${view.shown.length} / ${view.inFolder.length}` : view.scope.length ? String(view.scope.length) : "");
     },
   );
 }

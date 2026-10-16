@@ -18,9 +18,9 @@ describe("keptFieldNotice", () => {
 });
 
 describe("moveNotice", () => {
-  it("counts the moved papers and names the folder, the root as All Papers", () => {
+  it("counts the moved papers and names the folder, the root as All papers", () => {
     expect(moveNotice(2, [], "Thesis", titleOf)).toEqual({ kind: "ok", text: "2 papers moved to Thesis" });
-    expect(moveNotice(1, [], undefined, titleOf)).toEqual({ kind: "ok", text: "1 paper moved to All Papers" });
+    expect(moveNotice(1, [], undefined, titleOf)).toEqual({ kind: "ok", text: "1 paper moved to All papers" });
   });
 
   it("names the first paper that failed", () => {

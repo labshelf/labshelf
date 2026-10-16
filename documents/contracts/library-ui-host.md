@@ -54,7 +54,7 @@ UI to host:
 | `paper.openFile` | Open to the side on a file of the paper | opens it beside the list: paper.pdf in the reader, any other file in the host's own viewer |
 | `paper.revealFile` | Reveal on a file or subfolder of the paper | shows it in the system file manager |
 | `paper.copyFilePath` | Copy path on a file or subfolder of the paper | copies its path (absolute on a host with a file system, else from `papers`) and sends a `notice` |
-| `paper.setStatus` | badge click, status segment, menu, Alt+1 to Alt+3 | `snapshot`; a `notice` for papers that failed |
+| `paper.setStatus` | badge click, detail status button, menu, Alt+1 to Alt+3 | `snapshot`; a `notice` for papers that failed |
 | `paper.setTags` | a tag added or removed in the detail pane | `snapshot`; a `notice` for papers that failed |
 | `paper.setNote` | the note was typed and paused, or left | `snapshot` |
 | `paper.move` | drop on a folder, Move to | `snapshot` and a `notice` |

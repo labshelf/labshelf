@@ -42,7 +42,7 @@ function render(pane: Pane): void {
   if (key === pane.key && (pane.pointerDown || (inPane && active.classList.contains("note-input")))) { pane.stale = true; return; }
   if (key !== pane.key) {
     pane.notes.flush();
-    Object.assign(pane, { key, abstractOpen: false, authorsOpen: false, annFilter: "", annColor: null });
+    Object.assign(pane, { key, abstractOpen: false, authorsOpen: false, annFilter: "", annColor: null, tagEditing: false });
     pane.el.scrollTop = 0;
   }
   pane.stale = false;
@@ -51,7 +51,10 @@ function render(pane: Pane): void {
   const scroll = pane.el.scrollTop;
   pane.el.innerHTML = ids.length === 0 ? PLACEHOLDER : ids.length > 1 ? multiDetailHtml(pane, ids) : singleHtml(pane, ids[0]!);
   pane.el.scrollTop = scroll;
-  if (!keep) return;
+  if (!keep) {
+    if (pane.tagEditing) pane.el.querySelector<HTMLInputElement>(".tag-input")?.focus();
+    return;
+  }
   const field = pane.el.querySelector<HTMLInputElement>(`.${keep.cls}`);
   field?.focus();
   if (field && keep.start !== null) field.setSelectionRange(keep.start, keep.end);
@@ -92,7 +95,9 @@ function onKey(pane: Pane, e: KeyboardEvent): void {
   if (t.classList.contains("sec-head") && (e.key === "Enter" || e.key === " ")) { toggleSection(pane, t); e.preventDefault(); return; }
   if (t.classList.contains("tag-input")) {
     const tags = ids.length === 1 ? selectedPapers(pane, ids)[0]?.tags ?? [] : commonTags(selectedPapers(pane, ids));
+    if (e.key === "Escape") pane.tagEditing = false;
     onTagKey(pane.ctx, e, t as HTMLInputElement, ids, tags);
+    if (!pane.tagEditing) render(pane);
   } else if (t.classList.contains("note-input") && e.key === "Escape") {
     pane.notes.flush();
     pane.ctx.focusList();
@@ -121,6 +126,15 @@ function onInput(pane: Pane, e: Event): void {
   else if (t.classList.contains("tag-input")) onTagInput(pane.ctx, t, ids);
 }
 
+// Leaving the tag field closes it, unless a rebuild only moved the focus to its replacement.
+function closeTagField(pane: Pane): void {
+  setTimeout(() => {
+    if (!pane.tagEditing || document.activeElement?.classList.contains("tag-input")) return;
+    pane.tagEditing = false;
+    render(pane);
+  }, 0);
+}
+
 // A rebuild skipped while the note had focus or a button was pressed runs once both are over; after the click, so
 // replacing the pressed button cannot swallow it.
 function wirePointer(pane: Pane): () => void {
@@ -132,6 +146,7 @@ function wirePointer(pane: Pane): () => void {
   };
   pane.el.addEventListener("mousedown", () => { pane.pointerDown = true; }, true);
   pane.el.addEventListener("focusout", (e) => {
+    if ((e.target as HTMLElement).classList.contains("tag-input")) closeTagField(pane);
     if (!(e.target as HTMLElement).classList.contains("note-input")) return;
     pane.notes.flush();
     if (!pane.pointerDown) setTimeout(catchUp, 0);
@@ -145,7 +160,7 @@ export function mountDetailPane(ctx: UiContext, container: HTMLElement): () => v
   const saved = ctx.prefs.load();
   const pane: Pane = {
     ctx, el: container, tab: saved.detailTab, citeFormat: saved.citeFormat, collapsed: saved.secCollapsed,
-    abstractOpen: false, authorsOpen: false, annFilter: "", annColor: null, key: "\u0000", stale: false, pointerDown: false,
+    abstractOpen: false, authorsOpen: false, annFilter: "", annColor: null, tagEditing: false, key: "\u0000", stale: false, pointerDown: false,
     notes: createNoteEditor(ctx, container),
   };
   container.addEventListener("click", (e) => onClick(pane, e));

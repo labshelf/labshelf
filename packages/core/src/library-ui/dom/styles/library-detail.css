@@ -1,6 +1,6 @@
 /*
  * Styles the detail pane's frame under .ls-library: the placeholder, the head (title, authors, venue line, toolbar,
- * status segment, tag row, text-layer banner), the sticky tab bar and the collapsible sections like native pane headers.
+ * status menu, tag row, text-layer banner), the sticky tab bar and the collapsible sections like native pane headers.
  */
 .ls-library .detail-placeholder {
   display: flex; flex-direction: column; align-items: center; gap: var(--ls-space-5);
@@ -10,10 +10,17 @@
 .ls-library .kbd-help kbd { margin-right: var(--ls-space-1); }
 
 /* ── Head: what the paper is, then what you can do with it ─────── */
-.ls-library .detail-head { padding: var(--ls-space-6) 14px; display: flex; flex-direction: column; gap: var(--ls-space-3); }
+.ls-library .detail-head { position: relative; padding: var(--ls-space-6) 14px; display: flex; flex-direction: column; gap: var(--ls-space-3); }
+.ls-library .detail-head > .head-more { position: absolute; top: var(--ls-space-6); right: var(--ls-space-4); }
+.ls-library .detail-head > .detail-title { padding-right: 30px; }
 .ls-library .detail-title { font-weight: 600; font-size: var(--ls-text-lg); line-height: 1.35; user-select: text; overflow-wrap: anywhere; }
 .ls-library .detail-byline { font-size: var(--ls-text-md); line-height: 1.45; color: var(--ls-fg); opacity: .9; }
 .ls-library .detail-meta { font-size: var(--ls-text-sm); color: var(--ls-desc); }
+.ls-library .version-chip {
+  flex-shrink: 0; font-size: var(--ls-text-xs); line-height: 15px; padding: 0 var(--ls-space-3); border-radius: var(--ls-radius-pill);
+  color: var(--ls-desc); border: 1px dashed var(--ls-border-soft); cursor: default;
+}
+.ls-library .detail-meta .version-chip { margin-right: var(--ls-space-3); }
 .ls-library .link-btn {
   border: none; background: none; padding: 0; cursor: pointer; color: inherit; text-align: left; font: inherit;
   display: inline-flex; align-items: center; gap: var(--ls-space-2); max-width: 100%;
@@ -29,37 +36,27 @@
 .ls-library .detail-pane .ls-icon-btn { width: 26px; height: 26px; }
 .ls-library .detail-pane .ls-icon-btn svg { width: 15px; height: 15px; }
 
-.ls-library .status-seg { display: flex; margin-top: var(--ls-space-2); border-radius: var(--ls-radius); overflow: hidden; border: 1px solid var(--ls-border); }
-.ls-library .status-seg button {
-  flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: var(--ls-space-3); padding: 3px 0;
-  border: none; background: none; cursor: pointer; font-size: var(--ls-text-sm); color: var(--ls-desc);
-  transition: background var(--ls-fast), color var(--ls-fast);
-}
-.ls-library .status-seg button + button { border-left: 1px solid var(--ls-border); }
-.ls-library .status-seg button:hover { background: var(--ls-list-hover); color: var(--ls-fg); }
-.ls-library .status-seg button.on { background: var(--ls-list-inactive-bg); color: var(--ls-fg); font-weight: 600; }
+/* Status and Cite open menus; a chevron marks them as dropdowns. */
+.ls-library .detail-status-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--ls-space-3) var(--ls-space-6); }
+.ls-library .status-btn { margin-left: calc(-1 * var(--ls-space-4)); }
+.ls-library .status-btn svg:last-child, .ls-library .cite-btn svg:last-child { width: 12px; height: 12px; opacity: .6; }
 
-/* Tags: chips that search, an x that removes, and a field that adds. */
-.ls-library .tag-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-2); margin-top: var(--ls-space-1); }
-.ls-library .tag-chip {
-  display: inline-flex; align-items: center; border-radius: var(--ls-radius-pill); font-size: var(--ls-text-sm); line-height: 18px;
-  background: var(--ls-badge-bg); color: var(--ls-badge-fg);
-}
-.ls-library .tag-name { border: none; background: none; cursor: pointer; color: inherit; padding: 0 var(--ls-space-4); font-size: var(--ls-text-sm); }
-.ls-library .tag-chip .tag-name:not(:last-child) { padding-right: var(--ls-space-1); }
+/* Tags: #tag links that search, an x that appears on hover or focus and removes, and Add tag that opens a field. */
+.ls-library .tag-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-1) var(--ls-space-4); margin-top: var(--ls-space-1); }
+.ls-library .tag-chip { display: inline-flex; align-items: center; font-family: var(--ls-mono); font-size: var(--ls-text-sm); color: var(--ls-link); }
+.ls-library .tag-name { border: none; background: none; cursor: pointer; color: inherit; padding: 0; font: inherit; }
 .ls-library .tag-name:hover { text-decoration: underline; }
 .ls-library .tag-x {
-  display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-right: var(--ls-space-1);
-  border: none; background: none; color: inherit; cursor: pointer; border-radius: 50%; opacity: .6;
+  display: inline-flex; align-items: center; justify-content: center; width: 0; height: 16px; padding: 0; overflow: hidden; opacity: 0;
+  border: none; background: none; color: var(--ls-desc); cursor: pointer; border-radius: var(--ls-radius-sm);
 }
+.ls-library .tag-chip:hover .tag-x, .ls-library .tag-chip:focus-within .tag-x { width: 16px; opacity: 1; }
 .ls-library .tag-x svg { width: 10px; height: 10px; }
-.ls-library .tag-x:hover { opacity: 1; background: var(--ls-toolbar-hover); }
+.ls-library .tag-x:hover { color: var(--ls-fg); background: var(--ls-toolbar-hover); }
 .ls-library .tag-input {
-  flex: 1; min-width: 70px; max-width: 160px; height: 20px; padding: 0 var(--ls-space-3); border-radius: var(--ls-radius-pill);
-  font-size: var(--ls-text-sm); border: 1px dashed var(--ls-border); background: none; color: var(--ls-input-fg); outline: none;
+  min-width: 70px; max-width: 160px; height: 20px; padding: 0 var(--ls-space-2); font-family: var(--ls-mono); font-size: var(--ls-text-sm);
+  border: 1px solid var(--ls-focus); border-radius: var(--ls-radius-sm); background: var(--ls-input-bg); color: var(--ls-input-fg); outline: none;
 }
-.ls-library .tag-input::placeholder { color: var(--ls-desc); }
-.ls-library .tag-input:focus { border-style: solid; border-color: var(--ls-focus); background: var(--ls-input-bg); max-width: none; }
 
 /* ── Text-layer banner ──────────────────────────────────────────── */
 .ls-library .tl-banner {

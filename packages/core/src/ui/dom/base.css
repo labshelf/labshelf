@@ -39,6 +39,8 @@ svg { display: block; }
 .ls-btn:disabled { opacity: .45; cursor: default; }
 .ls-btn-primary { background: var(--ls-button-bg); color: var(--ls-button-fg); }
 .ls-btn-primary:hover:not(:disabled) { background: var(--ls-button-hover); }
+.ls-button-soft { background: var(--ls-button-soft-bg); color: var(--ls-button-soft-fg); }
+.ls-button-soft:hover:not(:disabled) { background: var(--ls-button-soft-hover); }
 .ls-btn-danger { color: var(--ls-error); }
 .ls-btn-lg { padding: 6px 14px; font-size: 13px; line-height: 18px; }
 .ls-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
@@ -66,7 +68,6 @@ svg { display: block; }
 .ls-input::placeholder { color: var(--ls-input-placeholder); }
 .ls-input:focus { border-color: var(--ls-focus); }
 .ls-input[aria-invalid="true"] { border-color: var(--ls-error); }
-.ls-input-sm { height: 24px; font-size: 12px; }
 
 /* Search box: icon + input + clear, from the list panel header. */
 .ls-search {
@@ -85,9 +86,7 @@ svg { display: block; }
 .ls-search .ls-search-clear:hover { opacity: 1; background: var(--ls-toolbar-hover); }
 .ls-search.has-query .ls-search-clear { display: flex; }
 
-.ls-checkbox {
-  display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;
-}
+.ls-checkbox { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
 .ls-checkbox input { width: 18px; height: 18px; margin: 0; accent-color: var(--ls-button-bg); cursor: pointer; }
 
 /* ── Badges, dots, chips ──────────────────────────────────────── */

@@ -1,6 +1,6 @@
 /**
- * Renders the tag row: chips that search their tag, an x that removes one, and a field that adds (Enter or a comma
- * adds, Backspace on an empty field takes back the last tag).
+ * Renders the tag row: #tag chips that search their tag, an x that removes one, and an Add tag button that opens a
+ * field (Enter or a comma adds, Backspace on an empty field takes back the last tag).
  */
 import { escapeHtml, icon } from "../../../../ui/index.js";
 import { changeTags } from "../../flows/index.js";
@@ -9,9 +9,10 @@ import type { UiContext } from "../../uiContext.js";
 const TAG_OPTIONS_ID = "ls-tag-options";
 
 function chip(tag: string): string {
+  const hash = `<span class="tag-hash" aria-hidden="true">#</span>`;
   const name = `<button class="tag-name" type="button" data-action="searchTag" data-tag="${escapeHtml(tag)}" title="Show papers tagged ${escapeHtml(tag)}">${escapeHtml(tag)}</button>`;
   const remove = `<button class="tag-x" type="button" data-action="removeTag" data-tag="${escapeHtml(tag)}" title="Remove tag" aria-label="Remove tag ${escapeHtml(tag)}">${icon("x")}</button>`;
-  return `<span class="tag-chip">${name}${remove}</span>`;
+  return `<span class="tag-chip">${hash}${name}${remove}</span>`;
 }
 
 /** Every tag in the library, once each (first spelling wins), A to Z: the field's suggestions. */
@@ -21,10 +22,16 @@ function libraryTags(ctx: UiContext): string[] {
   return [...seen.values()].sort((a, b) => a.localeCompare(b));
 }
 
-export function tagRowHtml(ctx: UiContext, tags: readonly string[]): string {
-  const input = `<input class="tag-input" list="${TAG_OPTIONS_ID}" placeholder="${tags.length ? "+ Tag" : "+ Add tag"}" title="Type a tag and press Enter; commas add several" spellcheck="false" autocomplete="off" aria-label="Add tag"/>` +
+function tagInput(ctx: UiContext): string {
+  return `<input class="tag-input" list="${TAG_OPTIONS_ID}" placeholder="Tag" title="Type a tag and press Enter; commas add several" spellcheck="false" autocomplete="off" aria-label="Add tag"/>` +
     `<datalist id="${TAG_OPTIONS_ID}">${libraryTags(ctx).map((t) => `<option value="${escapeHtml(t)}"></option>`).join("")}</datalist>`;
-  return `<div class="tag-row">${tags.map(chip).join("")}${input}</div>`;
+}
+
+/** The row of `tags`; `editing` shows the field in place of the Add tag button. */
+export function tagRowHtml(ctx: UiContext, tags: readonly string[], editing: boolean): string {
+  const add = editing ? tagInput(ctx)
+    : `<button class="ls-icon-btn tag-add" type="button" data-action="addTag" title="Add tag" aria-label="Add tag">${icon("plus")}</button>`;
+  return `<div class="tag-row">${tags.map(chip).join("")}${add}</div>`;
 }
 
 /** Handles a key in the tag field; `ids` are the papers the row edits, `tags` the ones it shows. */

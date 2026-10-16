@@ -18,23 +18,9 @@ function setup(caps = ALL_CAPABILITIES, stats = {}) {
   return t;
 }
 
-const chip = (t: ReturnType<typeof mountForTest>, id: string): string | undefined =>
-  t.rows().find((r) => r.dataset["id"] === id)!.querySelector(".version-chip")?.textContent ?? undefined;
-
 function show(t: ReturnType<typeof mountForTest>, id: string): void {
   t.host.post({ type: "select", id });
 }
-
-describe("version chip in the list", () => {
-  it("labels preprint and accepted PDFs only", () => {
-    const t = setup();
-    expect(chip(t, "pre")).toBe("Preprint");
-    expect(chip(t, "acc")).toBe("Accepted");
-    expect(chip(t, "pub")).toBeUndefined();
-    expect(chip(t, "unk")).toBeUndefined();
-    expect(chip(t, "nopdf")).toBeUndefined();
-  });
-});
 
 describe("detail head", () => {
   it("shows the chip in the meta line and a Find Published Version button for a preprint", () => {

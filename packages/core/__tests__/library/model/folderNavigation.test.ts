@@ -10,7 +10,7 @@ describe("folder navigation", () => {
 
     it("builds a root-first breadcrumb", () => {
       expect(breadcrumbFor(root, deep, sep)).toEqual([
-        { label: "All Papers", path: root, isRoot: true },
+        { label: "All papers", path: root, isRoot: true },
         { label: "ML", path: join(root, "ML"), isRoot: false },
         { label: "Vision", path: deep, isRoot: false },
       ]);
@@ -24,7 +24,7 @@ describe("folder navigation", () => {
     it("finds parents, names and labels", () => {
       expect(parentDir(deep, sep)).toBe(join(root, "ML"));
       expect(baseName(deep, sep)).toBe("Vision");
-      expect(folderLabel(root, root, sep)).toBe("All Papers");
+      expect(folderLabel(root, root, sep)).toBe("All papers");
       expect(folderLabel(root, deep, sep)).toBe("Vision");
     });
 
@@ -34,10 +34,10 @@ describe("folder navigation", () => {
       expect(countPapersUnder(papers, root, sep)).toBe(3);
     });
 
-    it("labels a folder by its path inside the library, the root as All Papers", () => {
+    it("labels a folder by its path inside the library, the root as All papers", () => {
       expect(folderPathLabel(root, deep, sep)).toBe("ML / Vision");
-      expect(folderPathLabel(root, root, sep)).toBe("All Papers");
-      expect(folderPathLabel(root, join(root + "-other", "x"), sep)).toBe("All Papers");
+      expect(folderPathLabel(root, root, sep)).toBe("All papers");
+      expect(folderPathLabel(root, join(root + "-other", "x"), sep)).toBe("All papers");
     });
 
     it("names the holder folder relative to the open one, joined with ' / '", () => {
@@ -49,7 +49,7 @@ describe("folder navigation", () => {
   });
 
   it("treats the empty path as the root", () => {
-    expect(folderLabel("papers", "", "/")).toBe("All Papers");
+    expect(folderLabel("papers", "", "/")).toBe("All papers");
   });
 
   it("keeps a path without a separator as its own parent", () => {

@@ -2,7 +2,7 @@
  * Mounts the library UI in jsdom against an in-test host that records every message the UI sends.
  */
 import {
-  DEFAULT_PREFS, createLoopbackTransport, type LibraryUiCapabilities, type LibraryUiPrefs, type PaperRecord, type PaperStats, type UiToHost,
+  DEFAULT_PREFS, createLoopbackTransport, type LibraryUiCapabilities, type LibraryUiPrefs, type PaperRecord, type PaperFilesState, type PaperStats, type UiToHost,
 } from "@labshelf/core";
 import { mountLibraryUi } from "../../../src/library-ui/dom";
 
@@ -44,7 +44,8 @@ export function mountForTest(prefs: Partial<LibraryUiPrefs> = {}, capabilities: 
   const key = (k: string, init: KeyboardEventInit = {}): void => { document.body.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true, ...init })); };
   const detail = (): HTMLElement => container.querySelector<HTMLElement>(".detail-pane")!;
   const click = (selector: string, root: ParentNode = container): void => { root.querySelector<HTMLElement>(selector)!.click(); };
-  return { lib, host, sent, saved, container, snapshot, rows, rowIds, key, detail, click };
+  const files = (id: string, state: PaperFilesState): void => host.post({ type: "files", id, state });
+  return { lib, host, sent, saved, container, snapshot, files, rows, rowIds, key, detail, click };
 }
 
 /** The labels of the open menu's items. */

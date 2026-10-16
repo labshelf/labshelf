@@ -18,6 +18,8 @@ export type ListKeyAction =
   | { kind: "focusSearch" }
   | { kind: "step"; delta: 1 | -1; extend: boolean }
   | { kind: "edge"; to: "first" | "last" }
+  | { kind: "expand" }
+  | { kind: "collapse" }
   | { kind: "parent" }
   | { kind: "open" }
   | { kind: "escape" }
@@ -51,6 +53,8 @@ export function listKeyAction(k: KeyPress): ListKeyAction | null {
     case "/": return { kind: "focusSearch" };
     case "ArrowDown": return { kind: "step", delta: 1, extend: k.shift };
     case "ArrowUp": return { kind: "step", delta: -1, extend: k.shift };
+    case "ArrowRight": return mod || k.alt ? null : { kind: "expand" };
+    case "ArrowLeft": return mod || k.alt ? null : { kind: "collapse" };
     case "Home": return { kind: "edge", to: "first" };
     case "End": return { kind: "edge", to: "last" };
     case "Enter": return { kind: "open" };

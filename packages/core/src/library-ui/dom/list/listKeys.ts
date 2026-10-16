@@ -7,11 +7,18 @@ import { listKeyAction, type ListKeyAction } from "../../listKeymap.js";
 import { confirmRemove, copyCitation, openPaper, setPaperStatus } from "../flows/index.js";
 import { showPaperMenu } from "../menu/index.js";
 import { overlayOpen, type ListCursor, type UiContext } from "../uiContext.js";
+import { collapseOrLeave, expandOrEnter, focusedChildRow, paperRowOf } from "./treeNav/index.js";
 
-// The menu key opens the paper menu under the cursor row, a little in from its left edge.
+// The menu key opens the menu of the focused file row, or the paper menu under the cursor row, a little in from its left edge.
 function openMenuAtCursor(ctx: UiContext): void {
+  const child = focusedChildRow(ctx.root);
+  if (child) {
+    const c = child.getBoundingClientRect();
+    child.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: c.left + 40, clientY: c.bottom }));
+    return;
+  }
   const { cursor, selected } = ctx.store.get();
-  const row = [...ctx.root.querySelectorAll<HTMLElement>(".paper-row")].find((r) => r.dataset["id"] === cursor);
+  const row = paperRowOf(ctx.root, cursor);
   if (!row || selected.size === 0) return;
   const r = row.getBoundingClientRect();
   showPaperMenu(ctx, { x: r.left + 40, y: r.bottom });
@@ -34,7 +41,14 @@ function perform(ctx: UiContext, cursor: ListCursor, action: ListKeyAction): boo
     case "step": cursor.step(action.delta, action.extend); return true;
     case "edge": ctx.store.set({ cursor: null }); cursor.step(action.to === "first" ? 1 : -1, false); return true;
     case "parent": if (s.folder.includes("/")) ctx.store.openFolder(parentDir(s.folder, "/")); return true;
-    case "open": if (s.cursor) openPaper(ctx, s.cursor); return true;
+    case "open": {
+      // A child row acts as its own click does, so each kind of child row decides what opening it means.
+      const child = focusedChildRow(ctx.root);
+      if (child) child.click(); else if (s.cursor) openPaper(ctx, s.cursor);
+      return true;
+    }
+    case "expand": return expandOrEnter(ctx.root, s.cursor);
+    case "collapse": return collapseOrLeave(ctx.root, s.cursor);
     case "escape":
       if (s.query || s.status !== "all" || s.noText) ctx.store.set({ status: "all", noText: false, query: "" });
       else ctx.store.clearSelection();

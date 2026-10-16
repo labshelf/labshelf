@@ -1,13 +1,10 @@
 /**
- * Renders the detail pane for several papers: how many, Move to and the copy and menu actions, their common
+ * Renders the detail pane for several papers: how many, Move to, the Cite and More actions menus, their common
  * status and tags, the OCR banner, and the list of the selected papers.
  */
 import type { PaperRecord } from "../../../model/index.js";
 import { escapeHtml, icon } from "../../../ui/index.js";
-import { CITE_LABEL } from "../flows/index.js";
-import { KEY_HINT } from "../uiContext.js";
-import { iconBtn, statusSeg } from "./detailMarkup.js";
-import { selectionBanner, tagRowHtml } from "./head/index.js";
+import { citeMenuButton, moreMenuButton, selectionBanner, statusMenuButton, tagRowHtml } from "./head/index.js";
 import type { PaneState } from "./paneState.js";
 import { paperLine } from "./tabs/index.js";
 
@@ -28,12 +25,9 @@ export function multiDetailHtml(pane: PaneState, ids: string[]): string {
   return `<div class="detail-head">` +
     `<div class="detail-title">${escapeHtml(String(ids.length))} papers selected</div>` +
     `<div class="detail-byline muted-text">Drag them onto a subfolder chip or a path segment, or use the actions below.</div>` +
-    `<div class="detail-toolbar"><button class="ls-btn ls-btn-primary" type="button" data-action="move">${icon("folder-move")}<span>Move to…</span></button><span class="tb-spacer"></span>` +
-      iconBtn("copyKey", "key", `Copy all cite keys (${KEY_HINT.mod}C)`) +
-      iconBtn("copyCite", "quote", `Copy all as ${CITE_LABEL[pane.citeFormat]}`) +
-      iconBtn("more", "more", "More actions") +
-    `</div>` +
-    statusSeg(status) + tagRowHtml(pane.ctx, commonTags(papers)) + (pane.ctx.caps.textLayer ? selectionBanner(pane.ctx, ids) : "") +
+    `<div class="detail-toolbar"><button class="ls-btn ls-button-soft" type="button" data-action="move">${icon("folder-move")}<span>Move to…</span></button>` +
+      citeMenuButton() + `<span class="tb-spacer"></span>${moreMenuButton()}</div>` +
+    `<div class="detail-status-row">${statusMenuButton(status)}${tagRowHtml(pane.ctx, commonTags(papers), pane.tagEditing)}</div>` + (pane.ctx.caps.textLayer ? selectionBanner(pane.ctx, ids) : "") +
   `</div>` +
   `<div class="sel-list">${papers.map((p) => paperLine(p, "selectOnly", "Show only this paper")).join("")}</div>`;
 }

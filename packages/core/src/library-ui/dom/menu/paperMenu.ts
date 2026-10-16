@@ -77,8 +77,8 @@ function paperMenuEntries(ctx: UiContext, ids: string[]): MenuEntry[] {
   ];
 }
 
-/** Opens the paper menu for the selection at a point or under an element. */
-export function showPaperMenu(ctx: UiContext, at: MenuAnchor | HTMLElement): void {
+/** Opens the paper menu for the selection at a point or under an element; `onClose` runs when it closes. */
+export function showPaperMenu(ctx: UiContext, at: MenuAnchor | HTMLElement, onClose?: () => void): void {
   const ids = [...ctx.store.get().selected];
-  if (ids.length > 0) showMenu(at, paperMenuEntries(ctx, ids));
+  if (ids.length > 0) showMenu(at, paperMenuEntries(ctx, ids), onClose ? { onClose } : {});
 }

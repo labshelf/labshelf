@@ -41,4 +41,9 @@ describe("listKeyAction", () => {
     expect(listKeyAction(press("F10", { shift: true }))).toEqual({ kind: "menu" });
     expect(listKeyAction(press("F10"))).toBeNull();
   });
+
+  it("maps ArrowRight to expand and ArrowLeft to collapse", () => {
+    expect(listKeyAction(press("ArrowRight"))).toEqual({ kind: "expand" });
+    expect(listKeyAction(press("ArrowLeft"))).toEqual({ kind: "collapse" });
+  });
 });

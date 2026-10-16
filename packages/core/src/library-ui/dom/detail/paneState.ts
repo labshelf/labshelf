@@ -20,6 +20,8 @@ export interface PaneState {
   authorsOpen: boolean;
   annFilter: string;
   annColor: AnnotationColor | null;
+  /** The tag row shows its field rather than the Add tag button. */
+  tagEditing: boolean;
   /** The selection the pane shows, as sorted ids. */
   key: string;
   /** A render was skipped while the note had focus. */

@@ -4,7 +4,7 @@
  */
 import { editedTags } from "../../library/index.js";
 import type { PaperRecord, PaperStatus } from "../../model/index.js";
-import type { CitationMapState, LibraryUiSnapshot, PaperDetails, SimilarPaper, TextLayerJobView } from "../protocol/index.js";
+import type { CitationMapState, LibraryUiSnapshot, PaperDetails, PaperFilesState, SimilarPaper, TextLayerJobView } from "../protocol/index.js";
 import { shallowEqual } from "./shallowEqual.js";
 import { mergeSnapshot } from "./snapshotIdentity.js";
 import { INITIAL_VIEW_STATE, type LibraryViewState } from "./viewState.js";
@@ -121,9 +121,16 @@ export class LibraryViewStore {
     this.set({ selected: new Set(), anchor: null, cursor: null });
   }
 
-  /** Shows the files of a paper; null closes them. */
+  /** Shows the files of a paper and closes the one open before; null closes them. Opening a paper marks its files as loading. */
   openPaper(id: string | null): void {
-    this.set({ open: id });
+    if (id === this.state.open) return;
+    if (id === null) { this.set({ open: null }); return; }
+    this.set({ open: id, files: { ...this.state.files, [id]: { status: "loading" } } });
+  }
+
+  /** Keeps the file listing the host sent for a paper. */
+  setFiles(id: string, state: PaperFilesState): void {
+    this.set({ files: { ...this.state.files, [id]: state } });
   }
 
   /** Opens a folder and resets the search, the status tab, the No text filter and the selection; closes the citation map. */

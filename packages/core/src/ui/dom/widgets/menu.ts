@@ -25,6 +25,8 @@ export interface MenuAnchor { x: number; y: number }
 export interface MenuOptions {
   /** Where to mount the menu; it must already carry the kit's styles. Defaults to document.body. */
   root?: ShadowRoot;
+  /** Runs once when the menu closes, whatever closed it: a pick, Escape, an outside click or another menu opening. */
+  onClose?: () => void;
 }
 
 let closeCurrent: (() => void) | null = null;
@@ -73,11 +75,15 @@ export function showMenu(anchor: MenuAnchor | HTMLElement, entries: MenuEntry[],
   document.addEventListener("keydown", onKey, true);
   menu.querySelector<HTMLButtonElement>(".ls-menu-item:not(:disabled)")?.focus();
 
+  let closed = false;
   function close(): void {
+    if (closed) return;
+    closed = true;
     document.removeEventListener("keydown", onKey, true);
     scrim.remove();
     menu.remove();
     if (closeCurrent === close) closeCurrent = null;
+    opts.onClose?.();
   }
   closeCurrent = close;
 }

@@ -31,13 +31,8 @@ describe("detail pane head", () => {
     expect(t.lib.store.get().query).toBe("author:vaswani");
   });
 
-  it("adds a tag with Enter and removes one with its x, showing both at once", () => {
+  it("removes a tag with its x and keeps the others", () => {
     const t = showA();
-    const input = t.detail().querySelector<HTMLInputElement>(".tag-input")!;
-    input.value = "transformers";
-    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
-    expect(t.sent).toContainEqual({ type: "paper.setTags", ids: ["a"], add: ["transformers"], remove: [] });
-    expect(t.lib.store.get().papers[0]!.tags).toEqual(["nlp", "transformers"]);
     t.click('[data-action="removeTag"][data-tag="nlp"]', t.detail());
     expect(t.sent).toContainEqual({ type: "paper.setTags", ids: ["a"], add: [], remove: ["nlp"] });
   });
@@ -138,5 +133,16 @@ describe("multi-selection", () => {
     expect(t.detail().querySelector(".detail-title")?.textContent).toBe("2 papers selected");
     expect([...t.detail().querySelectorAll(".tag-name")].map((e) => e.textContent)).toEqual(["nlp"]);
     expect(t.detail().querySelectorAll(".sel-list .rel-row")).toHaveLength(2);
+  });
+
+  it("labels the status button Status when the selected papers differ, and with the shared status when they agree", () => {
+    const t = mountForTest({}, ALL_CAPABILITIES);
+    const mixed = [paper("a", "papers", { status: "reading" }), paper("b", "papers", { status: "done" })];
+    t.snapshot(mixed, ["papers/a"], [], {});
+    t.lib.store.set({ selected: new Set(["a", "b"]) });
+    expect(t.detail().querySelector(".status-btn")?.textContent).toContain("Status");
+    t.snapshot([paper("a", "papers", { status: "done" }), paper("b", "papers", { status: "done" })], ["papers/a"], [], {});
+    t.lib.store.set({ selected: new Set(["a", "b"]) });
+    expect(t.detail().querySelector(".status-btn")?.textContent).toContain("Done");
   });
 });

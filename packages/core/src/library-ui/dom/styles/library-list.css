@@ -1,70 +1,66 @@
 /*
- * Styles the paper list under .ls-library: sortable column heads and paper rows (type icon, tags, location chip,
- * marks, Last read, status badge, the PDF child row). A narrow list pane drops Last read, then the publication.
+ * Styles the paper list under .ls-library: sortable column heads, folder group labels and paper rows (state icon, Last read, status mark,
+ * the file tray). Rows alternate on a faint band; a narrow list pane drops Last read, then Authors, then Year.
  */
+/* ── Folder groups ──────────────────────────────────────────────── */
+.ls-library .group-label {
+  position: sticky; top: var(--heads-h, 0); z-index: 1; display: flex; align-items: baseline; gap: var(--ls-space-3); min-width: 0;
+  padding: var(--ls-space-2) var(--ls-space-4); font-size: var(--ls-text-sm); background: var(--ls-sidebar-bg);
+  border-bottom: 1px solid var(--ls-border-faint); user-select: none; white-space: nowrap; overflow: hidden;
+}
+.ls-library .group-parents { color: var(--ls-desc); }
+.ls-library .group-last { font-weight: 600; }
+.ls-library .group-count { color: var(--ls-desc); font-variant-numeric: tabular-nums; }
+.ls-library .paper-row.in-group .title-cell { padding-left: var(--ls-space-7); }
+.ls-library .paper-row.in-group .file-row { padding-left: calc(28px + var(--ls-space-4) + var(--ls-space-7)); }
+
 /* ── Column heads ───────────────────────────────────────────────── */
 .ls-library .col-heads {
-  display: grid; grid-template-columns: var(--cols); padding: 3px var(--ls-space-2); flex-shrink: 0; user-select: none;
+  position: sticky; top: 0; z-index: 1; display: grid; grid-template-columns: var(--cols); padding: var(--ls-space-2) var(--ls-space-2); user-select: none;
   border-bottom: 1px solid var(--ls-border-soft); font-size: var(--ls-text-sm); color: var(--ls-desc); background: var(--ls-sidebar-bg);
 }
 .ls-library .col-heads > div { padding: 0 var(--ls-space-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ls-library .col-head.sortable { cursor: pointer; display: flex; align-items: center; gap: var(--ls-space-1); }
-.ls-library .col-head.sortable:hover, .ls-library .col-head.sorted { color: var(--ls-fg); }
-.ls-library .sort-ind { display: none; width: 12px; height: 12px; flex-shrink: 0; }
-.ls-library .sort-ind svg { width: 12px; height: 12px; }
-.ls-library .col-head.sorted .sort-ind { display: inline-flex; }
-.ls-library .col-head.sorted.asc .sort-ind { transform: rotate(180deg); }
+.ls-library .col-head.sortable:hover, .ls-library .col-head:not([aria-sort="none"]) { color: var(--ls-fg); }
+.ls-library .sort-ind { display: none; width: var(--ls-space-6); height: var(--ls-space-6); flex-shrink: 0; }
+.ls-library .sort-ind svg { width: 100%; height: 100%; }
+.ls-library .col-head:not([aria-sort="none"]) .sort-ind { display: inline-flex; }
+.ls-library .col-head[aria-sort="ascending"] .sort-ind { transform: rotate(180deg); }
 
 /* ── Rows ───────────────────────────────────────────────────────── */
+.ls-library .list-body { --cols: 28px minmax(0, 1fr) 150px 52px 84px 86px; }
 .ls-library .paper-list { flex: 1; overflow-y: auto; outline: none; }
 .ls-library .paper-row { cursor: pointer; }
+/* A paper's child rows share its band, so the stripe sits on the whole unit. */
+.ls-library .paper-row:nth-child(odd of .paper-row) { background: var(--ls-row-zebra); }
 .ls-library .paper-row-main {
-  display: grid; grid-template-columns: var(--cols); align-items: center; padding: 5px var(--ls-space-2); gap: 0;
-  border-bottom: 1px solid var(--ls-border-faint);
+  display: grid; grid-template-columns: var(--cols); align-items: center; min-height: var(--ls-row-h);
+  padding: var(--ls-space-3) var(--ls-space-2); gap: 0; border-bottom: 1px solid var(--ls-border-faint);
 }
 .ls-library .paper-row-main:hover { background: var(--ls-list-hover); }
+.ls-library .paper-row.expanded .paper-row-main { background: var(--ls-row-open); }
 .ls-library .paper-row.cursor:not(.selected) .paper-row-main { background: var(--ls-list-inactive-bg); }
-.ls-library .paper-row.selected .paper-row-main { background: var(--ls-list-active-bg); color: var(--ls-list-active-fg); }
-.ls-library .paper-row.selected .paper-row-main .col-meta { color: var(--ls-list-active-fg); }
-.ls-library .paper-list:focus .paper-row.cursor .paper-row-main { outline: 1px solid var(--ls-list-focus-outline); outline-offset: -1px; }
-.ls-library .paper-row-main > div, .ls-library .child-row > div { padding: 0 var(--ls-space-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Selection is a tint with an accent band on the leading edge, so the text keeps its own colours. */
+.ls-library .paper-row.selected .paper-row-main { background: var(--ls-row-selected); box-shadow: inset var(--ls-space-1) 0 0 var(--ls-focus); }
+.ls-library .paper-list [role="row"]:focus-visible { outline: 1px solid var(--ls-list-focus-outline); outline-offset: -1px; }
+.ls-library .paper-row-main > div { padding: 0 var(--ls-space-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ls-library .expand-btn {
-  display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; width: var(--ls-space-7); height: var(--ls-space-7); flex-shrink: 0;
   color: var(--ls-fg); transition: transform var(--ls-fast);
 }
-.ls-library .expand-btn svg { width: 16px; height: 16px; }
+.ls-library .expand-btn svg { width: 100%; height: 100%; }
 .ls-library .expand-btn.collapsed { transform: rotate(-90deg); }
 .ls-library .paper-row-main > .expand-btn { padding: 0; overflow: visible; }
-.ls-library .paper-row.selected .expand-btn { color: inherit; }
-/* A PDF-less row keeps a blank twistie cell for alignment and dims its file-minus icon. */
-.ls-library .expand-btn.leaf { visibility: hidden; pointer-events: none; }
-.ls-library .paper-row.no-pdf .paper-type-icon { opacity: .35; }
-.ls-library .paper-type-icon { opacity: .7; display: flex; align-items: center; }
-.ls-library .paper-type-icon svg { width: 13px; height: 13px; }
-.ls-library .paper-type-icon.tl-missing { opacity: 1; color: var(--ls-warning); }
-.ls-library .paper-type-icon.tl-busy { opacity: 1; color: var(--ls-link); }
-.ls-library .paper-row.selected .paper-type-icon.tl-missing, .ls-library .paper-row.selected .paper-type-icon.tl-busy { color: inherit; }
+/* The state icon follows the title, so a paper that needs attention says so without a column of its own. */
+.ls-library .title-state { display: inline-flex; flex-shrink: 0; color: var(--ls-desc); }
+.ls-library .title-state svg { width: var(--ls-space-6); height: var(--ls-space-6); }
+.ls-library .title-state.tl-missing { color: var(--ls-warning); }
+.ls-library .title-state.tl-busy { color: var(--ls-link); }
 .ls-library .col-title { font-size: var(--ls-font-size); }
 .ls-library .col-meta { font-size: var(--ls-text-md); color: var(--ls-desc); }
-.ls-library .title-cell { display: flex; align-items: center; gap: var(--ls-space-4); min-width: 0; }
+.ls-library .col-year, .ls-library .col-read { font-family: var(--ls-mono); font-size: var(--ls-text-sm); font-variant-numeric: tabular-nums; }
+.ls-library .title-cell { display: flex; align-items: center; gap: var(--ls-space-3); min-width: 0; }
 .ls-library .title-cell > .title-text { overflow: hidden; text-overflow: ellipsis; min-width: 0; flex-shrink: 1; }
-.ls-library .row-tag {
-  flex-shrink: 0; max-width: 120px; overflow: hidden; text-overflow: ellipsis; font-size: var(--ls-text-xs); line-height: 15px;
-  padding: 0 var(--ls-space-3); border-radius: var(--ls-radius-pill); cursor: pointer; background: var(--ls-badge-bg); color: var(--ls-badge-fg); opacity: .85;
-}
-.ls-library .row-tag:hover { opacity: 1; outline: 1px solid var(--ls-focus); }
-.ls-library .row-tag.more { cursor: default; outline: none; }
-.ls-library .paper-row.selected .row-tag { color: inherit; background: var(--ls-toolbar-hover); }
-.ls-library .row-marks { display: inline-flex; gap: var(--ls-space-3); margin-left: auto; padding-left: var(--ls-space-3); flex-shrink: 0; }
-.ls-library .row-mark { display: inline-flex; align-items: center; gap: var(--ls-space-1); font-size: var(--ls-text-xs); color: var(--ls-desc); }
-.ls-library .row-mark svg { width: 12px; height: 12px; }
-.ls-library .paper-row.selected .row-mark { color: var(--ls-list-active-fg); }
-.ls-library .loc-chip {
-  flex-shrink: 0; max-width: 45%; overflow: hidden; text-overflow: ellipsis; font-size: var(--ls-text-xs); padding: 0 var(--ls-space-3);
-  border-radius: var(--ls-radius-pill); cursor: pointer; color: var(--ls-desc); border: 1px solid var(--ls-border-soft);
-}
-.ls-library .loc-chip:hover { color: var(--ls-fg); border-color: var(--ls-focus); }
-.ls-library .paper-row.selected .loc-chip { color: inherit; border-color: currentColor; opacity: .8; }
 .ls-library .status-mark {
   display: inline-flex; align-items: center; justify-content: center; width: var(--ls-space-7); height: var(--ls-space-7); padding: 0;
   border: none; border-radius: var(--ls-radius-pill); background: none; cursor: pointer; color: var(--ls-mark-accent);
@@ -75,34 +71,55 @@
 .ls-library .status-mark-glyph { display: inline-flex; width: var(--ls-space-6); height: var(--ls-space-6); align-items: center; justify-content: center; }
 .ls-library .status-mark-glyph svg { display: block; width: 100%; height: 100%; }
 .ls-library .ls-status-dot { width: var(--ls-space-3); height: var(--ls-space-3); border-radius: 50%; background: currentColor; }
-.ls-library .version-chip {
-  flex-shrink: 0; font-size: var(--ls-text-xs); line-height: 15px; padding: 0 var(--ls-space-3); border-radius: var(--ls-radius-pill);
-  color: var(--ls-desc); border: 1px dashed var(--ls-border-soft); cursor: default;
-}
-.ls-library .detail-meta .version-chip { margin-right: var(--ls-space-3); }
-.ls-library .paper-row.selected .version-chip { color: inherit; border-color: currentColor; opacity: .8; }
 .ls-library .paper-row.dragging { opacity: .45; }
-.ls-library .paper-children { display: none; background: var(--ls-bg); }
+.ls-library .paper-children { display: none; }
 .ls-library .paper-row.expanded .paper-children { display: block; }
-.ls-library .child-row {
-  display: grid; grid-template-columns: var(--cols); align-items: center; padding: var(--ls-space-2) var(--ls-space-2) var(--ls-space-2) 28px; gap: 0;
-  font-size: var(--ls-text-md); color: var(--ls-desc); cursor: pointer; border-bottom: 1px solid var(--ls-border-faint);
-}
-.ls-library .child-row:hover { background: var(--ls-list-hover); color: var(--ls-fg); }
-.ls-library .child-row .paper-type-icon { opacity: .6; }
 .ls-library .list-loading { padding: 32px var(--ls-space-7); color: var(--ls-desc); font-size: var(--ls-text-md); text-align: center; }
 
-/* A narrow list pane drops columns before the title gets squeezed: Last read first, then the publication, then the creator. The pane
-   shares the window with the sidebar and the detail pane, so its own width decides, not the window's. */
-@container list-pane (max-width: 820px) {
-  .ls-library .list-body { --cols: 28px 22px minmax(0, 1fr) 150px 52px 170px 86px; }
+/* ── File tray: the open paper's files under its title, on the paper's zebra band ─────────────── */
+/* The fact runs on from the name like a sentence, so it never lines up under a paper column. */
+.ls-library .file-row {
+  position: relative; display: flex; align-items: baseline; gap: var(--ls-space-4); min-height: var(--ls-row-h);
+  padding: var(--ls-space-2) var(--ls-space-4) var(--ls-space-2) calc(28px + var(--ls-space-4));
+  border-bottom: 1px solid var(--ls-border-faint); font-size: var(--ls-text-md);
+}
+.ls-library .file-row:hover { background: var(--ls-list-hover); }
+.ls-library .file-row > div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.ls-library .file-type {
+  flex: none; width: 28px; align-self: center; display: flex; align-items: center;
+  font-family: var(--ls-mono); font-size: var(--ls-text-xs); font-weight: 600; color: var(--ls-desc);
+}
+.ls-library .file-type svg { width: var(--ls-space-6); height: var(--ls-space-6); }
+.ls-library .file-type.tone-pdf { color: var(--ls-file-pdf); }
+.ls-library .file-type.tone-md { color: var(--ls-file-md); }
+.ls-library .file-type.tone-dir { color: var(--ls-file-dir); }
+.ls-library .file-name { flex: none; max-width: 45%; font-size: var(--ls-font-size); }
+.ls-library .file-fact { flex: 1; margin-left: var(--ls-space-4); font-style: italic; }
+.ls-library .file-fact-label { font-style: normal; font-size: var(--ls-text-sm); color: var(--ls-desc); }
+/* The actions float over the end of the fact, which runs to the edge while they are hidden. */
+.ls-library .file-actions {
+  position: absolute; right: var(--ls-space-2); top: 50%; transform: translateY(-50%); display: flex; gap: var(--ls-space-2);
+  padding-left: var(--ls-space-7); background: linear-gradient(to right, transparent, var(--ls-bg) var(--ls-space-7)); visibility: hidden;
+}
+.ls-library .file-row:hover .file-actions, .ls-library .file-row:focus-within .file-actions { visibility: visible; }
+.ls-library .file-state { color: var(--ls-desc); }
+.ls-library .file-message { flex: 1; }
+.ls-library .file-state.failed .file-type { color: var(--ls-warning); }
+
+/* A narrow list pane drops columns before the title gets squeezed: Last read first, then Authors, then Year. Title and
+   Status stay. The pane shares the window with the sidebar and the detail pane, so its own width decides, not the window's.
+   Below 460px the tray fact would shrink to a few letters, so it takes its own line under the name. */
+@container list-pane (max-width: 720px) {
+  .ls-library .list-body { --cols: 28px minmax(0, 1fr) 130px 52px 86px; }
   .ls-library .col-read { display: none !important; }
 }
-@container list-pane (max-width: 720px) {
-  .ls-library .list-body { --cols: 28px 22px minmax(0, 1fr) 130px 52px 86px; }
-  .ls-library .col-pub { display: none !important; }
-}
 @container list-pane (max-width: 460px) {
-  .ls-library .list-body { --cols: 28px 22px minmax(0, 1fr) 52px 86px; }
+  .ls-library .list-body { --cols: 28px minmax(0, 1fr) 52px 86px; }
   .ls-library .col-creator { display: none !important; }
+  .ls-library .file-row { flex-wrap: wrap; }
+  .ls-library .file-fact { flex-basis: calc(100% - 28px - var(--ls-space-4)); margin-left: calc(28px + var(--ls-space-4)); }
+}
+@container list-pane (max-width: 340px) {
+  .ls-library .list-body { --cols: 28px minmax(0, 1fr) 86px; }
+  .ls-library .col-year { display: none !important; }
 }

@@ -7,6 +7,13 @@ import type { HostToUi } from "../protocol/index.js";
 import { onAddNoPdf, onAddSources, onFindMiss, onPdfMissing, revealPaper } from "./flows/index.js";
 import type { UiContext } from "./uiContext.js";
 
+// PLATFORM: the webview has no ILogger; the console goes to the host's webview log, so a failure carries its context there.
+function reportFilesFailure(ctx: UiContext, id: string, message: string): void {
+  const title = ctx.store.get().papers.find((p) => p.id === id)?.title ?? id;
+  console.warn("LabShelf library: could not list the files of a paper", { id, title, message });
+  toast(`Could not list the files of “${title}”: ${message}`, "error");
+}
+
 function applyData(ctx: UiContext, m: HostToUi): boolean {
   switch (m.type) {
     case "snapshot":
@@ -15,6 +22,10 @@ function applyData(ctx: UiContext, m: HostToUi): boolean {
       ctx.data.invalidate(null);
       return true;
     case "details": ctx.data.received(m.id); ctx.store.setDetails(m.id, m.details); return true;
+    case "files":
+      if (m.state.status === "failed") reportFilesFailure(ctx, m.id, m.state.message);
+      ctx.store.setFiles(m.id, m.state);
+      return true;
     case "similar": ctx.store.setSimilar(m.id, m.items); return true;
     case "sidecarChanged": ctx.data.invalidate(m.id); return true;
     case "jobs": ctx.store.setJobs(m.jobs); return true;

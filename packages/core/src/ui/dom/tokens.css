@@ -45,6 +45,7 @@
   --ls-button-soft-hover: color-mix(in srgb, var(--ls-focus) 24%, transparent);
   --ls-row-zebra: color-mix(in srgb, var(--ls-fg) 3%, transparent);
   --ls-row-open: color-mix(in srgb, var(--ls-fg) 7%, transparent);
+  --ls-row-selected: color-mix(in srgb, var(--ls-focus) 15%, transparent);
   --ls-button2-bg: #313131;
   --ls-button2-fg: #cccccc;
   --ls-button2-hover: #3c3c3c;

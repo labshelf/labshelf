@@ -1,28 +1,29 @@
 /**
- * Renders the paper list: column heads and one row per paper in scope, kept in step by id so a refresh rebuilds
- * only the rows that changed. Selection changes repaint classes only, so scroll position and focus survive.
+ * Renders the paper list as a treegrid: column heads and one paper unit per paper in scope, grouped by subfolder and kept
+ * in step by id so a refresh rebuilds only the rows that changed. Selection changes repaint attributes only, so scroll and focus survive.
  */
 import { PAPERS_DIR, folderLabel } from "../../../library/index.js";
 import { nextStatus, type PaperRecord } from "../../../model/index.js";
 import { deriveListView, type ListPaper } from "../../derive/index.js";
-import { tagQuery } from "../../searchQueries.js";
 import { endPaperDrag, startPaperDrag } from "../dnd/index.js";
 import { openPaper, requestAddPaper, setPaperStatus } from "../flows/index.js";
 import { showPaperMenu } from "../menu/index.js";
-import { overlayOpen, type ListCursor, type UiContext } from "../uiContext.js";
+import { overlayOpen, type UiContext } from "../uiContext.js";
 import { COLUMN_HEADS_HTML, paintColumnHeads, wireColumnHeads } from "./columnHeads.js";
 import { buildEmptyState, buildLoading } from "./emptyState.js";
+import { GroupedRows, groupPapers } from "./groups/index.js";
 import { attachListKeys } from "./listKeys.js";
+import { paintTray, wireFilesRequest } from "./tray/index.js";
 import { buildPaperRow, type RowHandlers, type RowView } from "./paperRow.js";
 import { RowReconciler } from "./rowReconciler.js";
+import { paintTabStop, treeCursor, wireTabStop } from "./treeNav/index.js";
 
 interface List {
   ctx: UiContext;
   el: HTMLElement;
   heads: HTMLElement;
-  rows: RowReconciler<ListPaper>;
+  rows: GroupedRows;
   order: string[];
-  expanded: Set<string>;
   lastFolder: string | null;
   /** What the rows of the current render are built from. */
   terms: string[];
@@ -44,8 +45,6 @@ function rowHandlers(list: List): RowHandlers {
     },
     onOpen: (id) => openPaper(ctx, id),
     onCycleStatus: (p) => setPaperStatus(ctx, [p.id], nextStatus(p.status)),
-    onOpenFolder: (folder) => ctx.store.openFolder(folder),
-    onSearchTag: (tag) => ctx.store.set({ status: "all", query: tagQuery(tag) }),
     onMenu: (id, e) => {
       if (!ctx.store.get().selected.has(id)) ctx.store.selectOnly(id);
       showPaperMenu(ctx, { x: e.clientX, y: e.clientY });
@@ -57,8 +56,8 @@ function rowHandlers(list: List): RowHandlers {
       list.el.querySelectorAll<HTMLElement>(".paper-row").forEach((r) => r.classList.toggle("dragging", ids.includes(r.dataset["id"] ?? "")));
     },
     onDragEnd: () => { endPaperDrag(ctx); list.el.querySelectorAll(".dragging").forEach((r) => r.classList.remove("dragging")); },
-    isExpanded: (id) => list.expanded.has(id),
-    setExpanded: (id, open) => { if (open) list.expanded.add(id); else list.expanded.delete(id); },
+    isOpen: (id) => ctx.store.get().open === id,
+    onToggle: (id) => ctx.store.openPaper(ctx.store.get().open === id ? null : id),
   };
 }
 
@@ -71,6 +70,8 @@ function placeholder(list: List, view: ReturnType<typeof deriveListView>): HTMLE
     narrowed: view.terms.length > 0 || s.status !== "all" || s.noText,
     onlyNoText: s.noText && view.terms.length === 0 && s.status === "all",
     onlyNested: view.inFolder.length > 0,
+    libraryEmpty: s.papers.length === 0,
+    query: s.query,
     folderLabel: folderLabel(PAPERS_DIR, s.folder, "/"),
     hint: ctx.labels.emptyHint,
     onClearFilters: () => { ctx.store.set({ status: "all", noText: false, query: "" }); ctx.focusSearch(); },
@@ -85,8 +86,25 @@ function paintSelection(list: List): void {
     const id = r.dataset["id"] ?? "";
     r.classList.toggle("selected", selected.has(id));
     r.classList.toggle("cursor", id === cursor);
-    r.setAttribute("aria-selected", String(selected.has(id)));
+    r.querySelector(".paper-row-main")?.setAttribute("aria-selected", String(selected.has(id)));
   });
+  paintTabStop(list.el, cursor);
+}
+
+/** Marks the open paper's unit expanded and every other collapsed, without rebuilding rows, so focus and scroll stay. */
+function paintOpen(list: List): void {
+  const { open } = list.ctx.store.get();
+  list.el.querySelectorAll<HTMLElement>(".paper-row").forEach((r) => {
+    const isOpen = r.dataset["id"] === open;
+    r.classList.toggle("expanded", isOpen);
+    r.querySelector(".expand-btn")?.classList.toggle("collapsed", !isOpen);
+    r.querySelector(".paper-row-main")?.setAttribute("aria-expanded", String(isOpen));
+  });
+}
+
+/** Sticky group labels sit below the column heads, whose height changes with the font and the sort indicator. */
+function paintHeadsHeight(list: List): void {
+  list.el.style.setProperty("--heads-h", `${list.heads.offsetHeight}px`);
 }
 
 function render(list: List): void {
@@ -95,8 +113,10 @@ function render(list: List): void {
   list.terms = view.terms;
   list.records = new Map(s.papers.map((p) => [p.id, p]));
   paintColumnHeads(list.heads, s.sortKey, s.sortDir);
-  list.order = view.rows.map((p) => p.id);
-  list.rows.update(view.rows, placeholder(list, view));
+  const groups = groupPapers(view.rows, s.folder);
+  list.order = groups.flatMap((g) => g.papers.map((p) => p.id));
+  list.rows.update(groups, placeholder(list, view));
+  paintHeadsHeight(list);
   const folderChanged = list.lastFolder !== s.folder;
   if (folderChanged) list.el.scrollTop = 0;
   list.lastFolder = s.folder;
@@ -106,47 +126,41 @@ function render(list: List): void {
     list.ctx.store.set({ selected, cursor: null, anchor: selected.size ? s.anchor : null });
   }
   paintSelection(list);
+  paintOpen(list);
+  paintTray(list.ctx, list.el, list.records);
   const searchFocused = document.activeElement?.classList.contains("ls-library-search") ?? false;
   if (folderChanged && !searchFocused && !overlayOpen()) list.el.focus();
 }
 
-function cursorOf(list: List): ListCursor {
-  return {
-    order: () => list.order,
-    step: (delta, extend) => {
-      if (list.order.length === 0) return;
-      const s = list.ctx.store.get();
-      let idx = s.cursor ? list.order.indexOf(s.cursor) : -1;
-      idx = idx === -1 ? (delta > 0 ? 0 : list.order.length - 1) : Math.min(list.order.length - 1, Math.max(0, idx + delta));
-      const id = list.order[idx]!;
-      if (extend && s.anchor) list.ctx.store.selectRange(list.order, id); else list.ctx.store.selectOnly(id);
-      list.rows.nodeFor(id)?.scrollIntoView({ block: "nearest" });
-    },
-  };
-}
-
 /** Mounts the list and returns the function that unmounts it. */
 export function mountPaperList(ctx: UiContext, container: HTMLElement): () => void {
-  container.innerHTML = `${COLUMN_HEADS_HTML}<div class="paper-list" tabindex="0" role="listbox" aria-multiselectable="true"></div>`;
+  // INVARIANT: the reconciler removes every child of its container it did not build, so each group body and the groups get their own.
+  container.innerHTML = `<div class="paper-list" tabindex="-1" role="treegrid" aria-multiselectable="true">${COLUMN_HEADS_HTML}` +
+    `<div class="paper-rows" role="none"></div></div>`;
   const el = container.querySelector<HTMLElement>(".paper-list")!;
   // A row renders from its record, PDF presence, location, reading stats, OCR job and the highlighted terms; anything
   // else keeps the node.
   const list: List = {
-    ctx, el, heads: container.querySelector<HTMLElement>(".col-heads")!, order: [], expanded: new Set(), lastFolder: null, terms: [], records: new Map(),
-    rows: new RowReconciler<ListPaper>(el, (p) => buildPaperRow(p, rowView(list, p), handlers),
-      (p) => [list.records.get(p.id), p.hasPdf, p.relFolder, list.terms.join("\u0000"), ctx.store.get().stats[p.id], ctx.store.get().jobs[p.id]]),
+    ctx, el, heads: container.querySelector<HTMLElement>(".col-heads")!, order: [], lastFolder: null, terms: [], records: new Map(),
+    rows: new GroupedRows(el.querySelector<HTMLElement>(".paper-rows")!, (body) => new RowReconciler<ListPaper>(body, (p) => buildPaperRow(p, rowView(list, p), handlers),
+      (p) => [list.records.get(p.id), p.hasPdf, p.relFolder, list.terms.join("\u0000"), ctx.store.get().stats[p.id], ctx.store.get().jobs[p.id]])),
   };
   const handlers = rowHandlers(list);
   wireColumnHeads(ctx, list.heads);
-  ctx.cursor = cursorOf(list);
+  ctx.cursor = treeCursor(ctx.store, el, () => list.order);
   const offKeys = attachListKeys(ctx, ctx.cursor);
+  const offTabStop = wireTabStop(el, () => ctx.store.get().cursor);
   const offRows = ctx.store.select(
     (s) => ({
       folder: s.folder, papers: s.papers, query: s.query, status: s.status, noText: s.noText, sortKey: s.sortKey, sortDir: s.sortDir,
-      includeSub: s.includeSub, loading: s.loading, pdfDirs: s.pdfDirs, stats: s.stats, jobs: s.jobs,
+      includeSub: s.includeSub, loading: s.loading, pdfDirs: s.pdfDirs, stats: s.stats, jobs: s.jobs, open: s.open, files: s.files,
     }),
     () => render(list),
   );
+  const offFiles = wireFilesRequest(ctx);
+  // ResizeObserver is absent where the list renders without layout (jsdom).
+  const headsObserver = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => paintHeadsHeight(list));
+  headsObserver?.observe(list.heads);
   const offSel = ctx.store.select((s) => ({ selected: s.selected, cursor: s.cursor }), () => paintSelection(list));
-  return () => { offRows(); offSel(); offKeys(); };
+  return () => { headsObserver?.disconnect(); offRows(); offFiles(); offSel(); offKeys(); offTabStop(); };
 }

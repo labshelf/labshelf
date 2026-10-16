@@ -27,11 +27,6 @@ describe("paperComparator", () => {
     expect(order("year", true, papers)).toEqual(["old", "new", "none"]);
   });
 
-  it("sorts by journal, falling back to publisher", () => {
-    const papers = [entry("c", "", { publisher: "Cambridge" }), entry("a", "", { journal: "Acta" }), entry("n")];
-    expect(order("publication", false, papers)).toEqual(["n", "a", "c"]);
-  });
-
   it("puts the most recently modified first", () => {
     const papers = [entry("old", "", {}, 10), entry("new", "", {}, 99)];
     expect(order("modified", false, papers)).toEqual(["new", "old"]);

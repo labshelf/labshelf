@@ -3,7 +3,6 @@
  * Requires tokens.css and base.css; the list and the detail pane have their own sheets.
  */
 .ls-library {
-  --cols: 28px 22px minmax(0, 1fr) 150px 52px 170px 84px 86px;
   display: flex; flex: 1; min-height: 0; overflow: hidden;
 }
 .ls-library.resizing, .ls-library.resizing * { cursor: col-resize !important; user-select: none !important; }

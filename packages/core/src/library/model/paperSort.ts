@@ -13,8 +13,6 @@ function compareRecords(key: SortSpec["key"], a: PaperRecord, b: PaperRecord): n
     case "year":
       // Newest first; `reverse` flips it.
       return (b.year ?? 0) - (a.year ?? 0);
-    case "publication":
-      return nameCollator.compare(a.journal ?? a.publisher ?? "", b.journal ?? b.publisher ?? "");
     case "status":
       return PAPER_STATUSES.indexOf(a.status) - PAPER_STATUSES.indexOf(b.status);
     default:

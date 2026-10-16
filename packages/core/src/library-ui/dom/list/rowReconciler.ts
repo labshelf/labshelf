@@ -39,9 +39,4 @@ export class RowReconciler<T extends { id: string }> {
     if (trailing) this.container.append(trailing);
     this.rows = next;
   }
-
-  /** The node showing `id`, if it is rendered. */
-  nodeFor(id: string): HTMLElement | undefined {
-    return this.rows.get(id)?.node;
-  }
 }

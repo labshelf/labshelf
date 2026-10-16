@@ -79,7 +79,6 @@
 }
 .ls-library .note-input:focus { border-color: var(--ls-focus); }
 .ls-library .note-input::placeholder { color: var(--ls-input-placeholder); }
-.ls-library .detail-note { margin: var(--ls-space-5) 14px 0; line-height: 1.5; font-size: var(--ls-text-md); white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
 .ls-library .notes-tab > .muted-note { padding: var(--ls-space-5) 14px; }
 
 /* ── Related papers, and the list of a multi-selection ──────────── */

@@ -48,7 +48,7 @@ export const DEFAULT_PREFS: LibraryUiPrefs = {
   citeFormat: "bibtex",
 };
 
-const SORT_KEYS: readonly SortKey[] = ["title", "creator", "year", "publication", "lastRead", "status"];
+const SORT_KEYS: readonly SortKey[] = ["title", "creator", "year", "lastRead", "status"];
 
 function isBoolMap(v: unknown): v is Record<string, boolean> {
   return !!v && typeof v === "object" && !Array.isArray(v) && Object.values(v as object).every((x) => typeof x === "boolean");
