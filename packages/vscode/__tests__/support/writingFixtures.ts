@@ -18,7 +18,7 @@ export function fakeHost(logger = fakeLogger()): WritingHost & { session: Writin
 export function fakeProjectData(): { [K in keyof ProjectDataPort]: jest.Mock } {
   return {
     listProjects: jest.fn(async () => []),
-    createProject: jest.fn(async () => { throw new Error("createProject is not stubbed"); }),
+    createProjectFromTemplate: jest.fn(async () => { throw new Error("createProjectFromTemplate is not stubbed"); }),
     addExistingFolder: jest.fn(async () => { throw new Error("addExistingFolder is not stubbed"); }),
     unregisterProjectFolder: jest.fn(async () => {}),
     rootFileNames: jest.fn(async () => []),

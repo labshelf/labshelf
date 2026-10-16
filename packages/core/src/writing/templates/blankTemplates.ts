@@ -1,6 +1,8 @@
-/** Writes the main file of a new project: one blank article per format, titled with the user's title. */
+/** Builds the blank template of a new project: one article per format, titled with the user's title. */
 
 import type { ProjectFormat } from "../project/index.js";
+import type { TemplateFile } from "./sources/index.js";
+import type { ProjectTemplate } from "./templateManifest.js";
 
 const LATEX_SPECIALS: Record<string, string> = {
   "\\": "\\textbackslash{}", "{": "\\{", "}": "\\}", $: "\\$", "&": "\\&", "#": "\\#",
@@ -50,9 +52,8 @@ function typstArticle(title: string): string {
   ].join("\n");
 }
 
-/** The main file name and its text for a new project. */
-export function blankTemplate(format: ProjectFormat, title: string): { main: string; text: string } {
-  return format === "latex"
-    ? { main: "main.tex", text: latexArticle(title) }
-    : { main: "main.typ", text: typstArticle(title) };
+/** The built-in template and its single main file for a new project. */
+export function blankTemplate(format: ProjectFormat, title: string): { template: ProjectTemplate; files: TemplateFile[] } {
+  const [main, text] = format === "latex" ? ["main.tex", latexArticle(title)] : ["main.typ", typstArticle(title)];
+  return { template: { id: `blank-${format}`, format, main }, files: [{ path: main, bytes: new TextEncoder().encode(text) }] };
 }

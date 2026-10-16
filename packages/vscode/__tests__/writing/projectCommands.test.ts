@@ -24,16 +24,20 @@ beforeEach(() => {
 });
 
 describe("labshelf.writing.newProject", () => {
-  it("creates the project with the title and format, reloads the list and opens the project", async () => {
+  it("creates the project from the blank template of the picked format, reloads the list and opens the project", async () => {
     const { projects } = setup();
     window["showInputBox"]!.mockResolvedValue("  Deep nets survey ");
     window["showQuickPick"]!.mockResolvedValue({ label: "Typst", format: "typst" });
     const entry = readyEntry("/lib/projects/deep-nets-survey", { main: "main.typ" });
-    data.createProject.mockResolvedValue(entry);
+    data.createProjectFromTemplate.mockResolvedValue(entry);
 
     await commandHandler("labshelf.writing.newProject")();
 
-    expect(data.createProject).toHaveBeenCalledWith("/lib", { title: "Deep nets survey", format: "typst" });
+    expect(data.createProjectFromTemplate).toHaveBeenCalledWith("/lib", expect.objectContaining({
+      title: "Deep nets survey",
+      template: { id: "blank-typst", format: "typst", main: "main.typ" },
+      files: [expect.objectContaining({ path: "main.typ" })],
+    }));
     expect(projects.reload).toHaveBeenCalled();
     expect(vscode.commands.executeCommand).toHaveBeenCalledWith("labshelf.writing.openProject", entry);
   });
@@ -45,7 +49,7 @@ describe("labshelf.writing.newProject", () => {
 
     window["showInputBox"]!.mockResolvedValue("Title");
     await commandHandler("labshelf.writing.newProject")();
-    expect(data.createProject).not.toHaveBeenCalled();
+    expect(data.createProjectFromTemplate).not.toHaveBeenCalled();
   });
 
   it("does nothing when the library setup is cancelled", async () => {

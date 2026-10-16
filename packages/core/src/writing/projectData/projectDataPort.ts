@@ -6,6 +6,7 @@ import type { FigureState } from "../figures/index.js";
 import type {
   FigureRecipe, OpenSources, ProjectCursor, ProjectEntry, ProjectFormat, ProjectLastEdit, ProjectSettingsPatch,
 } from "../project/index.js";
+import type { ProjectTemplate, TemplateFile } from "../templates/index.js";
 import type { SynctexRead } from "../synctex/index.js";
 import type { ValueLeaf, ValueProject } from "../values/index.js";
 import type { MarkVersionRequest, ProjectVersion } from "../versions/index.js";
@@ -13,7 +14,9 @@ import type { MarkVersionRequest, ProjectVersion } from "../versions/index.js";
 /** Paths are OS paths of the host; the implementation binds the logger. */
 export interface ProjectDataPort {
   listProjects(libraryRoot: string): Promise<ProjectEntry[]>;
-  createProject(libraryRoot: string, request: { title: string; format: ProjectFormat }): Promise<ProjectEntry>;
+  createProjectFromTemplate(
+    libraryRoot: string, request: { title: string; template: ProjectTemplate; files: readonly TemplateFile[] },
+  ): Promise<ProjectEntry>;
   addExistingFolder(libraryRoot: string, request: { folder: string; format: ProjectFormat }): Promise<ProjectEntry>;
   unregisterProjectFolder(libraryRoot: string, folder: string): Promise<void>;
   /** Names of the files directly inside `folder`, for picking a main file. */

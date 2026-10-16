@@ -4,7 +4,7 @@ import { projectBacklinks } from "../../backlinks/node/index.js";
 import { updateProjectBibliography } from "../../citations/node/index.js";
 import { readFigureStates } from "../../figures/node/index.js";
 import {
-  addExistingFolder, createProject, latestProjectEdit, listProjects, projectBuildDir, rootFileNames,
+  addExistingFolder, createProjectFromTemplate, latestProjectEdit, listProjects, projectBuildDir, rootFileNames,
   unregisterProjectFolder, updateProjectSettings, writeProjectCursor,
 } from "../../project/node/index.js";
 import { readSynctexFile } from "../../synctex/node/index.js";
@@ -15,7 +15,7 @@ import type { ProjectDataPort } from "../projectDataPort.js";
 export function nodeProjectData(logger: ILogger): ProjectDataPort {
   return {
     listProjects: (libraryRoot) => listProjects(libraryRoot, logger),
-    createProject: (libraryRoot, request) => createProject(libraryRoot, request, logger),
+    createProjectFromTemplate: (libraryRoot, request) => createProjectFromTemplate(libraryRoot, request, logger),
     addExistingFolder: (libraryRoot, request) => addExistingFolder(libraryRoot, request, logger),
     unregisterProjectFolder: (libraryRoot, folder) => unregisterProjectFolder(libraryRoot, folder, logger),
     rootFileNames,

@@ -3,12 +3,19 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import {
-  addExistingFolder, createProject, listProjects, loadProjectRegistry,
+  addExistingFolder, createProjectFromTemplate, listProjects, loadProjectRegistry,
 } from "../../../../src/writing/project/node/index";
+import type { ProjectFormat } from "../../../../src/writing/project/index";
+import { blankTemplate } from "../../../../src/writing/templates/index";
+import type { ILogger } from "../../../../src/ports/index";
 import { fakeLogger } from "../../../support/fakeLogger";
 import { cleanupTempDirs, listFiles, makeTempDir } from "../../../support/tempDirs";
 
 afterEach(cleanupTempDirs);
+
+function createBlankProject(lib: string, request: { title: string; format: ProjectFormat }, logger: ILogger) {
+  return createProjectFromTemplate(lib, { title: request.title, ...blankTemplate(request.format, request.title) }, logger);
+}
 
 async function setup(): Promise<{ lib: string; outside: string }> {
   const base = await makeTempDir();
@@ -26,10 +33,10 @@ async function externalFolder(outside: string, name: string, files: Record<strin
   return dir;
 }
 
-describe("createProject", () => {
+describe("createProjectFromTemplate", () => {
   it("creates projects/<id>/ with labshelf.yaml and the template main", async () => {
     const { lib } = await setup();
-    const entry = await createProject(lib, { title: "Deep Nets: a Survey", format: "latex" }, fakeLogger());
+    const entry = await createBlankProject(lib, { title: "Deep Nets: a Survey", format: "latex" }, fakeLogger());
     const folder = path.join(lib, "projects", "deep-nets-a-survey");
     expect(entry).toMatchObject({ kind: "ready", folder, location: "library", main: "main.tex" });
     expect(await fs.readFile(path.join(folder, "labshelf.yaml"), "utf8")).toBe("id: deep-nets-a-survey\nformat: latex\nmain: main.tex\n");
@@ -39,14 +46,14 @@ describe("createProject", () => {
 
   it("creates a Typst project with main.typ", async () => {
     const { lib } = await setup();
-    const entry = await createProject(lib, { title: "Notes", format: "typst" }, fakeLogger());
+    const entry = await createBlankProject(lib, { title: "Notes", format: "typst" }, fakeLogger());
     expect(entry.kind === "ready" && entry.main).toBe("main.typ");
   });
 
   it("gives a second project with the same title the suffix a", async () => {
     const { lib } = await setup();
-    await createProject(lib, { title: "Thesis", format: "latex" }, fakeLogger());
-    const second = await createProject(lib, { title: "Thesis", format: "latex" }, fakeLogger());
+    await createBlankProject(lib, { title: "Thesis", format: "latex" }, fakeLogger());
+    const second = await createBlankProject(lib, { title: "Thesis", format: "latex" }, fakeLogger());
     expect(second.kind === "ready" && second.settings.id).toBe("thesisa");
     expect(path.basename(second.folder)).toBe("thesisa");
   });
@@ -97,7 +104,7 @@ describe("addExistingFolder", () => {
 
   it("rejects an existing id that clashes with another project", async () => {
     const { lib, outside } = await setup();
-    await createProject(lib, { title: "Thesis", format: "latex" }, fakeLogger());
+    await createBlankProject(lib, { title: "Thesis", format: "latex" }, fakeLogger());
     const folder = await externalFolder(outside, "p", { "labshelf.yaml": "id: Thesis\nformat: latex\n" });
     const logger = fakeLogger();
     await expect(addExistingFolder(lib, { folder, format: "latex" }, logger)).rejects.toThrow(/already used/);
@@ -106,7 +113,7 @@ describe("addExistingFolder", () => {
 
   it("gives a folder without labshelf.yaml a fresh id when its name clashes", async () => {
     const { lib, outside } = await setup();
-    await createProject(lib, { title: "paper", format: "latex" }, fakeLogger());
+    await createBlankProject(lib, { title: "paper", format: "latex" }, fakeLogger());
     const folder = await externalFolder(outside, "paper");
     const entry = await addExistingFolder(lib, { folder, format: "latex" }, fakeLogger());
     expect(entry.kind === "ready" && entry.settings.id).toBe("papera");
@@ -119,7 +126,7 @@ describe("listProjects", () => {
     const folder = await externalFolder(outside, "ext");
     const logger = fakeLogger();
     await addExistingFolder(lib, { folder, format: "typst" }, logger);
-    await createProject(lib, { title: "Inside", format: "latex" }, logger);
+    await createBlankProject(lib, { title: "Inside", format: "latex" }, logger);
     const list = await listProjects(lib, logger);
     expect(list.map((e) => e.location)).toEqual(["library", "external"]);
   });
