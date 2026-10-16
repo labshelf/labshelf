@@ -998,6 +998,11 @@
           "type": "boolean",
           "default": false,
           "description": "Open the reader beside the current editor (split view). When disabled, the reader opens full-width in the active editor group."
+        },
+        "labshelf.writing.autoCompile": {
+          "type": "boolean",
+          "default": true,
+          "description": "Compile the PDF preview when a project source is saved."
         }
       }
     },
