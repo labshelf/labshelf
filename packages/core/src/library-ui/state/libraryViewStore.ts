@@ -139,7 +139,7 @@ export class LibraryViewStore {
       if (this.state.citationMap) this.set({ citationMap: null });
       return;
     }
-    this.set({ folder: path, query: "", status: "all", noText: false, selected: new Set(), anchor: null, cursor: null, citationMap: null });
+    this.set({ folder: path, query: "", status: "all", selected: new Set(), anchor: null, cursor: null, citationMap: null });
   }
 
   /** Shows the citation map in place of the paper list; null goes back to the paper list. */

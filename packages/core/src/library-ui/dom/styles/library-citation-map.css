@@ -1,6 +1,6 @@
 /*
  * Styles the citation map under .ls-library on the --ls-* tokens: its header, the graph above the list of missing
- * works, and the rows. While it is open it takes the place of the list header, filter bar and list.
+ * works, and the rows. While it is open it takes the place of the list header and list.
  */
 .ls-library.citation-map-open .list-pane > :not(.citation-map) { display: none; }
 .ls-library .citation-map { flex: 1; display: flex; flex-direction: column; min-height: 0; }

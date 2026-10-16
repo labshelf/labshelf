@@ -2,7 +2,7 @@
 // annotation export and the reader's own contributed keybindings.
 import * as vscode from "vscode";
 
-import { exportAnnotations, findSimilarPapers, type AiService, type ReaderCommandId } from "@labshelf/core";
+import { exportAnnotations, findSimilarPapers, type AiService, type ReaderCommandId, type StatusFilter } from "@labshelf/core";
 import { PdfViewerPanel, ReaderPanel, createVsCodeExportPorts } from "../../pdf-viewer/index.js";
 import { ListWebviewPanel, type ListPanelDeps } from "../../ui/list/index.js";
 import { citationMapPorts } from "../../citationMap/index.js";
@@ -63,9 +63,9 @@ function registerOpenListTabCommand(deps: PanelCommandsDeps): void {
       const services = await requireServices();
       if (services) { await ListWebviewPanel.revealPaper(listPanelDeps(deps, services), paperId); }
     }),
-    vscode.commands.registerCommand("labshelf.openListScope", async () => {
+    vscode.commands.registerCommand("labshelf.openListScope", async (scope: StatusFilter) => {
       const services = await requireServices();
-      if (services) { ListWebviewPanel.createOrShow(listPanelDeps(deps, services)); }
+      if (services) { await ListWebviewPanel.showScope(listPanelDeps(deps, services), scope); }
     }),
     vscode.commands.registerCommand("labshelf.showCitationMap", async () => {
       const services = await requireServices();

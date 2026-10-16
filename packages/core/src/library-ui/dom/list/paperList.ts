@@ -67,15 +67,12 @@ function placeholder(list: List, view: ReturnType<typeof deriveListView>): HTMLE
   if (view.rows.length > 0) return null;
   if (s.loading && s.papers.length === 0) return buildLoading();
   return buildEmptyState({
-    narrowed: view.terms.length > 0 || s.status !== "all" || s.noText,
-    onlyNoText: s.noText && view.terms.length === 0 && s.status === "all",
-    onlyNested: view.inFolder.length > 0,
+    narrowed: view.terms.length > 0 || s.status !== "all",
     libraryEmpty: s.papers.length === 0,
     query: s.query,
     folderLabel: folderLabel(PAPERS_DIR, s.folder, "/"),
     hint: ctx.labels.emptyHint,
-    onClearFilters: () => { ctx.store.set({ status: "all", noText: false, query: "" }); ctx.focusSearch(); },
-    onShowSubfolders: () => { ctx.prefs.save({ includeSub: true }); ctx.store.set({ includeSub: true }); },
+    onClearFilters: () => { ctx.store.set({ status: "all", query: "" }); ctx.focusSearch(); },
     onAdd: () => requestAddPaper(ctx),
   });
 }
@@ -152,8 +149,8 @@ export function mountPaperList(ctx: UiContext, container: HTMLElement): () => vo
   const offTabStop = wireTabStop(el, () => ctx.store.get().cursor);
   const offRows = ctx.store.select(
     (s) => ({
-      folder: s.folder, papers: s.papers, query: s.query, status: s.status, noText: s.noText, sortKey: s.sortKey, sortDir: s.sortDir,
-      includeSub: s.includeSub, loading: s.loading, pdfDirs: s.pdfDirs, stats: s.stats, jobs: s.jobs, open: s.open, files: s.files,
+      folder: s.folder, papers: s.papers, query: s.query, status: s.status, sortKey: s.sortKey, sortDir: s.sortDir,
+      loading: s.loading, pdfDirs: s.pdfDirs, stats: s.stats, jobs: s.jobs, open: s.open, files: s.files,
     }),
     () => render(list),
   );

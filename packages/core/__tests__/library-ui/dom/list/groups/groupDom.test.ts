@@ -85,14 +85,6 @@ describe("folder groups in a folder scope", () => {
 });
 
 describe("folder groups across scopes", () => {
-  it("renders only the own papers, with no group labels, when subfolders are off", () => {
-    const t = mounted({ includeSub: false });
-    t.lib.store.set({ includeSub: false });
-    expect(t.rowIds()).toEqual(["own1", "own2"]);
-    expect(labels(t)).toHaveLength(0);
-    expect(groups(t)).toHaveLength(0);
-  });
-
   it("groups All papers by folder relative to the root, root papers first", () => {
     const t = mounted();
     const top = paper("top", "papers", { title: "0 top" });

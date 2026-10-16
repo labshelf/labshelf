@@ -1,11 +1,10 @@
 /**
  * Lists the open folder's papers as the list sees them: scoped to the folder, decorated with where each one sits,
- * narrowed by the search and the subfolder toggle, and counted per status.
+ * and narrowed by the search.
  */
 import { isUnderDir, parentDir, relativeFolder } from "../../library/index.js";
 import { isEmptyQuery, paperMatches, searchDoc, type Query } from "../../library/search/index.js";
 import type { PaperRecord } from "../../model/index.js";
-import type { StatusFilter } from "../state/index.js";
 
 const SEP = "/";
 
@@ -28,17 +27,8 @@ export function listPapersUnder(all: readonly PaperRecord[], folder: string, pdf
     .map((p) => ({ ...p, folderPath: parentDir(p.path, SEP), relFolder: relativeFolder(p.path, folder, SEP), hasPdf: pdfDirs.has(p.path) }));
 }
 
-/**
- * Papers in scope before the status tab applies, so each tab can show its own count. A search always covers the
- * whole subtree and also matches the folder path shown in the row; without one the subfolder toggle decides.
- */
-export function papersInScope(papers: ListPaper[], query: Query, includeSub: boolean): ListPaper[] {
-  if (isEmptyQuery(query)) return papers.filter((p) => includeSub || p.relFolder === "");
+/** Papers in scope before the status filter applies. A search also matches the folder path shown in the row. */
+export function papersInScope(papers: ListPaper[], query: Query): ListPaper[] {
+  if (isEmptyQuery(query)) return papers;
   return papers.filter((p) => paperMatches(p, searchDoc(p, { folder: p.relFolder }), query));
-}
-
-export function statusCounts(scope: ListPaper[]): Record<StatusFilter, number> {
-  const counts: Record<StatusFilter, number> = { all: scope.length, unread: 0, reading: 0, done: 0 };
-  for (const p of scope) counts[p.status]++;
-  return counts;
 }

@@ -13,7 +13,6 @@ export type CiteFormat = (typeof CITE_FORMATS)[number];
 export interface LibraryUiPrefs {
   sortKey: SortKey;
   sortDir: SortDir;
-  includeSub: boolean;
   detailWidth: number;
   detailCollapsed: boolean;
   sidebarWidth: number;
@@ -38,7 +37,6 @@ export const PANE_LIMITS = {
 export const DEFAULT_PREFS: LibraryUiPrefs = {
   sortKey: "title",
   sortDir: 1,
-  includeSub: true,
   detailWidth: 360,
   detailCollapsed: false,
   sidebarWidth: 220,
@@ -66,7 +64,6 @@ export function sanitizePrefs(raw: unknown): LibraryUiPrefs {
   return {
     sortKey: oneOf(r["sortKey"], SORT_KEYS, d.sortKey),
     sortDir: r["sortDir"] === -1 ? -1 : 1,
-    includeSub: bool(r["includeSub"], d.includeSub),
     detailWidth: num(r["detailWidth"], d.detailWidth, PANE_LIMITS.detail),
     detailCollapsed: bool(r["detailCollapsed"], d.detailCollapsed),
     sidebarWidth: num(r["sidebarWidth"], d.sidebarWidth, PANE_LIMITS.sidebar),

@@ -2,6 +2,7 @@
  * Applies what the host sends: snapshots, navigation, selection, per-paper data, OCR jobs and the citation map go to the store, notices
  * and progress become toasts, and PDF and add-paper replies open their dialogs.
  */
+import { PAPERS_DIR } from "../../library/index.js";
 import { toast } from "../../ui/dom/index.js";
 import type { HostToUi } from "../protocol/index.js";
 import { onAddNoPdf, onAddSources, onFindMiss, onPdfMissing, revealPaper } from "./flows/index.js";
@@ -49,6 +50,8 @@ export function attachHostMessages(ctx: UiContext): () => void {
     if (applyData(ctx, m)) return;
     switch (m.type) {
       case "navigate": ctx.store.openFolder(m.folder); return;
+      // Opening a folder resets the status filter, so the status is set after it.
+      case "scope": ctx.store.openFolder(PAPERS_DIR); ctx.store.set({ status: m.status }); return;
       case "reveal": revealPaper(ctx, m.id); return;
       case "select": ctx.store.selectOnly(m.id); return;
       case "notice": toast(m.text, m.kind); return;

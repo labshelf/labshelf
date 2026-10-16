@@ -8,11 +8,11 @@ describe("sanitizePrefs", () => {
 
   it("validates every field and clamps widths", () => {
     const prefs = sanitizePrefs({
-      sortKey: "bogus", sortDir: -1, includeSub: "yes", detailWidth: 9999, sidebarWidth: 10,
+      sortKey: "bogus", sortDir: -1, detailWidth: 9999, sidebarWidth: 10,
       detailCollapsed: true, secCollapsed: { info: true, notes: "x" },
     });
     expect(prefs).toEqual({
-      ...DEFAULT_PREFS, sortKey: "title", sortDir: -1, includeSub: true, detailWidth: 760, sidebarWidth: 160,
+      ...DEFAULT_PREFS, sortKey: "title", sortDir: -1, detailWidth: 760, sidebarWidth: 160,
       detailCollapsed: true, secCollapsed: DEFAULT_PREFS.secCollapsed,
     });
   });
@@ -28,7 +28,11 @@ describe("sanitizePrefs", () => {
   });
 
   it("keeps valid values", () => {
-    expect(sanitizePrefs({ sortKey: "lastRead", sortDir: 1, includeSub: false, secCollapsed: { info: true } }))
-      .toMatchObject({ sortKey: "lastRead", sortDir: 1, includeSub: false, secCollapsed: { info: true } });
+    expect(sanitizePrefs({ sortKey: "lastRead", sortDir: 1, secCollapsed: { info: true } }))
+      .toMatchObject({ sortKey: "lastRead", sortDir: 1, secCollapsed: { info: true } });
+  });
+
+  it("drops stored keys that are not prefs", () => {
+    expect(sanitizePrefs({ includeSub: false, noText: true })).toEqual(DEFAULT_PREFS);
   });
 });

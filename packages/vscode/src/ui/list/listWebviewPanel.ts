@@ -3,7 +3,7 @@
  * snapshots, the open folder and OCR jobs, and answers through the typed message handlers.
  */
 import * as vscode from 'vscode';
-import { isUnderDir, type PaperRecord } from '@labshelf/core';
+import { isUnderDir, type PaperRecord, type StatusFilter } from '@labshelf/core';
 import { rootNode, type LibraryNode } from '../library/index.js';
 import { labshelfTabIcon } from '../tabIcon.js';
 import { onPaperChange } from '../../events/index.js';
@@ -61,6 +61,11 @@ export class ListWebviewPanel {
   /** Reveals or opens the panel, without changing its folder, and selects the paper once the UI is ready. */
   public static async revealPaper(deps: ListPanelDeps, id: string): Promise<void> {
     await ListWebviewPanel._revealOrOpen(deps)?._queue.post({ type: 'reveal', id });
+  }
+
+  /** Reveals or opens the panel and shows the library root filtered to `status` once the UI is ready. */
+  public static async showScope(deps: ListPanelDeps, status: StatusFilter): Promise<void> {
+    await ListWebviewPanel._revealOrOpen(deps)?._queue.post({ type: 'scope', status });
   }
 
   // Brings the panel forward on whatever folder it shows; createOrShow would navigate it.

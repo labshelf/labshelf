@@ -1,5 +1,5 @@
 /**
- * Mounts the library UI once into a host element (frame, header, filter bar, list, citation map, detail pane) wired to a host
+ * Mounts the library UI once into a host element (frame, header, list, citation map, detail pane) wired to a host
  * through a transport. The host fills the optional sidebar slot with its own folder view.
  */
 import type { LibraryUiCapabilities, LibraryUiLabels } from "../hostConfig.js";
@@ -8,7 +8,6 @@ import { LibraryViewStore, type PrefsPort } from "../state/index.js";
 import { mountCitationMap } from "./citationMap/index.js";
 import { mountDetailPane } from "./detail/index.js";
 import { makeDropTarget } from "./dnd/index.js";
-import { mountFilterBar } from "./filterBar/index.js";
 import { confirmDeleteFolder, promptNewFolder, promptRenameFolder } from "./flows/index.js";
 import { mountListHeader } from "./header/index.js";
 import { attachHostMessages } from "./hostMessages.js";
@@ -50,14 +49,13 @@ function reportFolder(ctx: UiContext): () => void {
 
 export function mountLibraryUi(host: HTMLElement, options: LibraryUiOptions): LibraryUi {
   const saved = options.prefs.load();
-  const store = new LibraryViewStore({ sortKey: saved.sortKey, sortDir: saved.sortDir, includeSub: saved.includeSub });
+  const store = new LibraryViewStore({ sortKey: saved.sortKey, sortDir: saved.sortDir });
   const { transport, prefs, capabilities: caps, labels } = options;
   const frame = buildFrame(host, prefs, options.withSidebar ?? false);
   const ctx = createUiContext(frame.root, { store, transport, prefs, caps, labels });
   const offs = [
     attachHostMessages(ctx),
     mountListHeader(ctx, frame.header),
-    mountFilterBar(ctx, frame.filterBar),
     mountPaperList(ctx, frame.list),
     mountCitationMap(ctx, frame.citationMap),
     mountDetailPane(ctx, frame.detail),

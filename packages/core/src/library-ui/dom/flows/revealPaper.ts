@@ -10,11 +10,10 @@ export function revealPaper(ctx: UiContext, id: string): void {
   const s = ctx.store.get();
   const paper = s.papers.find((p) => p.id === id);
   if (!paper) return;
-  const folder = parentDir(paper.path, "/");
   // CONTRACT: documents/contracts/library-ui-host.md#messages
-  if (s.folder !== PAPERS_DIR && !isUnderDir(paper.path, s.folder, "/")) ctx.store.openFolder(folder);
+  if (s.folder !== PAPERS_DIR && !isUnderDir(paper.path, s.folder, "/")) ctx.store.openFolder(parentDir(paper.path, "/"));
   else if (!deriveListView(ctx.store.get()).rows.some((p) => p.id === id)) {
-    ctx.store.set({ status: "all", noText: false, query: "", ...(folder !== s.folder ? { includeSub: true } : {}) });
+    ctx.store.set({ status: "all", query: "" });
   }
   ctx.store.selectOnly(id);
   ctx.store.openPaper(id);

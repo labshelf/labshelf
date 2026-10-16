@@ -20,11 +20,8 @@ export interface LibraryViewState {
   folder: string;
   query: string;
   status: StatusFilter;
-  /** Only papers whose PDF has no text layer. */
-  noText: boolean;
   sortKey: SortKey;
   sortDir: SortDir;
-  includeSub: boolean;
   /** Replaced on every change so slice equality stays a reference check. */
   selected: ReadonlySet<string>;
   anchor: string | null;
@@ -58,10 +55,8 @@ export const INITIAL_VIEW_STATE: LibraryViewState = {
   folder: PAPERS_DIR,
   query: "",
   status: "all",
-  noText: false,
   sortKey: "title",
   sortDir: 1,
-  includeSub: true,
   selected: new Set(),
   anchor: null,
   cursor: null,

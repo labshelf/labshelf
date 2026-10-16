@@ -27,7 +27,7 @@ describe("reveal", () => {
     expect(t.rowIds()).toContain("x");
   });
 
-  it("keeps an open scope that holds the paper and shows its subfolders", () => {
+  it("keeps an open scope that holds the paper", () => {
     const t = mountForTest();
     t.snapshot(library, [], folders);
     t.host.post({ type: "reveal", id: "x" });

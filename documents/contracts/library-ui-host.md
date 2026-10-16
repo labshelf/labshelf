@@ -2,7 +2,7 @@
 
 Read when you change the library UI or the code that hosts it.
 
-The library UI (folder header, filter bar, paper list, paper menu, detail pane, citation map) is one UI in core that a host mounts once. The host owns the library data, every mutation, files, the clipboard and the reader. The UI owns everything on screen, including every dialog, menu, picker and prompt, and builds every text it shows or copies (citations, BibTeX, annotation Markdown) from the records. They talk only through the typed message unions in core's `library-ui/protocol` module, which is the single source of truth for message shapes. Every payload is plain JSON: arrays, never Sets.
+The library UI (folder header, paper list, paper menu, detail pane, citation map) is one UI in core that a host mounts once. The host owns the library data, every mutation, files, the clipboard and the reader. The UI owns everything on screen, including every dialog, menu, picker and prompt, and builds every text it shows or copies (citations, BibTeX, annotation Markdown) from the records. They talk only through the typed message unions in core's `library-ui/protocol` module, which is the single source of truth for message shapes. Every payload is plain JSON: arrays, never Sets.
 
 Two hosts mount it:
 
@@ -28,7 +28,7 @@ Shared actions (open, status, move, remove, copy, folders, tags, notes, annotati
 
 | Capability | Host answers | VS Code | Browser |
 |---|---|---|---|
-| `textLayer` | `paper.makeSearchable`; sends `jobs`; the UI shows the No text filter and banners | yes | no |
+| `textLayer` | `paper.makeSearchable`; sends `jobs`; the UI shows the no-text row marks and banners | yes | no |
 | `similar` | `paper.similar` | yes | no |
 | `reveal`, `openExternal`, `fetchMetadata` | the message of the same name; `reveal` also covers `paper.revealFile` | yes | no |
 | `findPdf`, `attachPdf` | `paper.findPdf`, `paper.attachPdf` | no | yes |
@@ -77,7 +77,8 @@ Host to UI:
 | Message | UI does |
 |---|---|
 | `snapshot` | replaces the library; records and stats equal to the ones it holds keep their identity, so unchanged rows keep their DOM nodes; asks again for the shown paper's details |
-| `navigate` | opens the folder (search, status tab, No text filter and selection reset) |
+| `navigate` | opens the folder, with its subfolders' papers grouped below its own (search, status filter and selection reset) |
+| `scope` | opens the library root showing only papers with `status` (`all`, `unread`, `reading`, `done`); the host sends it for a side bar scope row; reports the folder change with `navigate` |
 | `select` | selects one paper |
 | `reveal` | shows the paper wherever it is: opens its folder unless the open scope already holds it, clears the search and status filter when they hide it, selects it, opens its files and scrolls it into view; reports a folder change with `navigate`; an unknown id does nothing |
 | `files` | fills the paper's file rows, or shows an inline error row when `state` is `failed` |

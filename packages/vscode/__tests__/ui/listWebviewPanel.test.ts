@@ -360,6 +360,26 @@ describe('ListWebviewPanel — reveal both ways', () => {
     expect(ListWebviewPanel.currentPanel).toBeDefined();
   });
 
+  it('holds a status scope until the UI is ready, then sends it after the snapshot', async () => {
+    const h = open();
+    await ListWebviewPanel.showScope(h.deps, 'unread');
+    await flush();
+    expect(h.posted()).toEqual([]);
+
+    await h.fire({ type: 'ready' });
+    const types = h.posted().map((m) => m.type);
+    expect(types.indexOf('scope')).toBeGreaterThan(types.indexOf('snapshot'));
+    expect(h.last('scope')).toEqual({ type: 'scope', status: 'unread' });
+  });
+
+  it('posts a status scope at once to a ready panel', async () => {
+    const h = open();
+    await h.fire({ type: 'ready' });
+    await ListWebviewPanel.showScope(h.deps, 'done');
+    await flush();
+    expect(h.last('scope')).toEqual({ type: 'scope', status: 'done' });
+  });
+
   it('drops a reveal queued before ready when the panel is disposed, and a fresh panel does not receive it', async () => {
     const h = open();
     await ListWebviewPanel.revealPaper(h.deps, 'p1');

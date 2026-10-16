@@ -1,5 +1,5 @@
 /*
- * Styles the library UI frame and sashes, list header and filter bar under .ls-library on the --ls-* tokens.
+ * Styles the library UI frame and sashes, list header under .ls-library on the --ls-* tokens.
  * Requires tokens.css and base.css; the list and the detail pane have their own sheets.
  */
 .ls-library {
@@ -60,34 +60,7 @@ body, #root { display: flex; flex-direction: column; }
 .ls-library .sidebar-toggle { margin-right: var(--ls-space-1); }
 .ls-library:not(.sidebar-collapsed) .sidebar-toggle, .ls-library:not(.has-sidebar) .sidebar-toggle { display: none; }
 
-/* ── Filter bar: status tabs and subfolder chips ────────────────── */
-.ls-library .filter-bar {
-  display: flex; align-items: center; gap: var(--ls-space-5); flex-shrink: 0; min-height: 30px; padding: 3px var(--ls-space-5); overflow: hidden;
-  border-bottom: 1px solid var(--ls-border-soft);
-}
-.ls-library .status-filters { display: flex; align-items: center; gap: var(--ls-space-1); flex-shrink: 0; }
-.ls-library .status-tab {
-  display: inline-flex; align-items: center; gap: 5px; padding: var(--ls-space-1) var(--ls-space-4); border-radius: var(--ls-radius-pill);
-  border: none; background: none; cursor: pointer; font-size: var(--ls-text-sm); color: var(--ls-desc);
-  transition: background var(--ls-fast), color var(--ls-fast);
-}
-.ls-library .status-tab:hover { color: var(--ls-fg); background: var(--ls-toolbar-hover); }
-.ls-library .status-tab.active { color: var(--ls-fg); background: var(--ls-list-inactive-bg); font-weight: 600; }
-.ls-library .status-tab .n { font-weight: 400; opacity: .7; }
-/* The No text filter sits apart from the status tabs, behind a thin rule. */
-.ls-library .status-tab.tl-tab { position: relative; margin-left: var(--ls-space-3); }
-.ls-library .status-tab.tl-tab::before {
-  content: ""; position: absolute; left: calc(-1 * var(--ls-space-2)); top: var(--ls-space-2); bottom: var(--ls-space-2);
-  border-left: 1px solid var(--ls-border-soft);
-}
-.ls-library .status-tab.tl-tab svg { width: 12px; height: 12px; color: var(--ls-warning); }
-.ls-library .sub-strip {
-  display: flex; align-items: center; gap: var(--ls-space-2); flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none;
-  padding-left: var(--ls-space-5); border-left: 1px solid var(--ls-border-soft);
-}
-.ls-library .sub-strip::-webkit-scrollbar { display: none; }
-.ls-library .sub-strip:empty { display: none; }
 /* While papers are dragged, every place they can be dropped lights up. */
-.ls-library.dragging-papers .ls-chip, .ls-library.dragging-papers .crumb:not(.current) { border-color: var(--ls-focus); border-style: dashed; }
+.ls-library.dragging-papers .crumb:not(.current) { border-color: var(--ls-focus); border-style: dashed; }
 .ls-library .drop-target { background: var(--ls-list-drop-bg) !important; outline: 1px dashed var(--ls-focus); outline-offset: -1px; }
 

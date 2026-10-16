@@ -1,5 +1,5 @@
-/** Exports the library UI derivations' public API: list rows, scope and counts, sorting, folders, the folder tree, text layers, related papers, sidecar summaries. */
-export { listPapersUnder, papersInScope, statusCounts } from "./listPapers.js";
+/** Exports the library UI derivations' public API: list rows, scope, sorting, folders, the folder tree, text layers, related papers, sidecar summaries. */
+export { listPapersUnder, papersInScope } from "./listPapers.js";
 export type { ListPaper } from "./listPapers.js";
 export { firstSortDir, sortPapers } from "./sortPapers.js";
 export { flattenFolders, folderNameProblem } from "./folders.js";

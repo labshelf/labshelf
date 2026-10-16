@@ -1,5 +1,5 @@
 /**
- * Builds the library UI frame once: an optional sidebar slot, the list pane (header, filter bar, list, and the
+ * Builds the library UI frame once: an optional sidebar slot, the list pane (header, list, and the
  * citation map that takes their place while it is open) and the detail pane, with a sash beside each side pane. Navigation never rebuilds it; each view repaints its own slice.
  */
 import { el } from "../../../ui/dom/index.js";
@@ -13,7 +13,6 @@ interface FrameSlots {
   /** Present when the host asked for a sidebar; the host fills it. */
   sidebar: HTMLElement | null;
   header: HTMLElement;
-  filterBar: HTMLElement;
   list: HTMLElement;
   citationMap: HTMLElement;
   detail: HTMLElement;
@@ -38,14 +37,13 @@ export function buildFrame(host: HTMLElement, prefs: PrefsPort, withSidebar: boo
   const saved = prefs.load();
   const root = el("div", { class: ["ls-library", ...(withSidebar ? ["has-sidebar"] : [])].join(" ") });
   const header = el("div", { class: "list-header" });
-  const filterBar = el("div", { class: "filter-bar" });
   const list = el("div", { class: "list-body" });
   const citationMap = el("section", { class: "citation-map", "aria-label": "Citation map", hidden: true });
   const detail = el("aside", { class: "detail-pane", "aria-label": "Paper details" });
   detail.style.width = `${saved.detailWidth}px`;
   root.classList.toggle(COLLAPSED_CLASS.detail, saved.detailCollapsed);
   const detailSide = sidePane(root, detail, "detail", prefs);
-  const listPane = el("section", { class: "list-pane" }, header, filterBar, list, citationMap);
+  const listPane = el("section", { class: "list-pane" }, header, list, citationMap);
   let sidebar: HTMLElement | null = null;
   const disposers = [detailSide.dispose];
   if (withSidebar) {
@@ -58,7 +56,7 @@ export function buildFrame(host: HTMLElement, prefs: PrefsPort, withSidebar: boo
   }
   root.append(listPane, detailSide.sash, detail);
   host.append(root);
-  return { root, sidebar, header, filterBar, list, citationMap, detail, dispose: () => disposers.forEach((d) => d()) };
+  return { root, sidebar, header, list, citationMap, detail, dispose: () => disposers.forEach((d) => d()) };
 }
 
 /** Shows a side pane if it is collapsed, and saves that. */

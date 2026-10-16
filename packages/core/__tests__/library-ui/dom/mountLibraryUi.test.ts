@@ -21,11 +21,21 @@ describe("mountLibraryUi", () => {
     expect(t.sent.filter((m) => m.type === "navigate")).toEqual([{ type: "navigate", folder: "papers/A" }]);
   });
 
-  it("tells the host when the user opens a subfolder chip, resetting search and selection", () => {
+  it("opens the library root with the status a host scope asks for", () => {
+    const t = mountForTest();
+    t.snapshot([...library.map((p) => ({ ...p, status: "done" as const })), paper("u", "papers/A", { title: "Unread paper" })], [], folders);
+    t.lib.store.openFolder("papers/A");
+    t.lib.store.set({ query: "paper" });
+    t.host.post({ type: "scope", status: "unread" });
+    expect(t.lib.store.get()).toMatchObject({ folder: "papers", status: "unread", query: "" });
+    expect(t.rowIds()).toEqual(["u"]);
+  });
+
+  it("tells the host when the user opens a folder, resetting search and selection", () => {
     const t = mountForTest();
     t.snapshot(library, [], folders);
     t.lib.store.set({ query: "paper", selected: new Set(["r"]) });
-    t.container.querySelector<HTMLElement>(".ls-chip")!.click();
+    t.lib.store.openFolder("papers/A");
     expect(t.sent).toContainEqual({ type: "navigate", folder: "papers/A" });
     expect(t.lib.store.get()).toMatchObject({ folder: "papers/A", query: "", status: "all" });
     expect(t.lib.store.get().selected.size).toBe(0);

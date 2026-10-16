@@ -1,6 +1,6 @@
 import { parseQuery, type PaperRecord } from "@labshelf/core";
 import { PAPERS_DIR } from "@labshelf/core";
-import { listPapersUnder, papersInScope, statusCounts } from "../../../src/library-ui/derive/listPapers";
+import { listPapersUnder, papersInScope } from "../../../src/library-ui/derive/listPapers";
 
 function paper(id: string, dir: string, extra: Partial<PaperRecord> = {}): PaperRecord {
   return { id, title: id, path: `${dir}/${id}`, citeKey: id, status: "unread", ...extra };
@@ -35,21 +35,20 @@ describe("listPapersUnder", () => {
 });
 
 
-describe("papersInScope + statusCounts", () => {
+describe("papersInScope", () => {
   const all = listPapersUnder(papers, PAPERS_DIR);
-  const scope = (query: string, includeSub = false): string[] => papersInScope(all, parseQuery(query), includeSub).map((p) => p.id);
+  const scope = (query: string): string[] => papersInScope(all, parseQuery(query)).map((p) => p.id);
 
-  it("honours the subfolder toggle when there is no query", () => {
-    expect(scope("")).toEqual(["root1"]);
-    expect(scope("", true)).toHaveLength(4);
+  it("keeps every paper of the subtree when there is no query", () => {
+    expect(scope("")).toHaveLength(4);
   });
   it("treats an operator without a value as no query", () => {
-    expect(scope("author:")).toEqual(["root1"]);
+    expect(scope("author:")).toHaveLength(4);
   });
   it("searches the whole subtree with every term required", () => {
     expect(scope("eve")).toEqual(["a11"]);
     expect(scope("eve graphs")).toEqual(["a11"]);
-    expect(scope("eve nature", true)).toEqual([]);
+    expect(scope("eve nature")).toEqual([]);
   });
   it("matches the folder path shown in the row", () => {
     expect(scope('"a / a1"')).toEqual(["a11"]);
@@ -68,9 +67,6 @@ describe("papersInScope + statusCounts", () => {
   });
   it("folds accents on both sides", () => {
     expect(scope("cafe")).toEqual(["root1"]);
-  });
-  it("counts each status", () => {
-    expect(statusCounts(all)).toEqual({ all: 4, unread: 2, reading: 1, done: 1 });
   });
 });
 
