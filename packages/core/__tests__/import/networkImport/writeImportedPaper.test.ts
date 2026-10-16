@@ -36,4 +36,23 @@ describe("writeImportedPaper", () => {
 
     expect(record.id).toBe("lee2020selfattentionb");
   });
+
+  it("writes the PDF's version beside the PDF", async () => {
+    const h = makeHarness();
+
+    const record = await writeImportedPaper(h.ctx, [], PAPERS, { metadata, pdf: pdfBytes(), pdfVersion: "accepted", log });
+
+    expect(await h.readMeta(record.path)).toMatchObject({ pdfVersion: "accepted" });
+    expect(h.logs.find((l) => l.message === "Paper captured")).toMatchObject({ context: { pdfVersion: "accepted" } });
+  });
+
+  it("writes no version without a PDF, or for a PDF of unknown version", async () => {
+    const h = makeHarness();
+
+    const noPdf = await writeImportedPaper(h.ctx, [], PAPERS, { metadata, pdfVersion: "preprint", log });
+    const unlabelled = await writeImportedPaper(h.ctx, [noPdf.id], PAPERS, { metadata, pdf: pdfBytes(), log });
+
+    expect(await h.readMeta(noPdf.path)).not.toHaveProperty("pdfVersion");
+    expect(await h.readMeta(unlabelled.path)).not.toHaveProperty("pdfVersion");
+  });
 });

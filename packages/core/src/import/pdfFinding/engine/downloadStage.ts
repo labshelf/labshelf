@@ -1,6 +1,7 @@
 /** Downloads ranked candidates a few at a time and keeps the best-ranked PDF, within the run's time limits. */
 import { downloadPdf, type DownloadOutcome } from "../download/index.js";
 import { reportError, warn } from "../env.js";
+import { compareVersions } from "../../../model/index.js";
 import type { PdfAttempt, PdfFetchOptions, ResolveContext, ResolvedPdf, ResolverEnv } from "../types.js";
 import { deadline } from "./deadline.js";
 import { pacedFetch } from "./domainPacer.js";
@@ -20,8 +21,9 @@ interface Taken {
 
 /**
  * Takes candidates in rank order, `limits.concurrency` at a time. A candidate that hits a bot wall is retried through
- * the host's helper tab at once, without holding a download slot. The first PDF waits up to `limits.holdMs` for
- * better-ranked downloads still in flight, then the best-ranked PDF wins and the rest are cancelled. `attempts`
+ * the host's helper tab at once, without holding a download slot. A PDF ranks by its version first (published and
+ * unlabelled, then accepted, then preprint), then by rank order. The first PDF waits up to `limits.holdMs` for
+ * better-ranking downloads still in flight, then the best PDF wins and the rest are cancelled. `attempts`
  * receives every finished download, in rank order.
  */
 export async function downloadBest(
@@ -84,10 +86,17 @@ function wakeup(signal: AbortSignal): Waker {
   return { changed: () => new Promise((resolve) => { wake = resolve; }), wake: () => wake() };
 }
 
-// The first PDF in rank order, after waiting up to `holdMs` for better-ranked downloads still in flight.
+// The best PDF by version, then rank order, after waiting up to `holdMs` for better downloads still in flight: those
+// ranked above it, and those below it whose label says they are a better version. An unlabelled copy ranked below a
+// preprint is not worth the wait; most are the wrong file or HTML.
 async function pickWinner(taken: Taken[], running: () => boolean, { changed, wake }: Waker, holdMs: number): Promise<Taken | undefined> {
-  const best = (): Taken | undefined => taken.find((t) => t.outcome?.pdf);
-  const betterInFlight = (winner: Taken): boolean => taken.slice(0, taken.indexOf(winner)).some((t) => !t.outcome);
+  const outranks = (a: Taken, b: Taken): boolean =>
+    (compareVersions(a.candidate.version, b.candidate.version) || taken.indexOf(a) - taken.indexOf(b)) < 0;
+  const best = (): Taken | undefined =>
+    taken.filter((t) => t.outcome?.pdf).reduce<Taken | undefined>((top, t) => (!top || outranks(t, top) ? t : top), undefined);
+  const worthWaiting = (t: Taken, winner: Taken): boolean =>
+    outranks(t, winner) && (taken.indexOf(t) < taken.indexOf(winner) || t.candidate.version !== undefined);
+  const betterInFlight = (winner: Taken): boolean => taken.some((t) => !t.outcome && worthWaiting(t, winner));
   while (running() && !best()) await changed();
   const first = best();
   if (first && betterInFlight(first)) {
@@ -127,5 +136,7 @@ function settle(taken: Taken[], winner: Taken | undefined, attempts: PdfAttempt[
     attempts.push({ source: candidate.source, url: candidate.url, outcome: ended.outcome, ...(ended.status !== undefined ? { status: ended.status } : {}) });
   }
   const pdf = winner?.outcome?.pdf;
-  return pdf ? { bytes: pdf.bytes, url: pdf.url, source: winner.candidate.source } : undefined;
+  if (!pdf) return undefined;
+  const { source, version } = winner.candidate;
+  return { bytes: pdf.bytes, url: pdf.url, source, ...(version ? { version } : {}) };
 }

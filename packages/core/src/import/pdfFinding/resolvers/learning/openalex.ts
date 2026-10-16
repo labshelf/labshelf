@@ -1,5 +1,6 @@
 // Looks up OpenAlex's record for a DOI or work id, proposing its publisher and repository copies and learning `pmcid` and `arxivId`.
 import { arxivIdFromUrl, normalizePmcid, pmcidFromUrl } from "../../../identifiers/index.js";
+import { noteVersion, versionFromOaLabel } from "../candidateVersion.js";
 import { lookupJson } from "../timedFetch.js";
 import type { PdfResolver, ResolveContext, ResolverEnv } from "../../types.js";
 import { acceptRecord } from "./acceptRecord.js";
@@ -12,6 +13,7 @@ interface OpenAlexLocation {
   landing_page_url?: string | null;
   is_oa?: boolean | null;
   source?: { type?: string | null } | null;
+  version?: string | null;
 }
 
 interface OpenAlexWork {
@@ -51,6 +53,10 @@ export async function openAlexCopies(ctx: ResolveContext, env: ResolverEnv, work
   if (!acceptRecord("openalex", ctx, env, record)) return [];
   const locations = [work.best_oa_location, ...(work.locations ?? [])].filter((l): l is OpenAlexLocation => Boolean(l));
   learnIdentifiers(ctx, work, locations);
+  for (const loc of locations) {
+    const version = versionFromOaLabel(loc.version, isPublisherSource(loc));
+    for (const url of [loc.pdf_url, loc.landing_page_url]) if (url) noteVersion(ctx, url, version);
+  }
   return copiesOf(work, locations);
 }
 
@@ -60,6 +66,12 @@ function learnIdentifiers(ctx: ResolveContext, work: OpenAlexWork, locations: Op
     pmcid: normalizePmcid(work.ids?.pmcid ?? undefined) ?? urls.map(pmcidFromUrl).find(Boolean),
     arxivId: urls.map(arxivIdFromUrl).find(Boolean),
   });
+}
+
+// OpenAlex types a location's source; journals, conferences and book platforms are the publisher's own site.
+function isPublisherSource(loc: OpenAlexLocation): boolean {
+  const type = (loc.source?.type ?? "").toLowerCase();
+  return type !== "" && type !== "repository";
 }
 
 // PMC and arXiv copies are left to the resolvers that know how to fetch them.

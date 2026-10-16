@@ -1,4 +1,5 @@
 /** Declares the PDF finder's shapes: what a resolver knows, what it proposes, and the ports a host supplies for downloading. */
+import type { PdfVersion } from "../../model/index.js";
 import type { ILogger } from "../../ports/index.js";
 import type { PdfCandidate } from "../landing/index.js";
 
@@ -75,6 +76,10 @@ export interface ResolveContext {
   contactEmail: string;
   /** The user's custom resolvers; the enabled ones propose addresses built from the DOI. */
   customResolvers?: readonly CustomResolver[];
+  /** Versions that lookups' sources gave for their URLs, keyed by URL; filled as lookups answer. */
+  versions?: Map<string, PdfVersion>;
+  /** Set when the paper already has a PDF of this version: only a copy that outranks it is wanted. */
+  betterThan?: PdfVersion;
 }
 
 /** What a resolver runs with: the host's network and logger. */
@@ -95,6 +100,8 @@ export interface ResolvedPdf {
   url: string;
   /** The resolver that suggested it. */
   source: string;
+  /** Which version of the paper it is, when its source said so. */
+  version?: PdfVersion;
 }
 
 /** How a download hop ended: the PDF, a bot check, a login or paywall, an HTML page without a PDF, or a failure. */

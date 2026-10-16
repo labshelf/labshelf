@@ -1,4 +1,5 @@
 /** Looks for an identified paper's PDF through the resolver chain and logs what it tried when nothing downloads. */
+import type { PdfVersion } from "../../model/index.js";
 import type { DetectedIds } from "../identifiers/index.js";
 import type { PdfCandidate } from "../landing/index.js";
 import type { ResolvedMetadata } from "../metadata/index.js";
@@ -15,6 +16,8 @@ export interface PdfSearch extends Partial<ResolveOptions> {
   metadata: ResolvedMetadata;
   landingUrl?: string | undefined;
   pageCandidates?: PdfCandidate[];
+  /** The version of the PDF the paper already has; set, only a copy that outranks it is looked for. */
+  betterThan?: PdfVersion | undefined;
   /** What the user gave or the page the paper came from, to tell the log lines apart. */
   input: string;
 }
@@ -34,11 +37,12 @@ export async function findPaperPdf(
       customResolvers: search.customResolvers,
     }),
     ...(search.pmcid ? { pmcid: search.pmcid } : {}),
+    ...(search.betterThan ? { betterThan: search.betterThan } : {}),
   };
   const found = await resolvePdf(context, fetchOptions, attempts);
   const { logger } = makeEnv(fetchOptions);
   if (found) {
-    await logger.log("INFO", "pdfFinding", "PDF found", { input: search.input, source: found.source, url: found.url, bytes: found.bytes.length });
+    await logger.log("INFO", "pdfFinding", "PDF found", { input: search.input, source: found.source, version: found.version, url: found.url, bytes: found.bytes.length });
   } else {
     await logger.log("INFO", "pdfFinding", "No PDF found", { input: search.input, attempts: attempts.map((a) => `${a.source}: ${a.url}`) });
   }

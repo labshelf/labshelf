@@ -1,5 +1,6 @@
 /** Contract of the download stage: rank beats arrival within the hold, concurrency and time limits hold. */
-import { downloadBest, type EngineLimits } from "../../../../src/import/pdfFinding/engine/index";
+import { downloadBest, type Candidate, type EngineLimits } from "../../../../src/import/pdfFinding/engine/index";
+import type { PdfVersion } from "@labshelf/core";
 import type { PdfAttempt } from "../../../../src/import/pdfFinding/types";
 import { pdf, makeContext, html } from "../../../support/pdfFindingHarness";
 import { candidatesOf, FAST_LIMITS, makeSlowNetwork } from "../../../support/slowNetwork";
@@ -67,6 +68,79 @@ describe("downloadBest ordering", () => {
     net.routes[A] = { res: pdf };
     await run([A], net, {}, makeContext({ landingUrl: "https://publisher.example/article" }));
     expect(net.calls[0]?.referer).toBe("https://publisher.example/article");
+  });
+});
+
+describe("downloadBest versions", () => {
+  async function* versioned(...entries: Array<[string, PdfVersion | undefined]>): AsyncGenerator<Candidate, void, undefined> {
+    for (const [url, version] of entries) yield { url, source: `s:${new URL(url).host}`, ...(version ? { version } : {}) };
+  }
+
+  async function runVersioned(entries: Array<[string, PdfVersion | undefined]>, net: ReturnType<typeof makeSlowNetwork>, holdMs = 600) {
+    const attempts: PdfAttempt[] = [];
+    const found = await downloadBest(makeContext(), versioned(...entries), { opts: {}, env: net.env, limits: { ...FAST_LIMITS, holdMs } }, attempts);
+    return { found, attempts };
+  }
+
+  it("a published candidate outranks a preprint ranked earlier that finishes first", async () => {
+    const net = makeSlowNetwork();
+    net.routes[A] = { res: pdf };
+    net.routes[B] = { ms: 80, res: pdf };
+    const { found, attempts } = await runVersioned([[A, "preprint"], [B, "published"]], net);
+    expect(found).toMatchObject({ url: B, source: "s:b.example", version: "published" });
+    expect(attempts.map((a) => a.url)).toEqual([A, B]);
+  });
+
+  it("an untagged PDF that finishes first outranks a preprint ranked earlier, and the result carries no version", async () => {
+    const net = makeSlowNetwork();
+    net.routes[A] = { ms: 80, res: pdf };
+    net.routes[B] = { res: pdf };
+    const { found } = await runVersioned([[A, "preprint"], [B, undefined]], net);
+    expect(found?.url).toBe(B);
+    expect(found).not.toHaveProperty("version");
+  });
+
+  it("a preprint does not wait for an untagged download ranked below it", async () => {
+    const net = makeSlowNetwork();
+    net.routes[A] = { res: pdf };
+    net.routes[B] = { ms: 300, res: pdf };
+    const started = Date.now();
+    const { found } = await runVersioned([[A, "preprint"], [B, undefined]], net, 600);
+    expect(found).toMatchObject({ url: A, version: "preprint" });
+    expect(Date.now() - started).toBeLessThan(250);
+  });
+
+  it("an accepted candidate outranks a preprint and yields to a published one", async () => {
+    const net = makeSlowNetwork();
+    net.routes[A] = { res: pdf };
+    net.routes[B] = { ms: 40, res: pdf };
+    net.routes[C] = { ms: 80, res: pdf };
+    expect((await runVersioned([[A, "preprint"], [B, "accepted"], [C, "published"]], net)).found).toMatchObject({ url: C, version: "published" });
+    expect((await runVersioned([[A, "preprint"], [B, "accepted"]], net)).found).toMatchObject({ url: B, version: "accepted" });
+  });
+
+  it("falls back to the rank order between equal versions", async () => {
+    const net = makeSlowNetwork();
+    net.routes[A] = { ms: 80, res: pdf };
+    net.routes[B] = { res: pdf };
+    expect((await runVersioned([[A, "published"], [B, "published"]], net)).found?.url).toBe(A);
+  });
+
+  it("a preprint wins when it is the only PDF", async () => {
+    const net = makeSlowNetwork();
+    net.routes[B] = { res: pdf };
+    const { found } = await runVersioned([[A, "published"], [B, "preprint"]], net);
+    expect(found).toMatchObject({ url: B, version: "preprint" });
+  });
+
+  it("does not wait for a worse version still downloading", async () => {
+    const net = makeSlowNetwork();
+    net.routes[A] = { res: pdf };
+    net.routes[B] = { ms: 1_500, res: pdf };
+    const started = Date.now();
+    const { found } = await runVersioned([[A, "published"], [B, "preprint"]], net);
+    expect(found?.url).toBe(A);
+    expect(Date.now() - started).toBeLessThan(500);
   });
 });
 

@@ -69,3 +69,17 @@ describe("paperRecordFromMetadata", () => {
     expect(record.authors).toEqual(["", "Noam Shazeer"]);
   });
 });
+
+describe("paperRecordFromMetadata pdfVersion", () => {
+  it.each(["preprint", "accepted", "published"])("reads %s", (pdfVersion) => {
+    expect(paperRecordFromMetadata({ pdfVersion }, location).pdfVersion).toBe(pdfVersion);
+  });
+
+  it.each([["final"], [3], [null], [""]])("ignores the invalid value %p", (pdfVersion) => {
+    expect(paperRecordFromMetadata({ pdfVersion }, location)).not.toHaveProperty("pdfVersion");
+  });
+
+  it("loads a sidecar that has no pdfVersion", () => {
+    expect(paperRecordFromMetadata({ title: "A" }, location)).not.toHaveProperty("pdfVersion");
+  });
+});

@@ -61,7 +61,7 @@ describe("resolvePdf", () => {
   it("asks Unpaywall with the contact email and uses its open-access copy", async () => {
     const h = makeFindingHarness();
     h.routes["https://api.unpaywall.org/v2/10.9999%2Foa?email=me%40uni.edu"] = () =>
-      json({ best_oa_location: { url_for_pdf: "https://repo.example/oa.pdf" } });
+      json({ best_oa_location: { url_for_pdf: "https://repo.example/oa.pdf", version: "submittedVersion" } });
     h.routes["https://repo.example/oa.pdf"] = pdf;
     expect((await resolvePdf(makeContext({ doi: "10.9999/oa" }), h.opts()))?.source).toBe("unpaywall");
   });
@@ -79,6 +79,25 @@ describe("resolvePdf", () => {
     const customResolvers = [{ name: "Mirror", template: "https://mirror.example/find/{doi}", enabled: true }];
     const got = await resolvePdf(makeContext({ doi: "10.9999/closed", customResolvers }), h.opts());
     expect(got).toMatchObject({ source: "custom", url: "https://files.example/x.pdf#navpanes=0" });
+  });
+
+  it("labels an arXiv-only paper's PDF a preprint", async () => {
+    const h = makeFindingHarness();
+    h.routes["https://arxiv.org/pdf/2301.00001"] = pdf;
+    expect(await resolvePdf(makeContext({ arxivId: "2301.00001" }), h.opts())).toMatchObject({ source: "arxiv", version: "preprint" });
+  });
+
+  it("prefers the published copy over arXiv's preprint, whichever answers first", async () => {
+    const h = makeFindingHarness();
+    h.routes["https://arxiv.org/pdf/2301.00001"] = pdf;
+    h.routes["https://dl.acm.org/doi/pdf/10.1145/1.2"] = () => new Promise<Response>((resolve) => setTimeout(() => resolve(pdf()), 40));
+    expect(await resolvePdf(makeContext({ arxivId: "2301.00001", doi: "10.1145/1.2" }), h.opts())).toMatchObject({ source: "publisher", version: "published" });
+  });
+
+  it("does not return a copy that is no better than the one the paper has", async () => {
+    const h = makeFindingHarness();
+    h.routes["https://arxiv.org/pdf/2301.00001"] = pdf;
+    expect(await resolvePdf(makeContext({ arxivId: "2301.00001", betterThan: "preprint" }), h.opts())).toBeUndefined();
   });
 
   it("returns undefined when nothing downloads as a PDF", async () => {
@@ -127,7 +146,7 @@ describe("the order of the chain", () => {
   it("keeps the better-ranked PDF when a lower-ranked one arrives first", async () => {
     const h = makeFindingHarness();
     h.routes["https://arxiv.org/pdf/2301.00001"] = () => new Promise<Response>((resolve) => setTimeout(() => resolve(pdf()), 60));
-    h.routes["https://api.unpaywall.org/v2/10.1%2Fx?email=me%40uni.edu"] = () => json({ best_oa_location: { url_for_pdf: "https://repo.example/oa.pdf" } });
+    h.routes["https://api.unpaywall.org/v2/10.1%2Fx?email=me%40uni.edu"] = () => json({ best_oa_location: { url_for_pdf: "https://repo.example/oa.pdf", version: "submittedVersion" } });
     h.routes["https://repo.example/oa.pdf"] = pdf;
     const attempts: PdfAttempt[] = [];
     const got = await resolvePdf(makeContext({ arxivId: "2301.00001", doi: "10.1/x" }), h.opts(), attempts);

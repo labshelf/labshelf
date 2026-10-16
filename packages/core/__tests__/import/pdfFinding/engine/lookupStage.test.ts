@@ -58,7 +58,7 @@ describe("startLookups and rankedCandidates", () => {
     const net = makeSlowNetwork();
     net.routes[S2] = { ms: 80, res: () => json({ title: "T", externalIds: { ArXiv: "hep-th/9711200" } }) };
     const got = await collect(makeContext({ doi: DOI }), net);
-    expect(got.filter((c) => c.source === "arxiv")).toEqual([{ url: "https://arxiv.org/pdf/hep-th/9711200", source: "arxiv" }]);
+    expect(got.filter((c) => c.source === "arxiv")).toEqual([{ url: "https://arxiv.org/pdf/hep-th/9711200", source: "arxiv", version: "preprint" }]);
   });
 
   it("proposes a URL once even when two lookups offer it", async () => {
@@ -81,6 +81,55 @@ describe("startLookups and rankedCandidates", () => {
     const out: Candidate[] = [];
     for await (const c of rankedCandidates(steps)) out.push(c);
     expect(out.map((c) => c.source)).toEqual(["publisher", "arxiv"]);
+  });
+});
+
+describe("candidate versions", () => {
+  const OA = "https://oa.example/accepted.pdf";
+  const PRE = "https://repo.example/submitted.pdf";
+
+  function withLabels(net: SlowNetwork): void {
+    net.routes[UNPAYWALL] = {
+      res: () => json({
+        best_oa_location: { url_for_pdf: OA, version: "acceptedVersion" },
+        oa_locations: [{ url_for_pdf: PRE, version: "submittedVersion" }, { url_for_pdf: "https://mirror.example/p.pdf" }],
+      }),
+    };
+  }
+
+  it("labels a candidate with its source's label, its preprint server or its publisher rule, and leaves the rest unlabelled", async () => {
+    const net = makeSlowNetwork();
+    withLabels(net);
+    const got = await collect(makeContext({ doi: DOI, arxivId: "2301.00001" }), net);
+    expect(got.map((c) => [c.url, c.version])).toEqual([
+      ["https://dl.acm.org/doi/pdf/10.1145/1.2", "published"],
+      ["https://arxiv.org/pdf/2301.00001", "preprint"],
+      [OA, "accepted"],
+      [PRE, "preprint"],
+      ["https://mirror.example/p.pdf", undefined],
+    ]);
+    expect(got.at(-1)).not.toHaveProperty("version");
+  });
+
+  it("drops the preprints and keeps the accepted, published and unlabelled copies when the paper has a preprint already", async () => {
+    const net = makeSlowNetwork();
+    withLabels(net);
+    const got = await collect(makeContext({ doi: DOI, arxivId: "2301.00001", betterThan: "preprint" }), net);
+    expect(got.map((c) => c.url)).toEqual(["https://dl.acm.org/doi/pdf/10.1145/1.2", OA, "https://mirror.example/p.pdf"]);
+  });
+
+  it("wants only published and unlabelled copies when the paper has an accepted version already", async () => {
+    const net = makeSlowNetwork();
+    withLabels(net);
+    const got = await collect(makeContext({ doi: DOI, arxivId: "2301.00001", betterThan: "accepted" }), net);
+    expect(got.map((c) => c.url)).toEqual(["https://dl.acm.org/doi/pdf/10.1145/1.2", "https://mirror.example/p.pdf"]);
+  });
+
+  it("keeps every candidate when the paper has no PDF", async () => {
+    const net = makeSlowNetwork();
+    withLabels(net);
+    const got = await collect(makeContext({ doi: DOI, arxivId: "2301.00001" }), net);
+    expect(got).toHaveLength(5);
   });
 });
 

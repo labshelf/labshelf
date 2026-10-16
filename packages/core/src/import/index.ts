@@ -17,8 +17,9 @@ export {
   dblpSearch,
   googleBooksByIsbn,
   DEFAULT_CONTACT_EMAIL,
+  publishedDoiOf,
 } from "./registries/index.js";
-export type { RegistryEnv, RegistryRecord } from "./registries/index.js";
+export type { PreprintIds, RegistryEnv, RegistryRecord } from "./registries/index.js";
 export * from "./lookup/index.js";
 export * from "./pdf/index.js";
 export * from "./bibtex/index.js";
@@ -26,3 +27,4 @@ export * from "./landing/index.js";
 export * from "./resolution/index.js";
 export * from "./pdfFinding/index.js";
 export * from "./networkImport/index.js";
+export * from "./pdfMatch/index.js";

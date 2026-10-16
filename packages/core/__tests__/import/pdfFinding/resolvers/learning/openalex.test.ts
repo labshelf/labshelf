@@ -62,4 +62,48 @@ describe("openalexResolver", () => {
     expect(await openalexResolver.resolve(makeContext({ pmid: "123" }), h.env)).toEqual([]);
     expect(h.calls).toEqual([]);
   });
+
+  it("notes each location's version label for its PDF and landing URLs, keeping the first label", async () => {
+    const h = makeFindingHarness();
+    h.routes[LOOKUP] = () => json({
+      title: work.title,
+      best_oa_location: { pdf_url: "https://pub.example/p.pdf", is_oa: true, version: "publishedVersion" },
+      locations: [
+        { pdf_url: "https://pub.example/p.pdf", is_oa: true, version: "submittedVersion" },
+        { pdf_url: "https://repo.example/r.pdf", landing_page_url: "https://repo.example/handle/1", is_oa: true, version: "acceptedVersion" },
+        { pdf_url: "https://pre.example/p.pdf", is_oa: true, version: "submittedVersion" },
+        { pdf_url: "https://odd.example/p.pdf", is_oa: true, version: "other" },
+      ],
+    });
+    const ctx = makeContext({ doi: "10.1/x" });
+    await openalexResolver.resolve(ctx, h.env);
+    expect(Object.fromEntries(ctx.versions!)).toEqual({
+      "https://pub.example/p.pdf": "published",
+      "https://repo.example/r.pdf": "accepted",
+      "https://repo.example/handle/1": "accepted",
+      "https://pre.example/p.pdf": "preprint",
+    });
+  });
+
+  it("keeps no pre-publication label on a copy from a journal source", async () => {
+    const h = makeFindingHarness();
+    h.routes[LOOKUP] = () => json({
+      title: work.title,
+      locations: [
+        { pdf_url: "https://journals.plos.org/p.pdf", is_oa: true, version: "submittedVersion", source: { type: "journal" } },
+        { pdf_url: "https://repo.example/r.pdf", is_oa: true, version: "submittedVersion", source: { type: "repository" } },
+      ],
+    });
+    const ctx = makeContext({ doi: "10.1/x" });
+    await openalexResolver.resolve(ctx, h.env);
+    expect(Object.fromEntries(ctx.versions!)).toEqual({ "https://repo.example/r.pdf": "preprint" });
+  });
+
+  it("notes no version from a record it rejects", async () => {
+    const h = makeFindingHarness();
+    h.routes[LOOKUP] = () => json({ ...work, best_oa_location: { ...work.best_oa_location, version: "publishedVersion" } });
+    const ctx = makeContext({ doi: "10.1/x", title: "A thesis about something else entirely" });
+    await openalexResolver.resolve(ctx, h.env);
+    expect(ctx.versions).toBeUndefined();
+  });
 });

@@ -1,21 +1,25 @@
 /** Starts every lookup at once, each under its own deadline, and hands their candidates out in rank order. */
 import { isSupplementaryUrl } from "../download/index.js";
 import { reportError } from "../env.js";
+import { outranksVersion, type PdfVersion } from "../../../model/index.js";
+import { candidateVersion } from "../resolvers/index.js";
 import type { PdfFetchOptions, PdfResolver, ResolveContext, ResolverEnv } from "../types.js";
 import { deadline } from "./deadline.js";
 import { landingLookup } from "./landingLookup.js";
 import { lookupPlan } from "./lookupPlan.js";
 
-/** A URL to download, labelled with whoever proposed it. */
+/** A URL to download, labelled with whoever proposed it and, when known, the version of the paper it holds. */
 export interface Candidate {
   url: string;
   source: string;
+  version?: PdfVersion;
 }
 
 /**
  * Starts the lookups in `lookupPlan`; a step with `after` starts once those settle. Each lookup is cut at `capMs` from
  * its own start, and all of them when `runSignal` aborts.
- * @returns each step's candidates, in rank order; a step that fails or is cut yields []
+ * @returns each step's candidates, in rank order, without those `ctx.betterThan` rules out; a step that fails or is cut
+ * yields []
  */
 export function startLookups(
   ctx: ResolveContext,
@@ -29,7 +33,7 @@ export function startLookups(
     const ready = Promise.all((step.after ?? []).map((r) => settled.get(r)));
     const answer = ready.then(() => cappedLookup(step.resolver, ctx, env, capMs, runSignal));
     if (!settled.has(step.resolver)) settled.set(step.resolver, answer);
-    return answer.then((urls) => urls.map((url) => ({ url, source: sourceLabel(step.resolver, ctx, url) })));
+    return answer.then((urls) => urls.map((url) => candidate(ctx, step.resolver, url)).filter((c) => wanted(ctx, c)));
   });
 }
 
@@ -68,6 +72,15 @@ async function cappedLookup(
   } finally {
     cap.clear();
   }
+}
+
+function candidate(ctx: ResolveContext, resolver: PdfResolver, url: string): Candidate {
+  const version = candidateVersion(ctx, resolver.name, url);
+  return { url, source: sourceLabel(resolver, ctx, url), ...(version ? { version } : {}) };
+}
+
+function wanted(ctx: ResolveContext, c: Candidate): boolean {
+  return !ctx.betterThan || outranksVersion(c.version, ctx.betterThan);
 }
 
 // Page links keep the label of whoever offered them ("page", "scholar").

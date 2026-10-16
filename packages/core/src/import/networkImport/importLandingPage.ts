@@ -48,6 +48,7 @@ export async function importLandingPage(
   const record = await writeImportedPaper(ctx, env.importDeps().takenIds(), targetDir, {
     metadata: { ...paper.metadata, title: normalizeTitle(title) },
     pdf: pdf?.bytes,
+    pdfVersion: pdf?.version,
     extra: { ...(paper.ids.doi && !paper.metadata.doi ? { doi: paper.ids.doi } : {}) },
     log: { message: "Paper imported from landing page", context: { url: page.finalUrl, origin: paper.origin } },
   });
