@@ -14,3 +14,5 @@ export * from "../writing/figures/node/index.js";
 export * from "../writing/values/node/index.js";
 export * from "../writing/checks/node/index.js";
 export * from "../writing/backlinks/node/index.js";
+export * from "../writing/versions/node/index.js";
+export * from "../writing/compare/node/index.js";

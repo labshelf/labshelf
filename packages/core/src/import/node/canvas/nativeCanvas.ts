@@ -6,6 +6,7 @@ import { pdfjsPackageJson } from "../pdfjsPackage.js";
 export interface NativeCanvasContext {
   fillStyle: string;
   fillRect(x: number, y: number, width: number, height: number): void;
+  getImageData(x: number, y: number, width: number, height: number): { data: Uint8ClampedArray };
 }
 
 export interface NativeCanvas {
