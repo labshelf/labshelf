@@ -1,6 +1,6 @@
 # Plan: Overleaf-like writing workspace in VS Code
 
-Status: in progress (session 7 of 8)
+Status: in progress (session 8 of 8)
 Size: GG — new view model, per-root builds, preview chrome, a reader-host and two library-format changes; grows if Typst root detection needs Tinymist
 Pending decisions: 0
 
@@ -59,12 +59,12 @@ Facts: [research/current-state.md](research/current-state.md), [research/checkli
 - [x] **A14** Outline shows the focused file's sections, marks the current one, follows tabs and edits, and reveals on click; Typst works without Tinymist.
 - [ ] **A15** Figures and Versions appear only while a project is open, collapsed with their count in the header, and are hidden when empty.
 - [x] **A16** Project rows match D13, and the list renders before any count.
-- [ ] **A17** Checklist groups start collapsed, keep their open state across reloads, and switch By kind / By section from the view title, remembered per project.
-- [ ] **A18** Adding `% TODO x` and saving adds an item; removing it and saving removes it; a broken `\ref`, a stale figure and an exceeded page limit each appear and clear.
-- [ ] **A19** By section places items under their heading, items in an included file under its name, and project-wide items under "Whole project".
-- [ ] **A20** Reading behaves as D16; a paper set Done shows under "N read" with today's date.
-- [ ] **A21** Manual items added, checked, deleted land in `.labshelf/checklist.json` and reach a second machine via sync.
-- [ ] **A22** The page chip behaves as D19; no `check.pages`, no chip.
+- [x] **A17** Checklist groups start collapsed, keep their open state across reloads, and switch By kind / By section from the view title, remembered per project.
+- [x] **A18** Adding `% TODO x` and saving adds an item; removing it and saving removes it; a broken `\ref`, a stale figure and an exceeded page limit each appear and clear.
+- [x] **A19** By section places items under their heading, items in an included file under its name, and project-wide items under "Whole project".
+- [x] **A20** Reading behaves as D16; a paper set Done shows under "N read" with today's date.
+- [x] **A21** Manual items added, checked, deleted land in `.labshelf/checklist.json` and reach a second machine via sync.
+- [x] **A22** The page chip behaves as D19; no `check.pages`, no chip.
 - [ ] **A23** Clicking a version opens its PDF; both compare actions open the comparison.
 - [ ] **A24** A cite key hover and a preview citation hover show D21's content; every mark in this plan's UI is an Arc mark.
 

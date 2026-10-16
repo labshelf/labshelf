@@ -1,45 +1,27 @@
-sha: ce0112e
-files: packages/core/src/ui/**, packages/core/src/model/**, packages/core/src/library/**, packages/core/src/writing/**, packages/vscode/src/ui/**, packages/vscode/src/writing/**, packages/vscode/package.json, documents/contracts/library-format.md, documents/contracts/sync.md
-source: four Explore scouts, 2026-10-16 (session 6)
+sha: fc9a469
+files: packages/core/src/writing/checklist/**, packages/core/src/reader/**, packages/core/src/writing/checks/**, packages/core/src/ui/**, packages/vscode/src/writing/**, packages/vscode/package.json, documents/contracts/reader-host.md
+source: three Explore scouts, 2026-10-16 (session 7)
 
-# Facts behind the Arc mark, checklist contracts, checklist model and Projects list
+# Facts for the Checklist view, Reading group and page chip
 
-## Icons and tokens (S6.1)
-- core/src/ui/icons/: `glyphs.ts` (STROKE_GLYPHS 24-grid, CODICON_GLYPHS 16-grid, LOGO_SVG), `icon.ts` `icon(name)` → inline SVG string, no width/height, `aria-hidden`. index exports `icon`, `IconName`. Test `core/__tests__/ui/icons.test.ts` iterates the glyph maps (no snapshots).
-- core/src/ui/dom/: base.css, dom.ts (`$`, `el`, …), theme.ts, tokens.css + vscodeHost.css (generated), settings/, widgets/ (dialog, menu, overlay, quickInput, toast + toast.css). Component CSS sits beside its TS (`widgets/toast.css`), exported as `@labshelf/core/styles/toast.css` (core/package.json:41), imported by vscode webview main.ts:8 and browser HTML `<link>`. CSS tests read the file (`__tests__/ui/dom/toastCss.test.ts`).
-- Tokens are generated from `core/src/ui/tokens/colorTokens.ts` (`token(dark, light)`), `pnpm --filter @labshelf/core tokens`; guarded by `__tests__/ui/tokensCss.test.ts`, `vscodeHostCss.test.ts`. vscodeHost.css maps tokens to `var(--vscode-*)` via `vscodeHostMap.ts`. No `ok`/`accent`/desaturated tokens: closest `--ls-error` #f85149/#a1260d, `--ls-warning` #cca700/#bf8803, `--ls-green` #89d185/#388a34, `--ls-blue` #3794ff/#007acc (dark/light).
-- vscode/src/ui/tabIcon.ts: static `media/labshelf-tab-{light,dark}.svg` pair via `Uri.joinPath(extensionUri, 'media', …)`; no files written, no globalStorageUri, no test.
-- ThemeIcons to replace: vscode/src/writing/figures/figureTreeItem.ts:11,27 (`stale: sync, missing: warning, fresh: graph`). readingList/ has no TreeItem icons. Projects rows: tree/projectsTreeProvider.ts:22,27.
-- No headless check for core DOM; `.claude/skills/verify/` has a CDP + Playwright headless-shell recipe.
+## Signals
+- core writing/checklist/node `readChecklistSignals(project, logger) → {sources, todos, brokenRefs, staleFigures, manual}` does all disk work (main + LaTeX includes; Typst main only, no broken refs); never throws (WARN + empty). `readManualItems`, `updateChecklist(folder, edit)` (atomic, throws on malformed file).
+- core `buildChecklist(input, "kind"|"section") → {groups (non-empty), openCount}`; input `{todos, brokenRefs, staleFigures, pageOverflow?, manual, reading: ReadingItem[], placeSection, citeSections}`; `sectionPlacer(sources, main)`, `citeSections(sources, main)`. Group ids by kind: todo/ref/figure/pages/manual/reading; by section: section ids, "#reading", "#whole-project". Items union by `kind`: todo|ref|figure|pages|manual|reading. openCount excludes Reading.
+- Pure manual edits: `addManualItem(doc,{id,text,now})`, `setManualItemDone`, `removeManualItem`.
+- vscode tree/projectCounts.ts:22-29 already calls buildChecklist for "N open" with `reading: []`, `pageOverflow: undefined`; debounced 300ms per-folder watcher.
+- Diagnostics (not needed: core scan covers refs): labelDiagnostics source "LabShelf", collection "labshelf-labels". No unknown-cite diagnostic.
+- View template: vscode figures/projectFiguresView.ts:20-66 (reload counter, attach(treeView) description, setContext in publish — INVARIANT: from reload, not getChildren). Watchers: figures/figureWatchers.ts:24-47. Tests: __tests__/writing/figures/projectFiguresView.test.ts, fixtures __tests__/support/writingFixtures.ts (readyEntry, fakeProjects, fakeLogger). vscode mock __mocks__/vscode/index.js.
+- Session: session/projectSession.ts `project`, `onDidChange(ReadyProject|undefined)`; context keys projectOpen/inProject. Views package.json:393-420 (figures uses `labshelf.writing.hasFigures`, collapsed). registerProjectViews.ts:23-58, composition registerWritingView.ts ~164-185. tree/ has 7 files (full) → new `writing/checklist/` folder.
 
-## statusChangedAt and checklist.json (S6.2)
-- Single status choke point: core/src/library/mutations/paperFields.ts `setPaperStatus` (:36) and `updatePaperFields` (:25) → `applyPatch` (:52-70, has a `changed` check at :59) → `writePaperRecord(ctx, record, {ownsStatus})` (paperRecordWrite.ts:22-52; `ownsStatus:false` re-reads status from disk via `keptStatus`). Every app's status write goes through these (browser libraryMutations.ts:68, terminal paperService.ts:125-139, vscode core/paperService.ts:76-86,175).
-- Record: core/src/model/paperRecord.ts:9-35 (`pdfRequestedAt?: string|null` is the model optional field); parse `core/src/library/paperMetadata.ts:20-60`; serialize `core/src/import/bibtex/bibtexService.ts:21-24 (OWNED_KEYS), 40-90 (carryOverUserKeys keeps unknown keys)`. New-paper status: library/mutations/import/newPaper.ts:32.
-- Contract: library-format.md:51-82 `## metadata.yaml` (status row :63); `## .labshelf/state.json` :175-191, `## .labshelf/versions/` :193.
-- Reader/writer pattern: core/src/writing/project/node/projectStateFile.ts (missing → undefined; non-object → WARN log; writer throws on corrupt file, writes with `writeFileAtomic`); pure half in `writing/project/deviceLocal/{projectState,parseJsonObject}.ts`.
-- sync.md:29-62 "Projects": `.labshelf/state.json` ignored (:38, code `core/src/sync/engine/pipeline/projectIgnore.ts`); "Conflicts keep both copies" (:62) → concurrent checklist.json edits lose no item (conflict copy). R6: sync.md stays unchanged.
-- `core/src/writing/checklist/` does not exist.
+## Reading list
+- vscode readingList/ (projectReadingLists.ts `of(project) → ReadingList`, readingListCommands.ts `labshelf.writing.addToReadingList(target: ProjectEntry)`), imported by writing/index.ts:9, registerWritingView.ts:7,62-75,92,170,185, tree/registerProjectViews.ts, tree/projectsTreeProvider.ts:22,65, tree/projectRows.ts:70 detailLines (`entries`, `neverOpened`). package.json :371 command, :583 menu, :702 palette.
+- core readingList `buildReadingList` → entries {key, paper?, cited, listed, opened}. `nextStatus`, `PaperStatus` core/model/paperStatus.ts. `statusChangedAt?` on PaperRecord (stamped in paperFields.ts:60).
+- Status write: `services.paperService.updatePapersStatus(ids, status) → failed ids` (vscode core/paperService.ts:76), reached by `controller.currentServices()?.paperService` (registerWritingView.ts:67,178).
+- Backlinks: vscode writing/backlinks/projectBacklinkIndex.ts (`index()`, `onDidChange`, debounced 1s); core citeSections already covers by-section placement from sources.
+- Arc icons: vscode ui/arcMarkIcons.ts `arcIcon(tone, progress) → {light,dark}` (baked out/marks, tones err/warn/ok/accent × none/half/full).
 
-## Checklist model inputs (S6.3)
-All under core/src/writing/ (W/). Lines are zero-based everywhere.
-- Headings: W/backlinks/sourceHeadings.ts:13 `sourceHeadings(format, text): {line, title}[]` (both formats). Nearest-heading idiom: W/backlinks/citationSites.ts:31-45 (`heading.line <= line`); `citationSites(format, text) → {key, line, section|undefined}[]` (private `lineStarts`/`lineOf`).
-- LaTeX: `scanLatexSource(text)` → `LatexSourceFacts {labels, refs, sections, macros, includes}` (W/latex/source/facts.ts:58-64). Typst: `scanTypstHeadings(text)` (W/typst/source/typstHeadings.ts:47).
-- Project files: W/latex/source/project/collectProjectSources.ts:31 `collectProjectSources(mainPath, reader{read(rel)})` → `{files: {path, facts}[], missing}`; pure, LaTeX only, main first then depth-first. Typst: only `findRoots` exported from W/project/roots/rootDetection.ts:68 (include resolution private).
-- Cites: W/citations/citationKeys.ts:55 `citedKeys(format, text) → {key, start, end}[]` (offsets; blanks comments). Backlinks: W/backlinks/backlinkIndex.ts:5-12 `Backlink {project, file, line, section}`, `BacklinkIndex = ReadonlyMap<key, Backlink[]>`.
-- Broken refs: W/latex/source/project/undefinedRefs.ts:12 `undefinedRefs(files) → {path, ref: RefFact}[]` (LaTeX only); vscode labelDiagnostics.ts:10-24 only maps to Diagnostics.
-- Figures: W/figures/figureState.ts:12-15 `FigureState` missing|stale{newerInputs}|fresh; `readFigureStates` node-only.
-- Pages: W/checks/paperBody.ts:34, W/checks/pdfRules.ts:9 `pageLimitFindings(body, limit)`; `CheckFinding` W/checks/checkTypes.ts:3-15.
-- Reading: W/readingList/readingList.ts:6-38 `ReadingListEntry {key, paper?, cited, listed, opened}`; `PaperStatus`, `nextStatus` core/src/model/paperStatus.ts:5,14.
-- No TODO scanner exists. Tests: core/__tests__/writing/<domain>/*.test.ts, Jest ESM, imports `../../../src/writing/x/index`.
-
-## Projects list (S6.4)
-- Row builder: vscode/src/writing/tree/projectsTreeProvider.ts:12-31 `projectTreeItem(entry)`; provider `WritingTreeProvider implements TreeDataProvider<ProjectEntry>` (55 lines), `onDidChangeTreeData` is `EventEmitter<void>` (needs `<Node|undefined>` for per-item refresh). Nodes are raw core `ProjectEntry` (core/src/writing/project/projectEntry.ts:1-17: ready {folder, location library|external, settings, main} | broken {folder, location, reason}). Today: flat list, no children, `book`/`warning` ThemeIcons, description = main or reason, `item.id = folder`, contextValue `labshelfProject[External]` / `labshelfProjectBroken[External]`.
-- Commands get the row as argument (`[entry]`); package.json:538-575 view/item/context regexes `/^labshelfProject(External)?$/`, reveal `/^labshelfProject/`, removeProject `/External$/` — section and child nodes need contextValues that match none.
-- Source: `WritingProjects.list()` sync (vscode/src/writing/session/projectStore.ts:17-52), `onDidChange` after `reload()`.
-- Build state: vscode/src/writing/preview/buildPreviews.ts:31-45 `BuildPreviews implements BuildListener` (build/buildListener.ts:12-19: building(folder, root), finished(project, root, result{status, problems}, trigger)); `states` deletes on success; no event, no timestamp. A tree needs its own listener storing last result per project.
-- Reading: `ProjectReadingLists.of(project)` (readingList/projectReadingLists.ts:21-35) async → entries {key, paper?: PaperRecord, cited, listed, opened}. Figures: `ProjectFigures.children(project)` (figures/projectFigures.ts:19-29) → FigureNode[] with state.status "stale"|"fresh"; skip when `settings.figures` undefined.
-- Invalidation pattern: figures/figureWatchers.ts:24-47 (per ready project, debounced 300ms, rebuilt on list change).
-- registerProjectViews.ts:23-43 builds the provider with `projects, figures, session, logger` — no readingLists/previews yet; composition root vscode/src/activation/registration/registerWritingView.ts (previews line 112, readingLists line 62).
-- Tests: vscode/__tests__/writing/tree/projectsTreeProvider.test.ts, fixtures `readyEntry`, `fakeProjects` in __tests__/support/writingFixtures.ts.
-- tree/ has 5 source files (+index); room for 3.
-- package.json:393-397 view `labshelf.writing` "Projects", when `!labshelf.writing.projectOpen`.
+## Page chip
+- preview protocol: `PreviewRoots` core/reader/previewProtocol.ts:60-65; WebviewToHost in reader/protocol.ts ~128-150; host handlers reader/host/previewMessages.ts:16-52 via PreviewPorts; vscode previewPorts.ts:14, roots/previewRootsMessage.ts:38 (input has `project`).
+- mountPreviewChrome.ts:37 deps {actions, banner, post, logs, visiblePoint}; called only from reader/dom/startup/buildReaderUi.ts:70-73; state via applyRoots/applyBuild from startup/hostMessages.ts:42-43. preview/ has 6 files.
+- `paperBody(pages: string[][])` writing/checks/paperBody.ts:34; check splits lines in checks/node/readPdfFacts.ts:25-34 (hasEOL). `check.pages` in writing/project/userKeys.ts:12-15. `arcMarkElement(tone, progress, label)` ui/dom/widgets/arcMark.ts:5.
+- Contract: reader-host.md `## Preview` lines 27-42, bullets `- **Topic.** …`.
