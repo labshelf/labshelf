@@ -16,6 +16,8 @@ export interface ToolbarActions {
 }
 
 export class Toolbar {
+  /** Holds host-specific action buttons between the title and the right group; hidden while empty. */
+  readonly actions: HTMLElement = el("div", { class: "rd-toolbar-group rd-toolbar-actions", hidden: "" });
   private readonly el = $("toolbar");
   private readonly backBtn: HTMLButtonElement;
   private readonly forwardBtn: HTMLButtonElement;
@@ -56,6 +58,7 @@ export class Toolbar {
     this.el.append(
       el("div", { class: "rd-toolbar-group" }, this.sidebarBtn, this.backBtn, this.forwardBtn),
       el("div", { class: "rd-toolbar-title", title }, title),
+      this.actions,
       el("div", { class: "rd-toolbar-group" }, findBtn, themeBtn, helpBtn),
     );
 

@@ -1,4 +1,4 @@
-/** Declares the shapes a preview reader and its host exchange: build state, page positions and the citations behind them. */
+/** Declares the shapes a preview reader and its host exchange: build state, build roots, page positions and the citations behind them. */
 // CONTRACT: documents/contracts/reader-host.md#preview
 
 /** The state of the build whose output a preview reader shows. */
@@ -40,6 +40,34 @@ export interface CitationCardPaper {
 export interface CitationEntry {
   key: string;
   paper?: CitationCardPaper;
+}
+
+/** One diagnostic of a build root; `file` and `line` locate it in the source when the compiler gave a place. */
+export interface PreviewProblem {
+  severity: "error" | "warning" | "info";
+  message: string;
+  hint?: string;
+  file?: string;
+  line?: number;
+}
+
+/** One document a writing project builds, with what the reader needs to show its problems and logs. */
+export interface PreviewRoot {
+  path: string;
+  failed: boolean;
+  /** True when the build kept a raw log the host can open. */
+  rawLog: boolean;
+  /** True when the PDF of this root maps to source positions. */
+  sourceLinks: boolean;
+  problems: PreviewProblem[];
+}
+
+/** The build roots of a writing project: the main one, the one following the editor focus and the one the reader shows. */
+export interface PreviewRoots {
+  main: string;
+  focused: string;
+  shown: string;
+  roots: PreviewRoot[];
 }
 
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);

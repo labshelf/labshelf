@@ -23,14 +23,20 @@ export type SidecarChange =
 
 /** What a host that shows a build's output as a preview does with the reader's requests. */
 export interface PreviewPorts {
-  /** Opens the source at the failed build's first error. */
-  showBuildProblem(): Promise<void>;
   /** Opens the source behind a point of the PDF. */
   showSource(point: PagePoint): Promise<void>;
   /** The keys cited at a link or citation of the PDF, each with its library paper when there is one. */
   lookupCitation(query: CitationQuery): Promise<CitationEntry[]>;
   /** Opens a library paper in the reader. */
   openCitedPaper(paperId: string): Promise<void>;
+  /** Builds the shown root again. */
+  recompile(): Promise<void>;
+  /** Scrolls the reader to the editor cursor. */
+  revealCursor(): Promise<void>;
+  /** Opens the source of the `index`-th problem of a build root. */
+  openProblem(root: string, index: number): Promise<void>;
+  /** Opens the raw build log of a build root. */
+  openRawLog(root: string): Promise<void>;
 }
 
 export interface ReaderHostPorts {

@@ -3,7 +3,7 @@
  */
 import type { Annotation, PdfTheme } from "../../model/index.js";
 import { errorMessage } from "../../logging/index.js";
-import type { BuildState, PageArea, PagePoint } from "../previewProtocol.js";
+import type { BuildState, PageArea, PagePoint, PreviewRoots } from "../previewProtocol.js";
 import { isWebviewMessage, type EffectiveTheme, type HostToWebview, type WebviewToHost } from "../protocol.js";
 import { annotationHandlers } from "./annotationMessages.js";
 import { READER_LOG_MODULE, type HostContext, type HostState, type MessageHandler, type MessageHandlers } from "./hostContext.js";
@@ -98,6 +98,20 @@ export class ReaderHostController {
    */
   revealPoint(point: PagePoint): void {
     this.postWhenReady({ type: "revealPoint", point });
+  }
+
+  /**
+   * Shows the build roots of a writing project with their problems, replacing the earlier list.
+   */
+  setPreviewRoots(roots: PreviewRoots): void {
+    this.postWhenReady({ type: "previewRoots", roots });
+  }
+
+  /**
+   * Opens the reader's problems view for a build root.
+   */
+  showLogs(root: string): void {
+    this.postWhenReady({ type: "showLogs", root });
   }
 
   /**

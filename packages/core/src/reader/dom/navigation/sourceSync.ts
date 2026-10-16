@@ -1,4 +1,4 @@
-// Links a build preview to its source: a double-click reports the page point behind it, and a revealed point is scrolled into view and marked.
+// Links a build preview to its source: a double-click reports the page point behind it, a revealed point is scrolled into view and marked, and the visible top-left of a page is a point.
 import { clampPage, type PagePoint } from "../../index.js";
 import { DOCUMENT_REPLACED, type ReaderContext } from "../session/index.js";
 import { pagePointAt, pixelOffsetOf, type PageViewportLike } from "./pagePoints.js";
@@ -10,6 +10,16 @@ const MARKER_MS = 1600;
 interface PageViewLike {
   div: HTMLElement;
   viewport: PageViewportLike;
+}
+
+/** The page point at the top-left of the part of the current page the reader shows. */
+export function visiblePoint(ctx: ReaderContext): PagePoint {
+  const page = ctx.pdfViewer.currentPageNumber;
+  const view = ctx.pdfViewer.getPageView(page - 1) as PageViewLike | undefined;
+  if (!view?.viewport) { return { page, x: 0, y: 0 }; }
+  const box = ctx.container.getBoundingClientRect();
+  const pageBox = view.div.getBoundingClientRect();
+  return pagePointAt(page, view.viewport, Math.max(0, box.left - pageBox.left - view.div.clientLeft), Math.max(0, box.top - pageBox.top - view.div.clientTop));
 }
 
 export class SourceSync {

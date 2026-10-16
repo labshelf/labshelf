@@ -34,13 +34,11 @@ describe("preview messages", () => {
     expect(posted[1]).toStrictEqual({ type: "reloadDocument" });
   });
 
-  it("hands showBuildProblem and showSource to the preview ports", async () => {
+  it("hands showSource to the preview ports", async () => {
     const { host, ports } = setupHost();
-    const preview = { showBuildProblem: jest.fn(async () => undefined), showSource: jest.fn(async () => undefined) };
+    const preview = { showSource: jest.fn(async () => undefined) };
     Object.assign(ports, { preview });
-    await host.handle({ command: "showBuildProblem" });
     await host.handle({ command: "showSource", point: { page: 1, x: 5, y: 6 } });
-    expect(preview.showBuildProblem).toHaveBeenCalledTimes(1);
     expect(preview.showSource).toHaveBeenCalledWith({ page: 1, x: 5, y: 6 });
   });
 
@@ -72,9 +70,9 @@ describe("preview messages", () => {
 
   it("logs a preview request in a reader without preview ports instead of failing", async () => {
     const { host, ports } = setupHost();
-    await host.handle({ command: "showBuildProblem" });
+    await host.handle({ command: "showSource", point: { page: 1, x: 5, y: 6 } });
     expect(ports.notify).not.toHaveBeenCalled();
-    expect(ports.logger.log).toHaveBeenCalledWith("WARN", "reader", "Preview request in a reader that previews nothing", { paperId: "p1", command: "showBuildProblem" });
+    expect(ports.logger.log).toHaveBeenCalledWith("WARN", "reader", "Preview request in a reader that previews nothing", { paperId: "p1", command: "showSource" });
   });
 
   it("holds showChanges until ready, then posts it at once", async () => {
@@ -86,5 +84,58 @@ describe("preview messages", () => {
     expect(posted).toEqual([{ type: "showChanges", areas }]);
     host.showChanges([]);
     expect(posted[1]).toEqual({ type: "showChanges", areas: [] });
+  });
+});
+
+describe("preview roots, logs and writing actions", () => {
+  const roots = {
+    main: "main.typ",
+    focused: "ch1.typ",
+    shown: "ch1.typ",
+    roots: [{ path: "ch1.typ", failed: true, rawLog: true, sourceLinks: true, problems: [{ severity: "error" as const, message: "boom", line: 3 }] }],
+  };
+
+  it("holds the build roots and a logs request until ready, then posts them", async () => {
+    const { host, posted } = setupHost();
+    host.setPreviewRoots(roots);
+    host.showLogs("ch1.typ");
+    expect(posted).toHaveLength(0);
+    await host.handle({ command: "ready", totalPages: 4 });
+    expect(posted).toContainEqual({ type: "previewRoots", roots });
+    expect(posted).toContainEqual({ type: "showLogs", root: "ch1.typ" });
+  });
+
+  it("posts the build roots and a logs request at once when ready", async () => {
+    const { host, posted } = setupHost();
+    await host.handle({ command: "ready", totalPages: 4 });
+    host.setPreviewRoots(roots);
+    host.showLogs("main.typ");
+    expect(posted).toEqual([{ type: "previewRoots", roots }, { type: "showLogs", root: "main.typ" }]);
+  });
+
+  it("hands each writing action to its preview port with its arguments", async () => {
+    const { host, ports } = setupHost();
+    const preview = { recompile: jest.fn(async () => undefined), revealCursor: jest.fn(async () => undefined), openProblem: jest.fn(async () => undefined), openRawLog: jest.fn(async () => undefined) };
+    Object.assign(ports, { preview });
+    await host.handle({ command: "recompile" });
+    await host.handle({ command: "revealCursor" });
+    await host.handle({ command: "openProblem", root: "ch1.typ", index: 2 });
+    await host.handle({ command: "openRawLog", root: "ch1.typ" });
+    expect(preview.recompile).toHaveBeenCalledTimes(1);
+    expect(preview.revealCursor).toHaveBeenCalledTimes(1);
+    expect(preview.openProblem).toHaveBeenCalledWith("ch1.typ", 2);
+    expect(preview.openRawLog).toHaveBeenCalledWith("ch1.typ");
+  });
+
+  it.each([
+    [{ command: "recompile" }],
+    [{ command: "revealCursor" }],
+    [{ command: "openProblem", root: "ch1.typ", index: 2 }],
+    [{ command: "openRawLog", root: "ch1.typ" }],
+  ])("logs %j in a reader without preview ports instead of failing", async (message) => {
+    const { host, ports } = setupHost();
+    await expect(host.handle(message)).resolves.toBeUndefined();
+    expect(ports.notify).not.toHaveBeenCalled();
+    expect(ports.logger.log).toHaveBeenCalledWith("WARN", "reader", "Preview request in a reader that previews nothing", { paperId: "p1", command: message.command });
   });
 });

@@ -1,10 +1,10 @@
 /**
- * Handles the requests a preview reader makes of its host: the failed build's first error, the source behind a point and the papers a citation names.
+ * Handles the requests a preview reader makes of its host: the source behind a point, the papers a citation names and the writing actions.
  */
 import type { CitationEntry } from "../previewProtocol.js";
 import { READER_LOG_MODULE, type HostContext, type MessageHandlers } from "./hostContext.js";
 
-// The reader shows the build banner, double-click to source and citation cards only in a preview, so a missing port is a host bug.
+// The reader shows the logs view, double-click to source and citation cards only in a preview, so a missing port is a host bug.
 function previewPorts(ctx: HostContext, command: string) {
   const { preview, logger, paper } = ctx.ports;
   if (!preview) {
@@ -13,11 +13,10 @@ function previewPorts(ctx: HostContext, command: string) {
   return preview;
 }
 
-export const previewHandlers: Pick<MessageHandlers, "showBuildProblem" | "showSource" | "lookupCitation" | "openCitedPaper"> = {
-  showBuildProblem: async (ctx) => {
-    await previewPorts(ctx, "showBuildProblem")?.showBuildProblem();
-  },
-
+export const previewHandlers: Pick<
+  MessageHandlers,
+  "showSource" | "lookupCitation" | "openCitedPaper" | "recompile" | "revealCursor" | "openProblem" | "openRawLog"
+> = {
   showSource: async (ctx, msg) => {
     await previewPorts(ctx, "showSource")?.showSource(msg.point);
   },
@@ -34,5 +33,21 @@ export const previewHandlers: Pick<MessageHandlers, "showBuildProblem" | "showSo
 
   openCitedPaper: async (ctx, msg) => {
     await previewPorts(ctx, "openCitedPaper")?.openCitedPaper(msg.paperId);
+  },
+
+  recompile: async (ctx) => {
+    await previewPorts(ctx, "recompile")?.recompile();
+  },
+
+  revealCursor: async (ctx) => {
+    await previewPorts(ctx, "revealCursor")?.revealCursor();
+  },
+
+  openProblem: async (ctx, msg) => {
+    await previewPorts(ctx, "openProblem")?.openProblem(msg.root, msg.index);
+  },
+
+  openRawLog: async (ctx, msg) => {
+    await previewPorts(ctx, "openRawLog")?.openRawLog(msg.root);
   },
 };

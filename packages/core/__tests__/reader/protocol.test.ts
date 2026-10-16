@@ -1,4 +1,4 @@
-import { isSafeExternalUrl, isWebviewMessage } from '../../src/reader/protocol';
+import { isSafeExternalUrl, isWebviewMessage, PROTOCOL_VERSION } from '../../src/reader/protocol';
 
 describe('isWebviewMessage', () => {
   describe('accepts a valid sample of every WebviewToHost command', () => {
@@ -142,8 +142,7 @@ describe('isWebviewMessage', () => {
 });
 
 describe('isWebviewMessage preview requests', () => {
-  it('accepts showBuildProblem and a showSource point on a page', () => {
-    expect(isWebviewMessage({ command: 'showBuildProblem' })).toBe(true);
+  it('accepts a showSource point on a page', () => {
     expect(isWebviewMessage({ command: 'showSource', point: { page: 2, x: 72.5, y: 300 } })).toBe(true);
   });
 
@@ -197,5 +196,34 @@ describe('isSafeExternalUrl', () => {
     expect(isSafeExternalUrl('/local/path')).toBe(false);
     expect(isSafeExternalUrl('relative/path')).toBe(false);
     expect(isSafeExternalUrl('not a url at all!!!')).toBe(false);
+  });
+});
+
+describe('writing actions and build roots', () => {
+  it('is protocol version 5', () => {
+    expect(PROTOCOL_VERSION).toBe(5);
+  });
+
+  it('accepts recompile, revealCursor, openProblem and openRawLog', () => {
+    expect(isWebviewMessage({ command: 'recompile' })).toBe(true);
+    expect(isWebviewMessage({ command: 'revealCursor' })).toBe(true);
+    expect(isWebviewMessage({ command: 'openProblem', root: 'main.typ', index: 0 })).toBe(true);
+    expect(isWebviewMessage({ command: 'openProblem', root: 'main.typ', index: 12 })).toBe(true);
+    expect(isWebviewMessage({ command: 'openRawLog', root: 'main.typ' })).toBe(true);
+  });
+
+  it.each([
+    [{ command: 'openProblem', index: 1 }],
+    [{ command: 'openProblem', root: '', index: 1 }],
+    [{ command: 'openProblem', root: 3, index: 1 }],
+    [{ command: 'openProblem', root: 'main.typ' }],
+    [{ command: 'openProblem', root: 'main.typ', index: -1 }],
+    [{ command: 'openProblem', root: 'main.typ', index: 1.5 }],
+    [{ command: 'openProblem', root: 'main.typ', index: '1' }],
+    [{ command: 'openRawLog' }],
+    [{ command: 'openRawLog', root: '' }],
+    [{ command: 'openRawLog', root: 7 }],
+  ])('rejects malformed %j', (message) => {
+    expect(isWebviewMessage(message)).toBe(false);
   });
 });
