@@ -28,7 +28,7 @@ describe('ReaderPanel as a build preview', () => {
       {
         key: 'preview:/p', store: createPreviewStore(), pdfUri: vscode.Uri.file('/p/main.pdf'), rootDir: vscode.Uri.file('/p'),
         paper: { id: 'preview:p', title: 'main.pdf', path: '/p', citeKey: '', status: 'reading' },
-        preview: { showBuildProblem, showSource: jest.fn(async () => {}) },
+        preview: { showBuildProblem, showSource: jest.fn(async () => {}), lookupCitation: jest.fn(async () => []), openCitedPaper: jest.fn(async () => {}) },
         onClosed, show: { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
       },
     );
