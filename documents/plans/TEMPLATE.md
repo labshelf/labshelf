@@ -104,6 +104,7 @@ Runner tiers:
 - **Do:** <what to build or change, in two to five bullets>
 - **Touch:** <files or folders>. **Do not touch:** <files or folders>
 - **Context:** <the facts the runner needs, from scouts or the brainstorm; link to the docs>
+- **Test first:** <the seam and A-ids the failing tests pin, written by `test-writer` before the step runs; "n/a" for moves, docs and tooling>
 - **Done when:** <the A-ids, plus any step-specific check>
 
 #### S2 — <step title>
