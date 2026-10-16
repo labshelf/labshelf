@@ -3,6 +3,7 @@
 
 import YAML from "yaml";
 import { readUserKeys, type UserKeys } from "./userKeys.js";
+import { readListedPapers, type ListedPaper } from "./listedPapers.js";
 
 export const PROJECT_FILE = "labshelf.yaml";
 export const DEFAULT_BIBLIOGRAPHY = "labshelf.bib";
@@ -22,6 +23,8 @@ export interface ProjectSettings extends UserKeys {
   bibliography?: string | undefined;
   /** Typst compiler version of the last build. */
   typst?: string | undefined;
+  /** Papers the project reads besides those it cites. */
+  papers?: ListedPaper[] | undefined;
 }
 
 /** Settings LabShelf may rewrite after creation; undefined removes the key. The user keys are the user's alone. */
@@ -68,6 +71,11 @@ export function parseProjectFile(text: string): ProjectFileResult {
   }
   const userKeys = readUserKeys(raw);
   if (typeof userKeys === "string") { return { ok: false, reason: userKeys }; }
+  if (raw["papers"] !== undefined && raw["papers"] !== null) {
+    const papers = readListedPapers(raw["papers"]);
+    if (typeof papers === "string") { return { ok: false, reason: papers }; }
+    settings.papers = papers;
+  }
   return { ok: true, settings: { ...settings, ...userKeys } };
 }
 

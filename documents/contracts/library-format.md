@@ -88,6 +88,9 @@ values: [results.json]
 check:
   pages: 9
   authors: [Jane Doe]
+papers:
+  - key: smith2020
+    doi: 10.1000/xyz123
 ```
 
 | Key | Type | Notes |
@@ -101,8 +104,9 @@ check:
 | `figures` | mapping | figure path → `{run, inputs}`; `run` is the shell command that makes the figure, run in the project folder; `inputs` lists paths or globs (`*`, `**`, `?`). A figure is stale when it is missing or an input is newer than it |
 | `values` | string[] | JSON files whose leaves the sources read: `\lsvalue{<file>.<path>}` in LaTeX, `json("…")` in Typst. `<file>` is the file name without `.json`, and of two files with the same name only the first is read; array items are numbered from 0 |
 | `check` | mapping | what the pre-submission check holds the built PDF to: `pages` is the most pages allowed before the references heading (every page counts when the PDF has none); `authors` lists names an anonymous submission must not show, besides the git user's and the PDF's Author field; the anonymity rules run unless `anonymous` is `false`, as for a camera-ready |
+| `papers` | `{key, doi?}`[] | papers the project reads besides those it cites; `key` is the cite key. LabShelf appends an entry when the user adds a paper to the project's reading list and removes it on Remove from Reading List. A rewrite of the list keeps only `key` and `doi` of each entry |
 
-LabShelf never writes `figures`, `values` or `check`. A malformed one makes the file fail to parse, with the key in the reason. A `run` command executes only after the user confirms it on that machine; the confirmation covers that project and that exact command.
+LabShelf never writes `figures`, `values` or `check`. A malformed `figures`, `values`, `check` or `papers` makes the file fail to parse, with the key in the reason. A `run` command executes only after the user confirms it on that machine; the confirmation covers that project and that exact command.
 
 Rules:
 
@@ -144,6 +148,43 @@ The device's list of project folders outside the library. Absolute paths differ 
 - Paths are absolute, kept in the order they were added, each at most once.
 - Unknown keys are preserved on rewrite. A file that is not a JSON object is never overwritten: projects outside the library stay hidden until the user fixes or deletes it.
 - Removing a project from LabShelf removes its entry and never deletes the folder.
+
+## .labshelf/state.json
+
+A project folder keeps where its user last edited in `<project>/.labshelf/state.json`. The cursor belongs to one person on one device, so the file is never synced, and project sync skips `.labshelf/state.json`.
+
+```json
+{
+  "file": "sections/intro.tex",
+  "line": 41,
+  "character": 8,
+  "updatedAt": "2026-10-15T21:40:12.000Z"
+}
+```
+
+- `file` is relative to the project folder, with `/` separators, and stays inside it. `line` and `character` are 0-based non-negative integers. `updatedAt` is an ISO timestamp.
+- An app that edits a project's source writes the file after the cursor settles, and the Library view offers "Continue" for the project edited last.
+- A file with a missing or invalid key, or a `file` that leaves the project, reads as having no saved position.
+- Unknown keys are preserved on rewrite. A file that is not a JSON object is never overwritten.
+
+## .labshelf/versions/
+
+A version is a named snapshot of a project: its sources and its built PDF at the moment the user marked it (for example "submitted", "rebuttal" or "camera-ready"). Versions live inside the project folder and are synced with it.
+
+```
+<project>/.labshelf/versions/<slug>/version.json
+<project>/.labshelf/versions/<slug>/paper.pdf
+<project>/.labshelf/versions/<slug>/sources/…
+```
+
+```json
+{ "name": "Camera-ready", "created": "2026-10-15T21:40:12.000Z" }
+```
+
+- `<slug>` is the name in lowercase ASCII: accents are removed, every run of characters outside `a-z` and `0-9` becomes one `-`, leading and trailing `-` are trimmed, and the result is cut to 60 characters. A name with no letter or digit has no slug and cannot be marked.
+- `sources/` holds the project's files at their relative paths, without hidden folders (`.labshelf/`, `.git/`) and without the built PDF, which is `paper.pdf`.
+- `version.json` is validated on read, because it arrives from other machines: `name` is a non-empty string and `created` an ISO 8601 timestamp. A folder whose file is missing or invalid is skipped.
+- Marking a name whose slug exists replaces that version. A snapshot is written to a hidden `.<slug>.tmp-*` folder and renamed into place, so readers never see a half-written version; hidden folders are ignored.
 
 ## Sidecar: `data.json`
 
