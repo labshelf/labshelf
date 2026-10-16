@@ -4,8 +4,9 @@
  */
 import { errorMessage, type HostEndpoint, type ILogger, type UiToHost } from "@labshelf/core";
 import {
-  captureTab, createCitationMapHandlers, createFolder, createPdfHandlers, deleteFolder, exportAnnotations, movePapers, offerOpenTabs, removePapers,
-  renameFolder, sendDetails, setNote, setStatus, setTags, writeClipboard, type CitationMapHandlers, type PdfHandlers,
+  captureTab, createCitationMapHandlers, createFolder, createPaperFileHandlers, createPdfHandlers, deleteFolder, exportAnnotations, movePapers, offerOpenTabs, removePapers,
+  renameFolder, sendDetails, setNote, setStatus, setTags, writeClipboard, type CitationMapHandlers, type PaperFileHandlers,
+  type PdfHandlers,
 } from "./handlers";
 import { watchChangeNotices } from "./changeNotices";
 import { createHostContext, type HostContext } from "./hostContext";
@@ -29,7 +30,13 @@ async function onReady(ctx: HostContext, initialPaper: string | null | undefined
   if (initialPaper && ctx.papers([initialPaper]).length) ctx.endpoint.post({ type: "select", id: initialPaper });
 }
 
-function dispatch(ctx: HostContext, pdf: PdfHandlers, citations: CitationMapHandlers, m: UiToHost, options: LibraryHostOptions): void {
+interface Handlers {
+  pdf: PdfHandlers;
+  files: PaperFileHandlers;
+  citations: CitationMapHandlers;
+}
+
+function dispatch(ctx: HostContext, { pdf, files, citations }: Handlers, m: UiToHost, options: LibraryHostOptions): void {
   switch (m.type) {
     case "ready": run(ctx, () => onReady(ctx, options.initialPaper)); return;
     case "navigate": ctx.folder = m.folder; return;
@@ -42,6 +49,12 @@ function dispatch(ctx: HostContext, pdf: PdfHandlers, citations: CitationMapHand
     case "paper.openForPdf": run(ctx, () => pdf.openForPdf(m.id, m.access)); return;
     case "paper.askAuthor": run(ctx, () => pdf.askAuthor(m.id)); return;
     case "paper.setStatus": run(ctx, () => setStatus(ctx, m.ids, m.status)); return;
+    // The page has no tree of its own to mark, so the selection needs no answer.
+    case "paper.selected": return;
+    case "paper.files": run(ctx, () => files.list(m.id)); return;
+    case "paper.describeFile": run(ctx, () => files.describe(m.id, m.name, m.description)); return;
+    case "paper.openFile": run(ctx, () => files.open(m.id, m.name)); return;
+    case "paper.copyFilePath": run(ctx, () => files.copyPath(m.id, m.name)); return;
     case "paper.details": run(ctx, () => sendDetails(ctx, m.id)); return;
     case "paper.setTags": run(ctx, () => setTags(ctx, m.ids, m.add, m.remove)); return;
     case "paper.setNote": run(ctx, () => setNote(ctx, m.id, m.note)); return;
@@ -65,7 +78,8 @@ export function attachLibraryHost(endpoint: HostEndpoint, options: LibraryHostOp
   const ctx = createHostContext(endpoint, options.log);
   const pdf = createPdfHandlers(ctx);
   const citations = createCitationMapHandlers(ctx);
-  endpoint.subscribe((m) => dispatch(ctx, pdf, citations, m, options));
+  const handlers: Handlers = { pdf, files: createPaperFileHandlers(ctx, pdf.open), citations };
+  endpoint.subscribe((m) => dispatch(ctx, handlers, m, options));
   watchLibraryChanges(ctx.snapshots, ctx.log);
   watchChangeNotices(ctx);
   return { openCitationMap: () => run(ctx, () => citations.open()) };

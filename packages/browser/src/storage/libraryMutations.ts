@@ -1,10 +1,11 @@
 /** Applies the core library mutations to the IndexedDB library and keeps the paper-record cache in step with the files. */
 import {
-  BibTeXService, createFolder, editPaperTags, movePapers, posixPathOps, readPaperOnDisk, relocatePapersUnder, removePapersUnder, renameFolder, setPaperStatus,
+  BibTeXService, createFolder, describePaperFileOnDisk, editPaperTags, listPaperFiles, movePapers, posixPathOps, readPaperOnDisk, relocatePapersUnder, removePapersUnder, renameFolder, setPaperStatus,
   trashFolder, trashPapers, updatePaperFields, writeImportedPaper, writePaperRecord, PAPERS_DIR,
 } from "@labshelf/core";
 import type {
-  BatchOutcome, FieldsBatchOutcome, ILogger, ImportedPaper, IPaperRecordIndex, MoveOutcome, MutationContext, PaperRecord, PaperRef, PaperStatus, PdfVersion,
+  BatchOutcome, FieldsBatchOutcome, ILogger, ImportedPaper, IPaperRecordIndex, MoveOutcome, MutationContext, PaperFilesState, PaperRecord, PaperRef, PaperStatus,
+  PdfVersion,
 } from "@labshelf/core";
 import { IndexedDbFileSystem } from "./indexedDbFileSystem";
 import { deleteRecord, listAllRecords, upsertRecord } from "./paperRecordStore";
@@ -29,6 +30,10 @@ export interface LibraryMutations {
   createFolder(parentDir: string, name: string): Promise<string>;
   renameFolder(dir: string, name: string): Promise<string>;
   trashFolder(dir: string): Promise<void>;
+  /** Lists the paper folder's entries with the descriptions its metadata.yaml holds; a failed read is a failed state. */
+  listFiles(paper: PaperRef): Promise<PaperFilesState>;
+  /** Sets or clears (empty) one entry's description; undefined when the paper's folder holds no paper. */
+  describeFile(paper: PaperRef, name: string, description: string): Promise<PaperRecord | undefined>;
 }
 
 const recordIndex: IPaperRecordIndex = {
@@ -38,6 +43,26 @@ const recordIndex: IPaperRecordIndex = {
 };
 
 type FolderMutations = Pick<LibraryMutations, "createFolder" | "renameFolder" | "trashFolder">;
+type FileMutations = Pick<LibraryMutations, "listFiles" | "describeFile">;
+
+function fileMutations(ctx: MutationContext): FileMutations {
+  return {
+    // The descriptions come from disk, not the cache, so a sync that rewrote metadata.yaml shows at once.
+    async listFiles(paper) {
+      // A metadata.yaml that cannot be read still lets the files show, without descriptions.
+      const onDisk = await readPaperOnDisk(ctx, paper.path).catch(async (error: unknown) => {
+        await ctx.logger.error("paperFiles", error, { id: paper.id, paperDir: paper.path, action: "read descriptions" });
+        return undefined;
+      });
+      return listPaperFiles(ctx.fs, paper.path, onDisk?.files, ctx.logger);
+    },
+    async describeFile(paper, name, description) {
+      const record = await describePaperFileOnDisk(ctx, paper.path, name, description);
+      if (record) { await upsertRecord(record, record.path); }
+      return record;
+    },
+  };
+}
 
 function folderMutations(ctx: MutationContext): FolderMutations {
   return {
@@ -102,5 +127,6 @@ export function createLibraryMutations(logger: ILogger): LibraryMutations {
       return outcome;
     },
     ...folderMutations(ctx),
+    ...fileMutations(ctx),
   };
 }
