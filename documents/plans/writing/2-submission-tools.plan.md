@@ -1,6 +1,6 @@
 # Plan: submission tools
 
-Status: in progress (session 2 of 4)
+Status: in progress (session 3 of 4)
 Size: GG — five features in core and VS Code, one of them a visual PDF diff; 4 sessions.
 Pending decisions: 0
 
@@ -31,7 +31,7 @@ Builds on [writing-core.plan.md](../../archive/writing-core.plan.md). The termin
 - [ ] **A1** Editing `plot_ablation.py` marks `fig/ablation.pdf` stale in the Writing view; "Regenerate" runs the command and clears the mark.
 - [ ] **A2** `\lsvalue{results.acc}` builds to the number in `results.json`; hovering it shows the value and file.
 - [x] **A3** The check flags a 10-page PDF against `check.pages: 9`, the author's name in the PDF metadata, and a Type 3 font.
-- [ ] **A4** After "Mark version: submitted" and some edits, "Compare" highlights the changed regions on each page.
+- [x] **A4** After "Mark version: submitted" and some edits, "Compare" highlights the changed regions on each page.
 - [ ] **A5** Pasted reviews become numbered points; marking all addressed and exporting writes a letter with quotes, replies and changed passages.
 
 ## 5. Design
@@ -79,9 +79,9 @@ Builds on [writing-core.plan.md](../../archive/writing-core.plan.md). The termin
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S7 | Snapshots | — | M · implementer (sonnet) | snapshot synced | [ ] |
-| S8 | Page-image diff and reader compare mode; `latexdiff` when present | S7 | H · main thread | A4 | [ ] |
-| S9 | Finish, plus a `verify` run | S7–S8 | `finish` + `verify` skills | gate passes | [ ] |
+| S7 | Snapshots | — | M · implementer (sonnet) | snapshot synced | [x] |
+| S8 | Page-image diff and reader compare mode; `latexdiff` when present | S7 | H · main thread | A4 | [x] |
+| S9 | Finish, plus a `verify` run | S7–S8 | `finish` + `verify` skills | gate passes | [x] |
 
 ### Session 4 — rebuttal
 
@@ -133,3 +133,8 @@ Builds on [writing-core.plan.md](../../archive/writing-core.plan.md). The termin
 - 2026-10-15 23:05 — S4 (main thread): `check:` (`pages`, `authors`, `anonymous`, default true) parsed in `project/userKeys.ts` (renamed from `experimentKeys.ts`; the folder was at 8 files) and added to library-format.md. Rules in `writing/checks/`: the page limit counts pages before the References heading, so references never push a paper over; author names are searched in the PDF text before the references and in the info dictionary, not in the sources, because review templates keep `\author` in the source and hide it in the PDF; a match is pointed at the source line that wrote it when one exists. pdf.js facts in `checks/node/`. The fixture is a real pdfTeX build; Jest replays what real pdf.js reports for it from a child process.
 - 2026-10-15 23:15 — S5 (Sonnet): "Research: Check Before Submitting" saves, builds through the Build command's builders, checks the built PDF and fills the `labshelf-check` Problems collection; per-project clearing extracted to `ProjectDiagnostics`, shared with build problems. A check whose build is superseded by a save-triggered build reports a failed build; a second run succeeds.
 - 2026-10-15 23:25 — S6: finish passed (core checks/project 128 tests, vscode writing 354 tests); vscode.md documents the command. A3 met on the real fixture through real pdf.js output and the Problems mapping in unit tests; not run in a real extension host, and the rules were not tried on real published papers.
+- 2026-10-15 22:40 — Session 3 start: scouts on the writing core, the reader and the VS Code glue.
+- 2026-10-15 22:45 — S7 (Sonnet): `writing/versions/` (slug, `version.json`, snapshot to a hidden temp folder renamed into place, listing that skips malformed folders), `.labshelf/versions/` in library-format.md (synced; the state.json clause narrowed to `.labshelf/state.json`), "Research: Mark Version" asks the name before saving and building, so a cancelled pick never costs a build.
+- 2026-10-15 23:04 — S8 core (main thread): the page diff runs in the extension host on pdf.js + native canvas renders, not in a reader worker, and Compare opens two reader panels side by side instead of a two-up mode, because the reader holds one viewer per webview. Pages are cut into column lines by XY-cut over page-level gutters; blocks pair by a darkness grid compared at every pixel phase with a concentrated-stripe limit, walking both builds in reading order, so text pushed to other columns and pages stays unmarked (R2). Measured on a real pdfTeX pair: exactly the edited paragraph and the changed number on each side, 0.4 s for three pages. Pixel-exact and sequence-alignment versions were tried and dropped: sub-pixel phase flips anti-aliased edges, and LaTeX's shared baseline grid interleaves columns. Reader: `showChanges` (protocol 4), percent-positioned marks redrawn on `pagerendered`, a "Changes" section in reader-host.md.
+- 2026-10-16 05:10 — S8 app (Sonnet): "Research: Compare Versions" (version against another version or the current build, which it builds first) opens two readers side by side with `showChanges` on each; on LaTeX projects with `latexdiff`, a marked-up PDF built by `buildMarkedUpDiff` (core, `latexdiff --flatten` then the project's toolchain, output in the build cache). Main thread: a reload request clears the marks first, so marks sent after it survive into the reloaded document (re-running a comparison on an open panel).
+- 2026-10-16 05:17 — S9: finish passed (core 84, vscode 27 scoped tests), no fixes. Verify: the real reader bundle in headless Chromium marks only the grown paragraph and the changed number on both sides, and the marks keep their place after zoom; `tokens.css` had not been regenerated, so the marks had no fill until `pnpm --filter @labshelf/core tokens`. The real extension host ran Mark Version → Compare (2 and 2 areas, both readers ready) but no screenshot of its window could be taken, and launching the installed VS Code app closed the user's own windows: the verify skill now forbids it. Not exercised: the replace-version modal and the latexdiff mode in the host. The `.labshelf/versions/` contract section went in with ba29531 of the parallel research-links session.
