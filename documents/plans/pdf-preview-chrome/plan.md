@@ -88,7 +88,7 @@ Owns abbreviated (`rd` core reader/dom, `cw` core writing, `vs` vscode writing).
 | 2a | [2a](sessions/2a-build-status.md) | Stale, `builtAt`, logs button | host controller, `vs/preview/{projectPreview,stale}`, `rd` header/logs | yes |
 | 2b | [2b](sessions/2b-build-options.md) | Auto compile, engine, options menu | `vs/build/options`, save listeners, `rd` header/options | yes |
 | 2c | done (see log.md) | PDF problems, cites | `cw/problems`, `cw/index.ts`, `vs/preview/problems` | yes |
-| 2d | [2d](sessions/2d-problem-marks.md) | Marks, cites status, F8 step | `rd` preview/marks, footer/cites | yes |
+| 2d | done (see log.md) | Marks, cites status, F8 step | `rd` preview/marks, footer/cites | yes |
 | 2e | [2e](sessions/2e-limits.md) | Words, limits, checks, meter | `cw/checks/limits`, `vs/preview/limits`, check cmd, `rd` footer/{limit,checks} | yes |
 | 2f | [2f](sessions/2f-citation-card.md) | Card data and UI | `rd/hover/citations`, `citationKeys.ts`, `vs/preview/citations`, `reader.css` | yes |
 | 2g | [2g](sessions/2g-citation-fixes.md) | `suggestKey`, card fixes | `cw/citations/fixes`, `vs/preview/citationFixes` | yes |
