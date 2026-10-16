@@ -10,16 +10,13 @@ import type { ILogger } from "../../../ports/index.js";
 import { PROJECT_FILE, projectIdSlug, type LatexEngine, type ProjectEntry } from "../../project/index.js";
 import { listProjects } from "../../project/node/index.js";
 import { parseTemplateManifest, serializeTemplateManifest, templateTreeProblem, type TemplateCategory, type TemplateManifest } from "../manifest/index.js";
-import { walkFolder, type FoundFile } from "./walkFolder.js";
+import { listProjectFiles } from "./projectFiles.js";
+import type { FoundFile } from "./walkFolder.js";
 
 const MODULE = "templates";
 const MANIFEST_FILE = "template.yaml";
 // Leaves room for the suffix that makes the id unique within the 64-character limit.
 const MAX_ID_BASE = 60;
-// Per-device and per-draft state that a new project must not inherit.
-const EXCLUDED_PATHS = new Set([
-  PROJECT_FILE, ".labshelf/versions", ".labshelf/rebuttal", ".labshelf/comments.json", ".labshelf/state.json", ".labshelf/checklist.json",
-]);
 
 /** What the user fills in when saving; `engine` is the one the app resolved for the build, used when labshelf.yaml names none. */
 export interface SaveTemplateDetails {
@@ -39,19 +36,9 @@ async function findProject(libraryRoot: string, projectId: string, logger: ILogg
   return entry;
 }
 
-// Both builds copy the PDF next to each root source file, so a PDF with a same-named source beside it is build output.
-function withoutBuiltPdfs(files: FoundFile[]): FoundFile[] {
-  const paths = new Set(files.map((f) => f.path));
-  return files.filter(({ path: p }) => {
-    if (!p.endsWith(".pdf")) { return true; }
-    const base = p.slice(0, -".pdf".length);
-    return !paths.has(`${base}.tex`) && !paths.has(`${base}.typ`);
-  });
-}
-
-/** The kept files of the project; `.git` is skipped, and a symbolic link or a tree that breaks the path rules throws naming the path. */
+/** The kept files of the project; a symbolic link or a tree that breaks the path rules throws naming the path. */
 async function projectFiles(folder: string): Promise<FoundFile[]> {
-  const files = withoutBuiltPdfs(await walkFolder(folder, (rel, name) => name === ".git" || EXCLUDED_PATHS.has(rel)));
+  const files = await listProjectFiles(folder);
   const problem = templateTreeProblem(files);
   if (problem !== undefined) { throw new Error(problem); }
   return files;

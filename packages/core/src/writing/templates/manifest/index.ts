@@ -5,4 +5,4 @@ export { isRecord, parseIndexJson } from "./indexJson.js";
 export { isLicenseExpression } from "./licenseExpression.js";
 export { TEMPLATE_CATEGORIES, TEMPLATE_ENGINES, parseTemplateManifest, readTemplateFields, serializeTemplateManifest } from "./templateManifest.js";
 export type { ProjectTemplate, TemplateCategory, TemplateEngine, TemplateManifest, TemplateManifestResult } from "./templateManifest.js";
-export { templatePathProblem, templateTreeProblem } from "./templatePaths.js";
+export { templatePathProblem, templateSizeProblem, templateStructureProblem, templateTreeProblem } from "./templatePaths.js";

@@ -27,20 +27,32 @@ export function templatePathProblem(path: string): string | undefined {
   return undefined;
 }
 
-/** The first rule a template's file list breaks (paths, labshelf.yaml, case clashes, counts and sizes), or undefined. */
-export function templateTreeProblem(files: readonly { path: string; size: number }[]): string | undefined {
+/** The first path rule a template's file list breaks (paths, labshelf.yaml, case clashes, file count), or undefined. */
+export function templateStructureProblem(files: readonly { path: string }[]): string | undefined {
   if (files.length > MAX_FILES) { return `${files.length} files; at most ${MAX_FILES} are allowed`; }
   const seen = new Set<string>();
-  let total = 0;
-  for (const { path, size } of files) {
+  for (const { path } of files) {
     const problem = templatePathProblem(path);
     if (problem !== undefined) { return problem; }
     const folded = path.toLowerCase();
     if (folded === "labshelf.yaml") { return `"${path}" would replace the project's labshelf.yaml`; }
     if (seen.has(folded)) { return `"${path}" differs from another path only in case`; }
     seen.add(folded);
+  }
+  return undefined;
+}
+
+/** The first size rule a template's file list breaks (one file or the total too large), or undefined. */
+export function templateSizeProblem(files: readonly { path: string; size: number }[]): string | undefined {
+  let total = 0;
+  for (const { path, size } of files) {
     if (size > MAX_FILE_BYTES) { return `"${path}" is over ${MAX_FILE_BYTES / 1024 / 1024} MiB`; }
     total += size;
   }
   return total > MAX_TOTAL_BYTES ? `the files total over ${MAX_TOTAL_BYTES / 1024 / 1024} MiB` : undefined;
+}
+
+/** The first rule a template's file list breaks, paths before sizes, or undefined. */
+export function templateTreeProblem(files: readonly { path: string; size: number }[]): string | undefined {
+  return templateStructureProblem(files) ?? templateSizeProblem(files);
 }

@@ -4,8 +4,8 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { SAMPLE_MAX_BYTES, THUMBNAIL_MAX_BYTES, THUMBNAIL_MAX_WIDTH, THUMBNAIL_MIN_WIDTH } from "./catalogLimits.js";
-import { readPngWidth } from "./pngWidth.js";
+import { SAMPLE_MAX_BYTES, THUMBNAIL_MAX_BYTES } from "./catalogLimits.js";
+import { thumbnailProblem } from "./thumbnailProblem.js";
 
 export type Previews = { thumbnail: Uint8Array; sample: Uint8Array };
 type Read<T> = { value: T } | { problem: string };
@@ -18,13 +18,6 @@ async function readRegularFile(folder: string, name: string, maxBytes: number): 
   if (!stat.isFile()) { return { problem: `${name} is not a regular file` }; }
   if (stat.size > maxBytes) { return { problem: `${name} is over ${maxBytes} bytes` }; }
   return { value: new Uint8Array(await fs.promises.readFile(file)) };
-}
-
-function thumbnailProblem(bytes: Uint8Array): string | undefined {
-  const width = readPngWidth(bytes);
-  if (width === undefined) { return "thumbnail.png is not a PNG"; }
-  const inRange = width >= THUMBNAIL_MIN_WIDTH && width <= THUMBNAIL_MAX_WIDTH;
-  return inRange ? undefined : `thumbnail.png is ${width} pixels wide, not ${THUMBNAIL_MIN_WIDTH} to ${THUMBNAIL_MAX_WIDTH}`;
 }
 
 /** The two preview files, or a reason naming the one that fails. */
