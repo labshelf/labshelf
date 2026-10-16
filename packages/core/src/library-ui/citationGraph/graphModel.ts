@@ -12,7 +12,7 @@ export interface GraphNode {
   radius: number;
 }
 
-export interface GraphEdge {
+interface GraphEdge {
   from: string;
   to: string;
 }

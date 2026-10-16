@@ -6,13 +6,13 @@ import { errorMessage } from "../../../logging/index.js";
 const LOOKUP_TIMEOUT_MS = 8000;
 const JSON_HEADERS = { Accept: "application/json" };
 
-export type LookupResponse = Awaited<ReturnType<FetchFn>>;
+type LookupResponse = Awaited<ReturnType<FetchFn>>;
 
 /**
  * Fetches `url`, reads the response with `read` inside the deadline and returns the result.
  * @returns undefined, after one WARN with the URL and the status or error, on any failure
  */
-export async function timedFetch<T>(
+async function timedFetch<T>(
   env: ResolverEnv,
   url: string,
   read: (res: LookupResponse) => Promise<T>,

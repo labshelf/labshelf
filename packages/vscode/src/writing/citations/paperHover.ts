@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import type { PaperRecord } from "@labshelf/core";
 
-export const escapeMarkdown = (text: string): string => text.replace(/[\\`*_{}[\]()#+\-.!|<>~&]/g, "\\$&");
+const escapeMarkdown = (text: string): string => text.replace(/[\\`*_{}[\]()#+\-.!|<>~&]/g, "\\$&");
 
 // Opening the paper is the key's Ctrl+click link, whose tooltip shows under this hover.
 export function paperHover(paper: PaperRecord): vscode.MarkdownString {

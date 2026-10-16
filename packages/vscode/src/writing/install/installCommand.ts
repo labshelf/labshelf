@@ -11,7 +11,7 @@ import type { PaperImporter, PaperTextLayers } from "../../core/index.js";
 import { activeProject } from "../build/index.js";
 import type { WritingHost, WritingProjects } from "../projectStore.js";
 
-export const INSTALL_COMMAND = "labshelf.installProjectPapers";
+const INSTALL_COMMAND = "labshelf.installProjectPapers";
 
 /** What the command needs of the open library. */
 export interface InstallServices {

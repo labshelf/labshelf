@@ -9,7 +9,7 @@ import { projectLabels } from "./projectLabels.js";
  * The column where the label name being typed starts, when the cursor sits inside the braces of a ref command.
  * The scanner drops empty names, so a stand-in letter and a closing brace are appended to make it yield one.
  */
-export function partialRefStart(linePrefix: string): number | undefined {
+function partialRefStart(linePrefix: string): number | undefined {
   const { refs } = scanLatexSource(`${linePrefix}x}`);
   const typing = refs.find((ref) => ref.range.end.line === 0 && ref.range.end.character === linePrefix.length + 1);
   return typing?.range.start.character;

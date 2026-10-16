@@ -800,7 +800,6 @@
   "dependencies": {
     "@labshelf/core": "workspace:*",
     "@myriaddreamin/typst-ts-web-compiler": "0.7.0",
-    "@myriaddreamin/typst.ts": "0.7.0",
     "@napi-rs/canvas": "^1.0.9",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "~6.3.289",

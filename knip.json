@@ -16,6 +16,10 @@
       "entry": [
         "__tests__/**/*.ts"
       ],
+      "ignoreBinaries": [
+        "pdflatex",
+        "pdftotext"
+      ],
       "project": [
         "src/**/*.ts",
         "__tests__/**/*.ts"
@@ -53,6 +57,7 @@
         "src/popup/index.ts",
         "src/options/index.ts",
         "src/library-page/main.ts",
+        "src/pdfText/offscreen.ts",
         "src/reader/index.ts",
         "src/ui/themeBoot.ts",
         "src/content/scholar.ts",

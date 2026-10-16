@@ -2,4 +2,3 @@
 export { registerLatexCommandCompletion } from "./commands/index.js";
 export { registerLatexEditing } from "./registerLatexEditing.js";
 export { LatexProjectSources } from "./project/index.js";
-export type { LatexProject, LatexProjectWorkspace } from "./project/index.js";

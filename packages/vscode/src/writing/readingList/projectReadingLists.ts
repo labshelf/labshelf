@@ -5,7 +5,7 @@ import { buildReadingList, papersByCiteKey, type BacklinkIndex, type ILogger, ty
 import type { ReadyProject } from "../figures/index.js";
 
 /** The open library as the reading list needs it. */
-export interface ReadingListSession {
+interface ReadingListSession {
   listPapers(): Promise<PaperRecord[]>;
   /** True when the paper's reader sidecar holds a reading position. */
   isOpened(paperId: string): Promise<boolean>;

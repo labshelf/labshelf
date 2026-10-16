@@ -4,4 +4,3 @@ export { ProjectSynctex } from "./projectSynctex.js";
 export type { SynctexLookup } from "./projectSynctex.js";
 export { revealInPreview } from "./revealInPreview.js";
 export { showSource } from "./showSource.js";
-export type { ShowSourceDeps } from "./showSource.js";

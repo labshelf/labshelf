@@ -166,9 +166,6 @@ importers:
       '@myriaddreamin/typst-ts-web-compiler':
         specifier: 0.7.0
         version: 0.7.0
-      '@myriaddreamin/typst.ts':
-        specifier: 0.7.0
-        version: 0.7.0(@myriaddreamin/typst-ts-web-compiler@0.7.0)
       '@napi-rs/canvas':
         specifier: ^1.0.9
         version: 1.0.9

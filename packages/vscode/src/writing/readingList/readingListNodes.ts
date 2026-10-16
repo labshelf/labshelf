@@ -17,7 +17,7 @@ export interface ReadingPaperNode {
   entry: ReadingListEntry;
 }
 
-export interface ReadingWarningNode {
+interface ReadingWarningNode {
   kind: "readingWarning";
   project: ReadyProject;
   neverOpened: number;
@@ -25,9 +25,9 @@ export interface ReadingWarningNode {
 
 export type ReadingNode = ReadingListNode | ReadingPaperNode | ReadingWarningNode;
 
-export const READING_LIST_CONTEXT = "labshelfReadingList";
-export const ADDED_PAPER_CONTEXT = "labshelfReadingPaperAdded";
-export const CITED_PAPER_CONTEXT = "labshelfReadingPaper";
+const READING_LIST_CONTEXT = "labshelfReadingList";
+const ADDED_PAPER_CONTEXT = "labshelfReadingPaperAdded";
+const CITED_PAPER_CONTEXT = "labshelfReadingPaper";
 
 const STATUS_ICON: Record<PaperStatus, string> = { unread: "circle-outline", reading: "play-circle", done: "pass" };
 

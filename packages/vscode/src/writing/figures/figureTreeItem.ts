@@ -4,8 +4,8 @@ import * as vscode from "vscode";
 
 import type { FigureNode } from "./figureNode.js";
 
-export const STALE_FIGURE_CONTEXT = "labshelfFigureStale";
-export const FRESH_FIGURE_CONTEXT = "labshelfFigure";
+const STALE_FIGURE_CONTEXT = "labshelfFigureStale";
+const FRESH_FIGURE_CONTEXT = "labshelfFigure";
 
 const ICON = { stale: "sync", missing: "warning", fresh: "graph" } as const;
 
