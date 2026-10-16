@@ -1,0 +1,13 @@
+sha: 5a4c4bab
+files: packages/core/src/library-ui/dom/list/tray/fileFacts.ts, packages/core/src/library-ui/dom/list/tray/trayRows.ts, packages/core/src/library-ui/dom/detail/head/paperHead.ts, packages/core/src/library-ui/dom/styles/library-detail.css, packages/core/src/library-ui/dom/styles/library-list.css, packages/core/src/library-ui/dom/styles/library-ui.css, packages/core/src/ui/tokens/scaleTokens.ts, packages/core/src/library-ui/dom/list/groups/index.ts
+source: Explore scout, session 6 (2026-10-16)
+
+# List fixes P3, P4, P5, P8 and knip leftovers
+
+Paths under packages/core/src/library-ui/dom/.
+
+- **P3** list/tray/fileFacts.ts:62-65 `noteEntry` sets `name:"Note"` and `fact.label:"Note"`; list/tray/trayRows.ts:17-20 always emits `<span class="file-fact-label">`. Fix: the note fact has no label, and trayRows skips the label span when the label is empty. Tests: __tests__/library-ui/dom/list/tray/trayRows.test.ts (:103 asserts the text "First line"; keep it).
+- **P4** detail/head/paperHead.ts:62-74: `.detail-title` already has the `.detail-byline` authors line under it (:18-26). styles/library-detail.css:16 `.detail-title` has no font-family. There is no serif token: ui/tokens/scaleTokens.ts:6-12 TYPE_TOKENS has font, mono, font-size, text-xs…lg; tokens.css is generated (`pnpm --filter @labshelf/core tokens`). Core has no @font-face, so add a `serif` type token whose stack is `"Source Serif 4", Georgia, serif` (no font file). Tests: __tests__/library-ui/dom/detail/detailHead.test.ts.
+- **P5** styles/library-list.css:43-44 `.paper-row.selected .paper-row-main { background: var(--ls-row-selected); box-shadow: inset var(--ls-space-1) 0 0 var(--ls-focus); }`. Fix: delete the box-shadow and make the comment above it say "plain tint".
+- **P8** The list pane is already a size container (styles/library-ui.css:33 `container: list-pane / inline-size`). library-list.css:31 sets `--cols: 28px minmax(0,1fr) 150px 52px 84px 86px`, and @container breakpoints are max 720 (hides .col-read, :112-115), max 460 (hides .col-creator, :116-121) and max 340 (hides .col-year, :122-125). Root cause not confirmed: measure the pane width with both side panes open before changing anything. Likely fix: title floor `minmax(120px,1fr)` plus raised thresholds. No test covers column hiding.
+- **knip** `formatSize`, `TrayKind` and `TypeTone` (fileFacts.ts:21,5,6) are used only inside that file, so drop `export`. `PaperGroup` is exported from list/groups/index.ts:3, but only groupedRows.ts uses it, through ./groupPapers.js, so drop it from the index. Check that the groups tests do not import it.

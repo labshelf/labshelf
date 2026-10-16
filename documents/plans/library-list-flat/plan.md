@@ -1,6 +1,6 @@
 # Plan: Flat "All papers" library list
 
-Status: in progress (wave 2 done; session 3 next)
+Status: in progress (sessions 6–8a done; session 9 VS Code check next)
 Size: G — core list, detail head, side bar and protocol plus wiring in two apps, 6 sessions in 3 waves; grows to GG if Q3 shows sync or IndexedDB must start carrying extra paper files
 Pending decisions: 0
 
@@ -74,7 +74,7 @@ States
 - [ ] **A18** While the snapshot or a file listing loads, the list shows a loading state; a failure is logged through `ILogger` with context and shown to the user.
 - [x] **A19** A long title ellipsizes with a tooltip; at narrow width Last read hides first, then Authors, then Year; the detail pane toggles.
 - [ ] **A20** Light and dark match the mockup screenshots in both hosts; VS Code high contrast stays readable.
-- [ ] **A21** `pnpm -r typecheck` and `pnpm -r test` pass; `tokenContrast` covers every new text token; no file over 300 lines, no directory over 8 source files.
+- [x] **A21** `pnpm -r typecheck` and `pnpm -r test` pass; `tokenContrast` covers every new text token; no file over 300 lines, no directory over 8 source files.
 
 ## 5. Design
 
@@ -106,7 +106,17 @@ Sessions sharing a number form a wave and run at the same time, in the same work
 | 2a | [sessions/2a-core-list.md](sessions/2a-core-list.md) | Core list and detail head; old pieces deleted | yes |
 | 2b | [sessions/2b-vscode.md](sessions/2b-vscode.md) | VS Code wiring: native tree, reveal both ways, Node listing | yes |
 | 2c | [sessions/2c-browser.md](sessions/2c-browser.md) | Browser wiring: side bar on the core tree, IndexedDB listing | yes |
-| 3 | [sessions/3-verify.md](sessions/3-verify.md) | Both hosts verified for real, parity screenshots, fixes | yes |
+| 3 | done (log.md) | Harnesses, browser A14/A15, parity findings P1–P7 | no |
+| 4 | done (log.md) | Tree bug diagnosed, browser Describe… round-trip | no |
+| 5a | done (log.md) | Tree folder-key fix | no |
+| 5c | done (log.md) | VS Code host A14, A15 tree→list, V2, R4 dark + HC | no |
+| 5d | [sessions/5d-vscode-finish.md](sessions/5d-vscode-finish.md) | V4/V5 reveal findings, A15 list→tree, finish | no |
+| 5b | done (log.md) | Browser A17–A19 pass; P8 found | no |
+| 6 | done (log.md) | P1–P8, V3 and carried items decided; research for 7–9 | no |
+| 7a | done (log.md) | `scope` message, filter bar and subfolder toggle removed; tree fix committed | yes |
+| 7b | done (log.md) | P3, P4, P5, P8, menu Home/End, A18 VS Code log | yes |
+| 8a | done (log.md) | One status mark (P6), "Folders" label (P7), VS Code tree dot | yes |
+| 9 | [sessions/9-verify-close.md](sessions/9-verify-close.md) | Verify both hosts, A8/A18/A20/A21, plan closed | yes |
 
 Rules for sessions of one wave:
 
