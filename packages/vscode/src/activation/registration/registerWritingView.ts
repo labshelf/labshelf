@@ -11,6 +11,7 @@ import {
 } from "../../writing/build/index.js";
 import { registerCheckCommand } from "../../writing/check/index.js";
 import { registerInstallCommand } from "../../writing/install/index.js";
+import { registerCompareVersionsCommand, registerMarkVersionCommand } from "../../writing/versions/index.js";
 import { hostPdfjs } from "../../pdf/node/index.js";
 import { registerTinymistBridge, registerTypstBuild } from "../../writing/typst/index.js";
 import { BuildPreviews, registerShowInPreview, registerShowPreview } from "../../writing/preview/index.js";
@@ -90,6 +91,8 @@ export function registerWritingView(
   };
   registerBuildCommand({ context, projects, builders });
   registerCheckCommand({ context, host, projects, builders, pdfjs: hostPdfjs });
+  registerMarkVersionCommand({ context, host, projects, builders });
+  registerCompareVersionsCommand({ context, host, projects, builders, pdfjs: hostPdfjs, reader });
   registerTinymistBridge(context, { host, projects });
   registerShowPreview({ context, projects, previews });
   registerShowInPreview({ context, projects, previews });

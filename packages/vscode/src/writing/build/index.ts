@@ -6,4 +6,4 @@ export { BuildDiagnostics } from "./buildDiagnostics.js";
 export { ProjectDiagnostics } from "./projectDiagnostics.js";
 export { BUILD_COMMAND, registerBuildCommand } from "./registerBuildCommand.js";
 export { registerLatexBuild } from "./registerLatexBuild.js";
-export { registerCompilerStatusBar, registerPickCompiler } from "./toolchain/index.js";
+export { ensureToolchain, registerCompilerStatusBar, registerPickCompiler } from "./toolchain/index.js";
