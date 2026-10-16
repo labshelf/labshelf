@@ -1,28 +1,26 @@
 /**
- * Shows a preview's build state at the top of the reader: a quiet note while a build runs, and after a failure the
- * error count as a button that opens the first error.
+ * Shows a preview's build state at the top of the reader: a quiet note while a build runs, a failure as a button, and
+ * a PDF that could not reload.
  */
-import type { BuildState } from "../../index.js";
 import { icon } from "../../../ui/index.js";
-import type { HostBridge } from "../session/index.js";
 import { $, el } from "../../../ui/dom/index.js";
 
 export class BuildBanner {
   private readonly root = $("build-banner");
 
-  constructor(private readonly host: HostBridge) {}
+  /** Shows a quiet note that a build runs. */
+  showBusy(): void {
+    this.render("rd-build-busy", el("span", { class: "rd-build-icon rd-spin", html: icon("loader") }), "Building…");
+  }
 
-  /**
-   * Shows the state the host reported; a build that succeeded clears the banner.
-   */
-  show(state: BuildState, errors: number): void {
-    if (state === "building") {
-      this.render("rd-build-busy", el("span", { class: "rd-build-icon rd-spin", html: icon("loader") }), "Building…");
-    } else if (state === "failed") {
-      this.showFailure(errors);
-    } else {
-      this.clear();
-    }
+  /** Shows a failure as a button; `note` is quiet text beside it. */
+  showFailed({ label, title, note, onClick }: { label: string; title: string; note?: string; onClick: () => void }): void {
+    const button = el("button", { class: "rd-build-action", type: "button", title },
+      el("span", { class: "rd-build-icon", html: icon("warning") }), label);
+    button.addEventListener("click", onClick);
+    this.root.className = "rd-build-failed";
+    this.root.replaceChildren(button, ...(note ? [el("span", { class: "rd-build-note" }, note)] : []));
+    this.root.hidden = false;
   }
 
   /**
@@ -32,27 +30,14 @@ export class BuildBanner {
     this.render("rd-build-failed", el("span", { class: "rd-build-icon", html: icon("warning") }), `Could not reload the PDF: ${message}`);
   }
 
-  private showFailure(errors: number): void {
-    const count = errors > 0 ? `: ${errors} ${errors === 1 ? "error" : "errors"}` : "";
-    const button = el("button", {
-      class: "rd-build-action",
-      type: "button",
-      title: "Open the first error",
-    }, el("span", { class: "rd-build-icon", html: icon("warning") }), `Build failed${count}`);
-    button.addEventListener("click", () => this.host.post({ command: "showBuildProblem" }));
-    this.root.className = "rd-build-failed";
-    this.root.replaceChildren(button, el("span", { class: "rd-build-note" }, "Showing the last successful build"));
-    this.root.hidden = false;
+  clear(): void {
+    this.root.hidden = true;
+    this.root.replaceChildren();
   }
 
   private render(kind: string, glyph: HTMLElement, text: string): void {
     this.root.className = kind;
     this.root.replaceChildren(glyph, el("span", {}, text));
     this.root.hidden = false;
-  }
-
-  private clear(): void {
-    this.root.hidden = true;
-    this.root.replaceChildren();
   }
 }

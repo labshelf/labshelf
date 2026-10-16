@@ -4,14 +4,14 @@ import { bindHostMessages, type HostMessageTargets } from "../../../../src/reade
 
 type Handler = (msg: HostToWebview) => void;
 
-function setup() {
+function setup(previewChrome: unknown = null) {
   const handlers = new Map<string, Handler>();
   const order: string[] = [];
   const changeMarks = { show: jest.fn((areas: unknown[]) => order.push(`show:${areas.length}`)) };
   const reloader = { reload: jest.fn(() => { order.push("reload"); return Promise.resolve(); }) };
   const targets = {
     ctx: { host: { on: (type: string, handler: Handler) => handlers.set(type, handler) } },
-    ui: { buildBanner: { showReloadError: jest.fn() } },
+    ui: { buildBanner: { showReloadError: jest.fn() }, previewChrome },
     reloader,
     changeMarks,
   } as unknown as HostMessageTargets;
@@ -34,5 +34,23 @@ describe("bindHostMessages", () => {
     send({ type: "reloadDocument" });
     send({ type: "showChanges", areas: [{ page: 1, left: 0, top: 0, right: 1, bottom: 1 }] });
     expect(order).toEqual(["show:1", "show:0", "reload", "show:1"]);
+  });
+
+  it("gives build state and roots to the preview chrome", () => {
+    const chrome = { applyBuild: jest.fn(), applyRoots: jest.fn() };
+    const { send } = setup(chrome);
+    const roots = { main: "/m", focused: "/m", shown: "/m", roots: [] };
+    send({ type: "buildStatus", state: "failed", errors: 2 });
+    send({ type: "previewRoots", roots });
+    expect(chrome.applyBuild).toHaveBeenCalledWith("failed", 2);
+    expect(chrome.applyRoots).toHaveBeenCalledWith(roots);
+  });
+
+  it("ignores build state and roots outside a preview", () => {
+    const { send } = setup();
+    expect(() => {
+      send({ type: "buildStatus", state: "building", errors: 0 });
+      send({ type: "previewRoots", roots: { main: "/m", focused: "/m", shown: "/m", roots: [] } });
+    }).not.toThrow();
   });
 });

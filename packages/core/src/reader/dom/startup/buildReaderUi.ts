@@ -1,9 +1,10 @@
 /**
  * Builds the reader's chrome, sidebar and navigation around an open document and keeps the toolbar in step with them.
  */
-import { clampPage } from "../../index.js";
+import { clampPage, type WebviewToHost } from "../../index.js";
 import { BuildBanner, Cheatsheet, SelectionBubble, StatusPill, type ThemeController, openThemePopover, Toolbar } from "../chrome/index.js";
-import { FindBar, NavHistory, ZoomController } from "../navigation/index.js";
+import { FindBar, NavHistory, visiblePoint, ZoomController } from "../navigation/index.js";
+import { LogsView, mountPreviewChrome, type PreviewChrome } from "../preview/index.js";
 import type { ReaderContext } from "../session/index.js";
 import { AnnotationsTab, OutlineTab, Sidebar, ThumbnailsTab } from "../sidebar/index.js";
 import { ReadingStateReporter } from "./readingStateReporter.js";
@@ -21,6 +22,10 @@ export interface ReaderUi {
   reporter: ReadingStateReporter;
   toolbar: Toolbar;
   buildBanner: BuildBanner;
+  /** The preview's toolbar actions, notice and logs view; null in the paper reader. */
+  previewChrome: PreviewChrome | null;
+  /** Opens the build logs of a root; the paper reader has none and only records the call. */
+  openLogs(rootPath: string): void;
 }
 
 /**
@@ -52,8 +57,22 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
   history.onChange(() => toolbar.setHistoryState(history.canGoBack, history.canGoForward));
   sidebar.onChange((s) => toolbar.setSidebarOpen(s.open));
   findBar.onToggle((open) => toolbar.setFindOpen(open));
-  const buildBanner = new BuildBanner(ctx.host);
-  return { history, zoom, goToPage, annotationsTab, sidebar, findBar, cheatsheet, pill, bubble, reporter, toolbar, buildBanner };
+  const buildBanner = new BuildBanner();
+  const ui: ReaderUi = {
+    history, zoom, goToPage, annotationsTab, sidebar, findBar, cheatsheet, pill, bubble, reporter, toolbar, buildBanner,
+    previewChrome: null,
+    openLogs: (rootPath) => console.warn(`LabShelf reader: no logs view to open for ${rootPath}`),
+  };
+  if (ctx.boot.preview) {
+    const post = (msg: WebviewToHost): void => ctx.host.post(msg);
+    // The pane covers #viewerContainer's parent, so it neither scrolls with the pages nor hides the sidebar.
+    const logs = new LogsView({ parent: ctx.container.parentElement ?? ctx.container, post });
+    ui.openLogs = (rootPath) => logs.open(rootPath);
+    ui.previewChrome = mountPreviewChrome({
+      actions: toolbar.actions, banner: buildBanner, post, logs, visiblePoint: () => visiblePoint(ctx),
+    });
+  }
+  return ui;
 }
 
 /** A jump records the departure first, so Back returns to where the reader was. */

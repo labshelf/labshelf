@@ -1,6 +1,6 @@
 /**
  * Applies the host's messages to an open reader: commands, page jumps, annotation updates, preference changes, and a
- * preview's reloads, build state, revealed source points and citation answers, and changed regions.
+ * preview's reloads, build state, logs, revealed source points and citation answers, and changed regions.
  */
 import { errorMessage } from "../../../logging/index.js";
 import type { PreviewCitations } from "../hover/index.js";
@@ -38,7 +38,10 @@ export function bindHostMessages({ ctx, ui, keyboard, hover, reloader, sourceSyn
     changeMarks.show([]);
     reloader.reload(msg.pdfUrl).catch((err: unknown) => ui.buildBanner.showReloadError(errorMessage(err)));
   });
-  host.on("buildStatus", (msg) => ui.buildBanner.show(msg.state, msg.errors));
+  // The preview chrome owns the banner: it weighs the build state against the roots.
+  host.on("buildStatus", (msg) => ui.previewChrome?.applyBuild(msg.state, msg.errors));
+  host.on("previewRoots", (msg) => ui.previewChrome?.applyRoots(msg.roots));
+  host.on("showLogs", (msg) => ui.openLogs(msg.root));
   host.on("revealPoint", (msg) => sourceSync.reveal(msg.point));
   host.on("showChanges", (msg) => changeMarks.show(msg.areas));
   host.on("citation", (msg) => citations.lookup.receive(msg.request, msg.entries));
