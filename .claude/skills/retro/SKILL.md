@@ -16,7 +16,7 @@ List each mistake once, with evidence. Sources:
 - user corrections and rejected proposals;
 - `check-rules.sh` firings and `check` or `finish` FAIL lines, plus finish's "Needs judgment";
 - packages that failed acceptance, were retried or escalated, or reported CONCERNS;
-- the plan's §8 deviations;
+- the plan's `log.md` deviations (read `log.md` alone; it holds every session's outcome, so no session file is needed);
 - work redone, reverted or thrown away;
 - estimates that missed by one size or more;
 - token waste: run `node scripts/agent-tokens.mjs` (current session) and take agents flagged over budget, files read more than once, and the largest tool results.
@@ -54,6 +54,6 @@ Keep it to 40 lines or fewer. Then stop and wait. Applying anything needs the us
 
 - **Checks.** Add the probe to `check-rules.sh`, following its pattern (count in the working tree vs `HEAD`, one `problems+=` line naming the AGENTS.md section), and add a failing and a clean fixture to `check-rules.test.sh`. Run `bash .claude/hooks/check-rules.test.sh`. All cases pass, or the check is not added.
 - **Rules.** Edit the one sentence in place. Follow `AGENTS.md` §5: present tense, no history language, and each fact in one place.
-- **Calibration.** When a plan finished, add its row to `documents/plans/CALIBRATION.md` (estimated size and sessions, sessions used, real time from the plan's first §8 log line to the last, real size, why they differed), drop rows beyond 20, and rewrite the bias line from all rows.
+- **Calibration.** When a plan finished, add its row to `documents/plans/CALIBRATION.md` (estimated size and sessions, sessions used, real time from the first `log.md` line to the last, real size, why they differed), drop rows beyond 20, and rewrite the bias line from all rows.
 
 Reply with what was applied, one line each, and the test result.

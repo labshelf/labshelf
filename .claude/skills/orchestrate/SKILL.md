@@ -8,7 +8,7 @@ You are the orchestrator, running on the model the user picked. Spend that model
 
 Request: $ARGUMENTS
 
-If the request is a path to an existing plan (`documents/plans/<slug>.plan.md`, optionally followed by `session <n>`), skip steps 1–3 and follow **Running a plan file** below.
+If the request is a path to an existing plan (`documents/plans/<slug>/plan.md`, optionally followed by `session <n>`), skip steps 1–3 and follow **Running a plan file** below.
 
 ## 1. Brief (you, short)
 
@@ -58,8 +58,8 @@ Rules for the plan:
 - Packages that touch the same files run in sequence. Only packages with disjoint files run in parallel.
 - Shared logic lands in core first; app packages depend on it.
 - Doubt step: a one-way package that still has two viable designs goes to the `council` skill before it runs, and its verdict becomes the package's decision. It costs about 200k subagent tokens, so a one-way package with one obvious design only states why there is no fork.
-- Size the plan with the scale in `documents/plans/TEMPLATE.md` (P, M, G, GG in AI sessions). Read `documents/plans/CALIBRATION.md` first and correct for its bias. Between two sizes, pick the smaller and write what would make it grow.
-- If the plan is G or GG, or has more than about five packages, write it to `documents/plans/<slug>.plan.md` from the template, split into sessions. Then stop after approval and tell the user to start session 1 in a fresh conversation with the prompt from `references/handoff.md`. Otherwise, keep the plan in the conversation in the same shape, shortened, and run it here.
+- Size the plan with the scale in `documents/plans/TEMPLATE/plan.md` (P, M, G, GG in AI sessions). Read `documents/plans/CALIBRATION.md` first and correct for its bias. Between two sizes, pick the smaller and write what would make it grow.
+- If the plan is G or GG, or has more than about five packages, write the directory `documents/plans/<slug>/` from `documents/plans/TEMPLATE/`, split into sessions of about four delegated steps each. Then stop after approval and tell the user to start session 1 in a fresh conversation with the prompt from `references/handoff.md`. Otherwise, keep the plan in the conversation in the same shape, shortened, and run it here.
 - Show the plan to the user and wait for approval before executing, unless they said to go ahead.
 
 ## 4. Execute
@@ -77,23 +77,24 @@ Rules for the plan:
 - Run the `finish` skill once at the end (Sonnet). It handles dead code, comments, docs and the architecture review, and fixes the mechanical issues itself. Fix only the findings that need judgment.
 - If the change is UI, extension host or terminal behaviour, run the `verify` skill and look at the screenshots it lists.
 - Commit only if the user asks: `commit-splitter` (Haiku).
-- If a plan file exists, tick its steps and add one line per step to its §8 log.
+- If a plan file exists, tick its steps in `sessions/*.md` and append one line per step to `log.md` with `>>`.
 
 Report to the user: what was built, the acceptance criteria with pass/fail, what each model did, and anything left open.
 
 ## Running a plan file
 
-1. Read §1, §2 and the header (status, size). If any decision is unchecked or any Q is open, ask about it before anything else.
-2. Pick the session: the one named in the request, or the first with unticked steps. Check its **Starts from** against the session context, which gives the branch and uncommitted work. If the repo is not in that state, stop and say what differs.
-3. Read only that session's table and its step blocks. Run them as in steps 4–5 above, and run nothing from later sessions. Set the status to `in progress (session <n> of <m>)`.
+1. Read `plan.md` (header, §1, §2). If any decision is unchecked or any Q is open, ask about it before anything else. Never read `log.md` whole.
+2. Pick the session: the one named in the request, or the lowest-numbered file in `sessions/`. Check its **Starts from** against the session context, which gives the branch and uncommitted work. If the repo is not in that state, stop and say what differs.
+3. Read only that session file and the `research/` entries it names. Run `node scripts/research-fresh.mjs`: re-scout each `stale` entry with an `Explore` scout and save its brief to `research/<area>.md` with a heredoc, under the header `sha:` (current `git rev-parse --short HEAD`), `files:`, `source:`; put `fresh` entries into the implementer briefs. Run the steps as in steps 4–5 above and nothing from later sessions. Set the status in `plan.md` to `in progress (session <n> of <m>)`.
 4. End the session:
    - run the `finish` skill;
-   - tick the steps and the acceptance criteria they meet;
-   - add §8 log lines with date and time, plus one line with the peak context of this thread and of the largest subagent from `node scripts/agent-tokens.mjs`;
+   - tick the steps in the session file and the acceptance criteria in `plan.md` they meet;
+   - append `log.md` lines with `>>` (date and time, one line per step, one line with the peak context of this thread and of the largest subagent from `node scripts/agent-tokens.mjs`);
+   - delete the finished session file after logging it;
    - commit if the session says **Commit: yes**. Approving the plan authorises those commits; use `commit-splitter`.
 5. If it was the last session:
-   - set the status to `done`;
-   - add a row to `documents/plans/CALIBRATION.md` with the estimated size and sessions, the sessions used, the real time from the first log line to the last, the real size, and why they differed;
+   - set the status in `plan.md` to `done`;
+   - add a row to `documents/plans/CALIBRATION.md` with the estimated size and sessions, the sessions used, the real time from the first `log.md` line to the last, the highest main-thread peak from the log, the real size, and why they differed;
    - update its bias line;
-   - delete the plan, or archive it only if it meets `documents/archive/README.md`.
+   - delete the plan directory, or archive it only if it meets `documents/archive/README.md`.
 6. Reply with the handoff message from `references/handoff.md` and stop. Never start the next session in this conversation; a fresh context is the point of splitting.

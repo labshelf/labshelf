@@ -13,7 +13,7 @@ Given a change (default: `git diff HEAD --stat`, then `git diff HEAD -- <path>` 
    - `architecture.md`: packages, domains, ports, runtimes, design system.
    - `product.md`: UX principles or product vocabulary.
    - `apps/*`: build, setup, verification recipes, platform constraints.
-   - `plans/*`: tick finished steps; when a plan is complete, delete it (or archive it only if it meets `archive/README.md`).
+   - `plans/<slug>/`: tick finished steps in `sessions/*.md`; when a plan is complete, delete its directory (or archive it only if it meets `archive/README.md`).
 2. Edit only what the change made wrong or missing. Each fact lives in one place — link instead of repeating.
 3. Delete text about behavior the code does not have. Never mark it "outdated" or "removed".
 

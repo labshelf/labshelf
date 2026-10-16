@@ -76,7 +76,7 @@ More rules:
 - **Each fact lives in one place.** Link to it instead of repeating it.
 - **Update docs in the same change as the code.** Delete docs of removed behaviour; do not mark them as outdated.
 - **Use English** for code, comments, docs and commit messages.
-- **Plans** follow [documents/plans/TEMPLATE.md](documents/plans/TEMPLATE.md) and live in `documents/plans/` while they are being executed. When a plan is done, delete it. Move it to `documents/archive/` only if it meets the bar in [documents/archive/README.md](documents/archive/README.md).
+- **Plans** are directories (`plan.md`, `sessions/`, `log.md`, `research/`) that follow [documents/plans/TEMPLATE/](documents/plans/TEMPLATE/plan.md) and live in `documents/plans/<slug>/` while they are being executed. When a plan is done, delete its directory. Move it to `documents/archive/` only if it meets the bar in [documents/archive/README.md](documents/archive/README.md).
 
 ## 6. Behaviour
 

@@ -35,7 +35,7 @@ Read when you look for the document that answers a question about LabShelf; the 
 | What constrains the browser extension? | [apps/browser.md](apps/browser.md#platform-constraints) |
 | How do I build and run the terminal app? | [apps/terminal.md](apps/terminal.md#build-and-run) |
 | How do I verify the terminal app? | [apps/terminal.md](apps/terminal.md#verification) |
-| What is the plan template and where are active plans? | [plans/TEMPLATE.md](plans/TEMPLATE.md) |
+| What is the plan template and where are active plans? | [plans/TEMPLATE/plan.md](plans/TEMPLATE/plan.md) |
 | When is a finished document archived? | [archive/README.md](archive/README.md) |
 
 Documents hold only what the code cannot say: no file or function listings, no constants, no user manuals, no history.

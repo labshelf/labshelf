@@ -1,6 +1,6 @@
 ---
 name: brainstorm
-description: Brainstorming mode for a new feature, design or idea, in one of three modes — spar (short opinionated back-and-forth, the default), grill (each round asks the whole frontier of open questions, numbered, each with a recommended answer) or council (a hard-to-reverse fork goes to the council skill). Gives its own opinion, disagrees when it should, does not plan or implement until the user approves; then writes the plan from documents/plans/TEMPLATE.md. Use when the user says brainstorm or grill me, wants to think an idea through, or asks "what do you think about…" before deciding.
+description: Brainstorming mode for a new feature, design or idea, in one of three modes — spar (short opinionated back-and-forth, the default), grill (each round asks the whole frontier of open questions, numbered, each with a recommended answer) or council (a hard-to-reverse fork goes to the council skill). Gives its own opinion, disagrees when it should, does not plan or implement until the user approves; then writes the plan directory from documents/plans/TEMPLATE/. Use when the user says brainstorm or grill me, wants to think an idea through, or asks "what do you think about…" before deciding.
 argument-hint: [grill|council:] <the idea or question to think through>
 disable-model-invocation: true
 ---
@@ -62,7 +62,7 @@ Only an explicit go-ahead to plan or build counts: "approved", "aprovado", "fech
 On approval:
 
 1. **Builder check.** Launch one fresh `general-purpose` agent with `model: "sonnet"`, giving it only the final recap and the paths of the docs it rests on: "You will build this from this text alone. List, in 10 lines or fewer, the questions you would have to ask before starting, and the decisions you would have to guess." Fold its answers into the decisions, or turn them into open questions, and ask the user only the ones that change the design.
-2. **Plan.** Write `documents/plans/<slug>.plan.md` from `documents/plans/TEMPLATE.md`: decisions from the conversation, open questions, steps with runner tiers, size on the scale above, sessions for G or GG (each ending green and committed). The "Not doing" list goes into Scope → Out. Run one or two `Explore` scouts first if §5 or §6 need facts about the code that you do not have. Keep it short.
-3. **Reply** in three to six lines: the plan path, its size and number of sessions, the decisions it rests on, and any open question that blocks approval. Then stop. Execution starts only with `/orchestrate documents/plans/<slug>.plan.md`.
+2. **Plan.** Write the directory `documents/plans/<slug>/` from `documents/plans/TEMPLATE/` (`plan.md` with the decisions and sessions overview, one `sessions/NN.md` per session, an empty `log.md`): decisions from the conversation, open questions, steps with runner tiers, size on the scale above, sessions for G or GG (each ending green and committed). The "Not doing" list goes into Scope → Out. Run one or two `Explore` scouts first if §5 or §6 need facts about the code that you do not have. Keep it short.
+3. **Reply** in three to six lines: the plan path, its size and number of sessions, the decisions it rests on, and any open question that blocks approval. Then stop. Execution starts only with `/orchestrate documents/plans/<slug>/plan.md`.
 
 Chat in the user's language. The plan file is in English, following the repo rule.

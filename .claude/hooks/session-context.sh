@@ -14,16 +14,24 @@ areas=$(printf '%s\n' "$status" | awk '{print $NF}' | awk -F/ '$1=="packages"{pr
 echo "LabShelf session context (from .claude/hooks/session-context.sh):"
 echo "- Branch: ${branch:-detached} · uncommitted: ${changed} changed, ${untracked} untracked${areas:+ · most changes in: $areas}"
 
-plans=$(find documents/plans -maxdepth 1 -name '*.plan.md' 2>/dev/null | sort)
+plans=$(find documents/plans -mindepth 2 -maxdepth 2 -name plan.md -not -path 'documents/plans/TEMPLATE/*' 2>/dev/null | sort)
 if [ -z "$plans" ]; then
   echo "- Active plans: none"
 else
-  echo "- Active plans (open/total checklist items):"
+  echo "- Active plans (open/total checklist items in sessions/*.md):"
   for p in $plans; do
-    open=$(grep -c '\[ \]' "$p"); done_=$(grep -ci '\[x\]' "$p")
+    dir=$(dirname "$p")
+    sessions=$(find "$dir/sessions" -name '*.md' 2>/dev/null | sort)
+    open=0; total=0; next=""
+    if [ -n "$sessions" ]; then
+      # shellcheck disable=SC2086
+      open=$(cat $sessions | grep -c '\[ \]'); total=$(cat $sessions | grep -ciE '\[( |x)\]')
+      # The lowest-numbered session file that still has an unticked table row holds the next step.
+      first=$(echo "$sessions" | while read -r f; do grep -qE '^\|.*\[ \][[:space:]]*\|?[[:space:]]*$' "$f" && { echo "$f"; break; }; done)
+      [ -n "$first" ] && next=$(grep -m1 -E '^\|.*\[ \][[:space:]]*\|?[[:space:]]*$' "$first" | awk -F'|' '{gsub(/^ +| +$/, "", $2); gsub(/^ +| +$/, "", $3); print $2 " " $3}' | cut -c1-90)
+    fi
     state=$(grep -m1 -E '^Status:' "$p" | sed 's/^Status: *//')
-    next=$(grep -m1 -E '\[ \]' "$p" | sed -E 's/^[[:space:]|-]*//; s/\[ \][[:space:]]*//' | cut -c1-90)
-    echo "  - $p: $open/$((open + done_)) open${state:+ · status: $state}${next:+ · next: $next}"
+    echo "  - $dir: $open/$total open${state:+ · status: $state}${next:+ · next: $next}"
   done
 fi
 
