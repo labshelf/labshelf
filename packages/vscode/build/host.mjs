@@ -24,7 +24,8 @@ const options = {
   // Matches the Node of the Electron shipped with engines.vscode ^1.98.
   target: ["node20"],
   // `vscode` is provided by the host; `node:sqlite` is a builtin esbuild leaves alone.
-  external: ["vscode", ...externalDependencies],
+  // TRAP: typst.ts dynamically imports its optional renderer peer, which is not installed; the host only compiles, so that import never runs.
+  external: ["vscode", "@myriaddreamin/typst-ts-renderer", ...externalDependencies],
   minify: production,
   sourcemap: true,
   tsconfig: resolve(pkgRoot, "tsconfig.json"),
