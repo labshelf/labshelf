@@ -14,12 +14,12 @@ A LabShelf library is a folder that the user owns. Every app reads and writes th
         paper.pdf                  optional
         metadata.yaml              required: a folder holding it is a paper
         bib.bib                    BibTeX entry generated from metadata.yaml
-  projects/                        writing projects created by LabShelf (not synced)
+  projects/                        writing projects created by LabShelf (synced, namespace "projects")
     <project id>/                  one folder per project; the folder name is the project id
       labshelf.yaml                required: a folder holding it is a project
   .research/                       hidden, owned by the apps
     papers/<paper id>/data.json    the sidecar (synced, namespace "appdata")
-    projects.json                  project folders registered outside the library (never synced)
+    projects.json                  project folders registered outside the library (never synced; the folders themselves sync in namespace "projects")
     index.sqlite                   VS Code's text index for the Related tab: chunk embeddings and the content hash of each indexed PDF (never synced)
     logs/app.log                   VS Code log (JSON lines)
     logs/terminal.log              terminal log (JSON lines)
@@ -91,6 +91,7 @@ check:
 papers:
   - key: smith2020
     doi: 10.1000/xyz123
+ignore: [data/raw/**, "*.log"]
 ```
 
 | Key | Type | Notes |
@@ -105,8 +106,9 @@ papers:
 | `values` | string[] | JSON files whose leaves the sources read: `\lsvalue{<file>.<path>}` in LaTeX, `json("…")` in Typst. `<file>` is the file name without `.json`, and of two files with the same name only the first is read; array items are numbered from 0 |
 | `check` | mapping | what the pre-submission check holds the built PDF to: `pages` is the most pages allowed before the references heading (every page counts when the PDF has none); `authors` lists names an anonymous submission must not show, besides the git user's and the PDF's Author field; the anonymity rules run unless `anonymous` is `false`, as for a camera-ready |
 | `papers` | `{key, doi?}`[] | papers the project reads besides those it cites; `key` is the cite key. LabShelf appends an entry when the user adds a paper to the project's reading list and removes it on Remove from Reading List. A rewrite of the list keeps only `key` and `doi` of each entry |
+| `ignore` | string[] | paths that project sync leaves on the device, as patterns relative to the project folder with `*`, `**` and `?` like `figures` inputs; a pattern that matches a folder covers everything under it ([sync.md](sync.md#projects)) |
 
-LabShelf never writes `figures`, `values` or `check`. A malformed `figures`, `values`, `check` or `papers` makes the file fail to parse, with the key in the reason. A `run` command executes only after the user confirms it on that machine; the confirmation covers that project and that exact command.
+LabShelf never writes `figures`, `values`, `check` or `ignore`. A malformed `figures`, `values`, `check`, `papers` or `ignore` makes the file fail to parse, with the key in the reason. A `run` command executes only after the user confirms it on that machine; the confirmation covers that project and that exact command.
 
 Rules:
 

@@ -12,7 +12,7 @@ Builds on [writing-core.plan.md](../../archive/writing-core.plan.md).
 
 ## 2. Decisions
 
-- [x] **D1** Projects sync in a new namespace `projects`, a `projects/` folder inside `LabShelf Library` on Drive. Both internal projects and registered external folders are mirrored. Only sources go up: never `.git/`, the build cache, or files matched by the project's ignore list. — The author keeps writing on another machine or in the browser; the git repository stays the user's.
+- [x] **D1** Projects sync in a new namespace `projects`, a `LabShelf Projects` folder beside `LabShelf Library` on Drive (inside it, the folder would map to `papers/projects/`). Both internal projects and registered external folders are mirrored. Only sources go up: never `.git/`, the build cache, or files matched by the project's ignore list. — The author keeps writing on another machine or in the browser; the git repository stays the user's.
 - [x] **D2** On another machine, a project known on Drive but not on disk shows in the Writing view as "Only on Drive — download to…". — External paths are device-local.
 - [x] **D3** Text files in projects merge three ways on sync instead of keeping two copies. The base is the content at the last agreed sync, kept in `.research/sync/base/` locally and in IndexedDB in the browser. Non-overlapping edits merge silently; overlapping ones are written with git-style conflict markers, which VS Code's built-in merge UI resolves. Binary files keep the existing keep-both rule. — Writing in turns never produces duplicate files.
 - [x] **D4** When the sync sees that another person changed a file of an open project within the last 10 minutes, LabShelf shows "<name> is editing this project. Start a live session?". The source is Drive's `lastModifyingUser`. The ~30 s sync delay is accepted. — Live collaboration is offered when it matters.
@@ -33,7 +33,7 @@ Answered:
 
 ## 4. Acceptance criteria
 
-- [ ] **A1** A project created on machine A appears on machine B after a sync, with the same files and no build cache or `.git/`.
+- [ ] **A1** A project created on machine A appears on machine B after a sync as "Only on Drive", and downloads with the same files and no `.git/` or ignored paths.
 - [ ] **A2** A registered external folder is mirrored without any change to the folder or its git status.
 - [ ] **A3** A edits paragraph 1 and B edits paragraph 5 of `main.tex` between syncs; after both sync, both edits are in one file and no conflict copy exists.
 - [ ] **A4** A and B edit the same line; the file holds conflict markers and VS Code offers Accept Current / Incoming.
@@ -65,7 +65,7 @@ Text files are those with a known text extension (`.tex`, `.typ`, `.bib`, `.md`,
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
 | S1 | Spike: shared folder access under `drive.file` (Picker) | — | H · main thread | Q1 answered in §8 | [x] |
-| S2 | Contract: `projects` namespace, ignore list, base store | S1 | H · main thread | sync.md and library-format.md updated | [ ] |
+| S2 | Contract: `projects` namespace, ignore list (base store and merge rule land with S6–S7) | S1 | H · main thread | sync.md and library-format.md updated | [x] |
 | S3 | Engine: `projects` namespace for internal and external projects | S2 | M · implementer (sonnet) | A1, A2 | [ ] |
 | S4 | Writing view: "Only on Drive — download to…" | S3 | M · implementer (sonnet) | D2 | [ ] |
 | S5 | Finish, plus a scratch-Drive run | S1–S4 | `finish` skill | gate passes | [ ] |
@@ -148,3 +148,4 @@ Text files are those with a known text extension (`.tex`, `.typ`, `.bib`, `.md`,
 
 - 2026-10-15 21:38 — Session 1 started; D1–D7 approved.
 - 2026-10-15 22:24 — S1 done. Two accounts (A owner, B writer) with the LabShelf desktop client on a scratch folder tree created by A's app: share only → B gets 404 on everything; B picks the folder in Picker → folder 200, children 404, listing empty; A adds a file after the pick → B 404; B creates a file in the folder → A 404; B picks one file → B reads it, A's later update stays readable to B, B's write is readable to A with `lastModifyingUser` = B. Scratch files deleted.
+- 2026-10-15 22:58 — S2 done. `projects` namespace, identity by id, Drive-only projects never auto-download, ignore list and `labshelf.yaml` `ignore:` in sync.md#projects and library-format.md. Deviations: Drive folder `LabShelf Projects` beside the library (D1 amended); A1 reworded to the Only-on-Drive flow; base store and merge rule move to S6–S7 so the contract describes only what exists.
