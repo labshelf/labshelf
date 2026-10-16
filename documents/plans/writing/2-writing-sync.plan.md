@@ -22,7 +22,7 @@ Builds on [writing-core.plan.md](../../archive/writing-core.plan.md).
 
 Answered:
 
-- **Q1** How a coauthor's LabShelf gets access to a shared project under the `drive.file` scope — **neither option works as written.** `drive.file` grants are per person and per file: sharing a folder grants the coauthor's app nothing, picking the folder in Google Picker grants the folder alone (not its children, nor files added later), and a file one author's app creates in a shared folder stays invisible to the other's app. A file the coauthor picks once in Picker stays readable and writable across later updates by either side, and its `lastModifyingUser` names the other author. **Consequence:** collaboration exchanges each project through one file that the owner's LabShelf creates and shares and the coauthor picks once; per-file mirroring to a coauthor is not possible. The exchange-file design is decided at S9 (one-way door, goes to `council`). Picker runs only in a browser page signed in to Google and needs an API key and the Picker API on the LabShelf Cloud project. Evidence: S1 in §8.
+- **Q1** How a coauthor's LabShelf gets access to a shared project under the `drive.file` scope — **neither option works as written.** `drive.file` grants are per person and per file: sharing a folder grants the coauthor's app nothing, picking the folder in Google Picker grants the folder alone (not its children, nor files added later), and a file one author's app creates in a shared folder stays invisible to the other's app. A file the coauthor picks once in Picker stays readable and writable across later updates by either side, and its `lastModifyingUser` names the other author. **Consequence:** per-file mirroring to a coauthor through Drive is not possible, and the full `drive` scope is out because the apps ship publicly (100-user cap, yearly security assessment). S9 opens with a `council` between two designs: (B) one exchange file per project that the owner's LabShelf creates and shares and the coauthor picks once, or (C) a GitHub repository per project with automatic commit, pull and push. Picker runs only in a browser page signed in to Google and needs an API key and the Picker API on the LabShelf Cloud project. Evidence: S1 in §8.
 
 ## 3. Scope
 
@@ -89,7 +89,7 @@ Text files are those with a known text extension (`.tex`, `.typ`, `.bib`, `.md`,
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S9 | Share project with a coauthor through one exchange file (per Q1; design via `council`) | Q1 | H · main thread | coauthor syncs the project | [ ] |
+| S9 | Share project with a coauthor (per Q1: `council` on exchange file vs GitHub first) | Q1 | H · main thread | coauthor syncs the project | [ ] |
 | S10 | Coauthor activity from Drive metadata; notice | S9 | M · implementer (sonnet) | A5 (notice) | [ ] |
 | S11 | OCT bridge | S10 | M · implementer (sonnet) | A5 | [ ] |
 | S12 | Finish | S9–S11 | `finish` skill | gate passes | [ ] |
