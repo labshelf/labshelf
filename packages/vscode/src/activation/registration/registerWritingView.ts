@@ -10,6 +10,7 @@ import {
   BuildDiagnostics, registerBuildCommand, registerCompilerStatusBar, registerLatexBuild, registerLatexWorkshopNotice, registerPickCompiler,
 } from "../../writing/build/index.js";
 import { registerCheckCommand } from "../../writing/check/index.js";
+import { registerInstallCommand } from "../../writing/install/index.js";
 import { hostPdfjs } from "../../pdf/node/index.js";
 import { registerTinymistBridge, registerTypstBuild } from "../../writing/typst/index.js";
 import { BuildPreviews, registerShowInPreview, registerShowPreview } from "../../writing/preview/index.js";
@@ -79,6 +80,7 @@ export function registerWritingView(
   registerRegenerateFigure({ context, host, figures, output: figureOutput });
   const listPapers = async (): Promise<PaperRecord[]> => await controller.currentServices()?.paperService.listPapers() ?? [];
   registerReadingListCommands({ context, host, projects, readingLists, listPapers });
+  registerInstallCommand({ context, host, projects, services: () => controller.currentServices() });
   const previews = new BuildPreviews({ host, listPapers, extensionUri: context.extensionUri, ...reader });
   const diagnostics = new BuildDiagnostics();
   context.subscriptions.push(diagnostics);

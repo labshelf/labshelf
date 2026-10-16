@@ -286,6 +286,11 @@
         "category": "LabShelf"
       },
       {
+        "command": "labshelf.installProjectPapers",
+        "title": "Install Project Papers",
+        "category": "LabShelf"
+      },
+      {
         "command": "labshelf.writing.showPreview",
         "title": "Research: Show Preview",
         "category": "LabShelf"
@@ -443,6 +448,11 @@
           "command": "labshelf.writing.checkBeforeSubmitting",
           "when": "view == labshelf.writing && viewItem =~ /^labshelfProject(External)?$/",
           "group": "1_open@2"
+        },
+        {
+          "command": "labshelf.installProjectPapers",
+          "when": "view == labshelf.writing && viewItem =~ /^labshelfProject(External)?$/",
+          "group": "1_open@6"
         },
         {
           "command": "labshelf.writing.reveal",
