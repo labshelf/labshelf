@@ -1,6 +1,6 @@
 # Plan: links between reading, the library and writing
 
-Status: in progress (session 2 of 6)
+Status: in progress (session 3 of 6)
 Size: GG — several features across core and the three apps, one of them a new data source (OpenAlex) and one an importer; 6 sessions.
 
 ## 1. Goal
@@ -36,7 +36,7 @@ Builds on [writing-core.plan.md](../../archive/writing-core.plan.md). AI feature
 - [ ] **A3** A paper cited by a project shows "Cited in <project>" in VS Code and the browser.
 - [x] **A4** The project's reading list shows its papers with status and the never-opened warning.
 - [x] **A5** After reading in the browser, VS Code's library home offers "Continue: <paper>, page 6".
-- [ ] **A6** A bib with an arXiv entry whose paper was published gets a linter warning and a quick fix with the published entry.
+- [x] **A6** A bib with an arXiv entry whose paper was published gets a linter warning and a quick fix with the published entry.
 - [ ] **A7** On a second machine, `labshelf install` in a cloned project adds the missing papers to the library.
 - [ ] **A8** The "often cited, missing" list shows papers cited by at least 3 library papers and imports one in a click.
 - [ ] **A9** Importing a Zotero library recreates its collections, PDFs, tags and notes.
@@ -88,9 +88,9 @@ Builds on [writing-core.plan.md](../../archive/writing-core.plan.md). AI feature
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S8 | Lint rules, with pdf-finding's published-version lookup | pdf-finding S21 merged | H · main thread | core tests with recorded responses | [ ] |
-| S9 | Diagnostics and quick fixes in VS Code | S8 | M · implementer (sonnet) | A6 | [ ] |
-| S10 | Finish | S8–S9 | `finish` skill | gate passes | [ ] |
+| S8 | Lint rules, with pdf-finding's published-version lookup | pdf-finding S21 merged | H · main thread | core tests with recorded responses | [x] |
+| S9 | Diagnostics and quick fixes in VS Code | S8 | M · implementer (sonnet) | A6 | [x] |
+| S10 | Finish | S8–S9 | `finish` skill | gate passes | [x] |
 
 ### Session 4 — papers as dependencies
 
@@ -173,3 +173,6 @@ Builds on [writing-core.plan.md](../../archive/writing-core.plan.md). AI feature
 - 2026-10-15 22:20 — S4 core (main thread): `writing/backlinks` (citation sites with the heading above, index per project file and heading), Cited in section in the shared detail pane, `project.openSource` in the library UI contract. The heading title replaces "§3": numbers break across `\input` files.
 - 2026-10-15 22:35 — S4 VS Code and S5 by a Sonnet implementer: backlink index service, Cited in in the list panel, Reading list node with the never-opened warning, `papers:` in `labshelf.yaml`. S6 by a Sonnet implementer: Continue rows in the Library view, `.labshelf/state.json` (device-local, never synced: there is no user identity to key it by). Main thread made Continue share the Writing view's project list.
 - 2026-10-15 22:41 — S7 finish: gate passes in core and vscode. A2–A5 verified in a real extension host on a library copy. A3 stays open for the browser: it has no writing projects until writing-sync brings them; its host then fills `citedIn`. Not verified: Typst, Remove from Reading List, the browser-to-VS Code sidecar path for A5.
+- 2026-10-15 22:54 — S8 (main thread): `writing/bibLint` parses user `.bib` files with offsets and lints duplicates (key, DOI, `titleKey`), missing DOIs (articles and proceedings only) and preprints with a published version through `publishedDoiOf` plus CrossRef, memoized per lookup. The published-version fix rewrites the entry as `@article` and keeps the key and the user's own fields; the missing-DOI fix is lazy and needs an exact title key and year match. The generated `labshelf.bib` is not linted: the library rewrites it, and its preprints are "Find Published Version"'s job.
+- 2026-10-15 22:58 — S9 by a Sonnet implementer: `writing/bibliography` in VS Code lints `.bib` files on open and save (collection `labshelf-bib`), quick fixes apply only while the document is unchanged since the lint, and "Look up the DOI" asks CrossRef in `resolveCodeAction`.
+- 2026-10-15 23:00 — S10 finish: gate passes in core and vscode (core's `writing/compare` typecheck error belongs to the parallel versions session). A6 verified in a real extension host against live arXiv and CrossRef: ATLAS 1207.7214 is replaced by its Physics Letters B entry with the key kept. That run showed CrossRef's 3000-name author list, so the fix keeps the entry's own `author` when the record lists more than 50. Not verified: applying the removal fix and a successful DOI lookup in the host, a `.bib` inside a LabShelf project.
