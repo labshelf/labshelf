@@ -261,6 +261,37 @@ export const x = 1;
 " \
   0 ""
 
+# 8. plan and session size caps (characters, not lines).
+chars() { head -c "$1" /dev/zero | tr '\0' 'a'; }
+plan_over="# Plan
+$(chars 12001)"
+plan_under="# Plan
+$(chars 11000)"
+session_over="# Session
+$(chars 6001)"
+session_under="# Session
+$(chars 5000)"
+
+run_case "plan.md over 12000 characters warns" \
+  "documents/plans/some-slug/plan.md" "" "$plan_over" \
+  2 "characters \(limit"
+
+run_case "plan.md under the cap is silent" \
+  "documents/plans/some-slug/plan.md" "" "$plan_under" \
+  0 ""
+
+run_case "session file over 6000 characters warns" \
+  "documents/plans/some-slug/sessions/01-first.md" "" "$session_over" \
+  2 "characters \(limit"
+
+run_case "session file under the cap is silent" \
+  "documents/plans/some-slug/sessions/01-first.md" "" "$session_under" \
+  0 ""
+
+run_case "plan log.md over 12000 characters is silent" \
+  "documents/plans/some-slug/log.md" "" "$plan_over" \
+  0 ""
+
 # Baseline: a clean diff reports nothing.
 run_case "clean diff" \
   "packages/core/src/sample.ts" \

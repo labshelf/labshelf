@@ -49,6 +49,17 @@ if [ "$limit" -gt 0 ]; then
   esac
 fi
 
+# Plan and session size.
+case "$rel" in
+  documents/plans/*/plan.md) chars_limit=12000; chars_hint="Split it: move detail into sessions/ or research/ (plan format: documents/plans/TEMPLATE/plan.md)." ;;
+  documents/plans/*/sessions/*.md) chars_limit=6000; chars_hint="Split the session or move context into research/." ;;
+  *) chars_limit=0 ;;
+esac
+if [ "$chars_limit" -gt 0 ]; then
+  chars=$(wc -m < "$file" | tr -d ' ')
+  [ "$chars" -gt "$chars_limit" ] && problems+=("$rel has $chars characters (limit $chars_limit). $chars_hint")
+fi
+
 # History language and dependency lists.
 pattern='no longer|previously|used to|legacy|formerly|was replaced|were replaced|backward[- ]compat|deprecated|@depends|@dependents|@usedBy'
 scope=""
