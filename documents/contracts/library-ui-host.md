@@ -30,6 +30,7 @@ Shared actions (open, status, move, remove, copy, folders, tags, notes, annotati
 | `similar` | `paper.similar` | yes | no |
 | `reveal`, `openExternal`, `fetchMetadata` | the message of the same name | yes | no |
 | `findPdf`, `attachPdf` | `paper.findPdf`, `paper.attachPdf` | no | yes |
+| `askAuthor` | `paper.askAuthor` | no | yes |
 
 Labels are the few texts that name a host's own way of working: the Add button's tooltip, the empty folder's hint, and the name of the reveal action.
 
@@ -56,7 +57,8 @@ UI to host:
 | `paper.attachPdf` | Attach PDF | opens a file picker in the same call; `snapshot` and a `notice` once a file is attached |
 | `paper.add` | Add | `add.sources`, or opens the host's own import, or a `notice` when there is nothing to add from |
 | `paper.openForPdf` | Open page, in the PDF dialogs, when the miss carries an `access` page | opens that page in a visible tab and attaches the PDF once it yields one; only a host with a browser session sets `access` |
-| `paper.addFrom` | the user picked a source, or answered the "No PDF found" dialog | `progress`, then `snapshot`, `select` and a `notice`, or `add.noPdf` |
+| `paper.askAuthor` | Ask the author, in the detail pane of a paper without a PDF or in the "No PDF found" dialog | `progress`, then opens the request email in the user's mail client, records `pdfRequestedAt` and sends `snapshot` with a `notice`; with no author address it opens the article page and records nothing |
+| `paper.addFrom` | the user picked a source, or answered the "No PDF found" dialog; `ifNoPdf: "author"` saves the reference and then does what `paper.askAuthor` does | `progress`, then `snapshot`, `select` and a `notice`, or `add.noPdf` |
 | `clipboard.write` | any copy; `label` names what was copied | a `notice` |
 
 Host to UI:
