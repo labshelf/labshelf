@@ -1,5 +1,5 @@
 /**
- * Draws the Arc mark, a ring whose arc length shows progress and whose colour shows a tone, as an SVG string.
+ * Draws the Arc mark, a ring whose arc length shows progress and whose colour shows a tone, and the reading-status mark built on it, as SVG strings.
  */
 import type { PaperStatus } from "../../model/index.js";
 import { MARK_TOKENS } from "../tokens/index.js";
@@ -29,16 +29,31 @@ const ARC: Record<ArcProgress, string> = {
   full: '<circle cx="6" cy="6" r="5"/>',
 };
 
+function markSvg(tone: ArcTone, body: string, colour: string | undefined, extraClass = ""): string {
+  if (colour !== undefined) {
+    // PLATFORM: VS Code scales tree icons to 16px, so the 12px mark sits centred in a 16px box to keep its size.
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="-2 -2 16 16" ${STROKE.replace("COLOUR", colour)}>${body.replaceAll("COLOUR", colour)}</svg>`;
+  }
+  return `<svg class="ls-arc ls-arc-${tone}${extraClass}" viewBox="0 0 12 12" ${STROKE.replace("COLOUR", "currentColor")} aria-hidden="true" focusable="false">${body.replaceAll("COLOUR", "currentColor")}</svg>`;
+}
+
 /**
  * @param colour a resolved colour to bake in, for a standalone SVG file; without it the mark is inline markup
  *   painted by `currentColor`, which arcMark.css sets from the tone's `--ls-mark-*` token.
  * @returns trusted SVG markup.
  */
 export function arcMark(tone: ArcTone, progress: ArcProgress, colour?: string): string {
-  const body = TRACK + ARC[progress];
-  if (colour !== undefined) {
-    // PLATFORM: VS Code scales tree icons to 16px, so the 12px mark sits centred in a 16px box to keep its size.
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="-2 -2 16 16" ${STROKE.replace("COLOUR", colour)}>${body}</svg>`;
-  }
-  return `<svg class="ls-arc ls-arc-${tone}" viewBox="0 0 12 12" ${STROKE.replace("COLOUR", "currentColor")} aria-hidden="true" focusable="false">${body}</svg>`;
+  return markSvg(tone, TRACK + ARC[progress], colour);
+}
+
+const DOT = '<circle cx="6" cy="6" r="3" fill="COLOUR" stroke="none"/>';
+
+/**
+ * The mark of a reading status in every app: a filled dot for Unread, so it never reads as an empty ring, and the status's Arc mark otherwise.
+ * @param colour as for `arcMark`.
+ * @returns trusted SVG markup.
+ */
+export function statusMark(status: PaperStatus, colour?: string): string {
+  const [tone, progress] = STATUS_ARC[status];
+  return status === "unread" ? markSvg(tone, DOT, colour, " ls-status-dot") : arcMark(tone, progress, colour);
 }

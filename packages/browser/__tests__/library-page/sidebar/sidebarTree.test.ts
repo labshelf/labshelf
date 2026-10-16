@@ -59,6 +59,22 @@ describe("sidebar tree", () => {
     expect(texts[3]).toMatch(/^Done2/);
   });
 
+  it("draws Unread as a filled dot and Reading and Done as arcs", () => {
+    const { slot } = mount();
+    const mark = (scope: string): Element | null => slot.querySelector(`[data-scope="${scope}"] .tree-icon svg`);
+    expect(mark("unread")?.classList.contains("ls-status-dot")).toBe(true);
+    expect(mark("reading")?.classList.contains("ls-status-dot")).toBe(false);
+    expect(mark("done")?.classList.contains("ls-status-dot")).toBe(false);
+  });
+
+  it("puts a static Folders label between the scope rows and the folder rows", () => {
+    const { slot } = mount();
+    const heading = slot.querySelector(".tree-heading");
+    expect(heading?.textContent).toBe("Folders");
+    expect(heading?.previousElementSibling?.getAttribute("data-scope")).toBe("done");
+    expect(heading?.nextElementSibling?.getAttribute("data-path")).toBe("papers/A");
+  });
+
   it("lists top-level folders then the root's own papers, with recursive folder counts", () => {
     const { slot } = mount();
     expect(order(slot).slice(4)).toEqual(["papers/A", "papers/Z", "r1"]);

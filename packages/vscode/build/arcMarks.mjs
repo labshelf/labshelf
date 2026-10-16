@@ -1,4 +1,4 @@
-/** Bakes the mark SVGs that native tree icons use into out/marks/: one Arc mark per tone, progress and theme, and the REF glyph per theme. */
+/** Bakes the mark SVGs that native tree icons use into out/marks/: one Arc mark per tone, progress and theme, and the Unread dot and the REF glyph per theme. */
 // PLATFORM: TreeItem icons cannot read CSS variables, and the workbench CSP blocks icons served from globalStorage (vscode-userdata:), so the files ship inside the extension folder.
 import { build } from "esbuild";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -13,7 +13,7 @@ async function loadMarkApi() {
   const bundle = await build({
     stdin: {
       contents: [
-        'export { ARC_TONES, ARC_PROGRESSES, ARC_TONE_COLORS, arcMark } from "../../core/src/ui/icons/arcMark.ts";',
+        'export { ARC_TONES, ARC_PROGRESSES, ARC_TONE_COLORS, STATUS_ARC, arcMark, statusMark } from "../../core/src/ui/icons/arcMark.ts";',
         'export { FILE_TYPE_TOKENS } from "../../core/src/ui/tokens/colorTokens.ts";',
         'export { TYPE_TOKENS } from "../../core/src/ui/tokens/scaleTokens.ts";',
       ].join("\n"),
@@ -36,14 +36,15 @@ function refMark(color, font) {
 }
 
 export async function arcMarkFiles() {
-  const { ARC_TONES, ARC_PROGRESSES, ARC_TONE_COLORS, FILE_TYPE_TOKENS, TYPE_TOKENS, arcMark } = await loadMarkApi();
+  const { ARC_TONES, ARC_PROGRESSES, ARC_TONE_COLORS, STATUS_ARC, FILE_TYPE_TOKENS, TYPE_TOKENS, arcMark, statusMark } = await loadMarkApi();
   const { value: dark, light } = FILE_TYPE_TOKENS["file-ref"];
   const refColor = { dark, light: light ?? dark };
   const arcs = ARC_TONES.flatMap((tone) => ARC_PROGRESSES.flatMap((progress) => THEMES.map((theme) => ({
     name: `${tone}-${progress}-${theme}.svg`,
     svg: arcMark(tone, progress, ARC_TONE_COLORS[tone][theme]),
   }))));
-  return [...arcs, ...THEMES.map((theme) => ({ name: `ref-${theme}.svg`, svg: refMark(refColor[theme], TYPE_TOKENS.mono.value) }))];
+  const unread = THEMES.map((theme) => ({ name: `unread-${theme}.svg`, svg: statusMark("unread", ARC_TONE_COLORS[STATUS_ARC.unread[0]][theme]) }));
+  return [...arcs, ...unread, ...THEMES.map((theme) => ({ name: `ref-${theme}.svg`, svg: refMark(refColor[theme], TYPE_TOKENS.mono.value) }))];
 }
 
 export async function writeArcMarks(outDir) {

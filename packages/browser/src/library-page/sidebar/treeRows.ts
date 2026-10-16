@@ -1,5 +1,5 @@
 // Builds the sidebar tree's rows: status scopes, folders with recursive counts and drop targets, and papers with a REF label.
-import { PAPERS_DIR, ROOT_LABEL, STATUS_ARC, STATUS_LABEL, arcMark, escapeHtml, icon, type StatusFilter } from "@labshelf/core";
+import { PAPERS_DIR, ROOT_LABEL, STATUS_LABEL, escapeHtml, icon, statusMark, type StatusFilter } from "@labshelf/core";
 import { el } from "@labshelf/core/dom";
 
 /** Row identity shared by focus, keyboard and click handling: `scope:<status>`, `folder:<path>` or `paper:<id>`. */
@@ -24,7 +24,7 @@ function treeItem(key: string, depth: number, marked: boolean, attrs: Record<str
 
 /** A status scope over the whole library; `current` when the list shows the library root with that status. */
 export function scopeRow(scope: StatusFilter, count: number, current: boolean): HTMLElement {
-  const mark = scope === "all" ? icon("library") : arcMark(...STATUS_ARC[scope]);
+  const mark = scope === "all" ? icon("library") : statusMark(scope);
   return treeItem(`scope:${scope}`, 0, current, { "data-scope": scope, "aria-current": current ? "true" : undefined, "aria-selected": "false" },
     `<span class="tree-twisty leaf">${icon("chevron-down")}</span><span class="tree-icon">${mark}</span>` +
       `<span class="tree-label">${escapeHtml(SCOPE_LABEL[scope])}</span>${countHtml(count)}`);

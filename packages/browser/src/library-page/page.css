@@ -50,6 +50,10 @@
 
 .tree { flex: 1; overflow-y: auto; overflow-x: hidden; padding-bottom: var(--ls-space-4); outline: none; }
 .tree-section.collapsed + .tree { display: none; }
+.tree-heading {
+  display: flex; align-items: center; height: var(--ls-row-h); padding: 0 var(--ls-space-4); margin-top: var(--ls-space-2);
+  font-size: var(--ls-text-sm); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ls-section-fg); user-select: none;
+}
 .tree-row {
   position: relative; display: flex; align-items: center; height: var(--ls-row-h); padding-right: var(--ls-space-3);
   padding-left: calc(var(--ls-space-4) + var(--depth, 0) * var(--ls-space-4)); cursor: pointer; white-space: nowrap; color: var(--ls-fg);

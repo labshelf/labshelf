@@ -37,6 +37,8 @@ export function render(t: Tree): void {
   const { folder, status, folders } = t.ui.store.get();
   const frag = document.createDocumentFragment();
   for (const { scope, count } of tree.scopes()) frag.append(scopeRow(scope, count, folder === PAPERS_DIR && status === scope));
+  // A plain heading, not a second collapsible `.tree-section`: the scopes and the folders scroll as one tree.
+  frag.append(el("div", { class: "tree-heading", role: "presentation", text: "Folders" }));
   const walk = (path: string, depth: number): void => {
     for (const child of tree.children(path)) {
       if (child.kind === "paper") { frag.append(paperRow(child.id, child.title, depth, child.id === t.selectedId)); continue; }

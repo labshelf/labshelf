@@ -60,10 +60,10 @@ describe('LibraryTreeDataProvider', () => {
     expect(items.every((i) => i.collapsibleState === vscode.TreeItemCollapsibleState.None)).toBe(true);
   });
 
-  it('gives Unread, Reading and Done their arc mark icon and opens the list on the scope when clicked', async () => {
+  it('gives Unread the dot icon, Reading and Done their arc mark icon, and opens the list on the scope when clicked', async () => {
     const { provider } = makeProvider();
     const items = (await itemsOf(provider)).slice(0, 4);
-    const marks: Array<[string, string]> = [['accent-none', 'unread'], ['accent-half', 'reading'], ['ok-full', 'done']];
+    const marks: Array<[string, string]> = [['unread', 'unread'], ['accent-half', 'reading'], ['ok-full', 'done']];
     marks.forEach(([mark, scope], i) => {
       const item = items[i + 1]!;
       const icon = item.iconPath as { light: vscode.Uri; dark: vscode.Uri };

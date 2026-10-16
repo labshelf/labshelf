@@ -4,7 +4,7 @@
  */
 import { compactTime } from "../../../library/index.js";
 import { PDF_VERSION_LABEL, STATUS_LABEL, isPrePublication, nextStatus, type PaperStatus, type PdfVersion } from "../../../model/index.js";
-import { STATUS_ARC, arcMark, escapeHtml, icon } from "../../../ui/index.js";
+import { escapeHtml, icon, statusMark } from "../../../ui/index.js";
 import { hasNoText, jobText, type ListPaper } from "../../derive/index.js";
 import type { PaperStats, TextLayerJobView } from "../../protocol/index.js";
 
@@ -41,7 +41,6 @@ export function lastReadHtml(stats: PaperStats | undefined): string {
 
 /** A button that cycles the status, drawn as a dot for Unread and an Arc mark for Reading and Done, named by the status word. */
 export function statusMarkHtml(status: PaperStatus): string {
-  const mark = status === "unread" ? `<span class="ls-status-dot"></span>` : arcMark(...STATUS_ARC[status]);
   return `<button class="status-mark s-${status}" data-cycle="1" title="Click to mark as ${STATUS_LABEL[nextStatus(status)]}">` +
-    `<span class="status-mark-glyph" role="img" aria-label="${STATUS_LABEL[status]}">${mark}</span></button>`;
+    `<span class="status-mark-glyph" role="img" aria-label="${STATUS_LABEL[status]}">${statusMark(status)}</span></button>`;
 }

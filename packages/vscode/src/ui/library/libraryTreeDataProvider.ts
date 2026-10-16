@@ -6,7 +6,7 @@ import { PAPERS_DIR, folderTreeFromSnapshot, libraryTree, type LibrarySnapshot, 
 import { isFolderNode, type LibraryNode, type LibraryTreeNode, type PaperNode } from './libraryNode.js';
 import { onPaperChange, type LibraryEvents } from "../../events/index.js";
 import type { ContinueSource } from "../../continue/index.js";
-import { arcIcons, refIcon, type ArcIcon, type ThemedIcon } from "../index.js";
+import { refIcon, statusIcons, type StatusIcon, type ThemedIcon } from "../index.js";
 import { continueTreeItem, isContinueNode } from './continueNode.js';
 import { folderTreeItem, paperTreeItem, scopeTreeItem } from './libraryTreeItems.js';
 
@@ -24,7 +24,7 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryT
   private _papersRoot: vscode.Uri | null;
   private _tree: { snapshot: LibrarySnapshot; tree: LibraryTree } | null = null;
   private _refreshTimer: ReturnType<typeof setTimeout> | null = null;
-  private readonly _arcIcon: ArcIcon;
+  private readonly _statusIcon: StatusIcon;
   private readonly _refIcon: ThemedIcon;
 
   constructor(
@@ -36,7 +36,7 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryT
     extensionUri: vscode.Uri,
   ) {
     this._papersRoot = papersRoot;
-    this._arcIcon = arcIcons(extensionUri);
+    this._statusIcon = statusIcons(extensionUri);
     this._refIcon = refIcon(extensionUri);
     // A folder move emits one paper:updated per paper, so event refreshes are coalesced.
     const refresh = (): void => this._scheduleRefresh();
@@ -63,7 +63,7 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryT
 
   async getTreeItem(node: LibraryTreeNode): Promise<vscode.TreeItem> {
     if (isContinueNode(node)) { return continueTreeItem(node); }
-    if ('scope' in node) { return scopeTreeItem(node, this._arcIcon); }
+    if ('scope' in node) { return scopeTreeItem(node, this._statusIcon); }
     if ('paperId' in node) { return paperTreeItem(node, this._refIcon); }
     const children = this._childrenAt(node.dirPath);
     const count = this._folderChild(node.dirPath)?.count ?? 0;

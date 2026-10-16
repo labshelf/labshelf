@@ -1,14 +1,14 @@
 // Shapes the scope, folder and paper rows of the Library tree as VS Code TreeItems.
 import * as vscode from 'vscode';
-import { ROOT_LABEL, STATUS_ARC, STATUS_LABEL } from '@labshelf/core';
-import type { ArcIcon, ThemedIcon } from '../index.js';
+import { ROOT_LABEL, STATUS_LABEL } from '@labshelf/core';
+import type { StatusIcon, ThemedIcon } from '../index.js';
 import type { LibraryNode, PaperNode, ScopeNode } from './libraryNode.js';
 
-export function scopeTreeItem({ scope, count }: ScopeNode, arcIcon: ArcIcon): vscode.TreeItem {
+export function scopeTreeItem({ scope, count }: ScopeNode, statusIcon: StatusIcon): vscode.TreeItem {
   const item = new vscode.TreeItem(scope === 'all' ? ROOT_LABEL : STATUS_LABEL[scope], vscode.TreeItemCollapsibleState.None);
   item.id = `labshelf:scope:${scope}`;
   item.description = String(count);
-  item.iconPath = scope === 'all' ? new vscode.ThemeIcon('library') : arcIcon(...STATUS_ARC[scope]);
+  item.iconPath = scope === 'all' ? new vscode.ThemeIcon('library') : statusIcon(scope);
   item.command = { command: 'labshelf.openListScope', title: 'Open', arguments: [scope] };
   return item;
 }
