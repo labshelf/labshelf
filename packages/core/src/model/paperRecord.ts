@@ -29,6 +29,10 @@ export interface PaperRecord extends BibliographicFields {
   // When `status` last changed (ISO timestamp); undefined means unknown, and a rewrite keeps the file's key.
   // CONTRACT: documents/contracts/library-format.md#metadatayaml
   statusChangedAt?: string;
+  // The user's descriptions of the files in the paper folder, by entry name. Undefined means "not known here": a rewrite
+  // keeps the file's key. An empty object removes the key.
+  // CONTRACT: documents/contracts/library-format.md#metadatayaml
+  files?: Record<string, string>;
   // True when <folder>/paper.pdf exists on this device. Derived by each surface
   // (VS Code indexer, browser file keys), never written to metadata.yaml.
   // Undefined = unknown, treated as present.

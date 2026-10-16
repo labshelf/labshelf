@@ -14,6 +14,7 @@ A LabShelf library is a folder that the user owns. Every app reads and writes th
         paper.pdf                  optional
         metadata.yaml              required: a folder holding it is a paper
         bib.bib                    BibTeX entry generated from metadata.yaml
+        <any other file or folder> the user's attachments; kept, moved and synced with the paper
   projects/                        writing projects created by LabShelf (synced, namespace "projects")
     <project id>/                  one folder per project; the folder name is the project id
       labshelf.yaml                required: a folder holding it is a project
@@ -33,6 +34,8 @@ A LabShelf library is a folder that the user owns. Every app reads and writes th
 ```
 
 Each log file is append-only. Past 2 MiB it moves to `<name>.log.1` (one rotated file is kept, overwritten on the next rotation).
+
+A paper folder may hold any other files and subfolders. Apps never delete or rewrite them, and moving or removing the paper takes them along. The apps list a paper's direct entries in its file tray and hide `metadata.yaml`, `bib.bib` and names starting with "." there.
 
 The browser stores the same tree in IndexedDB under the same relative paths. `papers/…` maps to the `library` namespace, and `appdata/<paper id>/data.json` maps to `.research/papers/<paper id>/data.json`.
 
@@ -70,6 +73,7 @@ IndexedDB holds only files, so an empty folder is a zero-byte `.keep` file insid
 | `pdfVersion` | `preprint` \| `accepted` \| `published` | which version `paper.pdf` is, when its source said so; absent or anything else reads as unknown |
 | `pdfRequestedAt` | `YYYY-MM-DD` string | the day the user asked the author for a copy; absent or anything else reads as never requested |
 | `statusChangedAt` | ISO timestamp string | when `status` last changed; absent or anything else reads as unknown |
+| `files` | mapping of string → string | the user's description of each entry of the paper folder, keyed by its name (one path segment); an entry whose value is not a non-empty string is ignored, and a name with no matching entry is shown nowhere |
 
 Rules:
 
@@ -78,6 +82,7 @@ Rules:
 - An app writes only the keys it owns in that action. A metadata refresh does not touch `status`, `tags` or `note` (see [sync.md](sync.md#coordination-between-local-apps)).
 - `pdfVersion` belongs to the action that writes `paper.pdf`: attaching or replacing the PDF sets it, or removes it when the new file's version is unknown. Any other rewrite keeps it.
 - `pdfRequestedAt` belongs to the action that opens the request email. Any other rewrite keeps it, and the address the request went to is never stored.
+- `files` belongs to the Describe action, which sets or removes one name and removes the key when no name is left. Any other rewrite keeps it, renaming or deleting a file does not touch it, and the next Describe on the paper drops names missing on disk.
 - `statusChangedAt` belongs to the action that changes `status`: it is set whenever the new status differs from the old one. Setting the same status again, creating a paper and any other rewrite keep it.
 - `bib.bib` is regenerated whenever `metadata.yaml` is written. One core service writes both. Its `file` field points at `paper.pdf` only when that file exists.
 

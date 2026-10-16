@@ -25,3 +25,4 @@ export * from "./model/index.js";
 export * from "./scan/index.js";
 export * from "./search/index.js";
 export * from "./links/index.js";
+export * from "./paperFiles/index.js";

@@ -55,6 +55,8 @@ export function paperRecordFromMetadata(meta: Record<string, unknown>, location:
   if (tags.length) { record.tags = tags; }
   if (typeof meta["note"] === "string") { record.note = meta["note"]; }
   if (isPdfVersion(meta["pdfVersion"])) { record.pdfVersion = meta["pdfVersion"]; }
+  const files = fileDescriptions(meta["files"]);
+  if (files) { record.files = files; }
   if (isIsoDay(meta["pdfRequestedAt"])) { record.pdfRequestedAt = meta["pdfRequestedAt"]; }
   if (isIsoTimestamp(meta["statusChangedAt"])) { record.statusChangedAt = meta["statusChangedAt"]; }
   return record;
@@ -66,6 +68,13 @@ function isIsoTimestamp(value: unknown): value is string {
 
 function isIsoDay(value: unknown): value is string {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+// Keeps the string descriptions of a YAML mapping; undefined when none is left.
+function fileDescriptions(value: unknown): Record<string, string> | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) { return undefined; }
+  const entries = Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === "string");
+  return entries.length ? Object.fromEntries(entries) : undefined;
 }
 
 // Keeps the string entries of a YAML list; anything else yields an empty list.

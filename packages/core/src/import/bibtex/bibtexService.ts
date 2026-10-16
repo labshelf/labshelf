@@ -77,6 +77,10 @@ function carryOverUserKeys(metadata: Record<string, unknown>, paper: PaperRecord
     delete carried["note"];
     if (paper.note.trim()) { metadata["note"] = paper.note; }
   }
+  if (paper.files !== undefined) {
+    delete carried["files"];
+    if (Object.keys(paper.files).length) { metadata["files"] = paper.files; }
+  }
   if (paper.pdfVersion !== undefined) {
     delete carried["pdfVersion"];
     if (paper.pdfVersion) { metadata["pdfVersion"] = paper.pdfVersion; }

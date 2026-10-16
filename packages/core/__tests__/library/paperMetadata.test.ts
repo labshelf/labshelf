@@ -111,3 +111,21 @@ describe("paperRecordFromMetadata statusChangedAt", () => {
     expect(paperRecordFromMetadata({ title: "A" }, location)).not.toHaveProperty("statusChangedAt");
   });
 });
+
+describe("paperRecordFromMetadata files", () => {
+  it("reads the files map of descriptions", () => {
+    expect(paperRecordFromMetadata({ files: { "notes.md": "My notes", data: "Raw" } }, location).files).toEqual({ "notes.md": "My notes", data: "Raw" });
+  });
+
+  it("drops entries whose description is not a string", () => {
+    expect(paperRecordFromMetadata({ files: { "a.txt": "ok", "b.txt": 3, "c.txt": null, "d.txt": ["x"] } }, location).files).toEqual({ "a.txt": "ok" });
+  });
+
+  it.each([["text"], [3], [["a"]], [null], [{}]])("leaves files out for the value %p", (files) => {
+    expect(paperRecordFromMetadata({ files }, location)).not.toHaveProperty("files");
+  });
+
+  it("leaves files out when the key is absent", () => {
+    expect(paperRecordFromMetadata({ title: "A" }, location)).not.toHaveProperty("files");
+  });
+});
