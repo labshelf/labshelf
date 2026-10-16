@@ -11,6 +11,7 @@ import { updateProjectSettings } from "../../project/node/index.js";
 import { generateBibliography } from "../bibliographyFile.js";
 import { withBibliographyLine } from "../bibliographyLine.js";
 import { scanCitationKeys } from "../citationKeys.js";
+import { syncProjectPapers } from "./projectPapersSync.js";
 import { DISK_ONLY, projectSources, type OpenSources } from "./projectSources.js";
 
 export interface CitingProject {
@@ -23,6 +24,8 @@ export interface CitingProject {
 export interface BibliographyUpdate {
   /** True when labshelf.bib was written; an unchanged file is not rewritten. */
   written: boolean;
+  /** True when the papers list of labshelf.yaml was rewritten. */
+  papersWritten: boolean;
   missing: string[];
   /** "conflict": the Typst main file already loads another bibliography, so labshelf.bib must be added by hand. */
   mainLine: "present" | "added" | "conflict" | "no-main" | "not-needed";
@@ -57,15 +60,17 @@ async function addMainLine(
 }
 
 /**
- * Writes labshelf.bib for the project's current citations. The main file and labshelf.yaml are touched only until
- * the main file loads labshelf.bib, starting with the first cited library paper and after labshelf.bib exists.
+ * Writes labshelf.bib for the project's current citations and keeps the `papers` list of labshelf.yaml in sync with
+ * them. The main file and `bibliography:` are touched only until the main file loads labshelf.bib, starting with the
+ * first cited library paper and after labshelf.bib exists.
  */
 export async function updateProjectBibliography(
   project: CitingProject, papers: readonly PaperRecord[], logger: ILogger, open: OpenSources = DISK_ONLY,
 ): Promise<BibliographyUpdate> {
   const bibFile = project.settings.bibliography ?? DEFAULT_BIBLIOGRAPHY;
   const bibPath = path.join(project.folder, bibFile);
-  const generated = generateBibliography(await projectCitationKeys(project.folder, project.settings.format, open), papers);
+  const keys = await projectCitationKeys(project.folder, project.settings.format, open);
+  const generated = generateBibliography(keys, papers);
   const current = await readOptionalFile(bibPath);
   const needed = generated.resolved.length > 0 || current !== undefined;
   const written = needed && current !== generated.text;
@@ -79,11 +84,12 @@ export async function updateProjectBibliography(
       await updateProjectSettings(project.folder, { bibliography: bibFile }, logger);
     }
   }
+  const papersWritten = await syncProjectPapers(project.folder, keys, papers, logger);
   // Runs on every save, so only a change is worth a log line.
-  if (written || mainLine === "added") {
+  if (written || mainLine === "added" || papersWritten) {
     await logger.log("INFO", "citations", "project bibliography updated", {
-      folder: project.folder, entries: generated.resolved.length, missing: generated.missing.length, mainLine,
+      folder: project.folder, entries: generated.resolved.length, missing: generated.missing.length, mainLine, papersWritten,
     });
   }
-  return { written, missing: generated.missing, mainLine };
+  return { written, papersWritten, missing: generated.missing, mainLine };
 }

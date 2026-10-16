@@ -62,6 +62,20 @@ describe("labshelf.writing.addToReadingList", () => {
     expect(parsed.ok && parsed.settings.papers).toEqual([{ key: "a" }, { key: "b" }]);
   });
 
+  it("turns an entry the sync listed as cited into a manual one instead of appending a duplicate", async () => {
+    const yaml = "id: thesis\nformat: latex\npapers:\n  - key: a\n    cited: true\n  - key: b\n    doi: 10.1/b\n    cited: true\n";
+    const { entry } = await setup(yaml, [paper("a", { doi: "10.1/a" }), paper("b"), paper("c")], ["a", "b", "c"]);
+    window["showQuickPick"]!.mockImplementation(async (choices: Array<{ label: string }>) => {
+      expect(choices.map((choice) => choice.label)).toEqual(["Title a", "Title b"]);
+      return choices[0];
+    });
+
+    await commandHandler("labshelf.writing.addToReadingList")(entry());
+
+    const parsed = parseProjectFile(await yamlText());
+    expect(parsed.ok && parsed.settings.papers).toEqual([{ key: "a", doi: "10.1/a" }, { key: "b", doi: "10.1/b", cited: true }]);
+  });
+
   it("writes nothing when the quick pick is dismissed", async () => {
     const { entry, projects } = await setup("id: thesis\nformat: latex\n", [paper("a")]);
     window["showQuickPick"]!.mockResolvedValue(undefined);

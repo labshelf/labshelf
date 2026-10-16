@@ -9,6 +9,14 @@ describe("papers key", () => {
     expect(result.ok && result.settings.papers).toEqual([{ key: "smith2020", doi: "10.1/x" }, { key: "doe19" }]);
   });
 
+  it("reads cited: true, treats false and absent as a manual entry, and keeps the flag on a rewrite", () => {
+    const result = parseProjectFile(`${head}papers:\n  - {key: a, cited: true}\n  - {key: b, cited: false}\n  - {key: c}\n`);
+    expect(result.ok && result.settings.papers).toEqual([{ key: "a", cited: true }, { key: "b" }, { key: "c" }]);
+    const out = updateProjectFile(`${head}`, { papers: [{ key: "a", doi: "10.1/x", cited: true }] });
+    const again = parseProjectFile(out);
+    expect(again.ok && again.settings.papers).toEqual([{ key: "a", doi: "10.1/x", cited: true }]);
+  });
+
   it("leaves papers undefined when the key is absent or empty", () => {
     const absent = parseProjectFile(head);
     expect(absent.ok && "papers" in absent.settings).toBe(false);
@@ -17,11 +25,13 @@ describe("papers key", () => {
   });
 
   it.each([
-    ["papers: smith2020", "papers must be a list of {key, doi} entries"],
+    ["papers: smith2020", "papers must be a list of {key, doi, cited} entries"],
     ["papers: [smith2020]", "papers[0] must be a mapping"],
     ["papers: [{doi: 10.1/x}]", "papers[0].key must be text"],
     ["papers: [{key: a}, {key: ' '}]", "papers[1].key must be text"],
     ["papers: [{key: a, doi: [x]}]", "papers[0].doi must be text"],
+    ["papers: [{key: a, cited: yes please}]", "papers[0].cited must be true or false"],
+    ["papers: [{key: a, cited: 1}]", "papers[0].cited must be true or false"],
   ])("fails %s with the key in the reason", (line, reason) => {
     expect(parseProjectFile(`${head}${line}\n`)).toEqual({ ok: false, reason });
   });

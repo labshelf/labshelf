@@ -23,7 +23,7 @@ export interface ProjectSettings extends UserKeys {
   bibliography?: string | undefined;
   /** Typst compiler version of the last build. */
   typst?: string | undefined;
-  /** Papers the project reads besides those it cites. */
+  /** Papers the project cites plus those the user added, each with its DOI when known. */
   papers?: ListedPaper[] | undefined;
 }
 

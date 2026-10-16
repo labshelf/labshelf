@@ -12,7 +12,7 @@ const backlinks = new Map([["a", [link("thesis")]], ["b", [link("other")]], ["gh
 describe("buildReadingList", () => {
   it("lists the project's cited keys, then added keys it does not cite, keeping keys the library lacks", async () => {
     const { entries } = await buildReadingList({
-      project: "thesis", backlinks, listed: [{ key: "c" }, { key: "a" }, { key: "gone" }],
+      project: "thesis", backlinks, listed: [{ key: "c" }, { key: "a", cited: true as const }, { key: "gone" }],
       papersByKey: library, isOpened: async () => true,
     });
     expect(entries.map((e) => [e.key, e.cited, e.listed, e.paper?.id])).toEqual([

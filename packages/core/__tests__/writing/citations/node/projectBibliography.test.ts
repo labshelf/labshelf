@@ -43,23 +43,25 @@ describe("updateProjectBibliography", () => {
     const main = "\\begin{document}\n\\cite{smith2020,unknown}\n\\end{document}\n";
     const dir = await folderWith({ "labshelf.yaml": "id: p\nformat: latex\n", "main.tex": main });
     const result = await updateProjectBibliography(project(dir, "latex", "main.tex"), papers, fakeLogger());
-    expect(result).toEqual({ written: true, missing: ["unknown"], mainLine: "added" });
+    expect(result).toEqual({ written: true, papersWritten: true, missing: ["unknown"], mainLine: "added" });
     expect(await read(dir, "labshelf.bib")).toContain("@article{smith2020,");
     expect(await read(dir, "main.tex")).toContain("\\bibliography{labshelf}");
-    expect(await read(dir, "labshelf.yaml")).toBe("id: p\nformat: latex\nbibliography: labshelf.bib\n");
+    expect(await read(dir, "labshelf.yaml")).toBe(
+      "id: p\nformat: latex\nbibliography: labshelf.bib\npapers:\n  - key: smith2020\n    cited: true\n",
+    );
   });
 
   it("does not rewrite an unchanged file and does not touch the main file again", async () => {
     const dir = await folderWith({ "labshelf.yaml": "id: p\nformat: latex\n", "main.tex": "\\cite{doe2021}" });
     await updateProjectBibliography(project(dir, "latex", "main.tex"), papers, fakeLogger());
     const again = await updateProjectBibliography(project(dir, "latex", "main.tex", "labshelf.bib"), papers, fakeLogger());
-    expect(again).toEqual({ written: false, missing: [], mainLine: "not-needed" });
+    expect(again).toEqual({ written: false, papersWritten: false, missing: [], mainLine: "not-needed" });
   });
 
   it("creates nothing while the project cites no library paper", async () => {
     const dir = await folderWith({ "labshelf.yaml": "id: p\nformat: typst\n", "main.typ": "@fig:one" });
     const result = await updateProjectBibliography(project(dir, "typst", "main.typ"), papers, fakeLogger());
-    expect(result).toEqual({ written: false, missing: ["fig:one"], mainLine: "not-needed" });
+    expect(result).toMatchObject({ written: false, missing: ["fig:one"], mainLine: "not-needed" });
     await expect(fs.stat(path.join(dir, "labshelf.bib"))).rejects.toThrow();
     expect(await read(dir, "main.typ")).toBe("@fig:one");
   });

@@ -27,8 +27,9 @@ export class BibliographySync {
     try {
       const result = await updateProjectBibliography(project, await session.listPapers(), session.logger, openEditorSources);
       if (result.mainLine === "conflict") { this.warnConflict(project); }
-      // labshelf.yaml gained `bibliography` once the project first cited a library paper.
-      if (result.mainLine !== "not-needed" && project.settings.bibliography === undefined) {
+      // labshelf.yaml gained `bibliography` once the project first cited a library paper, or its papers list changed.
+      const recordedBibliography = result.mainLine !== "not-needed" && project.settings.bibliography === undefined;
+      if (recordedBibliography || result.papersWritten) {
         await this.workspace.projects.reload();
       }
     } catch (error) {

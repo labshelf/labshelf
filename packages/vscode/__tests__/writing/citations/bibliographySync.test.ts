@@ -11,7 +11,7 @@ jest.mock("@labshelf/core/node", () => ({ ...jest.requireActual("@labshelf/core/
 
 const update = updateProjectBibliography as jest.Mock;
 const warning = vscode.window.showWarningMessage as jest.Mock;
-const result = (mainLine: string) => ({ written: true, missing: [], mainLine });
+const result = (mainLine: string, papersWritten = false) => ({ written: true, papersWritten, missing: [], mainLine });
 
 function setup() {
   const workspace = citationWorkspace("latex");
@@ -61,6 +61,17 @@ describe("bibliography update on accept", () => {
   it("reloads the project list when the first citation added the bibliography", async () => {
     const workspace = setup();
     update.mockResolvedValue(result("added"));
+    await accept();
+    expect(workspace.projects.reload).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("papers list of labshelf.yaml", () => {
+  it("reloads the project list when the papers list was written, and not when nothing changed", async () => {
+    const workspace = setup();
+    await accept();
+    expect(workspace.projects.reload).not.toHaveBeenCalled();
+    update.mockResolvedValue(result("not-needed", true));
     await accept();
     expect(workspace.projects.reload).toHaveBeenCalledTimes(1);
   });

@@ -29,7 +29,9 @@ async function addPaper(deps: ReadingListCommandsDeps, target: ProjectEntry | Re
   const project = picked?.kind === "ready" ? latest(deps.projects, picked.folder) : undefined;
   if (!session || !project) { return; }
   await executeSafely(session.logger, "labshelf.writing.addToReadingList", async () => {
-    const inList = new Set((await deps.readingLists.of(project)).entries.map((entry) => entry.key));
+    // A paper the sync listed as cited can be added to pin it, so it stays when the sources stop citing it.
+    const syncedKeys = new Set((project.settings.papers ?? []).filter((entry) => entry.cited).map((entry) => entry.key));
+    const inList = new Set((await deps.readingLists.of(project)).entries.map((entry) => entry.key).filter((key) => !syncedKeys.has(key)));
     const choices = (await deps.listPapers()).filter((paper) => !inList.has(paper.citeKey))
       .sort((a, b) => a.title.localeCompare(b.title))
       .map((paper) => ({ label: paper.title, description: paper.citeKey, paper }));
@@ -39,8 +41,13 @@ async function addPaper(deps: ReadingListCommandsDeps, target: ProjectEntry | Re
     }
     const chosen = await vscode.window.showQuickPick(choices, { placeHolder: `Add a paper to the reading list of ${project.settings.id}`, matchOnDescription: true });
     if (!chosen) { return; }
-    const entry = chosen.paper.doi ? { key: chosen.paper.citeKey, doi: chosen.paper.doi } : { key: chosen.paper.citeKey };
-    await updateProjectSettings(project.folder, { papers: [...project.settings.papers ?? [], entry] }, session.logger);
+    const { citeKey, doi } = chosen.paper;
+    const papers = project.settings.papers ?? [];
+    const manual = (known: string | undefined) => known ?? doi ? { key: citeKey, doi: known ?? doi } : { key: citeKey };
+    const listed = syncedKeys.has(citeKey)
+      ? papers.map((entry) => entry.key === citeKey && entry.cited ? manual(entry.doi) : entry)
+      : [...papers, manual(undefined)];
+    await updateProjectSettings(project.folder, { papers: listed }, session.logger);
     await deps.projects.reload();
   });
 }
