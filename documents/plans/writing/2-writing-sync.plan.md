@@ -2,7 +2,7 @@
 
 Status: in progress (session 1 of 4)
 Size: GG — a sync contract change (a new namespace and a text merge) plus collaboration in VS Code; 4 sessions, the first with a Drive-scope spike.
-Pending decisions: 1 (Q1, answered by S1)
+Pending decisions: 0
 
 ## 1. Goal
 
@@ -20,9 +20,9 @@ Builds on [writing-core.plan.md](../../archive/writing-core.plan.md).
 - [x] **D6** Comments live in `<project>/.labshelf/comments.json`, shown with the VS Code Comments API (threads in the gutter, replies, resolve). Each comment is anchored to the quoted text with context, not to a line number, and re-anchored on load; an anchor that cannot be found becomes "detached" and stays listed. — Comments without touching the source, synced and merged like any file.
 - [x] **D7** In the reader's review mode, a highlight with a note on the compiled PDF becomes a comment at the source line (SyncTeX). — Reviewing the PDF feeds the same comment threads.
 
-Open (blocks approval):
+Answered:
 
-- **Q1** How a coauthor's LabShelf gets access to a shared project under the `drive.file` scope — options: Google Picker grants access to the shared folder / each author syncs their own copy and LabShelf exchanges changes through a shared folder only for the merge; recommendation: decide after the S1 spike, which checks whether Picker access to a folder covers its children.
+- **Q1** How a coauthor's LabShelf gets access to a shared project under the `drive.file` scope — **neither option works as written.** `drive.file` grants are per person and per file: sharing a folder grants the coauthor's app nothing, picking the folder in Google Picker grants the folder alone (not its children, nor files added later), and a file one author's app creates in a shared folder stays invisible to the other's app. A file the coauthor picks once in Picker stays readable and writable across later updates by either side, and its `lastModifyingUser` names the other author. **Consequence:** collaboration exchanges each project through one file that the owner's LabShelf creates and shares and the coauthor picks once; per-file mirroring to a coauthor is not possible. The exchange-file design is decided at S9 (one-way door, goes to `council`). Picker runs only in a browser page signed in to Google and needs an API key and the Picker API on the LabShelf Cloud project. Evidence: S1 in §8.
 
 ## 3. Scope
 
@@ -63,7 +63,7 @@ Text files are those with a known text extension (`.tex`, `.typ`, `.bib`, `.md`,
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S1 | Spike: shared folder access under `drive.file` (Picker) | — | H · main thread | Q1 answered in §8 | [ ] |
+| S1 | Spike: shared folder access under `drive.file` (Picker) | — | H · main thread | Q1 answered in §8 | [x] |
 | S2 | Contract: `projects` namespace, ignore list, base store | S1 | H · main thread | sync.md and library-format.md updated | [ ] |
 | S3 | Engine: `projects` namespace for internal and external projects | S2 | M · implementer (sonnet) | A1, A2 | [ ] |
 | S4 | Writing view: "Only on Drive — download to…" | S3 | M · implementer (sonnet) | D2 | [ ] |
@@ -89,7 +89,7 @@ Text files are those with a known text extension (`.tex`, `.typ`, `.bib`, `.md`,
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S9 | Share project with a coauthor (per Q1) | Q1 | H · main thread | coauthor syncs the project | [ ] |
+| S9 | Share project with a coauthor through one exchange file (per Q1; design via `council`) | Q1 | H · main thread | coauthor syncs the project | [ ] |
 | S10 | Coauthor activity from Drive metadata; notice | S9 | M · implementer (sonnet) | A5 (notice) | [ ] |
 | S11 | OCT bridge | S10 | M · implementer (sonnet) | A5 | [ ] |
 | S12 | Finish | S9–S11 | `finish` skill | gate passes | [ ] |
@@ -144,3 +144,6 @@ Text files are those with a known text extension (`.tex`, `.typ`, `.bib`, `.md`,
 - **R3** The OCT public server changes terms or disappears. — It is self-hostable; the bridge only calls OCT commands.
 
 ## 8. Log
+
+- 2026-10-15 21:38 — Session 1 started; D1–D7 approved.
+- 2026-10-15 22:24 — S1 done. Two accounts (A owner, B writer) with the LabShelf desktop client on a scratch folder tree created by A's app: share only → B gets 404 on everything; B picks the folder in Picker → folder 200, children 404, listing empty; A adds a file after the pick → B 404; B creates a file in the folder → A 404; B picks one file → B reads it, A's later update stays readable to B, B's write is readable to A with `lastModifyingUser` = B. Scratch files deleted.
