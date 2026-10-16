@@ -1,4 +1,4 @@
-/** Exports the writing domain's runtime-neutral API: projects written in LaTeX or Typst, their citations and backlinks, figures and values, the pre-submission check, versions and their comparison, SyncTeX and the citations behind a compiled PDF. */
+/** Exports the writing domain's runtime-neutral API: projects written in LaTeX or Typst, their citations and backlinks, figures and values, the pre-submission check, the Checklist, versions and their comparison, SyncTeX and the citations behind a compiled PDF. */
 export * from "./citations/index.js";
 export * from "./project/index.js";
 export * from "./templates/index.js";
@@ -14,3 +14,4 @@ export * from "./versions/index.js";
 export * from "./compare/index.js";
 export * from "./bibLint/index.js";
 export * from "./projectData/index.js";
+export * from "./checklist/index.js";

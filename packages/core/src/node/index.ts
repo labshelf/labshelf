@@ -19,3 +19,4 @@ export * from "../writing/backlinks/node/index.js";
 export * from "../writing/versions/node/index.js";
 export * from "../writing/projectData/node/index.js";
 export * from "../writing/compare/node/index.js";
+export * from "../writing/checklist/node/index.js";
