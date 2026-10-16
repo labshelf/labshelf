@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import { findLabshelfLinks, papersByCiteKey, type LabshelfLink, type PaperRecord } from "@labshelf/core";
-import type { CitationWorkspace } from "../citations/index.js";
+import type { CitationSession } from "../citations/index.js";
 
 export interface PaperLink {
   readonly range: vscode.Range;
@@ -11,7 +11,10 @@ export interface PaperLink {
   readonly paper: PaperRecord | undefined;
 }
 
-export type LinkLibrary = Pick<CitationWorkspace, "session">;
+/** The open library, as far as links need it: the papers and the logger. */
+export interface LinkLibrary {
+  session(): Pick<CitationSession, "listPapers" | "logger"> | undefined;
+}
 
 /** Returns no links when no library is open; reads the library only when the text holds a link. */
 export async function findPaperLinks(library: LinkLibrary, document: vscode.TextDocument): Promise<PaperLink[]> {

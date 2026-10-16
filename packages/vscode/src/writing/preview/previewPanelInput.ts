@@ -1,6 +1,7 @@
 // Describes what a build preview needs from its host and names the paper a preview reader opens.
-import type { PaperRecord, PathOps, ProjectDataPort } from "@labshelf/core";
+import type { Annotation, ILogger, PaperRecord, PathOps, ProjectDataPort } from "@labshelf/core";
 import type { ReaderPanelDeps } from "../../pdf-viewer/index.js";
+import type { CiteSections } from "../citations/index.js";
 import type { ReadyProject } from "../mainDocument.js";
 import type { BuildRootOf } from "../nodePort/index.js";
 import type { WritingHost } from "../session/index.js";
@@ -8,6 +9,8 @@ import type { WritingHost } from "../session/index.js";
 export interface BuildPreviewsDeps extends Pick<ReaderPanelDeps, "extensionUri" | "locatePdfjs" | "isMac"> {
   host: Pick<WritingHost, "current">;
   listPapers: () => Promise<PaperRecord[]>;
+  highlightsOf: (paperId: string) => Promise<Annotation[]>;
+  citeSections: (project: ReadyProject, logger: ILogger) => Promise<CiteSections>;
   paths: PathOps;
   data: ProjectDataPort;
   /** The root the editor file builds into. */

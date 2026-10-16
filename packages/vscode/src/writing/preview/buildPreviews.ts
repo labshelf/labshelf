@@ -119,6 +119,7 @@ export class BuildPreviews implements BuildListener {
         preview: createPreviewPorts({
           bodyPages: (reported, contentPages) => this.bodyPagesCounted.fire({ folder: project.folder, root: reported, contentPages }),
           logger: session.logger, paths: this.deps.paths, projectFolder: project.folder, format: project.settings.format, listPapers: this.deps.listPapers,
+          highlightsOf: this.deps.highlightsOf, citeSections: () => this.deps.citeSections(project, session.logger),
           synctex: () => this.synctex.load(project, this.shown.get(project.folder) ?? project.main), typstCites: () => this.typstCites.get(this.currentKey(project)) ?? [],
           actions: createWritingActions({
             logger: session.logger, paths: this.deps.paths, data: this.deps.data, project, recompile: this.deps.recompile,

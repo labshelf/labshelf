@@ -2,12 +2,15 @@
 
 import type { Annotation, ILogger, PaperRecord } from "@labshelf/core";
 import type { WritingProjects } from "../session/index.js";
+import type { CiteSections } from "./citeSectionsCache.js";
 import { owningProject, type ProjectLookup, type ReadyProject } from "../mainDocument.js";
 
 export interface CitationSession {
   listPapers(): Promise<PaperRecord[]>;
   /** The paper's annotations; the page-argument completion keeps the highlights that have text. */
   highlightsOf(paperId: string): Promise<Annotation[]>;
+  /** Which sections of the project cite each key, from its saved sources. */
+  citeSections(project: ReadyProject): Promise<CiteSections>;
   logger: ILogger;
 }
 

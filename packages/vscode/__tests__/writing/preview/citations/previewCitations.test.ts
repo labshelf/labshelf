@@ -4,7 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { sourceAt, type PaperRecord } from "@labshelf/core";
+import { sourceAt, type Annotation, type PaperRecord } from "@labshelf/core";
 import { lookupCitation, openCitedPaper, type PreviewCitationDeps } from "../../../../src/writing/preview/citations";
 import type { SynctexLookup } from "../../../../src/writing/preview/sourceLinks";
 import { fakeLogger } from "../../../support/writingFixtures";
@@ -22,10 +22,17 @@ function deps(over: Partial<PreviewCitationDeps> = {}) {
   const logger = fakeLogger();
   const all: PreviewCitationDeps = {
     logger, projectFolder: "/p/paper", format: "latex", listPapers: async () => [smith],
+    highlightsOf: async () => [], citeSections: async () => ({ byKey: new Map() }),
     typstCites: () => [], synctex: async () => ({ status: "unsupported" }), ...over,
   };
   return { all, logger };
 }
+
+function highlight(page: number, content: string): Annotation {
+  return { id: `h${page}`, type: "highlight", pageNumber: page, content, createdAt: "2026-01-01T00:00:00Z" } as Annotation;
+}
+
+const section = (title: string) => ({ id: title, title, file: "main.tex" });
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -36,7 +43,7 @@ describe("lookupCitation", () => {
   it("names the library paper of a hyperref destination", async () => {
     const { all, logger } = deps();
     expect(await lookupCitation(all, { area, link: true, dest: "cite.smith2020" })).toEqual([
-      { key: "smith2020", paper: { id: "smith-1", title: "Smith on cats", authors: ["A. Smith"], year: 2020 } },
+      { key: "smith2020", paper: { id: "smith-1", title: "Smith on cats", authors: ["A. Smith"], status: "unread", year: 2020 } },
     ]);
     expect(logger.log).not.toHaveBeenCalled();
   });
@@ -85,6 +92,54 @@ describe("lookupCitation", () => {
     const { all, logger } = deps({ synctex: async () => found });
     expect(await lookupCitation(all, { area, link: false })).toEqual([]);
     expect(logger.log).toHaveBeenCalledWith("WARN", "writing/preview", "Citation lookup failed", expect.objectContaining({ projectFolder: "/p/paper", page: 1 }));
+  });
+});
+
+describe("lookupCitation card details", () => {
+  const link = { area, link: true, dest: "cite.smith2020" } as const;
+
+  it("attaches at most five quoted highlights to the cited paper", async () => {
+    const asked: string[] = [];
+    const { all } = deps({ highlightsOf: async (id) => { asked.push(id); return [1, 2, 3, 4, 5, 6, 7].map((page) => highlight(page, `quote ${page}`)); } });
+    const [entry] = await lookupCitation(all, link);
+    expect(asked).toEqual(["smith-1"]);
+    expect(entry?.paper?.highlights?.map((quote) => quote.text)).toEqual(["quote 1", "quote 2", "quote 3", "quote 4", "quote 5"]);
+  });
+
+  it("lists the distinct titles of the sections citing the key, in document order", async () => {
+    const byKey = new Map([["smith2020", [section("Intro"), section("Methods"), section("Intro")]]]);
+    const { all } = deps({ citeSections: async () => ({ byKey }) });
+    const [entry] = await lookupCitation(all, link);
+    expect(entry?.paper?.citedIn).toEqual(["Intro", "Methods"]);
+  });
+
+  it("leaves citedIn out for a key no section cites", async () => {
+    const { all } = deps({ citeSections: async () => ({ byKey: new Map([["other", [section("Intro")]]]) }) });
+    const [entry] = await lookupCitation(all, link);
+    expect(entry?.paper).not.toHaveProperty("citedIn");
+  });
+
+  it("does not read highlights or sections when no key names a library paper", async () => {
+    const highlightsOf = jest.fn(async () => []);
+    const { all } = deps({ highlightsOf });
+    expect(await lookupCitation(all, { area, link: true, dest: "cite.unknown" })).toEqual([{ key: "unknown" }]);
+    expect(highlightsOf).not.toHaveBeenCalled();
+  });
+
+  it("still answers and logs when the highlights cannot be read", async () => {
+    const { all, logger } = deps({ highlightsOf: async () => { throw new Error("store offline"); }, citeSections: async () => ({ byKey: new Map([["smith2020", [section("Intro")]]]) }) });
+    const [entry] = await lookupCitation(all, link);
+    expect(entry?.paper).toMatchObject({ id: "smith-1", citedIn: ["Intro"] });
+    expect(entry?.paper).not.toHaveProperty("highlights");
+    expect(logger.log).toHaveBeenCalledWith("WARN", "writing/preview", expect.any(String), expect.objectContaining({ projectFolder: "/p/paper", paperId: "smith-1", error: expect.stringContaining("store offline") }));
+  });
+
+  it("still answers and logs when the sections cannot be read", async () => {
+    const { all, logger } = deps({ highlightsOf: async () => [highlight(1, "quote")], citeSections: async () => { throw new Error("no sources"); } });
+    const [entry] = await lookupCitation(all, link);
+    expect(entry?.paper?.highlights).toHaveLength(1);
+    expect(entry?.paper).not.toHaveProperty("citedIn");
+    expect(logger.log).toHaveBeenCalledWith("WARN", "writing/preview", expect.any(String), expect.objectContaining({ projectFolder: "/p/paper", error: expect.stringContaining("no sources") }));
   });
 });
 

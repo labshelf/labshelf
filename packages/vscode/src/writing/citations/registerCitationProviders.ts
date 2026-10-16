@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import { BibliographySync } from "./bibliographySync.js";
 import { CitationCompletionProvider, UPDATE_BIBLIOGRAPHY_COMMAND } from "./citationCompletion.js";
-import { CitationHoverProvider } from "./citationHover.js";
+import { CitationHoverProvider } from "./hover/index.js";
 import { CitationLinkProvider } from "./citationLinks.js";
 import type { CitationWorkspace } from "./citationWorkspace.js";
 
