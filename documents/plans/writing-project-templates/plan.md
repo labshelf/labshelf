@@ -1,6 +1,6 @@
 # Plan: Project template library
 
-Status: in progress (session 5 of 6; sessions 1–4 done)
+Status: in progress (session 6 of 6 next)
 Size: GG — a new contract, a fourth Drive namespace, a new UI surface, a GitHub client and an outside catalog repository; 6 sessions. It would grow if publishing needs a GitHub App of our own.
 Pending decisions: 0
 
@@ -46,8 +46,8 @@ UI per [research/mockup.md](research/mockup.md) (canvas https://claude.ai/artifa
 - [x] **A2** A card opens a detail page with the preview, metadata, files and license. When the engine is not available locally, a warning names the missing engine.
 - [x] **A3** Use template creates a project with all the template's files and opens its main file. A template with `..` or an absolute path is refused with a message.
 - [ ] **A4** Save project as template stores the project under My templates, and it appears in the gallery on another device after sync.
-- [ ] **A5** Publish runs the checks (builds with the declared engine, no shell-escape, paths inside the project, license set) and compiles the thumbnail locally. After Sign in with GitHub → Submit for review, it shows the pull request link.
-- [ ] **A6** A failing catalog fetch, sign-in or submit is logged through `ILogger` with context and shown to the user. No partial project is left on disk.
+- [x] **A5** Publish runs the checks (builds with the declared engine, no shell-escape, paths inside the project, license set) and compiles the thumbnail locally. After Sign in with GitHub → Submit for review, it shows the pull request link.
+- [x] **A6** A failing catalog fetch, sign-in or submit is logged through `ILogger` with context and shown to the user. No partial project is left on disk.
 
 ## 5. Design
 
