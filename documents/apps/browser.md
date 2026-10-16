@@ -35,6 +35,10 @@ The minimum versions are the floor for pdf.js 6.3.
 - The Scholar content script renders inside a shadow root and loads the tokens as text, with `:root` rewritten to `:host`.
 - Cloudflare-protected publishers (ACM, SIAM, ScienceDirect) block headless browsers and plain `fetch`. Real downloads from them can only be tested by hand.
 
+## Citation map
+
+A fixed **Citation map** row at the top of the library page's sidebar opens the citation map in place of the paper list ([contract](../contracts/library-ui-host.md#citation-map)). The background builds it from OpenAlex and caches the data in IndexedDB ([contract](../contracts/library-format.md#researchopenalex)).
+
 ## Capture structure
 
 Identifier detection, landing-page parsing, metadata resolution and the PDF finder live in core `import/` and are shared with the other apps. `src/capture/` keeps only what needs the browser: the page probe content script, the helper tab and tab fetch (`capture/tab/`), the watched sign-in tab (`capture/watch/`), the capture and Scholar flows, and mapping a draft to a record.

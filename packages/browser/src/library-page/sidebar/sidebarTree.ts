@@ -3,6 +3,7 @@
 import { PAPERS_DIR, ROOT_LABEL, countPapersUnder, escapeHtml, icon, isUnderDir, parentDir, type FolderTreeNode } from "@labshelf/core";
 import { el, showMenu, type LibraryUi } from "@labshelf/core/dom";
 import type { PagePrefs } from "../prefs";
+import { citationMapEntry } from "./citationMapEntry";
 
 interface Tree {
   ui: LibraryUi;
@@ -137,9 +138,10 @@ function onKey(e: KeyboardEvent, t: Tree): void {
   paintFocus(t);
 }
 
-/** Fills the sidebar slot with the tree; returns its unsubscribe function. */
-export function mountSidebarTree(ui: LibraryUi, slot: HTMLElement, prefs: PagePrefs): () => void {
+/** Fills the sidebar slot with the citation map entry and the tree; returns the tree's unsubscribe function. */
+export function mountSidebarTree(ui: LibraryUi, slot: HTMLElement, prefs: PagePrefs, openCitationMap: () => void): () => void {
   slot.innerHTML = HEAD_HTML;
+  slot.querySelector(".tree-head")!.after(citationMapEntry(openCitationMap));
   const section = slot.querySelector<HTMLElement>(".tree-section")!;
   const t: Tree = { ui, prefs, el: slot.querySelector<HTMLElement>(".tree")!, expanded: new Set(prefs.treeExpanded()), focused: null };
   section.addEventListener("click", (e) => {

@@ -3,5 +3,6 @@ export { inspectTab, findPdf, safeFolder, summarizeAttempts, resetPdfSearch, sav
 export type { CaptureDraft, SavedPaper, SaveDecision } from "./captureService";
 export { draftFromScholarHit } from "./scholarCapture";
 export { draftFromRecord } from "./recordCapture";
+export { draftFromDoi } from "./doiCapture";
 export { attachPdfToPaper } from "./attachPdfToPaper";
 export { dropWatch, onTabLoaded, openAccessTab, watchOfTab, type AccessTabDeps } from "./watch";
