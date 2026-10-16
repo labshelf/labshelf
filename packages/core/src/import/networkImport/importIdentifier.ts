@@ -15,12 +15,22 @@ interface Found {
   identifier: DetectedIdentifier;
 }
 
+export interface IdentifierImportOptions {
+  /** The cite key the paper should get instead of the one built from its metadata; a taken one gets a letter suffix. */
+  citeKey?: string;
+}
+
 /**
  * Imports a paper from an identifier or a URL containing one. The PDF comes from the core chain; when none downloads,
  * the paper is saved as a reference without one.
  * @returns what happened
  */
-export async function importIdentifier(env: NetworkImportEnv, input: string, targetDir: string): Promise<ImportOutcome> {
+export async function importIdentifier(
+  env: NetworkImportEnv,
+  input: string,
+  targetDir: string,
+  options: IdentifierImportOptions = {},
+): Promise<ImportOutcome> {
   const identifiers = identifiersFromInput(input);
   if (!identifiers.length) { return { status: "failed", error: "No DOI, arXiv id, PMID or ISBN found", input }; }
   try {
@@ -45,6 +55,7 @@ export async function importIdentifier(env: NetworkImportEnv, input: string, tar
         ...(isArxiv && !metadata.url ? { url: `https://arxiv.org/abs/${identifier.value}` } : {}),
       },
       ...(isArxiv ? { sourceName: `${identifier.value}.pdf` } : {}),
+      ...(options.citeKey ? { citeKey: options.citeKey } : {}),
       log: { message: "Paper imported from identifier", context: { type: identifier.type, value: identifier.value } },
     });
     return { status: "added", record, needsReview: false, input };

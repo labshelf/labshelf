@@ -11,4 +11,5 @@ export { projectIdSlug } from "./projectId.js";
 export type { ProjectCursor } from "./projectState.js";
 export { parseProjectRegistry, serializeProjectRegistry, withFolder, withoutFolder } from "./projectRegistry.js";
 export type { ProjectRegistry } from "./projectRegistry.js";
+export * from "./install/index.js";
 export { projectTemplate } from "./templates.js";
