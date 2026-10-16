@@ -1,10 +1,9 @@
 /**
  * @jest-environment jsdom
  */
-// Tests the preview toolbar's page chip: its tone against the page limit and the single bodyPages report per shown PDF.
-import { mountPreviewChrome } from "../../../../src/reader/dom/preview/index";
-import { BuildBanner } from "../../../../src/reader/dom/chrome/buildBanner";
-import type { PreviewRoots } from "../../../../src/reader/previewProtocol";
+// Tests the preview footer's page chip: its tone against the page limit and the single bodyPages report per shown PDF.
+import { mountPreviewChrome } from "../../../../../src/reader/dom/preview/index";
+import type { PreviewRoots } from "../../../../../src/reader/previewProtocol";
 
 function roots(shown: string, pageLimit?: number): PreviewRoots {
   const list = [shown].map((path) => ({ path, failed: false, rawLog: true, sourceLinks: true, problems: [] }));
@@ -12,19 +11,21 @@ function roots(shown: string, pageLimit?: number): PreviewRoots {
 }
 
 function setup(contentPages: number) {
-  document.body.innerHTML = `<div id="build-banner" hidden></div>`;
-  const actions = document.createElement("div");
-  document.body.append(actions);
+  document.body.innerHTML =
+    `<main id="pdf-shell"><div id="viewerContainer"></div><div id="status-pill"></div><div id="build-banner" hidden></div></main>`;
   const post = jest.fn();
   const countBodyPages = jest.fn(async () => contentPages);
+  const outline = { load: async () => ({ rows: [], pages: [] }), currentPage: () => 1, onPageChange: jest.fn(), jump: jest.fn() };
   const chrome = mountPreviewChrome({
-    actions, banner: new BuildBanner(), post, countBodyPages,
-    logs: { open: jest.fn(), setRoots: jest.fn() }, visiblePoint: () => ({ page: 1, x: 0, y: 0 }),
+    post, countBodyPages, outline,
+    logs: { open: jest.fn(), setRoots: jest.fn() },
+    find: { isOpen: false, show: jest.fn(), close: jest.fn(), onToggle: jest.fn() },
+    sidebar: { isOpen: false, toggle: jest.fn(), onChange: jest.fn() },
   });
   const flush = () => new Promise<void>((resolve) => setImmediate(resolve));
-  const mark = () => actions.querySelector(".ls-arc-mark");
+  const mark = () => document.querySelector(".ls-arc-mark");
   const bodyPosts = () => post.mock.calls.map(([m]) => m).filter((m) => m.command === "bodyPages");
-  return { chrome, actions, post, countBodyPages, flush, mark, bodyPosts };
+  return { chrome, post, countBodyPages, flush, mark, bodyPosts };
 }
 
 describe("page chip", () => {
@@ -39,13 +40,13 @@ describe("page chip", () => {
     [5, 6, "ok"],
     [6, 6, "warn"],
     [7, 6, "err"],
-  ])("shows %i of %i with the %s tone, after the buttons", async (pages, limit, tone) => {
-    const { chrome, actions, mark, flush } = setup(pages);
+  ])("shows %i of %i with the %s tone, in the footer limit slot", async (pages, limit, tone) => {
+    const { chrome, mark, flush } = setup(pages);
     chrome.applyRoots(roots("/p/main.tex", limit));
     await flush();
     expect(mark()!.textContent).toContain(`${pages} of ${limit}`);
     expect(mark()!.querySelector(`.ls-arc-${tone}`)).not.toBeNull();
-    expect(actions.lastElementChild).toBe(mark());
+    expect(mark()!.closest('[data-slot="limit"]')).not.toBeNull();
   });
 
   it("posts the body pages once per shown root, not after every roots message", async () => {

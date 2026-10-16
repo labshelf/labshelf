@@ -1,72 +1,70 @@
-// Mounts a preview's toolbar actions (recompile, source links) and keeps its build notice and logs view in step with the host.
-import { icon } from "../../../ui/index.js";
-import type { BuildState, PagePoint, PreviewRoots, WebviewToHost } from "../../index.js";
-import type { BuildBanner } from "../chrome/index.js";
-import { iconButton } from "../elements/index.js";
-import type { LogsView } from "./logsView.js";
-import { PageChip } from "./pageChip.js";
-import { PreviewNotice } from "./previewNotice.js";
+// Composes a preview's chrome around the reader: the header above the pages, the footer below them, and the logs and page-count pieces beside them.
+import { $ } from "../../../ui/dom/index.js";
+import type { PreviewRoots, WebviewToHost } from "../../index.js";
+import type { OutlineRow } from "../../logic/index.js";
+import { mountPreviewHeader, type RecompileState } from "./header/index.js";
+import type { LogsView } from "./logs/index.js";
+import { mountPreviewFooter, PageChip, type PreviewBuildStatus } from "./footer/index.js";
+
+export interface PreviewOutlineSource {
+  load(): Promise<{ rows: OutlineRow[]; pages: Array<number | null> }>;
+  currentPage(): number;
+  onPageChange(fn: () => void): void;
+  jump(row: OutlineRow): void;
+}
 
 interface PreviewChromeDeps {
-  /** The toolbar's slot for host actions; unhidden on mount. */
-  actions: HTMLElement;
-  banner: BuildBanner;
   post: (msg: WebviewToHost) => void;
   logs: Pick<LogsView, "open" | "setRoots">;
+  find: Parameters<typeof mountPreviewHeader>[0]["find"];
+  sidebar: Parameters<typeof mountPreviewHeader>[0]["sidebar"];
+  /** The PDF outline the footer's breadcrumb follows. */
+  outline: PreviewOutlineSource;
   /** Counts the body pages of the open document. */
   countBodyPages: () => Promise<number>;
-  /** The point at the top-left of the visible part of the current page. */
-  visiblePoint: () => PagePoint;
 }
 
 export interface PreviewChrome {
   applyRoots(roots: PreviewRoots): void;
-  applyBuild(state: BuildState, errors: number): void;
+  applyBuild(build: PreviewBuildStatus): void;
+  /** Follows the host's effective theme. */
+  setDark(dark: boolean): void;
   /** The open document was replaced, so its body pages are counted again. */
   documentChanged(): void;
 }
 
-const CODE_TO_PDF = "Show the cursor in the PDF";
-const PDF_TO_CODE = "Show this place in the source";
-const NO_SOURCE_LINKS = "Typst does not link source and PDF yet";
-
-function retitle(button: HTMLButtonElement, title: string): void {
-  button.title = title;
-  button.setAttribute("aria-label", title);
+function recompileState({ state, stale }: PreviewBuildStatus): RecompileState {
+  if (state === "building") { return "building"; }
+  return stale ? "stale" : "current";
 }
 
 /**
- * Adds the preview's actions to the toolbar slot.
- * @returns handles the reader's host messages call to refresh the actions and the notice.
+ * Inserts the preview header and footer into the shell and switches the document to preview layout.
+ * @returns handles the reader's host messages call to refresh the chrome.
  */
-export function mountPreviewChrome({ actions, banner, post, logs, visiblePoint, countBodyPages }: PreviewChromeDeps): PreviewChrome {
-  const notice = new PreviewNotice(banner, (rootPath) => logs.open(rootPath));
-  const recompile = iconButton(icon("refresh"), "Recompile", "rd-preview-recompile");
-  const toPdf = iconButton(icon("arrow-right"), CODE_TO_PDF);
-  const toCode = iconButton(icon("arrow-left"), PDF_TO_CODE);
-  recompile.addEventListener("click", () => post({ command: "recompile" }));
-  toPdf.addEventListener("click", () => post({ command: "revealCursor" }));
-  toCode.addEventListener("click", () => post({ command: "showSource", point: visiblePoint() }));
-  actions.replaceChildren(recompile, toPdf, toCode);
-  actions.hidden = false;
-  const chip = new PageChip({ actions, post, countBodyPages });
+export function mountPreviewChrome({ post, logs, find, sidebar, outline, countBodyPages }: PreviewChromeDeps): PreviewChrome {
+  const header = mountPreviewHeader({ post, find, sidebar, pill: $("status-pill") });
+  $("viewerContainer").before(header.element);
+  document.documentElement.classList.add("rd-preview");
+  const footer = mountPreviewFooter({ openLogs: (path) => logs.open(path), outline });
+  $("viewerContainer").after(footer.element);
+  footer.slots.limit.hidden = false;
+  const chip = new PageChip({ actions: footer.slots.limit, post, countBodyPages });
 
   return {
     applyRoots(roots) {
-      const linked = roots.roots.find((r) => r.path === roots.shown)?.sourceLinks ?? true;
-      toPdf.disabled = toCode.disabled = !linked;
-      retitle(toPdf, linked ? CODE_TO_PDF : NO_SOURCE_LINKS);
-      retitle(toCode, linked ? PDF_TO_CODE : NO_SOURCE_LINKS);
-      notice.setRoots(roots);
       logs.setRoots(roots);
+      footer.setRoots(roots);
       chip.setRoots(roots);
     },
-    applyBuild(state, errors) {
-      const busy = state === "building";
-      if (busy) { recompile.setAttribute("aria-busy", "true"); } else { recompile.removeAttribute("aria-busy"); }
-      recompile.innerHTML = icon(busy ? "loader" : "refresh");
-      notice.setBuild(state, errors);
+    applyBuild(build) {
+      header.setBuild(recompileState(build));
+      footer.setBuild(build);
     },
-    documentChanged: () => chip.documentChanged(),
+    setDark: (dark) => header.setDark(dark),
+    documentChanged() {
+      footer.documentChanged();
+      chip.documentChanged();
+    },
   };
 }

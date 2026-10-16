@@ -82,5 +82,5 @@ export function renderReaderThemesCss(): string {
     "}",
     "",
   ]);
-  return [":root {", "  --ls-reader-toolbar-h: 38px;", ...darkDeclarations, ...swatches, "}", "", ...blocks].join("\n");
+  return [":root {", "  --ls-reader-toolbar-h: 38px;", "  --ls-reader-footer-h: 26px;", ...darkDeclarations, ...swatches, "}", "", ...blocks].join("\n");
 }

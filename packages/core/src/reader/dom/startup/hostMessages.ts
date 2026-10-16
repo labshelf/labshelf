@@ -38,8 +38,8 @@ export function bindHostMessages({ ctx, ui, keyboard, hover, reloader, sourceSyn
     changeMarks.show([]);
     reloader.reload(msg.pdfUrl).then(() => ui.previewChrome?.documentChanged()).catch((err: unknown) => ui.buildBanner.showReloadError(errorMessage(err)));
   });
-  // The preview chrome owns the banner: it weighs the build state against the roots.
-  host.on("buildStatus", (msg) => ui.previewChrome?.applyBuild(msg.state, msg.errors));
+  // The preview chrome shows the build state in the header and footer.
+  host.on("buildStatus", (msg) => ui.previewChrome?.applyBuild(msg));
   host.on("previewRoots", (msg) => ui.previewChrome?.applyRoots(msg.roots));
   host.on("showLogs", (msg) => ui.openLogs(msg.root));
   host.on("revealPoint", (msg) => sourceSync.reveal(msg.point));

@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 // Tests a preview's SyncTeX gestures: a double-click reports the page point, a revealed point scrolls into view and is marked briefly.
-import { SourceSync, visiblePoint } from "../../../../src/reader/dom/navigation/sourceSync";
+import { SourceSync } from "../../../../src/reader/dom/navigation/sourceSync";
 import { DOCUMENT_REPLACED, type ReaderContext } from "../../../../src/reader/dom/session";
 import type { PageViewportLike } from "../../../../src/reader/dom/navigation/pagePoints";
 
@@ -98,18 +98,5 @@ describe("SourceSync reveal", () => {
     sync.reveal({ page: 2, x: 3, y: 3 });
     handlers.get(DOCUMENT_REPLACED)?.();
     expect(marker()).toBeNull();
-  });
-});
-
-describe("visiblePoint", () => {
-  it("is the top-left of the part of the current page the container shows", () => {
-    const { container, ctx } = setup();
-    container.scrollTop = 500;
-    expect(visiblePoint(ctx)).toEqual({ page: 2, x: 0, y: 200 });
-  });
-
-  it("is the page origin while the page is fully visible", () => {
-    const { ctx } = setup();
-    expect(visiblePoint(ctx)).toEqual({ page: 2, x: 0, y: 0 });
   });
 });

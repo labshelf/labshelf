@@ -1,9 +1,9 @@
 // Shows a build root's problems over the page area, by severity tab, with its raw log one click away.
-import { el } from "../../../ui/dom/index.js";
-import { icon } from "../../../ui/index.js";
-import type { PreviewRoot, PreviewRoots, WebviewToHost } from "../../index.js";
-import { iconButton } from "../elements/index.js";
-import { fileName } from "./fileName.js";
+import { el } from "../../../../ui/dom/index.js";
+import { icon } from "../../../../ui/index.js";
+import type { PreviewRoot, PreviewRoots, WebviewToHost } from "../../../index.js";
+import { iconButton } from "../../elements/index.js";
+import { fileName } from "../fileName.js";
 import { renderEntries } from "./logEntries.js";
 import { LogsTabs } from "./logsTabs.js";
 

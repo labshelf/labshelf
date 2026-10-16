@@ -4,6 +4,7 @@
 import { activeOutlineIndex, flattenOutline, visibleRows, type OutlineRow, type RawOutlineNode } from "../../logic/index.js";
 import { DOCUMENT_REPLACED, type ReaderContext } from "../session/index.js";
 import { icon } from "../../../ui/index.js";
+import { resolveOutlinePages } from "./outlinePages.js";
 import type { SidebarPanel } from "./sidebar.js";
 import { el } from "../../../ui/dom/index.js";
 
@@ -64,20 +65,9 @@ export class OutlineTab implements SidebarPanel {
   /** Destinations resolve to page numbers lazily; active-entry tracking sharpens as they arrive. */
   private async resolvePages(): Promise<void> {
     const doc = this.ctx.pdfDocument;
-    for (const row of this.rows) {
-      if (doc !== this.ctx.pdfDocument) { return; }
-      try {
-        const explicit = typeof row.dest === "string" ? await doc.getDestination(row.dest) : row.dest;
-        const ref = Array.isArray(explicit) ? (explicit[0] as unknown) : null;
-        if (ref && typeof ref === "object") {
-          this.rowPages[row.id] = (await doc.getPageIndex(ref as Parameters<typeof doc.getPageIndex>[0])) + 1;
-        } else if (typeof ref === "number" && Number.isInteger(ref)) {
-          this.rowPages[row.id] = ref + 1;
-        }
-      } catch {
-        // An unresolvable entry simply never becomes active.
-      }
-    }
+    const pages = await resolveOutlinePages(doc, this.rows, () => doc === this.ctx.pdfDocument);
+    if (doc !== this.ctx.pdfDocument) { return; }
+    this.rowPages = pages;
     this.render();
   }
 

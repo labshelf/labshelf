@@ -1,146 +1,77 @@
 /**
  * @jest-environment jsdom
  */
-// Tests the preview chrome: toolbar actions, source-link gating, busy state and the build notice priority.
+// Tests the preview chrome composition: the header's place in the shell and its Recompile state from the build.
 import { mountPreviewChrome } from "../../../../src/reader/dom/preview/index";
-import { BuildBanner } from "../../../../src/reader/dom/chrome/buildBanner";
-import type { PreviewRoot, PreviewRoots } from "../../../../src/reader/previewProtocol";
-
-const TYPST_TITLE = "Typst does not link source and PDF yet";
-
-function root(path: string, over: Partial<PreviewRoot> = {}): PreviewRoot {
-  return { path, failed: false, rawLog: true, sourceLinks: true, problems: [], ...over };
-}
-
-function errors(n: number) {
-  return Array.from({ length: n }, (_, i) => ({ severity: "error" as const, message: `e${i}` }));
-}
-
-function roots(shown: string, focused: string, list: PreviewRoot[]): PreviewRoots {
-  return { main: "/p/main.tex", focused, shown, roots: list };
-}
 
 function setup() {
-  document.body.innerHTML = `<div id="build-banner" hidden></div>`;
-  const actions = document.createElement("div");
-  actions.hidden = true;
-  document.body.append(actions);
+  document.documentElement.className = "";
+  document.body.innerHTML =
+    `<main id="pdf-shell"><div id="viewerContainer"></div><div id="status-pill"></div><div id="build-banner" hidden></div></main>`;
   const post = jest.fn();
   const logs = { open: jest.fn(), setRoots: jest.fn() };
-  const openLogs = logs.open;
-  const banner = new BuildBanner();
-  const chrome = mountPreviewChrome({
-    actions, banner, post, logs, visiblePoint: () => ({ page: 3, x: 0, y: 0 }), countBodyPages: async () => 1,
-  });
-  const buttons = () => [...actions.querySelectorAll("button")];
-  return { chrome, actions, post, logs, openLogs, buttons, notice: document.getElementById("build-banner")! };
+  const find = {
+    isOpen: false, show: jest.fn(), close: jest.fn(), onToggle: jest.fn(),
+  };
+  const sidebar = { isOpen: false, toggle: jest.fn(), onChange: jest.fn() };
+  const outline = {
+    load: async () => ({ rows: [], pages: [] }), currentPage: () => 1, onPageChange: jest.fn(), jump: jest.fn(),
+  };
+  const chrome = mountPreviewChrome({ post, logs, find, sidebar, countBodyPages: async () => 1, outline });
+  const header = () => document.querySelector<HTMLElement>("header.rd-preview-header")!;
+  const recompile = () => header().querySelector<HTMLElement>(".rd-preview-recompile")!;
+  return { chrome, post, header, recompile };
 }
 
-const main = root("/p/main.tex");
-
-describe("mountPreviewChrome toolbar", () => {
-  it("unhides the slot with Recompile, code to PDF and PDF to code in order", () => {
-    const { actions, buttons } = setup();
-    expect(actions.hidden).toBe(false);
-    expect(buttons().map((b) => b.title)).toEqual([
-      "Recompile", "Show the cursor in the PDF", "Show this place in the source",
-    ]);
+describe("mountPreviewChrome header", () => {
+  it("inserts the header before #viewerContainer inside #pdf-shell", () => {
+    const { header } = setup();
+    const viewer = document.getElementById("viewerContainer")!;
+    expect(header().parentElement).toBe(document.getElementById("pdf-shell"));
+    expect(header().nextElementSibling).toBe(viewer);
   });
 
-  it("posts recompile, revealCursor and showSource with the visible point", () => {
-    const { buttons, post } = setup();
-    buttons()[0]!.click();
-    expect(post).toHaveBeenLastCalledWith({ command: "recompile" });
-    buttons()[1]!.click();
-    expect(post).toHaveBeenLastCalledWith({ command: "revealCursor" });
-    buttons()[2]!.click();
-    const msg = post.mock.calls.at(-1)![0];
-    expect(msg.command).toBe("showSource");
-    expect(msg.point.page).toBeGreaterThanOrEqual(1);
+  it("adds rd-preview to the document root", () => {
+    setup();
+    expect(document.documentElement.classList.contains("rd-preview")).toBe(true);
   });
 
-  it("disables both arrows with the Typst title when the shown root has no source links", () => {
-    const { chrome, buttons } = setup();
-    chrome.applyRoots(roots(main.path, main.path, [root(main.path, { sourceLinks: false })]));
-    const [, toPdf, toCode] = buttons();
-    for (const b of [toPdf!, toCode!]) {
-      expect(b.disabled).toBe(true);
-      expect(b.title).toBe(TYPST_TITLE);
-    }
-    expect(buttons()[0]!.disabled).toBe(false);
+  it("moves #status-pill into the header", () => {
+    const { header } = setup();
+    expect(header().contains(document.getElementById("status-pill"))).toBe(true);
   });
 
-  it("enables the arrows when the shown root has source links", () => {
-    const { chrome, buttons } = setup();
-    chrome.applyRoots(roots(main.path, main.path, [root(main.path, { sourceLinks: false })]));
-    chrome.applyRoots(roots(main.path, main.path, [main]));
-    expect(buttons()[1]!.disabled).toBe(false);
-    expect(buttons()[2]!.disabled).toBe(false);
-    expect(buttons()[1]!.title).toBe("Show the cursor in the PDF");
+  it("no longer offers the code-to-PDF and PDF-to-code buttons", () => {
+    const { header } = setup();
+    const names = [...header().querySelectorAll("button")].map((b) => `${b.title} ${b.getAttribute("aria-label")}`);
+    expect(names.join("|")).not.toMatch(/Show the cursor in the PDF|Show this place in the source/);
   });
 
-  it("shows Recompile busy but clickable while building", () => {
-    const { chrome, buttons, post } = setup();
-    chrome.applyBuild("building", 0);
-    const recompile = buttons()[0]!;
-    expect(recompile.getAttribute("aria-busy")).toBe("true");
-    expect(recompile.disabled).toBe(false);
-    recompile.click();
+  it("posts recompile from the header button", () => {
+    const { recompile, post } = setup();
+    recompile().click();
     expect(post).toHaveBeenCalledWith({ command: "recompile" });
-    chrome.applyBuild("succeeded", 0);
-    expect(recompile.getAttribute("aria-busy")).not.toBe("true");
-  });
-});
-
-describe("mountPreviewChrome notice", () => {
-  it("shows building first, even when the shown root failed", () => {
-    const { chrome, notice } = setup();
-    chrome.applyRoots(roots(main.path, main.path, [root(main.path, { failed: true, problems: errors(2) })]));
-    chrome.applyBuild("building", 0);
-    expect(notice.hidden).toBe(false);
-    expect(notice.textContent).toContain("Building");
   });
 
-  it("names the shown root's failure with its error count", () => {
-    const { chrome, notice } = setup();
-    chrome.applyRoots(roots(main.path, main.path, [root(main.path, { failed: true, problems: errors(2) })]));
-    chrome.applyBuild("failed", 2);
-    expect(notice.querySelector("button")!.textContent).toBe("Build failed: 2 errors");
+  it("sets Recompile to building while a build runs", () => {
+    const { chrome, recompile } = setup();
+    chrome.applyBuild({ state: "building", errors: 0 });
+    expect(recompile().dataset["state"]).toBe("building");
+    expect(recompile().getAttribute("aria-busy")).toBe("true");
   });
 
-  it("names a failed focused root by file name, singular and plural, while main is shown", () => {
-    const { chrome, notice } = setup();
-    const chapter = "/p/chapters/chapter.tex";
-    const list = (n: number) => [main, root(chapter, { failed: true, problems: errors(n) })];
-    chrome.applyRoots(roots(main.path, chapter, list(1)));
-    expect(notice.querySelector("button")!.textContent).toBe("chapter.tex: 1 error");
-    chrome.applyRoots(roots(main.path, chapter, list(3)));
-    expect(notice.querySelector("button")!.textContent).toBe("chapter.tex: 3 errors");
+  it("sets Recompile to stale when the build succeeded on an older source", () => {
+    const { chrome, recompile } = setup();
+    chrome.applyBuild({ state: "succeeded", errors: 0, stale: true });
+    expect(recompile().dataset["state"]).toBe("stale");
+    expect(recompile().hasAttribute("aria-busy")).toBe(false);
   });
 
-  it("clears when nothing failed and nothing builds", () => {
-    const { chrome, notice } = setup();
-    chrome.applyRoots(roots(main.path, main.path, [main]));
-    chrome.applyBuild("succeeded", 0);
-    expect(notice.hidden).toBe(true);
-  });
-
-  it("opens the failed root's logs on click without posting", () => {
-    const { chrome, notice, openLogs, post } = setup();
-    const chapter = "/p/chapter.tex";
-    chrome.applyRoots(roots(main.path, chapter, [main, root(chapter, { failed: true, problems: errors(1) })]));
-    notice.querySelector("button")!.click();
-    expect(openLogs).toHaveBeenCalledWith(chapter);
-    chrome.applyRoots(roots(main.path, main.path, [root(main.path, { failed: true, problems: errors(2) })]));
-    notice.querySelector("button")!.click();
-    expect(openLogs).toHaveBeenLastCalledWith(main.path);
-    expect(post).not.toHaveBeenCalled();
-  });
-
-  it("hands the roots to the logs view", () => {
-    const { chrome, logs } = setup();
-    const next = roots(main.path, main.path, [main]);
-    chrome.applyRoots(next);
-    expect(logs.setRoots).toHaveBeenCalledWith(next);
+  it("sets Recompile to current after a fresh successful build", () => {
+    const { chrome, recompile } = setup();
+    chrome.applyBuild({ state: "building", errors: 0 });
+    chrome.applyBuild({ state: "succeeded", errors: 0 });
+    expect(recompile().dataset["state"]).toBe("current");
+    expect(recompile().hasAttribute("aria-busy")).toBe(false);
   });
 });

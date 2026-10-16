@@ -1,10 +1,10 @@
 // Shows how many body pages the shown PDF has against the project's page limit, and reports the count to the host once per PDF.
-import { arcMarkElement } from "../../../ui/dom/index.js";
-import type { ArcTone } from "../../../ui/index.js";
-import type { PreviewRoots, WebviewToHost } from "../../index.js";
+import { arcMarkElement } from "../../../../ui/dom/index.js";
+import type { ArcTone } from "../../../../ui/index.js";
+import type { PreviewRoots, WebviewToHost } from "../../../index.js";
 
 interface PageChipDeps {
-  /** The toolbar slot; the chip is its last child. */
+  /** The footer's limit slot. */
   actions: HTMLElement;
   post: (msg: WebviewToHost) => void;
   countBodyPages: () => Promise<number>;

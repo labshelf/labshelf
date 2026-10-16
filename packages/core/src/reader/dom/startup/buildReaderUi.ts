@@ -3,8 +3,8 @@
  */
 import { clampPage, type WebviewToHost } from "../../index.js";
 import { BuildBanner, Cheatsheet, SelectionBubble, StatusPill, type ThemeController, openThemePopover, Toolbar } from "../chrome/index.js";
-import { FindBar, NavHistory, visiblePoint, ZoomController } from "../navigation/index.js";
-import { countBodyPages, LogsView, mountPreviewChrome, type PreviewChrome } from "../preview/index.js";
+import { FindBar, NavHistory, ZoomController } from "../navigation/index.js";
+import { countBodyPages, LogsView, mountPreviewChrome, type PreviewChrome, previewOutlineSource } from "../preview/index.js";
 import type { ReaderContext } from "../session/index.js";
 import { AnnotationsTab, OutlineTab, Sidebar, ThumbnailsTab } from "../sidebar/index.js";
 import { ReadingStateReporter } from "./readingStateReporter.js";
@@ -22,7 +22,7 @@ export interface ReaderUi {
   reporter: ReadingStateReporter;
   toolbar: Toolbar;
   buildBanner: BuildBanner;
-  /** The preview's toolbar actions, notice and logs view; null in the paper reader. */
+  /** The preview's header, logs view and page count; null in the paper reader. */
   previewChrome: PreviewChrome | null;
   /** Opens the build logs of a root; the paper reader has none and only records the call. */
   openLogs(rootPath: string): void;
@@ -69,7 +69,7 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
     const logs = new LogsView({ parent: ctx.container.parentElement ?? ctx.container, post });
     ui.openLogs = (rootPath) => logs.open(rootPath);
     ui.previewChrome = mountPreviewChrome({
-      actions: toolbar.actions, banner: buildBanner, post, logs, visiblePoint: () => visiblePoint(ctx),
+      post, logs, find: findBar, sidebar, outline: previewOutlineSource(ctx),
       countBodyPages: () => countBodyPages(ctx.pdfDocument),
     });
   }

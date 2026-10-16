@@ -1,6 +1,6 @@
 // Shows the build logs' severity tabs with their counts.
-import type { PreviewProblem } from "../../index.js";
-import { TabList } from "../chrome/index.js";
+import type { PreviewProblem } from "../../../index.js";
+import { TabList } from "../../chrome/index.js";
 
 /** Which problems a logs tab lists. */
 export type LogsFilter = "all" | PreviewProblem["severity"];

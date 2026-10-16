@@ -42,7 +42,7 @@ describe("bindHostMessages", () => {
     const roots = { main: "/m", focused: "/m", shown: "/m", roots: [] };
     send({ type: "buildStatus", state: "failed", errors: 2 });
     send({ type: "previewRoots", roots });
-    expect(chrome.applyBuild).toHaveBeenCalledWith("failed", 2);
+    expect(chrome.applyBuild).toHaveBeenCalledWith(expect.objectContaining({ state: "failed", errors: 2 }));
     expect(chrome.applyRoots).toHaveBeenCalledWith(roots);
   });
 

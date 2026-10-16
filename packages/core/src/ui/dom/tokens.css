@@ -197,6 +197,7 @@
 }
 :root {
   --ls-reader-toolbar-h: 38px;
+  --ls-reader-footer-h: 26px;
   --ls-reader-page: #1e1e1e;
   --ls-reader-bg: #1e1e1e;
   --ls-reader-surface: #252526;

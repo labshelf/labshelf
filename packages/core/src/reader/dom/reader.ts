@@ -81,6 +81,8 @@ function wireReader(
   reloader: DocumentReloader,
 ): void {
   const ui = buildReaderUi(ctx, theme);
+  ui.previewChrome?.setDark(theme.effective === "dark");
+  theme.onEffectiveChange((effective) => ui.previewChrome?.setDark(effective === "dark"));
   const citations = new PreviewCitations(ctx);
   const hover = new DeferredHover(ctx, theme, citations);
   const keyboard = new Keyboard(ctx, createActionRunner({ ctx, ui, hover }));

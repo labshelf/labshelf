@@ -17,6 +17,7 @@ export class ThemeController {
   private pdfViewer: PDFViewer | null = null;
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly listeners: Array<() => void> = [];
+  private readonly effectiveListeners: Array<(effective: EffectiveTheme) => void> = [];
 
   constructor(private readonly container: HTMLElement, preference: PdfTheme, effective: EffectiveTheme) {
     this.preference = preference;
@@ -43,6 +44,11 @@ export class ThemeController {
   onPageColorsChange(fn: () => void): void { this.listeners.push(fn); }
 
   /**
+   * Fires on every applied effective theme, whether it came from boot's init message or a later applyTheme.
+   */
+  onEffectiveChange(fn: (effective: EffectiveTheme) => void): void { this.effectiveListeners.push(fn); }
+
+  /**
    * Applies a theme preference/effective pair: updates the chrome's data attribute and the page preset colours.
    */
   apply(preference: PdfTheme | undefined, effective: EffectiveTheme | undefined): void {
@@ -52,6 +58,7 @@ export class ThemeController {
     document.documentElement.dataset["pdfTheme"] = effective;
     const preset = presetFor(effective);
     this.applyPageColors(preset.bg, preset.text);
+    for (const fn of this.effectiveListeners) { fn(effective); }
   }
 
   /**

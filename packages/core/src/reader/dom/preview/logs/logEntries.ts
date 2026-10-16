@@ -1,8 +1,8 @@
 // Lists a build root's problems for one logs tab; an entry that names a source place opens it.
-import { el } from "../../../ui/dom/index.js";
-import { icon, type IconName } from "../../../ui/index.js";
-import type { PreviewProblem } from "../../index.js";
-import { fileName } from "./fileName.js";
+import { el } from "../../../../ui/dom/index.js";
+import { icon, type IconName } from "../../../../ui/index.js";
+import type { PreviewProblem } from "../../../index.js";
+import { fileName } from "../fileName.js";
 import { matchesFilter, type LogsFilter } from "./logsTabs.js";
 
 const SEVERITY_ICON: Record<PreviewProblem["severity"], IconName> = { error: "warning", warning: "warning", info: "info" };

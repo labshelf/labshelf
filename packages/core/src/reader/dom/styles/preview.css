@@ -1,10 +1,6 @@
-/* Chrome only a build preview shows: the toolbar's Recompile button while it builds, and the build logs view. */
-.rd-preview-recompile[aria-busy="true"] svg { animation: rd-spin 1s linear infinite; }
-
-@media (prefers-reduced-motion: reduce) {
-  .rd-preview-recompile[aria-busy="true"] svg { animation: none; }
-}
-
+/* Chrome only a build preview shows: its header and footer (imported), the build logs view and the citation card. */
+@import "./preview-header.css";
+@import "./preview-footer.css";
 /* Logs view: covers the page area below the overlay toolbar; the sidebar stays beside it. */
 .rd-logs {
   position: absolute; inset: var(--ls-reader-toolbar-h) 0 0; z-index: 2;
@@ -39,9 +35,9 @@ button.rd-log-entry:focus-visible { outline: 1px solid var(--ls-focus); outline-
 }
 
 /* Page chip: the Arc mark's label stays visible beside the mark instead of appearing on hover. */
-.rd-toolbar-actions .ls-arc-mark { width: auto; align-items: center; gap: var(--ls-space-2); }
-.rd-toolbar-actions .ls-arc-mark .ls-arc { width: var(--ls-space-6); }
-.rd-toolbar-actions .ls-arc-mark .ls-arc-mark-label {
+.rd-preview-footer .ls-arc-mark { width: auto; align-items: center; gap: var(--ls-space-2); }
+.rd-preview-footer .ls-arc-mark .ls-arc { width: var(--ls-space-6); }
+.rd-preview-footer .ls-arc-mark .ls-arc-mark-label {
   position: static; margin: 0; padding: 0; background: none; opacity: 1; transform: none; line-height: normal;
 }
 
