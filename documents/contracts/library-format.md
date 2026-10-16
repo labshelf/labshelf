@@ -104,6 +104,8 @@ figures:
 values: [results.json]
 check:
   pages: 9
+  words: 8000
+  countUpTo: references
   authors: [Jane Doe]
 papers:
   - key: smith2020
@@ -123,11 +125,13 @@ ignore: [data/raw/**, "*.log"]
 | `typst` | string | Typst compiler version of the last successful Typst build, written after each one; a YAML number reads as its text |
 | `figures` | mapping | figure path → `{run, inputs}`; `run` is the shell command that makes the figure, run in the project folder; `inputs` lists paths or globs (`*`, `**`, `?`). A figure is stale when it is missing or an input is newer than it |
 | `values` | string[] | JSON files whose leaves the sources read: `\lsvalue{<file>.<path>}` in LaTeX, `json("…")` in Typst. `<file>` is the file name without `.json`, and of two files with the same name only the first is read; array items are numbered from 0 |
-| `check` | mapping | what the pre-submission check holds the built PDF to: `pages` is the most pages allowed before the references heading (every page counts when the PDF has none); `authors` lists names an anonymous submission must not show, besides the git user's and the PDF's Author field; the anonymity rules run unless `anonymous` is `false`, as for a camera-ready |
+| `check` | mapping | what the pre-submission check holds the built PDF to: `pages` is the most pages allowed, counted as `countUpTo` says; `authors` lists names an anonymous submission must not show, besides the git user's and the PDF's Author field; the anonymity rules run unless `anonymous` is `false`, as for a camera-ready |
+| `check.words` | positive integer | the most words allowed, counted up to the same point as `pages` |
+| `check.countUpTo` | `references` \| `end` | where `pages` and `words` stop counting: `references` (the default when absent) stops at the references heading, and every page counts when the PDF has none; `end` counts the whole document |
 | `papers` | `{key, doi?, cited?}`[] | the papers the project depends on; `key` is the cite key. LabShelf lists every key the sources cite that matches a library paper with `cited: true` and takes the DOI from the library paper with that cite key; an entry without `cited` is one the user added (Add to Reading List). A cited key with no library paper, such as a Typst label or a key from the user's own `.bib`, is not added, and an entry already listed for it stays while it is cited. Sync adds new cited entries in key order after the existing ones, fills a missing DOI from the library, never changes or removes a DOI already listed, and removes a `cited: true` entry once the sources stop citing the key; entries without `cited` are never removed, and Add to Reading List on a `cited: true` entry drops the flag. `labshelf install` imports the listed papers it cannot find in the library under their listed `key`. A rewrite of the list keeps only `key`, `doi` and `cited`; `cited: false` reads as absent |
 | `ignore` | string[] | paths that project sync leaves on the device, as patterns relative to the project folder with `*`, `**` and `?` like `figures` inputs; a pattern that matches a folder covers everything under it ([sync.md](sync.md#projects)) |
 
-LabShelf never writes `figures`, `values`, `check` or `ignore`. A malformed `figures`, `values`, `check`, `papers` or `ignore` makes the file fail to parse, with the key in the reason. A `run` command executes only after the user confirms it on that machine; the confirmation covers that project and that exact command.
+LabShelf writes `check.pages`, `check.words` and `check.countUpTo` from the preview, removes a limit the user clears and drops `check` when that leaves it empty. It never writes `figures`, `values`, `ignore` or the other `check` keys. A malformed `figures`, `values`, `check`, `papers` or `ignore` makes the file fail to parse, with the key in the reason. A `run` command executes only after the user confirms it on that machine; the confirmation covers that project and that exact command.
 
 Rules:
 

@@ -20,7 +20,7 @@ export function runChecks({ facts, sources, settings, gitUser }: CheckInput): Ch
   const body = paperBody(facts.pages.map((page) => page.lines));
   const names = [...(settings?.authors ?? []), ...(gitUser === undefined ? [] : [gitUser])];
   const findings = [
-    ...pageLimitFindings(body, settings?.pages),
+    ...pageLimitFindings(body, facts.pages.length, settings),
     ...(settings?.anonymous ?? true ? anonymityFindings({ facts, body, names, sources }) : []),
     ...unresolvedReferenceFindings(facts),
     ...type3FontFindings(facts),

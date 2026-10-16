@@ -2,7 +2,7 @@
 // CONTRACT: documents/contracts/library-format.md#labshelfyaml
 
 import YAML from "yaml";
-import { readUserKeys, type UserKeys } from "./userKeys.js";
+import { readUserKeys, type CountUpTo, type UserKeys } from "./userKeys.js";
 import { readListedPapers, type ListedPaper } from "./listedPapers.js";
 
 export const PROJECT_FILE = "labshelf.yaml";
@@ -27,8 +27,17 @@ export interface ProjectSettings extends UserKeys {
   papers?: ListedPaper[] | undefined;
 }
 
-/** Settings LabShelf may rewrite after creation; undefined removes the key. The user keys are the user's alone. */
-export type ProjectSettingsPatch = Partial<Omit<ProjectSettings, "id" | "format" | keyof UserKeys>>;
+/** The `check:` limits the preview edits. */
+export interface CheckLimits {
+  pages: number;
+  words: number;
+  countUpTo: CountUpTo;
+}
+
+/** Settings LabShelf may rewrite after creation; undefined removes the key, an absent key stays as it is. Of the user keys only the check limits are LabShelf's to write. */
+export type ProjectSettingsPatch = Partial<Omit<ProjectSettings, "id" | "format" | keyof UserKeys>> & {
+  check?: { [K in keyof CheckLimits]?: CheckLimits[K] | undefined };
+};
 
 export type ProjectFileResult =
   | { ok: true; settings: ProjectSettings }
@@ -88,8 +97,18 @@ export function serializeProjectFile(settings: ProjectSettings): string {
 /** Applies a patch to existing labshelf.yaml text, leaving comments, key order and unknown keys as they are. */
 export function updateProjectFile(text: string, patch: ProjectSettingsPatch): string {
   const doc = YAML.parseDocument(text);
-  for (const [key, value] of Object.entries(patch)) {
+  const { check, ...rest } = patch;
+  for (const [key, value] of Object.entries(rest)) {
     if (value === undefined) { doc.delete(key); } else { doc.set(key, value); }
   }
+  if (check !== undefined) { patchCheckLimits(doc, check); }
   return doc.toString();
+}
+
+function patchCheckLimits(doc: YAML.Document, check: NonNullable<ProjectSettingsPatch["check"]>): void {
+  for (const [key, value] of Object.entries(check)) {
+    if (value === undefined) { doc.deleteIn(["check", key]); } else { doc.setIn(["check", key], value); }
+  }
+  const mapping = doc.get("check");
+  if (YAML.isMap(mapping) && mapping.items.length === 0) { doc.delete("check"); }
 }

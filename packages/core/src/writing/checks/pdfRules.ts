@@ -1,4 +1,5 @@
 /** Checks the PDF's layout facts against common desk-reject causes: page limit, Type 3 fonts, low-resolution images and unresolved references. */
+import type { CheckSettings } from "../project/index.js";
 import type { CheckFinding, PdfFacts } from "./checkTypes.js";
 import type { PaperBody } from "./paperBody.js";
 
@@ -6,9 +7,12 @@ const MIN_DPI = 300;
 /** `??` is LaTeX's mark for an unresolved \ref; `[?]` and `(?)` mark unresolved citations in numeric and author-year styles. */
 const UNRESOLVED = /\?\?|\[\?(?:,\s*\?)*\]|\(\?\)/g;
 
-export function pageLimitFindings(body: PaperBody, limit: number | undefined): CheckFinding[] {
-  if (limit === undefined || body.contentPages <= limit) { return []; }
-  const counted = body.headingFound ? `${body.contentPages} pages before the references` : `${body.contentPages} pages (no References heading found, so every page counts)`;
+export function pageLimitFindings(body: PaperBody, totalPages: number, settings: CheckSettings | undefined): CheckFinding[] {
+  const limit = settings?.pages;
+  const toEnd = settings?.countUpTo === "end";
+  const pages = toEnd ? totalPages : body.contentPages;
+  if (limit === undefined || pages <= limit) { return []; }
+  const counted = toEnd ? `${pages} pages` : body.headingFound ? `${pages} pages before the references` : `${pages} pages (no References heading found, so every page counts)`;
   return [{ rule: "pages", severity: "error", message: `The paper has ${counted}; the limit is ${limit}.`, location: { kind: "pdf" } }];
 }
 
