@@ -1,6 +1,6 @@
 # Plan: Overleaf-like writing workspace in VS Code
 
-Status: in progress (session 6 of 8)
+Status: in progress (session 7 of 8)
 Size: GG — new view model, per-root builds, preview chrome, a reader-host and two library-format changes; grows if Typst root detection needs Tinymist
 Pending decisions: 0
 
@@ -58,7 +58,7 @@ Facts: [research/current-state.md](research/current-state.md), [research/checkli
 - [x] **A13** Typecheck and tests pass for core and vscode; the browser reader boots (headless check).
 - [x] **A14** Outline shows the focused file's sections, marks the current one, follows tabs and edits, and reveals on click; Typst works without Tinymist.
 - [ ] **A15** Figures and Versions appear only while a project is open, collapsed with their count in the header, and are hidden when empty.
-- [ ] **A16** Project rows match D13, and the list renders before any count.
+- [x] **A16** Project rows match D13, and the list renders before any count.
 - [ ] **A17** Checklist groups start collapsed, keep their open state across reloads, and switch By kind / By section from the view title, remembered per project.
 - [ ] **A18** Adding `% TODO x` and saving adds an item; removing it and saving removes it; a broken `\ref`, a stale figure and an exceeded page limit each appear and clear.
 - [ ] **A19** By section places items under their heading, items in an included file under its name, and project-wide items under "Whole project".

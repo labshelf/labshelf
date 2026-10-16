@@ -45,3 +45,16 @@
 - 2026-10-16 15:10 — S5.2 opus host agent: A6 (root/chapter/outside focus), A7 and A8 host side (failed root keeps main PDF, failed main sends showLogs, PDF untouched), A9 (separate per-root build folders) pass in a real host; webview DOM clicks rest on session 3 tests. A1–A12, A14 met; A5 cancel not drivable.
 - 2026-10-16 15:10 — S5.3 finish: gate PASS (vscode 792 tests), documents/apps/vscode.md gains the editor-actions bullet; Show in Preview stays LaTeX-only (Typst sync is out of scope).
 - 2026-10-16 15:10 — session 5 closed (second context): main peak 73.0k (baseline 48.8k), largest subagent 43.5k (S5.2 host implementer).
+- 2026-10-16 13:20 — session 6 research: four Explore scouts refreshed research/checklist-and-marks.md (sha ce0112e).
+- 2026-10-16 13:20 — S6.2 (partial) main thread: library-format.md gains `statusChangedAt` and `## .labshelf/checklist.json`; sync.md unchanged (conflicts keep both copies, R6 needs no merge). Code packages a/b specified in sessions/06.md.
+- 2026-10-16 13:20 — session 6 paused at the main-thread budget (~101k, mostly the research-fresh stale list). Left: S6.1, S6.2 code a/b, S6.3, S6.4, S6.5.
+- 2026-10-16 13:17 — S6.2a (test-writer + implementer sonnet): `statusChangedAt` parsed, serialized, stamped in `applyPatch` on a status change, kept from disk with `ownsStatus:false`; 99/99 tests.
+- 2026-10-16 13:17 — S6.2b (test-writer + implementer sonnet): `checklistFile.ts` + `node/checklistStore.ts`; 17 tests.
+- 2026-10-16 13:17 — S6.3 (test-writer + implementer sonnet): `scanTodos`, `sectionPlacer`, `citeSections`, `buildChecklist`; core 3535 tests green.
+- 2026-10-16 13:17 — S6.1 (implementer opus, core half; stopped at 60k) + S6.1b (implementer sonnet, vscode half): mark tokens, `arcMark`, `arcMarkElement` + arc-mark.css, `arcIcons`/`writeArcMarkIcons` in globalStorage (16px canvas), figure ThemeIcons replaced; vscode 797 tests green. Not yet seen outside Jest.
+- 2026-10-16 13:17 — S6.4 split: S6.4a done (core `readChecklistSignals`, 4 tests; one fixture gained `doneAt` to match the contract). S6.4b (vscode rows) left, design in sessions/06.md.
+- 2026-10-16 13:17 — session 6 paused again at the main-thread budget: main peak 112.6k (baseline 48.8k), largest subagent 62.7k (S6.1 core implementer). Left: S6.4b, S6.5.
+- 2026-10-16 16:40 — S6.4b (test-writer + implementer sonnet): Projects rows per D13 (sections, Arc mark, lazy "N open", "folder missing", detail children), BuildOutcomes fanned out next to BuildPreviews; vscode 814 tests.
+- 2026-10-16 16:40 — S6.5 finish: gate PASS (core 3539, vscode 814); documents/apps/vscode.md gains the Projects rows. Headless webview: all 12 Arc marks render in both themes, hover label slides in left without moving the mark.
+- 2026-10-16 16:40 — S6.5 verify (test-electron host, user-approved): rows, sections, counts, watcher (+1 TODO after ~3s), broken rows pass; Arc tree icons were blank because the workbench CSP blocks globalStorage URIs. Fix (implementer sonnet): marks baked at build time into packages/vscode/out/marks/, referenced via extensionUri; icons draw in the dark Projects view. Not seen: Figures view icons and light theme in the host.
+- 2026-10-16 16:40 — session 6 closed (third context): main peak 104.1k (baseline 49.6k), largest subagent 83.2k (verify host run).
