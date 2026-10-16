@@ -1,5 +1,5 @@
 // Reads a project's SyncTeX data once per build and keeps it until the next build replaces it.
-import type { PathOps, ProjectDataPort, SyncIndex } from "@labshelf/core";
+import { rootBuildFolder, type PathOps, type ProjectDataPort, type SyncIndex } from "@labshelf/core";
 import type { ReadyProject } from "../../mainDocument.js";
 import type { WritingHost } from "../../projectStore.js";
 import { PREVIEW_LOG_MODULE } from "../previewStrings.js";
@@ -24,11 +24,11 @@ export class ProjectSynctex {
     this.lookups.delete(projectFolder);
   }
 
-  /** The project's data. A missing or unreadable file is not kept, so a later build is picked up. */
-  load(project: ReadyProject): Promise<SynctexLookup> {
+  /** The data of a root's build. A missing or unreadable file is not kept, so a later build is picked up. */
+  load(project: ReadyProject, root: string | undefined): Promise<SynctexLookup> {
     const known = this.lookups.get(project.folder);
     if (known) { return known; }
-    const pending = this.read(project);
+    const pending = this.read(project, root);
     this.lookups.set(project.folder, pending);
     void pending.then((lookup) => {
       if (lookup.status !== "found" && this.lookups.get(project.folder) === pending) { this.lookups.delete(project.folder); }
@@ -36,14 +36,14 @@ export class ProjectSynctex {
     return pending;
   }
 
-  private async read(project: ReadyProject): Promise<SynctexLookup> {
+  private async read(project: ReadyProject, root: string | undefined): Promise<SynctexLookup> {
     // Typst writes no SyncTeX; its compiler has no PDF-to-source map LabShelf can read.
     if (project.settings.format !== "latex") { return { status: "unsupported" }; }
-    if (!project.main) { return { status: "missing", path: project.folder }; }
-    const mainFile = this.paths.join(project.folder, project.main);
+    if (!root) { return { status: "missing", path: project.folder }; }
+    const mainFile = this.paths.join(project.folder, root);
     try {
       const base = this.paths.basename(mainFile, this.paths.extname(mainFile));
-      return await this.data.readSynctexFile(this.data.projectBuildDir(project.settings.id), base, this.paths.dirname(mainFile));
+      return await this.data.readSynctexFile(this.paths.join(this.data.projectBuildDir(project.settings.id), rootBuildFolder(root)), base, this.paths.dirname(mainFile));
     } catch (error) {
       await this.host.current()?.logger.error(PREVIEW_LOG_MODULE, error, { projectFolder: project.folder });
       return { status: "unreadable" };

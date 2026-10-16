@@ -1,11 +1,14 @@
-// Names the PDF a Typst project's live preview shows, kept in the build folder apart from the saved <main>.pdf.
-import type { PathOps, ProjectDataPort } from "@labshelf/core";
+// Names the PDF a Typst root's live preview shows, kept in the root's build folder apart from the saved <root>.pdf.
+import { rootBuildFolder, type PathOps, type ProjectDataPort } from "@labshelf/core";
 import type { ReadyProject } from "../mainDocument.js";
 
+/** `root` is the compiled file relative to the project folder. */
 export function typstPreviewPdf(
-  project: ReadyProject & { main: string },
+  project: ReadyProject,
+  root: string,
   data: Pick<ProjectDataPort, "projectBuildDir">,
   paths: Pick<PathOps, "join" | "basename" | "extname">,
 ): string {
-  return paths.join(data.projectBuildDir(project.settings.id), `${paths.basename(project.main, paths.extname(project.main))}.pdf`);
+  const folder = paths.join(data.projectBuildDir(project.settings.id), rootBuildFolder(root));
+  return paths.join(folder, `${paths.basename(root, paths.extname(root))}.pdf`);
 }

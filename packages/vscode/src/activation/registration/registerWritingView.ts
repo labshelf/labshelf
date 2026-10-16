@@ -99,8 +99,8 @@ function registerBuildAndPreviewCommands(
   const previews = new BuildPreviews({ host, listPapers, paths: projects.paths, data: projects.data, extensionUri: context.extensionUri, ...reader });
   const diagnostics = new BuildDiagnostics();
   context.subscriptions.push(diagnostics);
-  const { builders } = registerNodeWriting({ context, host, projects, figures, previews, diagnostics, reader });
-  registerBuildCommand({ context, projects, builders });
+  const { builders, buildRootOf } = registerNodeWriting({ context, host, projects, figures, previews, diagnostics, reader });
+  registerBuildCommand({ context, projects, builders, buildRootOf });
   registerMarkVersionCommand({ context, host, projects, builders });
   registerTinymistBridge(context, { host, projects });
   registerShowPreview({ context, projects, previews });

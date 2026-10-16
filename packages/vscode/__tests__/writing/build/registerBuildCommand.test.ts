@@ -18,21 +18,31 @@ function setup() {
     readyEntry("/p/tex"),
     readyEntry("/p/typ", { main: "main.typ", settings: { id: "typ", format: "typst" } }),
   ]);
-  registerBuildCommand({ context: { subscriptions: [] } as never, projects, builders });
-  return { builders, order };
+  const buildRootOf = jest.fn(async (_folder: string, main: string, _file: string) => main);
+  registerBuildCommand({ context: { subscriptions: [] } as never, projects, builders, buildRootOf });
+  return { builders, order, buildRootOf };
 }
 
 beforeEach(() => jest.clearAllMocks());
 
 describe("registerBuildCommand", () => {
-  it.each([["/p/typ/main.typ", "typst", "/p/typ"], ["/p/tex/main.tex", "latex", "/p/tex"]] as const)(
-    "saves all editors, then builds %s with the %s builder", async (file, format, folder) => {
+  it.each([["/p/typ/main.typ", "typst", "/p/typ", "main.typ"], ["/p/tex/main.tex", "latex", "/p/tex", "main.tex"]] as const)(
+    "saves all editors, then builds %s with the %s builder", async (file, format, folder, root) => {
       const { builders, order } = setup();
       openInEditor(file);
       await commandHandler(BUILD_COMMAND)();
-      expect(builders[format].request).toHaveBeenCalledWith(folder, "command");
+      expect(builders[format].request).toHaveBeenCalledWith(folder, root, "command");
       expect(order).toEqual(["saveAll", format]);
     });
+
+  it("builds the root the injected buildRootOf resolves for a chapter that is not a root", async () => {
+    const { builders, buildRootOf } = setup();
+    buildRootOf.mockResolvedValue("book.tex");
+    openInEditor("/p/tex/chapters/one.tex");
+    await commandHandler(BUILD_COMMAND)();
+    expect(buildRootOf).toHaveBeenCalledWith("/p/tex", "main.tex", "/p/tex/chapters/one.tex");
+    expect(builders.latex.request).toHaveBeenCalledWith("/p/tex", "book.tex", "command");
+  });
 
   it("tells the user to open a project file when the active file is outside every project", async () => {
     const { builders } = setup();

@@ -1,4 +1,5 @@
 // Registers the Typst compiles: live into an open preview while the user types, and a build after every save of a Typst project's files.
+import { buildRootOf } from "@labshelf/core/node";
 import * as vscode from "vscode";
 
 import { owningProject, type ReadyProject } from "../../mainDocument.js";
@@ -27,11 +28,16 @@ function typstProjectOf(projects: WritingProjects, file: vscode.Uri): ReadyProje
 export function registerTypstBuild(deps: TypstBuildRegistration): TypstBuilds {
   const builds = new TypstBuilds({ ...deps, compiler: new TypstCompilerHost(deps.context.globalStorageUri.fsPath) });
   const timers = new Map<string, NodeJS.Timeout>();
-  const schedule = (folder: string, trigger: "live" | "save", delay: number): void => {
-    clearTimeout(timers.get(folder));
-    timers.set(folder, setTimeout(() => {
-      timers.delete(folder);
-      void builds.request(folder, trigger);
+  let disposed = false;
+  const schedule = async (project: ReadyProject, file: vscode.Uri, trigger: "live" | "save", delay: number): Promise<void> => {
+    const folder = project.folder;
+    const root = await buildRootOf(folder, project.main ?? "", file.fsPath);
+    if (disposed) { return; } // the root resolves asynchronously, possibly after dispose
+    const key = `${folder}\0${root}`;
+    clearTimeout(timers.get(key));
+    timers.set(key, setTimeout(() => {
+      timers.delete(key);
+      void builds.request(folder, root, trigger);
     }, delay));
   };
 
@@ -39,14 +45,14 @@ export function registerTypstBuild(deps: TypstBuildRegistration): TypstBuilds {
     vscode.workspace.onDidChangeTextDocument((event) => {
       if (event.contentChanges.length === 0) { return; }
       const project = typstProjectOf(deps.projects, event.document.uri);
-      if (project && deps.hasPreview(project.folder)) { schedule(project.folder, "live", LIVE_DEBOUNCE_MS); }
+      if (project && deps.hasPreview(project.folder)) { void schedule(project, event.document.uri, "live", LIVE_DEBOUNCE_MS); }
     }),
     // Any saved file can be an image, a .bib or a data file the document reads.
     vscode.workspace.onDidSaveTextDocument((document) => {
       const project = typstProjectOf(deps.projects, document.uri);
-      if (project) { schedule(project.folder, "save", SAVE_DEBOUNCE_MS); }
+      if (project) { void schedule(project, document.uri, "save", SAVE_DEBOUNCE_MS); }
     }),
-    { dispose: () => timers.forEach((timer) => clearTimeout(timer)) },
+    { dispose: () => { disposed = true; timers.forEach((timer) => clearTimeout(timer)); } },
   );
   return builds;
 }

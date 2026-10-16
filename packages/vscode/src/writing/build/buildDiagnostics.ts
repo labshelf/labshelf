@@ -1,4 +1,4 @@
-// Shows each project's build problems in the Problems panel and replaces them on the next build of that project.
+// Shows each build root's problems in the Problems panel and replaces them on the next build of that root.
 import * as vscode from "vscode";
 
 import type { LocatedProblem } from "@labshelf/core";
@@ -21,12 +21,13 @@ function diagnostic(problem: LocatedProblem): vscode.Diagnostic {
 export class BuildDiagnostics implements vscode.Disposable {
   private readonly diagnostics = new ProjectDiagnostics("labshelf-latex");
 
-  publish(projectFolder: string, problems: readonly LocatedProblem[]): void {
+  /** `rootPath` is the absolute path of the compiled root; each root's problems replace only its own. */
+  publish(rootPath: string, problems: readonly LocatedProblem[]): void {
     const byFile = new Map<string, vscode.Diagnostic[]>();
     for (const problem of problems) {
       byFile.set(problem.file, [...byFile.get(problem.file) ?? [], diagnostic(problem)]);
     }
-    this.diagnostics.replace(projectFolder, byFile);
+    this.diagnostics.replace(rootPath, byFile);
   }
 
   dispose(): void {

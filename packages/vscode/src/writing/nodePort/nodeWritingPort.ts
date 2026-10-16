@@ -17,4 +17,7 @@ interface NodeWritingDeps {
   reader: Omit<ReaderPanelDeps, "logger" | "extensionUri">;
 }
 
-export type RegisterNodeWriting = (deps: NodeWritingDeps) => { builders: ProjectBuilders };
+/** Project-relative root that a save or build of `file` (absolute) targets: the file when it is a root, else `main`. */
+export type BuildRootOf = (projectFolder: string, main: string, file: string) => Promise<string>;
+
+export type RegisterNodeWriting = (deps: NodeWritingDeps) => { builders: ProjectBuilders; buildRootOf: BuildRootOf };

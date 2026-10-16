@@ -41,12 +41,12 @@ async function checkBeforeSubmitting(deps: CheckCommandDeps, diagnostics: Projec
     }
     // The check reads the PDF of the sources as they are now, so it builds first.
     await vscode.workspace.saveAll(false);
-    const build = await deps.builders[project.settings.format].request(project.folder, "command");
+    const build = await deps.builders[project.settings.format].request(project.folder, project.main ?? "", "command");
     if (build?.status !== "succeeded") {
       await vscode.window.showWarningMessage("The check needs a successful build. The build problems are listed in Problems.");
       return;
     }
-    const pdfPath = await builtPdf(deps.projects, project);
+    const pdfPath = await builtPdf(deps.projects, project, project.main);
     if (!pdfPath) {
       await vscode.window.showInformationMessage("Build the project first; the check reads its PDF.");
       return;

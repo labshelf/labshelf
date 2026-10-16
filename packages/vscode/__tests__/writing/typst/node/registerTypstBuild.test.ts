@@ -1,10 +1,12 @@
 // Tests when Typst files trigger a build: debounced live compiles into an open preview, and debounced builds after a save.
 import * as vscode from "vscode";
 
+import { buildRootOf } from "@labshelf/core/node";
 import { runTypstBuild } from "@labshelf/core/typst/node";
 import { registerTypstBuild } from "../../../../src/writing/typst/node";
 import { fakeHost, fakeProjects, readyEntry } from "../../../support/writingFixtures";
 
+jest.mock("@labshelf/core/node", () => ({ ...jest.requireActual("@labshelf/core/node"), buildRootOf: jest.fn() }));
 jest.mock("@labshelf/core/typst/node", () => ({ ...jest.requireActual("@labshelf/core/typst/node"), runTypstBuild: jest.fn() }));
 jest.mock("../../../../src/writing/typst/node/typstCompilerHost", () => ({
   TypstCompilerHost: jest.fn(() => ({ get: async () => ({ session: {}, packages: {} }) })),
@@ -13,6 +15,7 @@ jest.mock("../../../../src/writing/typst/tinymist", () => ({ tinymistInstalled: 
 jest.mock("../../../../src/writing/typst/typstVersionPin", () => ({ recordTypstVersion: jest.fn(async () => {}) }));
 
 const run = runTypstBuild as jest.Mock;
+const rootOf = buildRootOf as jest.Mock;
 const workspace = vscode.workspace as unknown as { _fireTextDocumentChange: (event: unknown) => void; _fireDocumentEvent: (kind: string, document: unknown) => void };
 const doc = (fsPath: string) => ({ uri: Object.assign(vscode.Uri.file(fsPath), { scheme: "file" }) });
 
@@ -38,6 +41,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   jest.useFakeTimers();
   run.mockResolvedValue({ status: "succeeded", pdf: "/x.pdf", problems: [] });
+  rootOf.mockImplementation(async (_folder: string, main: string) => main);
 });
 
 afterEach(() => {
@@ -85,6 +89,25 @@ describe("registerTypstBuild saves", () => {
     expect(run).not.toHaveBeenCalled();
     await jest.advanceTimersByTimeAsync(1);
     expect(outputsOf()).toEqual([2]);
+  });
+
+  it("resolves a saved chapter's root through buildRootOf and builds that root", async () => {
+    rootOf.mockResolvedValue("book.typ");
+    setup(false);
+    save("/p/typ/chapters/one.typ");
+    await jest.advanceTimersByTimeAsync(300);
+    expect(rootOf).toHaveBeenCalledWith("/p/typ", "main.typ", "/p/typ/chapters/one.typ");
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(run.mock.calls[0][0].main).toBe("book.typ");
+  });
+
+  it("debounces saves per root: two roots each get a build", async () => {
+    rootOf.mockImplementation(async (_folder: string, _main: string, file: string) => (file.includes("/a/") ? "a/main.typ" : "b/main.typ"));
+    setup(false);
+    save("/p/typ/a/x.typ");
+    save("/p/typ/b/y.typ");
+    await jest.advanceTimersByTimeAsync(300);
+    expect(run.mock.calls.map(([request]) => request.main).sort()).toEqual(["a/main.typ", "b/main.typ"]);
   });
 
   it("ignores saves in LaTeX projects", async () => {

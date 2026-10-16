@@ -19,7 +19,7 @@ async function showInPreview(deps: ShowInPreviewDeps): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   const file = editor?.document.uri;
   const project = file?.scheme === "file" ? owningProject(deps.projects, file.fsPath) : undefined;
-  const pdf = await builtPdf(deps.projects, project);
+  const pdf = await builtPdf(deps.projects, project, project?.main);
   if (!editor || !file || !project || !pdf) {
     // The build command opens the preview on success and explains a missing project, main file or format.
     await vscode.commands.executeCommand(BUILD_COMMAND);

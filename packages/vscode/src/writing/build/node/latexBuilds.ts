@@ -1,9 +1,9 @@
-// Runs LaTeX builds one at a time per project: a newer request cancels the running compile and queues one fresh build.
+// Runs LaTeX builds one at a time per project: a newer request for any root cancels the running compile and queues one fresh build.
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import type { ILogger, ProjectEntry } from "@labshelf/core";
-import { projectBuildDir, runLatexBuild, updateProjectValues } from "@labshelf/core/node";
+import { rootBuildFolder, type ILogger, type ProjectEntry } from "@labshelf/core";
+import { clearFlatBuildFiles, projectBuildDir, runLatexBuild, updateProjectValues } from "@labshelf/core/node";
 import type { ReadyProject } from "../../mainDocument.js";
 import type { BuildDiagnostics } from "../buildDiagnostics.js";
 import type { BuildListener, BuildTrigger, FinishedBuild } from "../buildListener.js";
@@ -18,7 +18,8 @@ export interface LatexBuildsDeps extends ToolchainDeps {
 
 interface ProjectBuilds {
   chain: Promise<FinishedBuild | undefined>;
-  queued: boolean;
+  // INVARIANT: set while a build waits in the chain; a later request overwrites it, so the latest root and trigger run.
+  queued?: { root: string; trigger: BuildTrigger } | undefined;
   running?: AbortController | undefined;
 }
 
@@ -38,15 +39,17 @@ export class LatexBuilds {
   constructor(private readonly deps: LatexBuildsDeps) {}
 
   /** Resolves with the build's result, or `undefined` when it did not finish: cancelled, declined or failed to start. */
-  request(projectFolder: string, trigger: BuildTrigger): Promise<FinishedBuild | undefined> {
-    const state: ProjectBuilds = this.builds.get(projectFolder) ?? { chain: Promise.resolve(undefined), queued: false };
+  request(projectFolder: string, root: string, trigger: BuildTrigger): Promise<FinishedBuild | undefined> {
+    const state: ProjectBuilds = this.builds.get(projectFolder) ?? { chain: Promise.resolve(undefined) };
     this.builds.set(projectFolder, state);
     state.running?.abort();
-    if (state.queued) { return state.chain; }
-    state.queued = true;
+    const waiting = state.queued !== undefined;
+    state.queued = { root, trigger };
+    if (waiting) { return state.chain; }
     state.chain = state.chain.then(async () => {
-      state.queued = false;
-      return this.run(projectFolder, trigger, state);
+      const next = state.queued!;
+      state.queued = undefined;
+      return this.run(projectFolder, next.root, next.trigger, state);
     });
     return state.chain;
   }
@@ -70,7 +73,7 @@ export class LatexBuilds {
     }
   }
 
-  private async run(projectFolder: string, trigger: BuildTrigger, state: ProjectBuilds): Promise<FinishedBuild | undefined> {
+  private async run(projectFolder: string, root: string, trigger: BuildTrigger, state: ProjectBuilds): Promise<FinishedBuild | undefined> {
     const session = this.deps.host.current();
     const project = this.project(projectFolder);
     if (!session || !project || (trigger === "save" && this.declined.has(projectFolder))) { return undefined; }
@@ -87,21 +90,23 @@ export class LatexBuilds {
       this.declined.delete(projectFolder);
       const controller = new AbortController();
       state.running = controller;
-      const building = vscode.window.setStatusBarMessage(`$(sync~spin) Building ${project.main}`);
-      this.deps.previews.building(projectFolder);
+      const building = vscode.window.setStatusBarMessage(`$(sync~spin) Building ${root}`);
+      this.deps.previews.building(projectFolder, root);
       await this.generateValues(project, session.logger);
+      const buildDir = projectBuildDir(project.settings.id);
+      await clearFlatBuildFiles(buildDir, root, session.logger);
       const result = await runLatexBuild({
-        toolchain, projectFolder, main: project.main, outDir: projectBuildDir(project.settings.id),
+        toolchain, projectFolder, main: root, outDir: path.join(buildDir, rootBuildFolder(root)),
         signal: controller.signal, logger: session.logger,
       }).finally(() => building.dispose());
       if (state.running === controller) { state.running = undefined; }
       if (result.status === "cancelled") { return undefined; }
-      this.deps.diagnostics.publish(projectFolder, result.problems);
-      this.deps.previews.finished(project, result, trigger);
-      vscode.window.setStatusBarMessage(summary(result, project.main), 5000);
+      this.deps.diagnostics.publish(path.join(projectFolder, root), result.problems);
+      this.deps.previews.finished(project, root, result, trigger);
+      vscode.window.setStatusBarMessage(summary(result, root), 5000);
       return result;
     } catch (error) {
-      await session.logger.error(MODULE, error, { projectFolder, trigger });
+      await session.logger.error(MODULE, error, { projectFolder, root, trigger });
       await vscode.window.showErrorMessage(`Build of "${project.settings.id}" failed: ${String(error)}`);
       return undefined;
     }

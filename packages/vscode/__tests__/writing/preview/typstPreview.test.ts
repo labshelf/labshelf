@@ -58,7 +58,7 @@ describe("Typst preview source links", () => {
   it("reloads the document after a build without reading SyncTeX data", async () => {
     const { previews, controller } = setup();
     previews.show(typst, "/cache/typ/main.pdf", { beside: false });
-    previews.finished(typst, { status: "succeeded", pdf: "/cache/typ/main.pdf", problems: [] }, "save");
+    previews.finished(typst, "main.typ", { status: "succeeded", pdf: "/cache/typ/main.pdf", problems: [] }, "save");
     expect(controller.reloadDocument).toHaveBeenCalledTimes(1);
     expect(controller.setBuildStatus).toHaveBeenLastCalledWith("succeeded");
   });
@@ -75,17 +75,17 @@ describe("Typst cites of the shown preview", () => {
     const { previews, ports } = setup();
     previews.show(typst, "/cache/typ/main.pdf", { beside: false });
     expect(await keysAt(ports)).toEqual([]);
-    previews.finished(typst, build([cite("a")]), "save");
+    previews.finished(typst, "main.typ", build([cite("a")]), "save");
     expect(await keysAt(ports)).toEqual(["a"]);
-    previews.finished(typst, build([cite("b")]), "save");
+    previews.finished(typst, "main.typ", build([cite("b")]), "save");
     expect(await keysAt(ports)).toEqual(["b"]);
   });
 
   it("keeps the previous cites when a build fails", async () => {
     const { previews, ports } = setup();
     previews.show(typst, "/cache/typ/main.pdf", { beside: false });
-    previews.finished(typst, build([cite("a")]), "save");
-    previews.finished(typst, { status: "failed", problems: [] }, "save");
+    previews.finished(typst, "main.typ", build([cite("a")]), "save");
+    previews.finished(typst, "main.typ", { status: "failed", problems: [] }, "save");
     expect(await keysAt(ports)).toEqual(["a"]);
   });
 });

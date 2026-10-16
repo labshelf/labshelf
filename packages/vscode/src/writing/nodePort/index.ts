@@ -1,2 +1,2 @@
 // Exports the port through which the Writing view reaches its Node-only registrations.
-export type { RegisterNodeWriting } from "./nodeWritingPort.js";
+export type { BuildRootOf, RegisterNodeWriting } from "./nodeWritingPort.js";

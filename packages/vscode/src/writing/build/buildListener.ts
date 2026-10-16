@@ -8,8 +8,11 @@ export type BuildTrigger = "command" | "save";
 /** A Typst build's success also carries where it placed each citation. */
 export type FinishedBuild = Exclude<LatexBuildResult, { status: "cancelled" }> | TypstBuildResult;
 
-/** Told when a project's compile starts and when it ends; a cancelled compile never ends, the next one replaces it. */
+/**
+ * Told when the compile of a project's root starts and when it ends; a cancelled compile never ends, the next one replaces it.
+ * `root` is the compiled file relative to the project folder.
+ */
 export interface BuildListener {
-  building(projectFolder: string): void;
-  finished(project: ReadyProject, result: FinishedBuild, trigger: BuildTrigger): void;
+  building(projectFolder: string, root: string): void;
+  finished(project: ReadyProject, root: string, result: FinishedBuild, trigger: BuildTrigger): void;
 }

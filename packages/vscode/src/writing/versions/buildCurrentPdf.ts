@@ -17,12 +17,12 @@ export async function buildCurrentPdf(
   builders: ProjectBuilders, projects: Pick<WritingProjects, "data" | "paths">, project: ReadyProject, purpose: BuildPurpose,
 ): Promise<string | undefined> {
   await vscode.workspace.saveAll(false);
-  const build = await builders[project.settings.format].request(project.folder, "command");
+  const build = await builders[project.settings.format].request(project.folder, project.main ?? "", "command");
   if (build?.status !== "succeeded") {
     await vscode.window.showWarningMessage(`${purpose.action} needs a successful build. The build problems are listed in Problems.`);
     return undefined;
   }
-  const pdfPath = await builtPdf(projects, project);
+  const pdfPath = await builtPdf(projects, project, project.main);
   if (!pdfPath) { await vscode.window.showInformationMessage(`Build the project first; ${purpose.use}.`); }
   return pdfPath;
 }

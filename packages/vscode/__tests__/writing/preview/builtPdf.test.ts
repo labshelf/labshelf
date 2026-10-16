@@ -2,6 +2,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
+import { rootBuildFolder } from "@labshelf/core";
 import { builtPdf } from "../../../src/writing/preview/builtPdf";
 import { fakeProjects, readyEntry } from "../../support/writingFixtures";
 
@@ -28,33 +29,33 @@ afterEach(() => {
 
 describe("builtPdf", () => {
   it("returns the Typst preview PDF from the build folder, not the one next to main", async () => {
-    const preview = path.join(cache, "paper", "main.pdf");
+    const preview = path.join(cache, "paper", rootBuildFolder("doc/main.typ"), "main.pdf");
     existing(preview, path.join(dir, "doc", "main.pdf"));
-    expect(await builtPdf(projects, typst())).toBe(preview);
+    expect(await builtPdf(projects, typst(), "doc/main.typ")).toBe(preview);
   });
 
   it("returns undefined for a Typst project whose preview was not compiled, even with a saved PDF next to main", async () => {
     existing(path.join(dir, "doc", "main.pdf"));
-    expect(await builtPdf(projects, typst())).toBeUndefined();
+    expect(await builtPdf(projects, typst(), "doc/main.typ")).toBeUndefined();
   });
 
   it("returns the PDF next to the main file of a LaTeX project, or undefined when it is missing", async () => {
     const latex = readyEntry(dir, { main: "doc/main.tex" }) as Project;
     existing();
-    expect(await builtPdf(projects, latex)).toBeUndefined();
+    expect(await builtPdf(projects, latex, "doc/main.tex")).toBeUndefined();
     const pdf = path.join(dir, "doc", "main.pdf");
     existing(pdf);
-    expect(await builtPdf(projects, latex)).toBe(pdf);
+    expect(await builtPdf(projects, latex, "doc/main.tex")).toBe(pdf);
     expect(stat).toHaveBeenCalledWith(expect.objectContaining({ fsPath: pdf }));
   });
 
   it("returns undefined when the file system fails for another reason", async () => {
     stat.mockRejectedValue(new Error("EACCES"));
-    expect(await builtPdf(projects, readyEntry(dir, { main: "doc/main.tex" }) as Project)).toBeUndefined();
+    expect(await builtPdf(projects, readyEntry(dir, { main: "doc/main.tex" }) as Project, undefined)).toBeUndefined();
   });
 
   it("returns undefined without a project or a main file", async () => {
-    expect(await builtPdf(projects, undefined)).toBeUndefined();
-    expect(await builtPdf(projects, typst({ main: undefined }))).toBeUndefined();
+    expect(await builtPdf(projects, undefined, "doc/main.typ")).toBeUndefined();
+    expect(await builtPdf(projects, typst({ main: undefined }), undefined)).toBeUndefined();
   });
 });

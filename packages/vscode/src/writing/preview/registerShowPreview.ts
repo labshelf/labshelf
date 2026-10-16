@@ -18,7 +18,7 @@ interface ShowPreviewDeps {
 async function showPreview(deps: ShowPreviewDeps): Promise<void> {
   const file = vscode.window.activeTextEditor?.document.uri;
   const project = file?.scheme === "file" ? owningProject(deps.projects, file.fsPath) : undefined;
-  const pdf = await builtPdf(deps.projects, project);
+  const pdf = await builtPdf(deps.projects, project, project?.main);
   if (project && pdf) {
     deps.previews.show(project, pdf, { beside: false });
     return;

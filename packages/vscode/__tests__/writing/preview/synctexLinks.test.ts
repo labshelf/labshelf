@@ -5,6 +5,7 @@ import * as path from "node:path";
 import { gzipSync } from "node:zlib";
 import * as vscode from "vscode";
 
+import { rootBuildFolder } from "@labshelf/core";
 import { nodeProjectData } from "@labshelf/core/node";
 import { ReaderPanel } from "../../../src/pdf-viewer";
 import { BuildPreviews } from "../../../src/writing/preview";
@@ -15,7 +16,7 @@ jest.mock("../../../src/pdf-viewer", () => ({ ReaderPanel: { createOrShow: jest.
 
 const create = ReaderPanel.createOrShow as jest.Mock;
 type Project = Parameters<BuildPreviews["finished"]>[0];
-type Finished = Parameters<BuildPreviews["finished"]>[1];
+type Finished = Parameters<BuildPreviews["finished"]>[2];
 const succeeded = (dir: string): Finished => ({ status: "succeeded", pdf: path.join(dir, "main.pdf"), problems: [] });
 
 // One page: a heading of main.tex line 3 and a line of chapter.tex (line `chapterLine`), as pdfTeX records them.
@@ -35,7 +36,7 @@ let cache: string;
 let previousCache: string | undefined;
 
 function writeSynctex(text: string | null): void {
-  const file = path.join(cache, "labshelf", "builds", path.basename(dir), "main.synctex.gz");
+  const file = path.join(cache, "labshelf", "builds", path.basename(dir), rootBuildFolder("main.tex"), "main.synctex.gz");
   fs.mkdirSync(path.dirname(file), { recursive: true });
   if (text === null) { fs.rmSync(file, { force: true }); } else { fs.writeFileSync(file, gzipSync(text)); }
 }
@@ -122,7 +123,7 @@ describe("source from a preview double-click", () => {
     writeSynctex(synctex(dir, 7));
     await ports().showSource({ page: 1, x: 140, y: 234 });
     expect(openedAt().line).toBe(1);
-    previews.finished(project, succeeded(dir), "save");
+    previews.finished(project, "main.tex", succeeded(dir), "save");
     await ports().showSource({ page: 1, x: 140, y: 234 });
     expect(openedAt().line).toBe(7);
   });

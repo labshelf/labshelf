@@ -16,7 +16,7 @@ const manifest = JSON.parse(readFileSync(join(__dirname, "../../../package.json"
 };
 
 const builders = { latex: { request: jest.fn() }, typst: { request: jest.fn() } };
-const fakeRegisterNodeWriting: RegisterNodeWriting = () => ({ builders });
+const fakeRegisterNodeWriting: RegisterNodeWriting = () => ({ builders, buildRootOf: async (_folder, main) => main });
 
 function setup(root: string | undefined, register: RegisterNodeWriting = fakeRegisterNodeWriting) {
   const data = fakeProjectData();

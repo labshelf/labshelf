@@ -123,7 +123,7 @@ describe("labshelf.writing.checkBeforeSubmitting", () => {
     const { run, builders } = setup();
     openInEditor("/elsewhere/a.tex");
     await run(readyEntry("/p/typ", { main: "main.typ", settings: { id: "typ", format: "typst" } }));
-    expect(builders.typst.request).toHaveBeenCalledWith("/p/typ", "command");
+    expect(builders.typst.request).toHaveBeenCalledWith("/p/typ", "main.typ", "command");
   });
 
   it("asks to open a project file when the active file is outside every project", async () => {
