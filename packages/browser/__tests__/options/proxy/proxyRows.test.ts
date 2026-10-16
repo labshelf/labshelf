@@ -1,5 +1,5 @@
 /** The options page shows a proxy template's kind or an error, and saves only rows whose template is valid. */
-import { PROXY_TEMPLATE_ERROR, judgeTemplate, savableProxies } from "../../src/options/proxyRows";
+import { PROXY_TEMPLATE_ERROR, judgeTemplate, savableProxies } from "../../../src/options/proxy/proxyRows";
 
 describe("judgeTemplate", () => {
   it("names the kind of each valid shape", () => {

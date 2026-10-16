@@ -7,10 +7,11 @@ import { applyTheme } from "../ui";
 import { createAppearanceSection } from "./appearanceSection";
 import { createResolverSection } from "./customResolvers";
 import { createDriveConnection } from "./driveConnection";
-import { createGeneralForm } from "./generalForm";
+import type { EditableListSection } from "./editableList";
+import { createGeneralForm, type GeneralForm } from "./generalForm";
 import { createLogSection } from "./logSection";
-import { createProxySection } from "./proxySection";
-import { createReaderForm } from "./readerForm";
+import { createProxySection } from "./proxy";
+import { createReaderForm, type ReaderForm } from "./readerForm";
 import { createSavedFlag } from "./savedFlag";
 
 const ring = new StorageRingLogSink();
@@ -29,6 +30,34 @@ function autosave(controls: HTMLElement[], save: () => Promise<void>): () => voi
     control.addEventListener("change", schedule);
   }
   return schedule;
+}
+
+type Saved = ReturnType<typeof createSavedFlag>;
+
+/** Persists a proxy or resolver list as one settings key and logs how many entries were stored. */
+function autosaveList(section: EditableListSection, key: "proxies" | "customResolvers", message: string, saved: Saved): () => void {
+  return autosave([], async () => {
+    const list = section.read();
+    await updateSettings({ [key]: list });
+    await logger.log("INFO", "options", message, { count: list.length });
+    saved.flash();
+  });
+}
+
+function autosaveForms(general: GeneralForm, reader: ReaderForm, saved: Saved): void {
+  autosave(general.controls, async () => {
+    const patch = general.read();
+    await updateSettings(patch);
+    await logger.log("INFO", "options", "settings saved", patch as Record<string, unknown>);
+    saved.flash();
+  });
+  autosave(reader.controls, async () => {
+    // Normalized on save: an out-of-range delay is clamped, and the form shows what was stored.
+    const stored = await saveReaderPrefs(reader.read());
+    reader.fill(stored, true);
+    await logger.log("INFO", "options", "reader preferences saved", stored as unknown as Record<string, unknown>);
+    saved.flash();
+  });
 }
 
 async function init(): Promise<void> {
@@ -59,31 +88,9 @@ async function init(): Promise<void> {
   reader.fill(await loadReaderPrefs());
   proxies.fill(settings.proxies);
   resolvers.fill(settings.customResolvers);
-  autosave(general.controls, async () => {
-    const patch = general.read();
-    await updateSettings(patch);
-    await logger.log("INFO", "options", "settings saved", patch as Record<string, unknown>);
-    saved.flash();
-  });
-  autosave(reader.controls, async () => {
-    // Normalized on save: an out-of-range delay is clamped, and the form shows what was stored.
-    const stored = await saveReaderPrefs(reader.read());
-    reader.fill(stored, true);
-    await logger.log("INFO", "options", "reader preferences saved", stored as unknown as Record<string, unknown>);
-    saved.flash();
-  });
-  scheduleProxySave = autosave([], async () => {
-    const list = proxies.read();
-    await updateSettings({ proxies: list });
-    await logger.log("INFO", "options", "library proxies saved", { count: list.length });
-    saved.flash();
-  });
-  scheduleResolverSave = autosave([], async () => {
-    const list = resolvers.read();
-    await updateSettings({ customResolvers: list });
-    await logger.log("INFO", "options", "custom resolvers saved", { count: list.length });
-    saved.flash();
-  });
+  autosaveForms(general, reader, saved);
+  scheduleProxySave = autosaveList(proxies, "proxies", "library proxies saved", saved);
+  scheduleResolverSave = autosaveList(resolvers, "customResolvers", "custom resolvers saved", saved);
   await drive.refresh();
   await log.refresh();
 }

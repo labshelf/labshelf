@@ -1,7 +1,7 @@
 // Judges proxy rows typed on the options page and keeps the ones that can be saved.
 import { proxyKind, type LibraryProxy, type ProxyKind } from "@labshelf/core";
 
-export const PROXY_KIND_LABELS: Record<ProxyKind, string> = { prefix: "Prefix", hostname: "Hostname", openathens: "OpenAthens" };
+const PROXY_KIND_LABELS: Record<ProxyKind, string> = { prefix: "Prefix", hostname: "Hostname", openathens: "OpenAthens" };
 
 export const PROXY_TEMPLATE_ERROR = "Not a proxy address — paste a URL with $@, a hostname like .ezproxy.uni.edu, or an OpenAthens redirector link.";
 
