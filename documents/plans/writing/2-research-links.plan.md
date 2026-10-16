@@ -1,8 +1,7 @@
 # Plan: links between reading, the library and writing
 
-Status: draft
+Status: in progress (session 2 of 6)
 Size: GG — several features across core and the three apps, one of them a new data source (OpenAlex) and one an importer; 6 sessions.
-Pending decisions: 1
 
 ## 1. Goal
 
@@ -12,19 +11,17 @@ Builds on [writing-core.plan.md](../../archive/writing-core.plan.md). AI feature
 
 ## 2. Decisions
 
-- [ ] **D1** A `labshelf:` link format, `labshelf:<citekey>[#p<page>]`, works in any file. VS Code makes it clickable (DocumentLinkProvider) and shows the title on hover; the terminal opens it with `labshelf open <link>`; the browser handles `web+labshelf:` links. — Code that implements a paper points at the exact page.
-- [ ] **D2** Page-precise citations: citation completion lists the highlights of each paper; picking one inserts `\cite[p.~4]{key}` (Typst `@key[p. 4]`) and can paste the quote. — A highlight is already a citation waiting to happen.
-- [ ] **D3** Backlinks: the paper detail pane shows "Cited in <project> (§3)" from the citation scan of every project. — A paper's role in your work is visible where you manage it.
-- [ ] **D4** Project reading list: each project has its papers (cited plus added by hand) with reading status, and a warning "You cite 4 papers you never opened". — Writing shows what reading is left.
-- [ ] **D5** Continue where you left off: the library home shows the last paper and page read and the last project file edited, from any app, through the synced sidecar and a per-project `.labshelf/state.json`. — Moving between apps loses nothing.
-- [ ] **D6** Bibliography linter in VS Code: duplicate entries (same DOI or title key), missing DOI, and preprints that have a published version (found by the published-version lookup that [pdf-finding](../pdf-finding.plan.md) builds in its S21; its path is in that plan's §8 log, see its C2), with a quick fix that replaces the entry. — Every submission hits these.
-- [ ] **D7** Papers as dependencies: `labshelf.yaml` lists the project's papers (`papers:` with key and DOI), kept in sync with the citations. `labshelf install` (VS Code command and terminal) fetches the missing ones into the coauthor's library through the core resolver chain, using the coauthor's own access. — Onboarding a coauthor is one command.
-- [ ] **D8** Citation map from OpenAlex (open data, no key): for each library paper with a DOI, its references and citing works; the library view "Often cited by your papers, not in your library" with one-click import, and a graph view in VS Code and the browser. Cached in `.research/openalex/`, never synced. — Discovery without AI.
-- [ ] **D9** Zotero import: read `zotero.sqlite` (copied first, never opened in place) and its `storage/` folder; collections become folders, items become papers with PDFs, notes go to `note`, tags to `tags`; annotations from Zotero's reader become sidecar highlights where the position maps. — The main door for the audience.
+- [x] **D1** A `labshelf:` link format, `labshelf:<citekey>[#p<page>]`, works in any file. VS Code makes it clickable (DocumentLinkProvider) and shows the title on hover; the terminal opens it with `labshelf open <link>`; the browser handles `web+labshelf:` links. — Code that implements a paper points at the exact page.
+- [x] **D2** Page-precise citations: citation completion lists the highlights of each paper; picking one inserts `\cite[p.~4]{key}` (Typst `@key[p. 4]`) and can paste the quote. — A highlight is already a citation waiting to happen.
+- [x] **D3** Backlinks: the paper detail pane shows "Cited in <project> (§3)" from the citation scan of every project. — A paper's role in your work is visible where you manage it.
+- [x] **D4** Project reading list: each project has its papers (cited plus added by hand) with reading status, and a warning "You cite 4 papers you never opened". — Writing shows what reading is left.
+- [x] **D5** Continue where you left off: the library home shows the last paper and page read and the last project file edited, from any app, through the synced sidecar and a per-project `.labshelf/state.json`. — Moving between apps loses nothing.
+- [x] **D6** Bibliography linter in VS Code: duplicate entries (same DOI or title key), missing DOI, and preprints that have a published version (found by the published-version lookup that [pdf-finding](../pdf-finding.plan.md) builds in its S21; its path is in that plan's §8 log, see its C2), with a quick fix that replaces the entry. — Every submission hits these.
+- [x] **D7** Papers as dependencies: `labshelf.yaml` lists the project's papers (`papers:` with key and DOI), kept in sync with the citations. `labshelf install` (VS Code command and terminal) fetches the missing ones into the coauthor's library through the core resolver chain, using the coauthor's own access. — Onboarding a coauthor is one command.
+- [x] **D8** Citation map from OpenAlex (open data, no key): for each library paper with a DOI, its references and citing works; the library view "Often cited by your papers, not in your library" with one-click import, and a graph view in VS Code and the browser. Cached in `.research/openalex/`, never synced. — Discovery without AI.
+- [x] **D9** Zotero import: read `zotero.sqlite` (copied first, never opened in place) and its `storage/` folder; collections become folders, items become papers with PDFs, notes go to `note`, tags to `tags`; annotations from Zotero's reader become sidecar highlights where the position maps. — The main door for the audience.
 
-Open (blocks approval):
-
-- **Q1** The reading list membership — options: only cited papers plus manual adds / also every paper opened while the project was active; recommendation: cited plus manual, because automatic membership gets noisy.
+- [x] **Q1** The reading list holds the cited papers plus papers added by hand; papers opened while the project is active are not added, because automatic membership gets noisy.
 
 ## 3. Scope
 
@@ -34,7 +31,7 @@ Open (blocks approval):
 
 ## 4. Acceptance criteria
 
-- [ ] **A1** `// see labshelf:vaswani2017#p5` in a `.py` file is a link; clicking opens the reader at page 5; `labshelf open labshelf:vaswani2017#p5` does the same from the terminal.
+- [x] **A1** `// see labshelf:vaswani2017#p5` in a `.py` file is a link; clicking opens the reader at page 5; `labshelf open labshelf:vaswani2017#p5` does the same from the terminal.
 - [ ] **A2** Typing `\cite[` on a paper with highlights lists them; picking one inserts `\cite[p.~4]{key}`.
 - [ ] **A3** A paper cited by a project shows "Cited in <project>" in VS Code and the browser.
 - [ ] **A4** The project's reading list shows its papers with status and the never-opened warning.
@@ -66,12 +63,12 @@ Open (blocks approval):
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S1 | Link format; VS Code link provider and URI handler; terminal `open`; browser protocol handler | — | M · implementer (sonnet) | A1 | [ ] |
-| S2 | Finish | S1 | `finish` skill | gate passes | [ ] |
+| S1 | Link format; VS Code link provider and URI handler; terminal `open`; browser protocol handler | — | M · implementer (sonnet) | A1 | [x] |
+| S2 | Finish | S1 | `finish` skill | gate passes | [x] |
 
 ### Session 2 — highlights, backlinks, reading list, continue
 
-- **Starts from:** session 1 committed; Q1 answered
+- **Starts from:** session 1 committed
 - **Ends with:** A2–A5
 - **Commit:** yes
 
@@ -168,3 +165,7 @@ Open (blocks approval):
 - **R2** Zotero's schema changes between versions. — Read through a version check; fixture per supported schema.
 
 ## 8. Log
+
+- 2026-10-15 21:20 — S1 core: `library/links` parser and contract `contracts/links.md` (main thread); VS Code, terminal and browser parts by three Sonnet implementers in parallel.
+- 2026-10-15 21:50 — S1 verified in a real extension host: link in a `.py` file without `labshelf.yaml` opens the reader at page 5, hover shows the title; `labshelf open <link>` passes the page to a `{page}` viewer. Not verified: the `vscode://` URI (the package name `@labshelf/vscode` gives no usable extension id yet), Chrome dispatching a `web+labshelf:` click to the extension, Firefox.
+- 2026-10-15 21:55 — S2 finish: gate passes in all four packages; `terminal/src/cli/libraryCommands.ts` stays at 217 lines (under the hard limit).
