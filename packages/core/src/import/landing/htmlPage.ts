@@ -1,11 +1,19 @@
 // Reads HTML fetched without a DOM into the RawPage shape the in-tab probe produces.
+import { authorEmailMetasOf, mailtoLinksOf } from "./contacts/index.js";
 import { absoluteHttpUrl, attributes, decodeEntities } from "./htmlTags.js";
 import type { RawPage, RawPdfLink } from "./types.js";
 
 // PLATFORM: the MV3 service worker and the terminal have no DOMParser, so a tolerant regex reader handles the few tags that matter.
-/** @returns the meta tags, PDF links and viewers, and DOI links of an HTML document */
+/** @returns the meta tags, PDF links and viewers, DOI links and author-address evidence of an HTML document */
 export function parseHtmlPage(html: string, pageUrl: string): RawPage {
-  const raw: RawPage = { pageUrl, meta: metaTags(html), pdfLinks: pdfLinksOf(html, pageUrl).slice(0, 40), doiLinks: doiLinksOf(html) };
+  const raw: RawPage = {
+    pageUrl,
+    meta: metaTags(html),
+    pdfLinks: pdfLinksOf(html, pageUrl).slice(0, 40),
+    doiLinks: doiLinksOf(html),
+    mailtoLinks: mailtoLinksOf(html),
+    authorEmails: authorEmailMetasOf(html),
+  };
   const documentTitle = firstNonEmptyTitle(html);
   if (documentTitle) raw.documentTitle = documentTitle;
   return raw;

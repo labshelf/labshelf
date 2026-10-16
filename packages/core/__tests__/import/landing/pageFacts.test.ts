@@ -8,7 +8,7 @@ const springer = (): RawPage => parseHtmlPage(
   readFileSync(join(__dirname, "..", "..", "fixtures", "springerArticle.html"), "utf8"),
   "https://link.springer.com/article/10.1007/s10107-023-01234-5",
 );
-const page = (over: Partial<RawPage>): RawPage => ({ pageUrl: "https://example.org/a", meta: {}, pdfLinks: [], doiLinks: [], ...over });
+const page = (over: Partial<RawPage>): RawPage => ({ pageUrl: "https://example.org/a", meta: {}, pdfLinks: [], doiLinks: [], mailtoLinks: [], authorEmails: [], ...over });
 
 describe("interpretPage", () => {
   it("reads the full citation record a publisher page states", () => {

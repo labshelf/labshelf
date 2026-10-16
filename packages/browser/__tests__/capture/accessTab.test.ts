@@ -71,7 +71,7 @@ describe("the watched access tab", () => {
     fetchInTab.mockImplementation(async (_: number, url: string) => url === article
       ? { finalUrl: article, html: "<html></html>" }
       : { finalUrl: url, pdf: { bytes: PDF, url } });
-    probeTab.mockResolvedValue({ pageUrl: article, meta: { citation_title: [PAPER.title], citation_pdf_url: ["https://publisher.example/doi/pdf/10.1/x"] }, pdfLinks: [], doiLinks: [] });
+    probeTab.mockResolvedValue({ pageUrl: article, meta: { citation_title: [PAPER.title], citation_pdf_url: ["https://publisher.example/doi/pdf/10.1/x"] }, pdfLinks: [], doiLinks: [], mailtoLinks: [], authorEmails: [] });
     await onTabLoaded(d, 5, article);
     expect(d.attach).toHaveBeenCalledWith("p1", PDF);
   });
@@ -83,7 +83,7 @@ describe("the watched access tab", () => {
     fetchInTab.mockImplementation(async (_: number, url: string) => url === other
       ? { finalUrl: other, html: "<html></html>" }
       : { finalUrl: url, pdf: { bytes: PDF, url } });
-    probeTab.mockResolvedValue({ pageUrl: other, meta: { citation_title: ["A survey of protein folding"], citation_pdf_url: ["https://publisher.example/doi/pdf/10.1/other"] }, pdfLinks: [], doiLinks: [] });
+    probeTab.mockResolvedValue({ pageUrl: other, meta: { citation_title: ["A survey of protein folding"], citation_pdf_url: ["https://publisher.example/doi/pdf/10.1/other"] }, pdfLinks: [], doiLinks: [], mailtoLinks: [], authorEmails: [] });
     await onTabLoaded(d, 5, other);
     expect(d.attach).not.toHaveBeenCalled();
   });
