@@ -11,7 +11,7 @@ A "Save to LabShelf" button appears next to the scholarly results of an ordinary
 ## 2. Decisions
 
 - [ ] **D1** The Scholar content script entry gains the glob `https://www.google.*/search*` in both manifests. The entry already matches `https://*/*`, so this adds no permission and no install warning.
-- [ ] **D2** A result gets the button when its link's host is a scholarly host, or when its link or snippet carries a DOI, arXiv id or PMID. Scholarly hosts are the hosts of the publisher rule table (pdf-finding S8/S9) plus the repositories: PubMed, PMC, Europe PMC, arXiv, bioRxiv, medRxiv, SciELO, Semantic Scholar, OpenAlex and doi.org. The test is a pure core function, so the list lives in one place. Reference pages (SCIRP's `reference` pages, Wikipedia) get no button.
+- [ ] **D2** A result gets the button when its link's host is a scholarly host, or when its link or snippet carries a DOI, arXiv id or PMID. Scholarly hosts are the hosts of the publisher rule table (`core/src/import/pdfFinding/rules/`) plus the repositories: PubMed, PMC, Europe PMC, arXiv, bioRxiv, medRxiv, SciELO, Semantic Scholar, OpenAlex and doi.org. The test is a pure core function, so the list lives in one place. Reference pages (SCIRP's `reference` pages, Wikipedia) get no button.
 - [ ] **D3** One capture path for both pages. `ScholarHit` becomes `SearchHit`, and the Scholar capture resolves both kinds of hit: id in the links, then the landing page, then a title search checked against the printed year and authors. Google prints "de TF Smith · 1981" on scholarly results, which feeds that check.
 - [ ] **D4** The split button and its states move out of `content/scholar.ts` into a shared result-button module, and the Scholar and Google scripts become thin page adapters: find results, read a hit, choose where to mount the button. The button sits on the result's URL line, in a shadow root, like Scholar's.
 - [ ] **D5** Only organic web results on the "All" tab get the button. Ads, the AI overview, "People also ask", news, images and video results get none.
@@ -51,7 +51,7 @@ A "Save to LabShelf" button appears next to the scholarly results of an ordinary
 |---|---|---|---|
 | 1 | [sessions/01.md](sessions/01.md) | Google results get the button; A1–A5, the user's A1–A3 check in Chrome logged in log.md | yes |
 
-Starts from `feat/pdf-finding` with pdf-finding session 3 committed (the rule table exists).
+Starts from `feat/reader-ux` (the rule table exists).
 
 Runner tiers:
 

@@ -19,7 +19,7 @@ Builds on [writing-core.plan.md](../../archive/writing-core.plan.md). AI feature
 - [x] **D3** Backlinks: the paper detail pane shows "Cited in <project> (§3)" from the citation scan of every project. — A paper's role in your work is visible where you manage it.
 - [x] **D4** Project reading list: each project has its papers (cited plus added by hand) with reading status, and a warning "You cite 4 papers you never opened". — Writing shows what reading is left.
 - [x] **D5** Continue where you left off: the library home shows the last paper and page read and the last project file edited, from any app, through the synced sidecar and a per-project `.labshelf/state.json`. — Moving between apps loses nothing.
-- [x] **D6** Bibliography linter in VS Code: duplicate entries (same DOI or title key), missing DOI, and preprints that have a published version (found by the published-version lookup that [pdf-finding](../pdf-finding/plan.md) builds in its S21; its path is in that plan's §8 log, see its C2), with a quick fix that replaces the entry. — Every submission hits these.
+- [x] **D6** Bibliography linter in VS Code: duplicate entries (same DOI or title key), missing DOI, and preprints that have a published version (found by the published-version lookup `publishedDoiOf` in `core/src/import/registries/publishedDoi.ts`), with a quick fix that replaces the entry. — Every submission hits these.
 - [x] **D7** Papers as dependencies: `labshelf.yaml` lists the project's papers (`papers:` with key and DOI), kept in sync with the citations. `labshelf install` (VS Code command and terminal) fetches the missing ones into the coauthor's library through the core resolver chain, using the coauthor's own access. — Onboarding a coauthor is one command.
 - [x] **D8** Citation map from OpenAlex (open data, no key): for each library paper with a DOI, its references and citing works; the library view "Often cited by your papers, not in your library" with one-click import, and a graph view in VS Code and the browser. Cached in `.research/openalex/`, never synced. — Discovery without AI.
 - [x] **D9** Zotero import: read `zotero.sqlite` (copied first, never opened in place) and its `storage/` folder; collections become folders, items become papers with PDFs, notes go to `note`, tags to `tags`; annotations from Zotero's reader become sidecar highlights where the position maps. — The main door for the audience.
@@ -51,7 +51,7 @@ Builds on [writing-core.plan.md](../../archive/writing-core.plan.md). AI feature
 | link parse and format | `core/src/library/links/` | `labshelf:<key>[#p<n>]` |
 | highlight-to-citation | `core/src/writing/citations/` | uses the sidecar annotations |
 | backlink index, reading list | `core/src/writing/` | built from the project citation scans |
-| linter rules | `core/src/writing/bibLint/` | preprint check calls pdf-finding's published-version lookup, never a second copy of it; `titleKey` for duplicates |
+| linter rules | `core/src/writing/bibLint/` | preprint check calls `publishedDoiOf`, never a second copy of it; `titleKey` for duplicates |
 | OpenAlex works by DOI, cache, map | `core/src/import/registries/works/openalex.ts`; cache and map in `core/src/import/citationMap/` | extends the existing client and its `RegistryEnv`; the cache runs over `IFileSystem`, so every app can use it |
 | Zotero reader | `core/src/import/zotero/node/` | `node:sqlite` on a copy of `zotero.sqlite` |
 | UI | each app | providers and commands in VS Code; detail sections in the shared library UI |
