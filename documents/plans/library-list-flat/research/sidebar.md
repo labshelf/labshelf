@@ -1,36 +1,35 @@
-sha: 1d6fdd7
-files: packages/vscode/package.json, packages/vscode/src/ui/library/*, packages/vscode/src/activation/registration/registerLibraryTreeView.ts, packages/vscode/src/ui/list/**, packages/vscode/src/writing/tree/*, packages/browser/src/library-page/**, packages/core/src/library-ui/**
-source: Explore scout, 2026-10-16
+sha: b7492a43
+files: packages/vscode/src/ui/library/*, packages/vscode/src/ui/list/**, packages/vscode/src/activation/registration/registerLibraryTreeView.ts, packages/vscode/src/activation/registration/registerPanelCommands.ts, packages/vscode/src/ui/arcMarkIcons.ts, packages/vscode/build/arcMarks.mjs, packages/vscode/src/core/paperService.ts, packages/core/src/library-ui/derive/tree/*, packages/core/src/library-ui/protocol/*, packages/core/src/library/paperFiles/*, packages/core/src/library/mutations/paperRecordWrite.ts
+source: Explore scout + main-thread check, 2026-10-16
 
-# Side bars
+# Side bar and VS Code wiring
 
-## VS Code: native TreeView
-- `labshelf.library` view (package.json:448, type tree) in `labshelfContainer` (:439/:446); viewsWelcome at :497-507. `createTreeView` in registerLibraryTreeView.ts:65 with DnD and `showCollapseAll` (:68).
-- Provider ui/library/libraryTreeDataProvider.ts (170 lines): Continue rows (continueNode.ts, ThemeIcon book/edit), "All Papers" root (ThemeIcon library, :79), folders (ThemeIcon.Folder, description = recursive count :88; click runs `labshelf.openListTab` :91). No papers, no status scopes.
-- getParent (:118) is for folders only; ids = folder dirPath. `syncTreeToPanel` (registerLibraryTreeView.ts:82) reveals the open folder with `{select:true, focus:false, expand:true}` only when the tree is visible; re-run on `onDidChangeVisibility` (:90). Passed into extension.ts:58/66.
-- TreeItem cannot style label text; a mark must be an iconPath SVG or ThemeIcon. `arcIcons` (ui/arcMarkIcons.ts, exported ui/index.ts:3) produces the arc SVGs; not used inside ui/library/ yet.
-- Tree to list: `labshelf.openListTab` (registerPanelCommands.ts:50) calls `ListWebviewPanel.createOrShow` (ui/list/listWebviewPanel.ts:38), which calls `navigateTo` (:91) when a panel exists. `_showFolder` (:164) posts `navigate` only if `tellUi` and the UI folder differs.
-- `_post` (listWebviewPanel.ts:135-137) silently drops messages unless `_webviewReady && !_disposed`; no queue. `_webviewReady` is set in `onReady` (:127), which then calls `_pushState()` (full snapshot) and `_uiFolder = undefined`. Pattern for a deferred message: `_citationMapRequested` (:57/:128).
-- Webview→host `navigate` is handled at ui/list/host/messageHandler.ts:22 via `ctx.onNavigate` (listWebviewPanel.ts:130) → `_showFolder(..., false)`: the existing UI-to-tree path for folders.
+## Reuse
+- `libraryTree({folders, papers})` (core derive/tree/libraryTree.ts:20, exported from `@labshelf/core`): `scopes()` → `{scope, count}[]` (all, unread, reading, done); `children(path)` → `TreeChild[]` subfolders then papers by title; `parentOf(id)` → folder path. `TreeChild = {kind:"folder"; name; path; count} | {kind:"paper"; id; title}`. Folder paths are UI paths rooted at `PAPERS_DIR` ("papers/A/B"). Input `folders` is `FolderTreeNode[]`; check `folderTreeFromSnapshot` output fits.
+- `listPaperFiles(fs, paperDir, descriptions, logger)` (core library/paperFiles/listPaperFiles.ts:12) → `PaperFilesState` (`{status:"ready"; files} | {status:"failed"; message}`), port `Pick<LibraryFileSystem,"listDir"|"stat">`. `VscodeFileSystem` (vscode/src/storage/vscodeFileSystem.ts) already implements both: no new listing adapter.
+- `describePaperFile(files, name, description, onDisk)` (core library/paperFiles/describePaperFile.ts:10) → new map, `{}` for none, undefined if the name is not on disk. Pure.
+- Description write: `PaperFieldsPatch` has no `files`. `writePaperRecord` (core mutations/paperRecordWrite.ts) passes `files` through `rest`, so `writePaperRecord(ctx, {...current, files}, {ownsStatus:false})` writes it with no core change (undefined keeps the key, {} removes it).
+- `arcIcons(extensionUri)` (vscode/src/ui/arcMarkIcons.ts) → light/dark Uris of SVGs baked by vscode/build/arcMarks.mjs into out/marks/ (esbuild-bundles one core file, no core build). `STATUS_ARC` in core ui/icons/arcMark.ts maps status → tone/progress. No REF glyph in core: REF is mono text in the `file-ref` token colour (FILE_TYPE_TOKENS in core ui/tokens/colorTokens.ts), baked the same way.
 
-## Host to webview dispatch
-- Core dom/hostMessages.ts: `applyData` (:12-23) handles data messages; `attachHostMessages` (:28) subscribes via `ctx.transport.subscribe` and switches at :40-48.
-- Host→webview `select {id}` (protocol/messages.ts:45) exists, handled at hostMessages.ts:41 as `ctx.store.selectOnly(m.id)` (no folder change, no scroll). Only the browser sends it (hostController.ts:29, addFromTabHandler.ts:33).
-- Webview `paper.reveal` (messages.ts:18, messageHandler.ts:38) means reveal on disk (menu: paperMenu.ts:54).
+## Protocol (core library-ui/protocol/messages.ts)
+- Host→UI `reveal {id}`, `files {id, state}`, `select {id}`. UI→host `paper.selected {id|null}` (deduped, first emission skipped), `paper.files {id}`, `paper.describeFile {id, name, description}` (empty removes), `paper.openFile` / `paper.revealFile` / `paper.copyFilePath {id, name}`. `paper.reveal {id}` = reveal in the OS explorer. All parsed by `parseUiMessage` (SHAPES table, `isEntryName` = one path segment).
 
-## Core pieces
-- dom/flows/revealPaper.ts:9 `revealPaper(ctx: UiContext, id: string): void`: finds the paper in `store.get().papers` (returns silently if absent); outside `s.folder` (and folder not PAPERS_DIR) → `store.openFolder(parentDir)`; else if filtered out of `deriveListView(...).rows` → resets `status:"all", noText:false, query:""` (+`includeSub:true` if the folder differs); then `store.selectOnly(id)` and scrolls `.paper-row[data-id]` into view. Exported from flows/index.ts:9; used only by detailActions.ts:53 ("openRelated"). Not wired to a host message.
-- derive/folderTree.ts:1-18: `CountedFolder {name,path,total,children}`, `folderTreeFromSnapshot(snapshot: LibrarySnapshot)` (paths start at `papers`, from `snapshot.collections`). No tree with papers.
+## VS Code today
+- List webview lives in `ui/list/` (not libraryWebview). `listWebviewPanel.ts` 199 lines: `_post` drops messages until `_webviewReady` (set in `onReady`, which pushes the full state); deferred-message pattern `_citationMapRequested`; `createOrShow(deps, folder?)`, `navigateTo(folder)`; no paper-level reveal.
+- `ui/list/host/messageHandler.ts` (74 lines): `parseUiMessage` → `onPaperMessage` → `onFolderMessage`; none of the new messages handled (WARN "message this host does not offer").
+- `ui/library/libraryTreeDataProvider.ts` (170 lines): folder-only, own counts (`folderTreeFromSnapshot` + `findNode` + `_countUnder` :131-157, duplicate of `libraryTree`), ids = dirPath or `labshelf:all-papers`, click → `labshelf.openListTab`. `ui/library/` has 6 source files.
+- `registerLibraryTreeView.ts` (101 lines): `createTreeView("labshelf.library", …)`, `createLibraryProvider` (:36) from `controller.currentServices()?.library.snapshot`, `syncTreeToPanel(folder)` reveals only when visible.
+- Composition: `registerPanelCommands.ts:31` `listPanelDeps(deps, services)` builds `ListPanelDeps` (ui/list/listPanelDeps.ts, optional fields) per open; services has paperService, logger, library.snapshot.
+- Tests: `__tests__/ui/libraryTreeDataProvider.test.ts` (`snapshotFromScan`, vscode mock in `__mocks__/vscode/`), `__tests__/ui/listWebviewPanel.test.ts` (posted HostToUi messages), `__tests__/ui/arcMarkIcons.test.ts`; no messageHandler test.
 
-## Selection state
-- `selected: ReadonlySet<string>` (state/viewState.ts:29), plus `anchor` and `cursor`. Mutators in state/libraryViewStore.ts: `selectOnly` :99, `toggleSelected` :104, `selectRange` :111, `clearSelection` :119. `select(selector, listener)` (:39) subscribes to slices.
-- No webview→host message reports selection changes.
+## Risks
+- listWebviewPanel.ts is at 199 lines: the outbox queue goes in its own file.
+- Tree → panel → selection → tree can loop; guard on the same id.
+- Paper rows need their own command; `labshelf.openListTab` takes folder nodes.
 
-## Browser
-- library-page/main.ts:28-29 mounts `mountLibraryUi(root, {transport, prefs, withSidebar: true, ...})`; core shell/frame.ts:14 exposes `sidebar`, filled by library-page/sidebar/sidebarTree.ts (165 lines; also citationMapEntry.ts, index.ts): All papers row (:62), folders with `countPapersUnder` (:65), DnD, context menu (:109), keyboard nav (:121), selected folder from `store.get().folder` (:28). No papers, no status scopes.
-
-## Duplicates
-- Folder tree built twice: core `folderTreeFromSnapshot` (VS Code) vs store folders + `countPapersUnder` (browser). Also library/model/collectionTree.ts.
-
-## Projects
-- VS Code `labshelf.writing` native tree (writing/tree/projectsTreeProvider.ts and siblings). Browser: none.
+## Reveal both ways (2b.2 re-scout, 2026-10-16)
+- Protocol: host→UI `reveal {id}` (core flows/revealPaper handles it); UI→host `paper.selected {id|null}` (core reportSelection, mounted in mountLibraryUi). No host→UI message sets a status scope; only `navigate {folder}`.
+- `ListWebviewPanel` (ui/list/listWebviewPanel.ts, 199 lines): singleton `currentPanel`; `_post` drops messages while `!_webviewReady`; ready via `onReady` in `_hostContext()`, which runs `_pushState()` then flushes `_citationMapRequested`. `createOrShow(deps, folder?)` navigates an existing panel, so a reveal needs an entry point that does not navigate.
+- Host dispatch (ui/list/host/messageHandler.ts): `paper.selected` is unhandled and hits the WARN "message this host does not offer". `ListHostContext` (host/hostContext.ts) holds the callbacks; `ListPanelDeps.onDidNavigate` is the panel→tree seam to copy.
+- Tree: items set `labshelf.revealPaper [paperId]` and `labshelf.openListScope [scope]`, neither registered. Paper item id `labshelf:paper:<id>`; provider builds fresh nodes per `getChildren`, `getParent` uses `tree.parentOf`. TreeView handle is local to `registerLibraryTreeView` (`syncTreeToPanel` is the reveal pattern, guarded on `visible`).
+- Tests: `__tests__/ui/listWebviewPanel.test.ts` (332 lines) — `open()`, `fire()`, `posted()`; the citation-map block is the queued-until-ready model.

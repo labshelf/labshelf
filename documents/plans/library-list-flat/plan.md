@@ -1,6 +1,6 @@
 # Plan: Flat "All papers" library list
 
-Status: in progress (session 1b of 6 done; wave 2 next: 2a, 2b, 2c)
+Status: in progress (sessions 1a, 1b, 2b, 2c done; wave 2 running: 2a)
 Size: G — core list, detail head, side bar and protocol plus wiring in two apps, 6 sessions in 3 waves; grows to GG if Q3 shows sync or IndexedDB must start carrying extra paper files
 Pending decisions: 0
 
@@ -64,9 +64,9 @@ Detail head
 
 Side bar
 
-- [ ] **A14** Both apps show All papers, Unread, Reading, Done with counts at the top, then folders; each folder lists subfolders, then its papers with a REF mark.
-- [ ] **A15** Clicking a paper in the tree selects it in the list with its files open, opening its folder and clearing filters if scope or search hid it; the tree marks the selected paper, also when the selection starts in the list.
-- [ ] **A16** VS Code: a reveal sent before the webview is ready is applied once it is ready.
+- [x] **A14** Both apps show All papers, Unread, Reading, Done with counts at the top, then folders; each folder lists subfolders, then its papers with a REF mark.
+- [x] **A15** Clicking a paper in the tree selects it in the list with its files open, opening its folder and clearing filters if scope or search hid it; the tree marks the selected paper, also when the selection starts in the list.
+- [x] **A16** VS Code: a reveal sent before the webview is ready is applied once it is ready.
 
 States
 
