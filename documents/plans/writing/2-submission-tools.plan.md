@@ -1,8 +1,8 @@
 # Plan: submission tools
 
-Status: draft
+Status: in progress (session 1 of 4)
 Size: GG — five features in core and VS Code, one of them a visual PDF diff; 4 sessions.
-Pending decisions: 1
+Pending decisions: 0
 
 ## 1. Goal
 
@@ -12,15 +12,13 @@ Builds on [writing-core.plan.md](../../archive/writing-core.plan.md). The termin
 
 ## 2. Decisions
 
-- [ ] **D1** Figure provenance: `labshelf.yaml` maps each figure to the command that makes it and its inputs (`figures: {fig/ablation.pdf: {run: python plot_ablation.py, inputs: [plot_ablation.py, results/*.json]}}`). LabShelf marks a figure stale when an input is newer than it, and "Regenerate" runs the command (desktop only). — Only a tool that lives with the code can do this.
-- [ ] **D2** Live numbers: LaTeX projects get `\lsvalue{<file>.<path>}`, backed by a generated `labshelf-values.tex` built from the JSON files listed in `labshelf.yaml`; Typst reads JSON natively, so LabShelf only adds hover and completion over the same files. Hover shows the value and its source. — No number is copied by hand.
-- [ ] **D3** Pre-submission check, one command, results in Problems: page limit (from `labshelf.yaml` `check.pages`), anonymity (author names from `labshelf.yaml`, the git user and the PDF info dictionary; phrases like "our previous work"; GitHub or personal URLs), Type 3 fonts, raster figures under 300 dpi, unresolved references and citations. — Each item is a known desk-reject cause.
-- [ ] **D4** Versions: "Mark version" (submitted, rebuttal, camera-ready, or a free name) snapshots the sources and the PDF into `.labshelf/versions/<name>/`, synced with the project. "Compare" opens two versions side by side in the reader with changed regions highlighted from a page-image diff; `latexdiff` is used when TeX Live has it. — Works for both formats with one mechanism.
-- [ ] **D5** Rebuttal panel: paste the reviews; LabShelf splits them into numbered points (editable), each a thread with status (open, addressed, won't fix) linked to source ranges through the comments of [writing-sync](2-writing-sync.plan.md); "Export response" writes a Markdown or LaTeX letter quoting each point, the reply and the changed passages from the version diff. — The rebuttal is tracked, not juggled.
+- [x] **D1** Figure provenance: `labshelf.yaml` maps each figure to the command that makes it and its inputs (`figures: {fig/ablation.pdf: {run: python plot_ablation.py, inputs: [plot_ablation.py, results/*.json]}}`). LabShelf marks a figure stale when an input is newer than it, and "Regenerate" runs the command (desktop only). — Only a tool that lives with the code can do this.
+- [x] **D2** Live numbers: LaTeX projects get `\lsvalue{<file>.<path>}`, backed by a generated `labshelf-values.tex` built from the JSON files listed in `labshelf.yaml`; Typst reads JSON natively, so LabShelf only adds hover and completion over the same files. Hover shows the value and its source. — No number is copied by hand.
+- [x] **D3** Pre-submission check, one command, results in Problems: page limit (from `labshelf.yaml` `check.pages`), anonymity (author names from `labshelf.yaml`, the git user and the PDF info dictionary; phrases like "our previous work"; GitHub or personal URLs), Type 3 fonts, raster figures under 300 dpi, unresolved references and citations. — Each item is a known desk-reject cause.
+- [x] **D4** Versions: "Mark version" (submitted, rebuttal, camera-ready, or a free name) snapshots the sources and the PDF into `.labshelf/versions/<name>/`, synced with the project. "Compare" opens two versions side by side in the reader with changed regions highlighted from a page-image diff; `latexdiff` is used when TeX Live has it. — Works for both formats with one mechanism.
+- [x] **D5** Rebuttal panel: paste the reviews; LabShelf splits them into numbered points (editable), each a thread with status (open, addressed, won't fix) linked to source ranges through the comments of [writing-sync](2-writing-sync.plan.md); "Export response" writes a Markdown or LaTeX letter quoting each point, the reply and the changed passages from the version diff. — The rebuttal is tracked, not juggled.
 
-Open (blocks approval):
-
-- **Q1** Venue presets for the check (page limits, anonymity rules) — options: none, the user sets `check:` / ship presets for a few venues (NeurIPS, ICML, ACL, IEEE); recommendation: no presets, because limits change every year and a wrong preset is worse than none.
+- [x] **Q1** Venue presets for the check: none; the user sets `check:` in `labshelf.yaml`. — Limits change every year, and a wrong preset is worse than none.
 
 ## 3. Scope
 
@@ -57,9 +55,9 @@ Open (blocks approval):
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S1 | Figure provenance, staleness and regenerate | — | M · implementer (sonnet) | A1 | [ ] |
-| S2 | Values file, macro and hover | — | M · implementer (sonnet) | A2 | [ ] |
-| S3 | Finish | S1–S2 | `finish` skill | gate passes | [ ] |
+| S1 | Figure provenance, staleness and regenerate | — | M · implementer (sonnet) | A1 | [x] |
+| S2 | Values file, macro and hover | — | M · implementer (sonnet) | A2 | [x] |
+| S3 | Finish | S1–S2 | `finish` skill | gate passes | [x] |
 
 ### Session 2 — pre-submission check
 
@@ -126,3 +124,8 @@ Open (blocks approval):
 - **R2** Image diff is noisy when text reflows. — Diff per page with a tolerance, and `latexdiff` for LaTeX when available.
 
 ## 8. Log
+
+- 2026-10-15 21:30 — Session 1 start: D1–D5 and Q1 approved by the user; `figures:`, `values:` and `labshelf-values.tex` added to library-format.md with the parser (main thread). Reader stale badge dropped from S1: the reader has no overlay channel, and A1 needs only the Writing view.
+- 2026-10-15 21:50 — S1 (Sonnet): figure rows, staleness from mtimes with a hand-written glob matcher (Node 20 has no `fs.glob`), Regenerate with a per-machine confirmation per project and command; `runCancellable` gained shell and streaming; the project file walker lifted to `project/node`.
+- 2026-10-15 22:00 — S2 (Sonnet): `\lsvalue` macro file, `\input` line, LaTeX and Typst completion and hover, generation before LaTeX builds; a real pdflatex fixture test prints the value. Main thread: duplicate value file names skip the later file.
+- 2026-10-15 22:12 — S3: finish passed (core 2345, vscode 571 tests); six private `readOptional` copies merged into `readOptionalFile`. The real extension-host run could not complete (the test host refuses modal dialogs; screen capture unavailable), so A1 and A2 stay unticked until a manual or seeded-host check.
