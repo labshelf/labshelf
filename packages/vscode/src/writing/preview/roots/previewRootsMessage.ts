@@ -37,5 +37,9 @@ async function previewRoot(input: PreviewRootsInput, root: string): Promise<Prev
 
 export async function previewRootsMessage(input: PreviewRootsInput): Promise<PreviewRoots> {
   const roots = await Promise.all([...input.built].map((root) => previewRoot(input, root)));
-  return { main: input.project.main ?? input.shown, focused: input.focused, shown: input.shown, roots };
+  const pageLimit = input.project.settings.check?.pages;
+  return {
+    main: input.project.main ?? input.shown, focused: input.focused, shown: input.shown, roots,
+    ...(pageLimit !== undefined ? { pageLimit } : {}),
+  };
 }

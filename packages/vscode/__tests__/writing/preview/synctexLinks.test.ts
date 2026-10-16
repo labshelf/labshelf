@@ -9,7 +9,7 @@ import { rootBuildFolder } from "@labshelf/core";
 import { nodeProjectData } from "@labshelf/core/node";
 import { ReaderPanel } from "../../../src/pdf-viewer";
 import { BuildPreviews } from "../../../src/writing/preview";
-import { registerShowInPreview } from "../../../src/writing/preview/registerShowInPreview";
+import { registerShowInPreview } from "../../../src/writing/preview/commands/registerShowInPreview";
 import { commandHandler, fakeHost, fakeProjects, openInEditor, readyEntry } from "../../support/writingFixtures";
 
 jest.mock("../../../src/pdf-viewer", () => ({ ReaderPanel: { createOrShow: jest.fn() } }));

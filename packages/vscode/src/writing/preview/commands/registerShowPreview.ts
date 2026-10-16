@@ -1,11 +1,11 @@
 // Registers Show Preview: opens the active project's built PDF in the reader, building it first when it does not exist.
 import * as vscode from "vscode";
 
-import { BUILD_COMMAND } from "../build/index.js";
-import { owningProject } from "../mainDocument.js";
-import type { WritingProjects } from "../session/index.js";
-import type { BuildPreviews } from "./buildPreviews.js";
-import { builtPdf } from "./builtPdf.js";
+import { BUILD_COMMAND } from "../../build/index.js";
+import { owningProject } from "../../mainDocument.js";
+import type { WritingProjects } from "../../session/index.js";
+import type { BuildPreviews } from "../buildPreviews.js";
+import { builtPdf } from "../builtPdf.js";
 
 const SHOW_PREVIEW_COMMAND = "labshelf.writing.showPreview";
 

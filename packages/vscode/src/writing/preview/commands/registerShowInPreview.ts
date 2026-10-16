@@ -1,11 +1,11 @@
 // Registers Show in Preview: scrolls the active project's preview to the output of the line under the editor cursor.
 import * as vscode from "vscode";
 
-import { BUILD_COMMAND } from "../build/index.js";
-import { owningProject } from "../mainDocument.js";
-import type { WritingProjects } from "../session/index.js";
-import type { BuildPreviews } from "./buildPreviews.js";
-import { builtPdf } from "./builtPdf.js";
+import { BUILD_COMMAND } from "../../build/index.js";
+import { owningProject } from "../../mainDocument.js";
+import type { WritingProjects } from "../../session/index.js";
+import type { BuildPreviews } from "../buildPreviews.js";
+import { builtPdf } from "../builtPdf.js";
 
 const SHOW_IN_PREVIEW_COMMAND = "labshelf.writing.showInPreview";
 

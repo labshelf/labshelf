@@ -1,32 +1,16 @@
 // Keeps one reader preview per writing project: reloads it after a build, shows the build status and opens it when asked.
 import * as vscode from "vscode";
 
-import type { BuildState, PaperRecord, PathOps, ProjectDataPort, TypstCite, LocatedProblem } from "@labshelf/core";
-import { ReaderPanel, type ReaderPanelDeps } from "../../pdf-viewer/index.js";
+import type { BuildState, LocatedProblem, TypstCite } from "@labshelf/core";
+import { ReaderPanel } from "../../pdf-viewer/index.js";
 import type { BuildListener, BuildTrigger, FinishedBuild } from "../build/index.js";
 import type { ReadyProject } from "../mainDocument.js";
-import type { BuildRootOf } from "../nodePort/index.js";
-import type { WritingHost } from "../session/index.js";
-import { createPreviewPorts } from "./previewPorts.js";
+import { previewPaper, type BuildPreviewsDeps } from "./previewPanelInput.js";
+import { createPreviewPorts, type BodyPagesCount } from "./previewPorts.js";
 import { createWritingActions, focusedRoot, previewRootsMessage } from "./roots/index.js";
 import { PREVIEW_LOG_MODULE } from "./previewStrings.js";
 import { createPreviewStore } from "./previewStore.js";
 import { ProjectSynctex, revealInPreview } from "./sourceLinks/index.js";
-
-export interface BuildPreviewsDeps extends Pick<ReaderPanelDeps, "extensionUri" | "locatePdfjs" | "isMac"> {
-  host: Pick<WritingHost, "current">;
-  listPapers: () => Promise<PaperRecord[]>;
-  paths: PathOps;
-  data: ProjectDataPort;
-  /** The root the editor file builds into. */
-  buildRootOf: BuildRootOf;
-  /** Builds a root of the project again. */
-  recompile: (projectFolder: string, root: string) => Promise<unknown>;
-}
-
-function previewPaper(paths: PathOps, project: ReadyProject, pdf: string): PaperRecord {
-  return { id: `preview:${project.settings.id}`, title: paths.basename(pdf), path: paths.dirname(pdf), citeKey: "", status: "reading" };
-}
 
 export class BuildPreviews implements BuildListener {
   private readonly panels = new Map<string, ReaderPanel>();
@@ -42,6 +26,9 @@ export class BuildPreviews implements BuildListener {
   private readonly built = new Map<string, Set<string>>();
 
   private readonly synctex: ProjectSynctex;
+  private readonly bodyPagesCounted = new vscode.EventEmitter<BodyPagesCount>();
+  /** Fires when a preview's reader reports the body pages of the root it shows. */
+  readonly onDidCountBodyPages = this.bodyPagesCounted.event;
 
   constructor(private readonly deps: BuildPreviewsDeps) {
     this.synctex = new ProjectSynctex(deps.host, deps.paths, deps.data);
@@ -130,6 +117,7 @@ export class BuildPreviews implements BuildListener {
         pdfUri: vscode.Uri.file(pdf),
         rootDir: vscode.Uri.file(this.rootDir(project)),
         preview: createPreviewPorts({
+          bodyPages: (reported, contentPages) => this.bodyPagesCounted.fire({ folder: project.folder, root: reported, contentPages }),
           logger: session.logger, paths: this.deps.paths, projectFolder: project.folder, format: project.settings.format, listPapers: this.deps.listPapers,
           synctex: () => this.synctex.load(project, this.shown.get(project.folder) ?? project.main), typstCites: () => this.typstCites.get(this.currentKey(project)) ?? [],
           actions: createWritingActions({

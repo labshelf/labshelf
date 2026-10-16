@@ -6,7 +6,7 @@ import * as vscode from "vscode";
 
 import { ReaderPanel } from "../../../src/pdf-viewer";
 import { BuildPreviews } from "../../../src/writing/preview";
-import { registerShowPreview } from "../../../src/writing/preview/registerShowPreview";
+import { registerShowPreview } from "../../../src/writing/preview/commands/registerShowPreview";
 import { commandHandler, fakeHost, fakeProjectData, fakeProjects, openInEditor, readyEntry } from "../../support/writingFixtures";
 
 jest.mock("../../../src/pdf-viewer", () => ({ ReaderPanel: { createOrShow: jest.fn() } }));
