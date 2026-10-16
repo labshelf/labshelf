@@ -1,8 +1,7 @@
 // Opens the reader panels of a version comparison: one per side, or one for a marked-up PDF.
-import * as path from "node:path";
 import * as vscode from "vscode";
 
-import type { ILogger, PageArea, PaperRecord } from "@labshelf/core";
+import type { ILogger, PageArea, PaperRecord, PathOps } from "@labshelf/core";
 import { ReaderPanel, type ReaderPanelDeps } from "../../pdf-viewer/index.js";
 import { createPreviewStore } from "../preview/index.js";
 import type { ReadyProject } from "../mainDocument.js";
@@ -19,7 +18,7 @@ interface OpenedPanel {
 export class ComparePanels {
   private readonly open = new Set<string>();
 
-  constructor(private readonly deps: Omit<ReaderPanelDeps, "logger">) {}
+  constructor(private readonly deps: Omit<ReaderPanelDeps, "logger">, private readonly paths: PathOps) {}
 
   /** Shows `base` in the active column and `other` beside it, each with its changed regions marked. */
   showSides(logger: ILogger, project: ReadyProject, sides: { base: CompareSide; other: CompareSide }, changes: { before: PageArea[]; after: PageArea[] }): void {
@@ -42,7 +41,7 @@ export class ComparePanels {
 
   private show(logger: ILogger, project: ReadyProject, side: CompareSide, key: string, column: ShowIn): OpenedPanel {
     const fresh = !this.open.has(key);
-    const dir = path.dirname(side.pdfPath);
+    const dir = this.paths.dirname(side.pdfPath);
     const paper: PaperRecord = {
       id: `compare:${project.settings.id}:${side.slug}`, title: `${side.name} — ${project.settings.id}`, path: dir, citeKey: "", status: "reading",
     };

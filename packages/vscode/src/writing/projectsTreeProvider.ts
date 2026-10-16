@@ -1,7 +1,7 @@
 // Shows each writing project as a Writing view row, with its main file and, for problem projects, the reason, and the figures and reading list of a project below it.
 import * as vscode from "vscode";
 
-import type { ProjectEntry } from "@labshelf/core/node";
+import type { ProjectEntry } from "@labshelf/core";
 import { figureTreeItem, type FigureNode, type ProjectFigures, type ReadyProject } from "./figures/index.js";
 import type { WritingProjects } from "./projectStore.js";
 import { readingListChildren, readingTreeItem, type ProjectReadingLists, type ReadingNode } from "./readingList/index.js";
@@ -51,7 +51,7 @@ export class WritingTreeProvider implements vscode.TreeDataProvider<WritingNode>
   }
 
   getTreeItem(node: WritingNode): vscode.TreeItem {
-    if (node.kind === "figure") { return figureTreeItem(node); }
+    if (node.kind === "figure") { return figureTreeItem(node, this.projects.paths); }
     return node.kind === "ready" || node.kind === "broken" ? projectTreeItem(node) : readingTreeItem(node);
   }
 

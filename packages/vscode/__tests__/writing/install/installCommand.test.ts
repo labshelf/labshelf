@@ -1,4 +1,5 @@
 // Tests that Install Project Papers imports only the listed papers the library lacks, under the listed keys.
+import * as path from "node:path";
 import * as vscode from "vscode";
 
 import type { ImportOutcome, PaperRecord } from "@labshelf/core";
@@ -22,7 +23,7 @@ function setup(library: PaperRecord[], importFromNetwork: jest.Mock) {
     paperService: { listPapers: async () => library },
     logger,
   };
-  registerInstallCommand({ context: { subscriptions: [] } as never, host: fakeHost(logger), projects: { list: () => [] }, services: () => services });
+  registerInstallCommand({ context: { subscriptions: [] } as never, host: fakeHost(logger), projects: { list: () => [], paths: path }, services: () => services });
   return services;
 }
 

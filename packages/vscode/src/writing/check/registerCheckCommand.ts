@@ -1,8 +1,8 @@
 // Registers Check Before Submitting: builds the project, checks its PDF and sources, and lists the findings in Problems.
 import * as vscode from "vscode";
 
-import type { CheckFinding, ILogger, ProjectFormat } from "@labshelf/core";
-import { checkProject, type PdfjsLoader, type ProjectEntry } from "@labshelf/core/node";
+import type { CheckFinding, ILogger, ProjectFormat, PdfjsLoader, ProjectEntry } from "@labshelf/core";
+import { checkProject } from "@labshelf/core/node";
 import { executeSafely } from "../../commands/index.js";
 import { activeProject, ProjectDiagnostics } from "../build/index.js";
 import type { ReadyProject } from "../mainDocument.js";
@@ -15,7 +15,7 @@ export const CHECK_COMMAND = "labshelf.writing.checkBeforeSubmitting";
 interface CheckCommandDeps {
   context: vscode.ExtensionContext;
   host: WritingHost;
-  projects: Pick<WritingProjects, "list">;
+  projects: Pick<WritingProjects, "list" | "paths">;
   builders: Record<ProjectFormat, { request(projectFolder: string, trigger: "command"): Promise<{ status: string } | undefined> }>;
   pdfjs: PdfjsLoader;
 }

@@ -12,7 +12,7 @@ const MODULE = "writing/build";
 interface NoticeDeps {
   context: vscode.ExtensionContext;
   host: WritingHost;
-  projects: Pick<WritingProjects, "list">;
+  projects: Pick<WritingProjects, "list" | "paths">;
 }
 
 async function turnOffAutoBuild(host: WritingHost): Promise<void> {
@@ -47,7 +47,7 @@ export function registerLatexWorkshopNotice(deps: NoticeDeps): void {
     if (deps.context.workspaceState.get<boolean>(SHOWN_KEY)) { return; }
     if (!vscode.extensions.getExtension(LATEX_WORKSHOP_ID)) { return; }
     const file = vscode.window.activeTextEditor?.document.uri;
-    const project = file?.scheme === "file" ? owningProject(deps.projects.list(), file.fsPath) : undefined;
+    const project = file?.scheme === "file" ? owningProject(deps.projects, file.fsPath) : undefined;
     if (project?.settings.format === "latex") { void showNotice(deps); }
   };
   deps.context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(check));

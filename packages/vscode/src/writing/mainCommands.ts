@@ -11,7 +11,7 @@ import type { WritingHost, WritingProjects } from "./projectStore.js";
 interface MainCommandsDeps {
   context: vscode.ExtensionContext;
   host: WritingHost;
-  projects: Pick<WritingProjects, "list" | "reload">;
+  projects: Pick<WritingProjects, "list" | "paths" | "reload">;
 }
 
 async function writeMain(deps: MainCommandsDeps, project: ReadyProject, main: string): Promise<void> {
@@ -25,7 +25,7 @@ async function writeMain(deps: MainCommandsDeps, project: ReadyProject, main: st
 
 async function setMain(deps: MainCommandsDeps, file: vscode.Uri | undefined): Promise<void> {
   if (!file) { return; }
-  const project = owningProject(deps.projects.list(), file.fsPath);
+  const project = owningProject(deps.projects, file.fsPath);
   if (!project) {
     await vscode.window.showErrorMessage(`${path.basename(file.fsPath)} is not inside a LabShelf project.`);
     return;
@@ -36,12 +36,12 @@ async function setMain(deps: MainCommandsDeps, file: vscode.Uri | undefined): Pr
     );
     return;
   }
-  await writeMain(deps, project, mainPathIn(project, file.fsPath));
+  await writeMain(deps, project, mainPathIn(deps.projects.paths, project, file.fsPath));
 }
 
 async function pickMain(deps: MainCommandsDeps): Promise<void> {
   const active = vscode.window.activeTextEditor?.document.uri.fsPath;
-  const project = active ? owningProject(deps.projects.list(), active) : undefined;
+  const project = active ? owningProject(deps.projects, active) : undefined;
   if (!project) { return; }
   const candidates = mainCandidates(project.settings.format, await rootFileNames(project.folder));
   if (candidates.length === 0) {

@@ -1,4 +1,5 @@
 // Tests the Tinymist bridge: the one-time install offer, and pinning the main file only when it changes.
+import * as path from "node:path";
 import * as vscode from "vscode";
 
 import { registerTinymistBridge, tinymistInstalled } from "../../../../src/writing/typst/tinymist";
@@ -29,6 +30,7 @@ function setup(initial: Entry[], seenBefore = false) {
   const logger = fakeLogger();
   const projects = {
     list: () => entries,
+    paths: path,
     onDidChange: (handler: () => void) => { listeners.push(handler); return { dispose: () => {} }; },
   };
   registerTinymistBridge(context as never, { host: fakeHost(logger), projects: projects as never });

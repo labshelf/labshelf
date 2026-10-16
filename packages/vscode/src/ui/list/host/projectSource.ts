@@ -1,5 +1,4 @@
 /** Opens a writing project's source file at the line that cites a paper, refusing paths outside the project folder. */
-import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { LOG_MODULE, type ListHostContext } from './hostContext.js';
 
@@ -11,6 +10,7 @@ export async function openProjectSource(ctx: ListHostContext, project: string, f
     ctx.notice('error', `The project "${project}" is not in the Writing view`);
     return;
   }
+  const path = ctx.deps.pathOps;
   const target = path.resolve(folder, ...file.split('/'));
   const relative = path.relative(folder, target);
   // The webview is untrusted: a path that leaves the project folder is not opened.

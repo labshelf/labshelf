@@ -1,14 +1,15 @@
 // Tests the compiler status bar item: the engine of the active LaTeX project, hidden for Typst and outside projects.
+import * as path from "node:path";
 import * as vscode from "vscode";
 
-import type { ProjectEntry } from "@labshelf/core/node";
+import type { ProjectEntry } from "@labshelf/core";
 import { registerCompilerStatusBar } from "../../../../src/writing/build/toolchain";
 import { openInEditor, readyEntry } from "../../../support/writingFixtures";
 
 function setup(entries: ProjectEntry[]) {
   const changes = new vscode.EventEmitter<void>();
   let current = entries;
-  registerCompilerStatusBar({ subscriptions: [] } as never, { list: () => current, onDidChange: changes.event });
+  registerCompilerStatusBar({ subscriptions: [] } as never, { list: () => current, paths: path, onDidChange: changes.event });
   const item = (vscode.window.createStatusBarItem as jest.Mock).mock.results[0]!.value;
   return { item, setProjects: (next: ProjectEntry[]) => { current = next; changes.fire(); } };
 }

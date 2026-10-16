@@ -1,7 +1,7 @@
 // Shows a figure as a Writing view row: stale or missing marked, the newer inputs and the command in the tooltip, opened on click.
-import * as path from "node:path";
 import * as vscode from "vscode";
 
+import type { PathOps } from "@labshelf/core";
 import type { FigureNode } from "./figureNode.js";
 
 const STALE_FIGURE_CONTEXT = "labshelfFigureStale";
@@ -19,7 +19,7 @@ function tooltip(node: FigureNode): string {
   return lines.join("\n");
 }
 
-export function figureTreeItem(node: FigureNode): vscode.TreeItem {
+export function figureTreeItem(node: FigureNode, paths: PathOps): vscode.TreeItem {
   const { status } = node.state;
   const item = new vscode.TreeItem(node.path, vscode.TreeItemCollapsibleState.None);
   item.id = `${node.project.folder}#figure:${node.path}`;
@@ -28,7 +28,7 @@ export function figureTreeItem(node: FigureNode): vscode.TreeItem {
   if (status !== "fresh") { item.description = status; }
   item.tooltip = tooltip(node);
   if (status !== "missing") {
-    const file = vscode.Uri.file(path.join(node.project.folder, node.path));
+    const file = vscode.Uri.file(paths.join(node.project.folder, node.path));
     item.command = { command: "vscode.open", title: "Open Figure", arguments: [file] };
   }
   return item;

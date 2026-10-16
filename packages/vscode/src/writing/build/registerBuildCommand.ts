@@ -9,7 +9,7 @@ export const BUILD_COMMAND = "labshelf.writing.build";
 
 interface BuildCommandDeps {
   context: vscode.ExtensionContext;
-  projects: Pick<WritingProjects, "list">;
+  projects: Pick<WritingProjects, "list" | "paths">;
   builders: Record<ProjectFormat, { request(projectFolder: string, trigger: "command"): Promise<unknown> }>;
 }
 

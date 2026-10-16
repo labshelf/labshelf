@@ -31,7 +31,7 @@ async function newProject({ host, projects }: ProjectCommandsDeps): Promise<void
     if (!format) { return; }
     const entry = await createProject(session.root, { title, format }, session.logger);
     await projects.reload();
-    await openProjectMain(entry);
+    await openProjectMain(projects.paths, entry);
   });
 }
 

@@ -1,4 +1,5 @@
 // Tests the LaTeX Workshop notice: once per workspace, only with the extension and a LaTeX project, and the button's setting.
+import * as path from "node:path";
 import * as vscode from "vscode";
 
 import { registerLatexWorkshopNotice } from "../../../src/writing/build";
@@ -16,7 +17,7 @@ function setup(format: "latex" | "typst" = "latex", seenBefore = false) {
     workspaceState: { get: (key: string) => state.get(key), update: jest.fn(async (key: string, value: unknown) => { state.set(key, value); }) },
   };
   const logger = fakeLogger();
-  const projects = { list: () => [readyEntry("/code/repo", { settings: { id: "repo", format } })] };
+  const projects = { list: () => [readyEntry("/code/repo", { settings: { id: "repo", format } })], paths: path };
   registerLatexWorkshopNotice({ context: context as never, host: fakeHost(logger), projects });
   registered.push(context);
   return { context, logger };

@@ -89,7 +89,7 @@ function registerProjectAndFigureCommands(parts: WritingParts): void {
 
 function registerBuildAndPreviewCommands(parts: WritingParts, reader: HostAdapters["reader"]): void {
   const { context, host, projects, listPapers } = parts;
-  const previews = new BuildPreviews({ host, listPapers, extensionUri: context.extensionUri, ...reader });
+  const previews = new BuildPreviews({ host, listPapers, paths: projects.paths, extensionUri: context.extensionUri, ...reader });
   const diagnostics = new BuildDiagnostics();
   context.subscriptions.push(diagnostics);
   const builders = {
@@ -127,10 +127,10 @@ function registerEditingSupport(context: vscode.ExtensionContext, controller: Co
 }
 
 export function registerWritingView(
-  context: vscode.ExtensionContext, controller: LibraryRootController, reader: HostAdapters["reader"], events: LibraryEvents,
+  context: vscode.ExtensionContext, controller: LibraryRootController, reader: HostAdapters["reader"], paths: HostAdapters["paths"], events: LibraryEvents,
 ): WritingViewHandles {
   const host = createWritingHost(controller);
-  const projects = new WritingProjects(host);
+  const projects = new WritingProjects(host, paths);
   const figures = new ProjectFigures(host);
   const backlinks = new ProjectBacklinkIndex(projects, host);
   const readingLists = createReadingLists(controller, events, backlinks);

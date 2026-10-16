@@ -1,16 +1,17 @@
 // Tests the main-document status bar item: shown for the active project, hidden for files outside any project.
+import * as path from "node:path";
 import * as vscode from "vscode";
 
 import { registerMainStatusBar } from "../../src/writing";
 import { readyEntry } from "../support/writingFixtures";
-import type { ProjectEntry } from "@labshelf/core/node";
+import type { ProjectEntry } from "@labshelf/core";
 
 const window = vscode.window as unknown as { activeTextEditor: unknown; _fireActiveEditorChange: () => void };
 
 function setup(entries: ProjectEntry[]) {
   const changes = new vscode.EventEmitter<void>();
   let current = entries;
-  registerMainStatusBar({ subscriptions: [] } as never, { list: () => current, onDidChange: changes.event });
+  registerMainStatusBar({ subscriptions: [] } as never, { list: () => current, paths: path, onDidChange: changes.event });
   const item = (vscode.window.createStatusBarItem as jest.Mock).mock.results[0]!.value;
   return { item, setProjects: (next: ProjectEntry[]) => { current = next; changes.fire(); } };
 }

@@ -13,7 +13,7 @@ const MODULE = "writing/typst";
 export interface TinymistOfferDeps {
   context: vscode.ExtensionContext;
   host: Pick<WritingHost, "current">;
-  projects: Pick<WritingProjects, "list">;
+  projects: Pick<WritingProjects, "list" | "paths">;
 }
 
 async function install(deps: TinymistOfferDeps): Promise<void> {
@@ -44,7 +44,7 @@ export function registerTinymistOffer(deps: TinymistOfferDeps): void {
   const check = (): void => {
     if (deps.context.workspaceState.get<boolean>(SHOWN_KEY) || tinymistInstalled()) { return; }
     const file = vscode.window.activeTextEditor?.document.uri;
-    const project = file?.scheme === "file" ? owningProject(deps.projects.list(), file.fsPath) : undefined;
+    const project = file?.scheme === "file" ? owningProject(deps.projects, file.fsPath) : undefined;
     if (project?.settings.format === "typst") { void showOffer(deps); }
   };
   deps.context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(check));

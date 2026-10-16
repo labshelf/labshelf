@@ -2,10 +2,8 @@
 import * as vscode from "vscode";
 
 import {
-  describeInstall, keyResolves, planInstall, summarizeInstall,
-  type ILogger, type InstallResult, type PaperRecord,
+  describeInstall, keyResolves, planInstall, summarizeInstall, type ILogger, type InstallResult, type PaperRecord, type ProjectEntry,
 } from "@labshelf/core";
-import type { ProjectEntry } from "@labshelf/core/node";
 import { executeSafely, queueTextLayersOfAdded } from "../../commands/index.js";
 import type { PaperImporter, PaperTextLayers } from "../../core/index.js";
 import { activeProject } from "../build/index.js";
@@ -24,7 +22,7 @@ export interface InstallServices {
 interface InstallCommandDeps {
   context: vscode.ExtensionContext;
   host: WritingHost;
-  projects: Pick<WritingProjects, "list">;
+  projects: Pick<WritingProjects, "list" | "paths">;
   services: () => InstallServices | null | undefined;
 }
 

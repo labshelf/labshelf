@@ -9,7 +9,7 @@ import type { WritingProjects } from "../projectStore.js";
 
 /** What the providers read per request: the project list and the open library's logger. */
 export interface ValuesWorkspace {
-  projects: Pick<WritingProjects, "list" | "onDidChange">;
+  projects: Pick<WritingProjects, "list" | "paths" | "onDidChange">;
   logger(): ILogger | undefined;
 }
 
@@ -30,7 +30,7 @@ export class ProjectValues implements vscode.Disposable {
 
   /** The ready project that lists value files and owns the file as a source of its format. */
   sourceProject(file: string): ReadyProject | undefined {
-    const project = owningProject(this.workspace.projects.list(), file);
+    const project = owningProject(this.workspace.projects, file);
     const listsValues = (project?.settings.values?.length ?? 0) > 0;
     return project && listsValues && path.extname(file) === SOURCE_EXTENSION[project.settings.format] ? project : undefined;
   }

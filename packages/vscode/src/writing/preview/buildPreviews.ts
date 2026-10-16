@@ -1,9 +1,7 @@
 // Keeps one reader preview per writing project: reloads it after a build, shows the build status and opens it when asked.
-import * as path from "node:path";
 import * as vscode from "vscode";
 
-import type { BuildState, PaperRecord, TypstCite } from "@labshelf/core";
-import type { LocatedProblem } from "@labshelf/core/node";
+import type { BuildState, PaperRecord, PathOps, TypstCite, LocatedProblem } from "@labshelf/core";
 import { ReaderPanel, type ReaderPanelDeps } from "../../pdf-viewer/index.js";
 import type { BuildListener, BuildTrigger, FinishedBuild } from "../build/index.js";
 import type { ReadyProject } from "../mainDocument.js";
@@ -16,10 +14,11 @@ import { ProjectSynctex, revealInPreview } from "./sourceLinks/index.js";
 export interface BuildPreviewsDeps extends Pick<ReaderPanelDeps, "extensionUri" | "locatePdfjs" | "isMac"> {
   host: Pick<WritingHost, "current">;
   listPapers: () => Promise<PaperRecord[]>;
+  paths: PathOps;
 }
 
-function previewPaper(project: ReadyProject, pdf: string): PaperRecord {
-  return { id: `preview:${project.settings.id}`, title: path.basename(pdf), path: path.dirname(pdf), citeKey: "", status: "reading" };
+function previewPaper(paths: PathOps, project: ReadyProject, pdf: string): PaperRecord {
+  return { id: `preview:${project.settings.id}`, title: paths.basename(pdf), path: paths.dirname(pdf), citeKey: "", status: "reading" };
 }
 
 export class BuildPreviews implements BuildListener {
@@ -77,12 +76,12 @@ export class BuildPreviews implements BuildListener {
     try {
       const panel = ReaderPanel.createOrShow({ ...this.deps, logger: session.logger }, {
         key: `preview:${project.folder}`,
-        paper: previewPaper(project, pdf),
+        paper: previewPaper(this.deps.paths, project, pdf),
         store: createPreviewStore(),
         pdfUri: vscode.Uri.file(pdf),
-        rootDir: vscode.Uri.file(path.dirname(pdf)),
+        rootDir: vscode.Uri.file(this.deps.paths.dirname(pdf)),
         preview: createPreviewPorts({
-          logger: session.logger, projectFolder: project.folder, problems: () => this.problems.get(project.folder) ?? [],
+          logger: session.logger, paths: this.deps.paths, projectFolder: project.folder, problems: () => this.problems.get(project.folder) ?? [],
           synctex: () => this.synctex.load(project),
           format: project.settings.format, listPapers: this.deps.listPapers,
           typstCites: () => this.typstCites.get(project.folder) ?? [],

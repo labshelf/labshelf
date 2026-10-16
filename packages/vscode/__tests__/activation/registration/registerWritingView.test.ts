@@ -1,4 +1,5 @@
 // Tests that the Writing view registers exactly the commands package.json contributes and reloads when the library root changes.
+import * as path from "node:path";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import * as vscode from "vscode";
@@ -28,7 +29,7 @@ function setup(root: string | undefined) {
     globalStorageUri: vscode.Uri.file("/storage"),
     workspaceState: { get: () => undefined, update: jest.fn(async () => {}) },
   };
-  registerWritingView(context as unknown as vscode.ExtensionContext, controller, { locatePdfjs: () => null, isMac: false }, createLibraryEvents());
+  registerWritingView(context as unknown as vscode.ExtensionContext, controller, { locatePdfjs: () => null, isMac: false }, path, createLibraryEvents());
   return { emitter };
 }
 

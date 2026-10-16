@@ -27,7 +27,7 @@ async function setup(yaml: string, papers: PaperRecord[], inList: string[] = [])
   const host = fakeHost(logger);
   const read = () => readProject(folder, "library", logger);
   let entry = await read();
-  const projects = { list: () => [entry], reload: jest.fn(async () => { entry = await read(); }) };
+  const projects = { list: () => [entry], paths: path, reload: jest.fn(async () => { entry = await read(); }) };
   const readingLists = { of: jest.fn(async () => ({ entries: inList.map((key) => ({ key, paper: undefined, cited: true, listed: false, opened: false })), neverOpened: 0 })) };
   registerReadingListCommands({ context: { subscriptions: [] } as never, host, projects: projects as never, readingLists, listPapers: async () => papers });
   return { projects, entry: () => entry };

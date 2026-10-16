@@ -1,4 +1,5 @@
 // Tests the preview of a Typst project: whether one is open, and that source links explain they are LaTeX-only.
+import * as path from "node:path";
 import * as vscode from "vscode";
 
 import { ReaderPanel } from "../../../src/pdf-viewer";
@@ -18,7 +19,7 @@ function setup() {
   const controller = { setBuildStatus: jest.fn(), reloadDocument: jest.fn(), revealPoint: jest.fn() };
   let closed: (() => void) | undefined;
   create.mockImplementation((_deps, source) => { closed = source.onClosed; return { controller }; });
-  const previews = new BuildPreviews({ host, listPapers: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false });
+  const previews = new BuildPreviews({ host, paths: path, listPapers: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false });
   return { previews, controller, host, close: () => closed?.(), ports: () => create.mock.calls[0][1].preview };
 }
 

@@ -1,5 +1,4 @@
 // Tells Tinymist which file is the main document of the Typst project being edited.
-import * as path from "node:path";
 import * as vscode from "vscode";
 
 import { owningProject } from "../../mainDocument.js";
@@ -13,7 +12,7 @@ const MODULE = "writing/typst";
 export interface TinymistPinDeps {
   context: vscode.ExtensionContext;
   host: Pick<WritingHost, "current">;
-  projects: Pick<WritingProjects, "list" | "onDidChange">;
+  projects: Pick<WritingProjects, "list" | "paths" | "onDidChange">;
 }
 
 /** Pins when the active Typst project's main file differs from the last one pinned; a failed pin is retried on the next change. */
@@ -22,9 +21,9 @@ export function registerTinymistMainPin(deps: TinymistPinDeps): void {
   const sync = async (): Promise<void> => {
     if (!tinymistInstalled()) { return; }
     const file = vscode.window.activeTextEditor?.document.uri;
-    const project = file?.scheme === "file" ? owningProject(deps.projects.list(), file.fsPath) : undefined;
+    const project = file?.scheme === "file" ? owningProject(deps.projects, file.fsPath) : undefined;
     if (project?.settings.format !== "typst" || !project.main) { return; }
-    const main = path.join(project.folder, project.main);
+    const main = deps.projects.paths.join(project.folder, project.main);
     if (main === pinned) { return; }
     const logger = deps.host.current()?.logger;
     // Set before the command resolves so two quick editor changes pin once.

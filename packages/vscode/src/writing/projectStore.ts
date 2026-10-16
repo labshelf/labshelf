@@ -1,8 +1,8 @@
 // Holds the writing projects of the open library and tells views when the list is reloaded.
 import * as vscode from "vscode";
 
-import type { ILogger } from "@labshelf/core";
-import { listProjects, type ProjectEntry } from "@labshelf/core/node";
+import type { ILogger, PathOps, ProjectEntry } from "@labshelf/core";
+import { listProjects } from "@labshelf/core/node";
 
 /** The open library as writing code needs it: a folder path and the logger of that library. */
 export interface WritingSession {
@@ -22,7 +22,8 @@ export class WritingProjects implements vscode.Disposable {
   private readonly changeEmitter = new vscode.EventEmitter<void>();
   readonly onDidChange = this.changeEmitter.event;
 
-  constructor(private readonly host: Pick<WritingHost, "current">) {}
+  /** @param paths The path style of the project folders: the host's, which is not always "/". */
+  constructor(private readonly host: Pick<WritingHost, "current">, readonly paths: PathOps) {}
 
   list(): readonly ProjectEntry[] {
     return this.entries;

@@ -11,14 +11,14 @@ const SHOW_IN_PREVIEW_COMMAND = "labshelf.writing.showInPreview";
 
 interface ShowInPreviewDeps {
   context: vscode.ExtensionContext;
-  projects: Pick<WritingProjects, "list">;
+  projects: Pick<WritingProjects, "list" | "paths">;
   previews: Pick<BuildPreviews, "show" | "revealSource">;
 }
 
 async function showInPreview(deps: ShowInPreviewDeps): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   const file = editor?.document.uri;
-  const project = file?.scheme === "file" ? owningProject(deps.projects.list(), file.fsPath) : undefined;
+  const project = file?.scheme === "file" ? owningProject(deps.projects, file.fsPath) : undefined;
   const pdf = await builtPdf(project);
   if (!editor || !file || !project || !pdf) {
     // The build command opens the preview on success and explains a missing project, main file or format.

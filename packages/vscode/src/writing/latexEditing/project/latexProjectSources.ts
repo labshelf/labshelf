@@ -1,5 +1,4 @@
 // Collects the scanned source files of the LaTeX project that owns a document, cached until one of its files changes.
-import * as path from "node:path";
 import * as vscode from "vscode";
 
 import {
@@ -21,7 +20,7 @@ export interface LatexProject {
 }
 
 export interface LatexProjectWorkspace {
-  projects: Pick<WritingProjects, "list" | "onDidChange">;
+  projects: Pick<WritingProjects, "list" | "paths" | "onDidChange">;
   logger(): ILogger | undefined;
 }
 
@@ -47,8 +46,8 @@ export class LatexProjectSources implements vscode.Disposable {
 
   /** The LaTeX project that owns a `.tex` file on disk, if any. */
   projectOf(file: vscode.Uri): ReadyProject | undefined {
-    if (file.scheme !== "file" || path.extname(file.fsPath) !== ".tex") { return undefined; }
-    const project = owningProject(this.workspace.projects.list(), file.fsPath);
+    if (file.scheme !== "file" || this.workspace.projects.paths.extname(file.fsPath) !== ".tex") { return undefined; }
+    const project = owningProject(this.workspace.projects, file.fsPath);
     return project?.settings.format === "latex" ? project : undefined;
   }
 

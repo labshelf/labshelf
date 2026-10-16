@@ -1,5 +1,4 @@
 // Registers the build that follows every save of a LaTeX project's sources.
-import * as path from "node:path";
 import * as vscode from "vscode";
 
 import { owningProject } from "../mainDocument.js";
@@ -15,14 +14,14 @@ const SAVE_DEBOUNCE_MS = 300;
 interface LatexBuildDeps {
   context: vscode.ExtensionContext;
   host: WritingHost;
-  projects: Pick<WritingProjects, "list" | "reload">;
+  projects: Pick<WritingProjects, "list" | "paths" | "reload">;
   previews: Pick<BuildPreviews, "building" | "finished">;
   diagnostics: Pick<BuildDiagnostics, "publish">;
 }
 
 function latexProjectOf(projects: LatexBuildDeps["projects"], file: vscode.Uri): string | undefined {
   if (file.scheme !== "file") { return undefined; }
-  const project = owningProject(projects.list(), file.fsPath);
+  const project = owningProject(projects, file.fsPath);
   return project?.settings.format === "latex" ? project.folder : undefined;
 }
 
@@ -32,7 +31,7 @@ export function registerLatexBuild(deps: LatexBuildDeps): LatexBuilds {
   const timers = new Map<string, NodeJS.Timeout>();
 
   const onSave = (document: vscode.TextDocument): void => {
-    if (!SOURCE_EXTENSIONS.has(path.extname(document.uri.fsPath).toLowerCase())) { return; }
+    if (!SOURCE_EXTENSIONS.has(deps.projects.paths.extname(document.uri.fsPath).toLowerCase())) { return; }
     const folder = latexProjectOf(deps.projects, document.uri);
     if (!folder) { return; }
     clearTimeout(timers.get(folder));

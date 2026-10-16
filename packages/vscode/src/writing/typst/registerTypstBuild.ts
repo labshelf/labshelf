@@ -19,7 +19,7 @@ interface TypstBuildRegistration extends Omit<TypstBuildsDeps, "compiler"> {
 
 function typstProjectOf(projects: WritingProjects, file: vscode.Uri): ReadyProject | undefined {
   if (file.scheme !== "file") { return undefined; }
-  const project = owningProject(projects.list(), file.fsPath);
+  const project = owningProject(projects, file.fsPath);
   return project?.settings.format === "typst" ? project : undefined;
 }
 

@@ -1,4 +1,5 @@
 // Builds an in-memory LaTeX project: files on a fake disk, open editors and the project sources service over them.
+import * as path from "node:path";
 import * as vscode from "vscode";
 
 import { LatexProjectSources } from "../../src/writing/latexEditing/index";
@@ -26,7 +27,7 @@ export function latexProject(disk: Record<string, string>, over: { main?: string
   const projects = Object.assign(fakeProjects(entries), { changes: new vscode.EventEmitter<void>() });
   const logger = fakeLogger();
   const sources = new LatexProjectSources({
-    projects: { list: projects.list, onDidChange: projects.changes.event }, logger: () => logger,
+    projects: { list: projects.list, paths: path, onDidChange: projects.changes.event }, logger: () => logger,
   });
   const documents: vscode.TextDocument[] = [];
   const open = (relative: string, text = disk[relative] ?? ""): vscode.TextDocument => {

@@ -8,6 +8,10 @@ export interface PathOps {
   join(...parts: string[]): string;
   dirname(target: string): string;
   basename(target: string, ext?: string): string;
+  extname(target: string): string;
+  isAbsolute(target: string): boolean;
+  resolve(...parts: string[]): string;
+  relative(from: string, to: string): string;
 }
 
 /** Writes metadata.yaml and bib.bib for a paper; the core BibTeXService satisfies it. */

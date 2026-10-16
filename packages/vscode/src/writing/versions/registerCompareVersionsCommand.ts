@@ -2,10 +2,8 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import type { ILogger } from "@labshelf/core";
-import {
-  buildMarkedUpDiff, comparePdfs, findExecutable, listVersions, projectBuildDir, type PdfjsLoader, type ProjectEntry,
-} from "@labshelf/core/node";
+import type { ILogger, PdfjsLoader, ProjectEntry } from "@labshelf/core";
+import { buildMarkedUpDiff, comparePdfs, findExecutable, listVersions, projectBuildDir } from "@labshelf/core/node";
 import { executeSafely } from "../../commands/index.js";
 import type { ReaderPanelDeps } from "../../pdf-viewer/index.js";
 import { activeProject, ensureToolchain } from "../build/index.js";
@@ -20,7 +18,7 @@ export const COMPARE_VERSIONS_COMMAND = "labshelf.writing.compareVersions";
 interface CompareVersionsDeps {
   context: vscode.ExtensionContext;
   host: WritingHost;
-  projects: Pick<WritingProjects, "list" | "reload">;
+  projects: Pick<WritingProjects, "list" | "paths" | "reload">;
   builders: ProjectBuilders;
   pdfjs: PdfjsLoader;
   reader: Omit<ReaderPanelDeps, "logger" | "extensionUri">;
@@ -96,7 +94,7 @@ async function compareProject(deps: CompareVersionsDeps, panels: ComparePanels, 
 }
 
 export function registerCompareVersionsCommand(deps: CompareVersionsDeps): void {
-  const panels = new ComparePanels({ extensionUri: deps.context.extensionUri, ...deps.reader });
+  const panels = new ComparePanels({ extensionUri: deps.context.extensionUri, ...deps.reader }, deps.projects.paths);
   deps.context.subscriptions.push(
     vscode.commands.registerCommand(COMPARE_VERSIONS_COMMAND, (entry?: ProjectEntry) => compareProject(deps, panels, entry)),
   );

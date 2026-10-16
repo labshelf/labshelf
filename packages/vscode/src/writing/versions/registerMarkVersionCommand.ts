@@ -1,8 +1,8 @@
 // Registers Mark Version: builds the project and snapshots its sources and PDF under a name.
 import * as vscode from "vscode";
 
-import { versionSlug, type ILogger } from "@labshelf/core";
-import { listVersions, markVersion, type ProjectEntry } from "@labshelf/core/node";
+import { versionSlug, type ILogger, type ProjectEntry } from "@labshelf/core";
+import { listVersions, markVersion } from "@labshelf/core/node";
 import { executeSafely } from "../../commands/index.js";
 import { activeProject } from "../build/index.js";
 import type { ReadyProject } from "../mainDocument.js";
@@ -15,7 +15,7 @@ export const MARK_VERSION_COMMAND = "labshelf.writing.markVersion";
 interface MarkVersionDeps {
   context: vscode.ExtensionContext;
   host: WritingHost;
-  projects: Pick<WritingProjects, "list">;
+  projects: Pick<WritingProjects, "list" | "paths">;
   builders: ProjectBuilders;
 }
 

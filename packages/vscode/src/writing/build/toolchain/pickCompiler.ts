@@ -11,7 +11,7 @@ export const PICK_COMPILER_COMMAND = "labshelf.writing.pickCompiler";
 interface PickCompilerDeps {
   context: vscode.ExtensionContext;
   host: WritingHost;
-  projects: Pick<WritingProjects, "list" | "reload">;
+  projects: Pick<WritingProjects, "list" | "paths" | "reload">;
 }
 
 type EnginePick = vscode.QuickPickItem & { engine: LatexEngine };
@@ -27,7 +27,7 @@ function enginePick(engine: LatexEngine, current: LatexEngine | undefined): Engi
 
 async function pickCompiler(deps: PickCompilerDeps): Promise<void> {
   const active = vscode.window.activeTextEditor?.document.uri.fsPath;
-  const project = active ? owningProject(deps.projects.list(), active) : undefined;
+  const project = active ? owningProject(deps.projects, active) : undefined;
   if (project?.settings.format !== "latex") { return; }
   const current = project.settings.engine;
   const picked = await vscode.window.showQuickPick(

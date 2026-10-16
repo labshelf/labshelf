@@ -1,4 +1,5 @@
 // Tests that accepting a citation or saving a source regenerates labshelf.bib, and what the user is told when that cannot finish.
+import * as path from "node:path";
 import * as vscode from "vscode";
 
 import { updateProjectBibliography } from "@labshelf/core/node";
@@ -15,7 +16,7 @@ const result = (mainLine: string, papersWritten = false) => ({ written: true, pa
 
 function setup() {
   const workspace = citationWorkspace("latex");
-  workspace.projects = { list: workspace.projects.list, reload: jest.fn(async () => {}) };
+  workspace.projects = { list: workspace.projects.list, paths: path, reload: jest.fn(async () => {}) };
   registerCitationProviders({ subscriptions: [] } as never, workspace);
   return workspace as typeof workspace & { projects: { reload: jest.Mock } };
 }

@@ -1,8 +1,8 @@
 // Builds the session, project entries and command lookup the writing tests share.
+import * as path from "node:path";
 import * as vscode from "vscode";
 
-import type { ILogger } from "@labshelf/core";
-import type { ProjectEntry } from "@labshelf/core/node";
+import type { ILogger, ProjectEntry } from "@labshelf/core";
 import type { WritingHost, WritingSession } from "../../src/writing/index.js";
 
 export function fakeLogger(): { log: jest.Mock; error: jest.Mock } & ILogger {
@@ -14,8 +14,8 @@ export function fakeHost(logger = fakeLogger()): WritingHost & { session: Writin
   return { session, current: () => session, require: jest.fn(async () => session) };
 }
 
-export function fakeProjects(entries: ProjectEntry[] = []): { reload: jest.Mock; list: jest.Mock } {
-  return { reload: jest.fn(async () => {}), list: jest.fn(() => entries) };
+export function fakeProjects(entries: ProjectEntry[] = []): { reload: jest.Mock; list: jest.Mock; paths: typeof path } {
+  return { reload: jest.fn(async () => {}), list: jest.fn(() => entries), paths: path };
 }
 
 export function readyEntry(folder: string, over: Partial<Extract<ProjectEntry, { kind: "ready" }>> = {}): ProjectEntry {
