@@ -47,10 +47,10 @@ describe("registerWritingView", () => {
     expect(registered).toEqual(contributed);
   });
 
-  it("creates the contributed Projects, Files, Outline and Figures tree views", () => {
+  it("creates the contributed Projects, Files, Outline, Checklist and Figures tree views", () => {
     setup("/lib");
     const created = (vscode.window.createTreeView as jest.Mock).mock.calls.map(([id]) => id as string);
-    expect(created).toEqual(["labshelf.writing.figures", "labshelf.writing", "labshelf.writing.files", "labshelf.writing.outline"]);
+    expect(created).toEqual(["labshelf.writing.figures", "labshelf.writing", "labshelf.writing.files", "labshelf.writing.outline", "labshelf.writing.checklist"]);
     expect(manifest.contributes.views.labshelfContainer.map((v) => v.id)).toEqual(expect.arrayContaining(created));
   });
 
@@ -59,6 +59,14 @@ describe("registerWritingView", () => {
     const registered = (vscode.commands.registerCommand as jest.Mock).mock.calls.map(([id]) => id as string);
     expect(registered).toContain("labshelf.writing.revealOutline");
     expect(manifest.contributes.menus.commandPalette).toContainEqual({ command: "labshelf.writing.revealOutline", when: "false" });
+  });
+
+  it("hides the Checklist row commands from the palette and offers Add Item while a project is open", () => {
+    const palette = manifest.contributes.menus.commandPalette;
+    for (const id of ["bySection", "byKind", "removeItem", "nextStatus", "runCheck"]) {
+      expect(palette).toContainEqual({ command: `labshelf.writing.checklist.${id}`, when: "false" });
+    }
+    expect(palette).toContainEqual({ command: "labshelf.writing.checklist.addItem", when: "labshelf.writing.projectOpen" });
   });
 
   it("lists projects at start and again when the library root changes", async () => {

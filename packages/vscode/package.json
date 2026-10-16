@@ -362,6 +362,41 @@
         "icon": "$(italic)"
       },
       {
+        "command": "labshelf.writing.checklist.bySection",
+        "title": "Group by Section",
+        "category": "LabShelf",
+        "icon": "$(list-flat)"
+      },
+      {
+        "command": "labshelf.writing.checklist.byKind",
+        "title": "Group by Kind",
+        "category": "LabShelf",
+        "icon": "$(list-tree)"
+      },
+      {
+        "command": "labshelf.writing.checklist.addItem",
+        "title": "Add Checklist Item",
+        "category": "LabShelf",
+        "icon": "$(add)"
+      },
+      {
+        "command": "labshelf.writing.checklist.removeItem",
+        "title": "Delete",
+        "category": "LabShelf",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "labshelf.writing.checklist.nextStatus",
+        "title": "Next Status",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.checklist.runCheck",
+        "title": "Run Check",
+        "category": "LabShelf",
+        "icon": "$(checklist)"
+      },
+      {
         "command": "labshelf.writing.regenerateFigure",
         "title": "Research: Regenerate Figure",
         "category": "LabShelf",
@@ -406,6 +441,12 @@
           "name": "Outline",
           "type": "tree",
           "when": "labshelf.writing.projectOpen"
+        },
+        {
+          "id": "labshelf.writing.checklist",
+          "name": "Checklist",
+          "type": "tree",
+          "when": "labshelf.writing.projectOpen && labshelf.writing.hasChecklist"
         },
         {
           "id": "labshelf.writing.figures",
@@ -498,6 +539,26 @@
           "group": "navigation@5"
         },
         {
+          "command": "labshelf.writing.checklist.bySection",
+          "when": "view == labshelf.writing.checklist && !labshelf.writing.checklistBySection",
+          "group": "navigation@1"
+        },
+        {
+          "command": "labshelf.writing.checklist.byKind",
+          "when": "view == labshelf.writing.checklist && labshelf.writing.checklistBySection",
+          "group": "navigation@1"
+        },
+        {
+          "command": "labshelf.writing.checklist.addItem",
+          "when": "view == labshelf.writing.checklist",
+          "group": "navigation@2"
+        },
+        {
+          "command": "labshelf.writing.checklist.runCheck",
+          "when": "view == labshelf.writing.checklist",
+          "group": "navigation@3"
+        },
+        {
           "command": "labshelf.writing.newProject",
           "when": "view == labshelf.writing",
           "group": "navigation@1"
@@ -570,6 +631,11 @@
           "group": "2_remove@1"
         },
         {
+          "command": "labshelf.writing.checklist.removeItem",
+          "when": "view == labshelf.writing.checklist && viewItem == labshelfChecklistManual",
+          "group": "1_modify@1"
+        },
+        {
           "command": "labshelf.writing.regenerateFigure",
           "when": "view == labshelf.writing.figures && viewItem == labshelfFigureStale",
           "group": "inline@1"
@@ -609,6 +675,30 @@
         {
           "command": "labshelf.writing.revealOutline",
           "when": "false"
+        },
+        {
+          "command": "labshelf.writing.checklist.bySection",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.checklist.byKind",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.checklist.removeItem",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.checklist.nextStatus",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.checklist.runCheck",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.checklist.addItem",
+          "when": "labshelf.writing.projectOpen"
         },
         {
           "command": "labshelf.writing.showInPreview",

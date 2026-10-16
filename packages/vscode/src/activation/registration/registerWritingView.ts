@@ -1,7 +1,7 @@
 // Registers the Writing sidebar view with its commands, builds, previews, citations and editing support.
 import * as vscode from "vscode";
 
-import type { ILogger, PaperRecord } from "@labshelf/core";
+import type { ILogger, PaperRecord, PaperStatus } from "@labshelf/core";
 import {
   WritingProjects, registerMainCommands, registerMainStatusBar, registerProjectCommands,
   registerProjectItemCommands, registerReadingListCommands, ProjectBacklinkIndex, ProjectReadingLists, type WritingHost,
@@ -106,7 +106,7 @@ async function recompileRoot(
 
 function registerBuildAndPreviewCommands(
   parts: WritingParts, reader: HostAdapters["reader"], registerNodeWriting: RegisterNodeWriting, outcomes: BuildOutcomes,
-): ProjectSession {
+): { session: ProjectSession; previews: BuildPreviews } {
   const { context, host, projects, figures, listPapers } = parts;
   // The node registrations need `previews`, and `previews` needs their builders, so it reaches them through this variable once assigned.
   let node: ReturnType<RegisterNodeWriting> | undefined;
@@ -135,7 +135,7 @@ function registerBuildAndPreviewCommands(
   registerPickCompiler({ context, host, projects });
   registerCompilerStatusBar(context, projects);
   registerLatexWorkshopNotice({ context, host, projects });
-  return session;
+  return { session, previews };
 }
 
 function registerEditingSupport(context: vscode.ExtensionContext, controller: Controller, projects: WritingProjects): void {
@@ -180,9 +180,14 @@ export function registerWritingView(
   registerProjectAndFigureCommands(parts);
   const outcomes = new BuildOutcomes();
   context.subscriptions.push(outcomes);
-  const session = registerBuildAndPreviewCommands(parts, reader, registerNodeWriting, outcomes);
+  const { session, previews } = registerBuildAndPreviewCommands(parts, reader, registerNodeWriting, outcomes);
   const arcIcon = arcIcons(context.extensionUri);
-  registerProjectViews({ context, projects, figures, session, logger, arcIcon, readingLists, outcomes });
+  // With no library open every id failed, so the Checklist reports the write as failed.
+  const setStatus = async (ids: string[], status: PaperStatus): Promise<string[]> =>
+    await controller.currentServices()?.paperService.updatePapersStatus(ids, status) ?? ids;
+  registerProjectViews({
+    context, projects, figures, session, logger, arcIcon, readingLists, outcomes, previews, onDidChangeBacklinks: backlinks.onDidChange, setStatus,
+  });
   registerEditingSupport(context, controller, projects);
   void projects.reload();
   return { projects, backlinks };

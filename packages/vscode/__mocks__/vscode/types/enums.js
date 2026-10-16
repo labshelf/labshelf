@@ -25,6 +25,11 @@ const TreeItemCollapsibleState = {
   Expanded: 2,
 };
 
+const TreeItemCheckboxState = {
+  Unchecked: 0,
+  Checked: 1,
+};
+
 const CodeActionKind = { QuickFix: 'quickfix' };
 const CompletionItemKind = { Field: 4, Function: 2, Value: 11, Snippet: 14, Reference: 17 };
 const SymbolKind = { Module: 1, Namespace: 2, Class: 4, Property: 6, Field: 7, Struct: 22, Constant: 13 };
@@ -39,6 +44,7 @@ module.exports = {
   ColorThemeKind,
   ProgressLocation,
   TreeItemCollapsibleState,
+  TreeItemCheckboxState,
   CodeActionKind,
   CompletionItemKind,
   SymbolKind,

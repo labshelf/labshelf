@@ -12,7 +12,7 @@ describe("isIgnoredProjectPath", () => {
 
   it.each([
     "main.tex", "sections/intro.tex", ".gitignore", ".github/ci.yml",
-    ".labshelf/versions/camera-ready/version.json", ".labshelf/other.json", "figures/.labshelf/state.json",
+    ".labshelf/checklist.json", ".labshelf/versions/camera-ready/version.json", ".labshelf/other.json", "figures/.labshelf/state.json",
   ])("syncs %s", (path) => {
     expect(isIgnoredProjectPath(path, [])).toBe(false);
   });

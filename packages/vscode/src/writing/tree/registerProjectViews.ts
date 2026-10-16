@@ -1,12 +1,14 @@
-// Creates the Projects view, shown while no project is open, and the Files, Outline and Figures views of the open project with their commands.
+// Creates the Projects view, shown while no project is open, and the Files, Outline, Checklist and Figures views of the open project with their commands.
 import * as vscode from "vscode";
 
-import type { ILogger } from "@labshelf/core";
+import type { ILogger, PaperStatus } from "@labshelf/core";
 import { readChecklistSignals } from "@labshelf/core/node";
 import type { ArcIcon } from "../../ui/index.js";
 import type { BuildOutcomes } from "../build/index.js";
+import { registerChecklistView } from "../checklist/index.js";
 import { OutlineTreeProvider, REVEAL_OUTLINE_COMMAND, registerTypstOutline, revealOutline } from "../outline/index.js";
 import { ProjectFiguresView, type ProjectFigures } from "../figures/index.js";
+import type { BuildPreviews } from "../preview/index.js";
 import type { ProjectReadingLists } from "../readingList/index.js";
 import type { ProjectSession, WritingProjects } from "../session/index.js";
 import { registerProjectFileCommands } from "./projectFileCommands.js";
@@ -29,6 +31,9 @@ interface ProjectViewsDeps {
   arcIcon: ArcIcon;
   readingLists: ProjectReadingLists;
   outcomes: BuildOutcomes;
+  previews: Pick<BuildPreviews, "onDidCountBodyPages">;
+  onDidChangeBacklinks: vscode.Event<void>;
+  setStatus: (paperIds: string[], status: PaperStatus) => Promise<string[]>;
 }
 
 export function registerProjectViews(deps: ProjectViewsDeps): void {
@@ -55,4 +60,5 @@ export function registerProjectViews(deps: ProjectViewsDeps): void {
     registerTypstOutline(),
   );
   registerProjectFileCommands({ context, session, logger });
+  registerChecklistView({ context, session, previews: deps.previews, readingLists, onDidChangeBacklinks: deps.onDidChangeBacklinks, setStatus: deps.setStatus, logger, arcIcon });
 }

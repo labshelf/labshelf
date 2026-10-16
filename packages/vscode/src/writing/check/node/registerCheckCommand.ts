@@ -8,9 +8,7 @@ import { activeProject, ProjectDiagnostics, type ProjectBuilders } from "../../b
 import type { ReadyProject } from "../../mainDocument.js";
 import { builtPdf } from "../../preview/index.js";
 import type { WritingHost, WritingProjects } from "../../session/index.js";
-import { checkDiagnostics } from "../index.js";
-
-export const CHECK_COMMAND = "labshelf.writing.checkBeforeSubmitting";
+import { CHECK_COMMAND, checkDiagnostics } from "../index.js";
 
 interface CheckCommandDeps {
   context: vscode.ExtensionContext;

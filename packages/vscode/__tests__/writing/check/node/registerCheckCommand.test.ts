@@ -3,7 +3,8 @@ import * as vscode from "vscode";
 
 import type { CheckFinding } from "@labshelf/core";
 import { checkProject } from "@labshelf/core/node";
-import { CHECK_COMMAND, registerCheckCommand } from "../../../../src/writing/check/node";
+import { CHECK_COMMAND } from "../../../../src/writing/check";
+import { registerCheckCommand } from "../../../../src/writing/check/node";
 import { builtPdf } from "../../../../src/writing/preview";
 import { commandHandler, fakeHost, fakeProjects, openInEditor, readyEntry } from "../../../support/writingFixtures";
 
