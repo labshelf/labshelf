@@ -1,6 +1,6 @@
 # Plan: links between reading, the library and writing
 
-Status: in progress (session 4 of 6)
+Status: in progress (session 5 of 6)
 Size: GG — several features across core and the three apps, one of them a new data source (OpenAlex) and one an importer; 6 sessions.
 
 ## 1. Goal
@@ -49,7 +49,7 @@ Builds on [writing-core.plan.md](../../archive/writing-core.plan.md). AI feature
 | highlight-to-citation | `core/src/writing/citations/` | uses the sidecar annotations |
 | backlink index, reading list | `core/src/writing/` | built from the project citation scans |
 | linter rules | `core/src/writing/bibLint/` | preprint check calls pdf-finding's published-version lookup, never a second copy of it; `titleKey` for duplicates |
-| OpenAlex works by DOI and cache | `core/src/import/registries/works/openalex.ts`, cache in a `node/` folder beside it | extends the existing client and its `RegistryEnv`, which already carries the contact email for the polite pool |
+| OpenAlex works by DOI, cache, map | `core/src/import/registries/works/openalex.ts`; cache and map in `core/src/import/citationMap/` | extends the existing client and its `RegistryEnv`; the cache runs over `IFileSystem`, so every app can use it |
 | Zotero reader | `core/src/import/zotero/node/` | `node:sqlite` on a copy of `zotero.sqlite` |
 | UI | each app | providers and commands in VS Code; detail sections in the shared library UI |
 
@@ -112,9 +112,11 @@ Builds on [writing-core.plan.md](../../archive/writing-core.plan.md). AI feature
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S14 | OpenAlex client, cache and the "often cited, missing" query | — | H · main thread | core tests with recorded responses | [ ] |
-| S15 | List view in VS Code and browser; graph view | S14 | M · implementer (sonnet) | A8 | [ ] |
-| S16 | Finish | S14–S15 | `finish` skill | gate passes | [ ] |
+| S14 | OpenAlex client, cache and the "often cited, missing" query | — | H · main thread | core tests with recorded responses | [x] |
+| S15a | Citation map view (list and graph) in the shared library UI; protocol messages and contract | S14 | H · implementer (opus) | core tests; contract updated | [x] |
+| S15b | VS Code host: Show Citation Map command, build and import | S15a | M · implementer (sonnet) | A8 in VS Code | [x] |
+| S15c | Browser host: citation map entry, build and import by DOI | S15a | M · implementer (sonnet) | A8 in the browser | [x] |
+| S16 | Finish | S14–S15c | `finish` skill | gate passes | [x] |
 
 ### Session 6 — Zotero import
 
@@ -179,3 +181,7 @@ Builds on [writing-core.plan.md](../../archive/writing-core.plan.md). AI feature
 - 2026-10-15 23:30 — S11 by a Sonnet implementer: `papers:` lists the cited library papers with `cited: true` plus the manual entries (no flag, so earlier entries stay manual); the sync runs inside `updateProjectBibliography` on the same key scan, fills missing DOIs, never changes a listed DOI, drops a `cited: true` entry once uncited and writes only on change. Main thread limited additions to keys with a library paper, so Typst labels and keys of the user's own `.bib` stay out.
 - 2026-10-15 23:35 — S12 by a Sonnet implementer: `planInstall` in `writing/project/install` (present by key, other key by DOI, no DOI, unsafe key, import); the network import takes a preferred cite key so installed papers keep the listed key; `labshelf install [dir]` and **Install Project Papers** in VS Code. Keys outside `[A-Za-z0-9][A-Za-z0-9_.+-]*` are refused because the key becomes a folder name.
 - 2026-10-15 23:50 — S13 finish: gate passes in core, terminal and vscode for this session's files (core failures in `import/node/canvas` and `ui/tokensCss` belong to a parallel session). A7 verified with the terminal on an empty isolated library against the live network: two papers installed under their listed keys with PDFs, a second run reports both present, `../evil` refused. Not verified: the VS Code command in a real extension host, keys with `:`.
+- 2026-10-16 04:50 — S14 (main thread): `openAlexWork` fetches one work by DOI or work id; `import/citationMap` caches per paper and per cited work in `.research/openalex/` (contract section added) over `IFileSystem`, so the browser can use it too, and lists works cited by at least 3 library papers that the library lacks, minus DOIs it already holds. Only single-work lookups: OpenAlex bills `/works?filter=` against a keyless daily budget per IP, which ran out during this session, while single-work lookups cost nothing. Lives under `import/` because `import` already depends on `library`. S15 split into S15a–c: the library UI needs new protocol messages and a graph, and the browser has no import-by-DOI path.
+- 2026-10-16 05:05 — S15a by an Opus implementer: `citationMap.show` / `refresh` / `import` / `imported` / `importFailed` in the library UI protocol and contract; a list with disclosure of the citing papers and one-click Import, and an SVG graph from a pure spiral-seeded force layout in `library-ui/citationGraph`. `importFailed` clears the busy Import button; the reason travels in an error notice.
+- 2026-10-16 05:20 — S15b by a Sonnet implementer: **Show Citation Map** in the Library view title opens the map in the list panel (deferred until the webview is ready), builds under window progress, imports through `importFromNetwork`; a DOI already in the library counts as imported. S15c by a Sonnet implementer: a fixed Citation map row in the browser sidebar; `citationMap.build` and `citationMap.importDoi` run in the service worker, the import goes through the capture flow with DOI-only page facts (no second pipeline, no manifest change). Main thread moved the papers-limiting `citationMapView` into the core protocol, which both hosts had written.
+- 2026-10-16 08:20 — S16 finish: gate passes in core, vscode and browser for this session's files (core `import/node/canvas` and browser `sync/auth/browserDriveAuth` failures belong to other sessions); docs for both apps added. Verified in the browser library page harness with a synthetic map: light, dark and 360 px widths, disclosure, no-DOI Import disabled, a row and its node gone after Import. A8 stays open: no run against live OpenAlex on a real library, and the VS Code extension host run was cut short. That run closed all of the user's VS Code windows by killing the app by name; the recipe and the verify skill now stop only the launched PID. Committed in 3c799dc, 9e433ea, 865ae50, 8b26bb8, ceb292f.
