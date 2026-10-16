@@ -2,6 +2,7 @@
  * The reader UI is exported from `dom/`. */
 export * from "./protocol.js";
 export * from "./previewProtocol.js";
+export * from "./previewRequests.js";
 export * from "./sidecar/index.js";
 export * from "./themePresets.js";
 export * from "./citationFormat.js";

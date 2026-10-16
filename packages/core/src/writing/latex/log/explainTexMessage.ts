@@ -5,15 +5,21 @@ import type { TexLogMessage } from "./readTexLog.js";
 
 export type BuildProblemSeverity = "error" | "warning" | "info";
 
+/** The problems a preview marks on the PDF. */
+export type BuildProblemKind = "undefinedCitation" | "undefinedReference" | "overfull";
+
 export interface BuildProblem {
   severity: BuildProblemSeverity;
   message: string;
   hint?: string;
   file?: string;
   line?: number;
+  kind?: BuildProblemKind;
+  /** The cite key or label the problem is about. */
+  subject?: string;
 }
 
-type Explanation = { message: string; hint?: string } | null;
+type Explanation = { message: string; hint?: string; kind?: BuildProblemKind; subject?: string } | null;
 type Rule = [RegExp, (match: RegExpExecArray, message: TexLogMessage, engine: LatexEngine) => Explanation];
 
 const SPELLING_HINT = "Check the spelling, or load the package that defines it with \\usepackage.";
@@ -74,10 +80,14 @@ const NOISE = /^(?:There were (?:undefined|multiply-defined)|Label\(s\) may have
 
 const WARNING_RULES: Rule[] = [
   [NOISE, () => null],
-  [/^Reference [`'](.+?)' on page \S+ undefined/, (match) => ({ message: `Reference "${match[1]}" has no matching \\label.` })],
+  [/^Reference [`'](.+?)' on page \S+ undefined/, (match) => ({
+    message: `Reference "${match[1]}" has no matching \\label.`, kind: "undefinedReference", subject: match[1]!,
+  })],
   [/^Citation [`'](.+?)' (?:on page \S+ )?undefined/, (match) => ({
     message: `Citation "${match[1]}" is not in any bibliography.`,
     hint: "Cite it through the library completion, or add it to your own .bib file.",
+    kind: "undefinedCitation",
+    subject: match[1]!,
   })],
   [/^Label [`'](.+?)' multiply defined/, (match) => ({ message: `Label "${match[1]}" is defined more than once.` })],
 ];
@@ -88,7 +98,7 @@ function rounded(points: string): string {
 
 function explainBadBox(text: string): Explanation {
   const wide = /^Overfull \\hbox \(([\d.]+)pt too wide\)/.exec(text);
-  if (wide) { return { message: `A line sticks ${rounded(wide[1]!)} into the margin.` }; }
+  if (wide) { return { message: `A line sticks ${rounded(wide[1]!)} into the margin.`, kind: "overfull" }; }
   const high = /^Overfull \\vbox \(([\d.]+)pt too high\)/.exec(text);
   return high ? { message: `Content is ${rounded(high[1]!)} too tall for the page.` } : null;
 }
@@ -120,6 +130,8 @@ export function explainTexMessage(message: TexLogMessage, engine: LatexEngine): 
   if (!explained) { return null; }
   const problem: BuildProblem = { severity, message: explained.message };
   if (explained.hint) { problem.hint = explained.hint; }
+  if (explained.kind) { problem.kind = explained.kind; }
+  if (explained.subject !== undefined) { problem.subject = explained.subject; }
   if (message.file) { problem.file = message.file; }
   if (message.line !== undefined) { problem.line = message.line; }
   return problem;

@@ -1,4 +1,4 @@
-import { isSafeExternalUrl, isWebviewMessage, PROTOCOL_VERSION } from '../../src/reader/protocol';
+import { isSafeExternalUrl, isWebviewMessage } from '../../src/reader/protocol';
 
 describe('isWebviewMessage', () => {
   describe('accepts a valid sample of every WebviewToHost command', () => {
@@ -200,10 +200,6 @@ describe('isSafeExternalUrl', () => {
 });
 
 describe('writing actions and build roots', () => {
-  it('is protocol version 5', () => {
-    expect(PROTOCOL_VERSION).toBe(5);
-  });
-
   it('accepts recompile, revealCursor, openProblem and openRawLog', () => {
     expect(isWebviewMessage({ command: 'recompile' })).toBe(true);
     expect(isWebviewMessage({ command: 'revealCursor' })).toBe(true);

@@ -30,17 +30,19 @@ describe("parseTexLog on Tectonic logs", () => {
 
   it("reports undefined references and citations as warnings, without the summary line", () => {
     expect(parseTexLog(fixture("tectonic", "refs"), "tectonic")).toEqual([
-      { severity: "warning", message: 'Reference "sec:missing" has no matching \\label.', file: "main.tex", line: 5 },
+      { severity: "warning", message: 'Reference "sec:missing" has no matching \\label.', file: "main.tex", line: 5,
+        kind: "undefinedReference", subject: "sec:missing" },
       {
         severity: "warning", message: 'Citation "knuth84" is not in any bibliography.',
         hint: "Cite it through the library completion, or add it to your own .bib file.", file: "main.tex", line: 5,
+        kind: "undefinedCitation", subject: "knuth84",
       },
     ]);
   });
 
   it("reports an overfull line as info on the first line of its paragraph", () => {
     expect(parseTexLog(fixture("tectonic", "overfull"), "tectonic")).toEqual([
-      { severity: "info", message: "A line sticks 108.5pt into the margin.", file: "main.tex", line: 3 },
+      { severity: "info", message: "A line sticks 108.5pt into the margin.", file: "main.tex", line: 3, kind: "overfull" },
     ]);
   });
 
@@ -89,7 +91,7 @@ describe("parseTexLog on TeX Live logs", () => {
       'Citation "knuth84" is not in any bibliography.',
     ]);
     expect(parseTexLog(fixture("texlive", "overfull"), "pdflatex")).toEqual([
-      { severity: "info", message: "A line sticks 109.6pt into the margin.", file: "main.tex", line: 3 },
+      { severity: "info", message: "A line sticks 109.6pt into the margin.", file: "main.tex", line: 3, kind: "overfull" },
     ]);
   });
 });

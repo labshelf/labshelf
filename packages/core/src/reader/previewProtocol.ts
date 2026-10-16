@@ -1,6 +1,7 @@
 /** Declares the shapes a preview reader and its host exchange: build state, build roots, page positions and the citations behind them. */
 // CONTRACT: documents/contracts/reader-host.md#preview
 import type { PaperStatus } from "../model/index.js";
+import type { CountUpTo, LatexEngine } from "../writing/project/index.js";
 import type { QuotedHighlight } from "../writing/review/index.js";
 
 /** The state of the build whose output a preview reader shows. */
@@ -37,15 +38,44 @@ export interface CitationCardPaper {
   year?: number;
   summary?: string;
   status?: PaperStatus;
+  venue?: string;
+  /** The library folder that holds the paper. */
+  folder?: string;
   highlights?: QuotedHighlight[];
   /** Titles of the project's sections that cite the key. */
   citedIn?: string[];
 }
 
+/** The `.bib` record of a cite key that no library paper has. */
+export interface CitationBibEntry {
+  title?: string;
+  authors: string[];
+  year?: number;
+  venue?: string;
+}
+
+/** The `\cite` command that cites a key: its source file, 1-based line and command text. */
+export interface CitingCommand {
+  file: string;
+  line: number;
+  text: string;
+}
+
+/** The one fix a citation card offers: another key for an undefined one, the published venue of a preprint, or adding a `.bib`-only key to the library. */
+export type CitationCardFix =
+  | { kind: "replace"; suggestion: string }
+  | { kind: "update"; venue: string }
+  | { kind: "add" };
+
 /** One key cited at the queried place; `paper` is absent when no library paper has the key. */
 export interface CitationEntry {
   key: string;
   paper?: CitationCardPaper;
+  bib?: CitationBibEntry;
+  site?: CitingCommand;
+  /** The page a `[p.~N]` supplement names. */
+  citedPage?: number;
+  fix?: CitationCardFix;
 }
 
 /** One diagnostic of a build root; `file` and `line` locate it in the source when the compiler gave a place. */
@@ -57,6 +87,26 @@ export interface PreviewProblem {
   line?: number;
 }
 
+export type PdfProblemKind = "undefinedCitation" | "undefinedReference" | "overfull" | "preprint";
+
+/** A problem the reader marks on the PDF; `subject` is the cite key or label it is about, `area` its place when the host found one. */
+export interface PdfProblem {
+  kind: PdfProblemKind;
+  subject?: string;
+  message: string;
+  file?: string;
+  line?: number;
+  area?: PageArea;
+}
+
+/** The build settings the preview chrome shows and changes; `includeOnly` is present only when the shown root uses `\include`. */
+export interface BuildOptions {
+  autoCompile: boolean;
+  /** Absent for Typst, which has no engine choice. */
+  engine?: LatexEngine;
+  includeOnly?: { file: string; on: boolean };
+}
+
 /** One document a writing project builds, with what the reader needs to show its problems and logs. */
 export interface PreviewRoot {
   path: string;
@@ -66,6 +116,12 @@ export interface PreviewRoot {
   /** True when the PDF of this root maps to source positions. */
   sourceLinks: boolean;
   problems: PreviewProblem[];
+  /** In reading order for placed problems, then by file and line. */
+  pdfProblems?: PdfProblem[];
+  /** The number of citations in the root's sources. */
+  cites?: number;
+  /** The words of the root's sources up to `countUpTo`. */
+  words?: number;
 }
 
 /** The build roots of a writing project: the main one, the one following the editor focus and the one the reader shows. */
@@ -76,6 +132,12 @@ export interface PreviewRoots {
   roots: PreviewRoot[];
   /** The project's page limit; absent when it sets none. */
   pageLimit?: number;
+  wordLimit?: number;
+  /** Where page and word counts stop; `references` when absent. */
+  countUpTo?: CountUpTo;
+  /** Findings of the last pre-submission check; absent before the first one. */
+  checks?: number;
+  options?: BuildOptions;
 }
 
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);

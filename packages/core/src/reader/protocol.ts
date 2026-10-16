@@ -3,11 +3,11 @@
  * DOM-free and vscode-free so both TypeScript programs (and jest) can compile it.
  */
 import type { Annotation, AnnotationColor, PdfTheme } from "../model/index.js";
-import type { BuildState, CitationEntry, CitationQuery, PageArea, PagePoint, PreviewRoots } from "./previewProtocol.js";
-import { isCitationQuery, isPagePoint } from "./previewProtocol.js";
+import type { BuildState, CitationEntry, PageArea, PagePoint, PreviewRoots } from "./previewProtocol.js";
+import { checkPreviewRequest, type PreviewRequest } from "./previewRequests.js";
 import type { ReadingState } from "./sidecar/index.js";
 
-export const PROTOCOL_VERSION = 5;
+export const PROTOCOL_VERSION = 6;
 
 export type EffectiveTheme = Exclude<PdfTheme, "auto">;
 export type ZoomPreset = "page-width" | "page-fit" | "page-actual" | "auto";
@@ -89,8 +89,11 @@ export type HostToWebview =
    * With `pdfUrl` the reader shows that file instead of the open one.
    */
   | { type: "reloadDocument"; pdfUrl?: string }
-  /** `errors` counts the failed build's errors; it is 0 for the other states. */
-  | { type: "buildStatus"; state: BuildState; errors: number }
+  /**
+   * `errors` counts the failed build's errors; it is 0 for the other states.
+   * `builtAt` is the last successful build of the shown root in epoch milliseconds; `stale` marks a source saved or edited since.
+   */
+  | { type: "buildStatus"; state: BuildState; errors: number; stale?: boolean; builtAt?: number }
   /** Scrolls the reader to a point and marks it, e.g. the editor cursor's position found through SyncTeX. */
   | { type: "revealPoint"; point: PagePoint }
   /** Marks regions as changed, e.g. against another version of the paper; replaces earlier marks, and an empty list clears them. */
@@ -135,29 +138,12 @@ export type WebviewToHost =
   | { command: "copyText"; text: string }
   | { command: "exportAnnotations"; target: "clipboard" | "file" }
   | { command: "openExternalLink"; url: string }
-  /** The reader double-clicked this point; a preview host opens the source behind it. */
-  | { command: "showSource"; point: PagePoint }
-  /** Asks a preview host which cited papers stand behind a link or a citation in the PDF. */
-  | { command: "lookupCitation"; request: number; query: CitationQuery }
-  /** Opens a library paper named by a `citation` answer. */
-  | { command: "openCitedPaper"; paperId: string }
-  /** Asks a preview host to build the shown root again. */
-  | { command: "recompile" }
-  /** Asks a preview host to scroll the reader to the editor cursor. */
-  | { command: "revealCursor" }
-  /** Opens the source of the `index`-th problem of a build root. */
-  | { command: "openProblem"; root: string; index: number }
-  /** Opens the raw build log of a build root. */
-  | { command: "openRawLog"; root: string }
-  /** Reports how many pages of the PDF a build root produced hold the paper's body. */
-  | { command: "bodyPages"; root: string; contentPages: number };
+  | PreviewRequest;
 
 const isStr = (v: unknown): v is string => typeof v === "string";
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 const isObj = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
-
-const isRoot = (v: unknown): v is string => isStr(v) && v.length > 0;
 
 /**
  * Validates an untrusted webview message against the protocol; anything malformed is rejected so host handlers never see partial payloads.
@@ -166,7 +152,9 @@ const isRoot = (v: unknown): v is string => isStr(v) && v.length > 0;
 export function isWebviewMessage(raw: unknown): raw is WebviewToHost {
   if (!isObj(raw) || !isStr(raw["command"])) { return false; }
   const m = raw;
-  switch (m["command"] as WebviewToHost["command"]) {
+  const preview = checkPreviewRequest(m);
+  if (preview !== null) { return preview; }
+  switch (m["command"] as Exclude<WebviewToHost, PreviewRequest>["command"]) {
     case "ready-for-init":
       return true;
     case "ready":
@@ -192,21 +180,6 @@ export function isWebviewMessage(raw: unknown): raw is WebviewToHost {
       return m["target"] === "clipboard" || m["target"] === "file";
     case "openExternalLink":
       return isStr(m["url"]);
-    case "showSource":
-      return isPagePoint(m["point"]);
-    case "lookupCitation":
-      return isNum(m["request"]) && isCitationQuery(m["query"]);
-    case "openCitedPaper":
-      return isStr(m["paperId"]) && m["paperId"].length > 0;
-    case "recompile":
-    case "revealCursor":
-      return true;
-    case "openProblem":
-      return isRoot(m["root"]) && isNum(m["index"]) && Number.isInteger(m["index"]) && m["index"] >= 0;
-    case "openRawLog":
-      return isRoot(m["root"]);
-    case "bodyPages":
-      return isRoot(m["root"]) && isNum(m["contentPages"]) && Number.isInteger(m["contentPages"]) && m["contentPages"] >= 0;
     default:
       return false;
   }

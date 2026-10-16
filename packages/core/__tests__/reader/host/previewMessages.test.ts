@@ -54,7 +54,7 @@ describe("preview messages", () => {
     await host.handle({ command: "openCitedPaper", paperId: "smith-2020" });
     expect(preview.lookupCitation).toHaveBeenCalledWith(query);
     expect(posted).toContainEqual({ type: "citation", request: 7, entries });
-    expect(preview.openCitedPaper).toHaveBeenCalledWith("smith-2020");
+    expect(preview.openCitedPaper).toHaveBeenCalledWith("smith-2020", undefined);
   });
 
   it("still answers a citation lookup when the port fails or the reader previews nothing", async () => {

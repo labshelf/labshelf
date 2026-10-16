@@ -4,7 +4,9 @@
 import type { Annotation, PaperRecord } from "../../model/index.js";
 import type { ILogger } from "../../ports/index.js";
 import type { PaperDataStore } from "../sidecar/index.js";
+import type { LatexEngine } from "../../writing/project/index.js";
 import type { CitationEntry, CitationQuery, PagePoint } from "../previewProtocol.js";
+import type { CheckLimitsChange, CitationFix, ExportTarget, ProjectCommandId } from "../previewRequests.js";
 import type { EffectiveTheme, HostToWebview, ReaderPrefs } from "../protocol.js";
 
 export type NoticeKind = "info" | "ok" | "error";
@@ -27,8 +29,8 @@ export interface PreviewPorts {
   showSource(point: PagePoint): Promise<void>;
   /** The keys cited at a link or citation of the PDF, each with its library paper when there is one. */
   lookupCitation(query: CitationQuery): Promise<CitationEntry[]>;
-  /** Opens a library paper in the reader. */
-  openCitedPaper(paperId: string): Promise<void>;
+  /** Opens a library paper in the reader, at `page` when given. */
+  openCitedPaper(paperId: string, page?: number): Promise<void>;
   /** Builds the shown root again. */
   recompile(): Promise<void>;
   /** Scrolls the reader to the editor cursor. */
@@ -39,6 +41,18 @@ export interface PreviewPorts {
   openRawLog(root: string): Promise<void>;
   /** The pages of a build root's PDF that hold the paper's body, as the reader counted them. */
   bodyPages?(root: string, contentPages: number): Promise<void> | void;
+  /** Runs a project command on the shown root's project. */
+  runCommand?(id: ProjectCommandId): Promise<void>;
+  setAutoCompile?(on: boolean): Promise<void>;
+  setEngine?(engine: LatexEngine): Promise<void>;
+  /** Builds only the focused included file, or every file again. */
+  setIncludeOnly?(on: boolean): Promise<void>;
+  /** Writes the project's check limits to labshelf.yaml. */
+  setCheckLimits?(limits: CheckLimitsChange): Promise<void>;
+  fixCitation?(fix: CitationFix): Promise<void>;
+  exportProject?(target: ExportTarget): Promise<void>;
+  /** Opens a line of a file inside the project folder. */
+  openSourceLine?(file: string, line: number): Promise<void>;
 }
 
 export interface ReaderHostPorts {

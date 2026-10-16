@@ -2,6 +2,7 @@
  * Handles the requests a preview reader makes of its host: the source behind a point, the papers a citation names and the writing actions.
  */
 import type { CitationEntry } from "../previewProtocol.js";
+import type { PreviewRequest } from "../previewRequests.js";
 import { READER_LOG_MODULE, type HostContext, type MessageHandlers } from "./hostContext.js";
 
 // The reader shows the logs view, double-click to source and citation cards only in a preview, so a missing port is a host bug.
@@ -15,7 +16,7 @@ function previewPorts(ctx: HostContext, command: string) {
 
 export const previewHandlers: Pick<
   MessageHandlers,
-  "showSource" | "lookupCitation" | "openCitedPaper" | "recompile" | "revealCursor" | "openProblem" | "openRawLog" | "bodyPages"
+  PreviewRequest["command"]
 > = {
   showSource: async (ctx, msg) => {
     await previewPorts(ctx, "showSource")?.showSource(msg.point);
@@ -32,7 +33,7 @@ export const previewHandlers: Pick<
   },
 
   openCitedPaper: async (ctx, msg) => {
-    await previewPorts(ctx, "openCitedPaper")?.openCitedPaper(msg.paperId);
+    await previewPorts(ctx, "openCitedPaper")?.openCitedPaper(msg.paperId, msg.page);
   },
 
   recompile: async (ctx) => {
@@ -53,5 +54,38 @@ export const previewHandlers: Pick<
 
   bodyPages: async (ctx, msg) => {
     await previewPorts(ctx, "bodyPages")?.bodyPages?.(msg.root, msg.contentPages);
+  },
+
+  // The ports below are optional: a host that lacks one ignores the request.
+  runCommand: async (ctx, msg) => {
+    await previewPorts(ctx, "runCommand")?.runCommand?.(msg.id);
+  },
+
+  setAutoCompile: async (ctx, msg) => {
+    await previewPorts(ctx, "setAutoCompile")?.setAutoCompile?.(msg.on);
+  },
+
+  setEngine: async (ctx, msg) => {
+    await previewPorts(ctx, "setEngine")?.setEngine?.(msg.engine);
+  },
+
+  setIncludeOnly: async (ctx, msg) => {
+    await previewPorts(ctx, "setIncludeOnly")?.setIncludeOnly?.(msg.on);
+  },
+
+  setCheckLimits: async (ctx, msg) => {
+    await previewPorts(ctx, "setCheckLimits")?.setCheckLimits?.(msg.limits);
+  },
+
+  fixCitation: async (ctx, msg) => {
+    await previewPorts(ctx, "fixCitation")?.fixCitation?.(msg.fix);
+  },
+
+  exportProject: async (ctx, msg) => {
+    await previewPorts(ctx, "exportProject")?.exportProject?.(msg.target);
+  },
+
+  openSourceLine: async (ctx, msg) => {
+    await previewPorts(ctx, "openSourceLine")?.openSourceLine?.(msg.file, msg.line);
   },
 };

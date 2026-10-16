@@ -4,4 +4,5 @@ export * from "./debounce.js";
 export * from "./findScroll.js";
 export * from "./historyStack.js";
 export * from "./keymap.js";
+export type { ReaderAction } from "./keyBindings.js";
 export * from "./zoomMath.js";
