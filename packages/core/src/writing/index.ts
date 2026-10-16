@@ -12,3 +12,4 @@ export * from "./readingList/index.js";
 export * from "./versions/index.js";
 export * from "./compare/index.js";
 export * from "./bibLint/index.js";
+export * from "./projectData/index.js";
