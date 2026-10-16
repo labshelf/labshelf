@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import type { ILogger, PaperRecord } from "@labshelf/core";
 import {
-  WritingProjects, WritingTreeProvider, registerMainCommands, registerMainStatusBar, registerProjectCommands,
+  WritingProjects, registerMainCommands, registerMainStatusBar, registerProjectCommands,
   registerProjectItemCommands, registerReadingListCommands, ProjectBacklinkIndex, ProjectReadingLists, type WritingHost,
 } from "../../writing/index.js";
 import {
@@ -16,13 +16,13 @@ import { registerTinymistBridge } from "../../writing/typst/index.js";
 import { BuildPreviews, FocusFollower, registerShowInPreview, registerShowPreview } from "../../writing/preview/index.js";
 import { registerCitationProviders, type CitationWorkspace } from "../../writing/citations/index.js";
 import { registerLabshelfLinks } from "../../writing/links/index.js";
-import { registerProjectSession } from "../../writing/session/index.js";
+import { registerProjectSession, type ProjectSession } from "../../writing/session/index.js";
+import { registerProjectViews } from "../../writing/tree/index.js";
 import { ProjectFigures, watchFigureFiles } from "../../writing/figures/index.js";
 import { registerLatexCommandCompletion, registerLatexEditing } from "../../writing/latexEditing/index.js";
 import type { RegisterNodeWriting } from "../../writing/nodePort/index.js";
 import { registerWritingValues } from "../../writing/values/index.js";
 import { registerBibliographyLint } from "../../writing/bibliography/index.js";
-import { onPaperChange, type LibraryEvents } from "../../events/index.js";
 import type { LibraryRootController } from "../libraryLifecycle/index.js";
 import type { HostAdapters } from "../serviceComposition/index.js";
 
@@ -57,9 +57,7 @@ function openLibraryLogger(controller: Controller): ILogger {
   };
 }
 
-function createReadingLists(
-  controller: Controller, events: LibraryEvents, backlinks: ProjectBacklinkIndex,
-): ProjectReadingLists {
+function createReadingLists(controller: Controller, backlinks: ProjectBacklinkIndex): ProjectReadingLists {
   return new ProjectReadingLists({
     backlinks,
     session: () => {
@@ -70,7 +68,6 @@ function createReadingLists(
         logger: services.logger,
       } : undefined;
     },
-    onPapersChange: (listener) => onPaperChange(events, listener),
   });
 }
 
@@ -107,7 +104,7 @@ async function recompileRoot(
 
 function registerBuildAndPreviewCommands(
   parts: WritingParts, reader: HostAdapters["reader"], registerNodeWriting: RegisterNodeWriting,
-): void {
+): ProjectSession {
   const { context, host, projects, figures, listPapers } = parts;
   // The node registrations need `previews`, and `previews` needs their builders, so it reaches them through this variable once assigned.
   let node: ReturnType<RegisterNodeWriting> | undefined;
@@ -130,6 +127,7 @@ function registerBuildAndPreviewCommands(
   registerPickCompiler({ context, host, projects });
   registerCompilerStatusBar(context, projects);
   registerLatexWorkshopNotice({ context, host, projects });
+  return session;
 }
 
 function registerEditingSupport(context: vscode.ExtensionContext, controller: Controller, projects: WritingProjects): void {
@@ -152,30 +150,28 @@ function registerEditingSupport(context: vscode.ExtensionContext, controller: Co
 
 export function registerWritingView(
   context: vscode.ExtensionContext, controller: LibraryRootController, reader: HostAdapters["reader"],
-  adapters: Pick<HostAdapters, "paths" | "createProjectData">, events: LibraryEvents,
+  adapters: Pick<HostAdapters, "paths" | "createProjectData">,
   registerNodeWriting: RegisterNodeWriting,
 ): WritingViewHandles {
   const host = createWritingHost(controller);
-  const data = adapters.createProjectData(openLibraryLogger(controller));
+  const logger = openLibraryLogger(controller);
+  const data = adapters.createProjectData(logger);
   const projects = new WritingProjects(host, adapters.paths, data);
   const figures = new ProjectFigures(host, data);
   const backlinks = new ProjectBacklinkIndex(projects, host);
-  const readingLists = createReadingLists(controller, events, backlinks);
-  const provider = new WritingTreeProvider(projects, figures, readingLists);
+  const readingLists = createReadingLists(controller, backlinks);
   context.subscriptions.push(
     projects,
     figures,
     backlinks,
-    readingLists,
-    provider,
     watchFigureFiles(projects, () => figures.refresh()),
-    vscode.window.createTreeView("labshelf.writing", { treeDataProvider: provider }),
     controller.onDidChangeRoot(() => void projects.reload()),
   );
   const listPapers = async (): Promise<PaperRecord[]> => await controller.currentServices()?.paperService.listPapers() ?? [];
   const parts: WritingParts = { context, controller, host, projects, figures, readingLists, listPapers };
   registerProjectAndFigureCommands(parts);
-  registerBuildAndPreviewCommands(parts, reader, registerNodeWriting);
+  const session = registerBuildAndPreviewCommands(parts, reader, registerNodeWriting);
+  registerProjectViews({ context, projects, figures, session, logger });
   registerEditingSupport(context, controller, projects);
   void projects.reload();
   return { projects, backlinks };

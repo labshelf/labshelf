@@ -1,4 +1,4 @@
-// Tests that Add Paper to Reading List and Remove from Reading List write the papers key of the project's settings.
+// Tests that Add Paper to Reading List writes the papers key of the project's settings.
 import * as vscode from "vscode";
 
 import type { PaperRecord } from "@labshelf/core";
@@ -69,29 +69,5 @@ describe("labshelf.writing.addToReadingList", () => {
     await commandHandler("labshelf.writing.addToReadingList")(entry);
     expect(window["showQuickPick"]).not.toHaveBeenCalled();
     expect(window["showInformationMessage"]).toHaveBeenCalledWith(expect.stringContaining("already in this reading list"));
-  });
-});
-
-describe("labshelf.writing.removeFromReadingList", () => {
-  const added = (entry: unknown, key: string) => ({ kind: "readingPaper", project: entry, entry: { key, paper: undefined, cited: false, listed: true, opened: false } });
-
-  it("removes the entry", async () => {
-    const { entry, update } = setup([{ key: "a" }, { key: "b" }], []);
-    await commandHandler("labshelf.writing.removeFromReadingList")(added(entry, "a"));
-    expect(update).toHaveBeenCalledWith("/code/thesis", { papers: [{ key: "b" }] });
-  });
-
-  it("drops the papers key with the last entry", async () => {
-    const { entry, update } = setup([{ key: "b" }], []);
-    await commandHandler("labshelf.writing.removeFromReadingList")(added(entry, "b"));
-    expect(update).toHaveBeenCalledWith("/code/thesis", { papers: undefined });
-  });
-
-  it("does not remove a paper the project cites", async () => {
-    const { entry, update } = setup([{ key: "a" }], []);
-    const node = added(entry, "a");
-    node.entry.cited = true;
-    await commandHandler("labshelf.writing.removeFromReadingList")(node);
-    expect(update).not.toHaveBeenCalled();
   });
 });

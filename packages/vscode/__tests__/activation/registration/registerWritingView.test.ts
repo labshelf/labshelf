@@ -1,4 +1,4 @@
-// Tests that the Writing view registers exactly the commands package.json contributes and reloads when the library root changes.
+// Tests that the Writing views register exactly the commands package.json contributes and reloads when the library root changes.
 import * as path from "node:path";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -8,11 +8,10 @@ import { registerWritingView } from "../../../src/activation/registration/regist
 import type { LibraryRootController } from "../../../src/activation/libraryLifecycle";
 import type { RegisterNodeWriting } from "../../../src/writing/nodePort";
 import { registerNodeWriting } from "../../../src/writing/node";
-import { createLibraryEvents } from "../../../src/events";
 import { fakeLogger, fakeProjectData } from "../../support/writingFixtures";
 
 const manifest = JSON.parse(readFileSync(join(__dirname, "../../../package.json"), "utf8")) as {
-  contributes: { commands: { command: string }[]; views: { labshelfContainer: { id: string }[] } };
+  contributes: { commands: { command: string }[]; menus: { commandPalette: { command: string; when: string }[] }; views: { labshelfContainer: { id: string }[] } };
 };
 
 const builders = { latex: { request: jest.fn() }, typst: { request: jest.fn() } };
@@ -32,7 +31,7 @@ function setup(root: string | undefined, register: RegisterNodeWriting = fakeReg
     globalStorageUri: vscode.Uri.file("/storage"),
     workspaceState: { get: () => undefined, update: jest.fn(async () => {}) },
   };
-  registerWritingView(context as unknown as vscode.ExtensionContext, controller, { locatePdfjs: () => null, isMac: false }, { paths: path, createProjectData: () => data }, createLibraryEvents(), register);
+  registerWritingView(context as unknown as vscode.ExtensionContext, controller, { locatePdfjs: () => null, isMac: false }, { paths: path, createProjectData: () => data }, register);
   return { emitter, listProjects: data.listProjects };
 }
 
@@ -48,10 +47,18 @@ describe("registerWritingView", () => {
     expect(registered).toEqual(contributed);
   });
 
-  it("creates the contributed Writing tree view", () => {
+  it("creates the contributed Projects, Files, Outline and Figures tree views", () => {
     setup("/lib");
-    expect((vscode.window.createTreeView as jest.Mock).mock.calls[0]![0]).toBe("labshelf.writing");
-    expect(manifest.contributes.views.labshelfContainer.map((v) => v.id)).toContain("labshelf.writing");
+    const created = (vscode.window.createTreeView as jest.Mock).mock.calls.map(([id]) => id as string);
+    expect(created).toEqual(["labshelf.writing.figures", "labshelf.writing", "labshelf.writing.files", "labshelf.writing.outline"]);
+    expect(manifest.contributes.views.labshelfContainer.map((v) => v.id)).toEqual(expect.arrayContaining(created));
+  });
+
+  it("registers the outline reveal command, hidden from the palette", () => {
+    setup("/lib");
+    const registered = (vscode.commands.registerCommand as jest.Mock).mock.calls.map(([id]) => id as string);
+    expect(registered).toContain("labshelf.writing.revealOutline");
+    expect(manifest.contributes.menus.commandPalette).toContainEqual({ command: "labshelf.writing.revealOutline", when: "false" });
   });
 
   it("lists projects at start and again when the library root changes", async () => {

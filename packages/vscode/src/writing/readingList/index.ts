@@ -1,5 +1,3 @@
-// Exports a project's reading list in the Writing view: its rows, the list service and the commands that edit it.
+// Exports a project's reading list: the list service and the command that edits it.
 export { registerReadingListCommands } from "./readingListCommands.js";
 export { ProjectReadingLists } from "./projectReadingLists.js";
-export { readingListChildren, readingTreeItem } from "./readingListNodes.js";
-export type { ReadingListNode, ReadingNode } from "./readingListNodes.js";

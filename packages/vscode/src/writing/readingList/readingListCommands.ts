@@ -1,4 +1,4 @@
-// Registers Add Paper to Reading List and Remove from Reading List, which write the papers key of labshelf.yaml.
+// Registers Add Paper to Reading List, which writes the papers key of labshelf.yaml.
 import * as vscode from "vscode";
 
 import type { PaperRecord, ProjectEntry } from "@labshelf/core";
@@ -6,7 +6,6 @@ import { executeSafely } from "../../commands/index.js";
 import type { ReadyProject } from "../figures/index.js";
 import type { WritingHost, WritingProjects } from "../session/index.js";
 import type { ProjectReadingLists } from "./projectReadingLists.js";
-import type { ReadingListNode, ReadingPaperNode } from "./readingListNodes.js";
 
 interface ReadingListCommandsDeps {
   context: vscode.ExtensionContext;
@@ -22,10 +21,9 @@ function latest(projects: WritingProjects, folder: string): ReadyProject | undef
   return entry?.kind === "ready" ? entry : undefined;
 }
 
-async function addPaper(deps: ReadingListCommandsDeps, target: ProjectEntry | ReadingListNode | undefined): Promise<void> {
+async function addPaper(deps: ReadingListCommandsDeps, target: ProjectEntry | undefined): Promise<void> {
   const session = await deps.host.require();
-  const picked = target?.kind === "readingList" ? target.project : target;
-  const project = picked?.kind === "ready" ? latest(deps.projects, picked.folder) : undefined;
+  const project = target?.kind === "ready" ? latest(deps.projects, target.folder) : undefined;
   if (!session || !project) { return; }
   await executeSafely(session.logger, "labshelf.writing.addToReadingList", async () => {
     // A paper the sync listed as cited can be added to pin it, so it stays when the sources stop citing it.
@@ -51,20 +49,8 @@ async function addPaper(deps: ReadingListCommandsDeps, target: ProjectEntry | Re
   });
 }
 
-async function removePaper(deps: ReadingListCommandsDeps, node: ReadingPaperNode | undefined): Promise<void> {
-  const session = deps.host.current();
-  const project = node?.kind === "readingPaper" ? latest(deps.projects, node.project.folder) : undefined;
-  if (!session || !node || !project || node.entry.cited) { return; }
-  await executeSafely(session.logger, "labshelf.writing.removeFromReadingList", async () => {
-    const remaining = (project.settings.papers ?? []).filter((entry) => entry.key !== node.entry.key);
-    await deps.projects.data.updateProjectSettings(project.folder, { papers: remaining.length > 0 ? remaining : undefined });
-    await deps.projects.reload();
-  });
-}
-
 export function registerReadingListCommands(deps: ReadingListCommandsDeps): void {
   deps.context.subscriptions.push(
-    vscode.commands.registerCommand("labshelf.writing.addToReadingList", (target?: ProjectEntry | ReadingListNode) => addPaper(deps, target)),
-    vscode.commands.registerCommand("labshelf.writing.removeFromReadingList", (node?: ReadingPaperNode) => removePaper(deps, node)),
+    vscode.commands.registerCommand("labshelf.writing.addToReadingList", (target?: ProjectEntry) => addPaper(deps, target)),
   );
 }
