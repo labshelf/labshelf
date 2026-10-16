@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import type { BuildRootOf } from "../nodePort/index.js";
-import type { WritingProjects } from "../projectStore.js";
+import type { WritingProjects } from "../session/index.js";
 import { activeProject } from "./activeProject.js";
 import type { ProjectBuilders } from "./projectBuilders.js";
 

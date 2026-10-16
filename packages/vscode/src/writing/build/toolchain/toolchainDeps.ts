@@ -2,7 +2,7 @@
 import type { LatexEngine } from "@labshelf/core";
 import { executeSafely } from "../../../commands/index.js";
 import type { ReadyProject } from "../../mainDocument.js";
-import type { WritingHost, WritingProjects } from "../../projectStore.js";
+import type { WritingHost, WritingProjects } from "../../session/index.js";
 
 export interface ToolchainDeps {
   /** The extension's global storage folder; Tectonic is installed under it. */

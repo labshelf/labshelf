@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import type { BacklinkIndex } from "@labshelf/core";
 import { openEditorSources } from "../citations/index.js";
-import type { WritingHost, WritingProjects } from "../projectStore.js";
+import type { WritingHost, WritingProjects } from "../session/index.js";
 
 const REBUILD_DEBOUNCE_MS = 1000;
 const SOURCE_FILE = /\.(tex|typ)$/;

@@ -3,8 +3,8 @@ import * as vscode from "vscode";
 
 import { PROJECT_FILE, detectFormat, type ProjectFormat } from "@labshelf/core";
 import { executeSafely } from "../commands/index.js";
-import { openProjectMain } from "./openProjectMain.js";
-import type { WritingHost, WritingProjects } from "./projectStore.js";
+import type { WritingHost, WritingProjects } from "./session/index.js";
+import { OPEN_PROJECT_COMMAND } from "./session/index.js";
 
 interface ProjectCommandsDeps {
   context: vscode.ExtensionContext;
@@ -30,7 +30,7 @@ async function newProject({ host, projects }: ProjectCommandsDeps): Promise<void
     if (!format) { return; }
     const entry = await projects.data.createProject(session.root, { title, format });
     await projects.reload();
-    await openProjectMain(projects.paths, entry);
+    await vscode.commands.executeCommand(OPEN_PROJECT_COMMAND, entry);
   });
 }
 

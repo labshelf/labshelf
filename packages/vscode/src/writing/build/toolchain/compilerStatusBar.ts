@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import { engineLabel } from "@labshelf/core";
 import { owningProject } from "../../mainDocument.js";
-import type { WritingProjects } from "../../projectStore.js";
+import type { WritingProjects } from "../../session/index.js";
 import { PICK_COMPILER_COMMAND } from "./pickCompiler.js";
 
 export function registerCompilerStatusBar(context: vscode.ExtensionContext, projects: Pick<WritingProjects, "list" | "paths" | "onDidChange">): void {

@@ -29,7 +29,7 @@ describe("projectTreeItem", () => {
     expect(item.description).toBe("main.tex");
     expect(item.contextValue).toBe("labshelfProject");
     expect(item.tooltip).toBeUndefined();
-    expect(item.command).toEqual({ command: "labshelf.writing.openMain", title: "Open Main Document", arguments: [entry] });
+    expect(item.command).toEqual({ command: "labshelf.writing.openProject", title: "Open Main Document", arguments: [entry] });
   });
 
   it("marks an external project and gives its folder as tooltip", () => {

@@ -1,4 +1,4 @@
-// Tests the commands of a project row: open main, reveal and remove (which never deletes files).
+// Tests the commands of a project row: reveal and remove (which never deletes files).
 import * as vscode from "vscode";
 
 import { registerProjectItemCommands } from "../../src/writing";
@@ -20,22 +20,6 @@ function setup() {
 beforeEach(() => {
   jest.clearAllMocks();
   window["showWarningMessage"]!.mockResolvedValue(undefined);
-});
-
-describe("labshelf.writing.openMain", () => {
-  it("opens the main file of the project", async () => {
-    setup();
-    await commandHandler("labshelf.writing.openMain")(readyEntry("/code/paper", { main: "src/main.tex" }));
-    expect(executeCommand.mock.calls[0]![0]).toBe("vscode.open");
-    expect(executeCommand.mock.calls[0]![1].fsPath).toBe("/code/paper/src/main.tex");
-  });
-
-  it("tells the user when the project has no main file", async () => {
-    setup();
-    await commandHandler("labshelf.writing.openMain")(readyEntry("/code/paper", { main: undefined }));
-    expect(executeCommand).not.toHaveBeenCalled();
-    expect(window["showInformationMessage"]).toHaveBeenCalledWith(expect.stringContaining("no main file"));
-  });
 });
 
 describe("labshelf.writing.reveal", () => {

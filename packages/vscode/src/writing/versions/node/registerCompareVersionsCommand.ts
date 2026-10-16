@@ -9,7 +9,7 @@ import type { ReaderPanelDeps } from "../../../pdf-viewer/index.js";
 import { activeProject } from "../../build/index.js";
 import { ensureToolchain } from "../../build/node/index.js";
 import type { ReadyProject } from "../../mainDocument.js";
-import type { WritingHost, WritingProjects } from "../../projectStore.js";
+import type { WritingHost, WritingProjects } from "../../session/index.js";
 import type { ProjectBuilders } from "../../build/index.js";
 import { buildCurrentPdf } from "../buildCurrentPdf.js";
 import { ComparePanels } from "../ComparePanels.js";

@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import { owningProject } from "../../mainDocument.js";
-import type { WritingHost, WritingProjects } from "../../projectStore.js";
+import type { WritingHost, WritingProjects } from "../../session/index.js";
 import { tinymistInstalled } from "./tinymistExtension.js";
 
 // PLATFORM: Tinymist's language server advertises `tinymist.pinMain` (path argument) and the VS Code client exposes it as a command; its own `tinymist.pinMainToCurrent` pins only the active editor.

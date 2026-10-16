@@ -1,4 +1,4 @@
-// Mocks positions, ranges, selections and edits of text documents.
+// Mocks positions, ranges, selections, edits and text tabs of text documents.
 
 class Position {
   constructor(line, character) { this.line = line; this.character = character; }
@@ -33,4 +33,8 @@ class Location {
   constructor(uri, range) { this.uri = uri; this.range = range; }
 }
 
-module.exports = { Position, Range, Selection, TextEdit, WorkspaceEdit, Location };
+class TabInputText {
+  constructor(uri) { this.uri = uri; }
+}
+
+module.exports = { Position, Range, Selection, TextEdit, WorkspaceEdit, Location, TabInputText };

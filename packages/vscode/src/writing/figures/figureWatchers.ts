@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import { normalizeInputPath } from "@labshelf/core";
-import type { WritingProjects } from "../projectStore.js";
+import type { WritingProjects } from "../session/index.js";
 
 const DEBOUNCE_MS = 300;
 

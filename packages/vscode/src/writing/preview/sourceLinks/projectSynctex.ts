@@ -1,7 +1,7 @@
 // Reads a project's SyncTeX data once per build and keeps it until the next build replaces it.
 import { rootBuildFolder, type PathOps, type ProjectDataPort, type SyncIndex } from "@labshelf/core";
 import type { ReadyProject } from "../../mainDocument.js";
-import type { WritingHost } from "../../projectStore.js";
+import type { WritingHost } from "../../session/index.js";
 import { PREVIEW_LOG_MODULE } from "../previewStrings.js";
 
 export type SynctexLookup =

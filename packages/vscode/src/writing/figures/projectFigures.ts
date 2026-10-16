@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import type { ProjectDataPort } from "@labshelf/core";
 import type { FigureNode, ReadyProject } from "./figureNode.js";
-import type { WritingHost } from "../projectStore.js";
+import type { WritingHost } from "../session/index.js";
 
 export class ProjectFigures implements vscode.Disposable {
   private readonly changeEmitter = new vscode.EventEmitter<void>();

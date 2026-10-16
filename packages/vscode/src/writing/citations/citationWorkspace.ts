@@ -1,7 +1,7 @@
 // Gives the citation providers the writing project a file belongs to and the library papers to cite.
 
 import type { Annotation, ILogger, PaperRecord } from "@labshelf/core";
-import type { WritingProjects } from "../projectStore.js";
+import type { WritingProjects } from "../session/index.js";
 import { owningProject, type ProjectLookup, type ReadyProject } from "../mainDocument.js";
 
 export interface CitationSession {

@@ -6,7 +6,7 @@ import type { ProjectEntry } from "@labshelf/core";
 import type { TypstBuildResult } from "@labshelf/core/typst";
 import { runTypstBuild } from "@labshelf/core/typst/node";
 import type { BuildListener, BuildTrigger, FinishedBuild } from "../../build/index.js";
-import type { WritingHost, WritingProjects } from "../../projectStore.js";
+import type { WritingHost, WritingProjects } from "../../session/index.js";
 import { tinymistInstalled } from "../tinymist/index.js";
 import { typstPreviewPdf } from "../typstPreviewPdf.js";
 import { recordTypstVersion } from "../typstVersionPin.js";

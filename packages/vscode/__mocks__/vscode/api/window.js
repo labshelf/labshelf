@@ -1,4 +1,4 @@
-// Mocks vscode.window: messages, dialogs, editors, status bar and theme events.
+// Mocks vscode.window: messages, dialogs, editors, tabs, status bar and theme events.
 const { ColorThemeKind } = require('../types/enums');
 const makeWebviewPanel = require('./webviewPanel');
 
@@ -52,5 +52,8 @@ window.onDidChangeTextEditorSelection = jest.fn((handler) => {
 });
 window._fireSelectionChange = () => _selectionListeners.forEach((l) => l({ textEditor: window.activeTextEditor }));
 window.visibleTextEditors = [];
+
+// Tests fill `window.tabGroups.all` with groups of `{ input: new TabInputText(uri) }` tabs.
+window.tabGroups = { all: [], close: jest.fn(async () => true) };
 
 module.exports = window;

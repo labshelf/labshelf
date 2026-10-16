@@ -12,9 +12,10 @@ import {
 import { registerInstallCommand } from "../../writing/install/index.js";
 import { registerMarkVersionCommand } from "../../writing/versions/index.js";
 import { registerTinymistBridge } from "../../writing/typst/index.js";
-import { BuildPreviews, registerShowInPreview, registerShowPreview } from "../../writing/preview/index.js";
+import { BuildPreviews, FocusFollower, registerShowInPreview, registerShowPreview } from "../../writing/preview/index.js";
 import { registerCitationProviders, type CitationWorkspace } from "../../writing/citations/index.js";
 import { registerLabshelfLinks } from "../../writing/links/index.js";
+import { registerProjectSession } from "../../writing/session/index.js";
 import { ProjectFigures, watchFigureFiles } from "../../writing/figures/index.js";
 import { registerLatexCommandCompletion, registerLatexEditing } from "../../writing/latexEditing/index.js";
 import type { RegisterNodeWriting } from "../../writing/nodePort/index.js";
@@ -97,10 +98,12 @@ function registerBuildAndPreviewCommands(
 ): void {
   const { context, host, projects, figures, listPapers } = parts;
   const previews = new BuildPreviews({ host, listPapers, paths: projects.paths, data: projects.data, extensionUri: context.extensionUri, ...reader });
+  const session = registerProjectSession({ context, host, projects, previews });
   const diagnostics = new BuildDiagnostics();
   context.subscriptions.push(diagnostics);
   const { builders, buildRootOf } = registerNodeWriting({ context, host, projects, figures, previews, diagnostics, reader });
   registerBuildCommand({ context, projects, builders, buildRootOf });
+  context.subscriptions.push(new FocusFollower({ session, projects, buildRootOf, builders, previews, host }));
   registerMarkVersionCommand({ context, host, projects, builders });
   registerTinymistBridge(context, { host, projects });
   registerShowPreview({ context, projects, previews });

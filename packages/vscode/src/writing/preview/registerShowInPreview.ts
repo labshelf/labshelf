@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import { BUILD_COMMAND } from "../build/index.js";
 import { owningProject } from "../mainDocument.js";
-import type { WritingProjects } from "../projectStore.js";
+import type { WritingProjects } from "../session/index.js";
 import type { BuildPreviews } from "./buildPreviews.js";
 import { builtPdf } from "./builtPdf.js";
 
@@ -20,12 +20,12 @@ async function showInPreview(deps: ShowInPreviewDeps): Promise<void> {
   const file = editor?.document.uri;
   const project = file?.scheme === "file" ? owningProject(deps.projects, file.fsPath) : undefined;
   const pdf = await builtPdf(deps.projects, project, project?.main);
-  if (!editor || !file || !project || !pdf) {
+  if (!editor || !file || !project?.main || !pdf) {
     // The build command opens the preview on success and explains a missing project, main file or format.
     await vscode.commands.executeCommand(BUILD_COMMAND);
     return;
   }
-  deps.previews.show(project, pdf, { beside: true });
+  deps.previews.show(project, project.main, pdf, { beside: true });
   await deps.previews.revealSource(project, file.fsPath, editor.selection.active.line + 1);
 }
 

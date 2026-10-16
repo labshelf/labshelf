@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import { owningProject, type ReadyProject } from "../mainDocument.js";
-import type { WritingProjects } from "../projectStore.js";
+import type { WritingProjects } from "../session/index.js";
 
 export function activeProject(projects: Pick<WritingProjects, "list" | "paths">): ReadyProject | undefined {
   const file = vscode.window.activeTextEditor?.document.uri;

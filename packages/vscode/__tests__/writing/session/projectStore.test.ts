@@ -1,8 +1,8 @@
 // Tests that the project store lists the library's projects, tolerates failures and keeps the newest reload.
 import * as path from "node:path";
 
-import { WritingProjects } from "../../src/writing";
-import { fakeHost, fakeProjectData, readyEntry } from "../support/writingFixtures";
+import { WritingProjects } from "../../../src/writing";
+import { fakeHost, fakeProjectData, readyEntry } from "../../support/writingFixtures";
 
 describe("WritingProjects", () => {
   let data: ReturnType<typeof fakeProjectData>;

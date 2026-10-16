@@ -1,7 +1,7 @@
 // Finds the project a file belongs to and the main-file path to store for it.
 import type { PathOps, ProjectEntry } from "@labshelf/core";
 
-import type { WritingProjects } from "./projectStore.js";
+import type { WritingProjects } from "./session/index.js";
 
 export type ReadyProject = Extract<ProjectEntry, { kind: "ready" }>;
 

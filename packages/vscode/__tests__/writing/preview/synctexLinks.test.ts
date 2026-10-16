@@ -75,7 +75,7 @@ describe("source from a preview double-click", () => {
   it("opens the file and line behind the point in an editor column, centred", async () => {
     writeSynctex(synctex(dir));
     const { previews, project, ports, host } = setup();
-    previews.show(project, path.join(dir, "main.pdf"), { beside: false });
+    previews.show(project, "main.tex", path.join(dir, "main.pdf"), { beside: false });
     await ports().showSource({ page: 1, x: 140, y: 234 });
     expect(openedAt()).toEqual({ file: path.join(dir, "chapter.tex"), line: 1, column: 2 });
     const editor = await (vscode.window.showTextDocument as jest.Mock).mock.results[0]!.value;
@@ -87,7 +87,7 @@ describe("source from a preview double-click", () => {
 
   it("tells the user to build when there is no SyncTeX file, and logs it", async () => {
     const { previews, project, ports, host } = setup();
-    previews.show(project, path.join(dir, "main.pdf"), { beside: false });
+    previews.show(project, "main.tex", path.join(dir, "main.pdf"), { beside: false });
     await ports().showSource({ page: 1, x: 140, y: 234 });
     expect(vscode.window.showInformationMessage).toHaveBeenCalledWith("Build the project to link the preview to the source.");
     expect(vscode.window.showTextDocument).not.toHaveBeenCalled();
@@ -97,7 +97,7 @@ describe("source from a preview double-click", () => {
   it("reports an unreadable SyncTeX file as an error and asks for a build", async () => {
     writeSynctex("not synctex");
     const { previews, project, ports, host } = setup();
-    previews.show(project, path.join(dir, "main.pdf"), { beside: false });
+    previews.show(project, "main.tex", path.join(dir, "main.pdf"), { beside: false });
     await ports().showSource({ page: 1, x: 1, y: 1 });
     expect(host.session.logger.error).toHaveBeenCalledWith("writing/preview", expect.any(Error), { projectFolder: dir });
     expect(vscode.window.showInformationMessage).toHaveBeenCalledWith("Build the project to link the preview to the source.");
@@ -106,7 +106,7 @@ describe("source from a preview double-click", () => {
   it("says so when no source lies behind the point", async () => {
     writeSynctex(synctex(dir));
     const { previews, project, ports } = setup();
-    previews.show(project, path.join(dir, "main.pdf"), { beside: false });
+    previews.show(project, "main.tex", path.join(dir, "main.pdf"), { beside: false });
     await ports().showSource({ page: 9, x: 1, y: 1 });
     expect(vscode.window.showInformationMessage).toHaveBeenCalledWith("No source line found here.");
     expect(vscode.window.showTextDocument).not.toHaveBeenCalled();
@@ -114,7 +114,7 @@ describe("source from a preview double-click", () => {
 
   it("keeps one read per build and picks up the next build's file, and does not keep a missing file", async () => {
     const { previews, project, ports } = setup();
-    previews.show(project, path.join(dir, "main.pdf"), { beside: false });
+    previews.show(project, "main.tex", path.join(dir, "main.pdf"), { beside: false });
     await ports().showSource({ page: 1, x: 140, y: 234 });
     expect(vscode.window.showInformationMessage).toHaveBeenCalledTimes(1);
     writeSynctex(synctex(dir));
@@ -132,7 +132,7 @@ describe("source from a preview double-click", () => {
     writeSynctex(synctex(dir));
     (vscode.window.showTextDocument as jest.Mock).mockRejectedValueOnce(new Error("gone"));
     const { previews, project, ports, host } = setup();
-    previews.show(project, path.join(dir, "main.pdf"), { beside: false });
+    previews.show(project, "main.tex", path.join(dir, "main.pdf"), { beside: false });
     await ports().showSource({ page: 1, x: 140, y: 234 });
     expect(vscode.window.showInformationMessage).toHaveBeenCalledWith("Could not open chapter.tex.");
     expect(host.session.logger.error).toHaveBeenCalled();

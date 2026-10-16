@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import type { ILogger, PathOps, ValueLeaf } from "@labshelf/core";
 import { owningProject, type ReadyProject } from "../mainDocument.js";
-import type { WritingProjects } from "../projectStore.js";
+import type { WritingProjects } from "../session/index.js";
 
 /** What the providers read per request: the project list and the open library's logger. */
 export interface ValuesWorkspace {

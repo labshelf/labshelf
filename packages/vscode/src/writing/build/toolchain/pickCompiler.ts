@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import { LATEX_ENGINES, engineLabel, type LatexEngine } from "@labshelf/core";
 import { owningProject } from "../../mainDocument.js";
-import type { WritingHost, WritingProjects } from "../../projectStore.js";
+import type { WritingHost, WritingProjects } from "../../session/index.js";
 import { saveEngine } from "./toolchainDeps.js";
 
 export const PICK_COMPILER_COMMAND = "labshelf.writing.pickCompiler";

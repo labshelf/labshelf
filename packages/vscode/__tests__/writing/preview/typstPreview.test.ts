@@ -29,7 +29,7 @@ describe("BuildPreviews.hasPreview", () => {
   it("is true after the preview is shown and false before it and after it is closed", () => {
     const { previews, close } = setup();
     expect(previews.hasPreview("/p/typ")).toBe(false);
-    previews.show(typst, "/cache/typ/main.pdf", { beside: false });
+    previews.show(typst, "main.typ", "/cache/typ/main.pdf", { beside: false });
     expect(previews.hasPreview("/p/typ")).toBe(true);
     expect(previews.hasPreview("/p/other")).toBe(false);
     close();
@@ -40,7 +40,7 @@ describe("BuildPreviews.hasPreview", () => {
 describe("Typst preview source links", () => {
   it("explains on a double-click that source links are LaTeX-only", async () => {
     const { previews, ports, host } = setup();
-    previews.show(typst, "/cache/typ/main.pdf", { beside: false });
+    previews.show(typst, "main.typ", "/cache/typ/main.pdf", { beside: false });
     await ports().showSource({ page: 1, x: 10, y: 10 });
     expect(message).toHaveBeenCalledWith(TYPST_MESSAGE);
     expect(vscode.window.showTextDocument).not.toHaveBeenCalled();
@@ -49,7 +49,7 @@ describe("Typst preview source links", () => {
 
   it("explains in Show in Preview that source links are LaTeX-only, and reveals nothing", async () => {
     const { previews, controller } = setup();
-    previews.show(typst, "/cache/typ/main.pdf", { beside: false });
+    previews.show(typst, "main.typ", "/cache/typ/main.pdf", { beside: false });
     await previews.revealSource(typst, "/p/typ/main.typ", 3);
     expect(message).toHaveBeenCalledWith(TYPST_MESSAGE);
     expect(controller.revealPoint).not.toHaveBeenCalled();
@@ -57,7 +57,7 @@ describe("Typst preview source links", () => {
 
   it("reloads the document after a build without reading SyncTeX data", async () => {
     const { previews, controller } = setup();
-    previews.show(typst, "/cache/typ/main.pdf", { beside: false });
+    previews.show(typst, "main.typ", "/cache/typ/main.pdf", { beside: false });
     previews.finished(typst, "main.typ", { status: "succeeded", pdf: "/cache/typ/main.pdf", problems: [] }, "save");
     expect(controller.reloadDocument).toHaveBeenCalledTimes(1);
     expect(controller.setBuildStatus).toHaveBeenLastCalledWith("succeeded");
@@ -73,7 +73,7 @@ describe("Typst cites of the shown preview", () => {
 
   it("answers from the cites of the latest successful build, replaced by the next one", async () => {
     const { previews, ports } = setup();
-    previews.show(typst, "/cache/typ/main.pdf", { beside: false });
+    previews.show(typst, "main.typ", "/cache/typ/main.pdf", { beside: false });
     expect(await keysAt(ports)).toEqual([]);
     previews.finished(typst, "main.typ", build([cite("a")]), "save");
     expect(await keysAt(ports)).toEqual(["a"]);
@@ -83,7 +83,7 @@ describe("Typst cites of the shown preview", () => {
 
   it("keeps the previous cites when a build fails", async () => {
     const { previews, ports } = setup();
-    previews.show(typst, "/cache/typ/main.pdf", { beside: false });
+    previews.show(typst, "main.typ", "/cache/typ/main.pdf", { beside: false });
     previews.finished(typst, "main.typ", build([cite("a")]), "save");
     previews.finished(typst, "main.typ", { status: "failed", problems: [] }, "save");
     expect(await keysAt(ports)).toEqual(["a"]);

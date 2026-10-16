@@ -251,9 +251,15 @@
         "icon": "$(refresh)"
       },
       {
-        "command": "labshelf.writing.openMain",
-        "title": "Research: Open Main Document",
+        "command": "labshelf.writing.openProject",
+        "title": "Research: Open Project",
         "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.closeProject",
+        "title": "Close Project",
+        "category": "LabShelf",
+        "icon": "$(arrow-left)"
       },
       {
         "command": "labshelf.writing.reveal",
@@ -399,6 +405,11 @@
     "menus": {
       "view/title": [
         {
+          "command": "labshelf.writing.closeProject",
+          "when": "view == labshelf.writing && labshelf.writing.projectOpen",
+          "group": "navigation@0"
+        },
+        {
           "command": "labshelf.addPaper",
           "when": "view == labshelf.library",
           "group": "navigation@1"
@@ -461,7 +472,7 @@
           "group": "1_modify@3"
         },
         {
-          "command": "labshelf.writing.openMain",
+          "command": "labshelf.writing.openProject",
           "when": "view == labshelf.writing && viewItem =~ /^labshelfProject(External)?$/",
           "group": "1_open@1"
         },
@@ -555,8 +566,12 @@
           "when": "activeWebviewPanelId == 'labshelfPdf'"
         },
         {
-          "command": "labshelf.writing.openMain",
+          "command": "labshelf.writing.openProject",
           "when": "false"
+        },
+        {
+          "command": "labshelf.writing.closeProject",
+          "when": "labshelf.writing.projectOpen"
         },
         {
           "command": "labshelf.writing.reveal",

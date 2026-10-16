@@ -5,7 +5,7 @@ import {
   collectProjectSources, type ILogger, type MissingSource, type ProjectSourceFile, type ProjectSourceReader,
 } from "@labshelf/core";
 import { owningProject, type ReadyProject } from "../../mainDocument.js";
-import type { WritingProjects } from "../../projectStore.js";
+import type { WritingProjects } from "../../session/index.js";
 import { createProjectSourceReader } from "./projectSourceReader.js";
 
 /** A LaTeX project read from its main file through every file it includes. */

@@ -24,19 +24,18 @@ beforeEach(() => {
 });
 
 describe("labshelf.writing.newProject", () => {
-  it("creates the project with the title and format, reloads the list and opens the main file", async () => {
+  it("creates the project with the title and format, reloads the list and opens the project", async () => {
     const { projects } = setup();
     window["showInputBox"]!.mockResolvedValue("  Deep nets survey ");
     window["showQuickPick"]!.mockResolvedValue({ label: "Typst", format: "typst" });
-    data.createProject.mockResolvedValue(readyEntry("/lib/projects/deep-nets-survey", { main: "main.typ" }));
+    const entry = readyEntry("/lib/projects/deep-nets-survey", { main: "main.typ" });
+    data.createProject.mockResolvedValue(entry);
 
     await commandHandler("labshelf.writing.newProject")();
 
     expect(data.createProject).toHaveBeenCalledWith("/lib", { title: "Deep nets survey", format: "typst" });
     expect(projects.reload).toHaveBeenCalled();
-    const [command, uri] = (vscode.commands.executeCommand as jest.Mock).mock.calls[0];
-    expect(command).toBe("vscode.open");
-    expect(uri.fsPath).toBe("/lib/projects/deep-nets-survey/main.typ");
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith("labshelf.writing.openProject", entry);
   });
 
   it("creates nothing when the title or the format is cancelled", async () => {

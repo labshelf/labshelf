@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import { TYPST_VERSION } from "@labshelf/core/typst";
 import type { ReadyProject } from "../mainDocument.js";
-import type { WritingHost, WritingProjects } from "../projectStore.js";
+import type { WritingHost, WritingProjects } from "../session/index.js";
 
 const MODULE = "writing/typst";
 

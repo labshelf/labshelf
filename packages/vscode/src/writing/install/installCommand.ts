@@ -7,7 +7,7 @@ import {
 import { executeSafely, queueTextLayersOfAdded } from "../../commands/index.js";
 import type { PaperImporter, PaperTextLayers } from "../../core/index.js";
 import { activeProject } from "../build/index.js";
-import type { WritingHost, WritingProjects } from "../projectStore.js";
+import type { WritingHost, WritingProjects } from "../session/index.js";
 
 const INSTALL_COMMAND = "labshelf.installProjectPapers";
 

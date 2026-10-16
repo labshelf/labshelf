@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import { owningProject } from "../mainDocument.js";
-import type { WritingHost, WritingProjects } from "../projectStore.js";
+import type { WritingHost, WritingProjects } from "../session/index.js";
 
 const LATEX_WORKSHOP_ID = "James-Yu.latex-workshop";
 const SHOWN_KEY = "labshelf.writing.latexWorkshopNoticeShown";

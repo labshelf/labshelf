@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import { owningProject } from "./mainDocument.js";
-import type { WritingProjects } from "./projectStore.js";
+import type { WritingProjects } from "./session/index.js";
 
 const PICK_MAIN_COMMAND = "labshelf.writing.pickMain";
 

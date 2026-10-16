@@ -3,12 +3,12 @@ import * as vscode from "vscode";
 
 import type { ProjectEntry } from "@labshelf/core";
 import { figureTreeItem, type FigureNode, type ProjectFigures, type ReadyProject } from "./figures/index.js";
-import type { WritingProjects } from "./projectStore.js";
+import type { WritingProjects } from "./session/index.js";
 import { readingListChildren, readingTreeItem, type ProjectReadingLists, type ReadingNode } from "./readingList/index.js";
 
 export type WritingNode = ProjectEntry | FigureNode | ReadingNode;
 
-const OPEN_MAIN_COMMAND = "labshelf.writing.openMain";
+const OPEN_MAIN_COMMAND = "labshelf.writing.openProject";
 
 function contextValue(entry: ProjectEntry): string {
   const external = entry.location === "external" ? "External" : "";

@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import type { ReadyProject } from "../mainDocument.js";
-import type { WritingProjects } from "../projectStore.js";
+import type { WritingProjects } from "../session/index.js";
 import { typstPreviewPdf } from "../typst/index.js";
 
 /** The PDF's path, or `undefined` when there is no root or it has not been built. */

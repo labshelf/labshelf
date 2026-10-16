@@ -3,7 +3,7 @@ import { buildRootOf } from "@labshelf/core/node";
 import * as vscode from "vscode";
 
 import { owningProject, type ReadyProject } from "../../mainDocument.js";
-import type { WritingHost, WritingProjects } from "../../projectStore.js";
+import type { WritingHost, WritingProjects } from "../../session/index.js";
 import { TypstBuilds, type TypstBuildsDeps } from "./typstBuilds.js";
 import { TypstCompilerHost } from "./typstCompilerHost.js";
 

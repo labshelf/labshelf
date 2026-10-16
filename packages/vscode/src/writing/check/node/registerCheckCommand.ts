@@ -7,7 +7,7 @@ import { executeSafely } from "../../../commands/index.js";
 import { activeProject, ProjectDiagnostics, type ProjectBuilders } from "../../build/index.js";
 import type { ReadyProject } from "../../mainDocument.js";
 import { builtPdf } from "../../preview/index.js";
-import type { WritingHost, WritingProjects } from "../../projectStore.js";
+import type { WritingHost, WritingProjects } from "../../session/index.js";
 import { checkDiagnostics } from "../index.js";
 
 export const CHECK_COMMAND = "labshelf.writing.checkBeforeSubmitting";

@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 import type { PaperRecord, ProjectEntry } from "@labshelf/core";
 import { executeSafely } from "../../commands/index.js";
 import type { ReadyProject } from "../figures/index.js";
-import type { WritingHost, WritingProjects } from "../projectStore.js";
+import type { WritingHost, WritingProjects } from "../session/index.js";
 import type { ProjectReadingLists } from "./projectReadingLists.js";
 import type { ReadingListNode, ReadingPaperNode } from "./readingListNodes.js";
 

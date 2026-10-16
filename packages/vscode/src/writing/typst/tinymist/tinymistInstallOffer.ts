@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import { owningProject } from "../../mainDocument.js";
-import type { WritingHost, WritingProjects } from "../../projectStore.js";
+import type { WritingHost, WritingProjects } from "../../session/index.js";
 import { TINYMIST_ID, tinymistInstalled } from "./tinymistExtension.js";
 
 const SHOWN_KEY = "labshelf.writing.tinymistOfferShown";

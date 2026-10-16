@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 import { mainCandidates } from "@labshelf/core";
 import { executeSafely } from "../commands/index.js";
 import { mainPathIn, owningProject, type ReadyProject } from "./mainDocument.js";
-import type { WritingHost, WritingProjects } from "./projectStore.js";
+import type { WritingHost, WritingProjects } from "./session/index.js";
 
 interface MainCommandsDeps {
   context: vscode.ExtensionContext;

@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 import type { ProjectBuilders } from "../build/index.js";
 import type { ReadyProject } from "../mainDocument.js";
 import { builtPdf } from "../preview/index.js";
-import type { WritingProjects } from "../projectStore.js";
+import type { WritingProjects } from "../session/index.js";
 
 /** `action` names what needs the build ("Marking a version") and `use` why it needs the PDF ("a version keeps its PDF"). */
 export interface BuildPurpose {
