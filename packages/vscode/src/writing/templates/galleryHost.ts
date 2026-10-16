@@ -3,12 +3,14 @@ import {
   engineProblem, parseGalleryMessage, SOURCE_LABELS,
   type AvailableEngines, type GalleryToHost, type TemplateEntry, type TemplateKey, type TemplateSource, type TemplateSourceId,
 } from "@labshelf/core";
+import type { PublishHost } from "./publish/index.js";
 import { thumbnailDataUri } from "./thumbnailUri.js";
 import { TEMPLATES_LOG_MODULE, useTemplate, type UseTemplatePorts } from "./useTemplate.js";
 
 export interface GalleryHostDeps extends UseTemplatePorts {
   sources: readonly TemplateSource[];
   engines: () => Promise<AvailableEngines>;
+  publish: PublishHost;
 }
 
 const cacheKey = (key: TemplateKey): string => `${key.source}:${key.id}`;
@@ -20,6 +22,8 @@ export class GalleryHost {
   private readonly lifetime = new AbortController();
   private engines: Promise<AvailableEngines> | undefined;
   private ready = false;
+  private markReady: () => void = () => {};
+  private readonly pageReady = new Promise<void>((resolve) => { this.markReady = resolve; });
 
   constructor(private readonly deps: GalleryHostDeps) {}
 
@@ -29,10 +33,21 @@ export class GalleryHost {
   async handle(raw: unknown): Promise<void> {
     const message = parseGalleryMessage(raw);
     if (!message) {
-      await this.deps.logger.log("WARN", TEMPLATES_LOG_MODULE, "Ignored a malformed gallery message", { type: (raw as { type?: unknown } | null)?.type });
+      const type = (raw as { type?: unknown } | null)?.type;
+      await this.deps.logger.log("WARN", TEMPLATES_LOG_MODULE, "Ignored a malformed gallery message", { type });
+      // The page waits on a reply to publish.*, so a rejected one must not leave it stuck.
+      if (typeof type === "string" && type.startsWith("publish.")) {
+        this.deps.post({ type: "publish.failed", error: "LabShelf could not read that request. Try again." });
+      }
       return;
     }
     await this.dispatch(message);
+  }
+
+  /** Opens the Publish screen once the page has said `ready`, for the project or the one the user picks. */
+  async openPublish(projectId?: string): Promise<void> {
+    await this.pageReady;
+    await this.deps.publish.open(projectId);
   }
 
   /** Aborts every call still running. */
@@ -43,11 +58,12 @@ export class GalleryHost {
 
   private async dispatch(message: GalleryToHost): Promise<void> {
     switch (message.type) {
-      case "ready": this.ready = true; return this.listAll();
+      case "ready": this.ready = true; this.markReady(); return this.listAll();
       case "refresh": return this.listAll();
       case "thumbnails": await Promise.all(message.templates.map((key) => this.sendThumbnail(key))); return;
       case "detail": return this.sendEngine(message.template);
       case "use": return this.use(message.template);
+      case "publish.start": case "publish.check": case "publish.signIn": case "publish.submit": return this.deps.publish.handle(message);
     }
   }
 

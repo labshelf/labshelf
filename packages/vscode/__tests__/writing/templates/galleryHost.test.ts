@@ -1,5 +1,6 @@
 // Pins how the template gallery's host answers the page: listings per source, thumbnails, engine checks and "Use template".
 import type { HostToGallery, TemplateEntry, TemplateFile, TemplateSource, TemplateSourceId } from "@labshelf/core";
+import type { PublishHost } from "../../../src/writing/templates/publish/index.js";
 import { createGalleryHost, type GalleryHostDeps } from "../../../src/writing/templates/galleryHost.js";
 import { fakeLogger } from "../../support/writingFixtures.js";
 
@@ -30,10 +31,11 @@ function setup(over: Partial<GalleryHostDeps> = {}) {
     askTitle: jest.fn(async () => "My thesis"),
     createProject: jest.fn(async () => {}),
     logger,
+    publish: { open: jest.fn(async () => {}), handle: jest.fn(async () => {}) },
     post: (m) => { posts.push(m); },
     ...over,
   };
-  return { host: createGalleryHost(deps), deps, posts, logger, community, universe };
+  return { host: createGalleryHost(deps), deps, posts, logger, community, universe, publish: deps.publish as jest.Mocked<PublishHost> };
 }
 
 const key = (source: TemplateSourceId, id: string) => ({ source, id });
@@ -132,5 +134,25 @@ describe("createGalleryHost", () => {
     expect(posts).toEqual([]);
     expect(logger.log).toHaveBeenCalledWith("WARN", expect.any(String), expect.any(String), expect.anything());
     expect(host.isReady()).toBe(false);
+  });
+
+  it("hands publish messages to the publish host", async () => {
+    const { host, publish } = setup();
+    const draft = { name: "Thesis", category: "article", license: "MIT", description: "d" };
+    const project = { id: "thesis", title: "Thesis", engineLabel: "Typst" };
+    await host.handle({ type: "publish.start" });
+    await host.handle({ type: "publish.check", project, draft });
+    await host.handle({ type: "publish.signIn" });
+    expect(publish.handle.mock.calls.map(([m]) => m.type)).toEqual(["publish.start", "publish.check", "publish.signIn"]);
+  });
+
+  it("opens the Publish screen only after the page is ready", async () => {
+    const { host, publish } = setup();
+    const opened = host.openPublish("thesis");
+    await Promise.resolve();
+    expect(publish.open).not.toHaveBeenCalled();
+    await host.handle({ type: "ready" });
+    await opened;
+    expect(publish.open).toHaveBeenCalledWith("thesis");
   });
 });

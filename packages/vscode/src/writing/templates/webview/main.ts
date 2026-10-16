@@ -4,6 +4,7 @@ import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
 import "@labshelf/core/styles/toast.css";
 import "@labshelf/core/styles/template-gallery.css";
+import "@labshelf/core/styles/template-publish.css";
 import { $, mountTemplateGallery } from "@labshelf/core/dom";
 import { createGalleryChannel } from "./galleryChannel.js";
 

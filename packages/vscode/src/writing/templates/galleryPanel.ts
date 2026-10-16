@@ -4,6 +4,7 @@ import { labshelfTabIcon } from "../../ui/index.js";
 import { galleryBundleDirectory, galleryHtml } from "./galleryHtml.js";
 import { createGalleryHost, type GalleryHost, type GalleryHostDeps } from "./galleryHost.js";
 import { askProjectTitle } from "./projectTitlePrompt.js";
+import { createPublishHost } from "./publish/index.js";
 import type { TemplateGalleryDeps } from "./index.js";
 
 export class GalleryPanel {
@@ -12,13 +13,15 @@ export class GalleryPanel {
   private readonly disposables: vscode.Disposable[] = [];
 
   constructor(private readonly panel: vscode.WebviewPanel, deps: TemplateGalleryDeps, private readonly onDispose: () => void) {
+    const post: GalleryHostDeps["post"] = (message) => { if (!this.disposed) { void panel.webview.postMessage(message); } };
     const hostDeps: GalleryHostDeps = {
       sources: deps.sources,
       engines: deps.engines,
       logger: deps.logger,
       createProject: deps.createProject,
       askTitle: askProjectTitle,
-      post: (message) => { if (!this.disposed) { void panel.webview.postMessage(message); } },
+      publish: createPublishHost({ ...deps.publish, logger: deps.logger, post }),
+      post,
     };
     this.host = createGalleryHost(hostDeps);
     void galleryHtml(panel.webview, deps.context.extensionUri).then((html) => { if (!this.disposed) { panel.webview.html = html; } });
@@ -37,6 +40,8 @@ export class GalleryPanel {
   }
 
   reveal(): void { this.panel.reveal(vscode.ViewColumn.One); }
+
+  openPublish(projectId?: string): Promise<void> { return this.host.openPublish(projectId); }
 
   /** Lists the sources again; before the page is ready its own `ready` does the listing. */
   refresh(): void { if (this.host.isReady()) { void this.host.handle({ type: "refresh" }); } }

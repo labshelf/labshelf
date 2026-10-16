@@ -7,6 +7,7 @@ import type { WritingHost, WritingProjects } from "../../session/index.js";
 import { OPEN_PROJECT_COMMAND } from "../../session/index.js";
 import { createTemplateGallery, type TemplateGalleryDeps } from "../index.js";
 import { detectEngines } from "./engineAvailability.js";
+import { createPublishPorts, registerPublishCommand, type PublishBuilders } from "./publish/index.js";
 import { registerSaveProjectCommand } from "./saveProjectCommand.js";
 import { createTemplateSources } from "./templateSources.js";
 
@@ -16,6 +17,7 @@ interface TemplatesDeps {
   context: vscode.ExtensionContext;
   host: WritingHost;
   projects: Pick<WritingProjects, "data" | "list" | "paths" | "reload">;
+  builders: PublishBuilders;
 }
 
 /** Installs the template into the library's projects and opens the new project, which opens its main file. */
@@ -41,12 +43,18 @@ export function registerTemplates(deps: TemplatesDeps): void {
   const { context, host } = deps;
   const version = context.extension.packageJSON.version as string;
   const fetch: FetchLike = (url, init) => globalThis.fetch(url, { ...init, headers: { ...init?.headers, "User-Agent": `LabShelf-VSCode/${version}` } });
+  const publishFetch: typeof globalThis.fetch = (input, init) => {
+    const headers = new Headers(init?.headers);
+    headers.set("User-Agent", `LabShelf-VSCode/${version}`);
+    return globalThis.fetch(input, { ...init, headers });
+  };
   const gallery = createTemplateGallery({
     context,
     logger: libraryLogger(host),
     sources: createTemplateSources(host, fetch),
     engines: detectEngines,
     createProject: createProjectInstaller(deps),
+    publish: createPublishPorts({ storageDir: context.globalStorageUri.fsPath, host, projects: deps.projects, builders: deps.builders, fetch: publishFetch }),
   });
   context.subscriptions.push(
     gallery,
@@ -56,5 +64,6 @@ export function registerTemplates(deps: TemplatesDeps): void {
       await executeSafely(session.logger, OPEN_GALLERY_COMMAND, async () => gallery.open());
     }),
   );
+  registerPublishCommand({ context, host, openPublish: gallery.openPublish });
   registerSaveProjectCommand({ ...deps, onSaved: () => gallery.refresh() });
 }

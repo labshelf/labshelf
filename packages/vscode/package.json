@@ -249,6 +249,11 @@
         "category": "LabShelf"
       },
       {
+        "command": "labshelf.templates.publish",
+        "title": "Research: Publish Project as Template…",
+        "category": "LabShelf"
+      },
+      {
         "command": "labshelf.writing.addExistingFolder",
         "title": "Research: Add Existing Folder as Project…",
         "category": "LabShelf",
@@ -691,6 +696,11 @@
           "command": "labshelf.templates.saveProject",
           "when": "view == labshelf.writing && viewItem =~ /^labshelfProject(External)?$/",
           "group": "1_open@7"
+        },
+        {
+          "command": "labshelf.templates.publish",
+          "when": "view == labshelf.writing && viewItem =~ /^labshelfProject(External)?$/",
+          "group": "1_open@8"
         },
         {
           "command": "labshelf.writing.addToReadingList",

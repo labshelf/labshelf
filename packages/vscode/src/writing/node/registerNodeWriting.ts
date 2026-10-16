@@ -21,6 +21,6 @@ export const registerNodeWriting: RegisterNodeWriting = ({ context, host, projec
   };
   registerCheckCommand({ context, host, projects, builders, pdfjs: hostPdfjs });
   registerCompareVersionsCommand({ context, host, projects, builders, pdfjs: hostPdfjs, reader });
-  registerTemplates({ context, host, projects });
+  registerTemplates({ context, host, projects, builders });
   return { builders, buildRootOf };
 };
