@@ -24,6 +24,8 @@ After every Edit/Write, `.claude/hooks/check-rules.sh` reports regressions again
 
 After every tool call, `.claude/hooks/context-budget.mjs` warns once when the running agent's context passes its budget: 60k tokens for a subagent, 100k for the main thread. A subagent then returns what is left; the main thread finishes its step and hands off to a fresh session. Auto-compaction is off for this project. `node scripts/agent-tokens.mjs [session]` reports each agent's peak context, largest tool results and repeated reads; `pnpm test:tooling` tests both.
 
+After every Read, Grep, Glob or Bash call that names `packages/`, `.claude/hooks/read-budget.mjs` adds the size of the result to a per-session total and, once the main thread has read 60k characters, tells it once to delegate further reading of `packages/` to an `Explore` scout.
+
 ### Skills and agents
 
 Skills: `brainstorm` (think an idea through with the user in spar, grill or council mode; no files touched until approved; ends in a plan directory from `documents/plans/TEMPLATE/`), `council` (four opposed personas and a judge on one hard-to-reverse fork; about 200k subagent tokens), `retro` (turns this session's mistakes into checks and rules after approval), `orchestrate` (also runs an approved plan: `/orchestrate documents/plans/<slug>/plan.md`), `finish`, `check`, `ship` (finish + commits), `verify` (run an app for real), `ui-design` (UI in the apps: core tokens, components, icons, vocabulary), `health` (repo-wide audit). `ship`, `retro`, `health` and `brainstorm` run only when the user types them.
