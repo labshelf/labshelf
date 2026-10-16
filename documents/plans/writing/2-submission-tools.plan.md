@@ -1,6 +1,6 @@
 # Plan: submission tools
 
-Status: in progress (session 1 of 4)
+Status: in progress (session 2 of 4)
 Size: GG — five features in core and VS Code, one of them a visual PDF diff; 4 sessions.
 Pending decisions: 0
 
@@ -30,7 +30,7 @@ Builds on [writing-core.plan.md](../../archive/writing-core.plan.md). The termin
 
 - [ ] **A1** Editing `plot_ablation.py` marks `fig/ablation.pdf` stale in the Writing view; "Regenerate" runs the command and clears the mark.
 - [ ] **A2** `\lsvalue{results.acc}` builds to the number in `results.json`; hovering it shows the value and file.
-- [ ] **A3** The check flags a 10-page PDF against `check.pages: 9`, the author's name in the PDF metadata, and a Type 3 font.
+- [x] **A3** The check flags a 10-page PDF against `check.pages: 9`, the author's name in the PDF metadata, and a Type 3 font.
 - [ ] **A4** After "Mark version: submitted" and some edits, "Compare" highlights the changed regions on each page.
 - [ ] **A5** Pasted reviews become numbered points; marking all addressed and exporting writes a letter with quotes, replies and changed passages.
 
@@ -67,9 +67,9 @@ Builds on [writing-core.plan.md](../../archive/writing-core.plan.md). The termin
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S4 | Check rules over the PDF and the sources | — | H · main thread | core tests on fixture PDFs | [ ] |
-| S5 | Command and Problems output | S4 | M · implementer (sonnet) | A3 | [ ] |
-| S6 | Finish | S4–S5 | `finish` skill | gate passes | [ ] |
+| S4 | Check rules over the PDF and the sources | — | H · main thread | core tests on fixture PDFs | [x] |
+| S5 | Command and Problems output | S4 | M · implementer (sonnet) | A3 | [x] |
+| S6 | Finish | S4–S5 | `finish` skill | gate passes | [x] |
 
 ### Session 3 — versions
 
@@ -129,3 +129,7 @@ Builds on [writing-core.plan.md](../../archive/writing-core.plan.md). The termin
 - 2026-10-15 21:50 — S1 (Sonnet): figure rows, staleness from mtimes with a hand-written glob matcher (Node 20 has no `fs.glob`), Regenerate with a per-machine confirmation per project and command; `runCancellable` gained shell and streaming; the project file walker lifted to `project/node`.
 - 2026-10-15 22:00 — S2 (Sonnet): `\lsvalue` macro file, `\input` line, LaTeX and Typst completion and hover, generation before LaTeX builds; a real pdflatex fixture test prints the value. Main thread: duplicate value file names skip the later file.
 - 2026-10-15 22:12 — S3: finish passed (core 2345, vscode 571 tests); six private `readOptional` copies merged into `readOptionalFile`. The real extension-host run could not complete (the test host refuses modal dialogs; screen capture unavailable), so A1 and A2 stay unticked until a manual or seeded-host check.
+- 2026-10-15 22:40 — Session 2 start: scouts on pdf.js in Node, the writing core and the VS Code build/diagnostics glue.
+- 2026-10-15 23:05 — S4 (main thread): `check:` (`pages`, `authors`, `anonymous`, default true) parsed in `project/userKeys.ts` (renamed from `experimentKeys.ts`; the folder was at 8 files) and added to library-format.md. Rules in `writing/checks/`: the page limit counts pages before the References heading, so references never push a paper over; author names are searched in the PDF text before the references and in the info dictionary, not in the sources, because review templates keep `\author` in the source and hide it in the PDF; a match is pointed at the source line that wrote it when one exists. pdf.js facts in `checks/node/`. The fixture is a real pdfTeX build; Jest replays what real pdf.js reports for it from a child process.
+- 2026-10-15 23:15 — S5 (Sonnet): "Research: Check Before Submitting" saves, builds through the Build command's builders, checks the built PDF and fills the `labshelf-check` Problems collection; per-project clearing extracted to `ProjectDiagnostics`, shared with build problems. A check whose build is superseded by a save-triggered build reports a failed build; a second run succeeds.
+- 2026-10-15 23:25 — S6: finish passed (core checks/project 128 tests, vscode writing 354 tests); vscode.md documents the command. A3 met on the real fixture through real pdf.js output and the Problems mapping in unit tests; not run in a real extension host, and the rules were not tried on real published papers.
