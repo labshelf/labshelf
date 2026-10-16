@@ -15,3 +15,4 @@ export type { ProjectCursor, ProjectLastEdit } from "./deviceLocal/index.js";
 export { parseProjectRegistry, serializeProjectRegistry, withFolder, withoutFolder } from "./deviceLocal/index.js";
 export type { ProjectRegistry } from "./deviceLocal/index.js";
 export * from "./install/index.js";
+export * from "./export/index.js";
