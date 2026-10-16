@@ -1,10 +1,11 @@
-// Registers the commands that open the list and reader panels: the list tab, the PDF viewer,
+// Registers the commands that open the list and reader panels: the list tab, the citation map, the PDF viewer,
 // annotation export and the reader's own contributed keybindings.
 import * as vscode from "vscode";
 
 import { exportAnnotations, findSimilarPapers, type AiService, type ReaderCommandId } from "@labshelf/core";
 import { PdfViewerPanel, ReaderPanel, createVsCodeExportPorts } from "../../pdf-viewer/index.js";
 import { ListWebviewPanel, type ListPanelDeps } from "../../ui/list/index.js";
+import { citationMapPorts } from "../../citationMap/index.js";
 import type { LibraryNode } from "../../ui/library/index.js";
 import { resolvePaper, ensurePaperPdf, folderActions, type FolderCommandHost, type ActiveServices, currentTextLayerJobs, onTextLayerJobsChanged } from "../../commands/index.js";
 import type { LibraryEvents } from "../../events/index.js";
@@ -27,28 +28,33 @@ export interface PanelCommandsDeps {
   adapters: HostAdapters;
 }
 
+function listPanelDeps(deps: PanelCommandsDeps, services: ActiveServices): ListPanelDeps {
+  const { context, events, papersRootUri, folderHost, syncTreeToPanel, getAiService, adapters, projectBacklinks } = deps;
+  return {
+    extensionUri: context.extensionUri, paperService: services.paperService, events, logger: services.logger, pathOps: adapters.paths,
+    getPapersRoot: () => papersRootUri()?.fsPath ?? null,
+    getSnapshot: () => services.library.snapshot, folders: folderActions(folderHost),
+    citationMap: citationMapPorts(services),
+    onDidNavigate: syncTreeToPanel,
+    textLayerJobs: { current: currentTextLayerJobs, onDidChange: onTextLayerJobsChanged },
+    loadSidecar: (paperId) => services.paperDataStore.load(paperId),
+    findSimilar: (paper) => findSimilarPapers(getAiService(), paper),
+    projectBacklinks,
+  };
+}
+
 function registerOpenListTabCommand(deps: PanelCommandsDeps): void {
-  const { context, events, requireServices, papersRootUri, folderHost, syncTreeToPanel, getAiService, adapters, projectBacklinks } = deps;
+  const { context, requireServices, syncTreeToPanel } = deps;
 
   context.subscriptions.push(
     vscode.commands.registerCommand("labshelf.openListTab", (node?: LibraryNode) => {
       requireServices().then((services) => {
-        if (services) {
-          ListWebviewPanel.createOrShow(
-            {
-              extensionUri: context.extensionUri, paperService: services.paperService, events, logger: services.logger, pathOps: adapters.paths,
-              getPapersRoot: () => papersRootUri()?.fsPath ?? null,
-              getSnapshot: () => services.library.snapshot, folders: folderActions(folderHost),
-              onDidNavigate: syncTreeToPanel,
-              textLayerJobs: { current: currentTextLayerJobs, onDidChange: onTextLayerJobsChanged },
-              loadSidecar: (paperId) => services.paperDataStore.load(paperId),
-              findSimilar: (paper) => findSimilarPapers(getAiService(), paper),
-              projectBacklinks,
-            },
-            node,
-          );
-        }
+        if (services) { ListWebviewPanel.createOrShow(listPanelDeps(deps, services), node); }
       });
+    }),
+    vscode.commands.registerCommand("labshelf.showCitationMap", async () => {
+      const services = await requireServices();
+      if (services) { ListWebviewPanel.showCitationMap(listPanelDeps(deps, services)); }
     }),
   );
 }

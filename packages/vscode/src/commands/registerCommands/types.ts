@@ -25,6 +25,8 @@ export type ActiveServices = {
   // Where the AI subsystem's own SQLite file lives for this library root; startAiService opens it lazily,
   // inside its own try/catch, so a failure there degrades the AI subsystem instead of breaking activation.
   aiDatabasePath: string;
+  // The OpenAlex cache the citation map reads and fills.
+  citationCacheDir: string;
 };
 
 export type RequireServices = () => Promise<ActiveServices | null>;

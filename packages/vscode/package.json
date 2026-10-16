@@ -106,6 +106,12 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "labshelf.showCitationMap",
+        "title": "Show Citation Map",
+        "category": "LabShelf",
+        "icon": "$(type-hierarchy)"
+      },
+      {
         "command": "labshelf.renameFolder",
         "title": "Rename Folder",
         "category": "LabShelf"
@@ -401,6 +407,11 @@
           "command": "labshelf.library.refresh",
           "when": "view == labshelf.library",
           "group": "navigation@4"
+        },
+        {
+          "command": "labshelf.showCitationMap",
+          "when": "view == labshelf.library",
+          "group": "navigation@5"
         },
         {
           "command": "labshelf.writing.newProject",

@@ -5,6 +5,7 @@
 import { errorMessage, parseUiMessage, type UiToHost } from '@labshelf/core';
 import { LOG_MODULE, type ListHostContext } from './hostContext.js';
 import { movePapers, removePapers, revealPaper, runCommand, setNote, setStatus, setTags, writeClipboard } from './paperHandlers.js';
+import { importCitationWork, showCitationMap } from './citationMapHandlers.js';
 import { sendDetails, sendSimilar } from './paperData.js';
 import { openProjectSource } from './projectSource.js';
 
@@ -46,6 +47,8 @@ async function onPaperMessage(ctx: ListHostContext, m: UiToHost): Promise<boolea
     case 'paper.remove': await removePapers(ctx, m.ids); return true;
     case 'project.openSource': await openProjectSource(ctx, m.project, m.file, m.line); return true;
     case 'clipboard.write': await writeClipboard(ctx, m.text, m.label); return true;
+    case 'citationMap.refresh': await showCitationMap(ctx); return true;
+    case 'citationMap.import': await importCitationWork(ctx, m.workId, m.doi); return true;
     default: return false;
   }
 }

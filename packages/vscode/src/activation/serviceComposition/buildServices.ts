@@ -75,5 +75,6 @@ export async function buildServices(
     paperService, importer, textLayers, mutations, logger, library: store, paperDataStore, fileSystem,
     reindexLibrary: reindex,
     aiDatabasePath: paths.aiDatabasePath().fsPath,
+    citationCacheDir: paths.openAlexCacheDir().fsPath,
   };
 }

@@ -293,3 +293,40 @@ describe('ListWebviewPanel — text layers', () => {
     expect(jobs.subscription.dispose).toHaveBeenCalled();
   });
 });
+
+describe('ListWebviewPanel — citation map', () => {
+  const map = { papers: [{ id: 'p1', title: 'Title p1' }], links: [], missing: [] };
+  const citationMap = () => ({ buildCitationMap: jest.fn(async () => map), importByDoi: jest.fn() });
+
+  it('shows the map once the UI is ready when it was asked for before', async () => {
+    const h = open(undefined, { citationMap: citationMap() } as Partial<ListPanelDeps>);
+    ListWebviewPanel.showCitationMap(h.deps);
+    await flush();
+    expect(h.posted()).toEqual([]);
+
+    await h.fire({ type: 'ready' });
+    expect(h.posted().map((m) => m.type)).toEqual(['navigate', 'snapshot', 'citationMap.show', 'citationMap.show']);
+    expect(h.last('citationMap.show')).toEqual({ type: 'citationMap.show', state: { status: 'ready', map } });
+  });
+
+  it('shows the map at once in a panel that is open and keeps its folder', async () => {
+    const h = open(undefined, { citationMap: citationMap() } as Partial<ListPanelDeps>);
+    await h.fire({ type: 'ready' });
+    const before = h.posted().length;
+    ListWebviewPanel.showCitationMap(h.deps);
+    await flush();
+    await flush();
+    expect(h.posted().slice(before).map((m) => m.type)).toEqual(['citationMap.show', 'citationMap.show']);
+  });
+
+  it('opens a panel when none is open', async () => {
+    const h = open(undefined, { citationMap: citationMap() } as Partial<ListPanelDeps>);
+    ListWebviewPanel.currentPanel?.dispose();
+    ListWebviewPanel.showCitationMap(h.deps);
+    const created = (vscode.window.createWebviewPanel as jest.Mock).mock.results.at(-1)?.value;
+    created.webview._fireMessage({ type: 'ready' });
+    await flush();
+    await flush();
+    expect((created.webview.postMessage as jest.Mock).mock.calls.map(([m]) => m.type)).toContain('citationMap.show');
+  });
+});

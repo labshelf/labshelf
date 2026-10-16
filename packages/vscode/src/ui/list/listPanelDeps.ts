@@ -1,10 +1,11 @@
 /**
  * Declares what the list panel needs from the extension: the paper service, events, the library root, the library snapshot and
- * folder changes, OCR jobs, reader sidecars, the AI index and the writing projects' citations.
+ * folder changes, the citation map, OCR jobs, reader sidecars, the AI index and the writing projects' citations.
  */
 import type * as vscode from 'vscode';
 import type { Annotation, BacklinkIndex, ILogger, LibrarySnapshot, PaperRecord, PathOps, SimilarPaper, TextLayerJobView } from '@labshelf/core';
 import type { PaperService } from '../../core/index.js';
+import type { CitationMapPorts } from '../../citationMap/index.js';
 import type { LibraryEvents } from '../../events/index.js';
 import type { LibraryNode } from '../library/index.js';
 
@@ -40,6 +41,7 @@ export interface ListPanelDeps {
   /** The library's current snapshot, whose collections are the folder tree. */
   getSnapshot: () => LibrarySnapshot;
   folders: ListFolderActions;
+  citationMap: CitationMapPorts;
   /** Called whenever the panel shows a different folder, so the sidebar tree can follow. */
   onDidNavigate?: (folder: LibraryNode) => void;
   /** Papers waiting for or undergoing OCR, shown on their rows while it runs. */
