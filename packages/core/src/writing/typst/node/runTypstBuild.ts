@@ -3,6 +3,7 @@ import * as path from "node:path";
 
 import { writeFileAtomic } from "../../../library/node/index.js";
 import type { ILogger } from "../../../ports/index.js";
+import type { TypstCite } from "../../review/index.js";
 import type { LocatedProblem } from "../../latex/build/node/index.js";
 import type { FetchLike } from "../../latex/toolchain/node/index.js";
 import { typstProblems } from "../typstProblems.js";
@@ -29,7 +30,8 @@ export interface TypstBuildRequest {
 }
 
 export type TypstBuildResult =
-  | { status: "succeeded"; pdf: string; problems: LocatedProblem[] }
+  /** `cites` is empty when the citation probe failed; the failure is logged. */
+  | { status: "succeeded"; pdf: string; problems: LocatedProblem[]; cites: TypstCite[] }
   | { status: "failed"; problems: LocatedProblem[] };
 
 function compileOnce(request: TypstBuildRequest, mainFile: string): Promise<TypstCompileResult> {
@@ -68,5 +70,9 @@ export async function runTypstBuild(request: TypstBuildRequest): Promise<TypstBu
   }
   const pdf = result.pdf;
   await Promise.all(request.outputs.map((output) => writeFileAtomic(output, pdf)));
-  return { status: "succeeded", pdf: request.outputs[0], problems };
+  const citations = result.citations ?? { failure: "The compile reported no citations." };
+  if ("failure" in citations) {
+    await request.logger.log("WARN", MODULE, "Citation positions unavailable; the preview shows no citation cards", { main: mainFile, reason: citations.failure });
+  }
+  return { status: "succeeded", pdf: request.outputs[0], problems, cites: "cites" in citations ? citations.cites : [] };
 }

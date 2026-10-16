@@ -39,7 +39,7 @@ describe("runTypstBuild", () => {
     const outputs: [string, ...string[]] = [path.join(folder, "main.pdf"), path.join(folder, "copy", "again.pdf")];
     await fs.mkdir(path.join(folder, "copy"));
     const result = await runTypstBuild(request(folder, outputs));
-    expect(result).toEqual({ status: "succeeded", pdf: outputs[0], problems: [] });
+    expect(result).toEqual({ status: "succeeded", pdf: outputs[0], problems: [], cites: [] });
     for (const output of outputs) { expect((await fs.readFile(output)).subarray(0, 5).toString()).toBe("%PDF-"); }
   });
 

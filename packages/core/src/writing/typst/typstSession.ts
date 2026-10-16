@@ -1,6 +1,7 @@
 /** Compiles Typst documents to PDF with the WASM compiler, one compile at a time, reading files through an injected access port. */
 import { createTypstCompiler, initOptions, loadFonts, type TypstCompiler } from "@myriaddreamin/typst.ts";
 
+import { citationProbeSource, PROBE_FILE, PROBE_LABEL, readProbeAnswer, type TypstCitations } from "./typstCitationProbe.js";
 import type { TypstDiagnostic } from "./typstProblems.js";
 
 /** Synchronous file access: the compiler asks for files in the middle of a compile and cannot await. Paths are compiler paths. */
@@ -41,6 +42,8 @@ export interface TypstCompileRequest {
 export interface TypstCompileResult {
   pdf?: Uint8Array;
   diagnostics: TypstDiagnostic[];
+  /** Where each citation of the PDF landed; present with `pdf`. */
+  citations?: TypstCitations;
 }
 
 export class TypstSession {
@@ -59,7 +62,26 @@ export class TypstSession {
     this.compiler.resetShadow();
     for (const [path, text] of request.sources) { this.compiler.addSource(path, text); }
     const result = await this.compiler.compile({ root: request.root, mainFilePath: request.main, format: 1, diagnostics: "full" });
-    return { ...(result.result ? { pdf: result.result } : {}), diagnostics: (result.diagnostics ?? []) as TypstDiagnostic[] };
+    const diagnostics = (result.diagnostics ?? []) as TypstDiagnostic[];
+    if (!result.result) { return { diagnostics }; }
+    return { pdf: result.result, diagnostics, citations: await this.citations(request) };
+  }
+
+  // A second compile through a probe file, so the PDF itself never carries the probe's metadata; Typst reuses the main's layout.
+  private async citations(request: TypstCompileRequest): Promise<TypstCitations> {
+    const root = request.root.endsWith("/") ? request.root.slice(0, -1) : request.root;
+    if (!request.main.startsWith(`${root}/`)) { return { failure: `The main file ${request.main} is outside the root ${request.root}.` }; }
+    const probe = `${root}/${PROBE_FILE}`;
+    this.compiler.addSource(probe, citationProbeSource(request.main.slice(root.length)));
+    try {
+      return await this.compiler.runWithWorld({ mainFilePath: probe, root: request.root }, async (world) => {
+        const compiled = await world.compile({ diagnostics: "full" });
+        if (compiled.hasError) { return { failure: `The citation probe did not compile: ${JSON.stringify(compiled.diagnostics)?.slice(0, 300)}` }; }
+        return readProbeAnswer(await world.query({ selector: `<${PROBE_LABEL}>`, field: "value" }));
+      });
+    } catch (error) {
+      return { failure: error instanceof Error ? error.message : String(error) };
+    }
   }
 }
 
