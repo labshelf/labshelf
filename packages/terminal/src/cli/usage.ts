@@ -23,6 +23,7 @@ Library:
   status <id…> <unread|reading|done>
   tag <id…> +tag -tag              add / remove tags
   mv <id…> <collection>            move papers to a collection
+  install [project-dir]            import the papers a writing project lists in labshelf.yaml and the library lacks
 
 Sync (Google Drive, shared with the VS Code extension):
   sync                             sync now
