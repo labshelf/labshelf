@@ -16,6 +16,8 @@ interface CheckCommandDeps {
   projects: Pick<WritingProjects, "data" | "list" | "paths">;
   builders: ProjectBuilders;
   pdfjs: PdfjsLoader;
+  /** Called with a project's finding count after each completed check. */
+  onFindings?(folder: string, count: number): void;
 }
 
 function summary(count: number): string {
@@ -51,6 +53,7 @@ async function checkBeforeSubmitting(deps: CheckCommandDeps, diagnostics: Projec
     }
     const findings = await runCheck(deps, project, pdfPath, session.logger);
     diagnostics.replace(project.folder, checkDiagnostics(findings, pdfPath));
+    deps.onFindings?.(project.folder, findings.length);
     if (findings.length === 0) {
       void vscode.window.showInformationMessage("No problems found before submitting.");
       return;

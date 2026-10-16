@@ -23,7 +23,7 @@ const TRIO: CheckFinding[] = [
   { rule: "fonts", severity: "warning", message: "Type 3 font in use.", location: { kind: "pdf", page: 1 } },
 ];
 
-function setup(entries = [readyEntry("/p/tex"), readyEntry("/p/other")]) {
+function setup(entries = [readyEntry("/p/tex"), readyEntry("/p/other")], onFindings?: (folder: string, count: number) => void) {
   const order: string[] = [];
   const builders = {
     latex: { request: jest.fn(async () => { order.push("build"); return { status: "succeeded", pdf: "/p/tex/main.pdf", problems: [] } as const; }) },
@@ -32,7 +32,7 @@ function setup(entries = [readyEntry("/p/tex"), readyEntry("/p/other")]) {
   saveAll.mockImplementation(async () => { order.push("saveAll"); return true; });
   check.mockImplementation(async () => { order.push("check"); return TRIO; });
   const host = fakeHost();
-  registerCheckCommand({ context: { subscriptions: [] } as never, host, projects: fakeProjects(entries), builders, pdfjs });
+  registerCheckCommand({ context: { subscriptions: [] } as never, host, projects: fakeProjects(entries), builders, pdfjs, ...(onFindings ? { onFindings } : {}) });
   const collection = (vscode.languages.createDiagnosticCollection as jest.Mock).mock.results.at(-1)!.value;
   return { builders, order, host, collection, run: commandHandler(CHECK_COMMAND) };
 }
@@ -94,6 +94,24 @@ describe("labshelf.writing.checkBeforeSubmitting", () => {
     check.mockResolvedValue([TRIO[0]]);
     await run();
     expect(window["showInformationMessage"]).toHaveBeenLastCalledWith("1 problem found before submitting.");
+  });
+
+  it("reports the finding count of the project to onFindings, zero included", async () => {
+    const onFindings = jest.fn();
+    const { run } = setup(undefined, onFindings);
+    await run();
+    expect(onFindings).toHaveBeenLastCalledWith("/p/tex", 3);
+    check.mockResolvedValue([]);
+    await run();
+    expect(onFindings).toHaveBeenLastCalledWith("/p/tex", 0);
+  });
+
+  it("does not report when the build fails", async () => {
+    const onFindings = jest.fn();
+    const { run, builders } = setup(undefined, onFindings);
+    builders.latex.request.mockResolvedValue({ status: "failed", problems: [] } as never);
+    await run();
+    expect(onFindings).not.toHaveBeenCalled();
   });
 
   it("says so when nothing is found, without opening Problems", async () => {
