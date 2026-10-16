@@ -66,7 +66,7 @@ Text files are those with a known text extension (`.tex`, `.typ`, `.bib`, `.md`,
 |---|---|---|---|---|---|
 | S1 | Spike: shared folder access under `drive.file` (Picker) | — | H · main thread | Q1 answered in §8 | [x] |
 | S2 | Contract: `projects` namespace, ignore list (base store and merge rule land with S6–S7) | S1 | H · main thread | sync.md and library-format.md updated | [x] |
-| S3 | Engine: `projects` namespace for internal and external projects | S2 | M · implementer (sonnet) | A1, A2 | [ ] |
+| S3 | Engine: `projects` namespace for internal and external projects | S2 | M · implementer (sonnet) | A1, A2 | [[x] |
 | S4 | Writing view: "Only on Drive — download to…" | S3 | M · implementer (sonnet) | D2 | [ ] |
 | S5 | Finish, plus a scratch-Drive run | S1–S4 | `finish` skill | gate passes | [ ] |
 
@@ -149,3 +149,4 @@ Text files are those with a known text extension (`.tex`, `.typ`, `.bib`, `.md`,
 - 2026-10-15 21:38 — Session 1 started; D1–D7 approved.
 - 2026-10-15 22:24 — S1 done. Two accounts (A owner, B writer) with the LabShelf desktop client on a scratch folder tree created by A's app: share only → B gets 404 on everything; B picks the folder in Picker → folder 200, children 404, listing empty; A adds a file after the pick → B 404; B creates a file in the folder → A 404; B picks one file → B reads it, A's later update stays readable to B, B's write is readable to A with `lastModifyingUser` = B. Scratch files deleted.
 - 2026-10-15 22:58 — S2 done. `projects` namespace, identity by id, Drive-only projects never auto-download, ignore list and `labshelf.yaml` `ignore:` in sync.md#projects and library-format.md. Deviations: Drive folder `LabShelf Projects` beside the library (D1 amended); A1 reworded to the Only-on-Drive flow; base store and merge rule move to S6–S7 so the contract describes only what exists.
+- 2026-10-15 23:31 — S3 done (implementer, Sonnet; one follow-up). Engine syncs listed projects against `LabShelf Projects/<id>/`, reports Drive-only ids, skips ignored paths both ways; an empty list looks the folder up without creating it. A1/A2 pass in core tests; terminal and VS Code supply the list. Gate: S3 files green; the tree's other failures (canvas mock, `writing/compare`, `registerWritingView` length, browser lint) belong to the parallel session or predate it.

@@ -8,7 +8,7 @@ import type {
 import type { RemoteNamespace } from "../../provider/index.js";
 
 function emptyData(providerId: string): ManifestData {
-  return { providerId, namespaces: { library: {}, appdata: {} } };
+  return { providerId, namespaces: { library: {}, appdata: {}, projects: {} } };
 }
 
 /**
@@ -42,7 +42,7 @@ export class SyncManifest {
         const text = new TextDecoder("utf-8").decode(raw);
         const parsed = JSON.parse(text) as ManifestData;
         if (parsed?.namespaces?.library && parsed.namespaces.appdata) {
-          data = { providerId, namespaces: parsed.namespaces };
+          data = { providerId, namespaces: { ...parsed.namespaces, projects: parsed.namespaces.projects ?? {} } };
           if (parsed.roots && typeof parsed.roots === "object") { data.roots = { ...parsed.roots }; }
         }
       } catch {

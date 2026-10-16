@@ -18,7 +18,7 @@ async function makeContext(): Promise<{
     fs,
     manifest,
     resolver: new RemotePathResolver(provider, root.id),
-    localRoot: "/lib",
+    localPath: (path) => `/lib/${path}`,
     now: new Date("2026-05-16T00:00:00.000Z"),
   };
   return { ctx, fs, provider, manifest };

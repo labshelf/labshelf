@@ -10,6 +10,15 @@ function joinPath(prefix: string, name: string): string {
   return prefix ? `${prefix}/${name}` : name;
 }
 
+/**
+ * Narrows a scan to one folder of a namespace: every path starts with `prefix`, and a path `ignored` reports (with
+ * everything under it) is neither listed nor entered.
+ */
+export interface ScanScope {
+  prefix: string;
+  ignored(path: string): boolean;
+}
+
 /** A scanned local tree, plus the relative paths of the folders that could not be read ("" for the root). */
 export interface LocalScan {
   tree: Map<string, TreeNode>;
@@ -24,6 +33,7 @@ export async function scanLocalTree(
   fs: LocalFileSystem,
   rootPath: string,
   logger?: ILogger,
+  scope?: ScanScope,
 ): Promise<LocalScan> {
   const tree = new Map<string, TreeNode>();
   const unreadable: string[] = [];
@@ -42,6 +52,9 @@ export async function scanLocalTree(
     for (const name of names) {
       const abs = `${absDir}/${name}`;
       const rel = joinPath(relDir, name);
+      if (scope?.ignored(rel)) {
+        continue;
+      }
       const stat = await fs.stat(abs);
       if (!stat) {
         continue;
@@ -60,7 +73,7 @@ export async function scanLocalTree(
     }
   }
 
-  await walk(rootPath, "");
+  await walk(rootPath, scope?.prefix ?? "");
   return { tree, unreadable };
 }
 
@@ -91,11 +104,13 @@ export async function scanRemoteTree(
   resolver: RemotePathResolver,
   folderNameMap?: Map<string, string>,
   nameFolder?: RemoteFolderNamer,
+  scope?: ScanScope,
 ): Promise<Map<string, TreeNode>> {
   const tree = new Map<string, TreeNode>();
 
   async function walk(folderId: string, relDir: string, listed?: RemoteFile[]): Promise<void> {
-    const children = listed ?? await provider.list(folderId);
+    const listing = listed ?? await provider.list(folderId);
+    const children = scope ? listing.filter((c) => !scope.ignored(joinPath(relDir, c.name))) : listing;
     const taken = new Set(children.filter((c) => !c.isFolder).map((c) => c.name));
     const folders = await rankedFolderNames(children.filter((c) => c.isFolder), provider, folderNameMap, nameFolder);
     for (const { folder, kids, naming } of folders) {
@@ -106,7 +121,7 @@ export async function scanRemoteTree(
     collectFileNodes(children, relDir, tree);
   }
 
-  await walk(rootId, "");
+  await walk(rootId, scope?.prefix ?? "");
   return tree;
 }
 

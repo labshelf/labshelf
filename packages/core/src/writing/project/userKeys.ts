@@ -1,4 +1,4 @@
-/** Validates the keys of labshelf.yaml that only the user writes: figure recipes, JSON value files and the pre-submission check. */
+/** Validates the keys of labshelf.yaml that only the user writes: figure recipes, JSON value files, the pre-submission check and the sync ignore list. */
 // CONTRACT: documents/contracts/library-format.md#labshelfyaml
 
 /** How one figure is made: the command and the files whose changes make the figure stale. */
@@ -24,6 +24,8 @@ export interface UserKeys {
   /** JSON files, relative to the project folder, whose leaves `\lsvalue` and Typst `json()` read. */
   values?: string[] | undefined;
   check?: CheckSettings | undefined;
+  /** Patterns (`*`, `**`, `?`), relative to the project folder, of the paths project sync leaves on the device. */
+  ignore?: string[] | undefined;
 }
 
 const isText = (value: unknown): value is string => typeof value === "string" && value.trim() !== "";
@@ -66,6 +68,11 @@ export function readUserKeys(raw: Record<string, unknown>): UserKeys | string {
   if (!isAbsent(values)) {
     if (!isTextList(values)) { return "values must be a list of JSON file paths"; }
     keys.values = values;
+  }
+  const ignore = raw["ignore"];
+  if (!isAbsent(ignore)) {
+    if (!isTextList(ignore)) { return "ignore must be a list of path patterns"; }
+    keys.ignore = ignore;
   }
   if (!isAbsent(raw["check"])) {
     const check = readCheck(raw["check"]);

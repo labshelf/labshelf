@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import { createGoogleDriveProvider, diskSyncTarget, ReauthRequiredError, SyncCoordinator, type LibraryLayout } from "@labshelf/core";
-import type { IAuthProvider, ILogger, LocalFileSystem, LockStore, RemoteProvider, SyncOutcome, SyncResult, SyncTarget, SyncTimers } from "@labshelf/core";
+import type { IAuthProvider, ILogger, LocalFileSystem, LockStore, RemoteProvider, SyncOutcome, SyncProject, SyncResult, SyncTarget, SyncTimers } from "@labshelf/core";
 import { reportSyncOutcome } from "./syncReport.js";
 import { onPaperChange, type LibraryEvents } from "../../events/index.js";
 
@@ -33,6 +33,8 @@ export interface SyncControllerDeps {
   logger: ILogger;
   host: SyncHost;
   lock: SyncLock;
+  /** The writing projects of the library at a folder, as the projects namespace syncs them. */
+  listProjects?: (libraryRoot: string, logger: ILogger) => Promise<readonly SyncProject[]>;
   /** Paper id → title pairs used to name Drive folders. */
   listTitles?: () => Promise<Iterable<readonly [string, string]>>;
   /** Builds the Drive sign-in; the logger follows the library the controller points at. */
@@ -48,6 +50,7 @@ const INTERVAL_SETTING = "sync.autoSyncIntervalMinutes";
 export class SyncController implements vscode.Disposable {
   private readonly auth: DriveSignIn;
   private readonly lock: SyncLock;
+  private readonly listProjects: SyncControllerDeps["listProjects"];
   private readonly coordinator: SyncCoordinator;
   private paths: LibraryLayout<vscode.Uri>;
   private localFs: LocalFileSystem;
@@ -64,6 +67,7 @@ export class SyncController implements vscode.Disposable {
     this.localFs = deps.localFs;
     this.logger = deps.logger;
     this.lock = deps.lock;
+    this.listProjects = deps.listProjects;
     // The logger follows setLibrary: each library writes its own log.
     const followingLogger: ILogger = { log: (...args) => this.logger.log(...args), error: (...args) => this.logger.error(...args) };
     this.auth = deps.createAuth(followingLogger);
@@ -140,7 +144,15 @@ export class SyncController implements vscode.Disposable {
   }
 
   private target(): SyncTarget {
-    return diskSyncTarget({ files: this.localFs, layout: this.paths, toPath: (uri) => uri.fsPath, lock: this.lock });
+    const { listProjects, logger } = this;
+    const libraryRoot = this.paths.root.fsPath;
+    return diskSyncTarget({
+      files: this.localFs,
+      layout: this.paths,
+      toPath: (uri) => uri.fsPath,
+      lock: this.lock,
+      ...(listProjects ? { listProjects: () => listProjects(libraryRoot, logger) } : {}),
+    });
   }
 
   private onOutcome(outcome: SyncOutcome, reason: string): void {

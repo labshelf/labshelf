@@ -37,6 +37,7 @@ export class SyncControllerLifecycle {
       createAuth: (logger) => this.deps.adapters.sync.createDriveAuth(logger),
       host: this.deps.adapters.sync.host,
       lock: this.deps.adapters.sync.lock,
+      listProjects: this.deps.adapters.sync.listProjects,
       paths: libraryLayout(root, vscode.Uri.joinPath),
       localFs: fileSystem,
       events: this.deps.events,

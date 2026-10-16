@@ -18,14 +18,10 @@ export interface ApplyContext {
   fs: LocalFileSystem;
   manifest: SyncManifest;
   resolver: RemotePathResolver;
-  /** Absolute root directory of the namespace on the local disk. */
-  localRoot: string;
+  /** The absolute local path of a namespace-relative path. */
+  localPath(path: string): string;
   /** Date used for conflict rename suffixes. */
   now: Date;
-}
-
-function joinLocal(root: string, path: string): string {
-  return `${root}/${path}`;
 }
 
 async function pushLocalToRemote(
@@ -33,7 +29,7 @@ async function pushLocalToRemote(
   op: SyncOperation,
 ): Promise<void> {
   const local = op.local!;
-  const bytes = await ctx.fs.readFile(joinLocal(ctx.localRoot, op.path));
+  const bytes = await ctx.fs.readFile(ctx.localPath(op.path));
   const parentId = await ctx.resolver.parentOf(op.path);
   const remoteFile = await ctx.provider.upload(
     parentId,
@@ -54,7 +50,7 @@ async function pullRemoteToLocal(
 ): Promise<void> {
   const remote = op.remote!;
   const bytes = await ctx.provider.download(remote.remoteId!);
-  const target = joinLocal(ctx.localRoot, op.path);
+  const target = ctx.localPath(op.path);
   await ctx.fs.ensureDir(splitPath(target).dir);
   await ctx.fs.writeFile(target, bytes);
   ctx.manifest.set(ctx.namespace, op.path, {
@@ -80,7 +76,7 @@ async function resolveConflict(
       splitPath(newPath).name,
     );
     const bytes = await ctx.provider.download(renamed.id);
-    const target = joinLocal(ctx.localRoot, newPath);
+    const target = ctx.localPath(newPath);
     await ctx.fs.ensureDir(splitPath(target).dir);
     await ctx.fs.writeFile(target, bytes);
     ctx.manifest.set(ctx.namespace, newPath, {
@@ -125,7 +121,7 @@ async function applyOne(
       result.deletedRemote += 1;
       return;
     case "remote-deleted":
-      await ctx.fs.deleteFile(joinLocal(ctx.localRoot, op.path));
+      await ctx.fs.deleteFile(ctx.localPath(op.path));
       ctx.manifest.delete(ctx.namespace, op.path);
       result.deletedLocal += 1;
       return;

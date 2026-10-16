@@ -1,7 +1,7 @@
 /** Declares the sync coordinator's types — what an app injects into it and what it reports back — and why it skips a run. */
 import type { ILogger, LocalFileSystem, LockStore } from "../../ports/index.js";
 import type { RemoteProvider } from "../provider/index.js";
-import type { NamespaceRoots, SyncLockInfo, SyncResult, SyncRunRecord } from "../engine/index.js";
+import type { NamespaceRoots, SyncLockInfo, SyncProject, SyncResult, SyncRunRecord } from "../engine/index.js";
 
 export const SKIP_NO_OAUTH_CLIENT = "no Google OAuth client configured";
 export const SKIP_NOT_SIGNED_IN = "not signed in to Google Drive";
@@ -28,6 +28,8 @@ export interface SyncTarget {
   files: LocalFileSystem;
   roots: NamespaceRoots;
   state: { fs: LocalFileSystem; manifestPath: string; lastRunPath?: string };
+  /** The writing projects on this device; absent where the app has none, and the projects namespace then does not run. */
+  listProjects?(): Promise<readonly SyncProject[]>;
   /** The cross-app lock; absent where no other app shares the local files. */
   lock?: { store: LockStore; path: string; isProcessAlive?: (pid: number) => boolean };
 }

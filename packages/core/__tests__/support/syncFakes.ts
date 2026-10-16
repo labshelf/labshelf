@@ -114,7 +114,7 @@ interface RemoteNode {
   data?: Uint8Array;
 }
 
-/** In-memory RemoteProvider with two namespace roots. */
+/** In-memory RemoteProvider with a root per namespace. */
 export class FakeRemoteProvider implements RemoteProvider {
   readonly id = "fake";
   readonly displayName = "Fake Provider";
@@ -122,13 +122,15 @@ export class FakeRemoteProvider implements RemoteProvider {
   private seq = 0;
   private clockMs = 10_000;
   private readonly nodes = new Map<string, RemoteNode>();
-  private readonly roots: Record<RemoteNamespace, string>;
+  // The projects root exists once resolveRoot creates it, as on Drive.
+  private readonly roots: Partial<Record<RemoteNamespace, string>>;
 
   constructor() {
-    this.roots = {
-      library: this.mkRoot("library"),
-      appdata: this.mkRoot("appdata"),
-    };
+    this.roots = { library: this.mkRoot("library"), appdata: this.mkRoot("appdata") };
+  }
+
+  private rootId(ns: RemoteNamespace): string {
+    return this.roots[ns] ??= this.mkRoot(ns);
   }
 
   private mkRoot(name: string): string {
@@ -162,7 +164,12 @@ export class FakeRemoteProvider implements RemoteProvider {
   }
 
   async resolveRoot(ns: RemoteNamespace): Promise<RemoteFile> {
-    return this.nodes.get(this.roots[ns])!.file;
+    return this.nodes.get(this.rootId(ns))!.file;
+  }
+
+  async findRoot(ns: RemoteNamespace): Promise<RemoteFile | undefined> {
+    const id = this.roots[ns];
+    return id ? this.nodes.get(id)!.file : undefined;
   }
 
   async list(folderId: string): Promise<RemoteFile[]> {
@@ -242,7 +249,7 @@ export class FakeRemoteProvider implements RemoteProvider {
     };
     this.nodes.set(id, {
       file,
-      parentId: this.roots[ns],
+      parentId: this.rootId(ns),
       data: Buffer.from(content, "utf8"),
     });
     return file;

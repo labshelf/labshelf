@@ -211,6 +211,7 @@ function anotherAccount(inner: FakeRemoteProvider): RemoteProvider {
     disconnect: () => inner.disconnect(),
     isConnected: () => inner.isConnected(),
     resolveRoot: async (ns) => { const root = await inner.resolveRoot(ns); return { ...root, id: `acct2:${root.id}` }; },
+    findRoot: async (ns) => { const root = await inner.findRoot(ns); return root && { ...root, id: `acct2:${root.id}` }; },
     list: (id) => inner.list(unwrap(id)),
     createFolder: (parent, name) => inner.createFolder(unwrap(parent), name),
     upload: (parent, name, content, existing) => inner.upload(unwrap(parent), name, content, existing),

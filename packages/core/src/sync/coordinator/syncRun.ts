@@ -12,6 +12,7 @@ import {
   writeSyncRunRecord,
   type SyncLockInfo,
   type SyncLockOwner,
+  type SyncProject,
   type SyncResult,
   type SyncRunRecord,
 } from "../engine/index.js";
@@ -60,6 +61,7 @@ async function withSyncLock<T>(
 async function runEngine(input: SyncRunInput): Promise<SyncResult> {
   const { target } = input;
   const folderNames = input.listTitles ? buildLibraryFolderNames(await input.listTitles()) : undefined;
+  const projects = await listProjects(input);
   const manifest = await SyncManifest.load(target.state.fs, target.state.manifestPath, SYNC_PROVIDER_ID);
   const engine = new SyncEngine({
     provider: input.createProvider(),
@@ -69,8 +71,22 @@ async function runEngine(input: SyncRunInput): Promise<SyncResult> {
     clock: input.clock,
     logger: input.logger,
     ...(folderNames ? { libraryFolderNames: folderNames } : {}),
+    ...(projects ? { projects } : {}),
   });
   return engine.run();
+}
+
+// A project list that cannot be read leaves the projects namespace out of this run, so nothing on Drive is judged
+// against a list that may be incomplete.
+async function listProjects(input: SyncRunInput): Promise<readonly SyncProject[] | undefined> {
+  try {
+    return await input.target.listProjects?.();
+  } catch (error) {
+    await input.logger.log("WARN", input.source, "Sync skipped the projects namespace: the project list cannot be read", {
+      message: errorMessage(error),
+    });
+    return undefined;
+  }
 }
 
 // The record only tells other apps when the library last synced; losing it must not fail the sync it describes.
