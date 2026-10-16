@@ -12,3 +12,6 @@ export { relatedGroups } from "./related.js";
 export type { RelatedGroups } from "./related.js";
 export { paperDetailsOf, paperStatsOf } from "./sidecarSummary.js";
 export type { SidecarSummarySource } from "./sidecarSummary.js";
+export { noteFact, paperFileFact } from "./facts/index.js";
+export { libraryTree } from "./tree/index.js";
+export type { LibraryTree, TreeChild } from "./tree/index.js";
