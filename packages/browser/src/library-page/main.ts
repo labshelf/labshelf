@@ -7,6 +7,7 @@ import { mountLibraryUi } from "@labshelf/core/dom";
 import { createBrowserLogger } from "../platform";
 import { applyTheme } from "../ui";
 import { attachLibraryHost } from "./host";
+import { attachLinkHandling } from "./openLink";
 import { createLocalStoragePrefs } from "./prefs";
 import { attachRouter } from "./router";
 import { mountSidebarTree } from "./sidebar";
@@ -35,6 +36,7 @@ function boot(): void {
   if (ui.sidebar) mountSidebarTree(ui, ui.sidebar, prefs);
   const sync = createSyncStatus();
   mountStatusBar(root, sync, (listener) => ui.store.select((s) => s.papers.length, listener));
+  attachLinkHandling(log);
   void log.log("INFO", "library", "library page mounted");
 }
 

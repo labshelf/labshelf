@@ -39,6 +39,14 @@ The minimum versions are the floor for pdf.js 6.3.
 
 Identifier detection, landing-page parsing, metadata resolution and the PDF resolver chain live in core `import/` and are shared with the other apps. `src/capture/` keeps only what needs the browser: the page probe content script, the helper tab and tab fetch (`capture/tab/`), the capture and Scholar flows, and mapping a draft to a record.
 
+## labshelf: links
+
+`web+labshelf:` links ([links.md](../contracts/links.md)) open the library page with `?link=<link>`. The page resolves the cite key through core and replaces its own tab with the reader at the page, so a click leaves no extra tab. An unknown key or a malformed link shows an error toast and a log entry.
+
+- Firefox declares the handler in `manifest.firefox.json` (`protocol_handlers`, a relative `uriTemplate`).
+- Chrome's manifest has no such key. The library page calls `navigator.registerProtocolHandler` on load when the manifest declares none, and Chrome asks the user to allow it. The page logs a refusal and carries on.
+- Opening `library-page/index.html?link=...` by hand exercises the resolution. Whether a click on a page reaches the handler needs a headed browser, because the registration needs the user's approval.
+
 ## Headless run
 
 Playwright's full Chrome for Testing can load the unpacked extension. Run it outside the sandbox:
