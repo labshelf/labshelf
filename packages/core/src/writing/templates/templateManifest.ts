@@ -27,6 +27,9 @@ export interface TemplateManifest {
   authors: string[];
 }
 
+/** What installing a template needs from its manifest; a blank template has no engine. */
+export type ProjectTemplate = Pick<TemplateManifest, "id" | "format" | "main"> & Partial<Pick<TemplateManifest, "engine">>;
+
 export type TemplateManifestResult = { ok: true; manifest: TemplateManifest } | { ok: false; reason: string };
 
 const ID_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -122,4 +125,10 @@ export function parseTemplateManifest(yamlText: string): TemplateManifestResult 
   const record = value as Record<string, unknown>;
   const problem = schemaProblem(record["schema"]);
   return problem === undefined ? readTemplateFields(record) : { ok: false, reason: problem };
+}
+
+/** Writes a manifest as template.yaml text, keys in contract order; the yaml library quotes values that need it. */
+export function serializeTemplateManifest(manifest: TemplateManifest): string {
+  const { id, name, description, category, format, engine, main, compiler, license, authors } = manifest;
+  return YAML.stringify({ schema: 1, id, name, description, category, format, engine, main, ...(compiler === undefined ? {} : { compiler }), license, authors });
 }
