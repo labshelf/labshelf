@@ -48,6 +48,13 @@ describe("importPdf", () => {
     expect(h.logs.find((l) => l.message === "Paper imported from PDF")).toMatchObject({ level: "INFO", context: { id: "vaswani2017attention" } });
   });
 
+  it("does not set statusChangedAt on a new paper", async () => {
+    const h = makeHarness();
+    const { record } = added(await importPdf(h.ctx, makeImportDeps(), await writePdf(h), ML));
+    expect(record).not.toHaveProperty("statusChangedAt");
+    expect(await h.readMeta(record.path)).not.toHaveProperty("statusChangedAt");
+  });
+
   it("writes what a read from disk returns as the same paper", async () => {
     const h = makeHarness();
     const { record } = added(await importPdf(h.ctx, makeImportDeps(), await writePdf(h), ML));

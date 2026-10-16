@@ -2,7 +2,7 @@
  * Writes a paper record to metadata.yaml and bib.bib under the ownership rules of the library-format and sync contracts:
  * tags, note and the reading status belong to whoever set them, and hasPdf is never stored.
  */
-import type { PaperRecord, PaperStatus } from "../../model/index.js";
+import type { PaperRecord } from "../../model/index.js";
 import { PDF_FILE } from "../layout.js";
 import { errorMessage } from "../../logging/index.js";
 import { MUTATIONS_MODULE, type MutationContext } from "./context.js";
@@ -26,21 +26,29 @@ export async function writePaperRecord(
   record: PaperRecord,
   options: RecordWriteOptions,
 ): Promise<PaperRecord> {
-  const { tags: _tags, note: _note, hasPdf: _hasPdf, ...rest } = record;
-  const status = options.ownsStatus ? record.status : await keptStatus(ctx, record);
+  // The status and its timestamp go together: when the file's status wins, so does the file's timestamp.
+  const { statusChangedAt: _changedAt, ...unstamped } = record;
+  const { tags: _tags, note: _note, hasPdf: _hasPdf, ...rest } = unstamped;
+  const status = options.ownsStatus ? statusFields(record) : await keptStatus(ctx, record);
   const owned: Pick<PaperRecord, "tags" | "note"> = {};
   if (options.tags !== undefined) { owned.tags = options.tags; }
   if (options.note !== undefined) { owned.note = options.note; }
-  await ctx.artifacts.writePaperArtifacts(record.path, { ...rest, status, ...owned }, ctx.paths.join(record.path, PDF_FILE));
-  return { ...record, status, ...owned };
+  await ctx.artifacts.writePaperArtifacts(record.path, { ...rest, ...status, ...owned }, ctx.paths.join(record.path, PDF_FILE));
+  return { ...unstamped, ...status, ...owned };
+}
+
+type StatusFields = Pick<PaperRecord, "status" | "statusChangedAt">;
+
+function statusFields(record: PaperRecord): StatusFields {
+  return record.statusChangedAt === undefined ? { status: record.status } : { status: record.status, statusChangedAt: record.statusChangedAt };
 }
 
 // The terminal app or a sync may have changed the status after the index was built; the file's copy wins.
-async function keptStatus(ctx: MutationContext, record: PaperRecord): Promise<PaperStatus> {
+async function keptStatus(ctx: MutationContext, record: PaperRecord): Promise<StatusFields> {
   let reason: string;
   try {
-    const status = await statusOnDisk(ctx, record.path);
-    if (status) { return status; }
+    const onDisk = await statusOnDisk(ctx, record.path);
+    if (onDisk) { return onDisk; }
     reason = "metadata.yaml holds no valid status";
   } catch (error) {
     reason = errorMessage(error);
@@ -48,5 +56,5 @@ async function keptStatus(ctx: MutationContext, record: PaperRecord): Promise<Pa
   await ctx.logger.log("WARN", MUTATIONS_MODULE, "Status on disk unreadable, keeping the indexed status", {
     id: record.id, status: record.status, reason,
   });
-  return record.status;
+  return statusFields(record);
 }

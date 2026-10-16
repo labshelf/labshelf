@@ -183,3 +183,21 @@ describe('BibTeXService.writePaperArtifacts', () => {
     });
   });
 });
+
+describe('BibTeXService.writePaperArtifacts statusChangedAt', () => {
+  it('writes statusChangedAt and reads it back', async () => {
+    const fs = memoryFs();
+    await new BibTeXService(fs).writePaperArtifacts('/lib/papers/imai1986', paper({ statusChangedAt: '2026-10-15T10:00:00.000Z' }), 'paper.pdf');
+
+    expect(metadata(fs).statusChangedAt).toBe('2026-10-15T10:00:00.000Z');
+    const meta = parsePaperMetadata(fs.files.get('/lib/papers/imai1986/metadata.yaml')!)!;
+    expect(paperRecordFromMetadata(meta, { id: 'imai1986', path: '/lib/papers/imai1986', hasPdf: false }).statusChangedAt).toBe('2026-10-15T10:00:00.000Z');
+  });
+
+  it('writes no statusChangedAt key when the paper has none', async () => {
+    const fs = memoryFs();
+    await new BibTeXService(fs).writePaperArtifacts('/lib/papers/imai1986', paper(), 'paper.pdf');
+
+    expect(metadata(fs)).not.toHaveProperty('statusChangedAt');
+  });
+});

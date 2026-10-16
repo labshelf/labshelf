@@ -69,6 +69,7 @@ IndexedDB holds only files, so an empty folder is a zero-byte `.keep` file insid
 | `textLayer` | `{state, ocrPages?, failedPages?, reason?}` | whether the PDF has selectable text |
 | `pdfVersion` | `preprint` \| `accepted` \| `published` | which version `paper.pdf` is, when its source said so; absent or anything else reads as unknown |
 | `pdfRequestedAt` | `YYYY-MM-DD` string | the day the user asked the author for a copy; absent or anything else reads as never requested |
+| `statusChangedAt` | ISO timestamp string | when `status` last changed; absent or anything else reads as unknown |
 
 Rules:
 
@@ -77,6 +78,7 @@ Rules:
 - An app writes only the keys it owns in that action. A metadata refresh does not touch `status`, `tags` or `note` (see [sync.md](sync.md#coordination-between-local-apps)).
 - `pdfVersion` belongs to the action that writes `paper.pdf`: attaching or replacing the PDF sets it, or removes it when the new file's version is unknown. Any other rewrite keeps it.
 - `pdfRequestedAt` belongs to the action that opens the request email. Any other rewrite keeps it, and the address the request went to is never stored.
+- `statusChangedAt` belongs to the action that changes `status`: it is set whenever the new status differs from the old one. Setting the same status again, creating a paper and any other rewrite keep it.
 - `bib.bib` is regenerated whenever `metadata.yaml` is written. One core service writes both. Its `file` field points at `paper.pdf` only when that file exists.
 
 ## labshelf.yaml
@@ -189,6 +191,25 @@ A project folder keeps where its user last edited in `<project>/.labshelf/state.
 - An app that edits a project's source writes the file after the cursor settles, and the Library view offers "Continue" for the project edited last.
 - A file with a missing or invalid key, or a `file` that leaves the project, reads as having no saved position.
 - Unknown keys are preserved on rewrite. A file that is not a JSON object is never overwritten.
+
+## .labshelf/checklist.json
+
+A project's Checklist keeps the items its users add by hand in `<project>/.labshelf/checklist.json`. Coauthors share them, so the file syncs with the project.
+
+```json
+{
+  "items": [
+    { "id": "k3v9q2", "text": "Ask Ana for the ablation numbers", "done": false, "createdAt": "2026-10-16T09:12:00.000Z" },
+    { "id": "p81xza", "text": "Shorten the abstract", "done": true, "createdAt": "2026-10-14T18:03:00.000Z", "doneAt": "2026-10-15T10:40:00.000Z" }
+  ]
+}
+```
+
+- `id` is a non-empty string, unique in the file, and never reused. `text` is a non-empty string. `done` is a boolean. `createdAt` and `doneAt` are ISO timestamps; `doneAt` is present only while `done` is true.
+- A missing file reads as no items.
+- An item with a missing or invalid key is not shown and is kept unchanged on rewrite. Unknown keys, at the top level and in items, are preserved on rewrite.
+- A file that is not a JSON object with an `items` array is reported and never overwritten.
+- Two devices that edit the file offline produce a conflict copy, as for any project file ([sync.md](sync.md#three-way-diff)); no item is lost.
 
 ## .labshelf/versions/
 

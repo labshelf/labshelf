@@ -55,7 +55,11 @@ async function applyPatch(ctx: MutationContext, current: PaperRecord, patch: Pap
   if (patch.tags !== undefined) { owned.tags = normalizeTags(patch.tags); }
   if (patch.note !== undefined) { owned.note = patch.note; }
   const requested = patch.pdfRequestedAt === undefined ? {} : { pdfRequestedAt: patch.pdfRequestedAt };
-  const next: PaperRecord = { ...current, ...(patch.status ? { status: patch.status } : {}), ...owned, ...requested };
+  // CONTRACT: documents/contracts/library-format.md#metadatayaml
+  const stamp = patch.status !== undefined && patch.status !== current.status
+    ? { status: patch.status, statusChangedAt: ctx.now?.() ?? new Date().toISOString() }
+    : {};
+  const next: PaperRecord = { ...current, ...stamp, ...owned, ...requested };
   const changed = next.status !== current.status
     || (owned.tags !== undefined && owned.tags.join("\n") !== (current.tags ?? []).join("\n"))
     || (owned.note !== undefined && owned.note !== (current.note ?? ""))

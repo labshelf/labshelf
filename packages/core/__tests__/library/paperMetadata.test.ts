@@ -97,3 +97,17 @@ describe("paperRecordFromMetadata pdfRequestedAt", () => {
     expect(paperRecordFromMetadata({ title: "A" }, location)).not.toHaveProperty("pdfRequestedAt");
   });
 });
+
+describe("paperRecordFromMetadata statusChangedAt", () => {
+  it("reads an ISO timestamp string", () => {
+    expect(paperRecordFromMetadata({ statusChangedAt: "2026-10-15T10:00:00.000Z" }, location).statusChangedAt).toBe("2026-10-15T10:00:00.000Z");
+  });
+
+  it.each([["yesterday"], ["15/10/2026"], [20261015], [null], [""], [new Date()]])("ignores the invalid value %p", (statusChangedAt) => {
+    expect(paperRecordFromMetadata({ statusChangedAt }, location)).not.toHaveProperty("statusChangedAt");
+  });
+
+  it("loads a sidecar that has no statusChangedAt", () => {
+    expect(paperRecordFromMetadata({ title: "A" }, location)).not.toHaveProperty("statusChangedAt");
+  });
+});

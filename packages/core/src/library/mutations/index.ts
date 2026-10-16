@@ -2,7 +2,7 @@
 export type { BatchOutcome, MutationContext, PaperArtifactWriter, PaperRef, PathOps } from "./context.js";
 export { posixPathOps } from "./pathOps.js";
 export { resolvePaperRefs } from "./paperRefs.js";
-export { readPaperOnDisk, statusOnDisk } from "./paperOnDisk.js";
+export { readPaperOnDisk } from "./paperOnDisk.js";
 export { writePaperRecord } from "./paperRecordWrite.js";
 export type { RecordWriteOptions } from "./paperRecordWrite.js";
 export { editPaperTags, setPaperStatus, updatePaperFields } from "./paperFields.js";

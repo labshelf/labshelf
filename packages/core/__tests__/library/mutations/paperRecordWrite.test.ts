@@ -19,6 +19,23 @@ describe("writePaperRecord", () => {
     expect(await h.readMeta(FOLDER)).toMatchObject({ title: "Attention Is All You Need", status: "reading" });
   });
 
+  it("keeps the on-disk statusChangedAt along with the status when ownsStatus is false", async () => {
+    const h = makeHarness();
+    await h.seedPaper(FOLDER, { title: "Attention", status: "reading", statusChangedAt: "2025-05-05T00:00:00.000Z" });
+    const written = await writePaperRecord(
+      h.ctx, { ...indexed, statusChangedAt: "2020-01-01T00:00:00.000Z" }, { ownsStatus: false },
+    );
+    expect(written).toMatchObject({ status: "reading", statusChangedAt: "2025-05-05T00:00:00.000Z" });
+    expect(await h.readMeta(FOLDER)).toMatchObject({ status: "reading", statusChangedAt: "2025-05-05T00:00:00.000Z" });
+  });
+
+  it("does not invent a statusChangedAt the file lacks when ownsStatus is false", async () => {
+    const h = makeHarness();
+    await h.seedPaper(FOLDER, { title: "Attention", status: "reading" });
+    await writePaperRecord(h.ctx, { ...indexed, statusChangedAt: "2020-01-01T00:00:00.000Z" }, { ownsStatus: false });
+    expect(await h.readMeta(FOLDER)).not.toHaveProperty("statusChangedAt");
+  });
+
   it("writes the status the caller owns", async () => {
     const h = makeHarness();
     await h.seedPaper(FOLDER, { title: "Attention", status: "reading" });

@@ -56,7 +56,12 @@ export function paperRecordFromMetadata(meta: Record<string, unknown>, location:
   if (typeof meta["note"] === "string") { record.note = meta["note"]; }
   if (isPdfVersion(meta["pdfVersion"])) { record.pdfVersion = meta["pdfVersion"]; }
   if (isIsoDay(meta["pdfRequestedAt"])) { record.pdfRequestedAt = meta["pdfRequestedAt"]; }
+  if (isIsoTimestamp(meta["statusChangedAt"])) { record.statusChangedAt = meta["statusChangedAt"]; }
   return record;
+}
+
+function isIsoTimestamp(value: unknown): value is string {
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value) && Number.isFinite(Date.parse(value));
 }
 
 function isIsoDay(value: unknown): value is string {

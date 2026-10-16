@@ -213,3 +213,50 @@ describe("setPaperStatus / editPaperTags", () => {
     expect(await h.readMeta(`${PAPERS}/p1`)).not.toHaveProperty("tags");
   });
 });
+
+describe("statusChangedAt", () => {
+  const CHANGED = "2025-05-05T00:00:00.000Z";
+
+  it("is set to the context clock when updatePaperFields changes the status", async () => {
+    const h = await withBase();
+    const next = await updatePaperFields(h.ctx, P1, { status: "reading" });
+    expect(next?.statusChangedAt).toBe("2026-01-01T00:00:00.000Z");
+    expect(await h.readMeta(P1)).toMatchObject({ status: "reading", statusChangedAt: "2026-01-01T00:00:00.000Z" });
+  });
+
+  it("is set by setPaperStatus on every paper whose status differs", async () => {
+    const h = await withBase();
+    const outcome = await setPaperStatus(h.ctx, [{ id: "p1", path: P1 }], "done");
+    expect(outcome.records[0]?.statusChangedAt).toBe("2026-01-01T00:00:00.000Z");
+    expect(await h.readMeta(P1)).toMatchObject({ status: "done", statusChangedAt: "2026-01-01T00:00:00.000Z" });
+  });
+
+  it("replaces an older value when the status changes again", async () => {
+    const h = makeHarness();
+    await h.seedPaper(P1, { title: "T", status: "reading", statusChangedAt: CHANGED });
+    await updatePaperFields(h.ctx, P1, { status: "done" });
+    expect((await h.readMeta(P1))["statusChangedAt"]).toBe("2026-01-01T00:00:00.000Z");
+  });
+
+  it("keeps the old value when the same status is set again", async () => {
+    const h = makeHarness();
+    await h.seedPaper(P1, { title: "T", status: "reading", statusChangedAt: CHANGED });
+    await setPaperStatus(h.ctx, [{ id: "p1", path: P1 }], "reading");
+    await updatePaperFields(h.ctx, P1, { status: "reading", note: "n" });
+    expect((await h.readMeta(P1))["statusChangedAt"]).toBe(CHANGED);
+  });
+
+  it("stays absent when the same status is set on a record without it", async () => {
+    const h = await withBase();
+    await updatePaperFields(h.ctx, P1, { status: "unread", note: "n" });
+    expect(await h.readMeta(P1)).not.toHaveProperty("statusChangedAt");
+  });
+
+  it("is kept by a patch without status", async () => {
+    const h = makeHarness();
+    await h.seedPaper(P1, { title: "T", status: "reading", statusChangedAt: CHANGED });
+    await updatePaperFields(h.ctx, P1, { note: "n" });
+    await editPaperTags(h.ctx, [{ id: "p1", path: P1 }], ["x"], []);
+    expect((await h.readMeta(P1))["statusChangedAt"]).toBe(CHANGED);
+  });
+});
