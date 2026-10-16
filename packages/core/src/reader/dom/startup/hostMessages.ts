@@ -36,7 +36,7 @@ export function bindHostMessages({ ctx, ui, keyboard, hover, reloader, sourceSyn
   host.on("reloadDocument", (msg) => {
     // Marks describe the document they came with; marks sent after this request belong to the reloaded one.
     changeMarks.show([]);
-    reloader.reload(msg.pdfUrl).catch((err: unknown) => ui.buildBanner.showReloadError(errorMessage(err)));
+    reloader.reload(msg.pdfUrl).then(() => ui.previewChrome?.documentChanged()).catch((err: unknown) => ui.buildBanner.showReloadError(errorMessage(err)));
   });
   // The preview chrome owns the banner: it weighs the build state against the roots.
   host.on("buildStatus", (msg) => ui.previewChrome?.applyBuild(msg.state, msg.errors));

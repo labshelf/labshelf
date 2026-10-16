@@ -30,7 +30,7 @@ function setup() {
   const openLogs = logs.open;
   const banner = new BuildBanner();
   const chrome = mountPreviewChrome({
-    actions, banner, post, logs, visiblePoint: () => ({ page: 3, x: 0, y: 0 }),
+    actions, banner, post, logs, visiblePoint: () => ({ page: 3, x: 0, y: 0 }), countBodyPages: async () => 1,
   });
   const buttons = () => [...actions.querySelectorAll("button")];
   return { chrome, actions, post, logs, openLogs, buttons, notice: document.getElementById("build-banner")! };

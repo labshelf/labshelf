@@ -15,7 +15,7 @@ function previewPorts(ctx: HostContext, command: string) {
 
 export const previewHandlers: Pick<
   MessageHandlers,
-  "showSource" | "lookupCitation" | "openCitedPaper" | "recompile" | "revealCursor" | "openProblem" | "openRawLog"
+  "showSource" | "lookupCitation" | "openCitedPaper" | "recompile" | "revealCursor" | "openProblem" | "openRawLog" | "bodyPages"
 > = {
   showSource: async (ctx, msg) => {
     await previewPorts(ctx, "showSource")?.showSource(msg.point);
@@ -49,5 +49,9 @@ export const previewHandlers: Pick<
 
   openRawLog: async (ctx, msg) => {
     await previewPorts(ctx, "openRawLog")?.openRawLog(msg.root);
+  },
+
+  bodyPages: async (ctx, msg) => {
+    await previewPorts(ctx, "bodyPages")?.bodyPages?.(msg.root, msg.contentPages);
   },
 };

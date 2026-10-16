@@ -4,7 +4,7 @@
 import { clampPage, type WebviewToHost } from "../../index.js";
 import { BuildBanner, Cheatsheet, SelectionBubble, StatusPill, type ThemeController, openThemePopover, Toolbar } from "../chrome/index.js";
 import { FindBar, NavHistory, visiblePoint, ZoomController } from "../navigation/index.js";
-import { LogsView, mountPreviewChrome, type PreviewChrome } from "../preview/index.js";
+import { countBodyPages, LogsView, mountPreviewChrome, type PreviewChrome } from "../preview/index.js";
 import type { ReaderContext } from "../session/index.js";
 import { AnnotationsTab, OutlineTab, Sidebar, ThumbnailsTab } from "../sidebar/index.js";
 import { ReadingStateReporter } from "./readingStateReporter.js";
@@ -70,6 +70,7 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
     ui.openLogs = (rootPath) => logs.open(rootPath);
     ui.previewChrome = mountPreviewChrome({
       actions: toolbar.actions, banner: buildBanner, post, logs, visiblePoint: () => visiblePoint(ctx),
+      countBodyPages: () => countBodyPages(ctx.pdfDocument),
     });
   }
   return ui;

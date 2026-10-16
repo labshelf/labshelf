@@ -4,6 +4,7 @@ import type { BuildState, PagePoint, PreviewRoots, WebviewToHost } from "../../i
 import type { BuildBanner } from "../chrome/index.js";
 import { iconButton } from "../elements/index.js";
 import type { LogsView } from "./logsView.js";
+import { PageChip } from "./pageChip.js";
 import { PreviewNotice } from "./previewNotice.js";
 
 interface PreviewChromeDeps {
@@ -12,6 +13,8 @@ interface PreviewChromeDeps {
   banner: BuildBanner;
   post: (msg: WebviewToHost) => void;
   logs: Pick<LogsView, "open" | "setRoots">;
+  /** Counts the body pages of the open document. */
+  countBodyPages: () => Promise<number>;
   /** The point at the top-left of the visible part of the current page. */
   visiblePoint: () => PagePoint;
 }
@@ -19,6 +22,8 @@ interface PreviewChromeDeps {
 export interface PreviewChrome {
   applyRoots(roots: PreviewRoots): void;
   applyBuild(state: BuildState, errors: number): void;
+  /** The open document was replaced, so its body pages are counted again. */
+  documentChanged(): void;
 }
 
 const CODE_TO_PDF = "Show the cursor in the PDF";
@@ -34,7 +39,7 @@ function retitle(button: HTMLButtonElement, title: string): void {
  * Adds the preview's actions to the toolbar slot.
  * @returns handles the reader's host messages call to refresh the actions and the notice.
  */
-export function mountPreviewChrome({ actions, banner, post, logs, visiblePoint }: PreviewChromeDeps): PreviewChrome {
+export function mountPreviewChrome({ actions, banner, post, logs, visiblePoint, countBodyPages }: PreviewChromeDeps): PreviewChrome {
   const notice = new PreviewNotice(banner, (rootPath) => logs.open(rootPath));
   const recompile = iconButton(icon("refresh"), "Recompile", "rd-preview-recompile");
   const toPdf = iconButton(icon("arrow-right"), CODE_TO_PDF);
@@ -44,6 +49,7 @@ export function mountPreviewChrome({ actions, banner, post, logs, visiblePoint }
   toCode.addEventListener("click", () => post({ command: "showSource", point: visiblePoint() }));
   actions.replaceChildren(recompile, toPdf, toCode);
   actions.hidden = false;
+  const chip = new PageChip({ actions, post, countBodyPages });
 
   return {
     applyRoots(roots) {
@@ -53,6 +59,7 @@ export function mountPreviewChrome({ actions, banner, post, logs, visiblePoint }
       retitle(toCode, linked ? PDF_TO_CODE : NO_SOURCE_LINKS);
       notice.setRoots(roots);
       logs.setRoots(roots);
+      chip.setRoots(roots);
     },
     applyBuild(state, errors) {
       const busy = state === "building";
@@ -60,5 +67,6 @@ export function mountPreviewChrome({ actions, banner, post, logs, visiblePoint }
       recompile.innerHTML = icon(busy ? "loader" : "refresh");
       notice.setBuild(state, errors);
     },
+    documentChanged: () => chip.documentChanged(),
   };
 }

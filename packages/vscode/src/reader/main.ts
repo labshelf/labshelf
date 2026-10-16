@@ -5,6 +5,7 @@
 import "@labshelf/core/styles/tokens.css";
 import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/reader.css";
+import "@labshelf/core/styles/arc-mark.css";
 import "@labshelf/core/styles/preview.css";
 import type { ReaderBootParams } from "@labshelf/core";
 import { PerfMarks, $, startReader } from "@labshelf/core/dom";

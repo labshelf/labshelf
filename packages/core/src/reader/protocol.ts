@@ -148,7 +148,9 @@ export type WebviewToHost =
   /** Opens the source of the `index`-th problem of a build root. */
   | { command: "openProblem"; root: string; index: number }
   /** Opens the raw build log of a build root. */
-  | { command: "openRawLog"; root: string };
+  | { command: "openRawLog"; root: string }
+  /** Reports how many pages of the PDF a build root produced hold the paper's body. */
+  | { command: "bodyPages"; root: string; contentPages: number };
 
 const isStr = (v: unknown): v is string => typeof v === "string";
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
@@ -203,6 +205,8 @@ export function isWebviewMessage(raw: unknown): raw is WebviewToHost {
       return isRoot(m["root"]) && isNum(m["index"]) && Number.isInteger(m["index"]) && m["index"] >= 0;
     case "openRawLog":
       return isRoot(m["root"]);
+    case "bodyPages":
+      return isRoot(m["root"]) && isNum(m["contentPages"]) && Number.isInteger(m["contentPages"]) && m["contentPages"] >= 0;
     default:
       return false;
   }

@@ -4,14 +4,13 @@ import { promises as fs } from "node:fs";
 import type { PdfjsLoader } from "../../../import/index.js";
 import type { PdfFacts, PdfPageFacts } from "../checkTypes.js";
 import { walkOperators, type OperatorList } from "../operatorWalk.js";
-
-interface TextItem { str?: string; hasEOL?: boolean }
+import { pdfTextLines, type PdfTextItem } from "../pdfTextLines.js";
 
 interface FontObject { name?: string; isType3Font?: boolean }
 
 interface CheckPage {
   getOperatorList(): Promise<OperatorList>;
-  getTextContent(): Promise<{ items: TextItem[] }>;
+  getTextContent(): Promise<{ items: PdfTextItem[] }>;
   commonObjs: { has(id: string): boolean; get(id: string): unknown };
 }
 
@@ -21,18 +20,6 @@ interface CheckDocument {
   getMetadata(): Promise<{ info?: Record<string, unknown> }>;
 }
 
-/** pdf.js ends a line with an empty item flagged `hasEOL`; the items between are pieces of one line. */
-function textLines(items: TextItem[]): string[] {
-  const lines: string[] = [];
-  let line = "";
-  for (const item of items) {
-    line += item.str ?? "";
-    if (item.hasEOL === true) { lines.push(line); line = ""; }
-  }
-  if (line !== "") { lines.push(line); }
-  return lines;
-}
-
 async function pageFacts(page: CheckPage, OPS: Record<string, number>): Promise<PdfPageFacts> {
   // INVARIANT: a page's fonts are in commonObjs once its operator list has resolved.
   const { fontIds, images } = walkOperators(await page.getOperatorList(), OPS);
@@ -40,7 +27,7 @@ async function pageFacts(page: CheckPage, OPS: Record<string, number>): Promise<
     const font = (page.commonObjs.has(id) ? page.commonObjs.get(id) : undefined) as FontObject | undefined;
     return { name: font?.name ?? id, type3: font?.isType3Font === true };
   });
-  return { lines: textLines((await page.getTextContent()).items), fonts, images };
+  return { lines: pdfTextLines((await page.getTextContent()).items), fonts, images };
 }
 
 function textFields(info: Record<string, unknown> | undefined): Record<string, string> {

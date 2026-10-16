@@ -37,3 +37,10 @@ button.rd-log-entry:focus-visible { outline: 1px solid var(--ls-focus); outline-
   .rd-log-entry { flex-wrap: wrap; }
   .rd-log-location { flex-basis: 100%; padding-left: calc(14px + var(--ls-space-3)); }
 }
+
+/* Page chip: the Arc mark's label stays visible beside the mark instead of appearing on hover. */
+.rd-toolbar-actions .ls-arc-mark { width: auto; align-items: center; gap: var(--ls-space-2); }
+.rd-toolbar-actions .ls-arc-mark .ls-arc { width: var(--ls-space-6); }
+.rd-toolbar-actions .ls-arc-mark .ls-arc-mark-label {
+  position: static; margin: 0; padding: 0; background: none; opacity: 1; transform: none; line-height: normal;
+}

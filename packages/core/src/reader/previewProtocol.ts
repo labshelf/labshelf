@@ -68,6 +68,8 @@ export interface PreviewRoots {
   focused: string;
   shown: string;
   roots: PreviewRoot[];
+  /** The project's page limit; absent when it sets none. */
+  pageLimit?: number;
 }
 
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);

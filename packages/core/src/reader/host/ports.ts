@@ -37,6 +37,8 @@ export interface PreviewPorts {
   openProblem(root: string, index: number): Promise<void>;
   /** Opens the raw build log of a build root. */
   openRawLog(root: string): Promise<void>;
+  /** The pages of a build root's PDF that hold the paper's body, as the reader counted them. */
+  bodyPages?(root: string, contentPages: number): Promise<void> | void;
 }
 
 export interface ReaderHostPorts {
