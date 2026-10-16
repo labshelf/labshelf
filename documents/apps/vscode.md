@@ -69,15 +69,16 @@ pnpm dev:vscode                        # watches the host and the webview bundle
 Jest mocks `vscode`, and plain Node passes pdf.js's "am I Node?" check, so both hide bugs that appear only in the extension host. The host is an Electron utility process (`process.type === "utility"`), and pdf.js treats it as a browser. Any change to import, OCR, the text layer or pdf.js usage must run in a real host:
 
 1. Create a dummy extension: a `package.json` with `main` and empty `activationEvents`, plus a runner file that exports `run = async () => {…}`. In the runner, `require("vscode")` is real. Require the bundled `out/extension.js` (build first), or bundle the module under test with esbuild.
-2. Launch it directly, outside the sandbox. The `code` CLI wrapper detaches, so call the binary:
+2. Launch it directly, outside the sandbox. The `code` CLI wrapper detaches, so call the binary. Use a copy downloaded with `@vscode/test-electron`, never `/Applications/Visual Studio Code.app`: a host started from the installed app closes the user's own windows.
 
    ```bash
-   env -u ELECTRON_RUN_AS_NODE "/Applications/Visual Studio Code.app/Contents/MacOS/Code" --no-sandbox \
+   env -u ELECTRON_RUN_AS_NODE "<test-electron copy>/Contents/MacOS/Code" --no-sandbox \
      --user-data-dir=<SHORT path> --extensions-dir=<scratch> --disable-workspace-trust --skip-welcome \
      --skip-release-notes --disable-telemetry --disable-updates \
      --extensionDevelopmentPath=<dummy> --extensionTestsPath=<runner.js> <workspace>
    ```
 
+   `--extensionTestsPath` puts VS Code in test mode, which refuses authentication dialogs. A check that needs an interactive sign-in launches without it.
 3. Keep `--user-data-dir` under about 103 characters, because of the IPC socket path limit. The scratchpad path is too long, so symlink it from a short path and delete the symlink after the run.
 4. Write runner files with a quoted heredoc (`<<'EOF'`).
 5. Stop a stuck run by its own process only: keep the PID of the binary you launched (`$!`) and `kill <pid>`, or match its unique flag with `pkill -f -- "--user-data-dir=<SHORT path>"`. Never `pkill`/`killall` by app name (`Code`, `Electron`, `Visual Studio Code`): it matches the user's own windows and closes every one of them.
