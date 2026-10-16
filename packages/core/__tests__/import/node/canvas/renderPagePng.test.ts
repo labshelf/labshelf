@@ -5,7 +5,7 @@ import { renderPagePng } from '../../../../src/import/node/canvas/renderPagePng.
 describe('renderPagePng', () => {
   it('paints a white sheet, renders the page onto it and returns the PNG', async () => {
     const calls: string[] = [];
-    const context = { fillStyle: '', fillRect: jest.fn() };
+    const context = { fillStyle: '', fillRect: jest.fn(), getImageData: () => ({ data: new Uint8ClampedArray(0) }) };
     context.fillRect.mockImplementation((): void => { calls.push(`fill ${context.fillStyle}`); });
     const png = Buffer.from([137, 80, 78, 71]);
     const canvas = { width: 0, height: 0, getContext: () => context, toBuffer: jest.fn(() => png) };

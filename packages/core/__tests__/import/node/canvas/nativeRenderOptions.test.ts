@@ -3,7 +3,7 @@ import { nativeRenderOptions } from '../../../../src/import/node/canvas/nativeRe
 import type { NativeCanvasModule } from '../../../../src/import/node/canvas/index.js';
 
 describe('nativeRenderOptions', () => {
-  const context = { fillStyle: '', fillRect: jest.fn() };
+  const context = { fillStyle: '', fillRect: jest.fn(), getImageData: () => ({ data: new Uint8ClampedArray(0) }) };
   const canvasModule: NativeCanvasModule = {
     createCanvas: jest.fn((width: number, height: number) => ({
       width,
