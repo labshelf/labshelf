@@ -9,8 +9,8 @@ import type { CitationWorkspace } from "./citationWorkspace.js";
 
 // Typst has no built-in language id, so sources are matched by file name.
 const SOURCES = [
-  { selector: { scheme: "file", pattern: "**/*.tex" }, triggers: ["{", ","] },
-  { selector: { scheme: "file", pattern: "**/*.typ" }, triggers: ["@", "<"] },
+  { selector: { scheme: "file", pattern: "**/*.tex" }, triggers: ["{", ",", "["] },
+  { selector: { scheme: "file", pattern: "**/*.typ" }, triggers: ["@", "<", "["] },
 ];
 
 export function registerCitationProviders(

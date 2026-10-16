@@ -1,10 +1,9 @@
 /** Regenerates a project's labshelf.bib from the keys its sources cite and loads it from the main file on the first citation. */
 // CONTRACT: documents/contracts/library-format.md#labshelfbib
 
-import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { writeFileAtomic } from "../../../library/node/index.js";
+import { readOptionalFile, writeFileAtomic } from "../../../library/node/index.js";
 import type { PaperRecord } from "../../../model/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import { DEFAULT_BIBLIOGRAPHY, type ProjectFormat, type ProjectSettings } from "../../project/index.js";
@@ -12,6 +11,7 @@ import { updateProjectSettings } from "../../project/node/index.js";
 import { generateBibliography } from "../bibliographyFile.js";
 import { withBibliographyLine } from "../bibliographyLine.js";
 import { scanCitationKeys } from "../citationKeys.js";
+import { DISK_ONLY, projectSources, type OpenSources } from "./projectSources.js";
 
 export interface CitingProject {
   folder: string;
@@ -28,40 +28,14 @@ export interface BibliographyUpdate {
   mainLine: "present" | "added" | "conflict" | "no-main" | "not-needed";
 }
 
-/** The host's open editors: their unsaved text wins over the disk, and edits to an open file go through the editor. */
-export interface OpenSources {
-  /** The text of an open document, or undefined when the file is not open. */
-  text(file: string): string | undefined;
-  /** Replaces the whole text of an open document; false when the file is not open. */
-  replace(file: string, text: string): Promise<boolean>;
-}
-
-const DISK_ONLY: OpenSources = { text: () => undefined, replace: async () => false };
-
-const SOURCE_EXTENSION: Record<ProjectFormat, string> = { latex: ".tex", typst: ".typ" };
-
-async function readOptional(file: string): Promise<string | undefined> {
-  return fs.readFile(file, "utf8").catch((error: NodeJS.ErrnoException) => {
-    if (error.code === "ENOENT") { return undefined; }
-    throw error;
-  });
-}
-
 /** Keys cited anywhere in the project's sources; hidden folders and node_modules are not sources. */
 export async function projectCitationKeys(
   folder: string, format: ProjectFormat, open: OpenSources = DISK_ONLY,
 ): Promise<string[]> {
   const keys = new Set<string>();
-  const visit = async (dir: string): Promise<void> => {
-    for (const entry of await fs.readdir(dir, { withFileTypes: true })) {
-      const full = path.join(dir, entry.name);
-      if (entry.isDirectory() && !entry.name.startsWith(".") && entry.name !== "node_modules") { await visit(full); }
-      if (entry.isFile() && entry.name.endsWith(SOURCE_EXTENSION[format])) {
-        for (const key of scanCitationKeys(format, open.text(full) ?? await fs.readFile(full, "utf8"))) { keys.add(key); }
-      }
-    }
-  };
-  await visit(folder);
+  for await (const source of projectSources(folder, format, open)) {
+    for (const key of scanCitationKeys(format, source.text)) { keys.add(key); }
+  }
   return [...keys];
 }
 
@@ -70,7 +44,7 @@ async function addMainLine(
 ): Promise<BibliographyUpdate["mainLine"]> {
   if (project.main === undefined) { return "no-main"; }
   const mainPath = path.join(project.folder, project.main);
-  const text = open.text(mainPath) ?? await readOptional(mainPath);
+  const text = open.text(mainPath) ?? await readOptionalFile(mainPath);
   if (text === undefined) { return "no-main"; }
   const relative = path.relative(path.dirname(mainPath), path.join(project.folder, bibFile)).split(path.sep).join("/");
   const result = withBibliographyLine(project.settings.format, text, relative);
@@ -92,7 +66,7 @@ export async function updateProjectBibliography(
   const bibFile = project.settings.bibliography ?? DEFAULT_BIBLIOGRAPHY;
   const bibPath = path.join(project.folder, bibFile);
   const generated = generateBibliography(await projectCitationKeys(project.folder, project.settings.format, open), papers);
-  const current = await readOptional(bibPath);
+  const current = await readOptionalFile(bibPath);
   const needed = generated.resolved.length > 0 || current !== undefined;
   const written = needed && current !== generated.text;
   if (written) { await writeFileAtomic(bibPath, generated.text); }

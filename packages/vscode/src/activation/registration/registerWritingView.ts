@@ -66,7 +66,11 @@ export function registerWritingView(context: vscode.ExtensionContext, controller
   registerLatexWorkshopNotice({ context, host, projects });
   const session = (): ReturnType<CitationWorkspace["session"]> => {
     const services = controller.currentServices();
-    return services ? { listPapers: () => services.paperService.listPapers(), logger: services.logger } : undefined;
+    return services ? {
+      listPapers: () => services.paperService.listPapers(),
+      highlightsOf: (paperId) => services.paperDataStore.getAnnotations(paperId),
+      logger: services.logger,
+    } : undefined;
   };
   registerCitationProviders(context, { projects, session });
   registerLabshelfLinks(context, { session });

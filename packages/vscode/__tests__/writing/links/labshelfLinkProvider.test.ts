@@ -34,7 +34,7 @@ describe("labshelf link provider", () => {
 
   it("does not read the library for a text without links", async () => {
     const listPapers = jest.fn(async () => []);
-    await provide("plain text", { session: () => ({ listPapers, logger: citationWorkspace().logger }) });
+    await provide("plain text", { session: () => ({ listPapers, highlightsOf: async () => [], logger: citationWorkspace().logger }) });
     expect(listPapers).not.toHaveBeenCalled();
   });
 });

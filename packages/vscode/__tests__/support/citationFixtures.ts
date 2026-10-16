@@ -1,5 +1,5 @@
 // Builds the papers and the citation workspace the citation provider tests share.
-import type { PaperRecord } from "@labshelf/core";
+import type { Annotation, PaperRecord } from "@labshelf/core";
 import type { CitationWorkspace } from "../../src/writing/citations/index.js";
 import { fakeLogger, fakeProjects, readyEntry } from "./writingFixtures";
 
@@ -12,12 +12,20 @@ export const PAPERS: PaperRecord[] = [
   paper({ id: "p2", title: "Deep Residual Learning", citeKey: "he2016", authors: ["Kaiming He"], year: 2016 }),
 ];
 
+export function highlight(over: Partial<Annotation> = {}): Annotation {
+  return {
+    id: "h1", paperId: "p1", type: "highlight", pageNumber: 4, content: "Attention is all you need",
+    createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", ...over,
+  };
+}
+
 export function citationWorkspace(
   format: "latex" | "typst" = "latex", papers: PaperRecord[] = PAPERS,
+  annotations: Record<string, Annotation[]> = {},
 ): CitationWorkspace & { logger: ReturnType<typeof fakeLogger> } {
   const logger = fakeLogger();
   const entry = readyEntry("/code/repo", {
     main: format === "latex" ? "main.tex" : "main.typ", settings: { id: "repo", format },
   });
-  return { projects: fakeProjects([entry]), session: () => ({ listPapers: async () => papers, logger }), logger };
+  return { projects: fakeProjects([entry]), session: () => ({ listPapers: async () => papers, highlightsOf: async (id) => annotations[id] ?? [], logger }), logger };
 }

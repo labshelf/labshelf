@@ -1,12 +1,14 @@
 // Gives the citation providers the writing project a file belongs to and the library papers to cite.
 import * as path from "node:path";
 
-import type { ILogger, PaperRecord } from "@labshelf/core";
+import type { Annotation, ILogger, PaperRecord } from "@labshelf/core";
 import type { WritingProjects } from "../projectStore.js";
 import { owningProject, type ReadyProject } from "../mainDocument.js";
 
-interface CitationSession {
+export interface CitationSession {
   listPapers(): Promise<PaperRecord[]>;
+  /** The paper's annotations; the page-argument completion keeps the highlights that have text. */
+  highlightsOf(paperId: string): Promise<Annotation[]>;
   logger: ILogger;
 }
 

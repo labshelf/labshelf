@@ -109,7 +109,7 @@ describe("provider registration", () => {
     setup();
     const completion = (vscode.languages.registerCompletionItemProvider as jest.Mock).mock.calls;
     expect(completion.map(([selector, , ...triggers]) => [selector.pattern, triggers])).toEqual([
-      ["**/*.tex", ["{", ","]], ["**/*.typ", ["@", "<"]],
+      ["**/*.tex", ["{", ",", "["]], ["**/*.typ", ["@", "<", "["]],
     ]);
     expect(vscode.languages.registerHoverProvider).toHaveBeenCalledTimes(2);
     expect(vscode.languages.registerDocumentLinkProvider).toHaveBeenCalledTimes(2);
