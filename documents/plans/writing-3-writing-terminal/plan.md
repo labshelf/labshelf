@@ -4,11 +4,13 @@ Status: draft
 Size: G — terminal commands over core logic built by the other writing plans; 2 sessions.
 Pending decisions: 0
 
+This plan uses the directory format. Read this file, then only `sessions/01.md` or `sessions/02.md`. `log.md` is append-only: add lines with `>>`, never read it whole.
+
 ## 1. Goal
 
 People who write in Neovim, Helix or Emacs get the same writing environment from the `labshelf` command: the zero-configuration build with clear errors, a citation picker their editor can call, the pre-submission check, and all of it in CI so a pull request fails before a broken or de-anonymised paper goes out.
 
-Builds on [writing-core.plan.md](../../archive/writing-core.plan.md), [submission-tools.plan.md](2-submission-tools.plan.md) and [research-links.plan.md](2-research-links.plan.md).
+Builds on [writing-core.plan.md](../../archive/writing-core.plan.md), [submission-tools](../writing-2-submission-tools/plan.md) and [research-links](../writing-2-research-links/plan.md).
 
 ## 2. Decisions
 
@@ -41,50 +43,23 @@ Builds on [writing-core.plan.md](../../archive/writing-core.plan.md), [submissio
 | install | core | from research-links |
 | commands, picker, Writing pane | `packages/terminal/src/cli/`, `packages/terminal/src/ui/` | glue only |
 
-## 6. Sessions and steps
+## 6. Sessions
 
-### Session 1 — build, cite, projects
+| Session | File | Deliverable | Commit |
+|---|---|---|---|
+| 1 | [sessions/01.md](sessions/01.md) | build, cite, projects (A1–A3) | yes, one per step |
+| 2 | [sessions/02.md](sessions/02.md) | check, install, CI (A4, A5) | yes |
 
-- **Starts from:** writing-core done; clean tree.
-- **Ends with:** A1–A3
-- **Commit:** yes, one per step
+Runner tiers:
 
-| Id | Step | Depends on | Runner | Done when | OK |
-|---|---|---|---|---|---|
-| S1 | `labshelf build` and `--watch` | — | M · implementer (sonnet) | A1 | [ ] |
-| S2 | `labshelf cite` picker | — | M · implementer (sonnet) | A2 | [ ] |
-| S3 | `labshelf projects` and the TUI Writing pane | — | M · implementer (sonnet) | A3 | [ ] |
-| S4 | Finish, plus a terminal frame `verify` run | S1–S3 | `finish` + `verify` skills | gate passes | [ ] |
-
-### Session 2 — check, install, CI
-
-- **Starts from:** session 1 committed; submission-tools session 2 and research-links session 4 done
-- **Ends with:** A4, A5
-- **Commit:** yes
-
-| Id | Step | Depends on | Runner | Done when | OK |
-|---|---|---|---|---|---|
-| S5 | `labshelf check` and `labshelf install` | — | M · implementer (sonnet) | A4 | [ ] |
-| S6 | CI example and docs | S5 | M · implementer (sonnet) | A5 | [ ] |
-| S7 | Finish | S5–S6 | `finish` skill | gate passes | [ ] |
-
-### Step blocks
-
-#### S1 — Build
-
-- **Do:** a `build` command calling the core runner; the first-run toolchain prompt in the terminal; output lines `path:line: severity: message` then the hint indented; exit codes 0 / 1 (errors) / 2 (toolchain missing).
-
-#### S2 — Cite
-
-- **Do:** a full-screen picker reusing the TUI list and the core search; print the formatted citation; regenerate `labshelf.bib` in the project of the current directory.
-- **Context:** stdout carries only the citation, so editors can capture it; the UI draws on the TTY.
-
-#### S5–S6 — CI
-
-- **Do:** `check` and `install` commands with `--json` output; a workflow example installing LabShelf and Tectonic, running `labshelf install`, `labshelf build` and `labshelf check`, and uploading `main.pdf`.
+- **H**: the session model (Opus or Fable). Use it for design, algorithms and judgment.
+- **M**: Sonnet. Use it for well-specified implementation, moves and tests.
+- **L**: Haiku. Use it for gates, import fixes and commits.
 
 ## 7. Risks
 
 - **R1** The picker and stdout conflict in editors that capture output. — Draw on `/dev/tty`, print only the result on stdout.
 
 ## 8. Log
+
+See [log.md](log.md).

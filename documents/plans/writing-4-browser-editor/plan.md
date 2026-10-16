@@ -4,11 +4,13 @@ Status: draft
 Size: GG — a new app surface built on a large dependency, a web build of the VS Code extension, and a file system over Drive; 4 sessions, the first a go/no-go spike.
 Pending decisions: 1
 
+This plan uses the directory format. Read this file, then only the `sessions/NN.md` of your session. `log.md` is append-only: add lines with `>>`, never read it whole.
+
 ## 1. Goal
 
 Anyone can write a Typst (or LaTeX) project from the browser extension, with no install and no account other than their Google Drive: the same editor features as in VS Code, live Typst preview, comments and live sessions with coauthors. This gives Typst users for free what typst.app charges for (review comments, more storage), and keeps their files in their own Drive.
 
-Builds on [writing-core.plan.md](../../archive/writing-core.plan.md), [writing-sync.plan.md](2-writing-sync.plan.md) and [writing-browser-bridge.plan.md](3-writing-browser-bridge.plan.md).
+Builds on [writing-core.plan.md](../../archive/writing-core.plan.md), [writing-sync.plan.md](../writing-2-writing-sync/plan.md) and [writing-browser-bridge.plan.md](../writing-3-writing-browser-bridge/plan.md).
 
 ## 2. Decisions
 
@@ -48,73 +50,16 @@ Open (blocks approval):
 | project file system | `packages/browser/src/editor/` | `FileSystemProvider` over the IndexedDB project store |
 | OCT in the browser | `packages/browser/src/editor/` | `open-collaboration-monaco` or the OCT web extension, per the spike |
 
-## 6. Sessions and steps
+## 6. Sessions
 
-### Session 1 — spike
+| Session | File | Deliverable | Commit |
+|---|---|---|---|
+| 1 | [sessions/01.md](sessions/01.md) | Spike: Q1 answered with numbers | note only |
+| 2 | [sessions/02.md](sessions/02.md) | The VS Code extension runs on the web | yes |
+| 3 | [sessions/03.md](sessions/03.md) | The editor page (A1–A4, A6, A7) | yes |
+| 4 | [sessions/04.md](sessions/04.md) | Collaboration in the editor page (A4, A5) | yes |
 
-- **Starts from:** writing-browser-bridge done; clean tree.
-- **Ends with:** Q1 answered with numbers in §8.
-- **Commit:** the spike on a throwaway branch; only the §8 note on the plan branch
-
-| Id | Step | Depends on | Runner | Done when | OK |
-|---|---|---|---|---|---|
-| S1 | MV3 page with `monaco-vscode-api`, a hello web extension and Tinymist web | — | H · main thread | numbers for size, cold start, CSP | [ ] |
-
-### Session 2 — the extension on the web
-
-- **Starts from:** session 1 decided "go"
-- **Ends with:** the LabShelf extension runs in the spike page with citations, the Writing view and comments
-- **Commit:** yes
-
-| Id | Step | Depends on | Runner | Done when | OK |
-|---|---|---|---|---|---|
-| S2 | Web build of the VS Code extension; desktop-only features gated | S1 | H · main thread | builds; loads in the web host | [ ] |
-| S3 | Finish | S2 | `finish` skill | gate passes | [ ] |
-
-### Session 3 — the editor page
-
-- **Starts from:** session 2 committed
-- **Ends with:** A1–A4, A6, A7
-- **Commit:** yes
-
-| Id | Step | Depends on | Runner | Done when | OK |
-|---|---|---|---|---|---|
-| S4 | Editor page and trimmed layout | S2 | M · implementer (sonnet) | page opens a project | [ ] |
-| S5 | `FileSystemProvider` over IndexedDB, save and sync | S4 | M · implementer (sonnet) | A1, A3 | [ ] |
-| S6 | Typst preview and LaTeX read-only path | S5 | M · implementer (sonnet) | A2, A6 | [ ] |
-| S7 | Finish, plus a `verify` run with a cold-start measurement | S4–S6 | `finish` + `verify` skills | A7 | [ ] |
-
-### Session 4 — collaboration
-
-- **Starts from:** session 3 committed
-- **Ends with:** A4, A5
-- **Commit:** yes
-
-| Id | Step | Depends on | Runner | Done when | OK |
-|---|---|---|---|---|---|
-| S8 | OCT in the editor page | S5 | H · main thread | A5 | [ ] |
-| S9 | Finish | S8 | `finish` skill | gate passes | [ ] |
-
-### Step blocks
-
-#### S1 — Spike
-
-- **Do:** build a throwaway MV3 page that boots `monaco-vscode-api` with the extension and file services, loads a minimal web extension from the package and Tinymist's `extension.web.js`, opens a `.typ` file from memory.
-- **Context:** the reader already needs `'wasm-unsafe-eval'`; Chrome 125 and Firefox 128 are the floor ([reader-host.md](../../contracts/reader-host.md)).
-- **Done when:** §8 records bundle size, cold start, whether Tinymist diagnostics work, and the go/no-go.
-
-#### S2 — Web build
-
-- **Do:** add the `browser` entry and an esbuild target for the web extension host; replace remaining Node paths with ports already introduced by the refactor; show "Compile on desktop" for LaTeX builds.
-- **Context:** refactor S10.10 lists what is Node-only.
-
-#### S5 — File system
-
-- **Do:** a `FileSystemProvider` for a `labshelf-project:` scheme over the IndexedDB project store; writes trigger the browser's sync debounce.
-
-#### S8 — OCT
-
-- **Do:** wire OCT so a room created in VS Code can be joined from the page and the other way round; reuse the OCT sign-in flow.
+Runner tiers: **H** the session model (Opus or Fable); **M** Sonnet; **L** Haiku.
 
 ## 7. Risks
 
@@ -123,3 +68,5 @@ Open (blocks approval):
 - **R3** Upgrading `monaco-vscode-api` costs a session. — Pinned (D3); upgrade on our schedule.
 
 ## 8. Log
+
+See [log.md](log.md).

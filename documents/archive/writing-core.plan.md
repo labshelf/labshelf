@@ -11,7 +11,7 @@ Pending decisions: 0
 
 A researcher writes a paper in LaTeX or Typst inside VS Code, with LabShelf as the whole environment: one click to create a project, a build that needs no configuration and leaves no clutter, errors that say what to do, a preview in the LabShelf reader, and citations straight from the library. LabShelf replaces LaTeX Workshop for paper writing and works beside Tinymist for Typst.
 
-This plan is the base for [writing-sync](../plans/writing/2-writing-sync.plan.md), [writing-browser-bridge](../plans/writing/3-writing-browser-bridge.plan.md), [browser-editor](../plans/writing/4-browser-editor.plan.md), [writing-terminal](../plans/writing/3-writing-terminal.plan.md), [research-links](../plans/writing/2-research-links.plan.md) and [submission-tools](../plans/writing/2-submission-tools.plan.md).
+This plan is the base for [writing-sync](../plans/writing-2-writing-sync/plan.md), [writing-browser-bridge](../plans/writing-3-writing-browser-bridge/plan.md), [browser-editor](../plans/writing-4-browser-editor/plan.md), [writing-terminal](../plans/writing-3-writing-terminal/plan.md), [research-links](../plans/writing-2-research-links/plan.md) and [submission-tools](../plans/writing-2-submission-tools/plan.md).
 
 ## 2. Decisions
 
@@ -39,7 +39,7 @@ Answered:
 ## 3. Scope
 
 - **In:** core `writing/` domain, the VS Code Writing view, status bar, language providers, LaTeX build, the reader as preview, Typst in the reader.
-- **Out:** sync of projects and collaboration ([writing-sync](../plans/writing/2-writing-sync.plan.md)); the browser and terminal; TeXpresso live LaTeX (deferred); AI features; Word and Google Docs beyond copying a formatted citation.
+- **Out:** sync of projects and collaboration ([writing-sync](../plans/writing-2-writing-sync/plan.md)); the browser and terminal; TeXpresso live LaTeX (deferred); AI features; Word and Google Docs beyond copying a formatted citation.
 - **Contracts touched:** [library-format.md](../contracts/library-format.md) (`projects/`, `labshelf.yaml`, `labshelf.bib`, `.research/projects.json`); [reader-host.md](../contracts/reader-host.md) (preview messages: reload, build status, SyncTeX, citation lookup).
 
 ## 4. Acceptance criteria
@@ -173,7 +173,7 @@ typst: 0.14.2            # written on build, Typst projects only
 | S25 | Citation targets in the PDF (hyperref destinations, SyncTeX fallback, Typst links) | S14, S22 | H · main thread | core tests on sample PDFs | [x] |
 | S26 | Reader hover and click for citations in review mode | S25 | M · implementer (sonnet) | A10 | [x] |
 | S27 | Finish, plus a `verify` run | S25–S26 | `finish` + `verify` skills | gate passes | [x] |
-| S28 | Fix [research-links](../plans/writing/2-research-links.plan.md) before any other writing plan starts | S27 | H · main thread | plan 2 reuses the existing OpenAlex client and the PDF plan's published-version lookup | [x] |
+| S28 | Fix [research-links](../plans/writing-2-research-links/plan.md) before any other writing plan starts | S27 | H · main thread | plan 2 reuses the existing OpenAlex client and the PDF plan's published-version lookup | [x] |
 
 ### Step blocks
 
@@ -255,7 +255,7 @@ typst: 0.14.2            # written on build, Typst projects only
 
 #### S28 — Fix research-links
 
-- **Do:** in [2-research-links.plan.md](../plans/writing/2-research-links.plan.md), replace the new `core/src/import/openalex/` with the existing client in `core/src/import/registries/works/openalex.ts`; rewrite its D6 to reuse the published-version lookup that [pdf-finding](../plans/pdf-finding.plan.md) creates (the path is in that plan's §8 log, or in the code once it is merged).
+- **Do:** in [2-research-links.plan.md](../plans/writing-2-research-links/plan.md), replace the new `core/src/import/openalex/` with the existing client in `core/src/import/registries/works/openalex.ts`; rewrite its D6 to reuse the published-version lookup that [pdf-finding](../plans/pdf-finding/plan.md) creates (the path is in that plan's §8 log, or in the code once it is merged).
 
 ## 7. Risks
 
