@@ -8,9 +8,10 @@ import type { LibraryMutations } from "../storage";
 import type { createSyncMessages } from "./syncMessages";
 import {
   handleCaptureAttachPdf, handleCaptureFindPdf, handleCaptureInspect, handleCaptureSave, handleCaptureTab,
-  handleFindPdfForPaper, handleLibraryFolders, handleLibraryLookup, handleLibraryOpen, handleListTabs,
+  handleFindBetterPdf, handleFindPdfForPaper, handleLibraryFolders, handleLibraryLookup, handleLibraryOpen, handleListTabs,
   handleOpenForPdf, handleRemovePaper, handleScholarSave, accessTabDeps,
 } from "./handlers/index";
+import { handlePdfOfferMessage, isPdfOfferMessage } from "./pdfOffer/index";
 
 // Web pages reach the background only through the Scholar content script,
 // and only for what its buttons need; everything else is for extension pages.
@@ -50,6 +51,7 @@ export function registerMessageRouter(deps: MessageRouterDeps): void {
 }
 
 async function handle(msg: RuntimeMessage, { log, mutations, syncMessages, scheduleSync }: MessageRouterDeps): Promise<unknown> {
+  if (isPdfOfferMessage(msg)) return handlePdfOfferMessage({ log, mutations, scheduleSync }, msg);
   switch (msg.type) {
     case "auth.status":
       return syncMessages.authStatus();
@@ -77,7 +79,9 @@ async function handle(msg: RuntimeMessage, { log, mutations, syncMessages, sched
     case "capture.attachPdf":
       return handleCaptureAttachPdf(log, mutations, msg, scheduleSync);
     case "paper.findPdf":
-      return handleFindPdfForPaper(log, mutations, msg.id, scheduleSync);
+      return msg.replace
+        ? handleFindBetterPdf(log, mutations, msg.id, scheduleSync)
+        : handleFindPdfForPaper(log, mutations, msg.id, scheduleSync);
     case "paper.openForPdf":
       return handleOpenForPdf(accessTabDeps(log, mutations, scheduleSync), msg);
     case "paper.remove":

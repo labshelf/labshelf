@@ -4,4 +4,4 @@ export type { CaptureDraft, SavedPaper, SaveDecision } from "./captureService";
 export { draftFromScholarHit } from "./scholarCapture";
 export { draftFromRecord } from "./recordCapture";
 export { attachPdfToPaper } from "./attachPdfToPaper";
-export { dropWatch, onTabLoaded, openAccessTab, type AccessTabDeps } from "./watch";
+export { dropWatch, onTabLoaded, openAccessTab, watchOfTab, type AccessTabDeps } from "./watch";

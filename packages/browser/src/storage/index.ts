@@ -11,3 +11,4 @@ export {
   rebuildFromFiles,
 } from "./paperRecordStore";
 export { buildFolderTree, scanLibrary, pdfDirs } from "./folderTreeStore";
+export { stagePdf, stagedPdf, unstagePdf, keepStagedPdfs } from "./pdfStaging";

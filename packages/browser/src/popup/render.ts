@@ -8,7 +8,10 @@ import { folderName, metaLine } from "./format";
 import { pdfLineText } from "../ui";
 import { popupState, setState } from "./state";
 
-export function showStatus(opts: { glyph: IconName; tone: "ok" | "muted" | "warn"; title: string; detail: string; open?: string; attach?: string; undo?: boolean; tryAnyway?: boolean }): void {
+export function showStatus(opts: {
+  glyph: IconName; tone: "ok" | "muted" | "warn"; title: string; detail: string;
+  open?: string; attach?: string; dismiss?: string; undo?: boolean; tryAnyway?: boolean;
+}): void {
   const glyph = $("statusIcon");
   glyph.innerHTML = icon(opts.glyph);
   glyph.dataset["tone"] = opts.tone;
@@ -21,6 +24,9 @@ export function showStatus(opts: { glyph: IconName; tone: "ok" | "muted" | "warn
   const attach = $<HTMLButtonElement>("attachPdf");
   attach.hidden = !opts.attach;
   attach.innerHTML = `${icon("paperclip")}<span>${escapeHtml(opts.attach ?? "")}</span>`;
+  const dismiss = $<HTMLButtonElement>("dismissOffer");
+  dismiss.hidden = !opts.dismiss;
+  dismiss.textContent = opts.dismiss ?? "";
   $("undo").hidden = !opts.undo;
   $("tryAnyway").hidden = !opts.tryAnyway;
 }

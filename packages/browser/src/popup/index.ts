@@ -1,5 +1,5 @@
 // Saves the paper on the current tab from the toolbar popup.
-// States (data-state on #popup): loading, form | library | empty, saving, saved.
+// States (data-state on #popup): loading, form | library | empty, saving, saved. A matched PDF offer shows as library.
 import { bx, sendRuntime } from "../platform";
 import type { FoldersData } from "../platform";
 import { $ } from "@labshelf/core/dom";
@@ -8,6 +8,7 @@ import { errorMessage, icon } from "@labshelf/core";
 import { renderFolders, showStatus, autoGrow } from "./render";
 import { attachPdf, inspect, save, undo } from "./saveFlow";
 import { renderSync } from "./syncButton";
+import { dismissOffer, fetchOffer, showOffer } from "./offerCard";
 import { popupState, setState } from "./state";
 
 function wire(): void {
@@ -19,6 +20,7 @@ function wire(): void {
   });
   $("tryAnyway").addEventListener("click", () => { void save(); });
   $("attachPdf").addEventListener("click", () => { void attachPdf(); });
+  $("dismissOffer").addEventListener("click", () => { void dismissOffer(); });
   $("undo").addEventListener("click", () => { void undo(); });
   $("open").addEventListener("click", () => {
     const { folder, paper } = $("open").dataset;
@@ -54,7 +56,14 @@ async function init(): Promise<void> {
   void renderSync();
 
   const [tab] = await bx.tabs.query({ active: true, currentWindow: true });
+  // A PDF downloaded from any page, or opened from disk, can still match a paper; the offer then fills the popup.
+  const offerReady = tab?.id !== undefined ? fetchOffer(tab.id) : Promise.resolve(null);
   if (!tab?.id || !/^https?:/.test(tab.url ?? "")) {
+    const offer = await offerReady;
+    if (offer) {
+      showOffer(offer);
+      return;
+    }
     $("title").textContent = "Nothing to save here";
     setState("empty");
     showStatus({ glyph: "globe", tone: "muted", title: "This page can't be saved", detail: "Open an article's page or its PDF in a normal tab." });
@@ -67,8 +76,13 @@ async function init(): Promise<void> {
     .catch(() => undefined)
     .then(renderFolders);
   try {
-    await Promise.all([foldersReady, inspect()]);
+    await Promise.all([foldersReady, inspect(offerReady)]);
   } catch (err) {
+    const offer = await offerReady;
+    if (offer) {
+      showOffer(offer);
+      return;
+    }
     $("title").textContent = tab.title || "This page";
     setState("empty");
     showStatus({ glyph: "warning", tone: "muted", title: "Could not read this page", detail: errorMessage(err), tryAnyway: true });

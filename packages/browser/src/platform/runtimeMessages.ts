@@ -23,7 +23,8 @@ export type RuntimeMessage =
   /** Popup, paper already in the library without a PDF: attach the PDF found for this tab to that copy. */
   | { type: "capture.attachPdf"; tabId: number }
   /** Library page "Find PDF": run the resolver chain for a saved paper and attach what it finds. */
-  | { type: "paper.findPdf"; id: string }
+  /** `replace` looks only for a better version than the paper's preprint or accepted PDF, and replaces it. */
+  | { type: "paper.findPdf"; id: string; replace?: boolean }
   /** Library page: opens the page that stood in the way of a saved paper's PDF and attaches the PDF once the user gets through. */
   | { type: "paper.openForPdf"; id: string; access: PdfAccess }
   /** Removes a paper just saved (the popup's undo). */
@@ -35,7 +36,11 @@ export type RuntimeMessage =
   /** Opens the library page on a collection, optionally selecting a paper. */
   | { type: "library.open"; folder?: string; paperId?: string }
   /** Lists the current window's http(s) tabs, excluding extension pages. */
-  | { type: "tabs.list" };
+  | { type: "tabs.list" }
+  /** Popup: the offer to attach a PDF this tab showed, or the latest download, to a paper without one; null when none. */
+  | { type: "pdfOffer.get"; tabId: number }
+  | { type: "pdfOffer.attach"; offerId: string }
+  | { type: "pdfOffer.dismiss"; offerId: string };
 
 export type RuntimeResponse =
   | { ok: true; data?: unknown }
@@ -93,11 +98,27 @@ export interface AttachPdfData {
   id: string;
   /** paper.pdf was written now. */
   attached: boolean;
+  /** The PDF written replaced a preprint or accepted manuscript. */
+  replaced?: boolean;
   source?: string;
   /** Nothing written because a PDF was already there (e.g. it arrived by sync meanwhile). */
   alreadyHadPdf?: boolean;
   /** Present when nothing was found. */
   miss?: PdfMiss;
+}
+
+/** Reply to pdfOffer.get: a PDF the user opened or downloaded that matched a paper without a PDF. */
+export interface PdfOfferView {
+  id: string;
+  paperId: string;
+  title: string;
+  /** Collection holding the paper. */
+  folder: string;
+  /** The PDF could be fetched again; without it the paper can only be opened in the library. */
+  hasBytes: boolean;
+  source: "tab" | "download";
+  /** The offer is badged on the tab the popup asked for. */
+  onThisTab: boolean;
 }
 
 /**
