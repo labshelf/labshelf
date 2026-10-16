@@ -28,9 +28,9 @@ describe("icon", () => {
     expect(icon("logo")).not.toContain("currentColor");
   });
 
-  it.each(STROKE_NAMES)("strokes %s at 1.8 on a 24 grid", (name) => {
+  it.each(STROKE_NAMES)("strokes %s at 1.5 on a 24 grid", (name) => {
     const root = icon(name).slice(0, icon(name).indexOf(">"));
-    expect(root).toContain('stroke-width="1.8"');
+    expect(root).toContain('stroke-width="1.5"');
     expect(root).toContain('viewBox="0 0 24 24"');
   });
 
