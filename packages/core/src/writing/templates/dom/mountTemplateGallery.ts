@@ -5,6 +5,7 @@ import { createCardGrid, type CardGrid } from "./cardGrid.js";
 import { createDetailController, type DetailController } from "./detailController.js";
 import { createFacetBar } from "./facetBar.js";
 import { GalleryState, keyOf } from "./galleryState.js";
+import { createPublishController, type PublishController } from "./publish/index.js";
 import { createSourcesSidebar, type SourcesSidebar } from "./sourcesSidebar.js";
 
 export interface TemplateGalleryHandle {
@@ -17,9 +18,10 @@ interface RoutedViews {
   grid: CardGrid;
   sidebar: SourcesSidebar;
   details: DetailController;
+  publishing: PublishController;
 }
 
-function routeHostMessage(message: HostToGallery, { state, grid, sidebar, details }: RoutedViews): void {
+function routeHostMessage(message: HostToGallery, { state, grid, sidebar, details, publishing }: RoutedViews): void {
   const detail = details.current();
   switch (message.type) {
     case "source":
@@ -43,6 +45,15 @@ function routeHostMessage(message: HostToGallery, { state, grid, sidebar, detail
     case "notice":
       toast(message.text, message.kind);
       return;
+    case "publish.open":
+      publishing.open(message.project, message.draft);
+      return;
+    case "publish.checks":
+    case "publish.auth":
+    case "publish.submitted":
+    case "publish.failed":
+      publishing.route(message);
+      return;
   }
 }
 
@@ -59,24 +70,31 @@ export function mountTemplateGallery(root: HTMLElement, transport: GalleryTransp
   });
   const onFilterChange = (): void => {
     details.close();
+    publishing.close();
     grid.update();
   };
   const facets = createFacetBar(state, onFilterChange);
   const sidebar = createSourcesSidebar(state, {
     onFilterChange,
     onRefresh: () => { grid.update(); transport.post({ type: "refresh" }); },
+    onPublish: () => transport.post({ type: "publish.start" }),
   });
   const showGrid = (): void => main.replaceChildren(facets.element, grid.element);
   const details = createDetailController({ state, main, grid, transport, showGrid, requestThumbnails });
+  const publishing = createPublishController({
+    main, transport, showGrid, closeDetail: () => { details.close(); }, updateGrid: grid.update, focusEntry: sidebar.focusPublish,
+  });
 
   showGrid();
   const frame = el("div", { class: "ls-tpl" }, el("div", { class: "ls-tpl-frame" }, sidebar.element, main));
   frame.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") details.closeAndFocus();
+    if (event.key !== "Escape") return;
+    details.closeAndFocus();
+    publishing.closeAndFocus();
   });
   root.replaceChildren(frame);
   grid.update();
-  const unsubscribe = transport.subscribe((message) => routeHostMessage(message, { state, grid, sidebar, details }));
+  const unsubscribe = transport.subscribe((message) => routeHostMessage(message, { state, grid, sidebar, details, publishing }));
   transport.post({ type: "ready" });
 
   return {
@@ -84,6 +102,7 @@ export function mountTemplateGallery(root: HTMLElement, transport: GalleryTransp
       unsubscribe();
       grid.dispose();
       details.current()?.dispose();
+      publishing.current()?.dispose();
       root.replaceChildren();
     },
   };

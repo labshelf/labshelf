@@ -12,12 +12,16 @@ export interface SourcesSidebarHandlers {
   onFilterChange(): void;
   /** Refresh was pressed; the state's listings are already back to loading. */
   onRefresh(): void;
+  /** "Publish a template" was pressed. */
+  onPublish(): void;
 }
 
 export interface SourcesSidebar {
   element: HTMLElement;
   /** Patches counts, loading markers, errors and the selected row from the state. */
   update(): void;
+  /** Moves focus to the "Publish a template" button. */
+  focusPublish(): void;
 }
 
 /** `undefined` is "All sources". */
@@ -77,11 +81,14 @@ export function createSourcesSidebar(state: GalleryState, handlers: SourcesSideb
   const list = el("ul", { class: "ls-tpl-sources", role: "listbox", "aria-label": "Sources" }, ...rows.map((row) => row.item));
   const errors = el("div", { class: "ls-tpl-source-errors" });
   const refresh = el("button", { class: "ls-icon-btn", type: "button", "aria-label": "Refresh templates", title: "Refresh templates", html: icon("refresh") });
+  const publish = el("button", { class: "ls-btn", type: "button" }, el("span", { html: icon("arrow-up") }), "Publish a template");
+  publish.addEventListener("click", handlers.onPublish);
   const element = el("nav", { class: "ls-tpl-sidebar", "aria-label": "Template filters" },
     el("div", { class: "ls-tpl-section" }, el("span", { text: "Sources" }), refresh),
     list, errors,
     el("div", { class: "ls-tpl-section" }, el("span", { text: "Format" })),
-    buildFormats(state, handlers.onFilterChange));
+    buildFormats(state, handlers.onFilterChange),
+    el("div", { class: "ls-tpl-sidebar-publish" }, publish));
 
   const update = (): void => {
     patchRows(rows, state);
@@ -110,5 +117,5 @@ export function createSourcesSidebar(state: GalleryState, handlers: SourcesSideb
     handlers.onRefresh();
   });
   update();
-  return { element, update };
+  return { element, update, focusPublish: () => publish.focus() };
 }
