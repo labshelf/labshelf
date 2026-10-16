@@ -2,6 +2,7 @@
 name: retro
 description: End-of-session retrospective — lists the mistakes made in this conversation, turns each mechanical one into a check in .claude/hooks/check-rules.sh and each judgment one into a rule in the file that governs it, and adds a CALIBRATION.md row when a plan finished. Proposes first and applies only what the user approves. Use at the end of a session, after a plan's last session, or when the user says retro.
 argument-hint: [plan path, when a plan just finished]
+disable-model-invocation: true
 ---
 
 Plan: $ARGUMENTS
@@ -17,7 +18,8 @@ List each mistake once, with evidence. Sources:
 - packages that failed acceptance, were retried or escalated, or reported CONCERNS;
 - the plan's §8 deviations;
 - work redone, reverted or thrown away;
-- estimates that missed by one size or more.
+- estimates that missed by one size or more;
+- token waste: run `node scripts/agent-tokens.mjs` (current session) and take agents flagged over budget, files read more than once, and the largest tool results.
 
 Skip one-off typos and mistakes that were caught and fixed by an existing check or rule. Those mean the system worked.
 

@@ -38,10 +38,11 @@ Split the work into packages. Each package states:
 - **Tier, runner and model**: see the table below.
 - **Door**: one-way if it touches `documents/contracts/` or an on-disk format, sync, Drive writes, or an extension manifest or its permissions; otherwise two-way.
 - **Acceptance**: the checks that prove it is done.
+- **Test first**: for a behaviour change, the test seam and the acceptance items the failing tests pin. Moves, splits, docs and tooling say "n/a".
 
 | Tier | Work | Runner |
 |---|---|---|
-| H | design decisions, new UI design, algorithms, cross-package refactors that need judgment, hard debugging | you, in this thread; or `implementer` with `model: "opus"` or `"fable"` when it can run in parallel, or when the user assigned a model to it |
+| H | design decisions, new UI design (run the `ui-design` skill first), algorithms, cross-package refactors that need judgment, hard debugging | you, in this thread; or `implementer` with `model: "opus"` or `"fable"` when it can run in parallel, or when the user assigned a model to it |
 | M | well-specified implementation, moves and splits from a map, tests, reviews | `implementer` / `module-splitter` / `test-writer` / `code-mapper` on Sonnet |
 | L | running gates, import fixes, commits, changelog | `check` skill, `import-validator`, `commit-splitter` on Haiku |
 | Docs | `documents/` updates, comment standard, dead code | the `finish` skill on Sonnet, once at the end |
@@ -52,6 +53,8 @@ Escalation: a Sonnet package that fails its acceptance checks twice, or returns 
 
 Rules for the plan:
 - If the user named models ("Fable does the visual"), follow them.
+- A behaviour package runs as two steps: `test-writer` writes the failing tests from its acceptance items, then the `implementer` gets their paths and makes them pass. A target the agent can check against is what keeps the implementer from looping.
+- Size each package by what its agent must read, not by the feature: at most about ten files or ranges, so it finishes under the 60k subagent budget. A package that needs more is two packages.
 - Packages that touch the same files run in sequence. Only packages with disjoint files run in parallel.
 - Shared logic lands in core first; app packages depend on it.
 - Doubt step: a one-way package that still has two viable designs goes to the `council` skill before it runs, and its verdict becomes the package's decision. It costs about 200k subagent tokens, so a one-way package with one obvious design only states why there is no fork.
@@ -63,7 +66,8 @@ Rules for the plan:
 
 - Do the tier-H packages that need this conversation's context yourself.
 - Launch delegated packages with the Agent tool. Their prompts must be **self-contained**: goal, files, what not to touch, acceptance checks. Agents do not see this conversation.
-- Point instead of pasting: name the plan file and step id, the `AGENTS.md` section, and the files with line ranges, and let the agent read them. Paste only what is written nowhere, such as a decision taken in this conversation.
+- Point instead of pasting: name the plan file and step id, the `AGENTS.md` section, and the files with line ranges, and let the agent read them. Paste only what is written nowhere, such as a decision taken in this conversation, or a scout's finding the agent would otherwise re-discover.
+- Context budget: `.claude/hooks/context-budget.mjs` warns a subagent past 60k tokens and this thread past 100k. A subagent that stops on the warning returns what is left; split that remainder into a new package. When the warning reaches this thread, finish the current package, log it, and hand off (`references/handoff.md`) instead of continuing; never rely on compaction, which is off for this project.
 - Launch independent packages in one message so they run in parallel.
 - After each package, run the `check` skill (Haiku) instead of reading test output yourself. `finish` reuses the last `check` result when the tree has not changed since.
 - If a package's report shows a design problem, fix the plan. Do not patch around it.
@@ -85,7 +89,7 @@ Report to the user: what was built, the acceptance criteria with pass/fail, what
 4. End the session:
    - run the `finish` skill;
    - tick the steps and the acceptance criteria they meet;
-   - add §8 log lines with date and time;
+   - add §8 log lines with date and time, plus one line with the peak context of this thread and of the largest subagent from `node scripts/agent-tokens.mjs`;
    - commit if the session says **Commit: yes**. Approving the plan authorises those commits; use `commit-splitter`.
 5. If it was the last session:
    - set the status to `done`;

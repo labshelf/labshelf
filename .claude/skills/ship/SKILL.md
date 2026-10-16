@@ -1,6 +1,7 @@
 ---
 name: ship
 description: Close out the current change — the finish pass (Sonnet), then atomic commits (Haiku). Stops if the finish pass reports a failing gate or issues that need judgment.
+disable-model-invocation: true
 ---
 
 1. Run the `finish` skill.

@@ -2,6 +2,7 @@
 name: brainstorm
 description: Brainstorming mode for a new feature, design or idea, in one of three modes — spar (short opinionated back-and-forth, the default), grill (each round asks the whole frontier of open questions, numbered, each with a recommended answer) or council (a hard-to-reverse fork goes to the council skill). Gives its own opinion, disagrees when it should, does not plan or implement until the user approves; then writes the plan from documents/plans/TEMPLATE.md. Use when the user says brainstorm or grill me, wants to think an idea through, or asks "what do you think about…" before deciding.
 argument-hint: [grill|council:] <the idea or question to think through>
+disable-model-invocation: true
 ---
 
 These rules hold on every turn until the user approves (see below) or says to leave the mode.
