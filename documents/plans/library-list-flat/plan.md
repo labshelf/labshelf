@@ -1,6 +1,6 @@
 # Plan: Flat "All papers" library list
 
-Status: in progress (sessions 1a, 1b, 2b, 2c done; wave 2 running: 2a)
+Status: in progress (wave 2 done; session 3 next)
 Size: G — core list, detail head, side bar and protocol plus wiring in two apps, 6 sessions in 3 waves; grows to GG if Q3 shows sync or IndexedDB must start carrying extra paper files
 Pending decisions: 0
 
@@ -45,22 +45,22 @@ Open:
 
 List
 
-- [ ] **A1** Column heads are Title, Authors, Year, Last read, Status; clicking one sorts and sets `aria-sort`; a second click flips the order. No Publication column, no chips in the title cell.
+- [x] **A1** Column heads are Title, Authors, Year, Last read, Status; clicking one sorts and sets `aria-sort`; a second click flips the order. No Publication column, no chips in the title cell.
 - [x] **A2** Status shows Unread as a dot, Reading and Done as arcs, with an accessible name; Alt 1/2/3 sets it.
 - [x] **A3** Last read shows compact relative time ("1 d", "3 w"); the full date is in the tooltip.
-- [ ] **A4** Rows are taller, zebra runs edge to edge, the selection is an accent band, the focus ring shows only after keyboard navigation (`:focus-visible`).
-- [ ] **A5** With subfolders in scope, the open folder's own papers come first, unlabelled; each subfolder's papers follow under a muted "X › Y › Z" label with a count, one step indented; paths over three segments read "first … last two" with the full path in the tooltip; no folder colour.
-- [ ] **A6** Opening a paper (Enter, click, left twistie) tones its row one step up and shows its files below as tree-child rows: paper.pdf, the note, other files, subfolders; metadata.yaml never appears.
-- [ ] **A7** Each file row shows its type in coloured mono and its name, then one fact (D3); size and modified time are in the tooltip.
+- [x] **A4** Rows are taller, zebra runs edge to edge, the selection is an accent band, the focus ring shows only after keyboard navigation (`:focus-visible`).
+- [x] **A5** With subfolders in scope, the open folder's own papers come first, unlabelled; each subfolder's papers follow under a muted "X › Y › Z" label with a count, one step indented; paths over three segments read "first … last two" with the full path in the tooltip; no folder colour.
+- [x] **A6** Opening a paper (Enter, click, left twistie) tones its row one step up and shows its files below as tree-child rows: paper.pdf, the note, other files, subfolders; metadata.yaml never appears.
+- [x] **A7** Each file row shows its type in coloured mono and its name, then one fact (D3); size and modified time are in the tooltip.
 - [ ] **A8** Hovering or focusing a file row shows open to the side (files only), reveal, copy path, each labelled; "Describe…" stores a description that survives a reload and an older app's metadata rewrite.
-- [ ] **A9** The header shows Library › … › folder; All papers and the status scopes show no path.
-- [ ] **A10** Arrow keys move through rows and into the open paper's file rows; Shift F10 opens the row menu; tab order uses a roving tabindex.
-- [ ] **A11** The list is a treegrid: rows `role=row` with aria-selected and aria-expanded, groups `role=rowgroup` whose label is announced.
+- [x] **A9** The header shows Library › … › folder; All papers and the status scopes show no path.
+- [x] **A10** Arrow keys move through rows and into the open paper's file rows; Shift F10 opens the row menu; tab order uses a roving tabindex.
+- [x] **A11** The list is a treegrid: rows `role=row` with aria-selected and aria-expanded, groups `role=rowgroup` whose label is announced.
 
 Detail head
 
-- [ ] **A12** Title, authors, venue line ending "› folder"; Open PDF soft-tinted primary; Cite ⌄ copies in the chosen format; ⋯ in the corner holds the remaining actions.
-- [ ] **A13** Status ⌄ then #tags in mono with a +; a tag is removable on hover or focus; tabs Details, Annotations, Notes, Related keep every current field.
+- [x] **A12** Title, authors, venue line ending "› folder"; Open PDF soft-tinted primary; Cite ⌄ copies in the chosen format; ⋯ in the corner holds the remaining actions.
+- [x] **A13** Status ⌄ then #tags in mono with a +; a tag is removable on hover or focus; tabs Details, Annotations, Notes, Related keep every current field.
 
 Side bar
 
@@ -70,9 +70,9 @@ Side bar
 
 States
 
-- [ ] **A17** Empty library, empty folder and a search with no hits each show their own message.
+- [x] **A17** Empty library, empty folder and a search with no hits each show their own message.
 - [ ] **A18** While the snapshot or a file listing loads, the list shows a loading state; a failure is logged through `ILogger` with context and shown to the user.
-- [ ] **A19** A long title ellipsizes with a tooltip; at narrow width Last read hides first, then Authors, then Year; the detail pane toggles.
+- [x] **A19** A long title ellipsizes with a tooltip; at narrow width Last read hides first, then Authors, then Year; the detail pane toggles.
 - [ ] **A20** Light and dark match the mockup screenshots in both hosts; VS Code high contrast stays readable.
 - [ ] **A21** `pnpm -r typecheck` and `pnpm -r test` pass; `tokenContrast` covers every new text token; no file over 300 lines, no directory over 8 source files.
 

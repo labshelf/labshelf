@@ -18,3 +18,8 @@ Use a @vscode/test-electron copy on a copy of the library (memory `extension-hos
 
 ## 3.2 — Browser
 Headless page per memory `webview-smoke-test-headless-chromium`. Can run while 3.1 runs.
+
+## Carried from 2a
+- A8 and A18 are open in the core webview: the webview has no `ILogger`, so a failed file listing goes to `console.warn` plus an error toast. `vscode` `paperFileHandlers` does not log a failed listing that the port returns. Log it at the host source.
+- The filterBar status tabs and folder chip stay until VS Code sends the host→UI status-scope message.
+- Fixture check: the synthetic note row reads "Note  Note Empty" (name and fact label repeat). Decide on the real library whether the fact label goes.
