@@ -33,7 +33,7 @@ function boot(): void {
       emptyHint: "Open the paper's page in a tab and use the LabShelf toolbar button, or click Add to pick one of your open tabs.",
     },
   });
-  if (ui.sidebar) mountSidebarTree(ui, ui.sidebar, prefs, libraryHost.openCitationMap);
+  if (ui.sidebar) mountSidebarTree(ui, ui.sidebar, prefs, libraryHost.openCitationMap, host);
   const sync = createSyncStatus();
   mountStatusBar(root, sync, (listener) => ui.store.select((s) => s.papers.length, listener));
   attachLinkHandling(log);

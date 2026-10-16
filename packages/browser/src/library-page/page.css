@@ -76,6 +76,8 @@
 .tree-icon { width: 16px; height: 16px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; margin-right: var(--ls-space-3); opacity: .9; }
 .tree-icon svg { width: 15px; height: 15px; }
 .tree-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: var(--ls-font-size); }
+.tree-icon .ls-arc { width: var(--ls-space-6); height: var(--ls-space-6); }
+.tree-ref { flex-shrink: 0; margin-right: var(--ls-space-3); font-family: var(--ls-mono); font-size: var(--ls-text-xs); color: var(--ls-file-ref); }
 .tree-count { margin-left: var(--ls-space-3); font-size: var(--ls-text-md); color: var(--ls-desc); }
 .tree-row-actions { display: none; align-items: center; margin-left: var(--ls-space-2); }
 .tree-row:hover .tree-row-actions, .tree-row.focused .tree-row-actions { display: inline-flex; }
