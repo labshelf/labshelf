@@ -8,6 +8,6 @@ files: <comma-separated paths or globs the facts depend on>
 source: <scout, URL or doc the facts came from>
 ```
 
-`node scripts/research-fresh.mjs` prints `fresh <path>` or `stale <path> — <reason>` per entry. A stale entry is re-scouted before an implementer relies on it; a fresh one goes into the implementer's brief as is. An entry without `files:` (external docs) counts as fresh.
+The main thread does not read entries; it names them in implementer briefs by path. Re-scout an entry only when a package fails on a wrong premise.
 
 Delete this README in the real plan.

@@ -1,17 +1,16 @@
 # Session 4b — Extension-host run, docs
 
-- **Wave:** 4, runs together with 4a; **in its own worktree** (whole-repo build while 4a edits)
-- **Starts from:** wave 3 committed; the user confirms the `@vscode/test-electron` copy run (R5, never the installed VS Code)
-- **Ends with:** A2–A4, A9, A11–A13 and A14 (host half) observed in a real host; doc deltas folded into `documents/apps/vscode.md`; fixes committed
+- **Goal:** Observe the preview in a real VS Code extension host, fix host bugs, and document the preview in `documents/apps/vscode.md`.
+- **Starts from:** sessions 3a and 3b committed; the user confirms the `@vscode/test-electron` copy run. Never launch the installed VS Code. Run this session in its own worktree (whole-repo build while 4a edits).
+- **Ends with:** these criteria (host half) observed and fixes committed. **A2** Recompile is muted when current, full colour with an amber dot after a source save, spinning while building; the footer says Compiled N ago / Source changed / Compiling…. **A3** Options menu toggles auto compile (setting respected on save for `.tex` and `.typ`) and switches the LaTeX engine; the change reaches labshelf.yaml. **A4** Ctrl/Cmd+S in the preview recompiles; double-click opens the source line (LaTeX). **A9** Card actions Replace, Update to <venue>, Add to library each edit the source or library and mark the PDF stale. **A11** `N checks` runs Check Before Submitting; Compare Versions and Mark Version run the existing commands. **A12** `<file> only` appears only in projects using `\include` and builds with `\includeonly`. **A13** Export saves a project zip and an arXiv zip with a trimmed `.bib`, and opens the PDF externally. **A14** Every theme renders the chrome readably; the sheet stays brand.
 - **Owns:** fixes in `packages/vscode/**`; `documents/apps/vscode.md`; `documents/contracts/reader-host.md` (only to match observed behaviour)
-- **Research:** research/mockup.html
-- **Budget:** one conversation, main thread under about 70k, at most four delegated packages.
+- **Research:** `documents/plans/pdf-preview-chrome/research/mockup.html`
 
-Wave rules: plan.md §6. A bug whose fix is in `packages/core/` goes to 4a. Recipe: memory "Extension host e2e" — isolated user-data-dir, a copy of the library, stop only the launched PID.
+Context: a bug whose fix is in `packages/core/` is reported, not fixed (4a owns it). Recipe: use the `verify` skill; isolated user-data-dir, a copy of the library, stop only the launched PID or unique user-data-dir (never kill VS Code by name). Behaviour to document (D5–D9): engine menu for `.tex` roots only; `labshelf.writing.autoCompile` setting (default on) honoured by save listeners and Typst live compile; a source saved after the last build marks the root stale and the PDF never dims; F8 walks undefined citations, undefined references, overfull boxes, preprint entries (Typst places only citation problems); export through a save dialog (project zip, arXiv zip with `.bib` of cited entries from the user's `.bib`, open PDF in system viewer); limits in `labshelf.yaml` `check:` (`pages`, `words`, `countUpTo`).
 
 | Id | Package | Level | Runner | Done when | OK |
 |---|---|---|---|---|---|
 | 4b.1 | Host run: LaTeX thesis with `\include` and a Typst project; save with auto compile on and off, engine switch, Ctrl+S, logs, F8, card Replace/Update/Add, limits written to labshelf.yaml, `<file> only`, three exports, Compare/Mark/Checks; three themes, light and dark | — | `verify` (extension host) | findings listed with screenshots | [ ] |
-| 4b.2 | Fix what 4b.1 finds, one package per bug, test first | behaviour | implementer (sonnet; opus on a second failure) | re-run fine | [ ] |
-| 4b.3 | Tasks: fold the doc deltas from log.md into `documents/apps/vscode.md` (preview section), present tense | task | `doc-keeper` | doc matches 4b.1 | [ ] |
-| 4b.4 | Finish, commit | — | `finish` on Owns, `commit-splitter` with the file list | gate passes | [ ] |
+| 4b.2 | Fix what 4b.1 finds, one package per bug; test first only for a logic bug | behaviour | implementer (sonnet; opus on a second failure) | re-run fine | [ ] |
+| 4b.3 | Update the preview section of `documents/apps/vscode.md` to the observed behaviour, present tense, only what the code cannot say | task | `doc-keeper` | doc matches 4b.1 | [ ] |
+| 4b.4 | Check, commit | — | `check` on Owns, `git commit` of Owns | gate passes | [ ] |

@@ -37,7 +37,7 @@ test('findSessionTranscripts resolves a session id and its subagents', () => {
 test('formatReport lists main first, sorts subagents by peak and flags over-budget agents', () => {
   const stats = (peak) => ({ peak, final: peak, turns: 3, toolCalls: [{ tool: 'Bash', summary: 'ls', tokens: 900 }], repeatedReads: [] });
   const text = formatReport({
-    main: stats(120_000),
+    main: stats(160_000),
     agents: [
       { description: 'small', type: 'Explore', stats: stats(20_000) },
       { description: 'large', type: 'implementer', stats: stats(70_000) },

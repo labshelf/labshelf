@@ -26,4 +26,4 @@ disable-model-invocation: true
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ```
 
-Door is **one-way** by the rule in `.claude/skills/orchestrate/SKILL.md` step 3: name what it touches and how it is reversed. Otherwise it is **two-way**.
+Door is **one-way** when the change has contract-level work (the **Level** rule in `.claude/skills/orchestrate/SKILL.md` step 3): name what it touches and how it is reversed. Otherwise it is **two-way**.

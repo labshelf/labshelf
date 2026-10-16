@@ -1,5 +1,6 @@
 ---
 name: verify
+disable-model-invocation: true
 description: Run and verify a LabShelf app for real — the VS Code extension host, the webview/reader UI in headless Chrome, the browser extension, or the terminal TUI — on an isolated copy of the library, and look at the result. Use after UI, import/OCR/pdf.js, extension-host or terminal changes, or when asked to run, launch or screenshot an app.
 context: fork
 agent: general-purpose
@@ -25,14 +26,14 @@ Drive them with the `mcp__chrome-devtools__*` tools. The server in `.mcp.json` r
 1. Rebuild (`pnpm --filter @labshelf/browser build:chrome` for the extension).
 2. Browser extension: `install_extension` with the absolute `packages/browser/dist/chrome` path returns the id; `new_page` on `chrome-extension://<id>/popup/index.html` (or `library-page/`, `options/`); `trigger_extension_action` opens the popup the way the toolbar button does; `reload_extension` after a rebuild.
 3. Webview: serve the built HTML and the repo statically, then `new_page` and `navigate_page` with `initScript` holding the `acquireVsCodeApi` stub described in the webview harness and the `:root{--vscode-*}` block. TRAP: `initScript` runs before `<html>` exists, so append the `<style>` on `DOMContentLoaded`; touching `document.documentElement` throws and the page falls back to serif fonts.
-4. Check every page with `take_screenshot` (`filePath` under `<repo>/.verify/`, which git ignores; the server refuses paths outside the workspace, the scratchpad included) and `list_console_messages`; a page with console errors fails. `take_snapshot`, `click` and `evaluate_script` (pass the `pageId` that `new_page` lists) cover interaction and DOM asserts.
+4. Check every page with `take_screenshot` (`filePath` under `<repo>/.verify/`, which git ignores; the server refuses paths outside the workspace, the scratchpad included; empty `.verify/` before the run so only this run's shots stay) and `list_console_messages`; a page with console errors fails. `take_snapshot`, `click` and `evaluate_script` (pass the `pageId` that `new_page` lists) cover interaction and DOM asserts.
 
 Scripted checks that must repeat the same way, such as `website-sheet-fit.mjs`, stay Playwright scripts.
 
 ## Always
 1. Rebuild the app first; a stale bundle shows old behavior.
 2. Work on a copy: `cp -R ~/Documents/LabShelfLibrary <scratchpad>/lib`. Point `XDG_CONFIG_HOME`/`XDG_CACHE_HOME` at the scratchpad and use a throwaway `--user-data-dir`. Never touch the real library, config, keychain or Drive.
-3. Put harness scripts in the session scratchpad, not in the repo.
+3. One-off scripts go in the session scratchpad. A harness more than one session uses lives in the repo (a plan's wave-1 tooling): the library list harness is `scripts/verify-library/`.
 4. Launch browsers and VS Code outside the sandbox (they fail inside it). Use Playwright's Chrome for Testing / headless shell; `/Applications/Google Chrome.app` crashes headless on this machine. Stop only the processes you started, by PID.
 5. Exercise the change with a real paper from the copy, not only synthetic fixtures.
 6. Read the screenshots or text frames yourself before reporting.

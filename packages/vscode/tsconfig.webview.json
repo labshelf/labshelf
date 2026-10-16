@@ -10,5 +10,5 @@
     "declarationMap": false,
     "sourceMap": false
   },
-  "include": ["src/reader/**/*", "src/libraryWebview/**/*", "src/webviewGlobals.d.ts"]
+  "include": ["src/reader/**/*", "src/libraryWebview/**/*", "src/writing/templates/webview/**/*", "src/webviewGlobals.d.ts"]
 }

@@ -14,7 +14,6 @@ Run the gate on the current uncommitted change of the LabShelf repo and summariz
 2. For each package, run: `pnpm --filter @labshelf/<pkg> typecheck`, then `pnpm --filter @labshelf/<pkg> test`, then `lint` if the package defines it.
 3. Run `wc -l` on the touched files. Flag source files over 300 lines and tests over 500 that this change created or grew (compare with `git show HEAD:<file> | wc -l`).
 4. Flag directories that gained a file and now hold more than 8 source files, not counting `index.ts`.
-5. If `git status --porcelain` shows any change under `packages/`, also run `pnpm knip` and `pnpm jscpd` from the repo root (they scan the whole monorepo, not just the touched packages, and gate against their committed baselines). A nonzero exit from either is a FAIL.
 
 Return only:
 

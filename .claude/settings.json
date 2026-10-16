@@ -10,16 +10,6 @@
             "timeout": 10
           }
         ]
-      },
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/edit-context.sh",
-            "timeout": 10
-          }
-        ]
       }
     ],
     "PostToolUse": [
@@ -42,16 +32,6 @@
             "timeout": 5
           }
         ]
-      },
-      {
-        "matcher": "Read|Grep|Glob|Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/read-budget.mjs",
-            "timeout": 5
-          }
-        ]
       }
     ],
     "SessionStart": [
@@ -65,22 +45,11 @@
           }
         ]
       }
-    ],
-    "PreCompact": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/precompact.sh",
-            "timeout": 10
-          }
-        ]
-      }
     ]
   },
   "enabledPlugins": {
     "typescript-lsp@anthropic-plugin-directory": true,
-    "context7@anthropic-plugin-directory": true,
+    "context7@anthropic-plugin-directory": false,
     "pr-review-toolkit@anthropic-plugin-directory": false,
     "code-simplifier@anthropic-plugin-directory": false,
     "hookify@anthropic-plugin-directory": false,
@@ -91,5 +60,19 @@
   "autoCompactEnabled": false,
   "env": {
     "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet"
+  },
+  "permissions": {
+    "deny": [
+      "Artifact",
+      "ArtifactComments",
+      "ArtifactData",
+      "Workflow",
+      "ListAgents",
+      "ScheduleWakeup",
+      "CronCreate",
+      "CronDelete",
+      "CronList",
+      "RemoteTrigger"
+    ]
   }
 }

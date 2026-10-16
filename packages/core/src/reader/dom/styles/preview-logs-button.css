@@ -1,0 +1,9 @@
+/* Header logs button: the problem count badge. */
+.rd-logs-badge {
+  display: inline-flex; align-items: center; justify-content: center; min-width: var(--ls-space-7); height: var(--ls-space-7);
+  margin-left: var(--ls-space-1); padding: 0 var(--ls-space-1); border-radius: var(--ls-radius-pill);
+  font-size: var(--ls-text-xs); line-height: 1; color: var(--ls-reader-bg);
+}
+.rd-logs-badge[hidden] { display: none; }
+.rd-logs-badge[data-tone="error"] { background: var(--ls-error); }
+.rd-logs-badge[data-tone="warning"] { background: var(--ls-warning); }

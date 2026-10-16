@@ -1,7 +1,8 @@
 ---
 name: council
-description: Multi-agent council for one hard-to-reverse fork (a contract, sync or Drive behaviour, a package boundary, a UX model the user will learn) — four isolated personas with opposed objectives argue in two rounds, a fresh judge returns agreements, live clashes and verbatim dissent. Costs about 200k subagent tokens (each seat loads the repo context) and about 2k in the main thread, so never for facts, reversible choices or anything a scout can answer. Run from the main thread: from brainstorm, orchestrate, a fork that finish reports under Needs judgment, or directly as /council <fork>.
+description: Multi-agent council for one hard-to-reverse fork (a contract, sync or Drive behaviour, a package boundary, a UX model the user will learn) — four isolated personas with opposed objectives argue in two rounds, a fresh judge returns agreements, live clashes and verbatim dissent. Costs about 200k subagent tokens (each seat loads the repo context) and about 2k in the main thread, so never for facts, reversible choices or anything a scout can answer. Runs only when the user types /council <fork>.
 argument-hint: <the fork: question plus the options on the table>
+disable-model-invocation: true
 ---
 
 Fork: $ARGUMENTS

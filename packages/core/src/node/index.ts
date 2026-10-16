@@ -20,3 +20,4 @@ export * from "../writing/versions/node/index.js";
 export * from "../writing/projectData/node/index.js";
 export * from "../writing/compare/node/index.js";
 export * from "../writing/checklist/node/index.js";
+export * from "../github/index.js";

@@ -25,6 +25,20 @@ describe("preview messages", () => {
     expect(posted).toEqual([{ type: "buildStatus", state: "succeeded", errors: 0 }, { type: "reloadDocument" }]);
   });
 
+  it("adds stale and builtAt to the build status only when given", async () => {
+    const { host, posted } = setupHost();
+    await host.handle({ command: "ready", totalPages: 4 });
+    host.setBuildStatus("succeeded", 0, { stale: true, builtAt: 1700 });
+    host.setBuildStatus("succeeded", 0, { stale: false });
+    host.setBuildStatus("succeeded");
+    expect(posted).toEqual([
+      { type: "buildStatus", state: "succeeded", errors: 0, stale: true, builtAt: 1700 },
+      { type: "buildStatus", state: "succeeded", errors: 0, stale: false },
+      { type: "buildStatus", state: "succeeded", errors: 0 },
+    ]);
+    expect(posted[2]).toStrictEqual({ type: "buildStatus", state: "succeeded", errors: 0 });
+  });
+
   it("names the file to show in a reload only when given one", async () => {
     const { host, posted } = setupHost();
     await host.handle({ command: "ready", totalPages: 4 });

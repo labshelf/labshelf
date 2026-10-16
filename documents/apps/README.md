@@ -37,6 +37,7 @@ Unit tests do not cover webview DOM, the real extension host or a real terminal.
 |---|---|
 | import, OCR, text layer, anything pdf.js does in the extension host | [vscode.md → extension host run](vscode.md#extension-host-run) |
 | webview or reader UI, list panel | [vscode.md → webview harness](vscode.md#webview-harness) |
+| core library list and detail layout (light, dark, narrow) | `pnpm verify:library` mounts the core library UI on a made-up library and writes screenshots and console errors to `.verify/library/`; the VS Code theme variables are approximate |
 | browser extension pages, popup, capture | [browser.md → headless run](browser.md#headless-run) |
 | TUI layout, keys, terminal output | [terminal.md → verification](terminal.md#verification) |
 | PDF finding: resolvers, download, miss reasons | `pnpm --filter @labshelf/core eval:pdf` runs the corpus in `packages/core/tools/pdf-eval/` against the live network (needs network; reports are git-ignored) |
@@ -47,6 +48,6 @@ Rules for every recipe:
 - **Isolate config and tokens.** Point `XDG_CONFIG_HOME` and `XDG_CACHE_HOME` at scratch directories, and use a throwaway `--user-data-dir`.
 - **Use a real paper as well as synthetic fixtures.** Synthetic PDFs miss real-world failures: OCR layers, scans, margin stamps, missing link annotations.
 - **Look at the screenshots.** A passing DOM assertion does not prove the layout is right.
-- Harness scripts live in the session scratchpad and are not committed.
+- One-off harness scripts live in the session scratchpad. A harness that more than one session uses is committed under `scripts/`.
 - On this Mac, `/Applications/Google Chrome.app` crashes in headless mode. Use Playwright's Chrome for Testing or its headless shell from `~/Library/Caches/ms-playwright/`, launched outside the sandbox.
 - The `chrome-devtools` server in `.mcp.json` points `--executablePath` at `${HOME}/Library/Caches/ms-playwright/chromium-<ver>/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing`; `--channel` accepts only installed Chrome channels. After `npx playwright install chromium` changes `<ver>`, update the path to the folder that `ls ~/Library/Caches/ms-playwright/` shows.

@@ -9,7 +9,7 @@ const REWARN_STEP = 40_000;
 
 const MESSAGES = {
   subagent: (k) => `Context ≈${k}k tokens, over the 60k budget: finish the current edit, run no new broad reads, and return your report now with what is left undone.`,
-  main: (k) => `Context ≈${k}k tokens, over the 100k budget: finish the current step, write the handoff (plan log / next step) and tell the user to continue in a fresh session.`,
+  main: (k) => `Context ≈${k}k tokens, over the 150k budget: avoid new broad reads and delegate what is left of the session; write a new session file only if it cannot finish here.`,
 };
 
 function transcriptFor(input) {

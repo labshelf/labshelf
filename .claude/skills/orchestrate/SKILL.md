@@ -36,15 +36,17 @@ Split the work into packages. Each package states:
 - **Files**: the files it creates or changes, and what it must not touch.
 - **Depends on**: other package ids.
 - **Tier, runner and model**: see the table below.
-- **Door**: one-way if it touches `documents/contracts/` or an on-disk format, sync, Drive writes, or an extension manifest or its permissions; otherwise two-way.
-- **Acceptance**: the checks that prove it is done.
-- **Test first**: for a behaviour change, the test seam and the acceptance items the failing tests pin. Moves, splits, docs and tooling say "n/a".
+- **Level**: how much process it gets, by risk:
+  - **task** (move, rename, delete after a grep, compact, docs): no new test and no agent of its own; all of a session's tasks go in one Tasks package, or the main thread does them directly;
+  - **behaviour**: one `implementer` works test first on its own (writes the failing test, sees it fail, implements);
+  - **contract** (touches `documents/contracts/`, an on-disk format, a protocol, sync, Drive writes, or an extension manifest or its permissions): one `implementer` writes the failing tests first, then implements; `architecture-reviewer` follows only for an on-disk format, sync or Drive writes. These are the hard-to-reverse packages.
+- **Acceptance**: the checks that prove it is done; for behaviour and contract, the test seam and the acceptance items the failing tests pin.
 
 | Tier | Work | Runner |
 |---|---|---|
 | H | design decisions, new UI design (run the `ui-design` skill first), algorithms, cross-package refactors that need judgment, hard debugging | you, in this thread; or `implementer` with `model: "opus"` or `"fable"` when it can run in parallel, or when the user assigned a model to it |
 | M | well-specified implementation, moves and splits from a map, tests, reviews | `implementer` / `module-splitter` / `test-writer` / `code-mapper` on Sonnet |
-| L | running gates, import fixes, commits, changelog | `check` skill, `import-validator`, `commit-splitter` on Haiku |
+| L | running gates, import fixes, changelog | `check` skill, `import-validator` on Haiku; commits are a plain `git commit` in this thread |
 | Docs | `documents/` updates, comment standard, dead code | the `finish` skill on Sonnet, once at the end |
 
 Routing: pick the tier by the kind of judgment, not the size. Haiku only when the output is machine-checkable; Sonnet when explicit acceptance checks exist; Opus/Fable for contracts, new abstractions, cross-app work, prompt writing, and a bug that survived one Sonnet attempt.
@@ -53,48 +55,43 @@ Escalation: a Sonnet package that fails its acceptance checks twice, or returns 
 
 Rules for the plan:
 - If the user named models ("Fable does the visual"), follow them.
-- A behaviour package runs as two steps: `test-writer` writes the failing tests from its acceptance items, then the `implementer` gets their paths and makes them pass. A target the agent can check against is what keeps the implementer from looping.
-- Size each package by what its agent must read, not by the feature: at most about ten files or ranges, so it finishes under the 60k subagent budget. A package that needs more is two packages.
+- Size each package by what its agent must read, not by the feature: its brief names 5–8 files with line ranges, so it finishes under the 60k subagent budget. A package that needs more is two packages. A sweep ("what is unused?", "where is X used?") is a scout's job before the brief is written; the brief gets the list of candidates, never the sweep.
 - Packages that touch the same files run in sequence. Only packages with disjoint files run in parallel.
 - Shared logic lands in core first; app packages depend on it.
-- Doubt step: a one-way package that still has two viable designs goes to the `council` skill before it runs, and its verdict becomes the package's decision. It costs about 200k subagent tokens, so a one-way package with one obvious design only states why there is no fork.
-- Size the plan with the scale in `documents/plans/TEMPLATE/plan.md` (P, M, G, GG in AI sessions). Read `documents/plans/CALIBRATION.md` first and correct for its bias. Between two sizes, pick the smaller and write what would make it grow.
-- If the plan is G or GG, or has more than about five packages, write the directory `documents/plans/<slug>/` from `documents/plans/TEMPLATE/`, split into sessions of about four delegated steps each. Then stop after approval and tell the user to start session 1 in a fresh conversation with the prompt from `references/handoff.md`. Otherwise, keep the plan in the conversation in the same shape, shortened, and run it here.
+- Doubt step: a contract package that still has two viable designs is put to the user as the fork in two lines, with your recommendation; the user decides, or runs `/council` on it.
+- Size the plan in sessions. Between two sizes, pick the smaller.
+- If the plan is M or larger, or has more than about four packages, write the directory `documents/plans/<slug>/` from `documents/plans/TEMPLATE/`: self-contained session files, each delegated package's brief written in full in its session file. Sessions run in order; at most three run at the same time, and only with disjoint Owns. Then stop after approval and give the user the first prompts from `references/handoff.md`. Otherwise, keep the plan in the conversation in the same shape, shortened, and run it here.
 - Show the plan to the user and wait for approval before executing, unless they said to go ahead.
 
 ## 4. Execute
 
 - Do the tier-H packages that need this conversation's context yourself.
-- Launch delegated packages with the Agent tool. Their prompts must be **self-contained**: goal, files, what not to touch, acceptance checks. Agents do not see this conversation.
+- Launch delegated packages with the Agent tool. Write the brief before delegating, from the scouts: goal; "read only" with 5–8 files and line ranges; what is decided (DOM or data shape, names, placement); the seams to reuse; "done when" (tests, commands, limits); "do not touch". Agents do not see this conversation. An agent that stopped without editing got an incomplete brief: fix the brief, never resend the same one.
 - Point instead of pasting: name the plan file and step id, the `AGENTS.md` section, and the files with line ranges, and let the agent read them. Paste only what is written nowhere, such as a decision taken in this conversation, or a scout's finding the agent would otherwise re-discover.
-- Context budget: `.claude/hooks/context-budget.mjs` warns a subagent past 60k tokens and this thread past 100k. A subagent that stops on the warning returns what is left; split that remainder into a new package. When the warning reaches this thread, finish the current package, log it, and hand off (`references/handoff.md`) instead of continuing; never rely on compaction, which is off for this project.
+- Context budget: `.claude/hooks/context-budget.mjs` warns a subagent past 60k tokens and this thread past 150k. A subagent that stops on the warning returns what is left; split that remainder into a new package. This thread keeps going until the session is done; it writes a new session file only when it cannot finish.
 - Launch independent packages in one message so they run in parallel.
-- After each package, run the `check` skill (Haiku) instead of reading test output yourself. `finish` reuses the last `check` result when the tree has not changed since.
+- After the last package of a session, run the `check` skill (Haiku) once instead of reading test output yourself.
 - If a package's report shows a design problem, fix the plan. Do not patch around it.
 
 ## 5. Finish and commit
 
-- Run the `finish` skill once at the end (Sonnet). It handles dead code, comments, docs and the architecture review, and fixes the mechanical issues itself. Fix only the findings that need judgment.
-- If the change is UI, extension host or terminal behaviour, run the `verify` skill and look at the screenshots it lists.
-- Commit only if the user asks: `commit-splitter` (Haiku).
-- If a plan file exists, tick its steps in `sessions/*.md` and append one line per step to `log.md` with `>>`.
+- Run the `finish` skill once at the end of the whole change or plan, never per session (Sonnet). It handles dead code, comments, docs and the architecture review, and fixes the mechanical issues itself. Fix only the findings that need judgment.
+- Run the `verify` skill only when the user asks; the user checks UI by hand.
+- Commit only if the user asks: `git add <own files> && git commit` in this thread. `commit-splitter` is for `/ship`.
+- If a plan file exists, tick its steps in `sessions/*.md`.
 
-Report to the user: what was built, the acceptance criteria with pass/fail, what each model did, and anything left open.
+Report to the user: what was built, the acceptance criteria with pass/fail, what each model did, and anything left open. Ten lines when it went as planned; longer only for concerns.
 
 ## Running a plan file
 
-1. Read `plan.md` (header, §1, §2). If any decision is unchecked or any Q is open, ask about it before anything else. Never read `log.md` whole.
-2. Pick the session: the one named in the request, or the lowest-numbered file in `sessions/`. Check its **Starts from** against the session context, which gives the branch and uncommitted work. If the repo is not in that state, stop and say what differs.
-3. Read only that session file and the `research/` entries it names. Run `node scripts/research-fresh.mjs`: re-scout each `stale` entry with an `Explore` scout and save its brief to `research/<area>.md` with a heredoc, under the header `sha:` (current `git rev-parse --short HEAD`), `files:`, `source:`; put `fresh` entries into the implementer briefs. Run the steps as in steps 4–5 above and nothing from later sessions. Set the status in `plan.md` to `in progress (session <n> of <m>)`.
-4. End the session:
-   - run the `finish` skill;
-   - tick the steps in the session file and the acceptance criteria in `plan.md` they meet;
-   - append `log.md` lines with `>>` (date and time, one line per step, one line with the peak context of this thread and of the largest subagent from `node scripts/agent-tokens.mjs`);
-   - delete the finished session file after logging it;
-   - commit if the session says **Commit: yes**. Approving the plan authorises those commits; use `commit-splitter`.
-5. If it was the last session:
-   - set the status in `plan.md` to `done`;
-   - add a row to `documents/plans/CALIBRATION.md` with the estimated size and sessions, the sessions used, the real time from the first `log.md` line to the last, the highest main-thread peak from the log, the real size, and why they differed;
-   - update its bias line;
-   - delete the plan directory, or archive it only if it meets `documents/archive/README.md`.
-6. Reply with the handoff message from `references/handoff.md` and stop. Never start the next session in this conversation; a fresh context is the point of splitting.
+A session reads its session file and nothing else of the plan: not `plan.md`, not `log.md`, not other sessions. The session file is self-contained; if it is not, that is a planning bug to report, not a reason to read more.
+
+1. Pick the session: the one named in the request, or the lowest-numbered file in `sessions/`. Read only that file. Check its **Starts from** against the session context hook; if the repo is not in that state, stop and say what differs.
+2. Run its packages as in steps 4–5 above and nothing from other sessions. `research/` entries it names go into the implementer briefs by path; the implementer reads them, the main thread does not, and nothing is re-scouted unless a package fails on a wrong premise. Sibling sessions may edit the same worktree: touch, check and commit only the session's **Owns**.
+3. End the session:
+   - run `check` on the **Owns**;
+   - append one line to `log.md` with `>>`: date, session id, done/left, commit hash;
+   - delete the session file;
+   - commit the session's own files with `git add <Owns files> && git commit` in this thread; approving the plan authorises those commits.
+4. If it was the last session: run `finish` once on everything the plan touched, then delete the plan directory, or archive it only if it meets `documents/archive/README.md`.
+5. Reply with the handoff message from `references/handoff.md` and stop.

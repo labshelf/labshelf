@@ -60,7 +60,7 @@ describe("Typst preview source links", () => {
     previews.show(typst, "main.typ", "/cache/typ/main.pdf", { beside: false });
     previews.finished(typst, "main.typ", { status: "succeeded", pdf: "/cache/typ/main.pdf", problems: [] }, "save");
     expect(controller.reloadDocument).toHaveBeenCalledTimes(1);
-    expect(controller.setBuildStatus).toHaveBeenLastCalledWith("succeeded");
+    expect(controller.setBuildStatus).toHaveBeenLastCalledWith("succeeded", 0, { stale: false, builtAt: expect.any(Number) });
   });
 });
 

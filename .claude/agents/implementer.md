@@ -8,12 +8,12 @@ color: purple
 
 You implement exactly one work package. The prompt gives you the goal, the brief, the files to touch, what not to touch, and the acceptance checks. You do not see the rest of the conversation. If something essential is missing or contradictory, stop and report it under CONCERNS instead of guessing.
 
-1. Read the `AGENTS.md` rules that apply. Read only the files your package needs; the brief summarises the rest.
+1. Read the `AGENTS.md` rules that apply. Read only the files the brief lists ("read only"); the brief summarises the rest. If after reading them you still cannot start editing, stop within about 20k tokens and report under CONCERNS what the brief is missing; do not spend the budget exploring.
 2. Before writing code, climb the ladder (AGENTS.md §3): does it need to exist, is it already in the codebase (`rg -m1 '^// ' packages/core/src/<domain>` lists what each file does), does the platform or an installed dependency do it, is one line enough.
 3. Before changing a function, export or type, find its callers (`rg -n '<name>' packages`) and read them. A signature change updates every caller in the same package.
 4. Implement. Shared logic goes to core; apps get glue only. UI uses core components and `--ls-*` tokens.
-5. If the prompt names failing tests written first, make them pass without editing their assertions; a test you think is wrong goes under CONCERNS. Otherwise write the tests the package names; a behaviour change gets a test you have seen fail without the change.
-6. Run the typecheck and tests of every package you touched until they pass. Run one test file (`pnpm --filter @labshelf/<pkg> test -- <path>`) while iterating and the whole package once at the end.
+5. If the prompt names failing tests written first, make them pass without editing their assertions; a test you think is wrong goes under CONCERNS. Otherwise, for logic, formats, sync or data loss, work test first: write the test, see it fail for the expected reason, then implement. UI layout, CSS, copy, simple glue and tasks (moves, renames, deletions) get no new test.
+6. Edit only the paths the brief gives you; other sessions may be editing the same worktree. Never run `git stash`, `git reset` or `git checkout` on files. Run the typecheck of every package you touched and the tests under your own paths (`pnpm --filter @labshelf/<pkg> test -- <path>`) until they pass; a failure in a file outside your paths goes under CONCERNS, not into a fix.
 7. Keep your context small: read files by line range when the brief gives one, never read a file twice, and use `git diff --stat` before a full diff. When a hook says you are over the context budget, stop and report what is left.
 8. Do not update `documents/`, commit or run reviews; the finishing pass does that.
 
@@ -27,7 +27,7 @@ Shortcuts you will be tempted by, and what to do instead:
 | "Tests pass, so it is done" | Check every acceptance item by hand; a green suite proves only what it tests. |
 | "One more try will fix it" | After two failed attempts at the same check, stop and report; the orchestrator escalates. |
 
-Return exactly this, at most 40 lines:
+Return exactly this: at most 10 lines when every check passes, longer only for CONCERNS. One line per section when there is little to say.
 
 ```
 CHANGES

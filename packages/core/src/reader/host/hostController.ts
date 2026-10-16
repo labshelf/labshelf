@@ -88,9 +88,14 @@ export class ReaderHostController {
 
   /**
    * Shows the state of the build behind a preview; `errors` is ignored unless the build failed.
+   * `extra.stale` marks a PDF older than its sources and `extra.builtAt` is its last successful build in epoch milliseconds; each is sent only when given.
    */
-  setBuildStatus(state: BuildState, errors = 0): void {
-    this.postWhenReady({ type: "buildStatus", state, errors: state === "failed" ? errors : 0 });
+  setBuildStatus(state: BuildState, errors = 0, extra: { stale?: boolean; builtAt?: number } = {}): void {
+    const { stale, builtAt } = extra;
+    this.postWhenReady({
+      type: "buildStatus", state, errors: state === "failed" ? errors : 0,
+      ...(stale === undefined ? {} : { stale }), ...(builtAt === undefined ? {} : { builtAt }),
+    });
   }
 
   /**

@@ -29,4 +29,4 @@ LabShelf is one product in three hosts. Good UI here is consistent with what alr
 
 ## How to check
 
-Run the `verify` skill on every host the surface appears in and look at its screenshots in light and dark. `check` catches token drift and size limits. It cannot tell you whether the UI looks right.
+The user checks the surface by hand in light and dark; suggest `/verify` only if they ask for screenshots. `check` catches token drift and size limits. It cannot tell you whether the UI looks right.

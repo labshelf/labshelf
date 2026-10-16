@@ -80,7 +80,7 @@ More rules:
 
 ## 6. Behaviour
 
-- Every behaviour change ships with a test that fails without it.
+- Logic, formats, sync, contracts and data-loss paths ship with a test that fails without it. UI layout, CSS, copy and simple glue need no test; the user checks them by hand. Do not run `verify` unless asked.
 - Log important actions and every failure through the injected `ILogger`, with enough context to diagnose without a debugger. Log fallbacks explicitly, and do not log in hot paths.
 - Errors carry context. Never swallow an error silently; log it or surface it.
 - Replies end with what was not checked, not just what passed.

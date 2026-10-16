@@ -31,17 +31,18 @@ function setup() {
   return { previews, controller, host, panel, close: () => closed?.() };
 }
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => { jest.clearAllMocks(); jest.spyOn(Date, "now").mockReturnValue(5000); });
+afterEach(() => jest.restoreAllMocks());
 
 describe("BuildPreviews", () => {
   it("reloads an open preview and reports success", () => {
     const { previews, controller } = setup();
     previews.show(project, "main.tex", "/p/paper/main.pdf", { beside: false });
     previews.building("/p/paper", "main.tex");
-    expect(controller.setBuildStatus).toHaveBeenLastCalledWith("building");
+    expect(controller.setBuildStatus).toHaveBeenLastCalledWith("building", 0, {});
     previews.finished(project, "main.tex", succeeded, "save");
     expect(controller.reloadDocument).toHaveBeenCalledTimes(1);
-    expect(controller.setBuildStatus).toHaveBeenLastCalledWith("succeeded");
+    expect(controller.setBuildStatus).toHaveBeenLastCalledWith("succeeded", 0, { stale: false, builtAt: 5000 });
     expect(create).toHaveBeenCalledTimes(1);
   });
 
@@ -70,7 +71,7 @@ describe("BuildPreviews", () => {
     const { previews, controller } = setup();
     previews.show(project, "main.tex", "/p/paper/main.pdf", { beside: false });
     previews.finished(project, "main.tex", failed, "save");
-    expect(controller.setBuildStatus).toHaveBeenLastCalledWith("failed", 2);
+    expect(controller.setBuildStatus).toHaveBeenLastCalledWith("failed", 2, {});
     expect(controller.reloadDocument).not.toHaveBeenCalled();
   });
 
@@ -78,7 +79,7 @@ describe("BuildPreviews", () => {
     const { previews, controller } = setup();
     previews.finished(project, "main.tex", failed, "save");
     previews.show(project, "main.tex", "/p/paper/main.pdf", { beside: false });
-    expect(controller.setBuildStatus).toHaveBeenLastCalledWith("failed", 2);
+    expect(controller.setBuildStatus).toHaveBeenLastCalledWith("failed", 2, {});
     previews.building("/p/paper", "main.tex");
     previews.finished(project, "main.tex", succeeded, "save");
     controller.setBuildStatus.mockClear();
@@ -93,7 +94,7 @@ describe("BuildPreviews", () => {
     previews.finished(project, "b/main.tex", chapterFailure, "save");
     previews.finished(project, "b/main.tex", succeeded, "save");
     previews.show(project, "main.tex", "/p/paper/main.pdf", { beside: false });
-    expect(controller.setBuildStatus).toHaveBeenLastCalledWith("failed", 2);
+    expect(controller.setBuildStatus).toHaveBeenLastCalledWith("failed", 2, {});
     (vscode.window as unknown as { visibleTextEditors: unknown[] }).visibleTextEditors = [{ viewColumn: 1 }];
     await create.mock.calls[0][1].preview.openProblem("main.tex", 1);
     expect((vscode.window.showTextDocument as jest.Mock).mock.calls[0][0].fsPath).toBe("/p/paper/main.tex");
@@ -113,7 +114,7 @@ describe("BuildPreviews with several roots", () => {
     previews.show(project, "b/main.tex", chapterPdf, { beside: true });
     expect(create).toHaveBeenCalledTimes(1);
     expect(panel.showDocument).toHaveBeenCalledWith(expect.objectContaining({ fsPath: chapterPdf }), "main.pdf");
-    expect(controller.setBuildStatus).toHaveBeenLastCalledWith("succeeded", 0);
+    expect(controller.setBuildStatus).toHaveBeenLastCalledWith("succeeded", 0, {});
   });
 
   it("switches the open panel to a root whose build was started by focus", () => {
@@ -130,7 +131,7 @@ describe("BuildPreviews with several roots", () => {
     previews.finished(project, "b/main.tex", chapterFailure, "save");
     previews.show(project, "main.tex", "/p/paper/main.pdf", { beside: false });
     previews.show(project, "b/main.tex", chapterPdf, { beside: false });
-    expect(controller.setBuildStatus).toHaveBeenLastCalledWith("failed", 1);
+    expect(controller.setBuildStatus).toHaveBeenLastCalledWith("failed", 1, {});
   });
 
   it("reloads on a build of the shown root only", () => {
@@ -157,6 +158,54 @@ describe("BuildPreviews with several roots", () => {
     expect(previews.hasPreview("/p/paper")).toBe(false);
     previews.close("/p/paper");
     expect(panel.dispose).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("BuildPreviews staleness", () => {
+  const edit = (file: string) => (vscode.workspace as unknown as { _fireTextDocumentChange(event: unknown): void })
+    ._fireTextDocumentChange({ document: { uri: { scheme: "file", fsPath: file } }, contentChanges: [{}] });
+
+  it("sends when the shown root was built and that it is stale after a source edit", () => {
+    const { previews, controller } = setup();
+    previews.show(project, "main.tex", "/p/paper/main.pdf", { beside: false });
+    previews.building("/p/paper", "main.tex");
+    previews.finished(project, "main.tex", succeeded, "save");
+    controller.setBuildStatus.mockClear();
+    edit("/p/paper/main.tex");
+    edit("/p/paper/main.tex");
+    expect(controller.setBuildStatus).toHaveBeenCalledTimes(1);
+    expect(controller.setBuildStatus).toHaveBeenCalledWith("succeeded", 0, { stale: true, builtAt: 5000 });
+    previews.dispose();
+  });
+
+  it("does not resend for a root the preview does not show or for an edit without content changes", () => {
+    const { previews, controller } = setup();
+    previews.show(project, "main.tex", "/p/paper/main.pdf", { beside: false });
+    previews.building("/p/paper", "b/main.tex");
+    previews.finished(project, "b/main.tex", succeeded, "save");
+    controller.setBuildStatus.mockClear();
+    edit("/p/paper/b/main.tex");
+    expect(controller.setBuildStatus).not.toHaveBeenCalled();
+    (vscode.workspace as unknown as { _fireTextDocumentChange(event: unknown): void })
+      ._fireTextDocumentChange({ document: { uri: { scheme: "file", fsPath: "/p/paper/main.tex" } }, contentChanges: [] });
+    expect(controller.setBuildStatus).not.toHaveBeenCalled();
+    previews.dispose();
+  });
+
+  it("keeps the stale mark on the status shown while a rebuild runs and replays it when the preview reopens", () => {
+    const { previews, controller, close } = setup();
+    previews.show(project, "main.tex", "/p/paper/main.pdf", { beside: false });
+    previews.building("/p/paper", "main.tex");
+    previews.finished(project, "main.tex", succeeded, "save");
+    edit("/p/paper/main.tex");
+    previews.building("/p/paper", "main.tex");
+    expect(controller.setBuildStatus).toHaveBeenLastCalledWith("building", 0, { stale: true, builtAt: 5000 });
+    previews.finished(project, "main.tex", failed, "save");
+    expect(controller.setBuildStatus).toHaveBeenLastCalledWith("failed", 2, { stale: true, builtAt: 5000 });
+    close();
+    previews.show(project, "main.tex", "/p/paper/main.pdf", { beside: false });
+    expect(controller.setBuildStatus).toHaveBeenLastCalledWith("failed", 2, { stale: true, builtAt: 5000 });
+    previews.dispose();
   });
 });
 

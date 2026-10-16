@@ -30,14 +30,14 @@ test('a subagent over 60k is warned once, again only after another 40k', () => {
   assert.match(warning(run(input, stateDir)), /≈106k/);
 });
 
-test('the main thread has a 100k budget and a handoff message', () => {
+test('the main thread has a 150k budget and a delegate-what-is-left message', () => {
   const dir = tempDir();
   const stateDir = tempDir();
-  const { main } = writeSession(dir, 'sess', { mainContext: 99_000, agentContext: 5 });
+  const { main } = writeSession(dir, 'sess', { mainContext: 149_000, agentContext: 5 });
   const input = { session_id: 'sess', transcript_path: main };
   assert.equal(run(input, stateDir).stdout, '');
-  writeJsonl(main, [assistant('m2', 101_000)]);
-  assert.match(warning(run(input, stateDir)), /over the 100k budget.*fresh session/);
+  writeJsonl(main, [assistant('m2', 151_000)]);
+  assert.match(warning(run(input, stateDir)), /over the 150k budget.*delegate/);
 });
 
 test('falling back under budget re-arms the warning', () => {

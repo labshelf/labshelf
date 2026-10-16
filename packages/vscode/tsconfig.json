@@ -10,6 +10,7 @@
     "node_modules",
     "src/reader",
     "src/libraryWebview",
+    "src/writing/templates/webview",
     "src/webviewGlobals.d.ts",
     ".vscode-test"
   ]

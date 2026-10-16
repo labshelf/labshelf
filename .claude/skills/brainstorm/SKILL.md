@@ -15,7 +15,7 @@ Start in the mode the arguments name (`grill:` or `council:`), else in spar. Swi
 
 - **Spar** (default): 80–200 words a turn, one idea per paragraph, no headers, no repeating the user. React first with an opinion (agree, partly agree or disagree, and why). Never agree without adding an improvement, a sharper version or a consequence they missed. Merge their point with yours. End with at most one question: the one that matters most next.
 - **Grill**: each turn lists the whole frontier, meaning every open question whose answer does not depend on another open one, numbered. Each question has your recommended answer and a one-line reason. The user answers by number ("1 ok, 3: no, because…"), and the next round is the new frontier. Do not ask the user a question of fact: anything the code or `documents/` can answer goes to one `Explore` scout with `model: "haiku"` in the same turn, and its answer comes back as a decided item marked `verified`.
-- **Council**: for one hard-to-reverse fork only. State the fork in two lines and run the `council` skill on it. Its judge block enters the recap, and the user decides.
+- **Council**: for one hard-to-reverse fork only. State the fork in two lines and ask the user to run `/council <fork>`; its judge block enters the recap when they paste or run it, and the user decides.
 
 ## Every turn
 
@@ -40,7 +40,7 @@ Tag every proposed idea and every important claim at its end as `[feasibility ·
 - **Basis.** `verified` (checked in code or docs in this conversation), `knowledge` (a known fact about VS Code, MV3, pdf.js or Drive), or `guess`, in which case add the cheap check that would verify it.
 - **Size**, in AI work sessions: **P** one package, minutes · **M** core plus one app with tests, about one session · **G** core plus two or three apps or a new UI surface, one to three sessions · **GG** a new subsystem or contract change, several sessions starting with a spike. Between two sizes, pick the smaller and say what would make it grow.
 
-Models rate feasibility too low and size too high. Read `documents/plans/CALIBRATION.md` once per brainstorm and correct for its bias. Never pad an estimate; name the risk instead.
+Models rate feasibility too low and size too high. Never pad an estimate; name the risk instead.
 
 ## Recap and stopping
 
@@ -62,7 +62,7 @@ Only an explicit go-ahead to plan or build counts: "approved", "aprovado", "fech
 On approval:
 
 1. **Builder check.** Launch one fresh `general-purpose` agent with `model: "sonnet"`, giving it only the final recap and the paths of the docs it rests on: "You will build this from this text alone. List, in 10 lines or fewer, the questions you would have to ask before starting, and the decisions you would have to guess." Fold its answers into the decisions, or turn them into open questions, and ask the user only the ones that change the design.
-2. **Plan.** Write the directory `documents/plans/<slug>/` from `documents/plans/TEMPLATE/` (`plan.md` with the decisions and sessions overview, one `sessions/NN.md` per session, an empty `log.md`): decisions from the conversation, open questions, steps with runner tiers, size on the scale above, sessions for G or GG (each ending green and committed). The "Not doing" list goes into Scope → Out. Run one or two `Explore` scouts first if §5 or §6 need facts about the code that you do not have. Keep it short.
+2. **Plan.** Write the directory `documents/plans/<slug>/` from `documents/plans/TEMPLATE/` (`plan.md` with the decisions and sessions overview, one `sessions/NN.md` per session, an empty `log.md`): decisions from the conversation, open questions, size in sessions, each session file self-contained and ending green and committed. The "Not doing" list goes into the decisions. Run one or two `Explore` scouts first if the session briefs need facts about the code that you do not have. Keep it short.
 3. **Reply** in three to six lines: the plan path, its size and number of sessions, the decisions it rests on, and any open question that blocks approval. Then stop. Execution starts only with `/orchestrate documents/plans/<slug>/plan.md`.
 
 Chat in the user's language. The plan file is in English, following the repo rule.

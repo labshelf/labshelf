@@ -1,8 +1,7 @@
 # Plan: VS Code PDF preview redesign
 
-Status: in progress (wave 2: sessions 2a–2i)
-Size: GG — new preview surface, a labshelf.yaml contract change and new build features; 17 sessions in 4 waves (wave 2 nine wide); grows if `\includeonly` needs a build wrapper beyond latexmk flags
-Pending decisions: 0
+Status: in progress
+Size: 7 sessions — remaining host and webview pieces, their wiring, and the final checks of a larger redesign
 
 ## 1. Goal
 
@@ -12,9 +11,9 @@ The PDF preview beside a `.tex` or `.typ` source gets the layout of the mockup (
 
 Facts: [research/preview.md](research/preview.md), [research/writing-core.md](research/writing-core.md), [research/ui-kit.md](research/ui-kit.md).
 
-- [x] **D1** The chrome lives in core under `reader/dom/preview/` subfolders (header, footer, card), mounted only in preview mode; the library reader keeps its toolbar — browser editor (writing-4) reuses them later.
+- [x] **D1** The chrome lives in core under `reader/dom/preview/` subfolders (header, footer, card, marks), mounted only in preview mode; the library reader keeps its toolbar — the browser editor (writing-4) reuses them later.
 - [x] **D2** Citation card highlights show their colour only, with no meaning label — no annotation format change (user choice).
-- [x] **D3** Page and word limit, and "count up to References / End", live in `labshelf.yaml` `check:` next to the existing `pages` key, per project — syncs with coauthors (user choice; contract change).
+- [x] **D3** Page and word limit, and "count up to References / End", live in `labshelf.yaml` `check:` next to the existing `pages` key, per project — syncs with coauthors (user choice; contract change in `documents/contracts/library-format.md#labshelfyaml`: `check.words`, `check.countUpTo`).
 - [x] **D4** Find and the sidebar toggle stay in the View group; the page-theme popover becomes one Dark PDF toggle (pdf.js `pageColors`); help leaves the header and stays on `?` (user choice).
 - [x] **D5** The engine menu lists Tectonic, pdfLaTeX, XeLaTeX and LuaLaTeX for `.tex` roots and is hidden for `.typ` roots — Typst compiles in-process with typst.ts, so "Typst" is not an engine choice. It writes `engine` in labshelf.yaml through the existing pick-compiler path.
 - [x] **D6** Auto compile is a VS Code setting `labshelf.writing.autoCompile` (default on) honoured by both save listeners and the Typst live compile — a per-user preference, not project data.
@@ -22,19 +21,19 @@ Facts: [research/preview.md](research/preview.md), [research/writing-core.md](re
 - [x] **D8** F8 walks one ordered problem list per build: undefined citations, undefined references, overfull boxes, preprint entries. Placed on the PDF through SyncTeX for LaTeX; for Typst only citation problems are placed (typst cite targets), the rest open from the footer list.
 - [x] **D9** Export writes through a save dialog: project `.zip`, arXiv bundle whose `.bib` holds only cited entries (built from the user's `.bib`, never `labshelf.bib`), and "Open PDF in system viewer".
 - [x] **D10** The undefined-key suggestion ranks shelf cite keys by edit distance and author/year overlap in core; Replace edits the `\cite` in the source through a WorkspaceEdit.
+- [x] **D11** Placement: header, footer, menus and limit popover in `core/src/reader/dom/preview/{header,footer}/`; problem list in `core/src/writing/problems/` with PDF marks in `reader/dom/preview/marks/`; key suggestion in `core/src/writing/citations/`; `\includeonly` in `core/src/writing/latex/build/`; export in `core/src/writing/project/export`; stale state, auto compile, Ctrl+S and engine in `packages/vscode/src/writing/{build,preview}/`. Protocol messages (`core/src/reader/protocol.ts`, `previewProtocol.ts`, `previewRequests.ts`, contract `documents/contracts/reader-host.md#preview`) are frozen.
+- [x] **D12** Out of scope: browser and terminal UIs (writing-4 adopts the core chrome later), highlight meanings, venue presets for limits, Typst SyncTeX (plan typst-source-sync).
 
-## 3. Scope
+Open: none.
 
-- **In:** VS Code preview panel (LaTeX and Typst roots); core reader preview DOM, protocol and host ports; writing core for problems, suggestions, limits, export, `\includeonly`.
-- **Out:** browser and terminal UIs (writing-4 adopts the core chrome later); highlight meanings; venue presets for limits; Typst SyncTeX (plan typst-source-sync).
-- **Contracts touched:** `documents/contracts/reader-host.md#preview` (new messages), `documents/contracts/library-format.md#labshelfyaml` (`check.words`, `check.countUpTo`).
+Cross-plan caveat: writing-2-submission-tools and typst-source-sync also touch the preview messages; run `git worktree list` before a session that edits them.
 
-## 4. Acceptance criteria
+## 3. Acceptance
 
-- [ ] **A1** The preview shows header (Recompile, options, logs, export | compare, mark, dark, find, sidebar, page nav, zoom), the desk and the footer at 13px chrome height ≤ 38px header / 26px footer; no `--ls-*`-less colour in new CSS (check-rules + vscodeHostCss test). *(Layout part met and committed in wave 1.)*
+- [ ] **A1** The preview shows header (Recompile, options, logs, export | compare, mark, dark, find, sidebar, page nav, zoom), the desk and the footer at 13px chrome height ≤ 38px header / 26px footer; no `--ls-*`-less colour in new CSS (check-rules + vscodeHostCss test). *(Layout part met and committed.)*
 - [ ] **A2** Recompile is muted when current, full colour with an amber dot after a source save, spinning while building; the footer says Compiled N ago / Source changed / Compiling….
 - [ ] **A3** Options menu toggles auto compile (setting respected on save for `.tex` and `.typ`) and switches the LaTeX engine; the change reaches labshelf.yaml.
-- [ ] **A4** Ctrl/Cmd+S in the preview recompiles; double-click opens the source line (LaTeX). *(Layout part met and committed in wave 1.)*
+- [ ] **A4** Ctrl/Cmd+S in the preview recompiles; double-click opens the source line (LaTeX). *(Layout part met and committed.)*
 - [ ] **A5** Logs button shows the warning+error count; its menu lists entries and opens the source line or the raw log.
 - [x] **A6** Footer breadcrumb shows file › section › subsection for the scrolled position; its menu jumps to a section.
 - [ ] **A7** Footer shows `N cites · M to fix`; F8 / Shift+F8 and the arrows cycle problems, scroll to them and flash them; undefined cites have a red wavy underline, preprint entries amber, overfull lines a margin mark.
@@ -44,91 +43,22 @@ Facts: [research/preview.md](research/preview.md), [research/writing-core.md](re
 - [ ] **A11** `N checks` runs Check Before Submitting; Compare Versions and Mark Version buttons run the existing commands.
 - [ ] **A12** `<file> only` appears only in projects using `\include` and builds with `\includeonly`, keeping other chapters' numbering.
 - [ ] **A13** Export menu saves a project zip and an arXiv zip with a trimmed `.bib`, and opens the PDF externally.
-- [ ] **A14** Every theme in the VS Code host renders the chrome readably; the sheet stays brand (verify screenshots, light + dark). *(Layout part met and committed in wave 1.)*
+- [ ] **A14** Every theme in the VS Code host renders the chrome readably; the sheet stays brand (verify screenshots, light + dark). *(Layout part met and committed.)*
 
-## 5. Design
+## 4. Sessions
 
-| Piece | Lives in | Notes |
-|---|---|---|
-| Header, footer, menus, limit popover | `core/src/reader/dom/preview/{header,footer}/` | reuse `ui/dom/widgets/menu.ts`, `overlay.ts`, `toast.ts`, `statusPill` page/zoom logic; replaces `mountPreviewChrome` toolbar actions and `previewNotice` banner |
-| New icons | `core/src/ui/icons/glyphs.ts` | git-compare, contrast, upload, log (lucide style) |
-| Problem list + PDF marks | `core/src/writing/problems/` (pure) + `reader/dom/preview/marks/` | input: `BuildProblem[]`, bib findings, cite sites; output ordered `PreviewProblem` with page point |
-| Card | extend `reader/dom/hover/citations/citationCard.ts` | adds source line, page-first highlights, fix actions |
-| Key suggestion | `core/src/writing/citations/suggestKey.ts` | D10 |
-| Bib-only → library | `core/src/writing/citations/` + `library/mutations` | import by DOI/arXiv if present, else from bib fields |
-| Limit counting | reuse `countWords`, `collectProjectSources`, `paperBody` | D3 |
-| `\includeonly` | `core/src/writing/latex/build/` | spike first: latexmk `-usepretex` vs generated wrapper root |
-| Export | `core/src/writing/export/node/` | zip writer: check installed deps first (ladder) |
-| Stale state, auto compile, Ctrl+S, engine | `packages/vscode/src/writing/{build,preview}/` | `buildPreviews.ts` is 195 lines: split before growing |
-| Protocol, contracts, keymap | `core/src/reader/protocol.ts`, `previewProtocol.ts`, `logic/navigation/keymap.ts` | changed only in 1b, for every later wave; new fields optional |
+Seams between sessions (signatures in the owner's session file): S5 `pdfProblemsOf`, S6 `rootWords`/`setCheckLimits`/`CheckCounts`, S7 `buildOptions`/`setAutoCompile`/`setEngine`/`onAutoCompileChange`, S8 `IncludeOnlyState`, S9 `exportProject`, S10 `withCitationFixes`/`fixCitation`.
 
-## 6. Sessions
+Paths abbreviated: `rd` = `packages/core/src/reader/dom`, `cw` = `packages/core/src/writing`, `vs` = `packages/vscode/src/writing`.
 
-**Waves.** Wave 2 builds pieces in their own files, wave 3 wires them into the single-owner composition files, wave 4 verifies.
-
-| Wave | Runs together | Starts when |
-|---|---|---|
-| 1 | 1a, 1b, 1c, 1d | plan approved |
-| 2 | 2a–2i | wave 1 committed |
-| 3 | 3a, 3b | wave 2 committed |
-| 4 | 4a, 4b | wave 3 committed |
-
-| Session | File | Deliverable | Commit |
-|---|---|---|---|
-| 1a | done (see log.md) | Header, desk, footer with existing features; icons, tokens, Dark PDF, breadcrumb; empty slots for later waves | yes |
-| 1b | done (see log.md) | Protocol and contracts for all waves, `check.words`/`check.countUpTo` end to end, auto-compile setting, keymap entries, `buildPreviews.ts` split | yes |
-| 1c | done (see log.md) | Dark PDF follows the init theme | — |
-| 1d | done (see log.md) | Stale dot size, re-verify, finish | — |
-| 1e | done (see log.md) | Gate and commit 1a + 1c + 1d | yes |
-
-Owns abbreviated (`rd` core reader/dom, `cw` core writing, `vs` vscode writing).
-
-| Session | File | Deliverable | Owns | Commit |
+| Session | File | Deliverable | Owns | Runs with |
 |---|---|---|---|---|
-| 2a | done (see log.md) | Stale, `builtAt`, logs button | host controller, `vs/preview/{projectPreview,stale}`, `rd` header/logs | yes |
-| 2b | done (see log.md) | Auto compile, engine, options menu | `vs/build/options`, save listeners, `rd` header/options | — |
-| 2b2 | done (see log.md) | Menu radio roles | 2b Owns, `ui/dom/widgets/menu.ts` | — |
-| 2b3 | done (see log.md) | Unchosen engine (`engine: null`) | 2b Owns, `ui/dom/widgets/menu.ts`, `BuildOptions`, reader-host Build options line | — |
-| 2b4 | done (see log.md) | Finish and commit 2b | 2b3's Owns | yes |
-| 2c | done (see log.md) | PDF problems, cites | `cw/problems`, `cw/index.ts`, `vs/preview/problems` | yes |
-| 2d | done (see log.md) | Marks, cites status, F8 step | `rd` preview/marks, footer/cites | yes |
-| 2e2 | [2e2](sessions/2e2-limits.md) | Words, limits, checks, meter | `cw/checks/limits`, `vs/preview/limits`, check cmd, `rd` footer/{limit,checks} | yes |
-| 2f | done (see log.md) | Card data and UI | `rd/hover/citations`, `citationKeys.ts`, `vs/preview/citations`, `reader.css` | yes |
-| 2f3 | done (see log.md) | Card review follow-ups, finish, commit | as 2f | yes |
-| 2g | [2g](sessions/2g-citation-fixes.md) | `suggestKey`, card fixes | `cw/citations/fixes`, `vs/preview/citationFixes` | yes |
-| 2h | [2h](sessions/2h-includeonly.md) | `\includeonly` | `cw/latex/build`, `vs/build/node/{latexBuilds,includeOnly}`, `rd` header/only | yes |
-| 2i | done (see log.md) | Export file sets, menu, host `exportProject`, fflate | `cw/project/export`, `vs/export`, `package.json`, `rd` header/export | yes |
-| 2j | [2j](sessions/2j-build-status-finish.md) | Finish and commit 2a | 2a's Owns | yes |
-| 3a | [3a](sessions/3a-host-wiring.md) | Port handlers, roots fields | `vs/preview/{previewPorts.ts,projectPreview,roots}` | yes |
-| 3b | [3b](sessions/3b-webview-wiring.md) | Slots, marks, keys | `mountPreviewChrome.ts`, barrels, `preview.css`, `rd/startup`, cheatsheet | yes |
-| 4a | [4a](sessions/4a-webview-verify.md) | Headless webview check | core fixes | yes |
-| 4b | [4b](sessions/4b-host-verify.md) | Host run, docs (worktree) | vscode fixes, `apps/vscode.md` | yes |
+| 2g | [sessions/2g-citation-fixes.md](sessions/2g-citation-fixes.md) | `suggestKey`, card fixes (Replace, Update, Add) | `cw/citations/fixes/`, `cw/citations/index.ts`, `vs/preview/citationFixes/` | 2h, 2j |
+| 2h | [sessions/2h-includeonly.md](sessions/2h-includeonly.md) | `\includeonly` build and `<file> only` toggle | `cw/latex/build/**`, `vs/build/node/{latexBuilds,includeOnly,index}.ts`, `rd/preview/header/only/` | 2g, 2j |
+| 2j | [sessions/2j-build-status-finish.md](sessions/2j-build-status-finish.md) | Gate and commit of the stale and logs-button work | `core/src/reader/host/hostController.ts`, `vs/preview/projectPreview/**`, `vs/preview/stale/`, `rd/preview/header/logs/`, `rd/styles/preview-logs-button.css` | 2g, 2h |
+| 3a | [sessions/3a-host-wiring.md](sessions/3a-host-wiring.md) | Port handlers, roots fields | `vs/preview/{previewPorts.ts,index.ts}`, `vs/preview/projectPreview/**`, `vs/preview/roots/**` | 3b |
+| 3b | [sessions/3b-webview-wiring.md](sessions/3b-webview-wiring.md) | Slots, marks, keys | `rd/preview/{mountPreviewChrome.ts,index.ts}`, `rd/preview/header/index.ts`, `rd/preview/footer/{index.ts,pageChip.ts}`, `rd/styles/preview.css`, `rd/startup/{readerActions,buildReaderUi,hostMessages}.ts`, `rd/chrome/cheatsheet.ts` | 3a |
+| 4a | [sessions/4a-webview-verify.md](sessions/4a-webview-verify.md) | Headless webview check and fixes | fixes in `packages/core/src/reader/**` and `packages/core/src/ui/**`, `.verify/preview-4a/` | 4b |
+| 4b | [sessions/4b-host-verify.md](sessions/4b-host-verify.md) | Extension-host run, docs (own worktree) | fixes in `packages/vscode/**`, `documents/apps/vscode.md`, `documents/contracts/reader-host.md` | 4a |
 
-**Seams.** Messages: the 1b protocol, frozen. Full signatures in the owner's session file.
-
-| Seam | File | Shape | Owner |
-|---|---|---|---|
-| S1 | `reader/host/hostController.ts` | `setBuildStatus(state, errors, { stale?, builtAt? })` | 2a |
-| S3 | `rd/preview/header/<x>/` | `mount<X>(slot, { post })` → `{ setRoots(roots: PreviewRoots) }` | 2a 2b 2h 2i |
-| S4 | `rd/preview/{marks,footer/*}/` | `mountProblemMarks`, `mountProblems` (`step(±1)`), `mountLimitMeter`, `mountChecksButton` | 2d 2e |
-| S5 | `vs/preview/problems/` | `pdfProblemsOf` → `{ pdfProblems, cites }` | 2c |
-| S6 | `vs/preview/limits/` | `rootWords`, `setCheckLimits`, `CheckCounts` | 2e |
-| S7 | `vs/build/options/` | `buildOptions`, `setAutoCompile`, `setEngine`, `onAutoCompileChange` | 2b |
-| S8 | `vs/build/node/includeOnly.ts` | `IncludeOnlyState.option`, `.set` | 2h |
-| S9 | `vs/export/` | `exportProject(deps, project, root, target)` | 2i |
-| S10 | `vs/preview/citationFixes/` | `withCitationFixes`, `fixCitation` | 2g |
-
-**Parallel safety.** As in [TEMPLATE §6](../TEMPLATE/plan.md); only 1a and 4b edit `apps/vscode.md`.
-
-## 7. Risks
-
-- **R2** writing-2-submission-tools and typst-source-sync touch the preview messages — check `git worktree list` first.
-- **R3** Problem kinds from the TeX log are unverified — 2c checks them first.
-- **R4** `\includeonly` with latexmk may break `.aux` reuse — 2h starts with a spike and a go/no-go.
-- **R5** Host verify only in a test-electron copy, never the installed VS Code — 4b confirms first.
-- **R6** Nine sessions share a worktree in wave 2 — disjoint Owns, one owner per shared file; 2i and 4b use their own.
-- **R7** A seam miss in wave 2 shows in wave 3 — the wiring session reports it.
-
-## 8. Log
-
-See [log.md](log.md).
+Order: 2g, 2h, 2j run together first; 3a and 3b run after them; 4a and 4b run last. 3a and 2j both edit `projectPreview/**`, so 3a starts only after 2j is committed.
