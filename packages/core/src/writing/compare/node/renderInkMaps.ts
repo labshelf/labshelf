@@ -2,31 +2,16 @@
 import { promises as fs } from "node:fs";
 
 import type { PdfjsLoader } from "../../../import/index.js";
-import { loadNativeCanvas, nativeRenderOptions, type PdfViewport } from "../../../import/node/index.js";
+import { withPdfDocument } from "../../../import/node/index.js";
 import { inkMapFromRgba, type InkMap } from "../inkMap.js";
-
-interface RenderPage {
-  getViewport(options: { scale: number }): PdfViewport;
-  render(options: Record<string, unknown>): { promise: Promise<void> };
-  cleanup(): void;
-}
-
-interface RenderDocument {
-  numPages: number;
-  getPage(pageNumber: number): Promise<RenderPage>;
-}
 
 /**
  * @param pixelsPerPoint render scale; 1.5 (108 dpi) separates text lines while keeping a page near a million pixels
  * @throws when no native canvas is installed, since nothing could be drawn
  */
 export async function renderInkMaps(pdfjs: PdfjsLoader, pdfPath: string, pixelsPerPoint: number): Promise<InkMap[]> {
-  const canvasModule = loadNativeCanvas();
-  if (!canvasModule) { throw new Error("Cannot render PDF pages: the native canvas (@napi-rs/canvas) is not installed"); }
   const bytes = await fs.readFile(pdfPath);
-  const task = await pdfjs.getDocument({ data: new Uint8Array(bytes), ...nativeRenderOptions(canvasModule) });
-  try {
-    const document = (await task.promise) as unknown as RenderDocument;
+  return withPdfDocument(pdfjs, bytes, async (document, canvasModule) => {
     const pages: InkMap[] = [];
     for (let number = 1; number <= document.numPages; number++) {
       const page = await document.getPage(number);
@@ -42,8 +27,5 @@ export async function renderInkMaps(pdfjs: PdfjsLoader, pdfPath: string, pixelsP
       page.cleanup();
     }
     return pages;
-  } finally {
-    // pdf.js 6 has no PDFDocumentProxy.destroy(); the loading task owns teardown.
-    await task.destroy();
-  }
+  });
 }
