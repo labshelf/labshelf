@@ -8,7 +8,8 @@ export type ReadyProject = Extract<ProjectEntry, { kind: "ready" }>;
 /** The project list together with the path style its folders are written in. */
 export type ProjectLookup = Pick<WritingProjects, "list" | "paths">;
 
-function isInside(paths: PathOps, folder: string, file: string): boolean {
+/** Whether the file lies strictly inside the folder. */
+export function isInside(paths: PathOps, folder: string, file: string): boolean {
   const relative = paths.relative(folder, file);
   return relative !== "" && !relative.startsWith("..") && !paths.isAbsolute(relative);
 }

@@ -22,18 +22,19 @@ describe('ReaderPanel as a build preview', () => {
 
   function open(onClosed = jest.fn()) {
     const logger = { log: jest.fn(async () => {}), error: jest.fn(async () => {}) } as any;
-    const showBuildProblem = jest.fn(async () => {});
+    const showSource = jest.fn(async () => {});
     const reader = ReaderPanel.createOrShow(
       { extensionUri: vscode.Uri.file(extensionDir), logger, locatePdfjs: () => null, isMac: false },
       {
         key: 'preview:/p', store: createPreviewStore(), pdfUri: vscode.Uri.file('/p/main.pdf'), rootDir: vscode.Uri.file('/p'),
         paper: { id: 'preview:p', title: 'main.pdf', path: '/p', citeKey: '', status: 'reading' },
-        preview: { showBuildProblem, showSource: jest.fn(async () => {}), lookupCitation: jest.fn(async () => []), openCitedPaper: jest.fn(async () => {}) },
+        preview: { showSource, lookupCitation: jest.fn(async () => []), openCitedPaper: jest.fn(async () => {}),
+          recompile: jest.fn(async () => {}), revealCursor: jest.fn(async () => {}), openProblem: jest.fn(async () => {}), openRawLog: jest.fn(async () => {}) },
         onClosed, show: { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
       },
     );
     const panel = (vscode.window.createWebviewPanel as jest.Mock).mock.results.at(-1)!.value;
-    return { panel, reader, onClosed, showBuildProblem };
+    return { panel, reader, onClosed, showSource };
   }
 
   it('opens beside without taking focus and receives reader keybinding commands', () => {
@@ -51,11 +52,12 @@ describe('ReaderPanel as a build preview', () => {
     expect(panel.reveal).toHaveBeenCalledWith(undefined, true);
   });
 
-  it('answers the reader banner click through the preview ports', async () => {
-    const { panel, showBuildProblem } = open();
-    panel.webview._fireMessage({ command: 'showBuildProblem' });
+  it('answers a reader double-click through the preview ports', async () => {
+    const { panel, showSource } = open();
+    const point = { page: 2, x: 10, y: 20 };
+    panel.webview._fireMessage({ command: 'showSource', point });
     await flush();
-    expect(showBuildProblem).toHaveBeenCalledTimes(1);
+    expect(showSource).toHaveBeenCalledWith(point);
   });
 
   it('shows a notice instead of saving an annotation', async () => {

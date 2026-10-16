@@ -8,6 +8,7 @@ import {
 } from "../../writing/index.js";
 import {
   BuildDiagnostics, registerBuildCommand, registerCompilerStatusBar, registerLatexWorkshopNotice, registerPickCompiler,
+  type ProjectBuilders,
 } from "../../writing/build/index.js";
 import { registerInstallCommand } from "../../writing/install/index.js";
 import { registerMarkVersionCommand } from "../../writing/versions/index.js";
@@ -93,15 +94,33 @@ function registerProjectAndFigureCommands(parts: WritingParts): void {
   registerInstallCommand({ context, host, projects, services: () => controller.currentServices() });
 }
 
+/** Saves the editors and builds a root of the project with the builder of its format, as Build Project does. */
+async function recompileRoot(
+  projects: WritingProjects, builders: () => ProjectBuilders | undefined, folder: string, root: string,
+): Promise<unknown> {
+  const entry = projects.list().find((project) => project.kind === "ready" && project.folder === folder);
+  const format = entry?.kind === "ready" ? entry.settings.format : undefined;
+  if (!format) { return undefined; }
+  await vscode.workspace.saveAll(false);
+  return await builders()?.[format].request(folder, root, "command");
+}
+
 function registerBuildAndPreviewCommands(
   parts: WritingParts, reader: HostAdapters["reader"], registerNodeWriting: RegisterNodeWriting,
 ): void {
   const { context, host, projects, figures, listPapers } = parts;
-  const previews = new BuildPreviews({ host, listPapers, paths: projects.paths, data: projects.data, extensionUri: context.extensionUri, ...reader });
+  // The node registrations need `previews`, and `previews` needs their builders, so it reaches them through this variable once assigned.
+  let node: ReturnType<RegisterNodeWriting> | undefined;
+  const previews = new BuildPreviews({
+    host, listPapers, paths: projects.paths, data: projects.data, extensionUri: context.extensionUri, ...reader,
+    buildRootOf: async (...args) => (node ? await node.buildRootOf(...args) : args[1]),
+    recompile: (folder, root) => recompileRoot(projects, () => node?.builders, folder, root),
+  });
   const session = registerProjectSession({ context, host, projects, previews });
   const diagnostics = new BuildDiagnostics();
   context.subscriptions.push(diagnostics);
-  const { builders, buildRootOf } = registerNodeWriting({ context, host, projects, figures, previews, diagnostics, reader });
+  node = registerNodeWriting({ context, host, projects, figures, previews, diagnostics, reader });
+  const { builders, buildRootOf } = node;
   registerBuildCommand({ context, projects, builders, buildRootOf });
   context.subscriptions.push(new FocusFollower({ session, projects, buildRootOf, builders, previews, host }));
   registerMarkVersionCommand({ context, host, projects, builders });

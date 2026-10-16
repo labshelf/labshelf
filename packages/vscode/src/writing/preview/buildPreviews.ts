@@ -5,8 +5,10 @@ import type { BuildState, PaperRecord, PathOps, ProjectDataPort, TypstCite, Loca
 import { ReaderPanel, type ReaderPanelDeps } from "../../pdf-viewer/index.js";
 import type { BuildListener, BuildTrigger, FinishedBuild } from "../build/index.js";
 import type { ReadyProject } from "../mainDocument.js";
+import type { BuildRootOf } from "../nodePort/index.js";
 import type { WritingHost } from "../session/index.js";
 import { createPreviewPorts } from "./previewPorts.js";
+import { createWritingActions, focusedRoot, previewRootsMessage } from "./roots/index.js";
 import { PREVIEW_LOG_MODULE } from "./previewStrings.js";
 import { createPreviewStore } from "./previewStore.js";
 import { ProjectSynctex, revealInPreview } from "./sourceLinks/index.js";
@@ -16,6 +18,10 @@ export interface BuildPreviewsDeps extends Pick<ReaderPanelDeps, "extensionUri" 
   listPapers: () => Promise<PaperRecord[]>;
   paths: PathOps;
   data: ProjectDataPort;
+  /** The root the editor file builds into. */
+  buildRootOf: BuildRootOf;
+  /** Builds a root of the project again. */
+  recompile: (projectFolder: string, root: string) => Promise<unknown>;
 }
 
 function previewPaper(paths: PathOps, project: ReadyProject, pdf: string): PaperRecord {
@@ -32,6 +38,8 @@ export class BuildPreviews implements BuildListener {
   private readonly states = new Map<string, { state: BuildState; errors: number }>();
   // The root (relative to the project folder) whose PDF each project's open preview shows; its banner and reloads follow only that root.
   private readonly shown = new Map<string, string>();
+  // The roots each project has built, in build order; the reader lists exactly these.
+  private readonly built = new Map<string, Set<string>>();
 
   private readonly synctex: ProjectSynctex;
 
@@ -48,8 +56,16 @@ export class BuildPreviews implements BuildListener {
 
   /** Reloads an open preview after a build of the root it shows, or opens one when the build was asked for with the command. */
   finished(project: ReadyProject, root: string, result: FinishedBuild, trigger: BuildTrigger): void {
+    this.applyFinished(project, root, result, trigger);
+    // A failed main build opens the reader's logs once the reader knows the roots.
+    const logsOf = result.status === "failed" && root === project.main ? root : undefined;
+    void this.publishRoots(project).then(() => { if (logsOf !== undefined) { this.panels.get(project.folder)?.controller.showLogs(logsOf); } });
+  }
+
+  private applyFinished(project: ReadyProject, root: string, result: FinishedBuild, trigger: BuildTrigger): void {
     const key = this.deps.paths.join(project.folder, root);
     this.problems.set(key, result.problems);
+    this.built.set(project.folder, (this.built.get(project.folder) ?? new Set<string>()).add(root));
     const shown = this.shownRoot(project.folder);
     const panel = shown === root ? this.panels.get(project.folder) : undefined;
     if (result.status === "failed") {
@@ -114,10 +130,14 @@ export class BuildPreviews implements BuildListener {
         pdfUri: vscode.Uri.file(pdf),
         rootDir: vscode.Uri.file(this.rootDir(project)),
         preview: createPreviewPorts({
-          logger: session.logger, paths: this.deps.paths, projectFolder: project.folder, problems: () => this.problems.get(this.currentKey(project)) ?? [],
-          synctex: () => this.synctex.load(project, this.shown.get(project.folder) ?? project.main),
-          format: project.settings.format, listPapers: this.deps.listPapers,
-          typstCites: () => this.typstCites.get(this.currentKey(project)) ?? [],
+          logger: session.logger, paths: this.deps.paths, projectFolder: project.folder, format: project.settings.format, listPapers: this.deps.listPapers,
+          synctex: () => this.synctex.load(project, this.shown.get(project.folder) ?? project.main), typstCites: () => this.typstCites.get(this.currentKey(project)) ?? [],
+          actions: createWritingActions({
+            logger: session.logger, paths: this.deps.paths, data: this.deps.data, project, recompile: this.deps.recompile,
+            shownRoot: () => this.shown.get(project.folder) ?? project.main ?? "",
+            problemsOf: (reported) => this.built.get(project.folder)?.has(reported) ? this.problems.get(this.deps.paths.join(project.folder, reported)) : undefined,
+            reveal: (file, line) => this.revealSource(project, file, line),
+          }),
         }),
         onClosed: () => { this.panels.delete(project.folder); this.shown.delete(project.folder); },
         ...(options.beside ? { show: { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true } } : {}),
@@ -126,6 +146,7 @@ export class BuildPreviews implements BuildListener {
       this.shown.set(project.folder, root);
       const last = this.states.get(this.deps.paths.join(project.folder, root));
       if (last) { panel.controller.setBuildStatus(last.state, last.errors); }
+      void this.publishRoots(project);
       void session.logger.log("INFO", PREVIEW_LOG_MODULE, "Opened preview", { projectFolder: project.folder, root, pdf });
     } catch (error) {
       void session.logger.error(PREVIEW_LOG_MODULE, error, { projectFolder: project.folder, root, pdf });
@@ -140,7 +161,26 @@ export class BuildPreviews implements BuildListener {
     // The banner follows the new root: its running or failed build, or cleared after a success.
     const last = this.states.get(this.deps.paths.join(project.folder, root)) ?? { state: "succeeded" as const, errors: 0 };
     panel.controller.setBuildStatus(last.state, last.errors);
+    void this.publishRoots(project);
     void this.deps.host.current()?.logger.log("INFO", PREVIEW_LOG_MODULE, "Switched preview to another root", { projectFolder: project.folder, root, pdf });
+  }
+
+  // Tells the open preview which roots exist and which one each of main, the editor focus and the reader shows.
+  private async publishRoots(project: ReadyProject): Promise<void> {
+    const panel = this.panels.get(project.folder);
+    const shown = this.shown.get(project.folder);
+    if (!panel || shown === undefined) { return; }
+    const { paths, data } = this.deps;
+    try {
+      const focused = await focusedRoot(paths, this.deps.buildRootOf, project);
+      panel.controller.setPreviewRoots(await previewRootsMessage({
+        paths, data, project, focused, shown, built: this.built.get(project.folder) ?? [],
+        problemsOf: (root) => this.problems.get(paths.join(project.folder, root)) ?? [],
+        failed: (root) => this.states.get(paths.join(project.folder, root))?.state === "failed",
+      }));
+    } catch (error) {
+      void this.deps.host.current()?.logger.error(PREVIEW_LOG_MODULE, error, { projectFolder: project.folder, shown });
+    }
   }
 
   // The absolute path of the root the open preview shows, or of the main root before one is shown.

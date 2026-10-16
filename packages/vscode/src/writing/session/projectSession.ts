@@ -13,7 +13,7 @@ const PROJECT_OPEN_KEY = "labshelf.writing.projectOpen";
 const IN_PROJECT_KEY = "labshelf.writing.inProject";
 
 /** The preview panels the session opens and disposes; `root` is relative to the project folder. */
-export interface SessionPreviews {
+interface SessionPreviews {
   show(project: ReadyProject, root: string, pdf: string, options: { beside: boolean }): void;
   close(projectFolder: string): void;
 }

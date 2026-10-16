@@ -6,7 +6,7 @@ import { executeSafely } from "../../commands/index.js";
 import { ProjectSession, type ProjectSessionDeps } from "./projectSession.js";
 
 export const OPEN_PROJECT_COMMAND = "labshelf.writing.openProject";
-export const CLOSE_PROJECT_COMMAND = "labshelf.writing.closeProject";
+const CLOSE_PROJECT_COMMAND = "labshelf.writing.closeProject";
 
 interface ProjectSessionCommandsDeps extends Omit<ProjectSessionDeps, "workspaceState"> {
   context: vscode.ExtensionContext;

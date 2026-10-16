@@ -23,11 +23,11 @@ const succeeded: Finished = { status: "succeeded", pdf: "/p/paper/main.pdf", pro
 
 function setup() {
   const host = fakeHost();
-  const controller = { setBuildStatus: jest.fn(), reloadDocument: jest.fn() };
+  const controller = { setBuildStatus: jest.fn(), reloadDocument: jest.fn(), setPreviewRoots: jest.fn(), showLogs: jest.fn() };
   let closed: (() => void) | undefined;
   const panel = { controller, showDocument: jest.fn(), reveal: jest.fn(), dispose: jest.fn(() => closed?.()) };
   create.mockImplementation((_deps, source) => { closed = source.onClosed; return panel; });
-  const previews = new BuildPreviews({ host, paths: path, data: fakeProjectData(), listPapers: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false });
+  const previews = new BuildPreviews({ host, paths: path, data: fakeProjectData(), listPapers: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false, buildRootOf: async (_folder: string, main: string) => main, recompile: async () => {} });
   return { previews, controller, host, panel, close: () => closed?.() };
 }
 
@@ -86,24 +86,6 @@ describe("BuildPreviews", () => {
     expect(controller.setBuildStatus).not.toHaveBeenCalled();
   });
 
-  it("opens the first error's file at its 0-based line in an editor column, and line 1 without a line", async () => {
-    const { previews, host } = setup();
-    previews.finished(project, "main.tex", failed, "save");
-    previews.show(project, "main.tex", "/p/paper/main.pdf", { beside: false });
-    (vscode.window as unknown as { visibleTextEditors: unknown[] }).visibleTextEditors = [{ viewColumn: 1 }];
-    const ports = create.mock.calls[0][1].preview;
-    await ports.showBuildProblem();
-    const [uri, options] = (vscode.window.showTextDocument as jest.Mock).mock.calls[0];
-    expect(uri.fsPath).toBe("/p/paper/main.tex");
-    expect(options.selection.start.line).toBe(6);
-    expect(options.viewColumn).toBe(1);
-
-    previews.finished(project, "main.tex", { status: "failed", problems: [failed.problems[2]!] }, "save");
-    await ports.showBuildProblem();
-    expect((vscode.window.showTextDocument as jest.Mock).mock.calls[1][1].selection.start.line).toBe(0);
-    expect(host.session.logger.log).toHaveBeenCalledWith("INFO", "writing/preview", "Opened build problem", expect.anything());
-  });
-
   it("keeps the problems of each root: a root's success does not erase another root's failure", async () => {
     const { previews, controller, host } = setup();
     const chapterFailure: Finished = { status: "failed", problems: [{ severity: "error", message: "in b", file: "/p/paper/b/main.tex", line: 4 }] };
@@ -113,18 +95,11 @@ describe("BuildPreviews", () => {
     previews.show(project, "main.tex", "/p/paper/main.pdf", { beside: false });
     expect(controller.setBuildStatus).toHaveBeenLastCalledWith("failed", 2);
     (vscode.window as unknown as { visibleTextEditors: unknown[] }).visibleTextEditors = [{ viewColumn: 1 }];
-    await create.mock.calls[0][1].preview.showBuildProblem();
+    await create.mock.calls[0][1].preview.openProblem("main.tex", 1);
     expect((vscode.window.showTextDocument as jest.Mock).mock.calls[0][0].fsPath).toBe("/p/paper/main.tex");
-    expect(host.session.logger.log).not.toHaveBeenCalledWith("WARN", "writing/preview", "Build banner clicked without a stored problem", expect.anything());
+    expect(host.session.logger.log).not.toHaveBeenCalledWith("WARN", "writing/preview", expect.any(String), expect.anything());
   });
 
-  it("logs a warning when the banner is clicked with no stored problem", async () => {
-    const { previews, host } = setup();
-    previews.show(project, "main.tex", "/p/paper/main.pdf", { beside: false });
-    await create.mock.calls[0][1].preview.showBuildProblem();
-    expect(vscode.window.showTextDocument).not.toHaveBeenCalled();
-    expect(host.session.logger.log).toHaveBeenCalledWith("WARN", "writing/preview", "Build banner clicked without a stored problem", expect.anything());
-  });
 });
 
 describe("BuildPreviews with several roots", () => {
@@ -166,18 +141,6 @@ describe("BuildPreviews with several roots", () => {
     expect(controller.reloadDocument).not.toHaveBeenCalled();
     previews.finished(project, "b/main.tex", chapterSucceeded, "save");
     expect(controller.reloadDocument).toHaveBeenCalledTimes(1);
-  });
-
-  it("answers the preview ports with the shown root's problems", async () => {
-    const { previews, host } = setup();
-    previews.finished(project, "main.tex", failed, "save");
-    previews.finished(project, "b/main.tex", chapterFailure, "save");
-    previews.show(project, "main.tex", "/p/paper/main.pdf", { beside: false });
-    previews.show(project, "b/main.tex", chapterPdf, { beside: false });
-    (vscode.window as unknown as { visibleTextEditors: unknown[] }).visibleTextEditors = [{ viewColumn: 1 }];
-    await create.mock.calls[0][1].preview.showBuildProblem();
-    expect((vscode.window.showTextDocument as jest.Mock).mock.calls[0][0].fsPath).toBe("/p/paper/b/main.tex");
-    expect(host.session.logger.log).not.toHaveBeenCalledWith("WARN", "writing/preview", "Build banner clicked without a stored problem", expect.anything());
   });
 
   it("opens the panel on a built root after the Build command when none is open", () => {
