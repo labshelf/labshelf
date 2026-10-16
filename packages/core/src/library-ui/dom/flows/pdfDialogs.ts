@@ -1,15 +1,16 @@
 /**
  * Opens the dialogs around a missing PDF: opening a paper that has none, a search that came back empty, and a capture
  * that found no PDF. The first two offer to attach a file or to search (again); the capture asks whether to save the reference alone.
- * When a sign-in or a bot check stood in the way, the last two also offer to open that page. A preprint's search for
+ * When a sign-in or a bot check stood in the way, the last two also offer to open that page, and where the host can,
+ * both offer to email the authors for a copy. A preprint's search for
  * its published version asks first, because the new file replaces the old one.
  */
 import { PDF_VERSION_LABEL, isPrePublication } from "../../../model/index.js";
 import { showDialog, type DialogButton } from "../../../ui/dom/index.js";
-import { findMissMessage, noPdfDialogCopy, pdfAccessLabel } from "../../pdfCopy.js";
+import { ASK_AUTHOR_LABEL, findMissMessage, noPdfDialogCopy, pdfAccessLabel } from "../../pdfCopy.js";
 import type { PdfMiss } from "../../protocol/index.js";
 import type { UiContext } from "../uiContext.js";
-import { attachPdf, findPdf } from "./paperCommands.js";
+import { askAuthor, attachPdf, findPdf } from "./paperCommands.js";
 
 export async function onPdfMissing(ctx: UiContext, id: string): Promise<void> {
   const choice = await showDialog({
@@ -32,10 +33,12 @@ export async function onFindMiss(ctx: UiContext, id: string, miss: PdfMiss): Pro
     buttons: [
       { id: "attach", label: "Attach PDF…" },
       { id: "retry", label: "Search again", primary: !access },
+      ...(ctx.caps.askAuthor ? [{ id: "author", label: ASK_AUTHOR_LABEL }] : []),
       ...(access ? [{ id: "open", label: pdfAccessLabel(access), primary: true }] : []),
     ],
   });
-  if (choice === "attach") attachPdf(ctx, id);
+  if (choice === "author") askAuthor(ctx, id);
+  else if (choice === "attach") attachPdf(ctx, id);
   else if (choice === "retry") findPdf(ctx, id);
   else if (choice === "open" && access) ctx.transport.post({ type: "paper.openForPdf", id, access });
 }
@@ -57,13 +60,18 @@ export async function confirmFindBetterPdf(ctx: UiContext, id: string): Promise<
   if (choice === "find") findPdf(ctx, id, true);
 }
 
+/** A capture's answer to "No PDF found"; every choice but "retry" saves the reference. */
+export type NoPdfChoice = "save" | "open" | "author" | "retry";
+
 /**
  * Asks whether a capture without a PDF saves the reference alone, saves it and opens the page that stood in the way
- * ("open"), or searches again; undefined when cancelled. `root` mounts the dialog inside a content script's shadow root.
+ * ("open"), saves it and emails the authors ("author"), or searches again; undefined when cancelled. `root` mounts the
+ * dialog inside a content script's shadow root.
  */
-export function askNoPdf(title: string, miss: PdfMiss, root?: ShadowRoot): Promise<"save" | "open" | "retry" | undefined> {
-  const buttons: Array<DialogButton<"save" | "open" | "retry">> = [
+export function askNoPdf(title: string, miss: PdfMiss, root?: ShadowRoot): Promise<NoPdfChoice | undefined> {
+  const buttons: Array<DialogButton<NoPdfChoice>> = [
     { id: "retry", label: "Search again" },
+    { id: "author", label: ASK_AUTHOR_LABEL },
     { id: "save", label: "Save without PDF", primary: !miss.access },
     ...(miss.access ? [{ id: "open" as const, label: pdfAccessLabel(miss.access), primary: true }] : []),
   ];

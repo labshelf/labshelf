@@ -1,7 +1,15 @@
 /**
  * Defines the wording of a paper's PDF status on every surface: resolver labels and the "No PDF found" texts.
  */
+import { formatDay } from "../library/index.js";
 import type { PdfAccess, PdfMiss } from "./protocol/index.js";
+
+export const ASK_AUTHOR_LABEL = "Ask the author";
+
+/** The detail line of a paper whose authors were asked for a copy on `day` (YYYY-MM-DD). */
+export function pdfRequestedLine(day: string): string {
+  return `PDF requested from the author on ${formatDay(day)}`;
+}
 
 const SOURCE_LABELS: Record<string, string> = {
   page: "this page",

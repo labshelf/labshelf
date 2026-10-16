@@ -17,6 +17,8 @@ export interface LibraryUiCapabilities {
   findPdf?: boolean;
   /** Attaches a PDF file the user picks (`paper.attachPdf`). */
   attachPdf?: boolean;
+  /** Drafts an email asking the authors for a copy of a paper without a PDF (`paper.askAuthor`). */
+  askAuthor?: boolean;
 }
 
 export interface LibraryUiLabels {

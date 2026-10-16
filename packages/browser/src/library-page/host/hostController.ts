@@ -40,6 +40,7 @@ function dispatch(ctx: HostContext, pdf: PdfHandlers, m: UiToHost, options: Libr
     case "paper.findPdf": run(ctx, () => pdf.find(m.id, m.replace ?? false)); return;
     case "paper.attachPdf": pdf.attach(m.id); return;
     case "paper.openForPdf": run(ctx, () => pdf.openForPdf(m.id, m.access)); return;
+    case "paper.askAuthor": run(ctx, () => pdf.askAuthor(m.id)); return;
     case "paper.setStatus": run(ctx, () => setStatus(ctx, m.ids, m.status)); return;
     case "paper.details": run(ctx, () => sendDetails(ctx, m.id)); return;
     case "paper.setTags": run(ctx, () => setTags(ctx, m.ids, m.add, m.remove)); return;

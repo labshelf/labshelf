@@ -27,6 +27,8 @@ export type RuntimeMessage =
   | { type: "paper.findPdf"; id: string; replace?: boolean }
   /** Library page: opens the page that stood in the way of a saved paper's PDF and attaches the PDF once the user gets through. */
   | { type: "paper.openForPdf"; id: string; access: PdfAccess }
+  /** Library page "Ask the author": drafts the request email for a saved paper without a PDF. */
+  | { type: "paper.askAuthor"; id: string }
   /** Removes a paper just saved (the popup's undo). */
   | { type: "paper.remove"; id: string }
   /** Collections a paper can be saved into, plus the last one used. */
@@ -107,6 +109,15 @@ export interface AttachPdfData {
   miss?: PdfMiss;
 }
 
+/**
+ * Reply to paper.askAuthor: "mail" opened the request email, "article" opened the article page because no author
+ * address was found, "none" means the paper has neither an address nor a page to open.
+ */
+export interface AskAuthorData {
+  id: string;
+  opened: "mail" | "article" | "none";
+}
+
 /** Reply to pdfOffer.get: a PDF the user opened or downloaded that matched a paper without a PDF. */
 export interface PdfOfferView {
   id: string;
@@ -128,7 +139,7 @@ export interface PdfOfferView {
  */
 export interface LibraryChangedBroadcast {
   type: "library.changed";
-  reason: "capture" | "attach" | "remove" | "sync" | "annotations";
+  reason: "capture" | "attach" | "remove" | "sync" | "annotations" | "askAuthor";
   paperId?: string;
   /** A sentence for open library pages to show, for a change the user did not start there (a watched tab's PDF). */
   notice?: string;

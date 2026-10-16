@@ -17,6 +17,8 @@ export interface LibraryMutations {
   editTags(papers: PaperRef[], add: string[], remove: string[]): Promise<FieldsBatchOutcome>;
   /** Sets a paper's note; resolves to undefined when the paper's folder holds no paper. */
   setNote(paper: PaperRef, note: string): Promise<PaperRecord | undefined>;
+  /** Records the day (YYYY-MM-DD) the authors were asked for a copy; undefined when the paper's folder holds no paper. */
+  setPdfRequestedAt(paper: PaperRef, day: string): Promise<PaperRecord | undefined>;
   /**
    * Rewrites the metadata files of a paper whose PDF was just written, keeping the status on disk. The PDF's version is
    * set, or removed when unknown, and the text-layer check of any earlier file is dropped.
@@ -58,6 +60,11 @@ export function createLibraryMutations(logger: ILogger): LibraryMutations {
     },
     async setNote(paper, note) {
       const record = await updatePaperFields(ctx, paper.path, { note });
+      if (record) { await upsertRecord(record, record.path); }
+      return record;
+    },
+    async setPdfRequestedAt(paper, day) {
+      const record = await updatePaperFields(ctx, paper.path, { pdfRequestedAt: day });
       if (record) { await upsertRecord(record, record.path); }
       return record;
     },

@@ -1,6 +1,6 @@
 // Runs the capture, save and undo flow: inspecting the current tab, the shared "No PDF found" dialog, saving the
 // draft, attaching a PDF to an already-saved copy, and undoing a save.
-import { $, askNoPdf } from "@labshelf/core/dom";
+import { $, askNoPdf, type NoPdfChoice } from "@labshelf/core/dom";
 import { errorMessage, pdfSourceLabel, type IfNoPdf, type PdfMiss } from "@labshelf/core";
 
 import {
@@ -79,7 +79,7 @@ export async function inspect(offerReady: Promise<PdfOfferView | null>): Promise
 
 // The shared "No PDF found" dialog. Returns the chosen action, or undefined on
 // Cancel (nothing is written). The modal-open class guards the popup height.
-async function confirmNoPdf(title: string, miss: PdfMiss): Promise<"save" | "open" | "retry" | undefined> {
+async function confirmNoPdf(title: string, miss: PdfMiss): Promise<NoPdfChoice | undefined> {
   document.body.classList.add("modal-open");
   try {
     return await askNoPdf(title, miss);
@@ -97,7 +97,7 @@ async function confirmThen(title: string, miss: PdfMiss, from: string | undefine
     renderPdf("searching");
     return save("ask", true);
   }
-  // "open" saves too; the background then opens the page in the way, which closes the popup.
+  // "open" and "author" save too; the background then opens the page in the way or the request email, which closes the popup.
   return save(choice);
 }
 

@@ -43,6 +43,7 @@ const SHAPES: Record<UiToHost["type"], Record<string, FieldCheck>> = {
   "paper.findPdf": { id: isId, replace: (v) => v === undefined || isBool(v) },
   "paper.attachPdf": { id: isId },
   "paper.openForPdf": { id: isId, access: isAccess },
+  "paper.askAuthor": { id: isId },
   "paper.fetchMetadata": { id: isId },
   "paper.makeSearchable": { ids: isIds },
   "paper.setStatus": { ids: isIds, status: isStatus },
@@ -51,7 +52,7 @@ const SHAPES: Record<UiToHost["type"], Record<string, FieldCheck>> = {
   "paper.move": { ids: isIds, target: isLibraryPath },
   "paper.remove": { ids: isIds },
   "paper.add": { folder: isLibraryPath },
-  "paper.addFrom": { folder: isLibraryPath, sourceId: isId, ifNoPdf: (v) => v === "ask" || v === "save" || v === "open", retryPdf: isBool },
+  "paper.addFrom": { folder: isLibraryPath, sourceId: isId, ifNoPdf: (v) => v === "ask" || v === "save" || v === "open" || v === "author", retryPdf: isBool },
   "annotations.export": { id: isId },
   "clipboard.write": { text: isText, label: (v) => v === undefined || isText(v) },
 };

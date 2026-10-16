@@ -75,7 +75,8 @@ export interface AddSource {
 }
 
 /**
- * Whether a capture without a PDF asks first, saves the reference anyway, or saves it and opens the miss's access page
- * for the user to sign in or pass the check, attaching the PDF once that page yields it.
+ * Whether a capture without a PDF asks first, saves the reference anyway, saves it and opens the miss's access page
+ * for the user to sign in or pass the check (attaching the PDF once that page yields it), or saves it and drafts an
+ * email asking the authors for a copy.
  */
-export type IfNoPdf = "ask" | "save" | "open";
+export type IfNoPdf = "ask" | "save" | "open" | "author";

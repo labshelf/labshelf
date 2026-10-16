@@ -23,6 +23,7 @@ export type UiToHost =
   | { type: "paper.attachPdf"; id: string }
   /** Opens the page that stood in the way of the paper's PDF, and attaches the PDF once the user gets through. */
   | { type: "paper.openForPdf"; id: string; access: PdfAccess }
+  | { type: "paper.askAuthor"; id: string }
   | { type: "paper.fetchMetadata"; id: string }
   | { type: "paper.makeSearchable"; ids: string[] }
   | { type: "paper.setStatus"; ids: string[]; status: PaperStatus }

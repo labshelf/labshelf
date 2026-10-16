@@ -5,6 +5,7 @@
 import { familyName, venueLine } from "../../../../library/index.js";
 import { isPrePublication } from "../../../../model/index.js";
 import { escapeHtml, icon } from "../../../../ui/index.js";
+import { ASK_AUTHOR_LABEL, pdfRequestedLine } from "../../../pdfCopy.js";
 import { CITE_LABEL } from "../../flows/index.js";
 import { versionChipHtml } from "../../list/index.js";
 import { KEY_HINT } from "../../uiContext.js";
@@ -28,7 +29,7 @@ function bylineHtml(pane: PaneState, authors: readonly string[]): string {
 
 /**
  * Open PDF (or Continue at the last page), plus Find Published Version for a preprint where the host can search;
- * without a PDF, Find PDF and Attach PDF where the host can, else a disabled "No PDF".
+ * without a PDF, Find PDF, Attach PDF and Ask the author where the host can, else a disabled "No PDF".
  */
 function primaryButtons(pane: PaneState, v: PaperView): string {
   const caps = pane.ctx.caps;
@@ -42,7 +43,8 @@ function primaryButtons(pane: PaneState, v: PaperView): string {
     ? `<button class="ls-btn ls-btn-primary open-btn" type="button" data-action="findPdf"${v.pdfBusy ? " disabled" : ""}>${v.pdfBusy ? `<span class="spin">${icon("refresh")}</span><span>Searching…</span>` : `${icon("search")}<span>Find PDF</span>`}</button>`
     : `<button class="ls-btn open-btn" type="button" disabled title="This paper has no PDF">${icon("file-minus")}<span>No PDF</span></button>`;
   const attach = caps.attachPdf ? `<button class="ls-btn" type="button" data-action="attachPdf">${icon("paperclip")}<span>Attach PDF…</span></button>` : "";
-  return find + attach;
+  const ask = caps.askAuthor ? `<button class="ls-btn" type="button" data-action="askAuthor">${icon("mail")}<span>${ASK_AUTHOR_LABEL}</span></button>` : "";
+  return find + attach + ask;
 }
 
 function findBetterButton(busy: boolean): string {
@@ -58,6 +60,7 @@ export function paperHeadHtml(pane: PaneState, v: PaperView): string {
     `<div class="detail-title" title="${escapeHtml(p.title)}">${escapeHtml(p.title)}</div>` +
     (p.authors?.length ? bylineHtml(pane, p.authors) : "") +
     (meta || version ? `<div class="detail-meta">${version}${escapeHtml(meta)}</div>` : "") +
+    (!p.hasPdf && p.pdfRequestedAt ? `<div class="detail-meta">${escapeHtml(pdfRequestedLine(p.pdfRequestedAt))}</div>` : "") +
     `<div class="detail-toolbar">${primaryButtons(pane, v)}<span class="tb-spacer"></span>` +
       iconBtn("copyKey", "key", `Copy cite key ${p.citeKey} (${KEY_HINT.mod}C)`) +
       iconBtn("copyCite", "quote", `Copy citation as ${CITE_LABEL[pane.citeFormat]} — pick the style under Cite`) +

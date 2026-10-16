@@ -3,7 +3,7 @@
 import { findInLibrary, findPaperPdf, interpretPage, normalizeTags, resolvePagePaper, withAbstract } from "@labshelf/core";
 import type {
   DetectedIds, MetadataOrigin, MetadataSource, PageFacts, PaperRecord, PdfAttempt, PdfCandidate, PdfFetchOptions,
-  PdfVersion, ResolvedMetadata, ResolvedPdf,
+  PdfVersion, RawPage, ResolvedMetadata, ResolvedPdf,
 } from "@labshelf/core";
 import { fetchInTab, fetchViaHelperTab } from "./tab";
 import { probeTab } from "./tabProbe";
@@ -32,6 +32,8 @@ export interface CaptureDraft {
   pdfAttempts: PdfAttempt[];
   /** Set to look only for a copy that outranks the paper's PDF of this version. */
   betterThan?: PdfVersion;
+  /** The probed tab's page, kept for the author addresses it shows; absent for papers captured without a tab. */
+  page?: RawPage;
 }
 
 interface SaveOptions {
@@ -54,7 +56,7 @@ export interface SavedPaper {
 export async function inspectTab(log: ILogger, tabId: number, tabUrl: string): Promise<CaptureDraft> {
   const raw = await probeTab(log, tabId, tabUrl);
   const facts = interpretPage(raw);
-  return draftFromFacts(log, facts, { tab: { url: tabUrl, fetchInTab: (url) => fetchInTab(tabId, url) } });
+  return { ...(await draftFromFacts(log, facts, { tab: { url: tabUrl, fetchInTab: (url) => fetchInTab(tabId, url) } })), page: raw };
 }
 
 /**

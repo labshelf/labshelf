@@ -56,6 +56,10 @@ The background watches finished downloads and PDF tabs. For each new PDF address
 
 A paper whose PDF is a preprint or accepted manuscript (`pdfVersion` in [library-format.md](../contracts/library-format.md)) shows "Find Published Version" in its menu. The finder looks up the DOI of the published record, ranks candidates so a `published` one wins, and replaces `paper.pdf` only after the user confirms. Replacing sets `pdfVersion` to the new file's version.
 
+## Ask the author
+
+A paper without a PDF offers "Ask the author" in the detail pane and in the "No PDF found" dialogs. The background reads author addresses from the article page (author e-mail meta tags and correspondence `mailto:` links), then from PubMed's "Electronic address" affiliations, and opens a `mailto:` for at most three of them. Nothing is sent by LabShelf; the user sends the email from their own mail client. With no address, the article page opens instead and nothing is recorded. Opening the email writes `pdfRequestedAt`, which the pane shows while the paper has no PDF. The options page holds the name, affiliation and language that the email is written with.
+
 ## Headless run
 
 Playwright's full Chrome for Testing can load the unpacked extension. Run it outside the sandbox:

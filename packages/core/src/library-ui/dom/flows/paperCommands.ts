@@ -49,6 +49,11 @@ export function findPdf(ctx: UiContext, id: string, replace = false): void {
   ctx.transport.post(replace ? { type: "paper.findPdf", id, replace } : { type: "paper.findPdf", id });
 }
 
+/** The host finds an author address, opens the request email and records the day it was sent. */
+export function askAuthor(ctx: UiContext, id: string): void {
+  ctx.transport.post({ type: "paper.askAuthor", id });
+}
+
 /** Must run inside the click that asked for it: the host opens a file picker, which browsers allow only in a gesture. */
 export function attachPdf(ctx: UiContext, id: string): void {
   ctx.transport.post({ type: "paper.attachPdf", id });

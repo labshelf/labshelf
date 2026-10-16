@@ -122,6 +122,25 @@ describe("setNote", () => {
   });
 });
 
+describe("setPdfRequestedAt", () => {
+  it("writes the day to metadata.yaml and the cache", async () => {
+    const record = paper("a2020");
+    seed(record, "title: A\nstatus: unread\ncitekey: a2020\n");
+
+    const written = await mutations.setPdfRequestedAt({ id: record.id, path: record.path }, "2026-10-15");
+
+    expect(written?.pdfRequestedAt).toBe("2026-10-15");
+    expect(textAt("papers/a2020/metadata.yaml")).toMatch(/2026-10-15/);
+    expect(mockCache.get("a2020")?.pdfRequestedAt).toBe("2026-10-15");
+  });
+
+  it("resolves to undefined for a paper whose folder is gone and leaves the cache alone", async () => {
+    mockCache.set("gone", paper("gone"));
+    expect(await mutations.setPdfRequestedAt({ id: "gone", path: "papers/gone" }, "2026-10-15")).toBeUndefined();
+    expect(mockCache.get("gone")?.pdfRequestedAt).toBeUndefined();
+  });
+});
+
 describe("recordPdfAttached", () => {
   it("keeps the status on disk when the cached status is stale and marks the PDF present", async () => {
     const record = paper("a2020", "papers", { status: "unread" });
