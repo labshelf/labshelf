@@ -1,7 +1,10 @@
 // Reads and writes the user-facing preferences held in bx.storage.local.
 // The options page edits them; the PDF search consults them (proxies, custom resolvers).
 import { bx } from "./browserApi";
-import { DEFAULT_CONTACT_EMAIL, PAPERS_DIR, isCustomResolverTemplate, type CustomResolver, type LibraryProxy } from "@labshelf/core";
+import {
+  DEFAULT_CONTACT_EMAIL, PAPERS_DIR, isCustomResolverTemplate, isRequestLanguage, requestLanguageFrom,
+  type CustomResolver, type LibraryProxy, type RequestLanguage,
+} from "@labshelf/core";
 import { migrateMirrorSettings } from "./migrations";
 
 /** Persisted user preferences. */
@@ -16,6 +19,12 @@ export interface LabShelfSettings {
   proxies: LibraryProxy[];
   /** Custom resolvers in the order the PDF search tries them; none until the user adds one. */
   customResolvers: CustomResolver[];
+  /** Name signed on the email that asks an author for a copy; empty leaves the signature out. */
+  requesterName: string;
+  /** Affiliation signed under the name; empty leaves the line out. */
+  requesterAffiliation: string;
+  /** Language of that email; the browser's language until the user picks one. */
+  requestLanguage: RequestLanguage;
 }
 
 export const SETTINGS_STORAGE_KEY = "labshelf.settings";
@@ -26,6 +35,9 @@ const DEFAULTS: LabShelfSettings = {
   lastFolder: PAPERS_DIR,
   proxies: [],
   customResolvers: [],
+  requesterName: "",
+  requesterAffiliation: "",
+  requestLanguage: "en",
 };
 
 /** Keeps the entries of a stored proxy list that have the right shape; storage is outside the type system. */
@@ -50,6 +62,8 @@ function validResolvers(raw: unknown): CustomResolver[] {
   });
 }
 
+const textOr = (raw: unknown): string => (typeof raw === "string" ? raw : "");
+
 /**
  * Reads the merged settings object (defaults overlaid with persisted values).
  * @returns LabShelfSettings
@@ -62,7 +76,15 @@ export async function getSettings(): Promise<LabShelfSettings> {
     stored = migrated;
     await bx.storage.local.set({ [SETTINGS_STORAGE_KEY]: stored });
   }
-  return { ...DEFAULTS, ...stored, proxies: validProxies(stored.proxies), customResolvers: validResolvers(stored.customResolvers) };
+  return {
+    ...DEFAULTS,
+    ...stored,
+    proxies: validProxies(stored.proxies),
+    customResolvers: validResolvers(stored.customResolvers),
+    requesterName: textOr(stored.requesterName),
+    requesterAffiliation: textOr(stored.requesterAffiliation),
+    requestLanguage: isRequestLanguage(stored.requestLanguage) ? stored.requestLanguage : requestLanguageFrom(globalThis.navigator?.language),
+  };
 }
 
 /**

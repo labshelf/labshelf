@@ -88,3 +88,36 @@ describe("settings custom resolvers", () => {
     expect((await getSettings()).customResolvers).toEqual(settings.customResolvers);
   });
 });
+
+describe("settings for asking authors", () => {
+  const languageOf = (tag: string | undefined): Promise<string> => {
+    Object.defineProperty(globalThis, "navigator", { value: { language: tag }, configurable: true });
+    return getSettings().then((s) => s.requestLanguage);
+  };
+
+  it("defaults to an empty signature and the browser's language", async () => {
+    const settings = await getSettings();
+    expect(settings.requesterName).toBe("");
+    expect(settings.requesterAffiliation).toBe("");
+    expect(await languageOf("pt-BR")).toBe("pt");
+    expect(await languageOf("es-AR")).toBe("es");
+  });
+
+  it("falls back to English for an unsupported or missing browser language", async () => {
+    expect(await languageOf("de-DE")).toBe("en");
+    expect(await languageOf(undefined)).toBe("en");
+  });
+
+  it("reads back what was saved, and the saved language wins over the browser's", async () => {
+    await updateSettings({ requesterName: "Ada Lovelace", requesterAffiliation: "Analytical Engine Lab", requestLanguage: "es" });
+    const settings = await getSettings();
+    expect(settings).toMatchObject({ requesterName: "Ada Lovelace", requesterAffiliation: "Analytical Engine Lab", requestLanguage: "es" });
+    expect(await languageOf("pt-BR")).toBe("es");
+  });
+
+  it("drops stored values of the wrong shape", async () => {
+    store[SETTINGS_STORAGE_KEY] = { requesterName: 7, requesterAffiliation: { a: 1 }, requestLanguage: "fr" };
+    Object.defineProperty(globalThis, "navigator", { value: { language: "pt-PT" }, configurable: true });
+    expect(await getSettings()).toMatchObject({ requesterName: "", requesterAffiliation: "", requestLanguage: "pt" });
+  });
+});

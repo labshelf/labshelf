@@ -55,7 +55,12 @@ export function paperRecordFromMetadata(meta: Record<string, unknown>, location:
   if (tags.length) { record.tags = tags; }
   if (typeof meta["note"] === "string") { record.note = meta["note"]; }
   if (isPdfVersion(meta["pdfVersion"])) { record.pdfVersion = meta["pdfVersion"]; }
+  if (isIsoDay(meta["pdfRequestedAt"])) { record.pdfRequestedAt = meta["pdfRequestedAt"]; }
   return record;
+}
+
+function isIsoDay(value: unknown): value is string {
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
 // Keeps the string entries of a YAML list; anything else yields an empty list.

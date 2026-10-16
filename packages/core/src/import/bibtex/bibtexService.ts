@@ -81,6 +81,10 @@ function carryOverUserKeys(metadata: Record<string, unknown>, paper: PaperRecord
     delete carried["pdfVersion"];
     if (paper.pdfVersion) { metadata["pdfVersion"] = paper.pdfVersion; }
   }
+  if (paper.pdfRequestedAt !== undefined) {
+    delete carried["pdfRequestedAt"];
+    if (paper.pdfRequestedAt) { metadata["pdfRequestedAt"] = paper.pdfRequestedAt; }
+  }
   Object.assign(metadata, carried);
 }
 

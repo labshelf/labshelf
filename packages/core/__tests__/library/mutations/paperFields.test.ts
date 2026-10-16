@@ -136,6 +136,25 @@ describe("updatePaperFields", () => {
     await updatePaperFields(h.ctx, P1, { status: "done" });
     expect(h.logs.find((l) => l.message === "Paper updated")).toMatchObject({ level: "INFO", context: { id: "p1", fields: ["status"] } });
   });
+
+  it("sets, replaces and removes pdfRequestedAt without touching the other keys", async () => {
+    const h = await withBase();
+    await updatePaperFields(h.ctx, P1, { pdfRequestedAt: "2026-10-15" });
+    expect(await h.readMeta(P1)).toMatchObject({ pdfRequestedAt: "2026-10-15", customKey: "keep me", status: "unread" });
+    expect((await updatePaperFields(h.ctx, P1, { pdfRequestedAt: "2026-10-16" }))?.pdfRequestedAt).toBe("2026-10-16");
+    await updatePaperFields(h.ctx, P1, { status: "done" });
+    expect(await h.readMeta(P1)).toMatchObject({ pdfRequestedAt: "2026-10-16", status: "done" });
+    await updatePaperFields(h.ctx, P1, { pdfRequestedAt: null });
+    expect(await h.readMeta(P1)).not.toHaveProperty("pdfRequestedAt");
+  });
+
+  it("writes nothing when pdfRequestedAt is already the patched value", async () => {
+    const h = makeHarness();
+    await h.seedPaper(P1, { title: "T", pdfRequestedAt: "2026-10-15" });
+    const writes = h.fs.writes;
+    await updatePaperFields(h.ctx, P1, { pdfRequestedAt: "2026-10-15" });
+    expect(h.fs.writes).toBe(writes);
+  });
 });
 
 describe("setPaperStatus / editPaperTags", () => {
