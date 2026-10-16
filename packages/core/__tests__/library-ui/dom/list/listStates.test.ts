@@ -33,6 +33,20 @@ describe("empty states", () => {
     expect(t.container.querySelector(".ls-empty button")?.textContent).toBe("Clear filters");
   });
 
+  it("names the status scope when it holds no paper", () => {
+    const t = mountForTest();
+    t.snapshot(library);
+    t.lib.store.set({ status: "done" });
+    expect(text(t)).toBe("No papers marked Done");
+  });
+
+  it("names the status scope when a search in it finds no paper", () => {
+    const t = mountForTest();
+    t.snapshot(library);
+    t.lib.store.set({ status: "unread", query: "zzz" });
+    expect(text(t)).toBe("No papers match “zzz” in Unread");
+  });
+
   it("keeps the three messages distinct", () => {
     const t = mountForTest();
     t.snapshot([]);

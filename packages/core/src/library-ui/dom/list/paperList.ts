@@ -3,7 +3,7 @@
  * in step by id so a refresh rebuilds only the rows that changed. Selection changes repaint attributes only, so scroll and focus survive.
  */
 import { PAPERS_DIR, folderLabel } from "../../../library/index.js";
-import { nextStatus, type PaperRecord } from "../../../model/index.js";
+import { STATUS_LABEL, nextStatus, type PaperRecord } from "../../../model/index.js";
 import { deriveListView, type ListPaper } from "../../derive/index.js";
 import { endPaperDrag, startPaperDrag } from "../dnd/index.js";
 import { openPaper, requestAddPaper, setPaperStatus } from "../flows/index.js";
@@ -71,6 +71,7 @@ function placeholder(list: List, view: ReturnType<typeof deriveListView>): HTMLE
     libraryEmpty: s.papers.length === 0,
     query: s.query,
     folderLabel: folderLabel(PAPERS_DIR, s.folder, "/"),
+    statusLabel: s.status === "all" ? null : STATUS_LABEL[s.status],
     hint: ctx.labels.emptyHint,
     onClearFilters: () => { ctx.store.set({ status: "all", query: "" }); ctx.focusSearch(); },
     onAdd: () => requestAddPaper(ctx),
