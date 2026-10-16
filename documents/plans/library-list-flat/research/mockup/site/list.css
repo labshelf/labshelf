@@ -1,0 +1,288 @@
+body{background:var(--vscode-editor-background);color:var(--vscode-foreground);font:var(--vscode-font-size)/1.4 var(--vscode-font-family);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 32px}
+h1{font-size:16px;font-weight:600;margin:0 0 6px}
+.lead{color:var(--vscode-descriptionForeground);margin:0 0 14px;max-width:84ch}
+.notes{margin-top:18px;color:var(--vscode-descriptionForeground);font-size:12px;max-width:84ch;padding-left:18px}
+.notes li{margin-bottom:4px}
+kbd{font:11px var(--vscode-editor-font-family);padding:1px 5px;border-radius:4px;background:var(--soft2);color:var(--vscode-descriptionForeground)}
+.tsw{display:flex;flex-wrap:wrap;gap:2px;margin:0 0 12px}
+.tsw button{all:unset;cursor:pointer;height:24px;padding:0 9px;border-radius:6px;font-size:12px;color:var(--vscode-descriptionForeground)}
+.tsw button:hover{background:var(--soft)}
+.tsw button[aria-pressed="true"]{background:var(--soft2);color:var(--vscode-foreground)}
+:focus-visible{outline:1px solid var(--vscode-focusBorder);outline-offset:-1px}
+*{scrollbar-width:thin;scrollbar-color:var(--vscode-scrollbarSlider-background) transparent}
+svg.i{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}
+button,.row,.side li{transition:background-color .12s,color .12s,opacity .12s}
+
+.app{display:grid;grid-template-columns:240px minmax(0,1fr) 360px;height:760px;border:1px solid var(--hair);border-radius:10px;overflow:hidden;background:var(--vscode-editor-background)}
+.app>*{min-height:0;overflow:auto}
+.app.nodetail{grid-template-columns:240px minmax(0,1fr) 0}
+.app.nodetail .detail{display:none}
+@media (max-width:1100px){.app,.app.nodetail{grid-template-columns:minmax(0,1fr);height:auto}.app>*{overflow:visible}.side{display:none}.detail{border-left:0!important;border-top:1px solid var(--hair)}}
+
+/* Shared controls: ghost icons, soft filled buttons, one primary action. */
+.ib{all:unset;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:4px;min-width:26px;height:26px;padding:0 4px;box-sizing:border-box;border-radius:6px;color:var(--vscode-descriptionForeground)}
+.ib:hover,.ib[aria-expanded="true"]{background:var(--soft);color:var(--vscode-foreground)}
+.ib[aria-pressed="true"]{color:var(--vscode-foreground)}
+.btn{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;box-sizing:border-box;border-radius:6px;font-size:12.5px;background:var(--soft);color:var(--vscode-foreground)}
+.btn:hover{background:var(--soft2)}
+.btn.primary{height:28px;border-radius:7px;gap:6px;padding:0 12px 0 10px;font-weight:600;background:color-mix(in srgb,var(--vscode-focusBorder) 16%,transparent);color:color-mix(in srgb,var(--vscode-focusBorder) 70%,var(--vscode-foreground))}
+.btn.primary:hover{background:color-mix(in srgb,var(--vscode-focusBorder) 24%,transparent)}
+.btn.primary:active{background:color-mix(in srgb,var(--vscode-focusBorder) 30%,transparent)}
+.btn.ghost{background:none;color:var(--vscode-descriptionForeground);padding:0 8px}
+.btn.ghost:hover{background:var(--soft);color:var(--vscode-foreground)}
+.btn:focus-visible{outline-offset:2px}
+.mk{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;flex:none;color:var(--vscode-descriptionForeground)}
+.mk[data-t="accent"]{color:var(--reading)} .mk[data-t="ok"]{color:var(--ok)} .mk[data-t="warn"]{color:var(--warn)} .mk[data-t="err"]{color:var(--err)}
+.mk svg{width:13px;height:13px;overflow:visible}
+
+/* Side bar: inset rounded rows, quiet sentence-case labels. */
+.side{background:var(--vscode-sideBar-background);border-right:1px solid var(--hair);display:flex;flex-direction:column;padding:6px 0 12px}
+.vh{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:4px;width:calc(100% - 12px);margin:10px 6px 2px;height:24px;padding:0 8px 0 12px;border-radius:6px;font:600 11px var(--vscode-font-family);color:var(--vscode-descriptionForeground)}
+.vh .i{width:12px;height:12px;order:2;margin-left:auto;opacity:0}
+.vh:hover .i,.vh:focus-visible .i,.view.closed>.vh .i{opacity:1}
+.view.closed>ul{display:none} .view.closed>.vh .i{transform:rotate(-90deg)}
+.side ul{list-style:none;margin:0;padding:0 6px}
+.side li{display:flex;align-items:center;gap:8px;height:28px;padding:0 10px 0 calc(12px + var(--dp,0)*16px);border-radius:6px;white-space:nowrap;min-width:0;cursor:pointer}
+.side li:hover{background:var(--vscode-list-hoverBackground)}
+.side li[aria-current="true"]{background:var(--sel)}
+.side li .i{color:var(--vscode-descriptionForeground)}
+.side li .d{color:var(--vscode-descriptionForeground);font:11.5px var(--vscode-editor-font-family);margin-left:auto}
+.side li[hidden]{display:none}
+.side li.leaf>.i{opacity:.4}
+.side .twi{all:unset;cursor:pointer;display:inline-flex;flex:none;width:16px;height:16px;border-radius:3px;color:var(--vscode-descriptionForeground)}
+.side .twi:hover{color:var(--vscode-foreground)}
+.side .twi svg{transition:transform .12s}
+.side .twi[aria-expanded="true"] svg{transform:rotate(90deg)}
+.side .sect{cursor:default;height:32px;align-items:flex-end;padding-bottom:6px;font:600 11px var(--vscode-font-family);color:var(--vscode-descriptionForeground)}
+.side .sect:hover{background:none}
+/* Papers in the folder tree: each is a paper folder, marked by its own icon (a folder holding a page), then the title and the status mark. */
+.side li.pp{font-size:12.5px}
+.ty[data-k="ref"]{color:var(--reading)}
+/* REF sits on the title's baseline, like PDF and MD in the file rows. */
+.side li.pp{align-items:baseline;padding-top:7px;box-sizing:border-box}
+.side li.pp .ty{width:24px}
+.side li.pp .mk{align-self:center;margin-top:-7px}
+.side li.pp .pt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+
+
+/* List header bar: title, soft search field, ghost Add, details toggle. */
+.pane{display:flex;flex-direction:column}
+.bar{display:flex;flex-wrap:nowrap;align-items:center;gap:6px;min-height:54px;padding:10px 12px 8px 20px;box-sizing:border-box;position:sticky;top:0;background:var(--vscode-editor-background);z-index:2}
+.crumb{flex:1 1 auto;min-width:0;display:flex;align-items:baseline;gap:8px;white-space:nowrap;padding-right:8px}
+.crumb b{flex:none}
+.crumb b{font-size:15px;font-weight:600}
+.crumb .up{all:unset;cursor:pointer;font-size:13px;min-width:0;flex:0 1 auto;overflow:hidden;text-overflow:ellipsis;color:var(--vscode-descriptionForeground);border-radius:4px}
+.crumb .up:hover{color:var(--vscode-foreground)}
+.crumb .sep{align-self:center;display:inline-flex;margin:0 -4px;color:var(--vscode-descriptionForeground);opacity:.6}
+.crumb .sep .i{width:14px;height:14px}
+.crumb .count{color:var(--vscode-descriptionForeground);font:12px var(--vscode-editor-font-family)}
+.search{flex:0 1 220px;min-width:120px;display:flex;align-items:center;gap:6px;height:28px;padding:0 6px 0 8px;box-sizing:border-box;border-radius:6px;background:var(--soft);color:var(--vscode-descriptionForeground);outline:1px solid transparent}
+.search:focus-within{outline-color:var(--vscode-focusBorder);background:var(--vscode-input-background)}
+.search .i{width:14px;height:14px}
+.search input{all:unset;flex:1;min-width:0;color:var(--vscode-foreground);font-size:12.5px}
+.search input::placeholder{color:var(--vscode-input-placeholderForeground)}
+.search:focus-within kbd{display:none}
+
+
+/* List: one hairline under the column titles; rows are rounded and inset. */
+.tbl{flex:1;padding-bottom:12px}
+.heads,.row{display:grid;grid-template-columns:20px minmax(180px,1fr) 150px 44px 76px 44px;gap:12px;align-items:center;box-sizing:border-box}
+.row{margin:0 8px;padding:0 12px 0 4px;min-width:540px;height:34px;border-radius:6px;cursor:default}
+.heads{padding:0 20px 0 12px;min-width:556px;height:30px;border-bottom:1px solid var(--hair);position:sticky;top:54px;z-index:2;background:var(--vscode-editor-background)}
+.heads button{all:unset;cursor:pointer;display:flex;align-items:center;gap:3px;height:22px;border-radius:4px;font-size:11px;font-weight:500;color:var(--vscode-descriptionForeground);white-space:nowrap}
+.heads button:hover{color:var(--vscode-foreground)}
+.heads button svg{width:12px;height:12px;opacity:0}
+.heads button:hover svg{opacity:.45}
+.heads button[aria-sort]:not([aria-sort="none"]){color:var(--vscode-foreground)}
+.heads button[aria-sort="ascending"] svg,.heads button[aria-sort="descending"] svg{opacity:.8}
+.heads button[aria-sort="ascending"] svg{transform:rotate(180deg)}
+.heads .r{flex-direction:row-reverse;justify-self:end}
+/* Reading without dividers: papers alternate on a faint full-width band (open files share their paper's band), square, edge to edge.
+   Every section starts on a band, so each section reads the same and a lone paper is never bare.
+   An open paper is a unit: its row takes one tone, a step above the stripes, and its files sit just under it in a tray a touch quieter, edge to edge.
+   The row's tone ignores the stripe, so every open paper looks the same; the tone bounds the folder, so no indent guide.
+   Selection is a full-width band in the accent tint: same square, edge-to-edge shape as the stripes, never a card. Hover turns the text toward the accent. */
+:root{--z:color-mix(in srgb,var(--vscode-foreground) 3%,transparent);--well:color-mix(in srgb,var(--vscode-foreground) 4.5%,transparent);--oprow:color-mix(in srgb,var(--vscode-foreground) 7%,transparent);--zsel:color-mix(in srgb,var(--vscode-focusBorder) 15%,transparent)}
+.row,.files .frow{border-radius:0}
+.row:hover,.row.sel,.files .frow:hover{background:none}
+.row.z{background:var(--z);box-shadow:-40px 0 0 var(--z),40px 0 0 var(--z)}
+.files,.files.z{background:var(--well);box-shadow:-40px 0 0 var(--well),40px 0 0 var(--well);padding-top:4px}
+.files::before{display:none}
+.row:hover .t,.files .frow:hover .nm>span:last-child{color:color-mix(in srgb,var(--vscode-textLink-foreground) 70%,var(--vscode-foreground))}
+.row.op,.row.op.z{background:var(--oprow);box-shadow:-40px 0 0 var(--oprow),40px 0 0 var(--oprow)}
+.row.sel,.row.sel.z,.row.sel.op,.row.sel.op.z{background:var(--zsel);box-shadow:-40px 0 0 var(--zsel),40px 0 0 var(--zsel)}
+.row.sel .t,.row.sel:hover .t{color:var(--vscode-foreground)}
+.side li.pp[aria-selected="true"]{background:none;color:var(--vscode-foreground);font-weight:600}
+/* The focus ring shows only when moving with the keyboard. */
+.row:focus-visible{outline:none}
+:root.kbd .row:focus-visible{outline:1px solid color-mix(in srgb,var(--vscode-focusBorder) 50%,transparent);outline-offset:-1px}
+.cell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.m{color:var(--vscode-descriptionForeground)}
+.n{font:11.5px var(--vscode-editor-font-family);font-variant-numeric:tabular-nums;text-align:right}
+.n.l{text-align:center}
+.heads .c{justify-self:center;position:relative}
+.heads .c svg{position:absolute;left:100%}
+.row>.c{justify-self:center}
+.tw{all:unset;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;color:var(--vscode-descriptionForeground);opacity:.4}
+.row:hover .tw,.row.sel .tw,.tw[aria-expanded="true"]{opacity:1}
+.tw:hover{background:var(--soft);color:var(--vscode-foreground)}
+.tw svg{width:14px;height:14px;transition:transform .12s}
+.tw[aria-expanded="false"] svg{transform:rotate(-90deg)}
+.title .t{overflow:hidden;text-overflow:ellipsis}
+.stat{all:unset;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:5px}
+.stat:hover{background:var(--soft)}
+.grp{padding-top:4px}
+.grp+.grp{margin-top:8px}
+.gh{display:grid;grid-template-columns:20px minmax(0,1fr);gap:12px;align-items:center;box-sizing:border-box;height:32px;align-items:end;margin:0 8px;padding:0 12px 6px 4px;min-width:540px;position:sticky;top:84px;z-index:1;font:600 11px var(--vscode-font-family);color:var(--vscode-descriptionForeground);background:var(--vscode-editor-background)}
+/* Section headers stay small labels: the side bar is for navigating folders, the list is for papers. */
+.gh{grid-template-columns:minmax(0,1fr);padding-left:8px}
+.gh .tw{display:none}
+/* With section labels shown, the papers sit one soft step inside their label. */
+.grp.ind .row{margin-left:20px}
+.grp.ind .files{margin-left:12px}
+.tbl.ind .heads{padding-left:24px}
+.gl{display:flex;align-items:center;gap:4px;min-width:0;white-space:nowrap;overflow:hidden}
+.gs{all:unset;cursor:pointer;min-width:0;flex:0 1 auto;overflow:hidden;text-overflow:ellipsis;color:var(--vscode-descriptionForeground)}
+span.gs{cursor:default}
+.gs:not(.lf){font-weight:400;opacity:.85}
+button.gs:hover{color:var(--vscode-foreground)}
+.gs.lf{color:var(--vscode-descriptionForeground);font-weight:600;max-width:100%}
+.gsep{display:inline-flex;flex:none;color:var(--vscode-descriptionForeground);opacity:.6}
+.gsep .i{width:12px;height:12px}
+.gc{flex:none;margin-left:4px;font:11.5px var(--vscode-editor-font-family);color:var(--vscode-descriptionForeground)}
+.empty{padding:24px 44px;color:var(--vscode-descriptionForeground)}
+
+/* A paper's files open as tree children: one short row each inside the Title column, hung from the twistie by one indent guide; each file row repeats the list columns. */
+.files{padding:0 0 6px;position:relative}
+.files::before{content:"";position:absolute;left:22px;top:0;bottom:6px;width:1px;background:var(--vscode-tree-indentGuidesStroke);opacity:.35}
+/* A file row is just its type and name: the paper's columns don't apply to files. Kind, size and date are in the tooltip. */
+.frow{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;width:calc(100% - 44px);min-width:512px;margin:0 8px 0 36px;padding:0 12px 0 8px;height:28px;border-radius:6px;font-size:12.5px}
+.frow .n{overflow:visible}
+.frow .nm{display:flex;align-items:baseline;gap:8px;flex:none;max-width:45%;white-space:nowrap;overflow:hidden}
+/* What's inside: muted, smaller, running on from the name like a sentence, so it never lines up under a paper column. */
+.facts{display:flex;align-items:baseline;gap:8px;flex:1;min-width:0;margin-left:18px;padding-right:4px;overflow:hidden;white-space:nowrap}
+.facts .lab{flex:none;font-size:11px;color:var(--vscode-descriptionForeground);opacity:.8}
+.facts .say{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font:italic 12.5px var(--ls-serif);color:color-mix(in srgb,var(--vscode-foreground) 72%,transparent)}
+/* Actions show on hover or focus only. */
+.files .frow{align-items:baseline}
+/* They float over the end of the text (which runs to the edge when idle), on a fade of the tray colour. */
+.acts{position:absolute;right:6px;top:50%;transform:translateY(calc(-50% - 2px));display:flex;gap:2px;padding-left:28px;background:linear-gradient(to right,transparent,color-mix(in srgb,var(--vscode-foreground) 4.5%,var(--vscode-editor-background)) 26px);opacity:0;transition:opacity .12s}
+.frow:hover .acts,.frow:focus-within .acts{opacity:1}
+.fa{all:unset;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:5px;color:var(--vscode-descriptionForeground)}
+.fa:hover{background:var(--soft2);color:var(--vscode-foreground)}
+.fa .i{width:14px;height:14px}
+.frow .nm>span:last-child{overflow:hidden;text-overflow:ellipsis}
+.frow.add{color:var(--vscode-descriptionForeground)}
+.frow.add:hover{color:var(--vscode-foreground)}
+.ty{display:inline-flex;align-items:center;width:26px;flex:none;font:600 10px/1 var(--vscode-editor-font-family);letter-spacing:.06em}
+/* Text marks sit on the name's baseline; icon marks centre on it, their strokes pulled to the same left edge as PDF and MD. */
+.ty:has(svg){align-self:center}
+.frow>.nm>.ty:has(svg){align-self:center}
+.ty .i{width:14px;height:14px}
+.ty[data-k="dir"] .i{margin-left:-5px}
+.ty[data-k="add"] .i{margin-left:-3px}
+.ty[data-k="pdf"]{color:var(--err)} .ty[data-k="md"]{color:var(--reading)} .ty[data-k="dir"]{color:var(--warn)}
+
+/* Details: head, tabs, collapsible sections; same content as the core detail pane, no inner lines. */
+.detail{border-left:1px solid var(--hair);background:var(--vscode-editor-background);display:flex;flex-direction:column}
+.head{position:relative;padding:14px 22px 16px;display:flex;flex-direction:column;gap:10px}
+.hgroup{display:flex;flex-direction:column;gap:5px}
+.head h3{font:600 20px/1.3 var(--ls-serif);margin:0 0 2px;padding-right:30px;text-wrap:balance}
+.by{font-size:12.5px;line-height:1.5;color:var(--vscode-descriptionForeground)}
+.by button{all:unset;cursor:pointer;color:inherit}
+.by button:hover{color:var(--vscode-foreground);text-decoration:underline}
+.metaline{font-size:12px;color:var(--vscode-descriptionForeground)}
+.tools{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.tools .btn,.tools .ib{height:28px}
+.head .tools{margin-left:-8px}
+.head .tools .btn.primary{padding-left:8px}
+.btn svg.sm{width:12px;height:12px;opacity:.6}
+#moreMenu{position:absolute;top:14px;right:17px}
+.metaline .fl{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:4px;vertical-align:bottom}
+.metaline .fl:hover{color:var(--vscode-foreground);text-decoration:underline}
+.metaline .fl svg{width:12px;height:12px}
+.statusrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.statusrow>.btn{margin-left:-8px}
+.tags{display:flex;flex:1;min-width:0;flex-wrap:wrap;align-items:center;gap:2px 10px}
+.tag{display:inline-flex;align-items:center;height:20px;font:11.5px var(--vscode-editor-font-family);letter-spacing:.02em;color:var(--vscode-textLink-foreground)}
+.tag i{font-style:normal;opacity:.6}
+.tag:hover .tn{text-decoration:underline}
+.tag button{all:unset;cursor:pointer;display:inline-flex;width:0;overflow:hidden;opacity:0;border-radius:4px;transition:width .12s,opacity .12s,margin .12s}
+.tag:hover button,.tag:focus-within button{width:12px;opacity:.8;margin:0 0 0 3px}
+.tag button:hover{opacity:1}
+.tag button svg{width:12px;height:12px}
+.tagadd{all:unset;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:10px;color:var(--vscode-descriptionForeground)}
+.tagadd:hover{background:var(--soft);color:var(--vscode-foreground)}
+.tagadd svg{width:12px;height:12px}
+.tags input{all:unset;font:inherit;letter-spacing:inherit;height:20px;min-width:7ch;field-sizing:content;color:var(--vscode-foreground);caret-color:var(--vscode-textLink-foreground)}
+.tags input:focus,.tags input:focus-visible{outline:none}
+.tags input::placeholder{color:var(--vscode-descriptionForeground);opacity:.7}
+.dtabs{display:flex;gap:18px;padding:0 22px;position:sticky;top:0;background:var(--vscode-editor-background);z-index:1}
+.dtabs button{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:5px;height:34px;box-sizing:border-box;border-bottom:1px solid transparent;font-size:12.5px;color:var(--vscode-descriptionForeground)}
+.dtabs button:hover{color:var(--vscode-foreground)}
+.dtabs button[aria-selected="true"]{color:var(--vscode-foreground);border-bottom-color:var(--vscode-panelTitle-activeBorder)}
+.dtabs button:focus-visible{outline-offset:2px}
+.dtabs .badge{font:11px var(--vscode-editor-font-family);color:var(--vscode-descriptionForeground)}
+.dtabs .dot{width:5px;height:5px;border-radius:50%;background:var(--reading)}
+.tabbody{padding:8px 0 24px}
+.fold{margin-top:4px}
+.fold>.sec{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:6px;width:calc(100% - 28px);margin:0 14px;height:28px;padding:0 8px;border-radius:6px;font:600 11.5px var(--vscode-font-family);color:var(--vscode-descriptionForeground)}
+.fold>.sec:hover{color:var(--vscode-foreground);background:var(--soft)}
+.fold>.sec .i{width:12px;height:12px;order:2;margin-left:auto;opacity:.7}
+.fold>.sec .c{font:400 11px var(--vscode-editor-font-family)}
+.fold.closed>.sec .i{transform:rotate(-90deg)}
+.fold.closed>.fb{display:none}
+.fb{padding:2px 22px 12px}
+.abs{font:14px/1.6 var(--ls-serif);margin:0}
+.lnk{all:unset;cursor:pointer;color:var(--vscode-textLink-foreground);font-size:12px}
+.lnk:hover{text-decoration:underline}
+.kv{display:grid;grid-template-columns:80px minmax(0,1fr);gap:6px 12px;margin:0;font-size:12.5px}
+.kv dt{color:var(--vscode-descriptionForeground)}
+.kv dd{margin:0;min-width:0;display:flex;align-items:center;gap:4px;overflow-wrap:anywhere}
+.kv dd .ib{height:20px;min-width:20px;visibility:hidden}
+.kv dd:hover .ib,.kv dd .ib:focus-visible{visibility:visible}
+.kv .mono{font:12px var(--vscode-editor-font-family)}
+.kw{font-size:12.5px;line-height:1.7}
+.kw button{all:unset;cursor:pointer}
+.kw button:hover{color:var(--vscode-textLink-foreground);text-decoration:underline}
+.kw .sep{color:var(--vscode-descriptionForeground);margin:0 6px}
+.cfmt{display:flex;gap:2px;margin:0 0 8px -8px}
+.cfmt button{all:unset;cursor:pointer;font-size:12px;padding:0 8px;line-height:24px;border-radius:6px;color:var(--vscode-descriptionForeground)}
+.cfmt button:hover{color:var(--vscode-foreground)}
+.cfmt button[aria-pressed="true"]{background:var(--soft2);color:var(--vscode-foreground)}
+.cite{font:11.5px/1.55 var(--vscode-editor-font-family);white-space:pre-wrap;margin:0 0 10px;padding:10px 12px;border-radius:6px;background:var(--soft);overflow-wrap:anywhere}
+.cin{display:flex;flex-direction:column;gap:2px;font-size:12.5px}
+.cin button{all:unset;cursor:pointer;display:flex;gap:8px;padding:3px 8px;margin:0 -8px;border-radius:6px}
+.cin button:hover{background:var(--vscode-list-hoverBackground)}
+.cin .n{color:var(--vscode-descriptionForeground);margin-left:auto}
+.swatches{display:flex;align-items:center;gap:8px;padding:10px 22px 6px}
+.sw{all:unset;cursor:pointer;width:12px;height:12px;border-radius:50%;background:var(--c)}
+.sw[aria-pressed="true"]{box-shadow:0 0 0 2px var(--vscode-editor-background),0 0 0 3px var(--vscode-focusBorder)}
+.swatches .lnk{margin-left:auto}
+.swatches .lnk+.lnk{margin-left:10px}
+.pg{padding:14px 22px 4px;font:600 11px var(--vscode-font-family);color:var(--vscode-descriptionForeground)}
+.card{all:unset;box-sizing:border-box;cursor:pointer;display:block;width:calc(100% - 28px);margin:0 14px 4px;padding:7px 10px 7px 12px;border-radius:0 6px 6px 0;border-left:2px solid var(--c)}
+.card:hover{background:var(--vscode-list-hoverBackground)}
+.card p{font:13.5px/1.5 var(--ls-serif);margin:0 0 2px}
+.card small{font:11px var(--vscode-editor-font-family);color:var(--vscode-descriptionForeground)}
+textarea{display:block;box-sizing:border-box;width:calc(100% - 44px);margin:14px 22px 10px;min-height:140px;resize:vertical;font:13px/1.55 var(--vscode-font-family);color:var(--vscode-foreground);background:var(--soft);border:0;border-radius:6px;padding:8px 10px}
+textarea:focus{outline:1px solid var(--vscode-focusBorder)}
+.nbtns{display:flex;gap:6px;padding:0 22px}
+.rel{display:flex;flex-direction:column}
+.rel button{all:unset;cursor:pointer;display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:8px;align-items:center;height:28px;margin:0 14px;padding:0 8px;border-radius:6px;font-size:12.5px}
+.rel button:hover{background:var(--vscode-list-hoverBackground)}
+.rel .n{color:var(--vscode-descriptionForeground)}
+.placeholder{padding:32px 22px;color:var(--vscode-descriptionForeground)}
+
+/* Paper menu: right-click, the menu key or More. Menus and the toast are the only surfaces with a shadow. */
+.menu{position:fixed;z-index:20;min-width:240px;padding:5px;box-sizing:border-box;background:var(--vscode-editorWidget-background);color:var(--vscode-foreground);border:1px solid var(--hair);border-radius:8px;box-shadow:0 8px 24px var(--vscode-widget-shadow);font-size:13px}
+.menu button{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:8px;width:100%;height:26px;padding:0 10px 0 6px;border-radius:5px}
+.menu button:hover,.menu button:focus{background:var(--sel);outline:none}
+.menu button:focus-visible{outline:1px solid var(--vscode-focusBorder);outline-offset:-1px}
+.menu button .ck{width:14px;visibility:hidden} .menu button[aria-checked="true"] .ck{visibility:visible}
+.menu button kbd{margin-left:auto;background:none;padding:0;color:var(--vscode-descriptionForeground)}
+.menu button.danger{color:var(--err)}
+.menu hr{border:0;border-top:1px solid var(--hair);margin:4px 6px}
+.toast{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:8px;background:var(--vscode-editorWidget-background);color:var(--vscode-foreground);border:1px solid var(--hair);box-shadow:0 8px 24px var(--vscode-widget-shadow);border-radius:8px;padding:9px 14px;font-size:12.5px;opacity:0;transform:translateY(6px);transition:opacity .12s,transform .12s;pointer-events:none;z-index:30}
+.toast.show{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){*,*::before{transition:none!important}}
