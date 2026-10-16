@@ -35,3 +35,7 @@
 - 2026-10-16 1d peaks: main thread 74.0k (over 70k), largest subagent 59.8k (verify)
 - 2026-10-16 20:40 1e.1 check (Haiku): core typecheck PASS, reader+ui jest 71 suites / 863 PASS; knip flagged 5 unused type exports in reader/dom (fixed in main thread: barrels trimmed, slot-name types made local); jscpd clone is in packages/vscode (backlinks ↔ checklist), outside Owns
 - 2026-10-16 20:50 1e.2 1a.4 done; A6 ticked, A1/A4/A14 layout part noted; 1a-layout.md and 1e-commit.md deleted
+- 2026-10-16 18:10 2c.1 core orderPdfProblems (implementer, Sonnet): writing/problems/ + barrel; 5 tests pass; R3 confirmed (kinds + subject on LocatedProblem, warning line from "on input line")
+- 2026-10-16 18:10 2c.2 host pdfProblemsOf (implementer, Sonnet): preview/problems/; 9 tests pass; deps take SynctexLookup, logger, paths; format from project.settings.format; placed area is a zero-size rect at the SyncTeX point; 3a must write `preprints` and `readSources` (no existing helper; collectProjectSources is LaTeX-only)
+- 2026-10-16 18:10 2c.3 finish on Owns (finisher, Sonnet): gate PASS, no fixes, no doc change; typstPreview.test.ts "reloads the document after a build" fails on 2a's setBuildStatus change (2j's)
+- 2026-10-16 18:10 2c peaks: main thread 79.9k (baseline 50.3k), largest subagent 42.2k (2c.2)
