@@ -41,6 +41,8 @@ export interface LibraryLayout<T> {
   aiDatabasePath(): T;
   /** Scratch space for atomic writes: same volume as the library, outside both synced roots. */
   tmpDir(): T;
+  /** OpenAlex citation data per paper and per cited work: device-local, outside both synced roots. */
+  openAlexCacheDir(): T;
   paperDataRoot(): T;
   paperDataDir(paperId: string): T;
   paperDataPath(paperId: string): T;
@@ -71,6 +73,7 @@ export function libraryLayout<T>(root: T, join: Join<T>): LibraryLayout<T> {
     terminalLogPath: () => join(logsDir(), TERMINAL_LOG_FILE),
     aiDatabasePath: () => join(research(), AI_DATABASE_FILE),
     tmpDir: () => join(research(), "tmp"),
+    openAlexCacheDir: () => join(research(), "openalex"),
     paperDataRoot,
     paperDataDir,
     paperDataPath: (paperId) => join(paperDataDir(paperId), SIDECAR_FILE),

@@ -1,0 +1,14 @@
+{
+ "id": "https://openalex.org/W1632114991",
+ "doi": "https://doi.org/10.21236/ada273556",
+ "title": "Building a Large Annotated Corpus of English: The Penn Treebank",
+ "publication_year": 1993,
+ "authorships": [
+  {
+   "author": {
+    "display_name": "Mitchell P. Marcus"
+   }
+  }
+ ],
+ "cited_by_count": 7302
+}

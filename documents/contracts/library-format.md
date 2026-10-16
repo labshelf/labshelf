@@ -20,6 +20,7 @@ A LabShelf library is a folder that the user owns. Every app reads and writes th
   .research/                       hidden, owned by the apps
     papers/<paper id>/data.json    the sidecar (synced, namespace "appdata")
     projects.json                  project folders registered outside the library (never synced; the folders themselves sync in namespace "projects")
+    openalex/                      OpenAlex citation data for the citation map (never synced)
     index.sqlite                   VS Code's text index for the Related tab: chunk embeddings and the content hash of each indexed PDF (never synced)
     logs/app.log                   VS Code log (JSON lines)
     logs/terminal.log              terminal log (JSON lines)
@@ -156,6 +157,15 @@ The device's list of project folders outside the library. Absolute paths differ 
 - Paths are absolute, kept in the order they were added, each at most once.
 - Unknown keys are preserved on rewrite. A file that is not a JSON object is never overwritten: projects outside the library stay hidden until the user fixes or deletes it.
 - Removing a project from LabShelf removes its entry and never deletes the folder.
+
+## .research/openalex/
+
+The citation map's cache of OpenAlex works. It can be rebuilt from OpenAlex at any time, so it is never synced; the browser keeps it under the same relative path in IndexedDB.
+
+- `papers/<paper id>.json` holds the work a library paper's DOI resolved to; `works/<work id>.json` holds a work that library papers cite.
+- Each file is `{ "fetchedAt": "<ISO timestamp>", "doi": "<DOI looked up>", "work": { "workId": "W…", "doi", "title", "authors": [], "year", "citedByCount", "references": ["W…"] } }`. `doi` at the top is present only under `papers/`, and `references` is empty under `works/`.
+- An entry older than 30 days, or a paper entry whose `doi` differs from the paper's current DOI, is fetched again. A DOI OpenAlex does not return leaves no file.
+- A file that is not valid JSON or lacks `fetchedAt`, a `W<digits>` work id, or the `authors` and `references` arrays reads as missing and is overwritten on the next fetch.
 
 ## .labshelf/state.json
 

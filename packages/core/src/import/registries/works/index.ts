@@ -2,7 +2,7 @@
 export { crossRefByDoi, crossRefSearch } from "./crossref.js";
 export { arxivById, parseArxivFeed } from "./arxiv.js";
 export { pubMedByPmid, pmidFromPmcid, pubMedAuthorsByDoi } from "./pubmed.js";
-export { openAlexSearch, openAlexAutocomplete, type OpenAlexSuggestion } from "./openalex.js";
+export { openAlexSearch, openAlexAutocomplete, openAlexWork, type OpenAlexSuggestion, type OpenAlexCitationWork } from "./openalex.js";
 export { dataCiteByDoi } from "./datacite.js";
 export { semanticScholarByTitle, semanticScholarByDoi } from "./semanticScholar.js";
 export { europePmcSearch } from "./europePmc.js";
