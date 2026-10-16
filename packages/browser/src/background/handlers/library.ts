@@ -22,28 +22,29 @@ type ScheduleSync = (reason: string) => void;
 // record's CURRENT path (attachPdfToPaper re-reads it).
 const findingPdf = new Map<string, Promise<AttachPdfData>>();
 
-export async function handleFindPdfForPaper(log: ILogger, mutations: LibraryMutations, id: string, scheduleSync: ScheduleSync): Promise<AttachPdfData> {
-  const inflight = findingPdf.get(id);
+function shareInflight(key: string, start: () => Promise<AttachPdfData>): Promise<AttachPdfData> {
+  const inflight = findingPdf.get(key);
   if (inflight) return inflight;
-  const run = (async (): Promise<AttachPdfData> => {
+  const run = start();
+  findingPdf.set(key, run);
+  void run.catch(() => undefined).finally(() => { if (findingPdf.get(key) === run) findingPdf.delete(key); });
+  return run;
+}
+
+export function handleFindPdfForPaper(log: ILogger, mutations: LibraryMutations, id: string, scheduleSync: ScheduleSync): Promise<AttachPdfData> {
+  return shareInflight(id, async () => {
     const record = (await listAllRecords()).find((r) => r.id === id);
     if (!record) throw new Error("This paper is no longer in your library.");
     return attachFoundPdf(log, mutations, await draftFromRecord(log, record), id, scheduleSync, "paper.findPdf");
-  })();
-  findingPdf.set(id, run);
-  void run.catch(() => undefined).finally(() => { if (findingPdf.get(id) === run) findingPdf.delete(id); });
-  return run;
+  });
 }
 
 /**
  * "Find Published Version" on a paper whose PDF is a preprint or accepted manuscript: the search learns the journal
  * DOI when the preprint records one, keeps only copies that outrank the current file, and replaces it with the best.
  */
-export async function handleFindBetterPdf(log: ILogger, mutations: LibraryMutations, id: string, scheduleSync: ScheduleSync): Promise<AttachPdfData> {
-  const key = `better:${id}`;
-  const inflight = findingPdf.get(key);
-  if (inflight) return inflight;
-  const run = (async (): Promise<AttachPdfData> => {
+export function handleFindBetterPdf(log: ILogger, mutations: LibraryMutations, id: string, scheduleSync: ScheduleSync): Promise<AttachPdfData> {
+  return shareInflight(`better:${id}`, async () => {
     const record = (await listAllRecords()).find((r) => r.id === id);
     if (!record) throw new Error("This paper is no longer in your library.");
     if (!isPrePublication(record.pdfVersion)) throw new Error("This paper's PDF is not a preprint.");
@@ -61,10 +62,7 @@ export async function handleFindBetterPdf(log: ILogger, mutations: LibraryMutati
     scheduleSync("paper.findBetterPdf");
     broadcastChanged("attach", id);
     return { id, attached: true, replaced: true, source: pdf.source };
-  })();
-  findingPdf.set(key, run);
-  void run.catch(() => undefined).finally(() => { if (findingPdf.get(key) === run) findingPdf.delete(key); });
-  return run;
+  });
 }
 
 export async function handleRemovePaper(

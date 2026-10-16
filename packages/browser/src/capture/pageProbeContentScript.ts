@@ -2,12 +2,15 @@
 // Interpretation stays in core's interpretPage, so DOM and DOM-less paths apply identical rules.
 import type { RawPage } from "@labshelf/core";
 
+export type PageMetaEvidence = Pick<RawPage, "pageUrl" | "meta" | "authorEmails" | "documentTitle" | "pageIsPdf">;
+export type PageLinkEvidence = Pick<RawPage, "pdfLinks" | "doiLinks" | "mailtoLinks">;
+
 /**
- * Inspects the page DOM and returns the raw evidence. Serialized via
- * Function.prototype.toString(), so it MUST NOT close over imported symbols
- * and may only use browser globals.
+ * Each probe is serialized via Function.prototype.toString() and run in the page, so it MUST NOT close over
+ * imported symbols and may only use browser globals. They are two functions because every helper has to be nested
+ * inside the one that is injected, and one function would pass the length limit.
  */
-export function probe(): RawPage {
+export function probeMeta(): PageMetaEvidence {
   const meta: Record<string, string[]> = {};
   const authorEmails: Array<{ email: string; name?: string }> = [];
   let lastAuthor: string | undefined;
@@ -22,7 +25,13 @@ export function probe(): RawPage {
       lastAuthor = undefined;
     }
   }
+  const evidence: PageMetaEvidence = { pageUrl: location.href, meta, authorEmails };
+  if (document.title.trim()) evidence.documentTitle = document.title.trim();
+  if (document.contentType === "application/pdf") evidence.pageIsPdf = true;
+  return evidence;
+}
 
+export function probeLinks(): PageLinkEvidence {
   const pdfLinks: Array<{ url: string; kind: "embed" | "alternate" | "labelled" | "href" }> = [];
   const seen = new Set<string>();
   const add = (raw: string | null | undefined, kind: "embed" | "alternate" | "labelled" | "href"): void => {
@@ -64,10 +73,5 @@ export function probe(): RawPage {
     const at = Math.max(0, full.indexOf(text));
     return { href: a.getAttribute("href") ?? "", text, context: full.slice(Math.max(0, at - 200), at + text.length + 80) };
   });
-
-  const pageIsPdf = document.contentType === "application/pdf";
-  const raw: RawPage = { pageUrl: location.href, meta, pdfLinks: pdfLinks.slice(0, 40), doiLinks, mailtoLinks, authorEmails };
-  if (document.title.trim()) raw.documentTitle = document.title.trim();
-  if (pageIsPdf) raw.pageIsPdf = true;
-  return raw;
+  return { pdfLinks: pdfLinks.slice(0, 40), doiLinks, mailtoLinks };
 }

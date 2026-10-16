@@ -24,7 +24,7 @@ const SEEN = "pdfOfferSeen";
 const MAX_OFFERS = 3;
 const MAX_SEEN = 50;
 // A download has no tab of its own, so its offer shows in any tab's popup for a while.
-export const DOWNLOAD_OFFER_MS = 10 * 60_000;
+const DOWNLOAD_OFFER_MS = 10 * 60_000;
 
 async function allOffers(): Promise<PdfOffer[]> {
   return ((await bx.storage.session.get(OFFERS))[OFFERS] as PdfOffer[] | undefined) ?? [];

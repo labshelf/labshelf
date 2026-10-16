@@ -50,8 +50,13 @@ export function registerMessageRouter(deps: MessageRouterDeps): void {
   });
 }
 
-async function handle(msg: RuntimeMessage, { log, mutations, syncMessages, scheduleSync }: MessageRouterDeps, senderTabId: number | undefined): Promise<unknown> {
-  if (isPdfOfferMessage(msg)) return handlePdfOfferMessage({ log, mutations, scheduleSync }, msg);
+type SyncMessage = Extract<RuntimeMessage, { type: `auth.${string}` | `sync.${string}` }>;
+
+function isSyncMessage(msg: RuntimeMessage): msg is SyncMessage {
+  return msg.type.startsWith("auth.") || msg.type.startsWith("sync.");
+}
+
+function handleSyncMessage(msg: SyncMessage, { syncMessages, scheduleSync }: MessageRouterDeps): unknown {
   switch (msg.type) {
     case "auth.status":
       return syncMessages.authStatus();
@@ -66,6 +71,14 @@ async function handle(msg: RuntimeMessage, { log, mutations, syncMessages, sched
     case "sync.scheduleSoon":
       scheduleSync(msg.reason);
       return { scheduled: true };
+  }
+}
+
+async function handle(msg: RuntimeMessage, deps: MessageRouterDeps, senderTabId: number | undefined): Promise<unknown> {
+  const { log, mutations, scheduleSync } = deps;
+  if (isPdfOfferMessage(msg)) return handlePdfOfferMessage({ log, mutations, scheduleSync }, msg);
+  if (isSyncMessage(msg)) return handleSyncMessage(msg, deps);
+  switch (msg.type) {
     case "capture.inspect":
       return handleCaptureInspect(log, msg);
     case "capture.findPdf":

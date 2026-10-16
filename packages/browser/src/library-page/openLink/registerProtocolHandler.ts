@@ -1,7 +1,7 @@
 // Registers the extension's library page as the handler of web+labshelf: links in browsers whose manifest cannot declare it.
 import type { ILogger } from "@labshelf/core";
 
-export const LINK_SCHEME = "web+labshelf";
+const LINK_SCHEME = "web+labshelf";
 
 export interface ProtocolRegistration {
   /** True when the manifest declares the handler itself (Firefox `protocol_handlers`). */

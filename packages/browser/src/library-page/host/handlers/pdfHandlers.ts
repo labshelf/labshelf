@@ -59,44 +59,50 @@ async function reportFind(ctx: HostContext, id: string, result: AttachPdfData, r
   ctx.endpoint.post({ type: "pdf.findResult", id, miss: result.miss ?? { tried: 0, sources: [], blocked: false, needsLogin: false } });
 }
 
+async function openPdf(ctx: HostContext, fs: IndexedDbFileSystem, id: string): Promise<void> {
+  const paper = ctx.papers([id])[0];
+  if (!paper) return;
+  // A key can exist with zero or corrupt bytes, so the header is checked before the reader opens.
+  const pdfPath = `${paper.path}/${PDF_FILE}`;
+  const bytes = (await fs.stat(pdfPath)) ? await fs.readFile(pdfPath).catch(() => undefined) : undefined;
+  if (!bytes || !isPdfBytes(bytes)) { ctx.endpoint.post({ type: "pdf.missing", id }); return; }
+  await openReader(paper.id);
+}
+
+async function findPdfOnline(ctx: HostContext, searching: Set<string>, id: string, replace: boolean): Promise<void> {
+  if (searching.has(id) || ctx.papers([id]).length === 0) return;
+  searching.add(id);
+  ctx.endpoint.post({ type: "pdf.busy", id, busy: true });
+  ctx.endpoint.post({ type: "progress", key: `find:${id}`, text: replace ? "Looking for the published version…" : "Looking for the PDF…" });
+  let result: AttachPdfData;
+  try {
+    result = await sendRuntime<AttachPdfData>(replace ? { type: "paper.findPdf", id, replace } : { type: "paper.findPdf", id });
+  } finally {
+    searching.delete(id);
+    ctx.endpoint.post({ type: "progress", key: `find:${id}`, text: null });
+    ctx.endpoint.post({ type: "pdf.busy", id, busy: false });
+  }
+  await reportFind(ctx, id, result, replace);
+}
+
+function pickLocalPdf(ctx: HostContext, id: string): void {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".pdf,application/pdf";
+  input.addEventListener("change", () => {
+    const file = input.files?.[0];
+    if (file) void ingestLocalPdf(ctx, id, file).catch((err: unknown) => ctx.notice("error", errorMessage(err)));
+  });
+  input.click();
+}
+
 export function createPdfHandlers(ctx: HostContext): PdfHandlers {
   const fs = new IndexedDbFileSystem();
   const searching = new Set<string>();
   return {
-    async open(id) {
-      const paper = ctx.papers([id])[0];
-      if (!paper) return;
-      // A key can exist with zero or corrupt bytes, so the header is checked before the reader opens.
-      const pdfPath = `${paper.path}/${PDF_FILE}`;
-      const bytes = (await fs.stat(pdfPath)) ? await fs.readFile(pdfPath).catch(() => undefined) : undefined;
-      if (!bytes || !isPdfBytes(bytes)) { ctx.endpoint.post({ type: "pdf.missing", id }); return; }
-      await openReader(paper.id);
-    },
-    async find(id, replace) {
-      if (searching.has(id) || ctx.papers([id]).length === 0) return;
-      searching.add(id);
-      ctx.endpoint.post({ type: "pdf.busy", id, busy: true });
-      ctx.endpoint.post({ type: "progress", key: `find:${id}`, text: replace ? "Looking for the published version…" : "Looking for the PDF…" });
-      let result: AttachPdfData;
-      try {
-        result = await sendRuntime<AttachPdfData>(replace ? { type: "paper.findPdf", id, replace } : { type: "paper.findPdf", id });
-      } finally {
-        searching.delete(id);
-        ctx.endpoint.post({ type: "progress", key: `find:${id}`, text: null });
-        ctx.endpoint.post({ type: "pdf.busy", id, busy: false });
-      }
-      await reportFind(ctx, id, result, replace);
-    },
-    attach(id) {
-      const input = document.createElement("input");
-      input.type = "file";
-      input.accept = ".pdf,application/pdf";
-      input.addEventListener("change", () => {
-        const file = input.files?.[0];
-        if (file) void ingestLocalPdf(ctx, id, file).catch((err: unknown) => ctx.notice("error", errorMessage(err)));
-      });
-      input.click();
-    },
+    open: (id) => openPdf(ctx, fs, id),
+    find: (id, replace) => findPdfOnline(ctx, searching, id, replace),
+    attach: (id) => pickLocalPdf(ctx, id),
     async openForPdf(id, access) {
       await sendRuntime<{ opened: true }>({ type: "paper.openForPdf", id, access });
       const step = access.kind === "login" ? "sign in" : "pass the check";

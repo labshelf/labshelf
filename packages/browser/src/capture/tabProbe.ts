@@ -1,6 +1,6 @@
 /** Reads a tab's page for the capture flow, with the URL alone as the fallback for a tab the probe cannot enter. */
 import { errorMessage, type ILogger, type RawPage } from "@labshelf/core";
-import { probe } from "./pageProbeContentScript";
+import { probeLinks, probeMeta, type PageLinkEvidence, type PageMetaEvidence } from "./pageProbeContentScript";
 import { scriptingApi } from "./tab";
 
 // A tab the probe cannot enter (the browser's own PDF viewer on some versions) is still usable when its URL is a PDF.
@@ -8,9 +8,14 @@ export async function probeTab(log: ILogger, tabId: number, tabUrl: string): Pro
   const scripting = scriptingApi();
   try {
     if (!scripting) throw new Error("scripting API unavailable");
-    const results = (await scripting.executeScript({ target: { tabId }, func: probe })) as Array<{ result?: RawPage }>;
-    const raw = results[0]?.result;
-    if (raw) return raw;
+    const target = { tabId };
+    const [metaRun, linksRun] = await Promise.all([
+      scripting.executeScript({ target, func: probeMeta }) as Promise<Array<{ result?: PageMetaEvidence }>>,
+      scripting.executeScript({ target, func: probeLinks }) as Promise<Array<{ result?: PageLinkEvidence }>>,
+    ]);
+    const meta = metaRun[0]?.result;
+    const links = linksRun[0]?.result;
+    if (meta && links) return { ...meta, ...links };
     throw new Error("probe returned nothing");
   } catch (err) {
     void log.log("WARN", "capture", "probe failed, using the URL alone", { url: tabUrl, error: errorMessage(err) });
