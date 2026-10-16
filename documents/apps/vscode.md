@@ -73,7 +73,8 @@ Jest mocks `vscode`, and plain Node passes pdf.js's "am I Node?" check, so both 
 
 3. Keep `--user-data-dir` under about 103 characters, because of the IPC socket path limit. The scratchpad path is too long, so symlink it from a short path and delete the symlink after the run.
 4. Write runner files with a quoted heredoc (`<<'EOF'`).
-5. The runner cannot see contributed views. A "Bad progress location" log line is harness noise.
+5. Stop a stuck run by its own process only: keep the PID of the binary you launched (`$!`) and `kill <pid>`, or match its unique flag with `pkill -f -- "--user-data-dir=<SHORT path>"`. Never `pkill`/`killall` by app name (`Code`, `Electron`, `Visual Studio Code`): it matches the user's own windows and closes every one of them.
+6. The runner cannot see contributed views. A "Bad progress location" log line is harness noise.
 
 A cheaper middle ground reproduces pdf.js's environment but not the host lifecycle. Run the script with `ELECTRON_RUN_AS_NODE=1 ".../Code Helper (Plugin).app/Contents/MacOS/Code Helper (Plugin)"`, after setting `process.type = "utility"`.
 

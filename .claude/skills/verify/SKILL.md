@@ -25,5 +25,6 @@ Always:
 4. Launch browsers and VS Code outside the sandbox (they fail inside it). Use Playwright's Chrome for Testing / headless shell; `/Applications/Google Chrome.app` crashes headless on this machine.
 5. Exercise the change with a real paper from the copy, not only synthetic fixtures.
 6. Read the screenshots or text frames yourself before reporting.
+7. Stop only the processes you launched, by PID or by the unique `--user-data-dir` path. Never `pkill`/`killall` VS Code, Electron or Chrome by name: the user's own windows run from the same binaries and all of them close.
 
 Return: what you exercised, what you saw (pass/fail per check), the absolute paths of the 1–3 screenshots that best show the result (the main model may open them), and anything the recipe could not reach (for example Cloudflare-protected downloads). No harness logs.
