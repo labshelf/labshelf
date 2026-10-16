@@ -27,7 +27,7 @@ export interface LatexBuildsDeps extends ToolchainDeps {
 }
 
 interface ProjectBuilds {
-  chain: Promise<void>;
+  chain: Promise<FinishedBuild | undefined>;
   queued: boolean;
   running?: AbortController | undefined;
 }
@@ -47,15 +47,16 @@ export class LatexBuilds {
 
   constructor(private readonly deps: LatexBuildsDeps) {}
 
-  request(projectFolder: string, trigger: BuildTrigger): Promise<void> {
-    const state = this.builds.get(projectFolder) ?? { chain: Promise.resolve(), queued: false };
+  /** Resolves with the build's result, or `undefined` when it did not finish: cancelled, declined or failed to start. */
+  request(projectFolder: string, trigger: BuildTrigger): Promise<FinishedBuild | undefined> {
+    const state: ProjectBuilds = this.builds.get(projectFolder) ?? { chain: Promise.resolve(undefined), queued: false };
     this.builds.set(projectFolder, state);
     state.running?.abort();
     if (state.queued) { return state.chain; }
     state.queued = true;
     state.chain = state.chain.then(async () => {
       state.queued = false;
-      await this.run(projectFolder, trigger, state);
+      return this.run(projectFolder, trigger, state);
     });
     return state.chain;
   }
@@ -79,19 +80,19 @@ export class LatexBuilds {
     }
   }
 
-  private async run(projectFolder: string, trigger: BuildTrigger, state: ProjectBuilds): Promise<void> {
+  private async run(projectFolder: string, trigger: BuildTrigger, state: ProjectBuilds): Promise<FinishedBuild | undefined> {
     const session = this.deps.host.current();
     const project = this.project(projectFolder);
-    if (!session || !project || (trigger === "save" && this.declined.has(projectFolder))) { return; }
+    if (!session || !project || (trigger === "save" && this.declined.has(projectFolder))) { return undefined; }
     if (!project.main) {
       await vscode.window.showErrorMessage(`Project "${project.settings.id}" has no main file. Choose one from the status bar.`);
-      return;
+      return undefined;
     }
     try {
       const toolchain = await ensureToolchain(this.deps, project);
       if (!toolchain) {
         this.declined.add(projectFolder);
-        return;
+        return undefined;
       }
       this.declined.delete(projectFolder);
       const controller = new AbortController();
@@ -104,13 +105,15 @@ export class LatexBuilds {
         signal: controller.signal, logger: session.logger,
       }).finally(() => building.dispose());
       if (state.running === controller) { state.running = undefined; }
-      if (result.status === "cancelled") { return; }
+      if (result.status === "cancelled") { return undefined; }
       this.deps.diagnostics.publish(projectFolder, result.problems);
       this.deps.previews.finished(project, result, trigger);
       vscode.window.setStatusBarMessage(summary(result, project.main), 5000);
+      return result;
     } catch (error) {
       await session.logger.error(MODULE, error, { projectFolder, trigger });
       await vscode.window.showErrorMessage(`Build of "${project.settings.id}" failed: ${String(error)}`);
+      return undefined;
     }
   }
 }

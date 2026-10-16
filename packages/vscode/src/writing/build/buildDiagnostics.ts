@@ -2,6 +2,7 @@
 import * as vscode from "vscode";
 
 import type { LocatedProblem } from "@labshelf/core/node";
+import { ProjectDiagnostics } from "./projectDiagnostics.js";
 
 const SEVERITY = {
   error: vscode.DiagnosticSeverity.Error,
@@ -18,21 +19,17 @@ function diagnostic(problem: LocatedProblem): vscode.Diagnostic {
 }
 
 export class BuildDiagnostics implements vscode.Disposable {
-  private readonly collection = vscode.languages.createDiagnosticCollection("labshelf-latex");
-  private readonly filesByProject = new Map<string, vscode.Uri[]>();
+  private readonly diagnostics = new ProjectDiagnostics("labshelf-latex");
 
   publish(projectFolder: string, problems: readonly LocatedProblem[]): void {
-    for (const uri of this.filesByProject.get(projectFolder) ?? []) { this.collection.delete(uri); }
     const byFile = new Map<string, vscode.Diagnostic[]>();
     for (const problem of problems) {
       byFile.set(problem.file, [...byFile.get(problem.file) ?? [], diagnostic(problem)]);
     }
-    const uris = [...byFile.keys()].map((file) => vscode.Uri.file(file));
-    uris.forEach((uri, index) => this.collection.set(uri, [...byFile.values()][index]));
-    this.filesByProject.set(projectFolder, uris);
+    this.diagnostics.replace(projectFolder, byFile);
   }
 
   dispose(): void {
-    this.collection.dispose();
+    this.diagnostics.dispose();
   }
 }

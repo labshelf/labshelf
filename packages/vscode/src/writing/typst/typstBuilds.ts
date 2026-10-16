@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 
 import { projectBuildDir, type ProjectEntry } from "@labshelf/core/node";
 import { runTypstBuild, type TypstBuildResult } from "@labshelf/core/typst/node";
-import type { BuildListener, BuildTrigger } from "../build/index.js";
+import type { BuildListener, BuildTrigger, FinishedBuild } from "../build/index.js";
 import type { ReadyProject } from "../mainDocument.js";
 import type { WritingHost, WritingProjects } from "../projectStore.js";
 import { tinymistInstalled } from "./tinymist/index.js";
@@ -37,13 +37,17 @@ function unsavedSources(projectFolder: string): Map<string, string> {
 }
 
 export class TypstBuilds {
-  private readonly chains = new Map<string, { chain: Promise<void>; liveQueued: boolean }>();
+  private readonly chains = new Map<string, { chain: Promise<FinishedBuild | undefined>; liveQueued: boolean }>();
 
   constructor(private readonly deps: TypstBuildsDeps) {}
 
-  /** Queues a compile; live requests that arrive while one is queued are covered by it, since it reads the newest text. */
-  request(projectFolder: string, trigger: TypstTrigger): Promise<void> {
-    const state = this.chains.get(projectFolder) ?? { chain: Promise.resolve(), liveQueued: false };
+  /**
+   * Queues a compile; live requests that arrive while one is queued are covered by it, since it reads the newest text.
+   * Resolves with the result of a saved build, or `undefined` for a live compile or a build that did not run.
+   */
+  request(projectFolder: string, trigger: TypstTrigger): Promise<FinishedBuild | undefined> {
+    const state: { chain: Promise<FinishedBuild | undefined>; liveQueued: boolean } =
+      this.chains.get(projectFolder) ?? { chain: Promise.resolve(undefined), liveQueued: false };
     this.chains.set(projectFolder, state);
     if (trigger === "live") {
       if (state.liveQueued) { return state.chain; }
@@ -51,19 +55,19 @@ export class TypstBuilds {
     }
     state.chain = state.chain.then(async () => {
       if (trigger === "live") { state.liveQueued = false; }
-      await this.run(projectFolder, trigger);
+      return this.run(projectFolder, trigger);
     });
     return state.chain;
   }
 
-  private async run(projectFolder: string, trigger: TypstTrigger): Promise<void> {
+  private async run(projectFolder: string, trigger: TypstTrigger): Promise<FinishedBuild | undefined> {
     const session = this.deps.host.current();
     const entry = this.deps.projects.list().find((candidate) => candidate.folder === projectFolder);
-    if (!session || entry?.kind !== "ready") { return; }
+    if (!session || entry?.kind !== "ready") { return undefined; }
     const project = entry;
     if (!project.main) {
       if (trigger === "command") { await vscode.window.showErrorMessage(`Project "${project.settings.id}" has no main file. Choose one from the status bar.`); }
-      return;
+      return undefined;
     }
     const main = project.main;
     try {
@@ -79,7 +83,7 @@ export class TypstBuilds {
       // INVARIANT: a live compile that fails leaves the preview and its banner alone; half-typed text is not a failed build.
       if (trigger === "live") {
         if (result.status === "succeeded") { this.deps.previews.finished(project, result, "save"); }
-        return;
+        return undefined;
       }
       const errors = result.problems.filter((problem) => problem.severity === "error").length;
       // Tinymist already lists Typst errors while typing; a second copy would double every entry in Problems.
@@ -88,9 +92,11 @@ export class TypstBuilds {
       vscode.window.setStatusBarMessage(result.status === "succeeded" ? `$(check) Built ${name}.pdf` : `$(error) Build of ${main} failed: ${errors} ${errors === 1 ? "error" : "errors"}`, 5000);
       await session.logger.log(result.status === "failed" ? "WARN" : "INFO", MODULE, `Typst build ${result.status}`, { projectFolder, main, trigger, errors, ms: Date.now() - started });
       if (result.status === "succeeded") { await recordTypstVersion(project, this.deps); }
+      return result;
     } catch (error) {
       await session.logger.error(MODULE, error, { projectFolder, trigger });
       if (trigger !== "live") { await vscode.window.showErrorMessage(`Build of "${project.settings.id}" failed: ${String(error)}`); }
+      return undefined;
     }
   }
 }

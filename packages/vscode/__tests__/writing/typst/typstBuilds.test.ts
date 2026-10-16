@@ -105,6 +105,15 @@ describe("TypstBuilds results", () => {
     expect(recordTypstVersion).not.toHaveBeenCalled();
   });
 
+  it("resolves a saved build with its result, and a live compile or a thrown error with nothing", async () => {
+    run.mockResolvedValue(failed);
+    const { builds } = setup();
+    expect(await builds.request("/p/paper", "command")).toBe(failed);
+    expect(await builds.request("/p/paper", "live")).toBeUndefined();
+    run.mockRejectedValue(new Error("boom"));
+    expect(await builds.request("/p/paper", "save")).toBeUndefined();
+  });
+
   it("does not publish what Tinymist already lists, but the preview still gets the problems", async () => {
     (tinymistInstalled as jest.Mock).mockReturnValue(true);
     run.mockResolvedValue(failed);

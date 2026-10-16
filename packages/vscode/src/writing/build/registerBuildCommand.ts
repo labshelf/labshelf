@@ -2,20 +2,19 @@
 import * as vscode from "vscode";
 
 import type { ProjectFormat } from "@labshelf/core";
-import { owningProject } from "../mainDocument.js";
 import type { WritingProjects } from "../projectStore.js";
+import { activeProject } from "./activeProject.js";
 
 export const BUILD_COMMAND = "labshelf.writing.build";
 
 interface BuildCommandDeps {
   context: vscode.ExtensionContext;
   projects: Pick<WritingProjects, "list">;
-  builders: Record<ProjectFormat, { request(projectFolder: string, trigger: "command"): Promise<void> }>;
+  builders: Record<ProjectFormat, { request(projectFolder: string, trigger: "command"): Promise<unknown> }>;
 }
 
 async function buildActive(deps: BuildCommandDeps): Promise<void> {
-  const file = vscode.window.activeTextEditor?.document.uri;
-  const project = file?.scheme === "file" ? owningProject(deps.projects.list(), file.fsPath) : undefined;
+  const project = activeProject(deps.projects);
   if (!project) {
     await vscode.window.showInformationMessage("Open a file of a writing project to build it.");
     return;

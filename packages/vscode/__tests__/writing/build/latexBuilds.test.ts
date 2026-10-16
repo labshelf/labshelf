@@ -67,6 +67,15 @@ describe("LatexBuilds", () => {
     expect(window["setStatusBarMessage"]).toHaveBeenLastCalledWith("$(error) Build of main.tex failed: 1 error", 5000);
   });
 
+  it("resolves with the build's result, and with nothing for a cancelled build", async () => {
+    const { builds } = setup();
+    const result = { status: "succeeded", pdf: "/p/paper/main.pdf", problems: [] };
+    run.mockResolvedValue(result);
+    expect(await builds.request("/p/paper", "command")).toBe(result);
+    run.mockResolvedValue({ status: "cancelled" });
+    expect(await builds.request("/p/paper", "command")).toBeUndefined();
+  });
+
   it("cancels the running build on a newer request and folds a burst into one more build", async () => {
     const { builds, diagnostics } = setup();
     const signals: AbortSignal[] = [];

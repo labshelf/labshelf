@@ -18,6 +18,8 @@ import { registerLatexCommandCompletion, registerLatexEditing } from "../../writ
 import { registerWritingValues } from "../../writing/values/index.js";
 import type { LibraryRootController } from "../libraryLifecycle/index.js";
 import type { HostAdapters } from "../serviceComposition/index.js";
+import { registerCheckCommand } from "../../writing/check/index.js";
+import { hostPdfjs } from "../../pdf/node/index.js";
 
 export function registerWritingView(context: vscode.ExtensionContext, controller: LibraryRootController, reader: HostAdapters["reader"]): void {
   const current = (): ReturnType<WritingHost["current"]> => {
@@ -58,6 +60,7 @@ export function registerWritingView(context: vscode.ExtensionContext, controller
     typst: registerTypstBuild({ context, host, projects, previews, diagnostics, hasPreview: (folder) => previews.hasPreview(folder) }),
   };
   registerBuildCommand({ context, projects, builders });
+  registerCheckCommand({ context, host, projects, builders, pdfjs: hostPdfjs });
   registerTinymistBridge(context, { host, projects });
   registerShowPreview({ context, projects, previews });
   registerShowInPreview({ context, projects, previews });
