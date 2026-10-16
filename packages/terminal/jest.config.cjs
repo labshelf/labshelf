@@ -1,6 +1,9 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
+  // Agents read this output: print failures and totals only, and hide console output.
+  reporters: [['summary', { summaryThreshold: 0 }]],
+  silent: true,
   // TypeScript 7 ships only the native compiler, without the JS API ts-jest
   // needs, so tests compile with the aliased TypeScript 6 package instead
   // (same arrangement as packages/vscode; see the root .pnpmfile.cjs).

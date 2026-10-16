@@ -1,6 +1,9 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
+  // Agents read this output: print failures and totals only, and hide console output.
+  reporters: [['summary', { summaryThreshold: 0 }]],
+  silent: true,
   // DOM tests opt into jsdom per file; they still resolve packages such as yaml to their Node (CommonJS) builds.
   testEnvironmentOptions: { customExportConditions: ['node', 'node-addons'] },
   // TypeScript 7 ships only the native compiler, without the JS API ts-jest

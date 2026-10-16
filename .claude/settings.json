@@ -32,6 +32,16 @@
             "timeout": 15
           }
         ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/context-budget.mjs",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "SessionStart": [
@@ -60,13 +70,15 @@
   },
   "enabledPlugins": {
     "typescript-lsp@anthropic-plugin-directory": true,
-    "playwright@anthropic-plugin-directory": true,
     "context7@anthropic-plugin-directory": true,
-    "pr-review-toolkit@anthropic-plugin-directory": true,
-    "code-simplifier@anthropic-plugin-directory": true,
-    "hookify@anthropic-plugin-directory": true,
-    "frontend-design@anthropic-plugin-directory": true
+    "pr-review-toolkit@anthropic-plugin-directory": false,
+    "code-simplifier@anthropic-plugin-directory": false,
+    "hookify@anthropic-plugin-directory": false,
+    "frontend-design@anthropic-plugin-directory": false,
+    "cloudflare@cloudflare": false
   },
+  "disableClaudeAiConnectors": true,
+  "autoCompactEnabled": false,
   "env": {
     "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet"
   }
