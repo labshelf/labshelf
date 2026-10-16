@@ -8,7 +8,7 @@ Pending decisions: 1
 
 What a researcher reads, owns and writes stays connected: code and drafts link to exact pages of papers, highlights become page-precise citations, every paper knows which projects cite it, every project knows what it still has to read, the bibliography warns about stale preprints and duplicates, coauthors get a project's papers in one command, and the library shows which important papers are missing. Zotero users bring their library in one step.
 
-Builds on [writing-core.plan.md](1-writing-core.plan.md). AI features are out.
+Builds on [writing-core.plan.md](../../archive/writing-core.plan.md). AI features are out.
 
 ## 2. Decisions
 
@@ -17,7 +17,7 @@ Builds on [writing-core.plan.md](1-writing-core.plan.md). AI features are out.
 - [ ] **D3** Backlinks: the paper detail pane shows "Cited in <project> (§3)" from the citation scan of every project. — A paper's role in your work is visible where you manage it.
 - [ ] **D4** Project reading list: each project has its papers (cited plus added by hand) with reading status, and a warning "You cite 4 papers you never opened". — Writing shows what reading is left.
 - [ ] **D5** Continue where you left off: the library home shows the last paper and page read and the last project file edited, from any app, through the synced sidecar and a per-project `.labshelf/state.json`. — Moving between apps loses nothing.
-- [ ] **D6** Bibliography linter in VS Code: duplicate entries (same DOI or title key), missing DOI, and preprints that have a published version (Crossref `is-preprint-of` relations, then OpenAlex), with a quick fix that replaces the entry. — Every submission hits these.
+- [ ] **D6** Bibliography linter in VS Code: duplicate entries (same DOI or title key), missing DOI, and preprints that have a published version (found by the published-version lookup that [pdf-finding](../pdf-finding.plan.md) builds in its S21; its path is in that plan's §8 log, see its C2), with a quick fix that replaces the entry. — Every submission hits these.
 - [ ] **D7** Papers as dependencies: `labshelf.yaml` lists the project's papers (`papers:` with key and DOI), kept in sync with the citations. `labshelf install` (VS Code command and terminal) fetches the missing ones into the coauthor's library through the core resolver chain, using the coauthor's own access. — Onboarding a coauthor is one command.
 - [ ] **D8** Citation map from OpenAlex (open data, no key): for each library paper with a DOI, its references and citing works; the library view "Often cited by your papers, not in your library" with one-click import, and a graph view in VS Code and the browser. Cached in `.research/openalex/`, never synced. — Discovery without AI.
 - [ ] **D9** Zotero import: read `zotero.sqlite` (copied first, never opened in place) and its `storage/` folder; collections become folders, items become papers with PDFs, notes go to `note`, tags to `tags`; annotations from Zotero's reader become sidecar highlights where the position maps. — The main door for the audience.
@@ -28,7 +28,7 @@ Open (blocks approval):
 
 ## 3. Scope
 
-- **In:** core (link format, highlight-to-citation, backlink index, linter rules, OpenAlex client, Zotero reader), VS Code, terminal (`open`, `install`), browser (links, backlinks, map view).
+- **In:** core (link format, highlight-to-citation, backlink index, linter rules, OpenAlex citation data in the existing client, Zotero reader), VS Code, terminal (`open`, `install`), browser (links, backlinks, map view).
 - **Out:** AI suggestions; Mendeley and EndNote import.
 - **Contracts touched:** [library-format.md](../../contracts/library-format.md) (`papers:` in `labshelf.yaml`, `.labshelf/state.json`, `.research/openalex/`).
 
@@ -51,8 +51,8 @@ Open (blocks approval):
 | link parse and format | `core/src/library/links/` | `labshelf:<key>[#p<n>]` |
 | highlight-to-citation | `core/src/writing/citations/` | uses the sidecar annotations |
 | backlink index, reading list | `core/src/writing/` | built from the project citation scans |
-| linter rules | `core/src/writing/bibLint/` | Crossref relations, OpenAlex fallback, `titleKey` for duplicates |
-| OpenAlex client and cache | `core/src/import/openalex/` + `node/` | polite pool with a contact email setting |
+| linter rules | `core/src/writing/bibLint/` | preprint check calls pdf-finding's published-version lookup, never a second copy of it; `titleKey` for duplicates |
+| OpenAlex works by DOI and cache | `core/src/import/registries/works/openalex.ts`, cache in a `node/` folder beside it | extends the existing client and its `RegistryEnv`, which already carries the contact email for the polite pool |
 | Zotero reader | `core/src/import/zotero/node/` | `node:sqlite` on a copy of `zotero.sqlite` |
 | UI | each app | providers and commands in VS Code; detail sections in the shared library UI |
 
@@ -91,7 +91,7 @@ Open (blocks approval):
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S8 | Lint rules with Crossref and OpenAlex lookups | — | H · main thread | core tests with recorded responses | [ ] |
+| S8 | Lint rules, with pdf-finding's published-version lookup | pdf-finding S21 merged | H · main thread | core tests with recorded responses | [ ] |
 | S9 | Diagnostics and quick fixes in VS Code | S8 | M · implementer (sonnet) | A6 | [ ] |
 | S10 | Finish | S8–S9 | `finish` skill | gate passes | [ ] |
 
@@ -147,7 +147,7 @@ Open (blocks approval):
 
 #### S8 — Lint rules
 
-- **Do:** duplicate detection by DOI and `titleKey`; missing DOI; preprint → published through Crossref relations, then OpenAlex's version grouping; each rule returns a fix with the replacement entry.
+- **Do:** duplicate detection by DOI and `titleKey`; missing DOI; preprint → published through pdf-finding's published-version lookup (reuse it as is; if it lacks something the linter needs, extend it there); each rule returns a fix with the replacement entry.
 
 #### S11–S12 — Dependencies
 
@@ -155,7 +155,7 @@ Open (blocks approval):
 
 #### S14 — OpenAlex
 
-- **Do:** fetch `referenced_works` and cited-by counts per DOI, cache per paper with a fetch date; the query counts how many library papers cite each missing work.
+- **Do:** add a works-by-DOI call to the existing client in `core/src/import/registries/works/openalex.ts` that reads `referenced_works` and cited-by counts, cache per paper with a fetch date; the query counts how many library papers cite each missing work.
 
 #### S17 — Zotero
 

@@ -8,7 +8,7 @@ Pending decisions: 1
 
 Anyone can write a Typst (or LaTeX) project from the browser extension, with no install and no account other than their Google Drive: the same editor features as in VS Code, live Typst preview, comments and live sessions with coauthors. This gives Typst users for free what typst.app charges for (review comments, more storage), and keeps their files in their own Drive.
 
-Builds on [writing-core.plan.md](1-writing-core.plan.md), [writing-sync.plan.md](2-writing-sync.plan.md) and [writing-browser-bridge.plan.md](3-writing-browser-bridge.plan.md).
+Builds on [writing-core.plan.md](../../archive/writing-core.plan.md), [writing-sync.plan.md](2-writing-sync.plan.md) and [writing-browser-bridge.plan.md](3-writing-browser-bridge.plan.md).
 
 ## 2. Decisions
 

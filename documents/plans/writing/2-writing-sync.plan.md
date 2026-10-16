@@ -8,7 +8,7 @@ Pending decisions: 1
 
 A writing project follows its author across machines through their Google Drive, and two authors can work on it together without any LabShelf server: edits made at different times merge on sync, LabShelf notices when a coauthor is editing and offers a live session with shared cursors and chat, and coauthors can leave Overleaf-style comments instead of changing the text.
 
-Builds on [writing-core.plan.md](1-writing-core.plan.md).
+Builds on [writing-core.plan.md](../../archive/writing-core.plan.md).
 
 ## 2. Decisions
 

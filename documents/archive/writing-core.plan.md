@@ -1,6 +1,9 @@
+Kept because: decisions D1–D15 and the §8 measurements (Typst compile cost, Tectonic and TeX Live log formats, SyncTeX agreement, how each backend marks citations in its PDF) that the follow-up writing plans build on and no other document holds.
+Needed when: starting writing-sync, writing-browser-bridge, browser-editor (the Typst session in the browser), writing-terminal, research-links or submission-tools.
+
 # Plan: writing in VS Code
 
-Status: in progress (session 6 of 7 done)
+Status: done
 Size: GG — a new domain in core (projects, citations, LaTeX build, SyncTeX, Typst in WASM) plus a new VS Code surface and a reader-host contract change; 7 sessions. Grows if the Typst SVG layer needs its own spike session.
 Pending decisions: 0
 
@@ -8,7 +11,7 @@ Pending decisions: 0
 
 A researcher writes a paper in LaTeX or Typst inside VS Code, with LabShelf as the whole environment: one click to create a project, a build that needs no configuration and leaves no clutter, errors that say what to do, a preview in the LabShelf reader, and citations straight from the library. LabShelf replaces LaTeX Workshop for paper writing and works beside Tinymist for Typst.
 
-This plan is the base for [writing-sync](2-writing-sync.plan.md), [writing-browser-bridge](3-writing-browser-bridge.plan.md), [browser-editor](4-browser-editor.plan.md), [writing-terminal](3-writing-terminal.plan.md), [research-links](2-research-links.plan.md) and [submission-tools](2-submission-tools.plan.md).
+This plan is the base for [writing-sync](../plans/writing/2-writing-sync.plan.md), [writing-browser-bridge](../plans/writing/3-writing-browser-bridge.plan.md), [browser-editor](../plans/writing/4-browser-editor.plan.md), [writing-terminal](../plans/writing/3-writing-terminal.plan.md), [research-links](../plans/writing/2-research-links.plan.md) and [submission-tools](../plans/writing/2-submission-tools.plan.md).
 
 ## 2. Decisions
 
@@ -36,8 +39,8 @@ Answered:
 ## 3. Scope
 
 - **In:** core `writing/` domain, the VS Code Writing view, status bar, language providers, LaTeX build, the reader as preview, Typst in the reader.
-- **Out:** sync of projects and collaboration ([writing-sync](2-writing-sync.plan.md)); the browser and terminal; TeXpresso live LaTeX (deferred); AI features; Word and Google Docs beyond copying a formatted citation.
-- **Contracts touched:** [library-format.md](../../contracts/library-format.md) (`projects/`, `labshelf.yaml`, `labshelf.bib`, `.research/projects.json`); [reader-host.md](../../contracts/reader-host.md) (preview messages: reload, build status, SyncTeX, citation lookup).
+- **Out:** sync of projects and collaboration ([writing-sync](../plans/writing/2-writing-sync.plan.md)); the browser and terminal; TeXpresso live LaTeX (deferred); AI features; Word and Google Docs beyond copying a formatted citation.
+- **Contracts touched:** [library-format.md](../contracts/library-format.md) (`projects/`, `labshelf.yaml`, `labshelf.bib`, `.research/projects.json`); [reader-host.md](../contracts/reader-host.md) (preview messages: reload, build status, SyncTeX, citation lookup).
 
 ## 4. Acceptance criteria
 
@@ -50,7 +53,7 @@ Answered:
 - [x] **A7** Typing `\cite{` lists library papers; accepting one inserts the key and adds the entry to `labshelf.bib`; the same works with `@` in Typst.
 - [x] **A8** `\ref{` completes labels, an undefined label is a warning, the outline lists sections, hovering `$\alpha^2$` renders it, and the word count shows in the status bar.
 - [x] **A9** In a Typst project the reader updates while typing, without reloading or losing the scroll position; a save or Build Project writes `main.pdf`.
-- [ ] **A10** In review mode, hovering a citation in the PDF shows the library paper; clicking opens it.
+- [x] **A10** In review mode, hovering a citation in the PDF shows the library paper; clicking opens it.
 - [x] **A11** With LaTeX Workshop installed, LabShelf shows the duplication notice once per workspace.
 
 ## 5. Design
@@ -167,10 +170,10 @@ typst: 0.14.2            # written on build, Typst projects only
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S25 | Citation targets in the PDF (hyperref destinations, SyncTeX fallback, Typst links) | S14, S22 | H · main thread | core tests on sample PDFs | [ ] |
-| S26 | Reader hover and click for citations in review mode | S25 | M · implementer (sonnet) | A10 | [ ] |
-| S27 | Finish, plus a `verify` run | S25–S26 | `finish` + `verify` skills | gate passes | [ ] |
-| S28 | Fix [research-links](2-research-links.plan.md) before any other writing plan starts | S27 | H · main thread | plan 2 reuses the existing OpenAlex client and the PDF plan's published-version lookup | [ ] |
+| S25 | Citation targets in the PDF (hyperref destinations, SyncTeX fallback, Typst links) | S14, S22 | H · main thread | core tests on sample PDFs | [x] |
+| S26 | Reader hover and click for citations in review mode | S25 | M · implementer (sonnet) | A10 | [x] |
+| S27 | Finish, plus a `verify` run | S25–S26 | `finish` + `verify` skills | gate passes | [x] |
+| S28 | Fix [research-links](../plans/writing/2-research-links.plan.md) before any other writing plan starts | S27 | H · main thread | plan 2 reuses the existing OpenAlex client and the PDF plan's published-version lookup | [x] |
 
 ### Step blocks
 
@@ -252,7 +255,7 @@ typst: 0.14.2            # written on build, Typst projects only
 
 #### S28 — Fix research-links
 
-- **Do:** in [2-research-links.plan.md](2-research-links.plan.md), replace the new `core/src/import/openalex/` with the existing client in `core/src/import/registries/works/openalex.ts`; rewrite its D6 to reuse the published-version lookup that [pdf-finding](../pdf-finding.plan.md) creates (the path is in that plan's §8 log, or in the code once it is merged).
+- **Do:** in [2-research-links.plan.md](../plans/writing/2-research-links.plan.md), replace the new `core/src/import/openalex/` with the existing client in `core/src/import/registries/works/openalex.ts`; rewrite its D6 to reuse the published-version lookup that [pdf-finding](../plans/pdf-finding.plan.md) creates (the path is in that plan's §8 log, or in the code once it is merged).
 
 ## 7. Risks
 
@@ -293,3 +296,8 @@ typst: 0.14.2            # written on build, Typst projects only
 - 2026-10-15 20:58 — S22: `core/src/writing/typst/` (`@labshelf/core/typst`: session, pins, problems; hints dropped) and `node/` (`@labshelf/core/typst/node`: sync file access, fonts store, packages in the Typst CLI's data and cache folders with name/version checks before any path is built, `runTypstBuild` that downloads missing Universe packages and compiles once more). `latexBuildDir` became `projectBuildDir` in `project/node`. VS Code: `writing/typst/` compiles unsaved text 150 ms after typing pauses into the build-folder PDF while a preview is open; a failed live compile leaves preview and banner alone; save and Build Project write `main.pdf` too. `registerBuildCommand` dispatches by format. Typst previews answer double-click with a message instead of SyncTeX.
 - 2026-10-15 20:58 — S23: `writing/typst/tinymist/` offers Tinymist once per workspace and pins the main through the server's `tinymist.pinMain` (takes a path, writes no settings); Typst problems go to the Problems panel only without Tinymist. `typstVersionPin.ts` writes `typst:` after a successful build and warns once per project on a different recorded version.
 - 2026-10-15 20:58 — S24: finish gate passes (core 2219, vscode 497); architecture.md gains both entries, apps/vscode.md the Typst build, library-format.md the `typst:` write. The extension host confirms A9 (unsaved edits in the preview about 200 ms after the last key, scroll and webview kept, `main.pdf` unchanged until save; error unsaved keeps the last PDF, saved shows Problems and banner, fix clears), A7 for Typst, package download, the version write, the Tinymist offer and a pin without error (Tinymist 0.15.8). Not checked: that Tinymist's main actually changed, live preview beside Tinymist's diagnostics, offline font download, Windows paths, system fonts (R2).
+- 2026-10-15 21:00 — Session 7 runs in the `labshelf-writing-core` worktree.
+- 2026-10-15 21:15 — S25: real PDFs decide the route per backend. pdfTeX with hyperref names each citation link `cite.<key>` (biblatex `cite.<n>@<key>`), with no entry in `getDestinations()`. A Typst PDF carries no key: citation links are explicit destinations to the bibliography entry. So the Typst session compiles a second, shadow-only probe after each successful compile: the probe includes the main file and queries every `cite` with its key and position (pt, from the top-left). The probe's PDF is byte-identical to the main's, a positioned citation starts at its link rectangle's left edge, and a `set document` rule in the main still compiles. LaTeX without hyperref goes through SyncTeX to the keys on the source line. `writing/review/` (`citedKeysAt`, `citationEntries`), `papersByCiteKey` taken out of `bibliographyFile`, `typstCitationProbe`; protocol 3 with `lookupCitation`/`citation`/`openCitedPaper` in `previewProtocol.ts`; the host always answers a lookup. Sample-PDF tests read link annotations with real pdf.js in a child process, because Jest maps pdf.js to a mock.
+- 2026-10-15 21:20 — S26: reader `dom/hover/citations/` (lookup client with a 1.5 s timeout and a per-document cache, card, capture-phase click that opens the paper or replays the click for pdf.js); VS Code `writing/preview/citations/`, with the Typst positions of the last successful build kept beside the preview. The card's header reads "Cited paper", and the title moves into the body because headers are uppercase labels.
+- 2026-10-15 21:30 — S27: finish gate passes (core 2269, vscode 509, browser 124, terminal 862); apps/vscode.md gains review mode. The extension host confirms A10 for LaTeX with hyperref, Typst, and LaTeX without hyperref (card through SyncTeX): hover card, click opens the paper, and section and bibliography links keep their preview and jump. Not checked: biblatex's `cite.<n>@<key>` in a real build; one first Typst hover without a card that did not happen again. Open: `reader.css` is at 295 lines, and splitting it changes how both apps load it; Build Project on a fresh project does not write `labshelf.bib` until a source is saved.
+- 2026-10-15 21:30 — S28: research-links extends the existing OpenAlex client (works by DOI) and its `RegistryEnv`, and its linter calls pdf-finding's published-version lookup. That lookup is pdf-finding's S21, not built yet, so research-links S8 depends on it.

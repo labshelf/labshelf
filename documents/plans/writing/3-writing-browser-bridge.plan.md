@@ -8,7 +8,7 @@ Pending decisions: 1
 
 The browser extension becomes the writing companion for people who write in Overleaf or typst.app and read on the web: cite from the LabShelf library inside those editors, keep their bibliography healthy, cite straight from what they are reading, and see at a glance which papers on the web they already own.
 
-Builds on [writing-core.plan.md](1-writing-core.plan.md) and [writing-sync.plan.md](2-writing-sync.plan.md).
+Builds on [writing-core.plan.md](../../archive/writing-core.plan.md) and [writing-sync.plan.md](2-writing-sync.plan.md).
 
 ## 2. Decisions
 

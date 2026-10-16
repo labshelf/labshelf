@@ -8,7 +8,7 @@ Pending decisions: 1
 
 LabShelf carries a paper from the experiments to the camera-ready: figures and numbers stay in step with the code that produces them, a check before submitting catches desk-reject mistakes, every submitted version is kept and comparable, and the rebuttal is organised comment by comment.
 
-Builds on [writing-core.plan.md](1-writing-core.plan.md). The terminal and CI side is in [writing-terminal.plan.md](3-writing-terminal.plan.md).
+Builds on [writing-core.plan.md](../../archive/writing-core.plan.md). The terminal and CI side is in [writing-terminal.plan.md](3-writing-terminal.plan.md).
 
 ## 2. Decisions
 
