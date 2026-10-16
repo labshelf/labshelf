@@ -90,15 +90,16 @@ export function registerLibraryTreeView(deps: LibraryTreeViewDeps): LibraryTreeV
       // The folder may have just been removed; a stale selection is harmless.
     });
   };
-  deps.context.subscriptions.push(
-    libraryTreeView.onDidChangeVisibility((e) => {
-      if (e.visible) { syncTreeToPanel(ListWebviewPanel.currentPanel?.currentFolder); }
-    }),
-  );
+  // The latest paper selected while the tree was hidden; selected once the tree becomes visible.
+  let pendingPaperId: string | undefined;
 
   // Selecting the row this way does not run its command, so the list panel is not asked to reveal the paper again.
   const revealPaperInTree = (paperId: string): void => {
-    if (!libraryTreeView.visible) { return; }
+    if (!libraryTreeView.visible) {
+      pendingPaperId = paperId;
+      return;
+    }
+    pendingPaperId = undefined;
     const logger = deps.controller.currentServices()?.logger;
     const node = libraryProvider.paperNode(paperId);
     if (!node) {
@@ -109,6 +110,14 @@ export function registerLibraryTreeView(deps: LibraryTreeViewDeps): LibraryTreeV
       void logger?.log("WARN", LOG_MODULE, "Could not reveal the paper in the Library tree", { paperId, message: errorMessage(error) });
     });
   };
+
+  deps.context.subscriptions.push(
+    libraryTreeView.onDidChangeVisibility((e) => {
+      if (!e.visible) { return; }
+      syncTreeToPanel(ListWebviewPanel.currentPanel?.currentFolder);
+      if (pendingPaperId) { revealPaperInTree(pendingPaperId); }
+    }),
+  );
 
   // Folder structure changed on disk: refresh both the tree and the open panel.
   const refreshLibraryViews = (): void => {

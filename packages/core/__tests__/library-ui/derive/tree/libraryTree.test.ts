@@ -2,8 +2,10 @@
 import type { PaperRecord } from "@labshelf/core";
 import { libraryTree } from "../../../../src/library-ui/derive/tree";
 
-const paper = (id: string, dir: string, title: string, status: PaperRecord["status"] = "unread"): PaperRecord =>
-  ({ id, title, path: `${dir}/${id}`, citeKey: `key-${id}`, status });
+// The record path is the absolute folder a Node scan records, so keying by it would find no folder.
+const LIB = "/Users/x/lib";
+const paper = (id: string, folder: string, title: string, status: PaperRecord["status"] = "unread") =>
+  ({ record: { id, title, path: `${LIB}/${folder}/${id}`, citeKey: `key-${id}`, status } as PaperRecord, folder });
 
 const folders = [
   { name: "A", path: "papers/A", children: [{ name: "B", path: "papers/A/B", children: [] }, { name: "Empty", path: "papers/A/Empty", children: [] }] },
@@ -61,6 +63,13 @@ describe("libraryTree", () => {
   it("names the folder that holds a paper", () => {
     expect(tree().parentOf("b1")).toBe("papers/A/B");
     expect(tree().parentOf("r1")).toBe("papers");
+  });
+
+  it("keys papers by the folder it is given, not by the parent of their record path", () => {
+    const t = libraryTree({ folders, papers: [paper("b1", "papers/A/B", "deep")] });
+    expect(t.children("papers/A/B")).toEqual([{ kind: "paper", id: "b1", title: "deep" }]);
+    expect(t.children(`${LIB}/papers/A/B`)).toEqual([]);
+    expect(t.parentOf("b1")).toBe("papers/A/B");
   });
 
   it("has no parent for an unknown paper", () => {

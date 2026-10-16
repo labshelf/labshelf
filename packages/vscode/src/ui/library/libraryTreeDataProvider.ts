@@ -104,7 +104,8 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryT
     const snapshot = this._getSnapshot();
     if (!snapshot || !this._papersRoot) { return undefined; }
     if (this._tree?.snapshot !== snapshot) {
-      const papers = [...snapshot.papers.values()].map((entry) => entry.record);
+      const papers = [...snapshot.papers.values()].map(({ record, collection }) =>
+        ({ record, folder: collection ? `${PAPERS_DIR}/${collection}` : PAPERS_DIR }));
       this._tree = { snapshot, tree: libraryTree({ folders: folderTreeFromSnapshot(snapshot), papers }) };
     }
     return this._tree.tree;

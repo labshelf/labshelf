@@ -18,7 +18,11 @@ export interface Tree {
 /** The derivation, rebuilt only when the folders or papers change. */
 function derive(t: Tree): LibraryTree {
   const { folders, papers } = t.ui.store.get();
-  if (t.derived?.folders !== folders || t.derived.papers !== papers) t.derived = { folders, papers, tree: libraryTree({ folders, papers }) };
+  if (t.derived?.folders !== folders || t.derived.papers !== papers) {
+    // Browser record paths are IndexedDB keys relative to the library root, so the parent is the tree folder.
+    const located = papers.map((record) => ({ record, folder: parentDir(record.path, "/") }));
+    t.derived = { folders, papers, tree: libraryTree({ folders, papers: located }) };
+  }
   return t.derived.tree;
 }
 

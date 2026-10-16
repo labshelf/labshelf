@@ -15,7 +15,7 @@ const EXT = '/ext';
 // The paper with id "Z" lives in A: its id equals a folder name.
 function snapshotOf(folders: string[]): LibrarySnapshot {
   const entry = (id: string, collection: string, title: string, status: PaperRecord['status']): PaperEntry => ({
-    record: { id, title, status, path: ['papers', collection, id].filter(Boolean).join('/') } as PaperRecord, collection, modifiedMs: 0,
+    record: { id, title, status, path: [ROOT, collection, id].filter(Boolean).join('/') } as PaperRecord, collection, modifiedMs: 0,
   });
   const papers = [entry('p1', 'A', 'Beta', 'unread'), entry('Z', 'A', 'Alpha', 'done'), entry('p2', 'A/B', 'Deep', 'reading'), entry('loose-paper', '', 'Loose', 'reading')];
   return snapshotFromScan(ROOT, { folders, papers, orphans: [], duplicates: [] }, 0);
@@ -169,6 +169,34 @@ describe('LibraryTreeDataProvider', () => {
     const loose = provider.paperNode('loose-paper')!;
     expect(await provider.getParent(loose)).toBeNull();
     expect(await provider.getChildren()).toContainEqual(loose);
+  });
+
+  describe('with the absolute paper paths a real scan records', () => {
+    // scanLibrary stores record.path as the paper folder's file-system path, not as "papers/...".
+    function scannedProvider(): LibraryTreeDataProvider {
+      const entry = (id: string, collection: string, title: string): PaperEntry => ({
+        record: { id, title, status: 'unread', path: [ROOT, collection, id].filter(Boolean).join('/') } as PaperRecord, collection, modifiedMs: 0,
+      });
+      const papers = [entry('p-ref', 'Avançado/Referencias', 'Seascapes'), entry('p-loose', '', 'Loose')];
+      snapshot = snapshotFromScan(ROOT, { folders: ['Avançado', 'Avançado/Referencias'], papers, orphans: [], duplicates: [] }, 0);
+      return new LibraryTreeDataProvider(vscode.Uri.file(ROOT), () => snapshot, createLibraryEvents(), path, continueSource(), vscode.Uri.file(EXT));
+    }
+    const avancado = { label: 'Avançado', dirPath: `${ROOT}/Avançado` };
+    const referencias = { label: 'Referencias', dirPath: `${ROOT}/Avançado/Referencias` };
+
+    it('expands a folder that holds only papers and lists them', async () => {
+      const provider = scannedProvider();
+      const [item] = await itemsOf(provider, avancado);
+      expect(item).toMatchObject({ label: 'Referencias', description: '1', collapsibleState: vscode.TreeItemCollapsibleState.Collapsed });
+      expect((await provider.getTreeItem(referencias)).collapsibleState).toBe(vscode.TreeItemCollapsibleState.Collapsed);
+      expect(await labelsOf(provider, referencias)).toEqual(['Seascapes']);
+    });
+
+    it('reveals a paper through its folder, never through a folder built from its absolute path', async () => {
+      const provider = scannedProvider();
+      expect(await provider.getParent(provider.paperNode('p-ref')!)).toEqual(referencias);
+      expect(await provider.getParent(provider.paperNode('p-loose')!)).toBeNull();
+    });
   });
 
   it('coalesces a burst of paper events into one refresh', () => {
