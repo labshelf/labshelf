@@ -89,7 +89,7 @@ Owns abbreviated (`rd` core reader/dom, `cw` core writing, `vs` vscode writing).
 | 2b | done (see log.md) | Auto compile, engine, options menu | `vs/build/options`, save listeners, `rd` header/options | — |
 | 2b2 | done (see log.md) | Menu radio roles | 2b Owns, `ui/dom/widgets/menu.ts` | — |
 | 2b3 | done (see log.md) | Unchosen engine (`engine: null`) | 2b Owns, `ui/dom/widgets/menu.ts`, `BuildOptions`, reader-host Build options line | — |
-| 2b4 | [2b4](sessions/2b4-finish-commit.md) | Finish and commit 2b | 2b3's Owns | yes |
+| 2b4 | done (see log.md) | Finish and commit 2b | 2b3's Owns | yes |
 | 2c | done (see log.md) | PDF problems, cites | `cw/problems`, `cw/index.ts`, `vs/preview/problems` | yes |
 | 2d | done (see log.md) | Marks, cites status, F8 step | `rd` preview/marks, footer/cites | yes |
 | 2e2 | [2e2](sessions/2e2-limits.md) | Words, limits, checks, meter | `cw/checks/limits`, `vs/preview/limits`, check cmd, `rd` footer/{limit,checks} | yes |

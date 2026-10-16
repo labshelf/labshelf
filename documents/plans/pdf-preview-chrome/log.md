@@ -87,3 +87,4 @@
 - 2026-10-16 2b.6 unchosen engine (main thread, Opus; small enough not to delegate): `BuildOptions.engine?: LatexEngine | null`, `buildOptions` reports null for LaTeX without a stored engine, previewProtocol doc comment and reader-host.md Build options line updated; host test failed first, menu test pins none-checked (menu already handled null); core + vscode typecheck pass; architecture-reviewer (Sonnet): no Standards or Spec findings
 - 2026-10-16 2b.4 unfinished (main thread over budget at 73.6k) → sessions/2b4-finish-commit.md
 - 2026-10-16 2b3 peaks: main 73.6k (over budget, handed off), largest subagent 21.5k (architecture-reviewer)
+- 2026-10-16 2b.4 finish (Sonnet) on 2b Owns: gate PASS (core 14 tests, vscode build + typst/node 91 tests, both typechecks), no fixes, no findings; A3 host + menu done, mounting is 3b's
