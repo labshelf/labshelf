@@ -43,7 +43,7 @@ function setup() {
   const host = fakeHost();
   const controller = { setBuildStatus: jest.fn(), reloadDocument: jest.fn(), revealPoint: jest.fn() };
   create.mockImplementation(() => ({ controller }));
-  const previews = new BuildPreviews({ host, extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false });
+  const previews = new BuildPreviews({ host, listPapers: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false });
   const project = readyEntry(dir) as Project;
   const ports = () => create.mock.calls[0][1].preview;
   return { host, controller, previews, project, ports };

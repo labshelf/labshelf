@@ -1,10 +1,11 @@
-// Answers the reader's requests from a build preview: opens the source at the first build error or behind a double-click.
+// Answers the reader's requests from a build preview: opens the source at the first build error or behind a double-click, and names the papers it cites.
 import type { PreviewPorts } from "@labshelf/core";
 import type { LocatedProblem } from "@labshelf/core/node";
 import { PREVIEW_LOG_MODULE } from "./previewStrings.js";
-import { openSourceLine, showSource, type ShowSourceDeps } from "./sourceLinks/index.js";
+import { lookupCitation, openCitedPaper, type PreviewCitationDeps } from "./citations/index.js";
+import { openSourceLine, showSource } from "./sourceLinks/index.js";
 
-export interface PreviewPortsDeps extends ShowSourceDeps {
+export interface PreviewPortsDeps extends PreviewCitationDeps {
   /** The problems of the project's last build. */
   problems: () => readonly LocatedProblem[];
 }
@@ -29,5 +30,7 @@ export function createPreviewPorts(deps: PreviewPortsDeps): PreviewPorts {
   return {
     showBuildProblem: () => showBuildProblem(deps),
     showSource: (point) => showSource(deps, point),
+    lookupCitation: (query) => lookupCitation(deps, query),
+    openCitedPaper: (paperId) => openCitedPaper(deps, paperId),
   };
 }

@@ -18,7 +18,7 @@ function setup() {
   const controller = { setBuildStatus: jest.fn(), reloadDocument: jest.fn(), revealPoint: jest.fn() };
   let closed: (() => void) | undefined;
   create.mockImplementation((_deps, source) => { closed = source.onClosed; return { controller }; });
-  const previews = new BuildPreviews({ host, extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false });
+  const previews = new BuildPreviews({ host, listPapers: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false });
   return { previews, controller, host, close: () => closed?.(), ports: () => create.mock.calls[0][1].preview };
 }
 
@@ -60,5 +60,31 @@ describe("Typst preview source links", () => {
     previews.finished(typst, { status: "succeeded", pdf: "/cache/typ/main.pdf", problems: [] }, "save");
     expect(controller.reloadDocument).toHaveBeenCalledTimes(1);
     expect(controller.setBuildStatus).toHaveBeenLastCalledWith("succeeded");
+  });
+});
+
+describe("Typst cites of the shown preview", () => {
+  const area = { page: 1, left: 10, top: 10, right: 30, bottom: 20 };
+  const cite = (key: string) => ({ key, at: { page: 1, x: 12, y: 15 } });
+  const build = (cites: ReturnType<typeof cite>[]) => ({ status: "succeeded" as const, pdf: "/cache/typ/main.pdf", problems: [], cites });
+  const keysAt = async (ports: () => { lookupCitation(query: unknown): Promise<{ key: string }[]> }) =>
+    (await ports().lookupCitation({ area, link: true })).map((entry) => entry.key);
+
+  it("answers from the cites of the latest successful build, replaced by the next one", async () => {
+    const { previews, ports } = setup();
+    previews.show(typst, "/cache/typ/main.pdf", { beside: false });
+    expect(await keysAt(ports)).toEqual([]);
+    previews.finished(typst, build([cite("a")]), "save");
+    expect(await keysAt(ports)).toEqual(["a"]);
+    previews.finished(typst, build([cite("b")]), "save");
+    expect(await keysAt(ports)).toEqual(["b"]);
+  });
+
+  it("keeps the previous cites when a build fails", async () => {
+    const { previews, ports } = setup();
+    previews.show(typst, "/cache/typ/main.pdf", { beside: false });
+    previews.finished(typst, build([cite("a")]), "save");
+    previews.finished(typst, { status: "failed", problems: [] }, "save");
+    expect(await keysAt(ports)).toEqual(["a"]);
   });
 });

@@ -2,7 +2,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import type { BuildState, PaperRecord } from "@labshelf/core";
+import type { BuildState, PaperRecord, TypstCite } from "@labshelf/core";
 import type { LocatedProblem } from "@labshelf/core/node";
 import { ReaderPanel, type ReaderPanelDeps } from "../../pdf-viewer/index.js";
 import type { BuildListener, BuildTrigger, FinishedBuild } from "../build/index.js";
@@ -15,6 +15,7 @@ import { ProjectSynctex, revealInPreview } from "./sourceLinks/index.js";
 
 export interface BuildPreviewsDeps extends Pick<ReaderPanelDeps, "extensionUri" | "locatePdfjs" | "isMac"> {
   host: Pick<WritingHost, "current">;
+  listPapers: () => Promise<PaperRecord[]>;
 }
 
 function previewPaper(project: ReadyProject, pdf: string): PaperRecord {
@@ -24,6 +25,8 @@ function previewPaper(project: ReadyProject, pdf: string): PaperRecord {
 export class BuildPreviews implements BuildListener {
   private readonly panels = new Map<string, ReaderPanel>();
   private readonly problems = new Map<string, readonly LocatedProblem[]>();
+  // INVARIANT: the cites of the last successful Typst build, i.e. of the PDF a preview shows; a failed build leaves them.
+  private readonly typstCites = new Map<string, readonly TypstCite[]>();
   // A preview opened during a build or after a failed one shows that state at once.
   private readonly states = new Map<string, { state: BuildState; errors: number }>();
 
@@ -50,6 +53,7 @@ export class BuildPreviews implements BuildListener {
       return;
     }
     this.states.delete(project.folder);
+    if ("cites" in result) { this.typstCites.set(project.folder, result.cites); }
     // INVARIANT: an open preview holds the SyncTeX data of the build it shows, read before a later failed build can overwrite the file.
     this.synctex.invalidate(project.folder);
     if (panel) {
@@ -80,6 +84,8 @@ export class BuildPreviews implements BuildListener {
         preview: createPreviewPorts({
           logger: session.logger, projectFolder: project.folder, problems: () => this.problems.get(project.folder) ?? [],
           synctex: () => this.synctex.load(project),
+          format: project.settings.format, listPapers: this.deps.listPapers,
+          typstCites: () => this.typstCites.get(project.folder) ?? [],
         }),
         onClosed: () => { this.panels.delete(project.folder); },
         ...(options.beside ? { show: { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true } } : {}),

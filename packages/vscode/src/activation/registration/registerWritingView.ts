@@ -1,6 +1,7 @@
 // Registers the Writing sidebar view, its commands, the main-document and compiler status bar items, the LaTeX and Typst builds with the LaTeX Workshop notice, the Tinymist bridge and the preview, the citation providers, the LaTeX command completion and the source-aware LaTeX editing, and reloads the project list when the library root changes.
 import * as vscode from "vscode";
 
+import type { PaperRecord } from "@labshelf/core";
 import {
   WritingProjects, WritingTreeProvider, registerMainCommands, registerMainStatusBar, registerProjectCommands,
   registerProjectItemCommands, type WritingHost,
@@ -39,7 +40,8 @@ export function registerWritingView(context: vscode.ExtensionContext, controller
   registerProjectItemCommands({ context, host, projects });
   registerMainCommands({ context, host, projects });
   registerMainStatusBar(context, projects);
-  const previews = new BuildPreviews({ host, extensionUri: context.extensionUri, ...reader });
+  const listPapers = async (): Promise<PaperRecord[]> => await controller.currentServices()?.paperService.listPapers() ?? [];
+  const previews = new BuildPreviews({ host, listPapers, extensionUri: context.extensionUri, ...reader });
   const diagnostics = new BuildDiagnostics();
   context.subscriptions.push(diagnostics);
   const builders = {

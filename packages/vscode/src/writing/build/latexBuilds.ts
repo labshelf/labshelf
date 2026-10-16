@@ -3,13 +3,15 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 
 import { projectBuildDir, runLatexBuild, type LatexBuildResult, type ProjectEntry } from "@labshelf/core/node";
+import type { TypstBuildResult } from "@labshelf/core/typst/node";
 import type { ReadyProject } from "../mainDocument.js";
 import type { BuildDiagnostics } from "./buildDiagnostics.js";
 import { ensureToolchain, type ToolchainDeps } from "./toolchain/index.js";
 
 export type BuildTrigger = "command" | "save";
 
-export type FinishedBuild = Exclude<LatexBuildResult, { status: "cancelled" }>;
+/** A Typst build's success also carries where it placed each citation. */
+export type FinishedBuild = Exclude<LatexBuildResult, { status: "cancelled" }> | TypstBuildResult;
 
 /** Told when a project's compile starts and when it ends; a cancelled compile never ends, the next one replaces it. */
 export interface BuildListener {
