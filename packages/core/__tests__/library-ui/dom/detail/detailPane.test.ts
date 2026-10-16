@@ -54,6 +54,26 @@ describe("detail data from the host", () => {
   });
 });
 
+describe("cited in", () => {
+  it("lists the projects citing the paper and opens the source at the line", () => {
+    const t = showA();
+    const citedIn = [{ project: "thesis", file: "ch/related.tex", line: 11, section: "Related work" }];
+    t.host.post({ type: "details", id: "a", details: { annotations: [], reading: null, pdf: null, citedIn } });
+    const row = t.detail().querySelector<HTMLElement>('[data-action="openSource"]')!;
+    expect(row.textContent).toContain("thesis");
+    expect(row.textContent).toContain("Related work");
+    expect(row.textContent).toContain("ch/related.tex:12");
+    t.click('[data-action="openSource"]', t.detail());
+    expect(t.sent).toContainEqual({ type: "project.openSource", project: "thesis", file: "ch/related.tex", line: 11 });
+  });
+
+  it("shows no section when the host sends no projects", () => {
+    const t = showA();
+    t.host.post({ type: "details", id: "a", details: { annotations: [], reading: null, pdf: null } });
+    expect(t.detail().textContent).not.toContain("Cited in");
+  });
+});
+
 describe("detail tabs", () => {
   it("lists annotations by page and copies them as the core Markdown", () => {
     const t = showA({ detailTab: "annotations" });

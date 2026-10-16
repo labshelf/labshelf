@@ -57,6 +57,7 @@ UI to host:
 | `paper.add` | Add | `add.sources`, or opens the host's own import, or a `notice` when there is nothing to add from |
 | `paper.addFrom` | the user picked a source, or answered the "No PDF found" dialog | `progress`, then `snapshot`, `select` and a `notice`, or `add.noPdf` |
 | `clipboard.write` | any copy; `label` names what was copied | a `notice` |
+| `project.openSource` | a Cited in row; `file` is "/"-separated below the project folder, `line` zero-based | opens the file at the line |
 
 Host to UI:
 
@@ -65,7 +66,7 @@ Host to UI:
 | `snapshot` | replaces the library; records and stats equal to the ones it holds keep their identity, so unchanged rows keep their DOM nodes; asks again for the shown paper's details |
 | `navigate` | opens the folder (search, status tab, No text filter and selection reset) |
 | `select` | selects one paper |
-| `details` | shows the paper's annotations, reading position and file |
+| `details` | shows the paper's annotations, reading position and file, and Cited in from `citedIn`: one row per project file and heading that cites the paper. Only a host that knows writing projects sends `citedIn` (VS Code); it answers `project.openSource` |
 | `similar` | fills Related's similar content |
 | `sidecarChanged` | asks again for the shown paper's details (`id` null: whatever paper is shown) |
 | `jobs` | replaces the OCR jobs shown on rows and banners |

@@ -16,6 +16,11 @@ const isTexts = (v: unknown): v is string[] => Array.isArray(v) && v.every(isTex
 const isStatus = (v: unknown): v is PaperStatus => (PAPER_STATUSES as readonly unknown[]).includes(v);
 const isPage = (v: unknown): boolean => v === undefined || (typeof v === "number" && Number.isInteger(v) && v > 0);
 const isBool = (v: unknown): boolean => typeof v === "boolean";
+const isLine = (v: unknown): boolean => typeof v === "number" && Number.isInteger(v) && v >= 0;
+
+/** A "/"-separated path below a project folder: no leading "/", no empty, "." or ".." segment and no backslash. */
+const isProjectPath = (v: unknown): boolean =>
+  typeof v === "string" && !v.includes("\\") && v.split("/").every((s) => s !== "" && s !== "." && s !== "..");
 
 /** A "/"-separated library path: "papers" or below it, with no empty, "." or ".." segment and no backslash. */
 export function isLibraryPath(v: unknown): v is string {
@@ -48,6 +53,7 @@ const SHAPES: Record<UiToHost["type"], Record<string, FieldCheck>> = {
   "paper.add": { folder: isLibraryPath },
   "paper.addFrom": { folder: isLibraryPath, sourceId: isId, ifNoPdf: (v) => v === "ask" || v === "save", retryPdf: isBool },
   "annotations.export": { id: isId },
+  "project.openSource": { project: isId, file: isProjectPath, line: isLine },
   "clipboard.write": { text: isText, label: (v) => v === undefined || isText(v) },
 };
 

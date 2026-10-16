@@ -30,6 +30,7 @@ export type UiToHost =
   | { type: "paper.add"; folder: string }
   | { type: "paper.addFrom"; folder: string; sourceId: string; ifNoPdf: IfNoPdf; retryPdf: boolean }
   | { type: "annotations.export"; id: string }
+  | { type: "project.openSource"; project: string; file: string; line: number }
   | { type: "clipboard.write"; text: string; label?: string };
 
 export type HostToUi =

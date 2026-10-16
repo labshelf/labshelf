@@ -1,9 +1,10 @@
 /**
  * Declares the data shapes the library UI protocol carries: library snapshot, per-paper reading stats and details,
- * text-layer jobs, similar papers, and the PDF and add-paper replies. All plain JSON.
+ * the projects citing a paper, text-layer jobs, similar papers, and the PDF and add-paper replies. All plain JSON.
  */
 import type { FolderTreeNode } from "../../library/index.js";
 import type { Annotation, PaperRecord } from "../../model/index.js";
+import type { Backlink } from "../../writing/index.js";
 
 /** What the reader's sidecar says about a paper, for the row marks and the Last read column. */
 export interface PaperStats {
@@ -30,6 +31,8 @@ export interface PaperDetails {
   reading: { page: number; updatedAt: string } | null;
   /** The PDF on this device: its size and its path below the library root; null when it is not here. */
   pdf: { size: number; relPath: string } | null;
+  /** Where writing projects cite the paper; only hosts that answer `project.openSource` send it. */
+  citedIn?: Backlink[];
 }
 
 /** A paper waiting for, or in the middle of, OCR. */

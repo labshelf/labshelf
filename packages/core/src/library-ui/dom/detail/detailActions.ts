@@ -9,7 +9,7 @@ import { authorQuery, keywordQuery, tagQuery } from "../../searchQueries.js";
 import type { CiteFormat, DetailTab } from "../../state/index.js";
 import {
   attachPdf, changeTags, copyCitation, copyText, findPdf, fixableIds, hostFileAction, makeSearchable, openPaper,
-  pickMoveTarget, revealPaper, setPaperStatus,
+  openSource, pickMoveTarget, revealPaper, setPaperStatus,
 } from "../flows/index.js";
 import { showPaperMenu } from "../menu/index.js";
 import type { PaneState } from "./paneState.js";
@@ -50,6 +50,7 @@ function paperAction(pane: PaneState, a: string, el: HTMLElement): boolean {
     case "makeSearchable": makeSearchable(ctx, fixableIds(ctx, sel)); return true;
     case "openRelated": revealPaper(ctx, data["id"] ?? ""); return true;
     case "selectOnly": ctx.store.selectOnly(data["id"] ?? ""); return true;
+    case "openSource": openSource(ctx, data["project"] ?? "", data["file"] ?? "", Number(data["line"] ?? 0)); return true;
     default: return false;
   }
 }

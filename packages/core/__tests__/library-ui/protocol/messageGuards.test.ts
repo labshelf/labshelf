@@ -27,6 +27,7 @@ describe("parseUiMessage", () => {
       { type: "paper.makeSearchable", ids: ["p1"] },
       { type: "clipboard.write", text: "key", label: "cite key" },
       { type: "folder.create", parent: "papers", name: "New" },
+      { type: "project.openSource", project: "thesis", file: "ch/one.tex", line: 0 },
     ];
     for (const m of messages) expect(parseUiMessage(m)).toEqual(m);
   });
@@ -42,6 +43,10 @@ describe("parseUiMessage", () => {
       { type: "paper.open", id: "" },
       { type: "paper.setNote", id: "p1" },
       { type: "clipboard.write", text: 3 },
+      { type: "project.openSource", project: "thesis", file: "../x.tex", line: 0 },
+      { type: "project.openSource", project: "thesis", file: "/etc/x.tex", line: 0 },
+      { type: "project.openSource", project: "thesis", file: "a\\b.tex", line: 0 },
+      { type: "project.openSource", project: "thesis", file: "a.tex", line: -1 },
     ];
     for (const m of bad) expect(parseUiMessage(m)).toBeNull();
   });
