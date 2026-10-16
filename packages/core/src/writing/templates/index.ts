@@ -9,3 +9,4 @@ export type { TemplateEntry, TemplateSourceId } from "./templateEntry.js";
 export { TEMPLATE_CATEGORIES, TEMPLATE_ENGINES, parseTemplateManifest, readTemplateFields } from "./templateManifest.js";
 export type { TemplateCategory, TemplateEngine, TemplateManifest, TemplateManifestResult } from "./templateManifest.js";
 export { templatePathProblem, templateTreeProblem } from "./templatePaths.js";
+export * from "./sources/index.js";
