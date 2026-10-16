@@ -1,9 +1,9 @@
 /**
  * Declares what the list panel needs from the extension: the paper service, events, the library root, the library snapshot and
- * folder changes, the citation map, OCR jobs, reader sidecars, the AI index and the writing projects' citations.
+ * folder changes, the citation map, OCR jobs, reader sidecars, the AI index, the writing projects' citations and paper files.
  */
 import type * as vscode from 'vscode';
-import type { Annotation, BacklinkIndex, ILogger, LibrarySnapshot, PaperRecord, PathOps, SimilarPaper, TextLayerJobView } from '@labshelf/core';
+import type { Annotation, BacklinkIndex, ILogger, LibrarySnapshot, PaperFilesState, PaperRecord, PathOps, SimilarPaper, TextLayerJobView } from '@labshelf/core';
 import type { PaperService } from '../../core/index.js';
 import type { CitationMapPorts } from '../../citationMap/index.js';
 import type { LibraryEvents } from '../../events/index.js';
@@ -44,6 +44,8 @@ export interface ListPanelDeps {
   citationMap: CitationMapPorts;
   /** Called whenever the panel shows a different folder, so the sidebar tree can follow. */
   onDidNavigate?: (folder: LibraryNode) => void;
+  /** Called when the user selects one paper in the panel, so the sidebar tree can select its row. */
+  onDidSelectPaper?: (paperId: string) => void;
   /** Papers waiting for or undergoing OCR, shown on their rows while it runs. */
   textLayerJobs?: {
     current: () => TextLayerJobView[];
@@ -54,4 +56,9 @@ export interface ListPanelDeps {
   projectBacklinks?: ListProjectBacklinks;
   /** Papers with similar content, when the AI index is running. */
   findSimilar?: (paper: PaperRecord) => Promise<SimilarPaper[]>;
+  /** A paper folder's files and their descriptions; `describe` resolves undefined when it refuses the name. */
+  paperFiles?: {
+    list(paperId: string): Promise<PaperFilesState>;
+    describe(paperId: string, name: string, description: string): Promise<PaperFilesState | undefined>;
+  };
 }

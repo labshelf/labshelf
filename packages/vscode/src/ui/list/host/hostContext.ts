@@ -18,6 +18,8 @@ export interface ListHostContext {
   onReady(): Promise<void>;
   /** The UI opened a folder (absolute path). */
   onNavigate(dir: string): void;
+  /** The UI selected a paper, or cleared the selection (null). */
+  onSelect(id: string | null): void;
 }
 
 export const LOG_MODULE = 'ui/list';

@@ -55,7 +55,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   };
 
   const writing = registerWritingView(context, controller, adapters.reader, adapters, registerNodeWriting);
-  const { libraryProvider, syncTreeToPanel, refreshLibraryViews: refreshViews } = registerLibraryTreeView({
+  const { libraryProvider, syncTreeToPanel, revealPaperInTree, refreshLibraryViews: refreshViews } = registerLibraryTreeView({
     context, events, controller, papersRootUri, folderHost, adapters, projects: writing.projects,
   });
   refreshLibraryViews = refreshViews;
@@ -63,7 +63,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   registerSettingsWelcomeView(context, controller);
 
   registerPanelCommands({
-    context, events, requireServices, papersRootUri, folderHost, syncTreeToPanel, adapters,
+    context, events, requireServices, papersRootUri, folderHost, syncTreeToPanel, revealPaperInTree, adapters,
     getAiService: () => aiService, projectBacklinks: writing.backlinks,
   });
 

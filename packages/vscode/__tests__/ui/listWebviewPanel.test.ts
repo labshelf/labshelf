@@ -330,3 +330,58 @@ describe('ListWebviewPanel — citation map', () => {
     expect((created.webview.postMessage as jest.Mock).mock.calls.map(([m]) => m.type)).toContain('citationMap.show');
   });
 });
+
+describe('ListWebviewPanel — reveal both ways', () => {
+  it('holds a reveal until the UI is ready, then sends it once after the snapshot and without navigating', async () => {
+    const h = open();
+    h.created.webview.postMessage.mockClear();
+    ListWebviewPanel.currentPanel?.dispose();
+    const fresh = open();
+    await ListWebviewPanel.revealPaper(fresh.deps, 'p2');
+    await flush();
+    expect(fresh.posted()).toEqual([]);
+
+    await fresh.fire({ type: 'ready' });
+    const types = fresh.posted().map((m) => m.type);
+    expect(types.filter((t) => t === 'reveal')).toHaveLength(1);
+    expect(types.indexOf('reveal')).toBeGreaterThan(types.indexOf('snapshot'));
+    expect(fresh.last('reveal')).toEqual({ type: 'reveal', id: 'p2' });
+  });
+
+  it('creates a panel when none is open and posts reveal immediately in a ready one, without navigate', async () => {
+    const h = open();
+    await h.fire({ type: 'ready' });
+    const before = h.posted().length;
+    await ListWebviewPanel.revealPaper(h.deps, 'p1');
+    await flush();
+    const added = h.posted().slice(before);
+    expect(added).toContainEqual({ type: 'reveal', id: 'p1' });
+    expect(added.map((m) => m.type)).not.toContain('navigate');
+    expect(ListWebviewPanel.currentPanel).toBeDefined();
+  });
+
+  it('drops a reveal queued before ready when the panel is disposed, and a fresh panel does not receive it', async () => {
+    const h = open();
+    await ListWebviewPanel.revealPaper(h.deps, 'p1');
+    ListWebviewPanel.currentPanel?.dispose();
+    h.created.webview._fireMessage({ type: 'ready' });
+    await flush();
+    expect(h.posted().map((m) => m.type)).not.toContain('reveal');
+
+    const fresh = open();
+    await fresh.fire({ type: 'ready' });
+    expect(fresh.posted().map((m) => m.type)).not.toContain('reveal');
+  });
+
+  it('reports the selected paper to the host and ignores an empty selection', async () => {
+    const onDidSelectPaper = jest.fn();
+    const h = open(undefined, { onDidSelectPaper });
+    await h.fire({ type: 'ready' });
+    await h.fire({ type: 'paper.selected', id: 'p1' });
+    expect(onDidSelectPaper).toHaveBeenCalledTimes(1);
+    expect(onDidSelectPaper).toHaveBeenCalledWith('p1');
+    await h.fire({ type: 'paper.selected', id: null });
+    expect(onDidSelectPaper).toHaveBeenCalledTimes(1);
+    expect(h.logger.log).not.toHaveBeenCalledWith('WARN', expect.anything(), 'List webview sent a message this host does not offer', expect.anything());
+  });
+});

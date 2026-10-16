@@ -8,12 +8,15 @@ import { movePapers, removePapers, revealPaper, runCommand, setNote, setStatus, 
 import { importCitationWork, showCitationMap } from './citationMapHandlers.js';
 import { sendDetails, sendSimilar } from './paperData.js';
 import { openProjectSource } from './projectSource.js';
+import { onPaperFileMessage } from './paperFileHandlers.js';
 
 // What a failure notice says the action was.
 const FAILURE: Partial<Record<UiToHost['type'], string>> = {
   'folder.create': 'Could not create the folder', 'folder.rename': 'Could not rename the folder', 'folder.delete': 'Could not delete the folder',
   'paper.move': 'Could not move the papers', 'paper.remove': 'Could not remove the papers', 'paper.setStatus': 'Could not change the status',
   'paper.setTags': 'Could not change the tags', 'project.openSource': 'Could not open the source', 'paper.setNote': 'Could not save the note', 'clipboard.write': 'Could not copy',
+  'paper.describeFile': 'Could not save the file description', 'paper.openFile': 'Could not open the file',
+  'paper.revealFile': 'Could not reveal the file', 'paper.copyFilePath': 'Could not copy the path',
 };
 
 // Folder and add-paper messages, whose paths the guard kept inside papers/.
@@ -33,6 +36,7 @@ async function onFolderMessage(ctx: ListHostContext, m: UiToHost, toDisk: (ui: s
 async function onPaperMessage(ctx: ListHostContext, m: UiToHost): Promise<boolean> {
   switch (m.type) {
     case 'ready': await ctx.onReady(); return true;
+    case 'paper.selected': ctx.onSelect(m.id); return true;
     case 'paper.open': await runCommand(ctx, 'labshelf.openPdfViewer', m.id, ...(m.page ? [m.page] : [])); return true;
     case 'paper.openExternal': await runCommand(ctx, 'labshelf.openPaperPdfExternal', m.id); return true;
     case 'paper.reveal': await revealPaper(ctx, m.id); return true;
@@ -64,6 +68,7 @@ export async function handleListMessage(ctx: ListHostContext, raw: unknown): Pro
   try {
     if (await onPaperMessage(ctx, m)) { return; }
     if (paths && await onFolderMessage(ctx, m, (ui) => paths.fromUi(ui))) { return; }
+    if (await onPaperFileMessage(ctx, m)) { return; }
     // Find PDF, Attach PDF and adding from a source are browser capabilities this panel does not declare.
     await ctx.deps.logger.log('WARN', LOG_MODULE, 'List webview sent a message this host does not offer', { type: m.type });
   } catch (error) {
