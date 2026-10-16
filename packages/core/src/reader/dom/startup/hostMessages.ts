@@ -33,10 +33,10 @@ export function bindHostMessages({ ctx, ui, keyboard, hover, reloader, sourceSyn
     ui.toolbar.setAutoHide(msg.prefs.toolbarAutoHide);
     if (!msg.prefs.hoverPreviews) { hover.close(); }
   });
-  host.on("reloadDocument", () => {
+  host.on("reloadDocument", (msg) => {
     // Marks describe the document they came with; marks sent after this request belong to the reloaded one.
     changeMarks.show([]);
-    reloader.reload().catch((err: unknown) => ui.buildBanner.showReloadError(errorMessage(err)));
+    reloader.reload(msg.pdfUrl).catch((err: unknown) => ui.buildBanner.showReloadError(errorMessage(err)));
   });
   host.on("buildStatus", (msg) => ui.buildBanner.show(msg.state, msg.errors));
   host.on("revealPoint", (msg) => sourceSync.reveal(msg.point));

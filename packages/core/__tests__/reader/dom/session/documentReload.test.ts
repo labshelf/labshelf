@@ -39,15 +39,17 @@ function setup(options: { failRead?: boolean } = {}) {
     eventBus,
   } as unknown as ReaderContext;
   let reads = 0;
-  const readBytes = jest.fn(async () => {
+  const readUrls: string[] = [];
+  const fetchMock = jest.fn(async (url: string) => {
     reads++;
-    if (options.failRead) { throw new Error("HTTP 404"); }
-    return new ArrayBuffer(8);
+    readUrls.push(url);
+    return options.failRead ? { ok: false, status: 404 } : { ok: true, arrayBuffer: async () => new ArrayBuffer(8) };
   });
-  const reloader = new DocumentReloader(ctx, { readBytes });
+  global.fetch = fetchMock as unknown as typeof fetch;
+  const reloader = new DocumentReloader(ctx, {});
   const layOut = () => eventBus.dispatch("pagesinit");
   const setPages = (n: number) => { pages = n; };
-  return { ctx, reloader, eventBus, dispatched, opened, first, pdfViewer, layOut, setPages, reads: () => reads };
+  return { ctx, reloader, eventBus, dispatched, opened, first, pdfViewer, layOut, setPages, readUrls, reads: () => reads };
 }
 
 describe("DocumentReloader", () => {
@@ -91,5 +93,53 @@ describe("DocumentReloader", () => {
     await expect(t.reloader.reload()).rejects.toThrow("HTTP 404");
     expect(t.ctx.pdfDocument).toBe(t.first);
     expect(t.pdfViewer.setDocument).not.toHaveBeenCalled();
+  });
+
+  describe("switching to another file", () => {
+    const at = (t: ReturnType<typeof setup>, pageNumber: number, top: number) =>
+      t.eventBus.dispatch("updateviewarea", { location: { pageNumber, left: 0, top, scale: 1 } });
+
+    it("reads the named file and lands on its first page, keeping the zoom", async () => {
+      const t = setup();
+      at(t, 3, 500);
+      await t.reloader.reload("y");
+      expect(t.readUrls).toEqual(["y"]);
+      expect(t.ctx.boot.assets.pdfUrl).toBe("y");
+      t.pdfViewer.currentScaleValue = "auto";
+      t.layOut();
+      expect(t.pdfViewer.currentScaleValue).toBe("1.5");
+      expect(t.pdfViewer.scrollPageIntoView).toHaveBeenLastCalledWith({ pageNumber: 1 });
+    });
+
+    it("restores the spot the first file was left at when switching back", async () => {
+      const t = setup();
+      at(t, 3, 500);
+      await t.reloader.reload("y");
+      t.layOut();
+      await t.reloader.reload("x");
+      t.layOut();
+      expect(t.pdfViewer.scrollPageIntoView).toHaveBeenLastCalledWith({
+        pageNumber: 3, destArray: [null, { name: "XYZ" }, 0, 500, null], allowNegativeOffset: true,
+      });
+    });
+
+    it("re-reads the switched-to file on a reload without a name", async () => {
+      const t = setup();
+      await t.reloader.reload("y");
+      await t.reloader.reload();
+      expect(t.readUrls).toEqual(["y", "y"]);
+    });
+
+    it("reads the latest requested file for the queued reload", async () => {
+      const t = setup();
+      await Promise.all([t.reloader.reload("y"), t.reloader.reload("z"), t.reloader.reload("w")]);
+      expect(t.readUrls).toEqual(["y", "w"]);
+    });
+
+    it("keeps the open file when the named one cannot be read", async () => {
+      const t = setup({ failRead: true });
+      await expect(t.reloader.reload("y")).rejects.toThrow("HTTP 404");
+      expect(t.ctx.boot.assets.pdfUrl).toBe("x");
+    });
   });
 });

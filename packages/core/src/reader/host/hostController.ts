@@ -80,10 +80,10 @@ export class ReaderHostController {
   }
 
   /**
-   * Re-reads the PDF in place after the host replaced the file.
+   * Re-reads the PDF in place after the host replaced the file, or shows the file at `pdfUrl` instead.
    */
-  reloadDocument(): void {
-    this.postWhenReady({ type: "reloadDocument" });
+  reloadDocument(pdfUrl?: string): void {
+    this.postWhenReady(pdfUrl === undefined ? { type: "reloadDocument" } : { type: "reloadDocument", pdfUrl });
   }
 
   /**

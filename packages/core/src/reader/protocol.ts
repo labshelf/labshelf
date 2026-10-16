@@ -84,8 +84,11 @@ export type HostToWebview =
   | { type: "scrollToPage"; pageNumber: number }
   | { type: "prefsChanged"; prefs: ReaderPrefs }
   | { type: "command"; id: ReaderCommandId }
-  /** Re-reads the PDF in place, keeping page, offset and zoom; sent after a preview's build replaced the file. */
-  | { type: "reloadDocument" }
+  /**
+   * Re-reads the PDF in place, keeping page, offset and zoom; sent after a preview's build replaced the file.
+   * With `pdfUrl` the reader shows that file instead of the open one.
+   */
+  | { type: "reloadDocument"; pdfUrl?: string }
   /** `errors` counts the failed build's errors; it is 0 for the other states. */
   | { type: "buildStatus"; state: BuildState; errors: number }
   /** Scrolls the reader to a point and marks it, e.g. the editor cursor's position found through SyncTeX. */

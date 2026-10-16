@@ -23,7 +23,7 @@ describe('ReaderPanel as a build preview', () => {
   function open(onClosed = jest.fn()) {
     const logger = { log: jest.fn(async () => {}), error: jest.fn(async () => {}) } as any;
     const showBuildProblem = jest.fn(async () => {});
-    ReaderPanel.createOrShow(
+    const reader = ReaderPanel.createOrShow(
       { extensionUri: vscode.Uri.file(extensionDir), logger, locatePdfjs: () => null, isMac: false },
       {
         key: 'preview:/p', store: createPreviewStore(), pdfUri: vscode.Uri.file('/p/main.pdf'), rootDir: vscode.Uri.file('/p'),
@@ -33,7 +33,7 @@ describe('ReaderPanel as a build preview', () => {
       },
     );
     const panel = (vscode.window.createWebviewPanel as jest.Mock).mock.results.at(-1)!.value;
-    return { panel, onClosed, showBuildProblem };
+    return { panel, reader, onClosed, showBuildProblem };
   }
 
   it('opens beside without taking focus and receives reader keybinding commands', () => {
@@ -66,9 +66,27 @@ describe('ReaderPanel as a build preview', () => {
     expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(expect.stringContaining('Annotations are not saved in a build preview.'));
   });
 
+  it('shows another PDF in the same panel under a new title', async () => {
+    const { panel, reader } = open();
+    reader.controller.handle({ command: 'ready', totalPages: 1 });
+    await flush();
+    reader.showDocument(vscode.Uri.file('/p/other.pdf'), 'other.pdf');
+    expect(panel.title).toBe('other.pdf');
+    expect(panel.webview.postMessage).toHaveBeenCalledWith({ type: 'reloadDocument', pdfUrl: expect.stringContaining('other.pdf') });
+    expect(vscode.window.createWebviewPanel).toHaveBeenCalledTimes(1);
+  });
+
   it('runs the close hook once', () => {
     const { panel, onClosed } = open();
     panel.dispose();
     expect(onClosed).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes out when the host disposes it, so the next open creates a fresh panel', () => {
+    const { reader, onClosed } = open();
+    reader.dispose();
+    expect(onClosed).toHaveBeenCalledTimes(1);
+    open();
+    expect(vscode.window.createWebviewPanel).toHaveBeenCalledTimes(2);
   });
 });

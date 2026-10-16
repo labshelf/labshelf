@@ -27,10 +27,13 @@ function makeWebviewPanel(viewType, title, column, options) {
     viewColumn: column,
     options: options || {},
     reveal: jest.fn(),
-    dispose: jest.fn(() => disposeListeners.forEach(l => l())),
-    onDidDispose: jest.fn((handler) => {
+    dispose: jest.fn(() => [...disposeListeners].forEach(l => l())),
+    // As in VS Code, the subscription joins the given disposables and disposing it removes the listener.
+    onDidDispose: jest.fn((handler, _thisArg, disposables) => {
       disposeListeners.push(handler);
-      return { dispose: () => {} };
+      const subscription = { dispose: () => { const at = disposeListeners.indexOf(handler); if (at >= 0) { disposeListeners.splice(at, 1); } } };
+      disposables?.push(subscription);
+      return subscription;
     }),
     onDidChangeViewState: jest.fn((handler) => {
       viewStateListeners.push(handler);

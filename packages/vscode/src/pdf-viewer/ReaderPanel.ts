@@ -53,6 +53,7 @@ export class ReaderPanel {
   private _disposables: vscode.Disposable[] = [];
   private _disposed = false;
   private _closed = false;
+  private _closeOut: () => void = () => {};
 
   /** Drives the reader of this panel: page jumps, reloads, build status and revealed points. */
   readonly controller: ReaderHostController;
@@ -148,6 +149,14 @@ export class ReaderPanel {
     this._subscribe(source);
   }
 
+  /**
+   * Shows another PDF in this panel; it must lie under the `rootDir` the panel was opened with.
+   */
+  showDocument(pdf: vscode.Uri, title: string): void {
+    this._panel.title = title;
+    this.controller.reloadDocument(this._panel.webview.asWebviewUri(pdf).toString());
+  }
+
   reveal(preserveFocus = false): void {
     this._panel.reveal(undefined, preserveFocus);
   }
@@ -168,15 +177,15 @@ export class ReaderPanel {
       }
     }, null, this._disposables);
 
-    this._panel.onDidDispose(() => {
-      // dispose() below re-enters panel.dispose(); close-out must happen exactly once.
+    // INVARIANT: close-out runs exactly once, whether the user closes the tab or the host calls dispose().
+    this._closeOut = () => {
       if (this._closed) { return; }
       this._closed = true;
       source.onClosed?.();
       openPanels.delete(source.key);
       if (ReaderPanel.activePanel === this) { ReaderPanel.activePanel = undefined; }
-      this.dispose();
-    }, null, this._disposables);
+    };
+    this._panel.onDidDispose(() => { this._closeOut(); this.dispose(); }, null, this._disposables);
   }
 
   private _post(msg: HostToWebview): void {
@@ -190,6 +199,7 @@ export class ReaderPanel {
   dispose(): void {
     if (this._disposed) { return; }
     this._disposed = true;
+    this._closeOut();
     while (this._disposables.length) { this._disposables.pop()?.dispose(); }
     this._panel.dispose();
   }

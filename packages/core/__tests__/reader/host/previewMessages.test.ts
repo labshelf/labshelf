@@ -25,6 +25,15 @@ describe("preview messages", () => {
     expect(posted).toEqual([{ type: "buildStatus", state: "succeeded", errors: 0 }, { type: "reloadDocument" }]);
   });
 
+  it("names the file to show in a reload only when given one", async () => {
+    const { host, posted } = setupHost();
+    await host.handle({ command: "ready", totalPages: 4 });
+    host.reloadDocument("u");
+    host.reloadDocument();
+    expect(posted).toEqual([{ type: "reloadDocument", pdfUrl: "u" }, { type: "reloadDocument" }]);
+    expect(posted[1]).toStrictEqual({ type: "reloadDocument" });
+  });
+
   it("hands showBuildProblem and showSource to the preview ports", async () => {
     const { host, ports } = setupHost();
     const preview = { showBuildProblem: jest.fn(async () => undefined), showSource: jest.fn(async () => undefined) };
