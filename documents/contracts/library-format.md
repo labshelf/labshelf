@@ -24,6 +24,7 @@ A LabShelf library is a folder that the user owns. Every app reads and writes th
     papers/<paper id>/data.json    the sidecar (synced, namespace "appdata")
     projects.json                  project folders registered outside the library (never synced; the folders themselves sync in namespace "projects")
     openalex/                      OpenAlex citation data for the citation map (never synced)
+    staging/                       a project install (<project id>/) or a template save (template-*/) in progress, renamed into projects/ or templates/ when complete (never synced)
     templates/                     Community and Typst Universe indexes and thumbnails, see templates.md (never synced)
     index.sqlite                   VS Code's text index for the Related tab: chunk embeddings and the content hash of each indexed PDF (never synced)
     logs/app.log                   VS Code log (JSON lines)
