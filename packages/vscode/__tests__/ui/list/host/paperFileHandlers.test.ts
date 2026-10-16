@@ -44,6 +44,14 @@ describe('onPaperFileMessage', () => {
     expect(logger.log).toHaveBeenCalledWith('WARN', expect.any(String), expect.any(String), expect.objectContaining({ id: 'p1' }));
   });
 
+  it('paper.files replies failed and logs the paper id when the port throws', async () => {
+    const { ctx, post, logger, paperFiles } = context();
+    paperFiles.list.mockRejectedValueOnce(new Error('EACCES: permission denied'));
+    expect(await onPaperFileMessage(ctx, { type: 'paper.files', id: 'p1' })).toBe(true);
+    expect(post).toHaveBeenCalledWith({ type: 'files', id: 'p1', state: { status: 'failed', message: 'EACCES: permission denied' } });
+    expect(logger.log).toHaveBeenCalledWith('ERROR', expect.any(String), expect.any(String), { id: 'p1', message: 'EACCES: permission denied' });
+  });
+
   it('paper.describeFile stores the description and replies with the fresh listing', async () => {
     const { ctx, post, paperFiles } = context();
     expect(await onPaperFileMessage(ctx, { type: 'paper.describeFile', id: 'p1', name: 'data.csv', description: 'raw runs' })).toBe(true);

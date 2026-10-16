@@ -2,8 +2,8 @@
 import type { PaperRecord } from "../../../../model/index.js";
 import type { PaperFile, PaperStats } from "../../../protocol/index.js";
 
-export type TrayKind = "pdf" | "note" | "file" | "folder";
-export type TypeTone = "pdf" | "md" | "dir" | "other";
+type TrayKind = "pdf" | "note" | "file" | "folder";
+type TypeTone = "pdf" | "md" | "dir" | "other";
 
 export interface TrayEntry {
   kind: TrayKind;
@@ -11,6 +11,7 @@ export interface TrayEntry {
   /** Text of the type cell; empty for a folder, which shows a chevron. */
   type: string;
   tone: TypeTone;
+  /** The label is empty when the type and name already say what the fact is, as for the Note. */
   fact: { label: string; text: string } | null;
   title: string;
 }
@@ -18,7 +19,7 @@ export interface TrayEntry {
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const PDF_NAME = "paper.pdf";
 
-export function formatSize(bytes: number): string {
+function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -57,7 +58,7 @@ function fileFact(f: PaperFile): TrayEntry["fact"] {
 
 function noteEntry(record: PaperRecord): TrayEntry {
   const first = record.note?.split("\n").map((l) => l.trim()).find(Boolean);
-  return { kind: "note", name: "Note", type: "MD", tone: "md", fact: { label: "Note", text: first ?? "Empty" }, title: "" };
+  return { kind: "note", name: "Note", type: "MD", tone: "md", fact: { label: "", text: first ?? "Empty" }, title: "" };
 }
 
 /** The tray rows in display order: paper.pdf, the Note, other files, then subfolders. */

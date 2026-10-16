@@ -12,7 +12,8 @@ function row(extra: string, title: string, html: string, attrs: Record<string, s
 /** A row for a note, file or subfolder; `data-kind` and `data-name` say which one it is. */
 export function buildTrayRow(e: TrayEntry, onActivate: () => void): HTMLElement {
   const type = e.kind === "folder" ? icon("chevron-right") : escapeHtml(e.type);
-  const fact = e.fact ? `<span class="file-fact-label">${escapeHtml(e.fact.label)}</span> ${escapeHtml(e.fact.text)}` : "";
+  const label = e.fact?.label ? `<span class="file-fact-label">${escapeHtml(e.fact.label)}</span> ` : "";
+  const fact = e.fact ? label + escapeHtml(e.fact.text) : "";
   const r = row("", e.title,
     cell(`file-type tone-${e.tone}`, type) + cell("file-name", escapeHtml(e.name)) + cell("file-fact", fact) + cell("file-actions", ""),
     { "data-kind": e.kind, "data-name": e.name });

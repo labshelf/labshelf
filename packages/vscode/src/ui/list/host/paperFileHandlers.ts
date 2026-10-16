@@ -11,8 +11,20 @@ const isOneSegment = (name: string): boolean => name !== '' && name !== '.' && n
 
 async function sendFiles(ctx: ListHostContext, id: string): Promise<void> {
   const port = ctx.deps.paperFiles;
-  if (!port) { await ctx.deps.logger.log('WARN', LOG_MODULE, 'List asked for paper files without a file port', { id }); }
-  await ctx.post({ type: 'files', id, state: port ? await port.list(id) : NO_PORT });
+  if (!port) {
+    await ctx.deps.logger.log('WARN', LOG_MODULE, 'List asked for paper files without a file port', { id });
+    await ctx.post({ type: 'files', id, state: NO_PORT });
+    return;
+  }
+  let state: PaperFilesState;
+  try {
+    state = await port.list(id);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    await ctx.deps.logger.log('ERROR', LOG_MODULE, 'Listing paper files failed', { id, message });
+    state = { status: 'failed', message };
+  }
+  await ctx.post({ type: 'files', id, state });
 }
 
 async function describeFile(ctx: ListHostContext, id: string, name: string, description: string): Promise<void> {

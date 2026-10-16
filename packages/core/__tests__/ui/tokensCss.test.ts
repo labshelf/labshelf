@@ -15,6 +15,10 @@ describe("tokens.css", () => {
     expect(readFileSync(TOKENS_CSS, "utf8")).toBe(renderTokensCss());
   });
 
+  it("lists the serif title face", () => {
+    expect(renderTokensCss()).toContain('--ls-serif: "Source Serif 4", Georgia, serif;');
+  });
+
   it("keeps the dark and light selectors the browser rewrites", () => {
     const css = renderTokensCss();
     expect(css).toContain(":root {");

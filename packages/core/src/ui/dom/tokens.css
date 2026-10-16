@@ -89,6 +89,7 @@
   --ls-hl-pink: #e91e63;
   --ls-hl-note: #9c27b0;
   --ls-font: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", system-ui, "Ubuntu", "Droid Sans", sans-serif;
+  --ls-serif: "Source Serif 4", Georgia, serif;
   --ls-mono: Menlo, Monaco, "SF Mono", "Cascadia Code", Consolas, "Courier New", monospace;
   --ls-font-size: 13px;
   --ls-text-xs: 10px;

@@ -23,6 +23,10 @@ describe("vscodeHost.css", () => {
     for (const role of roles) expect(css).toMatch(new RegExp(`--ls-${role}: [^;]*var\\(--vscode-`));
   });
 
+  it("leaves the serif title face on its brand stack", () => {
+    expect(renderVscodeHostCss()).not.toContain("--ls-serif");
+  });
+
   it("leaves status-unread on the blue role, which follows charts-blue", () => {
     expect(renderVscodeHostCss()).toContain("--ls-blue: var(--vscode-charts-blue);");
     expect(renderVscodeHostCss()).not.toContain("--ls-status-unread");

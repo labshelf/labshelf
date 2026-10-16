@@ -5,6 +5,8 @@ import { token, type DesignToken } from "./designToken.js";
 
 export const TYPE_TOKENS = {
   font: token('-apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", system-ui, "Ubuntu", "Droid Sans", sans-serif'),
+  // A brand face for paper titles, so it stays the same in every host; no font file ships, so the stack falls back to Georgia.
+  serif: token('"Source Serif 4", Georgia, serif'),
   mono: token('Menlo, Monaco, "SF Mono", "Cascadia Code", Consolas, "Courier New", monospace'),
   "font-size": token("13px"),
   "text-xs": token("10px"),

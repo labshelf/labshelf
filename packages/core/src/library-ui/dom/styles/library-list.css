@@ -28,7 +28,7 @@
 .ls-library .col-head[aria-sort="ascending"] .sort-ind { transform: rotate(180deg); }
 
 /* ── Rows ───────────────────────────────────────────────────────── */
-.ls-library .list-body { --cols: 28px minmax(0, 1fr) 150px 52px 84px 86px; }
+.ls-library .list-body { --cols: 28px minmax(120px, 1fr) 150px 52px 84px 86px; }
 .ls-library .paper-list { flex: 1; overflow-y: auto; outline: none; }
 .ls-library .paper-row { cursor: pointer; }
 /* A paper's child rows share its band, so the stripe sits on the whole unit. */
@@ -40,8 +40,8 @@
 .ls-library .paper-row-main:hover { background: var(--ls-list-hover); }
 .ls-library .paper-row.expanded .paper-row-main { background: var(--ls-row-open); }
 .ls-library .paper-row.cursor:not(.selected) .paper-row-main { background: var(--ls-list-inactive-bg); }
-/* Selection is a tint with an accent band on the leading edge, so the text keeps its own colours. */
-.ls-library .paper-row.selected .paper-row-main { background: var(--ls-row-selected); box-shadow: inset var(--ls-space-1) 0 0 var(--ls-focus); }
+/* Selection is a plain tint, so the text keeps its own colours. */
+.ls-library .paper-row.selected .paper-row-main { background: var(--ls-row-selected); }
 .ls-library .paper-list [role="row"]:focus-visible { outline: 1px solid var(--ls-list-focus-outline); outline-offset: -1px; }
 .ls-library .paper-row-main > div { padding: 0 var(--ls-space-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ls-library .expand-btn {
@@ -108,18 +108,20 @@
 
 /* A narrow list pane drops columns before the title gets squeezed: Last read first, then Authors, then Year. Title and
    Status stay. The pane shares the window with the sidebar and the detail pane, so its own width decides, not the window's.
+   INVARIANT: each threshold is at least the next wider layout's fixed columns + 8px row padding + a 14px scrollbar + the
+   120px title floor (full 542, ≤720 438, ≤460 308), so the title never drops under its floor before a column goes.
    Below 460px the tray fact would shrink to a few letters, so it takes its own line under the name. */
 @container list-pane (max-width: 720px) {
-  .ls-library .list-body { --cols: 28px minmax(0, 1fr) 130px 52px 86px; }
+  .ls-library .list-body { --cols: 28px minmax(120px, 1fr) 130px 52px 86px; }
   .ls-library .col-read { display: none !important; }
 }
 @container list-pane (max-width: 460px) {
-  .ls-library .list-body { --cols: 28px minmax(0, 1fr) 52px 86px; }
+  .ls-library .list-body { --cols: 28px minmax(120px, 1fr) 52px 86px; }
   .ls-library .col-creator { display: none !important; }
   .ls-library .file-row { flex-wrap: wrap; }
   .ls-library .file-fact { flex-basis: calc(100% - 28px - var(--ls-space-4)); margin-left: calc(28px + var(--ls-space-4)); }
 }
 @container list-pane (max-width: 340px) {
-  .ls-library .list-body { --cols: 28px minmax(0, 1fr) 86px; }
+  .ls-library .list-body { --cols: 28px minmax(120px, 1fr) 86px; }
   .ls-library .col-year { display: none !important; }
 }

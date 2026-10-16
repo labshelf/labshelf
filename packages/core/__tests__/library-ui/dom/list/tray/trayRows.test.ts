@@ -102,6 +102,9 @@ describe("facts", () => {
     const withNote = openWith([file("paper.pdf")], { record: { note: "  First line\nsecond line" } });
     expect(text(withNote, "Note")).toContain("First line");
     expect(text(withNote, "Note")).not.toContain("second line");
+    expect(rowNamed(withNote, "Note").querySelector(".file-fact-label")).toBeNull();
+    const cells = [...rowNamed(withNote, "Note").querySelectorAll('[role="gridcell"]')].map((c) => c.textContent?.trim()).filter(Boolean);
+    expect(cells.join(" ")).toBe("MD Note First line");
     const empty = openWith([file("paper.pdf")]);
     expect(text(empty, "Note")).toContain("Empty");
   });

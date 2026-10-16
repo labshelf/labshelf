@@ -13,7 +13,7 @@
 .ls-library .detail-head { position: relative; padding: var(--ls-space-6) 14px; display: flex; flex-direction: column; gap: var(--ls-space-3); }
 .ls-library .detail-head > .head-more { position: absolute; top: var(--ls-space-6); right: var(--ls-space-4); }
 .ls-library .detail-head > .detail-title { padding-right: 30px; }
-.ls-library .detail-title { font-weight: 600; font-size: var(--ls-text-lg); line-height: 1.35; user-select: text; overflow-wrap: anywhere; }
+.ls-library .detail-title { font-family: var(--ls-serif); font-weight: 600; font-size: var(--ls-text-lg); line-height: 1.35; user-select: text; overflow-wrap: anywhere; }
 .ls-library .detail-byline { font-size: var(--ls-text-md); line-height: 1.45; color: var(--ls-fg); opacity: .9; }
 .ls-library .detail-meta { font-size: var(--ls-text-sm); color: var(--ls-desc); }
 .ls-library .version-chip {
