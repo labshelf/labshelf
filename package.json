@@ -5,7 +5,7 @@
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
-    "test:tooling": "node --test \"scripts/agent-transcripts/__tests__/*.test.mjs\"",
+    "test:tooling": "node --test \"scripts/agent-transcripts/__tests__/*.test.mjs\" \"scripts/__tests__/*.test.mjs\"",
     "dev:vscode": "pnpm --filter @labshelf/vscode dev",
     "build:vscode": "pnpm --filter @labshelf/vscode build",
     "lint": "pnpm -r lint && pnpm run lint:deps && pnpm run knip && pnpm run jscpd && pnpm run lint:dirs",
