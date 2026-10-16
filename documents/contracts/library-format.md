@@ -57,12 +57,14 @@ IndexedDB holds only files, so an empty folder is a zero-byte `.keep` file insid
 | `tags` | string[] | the user's labels |
 | `note` | string | the user's note |
 | `textLayer` | `{state, ocrPages?, failedPages?, reason?}` | whether the PDF has selectable text |
+| `pdfVersion` | `preprint` \| `accepted` \| `published` | which version `paper.pdf` is, when its source said so; absent or anything else reads as unknown |
 
 Rules:
 
 - Unknown keys are preserved on rewrite.
 - `hasPdf` is never written. Each app derives it from the presence of `paper.pdf`.
 - An app writes only the keys it owns in that action. A metadata refresh does not touch `status`, `tags` or `note` (see [sync.md](sync.md#coordination-between-local-apps)).
+- `pdfVersion` belongs to the action that writes `paper.pdf`: attaching or replacing the PDF sets it, or removes it when the new file's version is unknown. Any other rewrite keeps it.
 - `bib.bib` is regenerated whenever `metadata.yaml` is written. One core service writes both. Its `file` field points at `paper.pdf` only when that file exists.
 
 ## Sidecar: `data.json`
