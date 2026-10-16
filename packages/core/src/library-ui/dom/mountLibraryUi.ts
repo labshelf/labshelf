@@ -13,6 +13,7 @@ import { confirmDeleteFolder, promptNewFolder, promptRenameFolder } from "./flow
 import { mountListHeader } from "./header/index.js";
 import { attachHostMessages } from "./hostMessages.js";
 import { mountPaperList } from "./list/index.js";
+import { reportSelection } from "./reportSelection.js";
 import { buildFrame } from "./shell/index.js";
 import { createUiContext, type UiContext } from "./uiContext.js";
 
@@ -61,6 +62,7 @@ export function mountLibraryUi(host: HTMLElement, options: LibraryUiOptions): Li
     mountCitationMap(ctx, frame.citationMap),
     mountDetailPane(ctx, frame.detail),
     reportFolder(ctx),
+    reportSelection(ctx),
   ];
   options.transport.post({ type: "ready" });
   return {

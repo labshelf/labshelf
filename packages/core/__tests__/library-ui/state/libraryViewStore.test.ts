@@ -191,6 +191,23 @@ describe("LibraryViewStore snapshots", () => {
   });
 });
 
+describe("LibraryViewStore open paper", () => {
+  it("starts with no paper open", () => {
+    expect(new LibraryViewStore().get().open).toBeNull();
+  });
+
+  it("opens a paper and closes it with null, notifying subscribers", () => {
+    const store = new LibraryViewStore();
+    const seen: Array<string | null> = [];
+    store.select((s) => s.open, (o) => seen.push(o));
+    store.openPaper("p1");
+    expect(store.get().open).toBe("p1");
+    store.openPaper(null);
+    expect(store.get().open).toBeNull();
+    expect(seen).toEqual([null, "p1", null]);
+  });
+});
+
 describe("shallowEqual", () => {
   it("compares primitives, arrays and plain objects one level deep", () => {
     expect(shallowEqual(1, 1)).toBe(true);

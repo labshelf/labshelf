@@ -121,6 +121,11 @@ export class LibraryViewStore {
     this.set({ selected: new Set(), anchor: null, cursor: null });
   }
 
+  /** Shows the files of a paper; null closes them. */
+  openPaper(id: string | null): void {
+    this.set({ open: id });
+  }
+
   /** Opens a folder and resets the search, the status tab, the No text filter and the selection; closes the citation map. */
   openFolder(path: string): void {
     if (path === this.state.folder) {

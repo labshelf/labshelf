@@ -29,6 +29,8 @@ export interface LibraryViewState {
   selected: ReadonlySet<string>;
   anchor: string | null;
   cursor: string | null;
+  /** The paper whose files are shown; null when none is open. */
+  open: string | null;
   /** True until the host sends the first snapshot. */
   loading: boolean;
   /** Record paths whose folder holds the paper's PDF. */
@@ -61,6 +63,7 @@ export const INITIAL_VIEW_STATE: LibraryViewState = {
   selected: new Set(),
   anchor: null,
   cursor: null,
+  open: null,
   loading: true,
   pdfDirs: new Set(),
   pdfBusy: new Set(),

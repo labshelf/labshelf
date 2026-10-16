@@ -4,7 +4,7 @@
  */
 import { toast } from "../../ui/dom/index.js";
 import type { HostToUi } from "../protocol/index.js";
-import { onAddNoPdf, onAddSources, onFindMiss, onPdfMissing } from "./flows/index.js";
+import { onAddNoPdf, onAddSources, onFindMiss, onPdfMissing, revealPaper } from "./flows/index.js";
 import type { UiContext } from "./uiContext.js";
 
 function applyData(ctx: UiContext, m: HostToUi): boolean {
@@ -38,6 +38,7 @@ export function attachHostMessages(ctx: UiContext): () => void {
     if (applyData(ctx, m)) return;
     switch (m.type) {
       case "navigate": ctx.store.openFolder(m.folder); return;
+      case "reveal": revealPaper(ctx, m.id); return;
       case "select": ctx.store.selectOnly(m.id); return;
       case "notice": toast(m.text, m.kind); return;
       case "progress": showProgress(m.key, m.text); return;
