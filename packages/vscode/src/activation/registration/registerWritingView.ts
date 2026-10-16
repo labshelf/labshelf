@@ -11,6 +11,7 @@ import {
   type ProjectBuilders,
 } from "../../writing/build/index.js";
 import { registerInstallCommand } from "../../writing/install/index.js";
+import { registerEditorActions } from "../../writing/editorActions/index.js";
 import { registerMarkVersionCommand } from "../../writing/versions/index.js";
 import { registerTinymistBridge } from "../../writing/typst/index.js";
 import { BuildPreviews, FocusFollower, registerShowInPreview, registerShowPreview } from "../../writing/preview/index.js";
@@ -124,6 +125,7 @@ function registerBuildAndPreviewCommands(
   registerTinymistBridge(context, { host, projects });
   registerShowPreview({ context, projects, previews });
   registerShowInPreview({ context, projects, previews });
+  registerEditorActions({ context, host });
   registerPickCompiler({ context, host, projects });
   registerCompilerStatusBar(context, projects);
   registerLatexWorkshopNotice({ context, host, projects });

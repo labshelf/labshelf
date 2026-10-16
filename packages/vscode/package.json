@@ -350,6 +350,18 @@
         "category": "LabShelf"
       },
       {
+        "command": "labshelf.writing.bold",
+        "title": "Research: Bold",
+        "category": "LabShelf",
+        "icon": "$(bold)"
+      },
+      {
+        "command": "labshelf.writing.italic",
+        "title": "Research: Italic",
+        "category": "LabShelf",
+        "icon": "$(italic)"
+      },
+      {
         "command": "labshelf.writing.regenerateFigure",
         "title": "Research: Regenerate Figure",
         "category": "LabShelf",
@@ -603,6 +615,14 @@
           "when": "editorLangId == latex"
         },
         {
+          "command": "labshelf.writing.bold",
+          "when": "labshelf.writing.inProject"
+        },
+        {
+          "command": "labshelf.writing.italic",
+          "when": "labshelf.writing.inProject"
+        },
+        {
           "command": "labshelf.reader.zoomIn",
           "when": "activeWebviewPanelId == 'labshelfPdf'"
         },
@@ -681,6 +701,28 @@
         {
           "command": "labshelf.writing.addToReadingList",
           "when": "false"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "labshelf.writing.build",
+          "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject",
+          "group": "navigation@1"
+        },
+        {
+          "command": "labshelf.writing.showInPreview",
+          "when": "resourceLangId == latex && labshelf.writing.inProject",
+          "group": "navigation@2"
+        },
+        {
+          "command": "labshelf.writing.bold",
+          "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject",
+          "group": "navigation@3"
+        },
+        {
+          "command": "labshelf.writing.italic",
+          "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject",
+          "group": "navigation@4"
         }
       ],
       "editor/context": [
@@ -865,6 +907,24 @@
         "key": "ctrl+alt+j",
         "mac": "cmd+alt+j",
         "when": "editorLangId == latex"
+      },
+      {
+        "command": "labshelf.writing.build",
+        "key": "ctrl+enter",
+        "mac": "cmd+enter",
+        "when": "editorTextFocus && editorLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject"
+      },
+      {
+        "command": "labshelf.writing.bold",
+        "key": "ctrl+b",
+        "mac": "cmd+b",
+        "when": "editorTextFocus && editorLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject"
+      },
+      {
+        "command": "labshelf.writing.italic",
+        "key": "ctrl+i",
+        "mac": "cmd+i",
+        "when": "editorTextFocus && editorLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject"
       }
     ]
   },
