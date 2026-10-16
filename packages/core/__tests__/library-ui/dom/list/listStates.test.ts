@@ -139,10 +139,10 @@ describe("narrow list pane", () => {
   const block = (width: number): string => css.match(new RegExp(`@container list-pane \\(max-width: ${width}px\\) \\{([\\s\\S]*?)\\n\\}`))?.[1] ?? "";
 
   it("hides Last read first, then Authors, then Year, from wider to narrower", () => {
-    expect(block(720)).toContain(".col-read");
+    expect(block(600)).toContain(".col-read");
     expect(block(460)).toContain(".col-creator");
     expect(block(340)).toContain(".col-year");
-    expect(block(720)).not.toContain(".col-creator");
+    expect(block(600)).not.toContain(".col-creator");
     expect(block(460)).not.toContain(".col-year");
   });
 
