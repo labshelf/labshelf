@@ -1,6 +1,6 @@
-sha: 25a7770
+sha: 080f74b
 files: packages/vscode/src/writing/**, packages/vscode/package.json, packages/core/src/reader/**, packages/core/src/writing/latex/**, packages/core/src/writing/typst/**, documents/contracts/reader-host.md
-source: two Explore scouts, 2026-10-16; Writing view, Builds and Preview re-scouted 2026-10-16 after session 1
+source: two Explore scouts, 2026-10-16; Writing view, Builds and Preview re-scouted after session 1; Errors and Preview / reader re-scouted at session 3 start
 
 # Current state of writing view, builds and preview
 
@@ -22,8 +22,11 @@ source: two Explore scouts, 2026-10-16; Writing view, Builds and Preview re-scou
 - Typst: structured `TypstDiagnostic` → `LocatedProblem {severity error|warning, message, file, line?}`; hints dropped; not published to Problems when Tinymist is installed.
 
 ## Preview / reader
-- One `ReaderPanel` per project, key `preview:<folder>` (`preview/buildPreviews.ts`); `shown` maps folder → absolute root shown, but `show()` always sets the main root, and problems/typstCites/synctex closures and the `finished()` reload follow only the main root.
-- `ReaderPanel.createOrShow` on an existing key only reveals; `pdfUri` and `rootDir` (localResourceRoots) are read once at creation. The reader's `reloadDocument` re-reads the same `assets.pdfUrl` (`core/src/reader/dom/session/documentReload.ts`) keeping page, offset and zoom.
-- `registerShowPreview` / `registerShowInPreview` use the main root only; a command-triggered build opens the preview when none is open.
-- Toolbar (`core/src/reader/dom/chrome/toolbar.ts`) has fixed buttons, no slot. Forward/inverse search LaTeX only.
-- Test support: `__tests__/support/writingFixtures.ts` (`fakeHost, fakeProjects, readyEntry, commandHandler, openInEditor`); window mock has `onDidChangeActiveTextEditor` (`_fireActiveEditorChange`) but no `tabGroups`; `workspaceState` faked inline.
+- Boot flag `ReaderBootParams.preview: boolean` (protocol.ts:54, `PROTOCOL_VERSION = 4`), set by `ReaderPanel` when preview ports are passed (vscode/src/pdf-viewer/ReaderPanel.ts:141); read in dom/navigation/sourceSync.ts:21 and dom/hover/citations/previewCitations.ts. Only `Toolbar` call site: dom/startup/buildReaderUi.ts:44-52.
+- Toolbar (dom/chrome/toolbar.ts, 140 lines): `iconButton(icon(name), title)` in three `rd-toolbar-group`s; no slot. Banner: dom/chrome/buildBanner.ts (`#build-banner`, failed click posts `showBuildProblem`). Tab strip pattern: dom/sidebar/sidebar.ts:15-60 (`rd-tabs`, role=tablist).
+- Messages: HostToWebview by `type` (`reloadDocument`, `buildStatus`, `revealPoint`, `showChanges`, `citation`), no host→webview guard; WebviewToHost by `command`, validated by `isWebviewMessage`. Preview shapes and guards in `reader/previewProtocol.ts` (57 lines). Host side: `host/previewMessages.ts` handlers, `PreviewPorts` in `host/ports.ts:24-33`, posts through `postWhenReady` (holds the latest per `type`). Reader side: `dom/startup/hostMessages.ts` one `host.on` per message.
+- VS Code: `preview/buildPreviews.ts` keeps `problems` per absolute root (set in `finished()` before the shown check), `states`, `shown`; `revealSource(project,file,line)` → `controller.revealPoint`. `preview/previewPorts.ts` implements ports; inverse search in `sourceLinks/showSource.ts`; Typst lookups are `unsupported`.
+- Raw log: not carried by `FinishedBuild`; it is `<projectBuildDir(id)>/<rootBuildFolder(root)>/<base>.log` (runLatexBuild.ts:47). Typst has none.
+- Limits: protocol.ts 206 lines, reader.css 299 (new CSS needs its own file), `core/src/reader/host/` and `dom/startup/` hold 8 files, ReaderPanel.ts 206, buildPreviews.ts 166.
+- Icons: refresh, arrow-left, arrow-right, warning, info, external, file-text, loader, list, x, check; no error glyph (warning + `--ls-error`).
+- Test support: `__tests__/support/writingFixtures.ts` (`fakeHost, fakeProjects, readyEntry, commandHandler, openInEditor`); core host tests reader/host/{previewMessages,hostController}.test.ts + hostFixture.ts; reader/protocol.test.ts; reader/dom/startup/hostMessages.test.ts; no toolbar test.
