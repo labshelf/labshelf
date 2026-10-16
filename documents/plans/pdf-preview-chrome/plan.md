@@ -1,6 +1,6 @@
 # Plan: VS Code PDF preview redesign
 
-Status: in progress (wave 1 committed; wave 2 next: sessions 2a–2i)
+Status: in progress (wave 2: sessions 2a–2i)
 Size: GG — new preview surface, a labshelf.yaml contract change and new build features; 17 sessions in 4 waves (wave 2 nine wide); grows if `\includeonly` needs a build wrapper beyond latexmk flags
 Pending decisions: 0
 
@@ -85,15 +85,20 @@ Owns abbreviated (`rd` core reader/dom, `cw` core writing, `vs` vscode writing).
 
 | Session | File | Deliverable | Owns | Commit |
 |---|---|---|---|---|
-| 2a | [2a](sessions/2a-build-status.md) | Stale, `builtAt`, logs button | host controller, `vs/preview/{projectPreview,stale}`, `rd` header/logs | yes |
-| 2b | [2b](sessions/2b-build-options.md) | Auto compile, engine, options menu | `vs/build/options`, save listeners, `rd` header/options | yes |
+| 2a | done (see log.md) | Stale, `builtAt`, logs button | host controller, `vs/preview/{projectPreview,stale}`, `rd` header/logs | yes |
+| 2b | done (see log.md) | Auto compile, engine, options menu | `vs/build/options`, save listeners, `rd` header/options | — |
+| 2b2 | done (see log.md) | Menu radio roles | 2b Owns, `ui/dom/widgets/menu.ts` | — |
+| 2b3 | done (see log.md) | Unchosen engine (`engine: null`) | 2b Owns, `ui/dom/widgets/menu.ts`, `BuildOptions`, reader-host Build options line | — |
+| 2b4 | [2b4](sessions/2b4-finish-commit.md) | Finish and commit 2b | 2b3's Owns | yes |
 | 2c | done (see log.md) | PDF problems, cites | `cw/problems`, `cw/index.ts`, `vs/preview/problems` | yes |
 | 2d | done (see log.md) | Marks, cites status, F8 step | `rd` preview/marks, footer/cites | yes |
-| 2e | [2e](sessions/2e-limits.md) | Words, limits, checks, meter | `cw/checks/limits`, `vs/preview/limits`, check cmd, `rd` footer/{limit,checks} | yes |
-| 2f | [2f](sessions/2f-citation-card.md) | Card data and UI | `rd/hover/citations`, `citationKeys.ts`, `vs/preview/citations`, `reader.css` | yes |
+| 2e2 | [2e2](sessions/2e2-limits.md) | Words, limits, checks, meter | `cw/checks/limits`, `vs/preview/limits`, check cmd, `rd` footer/{limit,checks} | yes |
+| 2f | done (see log.md) | Card data and UI | `rd/hover/citations`, `citationKeys.ts`, `vs/preview/citations`, `reader.css` | yes |
+| 2f3 | done (see log.md) | Card review follow-ups, finish, commit | as 2f | yes |
 | 2g | [2g](sessions/2g-citation-fixes.md) | `suggestKey`, card fixes | `cw/citations/fixes`, `vs/preview/citationFixes` | yes |
 | 2h | [2h](sessions/2h-includeonly.md) | `\includeonly` | `cw/latex/build`, `vs/build/node/{latexBuilds,includeOnly}`, `rd` header/only | yes |
-| 2i | [2i](sessions/2i-export.md) | Export (own worktree) | `cw/project/export`, `vs/export`, `package.json`, `rd` header/export | yes |
+| 2i | done (see log.md) | Export file sets, menu, host `exportProject`, fflate | `cw/project/export`, `vs/export`, `package.json`, `rd` header/export | yes |
+| 2j | [2j](sessions/2j-build-status-finish.md) | Finish and commit 2a | 2a's Owns | yes |
 | 3a | [3a](sessions/3a-host-wiring.md) | Port handlers, roots fields | `vs/preview/{previewPorts.ts,projectPreview,roots}` | yes |
 | 3b | [3b](sessions/3b-webview-wiring.md) | Slots, marks, keys | `mountPreviewChrome.ts`, barrels, `preview.css`, `rd/startup`, cheatsheet | yes |
 | 4a | [4a](sessions/4a-webview-verify.md) | Headless webview check | core fixes | yes |

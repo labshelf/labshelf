@@ -66,3 +66,24 @@
 - 2026-10-16 17:51 2f.2 implementer (Sonnet): card in hover/citations/card/ (head, highlights folded, Open at p. N, Go to source, fix row), citation-card.css split from reader.css (275 lines) and preview.css; core reader+ui tests pass
 - 2026-10-16 17:51 2f budget stop: main thread over 70k after launching 2f.1/2f.2; 2f.3 and review follow-ups moved to sessions/2f3-card-finish.md
 - 2026-10-16 17:51 2f peaks: main thread 79.5k, largest subagent 72.1k (2f.2)
+- 2026-10-16 2b.5 radio menu items (implementer, Sonnet): `MenuItem.radio` gives role menuitemradio; optionsMenu passes `radio: true`, `markEnginesAsRadios` deleted; menu + options tests pass (12), core typecheck pass
+- 2026-10-16 2b.6 decision (user): no-engine LaTeX lists engines with none checked via `BuildOptions.engine: null` (ensureToolchain's pick asks and probes, so no pure rule to reuse) → sessions/2b3-unchosen-engine.md
+- 2026-10-16 2b2 peaks: main ≈72k (over budget at the 2b.6 handoff), largest subagent 25k (2b.5)
+- 2026-10-16 2f3.1 implementer (Sonnet): `bibCardEntry` in core writing/review (plainField exported from bibLint barrel, vscode copy deleted); browser vendorReader copies citation-card.css; citation-card.css on --ls-* tokens (440px width, 1–2px borders stay); `citingSites` stays in vscode (node:path); .bib from `settings.bibliography`/subfolders handed to 3a.2
+- 2026-10-16 2f3.2 finisher (Sonnet) on 2f files: gate PASS (core+vscode typecheck, core reader 847 + writing review/citations/bibLint + vscode citations 26 tests, browser build); renamed shadowing `page` param; A8 left unticked until 3a/3b wire the card
+- 2026-10-16 2f3 peaks: main thread ≈75k (fixed context ≈65k at start; all work delegated), largest subagent 56k (finisher)
+- 2026-10-16 17:45 2i.0 worktree ../labshelf-2i created and installed; research/writing-core.md refreshed (sha 8967fae7); scout findings added to sessions/2i-export.md; stopped at main-thread budget (≈74k) before 2i.1
+- 2026-10-16 2i.1 implementer (sonnet): core `project/export/` projectFiles, bibliographyFiles, arxivBundle; 11 tests, core typecheck PASS; bibs as array (several .bib); out/ build/ kept (no build-dir convention)
+- 2026-10-16 2i.2a implementer (sonnet): `header/export/exportMenu.ts` mountExportMenu (S3), jsdom test, preview jest 73 PASS
+- 2026-10-16 2i stopped at main-thread budget; left 2i.2b (host exportProject, fflate) and 2i.3 → sessions/2i2-host.md
+- 2026-10-16 2i peaks: main thread 79.1k (over 70k, baseline 50.3k), largest subagent 32.2k (2i.1)
+- 2026-10-16 2i.2b implementer (sonnet): vscode `writing/export/` exportProject (S9) + exportBundle, fflate devDependency, 7 tests PASS; vscode typecheck/build fail only on base-commit `submitTemplatePullRequest` missing from core/node (main has it uncommitted) → zipSync in out/extension.js unconfirmed; typst roots get no bib trimming; findFiles uses default excludes
+- 2026-10-16 2i.3a finish (sonnet) on 2i2 Owns: scoped gate PASS (core 20, vscode 7), review clean, nothing fixed
+- 2026-10-16 2i2 budget stop before commit/merge: main has dirty pnpm-lock.yaml (playwright-core) and plan docs from other sessions, so a plain merge refuses → sessions/2i3-commit-merge.md
+- 2026-10-16 2i2 peaks: main thread 71.7k (over 70k, baseline 50.3k), largest subagent 54.5k (2i.2b)
+- 2026-10-16 2i.3b/c main thread: export code copied from ../labshelf-2i into main, fflate hunks of package.json + pnpm-lock.yaml applied alone, pnpm install; committed on main without a worktree commit
+- 2026-10-16 2i.3d core+vscode typecheck PASS, export tests 25 PASS, vscode build PASS; `zipSync` 0 in out/extension.js because nothing imports `writing/export` until 3a (standalone esbuild of exportProject.ts bundles fflate: 2 hits) → 3a confirms the grep
+- 2026-10-16 2i.3e worktree ../labshelf-2i and branch removed
+- 2026-10-16 2b.6 unchosen engine (main thread, Opus; small enough not to delegate): `BuildOptions.engine?: LatexEngine | null`, `buildOptions` reports null for LaTeX without a stored engine, previewProtocol doc comment and reader-host.md Build options line updated; host test failed first, menu test pins none-checked (menu already handled null); core + vscode typecheck pass; architecture-reviewer (Sonnet): no Standards or Spec findings
+- 2026-10-16 2b.4 unfinished (main thread over budget at 73.6k) → sessions/2b4-finish-commit.md
+- 2026-10-16 2b3 peaks: main 73.6k (over budget, handed off), largest subagent 21.5k (architecture-reviewer)
