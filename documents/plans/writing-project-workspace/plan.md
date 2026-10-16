@@ -1,6 +1,6 @@
 # Plan: Overleaf-like writing workspace in VS Code
 
-Status: in progress (session 4 of 8)
+Status: in progress (session 5 of 8)
 Size: GG — new view model, per-root builds, preview chrome, a reader-host and two library-format changes; grows if Typst root detection needs Tinymist
 Pending decisions: 0
 
@@ -43,9 +43,9 @@ Facts: [research/current-state.md](research/current-state.md), [research/checkli
 
 ## 4. Acceptance criteria
 
-- [ ] **A1** With VS Code open on any folder, Projects lists the library's projects and the registered external folders.
-- [ ] **A2** Opening a project replaces the list with its views; the file tree hides the build dir and `.labshelf/` and marks the main file; back returns to the list.
-- [ ] **A3** File tree: open, new file/folder, rename, delete (confirmed); follows outside changes.
+- [x] **A1** With VS Code open on any folder, Projects lists the library's projects and the registered external folders.
+- [x] **A2** Opening a project replaces the list with its views; the file tree hides the build dir and `.labshelf/` and marks the main file; back returns to the list.
+- [x] **A3** File tree: open, new file/folder, rename, delete (confirmed); follows outside changes.
 - [x] **A4** Opening a project opens the main and exactly one preview; more sources never open a second preview.
 - [x] **A5** Closing the project closes its tabs and preview; on an unsaved-changes prompt, cancel keeps it open.
 - [x] **A6** Focusing a root shows its PDF, an included chapter shows the main PDF, and a non-project tab changes nothing.
@@ -56,7 +56,7 @@ Facts: [research/current-state.md](research/current-state.md), [research/checkli
 - [x] **A11** Logs view: All / Errors / Warnings / Info counts, file:line jumps, Open raw log.
 - [ ] **A12** D10 actions work in project files; Cmd+B elsewhere toggles the side bar.
 - [x] **A13** Typecheck and tests pass for core and vscode; the browser reader boots (headless check).
-- [ ] **A14** Outline shows the focused file's sections, marks the current one, follows tabs and edits, and reveals on click; Typst works without Tinymist.
+- [x] **A14** Outline shows the focused file's sections, marks the current one, follows tabs and edits, and reveals on click; Typst works without Tinymist.
 - [ ] **A15** Figures and Versions appear only while a project is open, collapsed with their count in the header, and are hidden when empty.
 - [ ] **A16** Project rows match D13, and the list renders before any count.
 - [ ] **A17** Checklist groups start collapsed, keep their open state across reloads, and switch By kind / By section from the view title, remembered per project.
