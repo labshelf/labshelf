@@ -184,6 +184,7 @@
   --ls-reader-shadow: 0 4px 18px rgba(0, 0, 0, .45);
   --ls-reader-find-hit: rgba(255, 213, 0, .35);
   --ls-reader-find-current: rgba(255, 140, 0, .6);
+  --ls-reader-change: rgba(255, 140, 0, .2);
   --ls-reader-swatch-dark: #1e1e1e;
   --ls-reader-swatch-dark-ink: #e8e8e8;
   --ls-reader-swatch-light: #ffffff;
@@ -206,6 +207,7 @@
   --ls-reader-shadow: 0 4px 18px rgba(0, 0, 0, .18);
   --ls-reader-find-hit: rgba(255, 213, 0, .35);
   --ls-reader-find-current: rgba(255, 140, 0, .6);
+  --ls-reader-change: rgba(255, 140, 0, .2);
 }
 
 [data-pdf-theme="sepia"] {
@@ -220,6 +222,7 @@
   --ls-reader-shadow: 0 4px 18px rgba(74, 55, 40, .25);
   --ls-reader-find-hit: rgba(255, 213, 0, .35);
   --ls-reader-find-current: rgba(255, 140, 0, .6);
+  --ls-reader-change: rgba(255, 140, 0, .2);
 }
 
 [data-pdf-theme="high-contrast"] {
@@ -234,4 +237,5 @@
   --ls-reader-shadow: 0 4px 18px rgba(0, 0, 0, .45);
   --ls-reader-find-hit: rgba(0, 255, 255, .4);
   --ls-reader-find-current: rgba(255, 0, 255, .6);
+  --ls-reader-change: rgba(255, 0, 255, .3);
 }

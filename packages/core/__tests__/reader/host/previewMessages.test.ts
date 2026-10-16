@@ -67,4 +67,15 @@ describe("preview messages", () => {
     expect(ports.notify).not.toHaveBeenCalled();
     expect(ports.logger.log).toHaveBeenCalledWith("WARN", "reader", "Preview request in a reader that previews nothing", { paperId: "p1", command: "showBuildProblem" });
   });
+
+  it("holds showChanges until ready, then posts it at once", async () => {
+    const { host, posted } = setupHost();
+    const areas = [{ page: 1, left: 1, top: 2, right: 3, bottom: 4 }];
+    host.showChanges(areas);
+    expect(posted).toHaveLength(0);
+    await host.handle({ command: "ready", totalPages: 4 });
+    expect(posted).toEqual([{ type: "showChanges", areas }]);
+    host.showChanges([]);
+    expect(posted[1]).toEqual({ type: "showChanges", areas: [] });
+  });
 });

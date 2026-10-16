@@ -275,6 +275,10 @@ kbd {
   border: 2px solid var(--ls-focus); border-radius: 50%; background: var(--ls-reader-active);
   pointer-events: none; animation: rd-sync-pulse 1.6s ease-out forwards;
 }
+.rd-change-mark {
+  position: absolute; z-index: 4; pointer-events: none;
+  background: var(--ls-reader-change); box-shadow: inset 2px 0 0 var(--ls-reader-find-current);
+}
 @keyframes rd-sync-pulse {
   0% { transform: scale(0.4); opacity: 1; }
   35% { transform: scale(1.3); opacity: 1; }

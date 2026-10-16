@@ -37,6 +37,10 @@ A host can show a build's output in the reader, e.g. a writing project's compile
   - Hovering shows a card with the paper. Clicking a citation link whose key has a library paper opens that paper (`openCitedPaper`) instead of jumping to the bibliography; any other link keeps its jump.
 - **The browser previews nothing yet.** Its host has no preview ports, so the controller logs a preview request from its reader and ignores it.
 
+## Changes
+
+A host can mark regions of the PDF as changed, e.g. what differs from another version of the paper ([library-format.md](library-format.md#labshelfversions)). It sends `showChanges` with page areas in the same space as preview points; the reader draws them over the pages and keeps them through zoom and re-rendering. Each message replaces the earlier marks, and an empty list clears them. A reload request drops the marks sent before it, because they describe the document they came with; marks sent after it apply to the reloaded document. Any reader accepts the message, library or preview.
+
 ## Host-specific constraints
 
 | Host | Constraint |

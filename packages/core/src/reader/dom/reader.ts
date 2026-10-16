@@ -18,7 +18,7 @@ import {
   createViewer,
 } from "./session/index.js";
 import { interceptCitationClicks, PreviewCitations } from "./hover/index.js";
-import { Keyboard, SourceSync } from "./navigation/index.js";
+import { ChangeMarks, Keyboard, SourceSync } from "./navigation/index.js";
 import {
   DeferredHover,
   PositionRestore,
@@ -84,7 +84,7 @@ function wireReader(
   const citations = new PreviewCitations(ctx);
   const hover = new DeferredHover(ctx, theme, citations);
   const keyboard = new Keyboard(ctx, createActionRunner({ ctx, ui, hover }));
-  bindHostMessages({ ctx, ui, keyboard, hover, reloader, sourceSync: new SourceSync(ctx), citations });
+  bindHostMessages({ ctx, ui, keyboard, hover, reloader, sourceSync: new SourceSync(ctx), changeMarks: new ChangeMarks(ctx), citations });
   interceptExternalLinks($("viewer"), ctx.host);
   interceptCitationClicks($("viewer"), ctx, citations);
   restore.attach({ ctx, ui, theme, perf, loadingMsg });

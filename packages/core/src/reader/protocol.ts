@@ -3,11 +3,11 @@
  * DOM-free and vscode-free so both TypeScript programs (and jest) can compile it.
  */
 import type { Annotation, AnnotationColor, PdfTheme } from "../model/index.js";
-import type { BuildState, CitationEntry, CitationQuery, PagePoint } from "./previewProtocol.js";
+import type { BuildState, CitationEntry, CitationQuery, PageArea, PagePoint } from "./previewProtocol.js";
 import { isCitationQuery, isPagePoint } from "./previewProtocol.js";
 import type { ReadingState } from "./sidecar/index.js";
 
-export const PROTOCOL_VERSION = 3;
+export const PROTOCOL_VERSION = 4;
 
 export type EffectiveTheme = Exclude<PdfTheme, "auto">;
 export type ZoomPreset = "page-width" | "page-fit" | "page-actual" | "auto";
@@ -90,6 +90,8 @@ export type HostToWebview =
   | { type: "buildStatus"; state: BuildState; errors: number }
   /** Scrolls the reader to a point and marks it, e.g. the editor cursor's position found through SyncTeX. */
   | { type: "revealPoint"; point: PagePoint }
+  /** Marks regions as changed, e.g. against another version of the paper; replaces earlier marks, and an empty list clears them. */
+  | { type: "showChanges"; areas: PageArea[] }
   /** Answers `lookupCitation` with the same `request`; no entries when the place cites nothing the host can name. */
   | { type: "citation"; request: number; entries: CitationEntry[] };
 
