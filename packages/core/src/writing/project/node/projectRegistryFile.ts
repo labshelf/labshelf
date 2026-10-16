@@ -1,9 +1,8 @@
 /** Reads and writes the library's device-local registry of project folders, .research/projects.json. */
-import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import { joinWith, libraryLayout } from "../../../library/index.js";
-import { writeFileAtomic } from "../../../library/node/index.js";
+import { readOptionalFile, writeFileAtomic } from "../../../library/node/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import {
   parseProjectRegistry, serializeProjectRegistry, withFolder, withoutFolder, type ProjectRegistry,
@@ -15,21 +14,12 @@ function registryPath(libraryRoot: string): string {
   return libraryLayout(libraryRoot, joinWith(path.sep as "/" | "\\")).projectRegistryPath();
 }
 
-async function readText(file: string): Promise<string | undefined> {
-  try {
-    return await fs.readFile(file, "utf8");
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") { return undefined; }
-    throw error;
-  }
-}
-
 /** @returns the registered folders; an unreadable or corrupt registry reads as empty and is logged */
 export async function loadProjectRegistry(libraryRoot: string, logger: ILogger): Promise<ProjectRegistry> {
   const file = registryPath(libraryRoot);
   let text: string | undefined;
   try {
-    text = await readText(file);
+    text = await readOptionalFile(file);
   } catch (error) {
     await logger.error(MODULE, error, { file, action: "read" });
     return { folders: [] };
@@ -50,7 +40,7 @@ async function updateRegistry(
   logger: ILogger,
 ): Promise<void> {
   const file = registryPath(libraryRoot);
-  const text = await readText(file);
+  const text = await readOptionalFile(file);
   const current = text === undefined ? { folders: [] } : parseProjectRegistry(text);
   if (current === undefined) { throw new Error(`${file} is corrupt; fix or delete it before changing projects`); }
   const next = edit(current);

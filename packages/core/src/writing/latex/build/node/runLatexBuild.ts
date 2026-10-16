@@ -2,7 +2,7 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { writeFileAtomic } from "../../../../library/node/index.js";
+import { readOptionalFile, writeFileAtomic } from "../../../../library/node/index.js";
 import type { ILogger } from "../../../../ports/index.js";
 import { parseTexLog } from "../../log/index.js";
 import { engineLabel, type LatexToolchain } from "../../toolchain/index.js";
@@ -30,13 +30,6 @@ const MODULE = "writing/build";
 // Tectonic's own summary lines say only that TeX failed; the cause is in the log or in another "error:" line.
 const TECTONIC_SUMMARY = /something bad happened inside|unrecoverable error|^error: halted on/;
 
-async function readOptional(file: string): Promise<string> {
-  return fs.readFile(file, "utf8").catch((error: NodeJS.ErrnoException) => {
-    if (error.code === "ENOENT") { return ""; }
-    throw error;
-  });
-}
-
 /** The reason a run failed when its log names no error: a network failure, a crash, a missing engine. */
 function failureReason(output: string, request: LatexBuildRequest, code: number | null): string {
   const lines = output.split(/\r?\n/).map((line) => line.trim()).filter((line) => line !== "");
@@ -55,7 +48,7 @@ async function compile(request: LatexBuildRequest, places: ProblemPlaces, base: 
     await request.logger.error(MODULE, error, { executable: command.executable, main: request.main });
     return { status: "failed", problems: [{ severity: "error", message: `Could not start ${command.executable}: ${String(error)}`, file: places.mainFile }] };
   }
-  const log = await readOptional(path.join(request.outDir, `${base}.log`));
+  const log = (await readOptionalFile(path.join(request.outDir, `${base}.log`))) ?? "";
   const problems = await locateProblems(parseTexLog(log, request.toolchain.engine), places);
   const builtPdf = path.join(request.outDir, `${base}.pdf`);
   if (outcome.code === 0 && await fs.stat(builtPdf).then(() => true, () => false)) {

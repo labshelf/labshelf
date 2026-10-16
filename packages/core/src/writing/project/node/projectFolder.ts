@@ -2,7 +2,7 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { writeFileAtomic } from "../../../library/node/index.js";
+import { readOptionalFile, writeFileAtomic } from "../../../library/node/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import { detectMainFile } from "../mainDetection.js";
 import {
@@ -23,15 +23,6 @@ export type ProjectEntry =
   }
   | { kind: "broken"; folder: string; location: ProjectLocation; reason: string };
 
-async function readOptional(file: string): Promise<string | undefined> {
-  try {
-    return await fs.readFile(file, "utf8");
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") { return undefined; }
-    throw error;
-  }
-}
-
 /** Names of the files at the folder's root; sources in subfolders are not main candidates. */
 export async function rootFileNames(folder: string): Promise<string[]> {
   const entries = await fs.readdir(folder, { withFileTypes: true });
@@ -45,7 +36,7 @@ export async function readProject(folder: string, location: ProjectLocation, log
     return { kind: "broken", folder, location, reason };
   };
   try {
-    const text = await readOptional(path.join(folder, PROJECT_FILE));
+    const text = await readOptionalFile(path.join(folder, PROJECT_FILE));
     if (text === undefined) {
       const exists = await fs.stat(folder).then(() => true, () => false);
       return broken(exists ? `${PROJECT_FILE} is missing` : "folder not found");
@@ -53,7 +44,7 @@ export async function readProject(folder: string, location: ProjectLocation, log
     const parsed = parseProjectFile(text);
     if (!parsed.ok) { return broken(`${PROJECT_FILE}: ${parsed.reason}`); }
     const main = parsed.settings.main
-      ?? await detectMainFile(parsed.settings.format, await rootFileNames(folder), (name) => readOptional(path.join(folder, name)));
+      ?? await detectMainFile(parsed.settings.format, await rootFileNames(folder), (name) => readOptionalFile(path.join(folder, name)));
     return { kind: "ready", folder, location, settings: parsed.settings, main };
   } catch (error) {
     await logger.error("project", error, { folder, action: "read" });

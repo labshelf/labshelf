@@ -3,7 +3,7 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import { claimCiteKey, joinWith, libraryLayout } from "../../../library/index.js";
-import { writeFileAtomic } from "../../../library/node/index.js";
+import { readOptionalFile, writeFileAtomic } from "../../../library/node/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import { PROJECT_FILE, parseProjectFile, serializeProjectFile, type ProjectFormat } from "../projectFile.js";
 import { projectIdSlug } from "../projectId.js";
@@ -79,10 +79,7 @@ export async function addExistingFolder(
     throw new Error(`${folder} is inside the library; create the project with New project instead`);
   }
   const file = path.join(folder, PROJECT_FILE);
-  const existing = await fs.readFile(file, "utf8").catch((error: NodeJS.ErrnoException) => {
-    if (error.code === "ENOENT") { return undefined; }
-    throw error;
-  });
+  const existing = await readOptionalFile(file);
   if (existing === undefined) {
     const id = await claimProjectId(libraryRoot, path.basename(folder), logger);
     await writeFileAtomic(file, serializeProjectFile({ id, format: request.format }));
