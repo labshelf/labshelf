@@ -17,6 +17,7 @@ import {
   type PerfMarks,
   createViewer,
 } from "./session/index.js";
+import { interceptCitationClicks, PreviewCitations } from "./hover/index.js";
 import { Keyboard, SourceSync } from "./navigation/index.js";
 import {
   DeferredHover,
@@ -80,10 +81,12 @@ function wireReader(
   reloader: DocumentReloader,
 ): void {
   const ui = buildReaderUi(ctx, theme);
-  const hover = new DeferredHover(ctx, theme);
+  const citations = new PreviewCitations(ctx);
+  const hover = new DeferredHover(ctx, theme, citations);
   const keyboard = new Keyboard(ctx, createActionRunner({ ctx, ui, hover }));
-  bindHostMessages({ ctx, ui, keyboard, hover, reloader, sourceSync: new SourceSync(ctx) });
+  bindHostMessages({ ctx, ui, keyboard, hover, reloader, sourceSync: new SourceSync(ctx), citations });
   interceptExternalLinks($("viewer"), ctx.host);
+  interceptCitationClicks($("viewer"), ctx, citations);
   restore.attach({ ctx, ui, theme, perf, loadingMsg });
   reportFirstRender(ctx, theme, perf, hover);
 }

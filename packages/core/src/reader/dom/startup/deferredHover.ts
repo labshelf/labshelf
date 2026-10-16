@@ -2,7 +2,7 @@
  * Holds the hover preview, which is built at idle time after the first page renders because reading page one never needs it.
  */
 import type { ThemeController } from "../chrome/index.js";
-import { DestPreview, HoverPreview } from "../hover/index.js";
+import { DestPreview, HoverPreview, type PreviewCitations } from "../hover/index.js";
 import { DOCUMENT_REPLACED, type ReaderContext } from "../session/index.js";
 import { CitationResolver, FloatResolver, PageTextCache } from "../text/index.js";
 
@@ -14,7 +14,11 @@ interface DocumentText {
 export class DeferredHover {
   private preview: HoverPreview | null = null;
 
-  constructor(private readonly ctx: ReaderContext, private readonly theme: ThemeController) {
+  constructor(
+    private readonly ctx: ReaderContext,
+    private readonly theme: ThemeController,
+    private readonly citations: PreviewCitations,
+  ) {
     ctx.eventBus.on(DOCUMENT_REPLACED, () => {
       if (!this.preview) { return; }
       const text = this.readText();
@@ -35,7 +39,7 @@ export class DeferredHover {
   createWhenIdle(): void {
     requestIdleCallback(() => {
       const text = this.readText();
-      this.preview = new HoverPreview(this.ctx, text.citations, text.floats, new DestPreview(this.ctx, this.theme));
+      this.preview = new HoverPreview(this.ctx, text.citations, text.floats, new DestPreview(this.ctx, this.theme), this.citations);
     });
   }
 

@@ -2,6 +2,7 @@
 import type { FloatKind, InTextRef } from "../../logic/index.js";
 import type { FloatResolver, CitationResolver } from "../text/index.js";
 import type { ReaderContext } from "../session/index.js";
+import type { PreviewCitations } from "./citations/index.js";
 import type { DestPreview } from "./destPreview.js";
 import type { ExplicitDest, HoverTarget, PopupContent } from "./hoverTarget.js";
 import { textContent } from "./popup.js";
@@ -17,6 +18,7 @@ export class ReferenceContent {
     private readonly resolver: CitationResolver,
     private readonly floats: FloatResolver,
     private readonly preview: DestPreview,
+    private readonly citations: PreviewCitations,
   ) {}
 
   async prepareText(target: HoverTarget, isCurrent: () => boolean): Promise<PopupContent | null> {
@@ -24,9 +26,8 @@ export class ReferenceContent {
     const pageEl = target.group[0]?.closest<HTMLElement>(".page");
     const pageNumber = Number(pageEl?.dataset["pageNumber"]);
     if (!ref || !pageEl || !pageNumber) { return null; }
-    return ref.kind === "float"
-      ? this.prepareFloat(target, ref, pageEl, pageNumber, isCurrent)
-      : this.prepareCitation(ref);
+    if (ref.kind === "float") { return this.prepareFloat(target, ref, pageEl, pageNumber, isCurrent); }
+    return (await this.citations.textCard(target, pageEl, pageNumber)) ?? this.prepareCitation(ref);
   }
 
   private async prepareCitation(ref: Exclude<InTextRef, { kind: "float" }>): Promise<PopupContent | null> {

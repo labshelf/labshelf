@@ -211,6 +211,22 @@ button { font: inherit; color: inherit; }
 .rd-hover-text { max-width: 440px; max-height: 260px; overflow: auto; padding: 8px 12px; font-size: 12.5px; line-height: 1.5; user-select: text; }
 .rd-hover-text p { margin: 0 0 8px; } .rd-hover-text p:last-child { margin-bottom: 0; }
 #hover-popup canvas { display: block; }
+.rd-hover-cite, .rd-hover-cites { max-width: 440px; padding: 8px 12px; font-size: 12.5px; line-height: 1.5; user-select: text; }
+.rd-hover-cite p { margin: 0 0 6px; }
+.rd-cite-byline, .rd-cite-missing { color: var(--ls-reader-desc); }
+.rd-cite-summary {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden;
+}
+.rd-cite-key { font-family: var(--ls-mono); font-size: 11.5px; color: var(--ls-reader-desc); }
+.rd-hover-cites { display: flex; flex-direction: column; gap: 2px; padding: 4px; }
+.rd-cite-row {
+  display: flex; flex-direction: column; gap: 1px; padding: 4px 8px; border: 0; border-radius: 4px;
+  background: none; color: inherit; font: inherit; text-align: left;
+}
+button.rd-cite-row { cursor: pointer; }
+button.rd-cite-row:hover { background: var(--ls-reader-hover); }
+button.rd-cite-row:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
+.rd-cite-title { font-weight: 600; }
 
 /* ── Cheatsheet ─────────────────────────────────────────────── */
 #cheatsheet { position: fixed; inset: 0; z-index: 200; display: none; align-items: center; justify-content: center; background: var(--ls-overlay); }

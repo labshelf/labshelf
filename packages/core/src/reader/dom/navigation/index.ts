@@ -4,3 +4,4 @@ export { Keyboard } from "./keyboard.js";
 export { NavHistory } from "./navHistory.js";
 export { ZoomController } from "./zoomController.js";
 export { SourceSync } from "./sourceSync.js";
+export { pagePointAt, type PageViewportLike } from "./pagePoints.js";

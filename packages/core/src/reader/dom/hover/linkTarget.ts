@@ -1,14 +1,13 @@
 /** Builds hover targets for PDF link annotations: finds the link under the pointer and prepares the popup for its destination. */
 import { destPoint } from "../../logic/index.js";
 import type { CitationResolver } from "../text/index.js";
+import type { PreviewCitations } from "./citations/index.js";
 import type { ReaderContext } from "../session/index.js";
 import type { DestPreview } from "./destPreview.js";
 import type { ExplicitDest, HoverTarget, PopupContent } from "./hoverTarget.js";
 import { textContent } from "./popup.js";
 
 const LINK_SELECTOR = "section.linkAnnotation[data-internal-link]";
-
-interface LinkAnnotationData { id: string; dest?: string | unknown[] | null }
 
 /**
  * @returns the internal link annotation the event is on, or null.
@@ -22,20 +21,21 @@ export function linkHoverTarget(link: HTMLElement): HoverTarget {
 }
 
 export class LinkContent {
-  private readonly pageAnnotations = new Map<number, Promise<LinkAnnotationData[]>>();
-
   constructor(
     private readonly ctx: ReaderContext,
     private readonly resolver: CitationResolver,
     private readonly preview: DestPreview,
+    private readonly citations: PreviewCitations,
   ) {}
 
   async prepare(link: HTMLElement, isCurrent: () => boolean): Promise<PopupContent | null> {
     const pageNumber = Number(link.closest<HTMLElement>(".page")?.dataset["pageNumber"]);
     const id = link.dataset["annotationId"];
     if (!pageNumber || !id) { return null; }
-    const dest = (await this.annotationsFor(pageNumber)).find((a) => a.id === id)?.dest;
+    const dest = (await this.citations.annotations.find(pageNumber, id))?.dest;
     if (!dest) { return null; }
+    const card = await this.citations.linkCard(link);
+    if (card) { return card; }
     const doc = this.ctx.pdfDocument;
     const explicit = typeof dest === "string" ? await doc.getDestination(dest) : dest;
     if (!Array.isArray(explicit)) { return null; }
@@ -55,16 +55,5 @@ export class LinkContent {
     if (!isCurrent()) { return null; }
     const canvas = await this.preview.render(targetPage, point.x, point.y);
     return canvas ? { title: `Page ${targetPage}`, body: canvas, copyText: null, jump } : null;
-  }
-
-  private annotationsFor(pageNumber: number): Promise<LinkAnnotationData[]> {
-    let p = this.pageAnnotations.get(pageNumber);
-    if (!p) {
-      p = this.ctx.pdfDocument.getPage(pageNumber)
-        .then((page) => page.getAnnotations({ intent: "display" }))
-        .then((list) => (list as Array<LinkAnnotationData & { subtype?: string }>).filter((a) => a.subtype === "Link"));
-      this.pageAnnotations.set(pageNumber, p);
-    }
-    return p;
   }
 }
