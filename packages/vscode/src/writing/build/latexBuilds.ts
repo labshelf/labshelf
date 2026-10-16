@@ -2,7 +2,8 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { projectBuildDir, runLatexBuild, type LatexBuildResult, type ProjectEntry } from "@labshelf/core/node";
+import type { ILogger } from "@labshelf/core";
+import { projectBuildDir, runLatexBuild, updateProjectValues, type LatexBuildResult, type ProjectEntry } from "@labshelf/core/node";
 import type { TypstBuildResult } from "@labshelf/core/typst/node";
 import type { ReadyProject } from "../mainDocument.js";
 import type { BuildDiagnostics } from "./buildDiagnostics.js";
@@ -68,6 +69,16 @@ export class LatexBuilds {
     return entry?.kind === "ready" ? entry : undefined;
   }
 
+  // A failure leaves the macro undefined, which LaTeX reports itself, so the build still runs.
+  private async generateValues(project: ReadyProject, logger: ILogger): Promise<void> {
+    if (!project.settings.values?.length) { return; }
+    try {
+      await updateProjectValues(project, logger);
+    } catch (error) {
+      await logger.error(MODULE, error, { projectFolder: project.folder, action: "generate-values" });
+    }
+  }
+
   private async run(projectFolder: string, trigger: BuildTrigger, state: ProjectBuilds): Promise<void> {
     const session = this.deps.host.current();
     const project = this.project(projectFolder);
@@ -87,6 +98,7 @@ export class LatexBuilds {
       state.running = controller;
       const building = vscode.window.setStatusBarMessage(`$(sync~spin) Building ${project.main}`);
       this.deps.previews.building(projectFolder);
+      await this.generateValues(project, session.logger);
       const result = await runLatexBuild({
         toolchain, projectFolder, main: project.main, outDir: projectBuildDir(project.settings.id),
         signal: controller.signal, logger: session.logger,

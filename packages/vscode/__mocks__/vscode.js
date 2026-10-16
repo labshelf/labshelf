@@ -346,11 +346,16 @@ class DocumentLink {
   constructor(range, target) { this.range = range; this.target = target; }
 }
 
+class TextEdit {
+  constructor(range, newText) { this.range = range; this.newText = newText; }
+  static insert(position, newText) { return new TextEdit(new Range(position, position), newText); }
+}
+
 class CompletionItem {
   constructor(label, kind) { this.label = label; this.kind = kind; }
 }
 
-const CompletionItemKind = { Function: 2, Snippet: 14, Reference: 17 };
+const CompletionItemKind = { Field: 4, Function: 2, Value: 11, Snippet: 14, Reference: 17 };
 
 class SnippetString {
   constructor(value) { this.value = value || ''; }
@@ -425,6 +430,7 @@ module.exports = {
   SymbolKind,
   CompletionItem,
   CompletionItemKind,
+  TextEdit,
   SnippetString,
   Selection,
   languages,

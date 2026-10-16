@@ -1,34 +1,62 @@
 // Tests the build queue: toolchain first, one build at a time per project, newer requests cancel, dismissed setups stay quiet on save.
 import * as vscode from "vscode";
 
-import { projectBuildDir, runLatexBuild } from "@labshelf/core/node";
+import { projectBuildDir, runLatexBuild, updateProjectValues } from "@labshelf/core/node";
 import { BuildDiagnostics } from "../../../src/writing/build/buildDiagnostics";
 import { LatexBuilds } from "../../../src/writing/build/latexBuilds";
 import { ensureToolchain } from "../../../src/writing/build/toolchain";
 import { fakeHost, fakeProjects, readyEntry } from "../../support/writingFixtures";
 
-jest.mock("@labshelf/core/node", () => ({ ...jest.requireActual("@labshelf/core/node"), runLatexBuild: jest.fn() }));
+jest.mock("@labshelf/core/node", () => ({ ...jest.requireActual("@labshelf/core/node"), runLatexBuild: jest.fn(), updateProjectValues: jest.fn() }));
 jest.mock("../../../src/writing/build/toolchain", () => ({ ensureToolchain: jest.fn() }));
 
 const TOOLCHAIN = { engine: "tectonic", executable: "/t/tectonic" };
 const run = runLatexBuild as jest.Mock;
+const generateValues = updateProjectValues as jest.Mock;
 const window = vscode.window as unknown as Record<string, jest.Mock>;
 
 function setup(over: Parameters<typeof readyEntry>[1] = {}) {
   const projects = fakeProjects([readyEntry("/p/paper", over)]);
   const diagnostics = { publish: jest.fn() };
   const previews = { building: jest.fn(), finished: jest.fn() };
-  const builds = new LatexBuilds({ storageDir: "/storage", host: fakeHost(), projects: projects as never, diagnostics, previews });
-  return { builds, diagnostics, previews };
+  const host = fakeHost();
+  const builds = new LatexBuilds({ storageDir: "/storage", host, projects: projects as never, diagnostics, previews });
+  return { builds, diagnostics, previews, logger: host.session.logger };
 }
 
 beforeEach(() => {
   jest.clearAllMocks();
+  generateValues.mockReset();
   (ensureToolchain as jest.Mock).mockResolvedValue(TOOLCHAIN);
   run.mockResolvedValue({ status: "failed", problems: [{ severity: "error", message: "x", file: "/p/paper/main.tex", line: 2 }] });
 });
 
 describe("LatexBuilds", () => {
+  it("generates the values file before compiling a project that lists values", async () => {
+    const { builds } = setup({ settings: { id: "paper", format: "latex", values: ["results.json"] } });
+    const order: string[] = [];
+    generateValues.mockImplementation(async () => { order.push("values"); });
+    run.mockImplementation(async () => { order.push("run"); return { status: "succeeded", pdf: "/p/paper/main.pdf", problems: [] }; });
+    await builds.request("/p/paper", "command");
+    expect(order).toEqual(["values", "run"]);
+    expect(generateValues).toHaveBeenCalledWith(expect.objectContaining({ folder: "/p/paper", main: "main.tex" }), expect.anything());
+  });
+
+  it("logs a failed values generation with its context and still compiles", async () => {
+    const { builds, logger } = setup({ settings: { id: "paper", format: "latex", values: ["results.json"] } });
+    const error = new Error("disk full");
+    generateValues.mockRejectedValue(error);
+    await builds.request("/p/paper", "command");
+    expect(logger.error).toHaveBeenCalledWith("writing/build", error, { projectFolder: "/p/paper", action: "generate-values" });
+    expect(run).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not generate values for a project without values", async () => {
+    const { builds } = setup();
+    await builds.request("/p/paper", "command");
+    expect(generateValues).not.toHaveBeenCalled();
+  });
+
   it("builds the main file into the project's cache folder and publishes the problems", async () => {
     const { builds, diagnostics } = setup();
     await builds.request("/p/paper", "command");

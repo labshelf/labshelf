@@ -1,4 +1,4 @@
-// Registers the Writing sidebar view, its commands, the main-document and compiler status bar items, the LaTeX and Typst builds with the LaTeX Workshop notice, the Tinymist bridge and the preview, the citation providers, the labshelf: links, the figures with Regenerate Figure, the LaTeX command completion and the source-aware LaTeX editing, and reloads the project list when the library root changes.
+// Registers the Writing sidebar view, its commands, the main-document and compiler status bar items, the LaTeX and Typst builds with the LaTeX Workshop notice, the Tinymist bridge and the preview, the citation providers, the labshelf: links, the figures with Regenerate Figure, the LaTeX command completion, the source-aware LaTeX editing and the value completion and hover, and reloads the project list when the library root changes.
 import * as vscode from "vscode";
 
 import type { PaperRecord } from "@labshelf/core";
@@ -15,6 +15,7 @@ import { registerCitationProviders, type CitationWorkspace } from "../../writing
 import { registerLabshelfLinks } from "../../writing/links/index.js";
 import { ProjectFigures, registerRegenerateFigure, watchFigureFiles } from "../../writing/figures/index.js";
 import { registerLatexCommandCompletion, registerLatexEditing } from "../../writing/latexEditing/index.js";
+import { registerWritingValues } from "../../writing/values/index.js";
 import type { LibraryRootController } from "../libraryLifecycle/index.js";
 import type { HostAdapters } from "../serviceComposition/index.js";
 
@@ -71,5 +72,6 @@ export function registerWritingView(context: vscode.ExtensionContext, controller
   registerLabshelfLinks(context, { session });
   registerLatexCommandCompletion(context);
   registerLatexEditing(context, { projects, logger: () => controller.currentServices()?.logger });
+  registerWritingValues(context, { projects, logger: () => controller.currentServices()?.logger });
   void projects.reload();
 }

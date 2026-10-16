@@ -11,3 +11,4 @@ export * from "../writing/latex/toolchain/node/index.js";
 export * from "../writing/latex/build/node/index.js";
 export * from "../writing/synctex/node/index.js";
 export * from "../writing/figures/node/index.js";
+export * from "../writing/values/node/index.js";
