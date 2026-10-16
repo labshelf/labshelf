@@ -39,3 +39,9 @@
 - 2026-10-16 13:10 — S4.4 sonnet implementer: Figures view (labshelf.writing.figures, collapsed, count in description, hasFigures key); reading-list node, readingListNodes.ts, removeFromReadingList and ProjectReadingLists events deleted; project rows not expandable until session 6. vscode 779 tests pass.
 - 2026-10-16 13:15 — S4.5 finish: gate PASS (core 3431, vscode 779 tests), documents/apps/vscode.md updated; worker-exit warning not reproduced. Extension host not run.
 - 2026-10-16 13:15 — session 4 closed (second context): main peak 78.5k (baseline 49.5k), largest subagent 61.0k (S4.4 implementer, over 60k).
+- 2026-10-16 13:40 — S5.1 sonnet implementer: editorActions/ (wrapSelection, bold/italic commands), editor/title buttons and cmd+enter/b/i scoped to latex/typst + inProject; vscode 792 tests pass.
+- 2026-10-16 14:30 — S5.2 (partial) opus host agents: harness built in scratchpad; A1–A5 (clean close), A12, A14, R5 pass in a real host; A5 cancel not drivable; A6–A9 left. Three opus agents stopped at the 60k budget while reading; one pass after the harness existed.
+- 2026-10-16 14:30 — session 5 paused at the main-thread budget (~102k). Left: S5.2 A6–A9, S5.3.
+- 2026-10-16 15:10 — S5.2 opus host agent: A6 (root/chapter/outside focus), A7 and A8 host side (failed root keeps main PDF, failed main sends showLogs, PDF untouched), A9 (separate per-root build folders) pass in a real host; webview DOM clicks rest on session 3 tests. A1–A12, A14 met; A5 cancel not drivable.
+- 2026-10-16 15:10 — S5.3 finish: gate PASS (vscode 792 tests), documents/apps/vscode.md gains the editor-actions bullet; Show in Preview stays LaTeX-only (Typst sync is out of scope).
+- 2026-10-16 15:10 — session 5 closed (second context): main peak 73.0k (baseline 48.8k), largest subagent 43.5k (S5.2 host implementer).

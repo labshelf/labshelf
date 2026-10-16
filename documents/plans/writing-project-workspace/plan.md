@@ -1,6 +1,6 @@
 # Plan: Overleaf-like writing workspace in VS Code
 
-Status: in progress (session 5 of 8)
+Status: in progress (session 6 of 8)
 Size: GG — new view model, per-root builds, preview chrome, a reader-host and two library-format changes; grows if Typst root detection needs Tinymist
 Pending decisions: 0
 
@@ -54,7 +54,7 @@ Facts: [research/current-state.md](research/current-state.md), [research/checkli
 - [x] **A9** Same-basename roots in two folders keep separate PDF, log, SyncTeX.
 - [x] **A10** Preview toolbar has Recompile and code→PDF / PDF→code; the paper reader toolbar has none.
 - [x] **A11** Logs view: All / Errors / Warnings / Info counts, file:line jumps, Open raw log.
-- [ ] **A12** D10 actions work in project files; Cmd+B elsewhere toggles the side bar.
+- [x] **A12** D10 actions work in project files; Cmd+B elsewhere toggles the side bar.
 - [x] **A13** Typecheck and tests pass for core and vscode; the browser reader boots (headless check).
 - [x] **A14** Outline shows the focused file's sections, marks the current one, follows tabs and edits, and reveals on click; Typst works without Tinymist.
 - [ ] **A15** Figures and Versions appear only while a project is open, collapsed with their count in the header, and are hidden when empty.
