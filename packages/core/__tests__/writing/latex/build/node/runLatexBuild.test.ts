@@ -3,6 +3,7 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import { projectBuildDir } from "../../../../../src/writing/project/node/index";
+import { rootBuildFolder } from "../../../../../src/writing/project/roots/index";
 import { runLatexBuild, type LatexBuildRequest } from "../../../../../src/writing/latex/build/node/index";
 import { fakeLogger } from "../../../../support/fakeLogger";
 import { cleanupTempDirs, makeTempDir } from "../../../../support/tempDirs";
@@ -50,6 +51,22 @@ posixOnly("runLatexBuild", () => {
     const result = await runLatexBuild(request);
     expect(result).toMatchObject({ status: "failed", problems: [{ message: "fontspec.sty: Unknown command \\oops.", file: path.join(request.projectFolder, "main.tex") }] });
     expect((result as { problems: { line?: number }[] }).problems[0]!.line).toBeUndefined();
+  });
+
+  it("builds same-named roots in different folders into their own build folders and puts each PDF next to its root", async () => {
+    const projectFolder = await makeTempDir();
+    const buildDir = path.join(await makeTempDir(), "build");
+    const executable = path.join(await makeTempDir(), "tectonic");
+    await fs.writeFile(executable, '#!/bin/sh\nOUT="$4"\nfor a in "$@"; do case "$prev" in --outdir|-outdir) OUT="$a";; esac; prev="$a"; done\nmkdir -p "$OUT"\necho "%PDF $(basename "$OUT")" > "$OUT/main.pdf"\n', { mode: 0o755 });
+    for (const root of ["a/main.tex", "b/main.tex"]) {
+      await fs.mkdir(path.join(projectFolder, path.dirname(root)), { recursive: true });
+      await fs.writeFile(path.join(projectFolder, root), "x\n");
+      const outDir = path.join(buildDir, rootBuildFolder(root));
+      const result = await runLatexBuild({ toolchain: { engine: "tectonic", executable }, projectFolder, main: root, outDir, signal: new AbortController().signal, logger: fakeLogger() });
+      expect(result).toMatchObject({ status: "succeeded", pdf: path.join(projectFolder, root.replace(".tex", ".pdf")) });
+    }
+    expect(await fs.readFile(path.join(projectFolder, "a", "main.pdf"), "utf8")).toContain("a__main.tex");
+    expect(await fs.readFile(path.join(projectFolder, "b", "main.pdf"), "utf8")).toContain("b__main.tex");
   });
 
   it("reports the toolchain's own error when the log names none", async () => {

@@ -6,6 +6,7 @@ export * from "../import/node/index.js";
 export * from "../reader/node/index.js";
 export * from "../ai/node/index.js";
 export * from "../writing/project/node/index.js";
+export * from "../writing/project/roots/node/index.js";
 export * from "../writing/citations/node/index.js";
 export * from "../writing/latex/toolchain/node/index.js";
 export * from "../writing/latex/build/node/index.js";

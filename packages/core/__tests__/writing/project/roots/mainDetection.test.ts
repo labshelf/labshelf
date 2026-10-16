@@ -1,5 +1,5 @@
 /** Verifies project format and main file detection from root file names. */
-import { detectFormat, detectMainFile, mainCandidates } from "../../../src/writing/project/index";
+import { detectFormat, detectMainFile, mainCandidates } from "../../../../src/writing/project/roots/index";
 
 function reader(files: Record<string, string>) {
   return async (name: string) => files[name];

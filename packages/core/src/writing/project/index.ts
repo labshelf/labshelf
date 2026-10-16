@@ -1,7 +1,7 @@
-/** Exports the runtime-neutral project model: labshelf.yaml, main detection, project ids, templates and the registry. */
+/** Exports the runtime-neutral project model: labshelf.yaml, main and root detection, root build folders, project ids, templates and the registry. */
 export type { CheckSettings, FigureRecipe, UserKeys } from "./userKeys.js";
 export type { ListedPaper } from "./listedPapers.js";
-export { detectFormat, detectMainFile, mainCandidates } from "./mainDetection.js";
+export { detectFormat, detectMainFile, findRoots, mainCandidates, rootBuildFolder } from "./roots/index.js";
 export {
   DEFAULT_BIBLIOGRAPHY, LATEX_ENGINES, PROJECT_FILE, PROJECT_FORMATS,
   parseProjectFile, serializeProjectFile, updateProjectFile,

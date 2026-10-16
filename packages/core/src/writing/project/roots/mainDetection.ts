@@ -1,12 +1,12 @@
 /** Finds a project's format and main file from the source files at its root, for projects whose labshelf.yaml names none. */
 
-import type { ProjectFormat } from "./projectFile.js";
+import type { ProjectFormat } from "../projectFile.js";
 
 const EXTENSION: Record<ProjectFormat, string> = { latex: ".tex", typst: ".typ" };
 const CONVENTIONAL_MAIN: Record<ProjectFormat, string> = { latex: "main.tex", typst: "main.typ" };
 
 // A commented-out `% \documentclass` does not count: the line must start with the command.
-const DOCUMENT_CLASS = /^[ \t]*\\documentclass\b/m;
+export const DOCUMENT_CLASS = /^[ \t]*\\documentclass\b/m;
 
 /** Source files of the format, the conventional main name first, then alphabetical. */
 export function mainCandidates(format: ProjectFormat, fileNames: readonly string[]): string[] {

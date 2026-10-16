@@ -4,7 +4,7 @@ import * as path from "node:path";
 
 import { readOptionalFile, writeFileAtomic } from "../../../library/node/index.js";
 import type { ILogger } from "../../../ports/index.js";
-import { detectMainFile } from "../mainDetection.js";
+import { detectMainFile } from "../roots/index.js";
 import type { ProjectEntry, ProjectLocation } from "../projectEntry.js";
 import {
   PROJECT_FILE, parseProjectFile, updateProjectFile, type ProjectSettings, type ProjectSettingsPatch,
