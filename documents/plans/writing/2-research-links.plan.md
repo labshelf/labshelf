@@ -1,6 +1,6 @@
 # Plan: links between reading, the library and writing
 
-Status: in progress (session 3 of 6)
+Status: in progress (session 4 of 6)
 Size: GG — several features across core and the three apps, one of them a new data source (OpenAlex) and one an importer; 6 sessions.
 
 ## 1. Goal
@@ -37,7 +37,7 @@ Builds on [writing-core.plan.md](../../archive/writing-core.plan.md). AI feature
 - [x] **A4** The project's reading list shows its papers with status and the never-opened warning.
 - [x] **A5** After reading in the browser, VS Code's library home offers "Continue: <paper>, page 6".
 - [x] **A6** A bib with an arXiv entry whose paper was published gets a linter warning and a quick fix with the published entry.
-- [ ] **A7** On a second machine, `labshelf install` in a cloned project adds the missing papers to the library.
+- [x] **A7** On a second machine, `labshelf install` in a cloned project adds the missing papers to the library.
 - [ ] **A8** The "often cited, missing" list shows papers cited by at least 3 library papers and imports one in a click.
 - [ ] **A9** Importing a Zotero library recreates its collections, PDFs, tags and notes.
 
@@ -100,9 +100,9 @@ Builds on [writing-core.plan.md](../../archive/writing-core.plan.md). AI feature
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S11 | `papers:` kept in sync with citations | — | M · implementer (sonnet) | core tests | [ ] |
-| S12 | `install` in core; VS Code command; terminal command | S11 | M · implementer (sonnet) | A7 | [ ] |
-| S13 | Finish | S11–S12 | `finish` skill | gate passes | [ ] |
+| S11 | `papers:` kept in sync with citations | — | M · implementer (sonnet) | core tests | [x] |
+| S12 | `install` in core; VS Code command; terminal command | S11 | M · implementer (sonnet) | A7 | [x] |
+| S13 | Finish | S11–S12 | `finish` skill | gate passes | [x] |
 
 ### Session 5 — citation map
 
@@ -176,3 +176,6 @@ Builds on [writing-core.plan.md](../../archive/writing-core.plan.md). AI feature
 - 2026-10-15 22:54 — S8 (main thread): `writing/bibLint` parses user `.bib` files with offsets and lints duplicates (key, DOI, `titleKey`), missing DOIs (articles and proceedings only) and preprints with a published version through `publishedDoiOf` plus CrossRef, memoized per lookup. The published-version fix rewrites the entry as `@article` and keeps the key and the user's own fields; the missing-DOI fix is lazy and needs an exact title key and year match. The generated `labshelf.bib` is not linted: the library rewrites it, and its preprints are "Find Published Version"'s job.
 - 2026-10-15 22:58 — S9 by a Sonnet implementer: `writing/bibliography` in VS Code lints `.bib` files on open and save (collection `labshelf-bib`), quick fixes apply only while the document is unchanged since the lint, and "Look up the DOI" asks CrossRef in `resolveCodeAction`.
 - 2026-10-15 23:00 — S10 finish: gate passes in core and vscode (core's `writing/compare` typecheck error belongs to the parallel versions session). A6 verified in a real extension host against live arXiv and CrossRef: ATLAS 1207.7214 is replaced by its Physics Letters B entry with the key kept. That run showed CrossRef's 3000-name author list, so the fix keeps the entry's own `author` when the record lists more than 50. Not verified: applying the removal fix and a successful DOI lookup in the host, a `.bib` inside a LabShelf project.
+- 2026-10-15 23:30 — S11 by a Sonnet implementer: `papers:` lists the cited library papers with `cited: true` plus the manual entries (no flag, so earlier entries stay manual); the sync runs inside `updateProjectBibliography` on the same key scan, fills missing DOIs, never changes a listed DOI, drops a `cited: true` entry once uncited and writes only on change. Main thread limited additions to keys with a library paper, so Typst labels and keys of the user's own `.bib` stay out.
+- 2026-10-15 23:35 — S12 by a Sonnet implementer: `planInstall` in `writing/project/install` (present by key, other key by DOI, no DOI, unsafe key, import); the network import takes a preferred cite key so installed papers keep the listed key; `labshelf install [dir]` and **Install Project Papers** in VS Code. Keys outside `[A-Za-z0-9][A-Za-z0-9_.+-]*` are refused because the key becomes a folder name.
+- 2026-10-15 23:50 — S13 finish: gate passes in core, terminal and vscode for this session's files (core failures in `import/node/canvas` and `ui/tokensCss` belong to a parallel session). A7 verified with the terminal on an empty isolated library against the live network: two papers installed under their listed keys with PDFs, a second run reports both present, `../evil` refused. Not verified: the VS Code command in a real extension host, keys with `:`.
