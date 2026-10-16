@@ -43,10 +43,10 @@ export function makeSearchable(ctx: UiContext, ids: readonly string[]): void {
   ctx.transport.post({ type: "paper.makeSearchable", ids: [...ids] });
 }
 
-/** Starts a PDF search unless one is already running for this paper. */
-export function findPdf(ctx: UiContext, id: string): void {
+/** Starts a PDF search unless one is already running for this paper; `replace` looks for a better version of its PDF. */
+export function findPdf(ctx: UiContext, id: string, replace = false): void {
   if (ctx.store.get().pdfBusy.has(id)) return;
-  ctx.transport.post({ type: "paper.findPdf", id });
+  ctx.transport.post(replace ? { type: "paper.findPdf", id, replace } : { type: "paper.findPdf", id });
 }
 
 /** Must run inside the click that asked for it: the host opens a file picker, which browsers allow only in a gesture. */

@@ -37,7 +37,7 @@ function dispatch(ctx: HostContext, pdf: PdfHandlers, m: UiToHost, options: Libr
     case "folder.rename": run(ctx, () => renameFolder(ctx, m.path, m.name)); return;
     case "folder.delete": run(ctx, () => deleteFolder(ctx, m.path)); return;
     case "paper.open": run(ctx, () => pdf.open(m.id)); return;
-    case "paper.findPdf": run(ctx, () => pdf.find(m.id)); return;
+    case "paper.findPdf": run(ctx, () => pdf.find(m.id, m.replace ?? false)); return;
     case "paper.attachPdf": pdf.attach(m.id); return;
     case "paper.openForPdf": run(ctx, () => pdf.openForPdf(m.id, m.access)); return;
     case "paper.setStatus": run(ctx, () => setStatus(ctx, m.ids, m.status)); return;

@@ -40,7 +40,7 @@ const SHAPES: Record<UiToHost["type"], Record<string, FieldCheck>> = {
   "paper.reveal": { id: isId },
   "paper.details": { id: isId },
   "paper.similar": { id: isId },
-  "paper.findPdf": { id: isId },
+  "paper.findPdf": { id: isId, replace: (v) => v === undefined || isBool(v) },
   "paper.attachPdf": { id: isId },
   "paper.openForPdf": { id: isId, access: isAccess },
   "paper.fetchMetadata": { id: isId },

@@ -4,7 +4,7 @@ import {
   trashFolder, trashPapers, updatePaperFields, writeImportedPaper, writePaperRecord, PAPERS_DIR,
 } from "@labshelf/core";
 import type {
-  BatchOutcome, FieldsBatchOutcome, ILogger, ImportedPaper, IPaperRecordIndex, MoveOutcome, MutationContext, PaperRecord, PaperRef, PaperStatus,
+  BatchOutcome, FieldsBatchOutcome, ILogger, ImportedPaper, IPaperRecordIndex, MoveOutcome, MutationContext, PaperRecord, PaperRef, PaperStatus, PdfVersion,
 } from "@labshelf/core";
 import { IndexedDbFileSystem } from "./indexedDbFileSystem";
 import { deleteRecord, listAllRecords, upsertRecord } from "./paperRecordStore";
@@ -17,8 +17,11 @@ export interface LibraryMutations {
   editTags(papers: PaperRef[], add: string[], remove: string[]): Promise<FieldsBatchOutcome>;
   /** Sets a paper's note; resolves to undefined when the paper's folder holds no paper. */
   setNote(paper: PaperRef, note: string): Promise<PaperRecord | undefined>;
-  /** Rewrites the metadata files of a paper whose PDF was just written, keeping the status on disk. */
-  recordPdfAttached(record: PaperRecord): Promise<PaperRecord>;
+  /**
+   * Rewrites the metadata files of a paper whose PDF was just written, keeping the status on disk. The PDF's version is
+   * set, or removed when unknown, and the text-layer check of any earlier file is dropped.
+   */
+  recordPdfAttached(record: PaperRecord, version?: PdfVersion): Promise<PaperRecord>;
   movePapers(papers: PaperRef[], targetDir: string): Promise<MoveOutcome>;
   trashPapers(papers: PaperRef[]): Promise<BatchOutcome>;
   createFolder(parentDir: string, name: string): Promise<string>;
@@ -58,9 +61,9 @@ export function createLibraryMutations(logger: ILogger): LibraryMutations {
       if (record) { await upsertRecord(record, record.path); }
       return record;
     },
-    async recordPdfAttached(record) {
-      const current = (await readPaperOnDisk(ctx, record.path)) ?? record;
-      const written = await writePaperRecord(ctx, { ...current, hasPdf: true }, { ownsStatus: false });
+    async recordPdfAttached(record, version) {
+      const { textLayer: _stale, ...current } = (await readPaperOnDisk(ctx, record.path)) ?? record;
+      const written = await writePaperRecord(ctx, { ...current, hasPdf: true, pdfVersion: version ?? null }, { ownsStatus: false });
       await upsertRecord(written, written.path);
       return written;
     },

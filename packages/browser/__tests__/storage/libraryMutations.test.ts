@@ -136,6 +136,40 @@ describe("recordPdfAttached", () => {
   });
 });
 
+describe("recordPdfAttached version", () => {
+  it("writes the version to the yaml and the cache, keeping status, tags and note", async () => {
+    const record = paper("a2020", "papers", { tags: ["nlp"], note: "keep me" });
+    seed(record, "title: A\nstatus: reading\ncitekey: a2020\ntags: [nlp]\nnote: keep me\n");
+
+    const written = await mutations.recordPdfAttached(record, "accepted");
+
+    expect(written).toMatchObject({ pdfVersion: "accepted", status: "reading", tags: ["nlp"], note: "keep me", hasPdf: true });
+    expect(textAt("papers/a2020/metadata.yaml")).toMatch(/pdfVersion: accepted/);
+    expect(mockCache.get("a2020")?.pdfVersion).toBe("accepted");
+  });
+
+  it("removes an existing version when the new file's version is unknown", async () => {
+    const record = paper("a2020", "papers", { pdfVersion: "preprint" });
+    seed(record, "title: A\nstatus: unread\ncitekey: a2020\npdfVersion: preprint\n");
+
+    const written = await mutations.recordPdfAttached(record);
+
+    expect(written.pdfVersion ?? null).toBeNull();
+    expect(textAt("papers/a2020/metadata.yaml")).not.toMatch(/pdfVersion/);
+  });
+
+  it("drops the text-layer check of the file it replaces", async () => {
+    const record = paper("a2020", "papers", { textLayer: { state: "missing", checkedAt: "2024-01-01T00:00:00Z" } });
+    seed(record, "title: A\nstatus: unread\ncitekey: a2020\ntextLayer:\n  state: missing\n  checkedAt: 2024-01-01T00:00:00Z\n");
+
+    const written = await mutations.recordPdfAttached(record, "published");
+
+    expect(written.textLayer).toBeUndefined();
+    expect(textAt("papers/a2020/metadata.yaml")).not.toMatch(/textLayer/);
+    expect(mockCache.get("a2020")?.textLayer).toBeUndefined();
+  });
+});
+
 describe("movePapers", () => {
   it("moves the folder on disk and re-points the cached record", async () => {
     seed(paper("a2020"), "title: A\n");

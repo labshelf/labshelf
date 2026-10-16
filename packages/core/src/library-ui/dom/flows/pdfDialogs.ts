@@ -1,8 +1,10 @@
 /**
  * Opens the dialogs around a missing PDF: opening a paper that has none, a search that came back empty, and a capture
  * that found no PDF. The first two offer to attach a file or to search (again); the capture asks whether to save the reference alone.
- * When a sign-in or a bot check stood in the way, the last two also offer to open that page.
+ * When a sign-in or a bot check stood in the way, the last two also offer to open that page. A preprint's search for
+ * its published version asks first, because the new file replaces the old one.
  */
+import { PDF_VERSION_LABEL, isPrePublication } from "../../../model/index.js";
 import { showDialog, type DialogButton } from "../../../ui/dom/index.js";
 import { findMissMessage, noPdfDialogCopy, pdfAccessLabel } from "../../pdfCopy.js";
 import type { PdfMiss } from "../../protocol/index.js";
@@ -36,6 +38,23 @@ export async function onFindMiss(ctx: UiContext, id: string, miss: PdfMiss): Pro
   if (choice === "attach") attachPdf(ctx, id);
   else if (choice === "retry") findPdf(ctx, id);
   else if (choice === "open" && access) ctx.transport.post({ type: "paper.openForPdf", id, access });
+}
+
+/** Asks before looking for the published version of a paper whose PDF is a preprint or an accepted manuscript. */
+export async function confirmFindBetterPdf(ctx: UiContext, id: string): Promise<void> {
+  const paper = ctx.store.get().papers.find((p) => p.id === id);
+  if (!paper || !isPrePublication(paper.pdfVersion)) return;
+  const marks = ctx.store.get().stats[id]?.annotations ?? 0;
+  const warning = marks
+    ? ` This paper has ${marks} highlight${marks === 1 ? "" : "s"} or note${marks === 1 ? "" : "s"}. They stay, but the new pages may not line up with them.`
+    : "";
+  const choice = await showDialog({
+    title: "Look for the published version?",
+    message: `The PDF of "${paper.title}" is the ${PDF_VERSION_LABEL[paper.pdfVersion].toLowerCase()} version. If LabShelf finds the published version, it replaces this file.${warning}`,
+    severity: marks ? "warning" : "info",
+    buttons: [{ id: "find", label: "Find and Replace", primary: true }],
+  });
+  if (choice === "find") findPdf(ctx, id, true);
 }
 
 /**

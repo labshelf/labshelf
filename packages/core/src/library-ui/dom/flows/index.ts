@@ -7,5 +7,5 @@ export { confirmRemove } from "./confirmRemove.js";
 export { pickMoveTarget } from "./pickMoveTarget.js";
 export { revealPaper } from "./revealPaper.js";
 export { confirmDeleteFolder, promptNewFolder, promptRenameFolder } from "./folderPrompts.js";
-export { askNoPdf, onFindMiss, onPdfMissing } from "./pdfDialogs.js";
+export { askNoPdf, confirmFindBetterPdf, onFindMiss, onPdfMissing } from "./pdfDialogs.js";
 export { onAddNoPdf, onAddSources, requestAddPaper } from "./addPaper.js";

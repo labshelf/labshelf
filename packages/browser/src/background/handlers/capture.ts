@@ -173,7 +173,7 @@ export async function attachFoundPdf(
 ): Promise<AttachPdfData> {
   const pdf = await findPdf(log, draft);
   if (!pdf) return { id, attached: false, miss: summarizeAttempts(draft.pdfAttempts) };
-  const { written } = await attachPdfToPaper(mutations, id, pdf.bytes);
+  const { written } = await attachPdfToPaper(mutations, id, pdf.bytes, { version: pdf.version });
   if (written) {
     scheduleSync(reason);
     broadcastChanged("attach", id);

@@ -18,7 +18,8 @@ export type UiToHost =
   | { type: "paper.reveal"; id: string }
   | { type: "paper.details"; id: string }
   | { type: "paper.similar"; id: string }
-  | { type: "paper.findPdf"; id: string }
+  /** `replace` looks only for a better version than the paper's preprint or accepted PDF, and replaces it when found. */
+  | { type: "paper.findPdf"; id: string; replace?: boolean }
   | { type: "paper.attachPdf"; id: string }
   /** Opens the page that stood in the way of the paper's PDF, and attaches the PDF once the user gets through. */
   | { type: "paper.openForPdf"; id: string; access: PdfAccess }

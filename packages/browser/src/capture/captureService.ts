@@ -3,7 +3,7 @@
 import { findInLibrary, findPaperPdf, interpretPage, normalizeTags, resolvePagePaper, withAbstract } from "@labshelf/core";
 import type {
   DetectedIds, MetadataOrigin, MetadataSource, PageFacts, PaperRecord, PdfAttempt, PdfCandidate, PdfFetchOptions,
-  ResolvedMetadata, ResolvedPdf,
+  PdfVersion, ResolvedMetadata, ResolvedPdf,
 } from "@labshelf/core";
 import { fetchInTab, fetchViaHelperTab } from "./tab";
 import { probeTab } from "./tabProbe";
@@ -30,6 +30,8 @@ export interface CaptureDraft {
   /** Started on first request; shared by the popup's PDF check and Save. */
   pdf?: Promise<ResolvedPdf | undefined>;
   pdfAttempts: PdfAttempt[];
+  /** Set to look only for a copy that outranks the paper's PDF of this version. */
+  betterThan?: PdfVersion;
 }
 
 interface SaveOptions {
@@ -106,6 +108,7 @@ export function findPdf(log: ILogger, draft: CaptureDraft): Promise<ResolvedPdf 
         input: draft.pageUrl,
         contactEmail: settings.contactEmail,
         customResolvers: settings.customResolvers,
+        betterThan: draft.betterThan,
       },
       draft.pdfAttempts,
     );
@@ -132,6 +135,7 @@ async function saveDraft(log: ILogger, mutations: LibraryMutations, draft: Captu
   const paper = await mutations.importPaper(folder, {
     metadata: { ...metadata, title: metadata.title ?? "Untitled" },
     pdf: pdf?.bytes,
+    pdfVersion: pdf?.version,
     extra: { ...(tags.length ? { tags } : {}), ...(note ? { note } : {}) },
     log: { message: "Paper captured", context: { page: draft.pageUrl, pdfSource: pdf?.source ?? null, origin: draft.origin } },
   });

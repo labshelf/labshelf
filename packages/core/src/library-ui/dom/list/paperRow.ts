@@ -1,5 +1,5 @@
 /**
- * Builds one paper row: twistie and PDF child row, type icon, title with tags, location chip and marks, creator,
+ * Builds one paper row: twistie and PDF child row, type icon, title with version and tags, location chip and marks, creator,
  * year, publication, Last read and a status badge that cycles; a right-click opens the paper menu.
  */
 import { PDF_FILE, formatAuthors } from "../../../library/index.js";
@@ -8,7 +8,7 @@ import { el, highlight } from "../../../ui/dom/index.js";
 import { escapeHtml, icon } from "../../../ui/index.js";
 import type { ListPaper } from "../../derive/index.js";
 import type { PaperStats, TextLayerJobView } from "../../protocol/index.js";
-import { lastReadHtml, marksHtml, tagChipsHtml, typeIconHtml } from "./rowCells.js";
+import { lastReadHtml, marksHtml, tagChipsHtml, typeIconHtml, versionChipHtml } from "./rowCells.js";
 
 export interface RowHandlers {
   onClick: (id: string, e: MouseEvent) => void;
@@ -34,7 +34,7 @@ export interface RowView {
 function titleCell(p: ListPaper, v: RowView): string {
   const chip = p.relFolder ? `<span class="loc-chip" title="Go to ${escapeHtml(p.relFolder)}">${highlight(p.relFolder, v.terms)}</span>` : "";
   return `<div class="col-title title-cell" title="${escapeHtml(p.title)}"><span class="title-text">${highlight(p.title, v.terms)}</span>` +
-    tagChipsHtml(p.tags ?? [], v.terms) + chip + marksHtml(v.stats, p.note) + `</div>`;
+    (p.hasPdf ? versionChipHtml(p.pdfVersion) : "") + tagChipsHtml(p.tags ?? [], v.terms) + chip + marksHtml(v.stats, p.note) + `</div>`;
 }
 
 function rowHtml(p: ListPaper, v: RowView, expanded: boolean): string {

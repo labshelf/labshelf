@@ -8,7 +8,7 @@ import { formatAnnotationsMarkdown, formatQuoteWithCitation } from "../../../rea
 import { authorQuery, keywordQuery, tagQuery } from "../../searchQueries.js";
 import type { CiteFormat, DetailTab } from "../../state/index.js";
 import {
-  attachPdf, changeTags, copyCitation, copyText, findPdf, fixableIds, hostFileAction, makeSearchable, openPaper,
+  attachPdf, changeTags, confirmFindBetterPdf, copyCitation, copyText, findPdf, fixableIds, hostFileAction, makeSearchable, openPaper,
   pickMoveTarget, revealPaper, setPaperStatus,
 } from "../flows/index.js";
 import { showPaperMenu } from "../menu/index.js";
@@ -39,6 +39,7 @@ function paperAction(pane: PaneState, a: string, el: HTMLElement): boolean {
     case "reveal": hostFileAction(ctx, "paper.reveal", id); return true;
     case "exportAnnotations": hostFileAction(ctx, "annotations.export", id); return true;
     case "findPdf": findPdf(ctx, id); return true;
+    case "findBetterPdf": void confirmFindBetterPdf(ctx, id); return true;
     case "attachPdf": attachPdf(ctx, id); return true;
     case "copyKey": copyCitation(ctx, sel, "key"); return true;
     case "copyCite": copyCitation(ctx, sel, (data["format"] as CiteFormat | undefined) ?? pane.citeFormat); return true;

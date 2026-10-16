@@ -3,6 +3,6 @@ export {
   handleCaptureInspect, handleCaptureFindPdf, handleCaptureSave, handleCaptureTab, handleScholarSave, handleCaptureAttachPdf,
 } from "./capture";
 export {
-  handleFindPdfForPaper, handleRemovePaper, handleLibraryFolders, handleLibraryLookup, handleLibraryOpen, handleListTabs,
+  handleFindBetterPdf, handleFindPdfForPaper, handleRemovePaper, handleLibraryFolders, handleLibraryLookup, handleLibraryOpen, handleListTabs,
 } from "./library";
 export { accessTabDeps, handleOpenForPdf } from "./access";

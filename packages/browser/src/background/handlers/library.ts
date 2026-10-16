@@ -1,10 +1,11 @@
-// Handles the library.folders/library.lookup/library.open, paper.findPdf/paper.remove and tabs.list runtime messages.
+// Handles the library.folders/library.lookup/library.open, paper.findPdf (with or without replace)/paper.remove and
+// tabs.list runtime messages.
 import { bx } from "../../platform";
 import type {
   AttachPdfData, FolderOption, FoldersData, LookupData, LookupItem, RuntimeMessage, TabSummary,
 } from "../../platform";
 import { getSettings } from "../../platform";
-import { draftFromRecord, safeFolder } from "../../capture/index";
+import { attachPdfToPaper, draftFromRecord, findPdf, safeFolder, summarizeAttempts } from "../../capture/index";
 import { attachFoundPdf } from "./capture";
 import { listAllRecords, buildFolderTree, pdfDirs } from "../../storage";
 import type { LibraryMutations } from "../../storage";
@@ -12,7 +13,7 @@ import { forgetPaper } from "../draftCache";
 import { broadcastChanged } from "../broadcast";
 import { hashForFolder } from "../../library-page";
 import { ref } from "./libraryRef";
-import { PAPERS_DIR, findInLibrary, type FolderTreeNode, type ILogger } from "@labshelf/core";
+import { PAPERS_DIR, findInLibrary, isPrePublication, publishedDoiOf, type FolderTreeNode, type ILogger } from "@labshelf/core";
 
 type ScheduleSync = (reason: string) => void;
 
@@ -31,6 +32,38 @@ export async function handleFindPdfForPaper(log: ILogger, mutations: LibraryMuta
   })();
   findingPdf.set(id, run);
   void run.catch(() => undefined).finally(() => { if (findingPdf.get(id) === run) findingPdf.delete(id); });
+  return run;
+}
+
+/**
+ * "Find Published Version" on a paper whose PDF is a preprint or accepted manuscript: the search learns the journal
+ * DOI when the preprint records one, keeps only copies that outrank the current file, and replaces it with the best.
+ */
+export async function handleFindBetterPdf(log: ILogger, mutations: LibraryMutations, id: string, scheduleSync: ScheduleSync): Promise<AttachPdfData> {
+  const key = `better:${id}`;
+  const inflight = findingPdf.get(key);
+  if (inflight) return inflight;
+  const run = (async (): Promise<AttachPdfData> => {
+    const record = (await listAllRecords()).find((r) => r.id === id);
+    if (!record) throw new Error("This paper is no longer in your library.");
+    if (!isPrePublication(record.pdfVersion)) throw new Error("This paper's PDF is not a preprint.");
+    const draft = await draftFromRecord(log, record);
+    const doi = await publishedDoiOf(
+      { logger: log, contactEmail: (await getSettings()).contactEmail },
+      { arxivId: draft.ids.arxivId, doi: draft.ids.doi ?? draft.metadata.doi },
+    );
+    if (doi) draft.ids = { ...draft.ids, doi };
+    draft.betterThan = record.pdfVersion;
+    const pdf = await findPdf(log, draft);
+    if (!pdf) return { id, attached: false, miss: summarizeAttempts(draft.pdfAttempts) };
+    await attachPdfToPaper(mutations, id, pdf.bytes, { version: pdf.version, replace: true });
+    void log.log("INFO", "library", "PDF replaced by a better version", { id, from: record.pdfVersion, to: pdf.version ?? null, url: pdf.url, publishedDoi: doi ?? null });
+    scheduleSync("paper.findBetterPdf");
+    broadcastChanged("attach", id);
+    return { id, attached: true, replaced: true, source: pdf.source };
+  })();
+  findingPdf.set(key, run);
+  void run.catch(() => undefined).finally(() => { if (findingPdf.get(key) === run) findingPdf.delete(key); });
   return run;
 }
 

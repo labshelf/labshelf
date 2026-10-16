@@ -51,3 +51,15 @@ describe("parseUiMessage", () => {
     for (const m of bad) expect(parseUiMessage(m)).toBeNull();
   });
 });
+
+describe("paper.findPdf replace flag", () => {
+  it("accepts true, false and absent", () => {
+    for (const m of [{ type: "paper.findPdf", id: "p1" }, { type: "paper.findPdf", id: "p1", replace: true }, { type: "paper.findPdf", id: "p1", replace: false }]) {
+      expect(parseUiMessage(m)).toEqual(m);
+    }
+  });
+
+  it("rejects a non-boolean", () => {
+    expect(parseUiMessage({ type: "paper.findPdf", id: "p1", replace: "yes" })).toBeNull();
+  });
+});

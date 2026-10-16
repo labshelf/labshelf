@@ -13,7 +13,8 @@ const MAX_PDF_BYTES = 120 * 1024 * 1024;
 
 export interface PdfHandlers {
   open(id: string): Promise<void>;
-  find(id: string): Promise<void>;
+  /** `replace` looks for a better version of the paper's preprint or accepted PDF and replaces it. */
+  find(id: string, replace: boolean): Promise<void>;
   /** Opens the file picker synchronously, so it must be called inside the user's click. */
   attach(id: string): void;
   /** Opens the sign-in or bot-check page in a tab the background watches for the PDF. */
@@ -33,7 +34,13 @@ async function ingestLocalPdf(ctx: HostContext, id: string, file: File): Promise
   ctx.notice("ok", "PDF attached");
 }
 
-async function reportFind(ctx: HostContext, id: string, result: AttachPdfData): Promise<void> {
+async function reportFind(ctx: HostContext, id: string, result: AttachPdfData, replace: boolean): Promise<void> {
+  if (replace) {
+    if (result.attached) await ctx.snapshots.refresh();
+    if (result.attached) ctx.notice("ok", `PDF replaced with a better version (via ${pdfSourceLabel(result.source)})`);
+    else ctx.notice("info", "No published version found. The PDF you have stays.");
+    return;
+  }
   if (result.attached || result.alreadyHadPdf) {
     await ctx.snapshots.refresh();
     if (result.attached) ctx.notice("ok", `PDF attached (via ${pdfSourceLabel(result.source)})`);
@@ -56,20 +63,20 @@ export function createPdfHandlers(ctx: HostContext): PdfHandlers {
       if (!bytes || !isPdfBytes(bytes)) { ctx.endpoint.post({ type: "pdf.missing", id }); return; }
       await openReader(paper.id);
     },
-    async find(id) {
+    async find(id, replace) {
       if (searching.has(id) || ctx.papers([id]).length === 0) return;
       searching.add(id);
       ctx.endpoint.post({ type: "pdf.busy", id, busy: true });
-      ctx.endpoint.post({ type: "progress", key: `find:${id}`, text: "Looking for the PDF…" });
+      ctx.endpoint.post({ type: "progress", key: `find:${id}`, text: replace ? "Looking for the published version…" : "Looking for the PDF…" });
       let result: AttachPdfData;
       try {
-        result = await sendRuntime<AttachPdfData>({ type: "paper.findPdf", id });
+        result = await sendRuntime<AttachPdfData>(replace ? { type: "paper.findPdf", id, replace } : { type: "paper.findPdf", id });
       } finally {
         searching.delete(id);
         ctx.endpoint.post({ type: "progress", key: `find:${id}`, text: null });
         ctx.endpoint.post({ type: "pdf.busy", id, busy: false });
       }
-      await reportFind(ctx, id, result);
+      await reportFind(ctx, id, result, replace);
     },
     attach(id) {
       const input = document.createElement("input");
