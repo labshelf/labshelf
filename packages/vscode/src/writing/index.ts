@@ -6,6 +6,5 @@ export { registerProjectItemCommands } from "./projectItemCommands.js";
 export { mainPathIn, owningProject } from "./mainDocument.js";
 export { WritingProjects } from "./session/index.js";
 export type { WritingHost, WritingSession } from "./session/index.js";
-export { WritingTreeProvider, projectTreeItem } from "./projectsTreeProvider.js";
 export { ProjectReadingLists, registerReadingListCommands } from "./readingList/index.js";
 export { ProjectBacklinkIndex } from "./backlinks/index.js";

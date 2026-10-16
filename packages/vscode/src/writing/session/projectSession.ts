@@ -29,6 +29,9 @@ export interface ProjectSessionDeps {
 export class ProjectSession implements vscode.Disposable {
   private openFolder: string | undefined;
   private readonly subscriptions: vscode.Disposable[];
+  private readonly changeEmitter = new vscode.EventEmitter<ReadyProject | undefined>();
+  /** Fires with the project when one opens or is restored, and with `undefined` when it closes. */
+  readonly onDidChange = this.changeEmitter.event;
 
   constructor(private readonly deps: ProjectSessionDeps) {
     this.subscriptions = [
@@ -77,6 +80,7 @@ export class ProjectSession implements vscode.Disposable {
 
   dispose(): void {
     this.subscriptions.forEach((subscription) => subscription.dispose());
+    this.changeEmitter.dispose();
   }
 
   private projectTabs(folder: string): vscode.Tab[] {
@@ -100,12 +104,14 @@ export class ProjectSession implements vscode.Disposable {
     this.openFolder = folder;
     void vscode.commands.executeCommand("setContext", PROJECT_OPEN_KEY, true);
     this.updateInProject();
+    this.changeEmitter.fire(this.project);
   }
 
   private markClosed(): void {
     this.openFolder = undefined;
     void vscode.commands.executeCommand("setContext", PROJECT_OPEN_KEY, false);
     this.updateInProject();
+    this.changeEmitter.fire(undefined);
   }
 
   private updateInProject(): void {

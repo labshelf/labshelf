@@ -262,8 +262,35 @@
         "icon": "$(arrow-left)"
       },
       {
+        "command": "labshelf.writing.newFile",
+        "title": "New File…",
+        "category": "LabShelf",
+        "icon": "$(new-file)"
+      },
+      {
+        "command": "labshelf.writing.newFolder",
+        "title": "New Folder…",
+        "category": "LabShelf",
+        "icon": "$(new-folder)"
+      },
+      {
+        "command": "labshelf.writing.renameFile",
+        "title": "Rename…",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.deleteFile",
+        "title": "Delete",
+        "category": "LabShelf"
+      },
+      {
         "command": "labshelf.writing.reveal",
         "title": "Research: Reveal Project Folder",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.revealOutline",
+        "title": "Research: Go to Heading",
         "category": "LabShelf"
       },
       {
@@ -331,12 +358,6 @@
       {
         "command": "labshelf.writing.addToReadingList",
         "title": "Add Paper to Reading List…",
-        "category": "LabShelf",
-        "icon": "$(add)"
-      },
-      {
-        "command": "labshelf.writing.removeFromReadingList",
-        "title": "Remove from Reading List",
         "category": "LabShelf"
       }
     ],
@@ -358,8 +379,28 @@
         },
         {
           "id": "labshelf.writing",
-          "name": "Writing",
-          "type": "tree"
+          "name": "Projects",
+          "type": "tree",
+          "when": "!labshelf.writing.projectOpen"
+        },
+        {
+          "id": "labshelf.writing.files",
+          "name": "Files",
+          "type": "tree",
+          "when": "labshelf.writing.projectOpen"
+        },
+        {
+          "id": "labshelf.writing.outline",
+          "name": "Outline",
+          "type": "tree",
+          "when": "labshelf.writing.projectOpen"
+        },
+        {
+          "id": "labshelf.writing.figures",
+          "name": "Figures",
+          "type": "tree",
+          "when": "labshelf.writing.projectOpen && labshelf.writing.hasFigures",
+          "visibility": "collapsed"
         },
         {
           "id": "labshelf.settings",
@@ -406,8 +447,18 @@
       "view/title": [
         {
           "command": "labshelf.writing.closeProject",
-          "when": "view == labshelf.writing && labshelf.writing.projectOpen",
+          "when": "view == labshelf.writing.files",
           "group": "navigation@0"
+        },
+        {
+          "command": "labshelf.writing.newFile",
+          "when": "view == labshelf.writing.files",
+          "group": "navigation@1"
+        },
+        {
+          "command": "labshelf.writing.newFolder",
+          "when": "view == labshelf.writing.files",
+          "group": "navigation@2"
         },
         {
           "command": "labshelf.addPaper",
@@ -508,31 +559,45 @@
         },
         {
           "command": "labshelf.writing.regenerateFigure",
-          "when": "view == labshelf.writing && viewItem == labshelfFigureStale",
+          "when": "view == labshelf.writing.figures && viewItem == labshelfFigureStale",
           "group": "inline@1"
         },
         {
           "command": "labshelf.writing.regenerateFigure",
-          "when": "view == labshelf.writing && viewItem =~ /^labshelfFigure/",
+          "when": "view == labshelf.writing.figures && viewItem =~ /^labshelfFigure/",
           "group": "1_figure@1"
         },
         {
           "command": "labshelf.writing.addToReadingList",
-          "when": "view == labshelf.writing && viewItem == labshelfReadingList",
-          "group": "inline@1"
-        },
-        {
-          "command": "labshelf.writing.addToReadingList",
-          "when": "view == labshelf.writing && viewItem =~ /^labshelfProject(External)?$|^labshelfReadingList$/",
+          "when": "view == labshelf.writing && viewItem =~ /^labshelfProject(External)?$/",
           "group": "3_reading@1"
         },
         {
-          "command": "labshelf.writing.removeFromReadingList",
-          "when": "view == labshelf.writing && viewItem == labshelfReadingPaperAdded",
-          "group": "2_remove@1"
+          "command": "labshelf.writing.newFile",
+          "when": "view == labshelf.writing.files && viewItem == labshelfProjectFolder",
+          "group": "1_create@1"
+        },
+        {
+          "command": "labshelf.writing.newFolder",
+          "when": "view == labshelf.writing.files && viewItem == labshelfProjectFolder",
+          "group": "1_create@2"
+        },
+        {
+          "command": "labshelf.writing.renameFile",
+          "when": "view == labshelf.writing.files && viewItem =~ /^labshelfProject(Folder|File)$/",
+          "group": "2_modify@1"
+        },
+        {
+          "command": "labshelf.writing.deleteFile",
+          "when": "view == labshelf.writing.files && viewItem =~ /^labshelfProject(Folder|File)$/",
+          "group": "2_modify@2"
         }
       ],
       "commandPalette": [
+        {
+          "command": "labshelf.writing.revealOutline",
+          "when": "false"
+        },
         {
           "command": "labshelf.writing.showInPreview",
           "when": "editorLangId == latex"
@@ -574,6 +639,22 @@
           "when": "labshelf.writing.projectOpen"
         },
         {
+          "command": "labshelf.writing.newFile",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.newFolder",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.renameFile",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.deleteFile",
+          "when": "false"
+        },
+        {
           "command": "labshelf.writing.reveal",
           "when": "false"
         },
@@ -599,10 +680,6 @@
         },
         {
           "command": "labshelf.writing.addToReadingList",
-          "when": "false"
-        },
-        {
-          "command": "labshelf.writing.removeFromReadingList",
           "when": "false"
         }
       ],

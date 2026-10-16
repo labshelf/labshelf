@@ -1,25 +1,8 @@
-// Tests how ready, broken, library and external projects appear as Writing view rows.
+// Tests how ready, broken, library and external projects appear as Projects view rows.
 import * as vscode from "vscode";
 
-import { WritingTreeProvider, projectTreeItem } from "../../src/writing";
-import type { FigureState } from "@labshelf/core";
-import type { FigureNode } from "../../src/writing/figures";
-import { fakeProjects, readyEntry } from "../support/writingFixtures";
-
-const NO_READING_LIST = { of: async () => ({ entries: [], neverOpened: 0 }), onDidChange: new vscode.EventEmitter<void>().event };
-const NO_FIGURES = { children: async () => [] as FigureNode[], onDidChange: new vscode.EventEmitter<void>().event };
-
-function projectWithFigures(): ReturnType<typeof readyEntry> {
-  return readyEntry("/lib/projects/paper", {
-    settings: { id: "paper", format: "latex", figures: { "fig/ablation.pdf": { run: "python plot_ablation.py", inputs: ["plot_ablation.py"] } } },
-  });
-}
-
-function figureNode(state: FigureState): FigureNode {
-  const project = projectWithFigures();
-  if (project.kind !== "ready") { throw new Error("unreachable"); }
-  return { kind: "figure", project, path: "fig/ablation.pdf", recipe: { run: "python plot_ablation.py", inputs: ["plot_ablation.py"] }, state };
-}
+import { WritingTreeProvider, projectTreeItem } from "../../../src/writing/tree";
+import { fakeProjects, readyEntry } from "../../support/writingFixtures";
 
 describe("projectTreeItem", () => {
   it("shows a library project by id with its main file, opened on click", () => {
@@ -52,8 +35,8 @@ describe("projectTreeItem", () => {
     expect(item.command).toBeUndefined();
   });
 
-  it("makes a ready project collapsible for its reading list and a broken one not", () => {
-    expect(projectTreeItem(readyEntry("/lib/projects/x")).collapsibleState).toBe(vscode.TreeItemCollapsibleState.Collapsed);
+  it("shows ready and broken projects as rows without children", () => {
+    expect(projectTreeItem(readyEntry("/lib/projects/x")).collapsibleState).toBe(vscode.TreeItemCollapsibleState.None);
     const broken = { kind: "broken" as const, folder: "/x", location: "library" as const, reason: "bad" };
     expect(projectTreeItem(broken).collapsibleState).toBe(vscode.TreeItemCollapsibleState.None);
   });
@@ -65,71 +48,19 @@ describe("projectTreeItem", () => {
 });
 
 describe("WritingTreeProvider", () => {
-  it("lists the store's projects as roots and only the reading list below a project without figures", async () => {
+  it("lists the store's projects as roots with nothing below them", () => {
     const entries = [readyEntry("/lib/projects/a"), readyEntry("/code/b", { location: "external" })];
-    const provider = new WritingTreeProvider({ ...fakeProjects(entries), onDidChange: new vscode.EventEmitter<void>().event } as never, NO_FIGURES, NO_READING_LIST);
+    const provider = new WritingTreeProvider({ ...fakeProjects(entries), onDidChange: new vscode.EventEmitter<void>().event } as never);
     expect(provider.getChildren()).toEqual(entries);
-    expect(await provider.getChildren(entries[0])).toEqual([{ kind: "readingList", project: entries[0], list: { entries: [], neverOpened: 0 } }]);
+    expect(provider.getChildren(entries[0])).toEqual([]);
   });
 
   it("refreshes the tree when the store changes", () => {
     const emitter = new vscode.EventEmitter<void>();
     const projects = { ...fakeProjects(), onDidChange: emitter.event };
-    const provider = new WritingTreeProvider(projects as never, NO_FIGURES, NO_READING_LIST);
+    const provider = new WritingTreeProvider(projects as never);
     const refreshed = jest.fn();
     provider.onDidChangeTreeData(refreshed);
-    emitter.fire();
-    expect(refreshed).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe("figure rows", () => {
-  const provider = (children: FigureNode[]): WritingTreeProvider => new WritingTreeProvider(
-    { ...fakeProjects(), onDidChange: new vscode.EventEmitter<void>().event } as never,
-    { children: async () => children, onDidChange: new vscode.EventEmitter<void>().event },
-    NO_READING_LIST,
-  );
-
-  it("lists the figures of a ready project below it, then its reading list", async () => {
-    const node = figureNode({ status: "fresh", missingInputs: [] });
-    expect(await provider([node]).getChildren(node.project)).toEqual([node, expect.objectContaining({ kind: "readingList" })]);
-  });
-
-  it("has no children below a broken project or a figure", async () => {
-    const node = figureNode({ status: "fresh", missingInputs: [] });
-    const broken = { kind: "broken" as const, folder: "/x", location: "library" as const, reason: "bad" };
-    expect(await provider([node]).getChildren(broken)).toEqual([]);
-    expect(await provider([node]).getChildren(node)).toEqual([]);
-  });
-
-  it("shows a stale figure with the newer inputs and the command, opened on click", () => {
-    const item = provider([]).getTreeItem(figureNode({ status: "stale", newerInputs: ["plot_ablation.py"], missingInputs: [] }));
-    expect(item.label).toBe("fig/ablation.pdf");
-    expect(item.description).toBe("stale");
-    expect(item.contextValue).toBe("labshelfFigureStale");
-    expect(item.tooltip).toBe("fig/ablation.pdf\nStale: newer inputs\n  plot_ablation.py\nCommand: python plot_ablation.py");
-    expect(item.command).toMatchObject({ command: "vscode.open" });
-  });
-
-  it("shows a missing figure with the missing marker and nothing to open", () => {
-    const item = provider([]).getTreeItem(figureNode({ status: "missing", missingInputs: ["gone.py"] }));
-    expect(item.description).toBe("missing");
-    expect(item.contextValue).toBe("labshelfFigureStale");
-    expect(item.tooltip).toContain("Inputs not found\n  gone.py");
-    expect(item.command).toBeUndefined();
-  });
-
-  it("shows a fresh figure with no description and its own context value", () => {
-    const item = provider([]).getTreeItem(figureNode({ status: "fresh", missingInputs: [] }));
-    expect(item.description).toBeUndefined();
-    expect(item.contextValue).toBe("labshelfFigure");
-  });
-
-  it("refreshes the tree when the figures change", () => {
-    const emitter = new vscode.EventEmitter<void>();
-    const tree = new WritingTreeProvider({ ...fakeProjects(), onDidChange: new vscode.EventEmitter<void>().event } as never, { children: async () => [], onDidChange: emitter.event }, NO_READING_LIST);
-    const refreshed = jest.fn();
-    tree.onDidChangeTreeData(refreshed);
     emitter.fire();
     expect(refreshed).toHaveBeenCalledTimes(1);
   });

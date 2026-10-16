@@ -1,4 +1,4 @@
-// Tests the project session: opening and closing a project as a unit, its context keys and its restore after reload.
+// Tests the project session: opening and closing a project as a unit, its context keys, its change event and its restore after reload.
 import * as vscode from "vscode";
 
 import type { ProjectEntry } from "@labshelf/core";
@@ -180,5 +180,28 @@ describe("inProject key", () => {
     expect(contextKey("labshelf.writing.inProject")).toBe(false);
     openInEditor("/code/a/sub/main.tex");
     expect(contextKey("labshelf.writing.inProject")).toBe(false);
+  });
+});
+
+describe("onDidChange", () => {
+  it("fires with the project after open, on restore and with undefined after a successful close", async () => {
+    const state = memento();
+    const { session } = setup([a, b], state);
+    const seen: (string | undefined)[] = [];
+    session.onDidChange((project) => seen.push(project?.folder));
+    await session.open(a);
+    tabGroups.all = [{ tabs: [tab("/code/a/main.tex")] }];
+    tabGroups.close.mockResolvedValueOnce(false);
+    await session.close();
+    tabGroups.all = [];
+    await session.close();
+    expect(seen).toEqual(["/code/a", undefined]);
+
+    await session.open(b);
+    const restored = setup([a, b], state);
+    const restoredSeen: (string | undefined)[] = [];
+    restored.session.onDidChange((project) => restoredSeen.push(project?.folder));
+    restored.changed.fire();
+    expect(restoredSeen).toEqual(["/code/b"]);
   });
 });
