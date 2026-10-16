@@ -21,6 +21,10 @@ const isLine = (v: unknown): boolean => typeof v === "number" && Number.isIntege
 /** A "/"-separated path below a project folder: no leading "/", no empty, "." or ".." segment and no backslash. */
 const isProjectPath = (v: unknown): boolean =>
   typeof v === "string" && !v.includes("\\") && v.split("/").every((s) => s !== "" && s !== "." && s !== "..");
+const isWebUrl = (v: unknown): boolean => typeof v === "string" && /^https?:\/\//i.test(v) && URL.canParse(v);
+// The page a host opens in a browser tab: only a web address, never a script or extension URL.
+const isAccess = (v: unknown): boolean =>
+  !!v && typeof v === "object" && ((v as Raw)["kind"] === "login" || (v as Raw)["kind"] === "bot") && isWebUrl((v as Raw)["url"]);
 
 /** A "/"-separated library path: "papers" or below it, with no empty, "." or ".." segment and no backslash. */
 export function isLibraryPath(v: unknown): v is string {
@@ -41,8 +45,10 @@ const SHAPES: Record<UiToHost["type"], Record<string, FieldCheck>> = {
   "paper.reveal": { id: isId },
   "paper.details": { id: isId },
   "paper.similar": { id: isId },
-  "paper.findPdf": { id: isId },
+  "paper.findPdf": { id: isId, replace: (v) => v === undefined || isBool(v) },
   "paper.attachPdf": { id: isId },
+  "paper.openForPdf": { id: isId, access: isAccess },
+  "paper.askAuthor": { id: isId },
   "paper.fetchMetadata": { id: isId },
   "paper.makeSearchable": { ids: isIds },
   "paper.setStatus": { ids: isIds, status: isStatus },
@@ -51,7 +57,7 @@ const SHAPES: Record<UiToHost["type"], Record<string, FieldCheck>> = {
   "paper.move": { ids: isIds, target: isLibraryPath },
   "paper.remove": { ids: isIds },
   "paper.add": { folder: isLibraryPath },
-  "paper.addFrom": { folder: isLibraryPath, sourceId: isId, ifNoPdf: (v) => v === "ask" || v === "save", retryPdf: isBool },
+  "paper.addFrom": { folder: isLibraryPath, sourceId: isId, ifNoPdf: (v) => v === "ask" || v === "save" || v === "open" || v === "author", retryPdf: isBool },
   "annotations.export": { id: isId },
   "project.openSource": { project: isId, file: isProjectPath, line: isLine },
   "clipboard.write": { text: isText, label: (v) => v === undefined || isText(v) },

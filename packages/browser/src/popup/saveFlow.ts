@@ -1,49 +1,62 @@
 // Runs the capture, save and undo flow: inspecting the current tab, the shared "No PDF found" dialog, saving the
 // draft, attaching a PDF to an already-saved copy, and undoing a save.
-import { $, askNoPdf } from "@labshelf/core/dom";
+import { $, askNoPdf, type NoPdfChoice } from "@labshelf/core/dom";
 import { errorMessage, pdfSourceLabel, type IfNoPdf, type PdfMiss } from "@labshelf/core";
 
-import { sendRuntime, type AttachPdfData, type DraftView, type LibraryRef, type PdfStatusData, type SaveOutcome } from "../platform";
+import {
+  sendRuntime, type AttachPdfData, type DraftView, type LibraryRef, type PdfOfferView, type PdfStatusData, type SaveOutcome,
+} from "../platform";
 import { folderName, parseTags } from "./format";
 import { renderPaper, renderPdf, showError, showLibraryCopy, showStatus } from "./render";
 import { popupState, setState } from "./state";
+import { attachOffered, offerFits, settleOffer, showOffer } from "./offerCard";
 
-// A paper already saved without its PDF: the background searches this very page
-// for one, and the popup offers to attach it when found.
+// A paper already saved without its PDF: a PDF this tab showed or the user downloaded for it is attached in one click;
+// otherwise the background searches this very page for one, and the popup offers to attach it when found.
 async function showExisting(existing: LibraryRef): Promise<void> {
   showLibraryCopy(existing);
   if (existing.hasPdf) return;
+  const found = popupState.offer?.hasBytes ? true : await pagePdfFound();
+  if (found === undefined) return;
+  showStatus(found
+    ? { glyph: "warning", tone: "warn", title: "In your library — without its PDF", detail: folderName(existing.folder), open: "Open in library", attach: "Attach PDF" }
+    : {
+      glyph: "warning", tone: "warn", title: "In your library — without its PDF",
+      detail: "No PDF on this page either — attach a file from the library.", open: "Open in library",
+    });
+  $("open").dataset["folder"] = existing.folder;
+  $("open").dataset["paper"] = existing.id;
+}
+
+/** @returns whether the page offers a PDF, or undefined when the search failed */
+async function pagePdfFound(): Promise<boolean | undefined> {
   renderPdf("searching");
   try {
     popupState.pdfStatus = await sendRuntime<PdfStatusData>({ type: "capture.findPdf", tabId: popupState.tabId });
   } catch {
     $("pdf").hidden = true;
-    return;
+    return undefined;
   }
-  if (popupState.pdfStatus.found) {
-    renderPdf(popupState.pdfStatus);
-    showStatus({
-      glyph: "warning", tone: "warn", title: "In your library — without its PDF",
-      detail: folderName(existing.folder), open: "Open in library", attach: "Attach PDF",
-    });
-  } else {
-    $("pdf").hidden = true;
-    showStatus({
-      glyph: "warning", tone: "warn", title: "In your library — without its PDF",
-      detail: "No PDF on this page either — attach a file from the library.", open: "Open in library",
-    });
-  }
-  $("open").dataset["folder"] = existing.folder;
-  $("open").dataset["paper"] = existing.id;
+  if (popupState.pdfStatus.found) renderPdf(popupState.pdfStatus);
+  else $("pdf").hidden = true;
+  return popupState.pdfStatus.found;
 }
 
-export async function inspect(): Promise<void> {
+export async function inspect(offerReady: Promise<PdfOfferView | null>): Promise<void> {
   const draft = await sendRuntime<DraftView>({ type: "capture.inspect", tabId: popupState.tabId });
-  renderPaper(draft);
+  const offer = (await offerReady) ?? undefined;
   if (draft.existing) {
+    // An offer for this very paper joins the library copy's card rather than adding a second one.
+    if (offer?.paperId === draft.existing.id) popupState.offer = offer;
+    renderPaper(draft);
     await showExisting(draft.existing);
     return;
   }
+  if (offerFits(offer, draft.isPaper)) {
+    showOffer(offer);
+    return;
+  }
+  renderPaper(draft);
   if (!draft.isPaper) {
     $("meta").textContent = "";
     setState("empty");
@@ -66,7 +79,7 @@ export async function inspect(): Promise<void> {
 
 // The shared "No PDF found" dialog. Returns the chosen action, or undefined on
 // Cancel (nothing is written). The modal-open class guards the popup height.
-async function confirmNoPdf(title: string, miss: PdfMiss): Promise<"save" | "retry" | undefined> {
+async function confirmNoPdf(title: string, miss: PdfMiss): Promise<NoPdfChoice | undefined> {
   document.body.classList.add("modal-open");
   try {
     return await askNoPdf(title, miss);
@@ -84,7 +97,8 @@ async function confirmThen(title: string, miss: PdfMiss, from: string | undefine
     renderPdf("searching");
     return save("ask", true);
   }
-  return save("save");
+  // "open" and "author" save too; the background then opens the page in the way or the request email, which closes the popup.
+  return save(choice);
 }
 
 export async function save(ifNoPdf: IfNoPdf = "ask", retryPdf = false): Promise<void> {
@@ -136,16 +150,21 @@ export async function save(ifNoPdf: IfNoPdf = "ask", retryPdf = false): Promise<
   }
 }
 
-// Popup "Attach PDF" on a library copy that had none: the background attaches
-// the PDF it found for this page to that copy.
+// Popup "Attach PDF" on a library copy that had none: the background attaches the offered PDF, or the PDF it found
+// for this page, to that copy.
 export async function attachPdf(): Promise<void> {
   const btn = $<HTMLButtonElement>("attachPdf");
   btn.disabled = true;
+  const offer = popupState.offer?.hasBytes ? popupState.offer : undefined;
   try {
-    const r = await sendRuntime<AttachPdfData>({ type: "capture.attachPdf", tabId: popupState.tabId });
+    const r = offer ? await attachOffered(offer) : await sendRuntime<AttachPdfData>({ type: "capture.attachPdf", tabId: popupState.tabId });
     $("pdf").hidden = true;
+    $("dismissOffer").hidden = true;
+    // The paper has its PDF, so a leftover offer only keeps the badge; the next pdfOffer.get drops it anyway.
+    if (!offer && r.attached) await settleOffer().catch(() => undefined);
     if (r.attached) {
-      showStatus({ glyph: "check", tone: "ok", title: "PDF attached", detail: `via ${pdfSourceLabel(r.source)} · syncs shortly`, open: "Open in library" });
+      const detail = r.source ? `via ${pdfSourceLabel(r.source)} · syncs shortly` : "Syncs shortly";
+      showStatus({ glyph: "check", tone: "ok", title: "PDF attached", detail, open: "Open in library" });
     } else if (r.alreadyHadPdf) {
       showStatus({ glyph: "check", tone: "ok", title: "Already has its PDF", detail: "", open: "Open in library" });
     } else {

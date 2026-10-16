@@ -8,9 +8,10 @@ import type { LibraryMutations } from "../storage";
 import type { createSyncMessages } from "./syncMessages";
 import {
   handleCaptureAttachPdf, handleCaptureFindPdf, handleCaptureInspect, handleCaptureSave, handleCaptureTab,
-  handleFindPdfForPaper, handleLibraryFolders, handleLibraryLookup, handleLibraryOpen, handleListTabs,
-  handleRemovePaper, handleScholarSave,
+  handleFindBetterPdf, handleFindPdfForPaper, handleLibraryFolders, handleLibraryLookup, handleLibraryOpen, handleListTabs,
+  handleAskAuthor, handleOpenForPdf, handleRemovePaper, handleScholarSave, accessTabDeps,
 } from "./handlers/index";
+import { handlePdfOfferMessage, isPdfOfferMessage } from "./pdfOffer/index";
 
 // Web pages reach the background only through the Scholar content script,
 // and only for what its buttons need; everything else is for extension pages.
@@ -29,7 +30,7 @@ export interface MessageRouterDeps {
 }
 
 export function registerMessageRouter(deps: MessageRouterDeps): void {
-  bx.runtime.onMessage.addListener(async (message: unknown, sender: { url?: string }) => {
+  bx.runtime.onMessage.addListener(async (message: unknown, sender: { url?: string; tab?: { id?: number } }) => {
     const msg = message as RuntimeMessage;
     // The background's own library.changed broadcast is not a request; if the
     // runtime delivers it back here, ignore it before the exhaustive switch.
@@ -39,7 +40,7 @@ export function registerMessageRouter(deps: MessageRouterDeps): void {
       return { ok: false, error: "Not allowed from this page" } satisfies RuntimeResponse;
     }
     try {
-      const data = await handle(msg, deps);
+      const data = await handle(msg, deps, sender.tab?.id);
       return { ok: true, data } satisfies RuntimeResponse;
     } catch (err: unknown) {
       const error = errorMessage(err);
@@ -49,7 +50,8 @@ export function registerMessageRouter(deps: MessageRouterDeps): void {
   });
 }
 
-async function handle(msg: RuntimeMessage, { log, mutations, syncMessages, scheduleSync }: MessageRouterDeps): Promise<unknown> {
+async function handle(msg: RuntimeMessage, { log, mutations, syncMessages, scheduleSync }: MessageRouterDeps, senderTabId: number | undefined): Promise<unknown> {
+  if (isPdfOfferMessage(msg)) return handlePdfOfferMessage({ log, mutations, scheduleSync }, msg);
   switch (msg.type) {
     case "auth.status":
       return syncMessages.authStatus();
@@ -73,11 +75,17 @@ async function handle(msg: RuntimeMessage, { log, mutations, syncMessages, sched
     case "capture.tab":
       return handleCaptureTab(log, mutations, msg, scheduleSync);
     case "scholar.save":
-      return handleScholarSave(log, mutations, msg, scheduleSync);
+      return handleScholarSave(log, mutations, msg, scheduleSync, senderTabId);
     case "capture.attachPdf":
       return handleCaptureAttachPdf(log, mutations, msg, scheduleSync);
     case "paper.findPdf":
-      return handleFindPdfForPaper(log, mutations, msg.id, scheduleSync);
+      return msg.replace
+        ? handleFindBetterPdf(log, mutations, msg.id, scheduleSync)
+        : handleFindPdfForPaper(log, mutations, msg.id, scheduleSync);
+    case "paper.openForPdf":
+      return handleOpenForPdf(accessTabDeps(log, mutations, scheduleSync), msg);
+    case "paper.askAuthor":
+      return handleAskAuthor({ log, mutations, scheduleSync }, msg.id, senderTabId);
     case "paper.remove":
       return handleRemovePaper(msg.id, mutations, log, scheduleSync);
     case "library.folders":

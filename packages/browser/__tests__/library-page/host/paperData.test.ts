@@ -45,10 +45,14 @@ function start() {
   const { ui, host } = createLoopbackTransport();
   const received: HostToUi[] = [];
   ui.subscribe((m) => received.push(m));
+  const listenersBefore = mockApi.runtime.onMessage.addListener.mock.calls.length;
   attachLibraryHost(host, { log: { log: async () => undefined, error: async () => undefined } });
   const send = async (m: UiToHost): Promise<void> => { ui.post(m); await flush(); };
   const last = <T extends HostToUi["type"]>(type: T) => received.filter((m): m is Extract<HostToUi, { type: T }> => m.type === type).at(-1);
-  const runtime = (): ((msg: unknown) => void) => mockApi.runtime.onMessage.addListener.mock.calls.at(-1)![0] as (msg: unknown) => void;
+  // Delivers a runtime message to every listener this host registered, as the browser does.
+  const runtime = (): ((msg: unknown) => void) => (msg) => {
+    for (const [listener] of mockApi.runtime.onMessage.addListener.mock.calls.slice(listenersBefore)) (listener as (m: unknown) => void)(msg);
+  };
   return { send, last, received, runtime };
 }
 
@@ -195,5 +199,14 @@ describe("annotation changes made in the reader", () => {
     app.runtime()({ type: "library.changed", reason: "sync" });
     await flush();
     expect(app.last("snapshot")?.snapshot.stats["smith2020"]?.annotations).toBe(1);
+  });
+
+  it("shows the notice of a change the background made on its own, such as a watched tab's PDF", async () => {
+    await seedLibrary(sidecar([]));
+    const app = start();
+    await app.send({ type: "ready" });
+    app.runtime()({ type: "library.changed", reason: "attach", paperId: "smith2020", notice: 'PDF attached to "Smith"' });
+    await flush();
+    expect(app.last("notice")).toEqual({ type: "notice", kind: "ok", text: 'PDF attached to "Smith"' });
   });
 });

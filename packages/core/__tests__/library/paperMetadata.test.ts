@@ -69,3 +69,31 @@ describe("paperRecordFromMetadata", () => {
     expect(record.authors).toEqual(["", "Noam Shazeer"]);
   });
 });
+
+describe("paperRecordFromMetadata pdfVersion", () => {
+  it.each(["preprint", "accepted", "published"])("reads %s", (pdfVersion) => {
+    expect(paperRecordFromMetadata({ pdfVersion }, location).pdfVersion).toBe(pdfVersion);
+  });
+
+  it.each([["final"], [3], [null], [""]])("ignores the invalid value %p", (pdfVersion) => {
+    expect(paperRecordFromMetadata({ pdfVersion }, location)).not.toHaveProperty("pdfVersion");
+  });
+
+  it("loads a sidecar that has no pdfVersion", () => {
+    expect(paperRecordFromMetadata({ title: "A" }, location)).not.toHaveProperty("pdfVersion");
+  });
+});
+
+describe("paperRecordFromMetadata pdfRequestedAt", () => {
+  it("reads a YYYY-MM-DD day", () => {
+    expect(paperRecordFromMetadata({ pdfRequestedAt: "2026-10-15" }, location).pdfRequestedAt).toBe("2026-10-15");
+  });
+
+  it.each([["15/10/2026"], ["2026-10-15T10:00:00Z"], ["2026-1-5"], [20261015], [null], [""], [new Date()]])("ignores the invalid value %p", (pdfRequestedAt) => {
+    expect(paperRecordFromMetadata({ pdfRequestedAt }, location)).not.toHaveProperty("pdfRequestedAt");
+  });
+
+  it("loads a sidecar that has no pdfRequestedAt", () => {
+    expect(paperRecordFromMetadata({ title: "A" }, location)).not.toHaveProperty("pdfRequestedAt");
+  });
+});

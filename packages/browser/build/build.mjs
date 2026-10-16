@@ -19,6 +19,8 @@ const ENTRIES = [
   { entry: "library-page/main.ts", out: "library-page/main.js", format: "esm" },
   // The PDF reader page: the shared reader UI from @labshelf/core/dom over an in-page host.
   { entry: "reader/index.ts", out: "reader/index.js", format: "esm" },
+  // Chrome's offscreen document, where pdf.js reads page 1 of a PDF the background matches to a paper.
+  { entry: "pdfText/offscreen.ts", out: "pdfText/offscreen.js", format: "esm", chromeOnly: true },
   // Classic script: runs in <head> before the stylesheets so the theme is set pre-paint.
   { entry: "ui/themeBoot.ts", out: "ui/themeBoot.js", format: "iife" },
   // Content scripts are classic scripts too: no module loading in page worlds.
@@ -44,7 +46,7 @@ async function buildOne(target) {
 
   const webDefines = googleCredentialDefines("web");
   await Promise.all(
-    ENTRIES.map((e) =>
+    ENTRIES.filter((e) => !e.chromeOnly || target === "chrome").map((e) =>
       esbuild({
         entryPoints: [resolve(srcRoot, e.entry)],
         outfile: resolve(outDir, e.out),

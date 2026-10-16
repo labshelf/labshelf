@@ -15,6 +15,6 @@ export async function probeTab(log: ILogger, tabId: number, tabUrl: string): Pro
   } catch (err) {
     void log.log("WARN", "capture", "probe failed, using the URL alone", { url: tabUrl, error: errorMessage(err) });
     const pageIsPdf = /\.pdf(?:[?#]|$)/i.test(tabUrl);
-    return { pageUrl: tabUrl, meta: {}, pdfLinks: [], doiLinks: [], ...(pageIsPdf ? { pageIsPdf: true } : {}) };
+    return { pageUrl: tabUrl, meta: {}, pdfLinks: [], doiLinks: [], mailtoLinks: [], authorEmails: [], ...(pageIsPdf ? { pageIsPdf: true } : {}) };
   }
 }

@@ -6,7 +6,7 @@ import { identifiersFromInput } from "../identifiers/index.js";
 import type { ResolvedMetadata } from "../metadata/index.js";
 import { resolveOnlineMetadata } from "../lookup/index.js";
 import { normalizeTitle } from "../pdf/index.js";
-import { findPaperPdf } from "../pdfFinding/index.js";
+import { findPaperPdf, type ResolvedPdf } from "../pdfFinding/index.js";
 import { NETWORK_IMPORT_MODULE, pdfFetchOptions, registryEnv, type NetworkImportEnv } from "./env.js";
 import { writeImportedPaper } from "./writeImportedPaper.js";
 
@@ -38,7 +38,8 @@ export async function importIdentifier(env: NetworkImportEnv, input: string, tar
     const pdf = await findPdfFor(env, found, input);
     const record = await writeImportedPaper(env.ctx, deps.takenIds(), targetDir, {
       metadata: { ...metadata, title: normalizeTitle(metadata.title!) },
-      pdf,
+      pdf: pdf?.bytes,
+      pdfVersion: pdf?.version,
       extra: {
         ...(identifier.type === "doi" && !metadata.doi ? { doi: identifier.value } : {}),
         ...(isArxiv && !metadata.url ? { url: `https://arxiv.org/abs/${identifier.value}` } : {}),
@@ -55,15 +56,14 @@ export async function importIdentifier(env: NetworkImportEnv, input: string, tar
 }
 
 // Books have no PDF to look for.
-async function findPdfFor(env: NetworkImportEnv, { metadata, identifier }: Found, input: string): Promise<Uint8Array | undefined> {
+async function findPdfFor(env: NetworkImportEnv, { metadata, identifier }: Found, input: string): Promise<ResolvedPdf | undefined> {
   if (identifier.type === "isbn") { return undefined; }
   const ids: DetectedIds = {
     ...(identifier.type === "doi" ? { doi: identifier.value } : {}),
     ...(identifier.type === "arxiv" ? { arxivId: identifier.value } : {}),
     ...(identifier.type === "pmid" ? { pmid: identifier.value } : {}),
   };
-  const found = await findPaperPdf(pdfFetchOptions(env), { ids, metadata, input, ...(identifier.type === "pmcid" ? { pmcid: identifier.value } : {}) });
-  return found?.bytes;
+  return findPaperPdf(pdfFetchOptions(env), { ids, metadata, input, ...(identifier.type === "pmcid" ? { pmcid: identifier.value } : {}) });
 }
 
 async function firstResolved(env: NetworkImportEnv, identifiers: DetectedIdentifier[]): Promise<Found | undefined> {

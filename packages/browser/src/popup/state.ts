@@ -1,9 +1,9 @@
-// Holds the popup's mutable session state (current tab, folders, the saved paper, PDF search result) and the
+// Holds the popup's mutable session state (current tab, folders, the saved paper, PDF search result, PDF offer) and the
 // data-state/#popup DOM toggle that drives which section of the form is visible.
 import { $ } from "@labshelf/core/dom";
 import { PAPERS_DIR, icon } from "@labshelf/core";
 
-import type { FoldersData, PdfStatusData, SavedPaperData } from "../platform";
+import type { FoldersData, PdfOfferView, PdfStatusData, SavedPaperData } from "../platform";
 
 export type PopupState = "loading" | "form" | "library" | "empty" | "saving" | "saved";
 
@@ -12,11 +12,14 @@ export const popupState: {
   folders: FoldersData;
   saved: SavedPaperData | undefined;
   pdfStatus: PdfStatusData | undefined;
+  /** A PDF this tab showed, or the latest download, that matched a paper without a PDF. */
+  offer: PdfOfferView | undefined;
 } = {
   tabId: -1,
   folders: { folders: [{ path: PAPERS_DIR, depth: 0 }], lastFolder: PAPERS_DIR },
   saved: undefined,
   pdfStatus: undefined,
+  offer: undefined,
 };
 
 export function setState(state: PopupState): void {

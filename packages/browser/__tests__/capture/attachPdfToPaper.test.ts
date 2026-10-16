@@ -58,6 +58,26 @@ describe("attachPdfToPaper", () => {
     expect(fakeFiles.has("papers/smith2020deep/metadata.yaml")).toBe(false);
   });
 
+  it("overwrites an existing PDF with replace and records the version", async () => {
+    mockRecords = [record({ pdfVersion: "preprint" })];
+    putFile("papers/smith2020deep/metadata.yaml", "title: Deep\nstatus: unread\npdfVersion: preprint\n");
+    putFile("papers/smith2020deep/paper.pdf", new Uint8Array([1, 2, 3]));
+    const result = await attachPdfToPaper(mutations, "smith2020deep", PDF, { replace: true, version: "published" });
+    expect(result.written).toBe(true);
+    expect(result.record.pdfVersion).toBe("published");
+    expect(fakeFiles.get("papers/smith2020deep/paper.pdf")?.bytes).toBe(PDF);
+    expect(textAt("papers/smith2020deep/metadata.yaml")).toMatch(/pdfVersion: published/);
+  });
+
+  it("refuses an existing PDF when only a version is given", async () => {
+    mockRecords = [record()];
+    const existing = new Uint8Array([1, 2, 3]);
+    putFile("papers/smith2020deep/paper.pdf", existing);
+    const result = await attachPdfToPaper(mutations, "smith2020deep", PDF, { version: "published" });
+    expect(result.written).toBe(false);
+    expect(fakeFiles.get("papers/smith2020deep/paper.pdf")?.bytes).toBe(existing);
+  });
+
   it("writes at the record's current path even when it moved since the id was captured", async () => {
     mockRecords = [record({ path: "papers/Thesis/smith2020deep" })];
     putFile("papers/Thesis/smith2020deep/metadata.yaml", "title: Deep\nstatus: unread\n");

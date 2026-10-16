@@ -1,4 +1,4 @@
-// Collects raw page evidence (meta values, PDF and DOI links) inside a tab via scripting.executeScript.
+// Collects raw page evidence (meta values, PDF, DOI and mailto links) inside a tab via scripting.executeScript.
 // Interpretation stays in core's interpretPage, so DOM and DOM-less paths apply identical rules.
 import type { RawPage } from "@labshelf/core";
 
@@ -9,11 +9,18 @@ import type { RawPage } from "@labshelf/core";
  */
 export function probe(): RawPage {
   const meta: Record<string, string[]> = {};
+  const authorEmails: Array<{ email: string; name?: string }> = [];
+  let lastAuthor: string | undefined;
   for (const el of Array.from(document.querySelectorAll<HTMLMetaElement>("meta[name], meta[property]"))) {
     const key = (el.getAttribute("name") ?? el.getAttribute("property") ?? "").trim().toLowerCase();
     const value = (el.content ?? "").trim();
     if (!key || !value) continue;
     (meta[key] ??= []).push(value);
+    if (key === "citation_author") lastAuthor = value;
+    else if (key === "citation_author_email") {
+      authorEmails.push(lastAuthor ? { email: value, name: lastAuthor } : { email: value });
+      lastAuthor = undefined;
+    }
   }
 
   const pdfLinks: Array<{ url: string; kind: "embed" | "alternate" | "labelled" | "href" }> = [];
@@ -48,8 +55,18 @@ export function probe(): RawPage {
     .map((a) => a.href)
     .slice(0, 20);
 
+  // Text around a mailto link: climb to an ancestor with enough words, then cut a window around the link.
+  const mailtoLinks = Array.from(document.querySelectorAll<HTMLAnchorElement>('a[href^="mailto:" i]')).slice(0, 20).map((a) => {
+    const text = (a.textContent ?? "").replace(/\s+/g, " ").trim();
+    let block: HTMLElement = a;
+    for (let i = 0; i < 4 && block.parentElement && (block.textContent ?? "").length < 280; i++) block = block.parentElement;
+    const full = (block.textContent ?? "").replace(/\s+/g, " ");
+    const at = Math.max(0, full.indexOf(text));
+    return { href: a.getAttribute("href") ?? "", text, context: full.slice(Math.max(0, at - 200), at + text.length + 80) };
+  });
+
   const pageIsPdf = document.contentType === "application/pdf";
-  const raw: RawPage = { pageUrl: location.href, meta, pdfLinks: pdfLinks.slice(0, 40), doiLinks };
+  const raw: RawPage = { pageUrl: location.href, meta, pdfLinks: pdfLinks.slice(0, 40), doiLinks, mailtoLinks, authorEmails };
   if (document.title.trim()) raw.documentTitle = document.title.trim();
   if (pageIsPdf) raw.pageIsPdf = true;
   return raw;

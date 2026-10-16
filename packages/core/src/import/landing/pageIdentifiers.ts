@@ -1,5 +1,5 @@
 /** Reads the DOI, arXiv id and PMID a page states in its meta tags, links and URL. */
-import { arxivIdFromDoi, arxivIdFromUrl, extractDoi, pmidFromUrl } from "../identifiers/index.js";
+import { arxivIdFromDoi, arxivIdFromUrl, extractDoi, normalizeArxivId, pmidFromUrl } from "../identifiers/index.js";
 import type { DetectedIds } from "../identifiers/index.js";
 import type { RawPage } from "./types.js";
 
@@ -17,8 +17,9 @@ export function identifiersOf(raw: RawPage, first: (...keys: string[]) => string
   const linkDois = [...new Set(raw.doiLinks.map((l) => extractDoi(l)).filter((d): d is string => !!d).map((d) => d.toLowerCase()))];
   const doi = metaDoi ?? extractDoi(raw.pageUrl) ?? (linkDois.length === 1 ? extractDoi(raw.doiLinks[0]) : undefined);
   if (doi) ids.doi = doi;
-  const arxivId = first("citation_arxiv_id") ?? arxivIdFromUrl(raw.pageUrl) ?? arxivIdFromDoi(doi);
-  if (arxivId) ids.arxivId = arxivId.replace(/^arxiv:/i, "").replace(/v\d+$/, "");
+  const metaArxiv = first("citation_arxiv_id");
+  const arxivId = (metaArxiv && normalizeArxivId(metaArxiv)) ?? arxivIdFromUrl(raw.pageUrl) ?? arxivIdFromDoi(doi);
+  if (arxivId) ids.arxivId = arxivId;
   const pmid = first("citation_pmid") ?? pmidFromUrl(raw.pageUrl);
   if (pmid && /^\d{6,9}$/.test(pmid)) ids.pmid = pmid;
   return ids;

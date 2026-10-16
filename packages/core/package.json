@@ -2,7 +2,8 @@
   "name": "@labshelf/core",
   "version": "0.1.0",
   "scripts": {
-    "typecheck": "tsc --noEmit -p ./",
+    "typecheck": "tsc --noEmit -p ./ && tsc --noEmit -p tools/pdf-eval",
+    "eval:pdf": "node --import ./tools/pdf-eval/loader/registerTypeScript.mjs --no-warnings tools/pdf-eval/run.ts",
     "lint": "node ../../scripts/run-eslint.mjs && pnpm run lint:runtime",
     "lint:runtime": "node ../../scripts/check-runtime-tsconfigs.mjs",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",

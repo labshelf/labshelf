@@ -37,7 +37,28 @@ The minimum versions are the floor for pdf.js 6.3.
 
 ## Capture structure
 
-Identifier detection, landing-page parsing, metadata resolution and the PDF resolver chain live in core `import/` and are shared with the other apps. `src/capture/` keeps only what needs the browser: the page probe content script, the helper tab and tab fetch (`capture/tab/`), the capture and Scholar flows, and mapping a draft to a record.
+Identifier detection, landing-page parsing, metadata resolution and the PDF finder live in core `import/` and are shared with the other apps. `src/capture/` keeps only what needs the browser: the page probe content script, the helper tab and tab fetch (`capture/tab/`), the watched sign-in tab (`capture/watch/`), the capture and Scholar flows, and mapping a draft to a record.
+
+When the PDF finder stops at a sign-in page or a bot check, the helper tab loads candidate pages in a background tab to pass what a script can pass. When the user chooses to open the page, a visible tab is opened and watched: each time a page in it finishes loading, the extension looks for a PDF and attaches it to the paper. The watch is kept in `storage.session`, so it survives the service worker sleeping, and ends after 5 minutes, when the tab closes, or when the PDF is attached. After that, publisher pages that asked for a sign-in are retried through the Library proxies listed in the options page (a prefix with `$@`, a hostname suffix or an OpenAthens redirector), top to bottom; when a proxy answers with its own sign-in page, that page is the one the dialog offers to open.
+
+The options page also lists Custom resolvers, empty and off by default. Each enabled entry is an address with `{doi}` where the paper's DOI goes. When no other source has the paper, the PDF finder opens the entries top to bottom and reads each answer like any other page: a PDF link in it is followed, and a bot check or sign-in wall goes to the helper tab and the watched tab. The extension names no site; the user supplies every address. A stored mirror toggle and address become one enabled entry when the profile loads.
+
+## PDF offers
+
+The background watches finished downloads and PDF tabs. For each new PDF address it re-fetches the bytes from the final URL with the user's cookies (extensions cannot read the downloads folder), because the address alone cannot name a paper. Core's `matchPdfToPaper` then matches it against the papers that have no PDF: first by DOI or arXiv id in the URL, then by the title on page 1.
+
+- Page 1 is read as text by pdf.js. Chrome's service worker cannot start a worker, so it asks an offscreen document (`pdfText/offscreen.html`, Chrome only and not built for Firefox); Firefox reads in place.
+- The bytes wait in their own IndexedDB database, `labshelf-pdf-staging`, outside the library file store so they never sync. They leave it when the user attaches or dismisses the offer.
+- A match marks only that tab's toolbar button with a `PDF` badge. The popup then offers "Attach to <paper>". No system notification is used, which would need the `notifications` permission.
+- Open offers and the addresses already looked at live in `storage.session`, so they survive the service worker sleeping.
+
+## Find Published Version
+
+A paper whose PDF is a preprint or accepted manuscript (`pdfVersion` in [library-format.md](../contracts/library-format.md)) shows "Find Published Version" in its menu. The finder looks up the DOI of the published record, ranks candidates so a `published` one wins, and replaces `paper.pdf` only after the user confirms. Replacing sets `pdfVersion` to the new file's version.
+
+## Ask the author
+
+A paper without a PDF offers "Ask the author" in the detail pane and in the "No PDF found" dialogs. The background reads author addresses from the article page (author e-mail meta tags and correspondence `mailto:` links), then from PubMed's "Electronic address" affiliations, and opens a `mailto:` for at most three of them. Nothing is sent by LabShelf; the user sends the email from their own mail client. With no address, the article page opens instead and nothing is recorded. Opening the email writes `pdfRequestedAt`, which the pane shows while the paper has no PDF. The options page holds the name, affiliation and language that the email is written with.
 
 ## labshelf: links
 

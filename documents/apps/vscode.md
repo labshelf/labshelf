@@ -52,7 +52,7 @@ pnpm dev:vscode                        # watches the host and the webview bundle
 ## Adding papers
 
 - **Research: Add Paper by DOI or Link…** takes a DOI, arXiv id, PMID, PMCID or article link. It runs the core network import: metadata from the registries, then the core PDF chain ([architecture.md](../architecture.md)). A paper without a free PDF is saved without one.
-- Sci-Hub is off, and the registries' contact email is the default, until a setting exists.
+- No custom resolver is configured and the registries' contact email is the default, until a setting exists.
 
 ## Extension host run
 

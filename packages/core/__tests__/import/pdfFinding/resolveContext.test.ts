@@ -22,9 +22,11 @@ describe("makeResolveContext", () => {
     expect(makeResolveContext({ doi: "10.48550/arXiv.hep-th/9711200" }, {}, undefined, [], { contactEmail: "a@b.c" })).toMatchObject({ arxivId: "hep-th/9711200" });
   });
 
-  it("includes Sci-Hub only when a mirror is passed", () => {
-    expect(makeResolveContext({}, {}, undefined, [], { contactEmail: "a@b.c" })).not.toHaveProperty("sciHubMirror");
-    expect(makeResolveContext({}, {}, undefined, [], { contactEmail: "a@b.c", sciHubMirror: "https://sci-hub.se" })).toMatchObject({ sciHubMirror: "https://sci-hub.se" });
+  it("includes custom resolvers only when some are passed", () => {
+    const customResolvers = [{ name: "A", template: "https://a.example/{doi}", enabled: true }];
+    expect(makeResolveContext({}, {}, undefined, [], { contactEmail: "a@b.c" })).not.toHaveProperty("customResolvers");
+    expect(makeResolveContext({}, {}, undefined, [], { contactEmail: "a@b.c", customResolvers: [] })).not.toHaveProperty("customResolvers");
+    expect(makeResolveContext({}, {}, undefined, [], { contactEmail: "a@b.c", customResolvers })).toMatchObject({ customResolvers });
   });
 
   it("leaves out what is unknown", () => {

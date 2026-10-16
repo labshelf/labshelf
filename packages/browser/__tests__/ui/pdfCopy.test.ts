@@ -1,7 +1,7 @@
 import { pdfLineText } from "../../src/ui/pdfCopy";
 import type { PdfMiss } from "@labshelf/core";
 
-const miss = (over: Partial<PdfMiss> = {}): PdfMiss => ({ tried: 0, sources: [], blocked: false, ...over });
+const miss = (over: Partial<PdfMiss> = {}): PdfMiss => ({ tried: 0, sources: [], blocked: false, needsLogin: false, ...over });
 
 describe("pdfLineText", () => {
   it("reads while searching, when found and when the search ends empty", () => {

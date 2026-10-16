@@ -3,11 +3,11 @@
  * Host-only actions appear only when the host has the capability.
  */
 import { PAPERS_DIR } from "../../../library/index.js";
-import { PAPER_STATUSES, STATUS_LABEL } from "../../../model/index.js";
+import { PAPER_STATUSES, STATUS_LABEL, isPrePublication } from "../../../model/index.js";
 import { showMenu, type MenuAnchor, type MenuEntry } from "../../../ui/dom/index.js";
 import { listPapersUnder, type ListPaper } from "../../derive/index.js";
 import {
-  attachPdf, confirmRemove, copyCitation, findPdf, fixableIds, hostFileAction, makeSearchable, openPaper, pickMoveTarget, setPaperStatus,
+  attachPdf, confirmFindBetterPdf, confirmRemove, copyCitation, findPdf, fixableIds, hostFileAction, makeSearchable, openPaper, pickMoveTarget, setPaperStatus,
 } from "../flows/index.js";
 import { KEY_HINT, type UiContext } from "../uiContext.js";
 import { focusTagInput } from "./tagInputFocus.js";
@@ -20,6 +20,9 @@ function openEntries(ctx: UiContext, p: ListPaper): MenuEntry[] {
   }];
   if (ctx.caps.openExternal) entries.push({ icon: "external", label: "Open in Default PDF App", disabled: !p.hasPdf, onSelect: () => hostFileAction(ctx, "paper.openExternal", p.id) });
   if (ctx.caps.findPdf && !p.hasPdf) entries.push({ icon: "search", label: "Find PDF", onSelect: () => findPdf(ctx, p.id) });
+  if (ctx.caps.findPdf && p.hasPdf && isPrePublication(p.pdfVersion)) {
+    entries.push({ icon: "search", label: "Find Published Version…", onSelect: () => { void confirmFindBetterPdf(ctx, p.id); } });
+  }
   if (ctx.caps.attachPdf) entries.push({ icon: "paperclip", label: "Attach PDF…", onSelect: () => attachPdf(ctx, p.id) });
   return [...entries, "separator"];
 }

@@ -3,7 +3,7 @@
 import { findInLibrary, findPaperPdf, interpretPage, normalizeTags, resolvePagePaper, withAbstract } from "@labshelf/core";
 import type {
   DetectedIds, MetadataOrigin, MetadataSource, PageFacts, PaperRecord, PdfAttempt, PdfCandidate, PdfFetchOptions,
-  ResolvedMetadata, ResolvedPdf,
+  PdfVersion, RawPage, ResolvedMetadata, ResolvedPdf,
 } from "@labshelf/core";
 import { fetchInTab, fetchViaHelperTab } from "./tab";
 import { probeTab } from "./tabProbe";
@@ -30,6 +30,10 @@ export interface CaptureDraft {
   /** Started on first request; shared by the popup's PDF check and Save. */
   pdf?: Promise<ResolvedPdf | undefined>;
   pdfAttempts: PdfAttempt[];
+  /** Set to look only for a copy that outranks the paper's PDF of this version. */
+  betterThan?: PdfVersion;
+  /** The probed tab's page, kept for the author addresses it shows; absent for papers captured without a tab. */
+  page?: RawPage;
 }
 
 interface SaveOptions {
@@ -52,7 +56,7 @@ export interface SavedPaper {
 export async function inspectTab(log: ILogger, tabId: number, tabUrl: string): Promise<CaptureDraft> {
   const raw = await probeTab(log, tabId, tabUrl);
   const facts = interpretPage(raw);
-  return draftFromFacts(log, facts, { tab: { url: tabUrl, fetchInTab: (url) => fetchInTab(tabId, url) } });
+  return { ...(await draftFromFacts(log, facts, { tab: { url: tabUrl, fetchInTab: (url) => fetchInTab(tabId, url) } })), page: raw };
 }
 
 /**
@@ -97,7 +101,7 @@ export function findPdf(log: ILogger, draft: CaptureDraft): Promise<ResolvedPdf 
   draft.pdf ??= (async () => {
     const settings = await getSettings();
     return findPaperPdf(
-      { ...draft.fetchOpts, credentials: "include", logger: log, viaHelperTab: (urls) => fetchViaHelperTab(log, urls) },
+      { ...draft.fetchOpts, credentials: "include", logger: log, proxies: settings.proxies, viaHelperTab: (urls, signal) => fetchViaHelperTab(log, urls, signal) },
       {
         ids: draft.ids,
         metadata: draft.metadata,
@@ -105,7 +109,8 @@ export function findPdf(log: ILogger, draft: CaptureDraft): Promise<ResolvedPdf 
         pageCandidates: draft.pdfCandidates,
         input: draft.pageUrl,
         contactEmail: settings.contactEmail,
-        ...(settings.enableSciHub ? { sciHubMirror: settings.sciHubMirror } : {}),
+        customResolvers: settings.customResolvers,
+        betterThan: draft.betterThan,
       },
       draft.pdfAttempts,
     );
@@ -132,6 +137,7 @@ async function saveDraft(log: ILogger, mutations: LibraryMutations, draft: Captu
   const paper = await mutations.importPaper(folder, {
     metadata: { ...metadata, title: metadata.title ?? "Untitled" },
     pdf: pdf?.bytes,
+    pdfVersion: pdf?.version,
     extra: { ...(tags.length ? { tags } : {}), ...(note ? { note } : {}) },
     log: { message: "Paper captured", context: { page: draft.pageUrl, pdfSource: pdf?.source ?? null, origin: draft.origin } },
   });
@@ -141,16 +147,19 @@ async function saveDraft(log: ILogger, mutations: LibraryMutations, draft: Captu
 }
 
 /**
- * Pure summary of what a failed search tried, for the "No PDF found" dialog.
- * Entries labelled "<source> (via tab)" (core resolvePdf) are a bot-check retry,
- * so they are not double-counted but do set `blocked`.
+ * Pure summary of what a failed search tried, for the "No PDF found" dialog. Its access page is the library proxy's
+ * sign-in page when a proxy redirected to one, because signing in there grants access to every publisher; otherwise
+ * the best-ranked candidate that answered a sign-in or a bot check, as attempts arrive in rank order.
  */
 export function summarizeAttempts(attempts: PdfAttempt[]): PdfMiss {
-  const direct = attempts.filter((a) => !a.source.endsWith("(via tab)"));
+  const wall = attempts.find((a) => a.outcome === "login" && a.proxy !== undefined)
+    ?? attempts.find((a) => a.outcome === "login" || a.outcome === "bot");
   return {
-    tried: new Set(direct.map((a) => a.url)).size,
-    sources: [...new Set(direct.map((a) => a.source))],
-    blocked: direct.length !== attempts.length,
+    ...(wall ? { access: { kind: wall.outcome === "login" ? "login" : "bot", url: wall.url } } : {}),
+    tried: new Set(attempts.map((a) => a.url)).size,
+    sources: [...new Set(attempts.map((a) => a.source))],
+    blocked: attempts.some((a) => a.outcome === "bot"),
+    needsLogin: attempts.some((a) => a.outcome === "login"),
   };
 }
 
@@ -180,8 +189,8 @@ export async function saveOrAsk(
     void log.log("INFO", MODULE, "no pdf: asking before saving", { page: draft.pageUrl, tried: draft.pdfAttempts.length });
     return { kind: "no-pdf", miss: summarizeAttempts(draft.pdfAttempts) };
   }
-  if (ifNoPdf === "save" && draft.isPaper && !(await findPdf(log, draft))) {
-    void log.log("INFO", MODULE, "saved without pdf (confirmed)", { page: draft.pageUrl, tried: draft.pdfAttempts.length });
+  if (ifNoPdf !== "ask" && draft.isPaper && !(await findPdf(log, draft))) {
+    void log.log("INFO", MODULE, "saved without pdf (confirmed)", { page: draft.pageUrl, tried: draft.pdfAttempts.length, ifNoPdf });
   }
   return { kind: "saved", saved: await saveDraft(log, mutations, draft, opts) };
 }

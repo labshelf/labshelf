@@ -45,10 +45,13 @@ describe("identifier import", () => {
     expect(await fs.readFile(path.join(folder, "bib.bib"), "utf8")).not.toContain("file =");
     const notFound = h.logs.find((l) => l.message === "No PDF found");
     expect(notFound).toMatchObject({ level: "INFO", context: { input: "10.1038/nature12373" } });
-    expect(notFound!.context!["attempts"]).toEqual(["unpaywall: https://repo.example.org/gone.pdf"]);
+    expect(notFound!.context!["attempts"]).toEqual([
+      "publisher: https://www.nature.com/articles/nature12373.pdf",
+      "unpaywall: https://repo.example.org/gone.pdf",
+    ]);
   });
 
-  it("finds the PDF of a DOI through the chain, identifying itself and never contacting Sci-Hub", async () => {
+  it("finds the PDF of a DOI through the chain and identifying itself", async () => {
     const h = await harness();
     h.resolve.mockResolvedValue(NATURE);
     const unpaywall = `https://api.unpaywall.org/v2/${encodeURIComponent("10.1038/nature12373")}?email=${encodeURIComponent(DEFAULT_CONTACT_EMAIL)}`;
@@ -64,7 +67,6 @@ describe("identifier import", () => {
       "https://repo.example.org/nature12373.pdf",
       expect.objectContaining({ headers: { "User-Agent": "LabShelf-Terminal/0.1" } }),
     );
-    expect(h.fetch.mock.calls.some(([url]) => /sci-?hub/i.test(url))).toBe(false);
     expect(h.logs.find((l) => l.message === "PDF found")).toMatchObject({ level: "INFO", context: { source: "unpaywall" } });
   });
 
@@ -247,7 +249,9 @@ describe("URL import", () => {
     h.routes.set("https://arxiv.org/pdf/1706.03762", pdfResponse());
     const outcomes = await h.service.importAny(["https://arxiv.org/abs/1706.03762"], "");
     expect(outcomes[0]!.status).toBe("added");
-    expect(h.fetch.mock.calls.map(([url]) => url)).toEqual(["https://arxiv.org/pdf/1706.03762"]);
+    const urls = h.fetch.mock.calls.map(([url]) => url);
+    expect(urls).toContain("https://arxiv.org/pdf/1706.03762");
+    expect(urls).not.toContain("https://arxiv.org/abs/1706.03762");
   });
 
   it("resolves a PubMed link as a PMID, not a download", async () => {

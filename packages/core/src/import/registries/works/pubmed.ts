@@ -1,7 +1,7 @@
-/** Looks up PubMed records by PMID and converts PMC ids to PMIDs. */
+/** Looks up PubMed records by PMID, converts PMC ids to PMIDs, and reads an article's author affiliations. */
 import { extractYear } from "../../metadata/index.js";
-import { fetchJson, type RegistryEnv } from "../http.js";
-import { xmlText } from "../text.js";
+import { fetchJson, fetchText, type RegistryEnv } from "../http.js";
+import { matchTag, xmlText } from "../text.js";
 import type { RegistryRecord } from "../types.js";
 
 interface PubMedSummary {
@@ -56,4 +56,36 @@ export async function pmidFromPmcid(env: RegistryEnv, pmcid: string): Promise<st
     `https://www.ncbi.nlm.nih.gov/pmc/utils/idconv/v1.0/?format=json&ids=${encodeURIComponent(pmcid)}`,
   );
   return payload?.records?.[0]?.pmid;
+}
+
+/** One author of a PubMed article with the affiliation lines PubMed prints for them. */
+interface PubMedAuthor {
+  name?: string;
+  affiliations: string[];
+}
+
+/**
+ * Finds the PubMed article of a DOI and lists its authors' affiliations, where PubMed appends the corresponding
+ * author's "Electronic address:".
+ * @returns the authors in order, or [] when PubMed has no article for the DOI
+ */
+export async function pubMedAuthorsByDoi(env: RegistryEnv, doi: string): Promise<PubMedAuthor[]> {
+  const search = await fetchJson<{ esearchresult?: { idlist?: string[] } }>(
+    env,
+    `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&term=${encodeURIComponent(`${doi}[doi]`)}`,
+  );
+  const pmid = search?.esearchresult?.idlist?.[0];
+  if (!pmid) return [];
+  const xml = await fetchText(env, `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&retmode=xml&id=${encodeURIComponent(pmid)}`);
+  return xml ? parsePubMedAuthors(xml) : [];
+}
+
+function parsePubMedAuthors(xml: string): PubMedAuthor[] {
+  return [...xml.matchAll(/<Author\b[^>]*>([\s\S]*?)<\/Author>/g)].map(([, block = ""]) => {
+    const name = [xmlText(matchTag(block, "ForeName")), xmlText(matchTag(block, "LastName"))].filter(Boolean).join(" ");
+    const affiliations = [...block.matchAll(/<Affiliation>([\s\S]*?)<\/Affiliation>/g)]
+      .map(([, text]) => xmlText(text))
+      .filter((text): text is string => text !== undefined);
+    return { ...(name ? { name } : {}), affiliations };
+  });
 }

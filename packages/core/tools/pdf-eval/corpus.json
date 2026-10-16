@@ -1,0 +1,398 @@
+[
+  {
+    "id": "10.1109/CVPR.2016.90",
+    "title": "Deep Residual Learning for Image Recognition",
+    "category": "cs-ml",
+    "landingUrl": "https://doi.org/10.1109/CVPR.2016.90"
+  },
+  {
+    "id": "10.1145/3065386",
+    "title": "ImageNet classification with deep convolutional neural networks",
+    "category": "cs-ml",
+    "landingUrl": "https://doi.org/10.1145/3065386"
+  },
+  {
+    "id": "10.1162/neco.1997.9.8.1735",
+    "title": "Long Short-Term Memory",
+    "category": "cs-ml",
+    "landingUrl": "https://doi.org/10.1162/neco.1997.9.8.1735"
+  },
+  {
+    "id": "10.1109/TPAMI.2016.2577031",
+    "title": "Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks",
+    "category": "cs-ml",
+    "landingUrl": "https://doi.org/10.1109/TPAMI.2016.2577031"
+  },
+  {
+    "id": "10.18653/v1/N19-1423",
+    "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+    "category": "cs-ml",
+    "landingUrl": "https://doi.org/10.18653/v1/N19-1423"
+  },
+  {
+    "id": "10.1007/s11263-015-0816-y",
+    "title": "ImageNet Large Scale Visual Recognition Challenge",
+    "category": "cs-ml",
+    "landingUrl": "https://doi.org/10.1007/s11263-015-0816-y"
+  },
+  {
+    "id": "10.1109/ICCV.2017.322",
+    "title": "Mask R-CNN",
+    "category": "cs-ml",
+    "landingUrl": "https://doi.org/10.1109/ICCV.2017.322"
+  },
+  {
+    "id": "10.1109/CVPR.2017.243",
+    "title": "Densely Connected Convolutional Networks",
+    "category": "cs-ml",
+    "landingUrl": "https://doi.org/10.1109/CVPR.2017.243"
+  },
+  {
+    "id": "10.1056/NEJMoa2034577",
+    "title": "Safety and Efficacy of the BNT162b2 mRNA Covid-19 Vaccine",
+    "category": "biomedical",
+    "landingUrl": "https://doi.org/10.1056/NEJMoa2034577"
+  },
+  {
+    "id": "10.1016/S0140-6736(20)30183-5",
+    "title": "Clinical features of patients infected with 2019 novel coronavirus in Wuhan, China",
+    "category": "biomedical",
+    "landingUrl": "https://doi.org/10.1016/S0140-6736(20)30183-5"
+  },
+  {
+    "id": "10.1371/journal.pmed.0020124",
+    "title": "Why Most Published Research Findings Are False",
+    "category": "biomedical",
+    "landingUrl": "https://doi.org/10.1371/journal.pmed.0020124"
+  },
+  {
+    "id": "10.1186/s13059-014-0550-8",
+    "title": "Moderated estimation of fold change and dispersion for RNA-seq data with DESeq2",
+    "category": "biomedical",
+    "landingUrl": "https://doi.org/10.1186/s13059-014-0550-8"
+  },
+  {
+    "id": "10.1093/bioinformatics/btp324",
+    "title": "Fast and accurate short read alignment with Burrows–Wheeler transform",
+    "category": "biomedical",
+    "landingUrl": "https://doi.org/10.1093/bioinformatics/btp324"
+  },
+  {
+    "id": "10.1001/jama.2020.1585",
+    "title": "Clinical Characteristics of 138 Hospitalized Patients With 2019 Novel Coronavirus–Infected Pneumonia in Wuhan, China",
+    "category": "biomedical",
+    "landingUrl": "https://doi.org/10.1001/jama.2020.1585"
+  },
+  {
+    "id": "10.1038/nbt.1754",
+    "title": "Integrative genomics viewer",
+    "category": "biomedical",
+    "landingUrl": "https://doi.org/10.1038/nbt.1754"
+  },
+  {
+    "id": "10.1038/nmeth.2019",
+    "title": "Fiji: an open-source platform for biological-image analysis",
+    "category": "biomedical",
+    "landingUrl": "https://doi.org/10.1038/nmeth.2019"
+  },
+  {
+    "id": "10.1103/PhysRevLett.116.061102",
+    "title": "Observation of Gravitational Waves from a Binary Black Hole Merger",
+    "category": "physics-maths",
+    "landingUrl": "https://doi.org/10.1103/PhysRevLett.116.061102"
+  },
+  {
+    "id": "10.1103/RevModPhys.81.109",
+    "title": "The electronic properties of graphene",
+    "category": "physics-maths",
+    "landingUrl": "https://doi.org/10.1103/RevModPhys.81.109"
+  },
+  {
+    "id": "10.1016/j.physletb.2012.08.020",
+    "title": "Observation of a new particle in the search for the Standard Model Higgs boson with the ATLAS detector at the LHC",
+    "category": "physics-maths",
+    "landingUrl": "https://doi.org/10.1016/j.physletb.2012.08.020"
+  },
+  {
+    "id": "10.4007/annals.2004.160.781",
+    "title": "PRIMES is in P",
+    "category": "physics-maths",
+    "landingUrl": "https://doi.org/10.4007/annals.2004.160.781"
+  },
+  {
+    "id": "10.1137/S0036144598347011",
+    "title": "Polynomial-Time Algorithms for Prime Factorization and Discrete Logarithms on a Quantum Computer",
+    "category": "physics-maths",
+    "landingUrl": "https://doi.org/10.1137/S0036144598347011"
+  },
+  {
+    "id": "10.1103/PhysRevLett.69.2863",
+    "title": "Density matrix formulation for quantum renormalization groups",
+    "category": "physics-maths",
+    "landingUrl": "https://doi.org/10.1103/PhysRevLett.69.2863"
+  },
+  {
+    "id": "10.1126/science.269.5221.198",
+    "title": "Observation of Bose-Einstein Condensation in a Dilute Atomic Vapor",
+    "category": "physics-maths",
+    "landingUrl": "https://doi.org/10.1126/science.269.5221.198"
+  },
+  {
+    "id": "10.1126/science.1230444",
+    "title": "The Chemistry and Applications of Metal-Organic Frameworks",
+    "category": "chemistry-engineering",
+    "landingUrl": "https://doi.org/10.1126/science.1230444"
+  },
+  {
+    "id": "10.1038/451652a",
+    "title": "Building better batteries",
+    "category": "chemistry-engineering",
+    "landingUrl": "https://doi.org/10.1038/451652a"
+  },
+  {
+    "id": "10.1063/1.464913",
+    "title": "Density-functional thermochemistry. III. The role of exact exchange",
+    "category": "chemistry-engineering",
+    "landingUrl": "https://doi.org/10.1063/1.464913"
+  },
+  {
+    "id": "10.1103/PhysRevLett.77.3865",
+    "title": "Generalized Gradient Approximation Made Simple",
+    "category": "chemistry-engineering",
+    "landingUrl": "https://doi.org/10.1103/PhysRevLett.77.3865"
+  },
+  {
+    "id": "10.1109/4235.996017",
+    "title": "A fast and elitist multiobjective genetic algorithm: NSGA-II",
+    "category": "chemistry-engineering",
+    "landingUrl": "https://doi.org/10.1109/4235.996017"
+  },
+  {
+    "id": "10.1021/ja809598r",
+    "title": "Organometal Halide Perovskites as Visible-Light Sensitizers for Photovoltaic Cells",
+    "category": "chemistry-engineering",
+    "landingUrl": "https://doi.org/10.1021/ja809598r"
+  },
+  {
+    "id": "10.1590/s0104-14282009000300013",
+    "title": "A review of the antimicrobial activity of chitosan",
+    "category": "brazilian-scielo",
+    "landingUrl": "https://doi.org/10.1590/s0104-14282009000300013"
+  },
+  {
+    "id": "10.1590/0074-02760150192",
+    "title": "First report of autochthonous transmission of Zika virus in Brazil",
+    "category": "brazilian-scielo",
+    "landingUrl": "https://doi.org/10.1590/0074-02760150192"
+  },
+  {
+    "id": "10.1590/s1413-24782002000100003",
+    "title": "Notas sobre a experiência e o saber de experiência",
+    "category": "brazilian-scielo",
+    "landingUrl": "https://doi.org/10.1590/s1413-24782002000100003"
+  },
+  {
+    "id": "10.1590/2175-7860201566411",
+    "title": "Growing knowledge: an overview of Seed Plant diversity in Brazil",
+    "category": "brazilian-scielo",
+    "landingUrl": "https://doi.org/10.1590/2175-7860201566411"
+  },
+  {
+    "id": "10.1590/s0004-282x1999000300013",
+    "title": "Confiabilidade da versão brasileira da Escala de Depressão em Geriatria (GDS) versão reduzida",
+    "category": "brazilian-scielo",
+    "landingUrl": "https://doi.org/10.1590/s0004-282x1999000300013"
+  },
+  {
+    "id": "10.1590/s1984-29612014042",
+    "title": "Reassessment of the potential economic impact of cattle parasites in Brazil",
+    "category": "brazilian-scielo",
+    "landingUrl": "https://doi.org/10.1590/s1984-29612014042"
+  },
+  {
+    "id": "10.1191/1478088706qp063oa",
+    "title": "Using thematic analysis in psychology",
+    "category": "social-science",
+    "landingUrl": "https://doi.org/10.1191/1478088706qp063oa"
+  },
+  {
+    "id": "10.1126/science.aac4716",
+    "title": "Estimating the reproducibility of psychological science",
+    "category": "social-science",
+    "landingUrl": "https://doi.org/10.1126/science.aac4716"
+  },
+  {
+    "id": "10.1177/0956797611417632",
+    "title": "False-Positive Psychology",
+    "category": "social-science",
+    "landingUrl": "https://doi.org/10.1177/0956797611417632"
+  },
+  {
+    "id": "10.1257/aer.91.5.1369",
+    "title": "The Colonial Origins of Comparative Development: An Empirical Investigation",
+    "category": "social-science",
+    "landingUrl": "https://doi.org/10.1257/aer.91.5.1369"
+  },
+  {
+    "id": "10.1017/S0140525X0999152X",
+    "title": "The weirdest people in the world?",
+    "category": "social-science",
+    "landingUrl": "https://doi.org/10.1017/S0140525X0999152X"
+  },
+  {
+    "id": "10.2307/1914185",
+    "title": "Prospect Theory: An Analysis of Decision under Risk",
+    "category": "social-science",
+    "landingUrl": "https://doi.org/10.2307/1914185"
+  },
+  {
+    "id": "10.1002/j.1538-7305.1948.tb01338.x",
+    "title": "A Mathematical Theory of Communication",
+    "category": "pre-1990",
+    "landingUrl": "https://doi.org/10.1002/j.1538-7305.1948.tb01338.x"
+  },
+  {
+    "id": "10.1115/1.3662552",
+    "title": "A New Approach to Linear Filtering and Prediction Problems",
+    "category": "pre-1990",
+    "landingUrl": "https://doi.org/10.1115/1.3662552"
+  },
+  {
+    "id": "10.1038/171737a0",
+    "title": "Molecular Structure of Nucleic Acids: A Structure for Deoxyribose Nucleic Acid",
+    "category": "pre-1990",
+    "landingUrl": "https://doi.org/10.1038/171737a0"
+  },
+  {
+    "id": "10.1113/jphysiol.1952.sp004764",
+    "title": "A quantitative description of membrane current and its application to conduction and excitation in nerve",
+    "category": "pre-1990",
+    "landingUrl": "https://doi.org/10.1113/jphysiol.1952.sp004764"
+  },
+  {
+    "id": "10.1007/BF01386390",
+    "title": "A note on two problems in connexion with graphs",
+    "category": "pre-1990",
+    "landingUrl": "https://doi.org/10.1007/BF01386390"
+  },
+  {
+    "id": "10.1126/science.162.3859.1243",
+    "title": "The Tragedy of the Commons",
+    "category": "pre-1990",
+    "landingUrl": "https://doi.org/10.1126/science.162.3859.1243"
+  },
+  {
+    "id": "10.1007/978-3-319-24574-4_28",
+    "title": "U-Net: Convolutional Networks for Biomedical Image Segmentation",
+    "category": "book-chapters",
+    "landingUrl": "https://doi.org/10.1007/978-3-319-24574-4_28"
+  },
+  {
+    "id": "10.1007/978-3-319-46448-0_2",
+    "title": "SSD: Single Shot MultiBox Detector",
+    "category": "book-chapters",
+    "landingUrl": "https://doi.org/10.1007/978-3-319-46448-0_2"
+  },
+  {
+    "id": "10.1007/978-3-319-10602-1_48",
+    "title": "Microsoft COCO: Common Objects in Context",
+    "category": "book-chapters",
+    "landingUrl": "https://doi.org/10.1007/978-3-319-10602-1_48"
+  },
+  {
+    "id": "10.1007/978-3-319-46493-0_38",
+    "title": "Identity Mappings in Deep Residual Networks",
+    "category": "book-chapters",
+    "landingUrl": "https://doi.org/10.1007/978-3-319-46493-0_38"
+  },
+  {
+    "id": "10.1007/978-3-319-46475-6_43",
+    "title": "Perceptual Losses for Real-Time Style Transfer and Super-Resolution",
+    "category": "book-chapters",
+    "landingUrl": "https://doi.org/10.1007/978-3-319-46475-6_43"
+  },
+  {
+    "id": "10.1038/nature14539",
+    "title": "Deep learning",
+    "category": "paywalled-free-copy",
+    "landingUrl": "https://doi.org/10.1038/nature14539"
+  },
+  {
+    "id": "10.1038/nature16961",
+    "title": "Mastering the game of Go with deep neural networks and tree search",
+    "category": "paywalled-free-copy",
+    "landingUrl": "https://doi.org/10.1038/nature16961"
+  },
+  {
+    "id": "10.1038/nature14236",
+    "title": "Human-level control through deep reinforcement learning",
+    "category": "paywalled-free-copy",
+    "landingUrl": "https://doi.org/10.1038/nature14236"
+  },
+  {
+    "id": "10.1016/j.neunet.2014.09.003",
+    "title": "Deep learning in neural networks: An overview",
+    "category": "paywalled-free-copy",
+    "landingUrl": "https://doi.org/10.1016/j.neunet.2014.09.003"
+  },
+  {
+    "id": "10.1109/5.726791",
+    "title": "Gradient-based learning applied to document recognition",
+    "category": "paywalled-free-copy",
+    "landingUrl": "https://doi.org/10.1109/5.726791"
+  },
+  {
+    "id": "10.1126/science.1102896",
+    "title": "Electric Field Effect in Atomically Thin Carbon Films",
+    "category": "paywalled-free-copy",
+    "landingUrl": "https://doi.org/10.1126/science.1102896"
+  },
+  {
+    "id": "10.1126/science.1225829",
+    "title": "A Programmable Dual-RNA–Guided DNA Endonuclease in Adaptive Bacterial Immunity",
+    "category": "paywalled-free-copy",
+    "landingUrl": "https://doi.org/10.1126/science.1225829"
+  },
+  {
+    "id": "10.1016/j.cell.2011.02.013",
+    "title": "Hallmarks of Cancer: The Next Generation",
+    "category": "paywalled-free-copy",
+    "landingUrl": "https://doi.org/10.1016/j.cell.2011.02.013"
+  },
+  {
+    "id": "arxiv:1706.03762",
+    "title": "Attention Is All You Need",
+    "category": "preprints",
+    "landingUrl": "https://arxiv.org/abs/1706.03762"
+  },
+  {
+    "id": "arxiv:1412.6980",
+    "title": "Adam: A Method for Stochastic Optimization",
+    "category": "preprints",
+    "landingUrl": "https://arxiv.org/abs/1412.6980"
+  },
+  {
+    "id": "arxiv:2005.14165",
+    "title": "Language Models are Few-Shot Learners",
+    "category": "preprints",
+    "landingUrl": "https://arxiv.org/abs/2005.14165"
+  },
+  {
+    "id": "arxiv:2010.11929",
+    "title": "An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale",
+    "category": "preprints",
+    "landingUrl": "https://arxiv.org/abs/2010.11929"
+  },
+  {
+    "id": "arxiv:1312.6114",
+    "title": "Auto-Encoding Variational Bayes",
+    "category": "preprints",
+    "landingUrl": "https://arxiv.org/abs/1312.6114"
+  },
+  {
+    "id": "arxiv:1406.2661",
+    "title": "Generative Adversarial Networks",
+    "category": "preprints",
+    "landingUrl": "https://arxiv.org/abs/1406.2661"
+  }
+]

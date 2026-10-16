@@ -1,7 +1,7 @@
 /** Exports the library UI protocol's public API: message unions and payloads, channel ends, in-page loopback, guard for untrusted messages. */
 export type { HostToUi, UiToHost } from "./messages.js";
 export type {
-  AddSource, IfNoPdf, LibraryUiSnapshot, PaperDetails, PaperStats, PdfMiss, SimilarPaper, TextLayerJobView,
+  AddSource, IfNoPdf, LibraryUiSnapshot, PaperDetails, PaperStats, PdfAccess, PdfMiss, SimilarPaper, TextLayerJobView,
 } from "./payloads.js";
 export type { HostEndpoint, LibraryTransport, MessageEnd } from "./transport.js";
 export { createLoopbackTransport } from "./loopbackTransport.js";

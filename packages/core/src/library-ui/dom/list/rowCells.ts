@@ -1,8 +1,9 @@
 /**
  * Renders the parts of a paper row that say more than the record: the type icon (PDF, no PDF, no text layer, OCR
- * running), tag chips, the annotation and note marks, and the Last read cell.
+ * running), the PDF version chip, tag chips, the annotation and note marks, and the Last read cell.
  */
 import { formatDateTime, relativeTime } from "../../../library/index.js";
+import { PDF_VERSION_LABEL, isPrePublication, type PdfVersion } from "../../../model/index.js";
 import { escapeHtml, icon } from "../../../ui/index.js";
 import { highlight } from "../../../ui/dom/index.js";
 import { hasNoText, jobText, type ListPaper } from "../../derive/index.js";
@@ -19,6 +20,18 @@ export function typeIconHtml(p: ListPaper, job: TextLayerJobView | undefined, te
     return cell("tl-missing", "No text layer: search and text selection do not work in this PDF. Select the paper to make it searchable.", icon("file-no-text"));
   }
   return cell("", "", icon("file"));
+}
+
+const VERSION_HINT = {
+  preprint: "This PDF is a preprint: the version before peer review.",
+  accepted: "This PDF is the accepted manuscript: peer-reviewed, without the publisher's layout.",
+} as const;
+
+/** A "Preprint" or "Accepted" chip; the published version and an unknown one show none. */
+export function versionChipHtml(version: PdfVersion | null | undefined): string {
+  return isPrePublication(version)
+    ? `<span class="version-chip" title="${escapeHtml(VERSION_HINT[version])}">${PDF_VERSION_LABEL[version]}</span>`
+    : "";
 }
 
 /** Up to three tag chips that search their tag, then a "+N" chip naming the rest. */

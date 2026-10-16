@@ -65,6 +65,12 @@
 }
 .ls-library .loc-chip:hover { color: var(--ls-fg); border-color: var(--ls-focus); }
 .ls-library .paper-row.selected .loc-chip { color: inherit; border-color: currentColor; opacity: .8; }
+.ls-library .version-chip {
+  flex-shrink: 0; font-size: var(--ls-text-xs); line-height: 15px; padding: 0 var(--ls-space-3); border-radius: var(--ls-radius-pill);
+  color: var(--ls-desc); border: 1px dashed var(--ls-border-soft); cursor: default;
+}
+.ls-library .detail-meta .version-chip { margin-right: var(--ls-space-3); }
+.ls-library .paper-row.selected .version-chip { color: inherit; border-color: currentColor; opacity: .8; }
 .ls-library .paper-row.dragging { opacity: .45; }
 .ls-library .paper-children { display: none; background: var(--ls-bg); }
 .ls-library .paper-row.expanded .paper-children { display: block; }

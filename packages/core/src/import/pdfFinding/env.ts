@@ -18,6 +18,10 @@ export function makeEnv(opts: PdfFetchOptions): ResolverEnv {
   };
 }
 
+export function info(env: ResolverEnv, message: string, context: Record<string, unknown>): void {
+  void env.logger.log("INFO", MODULE, message, context);
+}
+
 export function warn(env: ResolverEnv, message: string, context: Record<string, unknown>): void {
   void env.logger.log("WARN", MODULE, message, context);
 }

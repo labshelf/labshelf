@@ -14,6 +14,21 @@ export interface RawPdfLink {
   kind: "embed" | "alternate" | "labelled" | "href";
 }
 
+/** A mailto: link with the page text around it, which tells whether it names the corresponding author. */
+export interface RawMailtoLink {
+  href: string;
+  /** The link's own text. */
+  text: string;
+  /** Up to about 200 characters of page text before the link, the link text, and about 80 after. */
+  context: string;
+}
+
+/** A citation_author_email meta value and the citation_author tag that directly preceded it. */
+export interface RawAuthorEmail {
+  email: string;
+  name?: string;
+}
+
 /** Everything a page showed, as plain JSON (it crosses the browser's scripting boundary). */
 export interface RawPage {
   pageUrl: string;
@@ -26,6 +41,10 @@ export interface RawPage {
   pdfLinks: RawPdfLink[];
   /** hrefs of doi.org links — publishers print the article's own DOI this way. */
   doiLinks: string[];
+  /** At most 20 mailto: links, in page order. */
+  mailtoLinks: RawMailtoLink[];
+  /** citation_author_email meta tags in page order, kept apart from `meta` because the pairing with authors depends on order. */
+  authorEmails: RawAuthorEmail[];
 }
 
 /** A URL that may serve the paper's PDF, and who suggested it (shown to the user). */

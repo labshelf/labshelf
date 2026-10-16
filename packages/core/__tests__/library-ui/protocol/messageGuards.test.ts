@@ -28,6 +28,10 @@ describe("parseUiMessage", () => {
       { type: "clipboard.write", text: "key", label: "cite key" },
       { type: "folder.create", parent: "papers", name: "New" },
       { type: "project.openSource", project: "thesis", file: "ch/one.tex", line: 0 },
+      { type: "paper.openForPdf", id: "p1", access: { kind: "bot", url: "https://pmc.ncbi.nlm.nih.gov/x.pdf" } },
+      { type: "paper.addFrom", folder: "papers", sourceId: "t1", ifNoPdf: "open", retryPdf: false },
+      { type: "paper.addFrom", folder: "papers", sourceId: "t1", ifNoPdf: "author", retryPdf: false },
+      { type: "paper.askAuthor", id: "p1" },
     ];
     for (const m of messages) expect(parseUiMessage(m)).toEqual(m);
   });
@@ -47,7 +51,25 @@ describe("parseUiMessage", () => {
       { type: "project.openSource", project: "thesis", file: "/etc/x.tex", line: 0 },
       { type: "project.openSource", project: "thesis", file: "a\\b.tex", line: 0 },
       { type: "project.openSource", project: "thesis", file: "a.tex", line: -1 },
+      { type: "paper.openForPdf", id: "p1", access: { kind: "login", url: "javascript:alert(1)" } },
+      { type: "paper.openForPdf", id: "p1", access: { kind: "admin", url: "https://a.example/" } },
+      { type: "paper.openForPdf", id: "p1" },
+      { type: "paper.askAuthor", id: "" },
+      { type: "paper.askAuthor" },
+      { type: "paper.addFrom", folder: "papers", sourceId: "t1", ifNoPdf: "email", retryPdf: false },
     ];
     for (const m of bad) expect(parseUiMessage(m)).toBeNull();
+  });
+});
+
+describe("paper.findPdf replace flag", () => {
+  it("accepts true, false and absent", () => {
+    for (const m of [{ type: "paper.findPdf", id: "p1" }, { type: "paper.findPdf", id: "p1", replace: true }, { type: "paper.findPdf", id: "p1", replace: false }]) {
+      expect(parseUiMessage(m)).toEqual(m);
+    }
+  });
+
+  it("rejects a non-boolean", () => {
+    expect(parseUiMessage({ type: "paper.findPdf", id: "p1", replace: "yes" })).toBeNull();
   });
 });

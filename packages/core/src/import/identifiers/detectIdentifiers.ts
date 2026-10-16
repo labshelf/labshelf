@@ -1,5 +1,6 @@
 // Finds DOI, arXiv, PubMed, PMC and ISBN identifiers in a PDF's metadata, link annotations and text.
 import { asString } from "../metadata/index.js";
+import { ARXIV_ID_SOURCE } from "./arxiv.js";
 import { cleanDoiCandidate, decodeUrlEscapes } from "./doi.js";
 import type { DetectedIdentifier, IdentifierType } from "./types.js";
 
@@ -9,8 +10,7 @@ import type { DetectedIdentifier, IdentifierType } from "./types.js";
 // word, and the SICI form (`10.1002/(SICI)1097-4571(199806)49:8<693::AID-ASI4>3.0.CO;2-O`)
 // needs `<>:;()` to stay whole.
 const DOI_PATTERN = /10\.\d{4,9}\/[-._;()/:a-z0-9<>+]+/gi;
-const ARXIV_PATTERN = /(?:arxiv[.:\s/]*(?:org\/(?:abs|pdf)\/)?)(\d{4}\.\d{4,5})(?:v\d+)?/gi;
-const ARXIV_LEGACY_PATTERN = /arxiv[.:\s/]*([a-z-]+(?:\.[A-Z]{2})?\/\d{7})(?:v\d+)?/gi;
+const ARXIV_PATTERN = new RegExp(String.raw`arxiv[.:\s/]*(?:org\/(?:abs|pdf)\/)?(${ARXIV_ID_SOURCE})(?:v\d+)?`, "gi");
 const PMID_PATTERN = /\bPMID[:\s]*(\d{7,8})\b/gi;
 const PMCID_PATTERN = /\b(PMC\d{6,8})\b/gi;
 const ISBN_PATTERN = /\bISBN(?:-1[03])?[:\s]*((?:97[89][-\s]?)?(?:\d[-\s]?){9}[\dXx])\b/gi;
@@ -74,9 +74,6 @@ function scanSource(source: string, add: (type: IdentifierType, value: string | 
     add("doi", cleanDoiCandidate(doi));
   }
   for (const arxiv of matchAll(source, ARXIV_PATTERN, 1)) {
-    add("arxiv", arxiv);
-  }
-  for (const arxiv of matchAll(source, ARXIV_LEGACY_PATTERN, 1)) {
     add("arxiv", arxiv);
   }
   for (const pmid of matchAll(source, PMID_PATTERN, 1)) {

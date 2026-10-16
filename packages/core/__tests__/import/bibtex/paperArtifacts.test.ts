@@ -114,4 +114,72 @@ describe('BibTeXService.writePaperArtifacts', () => {
     expect(record.volume).toBe('15');
     expect(record.pages).toBe('12');
   });
+
+  describe('pdfVersion', () => {
+    const write = (fs: ReturnType<typeof memoryFs>, pdfVersion?: PaperRecord['pdfVersion']) =>
+      new BibTeXService(fs).writePaperArtifacts('/lib/papers/imai1986', paper(pdfVersion === undefined ? {} : { pdfVersion }), 'paper.pdf');
+
+    it('writes the version a record carries and reads it back', async () => {
+      const fs = memoryFs();
+      await write(fs, 'accepted');
+      expect(metadata(fs).pdfVersion).toBe('accepted');
+      const meta = parsePaperMetadata(fs.files.get('/lib/papers/imai1986/metadata.yaml')!)!;
+      expect(paperRecordFromMetadata(meta, { id: 'imai1986', path: '/lib/papers/imai1986', hasPdf: true }).pdfVersion).toBe('accepted');
+    });
+
+    it('replaces the file value with the record value', async () => {
+      const fs = memoryFs({ '/lib/papers/imai1986/metadata.yaml': 'title: Old\npdfVersion: preprint\n' });
+      await write(fs, 'published');
+      expect(metadata(fs).pdfVersion).toBe('published');
+    });
+
+    it('keeps the file value when the record does not know the version', async () => {
+      const fs = memoryFs({ '/lib/papers/imai1986/metadata.yaml': 'title: Old\npdfVersion: preprint\n' });
+      await write(fs);
+      expect(metadata(fs).pdfVersion).toBe('preprint');
+    });
+
+    it('removes the key when the record says the version is unknown', async () => {
+      const fs = memoryFs({ '/lib/papers/imai1986/metadata.yaml': 'title: Old\npdfVersion: preprint\n' });
+      await write(fs, null);
+      expect(metadata(fs)).not.toHaveProperty('pdfVersion');
+    });
+
+    it('writes none for a library file that never had one', async () => {
+      const fs = memoryFs();
+      await write(fs);
+      expect(metadata(fs)).not.toHaveProperty('pdfVersion');
+    });
+  });
+
+  describe('pdfRequestedAt', () => {
+    const write = (fs: ReturnType<typeof memoryFs>, pdfRequestedAt?: PaperRecord['pdfRequestedAt']) =>
+      new BibTeXService(fs).writePaperArtifacts('/lib/papers/imai1986', paper(pdfRequestedAt === undefined ? {} : { pdfRequestedAt }), 'paper.pdf');
+
+    it('writes the day a record carries and reads it back', async () => {
+      const fs = memoryFs();
+      await write(fs, '2026-10-15');
+      expect(metadata(fs).pdfRequestedAt).toBe('2026-10-15');
+      const meta = parsePaperMetadata(fs.files.get('/lib/papers/imai1986/metadata.yaml')!)!;
+      expect(paperRecordFromMetadata(meta, { id: 'imai1986', path: '/lib/papers/imai1986', hasPdf: false }).pdfRequestedAt).toBe('2026-10-15');
+    });
+
+    it('keeps the file value when the record does not know the day', async () => {
+      const fs = memoryFs({ '/lib/papers/imai1986/metadata.yaml': 'title: Old\npdfRequestedAt: 2026-10-01\n' });
+      await write(fs);
+      expect(metadata(fs).pdfRequestedAt).toBe('2026-10-01');
+    });
+
+    it('removes the key when the record says null', async () => {
+      const fs = memoryFs({ '/lib/papers/imai1986/metadata.yaml': 'title: Old\npdfRequestedAt: 2026-10-01\n' });
+      await write(fs, null);
+      expect(metadata(fs)).not.toHaveProperty('pdfRequestedAt');
+    });
+
+    it('writes none for a library file that never had one', async () => {
+      const fs = memoryFs();
+      await write(fs);
+      expect(metadata(fs)).not.toHaveProperty('pdfRequestedAt');
+    });
+  });
 });

@@ -1,0 +1,87 @@
+<!-- Captured live from https://www.sciencedirect.com/user/login on 2026-10-15; style and script noise trimmed. Elsevier sign-in page; CSRF token and client id in the form actions replaced. -->
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta http-equiv="X-UA-Compatible" content="IE=10,11" />
+	<meta name="google-site-verification" content="AiXBfGep0BkRlClAYvcd83Nxaqkjvdm5vYvDFhspysg" />
+	<meta name="robots" content="NOINDEX,FOLLOW,NOARCHIVE,NOODP,NOYDIR" />
+	<base href="https://id.elsevier.com/"/>
+				<title>Welcome</title>
+		    <script type="text/javascript" src="assets/js/toolkit.js"></script>
+	<script type="text/javascript" src="assets/js/showHidePassword.js"></script>
+	<link rel="stylesheet" href="assets/css/elsevier/main.min.css" />
+	<link rel="shortcut icon" type="image/png"  href="assets/images/elsevier/mstile-144x144.png"/>
+	<script src="/assets/js/analytics.js"></script>
+</head>
+<body>
+	<main id="maincontent">
+	<div id="skipLink" class="accessibility-link-skip" aria-label="Skip content" style="color: -webkit-link; text-decoration: underline; cursor: pointer;" onclick="toMain();" tabindex="0">Skip to content</div>
+<header class="client-info-header" aria-label="Header">
+	<div>
+		    	        <img class="els-client-logo-named-products" src="/assets/images/SD/science/logo.svg" onError="this.onerror=null;this.src='assets/images/elsevier/ELS_Letter_Logo.svg';" alt="ScienceDirect">
+	    		</div>
+			</header>
+  	<div class="els-hero-image"  style="background-image: url('/assets/images/SD/science/page.jpg')">
+  		<section class="container-fluid">
+			<div class="orange-border"></div>
+<div class="sec-A">
+			<form action="https://id.elsevier.com/as/authorization.oauth2?platSite=SD%2Fscience&els_policy=idp_policy_indv_identity_plus&response_type=code&redirect_uri=https%3A%2F%2Fwww.sciencedirect.com%2Fuser%2Fidentity%2Flanding&state=retryCounter%3D0%26csrfToken%3Dx%26idpPolicy%3Durn%253Acom%253Aelsevier%253Aidp%253Apolicy%253Aproduct%253Aindv_identity%26returnUrl%3Dhttps%253A%252F%252Fwww.sciencedirect.com%26prompt%3Dlogin%26cid%3Dx&client_id=SDFE-v4&additionalPlatSites=GH%2Fgeneralhospital%2CLS%2FLS%2CMDY%2Fmendeley%2CSC%2Fscopus%2CRX%2Freaxys&additionalPlatSites=GH%2Fgeneralhospital%2CLS%2FLS%2CMDY%2Fmendeley%2CSC%2Fscopus%2CRX%2Freaxys&scope=els_auth_info+profile+els_idp_analytics_attrs+email+urn%3Acom%3Aelsevier%3Aidp%3Apolicy%3Aproduct%3Aindv_identity+els_sa_discover+els_idp_info+openid&prompt=none" method="post" novalidate class="close-form" name="close-form">
+			<button id="bdd-els-close" class="els-close-btn" type="submit" aria-label="Cancel" name="close" value="true">
+			<img src="assets/images/elsevier/close.svg" alt="Cancel"/>
+		</button>
+		</form>
+			<img src="assets/images/elsevier/Non_Solus_Boxy.svg" alt="Elsevier" class="els-client-non-solus solus-logo">
+</div>
+                <form method="POST" action="/as/CTTnPrmCxI/resume/as/authorization.ping?client_id=SDFE-v4&state=retryCounter%3D0%26csrfToken%3Dx%26idpPolicy%3Durn%253Acom%253Aelsevier%253Aidp%253Apolicy%253Aproduct%253Aindv_identity%26returnUrl%3Dhttps%253A%252F%252Fwww.sciencedirect.com%26prompt%3Dlogin%26cid%3Dx" autocomplete="off" name="elsForm" novalidate>
+   <div class="sec-B">
+                    <h1 class="els-h1-txt">Welcome</h1>
+        <h2 class="els-h2-txt">Enter your email to continue with <span class="bold">ScienceDirect</span></h2>
+            <h2 class="els-h2-txt">If you have an Elsevier account, you will be directed to Sign in.</h2>
+      <h2 class="els-h2-txt">If no account is found in our database, you will be asked to Register.</h2>
+   </div>
+   <div class="sec-C">
+             <div class="form-row">
+         <input   type="text" id="bdd-email" name="pf.username" aria-required="true" aria-labelledby="emaillabel emailerror" required autocomplete="email" aria-autocomplete="inline" autofocus onkeyup="enableContinueButton();" onpaste="enableContinueButton();" oninput="enableContinueButton();"/>
+         <span class="bar"></span>
+                  <label id="emaillabel" for="bdd-email">Email</label>
+                           </div>
+   </div>
+   <div class="sec-D">
+      <div>
+               <button type="submit" class="els-primaryBtn continueBtn" id="bdd-elsPrimaryBtn" value="emailContinue" name="action">Continue</button>
+            </div>
+               <div>
+            <button type="submit" class="els-secondaryBtn btn-border signInInstBtn" id="bdd-elsSecondaryBtn" value="shibbolethSignIn" name="action">Sign in via your organization</button>
+         </div>
+          	<button class="els-help-link" onclick="loadTemplate('default');trackNavigationClick('button','id:start')">Get help with access</button>
+   </div>
+</form>
+		</section>
+	</div>
+	<footer class="els-footer" aria-label="Footer">
+    <div class="els-footer-logo">
+        <a class="els-footer-non-solus" title="Go to Elsevier Homepage" href="http://www.elsevier.com/" target="_blank"><img src="assets/images/elsevier/Non_Solus_Logo.svg" alt="Non Solus" aria-label="Elsevier homepage"></a>
+        <a class="els-footer-elsevier-letter" title="Go to Elsevier Homepage" href="http://www.elsevier.com/" target="_blank" tabindex="-1"><img src="assets/images/elsevier/ELS_Letter_Logo.svg" alt="Elsevier" aria-label="Elsevier homepage"></a>
+    </div>
+    <div class="els-document-links">
+        <div class="els-document-link-row cookies-row" aria-label="Copyright Notice General">Copyright &copy; 2026 Elsevier, its licensors, and contributors. All rights are reserved, including those for text and data mining, AI training, and similar technologies.</div>
+        <div class="els-document-link-row links-row">
+        <ul class="els-footer-links" style="list-style:none">
+           <li><a href="https://www.elsevier.com/about" aria-label="About Elsevier" class="els-document-link anchor" target="_tab"><span class="anchor-text">About Elsevier</span><span id="privacyLink-icon" class="privacyLink-icon">↗</span></a></li>
+           <li><a href=https://www.elsevier.com/legal/elsevier-website-terms-and-conditions aria-label="Terms and conditions" class="els-document-link anchor" target="_blank"><span class="anchor-text">Terms and conditions</span><span id="privacyLink-icon" class="privacyLink-icon">↗</span></a></li>
+           <li><a href=https://www.elsevier.com/legal/privacy-policy aria-label="Privacy policy" class="els-document-link anchor" target="_blank"><span class="anchor-text">Privacy policy</span><span id="privacyLink-icon" class="privacyLink-icon">↗</span></a></li>
+           <li><a href="javascript: void(0)" aria-label="Cookie settings" class="ot-sdk-show-settings cookie els-document-link anchor" style="color:black;"><span class="anchor-text">Cookie settings</span><span id="privacyLink-icon" class="privacyLink-icon">↗</span></a></li>
+           <li><a href="https://www.elsevier.support/elsevieraccess" aria-label="Help" class="els-document-link anchor" target="_blank"><span class="anchor-text">Help</span><span id="privacyLink-icon" class="privacyLink-icon">↗</span></a></li>
+        </ul>
+        </div>
+    </div>
+	<a class="relx-logo-e" style="height:30px" title="Go to RELX Group Homepage" href="http://www.reedelsevier.com/" target="_blank" aria-label="Relx group image">
+            <img src="assets/images/elsevier/Relx_Logo_E_2.svg" alt="RELXGroup">
+            <img src="assets/images/elsevier/Relx_Logo_Letter_2.svg" alt="RELXGroup">
+	</a>
+</footer>
+	</main>
+</body>
+</html>

@@ -40,6 +40,16 @@ describe('detectIdentifiers', () => {
     expect(identifiers).toContainEqual({ type: 'arxiv', value: '1706.03762' });
   });
 
+  it('finds an old-style arXiv id from a label, with or without the colon and the version', () => {
+    expect(detectIdentifiers({}, 'arXiv:hep-th/9711200')).toContainEqual({ type: 'arxiv', value: 'hep-th/9711200' });
+    expect(detectIdentifiers({}, 'arXiv hep-th/9711200v2 [hep-th] 27 Nov 1997')).toContainEqual({ type: 'arxiv', value: 'hep-th/9711200' });
+    expect(detectIdentifiers({}, 'arXiv:math.GT/0309136v1')).toContainEqual({ type: 'arxiv', value: 'math.GT/0309136' });
+  });
+
+  it('finds an old-style arXiv id from a link URL', () => {
+    expect(detectIdentifiers({}, '', ['https://arxiv.org/abs/hep-th/9711200v3'])).toContainEqual({ type: 'arxiv', value: 'hep-th/9711200' });
+  });
+
   it('finds an arXiv id from a link URL', () => {
     const identifiers = detectIdentifiers({}, '', ['https://arxiv.org/abs/1706.03762']);
 

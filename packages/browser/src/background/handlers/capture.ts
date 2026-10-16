@@ -13,6 +13,8 @@ import { draftForTab, scholarDraftFor } from "../draftCache";
 import { broadcastChanged } from "../broadcast";
 import type { LibraryMutations } from "../../storage";
 import { pdfExists, ref } from "./libraryRef";
+import { accessTabDeps, openAccessAfterCapture } from "./access";
+import { askAuthor, type AskAuthorDeps } from "./askAuthor";
 
 type ScheduleSync = (reason: string) => void;
 
@@ -94,17 +96,33 @@ export async function handleCaptureSave(
 ): Promise<SaveOutcome> {
   const draft = await draftForTab(log, msg.tabId, await tabUrl(msg.tabId));
   if (msg.retryPdf) resetPdfSearch(draft);
-  return outcome(draft, await saveOrAsk(log, mutations, draft, {
+  const ifNoPdf = msg.ifNoPdf ?? "ask";
+  const decision = await saveOrAsk(log, mutations, draft, {
     ...(msg.folder ? { folder: msg.folder } : {}),
     ...(msg.tags ? { tags: msg.tags } : {}),
     ...(msg.note ? { note: msg.note } : {}),
-  }, msg.ifNoPdf ?? "ask"), scheduleSync);
+  }, ifNoPdf);
+  const reply = outcome(draft, decision, scheduleSync);
+  await afterSave({ log, mutations, scheduleSync }, draft, reply, ifNoPdf, msg.tabId);
+  return reply;
+}
+
+// The "open" and "author" choices: the reference is saved (or was already there) without a PDF, so the page in the way
+// or the request email opens. The email opens in the captured tab.
+async function afterSave(
+  deps: AskAuthorDeps, draft: CaptureDraft, reply: SaveOutcome | SavedPaperData, ifNoPdf: IfNoPdf, tabId: number | undefined,
+): Promise<void> {
+  if (reply.status !== "saved" || reply.hasPdf || !draft.existing) return;
+  if (ifNoPdf === "open") await openAccessAfterCapture(accessTabDeps(deps.log, deps.mutations, deps.scheduleSync), draft, { id: reply.id, title: reply.title });
+  if (ifNoPdf === "author") await askAuthor(deps, draft.existing, { tabId, page: draft.page, articleUrl: draft.pageUrl });
 }
 
 interface UnlessSaved {
   folder?: string | undefined;
   ifNoPdf?: IfNoPdf | undefined;
   retryPdf?: boolean | undefined;
+  /** The tab the request email opens in. */
+  tabId?: number | undefined;
 }
 
 // The paper may already be in the library (saved or removed elsewhere since the draft was cached): never write a duplicate.
@@ -117,8 +135,12 @@ async function saveUnlessInLibrary(
 ): Promise<SaveOutcome | SavedPaperData> {
   if (request.retryPdf) resetPdfSearch(draft);
   await refreshExisting(draft);
-  if (draft.existing) return libraryCopy(draft);
-  return outcome(draft, await saveOrAsk(log, mutations, draft, request.folder ? { folder: request.folder } : {}, request.ifNoPdf ?? "ask"), scheduleSync);
+  const ifNoPdf = request.ifNoPdf ?? "ask";
+  const reply = draft.existing
+    ? await libraryCopy(draft)
+    : outcome(draft, await saveOrAsk(log, mutations, draft, request.folder ? { folder: request.folder } : {}, ifNoPdf), scheduleSync);
+  await afterSave({ log, mutations, scheduleSync }, draft, reply, ifNoPdf, request.tabId);
+  return reply;
 }
 
 export async function handleCaptureTab(
@@ -130,7 +152,7 @@ export async function handleCaptureTab(
   // Fresh look on the first call; the "Save without PDF" confirmation reuses
   // the cached draft (and its finished search).
   const draft = await draftForTab(log, msg.tabId, await tabUrl(msg.tabId), msg.ifNoPdf !== "save");
-  return saveUnlessInLibrary(log, mutations, draft, { folder: msg.targetFolder, ifNoPdf: msg.ifNoPdf, retryPdf: msg.retryPdf }, scheduleSync);
+  return saveUnlessInLibrary(log, mutations, draft, { folder: msg.targetFolder, ifNoPdf: msg.ifNoPdf, retryPdf: msg.retryPdf, tabId: msg.tabId }, scheduleSync);
 }
 
 export async function handleScholarSave(
@@ -138,8 +160,9 @@ export async function handleScholarSave(
   mutations: LibraryMutations,
   msg: Extract<RuntimeMessage, { type: "scholar.save" }>,
   scheduleSync: ScheduleSync,
+  scholarTabId: number | undefined,
 ): Promise<SaveOutcome | SavedPaperData> {
-  return saveUnlessInLibrary(log, mutations, await scholarDraftFor(log, msg.hit), msg, scheduleSync);
+  return saveUnlessInLibrary(log, mutations, await scholarDraftFor(log, msg.hit), { ...msg, tabId: scholarTabId }, scheduleSync);
 }
 
 /**
@@ -156,7 +179,7 @@ export async function attachFoundPdf(
 ): Promise<AttachPdfData> {
   const pdf = await findPdf(log, draft);
   if (!pdf) return { id, attached: false, miss: summarizeAttempts(draft.pdfAttempts) };
-  const { written } = await attachPdfToPaper(mutations, id, pdf.bytes);
+  const { written } = await attachPdfToPaper(mutations, id, pdf.bytes, { version: pdf.version });
   if (written) {
     scheduleSync(reason);
     broadcastChanged("attach", id);

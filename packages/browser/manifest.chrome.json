@@ -17,7 +17,8 @@
     "idle",
     "activeTab",
     "scripting",
-    "downloads"
+    "downloads",
+    "offscreen"
   ],
   "host_permissions": [
     "https://www.googleapis.com/*",

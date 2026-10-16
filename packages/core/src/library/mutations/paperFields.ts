@@ -1,4 +1,4 @@
-/** Changes the fields the user owns on papers (reading status, tags, note), reading each paper from disk first. */
+/** Changes the fields the user owns on papers (reading status, tags, note, the day a copy was requested), reading each paper from disk first. */
 import type { PaperRecord, PaperStatus } from "../../model/index.js";
 import { editedTags, normalizeTags } from "../identity/index.js";
 import { errorMessage } from "../../logging/index.js";
@@ -10,6 +10,8 @@ export interface PaperFieldsPatch {
   status?: PaperStatus;
   tags?: string[];
   note?: string;
+  /** The day (YYYY-MM-DD) the user asked the author for a copy; null removes it. */
+  pdfRequestedAt?: string | null;
 }
 
 export interface FieldsBatchOutcome extends BatchOutcome {
@@ -52,10 +54,12 @@ async function applyPatch(ctx: MutationContext, current: PaperRecord, patch: Pap
   const owned: Pick<PaperRecord, "tags" | "note"> = {};
   if (patch.tags !== undefined) { owned.tags = normalizeTags(patch.tags); }
   if (patch.note !== undefined) { owned.note = patch.note; }
-  const next: PaperRecord = { ...current, ...(patch.status ? { status: patch.status } : {}), ...owned };
+  const requested = patch.pdfRequestedAt === undefined ? {} : { pdfRequestedAt: patch.pdfRequestedAt };
+  const next: PaperRecord = { ...current, ...(patch.status ? { status: patch.status } : {}), ...owned, ...requested };
   const changed = next.status !== current.status
     || (owned.tags !== undefined && owned.tags.join("\n") !== (current.tags ?? []).join("\n"))
-    || (owned.note !== undefined && owned.note !== (current.note ?? ""));
+    || (owned.note !== undefined && owned.note !== (current.note ?? ""))
+    || (patch.pdfRequestedAt !== undefined && patch.pdfRequestedAt !== (current.pdfRequestedAt ?? null));
   if (!changed) { return current; }
   // `current` was just read from the file, so its status is the file's: writing it back changes nothing.
   const written = await writePaperRecord(ctx, next, { ownsStatus: true, ...owned });

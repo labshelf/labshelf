@@ -29,7 +29,7 @@ function setup(metadata: ResolvedMetadata | undefined = ATTENTION): Setup {
 const added = (outcome: ImportOutcome): void => expect(outcome.status).toBe("added");
 
 describe("importNetworkInput with an identifier", () => {
-  it("saves the PDF the chain finds for a DOI, asking with the default contact email and never Sci-Hub", async () => {
+  it("saves the PDF the chain finds for a DOI, asking with the default contact email", async () => {
     const { h, net, env } = setup();
     net.routes[unpaywall("10.1000/abc")] = () => json({ best_oa_location: { url_for_pdf: "https://repo.example.org/a.pdf" } });
     net.routes["https://repo.example.org/a.pdf"] = pdf;
@@ -37,8 +37,19 @@ describe("importNetworkInput with an identifier", () => {
     added(await importNetworkInput(env, "10.1000/abc", PAPERS));
 
     expect(await h.fs.readFile(`${PAPER_DIR}/paper.pdf`)).toEqual(PDF);
-    expect(net.calls.some((url) => /sci-?hub/i.test(url))).toBe(false);
     expect(h.logs.find((l) => l.message === "PDF found")).toMatchObject({ level: "INFO", context: { source: "unpaywall" } });
+  });
+
+  it("saves the PDF a DOI's landing page names in citation_pdf_url", async () => {
+    const { h, net, env } = setup();
+    net.routes["https://doi.org/10.1000/abc"] = () => html('<html><head><meta name="citation_pdf_url" content="https://cdn.example.org/paper.pdf"></head></html>');
+    net.routes["https://cdn.example.org/paper.pdf"] = pdf;
+
+    added(await importNetworkInput(env, "10.1000/abc", PAPERS));
+
+    expect(net.calls).toContain("https://doi.org/10.1000/abc");
+    expect(await h.fs.readFile(`${PAPER_DIR}/paper.pdf`)).toEqual(PDF);
+    expect(h.logs.find((l) => l.message === "PDF found")).toMatchObject({ context: { source: "landing" } });
   });
 
   it("keeps arXiv's source name and saves a reference when no PDF downloads, logging the attempts", async () => {
@@ -152,5 +163,58 @@ describe("importNetworkInput with a link", () => {
     expect(await importNetworkInput(env, "https://example.org/data", PAPERS)).toEqual({
       status: "failed", error: "The URL did not return a PDF", input: "https://example.org/data",
     });
+  });
+});
+
+describe("importNetworkInput records the PDF version", () => {
+  it("writes preprint for an arXiv paper whose only PDF is arXiv's", async () => {
+    const { h, net, env } = setup();
+    net.routes["https://arxiv.org/pdf/1706.03762"] = pdf;
+
+    added(await importNetworkInput(env, "arXiv:1706.03762", PAPERS));
+
+    expect(await h.readMeta(PAPER_DIR)).toMatchObject({ pdfVersion: "preprint" });
+    expect(h.logs.find((l) => l.message === "PDF found")).toMatchObject({ context: { version: "preprint" } });
+  });
+
+  it("writes the version Unpaywall labels the downloaded copy with", async () => {
+    const { h, net, env } = setup();
+    net.routes[unpaywall("10.1000/abc")] = () => json({ best_oa_location: { url_for_pdf: "https://repo.example.org/a.pdf", version: "acceptedVersion" } });
+    net.routes["https://repo.example.org/a.pdf"] = pdf;
+
+    added(await importNetworkInput(env, "10.1000/abc", PAPERS));
+
+    expect(await h.readMeta(PAPER_DIR)).toMatchObject({ pdfVersion: "accepted" });
+  });
+
+  it("writes no version for a copy nothing labels", async () => {
+    const { h, net, env } = setup();
+    net.routes[unpaywall("10.1000/abc")] = () => json({ best_oa_location: { url_for_pdf: "https://repo.example.org/a.pdf" } });
+    net.routes["https://repo.example.org/a.pdf"] = pdf;
+
+    added(await importNetworkInput(env, "10.1000/abc", PAPERS));
+
+    expect(await h.readMeta(PAPER_DIR)).not.toHaveProperty("pdfVersion");
+  });
+
+  it("writes no version when no PDF downloads", async () => {
+    const { h, net, env } = setup();
+    net.routes["https://arxiv.org/pdf/1706.03762"] = () => html("<html>log in</html>");
+
+    added(await importNetworkInput(env, "arXiv:1706.03762", PAPERS));
+
+    expect(await h.readMeta(PAPER_DIR)).not.toHaveProperty("pdfVersion");
+  });
+
+  it("writes the version of the PDF an article page's chain finds", async () => {
+    const { h, net, env } = setup();
+    const page = `<html><head><meta name="citation_title" content="A Study of Things"><meta name="citation_author" content="Lee, Ann">
+      <meta name="citation_publication_date" content="2020/05/01"><meta name="citation_pdf_url" content="https://arxiv.org/pdf/2005.00001"></head></html>`;
+    net.routes["https://example.org/article/1"] = () => html(page);
+    net.routes["https://arxiv.org/pdf/2005.00001"] = pdf;
+
+    added(await importNetworkInput(env, "https://example.org/article/1", PAPERS));
+
+    expect(await h.readMeta(`${PAPERS}/lee2020study`)).toMatchObject({ pdfVersion: "preprint" });
   });
 });

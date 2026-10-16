@@ -1,4 +1,5 @@
 /** Declares the PDF finder's shapes: what a resolver knows, what it proposes, and the ports a host supplies for downloading. */
+import type { PdfVersion } from "../../model/index.js";
 import type { ILogger } from "../../ports/index.js";
 import type { PdfCandidate } from "../landing/index.js";
 
@@ -25,6 +26,20 @@ export interface TabPort {
   fetchInTab(url: string): Promise<InTabAnswer | undefined>;
 }
 
+/** A library's proxy as the user pasted it; `template` decides how a URL goes through it (see `proxyKind`). */
+export interface LibraryProxy {
+  name: string;
+  template: string;
+  enabled: boolean;
+}
+
+/** A page the user knows may hold a paper's PDF: `template` is a URL with `{doi}` where the DOI goes. */
+export interface CustomResolver {
+  name: string;
+  template: string;
+  enabled: boolean;
+}
+
 export interface PdfFetchOptions {
   fetch?: FetchFn;
   /** "include" sends the user's cookies, so a paper the user can open through an institutional login downloads too. */
@@ -32,8 +47,13 @@ export interface PdfFetchOptions {
   headers?: Record<string, string>;
   logger?: ILogger;
   tab?: TabPort;
-  /** Loads URLs of one site through a real (background) tab, for candidates a bot check refused. */
-  viaHelperTab?: (urls: string[]) => Promise<FetchedPdf | undefined>;
+  /**
+   * Loads URLs of one site, best first, through a real background tab that passes the site's bot check, and returns
+   * the first that is a PDF. The run aborts `signal` once it no longer needs the answer.
+   */
+  viaHelperTab?: (urls: string[], signal: AbortSignal) => Promise<FetchedPdf | undefined>;
+  /** The user's library proxies, in the order to try them; a publisher page that asks for a sign-in is retried through each enabled one. */
+  proxies?: readonly LibraryProxy[];
 }
 
 /** Everything a resolver may know about the paper; learning resolvers fill in `pmcid` and `arxivId`. */
@@ -54,8 +74,12 @@ export interface ResolveContext {
   pageCandidates: PdfCandidate[];
   /** Contact email for the polite pools of Unpaywall, OpenAlex and CrossRef. */
   contactEmail: string;
-  /** Sci-Hub mirror base URL. Its presence is the user's opt-in; without it Sci-Hub is never contacted. */
-  sciHubMirror?: string;
+  /** The user's custom resolvers; the enabled ones propose addresses built from the DOI. */
+  customResolvers?: readonly CustomResolver[];
+  /** Versions that lookups' sources gave for their URLs, keyed by URL; filled as lookups answer. */
+  versions?: Map<string, PdfVersion>;
+  /** Set when the paper already has a PDF of this version: only a copy that outranks it is wanted. */
+  betterThan?: PdfVersion;
 }
 
 /** What a resolver runs with: the host's network and logger. */
@@ -76,10 +100,20 @@ export interface ResolvedPdf {
   url: string;
   /** The resolver that suggested it. */
   source: string;
+  /** Which version of the paper it is, when its source said so. */
+  version?: PdfVersion;
 }
 
-/** One URL the chain tried, for the capture log and the "No PDF found" dialog. */
+/** How a download hop ended: the PDF, a bot check, a login or paywall, an HTML page without a PDF, or a failure. */
+export type FetchOutcome = "pdf" | "bot" | "login" | "html" | "error";
+
+/** One URL the chain tried and how its last hop ended, for the capture log and the "No PDF found" dialog. */
 export interface PdfAttempt {
   source: string;
   url: string;
+  outcome: FetchOutcome;
+  /** HTTP status of that hop; absent on a network error or a tab fetch. */
+  status?: number;
+  /** Name of the library proxy `url` went through, when it did. */
+  proxy?: string;
 }

@@ -27,7 +27,7 @@ function boot(): void {
   attachRouter(host);
   const ui = mountLibraryUi(root, {
     transport, prefs, withSidebar: true,
-    capabilities: { findPdf: true, attachPdf: true },
+    capabilities: { findPdf: true, attachPdf: true, askAuthor: true },
     labels: {
       addTooltip: "Add a paper from an open tab",
       emptyHint: "Open the paper's page in a tab and use the LabShelf toolbar button, or click Add to pick one of your open tabs.",

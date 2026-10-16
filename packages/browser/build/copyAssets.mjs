@@ -15,6 +15,8 @@ export async function copyAssets({ srcRoot, outDir, target, pkgRoot }) {
   await cp(manifestSrc, join(outDir, "manifest.json"));
 
   for (const file of await readdir(srcRoot, { recursive: true })) {
+    // Only Chrome has offscreen documents.
+    if (target === "firefox" && file.startsWith("pdfText")) continue;
     if (STATIC_EXTENSIONS.has(extname(file).toLowerCase())) {
       await cp(join(srcRoot, file), join(outDir, file));
     }

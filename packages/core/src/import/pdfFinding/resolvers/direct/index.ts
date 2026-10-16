@@ -2,7 +2,7 @@
 export { pageHintResolver } from "./pageHint.js";
 export { arxivResolver } from "./arxiv.js";
 export { pmcResolver } from "./pmc.js";
-export { landingPdfUrls, publisherPdfUrls, publisherResolver } from "./publisher.js";
+export { publisherResolver } from "./publisher.js";
 export { crossrefResolver } from "./crossref.js";
 export { unpaywallResolver } from "./unpaywall.js";
-export { sciHubResolver } from "./sciHub.js";
+export { customResolver, isCustomResolverTemplate } from "./customResolver.js";

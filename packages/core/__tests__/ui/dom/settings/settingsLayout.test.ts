@@ -60,7 +60,7 @@ describe("settings layout", () => {
   it("builds number and text inputs with their attributes", () => {
     const n = numberField({ id: "n", min: 0, max: 240, step: 1 });
     expect(n.control).toMatchObject({ type: "number", min: "0", max: "240", step: "1" });
-    const t = textField({ id: "u", type: "url", placeholder: "https://sci-hub.se" });
-    expect(t.control).toMatchObject({ type: "url", placeholder: "https://sci-hub.se" });
+    const t = textField({ id: "u", type: "url", placeholder: "https://host.example" });
+    expect(t.control).toMatchObject({ type: "url", placeholder: "https://host.example" });
   });
 });

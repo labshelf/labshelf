@@ -1,9 +1,7 @@
-/** Builds the Sync and PDF resolution sections: auto-sync interval, contact email and the Sci-Hub fallback. */
-import { DEFAULT_CONTACT_EMAIL } from "@labshelf/core";
-import {
-  checkboxField, inlineCode, numberField, setRowDisabled, settingRow, settingsSection, textField,
-} from "@labshelf/core/dom";
-import { DEFAULT_SCI_HUB_MIRROR, type LabShelfSettings } from "../platform";
+/** Builds the Sync section (auto-sync interval, registry contact email) and the section for asking authors for a PDF (name, affiliation, email language). */
+import { DEFAULT_CONTACT_EMAIL, REQUEST_LANGUAGES, REQUEST_LANGUAGE_NAME, isRequestLanguage } from "@labshelf/core";
+import { inlineCode, numberField, selectField, settingRow, settingsSection, textField } from "@labshelf/core/dom";
+import type { LabShelfSettings } from "../platform";
 
 export interface GeneralForm {
   sections: HTMLElement[];
@@ -16,11 +14,14 @@ export interface GeneralForm {
 export function createGeneralForm(): GeneralForm {
   const interval = numberField({ id: "sync-interval", min: 0, max: 240, step: 1, width: "sm" });
   const email = textField({ id: "contact-email", type: "email", placeholder: "you@example.com" });
-  const sciHub = checkboxField({ id: "enable-scihub", label: "Enable the Sci-Hub fallback" });
-  const mirror = textField({ id: "scihub-mirror", type: "url", placeholder: DEFAULT_SCI_HUB_MIRROR });
-  const mirrorRow = settingRow({ label: "Sci-Hub mirror", labelFor: "scihub-mirror" }, mirror.element);
-  const dimMirror = (): void => setRowDisabled(mirrorRow, !sciHub.control.checked);
-  sciHub.control.addEventListener("change", dimMirror);
+
+  const name = textField({ id: "requester-name", type: "text", placeholder: "Ada Lovelace" });
+  const affiliation = textField({ id: "requester-affiliation", type: "text", placeholder: "University of London" });
+  const language = selectField({
+    id: "request-language",
+    width: "md",
+    options: REQUEST_LANGUAGES.map((value) => ({ value, label: REQUEST_LANGUAGE_NAME[value] })),
+  });
 
   const sync = settingsSection(
     { title: "Sync" },
@@ -35,30 +36,28 @@ export function createGeneralForm(): GeneralForm {
       description: "Sent to Unpaywall and in the CrossRef User-Agent, as both services ask.",
     }, email.element),
   );
-  const resolution = settingsSection(
-    {
-      title: "PDF resolution",
-      description: "LabShelf tries page hints → arXiv → CrossRef → Unpaywall, in order. When everything fails, an optional Sci-Hub fallback can run.",
-    },
-    settingRow({}, sciHub.element),
-    mirrorRow,
+  const requesting = settingsSection(
+    { title: "Requesting PDFs from authors", description: "When no PDF can be found, LabShelf can open an email to the author in your mail client. It never sends anything itself." },
+    settingRow({ label: "Your name", labelFor: "requester-name", description: "Signs the email. Left empty, the email carries no name." }, name.element),
+    settingRow({ label: "Your affiliation", labelFor: "requester-affiliation", description: "Written under your name." }, affiliation.element),
+    settingRow({ label: "Email language", labelFor: "request-language" }, language.element),
   );
-
   return {
-    sections: [sync, resolution],
-    controls: [interval.control, email.control, sciHub.control, mirror.control],
+    sections: [sync, requesting],
+    controls: [interval.control, email.control, name.control, affiliation.control, language.control],
     read: () => ({
       autoSyncMinutes: Math.min(240, Math.max(0, Number(interval.control.value) || 0)),
       contactEmail: email.control.value.trim() || DEFAULT_CONTACT_EMAIL,
-      enableSciHub: sciHub.control.checked,
-      sciHubMirror: (mirror.control.value.trim() || DEFAULT_SCI_HUB_MIRROR).replace(/\/+$/, ""),
+      requesterName: name.control.value.trim(),
+      requesterAffiliation: affiliation.control.value.trim(),
+      ...(isRequestLanguage(language.control.value) ? { requestLanguage: language.control.value } : {}),
     }),
     fill(settings) {
       interval.control.value = String(settings.autoSyncMinutes);
       email.control.value = settings.contactEmail;
-      sciHub.control.checked = settings.enableSciHub;
-      mirror.control.value = settings.sciHubMirror;
-      dimMirror();
+      name.control.value = settings.requesterName;
+      affiliation.control.value = settings.requesterAffiliation;
+      language.control.value = settings.requestLanguage;
     },
   };
 }

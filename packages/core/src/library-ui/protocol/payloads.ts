@@ -58,6 +58,16 @@ export interface PdfMiss {
   sources: string[];
   /** At least one candidate answered with a bot check. */
   blocked: boolean;
+  /** At least one candidate answered with a login or paywall page. */
+  needsLogin: boolean;
+  /** The best-ranked page that asked for a sign-in or a bot check, for the user to open; set only by a host with a browser session. */
+  access?: PdfAccess;
+}
+
+/** A page that stood between LabShelf and a PDF: a sign-in or paywall page, or a bot check the user can pass. */
+export interface PdfAccess {
+  kind: "login" | "bot";
+  url: string;
 }
 
 /** Something the host can add a paper from, such as an open browser tab. */
@@ -67,5 +77,9 @@ export interface AddSource {
   description: string;
 }
 
-/** Whether a capture without a PDF asks first or saves the reference anyway. */
-export type IfNoPdf = "ask" | "save";
+/**
+ * Whether a capture without a PDF asks first, saves the reference anyway, saves it and opens the miss's access page
+ * for the user to sign in or pass the check (attaching the PDF once that page yields it), or saves it and drafts an
+ * email asking the authors for a copy.
+ */
+export type IfNoPdf = "ask" | "save" | "open" | "author";

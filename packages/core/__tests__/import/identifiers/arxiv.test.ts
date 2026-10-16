@@ -7,6 +7,7 @@ describe('arxivIdFromUrl', () => {
     'https://arxiv.org/abs/1706.03762',
     'https://arxiv.org/pdf/1706.03762v7',
     'https://arxiv.org/html/1706.03762v1',
+    'https://doi.org/10.48550/arXiv.1706.03762',
   ])('reads the id from %s', (url) => {
     expect(arxivIdFromUrl(url)).toBe('1706.03762');
   });

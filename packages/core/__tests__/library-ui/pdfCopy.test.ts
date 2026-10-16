@@ -1,7 +1,7 @@
 import { findMissMessage, noPdfDialogCopy, pdfSourceLabel } from "../../src/library-ui/pdfCopy";
 import type { PdfMiss } from "../../src/library-ui/protocol";
 
-const miss = (over: Partial<PdfMiss> = {}): PdfMiss => ({ tried: 0, sources: [], blocked: false, ...over });
+const miss = (over: Partial<PdfMiss> = {}): PdfMiss => ({ tried: 0, sources: [], blocked: false, needsLogin: false, ...over });
 
 describe("pdfSourceLabel", () => {
   it("labels known resolvers, passes through unknown ones, falls back to the web", () => {
@@ -30,6 +30,12 @@ describe("noPdfDialogCopy", () => {
     const { message } = noPdfDialogCopy("Ghost", miss({ tried: 0 }));
     expect(message).toContain("No PDF link, DOI or arXiv id was found for \"Ghost\"");
     expect(message).not.toContain("Tried");
+  });
+
+  it("tells the user to open the page and sign in or pass the check when the miss has an access page", () => {
+    const url = "https://publisher.example/x.pdf";
+    expect(noPdfDialogCopy("X", miss({ tried: 1, needsLogin: true, access: { kind: "login", url } })).message).toContain("sign in there");
+    expect(findMissMessage("X", miss({ tried: 1, blocked: true, access: { kind: "bot", url } }))).toContain("pass the check there");
   });
 
   it("adds the bot-check hint when some links were blocked", () => {

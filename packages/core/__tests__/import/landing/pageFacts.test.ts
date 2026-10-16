@@ -8,7 +8,7 @@ const springer = (): RawPage => parseHtmlPage(
   readFileSync(join(__dirname, "..", "..", "fixtures", "springerArticle.html"), "utf8"),
   "https://link.springer.com/article/10.1007/s10107-023-01234-5",
 );
-const page = (over: Partial<RawPage>): RawPage => ({ pageUrl: "https://example.org/a", meta: {}, pdfLinks: [], doiLinks: [], ...over });
+const page = (over: Partial<RawPage>): RawPage => ({ pageUrl: "https://example.org/a", meta: {}, pdfLinks: [], doiLinks: [], mailtoLinks: [], authorEmails: [], ...over });
 
 describe("interpretPage", () => {
   it("reads the full citation record a publisher page states", () => {
@@ -58,6 +58,16 @@ describe("interpretPage", () => {
   it("recognises arXiv pages and the arXiv DOI", () => {
     expect(interpretPage(page({ pageUrl: "https://arxiv.org/abs/2301.12345v2" })).ids.arxivId).toBe("2301.12345");
     expect(interpretPage(page({ meta: { citation_doi: ["10.48550/arXiv.1706.03762"] } })).ids).toMatchObject({ arxivId: "1706.03762" });
+  });
+
+  it("reads old-style arXiv ids from the citation meta tag and the abs URL", () => {
+    expect(interpretPage(page({ meta: { citation_arxiv_id: ["arXiv:hep-th/9711200v3"] } })).ids.arxivId).toBe("hep-th/9711200");
+    expect(interpretPage(page({ meta: { citation_arxiv_id: ["math.GT/0309136"] } })).ids.arxivId).toBe("math.GT/0309136");
+    expect(interpretPage(page({ pageUrl: "https://arxiv.org/abs/hep-th/9711200v2" })).ids.arxivId).toBe("hep-th/9711200");
+  });
+
+  it("takes no arXiv id from a citation_arxiv_id that is not one", () => {
+    expect(interpretPage(page({ meta: { citation_arxiv_id: ["see the abstract"] } })).ids.arxivId).toBeUndefined();
   });
 
   it("treats a PDF tab as a paper whose first candidate is the tab itself", () => {

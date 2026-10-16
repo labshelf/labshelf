@@ -27,4 +27,45 @@ describe("unpaywallResolver", () => {
     expect(await unpaywallResolver.resolve(makeContext({ doi: "10.1/x" }), h.env)).toEqual([]);
     expect(h.logs).toEqual([expect.objectContaining({ level: "WARN", context: { url: URL_FOR, error: "offline" } })]);
   });
+
+  it("notes each location's version label for its URLs, and keeps the first label for a repeated URL", async () => {
+    const h = makeFindingHarness();
+    h.routes[URL_FOR] = () => json({
+      best_oa_location: { url_for_pdf: "https://repo.example/best.pdf", version: "acceptedVersion" },
+      oa_locations: [
+        { url_for_pdf: "https://repo.example/best.pdf", version: "submittedVersion" },
+        { url_for_pdf: "https://pub.example/oa.pdf", url: "https://pub.example/landing", version: "publishedVersion" },
+        { url_for_pdf: "https://pre.example/p.pdf", version: "submittedVersion" },
+        { url_for_pdf: "https://odd.example/p.pdf", version: "somethingElse" },
+        { url_for_pdf: "https://none.example/p.pdf" },
+      ],
+    });
+    const ctx = makeContext({ doi: "10.1/x" });
+    await unpaywallResolver.resolve(ctx, h.env);
+    expect(Object.fromEntries(ctx.versions!)).toEqual({
+      "https://repo.example/best.pdf": "accepted",
+      "https://pub.example/oa.pdf": "published",
+      "https://pub.example/landing": "published",
+      "https://pre.example/p.pdf": "preprint",
+    });
+  });
+
+  it("keeps no pre-publication label on a publisher-hosted copy", async () => {
+    const h = makeFindingHarness();
+    h.routes[URL_FOR] = () => json({
+      best_oa_location: { url_for_pdf: "https://journals.plos.org/p.pdf", host_type: "publisher", version: "submittedVersion" },
+      oa_locations: [{ url_for_pdf: "https://pub.example/vor.pdf", host_type: "publisher", version: "publishedVersion" }],
+    });
+    const ctx = makeContext({ doi: "10.1/x" });
+    await unpaywallResolver.resolve(ctx, h.env);
+    expect(Object.fromEntries(ctx.versions!)).toEqual({ "https://pub.example/vor.pdf": "published" });
+  });
+
+  it("leaves the versions unset when Unpaywall labels nothing", async () => {
+    const h = makeFindingHarness();
+    h.routes[URL_FOR] = () => json({ best_oa_location: { url_for_pdf: "https://repo.example/best.pdf" } });
+    const ctx = makeContext({ doi: "10.1/x" });
+    await unpaywallResolver.resolve(ctx, h.env);
+    expect(ctx.versions).toBeUndefined();
+  });
 });

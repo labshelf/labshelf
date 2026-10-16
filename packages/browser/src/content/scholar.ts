@@ -89,7 +89,7 @@ async function save(m: Mounted, folder?: string, ifNoPdf: IfNoPdf = "ask", retry
       // Nothing was written: ask before saving the reference without its PDF.
       setState(m, "confirm", "No PDF found — choose whether to save the reference without it.");
       const choice = await askNoPdf(m.hit.title, r.miss, overlayRoot());
-      if (choice === "save") return save(m, folder, "save");
+      if (choice === "save" || choice === "open" || choice === "author") return save(m, folder, choice);
       if (choice === "retry") return save(m, folder, "ask", true);
       setState(m, "idle", "Not saved — no PDF was found. Click to try again.");
       return;
