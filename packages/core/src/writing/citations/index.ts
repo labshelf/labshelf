@@ -8,6 +8,7 @@ export { pageSupplement, quotationBefore } from "./citedText.js";
 export { pageArgumentContext } from "./pageArgument.js";
 export type { PageArgumentContext } from "./pageArgument.js";
 export { syncListedPapers } from "./listedPapersSync.js";
+export type { BibliographyUpdate, CitingProject } from "./listedPapersSync.js";
 export { papersByCiteKey } from "./papersByCiteKey.js";
 export { citedKeys, scanCitationKeys } from "./citationKeys.js";
 export type { CitedKey } from "./citationKeys.js";

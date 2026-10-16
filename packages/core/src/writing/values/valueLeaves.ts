@@ -1,5 +1,6 @@
 /** Flattens parsed JSON into the number, string and boolean leaves that sources read by key. */
 // CONTRACT: documents/contracts/library-format.md#labshelf-valuestex
+import type { ProjectSettings } from "../project/index.js";
 
 export type LeafValue = number | string | boolean;
 
@@ -11,6 +12,13 @@ export interface ValueLeaf {
   file: string;
   /** Dotted path of the leaf inside the file. */
   path: string;
+}
+
+export interface ValueProject {
+  folder: string;
+  settings: ProjectSettings;
+  /** Main file relative to the folder; undefined when the project has none yet. */
+  main: string | undefined;
 }
 
 export interface FlattenedValues {

@@ -9,7 +9,8 @@ import type { OpenSources } from "../../project/index.js";
 import type { ValueLeaf } from "../valueLeaves.js";
 import { VALUES_FILE_NAME, generateValuesFile } from "../valuesFile.js";
 import { withValuesInput } from "../valuesInputLine.js";
-import { readProjectValues, type ValueProject } from "./projectValues.js";
+import type { ValueProject } from "../valueLeaves.js";
+import { readProjectValues } from "./projectValues.js";
 
 const MODULE = "writing/values";
 

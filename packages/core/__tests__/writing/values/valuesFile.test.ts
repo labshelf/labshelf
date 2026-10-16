@@ -1,5 +1,5 @@
 /** Verifies the generated labshelf-values.tex text, LaTeX escaping and the main file's input line. */
-import { VALUES_HEADER, flattenValues, generateValuesFile, withValuesInput } from "../../../src/writing/values/index";
+import { VALUES_HEADER, flattenValues, generateValuesFile, valueFilePath, withValuesInput } from "../../../src/writing/values/index";
 import { escapeLatex } from "../../../src/writing/values/valuesFile";
 
 describe("generateValuesFile", () => {
@@ -58,5 +58,17 @@ describe("withValuesInput", () => {
 
   it("leaves a file without \\begin{document} as it was", () => {
     expect(withValuesInput("\\section{A}\n")).toEqual({ kind: "no-document", text: "\\section{A}\n" });
+  });
+});
+
+describe("valueFilePath", () => {
+  it.each([
+    ["results.json", "results.json"],
+    ["./data/results.json", "data/results.json"],
+    ["data\\results.json", "data/results.json"],
+    ["data//a/../results.json", "data/results.json"],
+    ["../shared/results.json", "../shared/results.json"],
+  ])("normalises %s to %s", (listed, expected) => {
+    expect(valueFilePath(listed)).toBe(expected);
   });
 });

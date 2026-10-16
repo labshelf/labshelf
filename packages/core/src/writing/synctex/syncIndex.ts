@@ -55,3 +55,5 @@ export interface SourceLocation {
 }
 
 export const isBox = (node: SyncNode): node is SyncBox => "children" in node;
+
+export type SynctexRead = { status: "found"; index: SyncIndex } | { status: "missing"; path: string };

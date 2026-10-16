@@ -1,6 +1,7 @@
 /** Builds the text of a project's generated labshelf-values.tex from the JSON leaves its sources read. */
 // CONTRACT: documents/contracts/library-format.md#labshelf-valuestex
 
+import { posixPathOps } from "../../library/mutations/index.js";
 import type { ValueLeaf } from "./valueLeaves.js";
 
 export const VALUES_FILE_NAME = "labshelf-values.tex";
@@ -24,3 +25,6 @@ export function generateValuesFile(leaves: readonly ValueLeaf[]): string {
   const definitions = leaves.map((leaf) => `\\expandafter\\def\\csname lsv@${leaf.key}\\endcsname{${escapeLatex(String(leaf.value))}}`);
   return [VALUES_HEADER, LSVALUE_MACRO, ...definitions].join("\n") + "\n";
 }
+
+/** A file path as `values:` lists it, with "/" separators and no `./`, as leaves name their file. */
+export const valueFilePath = (listed: string): string => posixPathOps.resolve(listed.replaceAll("\\", "/"));

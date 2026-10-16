@@ -5,11 +5,9 @@ import { gunzip } from "node:zlib";
 import { promisify } from "node:util";
 
 import { parseSynctex } from "../parseSynctex.js";
-import type { SyncIndex } from "../syncIndex.js";
+import type { SynctexRead } from "../syncIndex.js";
 
 const gunzipAsync = promisify(gunzip);
-
-export type SynctexRead = { status: "found"; index: SyncIndex } | { status: "missing"; path: string };
 
 /** Reads `<outDir>/<base>.synctex.gz`; `cwd` is the folder the build ran in. A build that wrote no SyncTeX file reads as "missing". */
 export async function readSynctexFile(outDir: string, base: string, cwd: string): Promise<SynctexRead> {

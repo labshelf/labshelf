@@ -2,7 +2,24 @@
 // CONTRACT: documents/contracts/library-format.md#labshelfyaml
 
 import type { PaperRecord } from "../../model/index.js";
-import type { ListedPaper } from "../project/index.js";
+import type { ListedPaper, ProjectSettings } from "../project/index.js";
+
+export interface CitingProject {
+  folder: string;
+  settings: ProjectSettings;
+  /** Main file relative to the folder; undefined when the project has none yet. */
+  main: string | undefined;
+}
+
+export interface BibliographyUpdate {
+  /** True when labshelf.bib was written; an unchanged file is not rewritten. */
+  written: boolean;
+  /** True when the papers list of labshelf.yaml was rewritten. */
+  papersWritten: boolean;
+  missing: string[];
+  /** "conflict": the Typst main file already loads another bibliography, so labshelf.bib must be added by hand. */
+  mainLine: "present" | "added" | "conflict" | "no-main" | "not-needed";
+}
 
 /**
  * The list after syncing, or undefined when it is already in sync. Entries the user added are never removed, a DOI

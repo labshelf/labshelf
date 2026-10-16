@@ -5,18 +5,11 @@ import { readOptionalFile, writeFileAtomic } from "../../../library/node/index.j
 import type { ILogger } from "../../../ports/index.js";
 import {
   PROJECT_STATE_DIR, PROJECT_STATE_FILE, cursorOf, newestCursor, parseProjectState, serializeProjectState, withCursor,
-  type ProjectCursor,
+  type ProjectCursor, type ProjectLastEdit,
 } from "../deviceLocal/index.js";
 import type { ProjectEntry } from "../projectEntry.js";
 
 const MODULE = "projectState";
-
-/** A project and where its user last edited. */
-export interface ProjectLastEdit {
-  id: string;
-  folder: string;
-  cursor: ProjectCursor;
-}
 
 function stateFile(folder: string): string {
   return path.join(folder, PROJECT_STATE_DIR, PROJECT_STATE_FILE);

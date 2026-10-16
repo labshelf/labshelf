@@ -16,6 +16,13 @@ export interface ProjectCursor {
   updatedAt: string;
 }
 
+/** A project and where its user last edited. */
+export interface ProjectLastEdit {
+  id: string;
+  folder: string;
+  cursor: ProjectCursor;
+}
+
 /** The whole file: the cursor keys plus any key another version wrote. */
 export type ProjectState = Record<string, unknown>;
 

@@ -5,19 +5,11 @@ import * as path from "node:path";
 
 import type { ILogger } from "../../../ports/index.js";
 import { listProjectFiles } from "../../project/node/index.js";
+import type { MarkVersionRequest } from "../projectVersion.js";
 import { serializeVersionFile, VERSIONS_DIR, VERSION_FILE, VERSION_PDF, VERSION_SOURCES } from "../versionInfo.js";
 import { versionSlug } from "../versionSlug.js";
 
 const MODULE = "writing/versions";
-
-export interface MarkVersionRequest {
-  /** The project folder. */
-  folder: string;
-  /** The built PDF to keep with the sources. */
-  pdfPath: string;
-  name: string;
-  now: Date;
-}
 
 async function copyInto(source: string, target: string): Promise<void> {
   await fs.mkdir(path.dirname(target), { recursive: true });

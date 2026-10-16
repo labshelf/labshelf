@@ -6,30 +6,14 @@ import * as path from "node:path";
 import { readOptionalFile, writeFileAtomic } from "../../../library/node/index.js";
 import type { PaperRecord } from "../../../model/index.js";
 import type { ILogger } from "../../../ports/index.js";
-import { DEFAULT_BIBLIOGRAPHY, type OpenSources, type ProjectFormat, type ProjectSettings } from "../../project/index.js";
+import { DEFAULT_BIBLIOGRAPHY, type OpenSources, type ProjectFormat } from "../../project/index.js";
 import { updateProjectSettings } from "../../project/node/index.js";
+import type { BibliographyUpdate, CitingProject } from "../listedPapersSync.js";
 import { generateBibliography } from "../bibliographyFile.js";
 import { withBibliographyLine } from "../bibliographyLine.js";
 import { scanCitationKeys } from "../citationKeys.js";
 import { syncProjectPapers } from "./projectPapersSync.js";
 import { DISK_ONLY, projectSources } from "./projectSources.js";
-
-export interface CitingProject {
-  folder: string;
-  settings: ProjectSettings;
-  /** Main file relative to the folder; undefined when the project has none yet. */
-  main: string | undefined;
-}
-
-export interface BibliographyUpdate {
-  /** True when labshelf.bib was written; an unchanged file is not rewritten. */
-  written: boolean;
-  /** True when the papers list of labshelf.yaml was rewritten. */
-  papersWritten: boolean;
-  missing: string[];
-  /** "conflict": the Typst main file already loads another bibliography, so labshelf.bib must be added by hand. */
-  mainLine: "present" | "added" | "conflict" | "no-main" | "not-needed";
-}
 
 /** Keys cited anywhere in the project's sources; hidden folders and node_modules are not sources. */
 export async function projectCitationKeys(

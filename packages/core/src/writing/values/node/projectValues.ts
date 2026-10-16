@@ -5,20 +5,10 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import type { ILogger } from "../../../ports/index.js";
-import type { ProjectSettings } from "../../project/index.js";
-import { flattenValues, valueFileBase, type ValueLeaf } from "../valueLeaves.js";
+import { flattenValues, valueFileBase, type ValueLeaf, type ValueProject } from "../valueLeaves.js";
+import { valueFilePath } from "../valuesFile.js";
 
 const MODULE = "writing/values";
-
-export interface ValueProject {
-  folder: string;
-  settings: ProjectSettings;
-  /** Main file relative to the folder; undefined when the project has none yet. */
-  main: string | undefined;
-}
-
-/** A file path as `values:` lists it, with "/" separators and no `./`, as leaves name their file. */
-export const valueFilePath = (listed: string): string => path.posix.normalize(listed.replaceAll("\\", "/"));
 
 /** Leaves of every readable value file, in the order the files are listed; a missing or invalid file, or one whose name an earlier file already took, is logged and skipped. */
 export async function readProjectValues(project: Pick<ValueProject, "folder" | "settings">, logger: ILogger): Promise<ValueLeaf[]> {
