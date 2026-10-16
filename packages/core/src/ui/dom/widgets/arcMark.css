@@ -1,0 +1,24 @@
+/**
+ * Styles the Arc mark: its tone colours and the label that slides in to its left while the mark stays put.
+ * Requires tokens.css.
+ */
+.ls-arc-mark {
+  position: relative; display: inline-flex; flex-shrink: 0; width: var(--ls-space-6); height: var(--ls-space-6);
+  border-radius: var(--ls-radius-pill); outline: none;
+}
+.ls-arc-mark:focus-visible { box-shadow: 0 0 0 1px var(--ls-focus); }
+.ls-arc { display: block; width: 100%; height: 100%; }
+.ls-arc-err { color: var(--ls-mark-err); }
+.ls-arc-warn { color: var(--ls-mark-warn); }
+.ls-arc-ok { color: var(--ls-mark-ok); }
+.ls-arc-accent { color: var(--ls-mark-accent); }
+.ls-arc-mark-label {
+  position: absolute; right: 100%; top: 50%; z-index: 1; margin-right: var(--ls-space-2); padding: 0 var(--ls-space-2);
+  border-radius: var(--ls-radius-sm); background: var(--ls-widget-bg); color: var(--ls-desc);
+  font-family: var(--ls-font); font-size: var(--ls-text-sm); line-height: var(--ls-space-7); white-space: nowrap;
+  pointer-events: none; opacity: 0; transform: translate(var(--ls-space-2), -50%);
+  transition: opacity var(--ls-fast) ease-out, transform var(--ls-fast) ease-out;
+}
+.ls-arc-mark:hover .ls-arc-mark-label,
+.ls-arc-mark:focus-visible .ls-arc-mark-label { opacity: 1; transform: translate(0, -50%); }
+@media (prefers-reduced-motion: reduce) { .ls-arc-mark-label { transition: none; } }

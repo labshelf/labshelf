@@ -84,3 +84,12 @@ export const STATUS_TOKENS = {
   "status-reading": token("#e5c07b", "#c9a227"),
   "status-done": token("#4ec994", "#2e9e6b"),
 } satisfies Record<string, DesignToken>;
+
+// Status marks stay brand colours in every host, so these have no VS Code mapping.
+// They are the error, warning, green and blue roles with the saturation taken down.
+export const MARK_TOKENS = {
+  "mark-err": token("#d9736d", "#a8483a"),
+  "mark-warn": token("#c9ad4a", "#a8822f"),
+  "mark-ok": token("#93c190", "#4d8a4a"),
+  "mark-accent": token("#6ea3e0", "#3a78ad"),
+} satisfies Record<string, DesignToken>;
