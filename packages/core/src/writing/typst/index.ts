@@ -2,6 +2,7 @@
  * It is the `@labshelf/core/typst` entry, kept out of the root barrel so typst.ts stays out of every bundle that does not compile Typst. */
 export { TYPST_FONT_BASE_URL, TYPST_FONTS, TYPST_VERSION } from "./typstRelease.js";
 export type { TypstFontFile } from "./typstRelease.js";
+export type { TypstBuildResult } from "./typstBuildResult.js";
 export type { TypstCitations } from "./typstCitationProbe.js";
 export { typstProblems } from "./typstProblems.js";
 export type { TypstDiagnostic } from "./typstProblems.js";

@@ -3,9 +3,9 @@ import * as path from "node:path";
 
 import { writeFileAtomic } from "../../../library/node/index.js";
 import type { ILogger } from "../../../ports/index.js";
-import type { TypstCite } from "../../review/index.js";
 import type { LocatedProblem } from "../../latex/build/index.js";
 import type { FetchLike } from "../../latex/toolchain/node/index.js";
+import type { TypstBuildResult } from "../typstBuildResult.js";
 import { typstProblems } from "../typstProblems.js";
 import type { TypstCompileResult, TypstSession } from "../typstSession.js";
 import { fromCompilerPath, toCompilerPath } from "./typstFileAccess.js";
@@ -28,11 +28,6 @@ export interface TypstBuildRequest {
   fetch?: FetchLike;
   signal?: AbortSignal;
 }
-
-export type TypstBuildResult =
-  /** `cites` is empty when the citation probe failed; the failure is logged. */
-  | { status: "succeeded"; pdf: string; problems: LocatedProblem[]; cites: TypstCite[] }
-  | { status: "failed"; problems: LocatedProblem[] };
 
 function compileOnce(request: TypstBuildRequest, mainFile: string): Promise<TypstCompileResult> {
   const sources = new Map([...request.sources].map(([file, text]) => [toCompilerPath(file), text]));
