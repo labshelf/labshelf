@@ -108,9 +108,9 @@
 /* A narrow list pane drops columns before the title gets squeezed: Last read first, then Authors, then Year. Title and
    Status stay. The pane shares the window with the sidebar and the detail pane, so its own width decides, not the window's.
    INVARIANT: each threshold is at least the next wider layout's fixed columns + 8px row padding + a 14px scrollbar + the
-   120px title floor (full 542, ≤720 438, ≤460 308), so the title never drops under its floor before a column goes.
+   120px title floor (full 542, ≤600 438, ≤460 308), so the title never drops under its floor before a column goes.
    Below 460px the tray fact would shrink to a few letters, so it takes its own line under the name. */
-@container list-pane (max-width: 720px) {
+@container list-pane (max-width: 600px) {
   .ls-library .list-body { --cols: 28px minmax(120px, 1fr) 130px 52px 86px; }
   .ls-library .col-read { display: none !important; }
 }
