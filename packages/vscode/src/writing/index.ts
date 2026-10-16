@@ -3,6 +3,7 @@ export { registerMainCommands } from "./mainCommands.js";
 export { registerMainStatusBar } from "./mainStatusBar.js";
 export { registerProjectCommands } from "./projectCommands.js";
 export { registerProjectItemCommands } from "./projectItemCommands.js";
+export { mainPathIn, owningProject } from "./mainDocument.js";
 export { WritingProjects } from "./projectStore.js";
 export type { WritingHost, WritingSession } from "./projectStore.js";
 export { WritingTreeProvider, projectTreeItem } from "./projectsTreeProvider.js";

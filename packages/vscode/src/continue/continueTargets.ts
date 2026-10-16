@@ -1,7 +1,5 @@
 // Finds what the Library view offers to continue: the paper read last and the project file edited last.
-import { promises as fs } from "node:fs";
-import * as path from "node:path";
-import type * as vscode from "vscode";
+import * as vscode from "vscode";
 
 import {
   createSidecarReader, lastReadPaper, type ILogger, type PaperRecord, type SidecarSummarySource,
@@ -38,11 +36,16 @@ async function paperTarget(library: ContinueLibrary): Promise<ContinueTarget | u
   return last && record ? { kind: "paper", paperId: last.paperId, title: record.title || record.id, page: last.page } : undefined;
 }
 
-async function projectTarget(library: ContinueLibrary, projects: WritingProjects): Promise<ContinueTarget | undefined> {
+/** A missing, unreadable or non-file path all mean "nothing to continue to". */
+async function isFile(file: string): Promise<boolean> {
+  return vscode.workspace.fs.stat(vscode.Uri.file(file)).then((stat) => (stat.type & vscode.FileType.File) !== 0, () => false);
+}
+
+async function projectTarget(library: ContinueLibrary, projects: Pick<WritingProjects, "list" | "paths">): Promise<ContinueTarget | undefined> {
   const edit = await latestProjectEdit(projects.list(), library.logger);
   if (!edit) { return undefined; }
-  const file = path.join(edit.folder, ...edit.cursor.file.split("/"));
-  if (!(await fs.stat(file).then((stat) => stat.isFile(), () => false))) { return undefined; }
+  const file = projects.paths.join(edit.folder, ...edit.cursor.file.split("/"));
+  if (!(await isFile(file))) { return undefined; }
   const { line, character } = edit.cursor;
   return { kind: "project", projectId: edit.id, file, relativeFile: edit.cursor.file, line, character };
 }

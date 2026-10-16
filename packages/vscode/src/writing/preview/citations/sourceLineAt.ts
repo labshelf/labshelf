@@ -1,5 +1,4 @@
 // Finds the LaTeX source line behind a point of the preview through SyncTeX, reading the open editor's text before the file on disk.
-import * as fs from "node:fs/promises";
 import * as vscode from "vscode";
 
 import { sourceAt, type PagePoint, type SourceLine } from "@labshelf/core";
@@ -8,7 +7,7 @@ import type { SynctexLookup } from "../sourceLinks/index.js";
 /** The text of a file as the user sees it: the open document's, saved or not. */
 async function currentText(file: string): Promise<string> {
   const open = vscode.workspace.textDocuments.find((document) => document.uri.fsPath === file);
-  return open ? open.getText() : fs.readFile(file, "utf8");
+  return open ? open.getText() : new TextDecoder().decode(await vscode.workspace.fs.readFile(vscode.Uri.file(file)));
 }
 
 /** `undefined` when the project has no SyncTeX data or nothing of the source lies at the point. */

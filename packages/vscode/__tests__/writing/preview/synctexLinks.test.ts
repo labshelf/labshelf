@@ -43,7 +43,7 @@ function setup() {
   const host = fakeHost();
   const controller = { setBuildStatus: jest.fn(), reloadDocument: jest.fn(), revealPoint: jest.fn() };
   create.mockImplementation(() => ({ controller }));
-  const previews = new BuildPreviews({ host, listPapers: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false });
+  const previews = new BuildPreviews({ host, paths: path, listPapers: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false });
   const project = readyEntry(dir) as Project;
   const ports = () => create.mock.calls[0][1].preview;
   return { host, controller, previews, project, ports };
@@ -181,7 +181,7 @@ describe("Show in Preview command", () => {
   });
 
   it("runs the build command when the project has no built PDF", async () => {
-    fs.rmSync(path.join(dir, "main.pdf"));
+    (vscode.workspace.fs.stat as jest.Mock).mockRejectedValueOnce(Object.assign(new Error("FileNotFound"), { code: "FileNotFound" }));
     register(2);
     await commandHandler("labshelf.writing.showInPreview")();
     expect(vscode.commands.executeCommand).toHaveBeenCalledWith("labshelf.writing.build");

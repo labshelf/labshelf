@@ -4,8 +4,7 @@ import * as vscode from "vscode";
 import type { ILogger } from "@labshelf/core";
 import { writeProjectCursor } from "@labshelf/core/node";
 
-import { mainPathIn, owningProject } from "../writing/mainDocument.js";
-import type { WritingProjects } from "../writing/index.js";
+import { mainPathIn, owningProject, type WritingProjects } from "../writing/index.js";
 
 const MODULE = "continue";
 const SETTLE_MS = 2000;
@@ -27,10 +26,10 @@ export function registerProjectCursorRecorder(context: vscode.ExtensionContext, 
     const logger = deps.logger();
     if (!editor || !logger || editor.document.uri.scheme !== "file") { return; }
     const filePath = editor.document.uri.fsPath;
-    const project = owningProject(deps.projects.list(), filePath);
+    const project = owningProject(deps.projects, filePath);
     if (!project) { return; }
     const { line, character } = editor.selection.active;
-    const file = mainPathIn(project, filePath);
+    const file = mainPathIn(deps.projects.paths, project, filePath);
     const position = `${project.folder}\n${file}\n${line}:${character}`;
     if (position === lastSaved) { return; }
     try {
