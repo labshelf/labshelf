@@ -1,6 +1,6 @@
 # Plan: Agent context diet
 
-Status: in progress (session 1 of 3)
+Status: in progress (session 2 of 3)
 Size: G — tooling only (settings, agents, skills, hooks, scripts), no app code, but about 15 tooling files and three plan migrations; grows to GG if account-level skills or connectors cannot be turned off per project and need a different mechanism.
 Pending decisions: 0
 
@@ -49,8 +49,8 @@ Facts behind them: [research/baseline-measurements.md](research/baseline-measure
 - [x] **A4** The four plugins are off; `/ui-design` exists, and orchestrate names it for UI steps.
 - [x] **A5** `verify` installs the browser extension through chrome-devtools on Chrome for Testing, opens its popup and saves a screenshot; it also drives one VS Code webview page.
 - [x] **A6** `agent-tokens.mjs` reports per agent: baseline, plan-file reads, report size returned to the caller; `pnpm test:tooling` covers each.
-- [ ] **A7** `check-rules.sh` warns when a `plan.md` passes 12,000 characters or a session file 6,000; tested.
-- [ ] **A8** `research-fresh.mjs` lists exactly the entries whose files changed since their `sha`; tested on a fixture repository.
+- [x] **A7** `check-rules.sh` warns when a `plan.md` passes 12,000 characters or a session file 6,000; tested.
+- [x] **A8** `research-fresh.mjs` lists exactly the entries whose files changed since their `sha`; tested on a fixture repository.
 - [ ] **A9** `session-context.sh` lists directory plans with open items and next step, and nothing reads `*.plan.md` anymore.
 - [ ] **A10** `read-budget.mjs` warns once in the main thread past the threshold and never in a subagent; tested.
 - [ ] **A11** No `*.plan.md` remains under `documents/plans/`; each active plan is a directory within the caps.
@@ -73,8 +73,8 @@ Facts behind them: [research/baseline-measurements.md](research/baseline-measure
 
 | Session | File | Deliverable | Commit |
 |---|---|---|---|
-| 1 | [sessions/01.md](sessions/01.md) | baseline diet and measurement | yes |
-| 2 | [sessions/02.md](sessions/02.md) | plan directory format, caps, research cache | yes |
+| 1 | done, see log | baseline diet and measurement | yes |
+| 2 | done, see log | plan directory format, caps, research cache | yes |
 | 3 | [sessions/03.md](sessions/03.md) | read budget, migration of every plan, final measurement | yes |
 
 ## 7. Risks
