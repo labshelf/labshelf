@@ -1,17 +1,15 @@
-sha: 25a7770
-files: packages/vscode/src/writing/**, packages/vscode/src/activation/registration/registerWritingView.ts, packages/vscode/package.json, packages/core/src/writing/project/**, packages/core/src/writing/projectData/**, packages/core/src/library-ui/**, packages/core/src/ui/**
+sha: 632d371
+files: packages/core/src/writing/project/**, packages/core/src/writing/projectData/**, packages/core/src/writing/templates/**, packages/vscode/src/writing/projectCommands.ts
 source: Explore scout, 2026-10-16
 
-# The Projects view today
-- It is the native tree view `labshelf.writing` ("Writing"), one of three tree views in activity-bar container labshelfContainer (vscode/package.json:337-360; viewsWelcome 377-379 with New project / Add existing folder; view/title menus 427-437). Provider: vscode/src/writing/projectsTreeProvider.ts; composition: vscode/src/activation/registration/registerWritingView.ts:~127-160. No writing webview exists: the gallery is a new webview (editor panel opened from the view, or a `type: "webview"` view). writing-project-workspace is rewriting this side bar — check its current form before designing (Q4).
-- New project: vscode/src/writing/projectCommands.ts:23-35 — host.require(), showInputBox title, quick pick LaTeX/Typst, projects.data.createProject, reload, openProjectMain. Always <library>/projects/<id>/.
-- core/src/writing/project/node/projectCatalog.ts:46-62 createProject: claim id, non-recursive mkdir, write main (writeFileAtomic), write labshelf.yaml LAST (keeps a half-written project unlisted), log "project created". Port: core/src/writing/projectData/projectDataPort.ts:14-35 createProject(libraryRoot,{title,format}) only; node impl projectData/node/nodeProjectData.ts via vscode/src/activation/node/nodeAdapters.ts:25. Multi-file needs a new request shape with relative-path validation.
-- templates.ts projectTemplate(format,title) -> {main,text}; tests core/__tests__/writing/project/templates.test.ts. The blank templates become built-in gallery entries; the gallery replaces pickFormat so there is one way to create a project (AGENTS.md §4).
-- projectFile.ts: PROJECT_FORMATS latex|typst, PROJECT_FILE labshelf.yaml.
+# Project creation and templates in core
 
-# Reusable UI
-- Webview recipe: vscode/src/ui/list/listWebviewPanel.ts:1-45, listPanelHtml.ts, src/libraryWebview/{main,webviewChannel}.ts (CSP, nonce, bundle in dist/library, typed messages).
-- core/src/library-ui/dom/shell/frame.ts + sash.ts (sidebar/detail panes); mountLibraryUi is paper-specific.
-- Protocol pattern: core/src/library-ui/protocol/{messages,transport,loopbackTransport,messageGuards}.ts, contract documents/contracts/library-ui-host.md. Gallery needs its own message union + guards.
-- core/src/ui/dom/widgets/: showMenu, showDialog, confirmDialog, quickPick, inputBox, toast, overlay. Tokens core/src/ui/dom/tokens.css; icons core/src/ui/icons/{glyphs.ts,icon.ts} (FOLDER, BOOK, SHEET, SHEET_TALL, PANEL; check for a grid glyph). No card/grid component exists: new core dom component.
-- Docs: documents/apps/vscode.md:28-36 (Writing view).
+- core/src/writing/project/node/projectCatalog.ts:47-62 `createProject(libraryRoot,{title,format},logger)` (file 97 lines): claimProjectId (:38-44, private; INVARIANT ids unique across library and registry) → blankTemplate(format,title) → mkdir projects root → non-recursive mkdir folder → writeFileAtomic main → writeFileAtomic labshelf.yaml last via serializeProjectFile({id,format,main}) (no engine) → log INFO "project" "project created" {folder,format} → readProject(folder,"library",logger). No staging: a failure leaves a yaml-less folder.
+- core/src/writing/templates/blankTemplates.ts:54 `blankTemplate(format,title): {main,text}`; only caller projectCatalog.ts:11. `core/src/writing/project/templates.ts` no longer exists.
+- Reuse: templatePaths.ts:16 `templatePathProblem(path)`, :31 `templateTreeProblem(files:{path,size}[])` (return reason|undefined; tree refuses labshelf.yaml, >500 files, >5 MiB/file, >20 MiB total, case-insensitive dupes). sources/templateSource.ts:7 `TemplateFile {path, bytes: Uint8Array}`. library/node/atomicWrite.ts:9 `writeFileAtomic(target, string|Uint8Array, tmpDir?)` mkdirs parents. project/projectFile.ts:83 `serializeProjectFile`, :14-31 ProjectSettings (id, format, main?, engine?, bibliography?, typst?, papers?).
+- templateManifest.ts:44-50 TemplateManifest has format, engine (LATEX_ENGINES + "typst"), main (relative to files/); :115 parseTemplateManifest; no manifest serializer exists.
+- node/mineSource.ts:30-75 reads `<library>/templates/<id>/template.yaml` + `files/**`, drops id≠folder; node/readTemplateTree.ts:32 lstat walk refusing symlinks/hard links.
+- Port: projectData/projectDataPort.ts:16 `createProject(libraryRoot,{title,format})`; node impl projectData/node/nodeProjectData.ts:7,18; exported from project/node/index.ts:2. Only vscode calls it: vscode/src/writing/projectCommands.ts:23-35 (input box, LaTeX/Typst quick pick, createProject, reload, OPEN_PROJECT_COMMAND).
+- Tests: core/__tests__/writing/project/node/projectCatalog.test.ts:29-125; core/__tests__/writing/projectData/node/nodeProjectData.test.ts:21-39; vscode/__tests__/writing/projectCommands.test.ts:32-48; vscode/__tests__/support/writingFixtures.ts:21 stub.
+- Dir counts: templates/ root 7 sources, templates/node 4, project/node 7 (limit 8).
+- fs.rename onto an existing empty dir succeeds on POSIX: check the target first.

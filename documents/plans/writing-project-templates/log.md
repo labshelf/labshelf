@@ -18,3 +18,10 @@
 - 2026-10-16 12:12 — S1.4 done: finish (sonnet) gate PASS (core typecheck, 3392 tests), no fixes, standards and spec clean; commit-splitter (haiku) commits this session's files only.
 - 2026-10-16 12:12 — Peaks: main thread 61.8k; largest subagent 28.1k (finisher).
 - 2026-10-16 12:12 — Session 1 done; sessions/01.md deleted.
+- 2026-10-16 12:28 — Research: plans-overlap and projects-view re-scouted (Explore haiku, sonnet).
+- 2026-10-16 12:28 — S2.1 done: test-writer then implementer (sonnet). createProjectFromTemplate stages in .research/staging/<id>/, validates paths first, renames; createProject deleted; blankTemplate returns {template, files}; library-format.md staging line. Core 3418 tests.
+- 2026-10-16 12:28 — S2.3 done: implementer (sonnet). New project calls createProjectFromTemplate with a blank template; format pick stays until session 3.
+- 2026-10-16 12:28 — S2.2 done: test-writer then implementer (sonnet). saveProjectAsTemplate + serializeTemplateManifest + shared walkFolder; engine from labshelf.yaml or caller-resolved, authors from caller (templates.md updated; save wiring noted in sessions/03.md). Core 3431 tests.
+- 2026-10-16 12:28 — S2.4: finish (sonnet) gate PASS core (3431) and vscode (789); renamed test helper to createBlankProject. A3/A6 met in core only, A4 local half in core; plan acceptance boxes stay open until the UI.
+- 2026-10-16 12:28 — Peaks: main thread 98.7k; largest subagent 46.7k (implementer, S2.2).
+- 2026-10-16 12:28 — Session 2 done; sessions/02.md deleted.
