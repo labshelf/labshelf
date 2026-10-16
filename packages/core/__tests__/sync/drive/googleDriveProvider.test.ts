@@ -36,7 +36,8 @@ class FakeDrive {
   async listFiles(params: { q: string; spaces: string; fields: string; pageToken?: string }): Promise<{ files: DriveFile[] }> {
     this.calls.push({ q: params.q, spaces: params.spaces });
     const parent = /'([^']+)' in parents/.exec(params.q)?.[1];
-    const files = this.items.filter((i) => i.space === params.spaces && (parent === undefined || i.parent === parent));
+    const name = /name='([^']+)'/.exec(params.q)?.[1];
+    const files = this.items.filter((i) => i.space === params.spaces && (parent === undefined || i.parent === parent) && (name === undefined || i.name === name));
     return { files: files.map(({ id, name, mimeType, modifiedTime }) => ({ id, name, mimeType, modifiedTime })) };
   }
 
@@ -122,5 +123,32 @@ describe("scanRemoteTree over the appdata namespace", () => {
     const p = provider(drive);
     const tree = await scanRemoteTree(p, "appDataFolder", new RemotePathResolver(p, "appDataFolder"));
     expect(tree.get("paper-a/data.json")?.remoteId).toBe(newest);
+  });
+});
+
+describe("GoogleDriveProvider.resolveRoot", () => {
+  it("finds LabShelf Projects at the top level of the drive, apart from LabShelf Library", async () => {
+    const drive = new FakeDrive();
+    const lib = drive.add("drive", "root", "LabShelf Library", { folder: true });
+    const projects = drive.add("drive", "root", "LabShelf Projects", { folder: true });
+    const p = provider(drive);
+    expect((await p.resolveRoot("projects")).id).toBe(projects);
+    expect((await p.resolveRoot("library")).id).toBe(lib);
+  });
+
+  it("looks LabShelf Projects up without creating it", async () => {
+    const drive = new FakeDrive();
+    const p = provider(drive);
+    expect(await p.findRoot("projects")).toBeUndefined();
+    const projects = drive.add("drive", "root", "LabShelf Projects", { folder: true });
+    expect((await p.findRoot("projects"))?.id).toBe(projects);
+  });
+
+  it("creates LabShelf Projects at the top level when it is missing", async () => {
+    const drive = new FakeDrive();
+    const root = await provider(drive).resolveRoot("projects");
+    expect(root.name).toBe("LabShelf Projects");
+    expect(drive.calls[0]?.q).toContain("name='LabShelf Projects'");
+    expect((await provider(drive).resolveRoot("projects")).id).toBe(root.id);
   });
 });

@@ -65,6 +65,29 @@ describe("importNetworkInput with an identifier", () => {
     });
   });
 
+  it("names the paper with the cite key asked for", async () => {
+    const { h, env } = setup();
+
+    const outcome = await importNetworkInput(env, "10.1000/abc", PAPERS, { citeKey: "vaswani17" });
+
+    expect(outcome).toMatchObject({ status: "added", record: { id: "vaswani17", citeKey: "vaswani17" } });
+    expect(await h.fs.exists(`${PAPERS}/vaswani17/metadata.yaml`)).toBe(true);
+    expect(h.logs.find((l) => l.message === "Requested cite key was taken")).toBeUndefined();
+  });
+
+  it("suffixes a cite key that is taken, returns the suffixed one and logs a warning", async () => {
+    const { h, env } = setup();
+    const deps = makeImportDeps([{ id: "vaswani17" }]);
+    env.importDeps = () => deps;
+
+    const outcome = await importNetworkInput(env, "10.1000/abc", PAPERS, { citeKey: "vaswani17" });
+
+    expect(outcome).toMatchObject({ status: "added", record: { id: "vaswani17a", citeKey: "vaswani17a" } });
+    expect(h.logs.find((l) => l.message === "Requested cite key was taken")).toMatchObject({
+      level: "WARN", context: { requested: "vaswani17", id: "vaswani17a" },
+    });
+  });
+
   it("does not look for a PDF of a book", async () => {
     const { net, env } = setup({ title: "Deep Learning", authors: ["Ian Goodfellow"], year: 2016 });
 

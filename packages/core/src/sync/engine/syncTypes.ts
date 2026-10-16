@@ -69,10 +69,21 @@ export interface NamespaceResult {
   rebased?: boolean;
 }
 
+/** A writing project present on this device: its Drive folder is named after `id`. */
+export interface SyncProject {
+  id: string;
+  /** Absolute folder of the project on the local disk. */
+  root: string;
+  /** `labshelf.yaml` ignore patterns, relative to the project folder. */
+  ignore: readonly string[];
+}
+
 /** Aggregated result of a full sync run. */
 export interface SyncResult {
   providerId: string;
   namespaces: NamespaceResult[];
+  /** Ids of Drive project folders with no project on this device; absent when the projects namespace did not run. */
+  projectsOnlyOnDrive?: string[];
   startedAt: string;
   finishedAt: string;
 }

@@ -1,6 +1,6 @@
 /**
  * Answers the detail pane's requests for per-paper data: annotations, the reading position and the PDF on this
- * device, and papers with similar content from the AI index.
+ * device, the writing projects that cite the paper, and papers with similar content from the AI index.
  */
 import * as vscode from 'vscode';
 import { PDF_FILE, createSidecarReader, paperDetailsOf, paperFiles, type PaperDetails, type SimilarPaper } from '@labshelf/core';
@@ -25,6 +25,8 @@ export async function sendDetails(ctx: ListHostContext, id: string): Promise<voi
   const load = ctx.deps.loadSidecar;
   const sidecar = load ? await createSidecarReader(load, ctx.deps.logger, LOG_MODULE).summaryOf(id) : { annotations: [] };
   const details = paperDetailsOf(sidecar, await pdfOnDevice(ctx, paper.path, paper.hasPdf));
+  const backlinks = ctx.deps.projectBacklinks;
+  if (backlinks) { details.citedIn = [...backlinks.index().get(paper.citeKey) ?? []]; }
   await ctx.post({ type: 'details', id, details });
 }
 

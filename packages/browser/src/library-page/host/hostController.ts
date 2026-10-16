@@ -4,8 +4,8 @@
  */
 import { errorMessage, type HostEndpoint, type ILogger, type UiToHost } from "@labshelf/core";
 import {
-  captureTab, createFolder, createPdfHandlers, deleteFolder, exportAnnotations, movePapers, offerOpenTabs, removePapers,
-  renameFolder, sendDetails, setNote, setStatus, setTags, writeClipboard, type PdfHandlers,
+  captureTab, createCitationMapHandlers, createFolder, createPdfHandlers, deleteFolder, exportAnnotations, movePapers, offerOpenTabs, removePapers,
+  renameFolder, sendDetails, setNote, setStatus, setTags, writeClipboard, type CitationMapHandlers, type PdfHandlers,
 } from "./handlers";
 import { watchChangeNotices } from "./changeNotices";
 import { createHostContext, type HostContext } from "./hostContext";
@@ -29,7 +29,7 @@ async function onReady(ctx: HostContext, initialPaper: string | null | undefined
   if (initialPaper && ctx.papers([initialPaper]).length) ctx.endpoint.post({ type: "select", id: initialPaper });
 }
 
-function dispatch(ctx: HostContext, pdf: PdfHandlers, m: UiToHost, options: LibraryHostOptions): void {
+function dispatch(ctx: HostContext, pdf: PdfHandlers, citations: CitationMapHandlers, m: UiToHost, options: LibraryHostOptions): void {
   switch (m.type) {
     case "ready": run(ctx, () => onReady(ctx, options.initialPaper)); return;
     case "navigate": ctx.folder = m.folder; return;
@@ -50,6 +50,8 @@ function dispatch(ctx: HostContext, pdf: PdfHandlers, m: UiToHost, options: Libr
     case "paper.remove": run(ctx, () => removePapers(ctx, m.ids)); return;
     case "paper.add": run(ctx, () => offerOpenTabs(ctx, m.folder)); return;
     case "paper.addFrom": run(ctx, () => captureTab(ctx, m.folder, m.sourceId, m.ifNoPdf, m.retryPdf)); return;
+    case "citationMap.refresh": run(ctx, () => citations.open()); return;
+    case "citationMap.import": run(ctx, () => citations.importWork(m.workId, m.doi)); return;
     case "clipboard.write": run(ctx, () => writeClipboard(ctx, m.text, m.label)); return;
     default:
       // The page declares none of the capabilities behind the other messages (text layer, similar content, reveal,
@@ -59,10 +61,12 @@ function dispatch(ctx: HostContext, pdf: PdfHandlers, m: UiToHost, options: Libr
 }
 
 /** Starts answering the UI on `endpoint`. */
-export function attachLibraryHost(endpoint: HostEndpoint, options: LibraryHostOptions): void {
+export function attachLibraryHost(endpoint: HostEndpoint, options: LibraryHostOptions): { openCitationMap(): void } {
   const ctx = createHostContext(endpoint, options.log);
   const pdf = createPdfHandlers(ctx);
-  endpoint.subscribe((m) => dispatch(ctx, pdf, m, options));
+  const citations = createCitationMapHandlers(ctx);
+  endpoint.subscribe((m) => dispatch(ctx, pdf, citations, m, options));
   watchLibraryChanges(ctx.snapshots, ctx.log);
   watchChangeNotices(ctx);
+  return { openCitationMap: () => run(ctx, () => citations.open()) };
 }

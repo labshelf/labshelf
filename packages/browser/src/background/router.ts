@@ -9,7 +9,7 @@ import type { createSyncMessages } from "./syncMessages";
 import {
   handleCaptureAttachPdf, handleCaptureFindPdf, handleCaptureInspect, handleCaptureSave, handleCaptureTab,
   handleFindBetterPdf, handleFindPdfForPaper, handleLibraryFolders, handleLibraryLookup, handleLibraryOpen, handleListTabs,
-  handleAskAuthor, handleOpenForPdf, handleRemovePaper, handleScholarSave, accessTabDeps,
+  handleAskAuthor, handleCitationMapBuild, handleCitationMapImportDoi, handleOpenForPdf, handleRemovePaper, handleScholarSave, accessTabDeps,
 } from "./handlers/index";
 import { handlePdfOfferMessage, isPdfOfferMessage } from "./pdfOffer/index";
 
@@ -96,6 +96,10 @@ async function handle(msg: RuntimeMessage, { log, mutations, syncMessages, sched
       return handleLibraryOpen(msg);
     case "tabs.list":
       return handleListTabs();
+    case "citationMap.build":
+      return handleCitationMapBuild(log);
+    case "citationMap.importDoi":
+      return handleCitationMapImportDoi(log, mutations, msg.doi, scheduleSync);
     default: {
       const exhaustive: never = msg;
       throw new Error(`Unhandled message type: ${JSON.stringify(exhaustive)}`);

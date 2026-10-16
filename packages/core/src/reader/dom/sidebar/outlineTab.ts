@@ -2,7 +2,7 @@
  * Renders the Outline tab: the PDF's table of contents as a collapsible tree whose active entry follows the current page.
  */
 import { activeOutlineIndex, flattenOutline, visibleRows, type OutlineRow, type RawOutlineNode } from "../../logic/index.js";
-import type { ReaderContext } from "../session/index.js";
+import { DOCUMENT_REPLACED, type ReaderContext } from "../session/index.js";
 import { icon } from "../../../ui/index.js";
 import type { SidebarPanel } from "./sidebar.js";
 import { el } from "../../../ui/dom/index.js";
@@ -19,6 +19,7 @@ export class OutlineTab implements SidebarPanel {
   constructor(private readonly ctx: ReaderContext) {
     this.el.append(el("div", { class: "rd-panel-header" }, el("span", {}, "Outline")), this.list);
     ctx.eventBus.on("pagechanging", () => { if (this.visible) { this.highlightActive(); } });
+    ctx.eventBus.on(DOCUMENT_REPLACED, () => this.forget());
   }
 
   /**
@@ -31,14 +32,25 @@ export class OutlineTab implements SidebarPanel {
 
   onHide(): void { this.visible = false; }
 
+  private forget(): void {
+    this.loaded = false;
+    this.rows = [];
+    this.rowPages = [];
+    this.collapsed.clear();
+    if (this.visible) { void this.load(); } else { this.list.replaceChildren(); }
+  }
+
   private async load(): Promise<void> {
     this.loaded = true;
+    const doc = this.ctx.pdfDocument;
     let raw: RawOutlineNode[] | null = null;
     try {
-      raw = (await this.ctx.pdfDocument.getOutline()) as RawOutlineNode[] | null;
+      raw = (await doc.getOutline()) as RawOutlineNode[] | null;
     } catch {
       raw = null;
     }
+    // A reload during the read loads the new outline itself.
+    if (doc !== this.ctx.pdfDocument) { return; }
     this.rows = flattenOutline(raw);
     // Deep outlines open collapsed past the second level so the structure is scannable.
     for (const row of this.rows) {
@@ -53,6 +65,7 @@ export class OutlineTab implements SidebarPanel {
   private async resolvePages(): Promise<void> {
     const doc = this.ctx.pdfDocument;
     for (const row of this.rows) {
+      if (doc !== this.ctx.pdfDocument) { return; }
       try {
         const explicit = typeof row.dest === "string" ? await doc.getDestination(row.dest) : row.dest;
         const ref = Array.isArray(explicit) ? (explicit[0] as unknown) : null;

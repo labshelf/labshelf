@@ -1,4 +1,4 @@
-/** Builds the terminal's sync coordinator: the library on disk, the shared lock and run record, titles scanned from disk. */
+/** Builds the terminal's sync coordinator: the library on disk, the shared lock and run record, titles and projects scanned from disk. */
 import * as os from "node:os";
 
 import {
@@ -12,7 +12,7 @@ import {
   type RemoteProvider,
   type SyncTimers,
 } from "@labshelf/core";
-import { isProcessAlive, NodeLibraryFileSystem, NodeLockStore, type PkceLoopbackAuth } from "@labshelf/core/node";
+import { isProcessAlive, listSyncProjects, NodeLibraryFileSystem, NodeLockStore, type PkceLoopbackAuth } from "@labshelf/core/node";
 
 import { scanLibraryOnDisk, type LibraryRoot } from "../library/index.js";
 
@@ -33,7 +33,13 @@ export interface TerminalSyncDeps {
 export function createTerminalSync(deps: TerminalSyncDeps): SyncCoordinator {
   const { paths, auth, logger } = deps;
   const localFs = new NodeLibraryFileSystem(paths.layout.tmpDir());
-  const target = diskSyncTarget({ files: localFs, layout: paths.layout, toPath: (p) => p, lock: { store: new NodeLockStore(), isProcessAlive } });
+  const target = diskSyncTarget({
+    files: localFs,
+    layout: paths.layout,
+    toPath: (p) => p,
+    lock: { store: new NodeLockStore(), isProcessAlive },
+    listProjects: () => listSyncProjects(paths.root, logger),
+  });
   return new SyncCoordinator({
     app: "terminal",
     host: deps.host ?? os.hostname(),

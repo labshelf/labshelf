@@ -23,6 +23,7 @@ import {
   registerSettingsWelcomeView,
   registerPanelCommands,
   registerSyncCommands,
+  registerWritingView,
 } from "./activation/index.js";
 
 /** Activates the extension, initializing services if a library is already configured */
@@ -52,8 +53,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     followFolderMove: async (from, to) => { await ListWebviewPanel.currentPanel?.followFolderMove(from, to); },
   };
 
+  const writing = registerWritingView(context, controller, adapters.reader, events);
   const { libraryProvider, syncTreeToPanel, refreshLibraryViews: refreshViews } = registerLibraryTreeView({
-    context, events, controller, papersRootUri, folderHost, adapters,
+    context, events, controller, papersRootUri, folderHost, adapters, projects: writing.projects,
   });
   refreshLibraryViews = refreshViews;
 
@@ -61,7 +63,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   registerPanelCommands({
     context, events, requireServices, papersRootUri, folderHost, syncTreeToPanel, adapters,
-    getAiService: () => aiService,
+    getAiService: () => aiService, projectBacklinks: writing.backlinks,
   });
 
   registerLibraryCommands({ context, controller, folderHost, libraryProvider });

@@ -1,0 +1,48 @@
+/*
+ * Styles the citation map under .ls-library on the --ls-* tokens: its header, the graph above the list of missing
+ * works, and the rows. While it is open it takes the place of the list header, filter bar and list.
+ */
+.ls-library.citation-map-open .list-pane > :not(.citation-map) { display: none; }
+.ls-library .citation-map { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.ls-library .citation-map[hidden] { display: none; }
+.ls-library .cm-title-bar { margin: 0; font-size: var(--ls-font-size); font-weight: 600; color: var(--ls-fg); white-space: nowrap; }
+.ls-library .cm-header .crumb svg { width: 14px; height: 14px; }
+.ls-library .cm-body { flex: 1; overflow-y: auto; min-height: 0; }
+
+/* ── Graph ──────────────────────────────────────────────────────── */
+.ls-library .cm-graph-wrap { padding: var(--ls-space-3) var(--ls-space-5); border-bottom: 1px solid var(--ls-border-soft); }
+.ls-library .cm-graph { display: block; width: 100%; height: auto; max-height: 360px; }
+.ls-library .cm-edge { stroke: var(--ls-border-soft); stroke-width: 1; }
+.ls-library .cm-edge-missing { stroke-dasharray: 3 3; }
+.ls-library .cm-node { cursor: pointer; stroke-width: 1.5; transition: stroke-width var(--ls-fast); }
+.ls-library .cm-node:hover { stroke-width: 3; }
+.ls-library .cm-node-paper { fill: var(--ls-link); stroke: var(--ls-bg); }
+.ls-library .cm-node-missing { fill: var(--ls-bg); stroke: var(--ls-warning); stroke-dasharray: 3 2; }
+
+/* ── List of missing works ──────────────────────────────────────── */
+.ls-library .cm-heading {
+  margin: 0; padding: var(--ls-space-4) var(--ls-space-5) var(--ls-space-2);
+  font-size: var(--ls-text-sm); font-weight: 600; color: var(--ls-desc);
+}
+.ls-library .cm-list { list-style: none; margin: 0; padding: 0; }
+.ls-library .cm-row {
+  display: flex; align-items: flex-start; gap: var(--ls-space-4); padding: var(--ls-space-3) var(--ls-space-5);
+  border-bottom: 1px solid var(--ls-border-faint); outline: none; transition: background var(--ls-fast);
+}
+.ls-library .cm-row:hover { background: var(--ls-list-hover); }
+.ls-library .cm-row:focus-visible { outline: 1px solid var(--ls-list-focus-outline); outline-offset: -1px; }
+.ls-library .cm-row.highlighted { background: var(--ls-list-inactive-bg); }
+.ls-library .cm-row-text { flex: 1; min-width: 0; }
+.ls-library .cm-title { font-size: var(--ls-font-size); color: var(--ls-fg); overflow-wrap: anywhere; }
+.ls-library .cm-meta { font-size: var(--ls-text-md); color: var(--ls-desc); margin-top: var(--ls-space-1); }
+.ls-library .cm-cited { margin-top: var(--ls-space-1); font-size: var(--ls-text-sm); color: var(--ls-desc); }
+.ls-library .cm-cited summary { cursor: pointer; width: fit-content; }
+.ls-library .cm-cited summary:hover { color: var(--ls-fg); }
+.ls-library .cm-cited ul { list-style: none; margin: var(--ls-space-1) 0 0; padding-left: var(--ls-space-5); }
+.ls-library .cm-paper-link {
+  border: none; background: none; padding: var(--ls-space-1) 0; cursor: pointer; text-align: left;
+  font-size: var(--ls-text-sm); color: var(--ls-link);
+}
+.ls-library .cm-paper-link:hover { text-decoration: underline; }
+.ls-library .cm-import { flex-shrink: 0; }
+.ls-library .cm-import .spin svg { width: 14px; height: 14px; }

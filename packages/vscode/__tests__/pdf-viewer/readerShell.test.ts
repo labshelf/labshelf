@@ -7,7 +7,7 @@ import {
   resolveReaderBundleUris,
   serializeBoot,
 } from '../../src/pdf-viewer/renderer/readerShell';
-import { DEFAULT_READER_PREFS } from '@labshelf/core';
+import { DEFAULT_READER_PREFS, PROTOCOL_VERSION } from '@labshelf/core';
 import { statFromDisk } from '../support/diskStat';
 
 const vscode = require('vscode');
@@ -67,6 +67,7 @@ describe('renderReaderShell', () => {
         pdfUri: vscode.Uri.file('/papers/paper1/paper.pdf'),
         paperId: 'paper-1',
         paperTitle: 'Test Paper',
+        preview: false,
         prefs: DEFAULT_READER_PREFS,
         pdfjs: PDFJS_FILES,
         isMac: false,
@@ -128,7 +129,7 @@ describe('renderReaderShell', () => {
       expect(boot.prefs).toEqual(prefs);
       expect(boot.assets.pdfUrl).toContain('paper.pdf');
       expect(boot.isMac).toBe(true);
-      expect(boot.protocolVersion).toBe(1);
+      expect(boot.protocolVersion).toBe(PROTOCOL_VERSION);
     });
 
     it('sets the initial data-pdf-theme attribute to the VS Code theme', async () => {

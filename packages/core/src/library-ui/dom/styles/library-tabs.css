@@ -88,6 +88,8 @@
   border-radius: var(--ls-radius); cursor: pointer;
 }
 .ls-library .rel-row:hover { background: var(--ls-list-hover); }
+.ls-library button.rel-row { width: 100%; border: 0; background: none; color: inherit; font: inherit; text-align: left; }
+.ls-library button.rel-row .rel-main, .ls-library button.rel-row .rel-title, .ls-library button.rel-row .rel-sub { display: block; }
 .ls-library .rel-main { flex: 1; min-width: 0; }
 .ls-library .rel-title { font-size: var(--ls-text-md); line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ls-library .rel-sub { font-size: var(--ls-text-sm); color: var(--ls-desc); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

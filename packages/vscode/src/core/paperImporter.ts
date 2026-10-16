@@ -1,6 +1,6 @@
 /** Imports picked PDFs and folders, and papers named by an identifier or link, through the core imports, putting each added paper in the index as it lands. */
 import { doiLookup, importNetworkInput, importPaths } from "@labshelf/core";
-import type { ImportDeps, ImportOutcome, ImportProgress, LibraryStore, MutationContext, NetworkImportEnv, PaperRecord, PdfParse } from "@labshelf/core";
+import type { IdentifierImportOptions, ImportDeps, ImportOutcome, ImportProgress, LibraryStore, MutationContext, NetworkImportEnv, PaperRecord, PdfParse } from "@labshelf/core";
 import type { ReindexSummary } from "../storage/data/index.js";
 
 /** How the extension reaches the network for an import, and where a download waits while it is read. */
@@ -37,16 +37,21 @@ export class PaperImporter {
 
   /**
    * Imports the paper an identifier, a link to an article or a link to a PDF names, into targetDir (papers/ when
-   * absent); a DOI already in the library is not imported again.
+   * absent); a DOI already in the library is not imported again. `options.citeKey` names an identifier's paper.
    * @returns what happened
    */
-  async importFromNetwork(input: string, targetDir: string = this.ctx.papersRoot): Promise<ImportOutcome> {
+  async importFromNetwork(
+    input: string,
+    targetDir: string = this.ctx.papersRoot,
+    options: IdentifierImportOptions = {},
+  ): Promise<ImportOutcome> {
     const papers = this.records();
     const deps = this.importDeps(papers);
     const outcome = await importNetworkInput(
       { ctx: this.ctx, tmpDir: this.network.tmpDir, download: this.network.download, importDeps: () => deps, records: () => papers },
       input,
       targetDir,
+      options,
     );
     await this.indexAdded(outcome);
     return outcome;

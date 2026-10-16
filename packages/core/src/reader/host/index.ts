@@ -4,6 +4,7 @@ export { exportAnnotations } from "./exportAnnotations.js";
 export type {
   ExportAnnotationsPorts,
   NoticeKind,
+  PreviewPorts,
   ReaderHostPorts,
   ReaderSidecarStore,
   SidecarChange,

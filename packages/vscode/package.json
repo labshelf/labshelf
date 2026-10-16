@@ -11,6 +11,13 @@
     "Other"
   ],
   "main": "./out/extension.js",
+  "activationEvents": [
+    "workspaceContains:**/labshelf.yaml",
+    "onLanguage:latex",
+    "onLanguage:typst",
+    "onUri",
+    "onStartupFinished"
+  ],
   "contributes": {
     "commands": [
       {
@@ -97,6 +104,12 @@
         "title": "Refresh",
         "category": "LabShelf",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "labshelf.showCitationMap",
+        "title": "Show Citation Map",
+        "category": "LabShelf",
+        "icon": "$(type-hierarchy)"
       },
       {
         "command": "labshelf.renameFolder",
@@ -218,6 +231,107 @@
         "command": "labshelf.reader.toggleSidebar",
         "title": "Reader: Toggle Sidebar",
         "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.newProject",
+        "title": "Research: New Project…",
+        "category": "LabShelf",
+        "icon": "$(add)"
+      },
+      {
+        "command": "labshelf.writing.addExistingFolder",
+        "title": "Research: Add Existing Folder as Project…",
+        "category": "LabShelf",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "labshelf.writing.refresh",
+        "title": "Research: Refresh Projects",
+        "category": "LabShelf",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "labshelf.writing.openMain",
+        "title": "Research: Open Main Document",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.reveal",
+        "title": "Research: Reveal Project Folder",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.removeProject",
+        "title": "Research: Remove Project from LabShelf",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.setMain",
+        "title": "Set as Main Document",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.pickMain",
+        "title": "Research: Choose Main Document",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.pickCompiler",
+        "title": "Research: Choose LaTeX Compiler",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.build",
+        "title": "Research: Build Project",
+        "category": "LabShelf",
+        "icon": "$(play)"
+      },
+      {
+        "command": "labshelf.writing.checkBeforeSubmitting",
+        "title": "Research: Check Before Submitting",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.markVersion",
+        "title": "Research: Mark Version",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.compareVersions",
+        "title": "Research: Compare Versions",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.installProjectPapers",
+        "title": "Install Project Papers",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.showPreview",
+        "title": "Research: Show Preview",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.showInPreview",
+        "title": "Research: Show in Preview",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.regenerateFigure",
+        "title": "Research: Regenerate Figure",
+        "category": "LabShelf",
+        "icon": "$(sync)"
+      },
+      {
+        "command": "labshelf.writing.addToReadingList",
+        "title": "Add Paper to Reading List…",
+        "category": "LabShelf",
+        "icon": "$(add)"
+      },
+      {
+        "command": "labshelf.writing.removeFromReadingList",
+        "title": "Remove from Reading List",
+        "category": "LabShelf"
       }
     ],
     "viewsContainers": {
@@ -237,6 +351,11 @@
           "type": "tree"
         },
         {
+          "id": "labshelf.writing",
+          "name": "Writing",
+          "type": "tree"
+        },
+        {
           "id": "labshelf.settings",
           "name": "Settings",
           "type": "tree"
@@ -253,6 +372,10 @@
         "view": "labshelf.library",
         "contents": "No folders yet.\n[New folder](command:labshelf.newFolder)\nYou can also drag PDFs here.",
         "when": "labshelf.libraryLoaded"
+      },
+      {
+        "view": "labshelf.writing",
+        "contents": "No projects yet.\n[New project](command:labshelf.writing.newProject)\n[Add existing folder](command:labshelf.writing.addExistingFolder)"
       },
       {
         "view": "labshelf.settings",
@@ -294,6 +417,26 @@
           "command": "labshelf.library.refresh",
           "when": "view == labshelf.library",
           "group": "navigation@4"
+        },
+        {
+          "command": "labshelf.showCitationMap",
+          "when": "view == labshelf.library",
+          "group": "navigation@5"
+        },
+        {
+          "command": "labshelf.writing.newProject",
+          "when": "view == labshelf.writing",
+          "group": "navigation@1"
+        },
+        {
+          "command": "labshelf.writing.addExistingFolder",
+          "when": "view == labshelf.writing",
+          "group": "navigation@2"
+        },
+        {
+          "command": "labshelf.writing.refresh",
+          "when": "view == labshelf.writing",
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [
@@ -316,9 +459,73 @@
           "command": "labshelf.deleteFolder",
           "when": "view == labshelf.library && viewItem == labshelfFolder",
           "group": "1_modify@3"
+        },
+        {
+          "command": "labshelf.writing.openMain",
+          "when": "view == labshelf.writing && viewItem =~ /^labshelfProject(External)?$/",
+          "group": "1_open@1"
+        },
+        {
+          "command": "labshelf.writing.checkBeforeSubmitting",
+          "when": "view == labshelf.writing && viewItem =~ /^labshelfProject(External)?$/",
+          "group": "1_open@2"
+        },
+        {
+          "command": "labshelf.writing.markVersion",
+          "when": "view == labshelf.writing && viewItem =~ /^labshelfProject(External)?$/",
+          "group": "1_open@4"
+        },
+        {
+          "command": "labshelf.writing.compareVersions",
+          "when": "view == labshelf.writing && viewItem =~ /^labshelfProject(External)?$/",
+          "group": "1_open@5"
+        },
+        {
+          "command": "labshelf.installProjectPapers",
+          "when": "view == labshelf.writing && viewItem =~ /^labshelfProject(External)?$/",
+          "group": "1_open@6"
+        },
+        {
+          "command": "labshelf.writing.reveal",
+          "when": "view == labshelf.writing && viewItem =~ /^labshelfProject/",
+          "group": "1_open@3"
+        },
+        {
+          "command": "labshelf.writing.removeProject",
+          "when": "view == labshelf.writing && viewItem =~ /External$/",
+          "group": "2_remove@1"
+        },
+        {
+          "command": "labshelf.writing.regenerateFigure",
+          "when": "view == labshelf.writing && viewItem == labshelfFigureStale",
+          "group": "inline@1"
+        },
+        {
+          "command": "labshelf.writing.regenerateFigure",
+          "when": "view == labshelf.writing && viewItem =~ /^labshelfFigure/",
+          "group": "1_figure@1"
+        },
+        {
+          "command": "labshelf.writing.addToReadingList",
+          "when": "view == labshelf.writing && viewItem == labshelfReadingList",
+          "group": "inline@1"
+        },
+        {
+          "command": "labshelf.writing.addToReadingList",
+          "when": "view == labshelf.writing && viewItem =~ /^labshelfProject(External)?$|^labshelfReadingList$/",
+          "group": "3_reading@1"
+        },
+        {
+          "command": "labshelf.writing.removeFromReadingList",
+          "when": "view == labshelf.writing && viewItem == labshelfReadingPaperAdded",
+          "group": "2_remove@1"
         }
       ],
       "commandPalette": [
+        {
+          "command": "labshelf.writing.showInPreview",
+          "when": "editorLangId == latex"
+        },
         {
           "command": "labshelf.reader.zoomIn",
           "when": "activeWebviewPanelId == 'labshelfPdf'"
@@ -346,6 +553,56 @@
         {
           "command": "labshelf.reader.toggleSidebar",
           "when": "activeWebviewPanelId == 'labshelfPdf'"
+        },
+        {
+          "command": "labshelf.writing.openMain",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.reveal",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.removeProject",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.setMain",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.pickMain",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.pickCompiler",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.regenerateFigure",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.addToReadingList",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.removeFromReadingList",
+          "when": "false"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "labshelf.writing.showInPreview",
+          "when": "editorLangId == latex",
+          "group": "navigation@9"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "labshelf.writing.setMain",
+          "when": "resourceExtname =~ /^\\.(tex|typ)$/",
+          "group": "2_workspace@9"
         }
       ]
     },
@@ -510,6 +767,12 @@
         "key": "alt+right",
         "mac": "cmd+]",
         "when": "activeWebviewPanelId == 'labshelfPdf'"
+      },
+      {
+        "command": "labshelf.writing.showInPreview",
+        "key": "ctrl+alt+j",
+        "mac": "cmd+alt+j",
+        "when": "editorLangId == latex"
       }
     ]
   },
@@ -536,6 +799,8 @@
   },
   "dependencies": {
     "@labshelf/core": "workspace:*",
+    "@myriaddreamin/typst-ts-web-compiler": "0.7.0",
+    "@myriaddreamin/typst.ts": "0.7.0",
     "@napi-rs/canvas": "^1.0.9",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "~6.3.289",

@@ -44,6 +44,8 @@ export class PositionRestore {
   }
 
   private onPagesInit(target: RestoreTarget): void {
+    // A reload lays the pages out again; DocumentReloader keeps the reader's spot for that one.
+    if (this.pagesReady) { return; }
     const { ctx, perf, loadingMsg } = target;
     const { container, pdfViewer, pdfDocument } = ctx;
     perf.mark("pagesInit");

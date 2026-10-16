@@ -1,6 +1,7 @@
 /** Exports the library UI flows' public API: paper commands, copying, and the dialogs and pickers that precede host work. */
 export {
-  askAuthor, attachPdf, changeTags, findPdf, fixableIds, hostFileAction, makeSearchable, openPaper, saveNote, setPaperStatus,
+  askAuthor, attachPdf, changeTags, findPdf, fixableIds, hostFileAction, makeSearchable, openPaper, openSource,
+  saveNote, setPaperStatus,
 } from "./paperCommands.js";
 export { CITE_LABEL, copyCitation, copyText } from "./citeCopy.js";
 export { confirmRemove } from "./confirmRemove.js";

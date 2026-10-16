@@ -11,6 +11,11 @@ export function openPaper(ctx: UiContext, id: string, page?: number): void {
   ctx.transport.post(page ? { type: "paper.open", id, page } : { type: "paper.open", id });
 }
 
+/** Opens a writing project's source at a zero-based line. */
+export function openSource(ctx: UiContext, project: string, file: string, line: number): void {
+  ctx.transport.post({ type: "project.openSource", project, file, line });
+}
+
 export function setPaperStatus(ctx: UiContext, ids: readonly string[], status: PaperStatus): void {
   const byId = new Map(ctx.store.get().papers.map((p) => [p.id, p]));
   const changed = ids.filter((id) => byId.has(id) && byId.get(id)!.status !== status);

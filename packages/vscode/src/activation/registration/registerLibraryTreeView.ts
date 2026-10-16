@@ -7,7 +7,9 @@ import { LibraryTreeDataProvider, LibraryDragAndDropController } from "../../ui/
 import type { LibraryNode } from "../../ui/library/index.js";
 import { ListWebviewPanel } from "../../ui/list/index.js";
 import { importPapers, moveFolders, type FolderCommandHost } from "../../commands/index.js";
+import { registerContinue } from "../../continue/index.js";
 import type { LibraryEvents } from "../../events/index.js";
+import type { WritingProjects } from "../../writing/index.js";
 import type { LibraryRootController } from "../libraryLifecycle/index.js";
 import type { HostAdapters } from "../serviceComposition/index.js";
 
@@ -18,6 +20,7 @@ export interface LibraryTreeViewDeps {
   papersRootUri: () => vscode.Uri | null;
   folderHost: FolderCommandHost;
   adapters: HostAdapters;
+  projects: WritingProjects;
 }
 
 export interface LibraryTreeViewHandles {
@@ -27,10 +30,25 @@ export interface LibraryTreeViewHandles {
 }
 
 export function registerLibraryTreeView(deps: LibraryTreeViewDeps): LibraryTreeViewHandles {
-  const { context, events, controller, papersRootUri, folderHost, adapters } = deps;
+  const { context, events, controller, papersRootUri, folderHost, adapters, projects } = deps;
 
   // Library folder tree mirrors the real directory structure under papers/.
-  const libraryProvider = new LibraryTreeDataProvider(papersRootUri(), () => controller.currentServices()?.library.snapshot, events, adapters.paths);
+  const continueSource = registerContinue({
+    context,
+    library: () => {
+      const root = controller.currentRoot();
+      const services = controller.currentServices();
+      if (!root || !services) { return undefined; }
+      return {
+        root: root.fsPath,
+        logger: services.logger,
+        listPapers: () => services.paperService.listPapers(),
+        loadSidecar: (paperId) => services.paperDataStore.load(paperId),
+      };
+    },
+    projects,
+  });
+  const libraryProvider = new LibraryTreeDataProvider(papersRootUri(), () => controller.currentServices()?.library.snapshot, events, adapters.paths, continueSource);
   controller.onDidChangeRoot(({ root }) => {
     libraryProvider.setLibrary(libraryLayout(root, vscode.Uri.joinPath).papersRoot());
   });

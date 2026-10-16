@@ -1,4 +1,5 @@
 /** Exports the reader chrome group's public API. */
+export { BuildBanner } from "./buildBanner.js";
 export { Cheatsheet } from "./cheatsheet.js";
 export { SelectionBubble } from "./selectionBubble.js";
 export { StatusPill } from "./statusPill.js";

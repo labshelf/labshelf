@@ -1,6 +1,7 @@
 /**
  * Renders the Details tab: Abstract (folded past a length, copyable), Keywords that search, Info (publication,
- * volume, pages, DOI and URL links with copy, ISSN, language, cite key, folder), Cite in the chosen style, and File.
+ * volume, pages, DOI and URL links with copy, ISSN, language, cite key, folder), Cited in (writing projects), Cite in the
+ * chosen style, and File.
  */
 import { CITE_FORMATS } from "../../../state/index.js";
 import { PAPERS_DIR, folderLabel } from "../../../../library/index.js";
@@ -9,6 +10,7 @@ import { citationText } from "../../../citeText.js";
 import { CITE_LABEL } from "../../flows/index.js";
 import { copyBtn, iconBtn, kv, muted, section } from "../detailMarkup.js";
 import type { PaneState, PaperView } from "../paneState.js";
+import { citedInSectionHtml } from "./citedInSection.js";
 import { fileSectionHtml } from "./fileSection.js";
 
 const ABSTRACT_CLAMP_AT = 420;
@@ -60,6 +62,7 @@ export function detailsTabHtml(pane: PaneState, v: PaperView): string {
   return section("abstract", "Abstract", abstractBody(pane, v), pane.collapsed, { actions: v.p.summary ? iconBtn("copyAbstract", "copy", "Copy abstract") : "" }) +
     (keywords.length ? section("keywords", "Keywords", keywordsBody(keywords), pane.collapsed, { count: keywords.length }) : "") +
     section("info", "Info", infoBody(v), pane.collapsed) +
+    citedInSectionHtml(pane, v.details?.citedIn) +
     section("cite", "Cite", citeBody(pane, v), pane.collapsed) +
     section("file", "File", fileSectionHtml(pane, v), pane.collapsed);
 }

@@ -212,3 +212,27 @@ describe("terminal sync: two devices", () => {
     expect(remote.removals).toEqual([]);
   });
 });
+
+describe("terminal sync: writing projects", () => {
+  it("syncs the library's projects to LabShelf Projects, without their git repository, and reports them on a device that lacks them", async () => {
+    const remote = new FakeRemoteProvider();
+    const a = await device({
+      remote,
+      host: "host-a",
+      prepare: async (lib) => {
+        const project = path.join(lib.root, "projects", "thesis");
+        await fs.mkdir(path.join(project, ".git"), { recursive: true });
+        await fs.writeFile(path.join(project, "labshelf.yaml"), "id: thesis\nformat: latex\nignore: [draft.tex]\n");
+        await fs.writeFile(path.join(project, "main.tex"), "\\documentclass{article}");
+        await fs.writeFile(path.join(project, "draft.tex"), "scratch");
+        await fs.writeFile(path.join(project, ".git", "HEAD"), "ref: refs/heads/main");
+      },
+    });
+
+    expectSynced(await a.sync.syncNow());
+
+    expect(remote.filePaths("projects")).toEqual(["thesis/labshelf.yaml", "thesis/main.tex"]);
+    const b = await device({ remote, host: "host-b" });
+    expect(expectSynced(await b.sync.syncNow()).result.projectsOnlyOnDrive).toEqual(["thesis"]);
+  });
+});

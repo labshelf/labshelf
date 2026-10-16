@@ -2,7 +2,7 @@
 import type { ImportOutcome } from "../../library/index.js";
 import { identifiersFromInput } from "../identifiers/index.js";
 import type { NetworkImportEnv } from "./env.js";
-import { importIdentifier } from "./importIdentifier.js";
+import { importIdentifier, type IdentifierImportOptions } from "./importIdentifier.js";
 import { importUrl } from "./importUrl.js";
 
 /** A link that names an identifier (arxiv.org/abs/…, a DOI link) is imported through the registries, not downloaded. */
@@ -10,7 +10,12 @@ function isDirectUrl(input: string): boolean {
   return /^https?:\/\//i.test(input) && identifiersFromInput(input).length === 0;
 }
 
-/** @returns what happened */
-export function importNetworkInput(env: NetworkImportEnv, input: string, targetDir: string): Promise<ImportOutcome> {
-  return isDirectUrl(input) ? importUrl(env, input, targetDir) : importIdentifier(env, input, targetDir);
+/** @returns what happened; `options.citeKey` applies to identifiers only (a link to a PDF or page is keyed by its metadata) */
+export function importNetworkInput(
+  env: NetworkImportEnv,
+  input: string,
+  targetDir: string,
+  options: IdentifierImportOptions = {},
+): Promise<ImportOutcome> {
+  return isDirectUrl(input) ? importUrl(env, input, targetDir) : importIdentifier(env, input, targetDir, options);
 }

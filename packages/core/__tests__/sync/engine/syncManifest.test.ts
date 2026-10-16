@@ -56,6 +56,14 @@ describe("SyncManifest", () => {
     expect(m.paths("library")).toEqual([]);
   });
 
+  it("loads a manifest written before the projects namespace with an empty one", async () => {
+    const fs = new MemoryFileSystem();
+    fs.seed("/s.json", JSON.stringify({ providerId: "fake", namespaces: { library: { a: { remoteId: "r", contentHash: "h", modifiedTime: "t" } }, appdata: {} } }));
+    const m = await SyncManifest.load(fs, "/s.json", "fake");
+    expect(m.paths("library")).toEqual(["a"]);
+    expect(m.paths("projects")).toEqual([]);
+  });
+
   it("snapshot is an independent copy", async () => {
     const m = await SyncManifest.load(new MemoryFileSystem(), "/s.json", "fake");
     m.set("library", "a", { remoteId: "r", contentHash: "h", modifiedTime: "t" });

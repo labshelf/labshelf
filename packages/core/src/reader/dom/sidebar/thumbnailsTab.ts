@@ -3,7 +3,7 @@
  * PLATFORM: pdf.js' own thumbnail viewer is not exported from pdf_viewer.mjs.
  */
 import type { RenderTask } from "pdfjs-dist";
-import type { ReaderContext } from "../session/index.js";
+import { DOCUMENT_REPLACED, type ReaderContext } from "../session/index.js";
 import type { SidebarPanel } from "./sidebar.js";
 import type { ThemeController } from "../chrome/index.js";
 import { el } from "../../../ui/dom/index.js";
@@ -40,6 +40,7 @@ export class ThumbnailsTab implements SidebarPanel {
     this.el.append(this.list);
     ctx.eventBus.on("pagechanging", () => { if (this.visible) { this.markCurrent(true); } });
     theme.onPageColorsChange(() => this.reset());
+    ctx.eventBus.on(DOCUMENT_REPLACED, () => this.rebuild());
   }
 
   /**
@@ -65,6 +66,7 @@ export class ThumbnailsTab implements SidebarPanel {
     const doc = this.ctx.pdfDocument;
     // Page 1's aspect ratio sizes every placeholder; the real ratio is applied when a page renders.
     const first = await doc.getPage(1);
+    if (doc !== this.ctx.pdfDocument) { return; }
     const vp = first.getViewport({ scale: 1 });
     const ratio = vp.height / vp.width;
     this.observer = new IntersectionObserver((entries) => this.onIntersect(entries), {
@@ -154,6 +156,17 @@ export class ThumbnailsTab implements SidebarPanel {
   }
 
   /** Drops every canvas; they re-render lazily with the current page colours. */
+  // The page count and sizes may differ in the new document, so the list starts over.
+  private rebuild(): void {
+    this.cancelAll();
+    this.observer?.disconnect();
+    this.observer = null;
+    this.thumbs.length = 0;
+    this.list.replaceChildren();
+    this.built = false;
+    if (this.visible) { void this.build(); }
+  }
+
   private reset(): void {
     this.cancelAll();
     for (const t of this.thumbs) {

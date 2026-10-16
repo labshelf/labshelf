@@ -12,6 +12,8 @@ export interface ImportedPaper {
   pdfVersion?: PdfVersion | undefined;
   /** Fields set on top of the metadata (an identifier the user typed, an abstract URL, the user's tags). */
   extra?: Partial<Pick<PaperRecord, "doi" | "url" | "tags" | "note">>;
+  /** The cite key the paper asks for instead of the one built from its metadata. */
+  citeKey?: string;
   /** The file name the sidecar records as the paper's source. */
   sourceName?: string;
   /** What the log line says, and the context that identifies the import. */
@@ -27,11 +29,14 @@ export async function writeImportedPaper(
 ): Promise<PaperRecord> {
   const { metadata, pdf } = paper;
   const record = await writeNewPaper(ctx, takenIds, targetDir, {
-    citeKey: makeCiteKey(metadata, metadata.title),
+    citeKey: paper.citeKey ?? makeCiteKey(metadata, metadata.title),
     fields: { title: metadata.title, ...metadataFields(metadata), ...paper.extra, ...(pdf && paper.pdfVersion ? { pdfVersion: paper.pdfVersion } : {}) },
     pdf,
     sourceName: paper.sourceName ?? PDF_FILE,
   });
+  if (paper.citeKey && record.id !== paper.citeKey) {
+    await ctx.logger.log("WARN", NETWORK_IMPORT_MODULE, "Requested cite key was taken", { requested: paper.citeKey, id: record.id });
+  }
   await ctx.logger.log("INFO", NETWORK_IMPORT_MODULE, paper.log.message, {
     ...paper.log.context, id: record.id, withPdf: Boolean(pdf), pdfVersion: paper.pdfVersion, targetDir,
   });

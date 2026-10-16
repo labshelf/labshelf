@@ -1,0 +1,32 @@
+// Registers Show Preview: opens the active project's built PDF in the reader, building it first when it does not exist.
+import * as vscode from "vscode";
+
+import { BUILD_COMMAND } from "../build/index.js";
+import { owningProject } from "../mainDocument.js";
+import type { WritingProjects } from "../projectStore.js";
+import type { BuildPreviews } from "./buildPreviews.js";
+import { builtPdf } from "./builtPdf.js";
+
+const SHOW_PREVIEW_COMMAND = "labshelf.writing.showPreview";
+
+interface ShowPreviewDeps {
+  context: vscode.ExtensionContext;
+  projects: Pick<WritingProjects, "list">;
+  previews: Pick<BuildPreviews, "show">;
+}
+
+async function showPreview(deps: ShowPreviewDeps): Promise<void> {
+  const file = vscode.window.activeTextEditor?.document.uri;
+  const project = file?.scheme === "file" ? owningProject(deps.projects.list(), file.fsPath) : undefined;
+  const pdf = await builtPdf(project);
+  if (project && pdf) {
+    deps.previews.show(project, pdf, { beside: false });
+    return;
+  }
+  // The build command opens the preview on success and explains a missing project, main file or format.
+  await vscode.commands.executeCommand(BUILD_COMMAND);
+}
+
+export function registerShowPreview(deps: ShowPreviewDeps): void {
+  deps.context.subscriptions.push(vscode.commands.registerCommand(SHOW_PREVIEW_COMMAND, () => showPreview(deps)));
+}

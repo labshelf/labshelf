@@ -27,6 +27,13 @@
   border-bottom: 1px solid var(--ls-sidebar-border);
 }
 .tree-head .ls-brand { color: var(--ls-fg); padding-left: var(--ls-space-4); }
+.sidebar-entry {
+  display: flex; align-items: center; gap: var(--ls-space-3); height: var(--ls-row-h); padding: 0 var(--ls-space-4); flex-shrink: 0;
+  border: 0; background: none; color: var(--ls-fg); font: inherit; text-align: left; cursor: pointer;
+}
+.sidebar-entry:hover { background: var(--ls-list-hover); }
+.sidebar-entry:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
+.sidebar-entry svg { width: 15px; height: 15px; flex-shrink: 0; opacity: .9; }
 .tree-section {
   display: flex; align-items: center; justify-content: space-between; height: var(--ls-row-h); padding: 0 var(--ls-space-2) 0 var(--ls-space-1); flex-shrink: 0;
   font-size: var(--ls-text-sm); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ls-section-fg);

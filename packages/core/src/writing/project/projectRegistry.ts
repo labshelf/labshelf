@@ -1,0 +1,40 @@
+/** Reads and edits the device-local list of project folders outside the library, keeping keys other versions wrote. */
+// CONTRACT: documents/contracts/library-format.md#researchprojectsjson
+
+export interface ProjectRegistry {
+  /** Absolute paths, in the order they were added. */
+  folders: string[];
+  [key: string]: unknown;
+}
+
+/**
+ * Entries that are not text are dropped.
+ * @returns undefined when the text is not a JSON object, so the caller can refuse to overwrite it
+ */
+export function parseProjectRegistry(text: string): ProjectRegistry | undefined {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) { return undefined; }
+  const record = raw as Record<string, unknown>;
+  const folders = Array.isArray(record["folders"])
+    ? record["folders"].filter((folder): folder is string => typeof folder === "string")
+    : [];
+  return { ...record, folders };
+}
+
+export function serializeProjectRegistry(registry: ProjectRegistry): string {
+  return `${JSON.stringify(registry, null, 2)}\n`;
+}
+
+/** Adds a folder once; the same path added twice stays a single entry. */
+export function withFolder(registry: ProjectRegistry, folder: string): ProjectRegistry {
+  return registry.folders.includes(folder) ? registry : { ...registry, folders: [...registry.folders, folder] };
+}
+
+export function withoutFolder(registry: ProjectRegistry, folder: string): ProjectRegistry {
+  return { ...registry, folders: registry.folders.filter((entry) => entry !== folder) };
+}

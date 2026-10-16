@@ -30,7 +30,7 @@ export class HoverPopup {
       copy.addEventListener("click", () => onCopy(copyText));
       actions.append(copy);
     }
-    const go = iconButton(icon("arrow-right"), "Jump to destination", "rd-btn-sm");
+    const go = iconButton(icon("arrow-right"), content.jumpLabel ?? "Jump to destination", "rd-btn-sm");
     go.addEventListener("click", onJump);
     actions.append(go);
 

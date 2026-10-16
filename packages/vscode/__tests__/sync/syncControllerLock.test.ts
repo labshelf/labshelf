@@ -4,7 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 
-import { libraryLayout, type ILogger, type SyncTimerId, type SyncTimers } from '@labshelf/core';
+import { libraryLayout, type ILogger, type SyncProject, type SyncTimerId, type SyncTimers } from '@labshelf/core';
 import { NodeLockStore, PkceLoopbackAuth, isProcessAlive } from '@labshelf/core/node';
 import { FakeRemoteProvider, MemoryTokenStore } from '@labshelf/core/test-support/sync-fakes';
 
@@ -39,7 +39,12 @@ async function signedInAuth(): Promise<PkceLoopbackAuth> {
 const logs: Array<{ level: string; message: string }> = [];
 const logger: ILogger = { log: async (level, _module, message) => { logs.push({ level, message }); }, error: async () => undefined };
 
-async function makeController(root: string, timers?: SyncTimers, auth?: PkceLoopbackAuth): Promise<SyncController> {
+async function makeController(
+  root: string,
+  timers?: SyncTimers,
+  auth?: PkceLoopbackAuth,
+  listProjects?: (libraryRoot: string, logger: ILogger) => Promise<readonly SyncProject[]>,
+): Promise<SyncController> {
   const signedIn = auth ?? await signedInAuth();
   return new SyncController({
     ...(timers ? { timers } : {}),
@@ -51,6 +56,7 @@ async function makeController(root: string, timers?: SyncTimers, auth?: PkceLoop
     host: { name: os.hostname(), pid: process.pid },
     lock: { store: new NodeLockStore(), isProcessAlive },
     listTitles: async () => [],
+    ...(listProjects ? { listProjects } : {}),
     createProvider: () => provider,
   });
 }
@@ -140,6 +146,18 @@ describe('SyncController and the cross-app sync lock', () => {
       .find(([uri]) => (uri as vscode.Uri).fsPath === (renamed?.[0] as vscode.Uri | undefined)?.fsPath);
     expect(lastRun).toBeDefined();
     expect(JSON.parse(Buffer.from(lastRun![1] as Uint8Array).toString('utf8'))).toMatchObject({ app: 'vscode', providerId: 'fake' });
+    controller.dispose();
+  });
+
+  it('syncs the projects of the library it points at through the projects namespace', async () => {
+    const listProjects = jest.fn(async () => [{ id: 'thesis', root: path.join(root, 'projects', 'thesis'), ignore: [] }]);
+    const resolveRoot = jest.spyOn(provider, 'resolveRoot');
+    const controller = await makeController(root, undefined, undefined, listProjects);
+
+    await controller.sync();
+
+    expect(listProjects).toHaveBeenCalledWith(root, logger);
+    expect(resolveRoot).toHaveBeenCalledWith('projects');
     controller.dispose();
   });
 

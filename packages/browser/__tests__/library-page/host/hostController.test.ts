@@ -1,4 +1,6 @@
+const mockSendRuntime = jest.fn();
 jest.mock("../../../src/platform", () => ({
+  sendRuntime: (...a: unknown[]) => mockSendRuntime(...a),
   bx: { runtime: { sendMessage: jest.fn(), onMessage: { addListener: jest.fn(), removeListener: jest.fn() } } },
 }));
 jest.mock("../../../src/storage", () => ({
@@ -36,5 +38,19 @@ describe("library page host", () => {
     ui.post({ type: "paper.attachPdf", id: "p1" });
     expect(input.click).toHaveBeenCalledTimes(1);
     expect(input.accept).toBe(".pdf,application/pdf");
+  });
+
+  it("opens the citation map from the sidebar and again when the UI asks to refresh it", async () => {
+    mockSendRuntime.mockRejectedValue(new Error("offline"));
+    const { ui, host } = createLoopbackTransport();
+    const states: string[] = [];
+    ui.subscribe((m) => { if (m.type === "citationMap.show") states.push(m.state.status); });
+    const libraryHost = attachLibraryHost(host, { log: { log: async () => undefined, error: async () => undefined } });
+
+    libraryHost.openCitationMap();
+    ui.post({ type: "citationMap.refresh" });
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(states).toEqual(["loading", "loading", "failed", "failed"]);
   });
 });

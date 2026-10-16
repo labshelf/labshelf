@@ -4,7 +4,7 @@
  */
 import type { PaperStatus } from "../../model/index.js";
 import type {
-  AddSource, IfNoPdf, LibraryUiSnapshot, PaperDetails, PdfAccess, PdfMiss, SimilarPaper, TextLayerJobView,
+  AddSource, CitationMapState, IfNoPdf, LibraryUiSnapshot, PaperDetails, PdfAccess, PdfMiss, SimilarPaper, TextLayerJobView,
 } from "./payloads.js";
 
 export type UiToHost =
@@ -34,7 +34,10 @@ export type UiToHost =
   | { type: "paper.add"; folder: string }
   | { type: "paper.addFrom"; folder: string; sourceId: string; ifNoPdf: IfNoPdf; retryPdf: boolean }
   | { type: "annotations.export"; id: string }
-  | { type: "clipboard.write"; text: string; label?: string };
+  | { type: "project.openSource"; project: string; file: string; line: number }
+  | { type: "clipboard.write"; text: string; label?: string }
+  | { type: "citationMap.refresh" }
+  | { type: "citationMap.import"; workId: string; doi: string };
 
 export type HostToUi =
   | { type: "snapshot"; snapshot: LibraryUiSnapshot }
@@ -50,4 +53,9 @@ export type HostToUi =
   | { type: "pdf.missing"; id: string }
   | { type: "pdf.findResult"; id: string; miss: PdfMiss }
   | { type: "add.sources"; folder: string; sources: AddSource[] }
-  | { type: "add.noPdf"; folder: string; sourceId: string; title: string; miss: PdfMiss };
+  | { type: "add.noPdf"; folder: string; sourceId: string; title: string; miss: PdfMiss }
+  /** Opens the citation map view, or updates it while it is open. */
+  | { type: "citationMap.show"; state: CitationMapState }
+  | { type: "citationMap.imported"; workId: string }
+  /** The host has already told the user why with an error `notice`; the UI only clears the row's busy state. */
+  | { type: "citationMap.importFailed"; workId: string };

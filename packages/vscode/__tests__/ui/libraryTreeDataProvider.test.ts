@@ -2,7 +2,9 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { snapshotFromScan, type LibrarySnapshot, type PaperEntry, type PaperRecord } from '@labshelf/core';
 import { createLibraryEvents, type LibraryEvents } from '../../src/events/index';
-import { LibraryDragAndDropController, LibraryTreeDataProvider } from '../../src/ui/library/libraryTreeDataProvider';
+import type { ContinueSource, ContinueTarget } from '../../src/continue/index';
+import { LibraryDragAndDropController } from '../../src/ui/library/libraryDragAndDrop';
+import { LibraryTreeDataProvider } from '../../src/ui/library/libraryTreeDataProvider';
 
 const ROOT = '/lib/papers';
 const TREE_MIME = 'application/vnd.code.tree.labshelf.library';
@@ -13,11 +15,20 @@ function snapshotOf(folders: string[]): LibrarySnapshot {
   return snapshotFromScan(ROOT, { folders, papers: [entry('p1', 'A'), entry('p2', 'A/B'), entry('loose-paper', '')], orphans: [], duplicates: [] }, 0);
 }
 let snapshot: LibrarySnapshot | undefined;
+const labelOf = (node: object): string => ('label' in node ? String(node.label) : 'continue');
+
+let targets: ContinueTarget[] = [];
+let continueChanged: vscode.EventEmitter<void>;
+const continueSource = (): ContinueSource => {
+  continueChanged = new vscode.EventEmitter<void>();
+  return { targets: async () => targets, onDidChange: continueChanged.event };
+};
 
 function makeProvider(): { provider: LibraryTreeDataProvider; bus: LibraryEvents } {
   const bus = createLibraryEvents();
   snapshot = snapshotOf(['A', 'A/B', 'Z']);
-  const provider = new LibraryTreeDataProvider(vscode.Uri.file(ROOT), () => snapshot, bus, path);
+  targets = [];
+  const provider = new LibraryTreeDataProvider(vscode.Uri.file(ROOT), () => snapshot, bus, path, continueSource());
   return { provider, bus };
 }
 
@@ -25,23 +36,23 @@ describe('LibraryTreeDataProvider', () => {
   it('lists "All Papers" first, then the collection folders', async () => {
     const { provider } = makeProvider();
     const top = await provider.getChildren();
-    expect(top.map((n) => n.label)).toEqual(['All Papers', 'A', 'Z']);
+    expect(top.map(labelOf)).toEqual(['All Papers', 'A', 'Z']);
     expect(top[0]).toMatchObject({ dirPath: ROOT, isRoot: true });
     expect(await provider.getChildren(top[0])).toEqual([]);
   });
 
   it('returns nothing while no library is configured', async () => {
-    const provider = new LibraryTreeDataProvider(null, () => undefined, createLibraryEvents(), path);
+    const provider = new LibraryTreeDataProvider(null, () => undefined, createLibraryEvents(), path, continueSource());
     expect(await provider.getChildren()).toEqual([]);
   });
 
   it('lists the folders of the snapshot it reads at request time, empty ones included', async () => {
     const { provider } = makeProvider();
-    expect((await provider.getChildren()).map((n) => n.label)).toEqual(['All Papers', 'A', 'Z']);
+    expect((await provider.getChildren()).map(labelOf)).toEqual(['All Papers', 'A', 'Z']);
     expect(await provider.getChildren({ label: 'A', dirPath: `${ROOT}/A` })).toEqual([{ label: 'B', dirPath: `${ROOT}/A/B` }]);
 
     snapshot = snapshotOf(['A', 'A/B', 'Z', 'New']);
-    expect((await provider.getChildren()).map((n) => n.label)).toEqual(['All Papers', 'A', 'New', 'Z']);
+    expect((await provider.getChildren()).map(labelOf)).toEqual(['All Papers', 'A', 'New', 'Z']);
   });
 
   it('opens every folder in the list panel, including ones with subfolders', async () => {
@@ -86,6 +97,61 @@ describe('LibraryTreeDataProvider', () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+});
+
+describe('Continue rows', () => {
+  const paper: ContinueTarget = { kind: 'paper', paperId: 'p1', title: 'Attention', page: 6 };
+  const project: ContinueTarget = { kind: 'project', projectId: 'survey', file: '/proj/sec/a.tex', relativeFile: 'sec/a.tex', line: 41, character: 8 };
+
+  it('puts the paper and the project file above "All Papers", and nothing when there is nothing to continue', async () => {
+    const { provider } = makeProvider();
+    expect((await provider.getChildren()).map(labelOf)).toEqual(['All Papers', 'A', 'Z']);
+
+    targets = [paper, project];
+    const top = await provider.getChildren();
+    expect(top).toHaveLength(5);
+    const items = await Promise.all(top.slice(0, 2).map((n) => provider.getTreeItem(n)));
+    expect(items.map((i) => [i.label, i.description])).toEqual([['Continue: Attention', 'page 6'], ['Continue: survey', 'sec/a.tex']]);
+    expect(await provider.getChildren(top[0])).toEqual([]);
+    expect(provider.getParent(top[0]!)).toBeNull();
+  });
+
+  it('opens the reader at the saved page and the file at the saved cursor', async () => {
+    const { provider } = makeProvider();
+    targets = [paper, project];
+    const [paperRow, projectRow] = await provider.getChildren();
+    expect((await provider.getTreeItem(paperRow!)).command).toEqual({ command: 'labshelf.openPdfViewer', title: 'Open', arguments: ['p1', 6] });
+    const open = (await provider.getTreeItem(projectRow!)).command!;
+    expect(open.command).toBe('vscode.open');
+    const [uri, options] = open.arguments as [vscode.Uri, { selection: vscode.Range }];
+    expect(uri.fsPath).toBe('/proj/sec/a.tex');
+    expect(options.selection.start).toEqual({ line: 41, character: 8 });
+  });
+
+  it('refreshes when a project cursor is saved or a reader closes', () => {
+    jest.useFakeTimers();
+    try {
+      const { provider, bus } = makeProvider();
+      const fired = jest.fn();
+      provider.onDidChangeTreeData(fired);
+      continueChanged.fire();
+      bus.pdfViewerClosed.fire({ paperId: 'p1' });
+      jest.advanceTimersByTime(100);
+      expect(fired).toHaveBeenCalledTimes(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('is not draggable and drops onto it target papers/', async () => {
+    const onFolderMove = jest.fn(async () => {});
+    const dnd = new LibraryDragAndDropController(jest.fn(), onFolderMove);
+    const set = jest.fn();
+    dnd.handleDrag([{ target: paper }], { set } as never);
+    expect(set).not.toHaveBeenCalled();
+    await dnd.handleDrop({ target: paper }, new (vscode as any).DataTransfer({ [TREE_MIME]: [`${ROOT}/Z`] }));
+    expect(onFolderMove).toHaveBeenCalledWith([`${ROOT}/Z`], undefined);
   });
 });
 

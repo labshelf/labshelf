@@ -12,6 +12,7 @@ export const READER_SHELL_BODY = `<div id="app">
     <div id="find-bar" role="search"></div>
     <div id="viewerContainer" tabindex="0"><div id="viewer" class="pdfViewer"></div></div>
     <div id="status-pill"></div>
+    <div id="build-banner" role="status" aria-live="polite" hidden></div>
     <div id="loading-msg">Loading PDF...</div>
     <div id="error-msg" role="alert" hidden></div>
   </main>

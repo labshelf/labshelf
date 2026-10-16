@@ -2,6 +2,7 @@
 // Owns the timers, targets and the `attempt` token that drops stale async work.
 import type { CitationResolver, FloatResolver } from "../text/index.js";
 import type { ReaderContext } from "../session/index.js";
+import type { PreviewCitations } from "./citations/index.js";
 import type { DestPreview } from "./destPreview.js";
 import { sameTarget, type HoverTarget, type PopupContent } from "./hoverTarget.js";
 import { findLink, LinkContent, linkHoverTarget } from "./linkTarget.js";
@@ -14,8 +15,8 @@ const CLOSE_GRACE_MS = 150;
 
 export class HoverPreview {
   private readonly popup = new HoverPopup();
-  private readonly links: LinkContent;
-  private readonly references: ReferenceContent;
+  private links: LinkContent;
+  private references: ReferenceContent;
   private readonly texts = new TextTargets();
   private openTimer: ReturnType<typeof setTimeout> | null = null;
   private closeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -32,9 +33,10 @@ export class HoverPreview {
     resolver: CitationResolver,
     floats: FloatResolver,
     private readonly preview: DestPreview,
+    private readonly citations: PreviewCitations,
   ) {
-    this.links = new LinkContent(ctx, resolver, preview);
-    this.references = new ReferenceContent(ctx, resolver, floats, preview);
+    this.links = new LinkContent(ctx, resolver, preview, citations);
+    this.references = new ReferenceContent(ctx, resolver, floats, preview, citations);
     const viewer = $("viewer");
     viewer.addEventListener("mouseover", (e) => this.onOver(e));
     viewer.addEventListener("mouseout", (e) => this.onOut(e));
@@ -45,6 +47,15 @@ export class HoverPreview {
     ctx.eventBus.on("scalechanging", () => this.close());
     document.addEventListener("keydown", () => this.close());
     document.addEventListener("mousedown", (e) => { if (!this.popup.contains(e.target as Node)) { this.close(); } });
+  }
+
+  /**
+   * Answers from another document's text, e.g. after a reload; any open popup belonged to the old one.
+   */
+  useText(resolver: CitationResolver, floats: FloatResolver): void {
+    this.close();
+    this.links = new LinkContent(this.ctx, resolver, this.preview, this.citations);
+    this.references = new ReferenceContent(this.ctx, resolver, floats, this.preview, this.citations);
   }
 
   /**

@@ -1,5 +1,5 @@
 /**
- * Applies what the host sends: snapshots, navigation, selection, per-paper data and OCR jobs go to the store, notices
+ * Applies what the host sends: snapshots, navigation, selection, per-paper data, OCR jobs and the citation map go to the store, notices
  * and progress become toasts, and PDF and add-paper replies open their dialogs.
  */
 import { toast } from "../../ui/dom/index.js";
@@ -18,6 +18,9 @@ function applyData(ctx: UiContext, m: HostToUi): boolean {
     case "similar": ctx.store.setSimilar(m.id, m.items); return true;
     case "sidecarChanged": ctx.data.invalidate(m.id); return true;
     case "jobs": ctx.store.setJobs(m.jobs); return true;
+    case "citationMap.show": ctx.store.showCitationMap(m.state); return true;
+    case "citationMap.imported": ctx.store.removeMissingWork(m.workId); return true;
+    case "citationMap.importFailed": ctx.store.setCitationImporting(m.workId, false); return true;
     default: return false;
   }
 }

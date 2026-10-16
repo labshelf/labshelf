@@ -8,7 +8,7 @@ Pending decisions: 0
 
 People who write in Neovim, Helix or Emacs get the same writing environment from the `labshelf` command: the zero-configuration build with clear errors, a citation picker their editor can call, the pre-submission check, and all of it in CI so a pull request fails before a broken or de-anonymised paper goes out.
 
-Builds on [writing-core.plan.md](1-writing-core.plan.md), [submission-tools.plan.md](2-submission-tools.plan.md) and [research-links.plan.md](2-research-links.plan.md).
+Builds on [writing-core.plan.md](../../archive/writing-core.plan.md), [submission-tools.plan.md](2-submission-tools.plan.md) and [research-links.plan.md](2-research-links.plan.md).
 
 ## 2. Decisions
 

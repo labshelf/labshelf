@@ -39,6 +39,10 @@ export type RuntimeMessage =
   | { type: "library.open"; folder?: string; paperId?: string }
   /** Lists the current window's http(s) tabs, excluding extension pages. */
   | { type: "tabs.list" }
+  /** Library page: builds the citation map from OpenAlex for the library's papers. */
+  | { type: "citationMap.build" }
+  /** Library page: saves the paper with this DOI through the capture flow, or reports it already there. */
+  | { type: "citationMap.importDoi"; doi: string }
   /** Popup: the offer to attach a PDF this tab showed, or the latest download, to a paper without one; null when none. */
   | { type: "pdfOffer.get"; tabId: number }
   | { type: "pdfOffer.attach"; offerId: string }
@@ -47,6 +51,13 @@ export type RuntimeMessage =
 export type RuntimeResponse =
   | { ok: true; data?: unknown }
   | { ok: false; error: string };
+
+/** Reply to citationMap.importDoi. */
+export interface ImportedDoiData {
+  status: "saved" | "already-present";
+  id: string;
+  title: string;
+}
 
 /** The library's copy of a paper. */
 export interface LibraryRef {

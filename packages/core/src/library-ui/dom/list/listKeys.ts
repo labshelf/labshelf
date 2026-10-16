@@ -1,6 +1,6 @@
 /**
- * Runs the list keymap on key presses anywhere on the page, except while an overlay is open, inside a text field,
- * inside the host's sidebar (it has its own keys) or when Enter/Space activates a focused button.
+ * Runs the list keymap on key presses anywhere on the page, except while an overlay or the citation map is open, inside
+ * a text field, inside the host's sidebar (it has its own keys) or when Enter/Space activates a focused button.
  */
 import { parentDir } from "../../../library/index.js";
 import { listKeyAction, type ListKeyAction } from "../../listKeymap.js";
@@ -20,7 +20,7 @@ function openMenuAtCursor(ctx: UiContext): void {
 function ignored(e: KeyboardEvent, ctx: UiContext): boolean {
   const active = document.activeElement as HTMLElement | null;
   // An overlay that took the key (Escape closing a menu) has already handled it.
-  if (overlayOpen() || e.defaultPrevented) return true;
+  if (overlayOpen() || e.defaultPrevented || ctx.store.get().citationMap) return true;
   if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) return true;
   if (active && ctx.root.querySelector(".sidebar")?.contains(active)) return true;
   return !!active && active.tagName === "BUTTON" && (e.key === "Enter" || e.key === " ");

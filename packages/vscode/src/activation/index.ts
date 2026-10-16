@@ -7,4 +7,5 @@ export {
   registerSettingsWelcomeView,
   registerPanelCommands,
   registerSyncCommands,
+  registerWritingView,
 } from "./registration/index.js";

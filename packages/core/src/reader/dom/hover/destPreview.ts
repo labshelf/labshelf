@@ -4,7 +4,7 @@
  */
 import type { PageViewport, RenderTask } from "pdfjs-dist";
 import { type PdfRegion, cropRectForPreview, type Rect } from "../../logic/index.js";
-import type { ReaderContext } from "../session/index.js";
+import { DOCUMENT_REPLACED, type ReaderContext } from "../session/index.js";
 import type { ThemeController } from "../chrome/index.js";
 
 // Wide enough that a figure or a small table is readable without jumping to it; narrower panels shrink it to fit.
@@ -32,6 +32,7 @@ export class DestPreview {
 
   constructor(private readonly ctx: ReaderContext, private readonly theme: ThemeController) {
     theme.onPageColorsChange(() => this.cache.clear());
+    ctx.eventBus.on(DOCUMENT_REPLACED, () => this.cache.clear());
   }
 
   /**

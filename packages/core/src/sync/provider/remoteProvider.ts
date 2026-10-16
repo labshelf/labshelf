@@ -1,7 +1,7 @@
 // Declares the provider-agnostic contract of a remote storage backend used by the sync engine.
 
-/** A namespace splits visible library content from hidden app data. */
-export type RemoteNamespace = "library" | "appdata";
+/** A namespace splits visible library content, hidden app data and the writing projects. */
+export type RemoteNamespace = "library" | "appdata" | "projects";
 
 /** A file or folder as seen on the remote side. */
 export interface RemoteFile {
@@ -31,6 +31,8 @@ export interface RemoteProvider {
 
   /** Resolves (creating if needed) the root folder for a namespace. */
   resolveRoot(ns: RemoteNamespace): Promise<RemoteFile>;
+  /** Looks the root folder of a namespace up without creating it. */
+  findRoot(ns: RemoteNamespace): Promise<RemoteFile | undefined>;
   /** Lists direct children of a folder. */
   list(folderId: string): Promise<RemoteFile[]>;
   createFolder(parentId: string, name: string): Promise<RemoteFile>;

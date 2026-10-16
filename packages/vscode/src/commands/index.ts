@@ -3,8 +3,8 @@
  */
 export { folderActions, moveFolders, registerFolderCommands } from "./folderCommands";
 export type { FolderCommandHost } from "./folderCommands";
-export { registerCommands, resolvePaper, ensurePaperPdf } from "./registerCommands/index.js";
+export { registerCommands, resolvePaper, ensurePaperPdf, executeSafely } from "./registerCommands/index.js";
 export type { ActiveServices } from "./registerCommands/index.js";
 export { registerAiCommands } from "./registerAiCommands";
-export { importPapers, importPapersFromDialog } from "./importProgress";
+export { importPapers, importPapersFromDialog, queueTextLayersOfAdded } from "./importProgress";
 export { currentTextLayerJobs, onTextLayerJobsChanged, queueTextLayers } from "./textLayerQueue.js";

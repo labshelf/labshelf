@@ -20,6 +20,7 @@ export interface RenderParams {
   pdfUri: vscode.Uri;
   paperId: string;
   paperTitle: string;
+  preview: boolean;
   prefs: ReaderPrefs;
   pdfjs: PdfjsFiles | null;
   isMac: boolean;
@@ -146,6 +147,7 @@ function buildBootParams(
     },
     paperId: params.paperId,
     paperTitle: params.paperTitle,
+    preview: params.preview,
     themePreference: "auto",
     effectiveTheme,
     prefs: params.prefs,

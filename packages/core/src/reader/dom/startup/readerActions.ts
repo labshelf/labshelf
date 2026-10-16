@@ -17,7 +17,7 @@ export interface ActionDeps {
  * @returns the function Keyboard calls for every action it resolves.
  */
 export function createActionRunner({ ctx, ui, hover }: ActionDeps): (action: ReaderAction) => void {
-  const { container, pdfViewer, pdfDocument } = ctx;
+  const { container, pdfViewer } = ctx;
   const { goToPage, findBar, zoom, history, pill, sidebar, cheatsheet, bubble } = ui;
   const pageStep = (fraction: number): void => {
     container.scrollBy({ top: container.clientHeight * fraction, behavior: "smooth" });
@@ -31,7 +31,7 @@ export function createActionRunner({ ctx, ui, hover }: ActionDeps): (action: Rea
       case "nextPage": pdfViewer.nextPage(); break;
       case "prevPage": pdfViewer.previousPage(); break;
       case "firstPage": goToPage(1); break;
-      case "lastPage": goToPage(pdfDocument.numPages); break;
+      case "lastPage": goToPage(ctx.pdfDocument.numPages); break;
       case "find": findBar.show(); break;
       case "findNext": findBar.again(false); break;
       case "findPrev": findBar.again(true); break;

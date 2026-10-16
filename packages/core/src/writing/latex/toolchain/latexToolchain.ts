@@ -1,0 +1,19 @@
+// Describes the program that builds a LaTeX project and the label users see for each engine.
+import type { LatexEngine } from "../../project/index.js";
+
+export interface LatexToolchain {
+  engine: LatexEngine;
+  /** The Tectonic binary, or latexmk for the TeX Live engines. */
+  executable: string;
+}
+
+const ENGINE_LABELS: Readonly<Record<LatexEngine, string>> = {
+  tectonic: "XeLaTeX (Tectonic)",
+  xelatex: "XeLaTeX",
+  pdflatex: "pdfLaTeX",
+  lualatex: "LuaLaTeX",
+};
+
+export function engineLabel(engine: LatexEngine): string {
+  return ENGINE_LABELS[engine];
+}

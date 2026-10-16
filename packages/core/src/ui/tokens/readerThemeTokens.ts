@@ -21,9 +21,11 @@ export interface ReaderTheme {
   shadow: string;
   findHit: string;
   findCurrent: string;
+  /** Fill of a region another version of the paper shows differently. */
+  change: string;
 }
 
-const DARK_FIND = { findHit: "rgba(255, 213, 0, .35)", findCurrent: "rgba(255, 140, 0, .6)" };
+const DARK_FIND = { findHit: "rgba(255, 213, 0, .35)", findCurrent: "rgba(255, 140, 0, .6)", change: "rgba(255, 140, 0, .2)" };
 
 // The reader keeps its own chrome per theme, because a page theme can differ from the app theme.
 export const READER_THEMES: Record<ReaderThemeName, ReaderTheme> = {
@@ -50,7 +52,7 @@ export const READER_THEMES: Record<ReaderThemeName, ReaderTheme> = {
     surface: "#000000", border: "#ffffff", fg: "#ffffff", desc: "#ffffff",
     hover: "rgba(255, 255, 255, .2)", active: "rgba(255, 255, 255, .3)",
     shadow: "0 4px 18px rgba(0, 0, 0, .45)",
-    findHit: "rgba(0, 255, 255, .4)", findCurrent: "rgba(255, 0, 255, .6)",
+    findHit: "rgba(0, 255, 255, .4)", findCurrent: "rgba(255, 0, 255, .6)", change: "rgba(255, 0, 255, .3)",
   },
 };
 
@@ -61,6 +63,7 @@ function themeDeclarations(theme: ReaderTheme): string[] {
     ...CSS_ROLES.map((role) => `  --ls-reader-${role}: ${theme[role]};`),
     `  --ls-reader-find-hit: ${theme.findHit};`,
     `  --ls-reader-find-current: ${theme.findCurrent};`,
+    `  --ls-reader-change: ${theme.change};`,
   ];
 }
 

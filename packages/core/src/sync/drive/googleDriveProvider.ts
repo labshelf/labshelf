@@ -29,6 +29,10 @@ function toRemoteFile(f: DriveFile): RemoteFile {
   return file;
 }
 
+function topLevelName(ns: RemoteNamespace): string {
+  return ns === "library" ? "LabShelf Library" : "LabShelf Projects";
+}
+
 /** Google Drive implementation of RemoteProvider. */
 export class GoogleDriveProvider implements RemoteProvider {
   readonly id = SYNC_PROVIDER_ID;
@@ -59,20 +63,23 @@ export class GoogleDriveProvider implements RemoteProvider {
     if (ns === "appdata") {
       return this.resolveAppdataRoot();
     }
-    return this.resolveLibraryRoot();
+    const name = topLevelName(ns);
+    return await this.findTopLevelFolder(name) ?? toRemoteFile(await this.client.createFolder(name, []));
   }
 
-  private async resolveLibraryRoot(): Promise<RemoteFile> {
+  async findRoot(ns: RemoteNamespace): Promise<RemoteFile | undefined> {
+    return ns === "appdata" ? this.resolveAppdataRoot() : this.findTopLevelFolder(topLevelName(ns));
+  }
+
+  // CONTRACT: documents/contracts/sync.md#projects
+  // The two roots are siblings in My Drive: nothing under LabShelf Library may hold projects.
+  private async findTopLevelFolder(name: string): Promise<RemoteFile | undefined> {
     const result = await this.client.listFiles({
-      q: "name='LabShelf Library' and mimeType='application/vnd.google-apps.folder' and trashed=false",
+      q: `name='${name}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
       spaces: "drive",
       fields: LIST_FIELDS,
     });
-    if (result.files.length > 0) {
-      return toRemoteFile(result.files[0]!);
-    }
-    const created = await this.client.createFolder("LabShelf Library", []);
-    return toRemoteFile(created);
+    return result.files[0] ? toRemoteFile(result.files[0]) : undefined;
   }
 
   private async resolveAppdataRoot(): Promise<RemoteFile> {

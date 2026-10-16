@@ -1,0 +1,1 @@
+Fixtures of real pdfTeX builds (TeX Live 2026), each `pdflatex` run once: `before.tex` is a two-column, three-page `lipsum` paper; `after.tex` appends a sentence to the second paragraph, which pushes the rest of the paper down across columns and pages, and changes the number 0.913 to 0.927 on page 3.

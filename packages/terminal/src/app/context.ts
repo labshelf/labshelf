@@ -3,13 +3,15 @@
 import * as path from "node:path";
 
 import { BUILT_IN_GOOGLE_CLIENT, BibTeXService, Logger, PdfImportParser, errorMessage, resolveOAuthClient, type ILogger, type LibraryStore, type SyncCoordinator } from "@labshelf/core";
-import { FileLogSink, NodeLibraryFileSystem, NodePdfOpener, TesseractOcrEngine, createPdfjsLoader, type PdfjsLoader } from "@labshelf/core/node";
+import {
+  FileLogSink, NodeLibraryFileSystem, NodePdfOpener, TesseractOcrEngine, cacheDir, createPdfjsLoader, type PdfjsLoader,
+} from "@labshelf/core/node";
 
 import type { TerminalConfig } from "./config.js";
 import {
   LibraryRoot, LibraryWatcher, SidecarReader, TerminalPaperService, createLibraryStore, ensureLibraryStructure,
 } from "../library/index.js";
-import { cacheDir, moveToTrash, openExternal } from "../platform/index.js";
+import { moveToTrash, openExternal } from "../platform/index.js";
 import { defaultRenderer, ThumbnailService } from "../preview/index.js";
 import { createDriveAccount, createTerminalAuth, createTerminalSync, createTokenStore, type DriveAccount } from "../sync/index.js";
 import { detectImageProtocol, type ImageProtocol } from "../tui/index.js";

@@ -20,7 +20,7 @@ export interface LoadedPdf {
  * (Firefox in particular) refuses blob: workers.
  */
 export interface PdfSourceHooks {
-  /** Called once at t=0, before pdf.js is imported. Default: fetch(assets.pdfUrl). */
+  /** Called at t=0, before pdf.js is imported, and again on every reload. Default: fetch(assets.pdfUrl). */
   readBytes?(): Promise<ArrayBuffer>;
   /** Called once at t=0; the worker becomes GlobalWorkerOptions.workerPort. Default: Blob URL of the fetched worker source. */
   createWorker?(workerUrl: string): Worker;
@@ -53,18 +53,32 @@ export async function loadPdf(assets: ReaderAssets, perf: PerfMarks, hooks: PdfS
   ]);
   perf.mark("viewerImported");
 
-  const pdfDocument = await pdfjsLib.getDocument(documentParams(assets, pdfBytes)).promise;
+  const pdfDocument = await openPdfDocument(pdfjsLib, assets, pdfBytes);
   perf.mark("docLoaded");
 
   return { pdfjsLib, viewerLib, pdfDocument };
 }
 
-function startPdfBytes(assets: ReaderAssets, perf: PerfMarks, hooks: PdfSourceHooks): Promise<ArrayBuffer> {
-  const readBytes = hooks.readBytes ?? (() => fetch(assets.pdfUrl).then((r) => {
+/**
+ * @returns the paper's bytes, read through the host's hook or fetched; `fresh` bypasses the HTTP cache for a reload.
+ */
+export function readPdfBytes(assets: ReaderAssets, hooks: PdfSourceHooks, fresh: boolean): Promise<ArrayBuffer> {
+  if (hooks.readBytes) { return hooks.readBytes(); }
+  return fetch(assets.pdfUrl, fresh ? { cache: "no-store" } : {}).then((r) => {
     if (!r.ok) { throw new Error(`Could not read ${PDF_FILE} (HTTP ${r.status}).`); }
     return r.arrayBuffer();
-  }));
-  const bytes = readBytes().then((buf) => {
+  });
+}
+
+/**
+ * @returns the document parsed from `data`, which pdf.js transfers to its worker.
+ */
+export function openPdfDocument(pdfjsLib: PdfjsLib, assets: ReaderAssets, data: ArrayBuffer): Promise<PDFDocumentProxy> {
+  return pdfjsLib.getDocument(documentParams(assets, data)).promise;
+}
+
+function startPdfBytes(assets: ReaderAssets, perf: PerfMarks, hooks: PdfSourceHooks): Promise<ArrayBuffer> {
+  const bytes = readPdfBytes(assets, hooks, false).then((buf) => {
     perf.mark("pdfFetched");
     perf.set("pdfBytes", buf.byteLength);
     return buf;

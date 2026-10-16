@@ -3,11 +3,11 @@
  * snapshots, the open folder and OCR jobs, and answers through the typed message handlers.
  */
 import * as vscode from 'vscode';
-import { isUnderDir, type HostToUi, type PaperRecord, type TextLayerJobView } from '@labshelf/core';
+import { isUnderDir, type HostToUi, type PaperRecord } from '@labshelf/core';
 import { rootNode, type LibraryNode } from '../library/index.js';
 import { labshelfTabIcon } from '../tabIcon.js';
 import { onPaperChange } from '../../events/index.js';
-import { handleListMessage, type ListHostContext } from './host/index.js';
+import { handleListMessage, showCitationMap, type ListHostContext } from './host/index.js';
 import { libraryPaths, type LibraryPaths } from './libraryPaths.js';
 import { libraryBundleDirectory, listPanelHtml } from './listPanelHtml.js';
 import type { ListPanelDeps } from './listPanelDeps.js';
@@ -25,6 +25,7 @@ export class ListWebviewPanel {
   private _uiFolder: string | undefined;
   private _webviewReady = false;
   private _disposed = false;
+  private _citationMapRequested = false;
   private _loadSeq = 0;
   private _lastNotified: string | undefined;
   private _reloadTimer: ReturnType<typeof setTimeout> | null = null;
@@ -49,6 +50,13 @@ export class ListWebviewPanel {
     ListWebviewPanel.currentPanel = new ListWebviewPanel(panel, deps, folder);
   }
 
+  /** Reveals or opens the panel and shows the citation map in it, once the UI is ready. */
+  public static showCitationMap(deps: ListPanelDeps): void {
+    if (ListWebviewPanel.currentPanel) { ListWebviewPanel.currentPanel._panel.reveal(vscode.ViewColumn.One); } else { ListWebviewPanel.createOrShow(deps); }
+    const panel = ListWebviewPanel.currentPanel;
+    if (panel?._webviewReady) { void showCitationMap(panel._host); } else if (panel) { panel._citationMapRequested = true; }
+  }
+
   private constructor(private readonly _panel: vscode.WebviewPanel, private readonly _deps: ListPanelDeps, folder?: LibraryNode) {
     this._folder = folder;
     this._host = this._hostContext();
@@ -64,9 +72,13 @@ export class ListWebviewPanel {
       _deps.events.annotationChanged.event(this._onSidecarEvent),
       _deps.events.pdfViewerClosed.event(this._onSidecarEvent),
     );
+    // Which projects cite the shown paper changed: the pane asks for its details again.
+    if (_deps.projectBacklinks) {
+      this._disposables.push(_deps.projectBacklinks.onDidChange(() => void this._post({ type: 'sidecarChanged', id: null })));
+    }
     // Job updates arrive every page or two; they patch the rows without re-reading the index.
     if (_deps.textLayerJobs) {
-      this._disposables.push(_deps.textLayerJobs.onDidChange((jobs) => void this._postJobs(jobs)));
+      this._disposables.push(_deps.textLayerJobs.onDidChange((jobs) => void this._post({ type: 'jobs', jobs })));
     }
   }
 
@@ -111,17 +123,17 @@ export class ListWebviewPanel {
         const byId = new Map((await this._deps.paperService.listPapers()).map((p) => [p.id, p]));
         return ids.map((id) => byId.get(id)).filter((p): p is PaperRecord => !!p);
       },
-      onReady: async () => { this._webviewReady = true; this._uiFolder = undefined; await this._pushState(); },
+      onReady: async () => {
+        this._webviewReady = true; this._uiFolder = undefined;
+        await this._pushState();
+        if (this._citationMapRequested) { this._citationMapRequested = false; await showCitationMap(this._host); }
+      },
       onNavigate: (dir) => this._showFolder(this._nodeFor(dir), false),
     };
   }
 
   private async _post(message: HostToUi): Promise<void> {
     if (this._webviewReady && !this._disposed) { await this._panel.webview.postMessage(message); }
-  }
-
-  private async _postJobs(jobs: TextLayerJobView[]): Promise<void> {
-    await this._post({ type: 'jobs', jobs });
   }
 
   private _scheduleReload(): void {
@@ -171,7 +183,7 @@ export class ListWebviewPanel {
     if (seq !== this._loadSeq || this._disposed) { return; }
     this._showFolder(folder, true);
     await this._post({ type: 'snapshot', snapshot });
-    if (this._deps.textLayerJobs) { await this._postJobs(this._deps.textLayerJobs.current()); }
+    if (this._deps.textLayerJobs) { await this._post({ type: 'jobs', jobs: this._deps.textLayerJobs.current() }); }
   }
 
   /** Clears the static panel reference, detaches event listeners, and disposes the webview panel. */

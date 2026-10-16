@@ -35,6 +35,10 @@ The minimum versions are the floor for pdf.js 6.3.
 - The Scholar content script renders inside a shadow root and loads the tokens as text, with `:root` rewritten to `:host`.
 - Cloudflare-protected publishers (ACM, SIAM, ScienceDirect) block headless browsers and plain `fetch`. Real downloads from them can only be tested by hand.
 
+## Citation map
+
+A fixed **Citation map** row at the top of the library page's sidebar opens the citation map in place of the paper list ([contract](../contracts/library-ui-host.md#citation-map)). The background builds it from OpenAlex and caches the data in IndexedDB ([contract](../contracts/library-format.md#researchopenalex)).
+
 ## Capture structure
 
 Identifier detection, landing-page parsing, metadata resolution and the PDF finder live in core `import/` and are shared with the other apps. `src/capture/` keeps only what needs the browser: the page probe content script, the helper tab and tab fetch (`capture/tab/`), the watched sign-in tab (`capture/watch/`), the capture and Scholar flows, and mapping a draft to a record.
@@ -59,6 +63,14 @@ A paper whose PDF is a preprint or accepted manuscript (`pdfVersion` in [library
 ## Ask the author
 
 A paper without a PDF offers "Ask the author" in the detail pane and in the "No PDF found" dialogs. The background reads author addresses from the article page (author e-mail meta tags and correspondence `mailto:` links), then from PubMed's "Electronic address" affiliations, and opens a `mailto:` for at most three of them. Nothing is sent by LabShelf; the user sends the email from their own mail client. With no address, the article page opens instead and nothing is recorded. Opening the email writes `pdfRequestedAt`, which the pane shows while the paper has no PDF. The options page holds the name, affiliation and language that the email is written with.
+
+## labshelf: links
+
+`web+labshelf:` links ([links.md](../contracts/links.md)) open the library page with `?link=<link>`. The page resolves the cite key through core and replaces its own tab with the reader at the page, so a click leaves no extra tab. An unknown key or a malformed link shows an error toast and a log entry.
+
+- Firefox declares the handler in `manifest.firefox.json` (`protocol_handlers`, a relative `uriTemplate`).
+- Chrome's manifest has no such key. The library page calls `navigator.registerProtocolHandler` on load when the manifest declares none, and Chrome asks the user to allow it. The page logs a refusal and carries on.
+- Opening `library-page/index.html?link=...` by hand exercises the resolution. Whether a click on a page reaches the handler needs a headed browser, because the registration needs the user's approval.
 
 ## Headless run
 

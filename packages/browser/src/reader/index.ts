@@ -120,6 +120,7 @@ function bootParams(paper: PaperRecord, prefs: ReaderPrefs): ReaderBootParams {
     },
     paperId: paper.id,
     paperTitle: paper.title,
+    preview: false,
     themePreference: "auto",
     effectiveTheme: autoTheme(),
     prefs,

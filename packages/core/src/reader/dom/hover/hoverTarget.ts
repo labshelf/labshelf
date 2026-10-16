@@ -18,6 +18,8 @@ export interface PopupContent {
   body: HTMLElement;
   copyText: string | null;
   jump: () => void;
+  /** Names what the jump button does; defaults to going to the destination. */
+  jumpLabel?: string;
 }
 
 export function sameTarget(a: HoverTarget | null, b: HoverTarget | null): boolean {

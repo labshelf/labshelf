@@ -4,17 +4,32 @@ import type { ILogger, LocalFileSystem } from "../../../ports/index.js";
 import type {
   NamespaceResult,
   SyncOperation,
+  SyncProject,
   SyncResult,
+  TreeNode,
 } from "../syncTypes.js";
 import type { SyncManifest } from "../state/index.js";
 import { diffNamespace } from "./syncDiff.js";
 import { applyOperations } from "./syncApply.js";
 import { scanLocalTree, scanRemoteTree } from "./treeScan.js";
+import { scanProjects } from "./projectScan.js";
 import { RemotePathResolver } from "../../provider/index.js";
 import { createLibraryFolderNamer } from "../naming/index.js";
 
-/** Maps each namespace to its absolute local root directory. */
-export type NamespaceRoots = Record<RemoteNamespace, string>;
+/** The namespaces that are one local folder; the projects namespace spans one folder per project. */
+type FolderNamespace = Exclude<RemoteNamespace, "projects">;
+
+/** Maps each folder namespace to its absolute local root directory. */
+export type NamespaceRoots = Record<FolderNamespace, string>;
+
+/** What a namespace's two sides hold, ready to reconcile. */
+interface NamespaceScan {
+  resolver: RemotePathResolver;
+  remoteTree: Map<string, TreeNode>;
+  localTree: Map<string, TreeNode>;
+  unreadable: string[];
+  localPath(path: string): string;
+}
 
 /** Name translation maps for one namespace (e.g. paperId ↔ paper title). */
 export interface FolderNameMaps {
@@ -34,11 +49,17 @@ export interface SyncEngineDeps {
   clock?: () => Date;
   /** Optional name translation for the 'library' namespace. */
   libraryFolderNames?: FolderNameMaps;
+  /** The projects on this device; the projects namespace runs only when this is given. */
+  projects?: readonly SyncProject[];
   /** Receives warnings about local folders the scan could not read and the paths held back under them. */
   logger?: ILogger;
 }
 
-const NAMESPACES: RemoteNamespace[] = ["library", "appdata"];
+const NAMESPACES: FolderNamespace[] = ["library", "appdata"];
+
+function emptyResult(namespace: RemoteNamespace): NamespaceResult {
+  return { namespace, uploaded: 0, downloaded: 0, deletedLocal: 0, deletedRemote: 0, conflicts: [] };
+}
 
 /** Runs a bidirectional sync using only the injected RemoteProvider and LocalFileSystem. */
 export class SyncEngine {
@@ -48,7 +69,7 @@ export class SyncEngine {
     return this.deps.clock ? this.deps.clock() : new Date();
   }
 
-  private async syncNamespace(ns: RemoteNamespace): Promise<NamespaceResult> {
+  private async syncNamespace(ns: FolderNamespace): Promise<NamespaceResult> {
     const { provider, fs, manifest, roots, libraryFolderNames } = this.deps;
     const root = await provider.resolveRoot(ns);
 
@@ -60,6 +81,44 @@ export class SyncEngine {
       : undefined;
     const remoteTree = await scanRemoteTree(provider, root.id, resolver, names?.remoteToLocal, namer);
     const { tree: localTree, unreadable } = await scanLocalTree(fs, roots[ns], this.deps.logger);
+    return this.reconcile(ns, root.id, {
+      resolver, remoteTree, localTree, unreadable, localPath: (path) => `${roots[ns]}/${path}`,
+    });
+  }
+
+  // CONTRACT: documents/contracts/sync.md#projects
+  // Only the projects on this device take part: the trees hold nothing of the others, and a manifest entry that
+  // neither tree holds is left as it is, so a project that is absent here never deletes anything on Drive.
+  private async syncProjects(projects: readonly SyncProject[]): Promise<{ result: NamespaceResult; onlyOnDrive: string[] }> {
+    const { provider, fs, logger } = this.deps;
+    try {
+      // CONTRACT: documents/contracts/sync.md#projects
+      // The Drive folder is created by the first project upload: with no project here, the run only looks.
+      const root = projects.length > 0 ? await provider.resolveRoot("projects") : await provider.findRoot("projects");
+      if (!root) { return { result: emptyResult("projects"), onlyOnDrive: [] }; }
+      const resolver = new RemotePathResolver(provider, root.id);
+      const scan = await scanProjects(provider, fs, resolver, root.id, projects, logger);
+      const localPath = (path: string): string => {
+        const id = path.slice(0, path.indexOf("/"));
+        const projectRoot = scan.roots.get(id);
+        if (projectRoot === undefined) { throw new Error(`No project folder on this device for ${path}`); }
+        return `${projectRoot}/${path.slice(id.length + 1)}`;
+      };
+      const result = await this.reconcile("projects", root.id, { ...scan, resolver, localPath });
+      await logger?.log("INFO", "sync/projects", "Sync ran the projects namespace", {
+        projects: scan.roots.size, onlyOnDrive: scan.onlyOnDrive.length,
+        uploaded: result.uploaded, downloaded: result.downloaded, conflicts: result.conflicts.length,
+      });
+      return { result, onlyOnDrive: scan.onlyOnDrive };
+    } catch (error) {
+      await logger?.error("sync/projects", error, { projects: projects.map((project) => project.id) });
+      throw error;
+    }
+  }
+
+  private async reconcile(ns: RemoteNamespace, rootId: string, scan: NamespaceScan): Promise<NamespaceResult> {
+    const { provider, fs, manifest } = this.deps;
+    const { resolver, remoteTree, localTree, unreadable, localPath } = scan;
 
     // CONTRACT: documents/contracts/sync.md#remote-identity
     // The manifest only means "deleted on the other side" for the remote it was built against. Another account or
@@ -68,10 +127,10 @@ export class SyncEngine {
     // Either would otherwise turn every synced file into a local deletion.
     const knownRoot = manifest.rootId(ns);
     const rebased = knownRoot !== undefined
-      ? knownRoot !== root.id
+      ? knownRoot !== rootId
       : remoteTree.size === 0 && manifest.paths(ns).length > 0;
     if (rebased) { manifest.clearNamespace(ns); }
-    manifest.setRootId(ns, root.id);
+    manifest.setRootId(ns, rootId);
 
     const ops = await this.holdBackUnreadable(ns, diffNamespace(ns, localTree, remoteTree, manifest), unreadable);
     const result = await applyOperations(
@@ -81,7 +140,7 @@ export class SyncEngine {
         fs,
         manifest,
         resolver,
-        localRoot: roots[ns],
+        localPath,
         now: this.now(),
       },
       ops,
@@ -109,7 +168,7 @@ export class SyncEngine {
     return kept;
   }
 
-  /** Syncs both namespaces, then persists the manifest only if no namespace threw. */
+  /** Syncs the namespaces, then persists the manifest only if no namespace threw. */
   async run(): Promise<SyncResult> {
     if (!this.deps.provider.isConnected()) {
       throw new Error("Sync provider is not connected");
@@ -119,10 +178,13 @@ export class SyncEngine {
     for (const ns of NAMESPACES) {
       namespaces.push(await this.syncNamespace(ns));
     }
+    const projects = this.deps.projects ? await this.syncProjects(this.deps.projects) : undefined;
+    if (projects) { namespaces.push(projects.result); }
     await this.deps.manifest.save();
     return {
       providerId: this.deps.provider.id,
       namespaces,
+      ...(projects ? { projectsOnlyOnDrive: projects.onlyOnDrive } : {}),
       startedAt,
       finishedAt: this.now().toISOString(),
     };

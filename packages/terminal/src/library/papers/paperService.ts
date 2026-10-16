@@ -206,6 +206,17 @@ export class TerminalPaperService {
   }
 
   /**
+   * Imports the paper a DOI names under `citeKey` and reloads the store, so the next import's duplicate check sees it.
+   * @returns what happened
+   */
+  async importDoi(doi: string, citeKey: string, targetRel = ""): Promise<ImportOutcome> {
+    const outcome = await importNetworkInput(this.network, doi, this.paths.collectionDir(targetRel), { citeKey });
+    await this.deps.store.reload();
+    if (outcome.status === "added") { this.deps.onLocalChange?.(); }
+    return outcome;
+  }
+
+  /**
    * BibTeX entries for papers, without the local file line (what VS Code's "Copy BibTeX" produces).
    * @returns the entries separated by blank lines
    */

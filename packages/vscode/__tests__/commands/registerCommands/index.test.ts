@@ -21,7 +21,7 @@ function makeRequireServices(paperService?: Partial<PaperService>, logger?: Part
   return jest.fn(async () => ({
     paperService: ps as PaperService, logger: lg as ILogger, library: {} as any, paperDataStore: store,
     fileSystem: {} as any, importer: {} as any, textLayers: {} as any, mutations: {} as any, reindexLibrary,
-    aiDatabasePath: '/lib/.labshelf/index.sqlite',
+    aiDatabasePath: '/lib/.labshelf/index.sqlite', citationCacheDir: '/lib/.research/openalex',
   }));
 }
 

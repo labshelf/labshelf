@@ -20,6 +20,13 @@
       }
     }
   },
+  "protocol_handlers": [
+    {
+      "protocol": "web+labshelf",
+      "name": "LabShelf",
+      "uriTemplate": "/library-page/index.html?link=%s"
+    }
+  ],
   "permissions": [
     "identity",
     "storage",

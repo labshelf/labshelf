@@ -18,12 +18,29 @@ VS Code and the terminal open the same local folder and share its manifest, so e
 |---|---|---|---|
 | `library` | visible folder `LabShelf Library` (scope `drive.file`) | `papers/` | one folder per paper, plus the user's folders |
 | `appdata` | hidden `appDataFolder` (scope `drive.appdata`) | `.research/papers/` | `<paperId>/data.json` sidecars |
+| `projects` | visible folder `LabShelf Projects` (scope `drive.file`) | each writing project on the device | `<project id>/` with the project's files ([Projects](#projects)) |
 
 Dot files are synced like any other file. The browser marks an empty folder with a `.keep` file.
 
-Nothing else is uploaded. The VS Code AI database, logs and the files in `.research/sync/` stay on the device ([library-format.md](library-format.md)).
+Nothing else is uploaded. The VS Code AI database, logs, `.research/projects.json` and the files in `.research/sync/` stay on the device ([library-format.md](library-format.md)). VS Code and the terminal sync all three namespaces; the browser syncs `library` and `appdata`.
 
 An app only sees, through these scopes, the files that its own Google Cloud project created. All three apps therefore use OAuth clients from one Google Cloud project. VS Code and the terminal share the same Desktop client, and the browser uses a Web client.
+
+## Projects
+
+The `projects` namespace mirrors writing projects, both those under `<library>/projects/` and the folders registered in `.research/projects.json`. `LabShelf Projects` is a folder of its own beside `LabShelf Library`, never inside it, because everything under `LabShelf Library` maps to `papers/`.
+
+- **Identity.** A project's Drive folder is named after its `labshelf.yaml` `id`, on Drive and on every device. Two projects with the same id are the same project: a folder registered on two devices with the same `labshelf.yaml` syncs as one.
+- **Scope of a run.** A run syncs only the projects present on the device, each against `LabShelf Projects/<project id>/`. A project that is not on the device (removed from LabShelf, deleted, or on an unmounted disk) is left out: its Drive folder and its manifest entries stay as they were, so it never deletes anything on Drive.
+- **Only on Drive.** A folder in `LabShelf Projects` whose id has no project on the device is reported by the run and is never downloaded on its own. The user chooses where it goes: under `<library>/projects/`, or into a folder that is then registered.
+- **Ignored paths.** The engine neither uploads, downloads nor deletes:
+  - any path with a segment named `.git` (the project's repository stays the user's);
+  - `.labshelf/state.json` (one person's cursor on one device);
+  - a hidden folder directly under `.labshelf/versions/` (a version being written);
+  - a path matching a pattern in the project's `labshelf.yaml` `ignore:` list ([library-format.md](library-format.md#labshelfyaml)).
+
+  An ignored path keeps its manifest entry, if any, untouched.
+- **Manifest.** Paths are `<project id>/<path in the project>`, and the recorded root is the `LabShelf Projects` folder.
 
 ## Three-way diff
 

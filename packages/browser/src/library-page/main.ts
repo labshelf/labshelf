@@ -7,6 +7,7 @@ import { mountLibraryUi } from "@labshelf/core/dom";
 import { createBrowserLogger } from "../platform";
 import { applyTheme } from "../ui";
 import { attachLibraryHost } from "./host";
+import { attachLinkHandling } from "./openLink";
 import { createLocalStoragePrefs } from "./prefs";
 import { attachRouter } from "./router";
 import { mountSidebarTree } from "./sidebar";
@@ -22,7 +23,7 @@ function boot(): void {
   const { ui: transport, host } = createLoopbackTransport();
   // The host listens before the UI mounts, so the UI's ready message finds it. Opened from the popup or a Scholar
   // button, the page selects the paper just saved.
-  attachLibraryHost(host, { log, initialPaper: new URLSearchParams(location.search).get("paper") });
+  const libraryHost = attachLibraryHost(host, { log, initialPaper: new URLSearchParams(location.search).get("paper") });
   attachRouter(host);
   const ui = mountLibraryUi(root, {
     transport, prefs, withSidebar: true,
@@ -32,9 +33,10 @@ function boot(): void {
       emptyHint: "Open the paper's page in a tab and use the LabShelf toolbar button, or click Add to pick one of your open tabs.",
     },
   });
-  if (ui.sidebar) mountSidebarTree(ui, ui.sidebar, prefs);
+  if (ui.sidebar) mountSidebarTree(ui, ui.sidebar, prefs, libraryHost.openCitationMap);
   const sync = createSyncStatus();
   mountStatusBar(root, sync, (listener) => ui.store.select((s) => s.papers.length, listener));
+  attachLinkHandling(log);
   void log.log("INFO", "library", "library page mounted");
 }
 

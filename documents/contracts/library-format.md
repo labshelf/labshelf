@@ -14,8 +14,13 @@ A LabShelf library is a folder that the user owns. Every app reads and writes th
         paper.pdf                  optional
         metadata.yaml              required: a folder holding it is a paper
         bib.bib                    BibTeX entry generated from metadata.yaml
+  projects/                        writing projects created by LabShelf (synced, namespace "projects")
+    <project id>/                  one folder per project; the folder name is the project id
+      labshelf.yaml                required: a folder holding it is a project
   .research/                       hidden, owned by the apps
     papers/<paper id>/data.json    the sidecar (synced, namespace "appdata")
+    projects.json                  project folders registered outside the library (never synced; the folders themselves sync in namespace "projects")
+    openalex/                      OpenAlex citation data for the citation map (never synced)
     index.sqlite                   VS Code's text index for the Related tab: chunk embeddings and the content hash of each indexed PDF (never synced)
     logs/app.log                   VS Code log (JSON lines)
     logs/terminal.log              terminal log (JSON lines)
@@ -68,6 +73,136 @@ Rules:
 - `pdfVersion` belongs to the action that writes `paper.pdf`: attaching or replacing the PDF sets it, or removes it when the new file's version is unknown. Any other rewrite keeps it.
 - `pdfRequestedAt` belongs to the action that opens the request email. Any other rewrite keeps it, and the address the request went to is never stored.
 - `bib.bib` is regenerated whenever `metadata.yaml` is written. One core service writes both. Its `file` field points at `paper.pdf` only when that file exists.
+
+## labshelf.yaml
+
+A writing project is a folder with `labshelf.yaml` at its root. It lives either under `projects/` or anywhere else on the device, registered in `.research/projects.json`.
+
+```yaml
+id: deep-nets-survey
+format: latex
+main: main.tex
+engine: tectonic
+bibliography: labshelf.bib
+typst: 0.14.2
+figures:
+  fig/ablation.pdf:
+    run: python plot_ablation.py
+    inputs: [plot_ablation.py, results/*.json]
+values: [results.json]
+check:
+  pages: 9
+  authors: [Jane Doe]
+papers:
+  - key: smith2020
+    doi: 10.1000/xyz123
+    cited: true
+  - key: doe2019
+ignore: [data/raw/**, "*.log"]
+```
+
+| Key | Type | Notes |
+|---|---|---|
+| `id` | string | required; unique, case-insensitively, among the library's projects and the registered ones |
+| `format` | `latex` \| `typst` | required |
+| `main` | string | main file, relative to the project folder; when absent, the first root `.tex` file declaring `\documentclass` (`main.tex` first, then alphabetical), or `main.typ` |
+| `engine` | `tectonic` \| `xelatex` \| `pdflatex` \| `lualatex` | LaTeX only |
+| `bibliography` | string | the bibliography file the main file loads, `labshelf.bib` by default; written once the main file loads it |
+| `typst` | string | Typst compiler version of the last successful Typst build, written after each one; a YAML number reads as its text |
+| `figures` | mapping | figure path → `{run, inputs}`; `run` is the shell command that makes the figure, run in the project folder; `inputs` lists paths or globs (`*`, `**`, `?`). A figure is stale when it is missing or an input is newer than it |
+| `values` | string[] | JSON files whose leaves the sources read: `\lsvalue{<file>.<path>}` in LaTeX, `json("…")` in Typst. `<file>` is the file name without `.json`, and of two files with the same name only the first is read; array items are numbered from 0 |
+| `check` | mapping | what the pre-submission check holds the built PDF to: `pages` is the most pages allowed before the references heading (every page counts when the PDF has none); `authors` lists names an anonymous submission must not show, besides the git user's and the PDF's Author field; the anonymity rules run unless `anonymous` is `false`, as for a camera-ready |
+| `papers` | `{key, doi?, cited?}`[] | the papers the project depends on; `key` is the cite key. LabShelf lists every key the sources cite that matches a library paper with `cited: true` and takes the DOI from the library paper with that cite key; an entry without `cited` is one the user added (Add to Reading List). A cited key with no library paper, such as a Typst label or a key from the user's own `.bib`, is not added, and an entry already listed for it stays while it is cited. Sync adds new cited entries in key order after the existing ones, fills a missing DOI from the library, never changes or removes a DOI already listed, and removes a `cited: true` entry once the sources stop citing the key; entries without `cited` are never removed, and Add to Reading List on a `cited: true` entry drops the flag. `labshelf install` imports the listed papers it cannot find in the library under their listed `key`. A rewrite of the list keeps only `key`, `doi` and `cited`; `cited: false` reads as absent |
+| `ignore` | string[] | paths that project sync leaves on the device, as patterns relative to the project folder with `*`, `**` and `?` like `figures` inputs; a pattern that matches a folder covers everything under it ([sync.md](sync.md#projects)) |
+
+LabShelf never writes `figures`, `values`, `check` or `ignore`. A malformed `figures`, `values`, `check`, `papers` or `ignore` makes the file fail to parse, with the key in the reason. A `run` command executes only after the user confirms it on that machine; the confirmation covers that project and that exact command.
+
+Rules:
+
+- A new id is the title folded to lowercase ASCII, with every run of other characters turned into one hyphen; `project` when nothing is left. A registered folder takes its folder name as the title. Collisions take the paper suffixes (`a` to `z`, then `aa`, …).
+- Rewrites change only the keys being set and keep the user's comments, key order and unknown keys.
+- A `labshelf.yaml` that does not parse is never rewritten.
+- Registering a folder writes `labshelf.yaml` when the folder has none and touches nothing else in it. A folder inside the library cannot be registered.
+
+## labshelf.bib
+
+LabShelf owns this file in a writing project and regenerates it from the cite keys the project's sources cite.
+
+- The first line is the generated-file comment; edits are overwritten.
+- Entries are in key order, built from library metadata without a `file` field.
+- A key matches a paper's cite key case-sensitively. When two papers share a cite key, the smallest paper id wins.
+- A cited key with no library paper has no entry; it is left to the user's own `.bib` file.
+- The file is created with the first cited library paper.
+- Once the main file loads the file, the main file has the bibliography line and `labshelf.yaml` has `bibliography:`. A Typst main file that already calls `#bibliography` is left to the user.
+
+## labshelf-values.tex
+
+LabShelf owns this file in a LaTeX project with `values:`. It is written next to the main file before each build.
+
+- The first line is the generated-file comment; edits are overwritten. The file is rewritten only when its text changes.
+- It defines `\lsvalue{<key>}`, which prints the leaf's value, or `??` with a LaTeX warning when the key is unknown.
+- Each JSON leaf (number, string, boolean) becomes one key: `<file>.<path>`, dot-separated. Strings are escaped for LaTeX. A key with a character outside letters, digits, `.`, `-` and `_` is skipped.
+- The main file gets `\input{labshelf-values}` before `\begin{document}`, once. A main file without `\begin{document}` is left as it is, and the build logs a warning.
+
+## .research/projects.json
+
+The device's list of project folders outside the library. Absolute paths differ per machine, so it is never synced.
+
+```json
+{
+  "folders": ["/abs/path/to/project"]
+}
+```
+
+- Paths are absolute, kept in the order they were added, each at most once.
+- Unknown keys are preserved on rewrite. A file that is not a JSON object is never overwritten: projects outside the library stay hidden until the user fixes or deletes it.
+- Removing a project from LabShelf removes its entry and never deletes the folder.
+
+## .research/openalex/
+
+The citation map's cache of OpenAlex works. It can be rebuilt from OpenAlex at any time, so it is never synced; the browser keeps it under the same relative path in IndexedDB.
+
+- `papers/<paper id>.json` holds the work a library paper's DOI resolved to; `works/<work id>.json` holds a work that library papers cite.
+- Each file is `{ "fetchedAt": "<ISO timestamp>", "doi": "<DOI looked up>", "work": { "workId": "W…", "doi", "title", "authors": [], "year", "citedByCount", "references": ["W…"] } }`. `doi` at the top is present only under `papers/`, and `references` is empty under `works/`.
+- An entry older than 30 days, or a paper entry whose `doi` differs from the paper's current DOI, is fetched again. A DOI OpenAlex does not return leaves no file.
+- A file that is not valid JSON or lacks `fetchedAt`, a `W<digits>` work id, or the `authors` and `references` arrays reads as missing and is overwritten on the next fetch.
+
+## .labshelf/state.json
+
+A project folder keeps where its user last edited in `<project>/.labshelf/state.json`. The cursor belongs to one person on one device, so the file is never synced, and project sync skips `.labshelf/state.json`.
+
+```json
+{
+  "file": "sections/intro.tex",
+  "line": 41,
+  "character": 8,
+  "updatedAt": "2026-10-15T21:40:12.000Z"
+}
+```
+
+- `file` is relative to the project folder, with `/` separators, and stays inside it. `line` and `character` are 0-based non-negative integers. `updatedAt` is an ISO timestamp.
+- An app that edits a project's source writes the file after the cursor settles, and the Library view offers "Continue" for the project edited last.
+- A file with a missing or invalid key, or a `file` that leaves the project, reads as having no saved position.
+- Unknown keys are preserved on rewrite. A file that is not a JSON object is never overwritten.
+
+## .labshelf/versions/
+
+A version is a named snapshot of a project: its sources and its built PDF at the moment the user marked it (for example "submitted", "rebuttal" or "camera-ready"). Versions live inside the project folder and are synced with it.
+
+```
+<project>/.labshelf/versions/<slug>/version.json
+<project>/.labshelf/versions/<slug>/paper.pdf
+<project>/.labshelf/versions/<slug>/sources/…
+```
+
+```json
+{ "name": "Camera-ready", "created": "2026-10-15T21:40:12.000Z" }
+```
+
+- `<slug>` is the name in lowercase ASCII: accents are removed, every run of characters outside `a-z` and `0-9` becomes one `-`, leading and trailing `-` are trimmed, and the result is cut to 60 characters. A name with no letter or digit has no slug and cannot be marked.
+- `sources/` holds the project's files at their relative paths, without hidden folders (`.labshelf/`, `.git/`) and without the built PDF, which is `paper.pdf`.
+- `version.json` is validated on read, because it arrives from other machines: `name` is a non-empty string and `created` an ISO 8601 timestamp. A folder whose file is missing or invalid is skipped.
+- Marking a name whose slug exists replaces that version. A snapshot is written to a hidden `.<slug>.tmp-*` folder and renamed into place, so readers never see a half-written version; hidden folders are ignored.
 
 ## Sidecar: `data.json`
 

@@ -73,11 +73,13 @@ const workspace = {
   fs: workspaceFs,
   workspaceFolders: undefined,
   _config,
+  _configUpdate: jest.fn(async () => {}),
   getConfiguration: jest.fn((section) => ({
     get: (key, fallback) => {
       const value = (_config[section] || {})[key];
       return value === undefined ? fallback : value;
     },
+    update: (...args) => workspace._configUpdate(section, ...args),
   })),
   onDidChangeConfiguration: jest.fn((handler) => {
     _configListeners.push(handler);
@@ -159,13 +161,15 @@ const window = {
   showInformationMessage: jest.fn(async () => undefined),
   showErrorMessage: jest.fn(async () => undefined),
   setStatusBarMessage: jest.fn(() => ({ dispose: () => {} })),
-  withProgress: jest.fn(async (_options, task) => task({ report: jest.fn() }, { isCancellationRequested: false })),
+  withProgress: jest.fn(async (_options, task) => task({ report: jest.fn() }, { isCancellationRequested: false, onCancellationRequested: () => ({ dispose: () => {} }) })),
+  createOutputChannel: jest.fn(() => ({ append: jest.fn(), appendLine: jest.fn(), show: jest.fn(), dispose: jest.fn() })),
   registerTreeDataProvider: jest.fn(() => ({ dispose: () => {} })),
   createTreeView: jest.fn(() => ({ dispose: () => {}, onDidChangeSelection: jest.fn() })),
   showInputBox: jest.fn(async () => undefined),
   showQuickPick: jest.fn(async () => undefined),
   showSaveDialog: jest.fn(async () => undefined),
-  showTextDocument: jest.fn(async () => undefined),
+  registerUriHandler: jest.fn(() => ({ dispose: () => {} })),
+  showTextDocument: jest.fn(async () => ({ revealRange: jest.fn() })),
   createWebviewPanel: jest.fn((viewType, title, column, options) => makeWebviewPanel(viewType, title, column, options)),
   activeColorTheme: { kind: ColorThemeKind.Dark },
   onDidChangeActiveColorTheme: jest.fn((handler) => {
@@ -282,16 +286,171 @@ workspace.createFileSystemWatcher = jest.fn((pattern) => {
 
 // ─── Status bar ───────────────────────────────────────────────────────────────
 
+const ConfigurationTarget = { Global: 1, Workspace: 2, WorkspaceFolder: 3 };
+const extensions = { getExtension: jest.fn(() => undefined) };
+
 const StatusBarAlignment = { Left: 1, Right: 2 };
 window.createStatusBarItem = jest.fn(() => ({
   text: '', tooltip: '', command: undefined, show: jest.fn(), hide: jest.fn(), dispose: jest.fn(),
 }));
 
+// ─── Active editor ────────────────────────────────────────────────────────────
+
+// Tests set `window.activeTextEditor` and call `window._fireActiveEditorChange()`.
+const _activeEditorListeners = [];
+window.activeTextEditor = undefined;
+window.onDidChangeActiveTextEditor = jest.fn((handler) => {
+  _activeEditorListeners.push(handler);
+  return { dispose: () => { _activeEditorListeners.splice(_activeEditorListeners.indexOf(handler), 1); } };
+});
+window._fireActiveEditorChange = () => _activeEditorListeners.forEach((l) => l(window.activeTextEditor));
+
+// Tests call `window._fireSelectionChange()` after moving the active editor's selection.
+const _selectionListeners = [];
+window.onDidChangeTextEditorSelection = jest.fn((handler) => {
+  _selectionListeners.push(handler);
+  return { dispose: () => { _selectionListeners.splice(_selectionListeners.indexOf(handler), 1); } };
+});
+window._fireSelectionChange = () => _selectionListeners.forEach((l) => l({ textEditor: window.activeTextEditor }));
+
 // ─── CancellationToken ────────────────────────────────────────────────────────
 
 const CancellationToken = { None: { isCancellationRequested: false } };
 
+// ─── Text positions, edits and language features ──────────────────────────────
+
+class Position {
+  constructor(line, character) { this.line = line; this.character = character; }
+}
+
+class Range {
+  constructor(a, b, c, d) {
+    const [start, end] = typeof a === 'number' ? [new Position(a, b), new Position(c, d)] : [a, b];
+    this.start = start;
+    this.end = end;
+  }
+  contains(position) {
+    const after = (a, b) => a.line > b.line || (a.line === b.line && a.character >= b.character);
+    return after(position, this.start) && after(this.end, position);
+  }
+}
+
+class WorkspaceEdit {
+  constructor() { this.replacements = []; }
+  replace(uri, range, text) { this.replacements.push({ uri, range, text }); }
+}
+
+class CodeAction {
+  constructor(title, kind) { this.title = title; this.kind = kind; }
+}
+
+const CodeActionKind = { QuickFix: 'quickfix' };
+
+class MarkdownString {
+  constructor(value) { this.value = value || ''; this.isTrusted = undefined; }
+  appendMarkdown(text) { this.value += text; return this; }
+  appendText(text) { this.value += text; return this; }
+}
+
+class Hover {
+  constructor(contents, range) { this.contents = contents; this.range = range; }
+}
+
+class DocumentLink {
+  constructor(range, target) { this.range = range; this.target = target; }
+}
+
+class CompletionItem {
+  constructor(label, kind) { this.label = label; this.kind = kind; }
+}
+
+class TextEdit {
+  constructor(range, newText) { this.range = range; this.newText = newText; }
+  static insert(position, newText) { return new TextEdit(new Range(position, position), newText); }
+}
+
+const CompletionItemKind = { Field: 4, Function: 2, Value: 11, Snippet: 14, Reference: 17 };
+
+class SnippetString {
+  constructor(value) { this.value = value || ''; }
+}
+
+class Selection {
+  constructor(anchor, active) { this.anchor = anchor; this.active = active; }
+}
+
+// Handlers registered with workspace.onDidChangeTextDocument; tests call workspace._fireTextDocumentChange(event).
+const _textChangeListeners = [];
+workspace.onDidChangeTextDocument = jest.fn((handler) => {
+  _textChangeListeners.push(handler);
+  return { dispose: () => { _textChangeListeners.splice(_textChangeListeners.indexOf(handler), 1); } };
+});
+workspace._fireTextDocumentChange = (event) => _textChangeListeners.forEach((l) => l(event));
+window.visibleTextEditors = [];
+
+workspace.textDocuments = [];
+workspace.applyEdit = jest.fn(async () => true);
+workspace.saveAll = jest.fn(async () => true);
+
+// Handlers per document event; tests call workspace._fireDocumentEvent("save" | "open" | "close", document).
+const _documentListeners = { save: [], open: [], close: [] };
+const onDocumentEvent = (kind) => jest.fn((handler) => {
+  _documentListeners[kind].push(handler);
+  return { dispose: () => { _documentListeners[kind].splice(_documentListeners[kind].indexOf(handler), 1); } };
+});
+workspace.onDidSaveTextDocument = onDocumentEvent('save');
+workspace.onDidOpenTextDocument = onDocumentEvent('open');
+workspace.onDidCloseTextDocument = onDocumentEvent('close');
+workspace._fireDocumentEvent = (kind, document) => _documentListeners[kind].forEach((l) => l(document));
+
+class Location {
+  constructor(uri, range) { this.uri = uri; this.range = range; }
+}
+
+class DocumentSymbol {
+  constructor(name, detail, kind, range, selectionRange) {
+    Object.assign(this, { name, detail, kind, range, selectionRange, children: [] });
+  }
+}
+
+const SymbolKind = { Module: 1, Namespace: 2, Class: 4, Property: 6, Field: 7, Struct: 22, Constant: 13 };
+
+class Diagnostic {
+  constructor(range, message, severity) { this.range = range; this.message = message; this.severity = severity; }
+}
+
+const DiagnosticSeverity = { Error: 0, Warning: 1, Information: 2, Hint: 3 };
+
+const languages = {
+  createDiagnosticCollection: jest.fn(() => ({ set: jest.fn(), delete: jest.fn(), dispose: jest.fn() })),
+  registerCompletionItemProvider: jest.fn(() => ({ dispose: () => {} })),
+  registerHoverProvider: jest.fn(() => ({ dispose: () => {} })),
+  registerDocumentLinkProvider: jest.fn(() => ({ dispose: () => {} })),
+  registerDefinitionProvider: jest.fn(() => ({ dispose: () => {} })),
+  registerDocumentSymbolProvider: jest.fn(() => ({ dispose: () => {} })),
+  registerCodeActionsProvider: jest.fn(() => ({ dispose: () => {} })),
+};
+
 module.exports = {
+  Diagnostic,
+  DiagnosticSeverity,
+  Position,
+  Range,
+  WorkspaceEdit,
+  CodeAction,
+  CodeActionKind,
+  MarkdownString,
+  Hover,
+  DocumentLink,
+  Location,
+  DocumentSymbol,
+  SymbolKind,
+  CompletionItem,
+  CompletionItemKind,
+  TextEdit,
+  SnippetString,
+  Selection,
+  languages,
   Uri,
   FileType,
   workspace,
@@ -310,8 +469,11 @@ module.exports = {
   ColorThemeKind,
   RelativePattern,
   StatusBarAlignment,
+  ConfigurationTarget,
+  extensions,
   _fileWatchers,
   ViewColumn: { One: 1, Two: 2, Active: -1, Beside: -2 },
+  TextEditorRevealType: { Default: 0, InCenter: 1, InCenterIfOutsideViewport: 2, AtTop: 3 },
   WebviewPanel: class {},
   makeWebviewPanel,
   _themeChangeListeners,

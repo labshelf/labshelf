@@ -211,6 +211,22 @@ button { font: inherit; color: inherit; }
 .rd-hover-text { max-width: 440px; max-height: 260px; overflow: auto; padding: 8px 12px; font-size: 12.5px; line-height: 1.5; user-select: text; }
 .rd-hover-text p { margin: 0 0 8px; } .rd-hover-text p:last-child { margin-bottom: 0; }
 #hover-popup canvas { display: block; }
+.rd-hover-cite, .rd-hover-cites { max-width: 440px; padding: 8px 12px; font-size: 12.5px; line-height: 1.5; user-select: text; }
+.rd-hover-cite p { margin: 0 0 6px; }
+.rd-cite-byline, .rd-cite-missing { color: var(--ls-reader-desc); }
+.rd-cite-summary {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden;
+}
+.rd-cite-key { font-family: var(--ls-mono); font-size: 11.5px; color: var(--ls-reader-desc); }
+.rd-hover-cites { display: flex; flex-direction: column; gap: 2px; padding: 4px; }
+.rd-cite-row {
+  display: flex; flex-direction: column; gap: 1px; padding: 4px 8px; border: 0; border-radius: 4px;
+  background: none; color: inherit; font: inherit; text-align: left;
+}
+button.rd-cite-row { cursor: pointer; }
+button.rd-cite-row:hover { background: var(--ls-reader-hover); }
+button.rd-cite-row:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
+.rd-cite-title { font-weight: 600; }
 
 /* ── Cheatsheet ─────────────────────────────────────────────── */
 #cheatsheet { position: fixed; inset: 0; z-index: 200; display: none; align-items: center; justify-content: center; background: var(--ls-overlay); }
@@ -230,6 +246,45 @@ kbd {
 }
 .rd-cheat-note { margin-top: 14px; font-size: 11px; color: var(--ls-reader-desc); }
 
+/* ── Build banner (previews) ────────────────────────────────── */
+#build-banner {
+  position: absolute; z-index: 29; left: 50%; top: calc(var(--ls-reader-toolbar-h) + 8px); transform: translateX(-50%);
+  display: flex; align-items: center; gap: 8px; max-width: calc(100% - 48px); padding: 4px 10px;
+  background: var(--ls-reader-surface); border: 1px solid var(--ls-reader-border); border-radius: 999px; box-shadow: var(--ls-reader-shadow);
+  font-size: 12px; color: var(--ls-reader-desc); transition: top 140ms ease;
+}
+#build-banner[hidden] { display: none; }
+.rd-chrome-hidden #build-banner { top: 8px; }
+#build-banner.rd-build-failed { border-color: var(--ls-error); color: var(--ls-reader-fg); }
+.rd-build-icon { display: inline-flex; width: 14px; height: 14px; }
+.rd-build-icon svg { width: 14px; height: 14px; }
+.rd-build-failed .rd-build-icon { color: var(--ls-error); }
+.rd-build-action {
+  display: inline-flex; flex-shrink: 0; align-items: center; gap: 6px; padding: 0; border: none; background: none;
+  font: inherit; font-weight: 600; color: inherit; white-space: nowrap; cursor: pointer;
+}
+.rd-build-action:hover { text-decoration: underline; }
+.rd-build-action:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 2px; border-radius: 3px; }
+.rd-build-note { min-width: 0; color: var(--ls-reader-desc); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@keyframes rd-spin { to { transform: rotate(360deg); } }
+.rd-spin { animation: rd-spin 1s linear infinite; }
+
+/* ── Source marker (previews) ────────────────────────────────── */
+.rd-sync-marker {
+  position: absolute; z-index: 5; width: 22px; height: 22px; margin: -11px 0 0 -11px; box-sizing: border-box;
+  border: 2px solid var(--ls-focus); border-radius: 50%; background: var(--ls-reader-active);
+  pointer-events: none; animation: rd-sync-pulse 1.6s ease-out forwards;
+}
+.rd-change-mark {
+  position: absolute; z-index: 4; pointer-events: none;
+  background: var(--ls-reader-change); box-shadow: inset 2px 0 0 var(--ls-reader-find-current);
+}
+@keyframes rd-sync-pulse {
+  0% { transform: scale(0.4); opacity: 1; }
+  35% { transform: scale(1.3); opacity: 1; }
+  100% { transform: scale(1); opacity: 0; }
+}
+
 /* ── Status messages ────────────────────────────────────────── */
 #loading-msg, #error-msg {
   position: absolute; z-index: 10; left: 50%; top: 40%; transform: translate(-50%, -50%); max-width: 70%;
@@ -238,5 +293,7 @@ kbd {
 #error-msg { color: var(--ls-error); }
 
 @media (prefers-reduced-motion: reduce) {
-  #toolbar, #find-bar, #status-pill, #viewerContainer { transition: none; }
+  #toolbar, #find-bar, #status-pill, #viewerContainer, #build-banner { transition: none; }
+  .rd-spin { animation: none; }
+  .rd-sync-marker { animation: none; }
 }
