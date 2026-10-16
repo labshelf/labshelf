@@ -48,17 +48,25 @@ export async function copyToClipboard(text: string, osc52?: (sequence: string) =
   return "failed";
 }
 
+const PAGE_PLACEHOLDER = "{page}";
+
+/** Whether the configured PDF viewer command takes a page through a `{page}` token. */
+export function viewerTakesPage(viewer: string | undefined): boolean {
+  return viewer?.includes(PAGE_PLACEHOLDER) ?? false;
+}
+
 /**
  * Opens a file or folder with the system's default app (or `viewer` when configured), without waiting for it.
+ * A `{page}` token in `viewer` is replaced by `page` (1 when absent); the system openers take no page.
  * Throws when the opener cannot start.
  */
-export function openExternal(target: string, viewer?: string): void {
+export function openExternal(target: string, viewer?: string, page = 1): void {
   let command: string;
   let args: string[];
   if (viewer && viewer.trim()) {
     const parts = viewer.trim().split(/\s+/);
     command = parts[0]!;
-    args = [...parts.slice(1), target];
+    args = [...parts.slice(1).map((part) => part.replaceAll(PAGE_PLACEHOLDER, String(page))), target];
   } else if (process.platform === "darwin") {
     command = "open";
     args = [target];

@@ -19,7 +19,7 @@ Library:
   show <id> [--json]               details, highlights and reading position of a paper
   add <pdf|folder|url|doi|arxiv>…  import papers [--to <collection>]
   bib [id…] [-c <collection>]      print BibTeX [-o file.bib]
-  open <id>                        open the PDF
+  open <id|key|labshelf:key#pN>    open the PDF (a link opens at its page when the viewer has {page})
   status <id…> <unread|reading|done>
   tag <id…> +tag -tag              add / remove tags
   mv <id…> <collection>            move papers to a collection

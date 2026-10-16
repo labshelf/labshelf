@@ -8,10 +8,12 @@ import {
 } from "@labshelf/core";
 
 import { isSortKey, type AppContext, type TerminalConfig } from "../app/index.js";
-import { copyToClipboard, openExternal } from "../platform/index.js";
+import { copyToClipboard } from "../platform/index.js";
 import { fit, stringWidth } from "../tui/index.js";
 import { STATUS_GLYPH } from "../ui/index.js";
 import { stringFlag, type ParsedArgs } from "./args.js";
+import { runOpen } from "./openCommand.js";
+import { requirePaper } from "./paperLookup.js";
 import { runAuth, runSync } from "./syncCommands.js";
 import { Output, UsageError } from "./usage.js";
 
@@ -35,12 +37,6 @@ function table(entries: PaperEntry[], columns: number): string {
     const r = e.record;
     return `${STATUS_GLYPH[r.status]} ${String(r.year ?? "").padEnd(4)}  ${fit(r.id, idWidth)}  ${fit(r.title, titleWidth).trimEnd()}`;
   }).join("\n");
-}
-
-function requirePaper(ctx: AppContext, id: string): PaperEntry {
-  const entry = ctx.store.paper(id) ?? [...ctx.store.snapshot.papers.values()].find((e) => e.record.citeKey === id);
-  if (!entry) { throw new UsageError(`No paper with id "${id}"`); }
-  return entry;
 }
 
 function requireCollection(ctx: AppContext, raw: string | undefined): string {
@@ -152,17 +148,6 @@ async function runBib(ctx: AppContext, positionals: string[], flags: ParsedArgs[
   } else {
     io.out(text.trimEnd());
   }
-  return 0;
-}
-
-async function runOpen(ctx: AppContext, positionals: string[], io: Output): Promise<number> {
-  const entry = requirePaper(ctx, positionals[0] ?? "");
-  if (entry.record.hasPdf === false) {
-    const link = paperLink(entry.record);
-    io.err(`No PDF on this device for ${entry.record.id}${link ? ` (${link})` : ""}`);
-    return 1;
-  }
-  openExternal(paperFiles(entry.record.path, path.join).pdf, process.env["LABSHELF_PDF_VIEWER"] || ctx.config.terminal?.pdfViewer);
   return 0;
 }
 

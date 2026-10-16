@@ -17,7 +17,8 @@ labshelf doctor                             # checks library, config, Drive and 
 - Thumbnails need kitty, Ghostty, iTerm2 or WezTerm. In the VS Code terminal, set `terminal.integrated.enableImages` and `LABSHELF_IMAGES=iterm`. Inside tmux, images are off unless forced.
 - Thumbnails are faster with `brew install poppler` (pdftoppm). Without it, pdf.js renders them through `@napi-rs/canvas`.
 - Imports read scans and broken-font PDFs with Tesseract (English). The first such import downloads the language data into the cache folder, so it needs the network once.
-- PDFs open in the system viewer, or in `LABSHELF_PDF_VIEWER` or `terminal.pdfViewer` from the config.
+- PDFs open in the system viewer, or in `LABSHELF_PDF_VIEWER` or `terminal.pdfViewer` from the config. The viewer is a command; the PDF path is appended to it. A `{page}` token in the command is replaced by the page to open, for example `zathura -P {page}`, `okular -p {page}` or `evince -i {page}`.
+- `labshelf open <id | cite key | link>` accepts a [`labshelf:` link](../contracts/links.md) (`labshelf:vaswani2017#p5`, `web+labshelf:` or percent-encoded). A viewer with `{page}` gets the link's page, else the paper's saved reading position, else 1. The system opener cannot take a page, so with it the command opens the PDF and prints `Opened <key> — go to page <n>` for a link that names a page. A link whose cite key matches no paper fails with a usage error naming the key.
 
 ## Adding papers over the network
 
