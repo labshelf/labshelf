@@ -1,20 +1,9 @@
 // Shows the library paper behind a cited key when the cursor rests on it.
 import * as vscode from "vscode";
 
-import { citedKeys, type PaperRecord } from "@labshelf/core";
+import { citedKeys } from "@labshelf/core";
 import { citingProject, type CitationWorkspace } from "./citationWorkspace.js";
-
-const escapeMarkdown = (text: string): string => text.replace(/[\\`*_{}[\]()#+\-.!|<>~&]/g, "\\$&");
-
-// Opening the paper is the cited key's Ctrl+click link, whose tooltip shows under this hover.
-function paperHover(paper: PaperRecord): vscode.MarkdownString {
-  const markdown = new vscode.MarkdownString();
-  markdown.appendMarkdown(`**${escapeMarkdown(paper.title)}**`);
-  const byline = [paper.authors?.join(", "), paper.year].filter((part) => part !== undefined && part !== "").join(" ");
-  if (byline) { markdown.appendMarkdown(`\n\n${escapeMarkdown(byline)}`); }
-  if (paper.summary) { markdown.appendMarkdown(`\n\n${escapeMarkdown(paper.summary)}`); }
-  return markdown;
-}
+import { paperHover } from "./paperHover.js";
 
 export class CitationHoverProvider implements vscode.HoverProvider {
   constructor(private readonly workspace: CitationWorkspace) {}

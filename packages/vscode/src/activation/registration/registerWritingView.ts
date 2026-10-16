@@ -1,4 +1,4 @@
-// Registers the Writing sidebar view, its commands, the main-document and compiler status bar items, the LaTeX and Typst builds with the LaTeX Workshop notice, the Tinymist bridge and the preview, the citation providers, the LaTeX command completion and the source-aware LaTeX editing, and reloads the project list when the library root changes.
+// Registers the Writing sidebar view, its commands, the main-document and compiler status bar items, the LaTeX and Typst builds with the LaTeX Workshop notice, the Tinymist bridge and the preview, the citation providers, the labshelf: links, the LaTeX command completion and the source-aware LaTeX editing, and reloads the project list when the library root changes.
 import * as vscode from "vscode";
 
 import type { PaperRecord } from "@labshelf/core";
@@ -11,7 +11,8 @@ import {
 } from "../../writing/build/index.js";
 import { registerTinymistBridge, registerTypstBuild } from "../../writing/typst/index.js";
 import { BuildPreviews, registerShowInPreview, registerShowPreview } from "../../writing/preview/index.js";
-import { registerCitationProviders } from "../../writing/citations/index.js";
+import { registerCitationProviders, type CitationWorkspace } from "../../writing/citations/index.js";
+import { registerLabshelfLinks } from "../../writing/links/index.js";
 import { registerLatexCommandCompletion, registerLatexEditing } from "../../writing/latexEditing/index.js";
 import type { LibraryRootController } from "../libraryLifecycle/index.js";
 import type { HostAdapters } from "../serviceComposition/index.js";
@@ -55,13 +56,12 @@ export function registerWritingView(context: vscode.ExtensionContext, controller
   registerPickCompiler({ context, host, projects });
   registerCompilerStatusBar(context, projects);
   registerLatexWorkshopNotice({ context, host, projects });
-  registerCitationProviders(context, {
-    projects,
-    session: () => {
-      const services = controller.currentServices();
-      return services ? { listPapers: () => services.paperService.listPapers(), logger: services.logger } : undefined;
-    },
-  });
+  const session = (): ReturnType<CitationWorkspace["session"]> => {
+    const services = controller.currentServices();
+    return services ? { listPapers: () => services.paperService.listPapers(), logger: services.logger } : undefined;
+  };
+  registerCitationProviders(context, { projects, session });
+  registerLabshelfLinks(context, { session });
   registerLatexCommandCompletion(context);
   registerLatexEditing(context, { projects, logger: () => controller.currentServices()?.logger });
   void projects.reload();

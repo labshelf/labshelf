@@ -167,6 +167,7 @@ const window = {
   showInputBox: jest.fn(async () => undefined),
   showQuickPick: jest.fn(async () => undefined),
   showSaveDialog: jest.fn(async () => undefined),
+  registerUriHandler: jest.fn(() => ({ dispose: () => {} })),
   showTextDocument: jest.fn(async () => ({ revealRange: jest.fn() })),
   createWebviewPanel: jest.fn((viewType, title, column, options) => makeWebviewPanel(viewType, title, column, options)),
   activeColorTheme: { kind: ColorThemeKind.Dark },
@@ -318,6 +319,10 @@ class Range {
     const [start, end] = typeof a === 'number' ? [new Position(a, b), new Position(c, d)] : [a, b];
     this.start = start;
     this.end = end;
+  }
+  contains(position) {
+    const after = (a, b) => a.line > b.line || (a.line === b.line && a.character >= b.character);
+    return after(position, this.start) && after(this.end, position);
   }
 }
 

@@ -14,7 +14,9 @@
   "activationEvents": [
     "workspaceContains:**/labshelf.yaml",
     "onLanguage:latex",
-    "onLanguage:typst"
+    "onLanguage:typst",
+    "onUri",
+    "onStartupFinished"
   ],
   "contributes": {
     "commands": [
