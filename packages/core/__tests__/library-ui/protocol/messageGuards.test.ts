@@ -73,3 +73,24 @@ describe("paper.findPdf replace flag", () => {
     expect(parseUiMessage({ type: "paper.findPdf", id: "p1", replace: "yes" })).toBeNull();
   });
 });
+
+describe("citation map messages", () => {
+  it("accepts a refresh and an import of an OpenAlex work with a DOI", () => {
+    for (const m of [{ type: "citationMap.refresh" }, { type: "citationMap.import", workId: "W2626778328", doi: "10.1038/nature14539" }]) {
+      expect(parseUiMessage(m)).toEqual(m);
+    }
+  });
+
+  it("rejects an import without a well-formed work id or DOI", () => {
+    const bad = [
+      { type: "citationMap.import", workId: "W1" },
+      { type: "citationMap.import", doi: "10.1038/nature14539" },
+      { type: "citationMap.import", workId: "", doi: "10.1038/nature14539" },
+      { type: "citationMap.import", workId: "https://openalex.org/W1", doi: "10.1038/nature14539" },
+      { type: "citationMap.import", workId: "W1", doi: "" },
+      { type: "citationMap.import", workId: "W1", doi: "javascript:alert(1)" },
+      { type: "citationMap.import", workId: "W1", doi: 10.1 },
+    ];
+    for (const m of bad) expect(parseUiMessage(m)).toBeNull();
+  });
+});

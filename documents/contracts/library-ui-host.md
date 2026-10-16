@@ -2,7 +2,7 @@
 
 Read when you change the library UI or the code that hosts it.
 
-The library UI (folder header, filter bar, paper list, paper menu, detail pane) is one UI in core that a host mounts once. The host owns the library data, every mutation, files, the clipboard and the reader. The UI owns everything on screen, including every dialog, menu, picker and prompt, and builds every text it shows or copies (citations, BibTeX, annotation Markdown) from the records. They talk only through the typed message unions in core's `library-ui/protocol` module, which is the single source of truth for message shapes. Every payload is plain JSON: arrays, never Sets.
+The library UI (folder header, filter bar, paper list, paper menu, detail pane, citation map) is one UI in core that a host mounts once. The host owns the library data, every mutation, files, the clipboard and the reader. The UI owns everything on screen, including every dialog, menu, picker and prompt, and builds every text it shows or copies (citations, BibTeX, annotation Markdown) from the records. They talk only through the typed message unions in core's `library-ui/protocol` module, which is the single source of truth for message shapes. Every payload is plain JSON: arrays, never Sets.
 
 Two hosts mount it:
 
@@ -61,6 +61,8 @@ UI to host:
 | `paper.addFrom` | the user picked a source, or answered the "No PDF found" dialog; `ifNoPdf: "author"` saves the reference and then does what `paper.askAuthor` does | `progress`, then `snapshot`, `select` and a `notice`, or `add.noPdf` |
 | `clipboard.write` | any copy; `label` names what was copied | a `notice` |
 | `project.openSource` | a Cited in row; `file` is "/"-separated below the project folder, `line` zero-based | opens the file at the line |
+| `citationMap.refresh` | Refresh or Try again in the citation map | `citationMap.show` with `loading`, then with `ready` or `failed` |
+| `citationMap.import` | Import on a missing work; `workId` is an OpenAlex short id (`W` and digits), `doi` the work's DOI | imports the paper by its DOI; `snapshot`, a `notice` and `citationMap.imported`, or an error `notice` and `citationMap.importFailed` |
 
 Host to UI:
 
@@ -80,6 +82,17 @@ Host to UI:
 | `pdf.findResult` | says what the search tried; offers Attach PDF or Search again |
 | `add.sources` | lets the user pick a source |
 | `add.noPdf` | asks: Search again or Save without PDF |
+| `citationMap.show` | opens the citation map in place of the paper list, or updates it while it is open; `state` is `loading`, `ready` with the `map`, or `failed` with a `message` |
+| `citationMap.imported` | drops the work's row and graph node |
+| `citationMap.importFailed` | clears the work's busy Import button |
+
+## Citation map
+
+The citation map lists the works that at least three of the library's papers cite and the library lacks, most cited first, with a graph of the papers and those works. A host that offers it builds the map with `buildCitationMap` and opens the view by sending `citationMap.show`: VS Code from a command, the browser from a sidebar entry. A host that never sends it never shows the view, so no capability declares it.
+
+- **The map names its papers.** `map.papers` holds the id and title of every library paper that a link or a missing work's `citedBy` mentions; `links` join library papers, and each missing work keeps the OpenAlex fields `buildCitationMap` returns.
+- **The list carries every action.** Each row offers Import (disabled for a work without a DOI) and its citing papers, which send `paper.open`. The graph repeats these as mouse shortcuts: a paper's node sends `paper.open`, a missing work's node brings its row into view.
+- **Folder navigation closes it.** The Papers button, a folder the user opens and a `navigate` from the host all return to the paper list. The list keys do nothing while the map is open.
 
 ## Rules
 

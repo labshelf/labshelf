@@ -4,7 +4,7 @@
  */
 import { editedTags } from "../../library/index.js";
 import type { PaperRecord, PaperStatus } from "../../model/index.js";
-import type { LibraryUiSnapshot, PaperDetails, SimilarPaper, TextLayerJobView } from "../protocol/index.js";
+import type { CitationMapState, LibraryUiSnapshot, PaperDetails, SimilarPaper, TextLayerJobView } from "../protocol/index.js";
 import { shallowEqual } from "./shallowEqual.js";
 import { mergeSnapshot } from "./snapshotIdentity.js";
 import { INITIAL_VIEW_STATE, type LibraryViewState } from "./viewState.js";
@@ -121,10 +121,35 @@ export class LibraryViewStore {
     this.set({ selected: new Set(), anchor: null, cursor: null });
   }
 
-  /** Opens a folder and resets the search, the status tab, the No text filter and the selection. */
+  /** Opens a folder and resets the search, the status tab, the No text filter and the selection; closes the citation map. */
   openFolder(path: string): void {
-    if (path === this.state.folder) return;
-    this.set({ folder: path, query: "", status: "all", noText: false, selected: new Set(), anchor: null, cursor: null });
+    if (path === this.state.folder) {
+      if (this.state.citationMap) this.set({ citationMap: null });
+      return;
+    }
+    this.set({ folder: path, query: "", status: "all", noText: false, selected: new Set(), anchor: null, cursor: null, citationMap: null });
+  }
+
+  /** Shows the citation map in place of the paper list; null goes back to the paper list. */
+  showCitationMap(state: CitationMapState | null): void {
+    this.set({ citationMap: state, citationImporting: new Set() });
+  }
+
+  /** Marks a missing work's import as running or done. */
+  setCitationImporting(workId: string, busy: boolean): void {
+    const next = new Set(this.state.citationImporting);
+    if (busy) next.add(workId); else next.delete(workId);
+    this.set({ citationImporting: next });
+  }
+
+  /** Drops an imported work from the citation map. */
+  removeMissingWork(workId: string): void {
+    const shown = this.state.citationMap;
+    const importing = new Set(this.state.citationImporting);
+    importing.delete(workId);
+    if (shown?.status !== "ready") { this.set({ citationImporting: importing }); return; }
+    const map = { ...shown.map, missing: shown.map.missing.filter((w) => w.workId !== workId) };
+    this.set({ citationMap: { status: "ready", map }, citationImporting: importing });
   }
 
   private patchPapers(ids: readonly string[], change: (p: PaperRecord) => PaperRecord): void {

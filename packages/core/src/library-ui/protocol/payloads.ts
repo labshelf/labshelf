@@ -1,7 +1,8 @@
 /**
  * Declares the data shapes the library UI protocol carries: library snapshot, per-paper reading stats and details,
- * the projects citing a paper, text-layer jobs, similar papers, and the PDF and add-paper replies. All plain JSON.
+ * the projects citing a paper, text-layer jobs, similar papers, the PDF and add-paper replies, and the citation map. All plain JSON.
  */
+import type { CitationLink, MissingWork } from "../../import/index.js";
 import type { FolderTreeNode } from "../../library/index.js";
 import type { Annotation, PaperRecord } from "../../model/index.js";
 import type { Backlink } from "../../writing/index.js";
@@ -83,3 +84,17 @@ export interface AddSource {
  * email asking the authors for a copy.
  */
 export type IfNoPdf = "ask" | "save" | "open" | "author";
+
+/** The citation map as the UI draws it; `papers` names every library paper that a link or a missing work's `citedBy` mentions. */
+export interface CitationMapView {
+  papers: Array<{ id: string; title: string }>;
+  links: CitationLink[];
+  /** Most cited first. */
+  missing: MissingWork[];
+}
+
+/** What the citation map view shows: the map being built, the map, or why building it failed. */
+export type CitationMapState =
+  | { status: "loading" }
+  | { status: "ready"; map: CitationMapView }
+  | { status: "failed"; message: string };

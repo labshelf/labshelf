@@ -1,10 +1,10 @@
 /**
  * Declares the library UI's state: the library from the last snapshot, what the host sent about single papers,
- * the open folder, the list controls and the selection.
+ * the open folder, the list controls, the selection and the citation map view.
  */
 import { PAPERS_DIR, type FolderTreeNode } from "../../library/index.js";
 import type { PaperRecord, PaperStatus } from "../../model/index.js";
-import type { PaperDetails, PaperStats, SimilarPaper, TextLayerJobView } from "../protocol/index.js";
+import type { CitationMapState, PaperDetails, PaperStats, SimilarPaper, TextLayerJobView } from "../protocol/index.js";
 
 export type StatusFilter = "all" | PaperStatus;
 export type SortKey = "title" | "creator" | "year" | "publication" | "lastRead" | "status";
@@ -41,6 +41,10 @@ export interface LibraryViewState {
   details: Readonly<Record<string, PaperDetails>>;
   /** Similar papers by paper id; null while the host searches. */
   similar: Readonly<Record<string, SimilarPaper[] | null>>;
+  /** The citation map shown in place of the paper list; null while the paper list shows. */
+  citationMap: CitationMapState | null;
+  /** Work ids of the missing works being imported from the citation map. */
+  citationImporting: ReadonlySet<string>;
 }
 
 export const INITIAL_VIEW_STATE: LibraryViewState = {
@@ -63,4 +67,6 @@ export const INITIAL_VIEW_STATE: LibraryViewState = {
   jobs: {},
   details: {},
   similar: {},
+  citationMap: null,
+  citationImporting: new Set(),
 };

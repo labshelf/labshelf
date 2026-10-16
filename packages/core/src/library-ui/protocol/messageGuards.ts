@@ -17,6 +17,8 @@ const isStatus = (v: unknown): v is PaperStatus => (PAPER_STATUSES as readonly u
 const isPage = (v: unknown): boolean => v === undefined || (typeof v === "number" && Number.isInteger(v) && v > 0);
 const isBool = (v: unknown): boolean => typeof v === "boolean";
 const isLine = (v: unknown): boolean => typeof v === "number" && Number.isInteger(v) && v >= 0;
+const isWorkId = (v: unknown): boolean => typeof v === "string" && /^W\d+$/.test(v);
+const isDoi = (v: unknown): boolean => typeof v === "string" && /^10\.\d{4,9}\/\S+$/.test(v);
 
 /** A "/"-separated path below a project folder: no leading "/", no empty, "." or ".." segment and no backslash. */
 const isProjectPath = (v: unknown): boolean =>
@@ -61,6 +63,8 @@ const SHAPES: Record<UiToHost["type"], Record<string, FieldCheck>> = {
   "annotations.export": { id: isId },
   "project.openSource": { project: isId, file: isProjectPath, line: isLine },
   "clipboard.write": { text: isText, label: (v) => v === undefined || isText(v) },
+  "citationMap.refresh": {},
+  "citationMap.import": { workId: isWorkId, doi: isDoi },
 };
 
 /** @returns the message when it is one the UI can send with valid fields, else null */

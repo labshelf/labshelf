@@ -1,10 +1,11 @@
 /**
- * Mounts the library UI once into a host element (frame, header, filter bar, list, detail pane) wired to a host
+ * Mounts the library UI once into a host element (frame, header, filter bar, list, citation map, detail pane) wired to a host
  * through a transport. The host fills the optional sidebar slot with its own folder view.
  */
 import type { LibraryUiCapabilities, LibraryUiLabels } from "../hostConfig.js";
 import type { LibraryTransport } from "../protocol/index.js";
 import { LibraryViewStore, type PrefsPort } from "../state/index.js";
+import { mountCitationMap } from "./citationMap/index.js";
 import { mountDetailPane } from "./detail/index.js";
 import { makeDropTarget } from "./dnd/index.js";
 import { mountFilterBar } from "./filterBar/index.js";
@@ -57,6 +58,7 @@ export function mountLibraryUi(host: HTMLElement, options: LibraryUiOptions): Li
     mountListHeader(ctx, frame.header),
     mountFilterBar(ctx, frame.filterBar),
     mountPaperList(ctx, frame.list),
+    mountCitationMap(ctx, frame.citationMap),
     mountDetailPane(ctx, frame.detail),
     reportFolder(ctx),
   ];
