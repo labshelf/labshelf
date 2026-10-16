@@ -23,7 +23,7 @@ describe("row marks", () => {
     const marks = [...t.container.querySelectorAll<HTMLElement>(".row-mark")];
     expect(marks.map((m) => m.title)).toEqual(["4 annotations", "Has a note"]);
     const read = t.container.querySelector<HTMLElement>(".paper-row .col-read")!;
-    expect(read.textContent).toBe("3h ago");
+    expect(read.textContent).toBe("3 h");
     expect(read.title).toMatch(/^Last read .*, page 7$/);
   });
 

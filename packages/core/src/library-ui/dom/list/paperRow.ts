@@ -1,14 +1,13 @@
 /**
  * Builds one paper row: twistie and PDF child row, type icon, title with version and tags, location chip and marks, creator,
- * year, publication, Last read and a status badge that cycles; a right-click opens the paper menu.
+ * year, publication, Last read and a status mark that cycles; a right-click opens the paper menu.
  */
 import { PDF_FILE, formatAuthors } from "../../../library/index.js";
-import { STATUS_LABEL, nextStatus } from "../../../model/index.js";
 import { el, highlight } from "../../../ui/dom/index.js";
 import { escapeHtml, icon } from "../../../ui/index.js";
 import type { ListPaper } from "../../derive/index.js";
 import type { PaperStats, TextLayerJobView } from "../../protocol/index.js";
-import { lastReadHtml, marksHtml, tagChipsHtml, typeIconHtml, versionChipHtml } from "./rowCells.js";
+import { lastReadHtml, marksHtml, statusMarkHtml, tagChipsHtml, typeIconHtml, versionChipHtml } from "./rowCells.js";
 
 export interface RowHandlers {
   onClick: (id: string, e: MouseEvent) => void;
@@ -43,13 +42,12 @@ function rowHtml(p: ListPaper, v: RowView, expanded: boolean): string {
   const twistie = p.hasPdf
     ? `<div class="expand-btn${expanded ? "" : " collapsed"}" title="Attachments">${icon("chevron-down")}</div>`
     : `<div class="expand-btn leaf" aria-hidden="true"></div>`;
-  const badge = `<button class="ls-badge ls-badge-${escapeHtml(p.status)}" data-cycle="1" title="Click to mark as ${STATUS_LABEL[nextStatus(p.status)]}">${escapeHtml(STATUS_LABEL[p.status] ?? p.status)}</button>`;
   return `<div class="paper-row-main">` + twistie + typeIconHtml(p, v.job, v.textLayer) + titleCell(p, v) +
       `<div class="col-meta col-creator" title="${escapeHtml((p.authors ?? []).join(", "))}">${highlight(formatAuthors(p.authors), v.terms)}</div>` +
       `<div class="col-meta">${p.year ? highlight(p.year, v.terms) : ""}</div>` +
       `<div class="col-meta col-pub" title="${escapeHtml(venue)}">${highlight(venue, v.terms)}</div>` +
       lastReadHtml(v.stats) +
-      `<div class="col-meta">${badge}</div>` +
+      `<div class="col-meta">${statusMarkHtml(p.status)}</div>` +
     `</div>` +
     (p.hasPdf
       ? `<div class="paper-children"><div class="child-row"><div></div><div class="paper-type-icon">${icon("file")}</div><div>${PDF_FILE}</div><div class="col-creator"></div><div></div><div class="col-pub"></div><div class="col-read"></div><div></div></div></div>`

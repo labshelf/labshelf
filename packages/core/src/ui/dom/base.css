@@ -96,14 +96,6 @@ svg { display: block; }
   background: var(--ls-badge-bg); color: var(--ls-badge-fg);
 }
 .ls-count:empty { display: none; }
-.ls-badge {
-  border: none; font-family: inherit; cursor: pointer; display: inline-block;
-  padding: 1px 6px; border-radius: 8px; font-size: 10px; font-weight: 500; vertical-align: middle; line-height: 14px;
-}
-.ls-badge-unread { background: var(--ls-badge-bg); color: var(--ls-badge-fg); }
-.ls-badge-reading { background: var(--ls-status-reading); color: var(--ls-on-badge); }
-.ls-badge-done { background: var(--ls-status-done); color: var(--ls-on-badge); }
-.ls-badge:hover { filter: brightness(1.12); outline: 1px solid var(--ls-focus); }
 .ls-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: var(--ls-desc); display: inline-block; }
 .ls-dot.s-unread { background: var(--ls-status-unread); }
 .ls-dot.s-reading { background: var(--ls-status-reading); }

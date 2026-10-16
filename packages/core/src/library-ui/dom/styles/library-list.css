@@ -65,6 +65,16 @@
 }
 .ls-library .loc-chip:hover { color: var(--ls-fg); border-color: var(--ls-focus); }
 .ls-library .paper-row.selected .loc-chip { color: inherit; border-color: currentColor; opacity: .8; }
+.ls-library .status-mark {
+  display: inline-flex; align-items: center; justify-content: center; width: var(--ls-space-7); height: var(--ls-space-7); padding: 0;
+  border: none; border-radius: var(--ls-radius-pill); background: none; cursor: pointer; color: var(--ls-mark-accent);
+}
+.ls-library .status-mark.s-done { color: var(--ls-mark-ok); }
+.ls-library .status-mark.s-unread { color: var(--ls-desc); }
+.ls-library .status-mark:hover, .ls-library .status-mark:focus-visible { outline: 1px solid var(--ls-focus); }
+.ls-library .status-mark-glyph { display: inline-flex; width: var(--ls-space-6); height: var(--ls-space-6); align-items: center; justify-content: center; }
+.ls-library .status-mark-glyph svg { display: block; width: 100%; height: 100%; }
+.ls-library .ls-status-dot { width: var(--ls-space-3); height: var(--ls-space-3); border-radius: 50%; background: currentColor; }
 .ls-library .version-chip {
   flex-shrink: 0; font-size: var(--ls-text-xs); line-height: 15px; padding: 0 var(--ls-space-3); border-radius: var(--ls-radius-pill);
   color: var(--ls-desc); border: 1px dashed var(--ls-border-soft); cursor: default;

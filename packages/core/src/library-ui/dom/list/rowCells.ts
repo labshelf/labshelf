@@ -1,10 +1,10 @@
 /**
  * Renders the parts of a paper row that say more than the record: the type icon (PDF, no PDF, no text layer, OCR
- * running), the PDF version chip, tag chips, the annotation and note marks, and the Last read cell.
+ * running), the PDF version chip, tag chips, the annotation and note marks, the Last read cell and the status mark.
  */
-import { formatDateTime, relativeTime } from "../../../library/index.js";
-import { PDF_VERSION_LABEL, isPrePublication, type PdfVersion } from "../../../model/index.js";
-import { escapeHtml, icon } from "../../../ui/index.js";
+import { compactTime } from "../../../library/index.js";
+import { PDF_VERSION_LABEL, STATUS_LABEL, isPrePublication, nextStatus, type PaperStatus, type PdfVersion } from "../../../model/index.js";
+import { STATUS_ARC, arcMark, escapeHtml, icon } from "../../../ui/index.js";
 import { highlight } from "../../../ui/dom/index.js";
 import { hasNoText, jobText, type ListPaper } from "../../derive/index.js";
 import type { PaperStats, TextLayerJobView } from "../../protocol/index.js";
@@ -50,7 +50,15 @@ export function marksHtml(stats: PaperStats | undefined, note: string | undefine
 }
 
 export function lastReadHtml(stats: PaperStats | undefined): string {
-  const at = stats?.lastRead;
-  const title = at ? ` title="Last read ${escapeHtml(formatDateTime(at))}${stats?.lastPage ? `, page ${stats.lastPage}` : ""}"` : "";
-  return `<div class="col-meta col-read"${title}>${escapeHtml(relativeTime(at))}</div>`;
+  const at = stats?.lastRead ? Date.parse(stats.lastRead) : NaN;
+  if (!Number.isFinite(at)) return `<div class="col-meta col-read">—</div>`;
+  const title = `Last read ${new Date(at).toLocaleString()}${stats?.lastPage ? `, page ${stats.lastPage}` : ""}`;
+  return `<div class="col-meta col-read" title="${escapeHtml(title)}">${compactTime(at)}</div>`;
+}
+
+/** A button that cycles the status, drawn as a dot for Unread and an Arc mark for Reading and Done, named by the status word. */
+export function statusMarkHtml(status: PaperStatus): string {
+  const mark = status === "unread" ? `<span class="ls-status-dot"></span>` : arcMark(...STATUS_ARC[status]);
+  return `<button class="status-mark s-${status}" data-cycle="1" title="Click to mark as ${STATUS_LABEL[nextStatus(status)]}">` +
+    `<span class="status-mark-glyph" role="img" aria-label="${STATUS_LABEL[status]}">${mark}</span></button>`;
 }

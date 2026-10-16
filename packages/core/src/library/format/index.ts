@@ -6,5 +6,5 @@ export type { CitationSet, CitedPaper } from "./citationStyles.js";
 export { formatDateTime, formatDay } from "./dateTime.js";
 export { formatBytes } from "./fileSize.js";
 export { paperLink } from "./paperLink.js";
-export { relativeTime } from "./relativeTime.js";
+export { compactTime, relativeTime } from "./elapsedTime.js";
 export { venueLine } from "./venueLine.js";
