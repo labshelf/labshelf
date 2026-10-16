@@ -1,4 +1,4 @@
-// Registers the Writing sidebar view, its commands, the main-document and compiler status bar items, the LaTeX and Typst builds with the LaTeX Workshop notice, the Tinymist bridge and the preview, the citation providers, the labshelf: links, the LaTeX command completion and the source-aware LaTeX editing, and reloads the project list when the library root changes.
+// Registers the Writing sidebar view, its commands, the main-document and compiler status bar items, the LaTeX and Typst builds with the LaTeX Workshop notice, the Tinymist bridge and the preview, the citation providers, the labshelf: links, the figures with Regenerate Figure, the LaTeX command completion and the source-aware LaTeX editing, and reloads the project list when the library root changes.
 import * as vscode from "vscode";
 
 import type { PaperRecord } from "@labshelf/core";
@@ -13,6 +13,7 @@ import { registerTinymistBridge, registerTypstBuild } from "../../writing/typst/
 import { BuildPreviews, registerShowInPreview, registerShowPreview } from "../../writing/preview/index.js";
 import { registerCitationProviders, type CitationWorkspace } from "../../writing/citations/index.js";
 import { registerLabshelfLinks } from "../../writing/links/index.js";
+import { ProjectFigures, registerRegenerateFigure, watchFigureFiles } from "../../writing/figures/index.js";
 import { registerLatexCommandCompletion, registerLatexEditing } from "../../writing/latexEditing/index.js";
 import type { LibraryRootController } from "../libraryLifecycle/index.js";
 import type { HostAdapters } from "../serviceComposition/index.js";
@@ -30,10 +31,13 @@ export function registerWritingView(context: vscode.ExtensionContext, controller
   };
 
   const projects = new WritingProjects(host);
-  const provider = new WritingTreeProvider(projects);
+  const figures = new ProjectFigures(host);
+  const provider = new WritingTreeProvider(projects, figures);
   context.subscriptions.push(
     projects,
+    figures,
     provider,
+    watchFigureFiles(projects, () => figures.refresh()),
     vscode.window.createTreeView("labshelf.writing", { treeDataProvider: provider }),
     controller.onDidChangeRoot(() => void projects.reload()),
   );
@@ -41,6 +45,9 @@ export function registerWritingView(context: vscode.ExtensionContext, controller
   registerProjectItemCommands({ context, host, projects });
   registerMainCommands({ context, host, projects });
   registerMainStatusBar(context, projects);
+  const figureOutput = vscode.window.createOutputChannel("LabShelf Figures");
+  context.subscriptions.push(figureOutput);
+  registerRegenerateFigure({ context, host, figures, output: figureOutput });
   const listPapers = async (): Promise<PaperRecord[]> => await controller.currentServices()?.paperService.listPapers() ?? [];
   const previews = new BuildPreviews({ host, listPapers, extensionUri: context.extensionUri, ...reader });
   const diagnostics = new BuildDiagnostics();

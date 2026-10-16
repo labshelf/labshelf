@@ -1,4 +1,4 @@
-/** Runs a build process to its end and kills it with all its children when the build is cancelled. */
+/** Runs a process to its end and kills it with all its children when it is cancelled. */
 import { spawn } from "node:child_process";
 
 export interface ProcessOutcome {
@@ -8,6 +8,13 @@ export interface ProcessOutcome {
 }
 
 const OUTPUT_LIMIT = 64 * 1024;
+
+export interface CancellableOptions {
+  /** Runs `executable` as a shell command line, with `args` empty. */
+  shell?: boolean;
+  /** Receives each chunk of stdout and stderr as it arrives. */
+  onOutput?: (chunk: string) => void;
+}
 
 export class BuildCancelled extends Error {
   constructor() {
@@ -30,14 +37,20 @@ function killTree(pid: number): void {
   }
 }
 
-export function runCancellable(executable: string, args: string[], cwd: string, signal: AbortSignal): Promise<ProcessOutcome> {
+export function runCancellable(
+  executable: string, args: string[], cwd: string, signal: AbortSignal, options: CancellableOptions = {},
+): Promise<ProcessOutcome> {
   if (signal.aborted) { return Promise.reject(new BuildCancelled()); }
   return new Promise((resolve, reject) => {
     const child = spawn(executable, args, {
-      cwd, detached: process.platform !== "win32", windowsHide: true, stdio: ["ignore", "pipe", "pipe"],
+      cwd, shell: options.shell ?? false, detached: process.platform !== "win32", windowsHide: true, stdio: ["ignore", "pipe", "pipe"],
     });
     let output = "";
-    const collect = (chunk: Buffer): void => { output = (output + chunk.toString("utf8")).slice(-OUTPUT_LIMIT); };
+    const collect = (chunk: Buffer): void => {
+      const text = chunk.toString("utf8");
+      output = (output + text).slice(-OUTPUT_LIMIT);
+      options.onOutput?.(text);
+    };
     const onAbort = (): void => { if (child.pid !== undefined) { killTree(child.pid); } };
     child.stdout.on("data", collect);
     child.stderr.on("data", collect);

@@ -289,6 +289,12 @@
         "command": "labshelf.writing.showInPreview",
         "title": "Research: Show in Preview",
         "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.regenerateFigure",
+        "title": "Research: Regenerate Figure",
+        "category": "LabShelf",
+        "icon": "$(sync)"
       }
     ],
     "viewsContainers": {
@@ -426,6 +432,16 @@
           "command": "labshelf.writing.removeProject",
           "when": "view == labshelf.writing && viewItem =~ /External$/",
           "group": "2_remove@1"
+        },
+        {
+          "command": "labshelf.writing.regenerateFigure",
+          "when": "view == labshelf.writing && viewItem == labshelfFigureStale",
+          "group": "inline@1"
+        },
+        {
+          "command": "labshelf.writing.regenerateFigure",
+          "when": "view == labshelf.writing && viewItem =~ /^labshelfFigure/",
+          "group": "1_figure@1"
         }
       ],
       "commandPalette": [
@@ -483,6 +499,10 @@
         },
         {
           "command": "labshelf.writing.pickCompiler",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.regenerateFigure",
           "when": "false"
         }
       ],
