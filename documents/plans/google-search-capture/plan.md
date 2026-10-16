@@ -45,60 +45,25 @@ A "Save to LabShelf" button appears next to the scholarly results of an ordinary
 | Hit capture | `packages/browser/src/capture/` | `scholarCapture.ts` becomes `searchHitCapture.ts`, with `SearchHit` in `platform/runtimeMessages.ts`. |
 | Manifests | `packages/browser/manifest.chrome.json`, `manifest.firefox.json` | One more `include_globs` entry. |
 
-## 6. Sessions and steps
+## 6. Sessions
 
-### Session 1 — Google results get the button
+| Session | File | Deliverable | Commit |
+|---|---|---|---|
+| 1 | [sessions/01.md](sessions/01.md) | Google results get the button; A1–A5, the user's A1–A3 check in Chrome logged in log.md | yes |
 
-- **Starts from:** `feat/pdf-finding` with pdf-finding session 3 committed (the rule table exists)
-- **Ends with:** A1–A5, the user's A1–A3 check in Chrome logged in §8
-- **Commit:** yes
+Starts from `feat/pdf-finding` with pdf-finding session 3 committed (the rule table exists).
 
-| Id | Step | Depends on | Runner | Done when | OK |
-|---|---|---|---|---|---|
-| S1 | `isScholarlyHost` in core, with tests | — | M · implementer (sonnet) | host tests | [ ] |
-| S2 | Extract the result button; Scholar becomes an adapter; `SearchHit` | — | M · module-splitter (sonnet) | A4 | [ ] |
-| S3 | Google adapter, fixtures and manifest globs | S1–S2 | H · main thread | A3, A5 | [ ] |
-| S4 | Finish; the user checks A1–A3 in Chrome | S1–S3 | `finish` skill + user | gate passes, §8 | [ ] |
+Runner tiers:
 
-### Step blocks
-
-#### S1 — Scholarly-host test
-
-- **Do:**
-  - Add `isScholarlyHost(url)` beside the publisher rule table. It reads the table's hosts, so a new rule widens it on its own.
-  - Add the repository hosts from D2.
-  - Unit-test publisher, repository and non-scholarly hosts (`scirp.org/reference`, `wikipedia.org`).
-- **Touch:** `core/src/import/pdfFinding/rules/`. **Do not touch:** the rules themselves.
-- **Done when:** the host tests pass.
-
-#### S2 — Shared result button
-
-- **Do:**
-  - Move the split button, its states and its menus out of `content/scholar.ts` into `content/resultButton/`, with no behaviour change.
-  - Move `scholar.ts` and `scholarParse.ts` into `content/scholar/`.
-  - Rename `ScholarHit` to `SearchHit` and `scholarCapture.ts` to `searchHitCapture.ts`, and update every importer and message name.
-- **Touch:** `packages/browser/src/content/`, `capture/scholarCapture.ts`, `platform/runtimeMessages.ts`, the background capture handler, the build entry for the content script. **Do not touch:** core.
-- **Context:** `content/scholar.ts` is at 199 lines, so the Google script cannot copy from it (AGENTS.md §1, "never copy code").
-- **Done when:** A4, and the Scholar tests pass with only renames.
-
-#### S3 — Google adapter
-
-- **Do:**
-  - Save 3 Google result pages as fixtures: a DOI search, a title search, and a `hl=pt-BR` page.
-  - Parse organic results into `SearchHit`s, using `extractDoi`, `arxivIdFromUrl` and `pmidFromUrl` from core on the link and snippet, and the "author · year" line for authors and year.
-  - Mount the button only where D2 and D5 allow, and watch for results Google adds after load.
-  - Add `https://www.google.*/search*` to the content script's `include_globs` in both manifests.
-- **Touch:** `packages/browser/src/content/google/`, both manifests, the build entry. **Do not touch:** `content/resultButton/` beyond its public API.
-- **Done when:** A3 and A5.
-
-#### S4 — Finish and user check
-
-- **Do:** run `finish`, build `dist/chrome`, and hand the user the A1–A3 steps: the Smith–Waterman DOI search, one title search of their choice, and one search that should show no button.
-- **Done when:** the gate passes and the user's result is in §8.
+- **H**: the session model (Opus or Fable). Use it for design, algorithms and judgment.
+- **M**: Sonnet. Use it for well-specified implementation, moves and tests.
+- **L**: Haiku. Use it for gates, import fixes and commits.
 
 ## 7. Risks
 
-- **R1** Google changes its result markup, and the buttons disappear. Mitigation: the parser keys on stable anchors (the result link and its `h3`), the fixtures fail loudly, and no button appears rather than a wrong one.
-- **R2** A non-article page on a publisher host gets a button, such as a journal home page. Mitigation: the capture resolves no id and no title match, so it ends in the existing "not a paper" message rather than a wrong save.
+- **R1** Google changes its result markup, and the buttons disappear. — The parser keys on stable anchors (the result link and its `h3`), the fixtures fail loudly, and no button appears rather than a wrong one.
+- **R2** A non-article page on a publisher host gets a button, such as a journal home page. — The capture resolves no id and no title match, so it ends in the existing "not a paper" message rather than a wrong save.
 
 ## 8. Log
+
+See [log.md](log.md).

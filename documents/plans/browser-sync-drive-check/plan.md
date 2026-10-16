@@ -1,7 +1,7 @@
 # Plan: browser sync Drive check
 
 Status: approved
-Size: P — one manual check on a scratch Drive; grows to M if a folder is renamed or duplicated.
+Size: P — one manual check on a scratch Drive; grows to M if a folder is renamed or duplicated
 Pending decisions: 0
 
 ## 1. Goal
@@ -16,7 +16,7 @@ Confirm on a real Drive that browser sync, which runs through the core sync coor
 
 - **In:** the browser extension's Drive sync.
 - **Out:** code changes, unless the check fails.
-- **Contracts touched:** none. The check verifies [sync.md](../contracts/sync.md#folder-names).
+- **Contracts touched:** none. The check verifies [sync.md](../../contracts/sync.md#folder-names).
 
 ## 4. Acceptance criteria
 
@@ -29,32 +29,24 @@ Confirm on a real Drive that browser sync, which runs through the core sync coor
 
 Nothing new. Browser sync passes `listTitles` from its paper records and keeps the run record in IndexedDB under `google-drive.last.json`. The engine registers every remote folder under its manifest-first local name and creates folders only for unregistered paths.
 
-## 6. Sessions and steps
+## 6. Sessions
 
-### Session 1 — scratch-Drive check
+| Session | File | Deliverable | Commit |
+|---|---|---|---|
+| 1 | [sessions/01.md](sessions/01.md) | scratch-Drive check, A1–A4 | only if the check finds a bug |
 
-- **Starts from:** a clean tree; a scratch Google account signed in to a test browser profile.
-- **Ends with:** A1–A4 checked, and this plan deleted.
-- **Commit:** only if the check finds a bug.
+Runner tiers:
 
-| Id | Step | Depends on | Runner | Done when | OK |
-|---|---|---|---|---|---|
-| S1 | Upgrade sync on a scratch Drive | — | user | A1–A4 | [ ] |
+- **H**: the session model (Opus or Fable). Use it for design, algorithms and judgment.
+- **M**: Sonnet. Use it for well-specified implementation, moves and tests.
+- **L**: Haiku. Use it for gates, import fixes and commits.
 
-### Step blocks
-
-#### S1 — Upgrade sync on a scratch Drive
-
-- **Do:**
-  - build the extension from a commit before `browserSync` used the coordinator, load it in the test profile and sync two papers to the scratch Drive;
-  - load the current build in the same profile, add a file to one old paper and save a new paper, then sync;
-  - upload a file on Drive into an old paper's folder and sync again;
-  - reload the extension and open the options page.
-- **Context:** the regression tests that pin this are in `packages/browser/__tests__/sync/` and core's sync engine tests. How to run the extension: [apps/README.md](../apps/README.md#verifying-changes).
-- **Done when:** A1–A4.
+This plan's only step is run by the user.
 
 ## 7. Risks
 
 - **R1** The check runs against the wrong account and renames real folders. — Use a separate browser profile signed in only to the scratch account.
 
 ## 8. Log
+
+See [log.md](log.md). When A1–A4 are checked, delete this directory.
