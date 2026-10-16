@@ -87,6 +87,6 @@ The project-scope `.mcp.json` registers `chrome-devtools-mcp` (version pinned, h
 
 - Extension tools need the launched-browser (pipe) connection, so `--browserUrl`, `--wsEndpoint` and `--autoConnect` cannot be used with them.
 - File arguments must lie under the client's workspace roots (the repo) or the OS temp directory; write screenshots to the scratchpad.
-- Branded Google Chrome works headless through this server because the extension is installed over the protocol and not with `--load-extension`. To use Chrome for Testing instead, add `--executablePath=<path>` through a local override (`claude mcp add --scope local chrome-devtools -- npx -y chrome-devtools-mcp@<version> ...`), not in `.mcp.json`.
+- The server launches Playwright's Chrome for Testing through `--executablePath` (see [README.md → verifying changes](README.md#verifying-changes)).
 - A server added to `.mcp.json` becomes available after the next session start. Project-scope servers ask for approval on first use.
 - Without a configured MCP client, the server can be driven over stdio: spawn the `.mcp.json` command, send `initialize` (declaring the `roots` capability and answering `roots/list`), `notifications/initialized`, then `tools/call`.

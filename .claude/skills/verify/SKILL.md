@@ -13,16 +13,27 @@ The recipes live in `documents/apps/`. Pick the one for the change:
 | Change | Recipe |
 |---|---|
 | import, OCR, text layer, pdf.js in the extension host | `documents/apps/vscode.md` → "Extension host run" |
-| reader UI, list panel, any VS Code webview | `documents/apps/vscode.md` → "Webview harness" |
-| browser pages, popup, Scholar button, capture | `documents/apps/browser.md` → "Headless run", or its "Chrome DevTools MCP" subsection |
+| reader UI, list panel, any VS Code webview | "Browser and webview pages" below, with the stubs from `documents/apps/vscode.md` → "Webview harness" |
+| browser pages, popup, Scholar button, capture | "Browser and webview pages" below; `documents/apps/browser.md` → "Headless run" for what the tools cannot reach |
 | TUI layout, keys, terminal output | `documents/apps/terminal.md` → "Verification" |
 | website sheets (text overflow at 1440/768/390, every theme) | run `node .claude/skills/verify/website-sheet-fit.mjs` outside the sandbox; prints one `OVERFLOW` line per sheet, exits 1 on any |
 
-Always:
+## Browser and webview pages
+
+Drive them with the `mcp__chrome-devtools__*` tools. The server in `.mcp.json` runs Playwright's headless Chrome for Testing with an isolated profile, so it needs no hand-written CDP harness. These tools exist only in the main thread and in unrestricted agents; restricted agents such as `implementer` do not have them. If they are missing, say so and fall back to the CDP recipe in the app document.
+
+1. Rebuild (`pnpm --filter @labshelf/browser build:chrome` for the extension).
+2. Browser extension: `install_extension` with the absolute `packages/browser/dist/chrome` path returns the id; `new_page` on `chrome-extension://<id>/popup/index.html` (or `library-page/`, `options/`); `trigger_extension_action` opens the popup the way the toolbar button does; `reload_extension` after a rebuild.
+3. Webview: serve the built HTML and the repo statically, then `new_page` and `navigate_page` with `initScript` holding the `acquireVsCodeApi` stub described in the webview harness and the `:root{--vscode-*}` block. TRAP: `initScript` runs before `<html>` exists, so append the `<style>` on `DOMContentLoaded`; touching `document.documentElement` throws and the page falls back to serif fonts.
+4. Check every page with `take_screenshot` (`filePath` under `<repo>/.verify/`, which git ignores; the server refuses paths outside the workspace, the scratchpad included) and `list_console_messages`; a page with console errors fails. `take_snapshot`, `click` and `evaluate_script` (pass the `pageId` that `new_page` lists) cover interaction and DOM asserts.
+
+Scripted checks that must repeat the same way, such as `website-sheet-fit.mjs`, stay Playwright scripts.
+
+## Always
 1. Rebuild the app first; a stale bundle shows old behavior.
 2. Work on a copy: `cp -R ~/Documents/LabShelfLibrary <scratchpad>/lib`. Point `XDG_CONFIG_HOME`/`XDG_CACHE_HOME` at the scratchpad and use a throwaway `--user-data-dir`. Never touch the real library, config, keychain or Drive.
 3. Put harness scripts in the session scratchpad, not in the repo.
-4. Launch browsers and VS Code outside the sandbox (they fail inside it). Use Playwright's Chrome for Testing / headless shell; `/Applications/Google Chrome.app` crashes headless on this machine.
+4. Launch browsers and VS Code outside the sandbox (they fail inside it). Use Playwright's Chrome for Testing / headless shell; `/Applications/Google Chrome.app` crashes headless on this machine. Stop only the processes you started, by PID.
 5. Exercise the change with a real paper from the copy, not only synthetic fixtures.
 6. Read the screenshots or text frames yourself before reporting.
 

@@ -49,3 +49,4 @@ Rules for every recipe:
 - **Look at the screenshots.** A passing DOM assertion does not prove the layout is right.
 - Harness scripts live in the session scratchpad and are not committed.
 - On this Mac, `/Applications/Google Chrome.app` crashes in headless mode. Use Playwright's Chrome for Testing or its headless shell from `~/Library/Caches/ms-playwright/`, launched outside the sandbox.
+- The `chrome-devtools` server in `.mcp.json` points `--executablePath` at `${HOME}/Library/Caches/ms-playwright/chromium-<ver>/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing`; `--channel` accepts only installed Chrome channels. After `npx playwright install chromium` changes `<ver>`, update the path to the folder that `ls ~/Library/Caches/ms-playwright/` shows.
