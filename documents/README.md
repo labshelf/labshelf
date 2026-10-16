@@ -23,6 +23,7 @@ Read when you look for the document that answers a question about LabShelf; the 
 | How do local apps coordinate on one library? | [contracts/sync.md](contracts/sync.md#coordination-between-local-apps) |
 | How does an app authenticate with Drive? | [contracts/sync.md](contracts/sync.md#authentication) |
 | How is a link to a paper page written? | [contracts/links.md](contracts/links.md#grammar) |
+| What is a project template and its catalog index? | [contracts/templates.md](contracts/templates.md#manifest) |
 | How does a host start the PDF reader? | [contracts/reader-host.md](contracts/reader-host.md#startup) |
 | Which rules bind the reader and its host? | [contracts/reader-host.md](contracts/reader-host.md#rules) |
 | Which messages does the library UI exchange with its host? | [contracts/library-ui-host.md](contracts/library-ui-host.md#messages) |
