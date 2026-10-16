@@ -28,7 +28,7 @@ module.exports = {
   },
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
-    '^vscode$': '<rootDir>/__mocks__/vscode.js',
+    '^vscode$': '<rootDir>/__mocks__/vscode/index.js',
     // Remap .js extensions in relative imports to allow ts-jest to resolve .ts files
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
