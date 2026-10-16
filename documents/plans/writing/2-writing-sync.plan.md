@@ -1,8 +1,8 @@
 # Plan: writing projects on Drive and collaboration
 
-Status: draft
+Status: in progress (session 1 of 4)
 Size: GG — a sync contract change (a new namespace and a text merge) plus collaboration in VS Code; 4 sessions, the first with a Drive-scope spike.
-Pending decisions: 1
+Pending decisions: 1 (Q1, answered by S1)
 
 ## 1. Goal
 
@@ -12,13 +12,13 @@ Builds on [writing-core.plan.md](../../archive/writing-core.plan.md).
 
 ## 2. Decisions
 
-- [ ] **D1** Projects sync in a new namespace `projects`, a `projects/` folder inside `LabShelf Library` on Drive. Both internal projects and registered external folders are mirrored. Only sources go up: never `.git/`, the build cache, or files matched by the project's ignore list. — The author keeps writing on another machine or in the browser; the git repository stays the user's.
-- [ ] **D2** On another machine, a project known on Drive but not on disk shows in the Writing view as "Only on Drive — download to…". — External paths are device-local.
-- [ ] **D3** Text files in projects merge three ways on sync instead of keeping two copies. The base is the content at the last agreed sync, kept in `.research/sync/base/` locally and in IndexedDB in the browser. Non-overlapping edits merge silently; overlapping ones are written with git-style conflict markers, which VS Code's built-in merge UI resolves. Binary files keep the existing keep-both rule. — Writing in turns never produces duplicate files.
-- [ ] **D4** When the sync sees that another person changed a file of an open project within the last 10 minutes, LabShelf shows "<name> is editing this project. Start a live session?". The source is Drive's `lastModifyingUser`. The ~30 s sync delay is accepted. — Live collaboration is offered when it matters.
-- [ ] **D5** Live sessions use Open Collaboration Tools (MIT, public server run by TypeFox, end-to-end encrypted, cursors, follow and chat). LabShelf calls its `oct.createRoom` and `oct.joinRoom` commands and offers to install the extension. Embedding the OCT protocol library is out. — Real-time editing with no server of our own.
-- [ ] **D6** Comments live in `<project>/.labshelf/comments.json`, shown with the VS Code Comments API (threads in the gutter, replies, resolve). Each comment is anchored to the quoted text with context, not to a line number, and re-anchored on load; an anchor that cannot be found becomes "detached" and stays listed. — Comments without touching the source, synced and merged like any file.
-- [ ] **D7** In the reader's review mode, a highlight with a note on the compiled PDF becomes a comment at the source line (SyncTeX). — Reviewing the PDF feeds the same comment threads.
+- [x] **D1** Projects sync in a new namespace `projects`, a `projects/` folder inside `LabShelf Library` on Drive. Both internal projects and registered external folders are mirrored. Only sources go up: never `.git/`, the build cache, or files matched by the project's ignore list. — The author keeps writing on another machine or in the browser; the git repository stays the user's.
+- [x] **D2** On another machine, a project known on Drive but not on disk shows in the Writing view as "Only on Drive — download to…". — External paths are device-local.
+- [x] **D3** Text files in projects merge three ways on sync instead of keeping two copies. The base is the content at the last agreed sync, kept in `.research/sync/base/` locally and in IndexedDB in the browser. Non-overlapping edits merge silently; overlapping ones are written with git-style conflict markers, which VS Code's built-in merge UI resolves. Binary files keep the existing keep-both rule. — Writing in turns never produces duplicate files.
+- [x] **D4** When the sync sees that another person changed a file of an open project within the last 10 minutes, LabShelf shows "<name> is editing this project. Start a live session?". The source is Drive's `lastModifyingUser`. The ~30 s sync delay is accepted. — Live collaboration is offered when it matters.
+- [x] **D5** Live sessions use Open Collaboration Tools (MIT, public server run by TypeFox, end-to-end encrypted, cursors, follow and chat). LabShelf calls its `oct.createRoom` and `oct.joinRoom` commands and offers to install the extension. Embedding the OCT protocol library is out. — Real-time editing with no server of our own.
+- [x] **D6** Comments live in `<project>/.labshelf/comments.json`, shown with the VS Code Comments API (threads in the gutter, replies, resolve). Each comment is anchored to the quoted text with context, not to a line number, and re-anchored on load; an anchor that cannot be found becomes "detached" and stays listed. — Comments without touching the source, synced and merged like any file.
+- [x] **D7** In the reader's review mode, a highlight with a note on the compiled PDF becomes a comment at the source line (SyncTeX). — Reviewing the PDF feeds the same comment threads.
 
 Open (blocks approval):
 
