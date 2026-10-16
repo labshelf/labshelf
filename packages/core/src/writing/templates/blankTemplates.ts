@@ -1,6 +1,6 @@
 /** Writes the main file of a new project: one blank article per format, titled with the user's title. */
 
-import type { ProjectFormat } from "./projectFile.js";
+import type { ProjectFormat } from "../project/index.js";
 
 const LATEX_SPECIALS: Record<string, string> = {
   "\\": "\\textbackslash{}", "{": "\\{", "}": "\\}", $: "\\$", "&": "\\&", "#": "\\#",
@@ -51,7 +51,7 @@ function typstArticle(title: string): string {
 }
 
 /** The main file name and its text for a new project. */
-export function projectTemplate(format: ProjectFormat, title: string): { main: string; text: string } {
+export function blankTemplate(format: ProjectFormat, title: string): { main: string; text: string } {
   return format === "latex"
     ? { main: "main.tex", text: latexArticle(title) }
     : { main: "main.typ", text: typstArticle(title) };

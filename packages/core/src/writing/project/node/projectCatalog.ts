@@ -8,7 +8,7 @@ import type { ILogger } from "../../../ports/index.js";
 import { PROJECT_FILE, parseProjectFile, serializeProjectFile, type ProjectFormat } from "../projectFile.js";
 import type { ProjectEntry } from "../projectEntry.js";
 import { projectIdSlug } from "../projectId.js";
-import { projectTemplate } from "../templates.js";
+import { blankTemplate } from "../../templates/index.js";
 import { readProject } from "./projectFolder.js";
 import { loadProjectRegistry, registerProjectFolder } from "./projectRegistryFile.js";
 
@@ -51,7 +51,7 @@ export async function createProject(
 ): Promise<ProjectEntry> {
   const id = await claimProjectId(libraryRoot, request.title, logger);
   const folder = path.join(projectsRoot(libraryRoot), id);
-  const template = projectTemplate(request.format, request.title);
+  const template = blankTemplate(request.format, request.title);
   // Non-recursive on the project folder itself: a folder that appeared since the id was claimed is never reused.
   await fs.mkdir(projectsRoot(libraryRoot), { recursive: true });
   await fs.mkdir(folder);
