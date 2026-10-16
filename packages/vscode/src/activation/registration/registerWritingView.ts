@@ -1,7 +1,7 @@
-// Registers the Writing sidebar view, its commands, the main-document and compiler status bar items, the LaTeX and Typst builds with the LaTeX Workshop notice, the Tinymist bridge and the preview, the citation providers, the labshelf: links, the figures with Regenerate Figure, the LaTeX command completion, the source-aware LaTeX editing and the value completion and hover, the .bib diagnostics with their quick fixes, the backlink index and the reading list of each project, and reloads the project list when the library root changes.
+// Registers the Writing sidebar view with its commands, builds, previews, citations and editing support.
 import * as vscode from "vscode";
 
-import type { PaperRecord } from "@labshelf/core";
+import type { ILogger, PaperRecord } from "@labshelf/core";
 import {
   WritingProjects, WritingTreeProvider, registerMainCommands, registerMainStatusBar, registerProjectCommands,
   registerProjectItemCommands, registerReadingListCommands, ProjectBacklinkIndex, ProjectReadingLists, type WritingHost,
@@ -32,24 +32,25 @@ export interface WritingViewHandles {
   backlinks: ProjectBacklinkIndex;
 }
 
-export function registerWritingView(
-  context: vscode.ExtensionContext, controller: LibraryRootController, reader: HostAdapters["reader"], events: LibraryEvents,
-): WritingViewHandles {
+type Controller = LibraryRootController;
+
+function createWritingHost(controller: Controller): WritingHost {
   const current = (): ReturnType<WritingHost["current"]> => {
     const root = controller.currentRoot();
     const services = controller.currentServices();
     return root && services ? { root: root.fsPath, logger: services.logger } : undefined;
   };
-  const host: WritingHost = {
+  return {
     current,
     // Offers the library setup when none is configured.
     require: async () => { await controller.require(); return current(); },
   };
+}
 
-  const projects = new WritingProjects(host);
-  const figures = new ProjectFigures(host);
-  const backlinks = new ProjectBacklinkIndex(projects, host);
-  const readingLists = new ProjectReadingLists({
+function createReadingLists(
+  controller: Controller, events: LibraryEvents, backlinks: ProjectBacklinkIndex,
+): ProjectReadingLists {
+  return new ProjectReadingLists({
     backlinks,
     session: () => {
       const services = controller.currentServices();
@@ -61,17 +62,20 @@ export function registerWritingView(
     },
     onPapersChange: (listener) => onPaperChange(events, listener),
   });
-  const provider = new WritingTreeProvider(projects, figures, readingLists);
-  context.subscriptions.push(
-    projects,
-    figures,
-    backlinks,
-    readingLists,
-    provider,
-    watchFigureFiles(projects, () => figures.refresh()),
-    vscode.window.createTreeView("labshelf.writing", { treeDataProvider: provider }),
-    controller.onDidChangeRoot(() => void projects.reload()),
-  );
+}
+
+interface WritingParts {
+  context: vscode.ExtensionContext;
+  controller: Controller;
+  host: WritingHost;
+  projects: WritingProjects;
+  figures: ProjectFigures;
+  readingLists: ProjectReadingLists;
+  listPapers: () => Promise<PaperRecord[]>;
+}
+
+function registerProjectAndFigureCommands(parts: WritingParts): void {
+  const { context, controller, host, projects, figures, readingLists, listPapers } = parts;
   registerProjectCommands({ context, host, projects });
   registerProjectItemCommands({ context, host, projects });
   registerMainCommands({ context, host, projects });
@@ -79,9 +83,12 @@ export function registerWritingView(
   const figureOutput = vscode.window.createOutputChannel("LabShelf Figures");
   context.subscriptions.push(figureOutput);
   registerRegenerateFigure({ context, host, figures, output: figureOutput });
-  const listPapers = async (): Promise<PaperRecord[]> => await controller.currentServices()?.paperService.listPapers() ?? [];
   registerReadingListCommands({ context, host, projects, readingLists, listPapers });
   registerInstallCommand({ context, host, projects, services: () => controller.currentServices() });
+}
+
+function registerBuildAndPreviewCommands(parts: WritingParts, reader: HostAdapters["reader"]): void {
+  const { context, host, projects, listPapers } = parts;
   const previews = new BuildPreviews({ host, listPapers, extensionUri: context.extensionUri, ...reader });
   const diagnostics = new BuildDiagnostics();
   context.subscriptions.push(diagnostics);
@@ -99,6 +106,9 @@ export function registerWritingView(
   registerPickCompiler({ context, host, projects });
   registerCompilerStatusBar(context, projects);
   registerLatexWorkshopNotice({ context, host, projects });
+}
+
+function registerEditingSupport(context: vscode.ExtensionContext, controller: Controller, projects: WritingProjects): void {
   const session = (): ReturnType<CitationWorkspace["session"]> => {
     const services = controller.currentServices();
     return services ? {
@@ -107,12 +117,39 @@ export function registerWritingView(
       logger: services.logger,
     } : undefined;
   };
+  const logger = (): ILogger | undefined => controller.currentServices()?.logger;
   registerCitationProviders(context, { projects, session });
   registerLabshelfLinks(context, { session });
   registerLatexCommandCompletion(context);
-  registerLatexEditing(context, { projects, logger: () => controller.currentServices()?.logger });
-  registerWritingValues(context, { projects, logger: () => controller.currentServices()?.logger });
-  registerBibliographyLint(context, { logger: () => controller.currentServices()?.logger });
+  registerLatexEditing(context, { projects, logger });
+  registerWritingValues(context, { projects, logger });
+  registerBibliographyLint(context, { logger });
+}
+
+export function registerWritingView(
+  context: vscode.ExtensionContext, controller: LibraryRootController, reader: HostAdapters["reader"], events: LibraryEvents,
+): WritingViewHandles {
+  const host = createWritingHost(controller);
+  const projects = new WritingProjects(host);
+  const figures = new ProjectFigures(host);
+  const backlinks = new ProjectBacklinkIndex(projects, host);
+  const readingLists = createReadingLists(controller, events, backlinks);
+  const provider = new WritingTreeProvider(projects, figures, readingLists);
+  context.subscriptions.push(
+    projects,
+    figures,
+    backlinks,
+    readingLists,
+    provider,
+    watchFigureFiles(projects, () => figures.refresh()),
+    vscode.window.createTreeView("labshelf.writing", { treeDataProvider: provider }),
+    controller.onDidChangeRoot(() => void projects.reload()),
+  );
+  const listPapers = async (): Promise<PaperRecord[]> => await controller.currentServices()?.paperService.listPapers() ?? [];
+  const parts: WritingParts = { context, controller, host, projects, figures, readingLists, listPapers };
+  registerProjectAndFigureCommands(parts);
+  registerBuildAndPreviewCommands(parts, reader);
+  registerEditingSupport(context, controller, projects);
   void projects.reload();
   return { projects, backlinks };
 }

@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 
 import { libraryLayout } from "@labshelf/core";
 import { LibraryTreeDataProvider, LibraryDragAndDropController } from "../../ui/library/index.js";
-import type { LibraryNode } from "../../ui/library/index.js";
+import type { LibraryNode, LibraryTreeNode } from "../../ui/library/index.js";
 import { ListWebviewPanel } from "../../ui/list/index.js";
 import { importPapers, moveFolders, type FolderCommandHost } from "../../commands/index.js";
 import { registerContinue } from "../../continue/index.js";
@@ -29,9 +29,8 @@ export interface LibraryTreeViewHandles {
   refreshLibraryViews: () => void;
 }
 
-export function registerLibraryTreeView(deps: LibraryTreeViewDeps): LibraryTreeViewHandles {
-  const { context, events, controller, papersRootUri, folderHost, adapters, projects } = deps;
-
+function createLibraryProvider(deps: LibraryTreeViewDeps): LibraryTreeDataProvider {
+  const { context, events, controller, papersRootUri, adapters, projects } = deps;
   // Library folder tree mirrors the real directory structure under papers/.
   const continueSource = registerContinue({
     context,
@@ -52,7 +51,12 @@ export function registerLibraryTreeView(deps: LibraryTreeViewDeps): LibraryTreeV
   controller.onDidChangeRoot(({ root }) => {
     libraryProvider.setLibrary(libraryLayout(root, vscode.Uri.joinPath).papersRoot());
   });
+  return libraryProvider;
+}
 
+function createLibraryTreeView(
+  context: vscode.ExtensionContext, folderHost: FolderCommandHost, libraryProvider: LibraryTreeDataProvider,
+): vscode.TreeView<LibraryTreeNode> {
   const libraryDnD = new LibraryDragAndDropController(async (uris, targetDir) => {
     const services = await folderHost.requireServices();
     if (services) { await importPapers(services, uris, targetDir); }
@@ -66,6 +70,12 @@ export function registerLibraryTreeView(deps: LibraryTreeViewDeps): LibraryTreeV
   context.subscriptions.push(libraryTreeView);
   // From here an empty Library view really is empty: switch its welcome text from loading to "No folders yet".
   void vscode.commands.executeCommand("setContext", "labshelf.libraryLoaded", true);
+  return libraryTreeView;
+}
+
+export function registerLibraryTreeView(deps: LibraryTreeViewDeps): LibraryTreeViewHandles {
+  const libraryProvider = createLibraryProvider(deps);
+  const libraryTreeView = createLibraryTreeView(deps.context, deps.folderHost, libraryProvider);
 
   // Keeps the tree selection on the folder the list panel shows. reveal() would
   // force the sidebar open, so a hidden tree is synced when it becomes visible instead.
@@ -75,7 +85,7 @@ export function registerLibraryTreeView(deps: LibraryTreeViewDeps): LibraryTreeV
       // The folder may have just been removed; a stale selection is harmless.
     });
   };
-  context.subscriptions.push(
+  deps.context.subscriptions.push(
     libraryTreeView.onDidChangeVisibility((e) => {
       if (e.visible) { syncTreeToPanel(ListWebviewPanel.currentPanel?.currentFolder); }
     }),
