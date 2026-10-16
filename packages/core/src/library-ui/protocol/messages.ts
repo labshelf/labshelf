@@ -4,7 +4,7 @@
  */
 import type { PaperStatus } from "../../model/index.js";
 import type {
-  AddSource, CitationMapState, IfNoPdf, LibraryUiSnapshot, PaperDetails, PdfAccess, PdfMiss, SimilarPaper, TextLayerJobView,
+  AddSource, CitationMapState, IfNoPdf, LibraryUiSnapshot, PaperDetails, PaperFilesState, PdfAccess, PdfMiss, SimilarPaper, TextLayerJobView,
 } from "./payloads.js";
 
 export type UiToHost =
@@ -18,6 +18,14 @@ export type UiToHost =
   | { type: "paper.reveal"; id: string }
   | { type: "paper.details"; id: string }
   | { type: "paper.similar"; id: string }
+  /** The single selected paper changed; null when none or several are selected. */
+  | { type: "paper.selected"; id: string | null }
+  | { type: "paper.files"; id: string }
+  /** `name` is one entry of the paper folder; an empty `description` removes the stored one. */
+  | { type: "paper.describeFile"; id: string; name: string; description: string }
+  | { type: "paper.openFile"; id: string; name: string }
+  | { type: "paper.revealFile"; id: string; name: string }
+  | { type: "paper.copyFilePath"; id: string; name: string }
   /** `replace` looks only for a better version than the paper's preprint or accepted PDF, and replaces it when found. */
   | { type: "paper.findPdf"; id: string; replace?: boolean }
   | { type: "paper.attachPdf"; id: string }
@@ -43,6 +51,9 @@ export type HostToUi =
   | { type: "snapshot"; snapshot: LibraryUiSnapshot }
   | { type: "navigate"; folder: string }
   | { type: "select"; id: string }
+  /** Shows the paper wherever it is: opens its folder, clears filters that hide it, selects it and opens its files. */
+  | { type: "reveal"; id: string }
+  | { type: "files"; id: string; state: PaperFilesState }
   | { type: "notice"; kind: "info" | "ok" | "error"; text: string }
   | { type: "progress"; key: string; text: string | null }
   | { type: "details"; id: string; details: PaperDetails }

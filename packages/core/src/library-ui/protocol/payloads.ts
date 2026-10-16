@@ -1,11 +1,13 @@
 /**
  * Declares the data shapes the library UI protocol carries: library snapshot, per-paper reading stats and details,
- * the projects citing a paper, text-layer jobs, similar papers, the PDF and add-paper replies, and the citation map. All plain JSON.
+ * a paper's file listing, the projects citing a paper, text-layer jobs, similar papers, the PDF and add-paper replies, and the citation map. All plain JSON.
  */
 import type { CitationLink, MissingWork } from "../../import/index.js";
 import type { FolderTreeNode } from "../../library/index.js";
 import type { Annotation, PaperRecord } from "../../model/index.js";
 import type { Backlink } from "../../writing/index.js";
+
+export type { PaperFile, PaperFilesState } from "../../library/index.js";
 
 /** What the reader's sidecar says about a paper, for the row marks and the Last read column. */
 export interface PaperStats {
@@ -13,6 +15,8 @@ export interface PaperStats {
   lastPage?: number;
   /** ISO timestamp of the last reading position. */
   lastRead?: string;
+  /** The most recently changed highlight: its 1-based page and its text. */
+  lastHighlight?: { page: number; text: string };
 }
 
 /**

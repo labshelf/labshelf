@@ -18,6 +18,9 @@ const isPage = (v: unknown): boolean => v === undefined || (typeof v === "number
 const isBool = (v: unknown): boolean => typeof v === "boolean";
 const isLine = (v: unknown): boolean => typeof v === "number" && Number.isInteger(v) && v >= 0;
 const isWorkId = (v: unknown): boolean => typeof v === "string" && /^W\d+$/.test(v);
+// One entry of a paper folder: a single segment, never "." or "..", never a path.
+const isEntryName = (v: unknown): boolean =>
+  typeof v === "string" && v !== "" && v !== "." && v !== ".." && !v.includes("/") && !v.includes("\\");
 const isDoi = (v: unknown): boolean => typeof v === "string" && /^10\.\d{4,9}\/\S+$/.test(v);
 
 /** A "/"-separated path below a project folder: no leading "/", no empty, "." or ".." segment and no backslash. */
@@ -47,6 +50,12 @@ const SHAPES: Record<UiToHost["type"], Record<string, FieldCheck>> = {
   "paper.reveal": { id: isId },
   "paper.details": { id: isId },
   "paper.similar": { id: isId },
+  "paper.selected": { id: (v) => v === null || isId(v) },
+  "paper.files": { id: isId },
+  "paper.describeFile": { id: isId, name: isEntryName, description: isText },
+  "paper.openFile": { id: isId, name: isEntryName },
+  "paper.revealFile": { id: isId, name: isEntryName },
+  "paper.copyFilePath": { id: isId, name: isEntryName },
   "paper.findPdf": { id: isId, replace: (v) => v === undefined || isBool(v) },
   "paper.attachPdf": { id: isId },
   "paper.openForPdf": { id: isId, access: isAccess },

@@ -17,18 +17,20 @@ The UI names folders and papers by "/"-separated paths that start at `papers` (t
 
 1. The host starts listening on its end of the channel, then calls `mountLibraryUi(element, { transport, prefs, capabilities, labels, withSidebar })`. `prefs` is a `PrefsPort` over the host's storage. The UI starts empty and shows "Loading…".
 2. The UI sends `ready`.
-3. The host answers with `navigate` to the folder it wants open and then `snapshot`: the folder tree, every paper record, the record paths that have a PDF on this device, and reading stats by paper id (annotation count, last page, last read).
-4. The host may send `select` for a paper to show first, and `jobs` with the OCR running.
+3. The host answers with `navigate` to the folder it wants open and then `snapshot`: the folder tree, every paper record, the record paths that have a PDF on this device, and reading stats by paper id (annotation count, last page, last read, and the most recently changed highlight with its page).
+4. The host may send `select` or `reveal` for a paper to show first, and `jobs` with the OCR running.
+
+A host that can post before the UI is listening (VS Code, whose webview loads after the panel opens) keeps every message it sends before `ready` and delivers them, in order, after its answers to `ready`.
 
 ## Capabilities and labels
 
-Shared actions (open, status, move, remove, copy, folders, tags, notes, annotations and their export, keywords as searches, Related without similar content) work on every host, and every host answers `paper.details`, `paper.setTags`, `paper.setNote` and `annotations.export` and sends `sidecarChanged`. Everything else is a capability the host declares at mount; a capability left out hides every control that would send its message:
+Shared actions (open, status, move, remove, copy, folders, tags, notes, annotations and their export, keywords as searches, Related without similar content, a paper's files and their descriptions) work on every host, and every host answers `paper.details`, `paper.setTags`, `paper.setNote`, `annotations.export`, `paper.files`, `paper.describeFile`, `paper.openFile` and `paper.copyFilePath`, and sends `sidecarChanged`. Everything else is a capability the host declares at mount; a capability left out hides every control that would send its message:
 
 | Capability | Host answers | VS Code | Browser |
 |---|---|---|---|
 | `textLayer` | `paper.makeSearchable`; sends `jobs`; the UI shows the No text filter and banners | yes | no |
 | `similar` | `paper.similar` | yes | no |
-| `reveal`, `openExternal`, `fetchMetadata` | the message of the same name | yes | no |
+| `reveal`, `openExternal`, `fetchMetadata` | the message of the same name; `reveal` also covers `paper.revealFile` | yes | no |
 | `findPdf`, `attachPdf` | `paper.findPdf`, `paper.attachPdf` | no | yes |
 | `askAuthor` | `paper.askAuthor` | no | yes |
 
@@ -46,6 +48,12 @@ UI to host:
 | `paper.open` | Enter, double-click, Open PDF, an annotation (with its `page`) | opens the reader, or `pdf.missing` when the paper has no readable PDF |
 | `paper.details` | a paper is shown in the detail pane | `details` |
 | `paper.similar` | the Related tab is shown | `similar` |
+| `paper.selected` | the single selected paper changed, whether the user selected it or a host message did; `id` is null when no paper or several are selected | nothing; a host with its own tree marks the paper there |
+| `paper.files` | a paper's files are opened in the list | `files` |
+| `paper.describeFile` | the user confirmed Describe… on a file or subfolder; an empty `description` removes the stored one | writes the `files` key of the paper's metadata.yaml, then `snapshot` and `files` |
+| `paper.openFile` | Open to the side on a file of the paper | opens it beside the list: paper.pdf in the reader, any other file in the host's own viewer |
+| `paper.revealFile` | Reveal on a file or subfolder of the paper | shows it in the system file manager |
+| `paper.copyFilePath` | Copy path on a file or subfolder of the paper | copies its path (absolute on a host with a file system, else from `papers`) and sends a `notice` |
 | `paper.setStatus` | badge click, status segment, menu, Alt+1 to Alt+3 | `snapshot`; a `notice` for papers that failed |
 | `paper.setTags` | a tag added or removed in the detail pane | `snapshot`; a `notice` for papers that failed |
 | `paper.setNote` | the note was typed and paused, or left | `snapshot` |
@@ -71,6 +79,8 @@ Host to UI:
 | `snapshot` | replaces the library; records and stats equal to the ones it holds keep their identity, so unchanged rows keep their DOM nodes; asks again for the shown paper's details |
 | `navigate` | opens the folder (search, status tab, No text filter and selection reset) |
 | `select` | selects one paper |
+| `reveal` | shows the paper wherever it is: opens its folder unless the open scope already holds it, clears the search and status filter when they hide it, selects it, opens its files and scrolls it into view; reports a folder change with `navigate`; an unknown id does nothing |
+| `files` | fills the paper's file rows, or shows an inline error row when `state` is `failed` |
 | `details` | shows the paper's annotations, reading position and file, and Cited in from `citedIn`: one row per project file and heading that cites the paper. Only a host that knows writing projects sends `citedIn` (VS Code); it answers `project.openSource` |
 | `similar` | fills Related's similar content |
 | `sidecarChanged` | asks again for the shown paper's details (`id` null: whatever paper is shown) |
@@ -102,5 +112,6 @@ The citation map lists the works that at least three of the library's papers cit
 - **Attach PDF is answered synchronously.** Browsers allow a file picker only inside a user gesture, so the UI sends `paper.attachPdf` from the click itself and an in-page host opens the picker before the post returns.
 - **Status, tag and note changes show at once.** The UI applies them before sending; the next `snapshot` confirms or corrects them. A note being typed wins over the copy the host echoes back.
 - **Folder changes go both ways.** The UI reports every folder the user opens with `navigate`; the host sends `navigate` for folders it opens itself (a new folder, a renamed or deleted one, the browser's back and forward, a folder picked in the VS Code tree). The UI does not echo the first folder it renders.
-- **Heavy data is pulled.** Annotations, file size and similar papers arrive only for the paper on show, once per paper, and again after `sidecarChanged`.
+- **Heavy data is pulled.** Annotations, file size and similar papers arrive only for the paper on show, once per paper, and again after `sidecarChanged`. A file listing arrives only for a paper whose files are open, each time they open.
+- **Files are named inside their paper.** File messages carry the paper id and one entry name of its folder, never a path. The host lists, opens and describes only direct entries of that paper folder, and hides `metadata.yaml`, `bib.bib` and names starting with "." (see [library-format.md](library-format.md#layout)). A listing that fails is logged with the paper folder and answered with `files` in state `failed`.
 - **Preferences are validated once.** Hosts pass stored values through `sanitizePrefs`.

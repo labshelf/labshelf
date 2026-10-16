@@ -94,3 +94,49 @@ describe("citation map messages", () => {
     for (const m of bad) expect(parseUiMessage(m)).toBeNull();
   });
 });
+
+describe("file tray messages", () => {
+  const accepted = [
+    { type: "paper.selected", id: "p1" },
+    { type: "paper.selected", id: null },
+    { type: "paper.files", id: "p1" },
+    { type: "paper.describeFile", id: "p1", name: "notes.md", description: "My notes" },
+    { type: "paper.describeFile", id: "p1", name: "notes.md", description: "" },
+    { type: "paper.openFile", id: "p1", name: "data" },
+    { type: "paper.revealFile", id: "p1", name: "paper.pdf" },
+    { type: "paper.copyFilePath", id: "p1", name: "a b.txt" },
+  ];
+
+  it("passes well-formed messages through", () => {
+    for (const m of accepted) expect(parseUiMessage(m)).toEqual(m);
+  });
+
+  it("refuses missing fields and wrong types", () => {
+    const bad = [
+      { type: "paper.selected" },
+      { type: "paper.selected", id: 3 },
+      { type: "paper.selected", id: "" },
+      { type: "paper.files" },
+      { type: "paper.files", id: "" },
+      { type: "paper.files", id: 7 },
+      { type: "paper.describeFile", id: "p1", name: "a.txt" },
+      { type: "paper.describeFile", id: "p1", description: "x" },
+      { type: "paper.describeFile", id: "p1", name: "a.txt", description: 5 },
+      { type: "paper.describeFile", name: "a.txt", description: "x" },
+      { type: "paper.openFile", id: "p1" },
+      { type: "paper.openFile", id: "p1", name: 4 },
+      { type: "paper.revealFile", name: "a.txt" },
+      { type: "paper.revealFile", id: "p1", name: null },
+      { type: "paper.copyFilePath", id: "p1" },
+      { type: "paper.copyFilePath", id: 1, name: "a.txt" },
+    ];
+    for (const m of bad) expect(parseUiMessage(m)).toBeNull();
+  });
+
+  it.each(["a/b", "..", ".", "", "a\\b", "/etc", "../x"])("refuses the file name %p that is not one path segment", (name) => {
+    for (const type of ["paper.openFile", "paper.revealFile", "paper.copyFilePath"]) {
+      expect(parseUiMessage({ type, id: "p1", name })).toBeNull();
+    }
+    expect(parseUiMessage({ type: "paper.describeFile", id: "p1", name, description: "x" })).toBeNull();
+  });
+});
