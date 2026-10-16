@@ -1,6 +1,6 @@
 # Plan: VS Code writing code behind the web boundary
 
-Status: in progress (session 1 of 3)
+Status: in progress (session 2 of 3)
 Size: G — about 45 VS Code files, one new core port, 13 test files; grows to GG if the core data functions behind the port need rewriting instead of delegation
 Pending decisions: 0
 
