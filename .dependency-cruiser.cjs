@@ -96,6 +96,13 @@ module.exports = {
         ],
       },
     },
+    {
+      name: "vscode-neutral-no-vscode-node-folder",
+      comment: "Only extension.ts reaches VS Code node/ folders, so the neutral extension still bundles without them as a web extension.",
+      severity: "error",
+      from: { path: "^packages/vscode/src/", pathNot: ["/node/", "^packages/vscode/src/extension\\.ts$"] },
+      to: { path: "^packages/vscode/src/.*/node/" },
+    },
     ...indexOnlyRules(),
   ],
   options: {

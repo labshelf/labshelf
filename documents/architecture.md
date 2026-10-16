@@ -72,9 +72,18 @@ Core never reaches the platform directly. It declares a port, and each app imple
 
 Each app has exactly one composition root, and only that root instantiates adapters:
 
-- VS Code: `packages/vscode/src/extension.ts`; it takes the Node adapters from `activation/node/` and hands the rest of the extension the neutral `HostAdapters` interface
+- VS Code: `packages/vscode/src/extension.ts`; it takes the Node adapters from `activation/node/` and hands the rest of the extension the neutral `HostAdapters` interface (see [Node code in VS Code](#node-code-in-vs-code))
 - Browser: the background worker entry, plus one bootstrap per page (library, reader, popup, options)
 - Terminal: `packages/terminal/src/app/context.ts`
+
+### Node code in VS Code
+
+VS Code code outside a `node/` folder stays web-safe, so the extension can later ship as a web extension:
+
+- Data that core reads from disk with Node (project lists, settings, values, versions, synctex, backlinks, the build folder) comes through a neutral core port that the composition root puts on `HostAdapters`; its Node implementation lives in core `node/` next to the functions it delegates to. Writing projects use `ProjectDataPort` (`HostAdapters.createProjectData`).
+- Path logic uses the injected `PathOps`, and file reads use `vscode.workspace.fs`.
+- Code that spawns a process or hands a real disk path to an external tool (LaTeX and Typst builds, toolchain setup, figure regeneration, the project check, PDF compare) lives in a `node/` subfolder of its feature. All of it registers through one Node entry per area (for writing, `registerNodeWriting` in `writing/node/`), which `extension.ts` passes into the neutral registration. Neutral code sees it only through neutral types (for writing, `writing/nodePort/` and `ProjectBuilders`).
+- Only `extension.ts` imports a VS Code `node/` folder; `node/` folders may import each other.
 
 ## Design system
 
@@ -91,7 +100,7 @@ The design system gives the three apps one look:
 - Tests live next to the package they test (`packages/<pkg>/__tests__/` mirrors `src/`). Core has its own jest suite, and app suites test only app code.
 - Lint enforces the rules in [AGENTS.md](../AGENTS.md) that a machine can check:
   - ESLint `max-lines` and `max-lines-per-function`;
-  - import boundaries (dependency-cruiser): no app-to-app imports, no neutral → `node/` or `dom/` imports, no deep imports past an `index.ts`, and in VS Code no `node:*`, core `node/` or Node-only package (Tesseract, native canvas, pdfjs-dist) outside a `node/` folder, so the extension can run as a web extension;
+  - import boundaries (dependency-cruiser): no app-to-app imports, no neutral → `node/` or `dom/` imports, no deep imports past an `index.ts`, and in VS Code no `node:*`, core `node/` or Node-only package (Tesseract, native canvas, pdfjs-dist) outside a `node/` folder, and no import of a VS Code `node/` folder except from `extension.ts` or another `node/` folder, so the extension can run as a web extension;
   - unused files, exports and dependencies (knip);
   - directory size and per-runtime tsconfigs in core (`scripts/check-directory-size.mjs`, `scripts/check-runtime-tsconfigs.mjs`).
 
