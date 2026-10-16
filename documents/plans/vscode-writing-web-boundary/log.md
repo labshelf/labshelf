@@ -17,3 +17,9 @@
 - 2026-10-16 07:42 — peak context: main 104k (over budget), largest subagent 67k (S2.3b implementer)
 - 2026-10-16 07:44 — S2.5 finish PASS (core 3075, vscode 696 tests; lint:deps 14, all D5); commits by commit-splitter, packages/browser tabProbe work left out (not this plan)
 - 2026-10-16 07:44 — peak context (session 2 close): main 58k, largest subagent 19k (finisher)
+- 2026-10-16 — S3.1 D5 map (code-mapper, Sonnet): registerLatexBuild/registerTypstBuild move too; registrar passed into registerWritingView (needs projects/previews/diagnostics); map in research/d5-map.md; TypstBuildResult moved to neutral core (D1) instead of a structural copy in vscode (session model)
+- 2026-10-16 — S3.2 moves done in two module-splitter packages (Sonnet): a) core type, buildListener, projectBuilders, typstPreviewPdf, build/typst node/ moves; b) figures/check/versions node/, writing/nodePort, writing/node/registerNodeWriting, extension.ts; lint:deps 14 → 0, vscode 697 tests
+- 2026-10-16 — S3.3 rule vscode-neutral-no-vscode-node-folder (fires on a temporary import), architecture.md "Node code in VS Code", R-line in writing-2-writing-sync and writing-2-submission-tools (session model)
+- 2026-10-16 — S3.5 finish PASS (core 3075, vscode 697, terminal 876; lint:deps, knip, lint:dirs 0); fixed unused NodeWritingDeps export, check/ index use, import paths, barrel headers; dropped duplicate TypstBuildResult re-export from typst/node
+- 2026-10-16 — S3.4 NOT done: vscode build fails on clean HEAD (typst-ts-renderer unresolved in build:host) and the host launch was denied by the permission classifier; resume notes in sessions/03.md; plan stays open for S3.4 only
+- 2026-10-16 — peak context: main 101k (over budget), largest subagent 66k (S3.1 code-mapper)

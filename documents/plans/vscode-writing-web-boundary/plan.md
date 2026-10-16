@@ -1,6 +1,6 @@
 # Plan: VS Code writing code behind the web boundary
 
-Status: in progress (session 2 of 3)
+Status: in progress (session 3 of 3; only S3.4 open — extension-host check)
 Size: G — about 45 VS Code files, one new core port, 13 test files; grows to GG if the core data functions behind the port need rewriting instead of delegation
 Pending decisions: 0
 
@@ -28,12 +28,12 @@ Open: none. The branch is `feat/reader-ux`, as the request says.
 
 ## 4. Acceptance criteria
 
-- [ ] **A1** `pnpm run lint:deps` exits 0 with 0 violations.
-- [ ] **A2** `pnpm -r typecheck` and `pnpm -r test` pass, with the moved tests still mirroring `src/`.
-- [ ] **A3** No file under `packages/vscode/src/` outside a `node/` folder imports `node:*`, `@labshelf/core/node` or core `*/node/*` (A1 proves this; this item names the intent).
-- [ ] **A4** A new depcruise rule fails when VS Code code outside `node/` imports a VS Code `node/` folder, with `extension.ts` as the only exception. Shown by adding a temporary violation and seeing the rule fire.
+- [x] **A1** `pnpm run lint:deps` exits 0 with 0 violations.
+- [x] **A2** `pnpm -r typecheck` and `pnpm -r test` pass, with the moved tests still mirroring `src/`.
+- [x] **A3** No file under `packages/vscode/src/` outside a `node/` folder imports `node:*`, `@labshelf/core/node` or core `*/node/*` (A1 proves this; this item names the intent).
+- [x] **A4** A new depcruise rule fails when VS Code code outside `node/` imports a VS Code `node/` folder, with `extension.ts` as the only exception. Shown by adding a temporary violation and seeing the rule fire.
 - [ ] **A5** The extension host still runs the writing features on a copy of the library: open a project, build LaTeX and Typst, open the preview, compare versions (`verify` skill, extension-host recipe).
-- [ ] **A6** `documents/architecture.md` states D4 and D5 in one place, and the open writing-2 plans link to it for where Node-using writing code goes.
+- [x] **A6** `documents/architecture.md` states D4 and D5 in one place, and the open writing-2 plans link to it for where Node-using writing code goes.
 
 ## 5. Design
 

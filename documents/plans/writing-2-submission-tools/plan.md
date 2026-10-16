@@ -63,6 +63,7 @@ Runner tiers: **H** the session model (Opus or Fable); **M** Sonnet; **L** Haiku
 
 - **R1** Regenerate runs arbitrary commands. — One confirmation per project, commands only from `labshelf.yaml`, never from synced content without that confirmation on each machine.
 - **R2** Image diff is noisy when text reflows. — Diff per page with a tolerance, and `latexdiff` for LaTeX when available.
+- **R3** VS Code code that uses Node lands in the wrong folder and fails `lint:deps`. — Place it as [architecture.md#node-code-in-vs-code](../../architecture.md#node-code-in-vs-code) says: process and disk-path code in a feature's `node/` folder, registered through `writing/node/`; Node data reads through `ProjectDataPort`.
 
 ## 8. Log
 

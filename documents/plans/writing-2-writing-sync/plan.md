@@ -76,6 +76,7 @@ Runner tiers:
 - **R1** `drive.file` does not reach a coauthor's shared files. — S1 spike before any design depends on it.
 - **R2** A merge silently drops text. — Conflict markers on any overlap; the base store never deletes; tests on real edit histories.
 - **R3** The OCT public server changes terms or disappears. — It is self-hostable; the bridge only calls OCT commands.
+- **R4** VS Code code that uses Node lands in the wrong folder and fails `lint:deps`. — Place it as [architecture.md#node-code-in-vs-code](../../architecture.md#node-code-in-vs-code) says: process and disk-path code in a feature's `node/` folder, registered through `writing/node/`; Node data reads through `ProjectDataPort`.
 
 ## 8. Log
 
