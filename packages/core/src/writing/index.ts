@@ -9,3 +9,4 @@ export * from "./values/index.js";
 export * from "./checks/index.js";
 export * from "./backlinks/index.js";
 export * from "./readingList/index.js";
+export * from "./bibLint/index.js";
