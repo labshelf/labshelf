@@ -14,8 +14,8 @@ describe("popup format", () => {
     expect(parseTags("")).toEqual([]);
   });
 
-  it("names folders by their path inside the library, the root as All Papers", () => {
-    expect(folderName("papers")).toBe("All Papers");
+  it("names folders by their path inside the library, the root as All papers", () => {
+    expect(folderName("papers")).toBe("All papers");
     expect(folderName("papers/Thesis")).toBe("Thesis");
     expect(folderName("papers/Thesis/Chapter 2")).toBe("Thesis / Chapter 2");
   });

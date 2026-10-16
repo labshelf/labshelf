@@ -16,7 +16,7 @@ export function parseTags(text: string): string[] {
   return normalizeTags(text.split(/[,;]/).map((raw) => raw.trim().replace(/^#/, "")));
 }
 
-/** The folder's display name: its path inside the library ("Thesis / Chapter 2"), "All Papers" for the root. */
+/** The folder's display name: its path inside the library ("Thesis / Chapter 2"), "All papers" for the root. */
 export function folderName(path: string): string {
   return folderPathLabel(PAPERS_DIR, path, "/");
 }
