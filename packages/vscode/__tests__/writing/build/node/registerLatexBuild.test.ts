@@ -12,23 +12,28 @@ jest.mock("../../../../src/writing/build/node/latexBuilds", () => ({
 }));
 
 const rootOf = buildRootOf as jest.Mock;
-const workspace = vscode.workspace as unknown as { _fireDocumentEvent: (kind: string, document: unknown) => void };
+const workspace = vscode.workspace as unknown as {
+  _fireDocumentEvent: (kind: string, document: unknown) => void;
+  _fireConfigChange: (section: string) => void;
+  _config: Record<string, Record<string, unknown>>;
+};
 const doc = (fsPath: string) => ({ uri: Object.assign(vscode.Uri.file(fsPath), { scheme: "file" }) });
 const save = (fsPath: string) => workspace._fireDocumentEvent("save", doc(fsPath));
 
 let context: { subscriptions: { dispose(): void }[]; globalStorageUri: vscode.Uri };
 
-function setup() {
+function setup(host = fakeHost()) {
   const projects = fakeProjects([readyEntry("/p/tex", { main: "main.tex" }), readyEntry("/p/typ", { main: "main.typ", settings: { id: "typ", format: "typst" } })]);
   context = { subscriptions: [], globalStorageUri: vscode.Uri.file("/storage") };
   registerLatexBuild({
-    context: context as never, host: fakeHost(), projects: projects as never,
+    context: context as never, host, projects: projects as never,
     diagnostics: { publish: jest.fn() }, previews: { building: jest.fn(), finished: jest.fn() },
   });
 }
 
 beforeEach(() => {
   jest.clearAllMocks();
+  delete workspace._config["labshelf.writing"];
   jest.useFakeTimers();
   rootOf.mockImplementation(async (_folder: string, main: string) => main);
 });
@@ -65,5 +70,48 @@ describe("registerLatexBuild saves", () => {
     save("/p/tex/figure.png");
     await jest.advanceTimersByTimeAsync(1000);
     expect(request).not.toHaveBeenCalled();
+  });
+});
+
+describe("registerLatexBuild auto compile", () => {
+  const setAutoCompile = (on: boolean) => {
+    workspace._config["labshelf.writing"] = { autoCompile: on };
+    workspace._fireConfigChange("labshelf.writing.autoCompile");
+  };
+
+  it("requests no build on save while auto compile is off", async () => {
+    workspace._config["labshelf.writing"] = { autoCompile: false };
+    setup();
+    save("/p/tex/main.tex");
+    await jest.advanceTimersByTimeAsync(1000);
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  it("applies a change of the setting without registering again", async () => {
+    setup();
+    setAutoCompile(false);
+    save("/p/tex/main.tex");
+    await jest.advanceTimersByTimeAsync(1000);
+    expect(request).not.toHaveBeenCalled();
+    setAutoCompile(true);
+    save("/p/tex/main.tex");
+    await jest.advanceTimersByTimeAsync(300);
+    expect(request).toHaveBeenCalledWith("/p/tex", "main.tex", "save");
+  });
+
+  it("logs the skip once per setting value, not once per save", async () => {
+    const host = fakeHost();
+    workspace._config["labshelf.writing"] = { autoCompile: false };
+    setup(host);
+    save("/p/tex/main.tex");
+    save("/p/tex/main.tex");
+    save("/p/tex/figure.png");
+    await jest.advanceTimersByTimeAsync(1000);
+    expect(host.session.logger.log).toHaveBeenCalledTimes(1);
+    setAutoCompile(true);
+    setAutoCompile(false);
+    save("/p/tex/main.tex");
+    await jest.advanceTimersByTimeAsync(1000);
+    expect(host.session.logger.log).toHaveBeenCalledTimes(2);
   });
 });

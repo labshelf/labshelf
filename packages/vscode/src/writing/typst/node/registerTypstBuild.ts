@@ -4,6 +4,7 @@ import * as vscode from "vscode";
 
 import { owningProject, type ReadyProject } from "../../mainDocument.js";
 import type { WritingHost, WritingProjects } from "../../session/index.js";
+import { autoCompileGate } from "../../build/options/index.js";
 import { TypstBuilds, type TypstBuildsDeps } from "./typstBuilds.js";
 import { TypstCompilerHost } from "./typstCompilerHost.js";
 
@@ -29,7 +30,9 @@ export function registerTypstBuild(deps: TypstBuildRegistration): TypstBuilds {
   const builds = new TypstBuilds({ ...deps, compiler: new TypstCompilerHost(deps.context.globalStorageUri.fsPath) });
   const timers = new Map<string, NodeJS.Timeout>();
   let disposed = false;
+  const autoCompile = autoCompileGate(() => deps.host.current()?.logger);
   const schedule = async (project: ReadyProject, file: vscode.Uri, trigger: "live" | "save", delay: number): Promise<void> => {
+    if (!autoCompile.allows()) { return; }
     const folder = project.folder;
     const root = await buildRootOf(folder, project.main ?? "", file.fsPath);
     if (disposed) { return; } // the root resolves asynchronously, possibly after dispose
@@ -52,6 +55,7 @@ export function registerTypstBuild(deps: TypstBuildRegistration): TypstBuilds {
       const project = typstProjectOf(deps.projects, document.uri);
       if (project) { void schedule(project, document.uri, "save", SAVE_DEBOUNCE_MS); }
     }),
+    autoCompile,
     { dispose: () => { disposed = true; timers.forEach((timer) => clearTimeout(timer)); } },
   );
   return builds;

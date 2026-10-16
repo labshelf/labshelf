@@ -102,8 +102,8 @@ export interface PdfProblem {
 /** The build settings the preview chrome shows and changes; `includeOnly` is present only when the shown root uses `\include`. */
 export interface BuildOptions {
   autoCompile: boolean;
-  /** Absent for Typst, which has no engine choice. */
-  engine?: LatexEngine;
+  /** Absent for Typst, which has no engine choice; null for a LaTeX project that has not chosen one. */
+  engine?: LatexEngine | null;
   includeOnly?: { file: string; on: boolean };
 }
 

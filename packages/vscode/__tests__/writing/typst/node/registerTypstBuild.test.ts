@@ -16,19 +16,24 @@ jest.mock("../../../../src/writing/typst/typstVersionPin", () => ({ recordTypstV
 
 const run = runTypstBuild as jest.Mock;
 const rootOf = buildRootOf as jest.Mock;
-const workspace = vscode.workspace as unknown as { _fireTextDocumentChange: (event: unknown) => void; _fireDocumentEvent: (kind: string, document: unknown) => void };
+const workspace = vscode.workspace as unknown as {
+  _fireTextDocumentChange: (event: unknown) => void;
+  _fireDocumentEvent: (kind: string, document: unknown) => void;
+  _fireConfigChange: (section: string) => void;
+  _config: Record<string, Record<string, unknown>>;
+};
 const doc = (fsPath: string) => ({ uri: Object.assign(vscode.Uri.file(fsPath), { scheme: "file" }) });
 
 let context: { subscriptions: { dispose(): void }[]; globalStorageUri: vscode.Uri };
 
-function setup(hasPreview: boolean) {
+function setup(hasPreview: boolean, host = fakeHost()) {
   const projects = fakeProjects([
     readyEntry("/p/typ", { main: "main.typ", settings: { id: "typ", format: "typst" } }),
     readyEntry("/p/tex", { main: "main.tex" }),
   ]);
   context = { subscriptions: [], globalStorageUri: vscode.Uri.file("/storage") };
   registerTypstBuild({
-    context: context as never, host: fakeHost(), projects: projects as never,
+    context: context as never, host, projects: projects as never,
     diagnostics: { publish: jest.fn() }, previews: { building: jest.fn(), finished: jest.fn() }, hasPreview: () => hasPreview,
   });
 }
@@ -39,6 +44,7 @@ const outputsOf = () => run.mock.calls.map(([request]) => request.outputs.length
 
 beforeEach(() => {
   jest.clearAllMocks();
+  delete workspace._config["labshelf.writing"];
   jest.useFakeTimers();
   run.mockResolvedValue({ status: "succeeded", pdf: "/x.pdf", problems: [] });
   rootOf.mockImplementation(async (_folder: string, main: string) => main);
@@ -123,5 +129,52 @@ describe("registerTypstBuild saves", () => {
     context.subscriptions.forEach((subscription) => subscription.dispose());
     await jest.advanceTimersByTimeAsync(1000);
     expect(run).not.toHaveBeenCalled();
+  });
+});
+
+describe("registerTypstBuild auto compile", () => {
+  const setAutoCompile = (on: boolean) => {
+    workspace._config["labshelf.writing"] = { autoCompile: on };
+    workspace._fireConfigChange("labshelf.writing.autoCompile");
+  };
+
+  it("compiles neither live nor on save while auto compile is off", async () => {
+    workspace._config["labshelf.writing"] = { autoCompile: false };
+    setup(true);
+    change("/p/typ/main.typ");
+    save("/p/typ/main.typ");
+    await jest.advanceTimersByTimeAsync(1000);
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it("applies a change of the setting without registering again", async () => {
+    setup(true);
+    setAutoCompile(false);
+    change("/p/typ/main.typ");
+    await jest.advanceTimersByTimeAsync(1000);
+    expect(run).not.toHaveBeenCalled();
+    setAutoCompile(true);
+    change("/p/typ/main.typ");
+    await jest.advanceTimersByTimeAsync(150);
+    expect(outputsOf()).toEqual([1]);
+    save("/p/typ/main.typ");
+    await jest.advanceTimersByTimeAsync(300);
+    expect(run).toHaveBeenCalledTimes(2);
+  });
+
+  it("logs the skip once per setting value, not once per keystroke or save", async () => {
+    const host = fakeHost();
+    workspace._config["labshelf.writing"] = { autoCompile: false };
+    setup(true, host);
+    change("/p/typ/main.typ");
+    change("/p/typ/main.typ");
+    save("/p/typ/main.typ");
+    await jest.advanceTimersByTimeAsync(1000);
+    expect(host.session.logger.log).toHaveBeenCalledTimes(1);
+    setAutoCompile(true);
+    setAutoCompile(false);
+    save("/p/typ/main.typ");
+    await jest.advanceTimersByTimeAsync(1000);
+    expect(host.session.logger.log).toHaveBeenCalledTimes(2);
   });
 });

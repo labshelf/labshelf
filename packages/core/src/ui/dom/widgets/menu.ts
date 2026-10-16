@@ -13,6 +13,8 @@ export interface MenuItem {
   lead?: string;
   /** Shows a check mark in the icon's place. */
   checked?: boolean;
+  /** Marks a checked item as one choice of a group (role menuitemradio) instead of a toggle. */
+  radio?: boolean;
   hint?: string;
   danger?: boolean;
   disabled?: boolean;
@@ -45,7 +47,7 @@ export function showMenu(anchor: MenuAnchor | HTMLElement, entries: MenuEntry[],
     if (entry === "separator") { menu.append(el("div", { class: "ls-menu-sep", role: "separator" })); continue; }
     const item = el("button", {
       class: `ls-menu-item${entry.danger ? " danger" : ""}${entry.checked ? " checked" : ""}`,
-      role: entry.checked === undefined ? "menuitem" : "menuitemcheckbox",
+      role: entry.checked === undefined ? "menuitem" : entry.radio ? "menuitemradio" : "menuitemcheckbox",
       "aria-checked": entry.checked === undefined ? undefined : String(entry.checked),
       type: "button",
       disabled: entry.disabled ? true : undefined,
@@ -70,6 +72,8 @@ export function showMenu(anchor: MenuAnchor | HTMLElement, entries: MenuEntry[],
     if (e.key === "Escape") { e.preventDefault(); close(); }
     else if (e.key === "ArrowDown") { e.preventDefault(); items[(idx + 1) % items.length]?.focus(); }
     else if (e.key === "ArrowUp") { e.preventDefault(); items[(idx - 1 + items.length) % items.length]?.focus(); }
+    else if (e.key === "Home") { e.preventDefault(); items[0]?.focus(); }
+    else if (e.key === "End") { e.preventDefault(); items[items.length - 1]?.focus(); }
     else if (e.key === "Tab") { e.preventDefault(); }
   };
   document.addEventListener("keydown", onKey, true);

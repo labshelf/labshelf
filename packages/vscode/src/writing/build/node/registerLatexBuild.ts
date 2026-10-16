@@ -6,6 +6,7 @@ import { owningProject, type ReadyProject } from "../../mainDocument.js";
 import type { WritingHost, WritingProjects } from "../../session/index.js";
 import type { BuildPreviews } from "../../preview/index.js";
 import type { BuildDiagnostics } from "../buildDiagnostics.js";
+import { autoCompileGate } from "../options/index.js";
 import { LatexBuilds } from "./latexBuilds.js";
 
 const SOURCE_EXTENSIONS = new Set([".tex", ".bib", ".sty", ".cls"]);
@@ -31,11 +32,12 @@ export function registerLatexBuild(deps: LatexBuildDeps): LatexBuilds {
   const builds = new LatexBuilds({ storageDir: deps.context.globalStorageUri.fsPath, host: deps.host, projects: deps.projects, diagnostics: deps.diagnostics, previews: deps.previews });
   const timers = new Map<string, NodeJS.Timeout>();
   let disposed = false;
+  const autoCompile = autoCompileGate(() => deps.host.current()?.logger);
 
   const onSave = async (document: vscode.TextDocument): Promise<void> => {
     if (!SOURCE_EXTENSIONS.has(deps.projects.paths.extname(document.uri.fsPath).toLowerCase())) { return; }
     const project = latexProjectOf(deps.projects, document.uri);
-    if (!project) { return; }
+    if (!project || !autoCompile.allows()) { return; }
     const folder = project.folder;
     const root = await buildRootOf(folder, project.main ?? "", document.uri.fsPath);
     if (disposed) { return; } // the root resolves asynchronously, possibly after dispose
@@ -49,6 +51,7 @@ export function registerLatexBuild(deps: LatexBuildDeps): LatexBuilds {
 
   deps.context.subscriptions.push(
     vscode.workspace.onDidSaveTextDocument((document) => { void onSave(document); }),
+    autoCompile,
     { dispose: () => { disposed = true; timers.forEach((timer) => clearTimeout(timer)); builds.cancelAll(); } },
   );
   return builds;
