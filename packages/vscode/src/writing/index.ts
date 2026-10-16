@@ -6,3 +6,6 @@ export { registerProjectItemCommands } from "./projectItemCommands.js";
 export { WritingProjects } from "./projectStore.js";
 export type { WritingHost, WritingSession } from "./projectStore.js";
 export { WritingTreeProvider, projectTreeItem } from "./projectsTreeProvider.js";
+export { ProjectReadingLists, registerReadingListCommands } from "./readingList/index.js";
+export type { ReadingListSession } from "./readingList/index.js";
+export { ProjectBacklinkIndex } from "./backlinks/index.js";

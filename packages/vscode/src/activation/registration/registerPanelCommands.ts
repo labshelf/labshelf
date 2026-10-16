@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 
 import { exportAnnotations, findSimilarPapers, type AiService, type ReaderCommandId } from "@labshelf/core";
 import { PdfViewerPanel, ReaderPanel, createVsCodeExportPorts } from "../../pdf-viewer/index.js";
-import { ListWebviewPanel } from "../../ui/list/index.js";
+import { ListWebviewPanel, type ListPanelDeps } from "../../ui/list/index.js";
 import type { LibraryNode } from "../../ui/library/index.js";
 import { resolvePaper, ensurePaperPdf, folderActions, type FolderCommandHost, type ActiveServices, currentTextLayerJobs, onTextLayerJobsChanged } from "../../commands/index.js";
 import type { LibraryEvents } from "../../events/index.js";
@@ -22,11 +22,13 @@ export interface PanelCommandsDeps {
   folderHost: FolderCommandHost;
   syncTreeToPanel: (folder?: LibraryNode) => void;
   getAiService: () => AiService | null;
+  /** The writing projects' backlink index, shown in the detail pane as "Cited in". */
+  projectBacklinks: NonNullable<ListPanelDeps["projectBacklinks"]>;
   adapters: HostAdapters;
 }
 
 function registerOpenListTabCommand(deps: PanelCommandsDeps): void {
-  const { context, events, requireServices, papersRootUri, folderHost, syncTreeToPanel, getAiService, adapters } = deps;
+  const { context, events, requireServices, papersRootUri, folderHost, syncTreeToPanel, getAiService, adapters, projectBacklinks } = deps;
 
   context.subscriptions.push(
     vscode.commands.registerCommand("labshelf.openListTab", (node?: LibraryNode) => {
@@ -41,6 +43,7 @@ function registerOpenListTabCommand(deps: PanelCommandsDeps): void {
               textLayerJobs: { current: currentTextLayerJobs, onDidChange: onTextLayerJobsChanged },
               loadSidecar: (paperId) => services.paperDataStore.load(paperId),
               findSimilar: (paper) => findSimilarPapers(getAiService(), paper),
+              projectBacklinks,
             },
             node,
           );

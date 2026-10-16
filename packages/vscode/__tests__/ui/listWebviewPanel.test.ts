@@ -249,6 +249,15 @@ describe('ListWebviewPanel — per-paper data', () => {
     await flush();
     expect(h.last('sidecarChanged')).toEqual({ type: 'sidecarChanged', id: 'p1' });
   });
+
+  it('tells the UI to ask for the shown details again when the projects citing papers change', async () => {
+    const backlinks = new vscode.EventEmitter<void>();
+    const h = open(undefined, { projectBacklinks: { index: () => new Map(), projectFolder: () => undefined, onDidChange: backlinks.event } });
+    await h.fire({ type: 'ready' });
+    backlinks.fire();
+    await flush();
+    expect(h.last('sidecarChanged')).toEqual({ type: 'sidecarChanged', id: null });
+  });
 });
 
 describe('ListWebviewPanel — text layers', () => {

@@ -6,12 +6,13 @@ import { errorMessage, parseUiMessage, type UiToHost } from '@labshelf/core';
 import { LOG_MODULE, type ListHostContext } from './hostContext.js';
 import { movePapers, removePapers, revealPaper, runCommand, setNote, setStatus, setTags, writeClipboard } from './paperHandlers.js';
 import { sendDetails, sendSimilar } from './paperData.js';
+import { openProjectSource } from './projectSource.js';
 
 // What a failure notice says the action was.
 const FAILURE: Partial<Record<UiToHost['type'], string>> = {
   'folder.create': 'Could not create the folder', 'folder.rename': 'Could not rename the folder', 'folder.delete': 'Could not delete the folder',
   'paper.move': 'Could not move the papers', 'paper.remove': 'Could not remove the papers', 'paper.setStatus': 'Could not change the status',
-  'paper.setTags': 'Could not change the tags', 'paper.setNote': 'Could not save the note', 'clipboard.write': 'Could not copy',
+  'paper.setTags': 'Could not change the tags', 'project.openSource': 'Could not open the source', 'paper.setNote': 'Could not save the note', 'clipboard.write': 'Could not copy',
 };
 
 // Folder and add-paper messages, whose paths the guard kept inside papers/.
@@ -43,6 +44,7 @@ async function onPaperMessage(ctx: ListHostContext, m: UiToHost): Promise<boolea
     case 'paper.setTags': await setTags(ctx, m.ids, m.add, m.remove); return true;
     case 'paper.setNote': await setNote(ctx, m.id, m.note); return true;
     case 'paper.remove': await removePapers(ctx, m.ids); return true;
+    case 'project.openSource': await openProjectSource(ctx, m.project, m.file, m.line); return true;
     case 'clipboard.write': await writeClipboard(ctx, m.text, m.label); return true;
     default: return false;
   }

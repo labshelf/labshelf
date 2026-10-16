@@ -2,3 +2,4 @@
 export { registerCitationProviders } from "./registerCitationProviders.js";
 export type { CitationWorkspace } from "./citationWorkspace.js";
 export { paperHover } from "./paperHover.js";
+export { openEditorSources } from "./openEditorSources.js";

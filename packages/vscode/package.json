@@ -300,6 +300,17 @@
         "title": "Research: Regenerate Figure",
         "category": "LabShelf",
         "icon": "$(sync)"
+      },
+      {
+        "command": "labshelf.writing.addToReadingList",
+        "title": "Add Paper to Reading List…",
+        "category": "LabShelf",
+        "icon": "$(add)"
+      },
+      {
+        "command": "labshelf.writing.removeFromReadingList",
+        "title": "Remove from Reading List",
+        "category": "LabShelf"
       }
     ],
     "viewsContainers": {
@@ -452,6 +463,21 @@
           "command": "labshelf.writing.regenerateFigure",
           "when": "view == labshelf.writing && viewItem =~ /^labshelfFigure/",
           "group": "1_figure@1"
+        },
+        {
+          "command": "labshelf.writing.addToReadingList",
+          "when": "view == labshelf.writing && viewItem == labshelfReadingList",
+          "group": "inline@1"
+        },
+        {
+          "command": "labshelf.writing.addToReadingList",
+          "when": "view == labshelf.writing && viewItem =~ /^labshelfProject(External)?$|^labshelfReadingList$/",
+          "group": "3_reading@1"
+        },
+        {
+          "command": "labshelf.writing.removeFromReadingList",
+          "when": "view == labshelf.writing && viewItem == labshelfReadingPaperAdded",
+          "group": "2_remove@1"
         }
       ],
       "commandPalette": [
@@ -513,6 +539,14 @@
         },
         {
           "command": "labshelf.writing.regenerateFigure",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.addToReadingList",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.removeFromReadingList",
           "when": "false"
         }
       ],

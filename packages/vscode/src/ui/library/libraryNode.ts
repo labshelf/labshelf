@@ -2,6 +2,7 @@
  * Declares the folder node the Library tree and the list panel share: a collection folder under papers/, or papers/ itself.
  */
 import { ROOT_LABEL } from '@labshelf/core';
+import type { ContinueNode } from './continueNode.js';
 
 // A node is a "collection folder": a real directory under papers/ that is not
 // itself a paper folder. The root node stands for papers/ itself.
@@ -10,6 +11,9 @@ export interface LibraryNode {
   dirPath: string;
   isRoot?: boolean;
 }
+
+/** A row of the Library tree: a Continue shortcut or a folder. */
+export type LibraryTreeNode = LibraryNode | ContinueNode;
 
 /** Builds the node that represents papers/ itself. */
 export function rootNode(rootDir: string): LibraryNode {

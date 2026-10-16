@@ -6,6 +6,7 @@ import * as vscode from "vscode";
 import { listProjects } from "@labshelf/core/node";
 import { registerWritingView } from "../../../src/activation/registration/registerWritingView";
 import type { LibraryRootController } from "../../../src/activation/libraryLifecycle";
+import { createLibraryEvents } from "../../../src/events";
 import { fakeLogger } from "../../support/writingFixtures";
 
 jest.mock("@labshelf/core/node", () => ({ ...jest.requireActual("@labshelf/core/node"), listProjects: jest.fn(async () => []) }));
@@ -27,7 +28,7 @@ function setup(root: string | undefined) {
     globalStorageUri: vscode.Uri.file("/storage"),
     workspaceState: { get: () => undefined, update: jest.fn(async () => {}) },
   };
-  registerWritingView(context as unknown as vscode.ExtensionContext, controller, { locatePdfjs: () => null, isMac: false });
+  registerWritingView(context as unknown as vscode.ExtensionContext, controller, { locatePdfjs: () => null, isMac: false }, createLibraryEvents());
   return { emitter };
 }
 

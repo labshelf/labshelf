@@ -64,6 +64,10 @@ export class ListWebviewPanel {
       _deps.events.annotationChanged.event(this._onSidecarEvent),
       _deps.events.pdfViewerClosed.event(this._onSidecarEvent),
     );
+    // Which projects cite the shown paper changed: the pane asks for its details again.
+    if (_deps.projectBacklinks) {
+      this._disposables.push(_deps.projectBacklinks.onDidChange(() => void this._post({ type: 'sidecarChanged', id: null })));
+    }
     // Job updates arrive every page or two; they patch the rows without re-reading the index.
     if (_deps.textLayerJobs) {
       this._disposables.push(_deps.textLayerJobs.onDidChange((jobs) => void this._postJobs(jobs)));

@@ -6,6 +6,7 @@ import type { FigureState } from "@labshelf/core";
 import type { FigureNode } from "../../src/writing/figures";
 import { fakeProjects, readyEntry } from "../support/writingFixtures";
 
+const NO_READING_LIST = { of: async () => ({ entries: [], neverOpened: 0 }), onDidChange: new vscode.EventEmitter<void>().event };
 const NO_FIGURES = { children: async () => [] as FigureNode[], onDidChange: new vscode.EventEmitter<void>().event };
 
 function projectWithFigures(): ReturnType<typeof readyEntry> {
@@ -51,9 +52,10 @@ describe("projectTreeItem", () => {
     expect(item.command).toBeUndefined();
   });
 
-  it("makes a project with figures collapsible and one without not", () => {
-    expect(projectTreeItem(projectWithFigures()).collapsibleState).toBe(vscode.TreeItemCollapsibleState.Collapsed);
-    expect(projectTreeItem(readyEntry("/lib/projects/x")).collapsibleState).toBe(vscode.TreeItemCollapsibleState.None);
+  it("makes a ready project collapsible for its reading list and a broken one not", () => {
+    expect(projectTreeItem(readyEntry("/lib/projects/x")).collapsibleState).toBe(vscode.TreeItemCollapsibleState.Collapsed);
+    const broken = { kind: "broken" as const, folder: "/x", location: "library" as const, reason: "bad" };
+    expect(projectTreeItem(broken).collapsibleState).toBe(vscode.TreeItemCollapsibleState.None);
   });
 
   it("marks a broken library project without the external flag", () => {
@@ -63,17 +65,17 @@ describe("projectTreeItem", () => {
 });
 
 describe("WritingTreeProvider", () => {
-  it("lists the store's projects as roots and no figures below a project without any", async () => {
+  it("lists the store's projects as roots and only the reading list below a project without figures", async () => {
     const entries = [readyEntry("/lib/projects/a"), readyEntry("/code/b", { location: "external" })];
-    const provider = new WritingTreeProvider({ ...fakeProjects(entries), onDidChange: new vscode.EventEmitter<void>().event } as never, NO_FIGURES);
+    const provider = new WritingTreeProvider({ ...fakeProjects(entries), onDidChange: new vscode.EventEmitter<void>().event } as never, NO_FIGURES, NO_READING_LIST);
     expect(provider.getChildren()).toEqual(entries);
-    expect(await provider.getChildren(entries[0])).toEqual([]);
+    expect(await provider.getChildren(entries[0])).toEqual([{ kind: "readingList", project: entries[0], list: { entries: [], neverOpened: 0 } }]);
   });
 
   it("refreshes the tree when the store changes", () => {
     const emitter = new vscode.EventEmitter<void>();
     const projects = { ...fakeProjects(), onDidChange: emitter.event };
-    const provider = new WritingTreeProvider(projects as never, NO_FIGURES);
+    const provider = new WritingTreeProvider(projects as never, NO_FIGURES, NO_READING_LIST);
     const refreshed = jest.fn();
     provider.onDidChangeTreeData(refreshed);
     emitter.fire();
@@ -85,11 +87,12 @@ describe("figure rows", () => {
   const provider = (children: FigureNode[]): WritingTreeProvider => new WritingTreeProvider(
     { ...fakeProjects(), onDidChange: new vscode.EventEmitter<void>().event } as never,
     { children: async () => children, onDidChange: new vscode.EventEmitter<void>().event },
+    NO_READING_LIST,
   );
 
-  it("lists the figures of a ready project below it", async () => {
+  it("lists the figures of a ready project below it, then its reading list", async () => {
     const node = figureNode({ status: "fresh", missingInputs: [] });
-    expect(await provider([node]).getChildren(node.project)).toEqual([node]);
+    expect(await provider([node]).getChildren(node.project)).toEqual([node, expect.objectContaining({ kind: "readingList" })]);
   });
 
   it("has no children below a broken project or a figure", async () => {
@@ -124,7 +127,7 @@ describe("figure rows", () => {
 
   it("refreshes the tree when the figures change", () => {
     const emitter = new vscode.EventEmitter<void>();
-    const tree = new WritingTreeProvider({ ...fakeProjects(), onDidChange: new vscode.EventEmitter<void>().event } as never, { children: async () => [], onDidChange: emitter.event });
+    const tree = new WritingTreeProvider({ ...fakeProjects(), onDidChange: new vscode.EventEmitter<void>().event } as never, { children: async () => [], onDidChange: emitter.event }, NO_READING_LIST);
     const refreshed = jest.fn();
     tree.onDidChangeTreeData(refreshed);
     emitter.fire();

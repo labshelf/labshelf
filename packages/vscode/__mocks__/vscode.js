@@ -305,6 +305,14 @@ window.onDidChangeActiveTextEditor = jest.fn((handler) => {
 });
 window._fireActiveEditorChange = () => _activeEditorListeners.forEach((l) => l(window.activeTextEditor));
 
+// Tests call `window._fireSelectionChange()` after moving the active editor's selection.
+const _selectionListeners = [];
+window.onDidChangeTextEditorSelection = jest.fn((handler) => {
+  _selectionListeners.push(handler);
+  return { dispose: () => { _selectionListeners.splice(_selectionListeners.indexOf(handler), 1); } };
+});
+window._fireSelectionChange = () => _selectionListeners.forEach((l) => l({ textEditor: window.activeTextEditor }));
+
 // ─── CancellationToken ────────────────────────────────────────────────────────
 
 const CancellationToken = { None: { isCancellationRequested: false } };
@@ -346,13 +354,13 @@ class DocumentLink {
   constructor(range, target) { this.range = range; this.target = target; }
 }
 
+class CompletionItem {
+  constructor(label, kind) { this.label = label; this.kind = kind; }
+}
+
 class TextEdit {
   constructor(range, newText) { this.range = range; this.newText = newText; }
   static insert(position, newText) { return new TextEdit(new Range(position, position), newText); }
-}
-
-class CompletionItem {
-  constructor(label, kind) { this.label = label; this.kind = kind; }
 }
 
 const CompletionItemKind = { Field: 4, Function: 2, Value: 11, Snippet: 14, Reference: 17 };

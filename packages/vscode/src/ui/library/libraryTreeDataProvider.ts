@@ -1,11 +1,13 @@
 /**
- * Provides the VS Code tree view for the LabShelf library: an "All Papers" entry plus the collection folders under papers/. Every row opens in the list panel, shows its paper count, and accepts PDF drops and folder drags.
+ * Provides the VS Code tree view for the LabShelf library: Continue rows for the paper read last and the project file edited last, an "All Papers" entry, and the collection folders under papers/. Folder rows open in the list panel and show their paper count.
  */
 import * as vscode from 'vscode';
 import { PAPERS_DIR, findNode, folderTreeFromSnapshot, type CountedFolder, type LibrarySnapshot, type PathOps } from '@labshelf/core';
 import { rootNode } from './libraryNode.js';
-import type { LibraryNode } from './libraryNode.js';
+import type { LibraryNode, LibraryTreeNode } from './libraryNode.js';
 import { onPaperChange, type LibraryEvents } from "../../events/index.js";
+import type { ContinueSource } from "../../continue/index.js";
+import { continueTreeItem, isContinueNode } from './continueNode.js';
 
 export type { LibraryNode } from './libraryNode.js';
 
@@ -15,8 +17,8 @@ type SnapshotSource = () => LibrarySnapshot | undefined;
 const ROOT_ITEM_ID = 'labshelf:all-papers';
 const REFRESH_DEBOUNCE_MS = 60;
 
-export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryNode> {
-  private _onDidChangeTreeData = new vscode.EventEmitter<LibraryNode | undefined | null | void>();
+export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryTreeNode> {
+  private _onDidChangeTreeData = new vscode.EventEmitter<LibraryTreeNode | undefined | null | void>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
   private _papersRoot: vscode.Uri | null;
@@ -28,11 +30,15 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryN
     private readonly _getSnapshot: SnapshotSource,
     events: LibraryEvents,
     private readonly _paths: PathOps,
+    private readonly _continue: ContinueSource,
   ) {
     this._papersRoot = papersRoot;
     // A folder move emits one paper:updated per paper, so event refreshes are coalesced.
     const refresh = (): void => this._scheduleRefresh();
     onPaperChange(events, refresh);
+    // A reader closing has just saved its page; a project cursor is saved by the recorder.
+    events.pdfViewerClosed.event(refresh);
+    _continue.onDidChange(refresh);
   }
 
   /**
@@ -62,7 +68,8 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryN
    * Returns the VS Code TreeItem for a node. Every row, not just leaves, opens in the list panel on click.
    * @returns A vscode.TreeItem configured for the given node.
    */
-  async getTreeItem(node: LibraryNode): Promise<vscode.TreeItem> {
+  async getTreeItem(node: LibraryTreeNode): Promise<vscode.TreeItem> {
+    if (isContinueNode(node)) { return continueTreeItem(node); }
     const hasChildren = !node.isRoot && this._children(node.dirPath).length > 0;
     const item = new vscode.TreeItem(
       node.label,
@@ -86,11 +93,11 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryN
   }
 
   /**
-   * Returns the child folders of a node. The top level is "All Papers" followed by the folders directly under papers/.
-   * @returns A promise resolving to an array of LibraryNode objects.
+   * Returns the child folders of a node. The top level is the Continue rows, "All Papers", then the folders directly under papers/.
+   * @returns A promise resolving to an array of tree nodes.
    */
-  async getChildren(node?: LibraryNode): Promise<LibraryNode[]> {
-    if (node?.isRoot) {
+  async getChildren(node?: LibraryTreeNode): Promise<LibraryTreeNode[]> {
+    if (node && (isContinueNode(node) || node.isRoot)) {
       return [];
     }
     if (node) {
@@ -100,16 +107,17 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryN
     if (!root) {
       return [];
     }
-    return [root, ...this._children(root.dirPath)];
+    const rows = (await this._continue.targets()).map((target) => ({ target }));
+    return [...rows, root, ...this._children(root.dirPath)];
   }
 
   /**
    * Returns the parent LibraryNode for a given node, or null when the node is at the top level.
    * @returns The parent LibraryNode, or null.
    */
-  getParent(node: LibraryNode): vscode.ProviderResult<LibraryNode> {
+  getParent(node: LibraryTreeNode): vscode.ProviderResult<LibraryNode> {
     const root = this._papersRoot?.fsPath;
-    if (!root || node.isRoot) {
+    if (!root || isContinueNode(node) || node.isRoot) {
       return null;
     }
     const parent = this._paths.dirname(node.dirPath);
@@ -158,69 +166,5 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryN
       this._refreshTimer = null;
       this.refresh();
     }, REFRESH_DEBOUNCE_MS);
-  }
-}
-
-// text/uri-list carries OS file drops (PDF import). The tree mime carries folders
-// dragged inside this tree; its name is fixed by VS Code from the view id.
-const URI_LIST_MIME = 'text/uri-list';
-const TREE_MIME = 'application/vnd.code.tree.labshelf.library';
-
-export class LibraryDragAndDropController implements vscode.TreeDragAndDropController<LibraryNode> {
-  readonly dropMimeTypes = [URI_LIST_MIME, TREE_MIME];
-  readonly dragMimeTypes = [TREE_MIME];
-
-  constructor(
-    private readonly onFileDrop: (uris: vscode.Uri[], targetDir: string | undefined) => Promise<void>,
-    private readonly onFolderMove?: (sourceDirs: string[], targetDir: string | undefined) => Promise<void>,
-  ) {}
-
-  /**
-   * Puts the dragged folders on the transfer. "All Papers" is not a real folder and cannot be dragged.
-   */
-  handleDrag(source: readonly LibraryNode[], dataTransfer: vscode.DataTransfer): void {
-    const dirs = source.filter((n) => !n.isRoot).map((n) => n.dirPath);
-    if (dirs.length > 0) {
-      dataTransfer.set(TREE_MIME, new vscode.DataTransferItem(dirs));
-    }
-  }
-
-  /**
-   * Routes a drop: folders dragged within the tree are moved, OS files are imported. A drop on "All Papers" or on the empty area targets papers/.
-   */
-  async handleDrop(target: LibraryNode | undefined, dataTransfer: vscode.DataTransfer): Promise<void> {
-    const targetDir = target?.dirPath;
-
-    const dragged = dataTransfer.get(TREE_MIME)?.value as unknown;
-    if (Array.isArray(dragged) && dragged.length > 0) {
-      const dirs = dragged.filter((d): d is string => typeof d === 'string');
-      if (dirs.length > 0 && this.onFolderMove) {
-        await this.onFolderMove(dirs, targetDir);
-      }
-      return;
-    }
-
-    const item = dataTransfer.get(URI_LIST_MIME);
-    if (!item) {
-      return;
-    }
-
-    const raw = await item.asString();
-    const uris = raw
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line && !line.startsWith('#'))
-      .flatMap((line) => {
-        try {
-          return [vscode.Uri.parse(line, true)];
-        } catch {
-          return [];
-        }
-      })
-      .filter((u) => u.scheme === 'file');
-
-    if (uris.length > 0) {
-      await this.onFileDrop(uris, targetDir);
-    }
   }
 }

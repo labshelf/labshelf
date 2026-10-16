@@ -1,9 +1,9 @@
 /**
  * Declares what the list panel needs from the extension: the paper service, events, the library root, the library snapshot and
- * folder changes, OCR jobs, reader sidecars and the AI index.
+ * folder changes, OCR jobs, reader sidecars, the AI index and the writing projects' citations.
  */
 import type * as vscode from 'vscode';
-import type { Annotation, ILogger, LibrarySnapshot, PaperRecord, PathOps, SimilarPaper, TextLayerJobView } from '@labshelf/core';
+import type { Annotation, BacklinkIndex, ILogger, LibrarySnapshot, PaperRecord, PathOps, SimilarPaper, TextLayerJobView } from '@labshelf/core';
 import type { PaperService } from '../../core/index.js';
 import type { LibraryEvents } from '../../events/index.js';
 import type { LibraryNode } from '../library/index.js';
@@ -19,6 +19,14 @@ interface ListFolderActions {
   create(parentDir: string, name: string): Promise<void>;
   rename(dir: string, name: string): Promise<void>;
   trash(dir: string): Promise<void>;
+}
+
+/** The writing projects that cite papers; the panel shows them as "Cited in" and opens their sources. */
+interface ListProjectBacklinks {
+  index(): BacklinkIndex;
+  /** The folder of the ready project with this id. */
+  projectFolder(id: string): string | undefined;
+  onDidChange: vscode.Event<void>;
 }
 
 export interface ListPanelDeps {
@@ -41,6 +49,7 @@ export interface ListPanelDeps {
   };
   /** Reads a paper's reader sidecar (annotations, reading position). Without it the panel shows no annotations. */
   loadSidecar?: (paperId: string) => Promise<PaperSidecar>;
+  projectBacklinks?: ListProjectBacklinks;
   /** Papers with similar content, when the AI index is running. */
   findSimilar?: (paper: PaperRecord) => Promise<SimilarPaper[]>;
 }
