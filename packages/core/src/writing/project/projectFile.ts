@@ -2,6 +2,7 @@
 // CONTRACT: documents/contracts/library-format.md#labshelfyaml
 
 import YAML from "yaml";
+import { readExperimentKeys, type ExperimentKeys } from "./experimentKeys.js";
 
 export const PROJECT_FILE = "labshelf.yaml";
 export const DEFAULT_BIBLIOGRAPHY = "labshelf.bib";
@@ -12,7 +13,7 @@ export type ProjectFormat = (typeof PROJECT_FORMATS)[number];
 export const LATEX_ENGINES = ["tectonic", "xelatex", "pdflatex", "lualatex"] as const;
 export type LatexEngine = (typeof LATEX_ENGINES)[number];
 
-export interface ProjectSettings {
+export interface ProjectSettings extends ExperimentKeys {
   id: string;
   format: ProjectFormat;
   /** Path of the main file, relative to the project folder. */
@@ -23,8 +24,8 @@ export interface ProjectSettings {
   typst?: string | undefined;
 }
 
-/** Settings LabShelf may rewrite after creation; undefined removes the key. */
-export type ProjectSettingsPatch = Partial<Omit<ProjectSettings, "id" | "format">>;
+/** Settings LabShelf may rewrite after creation; undefined removes the key. The experiment keys are the user's alone. */
+export type ProjectSettingsPatch = Partial<Omit<ProjectSettings, "id" | "format" | keyof ExperimentKeys>>;
 
 export type ProjectFileResult =
   | { ok: true; settings: ProjectSettings }
@@ -65,7 +66,9 @@ export function parseProjectFile(text: string): ProjectFileResult {
     }
     settings[key] = value ?? undefined;
   }
-  return { ok: true, settings };
+  const experiment = readExperimentKeys(raw);
+  if (typeof experiment === "string") { return { ok: false, reason: experiment }; }
+  return { ok: true, settings: { ...settings, ...experiment } };
 }
 
 /** The text of a new labshelf.yaml. */

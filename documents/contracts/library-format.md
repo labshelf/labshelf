@@ -80,6 +80,11 @@ main: main.tex
 engine: tectonic
 bibliography: labshelf.bib
 typst: 0.14.2
+figures:
+  fig/ablation.pdf:
+    run: python plot_ablation.py
+    inputs: [plot_ablation.py, results/*.json]
+values: [results.json]
 ```
 
 | Key | Type | Notes |
@@ -90,6 +95,10 @@ typst: 0.14.2
 | `engine` | `tectonic` \| `xelatex` \| `pdflatex` \| `lualatex` | LaTeX only |
 | `bibliography` | string | the bibliography file the main file loads, `labshelf.bib` by default; written once the main file loads it |
 | `typst` | string | Typst compiler version of the last successful Typst build, written after each one; a YAML number reads as its text |
+| `figures` | mapping | figure path → `{run, inputs}`; `run` is the shell command that makes the figure, run in the project folder; `inputs` lists paths or globs (`*`, `**`, `?`). A figure is stale when it is missing or an input is newer than it |
+| `values` | string[] | JSON files whose leaves the sources read: `\lsvalue{<file>.<path>}` in LaTeX, `json("…")` in Typst. `<file>` is the file name without `.json`, and of two files with the same name only the first is read; array items are numbered from 0 |
+
+LabShelf never writes `figures` or `values`. A malformed one makes the file fail to parse, with the key in the reason. A `run` command executes only after the user confirms it on that machine; the confirmation covers that project and that exact command.
 
 Rules:
 
@@ -108,6 +117,15 @@ LabShelf owns this file in a writing project and regenerates it from the cite ke
 - A cited key with no library paper has no entry; it is left to the user's own `.bib` file.
 - The file is created with the first cited library paper.
 - Once the main file loads the file, the main file has the bibliography line and `labshelf.yaml` has `bibliography:`. A Typst main file that already calls `#bibliography` is left to the user.
+
+## labshelf-values.tex
+
+LabShelf owns this file in a LaTeX project with `values:`. It is written next to the main file before each build.
+
+- The first line is the generated-file comment; edits are overwritten. The file is rewritten only when its text changes.
+- It defines `\lsvalue{<key>}`, which prints the leaf's value, or `??` with a LaTeX warning when the key is unknown.
+- Each JSON leaf (number, string, boolean) becomes one key: `<file>.<path>`, dot-separated. Strings are escaped for LaTeX. A key with a character outside letters, digits, `.`, `-` and `_` is skipped.
+- The main file gets `\input{labshelf-values}` before `\begin{document}`, once. A main file without `\begin{document}` is left as it is, and the build logs a warning.
 
 ## .research/projects.json
 
