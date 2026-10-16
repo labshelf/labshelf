@@ -2,13 +2,15 @@
 import * as vscode from "vscode";
 
 import {
-  citationEntries, citedKeysAt, papersByCiteKey, quotedHighlights,
-  type Annotation, type CitationDetails, type CitationEntry, type CitationQuery, type ILogger, type PaperRecord, type ProjectFormat, type TypstCite,
+  citationEntries, citedKeysAt,
+  type Annotation, type CitationEntry, type CitationQuery, type ILogger, type PagePoint, type PaperRecord, type ProjectFormat, type TypstCite,
 } from "@labshelf/core";
 import type { CiteSections } from "../../citations/index.js";
 import { PREVIEW_LOG_MODULE } from "../previewStrings.js";
 import type { SynctexLookup } from "../sourceLinks/index.js";
-import { sourceLineAt } from "./sourceLineAt.js";
+import { cardDetails, warn } from "./citationCardDetails.js";
+import { citingSites, type CitingSite } from "./citingCommands.js";
+import { sourceLineAt, type LocatedSourceLine } from "./sourceLineAt.js";
 
 export interface PreviewCitationDeps {
   logger: ILogger;
@@ -23,51 +25,37 @@ export interface PreviewCitationDeps {
   citeSections: () => Promise<Pick<CiteSections, "byKey">>;
 }
 
-const HIGHLIGHTS_SHOWN = 5;
-
-async function warn(deps: PreviewCitationDeps, message: string, error: unknown, context: object = {}): Promise<void> {
-  await deps.logger.log("WARN", PREVIEW_LOG_MODULE, message, { projectFolder: deps.projectFolder, ...context, error: String(error) });
-}
-
-/** A part that cannot be read is logged and left out, so the card still answers. */
-async function cardDetails(deps: PreviewCitationDeps, keys: readonly string[], papers: readonly PaperRecord[]): Promise<CitationDetails> {
-  const cited = papersByCiteKey(papers);
-  const highlights = new Map<string, ReturnType<typeof quotedHighlights>>();
-  for (const paper of new Set(keys.flatMap((key) => cited.get(key) ?? []))) {
-    try {
-      const quotes = quotedHighlights(await deps.highlightsOf(paper.id), HIGHLIGHTS_SHOWN);
-      if (quotes.length > 0) { highlights.set(paper.id, quotes); }
-    } catch (error) {
-      await warn(deps, "Reading highlights for the citation card failed", error, { paperId: paper.id });
-    }
-  }
-  const citedIn = new Map<string, string[]>();
-  try {
-    const { byKey } = await deps.citeSections();
-    for (const key of keys) {
-      const titles = [...new Set((byKey.get(key) ?? []).map((section) => section.title))];
-      if (titles.length > 0) { citedIn.set(key, titles); }
-    }
-  } catch (error) {
-    await warn(deps, "Reading the citing sections for the citation card failed", error);
-  }
-  return { highlights, citedIn };
+function areaCenter(area: CitationQuery["area"]): PagePoint {
+  return { page: area.page, x: (area.left + area.right) / 2, y: (area.top + area.bottom) / 2 };
 }
 
 /** Answers with no entries on a failure; a hover must not raise a notice every time. */
 export async function lookupCitation(deps: PreviewCitationDeps, query: CitationQuery): Promise<CitationEntry[]> {
   try {
-    const keys = await citedKeysAt(query, {
-      format: deps.format,
-      typstCites: deps.typstCites(),
-      sourceLineAt: (point) => sourceLineAt(deps.synctex, point),
-    });
+    // The source line behind the place is read once: it finds the keys of a LaTeX text and the citing command of every key.
+    let located: Promise<LocatedSourceLine | undefined> | undefined;
+    const locate = (point: PagePoint): Promise<LocatedSourceLine | undefined> => (located ??= sourceLineAt(deps.synctex, point));
+    const keys = await citedKeysAt(query, { format: deps.format, typstCites: deps.typstCites(), sourceLineAt: locate });
     if (keys.length === 0) { return []; }
     const papers = await deps.listPapers();
-    return citationEntries(keys, papers, await cardDetails(deps, keys, papers));
+    const sites = deps.format === "latex" ? await citingSitesAt(deps, keys, () => locate(areaCenter(query.area))) : new Map<string, CitingSite>();
+    return citationEntries(keys, papers, await cardDetails(deps, keys, papers, sites));
   } catch (error) {
     await deps.logger.log("WARN", PREVIEW_LOG_MODULE, "Citation lookup failed", { projectFolder: deps.projectFolder, page: query.area.page, error: String(error) });
     return [];
+  }
+}
+
+/** The citing commands are extra: a source that cannot be read is logged and the card answers without them. */
+async function citingSitesAt(
+  deps: PreviewCitationDeps, keys: readonly string[], locate: () => Promise<LocatedSourceLine | undefined>,
+): Promise<Map<string, CitingSite>> {
+  try {
+    const source = await locate();
+    return source ? citingSites(deps.format, deps.projectFolder, source, keys) : new Map();
+  } catch (error) {
+    await warn(deps, "Reading the citing source for the citation card failed", error);
+    return new Map();
   }
 }
 

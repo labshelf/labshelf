@@ -23,13 +23,13 @@ describe("sourceLineAt", () => {
   it("reads the file through the workspace file system, decoded as UTF-8", async () => {
     readFile.mockResolvedValue(new TextEncoder().encode("café\nline"));
     const result = await sourceLineAt(lookup("/ws/main.tex"), point as never);
-    expect(result).toEqual({ text: "café\nline", line: 3 });
+    expect(result).toEqual({ file: "/ws/main.tex", text: "café\nline", line: 3 });
     expect(readFile).toHaveBeenCalledWith(expect.objectContaining({ fsPath: "/ws/main.tex" }));
   });
 
   it("prefers the open document's unsaved text over the file", async () => {
     (vscode.workspace as unknown as { textDocuments: unknown[] }).textDocuments = [{ uri: { fsPath: "/ws/main.tex" }, getText: () => "unsaved" }];
-    expect(await sourceLineAt(lookup("/ws/main.tex"), point as never)).toEqual({ text: "unsaved", line: 3 });
+    expect(await sourceLineAt(lookup("/ws/main.tex"), point as never)).toEqual({ file: "/ws/main.tex", text: "unsaved", line: 3 });
     expect(readFile).not.toHaveBeenCalled();
   });
 
