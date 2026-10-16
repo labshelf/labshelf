@@ -1,6 +1,6 @@
 # Plan: Overleaf-like writing workspace in VS Code
 
-Status: in progress (session 2 of 8)
+Status: in progress (session 3 of 8)
 Size: GG — new view model, per-root builds, preview chrome, a reader-host and two library-format changes; grows if Typst root detection needs Tinymist
 Pending decisions: 0
 
@@ -46,16 +46,16 @@ Facts: [research/current-state.md](research/current-state.md), [research/checkli
 - [ ] **A1** With VS Code open on any folder, Projects lists the library's projects and the registered external folders.
 - [ ] **A2** Opening a project replaces the list with its views; the file tree hides the build dir and `.labshelf/` and marks the main file; back returns to the list.
 - [ ] **A3** File tree: open, new file/folder, rename, delete (confirmed); follows outside changes.
-- [ ] **A4** Opening a project opens the main and exactly one preview; more sources never open a second preview.
-- [ ] **A5** Closing the project closes its tabs and preview; on an unsaved-changes prompt, cancel keeps it open.
-- [ ] **A6** Focusing a root shows its PDF, an included chapter shows the main PDF, and a non-project tab changes nothing.
+- [x] **A4** Opening a project opens the main and exactly one preview; more sources never open a second preview.
+- [x] **A5** Closing the project closes its tabs and preview; on an unsaved-changes prompt, cancel keeps it open.
+- [x] **A6** Focusing a root shows its PDF, an included chapter shows the main PDF, and a non-project tab changes nothing.
 - [ ] **A7** A failing focused root shows the main PDF with "<file>: <n> error(s)"; clicking opens its logs.
 - [ ] **A8** A failing main opens the logs; Back to PDF shows the last good PDF.
 - [x] **A9** Same-basename roots in two folders keep separate PDF, log, SyncTeX.
 - [ ] **A10** Preview toolbar has Recompile and code→PDF / PDF→code; the paper reader toolbar has none.
 - [ ] **A11** Logs view: All / Errors / Warnings / Info counts, file:line jumps, Open raw log.
 - [ ] **A12** D10 actions work in project files; Cmd+B elsewhere toggles the side bar.
-- [ ] **A13** Typecheck and tests pass for core and vscode; the browser reader boots (headless check).
+- [x] **A13** Typecheck and tests pass for core and vscode; the browser reader boots (headless check).
 - [ ] **A14** Outline shows the focused file's sections, marks the current one, follows tabs and edits, and reveals on click; Typst works without Tinymist.
 - [ ] **A15** Figures and Versions appear only while a project is open, collapsed with their count in the header, and are hidden when empty.
 - [ ] **A16** Project rows match D13, and the list renders before any count.
