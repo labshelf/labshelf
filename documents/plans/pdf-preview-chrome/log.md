@@ -1,4 +1,4 @@
-# Log: PDF preview chrome
+# Log: VS Code PDF preview redesign
 
 - 2026-10-16 — plan written from three scouts and the mockup; D2–D4 and scope chosen by the user
 - 2026-10-16 — sessions regrouped into 4 waves (1a+1b, 2a+2b+2c, 3a+3b, 4) with owned paths per session, at the user's request
@@ -16,3 +16,22 @@
 - 2026-10-16 17:08 1b handoff for 1a/2b: reader/dom/startup/readerActions.ts and reader/dom/chrome/cheatsheet.ts must pass KeyContext.preview and handle recompile/nextProblem/prevProblem. For 2a: ReaderHostController.setBuildStatus(state, errors) must be extended to send stale/builtAt.
 - 2026-10-16 17:08 1b finish: gate PASS (core reader+writing, vscode writing/preview; core/vscode/browser/terminal typecheck); no fixes needed.
 - 2026-10-16 17:08 1b peak context: main 90.6k, largest subagent 65.6k (1b.2 implementer, over 60k budget).
+- 2026-10-16 — plan title set to "VS Code PDF preview redesign"; directory name kept because waves are running in it
+- 2026-10-16 18:10 1a: preview.md research refreshed; header/footer seams written in sessions/1a-layout.md
+- 2026-10-16 18:10 1a.2 done (test-writer + implementer, Sonnet): header, composition, outline source; 13 + 8 tests
+- 2026-10-16 18:10 1a.3 done (test-writer + implementer ×3, Sonnet; first implementer hit 60k and was split into footer/layout and deletions): footer, outlineTrail, unused notice/banner/visiblePoint code deleted; 27 tests
+- 2026-10-16 18:10 1a handoff: main thread hit 100k after 1a.3; unfinished: 1a.4
+- 2026-10-16 18:10 1a peak context: main 115.8k, largest subagent implementer (header) 66.2k
+- 2026-10-16 17:23 1a.4 verify (verify skill ×2, Sonnet; first run hit 60k in setup): headless webview screenshots in .verify/preview-1a/; layout, wrap, breadcrumb menu, status texts and logs fine; 2 bugs: stale dot invisible (--ls-warning unset in the reader webview), Dark PDF pressed on a light theme
+- 2026-10-16 17:23 1a handoff: main thread hit the budget; unfinished: 1a.4 (fix the 2 bugs, re-verify, finish, commit)
+- 2026-10-16 17:23 1a peak context: main 89.4k, largest subagent verify 66.5k
+- 2026-10-16 — 1a.4 (fourth run): stale-dot bug is a harness stub gap (no --vscode-editorWarning/error vars), Dark PDF cause still open; context budget hit at ~72k, rest moved to sessions/1c-finish.md; no subagents
+- 2026-10-16 1c.1 done: Dark PDF followed only applyTheme, not init's theme; ThemeController.onEffectiveChange added, reader.ts wires setDark to it; test chrome/theme.test.ts; preview/chrome jest + core typecheck pass; no screenshot yet
+- 2026-10-16 1c handoff: main thread hit the 70k budget (baseline ~50k); unfinished 1c.2–1c.4 moved to sessions/1d-finish.md as 1d.1–1d.3
+- 2026-10-16 1c peak context: main ~73k, no subagents
+- 2026-10-16 1d.1 stale dot sized to mockup 5 px via calc(--ls-space-5 / 2) (main thread)
+- 2026-10-16 1d.2 verify (general-purpose, Sonnet): stale dot visible 5×5 amber, Dark PDF off on light / on on dark, screenshots .verify/preview-1d/
+- 2026-10-16 1d.3 finish (finisher): gate PASS, vscode.md preview layout; fixes (implementer, Sonnet): footer split into crumbs/statusView, arc-mark retarget, size tokens, Toolbar.actions deleted; commit moved to 1e (budget)
+- 2026-10-16 1d peaks: main thread 74.0k (over 70k), largest subagent 59.8k (verify)
+- 2026-10-16 20:40 1e.1 check (Haiku): core typecheck PASS, reader+ui jest 71 suites / 863 PASS; knip flagged 5 unused type exports in reader/dom (fixed in main thread: barrels trimmed, slot-name types made local); jscpd clone is in packages/vscode (backlinks ↔ checklist), outside Owns
+- 2026-10-16 20:50 1e.2 1a.4 done; A6 ticked, A1/A4/A14 layout part noted; 1a-layout.md and 1e-commit.md deleted
