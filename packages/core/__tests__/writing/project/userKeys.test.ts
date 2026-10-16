@@ -1,9 +1,9 @@
-/** Verifies the figures and values keys of labshelf.yaml. */
+/** Verifies the user-owned keys of labshelf.yaml: figures, values and check. */
 import { parseProjectFile, updateProjectFile } from "../../../src/writing/project/index";
 
 const base = "id: a\nformat: latex\n";
 
-describe("labshelf.yaml experiment keys", () => {
+describe("labshelf.yaml user keys", () => {
   it("reads figure recipes and value files", () => {
     const result = parseProjectFile(`${base}figures:\n  fig/ablation.pdf:\n    run: python plot_ablation.py\n    inputs: [plot_ablation.py, "results/*.json"]\n  fig/arch.pdf:\n    run: make arch\nvalues: [results.json]\n`);
     expect(result.ok && result.settings.figures).toEqual({
@@ -26,6 +26,11 @@ describe("labshelf.yaml experiment keys", () => {
     ["figures:\n  a.pdf:\n    run: make\n    inputs: x.py\n", "figures.a.pdf.inputs must be a list of paths"],
     ["values: results.json\n", "values must be a list of JSON file paths"],
     ["values: [1]\n", "values must be a list of JSON file paths"],
+    ["check: 9\n", "check must be a mapping"],
+    ["check:\n  pages: 8.5\n", "check.pages must be a positive whole number"],
+    ["check:\n  pages: 0\n", "check.pages must be a positive whole number"],
+    ["check:\n  authors: Jane Doe\n", "check.authors must be a list of names"],
+    ["check:\n  anonymous: yes please\n", "check.anonymous must be true or false"],
   ])("rejects %j", (extra, reason) => {
     expect(parseProjectFile(`${base}${extra}`)).toEqual({ ok: false, reason });
   });
@@ -33,5 +38,12 @@ describe("labshelf.yaml experiment keys", () => {
   it("keeps both keys through a settings rewrite", () => {
     const text = `${base}figures:\n  a.pdf:\n    run: make # draws a\nvalues:\n  - r.json\n`;
     expect(updateProjectFile(text, { main: "main.tex" })).toBe(`${text}main: main.tex\n`);
+  });
+
+  it("reads the check settings, anonymous unless the user says otherwise", () => {
+    const result = parseProjectFile(`${base}check:\n  pages: 9\n  authors: [Jane Doe, John Roe]\n`);
+    expect(result.ok && result.settings.check).toEqual({ pages: 9, authors: ["Jane Doe", "John Roe"], anonymous: true });
+    const cameraReady = parseProjectFile(`${base}check:\n  anonymous: false\n`);
+    expect(cameraReady.ok && cameraReady.settings.check).toEqual({ pages: undefined, authors: undefined, anonymous: false });
   });
 });

@@ -1,5 +1,5 @@
 /** Exports the runtime-neutral project model: labshelf.yaml, main detection, project ids, templates and the registry. */
-export type { ExperimentKeys, FigureRecipe } from "./experimentKeys.js";
+export type { CheckSettings, FigureRecipe, UserKeys } from "./userKeys.js";
 export { detectFormat, detectMainFile, mainCandidates } from "./mainDetection.js";
 export {
   DEFAULT_BIBLIOGRAPHY, LATEX_ENGINES, PROJECT_FILE, PROJECT_FORMATS,

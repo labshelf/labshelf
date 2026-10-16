@@ -85,6 +85,9 @@ figures:
     run: python plot_ablation.py
     inputs: [plot_ablation.py, results/*.json]
 values: [results.json]
+check:
+  pages: 9
+  authors: [Jane Doe]
 ```
 
 | Key | Type | Notes |
@@ -97,8 +100,9 @@ values: [results.json]
 | `typst` | string | Typst compiler version of the last successful Typst build, written after each one; a YAML number reads as its text |
 | `figures` | mapping | figure path → `{run, inputs}`; `run` is the shell command that makes the figure, run in the project folder; `inputs` lists paths or globs (`*`, `**`, `?`). A figure is stale when it is missing or an input is newer than it |
 | `values` | string[] | JSON files whose leaves the sources read: `\lsvalue{<file>.<path>}` in LaTeX, `json("…")` in Typst. `<file>` is the file name without `.json`, and of two files with the same name only the first is read; array items are numbered from 0 |
+| `check` | mapping | what the pre-submission check holds the built PDF to: `pages` is the most pages allowed before the references heading (every page counts when the PDF has none); `authors` lists names an anonymous submission must not show, besides the git user's and the PDF's Author field; the anonymity rules run unless `anonymous` is `false`, as for a camera-ready |
 
-LabShelf never writes `figures` or `values`. A malformed one makes the file fail to parse, with the key in the reason. A `run` command executes only after the user confirms it on that machine; the confirmation covers that project and that exact command.
+LabShelf never writes `figures`, `values` or `check`. A malformed one makes the file fail to parse, with the key in the reason. A `run` command executes only after the user confirms it on that machine; the confirmation covers that project and that exact command.
 
 Rules:
 

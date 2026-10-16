@@ -2,7 +2,7 @@
 // CONTRACT: documents/contracts/library-format.md#labshelfyaml
 
 import YAML from "yaml";
-import { readExperimentKeys, type ExperimentKeys } from "./experimentKeys.js";
+import { readUserKeys, type UserKeys } from "./userKeys.js";
 
 export const PROJECT_FILE = "labshelf.yaml";
 export const DEFAULT_BIBLIOGRAPHY = "labshelf.bib";
@@ -13,7 +13,7 @@ export type ProjectFormat = (typeof PROJECT_FORMATS)[number];
 export const LATEX_ENGINES = ["tectonic", "xelatex", "pdflatex", "lualatex"] as const;
 export type LatexEngine = (typeof LATEX_ENGINES)[number];
 
-export interface ProjectSettings extends ExperimentKeys {
+export interface ProjectSettings extends UserKeys {
   id: string;
   format: ProjectFormat;
   /** Path of the main file, relative to the project folder. */
@@ -24,8 +24,8 @@ export interface ProjectSettings extends ExperimentKeys {
   typst?: string | undefined;
 }
 
-/** Settings LabShelf may rewrite after creation; undefined removes the key. The experiment keys are the user's alone. */
-export type ProjectSettingsPatch = Partial<Omit<ProjectSettings, "id" | "format" | keyof ExperimentKeys>>;
+/** Settings LabShelf may rewrite after creation; undefined removes the key. The user keys are the user's alone. */
+export type ProjectSettingsPatch = Partial<Omit<ProjectSettings, "id" | "format" | keyof UserKeys>>;
 
 export type ProjectFileResult =
   | { ok: true; settings: ProjectSettings }
@@ -66,9 +66,9 @@ export function parseProjectFile(text: string): ProjectFileResult {
     }
     settings[key] = value ?? undefined;
   }
-  const experiment = readExperimentKeys(raw);
-  if (typeof experiment === "string") { return { ok: false, reason: experiment }; }
-  return { ok: true, settings: { ...settings, ...experiment } };
+  const userKeys = readUserKeys(raw);
+  if (typeof userKeys === "string") { return { ok: false, reason: userKeys }; }
+  return { ok: true, settings: { ...settings, ...userKeys } };
 }
 
 /** The text of a new labshelf.yaml. */

@@ -1,0 +1,13 @@
+% Fixture for the pre-submission check: ten pages, a Type 3 font, a 25 dpi image, an author in the PDF info and an unresolved reference.
+\pdfmapline{-cmss10 CMSS10 <cmss10.pfb}
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage[pdfauthor={Jane Doe}]{hyperref}
+\begin{document}
+\section{Intro}
+\textsf{Sans text set in a bitmap font.} See Section~\ref{sec:missing}.
+
+\includegraphics[width=2in]{lowres.png}
+\newpage Page two.\newpage Page three.\newpage Page four.\newpage Page five.
+\newpage Page six.\newpage Page seven.\newpage Page eight.\newpage Page nine.\newpage Page ten.
+\end{document}
