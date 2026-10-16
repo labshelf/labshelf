@@ -5,4 +5,4 @@ export { NavHistory } from "./navHistory.js";
 export { ZoomController } from "./zoomController.js";
 export { SourceSync } from "./sourceSync.js";
 export { ChangeMarks } from "./changeMarks.js";
-export { pagePointAt, type PageViewportLike } from "./pagePoints.js";
+export { pagePointAt, pixelOffsetOf, type PageViewportLike } from "./pagePoints.js";
