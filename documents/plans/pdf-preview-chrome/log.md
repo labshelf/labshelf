@@ -35,7 +35,34 @@
 - 2026-10-16 1d peaks: main thread 74.0k (over 70k), largest subagent 59.8k (verify)
 - 2026-10-16 20:40 1e.1 check (Haiku): core typecheck PASS, reader+ui jest 71 suites / 863 PASS; knip flagged 5 unused type exports in reader/dom (fixed in main thread: barrels trimmed, slot-name types made local); jscpd clone is in packages/vscode (backlinks ↔ checklist), outside Owns
 - 2026-10-16 20:50 1e.2 1a.4 done; A6 ticked, A1/A4/A14 layout part noted; 1a-layout.md and 1e-commit.md deleted
+- 2026-10-16 17:43 2d attempt 1: starts-from checked, ranges corrected in the session file; handed off on main-thread budget (≈73k at start) before 2d.1/2d.2 ran
+- 2026-10-16 17:44 2e attempt 1: starts-from checked, research/writing-core.md re-scouted (Haiku) and refreshed at 8967fae7; handed off on main-thread budget (≈70k after research-fresh output) before 2e.1/2e.2 ran; remaining work in sessions/2e2-limits.md
+- 2026-10-16 2b.0 scout (2× Explore, Sonnet): research/preview.md refreshed at 8967fae7, research/build-options.md added; corrections written into sessions/2b-build-options.md (setting already contributed, no DEBUG log level, no engine resolver, use ui showMenu); no package started
+- 2026-10-16 2b.0 peaks: main thread 81.6k (baseline 50.3k at start, over 70k after scouting), largest subagent 36.9k (preview scout); session handed off unchanged
+- 2026-10-16 17:45 2f.0 research refresh (2 Explore, Sonnet): ui-kit.md and writing-core.md rewritten at 8967fae7; quotedHighlights drops color, card CSS also in preview.css:45-62; session file updated; main thread hit 71k at startup, handed off before 2f.1
+- 2026-10-16 17:47 2a.0 research/preview.md refreshed (Explore, Sonnet) at 8967fae7; 2b later rewrote it at the same sha
+- 2026-10-16 17:47 2a.1 stale tracking (implementer, Sonnet): setBuildStatus extra {stale, builtAt}; preview/stale/StaleSources + vscodeSourceEvents; buildPreviews sends status on every call and resends once on first edit; typstPreview.test assertion updated by main thread; 30 owned vscode tests + 74 core host tests pass
+- 2026-10-16 17:47 2a.2 logs button (implementer, Sonnet): header/logs/logsButton.ts + preview-logs-button.css (not imported, 3b); 7 jsdom tests pass
+- 2026-10-16 17:47 2a peaks: main thread 84.5k (baseline 50.3k), largest subagent 44.9k (2a.1); handed off before 2a.3
+- 2026-10-16 17:47 2a.3 unfinished → sessions/2j-build-status-finish.md; 2a session file deleted
 - 2026-10-16 18:10 2c.1 core orderPdfProblems (implementer, Sonnet): writing/problems/ + barrel; 5 tests pass; R3 confirmed (kinds + subject on LocatedProblem, warning line from "on input line")
 - 2026-10-16 18:10 2c.2 host pdfProblemsOf (implementer, Sonnet): preview/problems/; 9 tests pass; deps take SynctexLookup, logger, paths; format from project.settings.format; placed area is a zero-size rect at the SyncTeX point; 3a must write `preprints` and `readSources` (no existing helper; collectProjectSources is LaTeX-only)
 - 2026-10-16 18:10 2c.3 finish on Owns (finisher, Sonnet): gate PASS, no fixes, no doc change; typstPreview.test.ts "reloads the document after a build" fails on 2a's setBuildStatus change (2j's)
 - 2026-10-16 18:10 2c peaks: main thread 79.9k (baseline 50.3k), largest subagent 42.2k (2c.2)
+- 2026-10-16 17:49 2d.1 marks overlay (sonnet): marks/problemMarks.ts + index, styles/preview-marks.css, 5 jsdom tests; also added `pixelOffsetOf` to reader/dom/navigation/index.ts barrel
+- 2026-10-16 17:49 2d.2 cites status (sonnet): footer/cites/citesStatus.ts + index, 13 jsdom tests; opens via `openSourceLine`; cites/step CSS added to preview-marks.css by main thread
+- 2026-10-16 17:49 2d peaks: main 79k (over budget, handed off 2d.3), largest subagent 42k
+- 2026-10-16 18:10 2b.1+2b.2 auto compile + options host (sonnet, one package): build/options/{autoCompile,buildOptions,index}.ts, gate in both save listeners and typst live; `autoCompileGate` logs once per setting value; `saveEngine` exported from toolchain barrel; 112 tests pass
+- 2026-10-16 18:10 2b.3 options menu (sonnet): header/options/optionsMenu.ts + index, styles/preview-options.css (repeats base.css menu rules with reader tokens), 7 jsdom tests; engine radios patched after showMenu (→ 2b.5)
+- 2026-10-16 18:10 2b open: LaTeX with no chosen engine hides the engine list (→ 2b.6); 2b.4 unfinished → sessions/2b2-options-fixes.md
+- 2026-10-16 18:10 2b peaks: main 82k (over budget, handed off), largest subagent 47k
+- 2026-10-16 2e2.1 implementer (Sonnet): core `wordsUpTo` + `readingOrderTexts` (splices includes at their place so a `\bibliography` in main does not cut later `\input`s); host `rootWords`, `setCheckLimits` (writes then reloads), `CheckCounts`; `registerCheckCommand` `onFindings`; core 46 + vscode 58 tests pass
+- 2026-10-16 2e2.2 implementer (Sonnet): `mountLimitMeter` (meter, popover, "Limits" button when no limit set), `mountChecksButton`, preview-limit.css (unimported, for 3b); jsdom tests pass
+- 2026-10-16 2e2.3 finish (Sonnet) on Owns: standards and spec clean, scoped tests pass; vscode typecheck fails only in sibling file preview/citations/projectBibRecords.ts (`plainField` export missing, 2f); A10/A11 left unticked until 3a/3b wire them
+- 2026-10-16 2e2 peaks: main thread ≈76k (over 70k at finish), largest subagent 55.8k (2e2.1)
+- 2026-10-16 17:51 2d.3 finish (Sonnet) on Owns: gate PASS (core typecheck, marks + cites suites 21 tests); no fixes; left: corner math also in navigation/changeMarks.ts, flash 1400 ms in both problemMarks.ts and preview-marks.css (3b keeps them in sync); A7 left unticked until 3b wires marks, footer cites and F8
+- 2026-10-16 17:51 2d peaks: main thread ≈63k, largest subagent 18.9k (finisher)
+- 2026-10-16 17:51 2f.1 implementer (Sonnet): cite `[p.~N]` page and command in citedKeys, page-first highlights keep colour, entries carry venue/folder/bib/site/citedPage; vscode fills them (bib from top-level .bib only); core writing 1130 + vscode preview 124 tests pass
+- 2026-10-16 17:51 2f.2 implementer (Sonnet): card in hover/citations/card/ (head, highlights folded, Open at p. N, Go to source, fix row), citation-card.css split from reader.css (275 lines) and preview.css; core reader+ui tests pass
+- 2026-10-16 17:51 2f budget stop: main thread over 70k after launching 2f.1/2f.2; 2f.3 and review follow-ups moved to sessions/2f3-card-finish.md
+- 2026-10-16 17:51 2f peaks: main thread 79.5k, largest subagent 72.1k (2f.2)

@@ -30,3 +30,5 @@ Wave rules: plan.md §6.
 - **Decided:** `recompile` → `post({command:"recompile"})`; `nextProblem`/`prevProblem` → `ui.previewChrome?.problems.step(±1)`; outside preview they do nothing. The keyboard passes `KeyContext.preview` from `ctx.boot.preview`; the cheatsheet lists the Preview group only in preview mode. Ctrl/Cmd+S prevents the browser save.
 - **Done when:** jsdom tests: each action, no-op outside preview, cheatsheet group; core `reader` tests pass.
 - **Do not touch:** wave-2 folders (`header/{logs,options,only,export}`, `footer/{cites,limit,checks}`, `marks`, `hover/`).
+
+**From 2e2:** import `styles/preview-limit.css`; mount `mountLimitMeter` in `footer.slots.limit` and `mountChecksButton` in `footer.slots.checks`; call the meter's `documentChanged()` where `PageChip.documentChanged` is called, then delete `footer/pageChip.ts`. The slots rely on `.rd-preview-slot[hidden]` in preview-header.css.
