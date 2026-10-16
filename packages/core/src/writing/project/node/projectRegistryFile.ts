@@ -6,7 +6,7 @@ import { readOptionalFile, writeFileAtomic } from "../../../library/node/index.j
 import type { ILogger } from "../../../ports/index.js";
 import {
   parseProjectRegistry, serializeProjectRegistry, withFolder, withoutFolder, type ProjectRegistry,
-} from "../projectRegistry.js";
+} from "../deviceLocal/index.js";
 
 const MODULE = "projectRegistry";
 

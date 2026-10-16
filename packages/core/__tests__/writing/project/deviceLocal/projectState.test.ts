@@ -1,7 +1,7 @@
 /** Verifies parsing, validation and editing of a project's state file. */
 import {
   cursorOf, newestCursor, parseProjectState, serializeProjectState, withCursor,
-} from "../../../src/writing/project/projectState";
+} from "../../../../src/writing/project/deviceLocal/index";
 
 const cursor = { file: "sec/intro.tex", line: 12, character: 4, updatedAt: "2026-01-02T10:00:00.000Z" };
 

@@ -1,5 +1,5 @@
 // Reads author-address evidence from HTML without a DOM: mailto links with their wording, and author e-mail meta tags.
-import { attributes, decodeEntities } from "../htmlTags.js";
+import { attributes, decodeEntities, metaPairs } from "../htmlTags.js";
 import type { RawAuthorEmail, RawMailtoLink } from "../types.js";
 
 const MAX_LINKS = 20;
@@ -37,11 +37,7 @@ export function mailtoLinksOf(html: string): RawMailtoLink[] {
 export function authorEmailMetasOf(html: string): RawAuthorEmail[] {
   const out: RawAuthorEmail[] = [];
   let name: string | undefined;
-  for (const m of html.matchAll(/<meta\b[^>]*>/gi)) {
-    const a = attributes(m[0]);
-    const key = (a["name"] ?? a["property"] ?? "").trim().toLowerCase();
-    const value = (a["content"] ?? "").trim();
-    if (!value) continue;
+  for (const { key, value } of metaPairs(html)) {
     if (key === "citation_author") name = value;
     else if (key === "citation_author_email") {
       out.push(name ? { email: value, name } : { email: value });

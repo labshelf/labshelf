@@ -1,6 +1,6 @@
 // Reads HTML fetched without a DOM into the RawPage shape the in-tab probe produces.
 import { authorEmailMetasOf, mailtoLinksOf } from "./contacts/index.js";
-import { absoluteHttpUrl, attributes, decodeEntities } from "./htmlTags.js";
+import { absoluteHttpUrl, attributes, decodeEntities, metaPairs } from "./htmlTags.js";
 import type { RawPage, RawPdfLink } from "./types.js";
 
 // PLATFORM: the MV3 service worker and the terminal have no DOMParser, so a tolerant regex reader handles the few tags that matter.
@@ -30,11 +30,8 @@ function firstNonEmptyTitle(html: string): string {
 
 function metaTags(html: string): Record<string, string[]> {
   const meta: Record<string, string[]> = {};
-  for (const m of html.matchAll(/<meta\b[^>]*>/gi)) {
-    const a = attributes(m[0]);
-    const key = (a["name"] ?? a["property"] ?? "").trim().toLowerCase();
-    const value = (a["content"] ?? "").trim();
-    if (key && value) (meta[key] ??= []).push(value);
+  for (const { key, value } of metaPairs(html)) {
+    if (key) (meta[key] ??= []).push(value);
   }
   return meta;
 }

@@ -1,5 +1,6 @@
 /** Reads and edits a project's device-local state file, which records where the user last edited, keeping keys other versions wrote. */
 // CONTRACT: documents/contracts/library-format.md#labshelfstatejson
+import { parseJsonObject } from "./parseJsonObject.js";
 
 /** The folder inside a project that holds device-local state. */
 export const PROJECT_STATE_DIR = ".labshelf";
@@ -20,13 +21,7 @@ export type ProjectState = Record<string, unknown>;
 
 /** @returns undefined when the text is not a JSON object, so the caller can refuse to overwrite it */
 export function parseProjectState(text: string): ProjectState | undefined {
-  let raw: unknown;
-  try {
-    raw = JSON.parse(text);
-  } catch {
-    return undefined;
-  }
-  return raw !== null && typeof raw === "object" && !Array.isArray(raw) ? raw as ProjectState : undefined;
+  return parseJsonObject(text);
 }
 
 // The file is read from a folder that can be shared or copied, so a path that leaves the project is rejected.

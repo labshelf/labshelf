@@ -6,7 +6,7 @@ import type { ILogger } from "../../../ports/index.js";
 import {
   PROJECT_STATE_DIR, PROJECT_STATE_FILE, cursorOf, newestCursor, parseProjectState, serializeProjectState, withCursor,
   type ProjectCursor,
-} from "../projectState.js";
+} from "../deviceLocal/index.js";
 import type { ProjectEntry } from "./projectFolder.js";
 
 const MODULE = "projectState";

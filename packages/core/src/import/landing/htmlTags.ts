@@ -1,4 +1,4 @@
-/** Reads HTML tags tolerantly with regexes: decodes entities and extracts tag attributes and absolute http(s) URLs. */
+/** Reads HTML tags tolerantly with regexes: decodes entities and extracts tag attributes, meta pairs and absolute http(s) URLs. */
 
 const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
 
@@ -30,5 +30,15 @@ export function absoluteHttpUrl(raw: string | undefined, base: string): string |
     return /^https?:/.test(url) ? url : undefined;
   } catch {
     return undefined;
+  }
+}
+
+/** @returns each non-empty `<meta>` as its lowercased name or property and its trimmed content, in document order */
+export function* metaPairs(html: string): Generator<{ key: string; value: string }> {
+  for (const m of html.matchAll(/<meta\b[^>]*>/gi)) {
+    const a = attributes(m[0]);
+    const key = (a["name"] ?? a["property"] ?? "").trim().toLowerCase();
+    const value = (a["content"] ?? "").trim();
+    if (value) yield { key, value };
   }
 }

@@ -7,9 +7,10 @@ export {
   parseProjectFile, serializeProjectFile, updateProjectFile,
 } from "./projectFile.js";
 export type { LatexEngine, ProjectFileResult, ProjectFormat, ProjectSettings, ProjectSettingsPatch } from "./projectFile.js";
+export { parseJsonObject } from "./deviceLocal/index.js";
 export { projectIdSlug } from "./projectId.js";
-export type { ProjectCursor } from "./projectState.js";
-export { parseProjectRegistry, serializeProjectRegistry, withFolder, withoutFolder } from "./projectRegistry.js";
-export type { ProjectRegistry } from "./projectRegistry.js";
+export type { ProjectCursor } from "./deviceLocal/index.js";
+export { parseProjectRegistry, serializeProjectRegistry, withFolder, withoutFolder } from "./deviceLocal/index.js";
+export type { ProjectRegistry } from "./deviceLocal/index.js";
 export * from "./install/index.js";
 export { projectTemplate } from "./templates.js";

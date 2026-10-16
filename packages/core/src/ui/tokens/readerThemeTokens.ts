@@ -68,17 +68,19 @@ function themeDeclarations(theme: ReaderTheme): string[] {
 }
 
 // The reader marks its theme on <html data-pdf-theme>; dark is also the default before
-// the attribute is set. The swatches of the theme picker show every theme at once.
+// the attribute is set. A theme block declares only what differs from dark, which it inherits from :root.
+// The swatches of the theme picker show every theme at once.
 export function renderReaderThemesCss(): string {
   const swatches = READER_THEME_NAMES.flatMap((name) => [
     `  --ls-reader-swatch-${name}: ${READER_THEMES[name].page};`,
     `  --ls-reader-swatch-${name}-ink: ${READER_THEMES[name].ink};`,
   ]);
+  const darkDeclarations = themeDeclarations(READER_THEMES.dark);
   const blocks = READER_THEME_NAMES.filter((name) => name !== "dark").flatMap((name) => [
     `[data-pdf-theme="${name}"] {`,
-    ...themeDeclarations(READER_THEMES[name]),
+    ...themeDeclarations(READER_THEMES[name]).filter((line) => !darkDeclarations.includes(line)),
     "}",
     "",
   ]);
-  return [":root {", "  --ls-reader-toolbar-h: 38px;", ...themeDeclarations(READER_THEMES.dark), ...swatches, "}", "", ...blocks].join("\n");
+  return [":root {", "  --ls-reader-toolbar-h: 38px;", ...darkDeclarations, ...swatches, "}", "", ...blocks].join("\n");
 }

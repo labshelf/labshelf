@@ -1,5 +1,6 @@
 /** Reads and edits the device-local list of project folders outside the library, keeping keys other versions wrote. */
 // CONTRACT: documents/contracts/library-format.md#researchprojectsjson
+import { parseJsonObject } from "./parseJsonObject.js";
 
 export interface ProjectRegistry {
   /** Absolute paths, in the order they were added. */
@@ -12,14 +13,8 @@ export interface ProjectRegistry {
  * @returns undefined when the text is not a JSON object, so the caller can refuse to overwrite it
  */
 export function parseProjectRegistry(text: string): ProjectRegistry | undefined {
-  let raw: unknown;
-  try {
-    raw = JSON.parse(text);
-  } catch {
-    return undefined;
-  }
-  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) { return undefined; }
-  const record = raw as Record<string, unknown>;
+  const record = parseJsonObject(text);
+  if (!record) { return undefined; }
   const folders = Array.isArray(record["folders"])
     ? record["folders"].filter((folder): folder is string => typeof folder === "string")
     : [];

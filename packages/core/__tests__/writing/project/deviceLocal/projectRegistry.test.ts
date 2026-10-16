@@ -1,7 +1,7 @@
 /** Verifies parsing and editing of the project folder registry. */
 import {
   parseProjectRegistry, serializeProjectRegistry, withFolder, withoutFolder,
-} from "../../../src/writing/project/index";
+} from "../../../../src/writing/project/index";
 
 describe("parseProjectRegistry", () => {
   it("reads folders", () => {
