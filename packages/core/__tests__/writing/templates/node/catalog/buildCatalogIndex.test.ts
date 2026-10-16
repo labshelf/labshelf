@@ -5,7 +5,7 @@ import * as path from "node:path";
 import { cleanupTempDirs, makeTempDir } from "../../../../support/tempDirs";
 import { PDF, addTemplate, put } from "./catalogFixtures";
 import { buildCatalogIndex } from "../../../../../src/writing/templates/node/index.js";
-import { parseCatalogIndex } from "../../../../../src/writing/templates/catalogIndex.js";
+import { parseCatalogIndex } from "../../../../../src/writing/templates/manifest/index.js";
 
 afterEach(cleanupTempDirs);
 

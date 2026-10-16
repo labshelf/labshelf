@@ -1,10 +1,8 @@
 /** Maps Typst Universe's package index to gallery entries, one per template package at its highest version. */
 // CONTRACT: documents/contracts/templates.md#typst-universe
 
-import type { SkippedEntry } from "../catalogIndex.js";
+import { isRecord, parseIndexJson, templatePathProblem, type SkippedEntry, type TemplateCategory } from "../manifest/index.js";
 import type { TemplateEntry } from "../templateEntry.js";
-import type { TemplateCategory } from "../templateManifest.js";
-import { templatePathProblem } from "../templatePaths.js";
 
 export const UNIVERSE_INDEX_URL = "https://packages.typst.org/preview/index.json";
 
@@ -22,11 +20,8 @@ const CATEGORY_MAP: Record<string, TemplateCategory> = {
   paper: "article", thesis: "thesis", poster: "poster", presentation: "slides", cv: "cv",
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-function isNewer(candidate: string, current: string): boolean {
+/** Whether dotted version `candidate` is higher than `current`, compared as numbers segment by segment. */
+export function isNewerVersion(candidate: string, current: string): boolean {
   const a = candidate.split(".").map(Number);
   const b = current.split(".").map(Number);
   for (let i = 0; i < Math.max(a.length, b.length); i += 1) {
@@ -76,10 +71,9 @@ function mapPackage(pkg: Record<string, unknown>, template: Record<string, unkno
 
 /** Reads Universe's index.json; never throws. Packages without a template key are ignored, unsafe template paths are skipped. */
 export function parseUniverseIndex(jsonText: string): UniverseIndexResult {
-  let value: unknown;
-  try { value = JSON.parse(jsonText); } catch (error) {
-    return { ok: false, reason: `invalid JSON: ${error instanceof Error ? error.message : String(error)}` };
-  }
+  const json = parseIndexJson(jsonText);
+  if (!json.ok) { return json; }
+  const value = json.value;
   if (!Array.isArray(value)) { return { ok: false, reason: "index.json is not an array" }; }
   const latest = new Map<string, Record<string, unknown>>();
   for (const pkg of value) {
@@ -88,7 +82,7 @@ export function parseUniverseIndex(jsonText: string): UniverseIndexResult {
     const version = text(pkg["version"]);
     if (name === undefined || version === undefined) { continue; }
     const seen = latest.get(name);
-    if (seen === undefined || isNewer(version, String(seen["version"]))) { latest.set(name, pkg); }
+    if (seen === undefined || isNewerVersion(version, String(seen["version"]))) { latest.set(name, pkg); }
   }
   const templates: UniverseTemplate[] = [];
   const skipped: SkippedEntry[] = [];

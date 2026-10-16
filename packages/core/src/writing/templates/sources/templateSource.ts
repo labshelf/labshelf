@@ -9,11 +9,19 @@ export interface TemplateFile {
   bytes: Uint8Array;
 }
 
+/** The entries a source offers, and whether they come from the device's cached index because the fetch failed. */
+export interface TemplateListing {
+  entries: TemplateEntry[];
+  fromCache: boolean;
+}
+
 /** A place the gallery lists templates from and downloads their files from. */
 export interface TemplateSource {
   readonly id: TemplateSourceId;
   /** The entries this source offers; throws only when there is neither a fresh nor a cached list. */
-  list(signal?: AbortSignal): Promise<TemplateEntry[]>;
+  list(signal?: AbortSignal): Promise<TemplateListing>;
+  /** The entry's card image, or undefined when it has none or cannot be fetched (logged, never thrown). */
+  thumbnail(entry: TemplateEntry, signal?: AbortSignal): Promise<Uint8Array | undefined>;
   /** Every file of the entry, checked against the path rules; throws with a user-facing message on any refusal. */
   files(entry: TemplateEntry, signal?: AbortSignal): Promise<TemplateFile[]>;
 }
@@ -32,4 +40,7 @@ export interface CachedIndex {
 export interface TemplateCache {
   readIndex(source: CachedSourceId): Promise<CachedIndex | undefined>;
   writeIndex(source: CachedSourceId, index: CachedIndex): Promise<void>;
+  /** `key` is "<source>/<file>"; a key that would leave the source's thumbnails folder is refused. */
+  readThumbnail(key: string): Promise<Uint8Array | undefined>;
+  writeThumbnail(key: string, bytes: Uint8Array): Promise<void>;
 }

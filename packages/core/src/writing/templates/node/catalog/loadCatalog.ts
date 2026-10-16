@@ -5,8 +5,7 @@ import { createHash } from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import type { CatalogBlob, CatalogEntry } from "../../catalogIndex.js";
-import { parseTemplateManifest } from "../../templateManifest.js";
+import { parseTemplateManifest, type CatalogBlob, type CatalogEntry } from "../../manifest/index.js";
 import { readTemplateTree } from "../readTemplateTree.js";
 import { readPreviews } from "./readPreviews.js";
 

@@ -1,0 +1,119 @@
+/*
+ * Styles the template gallery under .ls-tpl: the sources sidebar, the facet bar, the card grid and the detail page.
+ * A narrow gallery stacks the sidebar above the main column.
+ */
+/* The webview mounts into a plain wrapper div with no height, so the gallery sizes itself to the viewport; otherwise the frame, and so the sidebar background, ends at the content. */
+body { overflow: hidden; }
+.ls-tpl { container: ls-tpl / inline-size; height: 100vh; background: var(--ls-bg); color: var(--ls-fg); font: var(--ls-font-size) var(--ls-font); }
+.ls-tpl-frame { display: grid; grid-template-columns: var(--ls-gallery-sidebar-w) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); height: 100%; }
+.ls-tpl-frame > main { min-width: 0; overflow-y: auto; }
+.ls-tpl-section {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--ls-space-4);
+  padding: var(--ls-space-4) var(--ls-space-7); font-size: var(--ls-text-sm); text-transform: uppercase; color: var(--ls-section-fg);
+}
+
+/* ── Sources sidebar ────────────────────────────────────────────── */
+.ls-tpl-sidebar { background: var(--ls-sidebar-bg); border-right: 1px solid var(--ls-sidebar-border); padding: var(--ls-space-4) 0; overflow-y: auto; }
+.ls-tpl-sources { list-style: none; margin: 0; padding: 0; }
+.ls-tpl-source {
+  display: flex; align-items: center; gap: var(--ls-space-4); height: var(--ls-row-h); padding: 0 var(--ls-space-7); cursor: pointer; user-select: none;
+}
+.ls-tpl-source:hover { background: var(--ls-list-hover); }
+.ls-tpl-source[aria-selected="true"] { background: var(--ls-list-active-bg); color: var(--ls-list-active-fg); }
+.ls-tpl-source > :first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ls-tpl-source-note { flex-shrink: 0; display: inline-flex; align-items: center; gap: var(--ls-space-2); font-size: var(--ls-text-sm); color: var(--ls-desc); }
+.ls-tpl-source[aria-selected="true"] .ls-tpl-source-note { color: inherit; }
+.ls-tpl-source-note svg { width: 12px; height: 12px; }
+.ls-tpl-source-error {
+  display: flex; align-items: flex-start; gap: var(--ls-space-3); padding: var(--ls-space-2) var(--ls-space-7);
+  font-size: var(--ls-text-sm); color: var(--ls-error);
+}
+.ls-tpl-source-error svg { width: 12px; height: 12px; flex-shrink: 0; margin-top: var(--ls-space-1); }
+.ls-tpl-formats { display: flex; flex-direction: column; }
+.ls-tpl-sidebar .ls-checkbox { height: var(--ls-row-h); padding: 0 var(--ls-space-7); }
+
+/* ── Facet bar ──────────────────────────────────────────────────── */
+.ls-tpl-facets { display: flex; flex-direction: column; gap: var(--ls-space-4); padding: var(--ls-space-7); }
+.ls-tpl-facets-row { display: flex; align-items: center; gap: var(--ls-space-7); }
+.ls-tpl-title { margin: 0; flex-shrink: 0; font-size: var(--ls-text-lg); font-weight: 600; }
+.ls-tpl-facets .ls-search { flex: 1; min-width: 0; }
+.ls-tpl-facets input[type=search]::-webkit-search-cancel-button { appearance: none; }
+.ls-tpl-categories { display: flex; flex-wrap: wrap; gap: var(--ls-space-4); }
+.ls-tpl-category {
+  height: var(--ls-row-h); padding: 0 var(--ls-space-5); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-sm);
+  background: transparent; color: var(--ls-fg); font: inherit; font-size: var(--ls-text-md); cursor: pointer;
+}
+.ls-tpl-category:hover { background: var(--ls-list-hover); }
+.ls-tpl-category[aria-pressed="true"] { background: var(--ls-list-active-bg); color: var(--ls-list-active-fg); border-color: var(--ls-focus); }
+
+/* ── Card grid ──────────────────────────────────────────────────── */
+.ls-tpl-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--ls-gallery-card-w), 1fr)); gap: var(--ls-space-7);
+  list-style: none; margin: 0; padding: 0 var(--ls-space-7) var(--ls-space-7);
+}
+.ls-tpl-grid > li { min-width: 0; display: flex; }
+.ls-tpl-card {
+  display: flex; flex-direction: column; width: 100%; padding: 0; overflow: hidden; text-align: left; cursor: pointer;
+  background: var(--ls-widget-bg); color: inherit; font: inherit; border: 1px solid var(--ls-border); border-radius: var(--ls-radius);
+}
+.ls-tpl-card:hover { border-color: var(--ls-focus); }
+.ls-tpl-thumb {
+  display: flex; align-items: center; justify-content: center; width: 100%; aspect-ratio: 210 / 297; overflow: hidden;
+  background: var(--ls-section-bg); border-bottom: 1px solid var(--ls-border-soft);
+}
+.ls-tpl-thumb img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+.ls-tpl-thumb-icon { display: flex; opacity: .25; color: var(--ls-desc); }
+.ls-tpl-thumb-icon svg { width: 44px; height: 44px; }
+.ls-tpl-card-body { display: flex; flex-direction: column; gap: var(--ls-space-2); padding: var(--ls-space-5); min-width: 0; }
+.ls-tpl-card-name { font-size: var(--ls-font-size); font-weight: 600; }
+.ls-tpl-card-by, .ls-tpl-card-meta { font-size: var(--ls-text-sm); color: var(--ls-desc); }
+.ls-tpl-card-name, .ls-tpl-card-by { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ls-tpl-card.is-loading { pointer-events: none; }
+.ls-tpl-card.is-loading .ls-tpl-thumb { border-bottom: none; }
+.ls-tpl-card.is-loading .ls-tpl-card-name, .ls-tpl-card.is-loading .ls-tpl-card-by { height: var(--ls-text-md); border-radius: var(--ls-radius-sm); background: var(--ls-section-bg); }
+.ls-tpl .ls-empty { grid-column: 1 / -1; }
+
+/* ── Detail page ────────────────────────────────────────────────── */
+.ls-tpl-detail-nav { padding: var(--ls-space-7) var(--ls-space-7) 0; }
+.ls-tpl-detail-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--ls-space-7); padding: var(--ls-space-7); align-items: start; }
+.ls-tpl-preview {
+  display: flex; align-items: center; justify-content: center; margin: 0; padding: var(--ls-space-7);
+  background: var(--ls-section-bg); border: 1px solid var(--ls-border); border-radius: var(--ls-radius);
+}
+.ls-tpl-preview img { width: 100%; height: auto; display: block; box-shadow: var(--ls-page-shadow); }
+.ls-tpl-preview .ls-tpl-thumb-icon { aspect-ratio: 210 / 297; width: 100%; align-items: center; justify-content: center; }
+.ls-tpl-info { display: flex; flex-direction: column; align-items: flex-start; gap: var(--ls-space-6); min-width: 0; width: 100%; }
+.ls-tpl-detail-title { margin: 0; font-size: var(--ls-text-lg); font-weight: 600; overflow-wrap: anywhere; }
+.ls-tpl-detail-title:focus { outline: none; }
+.ls-tpl-description { margin: 0; color: var(--ls-fg); font-size: var(--ls-font-size); white-space: pre-line; overflow-wrap: anywhere; }
+.ls-tpl-detail .ls-btn-primary { gap: var(--ls-space-4); }
+.ls-tpl-detail .ls-btn-primary[aria-busy="true"] { cursor: progress; }
+.ls-tpl-engine-slot { width: 100%; }
+.ls-tpl-engine-slot:empty { display: none; }
+.ls-tpl-engine {
+  display: flex; align-items: flex-start; gap: var(--ls-space-4); padding: var(--ls-space-4) var(--ls-space-5); font-size: var(--ls-text-md);
+  background: var(--ls-warning-bg); border: 1px solid var(--ls-warning-border); border-radius: var(--ls-radius);
+}
+.ls-tpl-engine-icon { display: flex; flex-shrink: 0; color: var(--ls-warning); }
+.ls-tpl-engine-icon svg { width: 14px; height: 14px; }
+.ls-tpl-meta { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--ls-space-3) var(--ls-space-7); margin: 0; width: 100%; }
+.ls-tpl-meta dt { color: var(--ls-desc); font-size: var(--ls-text-md); }
+.ls-tpl-meta dd { margin: 0; color: var(--ls-fg); font-size: var(--ls-text-md); overflow-wrap: anywhere; }
+.ls-tpl-files-block { width: 100%; }
+.ls-tpl-files-block .ls-tpl-section { justify-content: flex-start; padding-left: 0; padding-right: 0; }
+.ls-tpl-files { list-style: none; margin: 0; padding: 0; }
+.ls-tpl-files li { display: flex; align-items: center; gap: var(--ls-space-4); height: var(--ls-row-h); }
+.ls-tpl-file-icon { display: flex; flex-shrink: 0; color: var(--ls-desc); }
+.ls-tpl-file-icon svg { width: 14px; height: 14px; }
+.ls-tpl-file-path { font-family: var(--ls-mono); font-size: var(--ls-text-md); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── Busy spinner ───────────────────────────────────────────────── */
+@keyframes ls-tpl-spin { to { transform: rotate(360deg); } }
+.ls-tpl .spin, .ls-tpl-spin { display: inline-flex; animation: ls-tpl-spin 1s linear infinite; }
+
+/* The gallery shares the window with nothing else, but a narrow panel still needs the sidebar out of the way. */
+@container ls-tpl (max-width: 640px) {
+  .ls-tpl-frame { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .ls-tpl-sidebar { border-right: none; border-bottom: 1px solid var(--ls-sidebar-border); }
+  .ls-tpl-detail-body { grid-template-columns: minmax(0, 1fr); }
+}

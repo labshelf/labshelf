@@ -1,5 +1,5 @@
 /** Verifies template.yaml parsing and the shared field validation. */
-import { parseTemplateManifest, readTemplateFields } from "../../../src/writing/templates/index";
+import { parseTemplateManifest, readTemplateFields } from "../../../../src/writing/templates/index";
 
 const latex = {
   schema: 1, id: "ieee-conference", name: "IEEE Conference", description: "Two-column paper.",

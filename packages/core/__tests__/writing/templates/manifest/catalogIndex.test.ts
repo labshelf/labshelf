@@ -1,5 +1,5 @@
 /** Verifies parsing of the Community catalog index.json. */
-import { parseCatalogIndex } from "../../../src/writing/templates/index";
+import { parseCatalogIndex } from "../../../../src/writing/templates/index";
 
 const COMMIT = "3f2c".repeat(10);
 const SHA = "9b1e".repeat(16);

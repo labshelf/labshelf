@@ -9,8 +9,7 @@ import { writeFileAtomic } from "../../../library/node/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import { PROJECT_FILE, projectIdSlug, type LatexEngine, type ProjectEntry } from "../../project/index.js";
 import { listProjects } from "../../project/node/index.js";
-import { parseTemplateManifest, serializeTemplateManifest, type TemplateCategory, type TemplateManifest } from "../templateManifest.js";
-import { templateTreeProblem } from "../templatePaths.js";
+import { parseTemplateManifest, serializeTemplateManifest, templateTreeProblem, type TemplateCategory, type TemplateManifest } from "../manifest/index.js";
 import { walkFolder, type FoundFile } from "./walkFolder.js";
 
 const MODULE = "templates";
@@ -40,9 +39,19 @@ async function findProject(libraryRoot: string, projectId: string, logger: ILogg
   return entry;
 }
 
+// Both builds copy the PDF next to each root source file, so a PDF with a same-named source beside it is build output.
+function withoutBuiltPdfs(files: FoundFile[]): FoundFile[] {
+  const paths = new Set(files.map((f) => f.path));
+  return files.filter(({ path: p }) => {
+    if (!p.endsWith(".pdf")) { return true; }
+    const base = p.slice(0, -".pdf".length);
+    return !paths.has(`${base}.tex`) && !paths.has(`${base}.typ`);
+  });
+}
+
 /** The kept files of the project; `.git` is skipped, and a symbolic link or a tree that breaks the path rules throws naming the path. */
 async function projectFiles(folder: string): Promise<FoundFile[]> {
-  const files = await walkFolder(folder, (rel, name) => name === ".git" || EXCLUDED_PATHS.has(rel));
+  const files = withoutBuiltPdfs(await walkFolder(folder, (rel, name) => name === ".git" || EXCLUDED_PATHS.has(rel)));
   const problem = templateTreeProblem(files);
   if (problem !== undefined) { throw new Error(problem); }
   return files;

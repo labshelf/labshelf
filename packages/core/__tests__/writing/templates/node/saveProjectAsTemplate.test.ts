@@ -48,6 +48,22 @@ describe("saveProjectAsTemplate", () => {
     expect(logger.errors).toEqual([]);
   });
 
+  it("leaves out the PDF the build copies beside a .tex file but keeps other PDFs", async () => {
+    const { lib, logger, project } = await setup();
+    for (const rel of ["main.pdf", "chapters/ch.tex", "chapters/ch.pdf", "figures/plot.pdf"]) { await put(project, rel, "x"); }
+    const manifest = await saveProjectAsTemplate(lib, "source", details, logger);
+    const files = await listFiles(path.join(lib, "templates", manifest.id, "files"));
+    expect(files).toEqual(["chapters/ch.tex", "figures/plot.pdf", "main.tex"].sort());
+  });
+
+  it("leaves out the PDF the build copies beside a .typ file", async () => {
+    const { lib, logger, project, main } = await setup("typst");
+    for (const rel of [main.replace(/\.typ$/, ".pdf"), "figures/plot.pdf"]) { await put(project, rel, "x"); }
+    const manifest = await saveProjectAsTemplate(lib, "source", details, logger);
+    const files = await listFiles(path.join(lib, "templates", manifest.id, "files"));
+    expect(files).toEqual([main, "figures/plot.pdf"].sort());
+  });
+
   it("writes a manifest that parses and carries the project format, main and the details", async () => {
     const { lib, logger, main } = await setup();
     const saved = await saveProjectAsTemplate(lib, "source", details, logger);
@@ -85,7 +101,7 @@ describe("saveProjectAsTemplate", () => {
     await put(project, "sections/a.tex", "A");
     await saveProjectAsTemplate(lib, "source", details, logger);
     const source = createMineSource({ libraryRoot: lib, logger });
-    const entries = await source.list();
+    const { entries } = await source.list();
     expect(entries.map((e) => e.id)).toEqual(["my-thesis"]);
     const files = await source.files(entries[0]!);
     expect(files.map((f) => f.path).sort()).toEqual([main, "sections/a.tex"].sort());
@@ -97,7 +113,7 @@ describe("saveProjectAsTemplate", () => {
     const second = await saveProjectAsTemplate(lib, "source", details, logger);
     expect(second.id).not.toBe(first.id);
     expect(second.id.startsWith("my-thesis")).toBe(true);
-    expect((await createMineSource({ libraryRoot: lib, logger }).list()).length).toBe(2);
+    expect((await createMineSource({ libraryRoot: lib, logger }).list()).entries.length).toBe(2);
   });
 
   it("rejects a symlink anywhere in the project naming its path, and writes nothing", async () => {

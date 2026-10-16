@@ -43,4 +43,39 @@ describe("createFsTemplateCache", () => {
     expect(await fs.readFile(path.join(lib, ".research/templates/universe/index.json"), "utf8")).toBe("[\"u\"]");
     expect(await cache.readIndex("universe")).toEqual({ body: "[\"u\"]", etag: "eu" });
   });
+
+  describe("thumbnails", () => {
+    const bytes = new Uint8Array([0, 255, 1, 2]);
+
+    it("reads undefined for a thumbnail never written", async () => {
+      expect(await createFsTemplateCache(await makeTempDir()).readThumbnail("community/abc.png")).toBeUndefined();
+    });
+
+    it("stores bytes under <source>/thumbnails and reads them back", async () => {
+      const lib = await makeTempDir();
+      const cache = createFsTemplateCache(lib);
+      await cache.writeThumbnail("universe/charged-0.1.0-small.webp", bytes);
+      const file = path.join(lib, ".research/templates/universe/thumbnails/charged-0.1.0-small.webp");
+      expect(Array.from(await fs.readFile(file))).toEqual(Array.from(bytes));
+      expect(Array.from((await cache.readThumbnail("universe/charged-0.1.0-small.webp"))!)).toEqual(Array.from(bytes));
+    });
+
+    it.each(["../escape.png", "community/../../escape.png", "community/../escape.png", "../../../outside"])(
+      "cannot write or read outside the thumbnails folder with key %s", async (key) => {
+        const lib = await makeTempDir();
+        const cache = createFsTemplateCache(lib);
+        await cache.writeThumbnail(key, bytes).catch(() => undefined);
+        expect(await cache.readThumbnail(key).catch(() => undefined)).toBeUndefined();
+        const written: string[] = [];
+        const walk = async (dir: string): Promise<void> => {
+          for (const e of await fs.readdir(dir, { withFileTypes: true })) {
+            const full = path.join(dir, e.name);
+            if (e.isDirectory()) { await walk(full); } else { written.push(full); }
+          }
+        };
+        await walk(lib);
+        const allowed = path.join(lib, ".research", "templates");
+        expect(written.every((f) => f.startsWith(allowed + path.sep) && f.includes(`${path.sep}thumbnails${path.sep}`))).toBe(true);
+      });
+  });
 });

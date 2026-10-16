@@ -1,6 +1,6 @@
 /** Verifies that a serialized template manifest parses back to the same manifest. */
-import { parseTemplateManifest, serializeTemplateManifest } from "../../../src/writing/templates/index";
-import type { TemplateManifest } from "../../../src/writing/templates/index";
+import { parseTemplateManifest, serializeTemplateManifest } from "../../../../src/writing/templates/index";
+import type { TemplateManifest } from "../../../../src/writing/templates/index";
 
 const latex: TemplateManifest = {
   id: "my-thesis", name: "My: thesis # one", description: "Line with \"quotes\" and: colons.",

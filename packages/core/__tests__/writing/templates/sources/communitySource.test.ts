@@ -45,7 +45,7 @@ describe("createCommunitySource list", () => {
   it("has id community and lists entries with source community", async () => {
     const { source } = await setup([await entry("a"), await entry("b")]);
     expect(source.id).toBe("community");
-    const entries = await source.list();
+    const { entries } = await source.list();
     expect(entries.map((e) => [e.id, e.source])).toEqual([["a", "community"], ["b", "community"]]);
   });
 
@@ -53,7 +53,7 @@ describe("createCommunitySource list", () => {
     const { source, logger } = await setup([
       await entry("a"), await entry("bad", { category: "book" }), await entry("a", { name: "Again" }), await entry("c"),
     ]);
-    expect((await source.list()).map((e) => e.id)).toEqual(["a", "c"]);
+    expect((await source.list()).entries.map((e) => e.id)).toEqual(["a", "c"]);
     expect(logger.text()).toContain("bad");
     expect(logger.calls.length).toBeGreaterThanOrEqual(2);
   });
@@ -63,14 +63,16 @@ describe("createCommunitySource list", () => {
     const { source } = await setup([await entry("new")], {
       [COMMUNITY_INDEX_URL]: new Response(indexText([await entry("new")], { schema: 2 }), { status: 200 }),
     }, cached);
-    expect((await source.list()).map((e) => e.id)).toEqual(["old"]);
+    const listed = await source.list();
+    expect(listed.entries.map((e) => e.id)).toEqual(["old"]);
+    expect(listed.fromCache).toBe(true);
   });
 });
 
 describe("createCommunitySource files", () => {
   it("fetches each file at the commit url and returns path and bytes", async () => {
     const { source, fetch } = await setup([await entry("a")]);
-    const [listed] = await source.list();
+    const [listed] = (await source.list()).entries;
     const files = await source.files(listed!);
     expect(files.map((f) => f.path)).toEqual(["main.tex", "refs/refs.bib"]);
     expect(Array.from(files[0]!.bytes)).toEqual(Array.from(MAIN));
@@ -87,7 +89,7 @@ describe("createCommunitySource files", () => {
   it("refuses a file whose sha256 differs from the index", async () => {
     const url = `${base("a")}/main.tex`;
     const { source, logger } = await setup([await entry("a")], { [url]: new Response(enc.encode("\\documentclass{book}12")) });
-    const [listed] = await source.list();
+    const [listed] = (await source.list()).entries;
     await expect(source.files(listed!)).rejects.toThrow("The catalog is updating, try again later");
     expect(logger.text()).toContain(url);
   });
@@ -97,7 +99,7 @@ describe("createCommunitySource files", () => {
     const { source, logger } = await setup([await entry("a", { files: [
       { path: "main.tex", size: MAIN.length + 1, sha256: await sha256Hex(MAIN) },
     ] })]);
-    const [listed] = await source.list();
+    const [listed] = (await source.list()).entries;
     await expect(source.files(listed!)).rejects.toThrow("The catalog is updating, try again later");
     expect(logger.text()).toContain(url);
   });
@@ -105,9 +107,74 @@ describe("createCommunitySource files", () => {
   it("rejects on HTTP 404, logging url and status", async () => {
     const url = `${base("a")}/refs/refs.bib`;
     const { source, logger } = await setup([await entry("a")], { [url]: new Response("gone", { status: 404 }) });
-    const [listed] = await source.list();
+    const [listed] = (await source.list()).entries;
     await expect(source.files(listed!)).rejects.toBeInstanceOf(Error);
     expect(logger.text()).toContain(url);
     expect(logger.text()).toContain("404");
+  });
+});
+
+describe("createCommunitySource list freshness and files", () => {
+  it("reports fromCache false on a fresh response", async () => {
+    const { source } = await setup([await entry("a")]);
+    expect((await source.list()).fromCache).toBe(false);
+  });
+
+  it("reports fromCache true when the fetch fails and the cached index is used", async () => {
+    const { source } = await setup([await entry("a")], { [COMMUNITY_INDEX_URL]: new Error("offline") }, indexText([await entry("a")]));
+    const listed = await source.list();
+    expect(listed.fromCache).toBe(true);
+    expect(listed.entries.map((e) => e.id)).toEqual(["a"]);
+  });
+
+  it("reports fromCache false on a 304", async () => {
+    const cached = indexText([await entry("a")]);
+    const { source } = await setup([await entry("a")], { [COMMUNITY_INDEX_URL]: new Response(null, { status: 304 }) }, cached);
+    expect((await source.list()).fromCache).toBe(false);
+  });
+
+  it("carries the index file paths on each entry", async () => {
+    const { source } = await setup([await entry("a")]);
+    expect((await source.list()).entries[0]!.files).toEqual(["main.tex", "refs/refs.bib"]);
+  });
+});
+
+describe("createCommunitySource thumbnail", () => {
+  const PNG = new Uint8Array([137, 80, 78, 71, 1, 2, 3]);
+  const thumbUrl = (id: string) => `https://cdn.jsdelivr.net/gh/labshelf/labshelf-templates@${COMMIT}/templates/${id}/preview/thumbnail.png`;
+  const thumbEntry = async (id: string) => entry(id, { thumbnail: { size: PNG.length, sha256: await sha256Hex(PNG) } });
+
+  it("fetches the preview thumbnail at the index commit and returns its bytes", async () => {
+    const { source, fetch } = await setup([await thumbEntry("a")], { [thumbUrl("a")]: new Response(PNG) });
+    const [listed] = (await source.list()).entries;
+    const bytes = await source.thumbnail(listed!);
+    expect(Array.from(bytes!)).toEqual(Array.from(PNG));
+    expect(fetch.calls.map((c) => c.url)).toContain(thumbUrl("a"));
+  });
+
+  it("caches the bytes and serves a later call without fetching", async () => {
+    const { source, fetch, cache } = await setup([await thumbEntry("a")], { [thumbUrl("a")]: new Response(PNG) });
+    const [listed] = (await source.list()).entries;
+    await source.thumbnail(listed!);
+    expect(cache.thumbnails.size).toBe(1);
+    const before = fetch.calls.length;
+    const again = await source.thumbnail(listed!);
+    expect(Array.from(again!)).toEqual(Array.from(PNG));
+    expect(fetch.calls.length).toBe(before);
+  });
+
+  it("returns undefined and logs WARN when the fetch fails and nothing is cached", async () => {
+    const { source, logger } = await setup([await thumbEntry("a")], { [thumbUrl("a")]: new Response("gone", { status: 404 }) });
+    const [listed] = (await source.list()).entries;
+    expect(await source.thumbnail(listed!)).toBeUndefined();
+    expect(logger.calls.some((c) => c.level === "WARN" && JSON.stringify(c).includes("a"))).toBe(true);
+  });
+
+  it("returns undefined for an entry that has no thumbnail", async () => {
+    const { source, fetch } = await setup([await thumbEntry("a")]);
+    const [listed] = (await source.list()).entries;
+    const before = fetch.calls.length;
+    expect(await source.thumbnail({ ...listed!, id: "unknown-id" })).toBeUndefined();
+    expect(fetch.calls.length).toBe(before);
   });
 });

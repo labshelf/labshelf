@@ -2,7 +2,7 @@
 
 import type { ProjectFormat } from "../project/index.js";
 import type { TemplateFile } from "./sources/index.js";
-import type { ProjectTemplate } from "./templateManifest.js";
+import type { ProjectTemplate } from "./manifest/index.js";
 
 const LATEX_SPECIALS: Record<string, string> = {
   "\\": "\\textbackslash{}", "{": "\\{", "}": "\\}", $: "\\$", "&": "\\&", "#": "\\#",

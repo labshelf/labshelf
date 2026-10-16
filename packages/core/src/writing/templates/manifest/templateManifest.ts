@@ -2,7 +2,7 @@
 // CONTRACT: documents/contracts/templates.md#manifest
 
 import YAML from "yaml";
-import { LATEX_ENGINES, PROJECT_FORMATS, type ProjectFormat } from "../project/index.js";
+import { LATEX_ENGINES, PROJECT_FORMATS, type ProjectFormat } from "../../project/index.js";
 import { isLicenseExpression } from "./licenseExpression.js";
 import { templatePathProblem } from "./templatePaths.js";
 

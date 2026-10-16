@@ -98,6 +98,8 @@
   --ls-radius-lg: 6px;
   --ls-radius-pill: 999px;
   --ls-row-h: 22px;
+  --ls-gallery-sidebar-w: 220px;
+  --ls-gallery-card-w: 200px;
   --ls-widget-shadow: 0 0 8px 2px rgba(0, 0, 0, .36);
   --ls-popup-shadow: 0 4px 18px rgba(0, 0, 0, .45);
   --ls-page-shadow: 0 1px 6px rgba(0, 0, 0, .3);

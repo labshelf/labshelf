@@ -1,12 +1,13 @@
-/** Exports the runtime-neutral template model: manifests and their serializer, path rules, the catalog index, the gallery entry and its filter, and the blank templates. */
+/** Exports the runtime-neutral template model: manifests and their serializer, path rules, the catalog index, the gallery entry and its filter, the blank templates, and the gallery protocol. */
 export { blankTemplate } from "./blankTemplates.js";
-export { parseCatalogIndex } from "./catalogIndex.js";
-export type { CatalogBlob, CatalogEntry, CatalogFile, CatalogIndexResult, SkippedEntry } from "./catalogIndex.js";
+export { TEMPLATE_CATEGORIES, TEMPLATE_ENGINES, isLicenseExpression, parseCatalogIndex, parseTemplateManifest, readTemplateFields, serializeTemplateManifest, templatePathProblem, templateTreeProblem } from "./manifest/index.js";
+export type { CatalogBlob, CatalogEntry, CatalogFile, CatalogIndexResult, ProjectTemplate, SkippedEntry, TemplateCategory, TemplateEngine, TemplateManifest, TemplateManifestResult } from "./manifest/index.js";
+export { engineProblem } from "./engineProblem.js";
+export type { AvailableEngines } from "./engineProblem.js";
 export { filterTemplates } from "./filterTemplates.js";
 export type { TemplateFilter } from "./filterTemplates.js";
+export { CATEGORY_LABELS, ENGINE_LABELS, FORMAT_LABELS, SOURCE_LABELS, templateByLine, templateMetaLine } from "./templateLabels.js";
 export { TEMPLATE_SOURCES } from "./templateEntry.js";
 export type { TemplateEntry, TemplateSourceId } from "./templateEntry.js";
-export { TEMPLATE_CATEGORIES, TEMPLATE_ENGINES, parseTemplateManifest, readTemplateFields, serializeTemplateManifest } from "./templateManifest.js";
-export type { ProjectTemplate, TemplateCategory, TemplateEngine, TemplateManifest, TemplateManifestResult } from "./templateManifest.js";
-export { templatePathProblem, templateTreeProblem } from "./templatePaths.js";
 export * from "./sources/index.js";
+export * from "./protocol/index.js";

@@ -6,12 +6,13 @@ import * as path from "node:path";
 
 import type { ILogger } from "../../../ports/index.js";
 import type { TemplateEntry } from "../templateEntry.js";
-import { UNIVERSE_INDEX_URL, fetchCachedIndex, parseUniverseIndex } from "../sources/index.js";
-import type { FetchLike, TemplateCache, TemplateFile, TemplateSource } from "../sources/index.js";
+import { UNIVERSE_INDEX_URL, fetchCachedIndex, fetchCachedThumbnail, parseUniverseIndex } from "../sources/index.js";
+import type { FetchLike, TemplateCache, TemplateFile, TemplateListing, TemplateSource } from "../sources/index.js";
 import { readTemplateTree } from "./readTemplateTree.js";
 
 const MODULE = "templates";
 const NAMESPACE = "preview";
+const THUMBNAILS_URL = "https://packages.typst.org/preview/thumbnails";
 
 type PackageSpec = { namespace: string; name: string; version: string };
 
@@ -43,9 +44,9 @@ export function createUniverseSource(deps: UniverseSourceDeps): TemplateSource {
 
   return {
     id: "universe",
-    async list(signal?: AbortSignal): Promise<TemplateEntry[]> {
+    async list(signal?: AbortSignal): Promise<TemplateListing> {
       const accepts = (body: string) => parseUniverseIndex(body).ok;
-      const { body } = await fetchCachedIndex({ url: UNIVERSE_INDEX_URL, source: "universe", accepts }, deps, signal);
+      const { body, fromCache } = await fetchCachedIndex({ url: UNIVERSE_INDEX_URL, source: "universe", accepts }, deps, signal);
       const parsed = parseUniverseIndex(body);
       if (!parsed.ok) { throw new Error(`The Typst Universe index is unusable: ${parsed.reason}`); }
       for (const skipped of parsed.skipped) {
@@ -53,7 +54,12 @@ export function createUniverseSource(deps: UniverseSourceDeps): TemplateSource {
       }
       templatePaths.clear();
       for (const { entry, templatePath } of parsed.templates) { templatePaths.set(entry.id, templatePath); }
-      return parsed.templates.map((template) => template.entry);
+      return { entries: parsed.templates.map((template) => template.entry), fromCache };
+    },
+    async thumbnail(entry: TemplateEntry, signal?: AbortSignal): Promise<Uint8Array | undefined> {
+      if (entry.version === undefined) { return undefined; }
+      const file = `${entry.id}-${entry.version}-small.webp`;
+      return fetchCachedThumbnail({ url: `${THUMBNAILS_URL}/${file}`, key: `universe/${file}` }, deps, signal);
     },
     async files(entry: TemplateEntry, signal?: AbortSignal): Promise<TemplateFile[]> {
       if (!templatePaths.has(entry.id)) { await this.list(signal); }

@@ -3,7 +3,7 @@
 
 import * as fs from "node:fs";
 
-import { templateTreeProblem } from "../templatePaths.js";
+import { templateTreeProblem } from "../manifest/index.js";
 import type { TemplateFile } from "../sources/index.js";
 import { walkFolder } from "./walkFolder.js";
 

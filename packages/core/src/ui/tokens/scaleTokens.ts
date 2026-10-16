@@ -30,6 +30,8 @@ export const SHAPE_TOKENS = {
   "radius-lg": token("6px"),
   "radius-pill": token("999px"),
   "row-h": token("22px"),
+  "gallery-sidebar-w": token("220px"),
+  "gallery-card-w": token("200px"),
 } satisfies Record<string, DesignToken>;
 
 export const ELEVATION_TOKENS = {

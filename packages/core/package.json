@@ -46,6 +46,7 @@
     "./styles/library-detail.css": "./src/library-ui/dom/styles/library-detail.css",
     "./styles/library-tabs.css": "./src/library-ui/dom/styles/library-tabs.css",
     "./styles/library-citation-map.css": "./src/library-ui/dom/styles/library-citation-map.css",
+    "./styles/template-gallery.css": "./src/writing/templates/dom/styles/template-gallery.css",
     "./styles/tokens.css": "./src/ui/dom/tokens.css",
     "./styles/vscodeHost.css": "./src/ui/dom/vscodeHost.css",
     "./test-support/sync-fakes": "./__tests__/support/syncFakes.ts",

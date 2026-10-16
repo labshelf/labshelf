@@ -1,5 +1,5 @@
 /** Verifies the template path and file-tree rules. */
-import { templatePathProblem, templateTreeProblem } from "../../../src/writing/templates/index";
+import { templatePathProblem, templateTreeProblem } from "../../../../src/writing/templates/index";
 
 const MiB = 1024 * 1024;
 

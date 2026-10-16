@@ -19,6 +19,8 @@ export interface CachedIndexDeps {
 
 export interface CachedIndexResult {
   body: string;
+  /** True only when the fetch failed and the cached copy stands in; a 304 confirms the cached copy is current. */
+  /** True only when the fetch failed; a 304 confirms the cached copy is current. */
   fromCache: boolean;
 }
 
@@ -49,7 +51,7 @@ export async function fetchCachedIndex(request: CachedIndexRequest, deps: Cached
   const cached = stored !== undefined && request.accepts(stored.body) ? stored : undefined;
   const result = await attempt(request, deps, cached, signal);
   if ("body" in result) { return { body: result.body, fromCache: false }; }
-  if ("notModified" in result) { return { body: cached!.body, fromCache: true }; }
+  if ("notModified" in result) { return { body: cached!.body, fromCache: false }; }
   const context = { url: request.url, source: request.source, ...result.failure };
   if (cached !== undefined) {
     await deps.logger.log("WARN", "templates", "Template index fetch failed; using the cached index", context);

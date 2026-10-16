@@ -1,7 +1,7 @@
 /** Narrows the gallery's template list by source, format, category and a free-text query. */
 
 import type { ProjectFormat } from "../project/index.js";
-import type { TemplateCategory } from "./templateManifest.js";
+import type { TemplateCategory } from "./manifest/index.js";
 import type { TemplateEntry, TemplateSourceId } from "./templateEntry.js";
 
 export interface TemplateFilter {

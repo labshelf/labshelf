@@ -25,7 +25,7 @@ describe("fetchCachedIndex", () => {
 
   it("sends If-None-Match and returns the cached body on 304 without rewriting", async () => {
     const { run, cache, fetch } = setup({ [URL]: new Response(null, { status: 304 }) }, { body: "{\"c\":1}", etag: "abc" });
-    expect(await run()).toEqual({ body: "{\"c\":1}", fromCache: true });
+    expect(await run()).toEqual({ body: "{\"c\":1}", fromCache: false });
     expect(fetch.calls[0]!.headers["If-None-Match"]).toBe("abc");
     expect(cache.writes).toEqual([]);
   });
@@ -33,7 +33,7 @@ describe("fetchCachedIndex", () => {
   it("returns the first body when a second call answers 304", async () => {
     const { run } = setup({ [URL]: [ok("{\"first\":1}", "e1"), new Response(null, { status: 304 })] });
     await run();
-    expect(await run()).toEqual({ body: "{\"first\":1}", fromCache: true });
+    expect(await run()).toEqual({ body: "{\"first\":1}", fromCache: false });
   });
 
   it("falls back to the cache when offline, warning with the url", async () => {

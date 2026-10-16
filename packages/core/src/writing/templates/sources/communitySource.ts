@@ -3,9 +3,10 @@
 
 import type { ILogger } from "../../../ports/index.js";
 import { sha256Hex } from "../../../sync/util/index.js";
-import { parseCatalogIndex, type CatalogEntry } from "../catalogIndex.js";
+import { parseCatalogIndex, type CatalogEntry } from "../manifest/index.js";
 import type { TemplateEntry } from "../templateEntry.js";
 import { fetchCachedIndex } from "./fetchCachedIndex.js";
+import { fetchCachedThumbnail } from "./fetchCachedThumbnail.js";
 import type { FetchLike, TemplateCache, TemplateFile, TemplateSource } from "./templateSource.js";
 
 const REPOSITORY = "https://cdn.jsdelivr.net/gh/labshelf/labshelf-templates";
@@ -21,6 +22,7 @@ export interface CommunitySourceDeps {
 
 interface RememberedIndex {
   commit: string;
+  fromCache: boolean;
   entries: Map<string, CatalogEntry>;
 }
 
@@ -29,6 +31,7 @@ function toGalleryEntry(entry: CatalogEntry): TemplateEntry {
     id: entry.id, name: entry.name, description: entry.description, category: entry.category, format: entry.format,
     engine: entry.engine, main: entry.main, license: entry.license, authors: entry.authors,
     ...(entry.compiler === undefined ? {} : { compiler: entry.compiler }), source: "community",
+    files: entry.files.map((file) => file.path),
   };
 }
 
@@ -51,21 +54,33 @@ export function createCommunitySource(deps: CommunitySourceDeps): TemplateSource
 
   async function load(signal?: AbortSignal): Promise<RememberedIndex> {
     const accepts = (body: string): boolean => parseCatalogIndex(body).ok;
-    const { body } = await fetchCachedIndex({ url: COMMUNITY_INDEX_URL, source: "community", accepts }, deps, signal);
+    const { body, fromCache } = await fetchCachedIndex({ url: COMMUNITY_INDEX_URL, source: "community", accepts }, deps, signal);
     const parsed = parseCatalogIndex(body);
     // INVARIANT: fetchCachedIndex only returns bodies that accepts() let through.
     if (!parsed.ok) { throw new Error(`The catalog index is unreadable: ${parsed.reason}`); }
     for (const skipped of parsed.skipped) {
       await deps.logger.log("WARN", MODULE, "Community template left out of the gallery", { id: skipped.id, reason: skipped.reason });
     }
-    remembered = { commit: parsed.commit, entries: new Map(parsed.entries.map((entry) => [entry.id, entry])) };
+    remembered = { commit: parsed.commit, fromCache, entries: new Map(parsed.entries.map((entry) => [entry.id, entry])) };
     return remembered;
   }
 
   return {
     id: "community",
     async list(signal) {
-      return [...(await load(signal)).entries.values()].map(toGalleryEntry);
+      const index = await load(signal);
+      return { entries: [...index.entries.values()].map(toGalleryEntry), fromCache: index.fromCache };
+    },
+    async thumbnail(entry, signal) {
+      const index = remembered ?? await load(signal);
+      const thumbnail = index.entries.get(entry.id)?.thumbnail;
+      if (thumbnail === undefined) { return undefined; }
+      const request = {
+        url: `${REPOSITORY}@${index.commit}/templates/${entry.id}/preview/thumbnail.png`,
+        key: `community/${thumbnail.sha256}.png`,
+        accepts: async (bytes: Uint8Array) => bytes.length === thumbnail.size && (await sha256Hex(bytes)) === thumbnail.sha256,
+      };
+      return fetchCachedThumbnail(request, deps, signal);
     },
     async files(entry, signal) {
       const index = remembered?.entries.has(entry.id) ? remembered : await load(signal);

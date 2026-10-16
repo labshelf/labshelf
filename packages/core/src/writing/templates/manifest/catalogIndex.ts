@@ -1,6 +1,7 @@
 /** Parses the Community catalog's index.json, keeping the entries that pass the manifest and path rules. */
 // CONTRACT: documents/contracts/templates.md#index
 
+import { isRecord, parseIndexJson } from "./indexJson.js";
 import { templateTreeProblem } from "./templatePaths.js";
 import { readTemplateFields, schemaProblem, type TemplateManifest } from "./templateManifest.js";
 
@@ -21,10 +22,6 @@ type Parsed<T> = { value: T } | { problem: string };
 
 const COMMIT_PATTERN = /^[0-9a-f]{40}$/;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
 
 function readBlob(value: unknown): CatalogBlob | undefined {
   if (!isRecord(value)) { return undefined; }
@@ -79,10 +76,9 @@ function readEntries(templates: unknown[]): { entries: CatalogEntry[]; skipped: 
 
 /** Reads index.json; a whole-index problem refuses it, an entry-level problem skips only that entry. Never throws. */
 export function parseCatalogIndex(jsonText: string): CatalogIndexResult {
-  let value: unknown;
-  try { value = JSON.parse(jsonText); } catch (error) {
-    return { ok: false, reason: `invalid JSON: ${error instanceof Error ? error.message : String(error)}` };
-  }
+  const json = parseIndexJson(jsonText);
+  if (!json.ok) { return json; }
+  const value = json.value;
   if (!isRecord(value)) { return { ok: false, reason: "index.json is not an object" }; }
   const problem = schemaProblem(value["schema"]);
   if (problem !== undefined) { return { ok: false, reason: problem }; }

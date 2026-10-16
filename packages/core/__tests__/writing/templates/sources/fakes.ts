@@ -5,13 +5,17 @@ import type { CachedIndex, CachedSourceId, FetchLike, TemplateCache } from "../.
 export interface MemoryCache extends TemplateCache {
   store: Map<CachedSourceId, CachedIndex>;
   writes: Array<{ source: CachedSourceId; index: CachedIndex }>;
+  thumbnails: Map<string, Uint8Array>;
 }
 
 export function memoryCache(initial: Partial<Record<CachedSourceId, CachedIndex>> = {}): MemoryCache {
   const store = new Map<CachedSourceId, CachedIndex>(Object.entries(initial) as Array<[CachedSourceId, CachedIndex]>);
   const writes: MemoryCache["writes"] = [];
+  const thumbnails = new Map<string, Uint8Array>();
   return {
-    store, writes,
+    store, writes, thumbnails,
+    readThumbnail: async (key) => thumbnails.get(key),
+    writeThumbnail: async (key, bytes) => { thumbnails.set(key, bytes); },
     readIndex: async (source) => store.get(source),
     writeIndex: async (source, index) => { writes.push({ source, index }); store.set(source, index); },
   };

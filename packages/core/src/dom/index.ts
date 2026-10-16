@@ -2,3 +2,4 @@
 export * from "../reader/dom/index.js";
 export * from "../ui/dom/index.js";
 export * from "../library-ui/dom/index.js";
+export * from "../writing/templates/dom/index.js";
