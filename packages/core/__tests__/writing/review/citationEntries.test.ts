@@ -12,8 +12,8 @@ describe("citationEntries", () => {
       paper("a", "smith2020", { authors: ["A. Smith"], year: 2020, summary: "Abstract." }),
     ];
     expect(citationEntries(["smith2020", "doe19", "smith2020"], papers)).toEqual([
-      { key: "smith2020", paper: { id: "a", title: "Title a", authors: ["A. Smith"], year: 2020, summary: "Abstract." } },
-      { key: "doe19", paper: { id: "b", title: "Title b", authors: [] } },
+      { key: "smith2020", paper: { id: "a", title: "Title a", authors: ["A. Smith"], year: 2020, summary: "Abstract.", status: "unread" } },
+      { key: "doe19", paper: { id: "b", title: "Title b", authors: [], status: "unread" } },
     ]);
   });
 
@@ -23,5 +23,19 @@ describe("citationEntries", () => {
 
   it("picks the paper with the smallest id on a duplicate key", () => {
     expect(citationEntries(["k"], [paper("z", "k"), paper("m", "k")])[0]?.paper?.id).toBe("m");
+  });
+});
+
+describe("citationEntries with details", () => {
+  it("carries the paper status and fills highlights by paper id and sections by key", () => {
+    const papers = [paper("a", "smith2020", { status: "done" }), paper("b", "doe19")];
+    const details = {
+      highlights: new Map([["a", [{ text: "Quote.", page: 2 }]]]),
+      citedIn: new Map([["smith2020", ["Introduction"]], ["doe19", []]]),
+    };
+    expect(citationEntries(["smith2020", "doe19"], papers, details)).toEqual([
+      { key: "smith2020", paper: { id: "a", title: "Title a", authors: [], status: "done", highlights: [{ text: "Quote.", page: 2 }], citedIn: ["Introduction"] } },
+      { key: "doe19", paper: { id: "b", title: "Title b", authors: [], status: "unread", citedIn: [] } },
+    ]);
   });
 });

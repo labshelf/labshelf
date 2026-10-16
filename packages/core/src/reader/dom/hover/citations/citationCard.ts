@@ -1,7 +1,10 @@
 // Builds the hover card that shows the library papers behind a citation.
 import type { CitationCardPaper, CitationEntry } from "../../../index.js";
-import { el } from "../../../../ui/dom/index.js";
+import { STATUS_LABEL } from "../../../../model/index.js";
+import { arcMarkElement, el } from "../../../../ui/dom/index.js";
+import { STATUS_ARC } from "../../../../ui/icons/index.js";
 import type { PopupContent } from "../hoverTarget.js";
+import { citationTabs } from "./citationTabs.js";
 
 export const OPEN_PAPER_LABEL = "Open paper";
 
@@ -10,13 +13,20 @@ function byline(paper: CitationCardPaper): string {
   return [paper.authors.join(", "), paper.year === undefined ? "" : String(paper.year)].filter(Boolean).join(" · ");
 }
 
-function singleBody(entry: CitationEntry, paper: CitationCardPaper): HTMLElement {
-  return el("div", { class: "rd-hover-cite" },
-    el("p", { class: "rd-cite-title" }, paper.title),
-    byline(paper) && el("p", { class: "rd-cite-byline" }, byline(paper)),
-    paper.summary && el("p", { class: "rd-cite-summary" }, paper.summary),
-    el("code", { class: "rd-cite-key" }, entry.key),
+function head(entry: CitationEntry, paper: CitationCardPaper): HTMLElement {
+  const { status } = paper;
+  return el("div", { class: "rd-cite-head" },
+    status && arcMarkElement(...STATUS_ARC[status], STATUS_LABEL[status]),
+    el("div", { class: "rd-cite-head-text" },
+      el("p", { class: "rd-cite-title" }, paper.title),
+      byline(paper) && el("p", { class: "rd-cite-byline" }, byline(paper)),
+      el("code", { class: "rd-cite-key" }, entry.key),
+    ),
   );
+}
+
+function singleBody(entry: CitationEntry, paper: CitationCardPaper): HTMLElement {
+  return el("div", { class: "rd-hover-cite" }, head(entry, paper), ...citationTabs(paper));
 }
 
 function row(entry: CitationEntry, open: (paperId: string) => void): HTMLElement {

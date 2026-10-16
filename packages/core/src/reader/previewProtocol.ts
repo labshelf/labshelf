@@ -1,5 +1,7 @@
 /** Declares the shapes a preview reader and its host exchange: build state, build roots, page positions and the citations behind them. */
 // CONTRACT: documents/contracts/reader-host.md#preview
+import type { PaperStatus } from "../model/index.js";
+import type { QuotedHighlight } from "../writing/review/index.js";
 
 /** The state of the build whose output a preview reader shows. */
 export type BuildState = "building" | "succeeded" | "failed";
@@ -27,13 +29,17 @@ export interface CitationQuery {
   dest?: string;
 }
 
-/** The library paper a cite key names, as the reader's citation card shows it. */
+/** The library paper a cite key names, as the reader's citation card shows it; `summary` is its abstract. */
 export interface CitationCardPaper {
   id: string;
   title: string;
   authors: string[];
   year?: number;
   summary?: string;
+  status?: PaperStatus;
+  highlights?: QuotedHighlight[];
+  /** Titles of the project's sections that cite the key. */
+  citedIn?: string[];
 }
 
 /** One key cited at the queried place; `paper` is absent when no library paper has the key. */

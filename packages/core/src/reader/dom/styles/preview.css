@@ -44,3 +44,23 @@ button.rd-log-entry:focus-visible { outline: 1px solid var(--ls-focus); outline-
 .rd-toolbar-actions .ls-arc-mark .ls-arc-mark-label {
   position: static; margin: 0; padding: 0; background: none; opacity: 1; transform: none; line-height: normal;
 }
+
+/* Citation card: a head with the status mark, then light tabs whose panels share one height so switching does not jump. */
+.rd-cite-head { display: flex; align-items: flex-start; gap: var(--ls-space-3); }
+.rd-cite-head .ls-arc-mark { flex-shrink: 0; margin-top: var(--ls-space-1); }
+.rd-cite-head-text { flex: 1; min-width: 0; }
+.rd-cite-tabs { padding: 0; margin: var(--ls-space-2) 0 0; gap: var(--ls-space-4); }
+.rd-cite-tabs .rd-tab {
+  flex: none; height: auto; padding: var(--ls-space-1) 0; border-radius: 0; font-size: var(--ls-text-sm);
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.rd-cite-tabs .rd-tab:hover { background: none; color: var(--ls-reader-fg); }
+.rd-cite-tabs .rd-tab[aria-selected="true"] { background: none; border-bottom-color: var(--ls-focus); }
+.rd-cite-panel { max-height: calc(var(--ls-space-7) * 5); overflow: auto; padding-top: var(--ls-space-3); }
+.rd-cite-panel:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
+.rd-cite-panel .rd-cite-summary { display: block; margin: 0; }
+.rd-cite-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--ls-space-2); }
+.rd-cite-highlight { display: flex; gap: var(--ls-space-3); align-items: baseline; }
+.rd-cite-quote { flex: 1; min-width: 0; }
+.rd-cite-page { flex-shrink: 0; font-size: var(--ls-text-xs); color: var(--ls-reader-desc); }
+p.rd-cite-empty { margin: 0; color: var(--ls-reader-desc); }

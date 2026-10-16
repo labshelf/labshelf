@@ -1,12 +1,16 @@
 /**
  * Draws the Arc mark, a ring whose arc length shows progress and whose colour shows a tone, as an SVG string.
  */
+import type { PaperStatus } from "../../model/index.js";
 import { MARK_TOKENS } from "../tokens/index.js";
 
 export const ARC_TONES = ["err", "warn", "ok", "accent"] as const;
 export const ARC_PROGRESSES = ["none", "half", "full"] as const;
 export type ArcTone = (typeof ARC_TONES)[number];
 export type ArcProgress = (typeof ARC_PROGRESSES)[number];
+
+/** The Arc mark of each reading status, the same in every app. */
+export const STATUS_ARC: Record<PaperStatus, readonly [ArcTone, ArcProgress]> = { unread: ["accent", "none"], reading: ["accent", "half"], done: ["ok", "full"] };
 
 /** The resolved colour of each tone, for hosts that cannot read CSS variables (native tree icons). */
 export const ARC_TONE_COLORS = Object.fromEntries(
