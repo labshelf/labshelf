@@ -2,7 +2,6 @@
 import * as vscode from "vscode";
 
 import type { ILogger } from "@labshelf/core";
-import { writeProjectCursor } from "@labshelf/core/node";
 
 import { mainPathIn, owningProject, type WritingProjects } from "../writing/index.js";
 
@@ -33,7 +32,7 @@ export function registerProjectCursorRecorder(context: vscode.ExtensionContext, 
     const position = `${project.folder}\n${file}\n${line}:${character}`;
     if (position === lastSaved) { return; }
     try {
-      await writeProjectCursor(project.folder, { file, line, character, updatedAt: new Date().toISOString() });
+      await deps.projects.data.writeProjectCursor(project.folder, { file, line, character, updatedAt: new Date().toISOString() });
       lastSaved = position;
       deps.onRecorded();
     } catch (error) {

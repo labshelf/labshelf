@@ -2,7 +2,6 @@
 import * as vscode from "vscode";
 
 import type { ProjectEntry } from "@labshelf/core";
-import { unregisterProjectFolder } from "@labshelf/core/node";
 import { executeSafely } from "../commands/index.js";
 import { openProjectMain } from "./openProjectMain.js";
 import type { WritingHost, WritingProjects } from "./projectStore.js";
@@ -24,7 +23,7 @@ async function removeProject({ host, projects }: ItemCommandsDeps, entry: Projec
       remove,
     );
     if (answer !== remove) { return; }
-    await unregisterProjectFolder(session.root, entry.folder, session.logger);
+    await projects.data.unregisterProjectFolder(session.root, entry.folder);
     await projects.reload();
   });
 }

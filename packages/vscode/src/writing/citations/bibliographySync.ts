@@ -2,7 +2,6 @@
 import * as vscode from "vscode";
 
 import { DEFAULT_BIBLIOGRAPHY } from "@labshelf/core";
-import { updateProjectBibliography } from "@labshelf/core/node";
 import { citingProject, type CitationWorkspace } from "./citationWorkspace.js";
 import { openEditorSources } from "./openEditorSources.js";
 import type { ReadyProject } from "../mainDocument.js";
@@ -25,7 +24,7 @@ export class BibliographySync {
 
   private async run(project: ReadyProject, session: NonNullable<ReturnType<CitationWorkspace["session"]>>): Promise<void> {
     try {
-      const result = await updateProjectBibliography(project, await session.listPapers(), session.logger, openEditorSources);
+      const result = await this.workspace.projects.data.updateProjectBibliography(project, await session.listPapers(), openEditorSources);
       if (result.mainLine === "conflict") { this.warnConflict(project); }
       // labshelf.yaml gained `bibliography` once the project first cited a library paper, or its papers list changed.
       const recordedBibliography = result.mainLine !== "not-needed" && project.settings.bibliography === undefined;

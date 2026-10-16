@@ -18,7 +18,7 @@ export type TypstTrigger = BuildTrigger | "live";
 export interface TypstBuildsDeps {
   compiler: Pick<TypstCompilerHost, "get">;
   host: Pick<WritingHost, "current">;
-  projects: Pick<WritingProjects, "reload"> & { list: () => readonly ProjectEntry[] };
+  projects: Pick<WritingProjects, "data" | "reload"> & { list: () => readonly ProjectEntry[] };
   diagnostics: { publish(projectFolder: string, problems: TypstBuildResult["problems"]): void };
   previews: BuildListener;
 }

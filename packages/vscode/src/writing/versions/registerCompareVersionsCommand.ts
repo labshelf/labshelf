@@ -18,7 +18,7 @@ export const COMPARE_VERSIONS_COMMAND = "labshelf.writing.compareVersions";
 interface CompareVersionsDeps {
   context: vscode.ExtensionContext;
   host: WritingHost;
-  projects: Pick<WritingProjects, "list" | "paths" | "reload">;
+  projects: Pick<WritingProjects, "data" | "list" | "paths" | "reload">;
   builders: ProjectBuilders;
   pdfjs: PdfjsLoader;
   reader: Omit<ReaderPanelDeps, "logger" | "extensionUri">;

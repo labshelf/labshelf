@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 
 import { ReaderPanel } from "../../../src/pdf-viewer";
 import { BuildPreviews } from "../../../src/writing/preview";
-import { fakeHost, readyEntry } from "../../support/writingFixtures";
+import { fakeHost, fakeProjectData, readyEntry } from "../../support/writingFixtures";
 
 jest.mock("../../../src/pdf-viewer", () => ({ ReaderPanel: { createOrShow: jest.fn() } }));
 
@@ -19,7 +19,7 @@ function setup() {
   const controller = { setBuildStatus: jest.fn(), reloadDocument: jest.fn(), revealPoint: jest.fn() };
   let closed: (() => void) | undefined;
   create.mockImplementation((_deps, source) => { closed = source.onClosed; return { controller }; });
-  const previews = new BuildPreviews({ host, paths: path, listPapers: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false });
+  const previews = new BuildPreviews({ host, paths: path, data: fakeProjectData(), listPapers: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false });
   return { previews, controller, host, close: () => closed?.(), ports: () => create.mock.calls[0][1].preview };
 }
 

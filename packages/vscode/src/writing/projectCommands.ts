@@ -2,7 +2,6 @@
 import * as vscode from "vscode";
 
 import { PROJECT_FILE, detectFormat, type ProjectFormat } from "@labshelf/core";
-import { addExistingFolder, createProject, rootFileNames } from "@labshelf/core/node";
 import { executeSafely } from "../commands/index.js";
 import { openProjectMain } from "./openProjectMain.js";
 import type { WritingHost, WritingProjects } from "./projectStore.js";
@@ -29,7 +28,7 @@ async function newProject({ host, projects }: ProjectCommandsDeps): Promise<void
     if (!title) { return; }
     const format = await pickFormat("Format of the new project");
     if (!format) { return; }
-    const entry = await createProject(session.root, { title, format }, session.logger);
+    const entry = await projects.data.createProject(session.root, { title, format });
     await projects.reload();
     await openProjectMain(projects.paths, entry);
   });
@@ -44,12 +43,12 @@ async function addFolder({ host, projects }: ProjectCommandsDeps): Promise<void>
     });
     const folder = picked?.[0]?.fsPath;
     if (!folder) { return; }
-    const names = await rootFileNames(folder);
+    const names = await projects.data.rootFileNames(folder);
     // Core keeps an existing labshelf.yaml and ignores the format, so the user is not asked for it.
     const format = detectFormat(names)
       ?? (names.includes(PROJECT_FILE) ? "latex" : await pickFormat("This folder has no .tex or .typ file. Which format is the project?"));
     if (!format) { return; }
-    await addExistingFolder(session.root, { folder, format }, session.logger);
+    await projects.data.addExistingFolder(session.root, { folder, format });
     await projects.reload();
   });
 }

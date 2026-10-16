@@ -1,20 +1,17 @@
 // Tests New project and Add existing folder: happy paths, cancellation and errors shown to the user.
 import * as vscode from "vscode";
 
-import { addExistingFolder, createProject, rootFileNames } from "@labshelf/core/node";
 import { registerProjectCommands } from "../../src/writing";
 import { commandHandler, fakeHost, fakeProjects, readyEntry } from "../support/writingFixtures";
 
-jest.mock("@labshelf/core/node", () => ({
-  ...jest.requireActual("@labshelf/core/node"),
-  createProject: jest.fn(), addExistingFolder: jest.fn(), rootFileNames: jest.fn(),
-}));
-
 const window = vscode.window as unknown as Record<string, jest.Mock>;
+
+let data: ReturnType<typeof fakeProjects>["data"];
 
 function setup() {
   const host = fakeHost();
   const projects = fakeProjects();
+  data = projects.data;
   registerProjectCommands({ context: { subscriptions: [] } as never, host, projects: projects as never });
   return { host, projects };
 }
@@ -28,14 +25,14 @@ beforeEach(() => {
 
 describe("labshelf.writing.newProject", () => {
   it("creates the project with the title and format, reloads the list and opens the main file", async () => {
-    const { host, projects } = setup();
+    const { projects } = setup();
     window["showInputBox"]!.mockResolvedValue("  Deep nets survey ");
     window["showQuickPick"]!.mockResolvedValue({ label: "Typst", format: "typst" });
-    (createProject as jest.Mock).mockResolvedValue(readyEntry("/lib/projects/deep-nets-survey", { main: "main.typ" }));
+    data.createProject.mockResolvedValue(readyEntry("/lib/projects/deep-nets-survey", { main: "main.typ" }));
 
     await commandHandler("labshelf.writing.newProject")();
 
-    expect(createProject).toHaveBeenCalledWith("/lib", { title: "Deep nets survey", format: "typst" }, host.session.logger);
+    expect(data.createProject).toHaveBeenCalledWith("/lib", { title: "Deep nets survey", format: "typst" });
     expect(projects.reload).toHaveBeenCalled();
     const [command, uri] = (vscode.commands.executeCommand as jest.Mock).mock.calls[0];
     expect(command).toBe("vscode.open");
@@ -49,7 +46,7 @@ describe("labshelf.writing.newProject", () => {
 
     window["showInputBox"]!.mockResolvedValue("Title");
     await commandHandler("labshelf.writing.newProject")();
-    expect(createProject).not.toHaveBeenCalled();
+    expect(data.createProject).not.toHaveBeenCalled();
   });
 
   it("does nothing when the library setup is cancelled", async () => {
@@ -64,53 +61,54 @@ describe("labshelf.writing.addExistingFolder", () => {
   const pick = (path: string) => window["showOpenDialog"]!.mockResolvedValue([vscode.Uri.file(path)]);
 
   it("registers the folder with the format its sources suggest, without asking", async () => {
-    const { host, projects } = setup();
+    const { projects } = setup();
     pick("/code/paper");
-    (rootFileNames as jest.Mock).mockResolvedValue(["notes.typ", "refs.bib"]);
+    data.rootFileNames.mockResolvedValue(["notes.typ", "refs.bib"]);
+    data.addExistingFolder.mockResolvedValue(readyEntry("/code/paper"));
 
     await commandHandler("labshelf.writing.addExistingFolder")();
 
     expect(window["showQuickPick"]).not.toHaveBeenCalled();
-    expect(addExistingFolder).toHaveBeenCalledWith("/lib", { folder: "/code/paper", format: "typst" }, host.session.logger);
+    expect(data.addExistingFolder).toHaveBeenCalledWith("/lib", { folder: "/code/paper", format: "typst" });
     expect(projects.reload).toHaveBeenCalled();
   });
 
   it("asks for the format only when the folder has no source file", async () => {
     setup();
     pick("/code/empty");
-    (rootFileNames as jest.Mock).mockResolvedValue(["README.md"]);
+    data.rootFileNames.mockResolvedValue(["README.md"]);
     window["showQuickPick"]!.mockResolvedValue({ label: "LaTeX", format: "latex" });
 
     await commandHandler("labshelf.writing.addExistingFolder")();
 
-    expect(addExistingFolder).toHaveBeenCalledWith("/lib", { folder: "/code/empty", format: "latex" }, expect.anything());
+    expect(data.addExistingFolder).toHaveBeenCalledWith("/lib", { folder: "/code/empty", format: "latex" });
   });
 
   it("does not ask for the format when the folder already has labshelf.yaml", async () => {
     setup();
     pick("/code/configured");
-    (rootFileNames as jest.Mock).mockResolvedValue(["labshelf.yaml", "README.md"]);
+    data.rootFileNames.mockResolvedValue(["labshelf.yaml", "README.md"]);
 
     await commandHandler("labshelf.writing.addExistingFolder")();
 
     expect(window["showQuickPick"]).not.toHaveBeenCalled();
-    expect(addExistingFolder).toHaveBeenCalledWith("/lib", expect.objectContaining({ folder: "/code/configured" }), expect.anything());
+    expect(data.addExistingFolder).toHaveBeenCalledWith("/lib", expect.objectContaining({ folder: "/code/configured" }));
   });
 
   it("registers nothing when the dialog or the format question is cancelled", async () => {
     setup();
     await commandHandler("labshelf.writing.addExistingFolder")();
     pick("/code/empty");
-    (rootFileNames as jest.Mock).mockResolvedValue([]);
+    data.rootFileNames.mockResolvedValue([]);
     await commandHandler("labshelf.writing.addExistingFolder")();
-    expect(addExistingFolder).not.toHaveBeenCalled();
+    expect(data.addExistingFolder).not.toHaveBeenCalled();
   });
 
   it("shows the error when the folder is inside the library, and logs it", async () => {
     const { host, projects } = setup();
     pick("/lib/projects/x");
-    (rootFileNames as jest.Mock).mockResolvedValue(["main.tex"]);
-    (addExistingFolder as jest.Mock).mockRejectedValue(new Error("/lib/projects/x is inside the library"));
+    data.rootFileNames.mockResolvedValue(["main.tex"]);
+    data.addExistingFolder.mockRejectedValue(new Error("/lib/projects/x is inside the library"));
 
     await commandHandler("labshelf.writing.addExistingFolder")();
 

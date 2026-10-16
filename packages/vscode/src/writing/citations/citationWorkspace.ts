@@ -13,7 +13,7 @@ export interface CitationSession {
 
 /** What the providers read per request: the open library, if any, and the project list. */
 export interface CitationWorkspace {
-  projects: Pick<WritingProjects, "list" | "paths" | "reload">;
+  projects: Pick<WritingProjects, "data" | "list" | "paths" | "reload">;
   session(): CitationSession | undefined;
 }
 

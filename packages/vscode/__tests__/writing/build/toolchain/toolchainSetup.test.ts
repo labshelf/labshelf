@@ -1,13 +1,13 @@
 // Tests the toolchain setup: the first-run pick, TeX Live detection, the Tectonic download consent and the D5 error.
 import * as vscode from "vscode";
 
-import { findExecutable, installedTectonic, installTectonic, updateProjectSettings } from "@labshelf/core/node";
+import { findExecutable, installedTectonic, installTectonic } from "@labshelf/core/node";
 import { ensureToolchain } from "../../../../src/writing/build/toolchain";
 import { fakeHost, fakeProjects, readyEntry } from "../../../support/writingFixtures";
 
 jest.mock("@labshelf/core/node", () => ({
   ...jest.requireActual("@labshelf/core/node"),
-  updateProjectSettings: jest.fn(), findExecutable: jest.fn(), installedTectonic: jest.fn(), installTectonic: jest.fn(),
+  findExecutable: jest.fn(), installedTectonic: jest.fn(), installTectonic: jest.fn(),
 }));
 
 const window = vscode.window as unknown as Record<string, jest.Mock>;
@@ -33,19 +33,19 @@ beforeEach(() => {
 
 describe("first-run pick", () => {
   it("writes engine tectonic when Tectonic is picked, then continues with it", async () => {
-    const { deps, host, projects } = setup();
+    const { deps, projects } = setup();
     window["showQuickPick"]!.mockImplementation(async (items) => items.find((item: { engine: string }) => item.engine === "tectonic"));
     (installedTectonic as jest.Mock).mockResolvedValue("/storage/tectonic/0.17.0/tectonic");
 
     const toolchain = await ensureToolchain(deps, project());
 
-    expect(updateProjectSettings).toHaveBeenCalledWith("/code/repo", { engine: "tectonic" }, host.session.logger);
+    expect(projects.data.updateProjectSettings).toHaveBeenCalledWith("/code/repo", { engine: "tectonic" });
     expect(projects.reload).toHaveBeenCalled();
     expect(toolchain).toEqual({ engine: "tectonic", executable: "/storage/tectonic/0.17.0/tectonic" });
   });
 
   it("lists TeX Live first when latexmk is on PATH and writes pdflatex for it", async () => {
-    const { deps, host } = setup();
+    const { deps, projects } = setup();
     latexmkOnPath(true);
     window["showQuickPick"]!.mockImplementation(async (items) => items[0]);
 
@@ -55,12 +55,12 @@ describe("first-run pick", () => {
     expect(items.map((item: { label: string }) => item.label)).toEqual(["TeX Live (latexmk)", "XeLaTeX (Tectonic)"]);
     expect(items[1].description).toBe("recommended");
     expect(items[1].detail).toMatch(/Downloads about \d+ MB once/);
-    expect(updateProjectSettings).toHaveBeenCalledWith("/code/repo", { engine: "pdflatex" }, host.session.logger);
+    expect(projects.data.updateProjectSettings).toHaveBeenCalledWith("/code/repo", { engine: "pdflatex" });
     expect(toolchain).toEqual({ engine: "pdflatex", executable: "/usr/bin/latexmk" });
   });
 
   it("says TeX Live is not installed when latexmk is missing, and writes nothing on Escape", async () => {
-    const { deps } = setup();
+    const { deps, projects } = setup();
     window["showQuickPick"]!.mockResolvedValue(undefined);
 
     expect(await ensureToolchain(deps, project())).toBeUndefined();
@@ -68,7 +68,7 @@ describe("first-run pick", () => {
     const items = window["showQuickPick"]!.mock.calls[0]![0];
     expect(items[0].label).toBe("XeLaTeX (Tectonic)");
     expect(items[1].detail).toBe("TeX Live is not installed.");
-    expect(updateProjectSettings).not.toHaveBeenCalled();
+    expect(projects.data.updateProjectSettings).not.toHaveBeenCalled();
   });
 });
 
@@ -168,13 +168,13 @@ describe("TeX Live engines", () => {
   });
 
   it("switches the project to Tectonic on Use Tectonic", async () => {
-    const { deps, host, projects } = setup();
+    const { deps, projects } = setup();
     window["showErrorMessage"]!.mockResolvedValue("Use Tectonic");
     (installedTectonic as jest.Mock).mockResolvedValue("/storage/tectonic/0.17.0/tectonic");
 
     const toolchain = await ensureToolchain(deps, project("pdflatex"));
 
-    expect(updateProjectSettings).toHaveBeenCalledWith("/code/repo", { engine: "tectonic" }, host.session.logger);
+    expect(projects.data.updateProjectSettings).toHaveBeenCalledWith("/code/repo", { engine: "tectonic" });
     expect(projects.reload).toHaveBeenCalled();
     expect(toolchain).toEqual({ engine: "tectonic", executable: "/storage/tectonic/0.17.0/tectonic" });
   });

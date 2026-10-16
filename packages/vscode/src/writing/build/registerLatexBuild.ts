@@ -14,7 +14,7 @@ const SAVE_DEBOUNCE_MS = 300;
 interface LatexBuildDeps {
   context: vscode.ExtensionContext;
   host: WritingHost;
-  projects: Pick<WritingProjects, "list" | "paths" | "reload">;
+  projects: Pick<WritingProjects, "data" | "list" | "paths" | "reload">;
   previews: Pick<BuildPreviews, "building" | "finished">;
   diagnostics: Pick<BuildDiagnostics, "publish">;
 }

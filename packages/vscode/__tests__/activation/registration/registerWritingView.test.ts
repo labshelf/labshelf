@@ -4,19 +4,17 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import * as vscode from "vscode";
 
-import { listProjects } from "@labshelf/core/node";
 import { registerWritingView } from "../../../src/activation/registration/registerWritingView";
 import type { LibraryRootController } from "../../../src/activation/libraryLifecycle";
 import { createLibraryEvents } from "../../../src/events";
-import { fakeLogger } from "../../support/writingFixtures";
-
-jest.mock("@labshelf/core/node", () => ({ ...jest.requireActual("@labshelf/core/node"), listProjects: jest.fn(async () => []) }));
+import { fakeLogger, fakeProjectData } from "../../support/writingFixtures";
 
 const manifest = JSON.parse(readFileSync(join(__dirname, "../../../package.json"), "utf8")) as {
   contributes: { commands: { command: string }[]; views: { labshelfContainer: { id: string }[] } };
 };
 
 function setup(root: string | undefined) {
+  const data = fakeProjectData();
   const emitter = new vscode.EventEmitter<{ root: vscode.Uri }>();
   const controller = {
     currentRoot: () => (root ? vscode.Uri.file(root) : undefined),
@@ -29,8 +27,8 @@ function setup(root: string | undefined) {
     globalStorageUri: vscode.Uri.file("/storage"),
     workspaceState: { get: () => undefined, update: jest.fn(async () => {}) },
   };
-  registerWritingView(context as unknown as vscode.ExtensionContext, controller, { locatePdfjs: () => null, isMac: false }, path, createLibraryEvents());
-  return { emitter };
+  registerWritingView(context as unknown as vscode.ExtensionContext, controller, { locatePdfjs: () => null, isMac: false }, { paths: path, createProjectData: () => data }, createLibraryEvents());
+  return { emitter, listProjects: data.listProjects };
 }
 
 const flush = () => new Promise((resolve) => setImmediate(resolve));
@@ -52,7 +50,7 @@ describe("registerWritingView", () => {
   });
 
   it("lists projects at start and again when the library root changes", async () => {
-    const { emitter } = setup("/lib");
+    const { emitter, listProjects } = setup("/lib");
     await flush();
     expect(listProjects).toHaveBeenCalledTimes(1);
     emitter.fire({ root: vscode.Uri.file("/other") });
@@ -61,7 +59,7 @@ describe("registerWritingView", () => {
   });
 
   it("lists nothing while no library is configured", async () => {
-    setup(undefined);
+    const { listProjects } = setup(undefined);
     await flush();
     expect(listProjects).not.toHaveBeenCalled();
   });

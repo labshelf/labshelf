@@ -2,10 +2,9 @@
 import * as vscode from "vscode";
 
 import { ValueCompletionProvider } from "../../../src/writing/values/valueCompletion";
-import { removeValueFolders, valuesFixture } from "../../support/valueFixtures";
+import { valuesFixture } from "../../support/valueFixtures";
 import { fakeDocument, withCursor } from "../../support/textDocument";
 
-afterEach(removeValueFolders);
 
 const RESULTS = JSON.stringify({ acc: 0.91, model: { name: "bert", layers: [1, 2] }, skip: null });
 

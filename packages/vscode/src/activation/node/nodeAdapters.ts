@@ -3,7 +3,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import type * as vscode from "vscode";
 
-import { NodeLockStore, NodePdfOpener, createNodeSidecarPort, isProcessAlive, listSyncProjects, openAiStorage } from "@labshelf/core/node";
+import { NodeLockStore, NodePdfOpener, createNodeSidecarPort, isProcessAlive, listSyncProjects, nodeProjectData, openAiStorage } from "@labshelf/core/node";
 import { createExtensionLogger } from "../../core/node/index.js";
 import { createOcrEngine, createTextLayerBuilder, hostPdfjs } from "../../pdf/node/index.js";
 import { locatePdfjs } from "../../pdf-viewer/node/index.js";
@@ -22,6 +22,7 @@ export function createNodeAdapters(context: vscode.ExtensionContext): HostAdapte
     },
     createSidecarPort: createNodeSidecarPort,
     openAiStorage,
+    createProjectData: nodeProjectData,
     sync: {
       host: { name: os.hostname(), pid: process.pid },
       lock: { store: new NodeLockStore(), isProcessAlive },

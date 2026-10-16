@@ -53,7 +53,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     followFolderMove: async (from, to) => { await ListWebviewPanel.currentPanel?.followFolderMove(from, to); },
   };
 
-  const writing = registerWritingView(context, controller, adapters.reader, adapters.paths, events);
+  const writing = registerWritingView(context, controller, adapters.reader, adapters, events);
   const { libraryProvider, syncTreeToPanel, refreshLibraryViews: refreshViews } = registerLibraryTreeView({
     context, events, controller, papersRootUri, folderHost, adapters, projects: writing.projects,
   });

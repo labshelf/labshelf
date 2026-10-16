@@ -2,7 +2,6 @@
 import * as vscode from "vscode";
 
 import type { PaperRecord, ProjectEntry } from "@labshelf/core";
-import { updateProjectSettings } from "@labshelf/core/node";
 import { executeSafely } from "../../commands/index.js";
 import type { ReadyProject } from "../figures/index.js";
 import type { WritingHost, WritingProjects } from "../projectStore.js";
@@ -47,7 +46,7 @@ async function addPaper(deps: ReadingListCommandsDeps, target: ProjectEntry | Re
     const listed = syncedKeys.has(citeKey)
       ? papers.map((entry) => entry.key === citeKey && entry.cited ? manual(entry.doi) : entry)
       : [...papers, manual(undefined)];
-    await updateProjectSettings(project.folder, { papers: listed }, session.logger);
+    await deps.projects.data.updateProjectSettings(project.folder, { papers: listed });
     await deps.projects.reload();
   });
 }
@@ -58,7 +57,7 @@ async function removePaper(deps: ReadingListCommandsDeps, node: ReadingPaperNode
   if (!session || !node || !project || node.entry.cited) { return; }
   await executeSafely(session.logger, "labshelf.writing.removeFromReadingList", async () => {
     const remaining = (project.settings.papers ?? []).filter((entry) => entry.key !== node.entry.key);
-    await updateProjectSettings(project.folder, { papers: remaining.length > 0 ? remaining : undefined }, session.logger);
+    await deps.projects.data.updateProjectSettings(project.folder, { papers: remaining.length > 0 ? remaining : undefined });
     await deps.projects.reload();
   });
 }

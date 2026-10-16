@@ -2,7 +2,6 @@
 import * as vscode from "vscode";
 
 import { TYPST_VERSION } from "@labshelf/core/typst";
-import { updateProjectSettings } from "@labshelf/core/node";
 import type { ReadyProject } from "../mainDocument.js";
 import type { WritingHost, WritingProjects } from "../projectStore.js";
 
@@ -10,7 +9,7 @@ const MODULE = "writing/typst";
 
 interface VersionPinDeps {
   host: Pick<WritingHost, "current">;
-  projects: Pick<WritingProjects, "reload">;
+  projects: Pick<WritingProjects, "data" | "reload">;
 }
 
 /** Folders already warned about in this session, so a project warns once however often it builds. */
@@ -32,7 +31,7 @@ export async function recordTypstVersion(project: ReadyProject, deps: VersionPin
   if (recorded !== undefined) { warnOnce(project, recorded); }
   if (!logger) { return; }
   try {
-    await updateProjectSettings(project.folder, { typst: TYPST_VERSION }, logger);
+    await deps.projects.data.updateProjectSettings(project.folder, { typst: TYPST_VERSION });
     await deps.projects.reload();
   } catch (error) {
     await logger.error(MODULE, error, { action: "record-typst-version", folder: project.folder });

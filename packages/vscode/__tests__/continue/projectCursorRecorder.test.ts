@@ -1,14 +1,9 @@
 // Verifies that the cursor of the active project file is saved after it settles, on save, and only for files in a ready project.
 import * as vscode from "vscode";
 
-import { writeProjectCursor } from "@labshelf/core/node";
-
 import { registerProjectCursorRecorder } from "../../src/continue/projectCursorRecorder";
 import type { WritingProjects } from "../../src/writing";
 import { fakeLogger, fakeProjects, readyEntry } from "../support/writingFixtures";
-
-jest.mock("@labshelf/core/node", () => ({ ...jest.requireActual("@labshelf/core/node"), writeProjectCursor: jest.fn(async () => {}) }));
-const write = writeProjectCursor as jest.Mock;
 
 const win = vscode.window as unknown as {
   activeTextEditor: unknown; _fireActiveEditorChange: () => void; _fireSelectionChange: () => void;
@@ -22,9 +17,11 @@ function edit(fsPath: string, line = 3, character = 7, scheme = "file"): void {
 }
 
 const contexts: vscode.ExtensionContext[] = [];
+let write: jest.Mock;
 
 function setup(entries = [readyEntry("/lib/projects/a")]) {
   const projects = fakeProjects(entries);
+  write = projects.data.writeProjectCursor;
   const logger = fakeLogger();
   const onRecorded = jest.fn();
   const context = { subscriptions: [] as { dispose(): void }[] } as unknown as vscode.ExtensionContext;
@@ -35,7 +32,6 @@ function setup(entries = [readyEntry("/lib/projects/a")]) {
 
 beforeEach(() => {
   jest.useFakeTimers();
-  write.mockClear();
   win.activeTextEditor = undefined;
 });
 afterEach(() => {

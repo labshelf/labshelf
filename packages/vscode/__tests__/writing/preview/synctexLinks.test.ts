@@ -5,6 +5,7 @@ import * as path from "node:path";
 import { gzipSync } from "node:zlib";
 import * as vscode from "vscode";
 
+import { nodeProjectData } from "@labshelf/core/node";
 import { ReaderPanel } from "../../../src/pdf-viewer";
 import { BuildPreviews } from "../../../src/writing/preview";
 import { registerShowInPreview } from "../../../src/writing/preview/registerShowInPreview";
@@ -43,7 +44,7 @@ function setup() {
   const host = fakeHost();
   const controller = { setBuildStatus: jest.fn(), reloadDocument: jest.fn(), revealPoint: jest.fn() };
   create.mockImplementation(() => ({ controller }));
-  const previews = new BuildPreviews({ host, paths: path, listPapers: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false });
+  const previews = new BuildPreviews({ host, paths: path, data: nodeProjectData(host.session.logger), listPapers: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false });
   const project = readyEntry(dir) as Project;
   const ports = () => create.mock.calls[0][1].preview;
   return { host, controller, previews, project, ports };

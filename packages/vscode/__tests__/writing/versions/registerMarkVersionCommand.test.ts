@@ -1,47 +1,48 @@
 // Tests Mark Version: it asks for a name, confirms a replace, builds first and snapshots the built PDF.
 import * as vscode from "vscode";
 
-import { listVersions, markVersion } from "@labshelf/core/node";
 import { MARK_VERSION_COMMAND, registerMarkVersionCommand } from "../../../src/writing/versions/registerMarkVersionCommand";
 import { builtPdf } from "../../../src/writing/preview";
 import { commandHandler, fakeHost, fakeProjects, openInEditor, readyEntry } from "../../support/writingFixtures";
 
-jest.mock("@labshelf/core/node", () => ({ ...jest.requireActual("@labshelf/core/node"), markVersion: jest.fn(), listVersions: jest.fn() }));
 jest.mock("../../../src/writing/preview", () => ({ builtPdf: jest.fn() }));
 
-const mark = markVersion as jest.Mock;
-const list = listVersions as jest.Mock;
+let mark: jest.Mock;
+let list: jest.Mock;
 const pdfFor = builtPdf as jest.Mock;
 const window = vscode.window as unknown as Record<string, jest.Mock>;
 const saveAll = (vscode.workspace as unknown as { saveAll: jest.Mock }).saveAll;
 
 function setup(entries = [readyEntry("/p/tex"), readyEntry("/p/other")]) {
   const order: string[] = [];
+  const projects = fakeProjects(entries);
+  mark = projects.data.markVersion;
+  list = projects.data.listVersions;
   const builders = {
     latex: { request: jest.fn(async () => { order.push("build"); return { status: "succeeded" } as const; }) },
     typst: { request: jest.fn(async () => undefined) },
   };
   saveAll.mockImplementation(async () => { order.push("saveAll"); return true; });
+  list.mockResolvedValue([]);
   mark.mockImplementation(async () => { order.push("mark"); return "/p/tex/.labshelf/versions/x"; });
   const host = fakeHost();
-  registerMarkVersionCommand({ context: { subscriptions: [] } as never, host, projects: fakeProjects(entries), builders });
+  registerMarkVersionCommand({ context: { subscriptions: [] } as never, host, projects, builders });
   return { builders, order, host, run: commandHandler(MARK_VERSION_COMMAND) };
 }
 
 beforeEach(() => {
   jest.clearAllMocks();
   pdfFor.mockResolvedValue("/p/tex/main.pdf");
-  list.mockResolvedValue([]);
   window["showQuickPick"]!.mockResolvedValue("submitted");
   openInEditor("/p/tex/main.tex");
 });
 
 describe("labshelf.writing.markVersion", () => {
   it("saves, builds and then snapshots the built PDF under the picked name", async () => {
-    const { run, order, host } = setup();
+    const { run, order } = setup();
     await run();
     expect(order).toEqual(["saveAll", "build", "mark"]);
-    expect(mark).toHaveBeenCalledWith({ folder: "/p/tex", pdfPath: "/p/tex/main.pdf", name: "submitted", now: expect.any(Date) }, host.session.logger);
+    expect(mark).toHaveBeenCalledWith({ folder: "/p/tex", pdfPath: "/p/tex/main.pdf", name: "submitted", now: expect.any(Date) });
     expect(window["showInformationMessage"]).toHaveBeenCalledWith("Marked version “submitted”.");
   });
 
@@ -59,7 +60,7 @@ describe("labshelf.writing.markVersion", () => {
     const { validateInput } = window["showInputBox"]!.mock.calls[0]![0];
     expect(validateInput("Réponse 2")).toBeUndefined();
     expect(validateInput("   ")).toEqual(expect.any(String));
-    expect(mark).toHaveBeenCalledWith(expect.objectContaining({ name: "Réponse 2" }), expect.anything());
+    expect(mark).toHaveBeenCalledWith(expect.objectContaining({ name: "Réponse 2" }));
   });
 
   it("does nothing when the user cancels the name", async () => {

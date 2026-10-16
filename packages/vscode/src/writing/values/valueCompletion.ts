@@ -37,7 +37,7 @@ export class ValueCompletionProvider implements vscode.CompletionItemProvider {
 
   private async typstMembers(project: ReadyProject, document: vscode.TextDocument, position: vscode.Position) {
     const typing = typstValuePrefix(document.getText(), document.offsetAt(position));
-    const file = typing && listedValueFile(project, document.uri.fsPath, typing.source);
+    const file = typing && listedValueFile(this.values.paths, project, document.uri.fsPath, typing.source);
     if (!typing || file === undefined) { return undefined; }
     const range = new vscode.Range(document.positionAt(typing.start), position);
     return valueMembers(await this.values.leaves(project), file, typing.parent).map((member) => item(member.name, member.leaf, file, range));

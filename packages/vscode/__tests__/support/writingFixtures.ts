@@ -2,7 +2,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import type { ILogger, ProjectEntry } from "@labshelf/core";
+import type { ILogger, ProjectDataPort, ProjectEntry } from "@labshelf/core";
 import type { WritingHost, WritingSession } from "../../src/writing/index.js";
 
 export function fakeLogger(): { log: jest.Mock; error: jest.Mock } & ILogger {
@@ -14,8 +14,32 @@ export function fakeHost(logger = fakeLogger()): WritingHost & { session: Writin
   return { session, current: () => session, require: jest.fn(async () => session) };
 }
 
-export function fakeProjects(entries: ProjectEntry[] = []): { reload: jest.Mock; list: jest.Mock; paths: typeof path } {
-  return { reload: jest.fn(async () => {}), list: jest.fn(() => entries), paths: path };
+/** A project data port whose methods are mocks that resolve to empty results. */
+export function fakeProjectData(): { [K in keyof ProjectDataPort]: jest.Mock } {
+  return {
+    listProjects: jest.fn(async () => []),
+    createProject: jest.fn(async () => { throw new Error("createProject is not stubbed"); }),
+    addExistingFolder: jest.fn(async () => { throw new Error("addExistingFolder is not stubbed"); }),
+    unregisterProjectFolder: jest.fn(async () => {}),
+    rootFileNames: jest.fn(async () => []),
+    updateProjectSettings: jest.fn(async () => {}),
+    writeProjectCursor: jest.fn(async () => {}),
+    latestProjectEdit: jest.fn(async () => undefined),
+    listVersions: jest.fn(async () => []),
+    markVersion: jest.fn(async () => { throw new Error("markVersion is not stubbed"); }),
+    readProjectValues: jest.fn(async () => []),
+    readFigureStates: jest.fn(async () => ({})),
+    updateProjectBibliography: jest.fn(async () => ({ written: false, papersWritten: false, missing: [], mainLine: "not-needed" as const })),
+    projectBacklinks: jest.fn(async () => new Map()),
+    projectBuildDir: jest.fn((id: string) => `/cache/${id}`),
+    readSynctexFile: jest.fn(async () => { throw new Error("readSynctexFile is not stubbed"); }),
+  };
+}
+
+export function fakeProjects(entries: ProjectEntry[] = []): {
+  reload: jest.Mock; list: jest.Mock; paths: typeof path; data: ReturnType<typeof fakeProjectData>;
+} {
+  return { reload: jest.fn(async () => {}), list: jest.fn(() => entries), paths: path, data: fakeProjectData() };
 }
 
 export function readyEntry(folder: string, over: Partial<Extract<ProjectEntry, { kind: "ready" }>> = {}): ProjectEntry {

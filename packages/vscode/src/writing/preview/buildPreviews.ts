@@ -1,7 +1,7 @@
 // Keeps one reader preview per writing project: reloads it after a build, shows the build status and opens it when asked.
 import * as vscode from "vscode";
 
-import type { BuildState, PaperRecord, PathOps, TypstCite, LocatedProblem } from "@labshelf/core";
+import type { BuildState, PaperRecord, PathOps, ProjectDataPort, TypstCite, LocatedProblem } from "@labshelf/core";
 import { ReaderPanel, type ReaderPanelDeps } from "../../pdf-viewer/index.js";
 import type { BuildListener, BuildTrigger, FinishedBuild } from "../build/index.js";
 import type { ReadyProject } from "../mainDocument.js";
@@ -15,6 +15,7 @@ export interface BuildPreviewsDeps extends Pick<ReaderPanelDeps, "extensionUri" 
   host: Pick<WritingHost, "current">;
   listPapers: () => Promise<PaperRecord[]>;
   paths: PathOps;
+  data: ProjectDataPort;
 }
 
 function previewPaper(paths: PathOps, project: ReadyProject, pdf: string): PaperRecord {
@@ -32,7 +33,7 @@ export class BuildPreviews implements BuildListener {
   private readonly synctex: ProjectSynctex;
 
   constructor(private readonly deps: BuildPreviewsDeps) {
-    this.synctex = new ProjectSynctex(deps.host);
+    this.synctex = new ProjectSynctex(deps.host, deps.paths, deps.data);
   }
 
   /** Tells an open preview that a build of the project started. */

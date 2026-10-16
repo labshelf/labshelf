@@ -2,10 +2,9 @@
 import * as vscode from "vscode";
 
 import { ValueHoverProvider } from "../../../src/writing/values/valueHover";
-import { removeValueFolders, valuesFixture } from "../../support/valueFixtures";
+import { valuesFixture } from "../../support/valueFixtures";
 import { fakeDocument, withCursor } from "../../support/textDocument";
 
-afterEach(removeValueFolders);
 
 const RESULTS = JSON.stringify({ acc: 0.91, model: { name: "a_b" } });
 

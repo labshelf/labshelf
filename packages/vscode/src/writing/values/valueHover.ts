@@ -41,7 +41,7 @@ export class ValueHoverProvider implements vscode.HoverProvider {
 
   private typst(project: ReadyProject, document: vscode.TextDocument, offset: number, leaves: readonly ValueLeaf[]) {
     const reference = typstValueAt(document.getText(), offset);
-    const file = reference && listedValueFile(project, document.uri.fsPath, reference.source);
+    const file = reference && listedValueFile(this.values.paths, project, document.uri.fsPath, reference.source);
     if (!reference || file === undefined) { return undefined; }
     const leaf = leaves.find((candidate) => candidate.file === file && candidate.path === reference.path);
     // A member that holds more members has no single value to show.

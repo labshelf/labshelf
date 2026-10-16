@@ -1,5 +1,5 @@
 // Declares everything the extension needs from its host runtime, so activation code never touches Node directly.
-import type { ILogger, LibraryLayout, OpenAiStorage, PathOps, PdfDocumentOpener, PdfTextLayerBuilder, PdfOcrEngine, SidecarPort, SyncProject } from "@labshelf/core";
+import type { ILogger, LibraryLayout, OpenAiStorage, PathOps, PdfDocumentOpener, PdfTextLayerBuilder, PdfOcrEngine, ProjectDataPort, SidecarPort, SyncProject } from "@labshelf/core";
 import type { PdfjsLocator } from "../../pdf-viewer/index.js";
 import type { SharedLibraryConfig } from "../../storage/paths/index.js";
 import type { DriveSignIn, SyncHost, SyncLock } from "../../sync/adapter/index.js";
@@ -18,6 +18,8 @@ export interface HostAdapters {
   createPdfTextServices(logger: ILogger): PdfTextServices;
   createSidecarPort(layout: Pick<LibraryLayout<string>, "paperDataPath" | "tmpDir">, logger: ILogger): SidecarPort;
   openAiStorage: OpenAiStorage;
+  /** Project data over the library's writing projects; the logger is the open library's, which changes with it. */
+  createProjectData(logger: ILogger): ProjectDataPort;
   sync: {
     host: SyncHost;
     lock: SyncLock;

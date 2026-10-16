@@ -11,7 +11,7 @@ export const PICK_COMPILER_COMMAND = "labshelf.writing.pickCompiler";
 interface PickCompilerDeps {
   context: vscode.ExtensionContext;
   host: WritingHost;
-  projects: Pick<WritingProjects, "list" | "paths" | "reload">;
+  projects: Pick<WritingProjects, "data" | "list" | "paths" | "reload">;
 }
 
 type EnginePick = vscode.QuickPickItem & { engine: LatexEngine };

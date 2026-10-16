@@ -1,8 +1,5 @@
 // Reads a project's SyncTeX data once per build and keeps it until the next build replaces it.
-import * as path from "node:path";
-
-import type { SyncIndex } from "@labshelf/core";
-import { projectBuildDir, readSynctexFile } from "@labshelf/core/node";
+import type { PathOps, ProjectDataPort, SyncIndex } from "@labshelf/core";
 import type { ReadyProject } from "../../mainDocument.js";
 import type { WritingHost } from "../../projectStore.js";
 import { PREVIEW_LOG_MODULE } from "../previewStrings.js";
@@ -16,7 +13,11 @@ export type SynctexLookup =
 export class ProjectSynctex {
   private readonly lookups = new Map<string, Promise<SynctexLookup>>();
 
-  constructor(private readonly host: Pick<WritingHost, "current">) {}
+  constructor(
+    private readonly host: Pick<WritingHost, "current">,
+    private readonly paths: PathOps,
+    private readonly data: ProjectDataPort,
+  ) {}
 
   /** Forgets the project's data; the next lookup reads the file the latest build wrote. */
   invalidate(projectFolder: string): void {
@@ -39,9 +40,10 @@ export class ProjectSynctex {
     // Typst writes no SyncTeX; its compiler has no PDF-to-source map LabShelf can read.
     if (project.settings.format !== "latex") { return { status: "unsupported" }; }
     if (!project.main) { return { status: "missing", path: project.folder }; }
-    const mainFile = path.join(project.folder, project.main);
+    const mainFile = this.paths.join(project.folder, project.main);
     try {
-      return await readSynctexFile(projectBuildDir(project.settings.id), path.basename(mainFile, path.extname(mainFile)), path.dirname(mainFile));
+      const base = this.paths.basename(mainFile, this.paths.extname(mainFile));
+      return await this.data.readSynctexFile(this.data.projectBuildDir(project.settings.id), base, this.paths.dirname(mainFile));
     } catch (error) {
       await this.host.current()?.logger.error(PREVIEW_LOG_MODULE, error, { projectFolder: project.folder });
       return { status: "unreadable" };

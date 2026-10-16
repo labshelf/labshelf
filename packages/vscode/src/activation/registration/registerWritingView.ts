@@ -47,6 +47,15 @@ function createWritingHost(controller: Controller): WritingHost {
   };
 }
 
+/** Logs to the open library's logger; the project data lives as long as the extension while the library can change. */
+function openLibraryLogger(controller: Controller): ILogger {
+  const current = (): ILogger | undefined => controller.currentServices()?.logger;
+  return {
+    log: async (...args) => { await current()?.log(...args); },
+    error: async (...args) => { await current()?.error(...args); },
+  };
+}
+
 function createReadingLists(
   controller: Controller, events: LibraryEvents, backlinks: ProjectBacklinkIndex,
 ): ProjectReadingLists {
@@ -89,7 +98,7 @@ function registerProjectAndFigureCommands(parts: WritingParts): void {
 
 function registerBuildAndPreviewCommands(parts: WritingParts, reader: HostAdapters["reader"]): void {
   const { context, host, projects, listPapers } = parts;
-  const previews = new BuildPreviews({ host, listPapers, paths: projects.paths, extensionUri: context.extensionUri, ...reader });
+  const previews = new BuildPreviews({ host, listPapers, paths: projects.paths, data: projects.data, extensionUri: context.extensionUri, ...reader });
   const diagnostics = new BuildDiagnostics();
   context.subscriptions.push(diagnostics);
   const builders = {
@@ -127,11 +136,13 @@ function registerEditingSupport(context: vscode.ExtensionContext, controller: Co
 }
 
 export function registerWritingView(
-  context: vscode.ExtensionContext, controller: LibraryRootController, reader: HostAdapters["reader"], paths: HostAdapters["paths"], events: LibraryEvents,
+  context: vscode.ExtensionContext, controller: LibraryRootController, reader: HostAdapters["reader"],
+  adapters: Pick<HostAdapters, "paths" | "createProjectData">, events: LibraryEvents,
 ): WritingViewHandles {
   const host = createWritingHost(controller);
-  const projects = new WritingProjects(host, paths);
-  const figures = new ProjectFigures(host);
+  const data = adapters.createProjectData(openLibraryLogger(controller));
+  const projects = new WritingProjects(host, adapters.paths, data);
+  const figures = new ProjectFigures(host, data);
   const backlinks = new ProjectBacklinkIndex(projects, host);
   const readingLists = createReadingLists(controller, events, backlinks);
   const provider = new WritingTreeProvider(projects, figures, readingLists);

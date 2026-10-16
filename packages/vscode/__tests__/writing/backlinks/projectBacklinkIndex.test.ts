@@ -1,18 +1,14 @@
 // Tests that the backlink index is rebuilt, debounced, when projects change or a project source is saved or edited.
 import * as vscode from "vscode";
 
-import { projectBacklinks } from "@labshelf/core/node";
 import { ProjectBacklinkIndex } from "../../../src/writing/backlinks";
 import { fakeDocument } from "../../support/textDocument";
-import { fakeHost, fakeLogger, readyEntry } from "../../support/writingFixtures";
-
-jest.mock("@labshelf/core/node", () => ({ ...jest.requireActual("@labshelf/core/node"), projectBacklinks: jest.fn() }));
+import { fakeHost, fakeLogger, fakeProjects, readyEntry } from "../../support/writingFixtures";
 
 const workspace = vscode.workspace as unknown as {
   _fireDocumentEvent: (kind: string, document: vscode.TextDocument) => void;
   _fireTextDocumentChange: (event: { document: vscode.TextDocument }) => void;
 };
-const build = projectBacklinks as jest.Mock;
 const link = { project: "survey", file: "main.tex", line: 2, section: "Intro" };
 
 const created: ProjectBacklinkIndex[] = [];
@@ -20,17 +16,17 @@ const created: ProjectBacklinkIndex[] = [];
 function setup(logger = fakeLogger()) {
   const changed = new vscode.EventEmitter<void>();
   const entries = [readyEntry("/lib/projects/survey")];
-  const index = new ProjectBacklinkIndex({ list: () => entries, onDidChange: changed.event } as never, fakeHost(logger));
+  const projects = { ...fakeProjects(entries), onDidChange: changed.event };
+  const build = projects.data.projectBacklinks;
+  build.mockResolvedValue(new Map([["smith2020", [link]]]));
+  const index = new ProjectBacklinkIndex(projects as never, fakeHost(logger));
   const onChange = jest.fn();
   index.onDidChange(onChange);
   created.push(index);
-  return { index, changed, onChange, logger };
+  return { index, changed, onChange, logger, build };
 }
 
-beforeEach(() => {
-  jest.useFakeTimers();
-  build.mockReset().mockResolvedValue(new Map([["smith2020", [link]]]));
-});
+beforeEach(() => { jest.useFakeTimers(); });
 afterEach(() => {
   // The vscode double keeps document listeners across tests.
   for (const index of created.splice(0)) { index.dispose(); }
@@ -39,21 +35,21 @@ afterEach(() => {
 
 describe("ProjectBacklinkIndex", () => {
   it("rebuilds once, a second after the project list changes, and reads open editors", async () => {
-    const { index, changed, onChange } = setup();
+    const { index, changed, onChange, build } = setup();
     changed.fire();
     changed.fire();
     await jest.advanceTimersByTimeAsync(999);
     expect(build).not.toHaveBeenCalled();
     await jest.advanceTimersByTimeAsync(1);
     expect(build).toHaveBeenCalledTimes(1);
-    expect(build.mock.calls[0]![2]).toEqual(expect.objectContaining({ text: expect.any(Function) }));
+    expect(build.mock.calls[0]![1]).toEqual(expect.objectContaining({ text: expect.any(Function) }));
     expect(index.index().get("smith2020")).toEqual([link]);
     expect(index.projectFolder("survey")).toBe("/lib/projects/survey");
     expect(onChange).toHaveBeenCalledTimes(1);
   });
 
   it("rebuilds when a .tex file inside a project is saved or edited, not for other files", async () => {
-    const { onChange } = setup();
+    const { onChange, build } = setup();
     workspace._fireDocumentEvent("save", fakeDocument("/lib/projects/survey/notes.md", ""));
     workspace._fireDocumentEvent("save", fakeDocument("/elsewhere/main.tex", ""));
     await jest.advanceTimersByTimeAsync(1000);
@@ -68,7 +64,7 @@ describe("ProjectBacklinkIndex", () => {
   });
 
   it("logs a failed rebuild and keeps the last index", async () => {
-    const { index, changed, onChange, logger } = setup();
+    const { index, changed, onChange, logger, build } = setup();
     changed.fire();
     await jest.advanceTimersByTimeAsync(1000);
     build.mockRejectedValue(new Error("disk"));
@@ -80,7 +76,7 @@ describe("ProjectBacklinkIndex", () => {
   });
 
   it("stops listening when disposed", async () => {
-    const { index, changed } = setup();
+    const { index, changed, build } = setup();
     index.dispose();
     workspace._fireDocumentEvent("save", fakeDocument("/lib/projects/survey/main.tex", ""));
     await jest.advanceTimersByTimeAsync(1000);

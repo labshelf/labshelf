@@ -4,7 +4,6 @@ import * as vscode from "vscode";
 import {
   createSidecarReader, lastReadPaper, type ILogger, type PaperRecord, type SidecarSummarySource,
 } from "@labshelf/core";
-import { latestProjectEdit } from "@labshelf/core/node";
 
 import type { WritingProjects } from "../writing/index.js";
 
@@ -41,8 +40,8 @@ async function isFile(file: string): Promise<boolean> {
   return vscode.workspace.fs.stat(vscode.Uri.file(file)).then((stat) => (stat.type & vscode.FileType.File) !== 0, () => false);
 }
 
-async function projectTarget(library: ContinueLibrary, projects: Pick<WritingProjects, "list" | "paths">): Promise<ContinueTarget | undefined> {
-  const edit = await latestProjectEdit(projects.list(), library.logger);
+async function projectTarget(library: ContinueLibrary, projects: Pick<WritingProjects, "list" | "paths" | "data">): Promise<ContinueTarget | undefined> {
+  const edit = await projects.data.latestProjectEdit(projects.list());
   if (!edit) { return undefined; }
   const file = projects.paths.join(edit.folder, ...edit.cursor.file.split("/"));
   if (!(await isFile(file))) { return undefined; }

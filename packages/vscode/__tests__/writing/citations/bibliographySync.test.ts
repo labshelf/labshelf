@@ -1,22 +1,20 @@
 // Tests that accepting a citation or saving a source regenerates labshelf.bib, and what the user is told when that cannot finish.
-import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { updateProjectBibliography } from "@labshelf/core/node";
 import { registerCitationProviders } from "../../../src/writing/citations";
 import { citationWorkspace, PAPERS } from "../../support/citationFixtures";
 import { commandHandler } from "../../support/writingFixtures";
 import { fakeDocument } from "../../support/textDocument";
 
-jest.mock("@labshelf/core/node", () => ({ ...jest.requireActual("@labshelf/core/node"), updateProjectBibliography: jest.fn() }));
-
-const update = updateProjectBibliography as jest.Mock;
+let update: jest.Mock;
 const warning = vscode.window.showWarningMessage as jest.Mock;
 const result = (mainLine: string, papersWritten = false) => ({ written: true, papersWritten, missing: [], mainLine });
 
 function setup() {
   const workspace = citationWorkspace("latex");
-  workspace.projects = { list: workspace.projects.list, paths: path, reload: jest.fn(async () => {}) };
+  workspace.projects = { ...workspace.projects, reload: jest.fn(async () => {}) };
+  update = workspace.projects.data.updateProjectBibliography as jest.Mock;
+  update.mockResolvedValue(result("not-needed"));
   registerCitationProviders({ subscriptions: [] } as never, workspace);
   return workspace as typeof workspace & { projects: { reload: jest.Mock } };
 }
@@ -25,19 +23,17 @@ const savedHandler = () => (vscode.workspace.onDidSaveTextDocument as jest.Mock)
 
 beforeEach(() => {
   jest.clearAllMocks();
-  update.mockResolvedValue(result("not-needed"));
   (vscode.workspace as unknown as { textDocuments: unknown[] }).textDocuments = [];
 });
 
 describe("bibliography update on accept", () => {
   it("regenerates the bibliography of the owning project with the library papers and the open editors", async () => {
-    const workspace = setup();
+    setup();
     (vscode.workspace as unknown as { textDocuments: unknown[] }).textDocuments = [fakeDocument("/code/repo/main.tex", "open text")];
     await accept();
-    const [project, papers, logger, open] = update.mock.calls[0]!;
+    const [project, papers, open] = update.mock.calls[0]!;
     expect(project).toMatchObject({ folder: "/code/repo", main: "main.tex", settings: { format: "latex" } });
     expect(papers).toEqual(PAPERS);
-    expect(logger).toBe(workspace.logger);
     expect(open.text("/code/repo/main.tex")).toBe("open text");
     expect(open.text("/code/repo/other.tex")).toBeUndefined();
   });
@@ -46,7 +42,7 @@ describe("bibliography update on accept", () => {
     setup();
     (vscode.workspace as unknown as { textDocuments: unknown[] }).textDocuments = [fakeDocument("/code/repo/main.tex", "ab\ncd")];
     await accept();
-    const open = update.mock.calls[0]![3];
+    const open = update.mock.calls[0]![2];
     expect(await open.replace("/code/repo/main.tex", "new")).toBe(true);
     const edit = (vscode.workspace.applyEdit as jest.Mock).mock.calls[0]![0];
     expect(edit.replacements[0]).toMatchObject({ text: "new", range: { start: { line: 0, character: 0 }, end: { line: 1, character: 2 } } });
