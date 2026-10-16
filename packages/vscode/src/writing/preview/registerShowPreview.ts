@@ -11,14 +11,14 @@ const SHOW_PREVIEW_COMMAND = "labshelf.writing.showPreview";
 
 interface ShowPreviewDeps {
   context: vscode.ExtensionContext;
-  projects: Pick<WritingProjects, "list" | "paths">;
+  projects: Pick<WritingProjects, "data" | "list" | "paths">;
   previews: Pick<BuildPreviews, "show">;
 }
 
 async function showPreview(deps: ShowPreviewDeps): Promise<void> {
   const file = vscode.window.activeTextEditor?.document.uri;
   const project = file?.scheme === "file" ? owningProject(deps.projects, file.fsPath) : undefined;
-  const pdf = await builtPdf(project);
+  const pdf = await builtPdf(deps.projects, project);
   if (project && pdf) {
     deps.previews.show(project, pdf, { beside: false });
     return;

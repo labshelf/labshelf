@@ -2,8 +2,9 @@
 import * as vscode from "vscode";
 
 import { runFigureCommand } from "@labshelf/core/node";
-import { registerRegenerateFigure, type FigureNode } from "../../../src/writing/figures";
-import { commandHandler, fakeHost, readyEntry } from "../../support/writingFixtures";
+import type { FigureNode } from "../../../../src/writing/figures";
+import { registerRegenerateFigure } from "../../../../src/writing/figures/node";
+import { commandHandler, fakeHost, readyEntry } from "../../../support/writingFixtures";
 
 jest.mock("@labshelf/core/node", () => ({ ...jest.requireActual("@labshelf/core/node"), runFigureCommand: jest.fn() }));
 

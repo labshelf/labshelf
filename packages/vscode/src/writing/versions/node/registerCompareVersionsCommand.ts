@@ -4,14 +4,16 @@ import * as vscode from "vscode";
 
 import type { ILogger, PdfjsLoader, ProjectEntry } from "@labshelf/core";
 import { buildMarkedUpDiff, comparePdfs, findExecutable, listVersions, projectBuildDir } from "@labshelf/core/node";
-import { executeSafely } from "../../commands/index.js";
-import type { ReaderPanelDeps } from "../../pdf-viewer/index.js";
-import { activeProject, ensureToolchain } from "../build/index.js";
-import type { ReadyProject } from "../mainDocument.js";
-import type { WritingHost, WritingProjects } from "../projectStore.js";
-import { buildCurrentPdf, type ProjectBuilders } from "./buildCurrentPdf.js";
-import { ComparePanels } from "./ComparePanels.js";
-import { CURRENT_SLUG, pickMode, pickSides, versionSide, type CompareMode, type CompareSide } from "./compareSides.js";
+import { executeSafely } from "../../../commands/index.js";
+import type { ReaderPanelDeps } from "../../../pdf-viewer/index.js";
+import { activeProject } from "../../build/index.js";
+import { ensureToolchain } from "../../build/node/index.js";
+import type { ReadyProject } from "../../mainDocument.js";
+import type { WritingHost, WritingProjects } from "../../projectStore.js";
+import type { ProjectBuilders } from "../../build/index.js";
+import { buildCurrentPdf } from "../buildCurrentPdf.js";
+import { ComparePanels } from "../ComparePanels.js";
+import { CURRENT_SLUG, pickMode, pickSides, versionSide, type CompareMode, type CompareSide } from "../compareSides.js";
 
 export const COMPARE_VERSIONS_COMMAND = "labshelf.writing.compareVersions";
 
@@ -30,7 +32,7 @@ interface Sides {
 }
 
 async function currentSide(deps: CompareVersionsDeps, project: ReadyProject): Promise<CompareSide | undefined> {
-  const pdfPath = await buildCurrentPdf(deps.builders, project, { action: "Comparing with the current build", use: "the comparison reads its PDF" });
+  const pdfPath = await buildCurrentPdf(deps.builders, deps.projects, project, { action: "Comparing with the current build", use: "the comparison reads its PDF" });
   return pdfPath ? { slug: CURRENT_SLUG, name: "Current build", pdfPath, sourcesDir: project.folder } : undefined;
 }
 

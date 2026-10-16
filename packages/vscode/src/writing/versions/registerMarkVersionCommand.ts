@@ -6,7 +6,8 @@ import { executeSafely } from "../../commands/index.js";
 import { activeProject } from "../build/index.js";
 import type { ReadyProject } from "../mainDocument.js";
 import type { WritingHost, WritingProjects } from "../projectStore.js";
-import { buildCurrentPdf, type ProjectBuilders } from "./buildCurrentPdf.js";
+import type { ProjectBuilders } from "../build/index.js";
+import { buildCurrentPdf } from "./buildCurrentPdf.js";
 import { pickVersionName } from "./pickVersionName.js";
 
 export const MARK_VERSION_COMMAND = "labshelf.writing.markVersion";
@@ -42,7 +43,7 @@ async function markProjectVersion(deps: MarkVersionDeps, entry: ProjectEntry | u
     const name = await pickVersionName();
     if (!name || !await confirmReplace(deps, project, name)) { return; }
     // The snapshot keeps the PDF of the sources as they are now, so it builds first.
-    const pdfPath = await buildCurrentPdf(deps.builders, project, { action: "Marking a version", use: "a version keeps its PDF" });
+    const pdfPath = await buildCurrentPdf(deps.builders, deps.projects, project, { action: "Marking a version", use: "a version keeps its PDF" });
     if (!pdfPath) { return; }
     const options = { location: vscode.ProgressLocation.Notification, title: `Marking version "${name}"` };
     await vscode.window.withProgress(options, () =>

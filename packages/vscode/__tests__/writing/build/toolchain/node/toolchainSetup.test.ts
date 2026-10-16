@@ -2,8 +2,8 @@
 import * as vscode from "vscode";
 
 import { findExecutable, installedTectonic, installTectonic } from "@labshelf/core/node";
-import { ensureToolchain } from "../../../../src/writing/build/toolchain";
-import { fakeHost, fakeProjects, readyEntry } from "../../../support/writingFixtures";
+import { ensureToolchain } from "../../../../../src/writing/build/toolchain/node";
+import { fakeHost, fakeProjects, readyEntry } from "../../../../support/writingFixtures";
 
 jest.mock("@labshelf/core/node", () => ({
   ...jest.requireActual("@labshelf/core/node"),

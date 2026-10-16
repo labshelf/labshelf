@@ -1,8 +1,8 @@
 // Registers the Typst compiles: live into an open preview while the user types, and a build after every save of a Typst project's files.
 import * as vscode from "vscode";
 
-import { owningProject, type ReadyProject } from "../mainDocument.js";
-import type { WritingHost, WritingProjects } from "../projectStore.js";
+import { owningProject, type ReadyProject } from "../../mainDocument.js";
+import type { WritingHost, WritingProjects } from "../../projectStore.js";
 import { TypstBuilds, type TypstBuildsDeps } from "./typstBuilds.js";
 import { TypstCompilerHost } from "./typstCompilerHost.js";
 

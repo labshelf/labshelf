@@ -2,15 +2,15 @@
 import * as vscode from "vscode";
 
 import { runTypstBuild } from "@labshelf/core/typst/node";
-import { registerTypstBuild } from "../../../src/writing/typst";
-import { fakeHost, fakeProjects, readyEntry } from "../../support/writingFixtures";
+import { registerTypstBuild } from "../../../../src/writing/typst/node";
+import { fakeHost, fakeProjects, readyEntry } from "../../../support/writingFixtures";
 
 jest.mock("@labshelf/core/typst/node", () => ({ ...jest.requireActual("@labshelf/core/typst/node"), runTypstBuild: jest.fn() }));
-jest.mock("../../../src/writing/typst/typstCompilerHost", () => ({
+jest.mock("../../../../src/writing/typst/node/typstCompilerHost", () => ({
   TypstCompilerHost: jest.fn(() => ({ get: async () => ({ session: {}, packages: {} }) })),
 }));
-jest.mock("../../../src/writing/typst/tinymist", () => ({ tinymistInstalled: () => false }));
-jest.mock("../../../src/writing/typst/typstVersionPin", () => ({ recordTypstVersion: jest.fn(async () => {}) }));
+jest.mock("../../../../src/writing/typst/tinymist", () => ({ tinymistInstalled: () => false }));
+jest.mock("../../../../src/writing/typst/typstVersionPin", () => ({ recordTypstVersion: jest.fn(async () => {}) }));
 
 const run = runTypstBuild as jest.Mock;
 const workspace = vscode.workspace as unknown as { _fireTextDocumentChange: (event: unknown) => void; _fireDocumentEvent: (kind: string, document: unknown) => void };

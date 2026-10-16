@@ -6,6 +6,8 @@ import * as vscode from "vscode";
 
 import { registerWritingView } from "../../../src/activation/registration/registerWritingView";
 import type { LibraryRootController } from "../../../src/activation/libraryLifecycle";
+import type { RegisterNodeWriting } from "../../../src/writing/nodePort";
+import { registerNodeWriting } from "../../../src/writing/node";
 import { createLibraryEvents } from "../../../src/events";
 import { fakeLogger, fakeProjectData } from "../../support/writingFixtures";
 
@@ -13,7 +15,10 @@ const manifest = JSON.parse(readFileSync(join(__dirname, "../../../package.json"
   contributes: { commands: { command: string }[]; views: { labshelfContainer: { id: string }[] } };
 };
 
-function setup(root: string | undefined) {
+const builders = { latex: { request: jest.fn() }, typst: { request: jest.fn() } };
+const fakeRegisterNodeWriting: RegisterNodeWriting = () => ({ builders });
+
+function setup(root: string | undefined, register: RegisterNodeWriting = fakeRegisterNodeWriting) {
   const data = fakeProjectData();
   const emitter = new vscode.EventEmitter<{ root: vscode.Uri }>();
   const controller = {
@@ -27,7 +32,7 @@ function setup(root: string | undefined) {
     globalStorageUri: vscode.Uri.file("/storage"),
     workspaceState: { get: () => undefined, update: jest.fn(async () => {}) },
   };
-  registerWritingView(context as unknown as vscode.ExtensionContext, controller, { locatePdfjs: () => null, isMac: false }, { paths: path, createProjectData: () => data }, createLibraryEvents());
+  registerWritingView(context as unknown as vscode.ExtensionContext, controller, { locatePdfjs: () => null, isMac: false }, { paths: path, createProjectData: () => data }, createLibraryEvents(), register);
   return { emitter, listProjects: data.listProjects };
 }
 
@@ -37,7 +42,7 @@ beforeEach(() => jest.clearAllMocks());
 
 describe("registerWritingView", () => {
   it("registers every labshelf.writing command of package.json and no other", () => {
-    setup("/lib");
+    setup("/lib", registerNodeWriting);
     const registered = (vscode.commands.registerCommand as jest.Mock).mock.calls.map(([id]) => id as string).filter((id) => id.startsWith("labshelf.writing.")).sort();
     const contributed = manifest.contributes.commands.map((c) => c.command).filter((id) => id.startsWith("labshelf.writing.")).sort();
     expect(registered).toEqual(contributed);

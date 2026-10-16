@@ -1,3 +1,2 @@
-/** Exports the version commands: Mark Version and Compare Versions. */
+// Exports the neutral version commands: Mark Version.
 export { registerMarkVersionCommand } from "./registerMarkVersionCommand.js";
-export { registerCompareVersionsCommand } from "./registerCompareVersionsCommand.js";

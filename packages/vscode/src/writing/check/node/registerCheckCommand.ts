@@ -1,22 +1,22 @@
 // Registers Check Before Submitting: builds the project, checks its PDF and sources, and lists the findings in Problems.
 import * as vscode from "vscode";
 
-import type { CheckFinding, ILogger, ProjectFormat, PdfjsLoader, ProjectEntry } from "@labshelf/core";
+import type { CheckFinding, ILogger, PdfjsLoader, ProjectEntry } from "@labshelf/core";
 import { checkProject } from "@labshelf/core/node";
-import { executeSafely } from "../../commands/index.js";
-import { activeProject, ProjectDiagnostics } from "../build/index.js";
-import type { ReadyProject } from "../mainDocument.js";
-import { builtPdf } from "../preview/index.js";
-import type { WritingHost, WritingProjects } from "../projectStore.js";
-import { checkDiagnostics } from "./checkDiagnostics.js";
+import { executeSafely } from "../../../commands/index.js";
+import { activeProject, ProjectDiagnostics, type ProjectBuilders } from "../../build/index.js";
+import type { ReadyProject } from "../../mainDocument.js";
+import { builtPdf } from "../../preview/index.js";
+import type { WritingHost, WritingProjects } from "../../projectStore.js";
+import { checkDiagnostics } from "../index.js";
 
 export const CHECK_COMMAND = "labshelf.writing.checkBeforeSubmitting";
 
 interface CheckCommandDeps {
   context: vscode.ExtensionContext;
   host: WritingHost;
-  projects: Pick<WritingProjects, "list" | "paths">;
-  builders: Record<ProjectFormat, { request(projectFolder: string, trigger: "command"): Promise<{ status: string } | undefined> }>;
+  projects: Pick<WritingProjects, "data" | "list" | "paths">;
+  builders: ProjectBuilders;
   pdfjs: PdfjsLoader;
 }
 
@@ -46,7 +46,7 @@ async function checkBeforeSubmitting(deps: CheckCommandDeps, diagnostics: Projec
       await vscode.window.showWarningMessage("The check needs a successful build. The build problems are listed in Problems.");
       return;
     }
-    const pdfPath = await builtPdf(project);
+    const pdfPath = await builtPdf(deps.projects, project);
     if (!pdfPath) {
       await vscode.window.showInformationMessage("Build the project first; the check reads its PDF.");
       return;

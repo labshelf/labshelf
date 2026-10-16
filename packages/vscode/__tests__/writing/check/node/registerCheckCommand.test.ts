@@ -3,12 +3,12 @@ import * as vscode from "vscode";
 
 import type { CheckFinding } from "@labshelf/core";
 import { checkProject } from "@labshelf/core/node";
-import { CHECK_COMMAND, registerCheckCommand } from "../../../src/writing/check/registerCheckCommand";
-import { builtPdf } from "../../../src/writing/preview";
-import { commandHandler, fakeHost, fakeProjects, openInEditor, readyEntry } from "../../support/writingFixtures";
+import { CHECK_COMMAND, registerCheckCommand } from "../../../../src/writing/check/node";
+import { builtPdf } from "../../../../src/writing/preview";
+import { commandHandler, fakeHost, fakeProjects, openInEditor, readyEntry } from "../../../support/writingFixtures";
 
 jest.mock("@labshelf/core/node", () => ({ ...jest.requireActual("@labshelf/core/node"), checkProject: jest.fn() }));
-jest.mock("../../../src/writing/preview", () => ({ builtPdf: jest.fn() }));
+jest.mock("../../../../src/writing/preview", () => ({ builtPdf: jest.fn() }));
 
 const check = checkProject as jest.Mock;
 const pdfFor = builtPdf as jest.Mock;

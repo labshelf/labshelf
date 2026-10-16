@@ -10,8 +10,8 @@ const saveAll = (vscode.workspace as unknown as { saveAll: jest.Mock }).saveAll;
 function setup() {
   const order: string[] = [];
   const builders = {
-    latex: { request: jest.fn(async () => { order.push("latex"); }) },
-    typst: { request: jest.fn(async () => { order.push("typst"); }) },
+    latex: { request: jest.fn(async () => { order.push("latex"); return undefined; }) },
+    typst: { request: jest.fn(async () => { order.push("typst"); return undefined; }) },
   };
   saveAll.mockImplementation(async () => { order.push("saveAll"); return true; });
   const projects = fakeProjects([

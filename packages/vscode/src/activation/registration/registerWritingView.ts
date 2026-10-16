@@ -7,18 +7,17 @@ import {
   registerProjectItemCommands, registerReadingListCommands, ProjectBacklinkIndex, ProjectReadingLists, type WritingHost,
 } from "../../writing/index.js";
 import {
-  BuildDiagnostics, registerBuildCommand, registerCompilerStatusBar, registerLatexBuild, registerLatexWorkshopNotice, registerPickCompiler,
+  BuildDiagnostics, registerBuildCommand, registerCompilerStatusBar, registerLatexWorkshopNotice, registerPickCompiler,
 } from "../../writing/build/index.js";
-import { registerCheckCommand } from "../../writing/check/index.js";
 import { registerInstallCommand } from "../../writing/install/index.js";
-import { registerCompareVersionsCommand, registerMarkVersionCommand } from "../../writing/versions/index.js";
-import { hostPdfjs } from "../../pdf/node/index.js";
-import { registerTinymistBridge, registerTypstBuild } from "../../writing/typst/index.js";
+import { registerMarkVersionCommand } from "../../writing/versions/index.js";
+import { registerTinymistBridge } from "../../writing/typst/index.js";
 import { BuildPreviews, registerShowInPreview, registerShowPreview } from "../../writing/preview/index.js";
 import { registerCitationProviders, type CitationWorkspace } from "../../writing/citations/index.js";
 import { registerLabshelfLinks } from "../../writing/links/index.js";
-import { ProjectFigures, registerRegenerateFigure, watchFigureFiles } from "../../writing/figures/index.js";
+import { ProjectFigures, watchFigureFiles } from "../../writing/figures/index.js";
 import { registerLatexCommandCompletion, registerLatexEditing } from "../../writing/latexEditing/index.js";
+import type { RegisterNodeWriting } from "../../writing/nodePort/index.js";
 import { registerWritingValues } from "../../writing/values/index.js";
 import { registerBibliographyLint } from "../../writing/bibliography/index.js";
 import { onPaperChange, type LibraryEvents } from "../../events/index.js";
@@ -89,26 +88,20 @@ function registerProjectAndFigureCommands(parts: WritingParts): void {
   registerProjectItemCommands({ context, host, projects });
   registerMainCommands({ context, host, projects });
   registerMainStatusBar(context, projects);
-  const figureOutput = vscode.window.createOutputChannel("LabShelf Figures");
-  context.subscriptions.push(figureOutput);
-  registerRegenerateFigure({ context, host, figures, output: figureOutput });
   registerReadingListCommands({ context, host, projects, readingLists, listPapers });
   registerInstallCommand({ context, host, projects, services: () => controller.currentServices() });
 }
 
-function registerBuildAndPreviewCommands(parts: WritingParts, reader: HostAdapters["reader"]): void {
-  const { context, host, projects, listPapers } = parts;
+function registerBuildAndPreviewCommands(
+  parts: WritingParts, reader: HostAdapters["reader"], registerNodeWriting: RegisterNodeWriting,
+): void {
+  const { context, host, projects, figures, listPapers } = parts;
   const previews = new BuildPreviews({ host, listPapers, paths: projects.paths, data: projects.data, extensionUri: context.extensionUri, ...reader });
   const diagnostics = new BuildDiagnostics();
   context.subscriptions.push(diagnostics);
-  const builders = {
-    latex: registerLatexBuild({ context, host, projects, previews, diagnostics }),
-    typst: registerTypstBuild({ context, host, projects, previews, diagnostics, hasPreview: (folder) => previews.hasPreview(folder) }),
-  };
+  const { builders } = registerNodeWriting({ context, host, projects, figures, previews, diagnostics, reader });
   registerBuildCommand({ context, projects, builders });
-  registerCheckCommand({ context, host, projects, builders, pdfjs: hostPdfjs });
   registerMarkVersionCommand({ context, host, projects, builders });
-  registerCompareVersionsCommand({ context, host, projects, builders, pdfjs: hostPdfjs, reader });
   registerTinymistBridge(context, { host, projects });
   registerShowPreview({ context, projects, previews });
   registerShowInPreview({ context, projects, previews });
@@ -138,6 +131,7 @@ function registerEditingSupport(context: vscode.ExtensionContext, controller: Co
 export function registerWritingView(
   context: vscode.ExtensionContext, controller: LibraryRootController, reader: HostAdapters["reader"],
   adapters: Pick<HostAdapters, "paths" | "createProjectData">, events: LibraryEvents,
+  registerNodeWriting: RegisterNodeWriting,
 ): WritingViewHandles {
   const host = createWritingHost(controller);
   const data = adapters.createProjectData(openLibraryLogger(controller));
@@ -159,7 +153,7 @@ export function registerWritingView(
   const listPapers = async (): Promise<PaperRecord[]> => await controller.currentServices()?.paperService.listPapers() ?? [];
   const parts: WritingParts = { context, controller, host, projects, figures, readingLists, listPapers };
   registerProjectAndFigureCommands(parts);
-  registerBuildAndPreviewCommands(parts, reader);
+  registerBuildAndPreviewCommands(parts, reader, registerNodeWriting);
   registerEditingSupport(context, controller, projects);
   void projects.reload();
   return { projects, backlinks };

@@ -1,9 +1,9 @@
-/** Exports the build: the Build Project command, its Problems entries and their per-project bookkeeping, plus LaTeX's toolchain setup, compiler choice and build on save. */
+/** Exports the neutral build: the Build Project command, its Problems entries and their per-project bookkeeping, the build listener and builder types, and the LaTeX compiler choice. */
 export { registerLatexWorkshopNotice } from "./latexWorkshopNotice.js";
-export type { BuildListener, BuildTrigger, FinishedBuild } from "./latexBuilds.js";
+export type { BuildListener, BuildTrigger, FinishedBuild } from "./buildListener.js";
+export type { ProjectBuilders } from "./projectBuilders.js";
 export { activeProject } from "./activeProject.js";
 export { BuildDiagnostics } from "./buildDiagnostics.js";
 export { ProjectDiagnostics } from "./projectDiagnostics.js";
 export { BUILD_COMMAND, registerBuildCommand } from "./registerBuildCommand.js";
-export { registerLatexBuild } from "./registerLatexBuild.js";
-export { ensureToolchain, registerCompilerStatusBar, registerPickCompiler } from "./toolchain/index.js";
+export { registerCompilerStatusBar, registerPickCompiler } from "./toolchain/index.js";

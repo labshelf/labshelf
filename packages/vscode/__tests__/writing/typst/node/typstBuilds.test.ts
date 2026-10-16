@@ -2,21 +2,20 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { projectBuildDir } from "@labshelf/core/node";
 import { runTypstBuild } from "@labshelf/core/typst/node";
-import { tinymistInstalled } from "../../../src/writing/typst/tinymist";
-import { TypstBuilds, typstPreviewPdf } from "../../../src/writing/typst/typstBuilds";
-import { recordTypstVersion } from "../../../src/writing/typst/typstVersionPin";
-import { fakeHost, fakeLogger, fakeProjects, readyEntry } from "../../support/writingFixtures";
+import { tinymistInstalled } from "../../../../src/writing/typst/tinymist";
+import { TypstBuilds } from "../../../../src/writing/typst/node/typstBuilds";
+import { recordTypstVersion } from "../../../../src/writing/typst/typstVersionPin";
+import { fakeHost, fakeLogger, fakeProjects, readyEntry } from "../../../support/writingFixtures";
 
 jest.mock("@labshelf/core/typst/node", () => ({ ...jest.requireActual("@labshelf/core/typst/node"), runTypstBuild: jest.fn() }));
-jest.mock("../../../src/writing/typst/tinymist", () => ({ tinymistInstalled: jest.fn() }));
-jest.mock("../../../src/writing/typst/typstVersionPin", () => ({ recordTypstVersion: jest.fn(async () => {}) }));
+jest.mock("../../../../src/writing/typst/tinymist", () => ({ tinymistInstalled: jest.fn() }));
+jest.mock("../../../../src/writing/typst/typstVersionPin", () => ({ recordTypstVersion: jest.fn(async () => {}) }));
 
 const run = runTypstBuild as jest.Mock;
 const window = vscode.window as unknown as Record<string, jest.Mock>;
 const workspace = vscode.workspace as unknown as { textDocuments: unknown[] };
-const PREVIEW = path.join(projectBuildDir("paper"), "main.pdf");
+const PREVIEW = path.join("/cache/paper", "main.pdf");
 const problems = [{ severity: "error", message: "unknown variable", file: "/p/paper/main.typ", line: 2 }];
 const succeeded = { status: "succeeded", pdf: PREVIEW, problems: [] };
 const failed = { status: "failed", problems };
@@ -45,13 +44,6 @@ beforeEach(() => {
   run.mockResolvedValue(succeeded);
 });
 
-describe("typstPreviewPdf", () => {
-  it("names the preview after the main file inside the project's build folder", () => {
-    const project = readyEntry("/p/paper", { main: "src/thesis.typ" }) as Parameters<typeof typstPreviewPdf>[0];
-    expect(typstPreviewPdf(project)).toBe(path.join(projectBuildDir("paper"), "thesis.pdf"));
-  });
-});
-
 describe("TypstBuilds outputs", () => {
   it("live compiles only into the preview and passes unsaved project documents as sources", async () => {
     workspace.textDocuments = [
@@ -73,7 +65,7 @@ describe("TypstBuilds outputs", () => {
     const { builds } = setup({ main: "sub/main.typ" });
     await builds.request("/p/paper", trigger);
     const request = run.mock.calls[0][0];
-    expect(request.outputs).toEqual([path.join(projectBuildDir("paper"), "main.pdf"), "/p/paper/sub/main.pdf"]);
+    expect(request.outputs).toEqual([path.join("/cache/paper", "main.pdf"), "/p/paper/sub/main.pdf"]);
     expect(request.sources.size).toBe(0);
   });
 });

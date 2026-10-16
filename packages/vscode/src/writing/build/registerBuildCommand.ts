@@ -1,16 +1,16 @@
 // Registers Build Project: saves every editor and builds the active file's project with the builder for its format.
 import * as vscode from "vscode";
 
-import type { ProjectFormat } from "@labshelf/core";
 import type { WritingProjects } from "../projectStore.js";
 import { activeProject } from "./activeProject.js";
+import type { ProjectBuilders } from "./projectBuilders.js";
 
 export const BUILD_COMMAND = "labshelf.writing.build";
 
 interface BuildCommandDeps {
   context: vscode.ExtensionContext;
   projects: Pick<WritingProjects, "list" | "paths">;
-  builders: Record<ProjectFormat, { request(projectFolder: string, trigger: "command"): Promise<unknown> }>;
+  builders: ProjectBuilders;
 }
 
 async function buildActive(deps: BuildCommandDeps): Promise<void> {

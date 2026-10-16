@@ -1,2 +1,2 @@
-/** Exports the Check Before Submitting command. */
-export { registerCheckCommand } from "./registerCheckCommand.js";
+// Exports the neutral check pieces: the diagnostics a check run publishes.
+export { checkDiagnostics } from "./checkDiagnostics.js";

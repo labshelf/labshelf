@@ -3,14 +3,14 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 
 import type { ProjectEntry } from "@labshelf/core";
-import { projectBuildDir } from "@labshelf/core/node";
-import { runTypstBuild, type TypstBuildResult } from "@labshelf/core/typst/node";
-import type { BuildListener, BuildTrigger, FinishedBuild } from "../build/index.js";
-import type { ReadyProject } from "../mainDocument.js";
-import type { WritingHost, WritingProjects } from "../projectStore.js";
-import { tinymistInstalled } from "./tinymist/index.js";
+import type { TypstBuildResult } from "@labshelf/core/typst";
+import { runTypstBuild } from "@labshelf/core/typst/node";
+import type { BuildListener, BuildTrigger, FinishedBuild } from "../../build/index.js";
+import type { WritingHost, WritingProjects } from "../../projectStore.js";
+import { tinymistInstalled } from "../tinymist/index.js";
+import { typstPreviewPdf } from "../typstPreviewPdf.js";
+import { recordTypstVersion } from "../typstVersionPin.js";
 import type { TypstCompilerHost } from "./typstCompilerHost.js";
-import { recordTypstVersion } from "./typstVersionPin.js";
 
 /** "live" compiles unsaved text for the preview only; the others write `<main>.pdf` from the files on disk. */
 export type TypstTrigger = BuildTrigger | "live";
@@ -18,17 +18,12 @@ export type TypstTrigger = BuildTrigger | "live";
 export interface TypstBuildsDeps {
   compiler: Pick<TypstCompilerHost, "get">;
   host: Pick<WritingHost, "current">;
-  projects: Pick<WritingProjects, "data" | "reload"> & { list: () => readonly ProjectEntry[] };
+  projects: Pick<WritingProjects, "data" | "paths" | "reload"> & { list: () => readonly ProjectEntry[] };
   diagnostics: { publish(projectFolder: string, problems: TypstBuildResult["problems"]): void };
   previews: BuildListener;
 }
 
 const MODULE = "writing/typst";
-
-/** The preview's PDF: the build folder keeps it apart from `<main>.pdf`, which only a saved build writes. */
-export function typstPreviewPdf(project: ReadyProject & { main: string }): string {
-  return path.join(projectBuildDir(project.settings.id), `${path.parse(project.main).name}.pdf`);
-}
 
 function unsavedSources(projectFolder: string): Map<string, string> {
   const inside = (file: string): boolean => !path.relative(projectFolder, file).startsWith("..");
@@ -73,7 +68,7 @@ export class TypstBuilds {
     const main = project.main;
     try {
       const compiler = await this.deps.compiler.get(session.logger);
-      const previewPdf = typstPreviewPdf({ ...project, main });
+      const previewPdf = typstPreviewPdf({ ...project, main }, this.deps.projects.data, this.deps.projects.paths);
       const { dir, name } = path.parse(main);
       const started = Date.now();
       const result = await runTypstBuild({

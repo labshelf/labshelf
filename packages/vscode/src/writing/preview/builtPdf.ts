@@ -2,14 +2,15 @@
 import * as vscode from "vscode";
 
 import type { ReadyProject } from "../mainDocument.js";
+import type { WritingProjects } from "../projectStore.js";
 import { typstPreviewPdf } from "../typst/index.js";
 
 /** The PDF's path, or `undefined` when the project has no main file or has not been built. */
-export async function builtPdf(project: ReadyProject | undefined): Promise<string | undefined> {
+export async function builtPdf(projects: Pick<WritingProjects, "data" | "paths">, project: ReadyProject | undefined): Promise<string | undefined> {
   if (!project?.main) { return undefined; }
   // INVARIANT: `main` is project-relative with "/" separators on every platform.
   const pdf = project.settings.format === "typst"
-    ? typstPreviewPdf({ ...project, main: project.main })
+    ? typstPreviewPdf({ ...project, main: project.main }, projects.data, projects.paths)
     : vscode.Uri.joinPath(vscode.Uri.file(project.folder), `${project.main.replace(/\.[^/.]*$/, "")}.pdf`).fsPath;
   return await vscode.workspace.fs.stat(vscode.Uri.file(pdf)).then(() => pdf, () => undefined);
 }

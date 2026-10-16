@@ -5,9 +5,9 @@ import {
   engineLabel, tectonicAsset, texLiveGuideUrl, type LatexEngine, type LatexToolchain,
 } from "@labshelf/core";
 import { findExecutable } from "@labshelf/core/node";
-import type { ReadyProject } from "../../mainDocument.js";
+import type { ReadyProject } from "../../../mainDocument.js";
 import { tectonicToolchain } from "./tectonicSetup.js";
-import { saveEngine, type ToolchainDeps } from "./toolchainDeps.js";
+import { saveEngine, type ToolchainDeps } from "../toolchainDeps.js";
 
 const OPEN_GUIDE = "Open install guide";
 const USE_TECTONIC = "Use Tectonic";

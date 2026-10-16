@@ -2,23 +2,13 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import type { ILogger, LatexBuildResult, ProjectEntry } from "@labshelf/core";
+import type { ILogger, ProjectEntry } from "@labshelf/core";
 import { projectBuildDir, runLatexBuild, updateProjectValues } from "@labshelf/core/node";
-import type { TypstBuildResult } from "@labshelf/core/typst/node";
-import type { ReadyProject } from "../mainDocument.js";
-import type { BuildDiagnostics } from "./buildDiagnostics.js";
-import { ensureToolchain, type ToolchainDeps } from "./toolchain/index.js";
-
-export type BuildTrigger = "command" | "save";
-
-/** A Typst build's success also carries where it placed each citation. */
-export type FinishedBuild = Exclude<LatexBuildResult, { status: "cancelled" }> | TypstBuildResult;
-
-/** Told when a project's compile starts and when it ends; a cancelled compile never ends, the next one replaces it. */
-export interface BuildListener {
-  building(projectFolder: string): void;
-  finished(project: ReadyProject, result: FinishedBuild, trigger: BuildTrigger): void;
-}
+import type { ReadyProject } from "../../mainDocument.js";
+import type { BuildDiagnostics } from "../buildDiagnostics.js";
+import type { BuildListener, BuildTrigger, FinishedBuild } from "../buildListener.js";
+import type { ToolchainDeps } from "../toolchain/index.js";
+import { ensureToolchain } from "../toolchain/node/index.js";
 
 export interface LatexBuildsDeps extends ToolchainDeps {
   projects: ToolchainDeps["projects"] & { list: () => readonly ProjectEntry[] };

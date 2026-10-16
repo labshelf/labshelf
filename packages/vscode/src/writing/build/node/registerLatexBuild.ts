@@ -1,10 +1,10 @@
 // Registers the build that follows every save of a LaTeX project's sources.
 import * as vscode from "vscode";
 
-import { owningProject } from "../mainDocument.js";
-import type { WritingHost, WritingProjects } from "../projectStore.js";
-import type { BuildPreviews } from "../preview/index.js";
-import type { BuildDiagnostics } from "./buildDiagnostics.js";
+import { owningProject } from "../../mainDocument.js";
+import type { WritingHost, WritingProjects } from "../../projectStore.js";
+import type { BuildPreviews } from "../../preview/index.js";
+import type { BuildDiagnostics } from "../buildDiagnostics.js";
 import { LatexBuilds } from "./latexBuilds.js";
 
 const SOURCE_EXTENSIONS = new Set([".tex", ".bib", ".sty", ".cls"]);

@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import { TECTONIC_VERSION, tectonicAsset, texLiveGuideUrl, type LatexToolchain } from "@labshelf/core";
 import { installedTectonic, installTectonic } from "@labshelf/core/node";
-import type { WritingSession } from "../../projectStore.js";
+import type { WritingSession } from "../../../projectStore.js";
 
 const DOWNLOAD = "Download";
 const OPEN_GUIDE = "Open TeX Live guide";

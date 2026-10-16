@@ -2,13 +2,13 @@
 import * as vscode from "vscode";
 
 import { projectBuildDir, runLatexBuild, updateProjectValues } from "@labshelf/core/node";
-import { BuildDiagnostics } from "../../../src/writing/build/buildDiagnostics";
-import { LatexBuilds } from "../../../src/writing/build/latexBuilds";
-import { ensureToolchain } from "../../../src/writing/build/toolchain";
-import { fakeHost, fakeProjects, readyEntry } from "../../support/writingFixtures";
+import { BuildDiagnostics } from "../../../../src/writing/build/buildDiagnostics";
+import { LatexBuilds } from "../../../../src/writing/build/node/latexBuilds";
+import { ensureToolchain } from "../../../../src/writing/build/toolchain/node";
+import { fakeHost, fakeProjects, readyEntry } from "../../../support/writingFixtures";
 
 jest.mock("@labshelf/core/node", () => ({ ...jest.requireActual("@labshelf/core/node"), runLatexBuild: jest.fn(), updateProjectValues: jest.fn() }));
-jest.mock("../../../src/writing/build/toolchain", () => ({ ensureToolchain: jest.fn() }));
+jest.mock("../../../../src/writing/build/toolchain/node", () => ({ ensureToolchain: jest.fn() }));
 
 const TOOLCHAIN = { engine: "tectonic", executable: "/t/tectonic" };
 const run = runLatexBuild as jest.Mock;
