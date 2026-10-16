@@ -1,6 +1,7 @@
-/** Exports the neutral build: the Build Project command, its Problems entries and their per-project bookkeeping, the build listener and builder types, and the LaTeX compiler choice. */
+/** Exports the neutral build: the Build Project command, its Problems entries and their per-project bookkeeping, the build listener, the record of each project's last build and the builder types, and the LaTeX compiler choice. */
 export { registerLatexWorkshopNotice } from "./latexWorkshopNotice.js";
 export type { BuildListener, BuildTrigger, FinishedBuild } from "./buildListener.js";
+export { BuildOutcomes } from "./buildOutcomes.js";
 export type { ProjectBuilders } from "./projectBuilders.js";
 export { activeProject } from "./activeProject.js";
 export { BuildDiagnostics } from "./buildDiagnostics.js";

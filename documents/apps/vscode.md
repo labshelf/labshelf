@@ -10,7 +10,7 @@ The full LabShelf workspace inside VS Code:
 - import with OCR;
 - similar-paper indexing;
 - Drive sync;
-- a Projects view of LaTeX and Typst projects. Opening a project swaps it for that project's Files, Outline and Figures views.
+- a Projects view of LaTeX and Typst projects, grouped In library and External folders. A row shows an Arc mark and, once counted, "N open" (open TODOs, broken references, stale figures and checklist items); the mark is red when the last build this session failed, amber when anything is open, green otherwise, and a missing folder reads "folder missing". Expanding a row shows its main file and engine, the last build, reading progress and stale figures. Opening a project swaps it for that project's Files, Outline and Figures views.
 
 ## Build and run
 

@@ -2,13 +2,23 @@
 import * as vscode from "vscode";
 
 import type { ILogger } from "@labshelf/core";
+import { readChecklistSignals } from "@labshelf/core/node";
+import type { ArcIcon } from "../../ui/index.js";
+import type { BuildOutcomes } from "../build/index.js";
 import { OutlineTreeProvider, REVEAL_OUTLINE_COMMAND, registerTypstOutline, revealOutline } from "../outline/index.js";
 import { ProjectFiguresView, type ProjectFigures } from "../figures/index.js";
+import type { ProjectReadingLists } from "../readingList/index.js";
 import type { ProjectSession, WritingProjects } from "../session/index.js";
 import { registerProjectFileCommands } from "./projectFileCommands.js";
 import { ProjectFilesProvider } from "./projectFilesProvider.js";
 import { watchProjectFiles } from "./projectFilesWatcher.js";
 import { WritingTreeProvider } from "./projectsTreeProvider.js";
+
+/** Reports every create, change or delete under a project folder. */
+function watchFolder(folder: string, onChange: () => void): vscode.Disposable {
+  const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(folder, "**/*"));
+  return vscode.Disposable.from(watcher, watcher.onDidCreate(onChange), watcher.onDidChange(onChange), watcher.onDidDelete(onChange));
+}
 
 interface ProjectViewsDeps {
   context: vscode.ExtensionContext;
@@ -16,14 +26,19 @@ interface ProjectViewsDeps {
   figures: ProjectFigures;
   session: ProjectSession;
   logger: ILogger;
+  arcIcon: ArcIcon;
+  readingLists: ProjectReadingLists;
+  outcomes: BuildOutcomes;
 }
 
 export function registerProjectViews(deps: ProjectViewsDeps): void {
-  const { context, projects, figures, session, logger } = deps;
-  const list = new WritingTreeProvider(projects);
+  const { context, projects, figures, session, logger, arcIcon, readingLists, outcomes } = deps;
+  const list = new WritingTreeProvider({
+    projects, logger, arcIcon, readingLists, buildOutcomes: outcomes, readSignals: readChecklistSignals, watchFolder,
+  });
   const files = new ProjectFilesProvider({ session, projects, logger });
   const outline = new OutlineTreeProvider(logger);
-  const figuresView = new ProjectFiguresView({ session, figures, paths: projects.paths });
+  const figuresView = new ProjectFiguresView({ session, figures, paths: projects.paths, arcIcon });
   const figuresTree = vscode.window.createTreeView("labshelf.writing.figures", { treeDataProvider: figuresView });
   figuresView.attach(figuresTree);
   context.subscriptions.push(

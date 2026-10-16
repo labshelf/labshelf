@@ -2,7 +2,7 @@
 import type * as vscode from "vscode";
 
 import type { ReaderPanelDeps } from "../../pdf-viewer/index.js";
-import type { BuildDiagnostics, ProjectBuilders } from "../build/index.js";
+import type { BuildDiagnostics, BuildListener, ProjectBuilders } from "../build/index.js";
 import type { ProjectFigures } from "../figures/index.js";
 import type { BuildPreviews } from "../preview/index.js";
 import type { WritingHost, WritingProjects } from "../index.js";
@@ -12,7 +12,8 @@ interface NodeWritingDeps {
   host: WritingHost;
   projects: WritingProjects;
   figures: ProjectFigures;
-  previews: BuildPreviews;
+  /** Hears every build and answers whether a project has a preview open. */
+  previews: BuildListener & Pick<BuildPreviews, "hasPreview">;
   diagnostics: BuildDiagnostics;
   reader: Omit<ReaderPanelDeps, "logger" | "extensionUri">;
 }

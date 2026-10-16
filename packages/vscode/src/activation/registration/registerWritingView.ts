@@ -7,7 +7,7 @@ import {
   registerProjectItemCommands, registerReadingListCommands, ProjectBacklinkIndex, ProjectReadingLists, type WritingHost,
 } from "../../writing/index.js";
 import {
-  BuildDiagnostics, registerBuildCommand, registerCompilerStatusBar, registerLatexWorkshopNotice, registerPickCompiler,
+  BuildDiagnostics, BuildOutcomes, registerBuildCommand, registerCompilerStatusBar, registerLatexWorkshopNotice, registerPickCompiler,
   type ProjectBuilders,
 } from "../../writing/build/index.js";
 import { registerInstallCommand } from "../../writing/install/index.js";
@@ -24,6 +24,7 @@ import { registerLatexCommandCompletion, registerLatexEditing } from "../../writ
 import type { RegisterNodeWriting } from "../../writing/nodePort/index.js";
 import { registerWritingValues } from "../../writing/values/index.js";
 import { registerBibliographyLint } from "../../writing/bibliography/index.js";
+import { arcIcons } from "../../ui/index.js";
 import type { LibraryRootController } from "../libraryLifecycle/index.js";
 import type { HostAdapters } from "../serviceComposition/index.js";
 
@@ -104,7 +105,7 @@ async function recompileRoot(
 }
 
 function registerBuildAndPreviewCommands(
-  parts: WritingParts, reader: HostAdapters["reader"], registerNodeWriting: RegisterNodeWriting,
+  parts: WritingParts, reader: HostAdapters["reader"], registerNodeWriting: RegisterNodeWriting, outcomes: BuildOutcomes,
 ): ProjectSession {
   const { context, host, projects, figures, listPapers } = parts;
   // The node registrations need `previews`, and `previews` needs their builders, so it reaches them through this variable once assigned.
@@ -117,7 +118,12 @@ function registerBuildAndPreviewCommands(
   const session = registerProjectSession({ context, host, projects, previews });
   const diagnostics = new BuildDiagnostics();
   context.subscriptions.push(diagnostics);
-  node = registerNodeWriting({ context, host, projects, figures, previews, diagnostics, reader });
+  const builds = {
+    building: (...args: Parameters<BuildPreviews["building"]>) => { previews.building(...args); outcomes.building(...args); },
+    finished: (...args: Parameters<BuildPreviews["finished"]>) => { previews.finished(...args); outcomes.finished(...args); },
+    hasPreview: (folder: string) => previews.hasPreview(folder),
+  };
+  node = registerNodeWriting({ context, host, projects, figures, previews: builds, diagnostics, reader });
   const { builders, buildRootOf } = node;
   registerBuildCommand({ context, projects, builders, buildRootOf });
   context.subscriptions.push(new FocusFollower({ session, projects, buildRootOf, builders, previews, host }));
@@ -172,8 +178,11 @@ export function registerWritingView(
   const listPapers = async (): Promise<PaperRecord[]> => await controller.currentServices()?.paperService.listPapers() ?? [];
   const parts: WritingParts = { context, controller, host, projects, figures, readingLists, listPapers };
   registerProjectAndFigureCommands(parts);
-  const session = registerBuildAndPreviewCommands(parts, reader, registerNodeWriting);
-  registerProjectViews({ context, projects, figures, session, logger });
+  const outcomes = new BuildOutcomes();
+  context.subscriptions.push(outcomes);
+  const session = registerBuildAndPreviewCommands(parts, reader, registerNodeWriting, outcomes);
+  const arcIcon = arcIcons(context.extensionUri);
+  registerProjectViews({ context, projects, figures, session, logger, arcIcon, readingLists, outcomes });
   registerEditingSupport(context, controller, projects);
   void projects.reload();
   return { projects, backlinks };
