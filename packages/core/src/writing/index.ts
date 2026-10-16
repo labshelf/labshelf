@@ -15,3 +15,4 @@ export * from "./compare/index.js";
 export * from "./bibLint/index.js";
 export * from "./projectData/index.js";
 export * from "./checklist/index.js";
+export * from "./problems/index.js";
