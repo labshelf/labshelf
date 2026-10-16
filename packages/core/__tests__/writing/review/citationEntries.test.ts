@@ -39,3 +39,31 @@ describe("citationEntries with details", () => {
     ]);
   });
 });
+
+describe("citationEntries card fields", () => {
+  it("fills the venue and the library folder of a paper", () => {
+    const papers = [paper("a", "k", { journal: "Nature", path: "papers/ML/Vision/a" })];
+    expect(citationEntries(["k"], papers)[0]?.paper).toMatchObject({ venue: "Nature", folder: "ML / Vision" });
+  });
+
+  it("leaves the folder out for a paper at the library root", () => {
+    expect(citationEntries(["k"], [paper("a", "k", { path: "papers/a" })])[0]?.paper).not.toHaveProperty("folder");
+  });
+
+  it("adds the citing command and cited page to an entry, with or without a paper", () => {
+    const site = { file: "main.tex", line: 7, text: "\\cite[p.~4]{k}" };
+    const details = { site: new Map([["k", site], ["z", site]]), citedPage: new Map([["k", 4]]) };
+    expect(citationEntries(["k", "z"], [paper("a", "k")], details)).toEqual([
+      { key: "k", paper: { id: "a", title: "Title a", authors: [], status: "unread" }, site, citedPage: 4 },
+      { key: "z", site },
+    ]);
+  });
+
+  it("gives the .bib record of a key no library paper has, never of one it has", () => {
+    const bib = { title: "T", authors: ["Doe, J."], year: 2019 };
+    const details = { bib: new Map([["z", bib], ["k", bib]]) };
+    const [inLibrary, bibOnly] = citationEntries(["k", "z"], [paper("a", "k")], details);
+    expect(inLibrary).not.toHaveProperty("bib");
+    expect(bibOnly).toEqual({ key: "z", bib });
+  });
+});

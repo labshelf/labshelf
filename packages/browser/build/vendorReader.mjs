@@ -1,7 +1,7 @@
 /**
  * Copies what the reader page loads at runtime into the per-target dist folder:
  * - pdf.js (legacy build, the one the VS Code reader uses) into vendor/pdfjs/{build,web,cmaps,standard_fonts,wasm,iccs};
- * - the shared reader stylesheet from @labshelf/core into reader/reader.css;
+ * - the shared reader stylesheet from @labshelf/core and the citation card styles it imports into reader/;
  * - the design tokens, base, toast, settings and library UI styles from @labshelf/core into ui/styles/, where the pages link them.
  * pdf_viewer.mjs goes through esbuild (es2023): its `v`-flag regex makes the addons-linter behind `web-ext lint` fail.
  */
@@ -37,6 +37,7 @@ export async function vendorReader({ outDir, pkgRoot }) {
 
   await mkdir(join(outDir, "reader"), { recursive: true });
   await copyFile(require.resolve("@labshelf/core/styles/reader.css"), join(outDir, "reader/reader.css"));
+  await copyFile(join(dirname(require.resolve("@labshelf/core/styles/reader.css")), "citation-card.css"), join(outDir, "reader/citation-card.css"));
   await mkdir(join(outDir, "ui/styles"), { recursive: true });
   for (const sheet of ["tokens", "base", "toast", "settings", "library-ui", "library-list", "library-detail", "library-tabs", "library-citation-map"]) {
     await copyFile(require.resolve(`@labshelf/core/styles/${sheet}.css`), join(outDir, `ui/styles/${sheet}.css`));

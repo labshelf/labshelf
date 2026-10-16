@@ -1,5 +1,5 @@
 /** Verifies which citation keys are found in LaTeX and Typst sources. */
-import { scanCitationKeys } from "../../../src/writing/citations/index";
+import { citedKeys, scanCitationKeys } from "../../../src/writing/citations/index";
 
 describe("scanCitationKeys in LaTeX", () => {
   it.each([
@@ -35,5 +35,32 @@ describe("scanCitationKeys in Typst", () => {
   it("ignores e-mail addresses and comments", () => {
     const text = "mail me@example.org // @line\n/* @block\n@still */ @kept https://x.org/@user";
     expect(scanCitationKeys("typst", text)).toEqual(["kept"]);
+  });
+});
+
+describe("citedKeys page and command", () => {
+  it.each([
+    ["\\cite[p.~4]{a}", 4],
+    ["\\cite[see][p.~4]{a}", 4],
+    ["\\citep[p.~12]{a}", 12],
+  ])("reads the page of %s", (text, page) => {
+    expect(citedKeys("latex", text).map((cited) => cited.page)).toEqual([page]);
+  });
+
+  it("leaves the page out when no argument names one", () => {
+    const [plain, other] = citedKeys("latex", "\\cite{a} \\cite[see]{b} \\cite[ch. 2]{c}");
+    expect(plain).not.toHaveProperty("page");
+    expect(other).not.toHaveProperty("page");
+    expect(citedKeys("typst", "@a")[0]).not.toHaveProperty("page");
+  });
+
+  it("gives every key of a command the command text and page", () => {
+    const [first, second] = citedKeys("latex", "x \\citep[p.~4]{a, b} y");
+    expect(first).toMatchObject({ key: "a", page: 4, command: "\\citep[p.~4]{a, b}" });
+    expect(second).toMatchObject({ key: "b", page: 4, command: "\\citep[p.~4]{a, b}" });
+  });
+
+  it("gives a Typst reference and cite call as the command", () => {
+    expect(citedKeys("typst", "see @a and #cite(<b>)").map((cited) => cited.command)).toEqual(["@a", "#cite(<b>)"]);
   });
 });

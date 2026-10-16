@@ -1,0 +1,66 @@
+/* Styles the reader's citation hover card: head, tabs, highlights, actions and fix row, on the --ls-* tokens. */
+
+.rd-hover-cite, .rd-hover-cites { max-width: 440px; padding: var(--ls-space-4) var(--ls-space-6); font-size: var(--ls-text-md); line-height: 1.5; user-select: text; }
+.rd-hover-cite p { margin: 0 0 var(--ls-space-3); }
+.rd-cite-byline, .rd-cite-missing { color: var(--ls-reader-desc); }
+.rd-cite-summary {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden;
+}
+.rd-cite-key { font-family: var(--ls-mono); font-size: var(--ls-text-sm); color: var(--ls-reader-desc); }
+.rd-hover-cites { display: flex; flex-direction: column; gap: var(--ls-space-1); padding: var(--ls-space-2); }
+.rd-cite-row {
+  display: flex; flex-direction: column; gap: 1px; padding: var(--ls-space-2) var(--ls-space-4); border: 0; border-radius: var(--ls-radius);
+  background: none; color: inherit; font: inherit; text-align: left;
+}
+button.rd-cite-row { cursor: pointer; }
+button.rd-cite-row:hover { background: var(--ls-reader-hover); }
+button.rd-cite-row:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
+.rd-cite-title { font-weight: 600; }
+
+/* Citation card: a head with the status mark, then light tabs whose panels share one height so switching does not jump. */
+.rd-cite-head { display: flex; align-items: flex-start; gap: var(--ls-space-3); }
+.rd-cite-head .ls-arc-mark { flex-shrink: 0; margin-top: var(--ls-space-1); }
+.rd-cite-head-text { flex: 1; min-width: 0; }
+.rd-cite-tabs { padding: 0; margin: var(--ls-space-2) 0 0; gap: var(--ls-space-4); }
+.rd-cite-tabs .rd-tab {
+  flex: none; height: auto; padding: var(--ls-space-1) 0; border-radius: 0; font-size: var(--ls-text-sm);
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.rd-cite-tabs .rd-tab:hover { background: none; color: var(--ls-reader-fg); }
+.rd-cite-tabs .rd-tab[aria-selected="true"] { background: none; border-bottom-color: var(--ls-focus); }
+.rd-cite-panel { max-height: calc(var(--ls-space-7) * 5); overflow: auto; padding-top: var(--ls-space-3); }
+.rd-cite-panel:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
+.rd-cite-panel .rd-cite-summary { display: block; margin: 0; }
+.rd-cite-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--ls-space-2); }
+.rd-cite-highlight { display: flex; gap: var(--ls-space-3); align-items: baseline; }
+.rd-cite-quote { flex: 1; min-width: 0; }
+.rd-cite-page { flex-shrink: 0; font-size: var(--ls-text-xs); color: var(--ls-reader-desc); }
+p.rd-cite-empty { margin: 0; color: var(--ls-reader-desc); }
+/* Preview card: REF/BIB tag, venue, citing command, page-first highlights, actions and the fix row. */
+.rd-cite-top { display: flex; align-items: baseline; gap: var(--ls-space-4); }
+.rd-cite-top .rd-cite-byline { flex: 1; min-width: 0; }
+.rd-cite-tag {
+  flex-shrink: 0; padding: 0 var(--ls-space-3); border: 1px solid var(--ls-reader-border); border-radius: var(--ls-radius-sm);
+  font-size: var(--ls-text-xs); font-weight: 600; letter-spacing: .04em; color: var(--ls-reader-desc);
+}
+.rd-cite-venue { font-size: var(--ls-text-md); color: var(--ls-reader-desc); }
+.rd-cite-site { font-family: var(--ls-mono); font-size: var(--ls-text-sm); color: var(--ls-reader-desc); overflow-wrap: anywhere; }
+.rd-cite-highlight { border-left: 2px solid var(--ls-reader-border); padding-left: var(--ls-space-4); }
+.rd-cite-hl-yellow { border-left-color: var(--ls-hl-yellow); }
+.rd-cite-hl-green { border-left-color: var(--ls-hl-green); }
+.rd-cite-hl-blue { border-left-color: var(--ls-hl-blue); }
+.rd-cite-hl-red { border-left-color: var(--ls-hl-red); }
+.rd-cite-hl-pink { border-left-color: var(--ls-hl-pink); }
+.rd-cite-highlights { display: flex; flex-direction: column; gap: var(--ls-space-3); }
+.rd-cite-highlights summary { cursor: pointer; font-size: var(--ls-text-sm); font-weight: 600; color: var(--ls-reader-desc); }
+.rd-cite-highlights summary:hover { color: var(--ls-reader-fg); }
+.rd-cite-highlights details > .rd-cite-list { margin-top: var(--ls-space-3); }
+.rd-cite-acts, .rd-cite-fix { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-2); margin-top: var(--ls-space-5); }
+.rd-cite-btn {
+  padding: var(--ls-space-2) var(--ls-space-5); border: 0; border-radius: var(--ls-radius); cursor: pointer;
+  font: inherit; font-size: var(--ls-text-md); background: var(--ls-button2-bg); color: var(--ls-button2-fg);
+}
+.rd-cite-btn:hover { background: var(--ls-button2-hover); }
+.rd-cite-btn:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
+.rd-cite-btn-primary { background: var(--ls-button-bg); color: var(--ls-button-fg); }
+.rd-cite-btn-primary:hover { background: var(--ls-button-hover); }

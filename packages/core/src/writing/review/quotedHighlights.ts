@@ -8,11 +8,12 @@ export interface QuotedHighlight {
   color?: AnnotationColor;
 }
 
-/** @returns at most `limit` text-bearing highlights, by page, then by creation within a page. */
-export function quotedHighlights(annotations: readonly Annotation[], limit: number): QuotedHighlight[] {
+/** @returns at most `limit` text-bearing highlights: those on `citedPage` first, then by page, then by creation within a page. */
+export function quotedHighlights(annotations: readonly Annotation[], limit: number, citedPage?: number): QuotedHighlight[] {
+  const onCitedPage = (a: Annotation): number => (a.pageNumber === citedPage ? 0 : 1);
   return annotations
     .filter((a) => a.type === "highlight" && a.content.trim() !== "")
-    .sort((a, b) => a.pageNumber - b.pageNumber || a.createdAt.localeCompare(b.createdAt))
+    .sort((a, b) => onCitedPage(a) - onCitedPage(b) || a.pageNumber - b.pageNumber || a.createdAt.localeCompare(b.createdAt))
     .slice(0, limit)
-    .map((a) => ({ text: a.content.trim(), page: a.pageNumber }));
+    .map((a) => ({ text: a.content.trim(), page: a.pageNumber, ...(a.color ? { color: a.color } : {}) }));
 }

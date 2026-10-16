@@ -1,7 +1,8 @@
 // Builds a cited paper's detail tabs: its highlights, its abstract and the project sections that cite it.
-import type { CitationCardPaper } from "../../../index.js";
-import { el } from "../../../../ui/dom/index.js";
-import { TabList } from "../../chrome/index.js";
+import type { CitationCardPaper } from "../../../../index.js";
+import { el } from "../../../../../ui/dom/index.js";
+import { TabList } from "../../../chrome/index.js";
+import { highlightsPanel } from "./citationHighlights.js";
 
 type DetailTab = "highlights" | "abstract" | "citedIn";
 
@@ -9,7 +10,7 @@ interface DetailSpec {
   id: DetailTab;
   label: string;
   has: (paper: CitationCardPaper) => boolean;
-  render: (paper: CitationCardPaper) => HTMLElement;
+  render: (paper: CitationCardPaper, citedPage: number | undefined) => HTMLElement;
 }
 
 const empty = (text: string): HTMLElement => el("p", { class: "rd-cite-empty", text });
@@ -19,11 +20,7 @@ const DETAILS: readonly DetailSpec[] = [
     id: "highlights",
     label: "Highlights",
     has: (paper) => (paper.highlights?.length ?? 0) > 0,
-    render: (paper) => paper.highlights?.length
-      ? el("ul", { class: "rd-cite-list" }, ...paper.highlights.map((h) => el("li", { class: "rd-cite-highlight" },
-        el("span", { class: "rd-cite-quote", text: h.text }),
-        el("span", { class: "rd-cite-page", text: `p. ${h.page}` }))))
-      : empty("No highlights"),
+    render: (paper, citedPage) => paper.highlights?.length ? highlightsPanel(paper.highlights, citedPage) : empty("No highlights"),
   },
   {
     id: "abstract",
@@ -45,11 +42,11 @@ const DETAILS: readonly DetailSpec[] = [
 let cardCount = 0;
 
 /** @returns the tab strip followed by one panel per tab, opened on the first tab with content. */
-export function citationTabs(paper: CitationCardPaper): HTMLElement[] {
+export function citationTabs(paper: CitationCardPaper, citedPage?: number): HTMLElement[] {
   const prefix = `rd-cite-${++cardCount}`;
   const panels = new Map(DETAILS.map((d) => [d.id, el("div", {
     class: "rd-cite-panel", role: "tabpanel", tabindex: "0", id: `${prefix}-${d.id}-panel`, "aria-labelledby": `${prefix}-${d.id}-tab`,
-  }, d.render(paper))]));
+  }, d.render(paper, citedPage))]));
   const show = (id: DetailTab): void => panels.forEach((panel, key) => { panel.hidden = key !== id; });
   const first = DETAILS.find((d) => d.has(paper))?.id;
   const tabs = new TabList(

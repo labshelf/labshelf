@@ -21,19 +21,45 @@ export interface CitedKey {
   /** Character offsets of the key in the text. */
   start: number;
   end: number;
+  /** The whole citing command, e.g. `\cite[p.~4]{a, b}` or `@a`. */
+  command: string;
+  /** The page a LaTeX `[p.~N]` argument names. */
+  page?: number;
 }
+
+const PAGE_ARGUMENT = /^\s*p\.~?\s*(\d+)\s*$/;
 
 // Blanks out what is not source while keeping every offset, so matches still point into the real text.
 const blank = (text: string, pattern: RegExp): string => text.replace(pattern, (match) => match.replace(/[^\n]/g, " "));
 
+function pageOf(command: string): number | undefined {
+  for (const argument of command.slice(0, command.lastIndexOf("{")).matchAll(/\[([^\]]*)\]/g)) {
+    const page = PAGE_ARGUMENT.exec(argument[1]!)?.[1];
+    if (page) { return Number(page); }
+  }
+  return undefined;
+}
+
 function latexKeys(text: string): CitedKey[] {
   return [...blank(text, LATEX_COMMENT).matchAll(LATEX_CITE)].flatMap((match) => {
     const listStart = match.index + match[0].length - 1 - match[1]!.length;
+    const page = pageOf(match[0]);
     return [...match[1]!.matchAll(/[^,\s][^,]*/g)].map((part) => {
       const key = part[0].trimEnd();
-      return { key, start: listStart + part.index, end: listStart + part.index + key.length };
+      return { key, start: listStart + part.index, end: listStart + part.index + key.length, command: match[0], ...(page !== undefined ? { page } : {}) };
     });
   });
+}
+
+// The `#cite(...)` call up to its closing parenthesis; an unclosed call runs to the end of the line.
+function typstCall(source: string, from: number): string {
+  const lineEnd = source.indexOf("\n", from) < 0 ? source.length : source.indexOf("\n", from);
+  let depth = 0;
+  for (let i = from; i < lineEnd; i++) {
+    if (source[i] === "(") { depth++; }
+    else if (source[i] === ")" && --depth === 0) { return source.slice(from, i + 1); }
+  }
+  return source.slice(from, lineEnd);
 }
 
 function typstKeys(text: string): CitedKey[] {
@@ -41,12 +67,12 @@ function typstKeys(text: string): CitedKey[] {
   const references = [...source.matchAll(TYPST_REFERENCE)].map((match) => {
     // PLATFORM: Typst drops a trailing `.` or `:` from `@key.` so that a reference can end a sentence.
     const key = match[1]!.replace(/[.:]+$/, "");
-    return { key, start: match.index + 1, end: match.index + 1 + key.length };
+    return { key, start: match.index + 1, end: match.index + 1 + key.length, command: `@${key}` };
   });
   const labels = [...source.matchAll(TYPST_CITE_LABEL)].map((match) => {
     const key = (match[1] ?? match[2])!;
     const start = match.index + match[0].lastIndexOf(key);
-    return { key, start, end: start + key.length };
+    return { key, start, end: start + key.length, command: typstCall(source, match.index) };
   });
   return [...references, ...labels].sort((a, b) => a.start - b.start);
 }

@@ -2,8 +2,8 @@
  * @jest-environment jsdom
  */
 // Tests the citation hover card for one paper, several entries and an entry without a library paper.
-import { citationContent, OPEN_PAPER_LABEL } from "../../../../../src/reader/dom/hover/citations/citationCard";
-import type { CitationEntry } from "../../../../../src/reader";
+import { citationContent, OPEN_PAPER_LABEL } from "../../../../../../src/reader/dom/hover/citations/card";
+import type { CitationEntry } from "../../../../../../src/reader";
 
 const smith: CitationEntry = {
   key: "smith2020",

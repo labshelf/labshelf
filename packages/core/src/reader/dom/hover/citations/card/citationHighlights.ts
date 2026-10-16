@@ -1,0 +1,24 @@
+// Renders a paper's highlights for a citation card: those on the cited page first, the rest folded.
+import type { CitationCardPaper } from "../../../../index.js";
+import { el } from "../../../../../ui/dom/index.js";
+
+type Highlight = NonNullable<CitationCardPaper["highlights"]>[number];
+
+/** The colour is the only thing a highlight says about itself, so it shows as a swatch with no label. */
+function item(highlight: Highlight): HTMLElement {
+  return el("li", { class: `rd-cite-highlight${highlight.color ? ` rd-cite-hl-${highlight.color}` : ""}` },
+    el("span", { class: "rd-cite-quote", text: highlight.text }),
+    el("span", { class: "rd-cite-page", text: `p. ${highlight.page}` }));
+}
+
+const list = (highlights: Highlight[]): HTMLElement => el("ul", { class: "rd-cite-list" }, ...highlights.map(item));
+
+/** @returns the highlights in one list, or, when a page is cited, that page's highlights above a folded group of the others. */
+export function highlightsPanel(highlights: Highlight[], citedPage: number | undefined): HTMLElement {
+  if (citedPage === undefined) { return el("div", { class: "rd-cite-highlights" }, list(highlights)); }
+  const onPage = highlights.filter((h) => h.page === citedPage);
+  const others = highlights.filter((h) => h.page !== citedPage);
+  return el("div", { class: "rd-cite-highlights" },
+    onPage.length ? list(onPage) : el("p", { class: "rd-cite-empty", text: "None on this page" }),
+    others.length > 0 && el("details", {}, el("summary", { text: `Other highlights (${others.length})` }), list(others)));
+}

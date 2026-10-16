@@ -23,4 +23,18 @@ describe("quotedHighlights", () => {
   it("returns nothing for a paper without highlights", () => {
     expect(quotedHighlights([], 3)).toEqual([]);
   });
+
+  it("keeps the colour of a highlight", () => {
+    expect(quotedHighlights([note({ content: "x", color: "yellow" })], 3)).toEqual([{ text: "x", page: 1, color: "yellow" }]);
+  });
+
+  it("puts the highlights of the cited page first and applies the limit after", () => {
+    const picked = quotedHighlights([
+      note({ content: "p1", pageNumber: 1 }),
+      note({ content: "p2", pageNumber: 2 }),
+      note({ content: "p9b", pageNumber: 9, createdAt: "2026-01-02T00:00:00Z" }),
+      note({ content: "p9a", pageNumber: 9 }),
+    ], 3, 9);
+    expect(picked.map((h) => h.text)).toEqual(["p9a", "p9b", "p1"]);
+  });
 });
