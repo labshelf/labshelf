@@ -1,6 +1,6 @@
 # Plan: Find and download PDFs as well as Zotero and Paperpile
 
-Status: in progress (session 7 of 8)
+Status: in progress (session 8 of 8) — all steps run; waiting for the user's manual checks (A7, A8, A11, and the manual parts of A12–A14)
 Size: GG — a measurement harness, a reordered resolver engine, a publisher rule table, a bot-wall ladder, library proxies, PDF versions and two last-resort flows across core and the browser extension; grows past 8 sessions if the user's manual checks show session access failing for reasons the rules cannot fix
 Pending decisions: 0
 Branch: `feat/pdf-finding`, cut from `feat/reader-ux` (72b3dc0), in the worktree `../labshelf-pdf-finding` — `main` predates `import/pdfFinding/`
@@ -190,9 +190,9 @@ Each session ends with typecheck and tests green, the `finish` pass, a harness r
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S25 | Author contacts: `mailtoLinks`, meta tags, PubMed affiliations | — | M · implementer (sonnet) | extraction tests | [ ] |
-| S26 | Request email builder, settings, `pdfRequestedAt` round trip | S21 | M · implementer (sonnet) | encoding and YAML tests | [ ] |
-| S27 | "Ask the author" in the dialog and the detail pane | S25–S26 | H · main thread | A14 | [ ] |
+| S25 | Author contacts: `mailtoLinks`, meta tags, PubMed affiliations | — | M · implementer (sonnet) | extraction tests | [x] |
+| S26 | Request email builder, settings, `pdfRequestedAt` round trip | S21 | M · implementer (sonnet) | encoding and YAML tests | [x] |
+| S27 | "Ask the author" in the dialog and the detail pane | S25–S26 | H · main thread | A14 | [x] |
 | S28 | Finish, docs, delete this plan | S25–S27 | `finish` skill | gate passes | [ ] |
 
 ### Step blocks
@@ -424,7 +424,7 @@ Each session ends with typecheck and tests green, the `finish` pass, a harness r
 #### S27 — Ask the author in the UI
 
 - **Do:**
-  - Add a runtime message `paper.authorContact { id }`, which returns `{ contacts, articleUrl? }` and is limited to extension pages, like `paper.findPdf`.
+  - Add a runtime message `paper.askAuthor { id }`, limited to extension pages like `paper.findPdf`. The background finds the addresses, builds and opens the `mailto:`, and writes `pdfRequestedAt`. A capture's "No PDF found" dialog sends `ifNoPdf: "author"`, which saves the reference first.
   - Show the "Ask the author" button in the "PDF not found" dialog (popup, Scholar, library "Add") and in the "No PDF" detail pane.
   - The click opens the `mailto:` and writes `pdfRequestedAt`. The pane shows "PDF requested from the author on <date>".
 - **Touch:** `packages/browser/src/background/`, `popup/`, `core/src/library-ui/dom/detail/`. **Do not touch:** the resolver chain.
@@ -471,3 +471,8 @@ Each session ends with typecheck and tests green, the `finish` pass, a harness r
 - 2026-10-15 22:00 — S22: `core/src/import/pdfMatch/matchPdfToPaper.ts`: ids in the URL or referrer, then the page-1 title through `sameWork` (at least 15 characters), nothing on a tie. Known gap: `extractDoi` keeps `&…` after a DOI in a query string.
 - 2026-10-15 22:00 — S23: `browser/src/background/pdfOffer/` watches completed PDF downloads and PDF tabs (skipping S13-watched tabs), re-fetches with credentials, stages the bytes in the `labshelf-pdf-staging` IndexedDB (never synced, at most 3 offers), reads page-1 lines through an offscreen document in Chrome (`offscreen` permission, Chrome manifest only) or in place in Firefox, and sets a per-tab "PDF" badge. The popup merges the offer into the existing "In your library — without its PDF" card when the tab already resolves to that paper, and otherwise shows "Attach to <paper>". Headless Chrome: an arXiv PDF tab matched a title-only paper, and one click wrote `paper.pdf`. Not checked: Firefox, a real `downloads.onChanged` event, one-time signed URLs. A11 waits for the user's check in Chrome and Firefox.
 - 2026-10-15 22:00 — S24 harness: ids 32/66 correct, 2 wrong; landing 27/66, 3 wrong; medians found 3.3 s, not-found 1.8 s and 2.3 s. `diagnose` ran HEAD and the working tree alternately three times each: HEAD gave 31–32 and 27–28 with found medians 3.3–3.9 s in the same hour, so the drop against S20 is network (SciELO and doi.org lookups hitting their caps; 6 landing timeouts at 30 s in both trees). The wrong copies are the known OpenAlex ones. Finish pass green: typecheck in all four packages; core 2266, browser 202, vscode 255, terminal 863 tests. Browser lint fails only on `options/index.ts:34` and `libraryMutations.ts:39`, both pre-existing. `background/` and `storage/` in the browser are at 8 files. Open for the user: A11 in Chrome and Firefox, plus the manual parts of A12 (capture of an arXiv-only paper, the badge in VS Code, the replace prompt) and A13 (the "requested on" line, which comes with S26).
+- 2026-10-15 22:25 — C1: nothing to rebase onto. `origin/main` is already in this branch, and `feat/writing-core` is still unmerged and edits other sections of `library-format.md`.
+- 2026-10-15 22:25 — S25: `core/src/import/landing/contacts/`. `RawPage` gains `mailtoLinks` (href, link text, about 280 characters of surrounding text) and `authorEmails` (`citation_author_email` in page order, paired with the `citation_author` before it, because `meta` is a record and loses that order). Both the page probe and `parseHtmlPage` fill them. `findAuthorContacts` reads the page, then PubMed (`pubMedAuthorsByDoi` in `registries/works/pubmed.ts`, esearch by DOI and then efetch affiliations). No NCBI queue was added, because a lookup runs once per user click. The fixtures are snippets modelled on PLOS, Springer, Elsevier, MDPI and Frontiers markup, not saved pages. Known gap: an author whose meta tags all come before their e-mail tags gets the wrong name, though the address stays right.
+- 2026-10-15 22:25 — S26: `pdfRequestedAt` follows `pdfVersion` in the contract, YAML and `updatePaperFields`. `requestCopyMailto` is in `core/src/library-ui/requestCopy/`, in English, Portuguese and Spanish, with RFC 6068 encoding and an 1,800-character cap that shortens the authors, then the body title, then the subject. The requester's name, affiliation and language live in the browser's general options. The cap can still be exceeded by a very long recipient list, so the background sends to at most 3 addresses.
+- 2026-10-15 22:25 — S27: deviation from the step block. `paper.askAuthor { id }` does the whole job in the background, so addresses never reach a page. Every capture dialog offers "Ask the author" (`IfNoPdf` gains `"author"`). The detail pane and the library's "No PDF found" dialog offer it behind the `askAuthor` capability (browser only, and the contract row is in `library-ui-host.md`). Any host shows "PDF requested from the author on <date>" for a paper without a PDF. The email opens by navigating the captured tab, or the library tab, to the `mailto:`. With no address, the article page opens and nothing is recorded. Not checked: the mail-client hand-off in Chrome and Firefox (tagged `PLATFORM:` in `askAuthor.ts`), the line in the VS Code webview, a capture with the "author" choice end to end (no test harness for the capture handler covers "open" or "author").
+- 2026-10-15 22:25 — S28: finish pass green. Typecheck passes in all four packages. Tests: core 2340, browser 214, vscode 255, terminal 863. `documents/apps/browser.md` gains an "Ask the author" section. No harness run: this session does not touch the resolver chain. The plan stays open, without a CALIBRATION row, until the user's manual checks (A7, A8, A11, and the manual parts of A12–A14) come back, because those checks can add sessions (header). A2 is still not met (S20, S24).
