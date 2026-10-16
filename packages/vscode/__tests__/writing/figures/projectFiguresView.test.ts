@@ -7,6 +7,7 @@ import { ProjectFiguresView } from "../../../src/writing/figures";
 import { readyEntry } from "../../support/writingFixtures";
 
 const executeCommand = vscode.commands.executeCommand as jest.Mock;
+const arcIcon = () => ({ light: vscode.Uri.file("/light.svg"), dark: vscode.Uri.file("/dark.svg") });
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
 function node(project: ReadyProject, figurePath: string): FigureNode {
@@ -19,7 +20,7 @@ function setup(open: boolean, figurePaths: string[] = []) {
   const figuresChanged = new vscode.EventEmitter<void>();
   const session = { project: open ? project : undefined, onDidChange: sessionChanged.event };
   const figures = { children: jest.fn(async (target: ReadyProject) => figurePaths.map((p) => node(target, p))), onDidChange: figuresChanged.event };
-  const view = new ProjectFiguresView({ session, figures, paths: path });
+  const view = new ProjectFiguresView({ session, figures, paths: path, arcIcon });
   const treeView: { description?: string } = {};
   view.attach(treeView as vscode.TreeView<FigureNode>);
   return { view, treeView, session, figures, sessionChanged, figuresChanged, project };

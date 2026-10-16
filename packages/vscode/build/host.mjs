@@ -4,6 +4,7 @@ import { readFile, rm } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { googleCredentialDefines } from "../../../scripts/googleCredentials.mjs";
+import { writeArcMarks } from "./arcMarks.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const pkgRoot = resolve(here, "..");
@@ -34,10 +35,12 @@ const options = {
 };
 
 if (watch) {
+  await writeArcMarks(outDir);
   const ctx = await context(options);
   await ctx.watch();
   console.log(`[labshelf-host] watching → ${options.outfile}`);
 } else {
   await rm(outDir, { recursive: true, force: true });
   await build(options);
+  await writeArcMarks(outDir);
 }

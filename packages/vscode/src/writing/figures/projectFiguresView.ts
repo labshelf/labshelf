@@ -2,6 +2,7 @@
 import * as vscode from "vscode";
 
 import type { PathOps } from "@labshelf/core";
+import type { ArcIcon } from "../../ui/index.js";
 import type { ProjectSession } from "../session/index.js";
 import type { FigureNode } from "./figureNode.js";
 import { figureTreeItem } from "./figureTreeItem.js";
@@ -13,6 +14,7 @@ interface ProjectFiguresViewDeps {
   session: Pick<ProjectSession, "project" | "onDidChange">;
   figures: Pick<ProjectFigures, "children" | "onDidChange">;
   paths: PathOps;
+  arcIcon: ArcIcon;
 }
 
 export class ProjectFiguresView implements vscode.TreeDataProvider<FigureNode>, vscode.Disposable {
@@ -35,7 +37,7 @@ export class ProjectFiguresView implements vscode.TreeDataProvider<FigureNode>, 
   }
 
   getTreeItem(node: FigureNode): vscode.TreeItem {
-    return figureTreeItem(node, this.deps.paths);
+    return figureTreeItem(node, this.deps.paths, this.deps.arcIcon);
   }
 
   getChildren(parent?: FigureNode): FigureNode[] {
