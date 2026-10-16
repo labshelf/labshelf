@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import { watchFigureFiles } from "../../../src/writing/figures";
 import { readyEntry } from "../../support/writingFixtures";
-import type { ProjectEntry } from "@labshelf/core/node";
+import type { ProjectEntry } from "@labshelf/core";
 
 const withFigures = readyEntry("/code/paper", {
   settings: { id: "paper", format: "latex", figures: { "fig/a.pdf": { run: "x", inputs: ["plot.py", "./results/*.json"] } } },

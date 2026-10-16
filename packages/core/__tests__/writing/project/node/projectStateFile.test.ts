@@ -2,9 +2,8 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import {
-  latestProjectEdit, readProjectCursor, writeProjectCursor, type ProjectEntry,
-} from "../../../../src/writing/project/node/index";
+import type { ProjectEntry } from "../../../../src/writing/project/index";
+import { latestProjectEdit, readProjectCursor, writeProjectCursor } from "../../../../src/writing/project/node/index";
 import { fakeLogger } from "../../../support/fakeLogger";
 import { cleanupTempDirs, makeTempDir } from "../../../support/tempDirs";
 

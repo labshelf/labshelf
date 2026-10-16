@@ -6,9 +6,10 @@ import { claimCiteKey, joinWith, libraryLayout } from "../../../library/index.js
 import { readOptionalFile, writeFileAtomic } from "../../../library/node/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import { PROJECT_FILE, parseProjectFile, serializeProjectFile, type ProjectFormat } from "../projectFile.js";
+import type { ProjectEntry } from "../projectEntry.js";
 import { projectIdSlug } from "../projectId.js";
 import { projectTemplate } from "../templates.js";
-import { readProject, type ProjectEntry } from "./projectFolder.js";
+import { readProject } from "./projectFolder.js";
 import { loadProjectRegistry, registerProjectFolder } from "./projectRegistryFile.js";
 
 function projectsRoot(libraryRoot: string): string {

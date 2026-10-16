@@ -2,3 +2,4 @@
 export { versionSlug } from "./versionSlug.js";
 export { parseVersionFile, serializeVersionFile, VERSIONS_DIR, VERSION_FILE, VERSION_PDF, VERSION_SOURCES } from "./versionInfo.js";
 export type { VersionInfo } from "./versionInfo.js";
+export type { ProjectVersion } from "./projectVersion.js";

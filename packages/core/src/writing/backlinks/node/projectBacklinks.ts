@@ -2,8 +2,8 @@
 import * as path from "node:path";
 
 import type { ILogger } from "../../../ports/index.js";
-import { DISK_ONLY, projectSources, type OpenSources } from "../../citations/node/index.js";
-import type { ProjectEntry } from "../../project/node/index.js";
+import { DISK_ONLY, projectSources } from "../../citations/node/index.js";
+import type { OpenSources, ProjectEntry } from "../../project/index.js";
 import { addBacklinks, type Backlink, type BacklinkIndex } from "../backlinkIndex.js";
 import { citationSites } from "../citationSites.js";
 

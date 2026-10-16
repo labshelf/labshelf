@@ -1,7 +1,7 @@
 /** Reads the facts the pre-submission check needs from a PDF through pdf.js: text lines, fonts, placed images and the info dictionary. */
 import { promises as fs } from "node:fs";
 
-import type { PdfjsLoader } from "../../../import/node/index.js";
+import type { PdfjsLoader } from "../../../import/index.js";
 import type { PdfFacts, PdfPageFacts } from "../checkTypes.js";
 import { walkOperators, type OperatorList } from "../operatorWalk.js";
 

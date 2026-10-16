@@ -6,8 +6,9 @@ import { readOptionalFile, writeFileAtomic } from "../../../../library/node/inde
 import type { ILogger } from "../../../../ports/index.js";
 import { parseTexLog } from "../../log/index.js";
 import { engineLabel, type LatexToolchain } from "../../toolchain/index.js";
+import type { LatexBuildResult, LocatedProblem } from "../buildResult.js";
 import { latexBuildCommand } from "../latexBuildCommand.js";
-import { locateProblems, type LocatedProblem, type ProblemPlaces } from "./locateProblems.js";
+import { locateProblems, type ProblemPlaces } from "./locateProblems.js";
 import { BuildCancelled, runCancellable } from "./runCancellable.js";
 
 export interface LatexBuildRequest {
@@ -20,11 +21,6 @@ export interface LatexBuildRequest {
   signal: AbortSignal;
   logger: ILogger;
 }
-
-export type LatexBuildResult =
-  | { status: "cancelled" }
-  | { status: "succeeded"; pdf: string; problems: LocatedProblem[] }
-  | { status: "failed"; problems: LocatedProblem[] };
 
 const MODULE = "writing/build";
 // Tectonic's own summary lines say only that TeX failed; the cause is in the log or in another "error:" line.

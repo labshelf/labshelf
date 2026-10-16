@@ -8,6 +8,8 @@ export {
 } from "./projectFile.js";
 export type { LatexEngine, ProjectFileResult, ProjectFormat, ProjectSettings, ProjectSettingsPatch } from "./projectFile.js";
 export { parseJsonObject } from "./deviceLocal/index.js";
+export type { OpenSources } from "./openSources.js";
+export type { ProjectEntry, ProjectLocation } from "./projectEntry.js";
 export { projectIdSlug } from "./projectId.js";
 export type { ProjectCursor } from "./deviceLocal/index.js";
 export { parseProjectRegistry, serializeProjectRegistry, withFolder, withoutFolder } from "./deviceLocal/index.js";

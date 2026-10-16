@@ -1,8 +1,8 @@
 // Registers Add Paper to Reading List and Remove from Reading List, which write the papers key of labshelf.yaml.
 import * as vscode from "vscode";
 
-import type { PaperRecord } from "@labshelf/core";
-import { updateProjectSettings, type ProjectEntry } from "@labshelf/core/node";
+import type { PaperRecord, ProjectEntry } from "@labshelf/core";
+import { updateProjectSettings } from "@labshelf/core/node";
 import { executeSafely } from "../../commands/index.js";
 import type { ReadyProject } from "../figures/index.js";
 import type { WritingHost, WritingProjects } from "../projectStore.js";

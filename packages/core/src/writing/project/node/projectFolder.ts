@@ -5,23 +5,10 @@ import * as path from "node:path";
 import { readOptionalFile, writeFileAtomic } from "../../../library/node/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import { detectMainFile } from "../mainDetection.js";
+import type { ProjectEntry, ProjectLocation } from "../projectEntry.js";
 import {
   PROJECT_FILE, parseProjectFile, updateProjectFile, type ProjectSettings, type ProjectSettingsPatch,
 } from "../projectFile.js";
-
-/** "library": under <library>/projects/; "external": a registered folder anywhere else. */
-export type ProjectLocation = "library" | "external";
-
-export type ProjectEntry =
-  | {
-    kind: "ready";
-    folder: string;
-    location: ProjectLocation;
-    settings: ProjectSettings;
-    /** The main file from labshelf.yaml, else the detected one; undefined when neither exists. */
-    main: string | undefined;
-  }
-  | { kind: "broken"; folder: string; location: ProjectLocation; reason: string };
 
 /** Names of the files at the folder's root; sources in subfolders are not main candidates. */
 export async function rootFileNames(folder: string): Promise<string[]> {

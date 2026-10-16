@@ -4,7 +4,6 @@ export { listSyncProjects } from "./projectSyncList.js";
 export { listProjectFiles } from "./projectFiles.js";
 export { projectBuildDir } from "./projectBuildDir.js";
 export { readProject, rootFileNames, updateProjectSettings } from "./projectFolder.js";
-export type { ProjectEntry, ProjectLocation } from "./projectFolder.js";
 export { latestProjectEdit, readProjectCursor, writeProjectCursor } from "./projectStateFile.js";
 export type { ProjectLastEdit } from "./projectStateFile.js";
 export { loadProjectRegistry, registerProjectFolder, unregisterProjectFolder } from "./projectRegistryFile.js";

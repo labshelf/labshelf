@@ -3,7 +3,7 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import { projectBacklinks } from "../../../../src/writing/backlinks/node/index";
-import type { ProjectEntry } from "../../../../src/writing/project/node/index";
+import type { ProjectEntry } from "../../../../src/writing/project/index";
 import { fakeLogger } from "../../../support/fakeLogger";
 import { cleanupTempDirs, makeTempDir } from "../../../support/tempDirs";
 

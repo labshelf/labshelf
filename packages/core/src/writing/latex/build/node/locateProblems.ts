@@ -2,9 +2,8 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
+import type { LocatedProblem } from "../buildResult.js";
 import type { BuildProblem } from "../../log/index.js";
-
-export type LocatedProblem = Omit<BuildProblem, "file"> & { file: string };
 
 export interface ProblemPlaces {
   projectFolder: string;

@@ -7,7 +7,7 @@ import {
   PROJECT_STATE_DIR, PROJECT_STATE_FILE, cursorOf, newestCursor, parseProjectState, serializeProjectState, withCursor,
   type ProjectCursor,
 } from "../deviceLocal/index.js";
-import type { ProjectEntry } from "./projectFolder.js";
+import type { ProjectEntry } from "../projectEntry.js";
 
 const MODULE = "projectState";
 

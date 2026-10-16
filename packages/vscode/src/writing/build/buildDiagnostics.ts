@@ -1,7 +1,7 @@
 // Shows each project's build problems in the Problems panel and replaces them on the next build of that project.
 import * as vscode from "vscode";
 
-import type { LocatedProblem } from "@labshelf/core/node";
+import type { LocatedProblem } from "@labshelf/core";
 import { ProjectDiagnostics } from "./projectDiagnostics.js";
 
 const SEVERITY = {

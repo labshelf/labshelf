@@ -2,6 +2,5 @@
 export { markVersion } from "./markVersion.js";
 export type { MarkVersionRequest } from "./markVersion.js";
 export { listVersions } from "./listVersions.js";
-export type { ProjectVersion } from "./listVersions.js";
 export { buildMarkedUpDiff } from "./buildMarkedUpDiff.js";
 export type { MarkedUpDiffRequest } from "./buildMarkedUpDiff.js";

@@ -1,8 +1,7 @@
 // Makes a scanned PDF searchable by overlaying Tesseract's invisible text on each textless page.
 // Page content is never re-encoded, so the paper looks identical and grows only a few KB per page.
 import type { ExistingLayer, PdfTextLayerBuilder, TextLayerDetection, TextLayerHooks, TextLayerOutcome } from "../../../library/index.js";
-import { isSparseText } from "../../pdf/index.js";
-import type { PdfjsLoader } from "../loadPdfjs.js";
+import { isSparseText, type PdfjsLoader } from "../../pdf/index.js";
 import { openPdfForOcr, type OcrDocument } from "./ocrDocument.js";
 import type { TesseractOcrEngine } from "./tesseractOcrEngine.js";
 import { openRewriteTarget, overlayTextLayers } from "./textLayerOverlay.js";

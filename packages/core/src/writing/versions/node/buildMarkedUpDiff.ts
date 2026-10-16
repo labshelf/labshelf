@@ -3,8 +3,8 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import type { ILogger } from "../../../ports/index.js";
+import { latexBuildCommand } from "../../latex/build/index.js";
 import { runCancellable } from "../../latex/build/node/index.js";
-import { latexBuildCommand } from "../../latex/build/latexBuildCommand.js";
 import type { LatexToolchain } from "../../latex/toolchain/index.js";
 import { outputTail, runLatexdiff } from "./runLatexdiff.js";
 

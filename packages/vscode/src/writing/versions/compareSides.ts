@@ -1,7 +1,7 @@
 // Asks which two versions of a project to compare and which kind of comparison to run.
 import * as vscode from "vscode";
 
-import type { ProjectVersion } from "@labshelf/core/node";
+import type { ProjectVersion } from "@labshelf/core";
 
 export const CURRENT_SLUG = "current";
 

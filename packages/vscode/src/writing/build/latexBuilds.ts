@@ -2,8 +2,8 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import type { ILogger } from "@labshelf/core";
-import { projectBuildDir, runLatexBuild, updateProjectValues, type LatexBuildResult, type ProjectEntry } from "@labshelf/core/node";
+import type { ILogger, LatexBuildResult, ProjectEntry } from "@labshelf/core";
+import { projectBuildDir, runLatexBuild, updateProjectValues } from "@labshelf/core/node";
 import type { TypstBuildResult } from "@labshelf/core/typst/node";
 import type { ReadyProject } from "../mainDocument.js";
 import type { BuildDiagnostics } from "./buildDiagnostics.js";

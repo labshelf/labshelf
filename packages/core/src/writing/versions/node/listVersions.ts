@@ -3,14 +3,10 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import type { ILogger } from "../../../ports/index.js";
+import type { ProjectVersion } from "../projectVersion.js";
 import { parseVersionFile, VERSIONS_DIR, VERSION_FILE, VERSION_PDF, VERSION_SOURCES, type VersionInfo } from "../versionInfo.js";
 
 const MODULE = "writing/versions";
-
-export interface ProjectVersion extends VersionInfo {
-  pdfPath: string;
-  sourcesDir: string;
-}
 
 async function readVersion(root: string, slug: string, logger: ILogger): Promise<ProjectVersion | undefined> {
   const dir = path.join(root, slug);

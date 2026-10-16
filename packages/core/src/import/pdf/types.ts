@@ -76,3 +76,18 @@ export interface PdfPageLike {
 export interface PdfDocumentOpener {
   open(bytes: Uint8Array): Promise<PdfDocumentLike>;
 }
+
+export type PdfjsModule = Record<string, unknown>;
+
+export interface PdfLoadingTask {
+  promise: Promise<PdfDocumentLike>;
+  destroy(): Promise<void>;
+}
+
+/** A host's pdf.js entry point; a Node host runs its worker in-process. */
+export interface PdfjsLoader {
+  /** The pdf.js module, imported on first use. */
+  load(): Promise<PdfjsModule>;
+  /** Opens a loading task with the loader's document options; `options` wins over them. */
+  getDocument(options: Record<string, unknown>): Promise<PdfLoadingTask>;
+}

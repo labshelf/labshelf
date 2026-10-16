@@ -1,7 +1,7 @@
 // Opens a PDF for optical reading: renders pages to PNG on the native canvas and reads their existing text.
 import { invisibleShare, type OperatorList } from "./invisibleTextShare.js";
 import { loadNativeCanvas, nativeRenderOptions, renderPagePng } from "../canvas/index.js";
-import type { PdfjsLoader } from "../loadPdfjs.js";
+import type { PdfjsLoader } from "../../pdf/index.js";
 import type { PdfViewport } from "../canvas/index.js";
 
 // Tesseract wants roughly 300 DPI; PDF user space is 72 DPI.

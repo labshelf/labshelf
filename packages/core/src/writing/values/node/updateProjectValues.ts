@@ -5,7 +5,7 @@ import * as path from "node:path";
 
 import { readOptionalFile, writeFileAtomic } from "../../../library/node/index.js";
 import type { ILogger } from "../../../ports/index.js";
-import type { OpenSources } from "../../citations/node/index.js";
+import type { OpenSources } from "../../project/index.js";
 import type { ValueLeaf } from "../valueLeaves.js";
 import { VALUES_FILE_NAME, generateValuesFile } from "../valuesFile.js";
 import { withValuesInput } from "../valuesInputLine.js";

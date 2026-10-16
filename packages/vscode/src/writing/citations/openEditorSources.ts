@@ -1,7 +1,7 @@
 // Lets the bibliography update read and edit the documents open in VS Code instead of the files on disk.
 import * as vscode from "vscode";
 
-import type { OpenSources } from "@labshelf/core/node";
+import type { OpenSources } from "@labshelf/core";
 
 function openDocument(file: string): vscode.TextDocument | undefined {
   return vscode.workspace.textDocuments.find((document) => document.uri.scheme === "file" && document.uri.fsPath === file);

@@ -4,7 +4,7 @@ import * as path from "node:path";
 import { writeFileAtomic } from "../../../library/node/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import type { TypstCite } from "../../review/index.js";
-import type { LocatedProblem } from "../../latex/build/node/index.js";
+import type { LocatedProblem } from "../../latex/build/index.js";
 import type { FetchLike } from "../../latex/toolchain/node/index.js";
 import { typstProblems } from "../typstProblems.js";
 import type { TypstCompileResult, TypstSession } from "../typstSession.js";

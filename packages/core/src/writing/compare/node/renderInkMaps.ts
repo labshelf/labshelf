@@ -1,7 +1,8 @@
 /** Renders every page of a PDF file onto the native canvas and keeps only its ink. */
 import { promises as fs } from "node:fs";
 
-import { loadNativeCanvas, nativeRenderOptions, type PdfjsLoader, type PdfViewport } from "../../../import/node/index.js";
+import type { PdfjsLoader } from "../../../import/index.js";
+import { loadNativeCanvas, nativeRenderOptions, type PdfViewport } from "../../../import/node/index.js";
 import { inkMapFromRgba, type InkMap } from "../inkMap.js";
 
 interface RenderPage {

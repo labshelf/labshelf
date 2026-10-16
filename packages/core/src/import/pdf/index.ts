@@ -9,6 +9,9 @@ export type {
   PdfPageLike,
   PdfDocumentOpener,
   PdfOcrEngine,
+  PdfjsLoader,
+  PdfjsModule,
+  PdfLoadingTask,
 } from "./types.js";
 export { extractTitleBlocks, extractPageTexts, extractLinkUrls } from "./textExtraction.js";
 export { titleFromBlocks, authorsFromBlocks } from "./frontPageLayout.js";

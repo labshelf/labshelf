@@ -1,7 +1,7 @@
 /** Runs the pre-submission check on a project folder and its built PDF. */
 import { promises as fs } from "node:fs";
 
-import type { PdfjsLoader } from "../../../import/node/index.js";
+import type { PdfjsLoader } from "../../../import/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import type { CheckSettings } from "../../project/index.js";
 import { listProjectFiles } from "../../project/node/index.js";

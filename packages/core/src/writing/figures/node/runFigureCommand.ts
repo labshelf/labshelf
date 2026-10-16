@@ -1,4 +1,5 @@
 /** Runs a figure's shell command in the project folder, streaming its output and stopping it on cancel. */
+import type { FigureRunResult } from "../figureRunResult.js";
 import { BuildCancelled, runCancellable } from "../../latex/build/node/index.js";
 
 export interface FigureRun {
@@ -8,10 +9,6 @@ export interface FigureRun {
   signal: AbortSignal;
   onOutput?: (chunk: string) => void;
 }
-
-export type FigureRunResult =
-  | { status: "finished"; /** Null when a signal ended the command. */ code: number | null; /** The tail of stdout and stderr. */ output: string }
-  | { status: "cancelled" };
 
 /** Rejects when the shell cannot start; a command that exits with an error code is a result, not a rejection. */
 export async function runFigureCommand(run: FigureRun): Promise<FigureRunResult> {

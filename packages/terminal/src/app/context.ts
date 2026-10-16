@@ -2,10 +2,11 @@
 // INVARIANT: the TUI and the CLI both start here; nothing else instantiates adapters.
 import * as path from "node:path";
 
-import { BUILT_IN_GOOGLE_CLIENT, BibTeXService, Logger, PdfImportParser, errorMessage, resolveOAuthClient, type ILogger, type LibraryStore, type SyncCoordinator } from "@labshelf/core";
 import {
-  FileLogSink, NodeLibraryFileSystem, NodePdfOpener, TesseractOcrEngine, cacheDir, createPdfjsLoader, type PdfjsLoader,
-} from "@labshelf/core/node";
+  BUILT_IN_GOOGLE_CLIENT, BibTeXService, Logger, PdfImportParser, errorMessage, resolveOAuthClient,
+  type ILogger, type LibraryStore, type PdfjsLoader, type SyncCoordinator,
+} from "@labshelf/core";
+import { FileLogSink, NodeLibraryFileSystem, NodePdfOpener, TesseractOcrEngine, cacheDir, createPdfjsLoader } from "@labshelf/core/node";
 
 import type { TerminalConfig } from "./config.js";
 import {

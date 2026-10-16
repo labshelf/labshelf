@@ -1,22 +1,8 @@
 /** Loads pdf.js once for a Node host and runs its worker in-process; one loader per composition root. */
-import type { PdfDocumentLike } from "../pdf/index.js";
+import type { PdfjsLoader, PdfjsModule, PdfLoadingTask } from "../pdf/index.js";
 import { DiskBinaryDataFactory } from "./diskBinaryDataFactory.js";
 import { installElectronGlobals, patchFeatureTestPlatform } from "./electronShims.js";
 import { pdfjsDataOptions } from "./pdfjsDataOptions.js";
-
-export type PdfjsModule = Record<string, unknown>;
-
-export interface PdfLoadingTask {
-  promise: Promise<PdfDocumentLike>;
-  destroy(): Promise<void>;
-}
-
-export interface PdfjsLoader {
-  /** The pdf.js module, imported on first use. */
-  load(): Promise<PdfjsModule>;
-  /** Opens a loading task with the loader's document options; `options` wins over them. */
-  getDocument(options: Record<string, unknown>): Promise<PdfLoadingTask>;
-}
 
 export interface PdfjsLoaderOptions {
   /** The host is an Electron utility process (the VS Code extension host), which pdf.js does not recognise as Node. */

@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import type { PdfjsLoader } from "../../../../src/import/node/index";
+import type { PdfjsLoader } from "../../../../src/import/index";
 import { checkProject } from "../../../../src/writing/checks/node/index";
 import { fakeLogger } from "../../../support/fakeLogger";
 import { cleanupTempDirs, makeTempDir } from "../../../support/tempDirs";

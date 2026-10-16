@@ -2,7 +2,8 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { projectBuildDir, type ProjectEntry } from "@labshelf/core/node";
+import type { ProjectEntry } from "@labshelf/core";
+import { projectBuildDir } from "@labshelf/core/node";
 import { runTypstBuild, type TypstBuildResult } from "@labshelf/core/typst/node";
 import type { BuildListener, BuildTrigger, FinishedBuild } from "../build/index.js";
 import type { ReadyProject } from "../mainDocument.js";

@@ -6,13 +6,13 @@ import * as path from "node:path";
 import { readOptionalFile, writeFileAtomic } from "../../../library/node/index.js";
 import type { PaperRecord } from "../../../model/index.js";
 import type { ILogger } from "../../../ports/index.js";
-import { DEFAULT_BIBLIOGRAPHY, type ProjectFormat, type ProjectSettings } from "../../project/index.js";
+import { DEFAULT_BIBLIOGRAPHY, type OpenSources, type ProjectFormat, type ProjectSettings } from "../../project/index.js";
 import { updateProjectSettings } from "../../project/node/index.js";
 import { generateBibliography } from "../bibliographyFile.js";
 import { withBibliographyLine } from "../bibliographyLine.js";
 import { scanCitationKeys } from "../citationKeys.js";
 import { syncProjectPapers } from "./projectPapersSync.js";
-import { DISK_ONLY, projectSources, type OpenSources } from "./projectSources.js";
+import { DISK_ONLY, projectSources } from "./projectSources.js";
 
 export interface CitingProject {
   folder: string;

@@ -1,8 +1,8 @@
 // Registers Regenerate Figure: confirms the command once, runs it with progress and live output, and reports a failure.
 import * as vscode from "vscode";
 
-import { runFigureCommand, type FigureRunResult } from "@labshelf/core/node";
-import type { ILogger } from "@labshelf/core";
+import { runFigureCommand } from "@labshelf/core/node";
+import type { ILogger, FigureRunResult } from "@labshelf/core";
 import { executeSafely } from "../../commands/index.js";
 import type { WritingHost } from "../projectStore.js";
 import { confirmFigureCommand } from "./figureConsent.js";

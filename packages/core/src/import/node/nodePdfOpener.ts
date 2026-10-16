@@ -1,6 +1,5 @@
 /** Opens PDFs by parsing them with pdf.js in the current Node process. */
-import type { PdfDocumentLike, PdfDocumentOpener } from "../pdf/index.js";
-import type { PdfjsLoader } from "./loadPdfjs.js";
+import type { PdfDocumentLike, PdfDocumentOpener, PdfjsLoader } from "../pdf/index.js";
 
 export class NodePdfOpener implements PdfDocumentOpener {
   constructor(private readonly pdfjs: PdfjsLoader) {}

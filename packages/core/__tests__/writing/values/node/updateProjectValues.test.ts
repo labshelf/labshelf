@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import type { OpenSources } from "../../../../src/writing/citations/node/index";
+import type { OpenSources } from "../../../../src/writing/project/index";
 import type { ProjectSettings } from "../../../../src/writing/project/index";
 import { VALUES_HEADER } from "../../../../src/writing/values/index";
 import { readProjectValues, updateProjectValues } from "../../../../src/writing/values/node/index";

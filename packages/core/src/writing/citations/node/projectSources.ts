@@ -1,16 +1,8 @@
 /** Reads a project's LaTeX or Typst sources, taking an open editor's unsaved text over the disk. */
 import { promises as fs } from "node:fs";
 
-import type { ProjectFormat } from "../../project/index.js";
+import type { OpenSources, ProjectFormat } from "../../project/index.js";
 import { listProjectFiles } from "../../project/node/index.js";
-
-/** The host's open editors: their unsaved text wins over the disk, and edits to an open file go through the editor. */
-export interface OpenSources {
-  /** The text of an open document, or undefined when the file is not open. */
-  text(file: string): string | undefined;
-  /** Replaces the whole text of an open document; false when the file is not open. */
-  replace(file: string, text: string): Promise<boolean>;
-}
 
 export const DISK_ONLY: OpenSources = { text: () => undefined, replace: async () => false };
 

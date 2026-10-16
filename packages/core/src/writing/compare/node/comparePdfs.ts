@@ -1,5 +1,5 @@
 /** Compares two PDF files and returns the regions that changed on each side's pages. */
-import type { PdfjsLoader } from "../../../import/node/index.js";
+import type { PdfjsLoader } from "../../../import/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import { diffPages, type PdfChanges } from "../diffPages.js";
 import { renderInkMaps } from "./renderInkMaps.js";
