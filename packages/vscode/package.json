@@ -233,10 +233,20 @@
         "category": "LabShelf"
       },
       {
-        "command": "labshelf.writing.newProject",
-        "title": "Research: New Project…",
+        "command": "labshelf.templates.open",
+        "title": "Research: Browse Templates…",
         "category": "LabShelf",
         "icon": "$(add)"
+      },
+      {
+        "command": "labshelf.writing.newBlankProject",
+        "title": "Research: New Blank Project…",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.templates.saveProject",
+        "title": "Research: Save Project as Template…",
+        "category": "LabShelf"
       },
       {
         "command": "labshelf.writing.addExistingFolder",
@@ -475,7 +485,7 @@
       },
       {
         "view": "labshelf.writing",
-        "contents": "No projects yet.\n[New project](command:labshelf.writing.newProject)\n[Add existing folder](command:labshelf.writing.addExistingFolder)"
+        "contents": "No projects yet.\n[Browse templates](command:labshelf.templates.open)\n[New blank project](command:labshelf.writing.newBlankProject)\n[Add existing folder](command:labshelf.writing.addExistingFolder)"
       },
       {
         "view": "labshelf.settings",
@@ -559,7 +569,7 @@
           "group": "navigation@3"
         },
         {
-          "command": "labshelf.writing.newProject",
+          "command": "labshelf.templates.open",
           "when": "view == labshelf.writing",
           "group": "navigation@1"
         },
@@ -644,6 +654,11 @@
           "command": "labshelf.writing.regenerateFigure",
           "when": "view == labshelf.writing.figures && viewItem =~ /^labshelfFigure/",
           "group": "1_figure@1"
+        },
+        {
+          "command": "labshelf.templates.saveProject",
+          "when": "view == labshelf.writing && viewItem =~ /^labshelfProject(External)?$/",
+          "group": "1_open@7"
         },
         {
           "command": "labshelf.writing.addToReadingList",

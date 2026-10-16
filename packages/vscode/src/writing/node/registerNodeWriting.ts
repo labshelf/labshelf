@@ -1,4 +1,4 @@
-// Registers the Writing commands and builds that need Node: figures, LaTeX and Typst builds, checks and version compare.
+// Registers the Writing commands and builds that need Node: figures, LaTeX and Typst builds, checks and version compare, and the template gallery.
 import { buildRootOf } from "@labshelf/core/node";
 import * as vscode from "vscode";
 
@@ -7,6 +7,7 @@ import { registerLatexBuild } from "../build/node/index.js";
 import { registerCheckCommand } from "../check/node/index.js";
 import { registerRegenerateFigure } from "../figures/node/index.js";
 import type { RegisterNodeWriting } from "../nodePort/index.js";
+import { registerTemplates } from "../templates/node/index.js";
 import { registerTypstBuild } from "../typst/node/index.js";
 import { registerCompareVersionsCommand } from "../versions/node/index.js";
 
@@ -20,5 +21,6 @@ export const registerNodeWriting: RegisterNodeWriting = ({ context, host, projec
   };
   registerCheckCommand({ context, host, projects, builders, pdfjs: hostPdfjs });
   registerCompareVersionsCommand({ context, host, projects, builders, pdfjs: hostPdfjs, reader });
+  registerTemplates({ context, host, projects });
   return { builders, buildRootOf };
 };

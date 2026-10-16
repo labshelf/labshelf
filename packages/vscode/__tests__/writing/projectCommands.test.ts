@@ -1,4 +1,4 @@
-// Tests New project and Add existing folder: happy paths, cancellation and errors shown to the user.
+// Tests New blank project and Add existing folder: happy paths, cancellation and errors shown to the user.
 import * as vscode from "vscode";
 
 import { registerProjectCommands } from "../../src/writing";
@@ -23,7 +23,7 @@ beforeEach(() => {
   window["showOpenDialog"]!.mockResolvedValue(undefined);
 });
 
-describe("labshelf.writing.newProject", () => {
+describe("labshelf.writing.newBlankProject", () => {
   it("creates the project from the blank template of the picked format, reloads the list and opens the project", async () => {
     const { projects } = setup();
     window["showInputBox"]!.mockResolvedValue("  Deep nets survey ");
@@ -31,7 +31,7 @@ describe("labshelf.writing.newProject", () => {
     const entry = readyEntry("/lib/projects/deep-nets-survey", { main: "main.typ" });
     data.createProjectFromTemplate.mockResolvedValue(entry);
 
-    await commandHandler("labshelf.writing.newProject")();
+    await commandHandler("labshelf.writing.newBlankProject")();
 
     expect(data.createProjectFromTemplate).toHaveBeenCalledWith("/lib", expect.objectContaining({
       title: "Deep nets survey",
@@ -44,18 +44,18 @@ describe("labshelf.writing.newProject", () => {
 
   it("creates nothing when the title or the format is cancelled", async () => {
     setup();
-    await commandHandler("labshelf.writing.newProject")();
+    await commandHandler("labshelf.writing.newBlankProject")();
     expect(window["showQuickPick"]).not.toHaveBeenCalled();
 
     window["showInputBox"]!.mockResolvedValue("Title");
-    await commandHandler("labshelf.writing.newProject")();
+    await commandHandler("labshelf.writing.newBlankProject")();
     expect(data.createProjectFromTemplate).not.toHaveBeenCalled();
   });
 
   it("does nothing when the library setup is cancelled", async () => {
     const { host } = setup();
     (host.require as jest.Mock).mockResolvedValue(undefined);
-    await commandHandler("labshelf.writing.newProject")();
+    await commandHandler("labshelf.writing.newBlankProject")();
     expect(window["showInputBox"]).not.toHaveBeenCalled();
   });
 });

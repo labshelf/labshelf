@@ -14,6 +14,7 @@ const distDir = resolve(pkgRoot, "dist");
 const BUNDLES = {
   "reader/reader": "src/reader/main.ts",
   "library/library": "src/libraryWebview/main.ts",
+  "templates/templates": "src/writing/templates/webview/main.ts",
 };
 
 const watch = process.argv.includes("--watch");

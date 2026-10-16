@@ -33,6 +33,7 @@
         "src/extension.ts",
         "src/reader/main.ts",
         "src/libraryWebview/main.ts",
+        "src/writing/templates/webview/main.ts",
         "build/*.mjs",
         "__tests__/**/*.ts"
       ],

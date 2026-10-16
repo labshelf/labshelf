@@ -1,4 +1,4 @@
-// Registers the commands that add a writing project: New project and Add existing folder.
+// Registers the commands that add a writing project from a blank template or an existing folder.
 import * as vscode from "vscode";
 
 import { PROJECT_FILE, blankTemplate, detectFormat, type ProjectFormat } from "@labshelf/core";
@@ -20,10 +20,10 @@ async function pickFormat(placeHolder: string): Promise<ProjectFormat | undefine
   return picked?.format;
 }
 
-async function newProject({ host, projects }: ProjectCommandsDeps): Promise<void> {
+async function newBlankProject({ host, projects }: ProjectCommandsDeps): Promise<void> {
   const session = await host.require();
   if (!session) { return; }
-  await executeSafely(session.logger, "labshelf.writing.newProject", async () => {
+  await executeSafely(session.logger, "labshelf.writing.newBlankProject", async () => {
     const title = (await vscode.window.showInputBox({ prompt: "Project title", placeHolder: "Deep nets survey" }))?.trim();
     if (!title) { return; }
     const format = await pickFormat("Format of the new project");
@@ -55,7 +55,7 @@ async function addFolder({ host, projects }: ProjectCommandsDeps): Promise<void>
 
 export function registerProjectCommands(deps: ProjectCommandsDeps): void {
   deps.context.subscriptions.push(
-    vscode.commands.registerCommand("labshelf.writing.newProject", () => newProject(deps)),
+    vscode.commands.registerCommand("labshelf.writing.newBlankProject", () => newBlankProject(deps)),
     vscode.commands.registerCommand("labshelf.writing.addExistingFolder", () => addFolder(deps)),
     vscode.commands.registerCommand("labshelf.writing.refresh", () => deps.projects.reload()),
   );
