@@ -1,7 +1,8 @@
 // Builds the options page from core components and autosaves every change, debounced, with a "Saved" flag.
 // Reader preferences mirror VS Code's labshelf.reader.* settings.
 import { $, settingsPage } from "@labshelf/core/dom";
-import { StorageRingLogSink, createBrowserLogger, getSettings, updateSettings } from "../platform";
+import { createBrowserLatexHelper, createHelperSetupSection } from "../helper";
+import { StorageRingLogSink, bx, createBrowserLogger, getSettings, updateSettings } from "../platform";
 import { loadReaderPrefs, saveReaderPrefs } from "../reader/access";
 import { applyTheme } from "../ui";
 import { createAppearanceSection } from "./appearanceSection";
@@ -76,6 +77,11 @@ async function init(): Promise<void> {
     proxies.element,
     resolvers.element,
     reader.section,
+    createHelperSetupSection(createBrowserLatexHelper(logger), {
+      logger,
+      getPlatformInfo: () => bx.runtime.getPlatformInfo(),
+      openUrl: (url) => void bx.tabs.create({ url }),
+    }),
     createAppearanceSection(saved.flash),
     log.element,
   ));

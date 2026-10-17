@@ -1,0 +1,6 @@
+/* Styles the helper setup card's install progress bar. Requires ui/styles/tokens.css. */
+.helper-progress { display: flex; flex-direction: column; gap: var(--ls-space-3); margin-top: var(--ls-space-4); }
+.helper-progress-track { height: var(--ls-space-3); border-radius: var(--ls-radius-pill); background: var(--ls-border-soft); overflow: hidden; }
+.helper-progress-bar { height: 100%; width: 0; background: var(--ls-progress); transition: width var(--ls-normal); }
+.helper-progress-bar.indeterminate { width: 40%; }
+.helper-progress-message { color: var(--ls-desc); }

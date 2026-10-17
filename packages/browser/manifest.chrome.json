@@ -16,7 +16,8 @@
     "activeTab",
     "scripting",
     "downloads",
-    "offscreen"
+    "offscreen",
+    "nativeMessaging"
   ],
   "host_permissions": [
     "https://api.crossref.org/*",

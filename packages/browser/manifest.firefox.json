@@ -31,7 +31,8 @@
     "storage",
     "activeTab",
     "scripting",
-    "downloads"
+    "downloads",
+    "nativeMessaging"
   ],
   "host_permissions": [
     "https://api.crossref.org/*",
