@@ -14,7 +14,7 @@ export interface ProjectDetailView {
   openLabel: string;
 }
 
-export interface ProjectDetailPane {
+interface ProjectDetailPane {
   update(view: ProjectDetailView): void;
 }
 

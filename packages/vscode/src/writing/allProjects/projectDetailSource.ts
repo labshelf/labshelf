@@ -14,7 +14,7 @@ export interface ProjectDetailDeps extends Pick<BuildSources, "outcomes" | "buil
   pdfjs: PdfjsLoader;
 }
 
-export interface ProjectCites { cites: number; unresolved: number }
+interface ProjectCites { cites: number; unresolved: number }
 
 export interface ProjectDetailSource {
   build(project: ReadyProject): Promise<ProjectBuildSummary>;
