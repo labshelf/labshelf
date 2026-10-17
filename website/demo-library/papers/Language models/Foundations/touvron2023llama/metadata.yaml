@@ -1,0 +1,40 @@
+title: "LLaMA: Open and Efficient Foundation Language Models"
+citekey: touvron2023llama
+source: 2302.13971.pdf
+authors:
+  - Hugo Touvron
+  - Thibaut Lavril
+  - Gautier Izacard
+  - Xavier Martinet
+  - Marie-Anne Lachaux
+  - Timothée Lacroix
+  - Baptiste Rozière
+  - Naman Goyal
+  - Eric Hambro
+  - Faisal Azhar
+  - Aurelien Rodriguez
+  - Armand Joulin
+  - Edouard Grave
+  - Guillaume Lample
+year: 2023
+status: done
+summary: We introduce LLaMA, a collection of foundation language models ranging
+  from 7B to 65B parameters. We train our models on trillions of tokens, and
+  show that it is possible to train state-of-the-art models using publicly
+  available datasets exclusively, without resorting to proprietary and
+  inaccessible datasets. In particular, LLaMA-13B outperforms GPT-3 (175B) on
+  most benchmarks, and LLaMA-65B is competitive with the best models,
+  Chinchilla-70B and PaLM-540B. We release all our models to the research
+  community.
+journal: arXiv preprint
+url: https://arxiv.org/abs/2302.13971
+keywords:
+  - language models
+  - scaling
+tags:
+  - llm
+  - open-weights
+note: Smaller models trained on more tokens beat larger ones at inference cost.
+  Table 3 for the common-sense numbers.
+statusChangedAt: 2026-08-04T09:30:00.000Z
+pdfVersion: preprint

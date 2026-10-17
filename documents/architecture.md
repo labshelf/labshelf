@@ -10,10 +10,10 @@ packages/
   vscode/     @labshelf/vscode    VS Code extension: wiring and VS Code-only code
   browser/    @labshelf/browser   Chrome/Firefox MV3 extension: wiring and browser-only code
   terminal/   @labshelf/terminal  `labshelf` TUI and CLI: wiring and terminal-only code
-website/                          public site about LabShelf; not part of the product
+website/    @labshelf/website   public site about LabShelf; not part of the product
 ```
 
-Dependencies point one way: each app depends on `core`, and nothing depends on an app. Apps never import each other. The website may use core's design tokens and icons and nothing else.
+Dependencies point one way: each app depends on `core`, and nothing depends on an app. Apps never import each other. The website may mount core's library UI and reader through their host contracts, with an in-page host over the demo library in `website/demo-library/`. It never imports an app.
 
 ## What an app contains
 

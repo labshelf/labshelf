@@ -1,0 +1,35 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{hyperref}
+
+\title{Notes on Reasoning in Large Language Models}
+\author{Ana Souza}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We collect what is known about eliciting multi-step reasoning from large language models
+and how that behaviour is steered after pre-training.
+\end{abstract}
+
+\section{Background}
+Open foundation models such as LLaMA~\cite{touvron2023llama} make it possible to study
+prompting methods without access to a proprietary system.
+
+\section{Prompting for reasoning}
+Chain-of-thought prompting~\cite{wei2022chainofthought} shows that intermediate steps
+improve accuracy on arithmetic and commonsense benchmarks. Sampling several reasoning paths
+and voting on the answer~\cite{wang2022selfconsitency} improves on a single greedy path, and
+interleaving reasoning with tool calls~\cite{yao2022react} lets a model act on what it reads.
+Recent work reports that these gains transfer to biomedical text~\cite{chen2023benchmarking}.
+
+\section{Steering behaviour}
+Preference data can replace an explicit reward model~\cite{rafailov2023direct}, and written
+principles can replace most human harm labels~\cite{bai2022constitutional}.
+
+\bibliographystyle{plain}
+\bibliography{labshelf,refs}
+
+\end{document}

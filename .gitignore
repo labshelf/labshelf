@@ -4,6 +4,8 @@ out/
 packages/*/out/
 packages/*/dist/
 .research/
+# The demo library ships its highlight sidecars.
+!website/demo-library/.research/
 .vscode-test/
 coverage/
 *.vsix
@@ -33,3 +35,4 @@ credentials/*.json
 # VS Code test-host symlinks (short paths for the IPC socket limit)
 /.udd-*
 /.ext-*
+website/dist/

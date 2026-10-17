@@ -1,0 +1,49 @@
+{
+  "annotations": [
+    {
+      "id": "touvron2023llama-h1",
+      "paperId": "touvron2023llama",
+      "type": "highlight",
+      "pageNumber": 1,
+      "content": "LLaMA-13B outperforms GPT-3 on most bench-",
+      "color": "yellow",
+      "position": {
+        "x": 0.5126,
+        "y": 0.4777,
+        "width": 0.3731,
+        "height": 0.014
+      },
+      "createdAt": "2026-08-03T14:02:00.000Z",
+      "updatedAt": "2026-08-03T14:02:00.000Z"
+    },
+    {
+      "id": "touvron2023llama-h2",
+      "paperId": "touvron2023llama",
+      "type": "highlight",
+      "pageNumber": 1,
+      "content": "ultimately be cheaper at inference. For instance,",
+      "color": "green",
+      "position": {
+        "x": 0.5126,
+        "y": 0.2717,
+        "width": 0.3723,
+        "height": 0.014
+      },
+      "createdAt": "2026-08-03T14:05:00.000Z",
+      "updatedAt": "2026-08-03T14:05:00.000Z"
+    }
+  ],
+  "theme": "auto",
+  "reading": {
+    "page": 1,
+    "scaleValue": "page-width",
+    "left": 0,
+    "top": 380,
+    "sidebar": {
+      "open": false,
+      "tab": "outline",
+      "width": 240
+    },
+    "updatedAt": "2026-08-04T09:28:00.000Z"
+  }
+}

@@ -1,0 +1,19 @@
+id: llm-reasoning-notes
+format: latex
+main: main.tex
+engine: tectonic
+bibliography: labshelf.bib
+check:
+  pages: 8
+  countUpTo: references
+papers:
+  - key: bai2022constitutional
+    cited: true
+  - key: rafailov2023direct
+    cited: true
+  - key: touvron2023llama
+    cited: true
+  - key: wei2022chainofthought
+    cited: true
+  - key: yao2022react
+    cited: true

@@ -1,0 +1,81 @@
+{
+  "annotations": [
+    {
+      "id": "wei2022chainofthought-h1",
+      "paperId": "wei2022chainofthought",
+      "type": "highlight",
+      "pageNumber": 1,
+      "content": "naturally in sufficiently large language models via a simple method called chain-of-",
+      "color": "yellow",
+      "position": {
+        "x": 0.2334,
+        "y": 0.4234,
+        "width": 0.5358,
+        "height": 0.0138
+      },
+      "createdAt": "2026-09-18T20:12:00.000Z",
+      "updatedAt": "2026-09-18T20:12:00.000Z"
+    },
+    {
+      "id": "wei2022chainofthought-h2",
+      "paperId": "wei2022chainofthought",
+      "type": "highlight",
+      "pageNumber": 1,
+      "content": "accuracy on the GSM8K benchmark of math word problems, surpassing even",
+      "color": "green",
+      "position": {
+        "x": 0.2334,
+        "y": 0.5223,
+        "width": 0.5331,
+        "height": 0.0138
+      },
+      "createdAt": "2026-09-18T20:13:00.000Z",
+      "updatedAt": "2026-09-18T20:13:00.000Z"
+    },
+    {
+      "id": "wei2022chainofthought-h3",
+      "paperId": "wei2022chainofthought",
+      "type": "highlight",
+      "pageNumber": 1,
+      "content": "finetuned GPT-3 with a verifier.",
+      "color": "pink",
+      "position": {
+        "x": 0.2334,
+        "y": 0.5361,
+        "width": 0.2091,
+        "height": 0.0138
+      },
+      "createdAt": "2026-09-18T20:14:00.000Z",
+      "updatedAt": "2026-09-18T20:14:00.000Z"
+    },
+    {
+      "id": "wei2022chainofthought-h4",
+      "paperId": "wei2022chainofthought",
+      "type": "highlight",
+      "pageNumber": 2,
+      "content": "This work explores how the reasoning ability of large",
+      "color": "blue",
+      "position": {
+        "x": 0.1743,
+        "y": 0.2718,
+        "width": 0.3757,
+        "height": 0.0138
+      },
+      "createdAt": "2026-09-19T08:40:00.000Z",
+      "updatedAt": "2026-09-19T08:40:00.000Z"
+    }
+  ],
+  "theme": "auto",
+  "reading": {
+    "page": 2,
+    "scaleValue": "page-width",
+    "left": 0,
+    "top": 120,
+    "sidebar": {
+      "open": true,
+      "tab": "outline",
+      "width": 240
+    },
+    "updatedAt": "2026-09-21T08:44:00.000Z"
+  }
+}
