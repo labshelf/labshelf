@@ -8,6 +8,7 @@ import type { BuildPreviews } from "../../preview/index.js";
 import type { BuildDiagnostics } from "../buildDiagnostics.js";
 import { autoCompileGate } from "../options/index.js";
 import { LatexBuilds } from "./latexBuilds.js";
+import type { IncludeOnlyTarget } from "./includeOnly.js";
 
 const SOURCE_EXTENSIONS = new Set([".tex", ".bib", ".sty", ".cls"]);
 // Editors with auto save write several times a second while typing; one build covers a burst.
@@ -19,6 +20,8 @@ interface LatexBuildDeps {
   projects: Pick<WritingProjects, "data" | "list" | "paths" | "reload">;
   previews: Pick<BuildPreviews, "building" | "finished">;
   diagnostics: Pick<BuildDiagnostics, "publish">;
+  /** The `\include` path a save builds alone while the preview's include-only toggle is on. */
+  includeOnlyTarget?: IncludeOnlyTarget;
 }
 
 function latexProjectOf(projects: LatexBuildDeps["projects"], file: vscode.Uri): ReadyProject | undefined {
@@ -34,6 +37,15 @@ export function registerLatexBuild(deps: LatexBuildDeps): LatexBuilds {
   let disposed = false;
   const autoCompile = autoCompileGate(() => deps.host.current()?.logger);
 
+  const requestSave = async (project: ReadyProject, root: string): Promise<void> => {
+    try {
+      const target = await deps.includeOnlyTarget?.(project, root);
+      await builds.request(project.folder, root, "save", target);
+    } catch (error) {
+      await deps.host.current()?.logger.error("writing/build", error, { projectFolder: project.folder, root, action: "save build" });
+    }
+  };
+
   const onSave = async (document: vscode.TextDocument): Promise<void> => {
     if (!SOURCE_EXTENSIONS.has(deps.projects.paths.extname(document.uri.fsPath).toLowerCase())) { return; }
     const project = latexProjectOf(deps.projects, document.uri);
@@ -45,7 +57,7 @@ export function registerLatexBuild(deps: LatexBuildDeps): LatexBuilds {
     clearTimeout(timers.get(key));
     timers.set(key, setTimeout(() => {
       timers.delete(key);
-      void builds.request(folder, root, "save");
+      void requestSave(project, root);
     }, SAVE_DEBOUNCE_MS));
   };
 

@@ -30,20 +30,17 @@ export interface CitationQuery {
   dest?: string;
 }
 
-/** The library paper a cite key names, as the reader's citation card shows it; `summary` is its abstract. */
+/** The library paper a cite key names, as the reader's citation card shows it. */
 export interface CitationCardPaper {
   id: string;
   title: string;
   authors: string[];
   year?: number;
-  summary?: string;
   status?: PaperStatus;
   venue?: string;
   /** The library folder that holds the paper. */
   folder?: string;
   highlights?: QuotedHighlight[];
-  /** Titles of the project's sections that cite the key. */
-  citedIn?: string[];
 }
 
 /** The `.bib` record of a cite key that no library paper has. */

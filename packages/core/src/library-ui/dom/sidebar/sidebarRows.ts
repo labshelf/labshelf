@@ -1,7 +1,7 @@
 // Builds the sidebar's rows: sub-headings, the All papers row, folders with recursive counts, papers with a REF label, tags, and projects.
 import { PAPERS_DIR, ROOT_LABEL } from "../../../library/index.js";
 import { el } from "../../../ui/dom/index.js";
-import { arcMark, escapeHtml, icon } from "../../../ui/index.js";
+import { escapeHtml, icon } from "../../../ui/index.js";
 import type { SidebarProject } from "./sidebarProjects.js";
 
 /** Row identity shared by focus, keyboard and click handling: `section:<id>`, `group:<id>`, `all-papers`, `folder:<path>`, `paper:<id>`, `tag:<tag>` or `project:<id>`. */
@@ -12,7 +12,7 @@ export const GROUP_ROW_DEPTH = 3;
 
 const countHtml = (count: number): string => (count > 0 ? `<span class="tree-count">${count}</span>` : "");
 
-function treeItem(key: string, depth: number, current: boolean, attrs: Record<string, string | undefined>, html: string): HTMLElement {
+export function treeItem(key: string, depth: number, current: boolean, attrs: Record<string, string | undefined>, html: string): HTMLElement {
   return el("div", {
     class: `tree-row${current ? " current" : ""}${attrs["aria-expanded"] === "false" ? " collapsed" : ""}`,
     role: "treeitem",
@@ -23,15 +23,16 @@ function treeItem(key: string, depth: number, current: boolean, attrs: Record<st
   });
 }
 
-/** A static sub-heading; `actions` holds icon buttons shown on hover. */
-export function headingRow(text: string, actions = ""): HTMLElement {
-  return el("div", { class: "tree-heading", role: "presentation", html: `<span>${escapeHtml(text)}</span>${actions ? `<span class="tree-heading-actions">${actions}</span>` : ""}` });
-}
-
 /** The row that opens the library root; `current` when the list shows it. */
 export function allPapersRow(count: number, current: boolean): HTMLElement {
   return treeItem("all-papers", 0, current, { "data-all-papers": "", "aria-current": current ? "true" : undefined, "aria-selected": "false" },
     `<span class="tree-icon">${icon("book-open")}</span><span class="tree-label">${escapeHtml(ROOT_LABEL)}</span>${countHtml(count)}`);
+}
+
+/** The fixed row that opens the template gallery, as All papers opens the library root. */
+export function exploreTemplatesRow(): HTMLElement {
+  return treeItem("templates", 0, false, { "data-templates": "", "aria-selected": "false" },
+    `<span class="tree-icon">${icon("layers")}</span><span class="tree-label">Explore templates</span>`);
 }
 
 export interface FolderRowState { depth: number; count: number; open: boolean; current: boolean }
@@ -60,9 +61,18 @@ export function tagRow(tag: string, count: number, current: boolean): HTMLElemen
     `<span class="tree-twisty leaf">${icon("chevron-down")}</span><span class="tree-label"><span class="tree-hash" aria-hidden="true">#</span>${escapeHtml(tag)}</span>${countHtml(count)}`);
 }
 
-/** A writing project: its progress mark, name and optional count. */
-export function projectRow(p: SidebarProject): HTMLElement {
-  return treeItem(`project:${p.id}`, 0, false, { "data-project": p.id, "aria-selected": "false", title: p.tooltip },
-    `<span class="tree-icon">${arcMark(p.mark.tone, p.mark.progress)}</span><span class="tree-label">${escapeHtml(p.name)}</span>` +
+const formatLabel = (format: SidebarProject["format"]): string =>
+  format ? `<span class="tree-ref ${format === "latex" ? "tex" : "typ"}">${format === "latex" ? "TEX" : "TYP"}</span>` : `<span class="tree-ref"></span>`;
+
+/** A folder of My projects; it exists only while a project sits under it. */
+export function projectFolderRow(name: string, path: string, s: FolderRowState): HTMLElement {
+  return treeItem(`project-folder:${path}`, s.depth, false, { "data-project-folder": path, "aria-selected": "false", "aria-expanded": String(s.open), title: path },
+    `<span class="tree-twisty">${icon("chevron-down")}</span><span class="tree-label">${escapeHtml(name)}</span>` + countHtml(s.count));
+}
+
+/** A writing project: its format label (TEX or TYP, like a paper's REF), name and optional count. */
+export function projectRow(p: SidebarProject, depth: number): HTMLElement {
+  return treeItem(`project:${p.id}`, depth, false, { "data-project": p.id, "aria-selected": "false", title: p.tooltip },
+    `<span class="tree-twisty leaf">${icon("chevron-down")}</span>${formatLabel(p.format)}<span class="tree-label">${escapeHtml(p.name)}</span>` +
     (p.count ? `<span class="tree-count">${escapeHtml(p.count)}</span>` : ""));
 }

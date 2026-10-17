@@ -1,0 +1,9 @@
+/* Styles the header `<file> only` toggle: a quiet monospace text button that stands out while pressed. */
+.rd-preview-only {
+  padding: var(--ls-space-1) var(--ls-space-3); border: 0; border-radius: var(--ls-radius); background: transparent; cursor: pointer;
+  font-family: var(--ls-mono); font-size: var(--ls-text-md); line-height: 20px;
+  color: var(--ls-desc);
+}
+.rd-preview-only:hover { color: var(--ls-fg); }
+.rd-preview-only[aria-pressed="true"] { color: var(--ls-fg); background: var(--ls-toolbar-active); }
+.rd-preview-only:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: -1px; }

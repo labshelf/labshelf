@@ -2,4 +2,5 @@
 export { LogsView } from "./logs/index.js";
 export { mountPreviewChrome, type PreviewChrome } from "./mountPreviewChrome.js";
 export { countBodyPages } from "./countBodyPages.js";
+export { areaScroller } from "./scrollToArea.js";
 export { previewOutlineSource } from "./outlineSource.js";

@@ -20,6 +20,8 @@ export interface PopupContent {
   jump: () => void;
   /** Names what the jump button does; defaults to going to the destination. */
   jumpLabel?: string;
+  /** The card brings its own actions, so the popup shows no title bar. */
+  bare?: boolean;
 }
 
 export function sameTarget(a: HoverTarget | null, b: HoverTarget | null): boolean {

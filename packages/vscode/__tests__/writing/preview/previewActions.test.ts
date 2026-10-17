@@ -8,8 +8,8 @@ import * as vscode from "vscode";
 import { rootBuildFolder } from "@labshelf/core";
 import { nodeProjectData } from "@labshelf/core/node";
 import { ReaderPanel } from "../../../src/pdf-viewer";
-import { BuildPreviews } from "../../../src/writing/preview";
-import { fakeHost, openInEditor, readyEntry } from "../../support/writingFixtures";
+import { BuildPreviews, CheckCounts } from "../../../src/writing/preview";
+import { fakeHost, fakeProjects, openInEditor, readyEntry } from "../../support/writingFixtures";
 
 jest.mock("../../../src/pdf-viewer", () => ({ ReaderPanel: { createOrShow: jest.fn() } }));
 
@@ -36,6 +36,7 @@ function setup(type: "latex" | "typst" = "latex") {
   const previews = new BuildPreviews({
     host, paths: path, data: nodeProjectData(host.session.logger), listPapers: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false,
     buildRootOf: async (_folder: string, main: string) => main, recompile,
+    projects: fakeProjects(), checkCounts: new CheckCounts(),
   } as never);
   const main = project.main!;
   previews.show(project, main, path.join(dir, main.replace(/\.\w+$/, ".pdf")), { beside: false });

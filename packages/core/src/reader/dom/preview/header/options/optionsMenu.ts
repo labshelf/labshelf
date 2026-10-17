@@ -11,7 +11,7 @@ interface OptionsMenuDeps {
 
 function entries(options: BuildOptions, post: OptionsMenuDeps["post"]): MenuEntry[] {
   const list: MenuEntry[] = [
-    { label: "Auto compile", checked: options.autoCompile, onSelect: () => post({ command: "setAutoCompile", on: !options.autoCompile }) },
+    { label: "Auto compile on save", checked: options.autoCompile, onSelect: () => post({ command: "setAutoCompile", on: !options.autoCompile }) },
   ];
   if (options.engine === undefined) { return list; }
   list.push("separator");
@@ -22,11 +22,11 @@ function entries(options: BuildOptions, post: OptionsMenuDeps["post"]): MenuEntr
 }
 
 /**
- * Mounts the gear button into the header's `options` slot; the slot shows while the roots carry build options.
+ * Mounts the chevron button into the header's `options` slot; the slot shows while the roots carry build options.
  * @returns `setRoots`, which the host's roots messages drive.
  */
 export function mountOptionsMenu(slot: HTMLElement, { post }: OptionsMenuDeps): { setRoots(roots: PreviewRoots): void } {
-  const button = iconButton(icon("gear"), "Build options");
+  const button = iconButton(icon("chevron-down"), "Build options");
   button.setAttribute("aria-haspopup", "menu");
   button.setAttribute("aria-expanded", "false");
   let options: BuildOptions | undefined;

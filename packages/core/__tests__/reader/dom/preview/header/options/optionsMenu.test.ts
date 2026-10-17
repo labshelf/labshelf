@@ -46,9 +46,9 @@ describe("mountOptionsMenu", () => {
     const t = setup();
     t.menu.setRoots(roots({ autoCompile: false }));
     t.button().click();
-    expect(t.items().map((b) => b.textContent)).toEqual(["Auto compile"]);
-    expect(t.item("Auto compile").getAttribute("role")).toBe("menuitemcheckbox");
-    expect(t.item("Auto compile").getAttribute("aria-checked")).toBe("false");
+    expect(t.items().map((b) => b.textContent)).toEqual(["Auto compile on save"]);
+    expect(t.item("Auto compile on save").getAttribute("role")).toBe("menuitemcheckbox");
+    expect(t.item("Auto compile on save").getAttribute("aria-checked")).toBe("false");
     expect(t.button().getAttribute("aria-expanded")).toBe("true");
   });
 
@@ -76,7 +76,7 @@ describe("mountOptionsMenu", () => {
     const t = setup();
     t.menu.setRoots(roots({ autoCompile: true }));
     t.button().click();
-    t.item("Auto compile").click();
+    t.item("Auto compile on save").click();
     expect(t.post).toHaveBeenCalledWith({ command: "setAutoCompile", on: false });
     expect(document.querySelector(".ls-menu")).toBeNull();
   });

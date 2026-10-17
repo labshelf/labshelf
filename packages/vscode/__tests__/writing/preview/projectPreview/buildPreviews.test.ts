@@ -5,7 +5,7 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 
 import { ReaderPanel } from "../../../../src/pdf-viewer";
-import { BuildPreviews } from "../../../../src/writing/preview";
+import { BuildPreviews, CheckCounts } from "../../../../src/writing/preview";
 import { registerShowPreview } from "../../../../src/writing/preview/commands/registerShowPreview";
 import { commandHandler, fakeHost, fakeProjectData, fakeProjects, openInEditor, readyEntry } from "../../../support/writingFixtures";
 
@@ -27,8 +27,9 @@ function setup() {
   let closed: (() => void) | undefined;
   const panel = { controller, showDocument: jest.fn(), reveal: jest.fn(), dispose: jest.fn(() => closed?.()) };
   create.mockImplementation((_deps, source) => { closed = source.onClosed; return panel; });
-  const previews = new BuildPreviews({ host, paths: path, data: fakeProjectData(), listPapers: async () => [], highlightsOf: async () => [], citeSections: async () => ({ byKey: new Map(), sectionAt: () => undefined }), extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false, buildRootOf: async (_folder: string, main: string) => main, recompile: async () => {} });
-  return { previews, controller, host, panel, close: () => closed?.() };
+  const counts = new CheckCounts();
+  const previews = new BuildPreviews({ projects: fakeProjects([project]), checkCounts: counts, host, paths: path, data: fakeProjectData(), listPapers: async () => [], highlightsOf: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false, buildRootOf: async (_folder: string, main: string) => main, recompile: async () => {}, setEngine: async () => {}, fixes: () => undefined });
+  return { previews, controller, host, panel, counts, close: () => closed?.() };
 }
 
 beforeEach(() => { jest.clearAllMocks(); jest.spyOn(Date, "now").mockReturnValue(5000); });
@@ -101,6 +102,19 @@ describe("BuildPreviews", () => {
     expect(host.session.logger.log).not.toHaveBeenCalledWith("WARN", "writing/preview", expect.any(String), expect.anything());
   });
 
+});
+
+describe("BuildPreviews roots", () => {
+  it("sends the roots again with the finding count when a check records one", async () => {
+    const { previews, controller, counts } = setup();
+    previews.show(project, "main.tex", "/p/paper/main.pdf", { beside: false });
+    await new Promise((resolve) => setImmediate(resolve));
+    const before = controller.setPreviewRoots.mock.calls.length;
+    counts.record("/p/paper", 3);
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(controller.setPreviewRoots).toHaveBeenCalledTimes(before + 1);
+    expect(controller.setPreviewRoots.mock.calls.at(-1)?.[0]).toEqual(expect.objectContaining({ checks: 3 }));
+  });
 });
 
 describe("BuildPreviews with several roots", () => {

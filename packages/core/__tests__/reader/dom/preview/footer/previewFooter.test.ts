@@ -79,7 +79,7 @@ describe("mountPreviewFooter breadcrumb", () => {
     const { footer, crumbs, goTo } = setup();
     footer.setRoots(roots("/p/chapters/intro.tex", "/p/chapters/intro.tex", [root("/p/chapters/intro.tex")]));
     await flush();
-    expect(crumbs().textContent).toContain("intro.tex");
+    expect(crumbs().textContent).toContain("intro.pdf");
     expect(crumbs().textContent).toContain("Intro");
     goTo(2);
     expect(crumbs().textContent).toContain("Intro");
@@ -100,7 +100,7 @@ describe("mountPreviewFooter breadcrumb", () => {
     footer.setRoots(roots(main.path, main.path, [main]));
     await flush();
     goTo(1);
-    expect(crumbs().textContent).toContain("main.tex");
+    expect(crumbs().textContent).toContain("main.pdf");
     for (const title of ["Intro", "Background", "Methods"]) { expect(crumbs().textContent).not.toContain(title); }
   });
 
@@ -119,7 +119,7 @@ describe("mountPreviewFooter breadcrumb", () => {
     const { footer, crumbs } = setup(false);
     footer.setRoots(roots(main.path, main.path, [main]));
     await flush();
-    expect(crumbs().textContent).toContain("main.tex");
+    expect(crumbs().textContent).toContain("main.pdf");
     expect(crumbs().querySelector("button")).toBeNull();
   });
 
@@ -197,7 +197,7 @@ describe("mountPreviewFooter status", () => {
     const { footer, status, clock } = setup();
     footer.setRoots(roots(main.path, main.path, [main]));
     footer.setBuild({ state: "succeeded", errors: 0, builtAt: clock() - 5 * 60_000 });
-    expect(status().textContent).toBe("Compiled 5m ago");
+    expect(status().textContent).toBe("Compiled 5 min ago");
   });
 
   it("is empty when the build is done and nothing is known", () => {
@@ -218,7 +218,7 @@ describe("mountPreviewFooter status", () => {
       expect(status().textContent).toBe("Compiled just now");
       advance(30_000);
       jest.advanceTimersByTime(30_000);
-      expect(status().textContent).toBe("Compiled 1m ago");
+      expect(status().textContent).toBe("Compiled 1 min ago");
     });
   });
 });

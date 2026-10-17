@@ -1,0 +1,47 @@
+/*
+ * Styles the project search panel under .ls-psearch: the search and replace form, the scope switch and line, and the results list.
+ * The replace buttons on results show only while the replace field is open (.ls-psearch-replacing).
+ */
+.ls-psearch { height: 100vh; overflow-y: auto; background: var(--ls-bg); color: var(--ls-fg); font: var(--ls-font-size) var(--ls-font); }
+.ls-psearch-panel { display: flex; flex-direction: column; gap: var(--ls-space-2); padding: var(--ls-space-4) 0; }
+
+/* ── Form ───────────────────────────────────────────────────────── */
+.ls-psearch-form { display: flex; align-items: flex-start; gap: var(--ls-space-1); padding: 0 var(--ls-space-4) 0 var(--ls-space-1); }
+.ls-psearch-fields { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--ls-space-2); }
+.ls-psearch-field .ls-icon-btn { width: var(--ls-row-h); height: var(--ls-row-h); }
+.ls-psearch-scope { display: flex; gap: var(--ls-space-2); }
+.ls-psearch-scope-option {
+  height: var(--ls-row-h); padding: 0 var(--ls-space-4); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-sm);
+  background: transparent; color: var(--ls-fg); font: inherit; font-size: var(--ls-text-sm); cursor: pointer;
+}
+.ls-psearch-scope-option:hover { background: var(--ls-list-hover); }
+.ls-psearch-scope-option[aria-checked="true"] { background: var(--ls-list-active-bg); color: var(--ls-list-active-fg); border-color: var(--ls-focus); }
+.ls-psearch-scope-option:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
+
+/* ── Scope line and summary ─────────────────────────────────────── */
+.ls-psearch-scope-line, .ls-psearch-summary {
+  padding: 0 var(--ls-space-4) 0 var(--ls-space-7); font-size: var(--ls-text-sm); color: var(--ls-desc);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ls-psearch-summary { white-space: normal; }
+.ls-psearch-summary:empty { display: none; }
+.ls-psearch-outside { margin: 0; padding: var(--ls-space-4) var(--ls-space-7); color: var(--ls-desc); }
+
+/* ── Results ────────────────────────────────────────────────────── */
+.ls-psearch-results, .ls-psearch-matches { list-style: none; margin: 0; padding: 0; }
+.ls-psearch-row {
+  display: flex; align-items: center; gap: var(--ls-space-2); height: var(--ls-row-h); padding-right: var(--ls-space-4);
+  cursor: pointer; user-select: none; outline: none;
+}
+.ls-psearch-row:hover { background: var(--ls-list-hover); }
+.ls-psearch-row:focus-visible { outline: 1px solid var(--ls-list-focus-outline); outline-offset: -1px; }
+.ls-psearch-file { padding-left: var(--ls-space-2); font-weight: 600; }
+.ls-psearch-match { padding-left: var(--ls-space-7); }
+.ls-psearch-current { background: var(--ls-list-inactive-bg); }
+.ls-psearch-twistie { display: inline-flex; flex-shrink: 0; }
+.ls-psearch-twistie svg { width: 16px; height: 16px; }
+.ls-psearch-label, .ls-psearch-preview { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ls-psearch-preview { font-family: var(--ls-mono); font-size: var(--ls-text-sm); }
+.ls-psearch-hit { background: var(--ls-find-match); color: inherit; border-radius: var(--ls-radius-sm); }
+.ls-psearch-action { display: none; }
+.ls-psearch-replacing .ls-psearch-row:is(:hover, :focus-within, :focus) .ls-psearch-action { display: inline-flex; }

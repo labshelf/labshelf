@@ -1,6 +1,7 @@
 // Renders a paper's highlights for a citation card: those on the cited page first, the rest folded.
 import type { CitationCardPaper } from "../../../../index.js";
 import { el } from "../../../../../ui/dom/index.js";
+import { icon } from "../../../../../ui/index.js";
 
 type Highlight = NonNullable<CitationCardPaper["highlights"]>[number];
 
@@ -20,5 +21,12 @@ export function highlightsPanel(highlights: Highlight[], citedPage: number | und
   const others = highlights.filter((h) => h.page !== citedPage);
   return el("div", { class: "rd-cite-highlights" },
     onPage.length ? list(onPage) : el("p", { class: "rd-cite-empty", text: "None on this page" }),
-    others.length > 0 && el("details", {}, el("summary", { text: `Other highlights (${others.length})` }), list(others)));
+    others.length > 0 && el("details", {}, el("summary", {}, el("span", { class: "rd-cite-chevron", html: icon("chevron-right") }), `Other highlights (${others.length})`), list(others)));
+}
+
+/** The preview card's highlights: a label naming the cited page above the highlights panel. */
+export function flatHighlights(highlights: Highlight[], citedPage: number | undefined): HTMLElement {
+  return el("div", { class: "rd-cite-flat-highlights" },
+    el("p", { class: "rd-cite-label", text: citedPage === undefined ? "Your highlights" : `Your highlights on p. ${citedPage}` }),
+    highlightsPanel(highlights, citedPage));
 }

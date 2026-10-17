@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import type { PaperRecord, ProjectEntry } from "@labshelf/core";
-import { executeSafely } from "../../commands/index.js";
+import { executeSafely, paperPickItem } from "../../commands/index.js";
 import type { ReadyProject } from "../figures/index.js";
 import type { WritingHost, WritingProjects } from "../session/index.js";
 import type { ProjectReadingLists } from "./projectReadingLists.js";
@@ -31,12 +31,12 @@ async function addPaper(deps: ReadingListCommandsDeps, target: ProjectEntry | un
     const inList = new Set((await deps.readingLists.of(project)).entries.map((entry) => entry.key).filter((key) => !syncedKeys.has(key)));
     const choices = (await deps.listPapers()).filter((paper) => !inList.has(paper.citeKey))
       .sort((a, b) => a.title.localeCompare(b.title))
-      .map((paper) => ({ label: paper.title, description: paper.citeKey, paper }));
+      .map(paperPickItem);
     if (choices.length === 0) {
       void vscode.window.showInformationMessage("Every paper in the library is already in this reading list.");
       return;
     }
-    const chosen = await vscode.window.showQuickPick(choices, { placeHolder: `Add a paper to the reading list of ${project.settings.id}`, matchOnDescription: true });
+    const chosen = await vscode.window.showQuickPick(choices, { placeHolder: `Add a paper to the reading list of ${project.settings.id}`, matchOnDescription: true, matchOnDetail: true });
     if (!chosen) { return; }
     const { citeKey, doi } = chosen.paper;
     const papers = project.settings.papers ?? [];

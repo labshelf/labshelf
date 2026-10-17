@@ -5,3 +5,4 @@ export { registerShowPreview, registerShowInPreview } from "./commands/index.js"
 export { builtPdf } from "./builtPdf.js";
 export { createPreviewStore } from "./previewStore.js";
 export type { BodyPagesCount } from "./previewPorts.js";
+export { CheckCounts, rootWords, setCheckLimits } from "./limits/index.js";

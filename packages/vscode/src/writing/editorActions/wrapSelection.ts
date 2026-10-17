@@ -1,6 +1,7 @@
 // Wraps or unwraps selected source text in bold or italic markup for LaTeX and Typst.
 
-export type WrapLanguage = "latex" | "typst";
+import type { WritingLanguage } from "./editorLanguage.js";
+
 export type WrapStyle = "bold" | "italic";
 
 export interface WrapResult {
@@ -9,13 +10,13 @@ export interface WrapResult {
   cursor?: number;
 }
 
-const MARKERS: Record<WrapLanguage, Record<WrapStyle, readonly [string, string]>> = {
+const MARKERS: Record<WritingLanguage, Record<WrapStyle, readonly [string, string]>> = {
   latex: { bold: ["\\textbf{", "}"], italic: ["\\emph{", "}"] },
   typst: { bold: ["*", "*"], italic: ["_", "_"] },
 };
 
 /** True when `inner` cannot close or reopen the span that surrounds it, so the outer markers belong together. */
-function isSingleSpan(language: WrapLanguage, inner: string, open: string): boolean {
+function isSingleSpan(language: WritingLanguage, inner: string, open: string): boolean {
   if (language === "typst") { return !inner.includes(open); }
   let depth = 0;
   for (const char of inner) {
@@ -25,7 +26,7 @@ function isSingleSpan(language: WrapLanguage, inner: string, open: string): bool
   return depth === 0;
 }
 
-export function wrapSelection(language: WrapLanguage, style: WrapStyle, selected: string): WrapResult {
+export function wrapSelection(language: WritingLanguage, style: WrapStyle, selected: string): WrapResult {
   const [open, close] = MARKERS[language][style];
   if (selected === "") { return { text: open + close, cursor: open.length }; }
   const wrapped = selected.length >= open.length + close.length && selected.startsWith(open) && selected.endsWith(close);

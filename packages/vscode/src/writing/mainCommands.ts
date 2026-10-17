@@ -55,7 +55,8 @@ async function pickMain(deps: MainCommandsDeps): Promise<void> {
 
 export function registerMainCommands(deps: MainCommandsDeps): void {
   deps.context.subscriptions.push(
-    vscode.commands.registerCommand("labshelf.writing.setMain", (file?: vscode.Uri) => setMain(deps, file)),
+    // The sidebar Files tree passes its row ({ uri }); editors and the Explorer pass a Uri.
+    vscode.commands.registerCommand("labshelf.writing.setMain", (file?: vscode.Uri | { uri: vscode.Uri }) => setMain(deps, file instanceof vscode.Uri ? file : file?.uri)),
     vscode.commands.registerCommand("labshelf.writing.pickMain", () => pickMain(deps)),
   );
 }

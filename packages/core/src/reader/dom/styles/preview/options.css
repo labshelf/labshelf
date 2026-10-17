@@ -1,0 +1,34 @@
+/**
+ * Styles the preview's header menus after VS Code's menus: the options menu (showMenu, .ls-menu) and the zoom menu
+ * (buildMenu in .rd-popover). Self-contained because the reader page skips base.css; scoped to .rd-preview so the library reader keeps its own menus.
+ */
+.rd-preview .ls-menu, .rd-preview .rd-popover {
+  position: fixed; min-width: 160px; padding: var(--ls-space-2);
+  background: var(--ls-menu-bg); color: var(--ls-menu-fg); border: 1px solid var(--ls-menu-border);
+  border-radius: var(--ls-radius-lg); box-shadow: var(--ls-popup-shadow); font-size: var(--ls-font-size);
+}
+.rd-preview .ls-menu { z-index: 1000; }
+.rd-preview .rd-popover { z-index: 100; }
+.rd-preview .ls-menu-item, .rd-preview .rd-menu-item {
+  position: relative; display: flex; align-items: center; width: 100%; height: 24px; padding: 0 var(--ls-space-6) 0 28px;
+  border: 0; border-radius: var(--ls-radius); background: none; color: inherit; text-align: left; font: inherit; cursor: pointer; white-space: nowrap;
+}
+.rd-preview .ls-menu-item:hover, .rd-preview .ls-menu-item:focus-visible,
+.rd-preview .rd-menu-item:hover, .rd-preview .rd-menu-item:focus-visible {
+  background: var(--ls-menu-selection-bg); color: var(--ls-menu-selection-fg); outline: none;
+}
+.rd-preview .ls-menu-item:focus-visible, .rd-preview .rd-menu-item:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
+.rd-preview .ls-menu-sep, .rd-preview .rd-menu-sep { height: 1px; margin: var(--ls-space-2) 0; background: var(--ls-menu-separator); }
+.rd-preview .ls-scrim { position: fixed; inset: 0; z-index: 900; background: transparent; }
+
+/* The 28px gutter holds the mark: a check for a toggle, a dot for one choice of a group. */
+.rd-preview .ls-menu-lead {
+  position: absolute; left: 0; top: 0; bottom: 0; display: inline-flex; align-items: center; justify-content: center; width: 28px;
+}
+.rd-preview .ls-menu-item svg { width: var(--ls-text-lg); height: var(--ls-text-lg); }
+.rd-preview .ls-menu-item[role="menuitemradio"] .ls-menu-lead svg { display: none; }
+.rd-preview .ls-menu-item[role="menuitemradio"].checked .ls-menu-lead::before,
+.rd-preview .rd-menu-item[aria-checked="true"]::before {
+  content: ""; width: var(--ls-space-3); height: var(--ls-space-3); border-radius: 50%; background: currentColor;
+}
+.rd-preview .rd-menu-item[aria-checked="true"]::before { position: absolute; left: 11px; top: 50%; margin-top: calc(var(--ls-space-3) / -2); }

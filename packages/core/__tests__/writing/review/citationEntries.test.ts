@@ -9,10 +9,10 @@ describe("citationEntries", () => {
   it("names the library paper of each key with its card fields, once per key, in key order", () => {
     const papers = [
       paper("b", "doe19"),
-      paper("a", "smith2020", { authors: ["A. Smith"], year: 2020, summary: "Abstract." }),
+      paper("a", "smith2020", { authors: ["A. Smith"], year: 2020 }),
     ];
     expect(citationEntries(["smith2020", "doe19", "smith2020"], papers)).toEqual([
-      { key: "smith2020", paper: { id: "a", title: "Title a", authors: ["A. Smith"], year: 2020, summary: "Abstract.", status: "unread" } },
+      { key: "smith2020", paper: { id: "a", title: "Title a", authors: ["A. Smith"], year: 2020, status: "unread" } },
       { key: "doe19", paper: { id: "b", title: "Title b", authors: [], status: "unread" } },
     ]);
   });
@@ -27,15 +27,14 @@ describe("citationEntries", () => {
 });
 
 describe("citationEntries with details", () => {
-  it("carries the paper status and fills highlights by paper id and sections by key", () => {
+  it("carries the paper status and fills highlights by paper id", () => {
     const papers = [paper("a", "smith2020", { status: "done" }), paper("b", "doe19")];
     const details = {
       highlights: new Map([["a", [{ text: "Quote.", page: 2 }]]]),
-      citedIn: new Map([["smith2020", ["Introduction"]], ["doe19", []]]),
     };
     expect(citationEntries(["smith2020", "doe19"], papers, details)).toEqual([
-      { key: "smith2020", paper: { id: "a", title: "Title a", authors: [], status: "done", highlights: [{ text: "Quote.", page: 2 }], citedIn: ["Introduction"] } },
-      { key: "doe19", paper: { id: "b", title: "Title b", authors: [], status: "unread", citedIn: [] } },
+      { key: "smith2020", paper: { id: "a", title: "Title a", authors: [], status: "done", highlights: [{ text: "Quote.", page: 2 }] } },
+      { key: "doe19", paper: { id: "b", title: "Title b", authors: [], status: "unread" } },
     ]);
   });
 });

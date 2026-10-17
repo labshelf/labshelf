@@ -34,7 +34,7 @@ export class HoverPopup {
     go.addEventListener("click", onJump);
     actions.append(go);
 
-    this.el.replaceChildren(el("div", { class: "rd-hover-header" }, el("span", {}, content.title), actions), content.body);
+    this.el.replaceChildren(...(content.bare ? [content.body] : [el("div", { class: "rd-hover-header" }, el("span", {}, content.title), actions), content.body]));
     this.el.classList.add("rd-visible");
     const p = this.el.getBoundingClientRect();
     const below = anchor.bottom + 8;

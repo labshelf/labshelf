@@ -6,8 +6,8 @@ import * as vscode from "vscode";
 
 import { rootBuildFolder } from "@labshelf/core";
 import { ReaderPanel } from "../../../src/pdf-viewer";
-import { BuildPreviews } from "../../../src/writing/preview";
-import { fakeHost, fakeProjectData, openInEditor, readyEntry } from "../../support/writingFixtures";
+import { BuildPreviews, CheckCounts } from "../../../src/writing/preview";
+import { fakeHost, fakeProjectData, fakeProjects, openInEditor, readyEntry } from "../../support/writingFixtures";
 
 jest.mock("../../../src/pdf-viewer", () => ({ ReaderPanel: { createOrShow: jest.fn() } }));
 
@@ -33,6 +33,7 @@ function setup(project: Project, buildRootOf = async (_folder: string, main: str
   const previews = new BuildPreviews({
     host, paths: path, data, listPapers: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false,
     buildRootOf, recompile: jest.fn(async () => {}),
+  projects: fakeProjects(), checkCounts: new CheckCounts(),
   } as never);
   const show = (root: string) => previews.show(project, root, path.join(dir, root.replace(/\.\w+$/, ".pdf")), { beside: false });
   const lastRoots = () => controller.setPreviewRoots.mock.calls.at(-1)?.[0];
@@ -71,10 +72,10 @@ describe("preview roots after a build", () => {
     previews.finished(project, "b/main.tex", ok("b/main.tex"), "save");
     await flush();
     expect(lastRoots()).toEqual({
-      main: "main.tex", focused: "main.tex", shown: "main.tex",
+      main: "main.tex", focused: "main.tex", shown: "main.tex", options: { autoCompile: true, engine: null },
       roots: expect.arrayContaining([
-        { path: "main.tex", failed: true, rawLog: true, sourceLinks: true, problems: [{ severity: "error", message: "Undefined control sequence.", hint: "Check the spelling.", file: "chapters/a.tex", line: 4 }] },
-        { path: "b/main.tex", failed: false, rawLog: false, sourceLinks: true, problems: [] },
+        { path: "main.tex", failed: true, rawLog: true, sourceLinks: true, problems: [{ severity: "error", message: "Undefined control sequence.", hint: "Check the spelling.", file: "chapters/a.tex", line: 4 }], pdfProblems: [], cites: 0, words: 0 },
+        { path: "b/main.tex", failed: false, rawLog: false, sourceLinks: true, problems: [], pdfProblems: [], cites: 0, words: 0 },
       ]),
     });
     expect(lastRoots().roots).toHaveLength(2);

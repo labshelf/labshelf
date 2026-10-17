@@ -3,6 +3,7 @@ import type * as vscode from "vscode";
 
 import type { ReaderPanelDeps } from "../../pdf-viewer/index.js";
 import type { BuildDiagnostics, BuildListener, ProjectBuilders } from "../build/index.js";
+import type { IncludeOnlyTarget } from "../build/node/index.js";
 import type { ProjectFigures } from "../figures/index.js";
 import type { BuildPreviews } from "../preview/index.js";
 import type { WritingHost, WritingProjects } from "../index.js";
@@ -16,6 +17,10 @@ interface NodeWritingDeps {
   previews: BuildListener & Pick<BuildPreviews, "hasPreview">;
   diagnostics: BuildDiagnostics;
   reader: Omit<ReaderPanelDeps, "logger" | "extensionUri">;
+  /** What a save builds alone while the include-only toggle is on. */
+  includeOnlyTarget?: IncludeOnlyTarget;
+  /** Hears the finding count of every check run. */
+  onFindings?(folder: string, count: number): void;
 }
 
 /** Project-relative root that a save or build of `file` (absolute) targets: the file when it is a root, else `main`. */

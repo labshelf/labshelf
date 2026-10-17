@@ -1,6 +1,21 @@
 /* Chrome only a build preview shows: its header and footer (imported), the build logs view and the citation card. */
-@import "./preview-header.css";
-@import "./preview-footer.css";
+@import "./preview/header.css";
+@import "./preview/footer.css";
+@import "./preview/limit.css";
+@import "./preview/logs-button.css";
+@import "./preview/marks.css";
+@import "./preview/options.css";
+@import "./preview/only.css";
+/* Desk and sheet: the desk is a grey apart from the sheet, and a sheet keeps a visible edge even when it is dark. */
+.rd-preview #viewerContainer { background: color-mix(in srgb, var(--ls-bg) 92%, var(--ls-fg)); }
+/* The edge is a ring around the canvas: pdf.js' 9px page border must keep its width or every layer drifts off the ink. */
+.rd-preview #viewer .page { box-shadow: none; }
+.rd-preview #viewer .page .canvasWrapper { box-shadow: var(--ls-page-shadow), 0 0 0 1px var(--ls-border-soft); }
+/* The light preset leaves pdf.js' canvas white (null pageColors keeps figure colours), so multiplying it over the warm sheet tints the white without recolouring. */
+.rd-preview[data-pdf-pages="light"] #viewer .page { background-color: var(--ls-sheet-light); }
+.rd-preview[data-pdf-pages="light"] #viewer .page canvas { mix-blend-mode: multiply; }
+.rd-preview[data-pdf-pages="dark"] #viewer .page { background-color: var(--ls-reader-swatch-dark); }
+
 /* Logs view: covers the page area below the overlay toolbar; the sidebar stays beside it. */
 .rd-logs {
   position: absolute; inset: var(--ls-reader-toolbar-h) 0 0; z-index: 2;
@@ -22,7 +37,7 @@ button.rd-log-entry { cursor: pointer; }
 button.rd-log-entry:hover { background: var(--ls-reader-hover); }
 button.rd-log-entry:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
 .rd-log-icon { display: inline-flex; flex-shrink: 0; padding-top: var(--ls-space-1); color: var(--ls-reader-desc); }
-.rd-log-icon svg { width: 14px; height: 14px; }
+.rd-log-icon svg { width: var(--ls-text-lg); height: var(--ls-text-lg); }
 .rd-log-error { color: var(--ls-error); }
 .rd-log-warning { color: var(--ls-warning); }
 .rd-log-text { display: flex; flex-direction: column; flex: 1; min-width: 0; overflow-wrap: anywhere; }
@@ -31,12 +46,5 @@ button.rd-log-entry:focus-visible { outline: 1px solid var(--ls-focus); outline-
 
 @container (max-width: 360px) {
   .rd-log-entry { flex-wrap: wrap; }
-  .rd-log-location { flex-basis: 100%; padding-left: calc(14px + var(--ls-space-3)); }
-}
-
-/* Page chip: the Arc mark's label stays visible beside the mark instead of appearing on hover. */
-.rd-preview-footer .ls-arc-mark { width: auto; align-items: center; gap: var(--ls-space-2); }
-.rd-preview-footer .ls-arc-mark .ls-arc { width: var(--ls-space-6); }
-.rd-preview-footer .ls-arc-mark .ls-arc-mark-label {
-  position: static; margin: 0; padding: 0; background: none; opacity: 1; transform: none; line-height: normal;
+  .rd-log-location { flex-basis: 100%; padding-left: calc(var(--ls-text-lg) + var(--ls-space-3)); }
 }

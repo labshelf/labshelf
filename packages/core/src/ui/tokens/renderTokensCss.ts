@@ -1,7 +1,7 @@
 /**
  * Renders the design tokens as the `--ls-*` stylesheet that `ui/dom/tokens.css` holds.
  */
-import { COLOR_TOKENS, FILE_TYPE_TOKENS, MARK_TOKENS, STATUS_TOKENS } from "./colorTokens.js";
+import { COLOR_TOKENS, FILE_TYPE_TOKENS, MARK_TOKENS, SHEET_TOKENS, STATUS_TOKENS } from "./colorTokens.js";
 import { token, type DesignToken } from "./designToken.js";
 import { HIGHLIGHT_COLORS } from "./highlightTokens.js";
 import { renderReaderThemesCss } from "./readerThemeTokens.js";
@@ -12,6 +12,7 @@ const ALL_TOKENS: Record<string, DesignToken> = {
   ...STATUS_TOKENS,
   ...MARK_TOKENS,
   ...FILE_TYPE_TOKENS,
+  ...SHEET_TOKENS,
   ...Object.fromEntries(Object.entries(HIGHLIGHT_COLORS).map(([name, value]) => [`hl-${name}`, token(value)])),
   ...TYPE_TOKENS,
   ...SPACE_TOKENS,

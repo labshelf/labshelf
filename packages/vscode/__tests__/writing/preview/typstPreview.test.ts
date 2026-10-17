@@ -3,8 +3,8 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 
 import { ReaderPanel } from "../../../src/pdf-viewer";
-import { BuildPreviews } from "../../../src/writing/preview";
-import { fakeHost, fakeProjectData, readyEntry } from "../../support/writingFixtures";
+import { BuildPreviews, CheckCounts } from "../../../src/writing/preview";
+import { fakeHost, fakeProjects, fakeProjectData, readyEntry } from "../../support/writingFixtures";
 
 jest.mock("../../../src/pdf-viewer", () => ({ ReaderPanel: { createOrShow: jest.fn() } }));
 
@@ -19,7 +19,7 @@ function setup() {
   const controller = { setBuildStatus: jest.fn(), reloadDocument: jest.fn(), revealPoint: jest.fn(), setPreviewRoots: jest.fn(), showLogs: jest.fn() };
   let closed: (() => void) | undefined;
   create.mockImplementation((_deps, source) => { closed = source.onClosed; return { controller }; });
-  const previews = new BuildPreviews({ host, paths: path, data: fakeProjectData(), listPapers: async () => [], highlightsOf: async () => [], citeSections: async () => ({ byKey: new Map(), sectionAt: () => undefined }), extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false, buildRootOf: async (_folder: string, main: string) => main, recompile: async () => {} });
+  const previews = new BuildPreviews({ host, paths: path, data: fakeProjectData(), listPapers: async () => [], highlightsOf: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false, buildRootOf: async (_folder: string, main: string) => main, recompile: async () => {}, projects: fakeProjects(), checkCounts: new CheckCounts(), setEngine: async () => {}, fixes: () => undefined });
   return { previews, controller, host, close: () => closed?.(), ports: () => create.mock.calls[0][1].preview };
 }
 

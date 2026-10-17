@@ -4,39 +4,17 @@
 // Tests the preview header: build and view groups, Recompile states, project commands and the toggle buttons.
 import { mountPreviewHeader } from "../../../../../src/reader/dom/preview/header/index";
 
-function fakeFind() {
-  let listener: (open: boolean) => void = () => undefined;
-  const find = {
-    isOpen: false,
-    show: jest.fn(() => { find.isOpen = true; listener(true); }),
-    close: jest.fn(() => { find.isOpen = false; listener(false); }),
-    onToggle: (fn: (open: boolean) => void) => { listener = fn; },
-  };
-  return find;
-}
-
-function fakeSidebar() {
-  let listener: (s: { open: boolean }) => void = () => undefined;
-  const sidebar = {
-    isOpen: false,
-    toggle: jest.fn(() => { sidebar.isOpen = !sidebar.isOpen; listener({ open: sidebar.isOpen }); }),
-    onChange: (fn: (s: { open: boolean }) => void) => { listener = fn; },
-  };
-  return sidebar;
-}
-
 function setup() {
   const post = jest.fn();
-  const find = fakeFind();
-  const sidebar = fakeSidebar();
   const pill = document.createElement("div");
   pill.id = "status-pill";
-  const header = mountPreviewHeader({ post, find, sidebar, pill });
+  const setPagesDark = jest.fn();
+  const header = mountPreviewHeader({ post, pill, setPagesDark });
   document.body.replaceChildren(header.element);
   const q = <T extends Element = HTMLButtonElement>(sel: string) => header.element.querySelector<T>(sel)!;
   const byName = (name: string) =>
     [...header.element.querySelectorAll("button")].find((b) => b.getAttribute("aria-label") === name || b.textContent?.trim() === name)!;
-  return { header, post, find, sidebar, pill, q, byName };
+  return { header, post, pill, q, byName, setPagesDark };
 }
 
 describe("mountPreviewHeader structure", () => {
@@ -82,7 +60,7 @@ describe("mountPreviewHeader structure", () => {
   it("gives every button an accessible name", () => {
     const { header } = setup();
     const buttons = [...header.element.querySelectorAll("button")];
-    expect(buttons.length).toBeGreaterThanOrEqual(6);
+    expect(buttons.length).toBeGreaterThanOrEqual(4);
     for (const b of buttons) {
       const name = b.getAttribute("aria-label") || b.title || b.textContent?.trim();
       expect(name).toBeTruthy();
@@ -132,49 +110,34 @@ describe("mountPreviewHeader view group", () => {
     expect(post).toHaveBeenLastCalledWith({ command: "runCommand", id: "markVersion" });
   });
 
-  it("toggles Dark PDF through selectTheme and follows setDark", () => {
-    const { header, byName, post } = setup();
+  it("toggles Dark PDF locally without a host message", () => {
+    const { byName, post, setPagesDark } = setup();
     const dark = byName("Dark PDF");
     expect(dark.getAttribute("aria-pressed")).toBe("false");
     dark.click();
-    expect(post).toHaveBeenLastCalledWith({ command: "selectTheme", theme: "dark" });
-    header.setDark(true);
+    expect(setPagesDark).toHaveBeenLastCalledWith(true);
     expect(dark.getAttribute("aria-pressed")).toBe("true");
     dark.click();
-    expect(post).toHaveBeenLastCalledWith({ command: "selectTheme", theme: "light" });
-    header.setDark(false);
+    expect(setPagesDark).toHaveBeenLastCalledWith(false);
     expect(dark.getAttribute("aria-pressed")).toBe("false");
+    expect(post).not.toHaveBeenCalled();
   });
 
-  it("opens and closes Find, and mirrors its state in aria-pressed", () => {
-    const { byName, find } = setup();
-    const button = byName("Find");
-    expect(button.getAttribute("aria-pressed")).toBe("false");
-    button.click();
-    expect(find.show).toHaveBeenCalledTimes(1);
-    expect(button.getAttribute("aria-pressed")).toBe("true");
-    button.click();
-    expect(find.close).toHaveBeenCalledTimes(1);
-    expect(button.getAttribute("aria-pressed")).toBe("false");
+  it("rules the page controls off from Dark PDF", () => {
+    const { header, pill } = setup();
+    const view = [...header.element.querySelector(".rd-preview-view")!.children];
+    const rule = view.findIndex((c) => c.classList.contains("rd-preview-rule"));
+    expect(view[rule - 1]?.getAttribute("aria-label")).toBe("Dark PDF");
+    expect(view[rule + 1]).toBe(pill);
   });
 
-  it("follows the find bar when it closes on its own", () => {
-    const { byName, find } = setup();
-    const button = byName("Find");
-    button.click();
-    find.close();
-    expect(button.getAttribute("aria-pressed")).toBe("false");
-  });
-
-  it("toggles the sidebar and mirrors its state in aria-pressed", () => {
-    const { q, sidebar, byName } = setup();
-    const button = byName("Sidebar");
-    expect(button.getAttribute("aria-pressed")).toBe("false");
-    button.click();
-    expect(sidebar.toggle).toHaveBeenCalledTimes(1);
-    expect(button.getAttribute("aria-pressed")).toBe("true");
-    sidebar.toggle();
-    expect(button.getAttribute("aria-pressed")).toBe("false");
-    expect(q(".rd-preview-view").contains(button)).toBe(true);
+  it("has no Find or Sidebar button and rules off the logs slot from the only slot", () => {
+    const { header, byName } = setup();
+    expect(byName("Find")).toBeUndefined();
+    expect(byName("Sidebar")).toBeUndefined();
+    const build = [...header.element.querySelector(".rd-preview-build")!.children];
+    const rule = build.findIndex((c) => c.classList.contains("rd-preview-rule"));
+    expect(build[rule - 1]).toBe(header.slots.only);
+    expect(build[rule + 1]).toBe(header.slots.logs);
   });
 });

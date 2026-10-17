@@ -13,6 +13,8 @@ export const TYPE_TOKENS = {
   "text-sm": token("11px"),
   "text-md": token("12px"),
   "text-lg": token("14px"),
+  "text-xl": token("15px"),
+  "text-2xl": token("17px"),
 } satisfies Record<string, DesignToken>;
 
 // The steps are the padding and gap values the three UIs already use most.

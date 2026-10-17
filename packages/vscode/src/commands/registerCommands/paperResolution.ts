@@ -1,8 +1,9 @@
 // Finds a paper for a command, or guards the command when none is selected; every registration group calls it.
 import * as vscode from "vscode";
 
-import { type PaperRecord, STATUS_LABEL, isSafeExternalUrl, paperLink } from "@labshelf/core";
+import { type PaperRecord, isSafeExternalUrl, paperLink } from "@labshelf/core";
 import type { PaperService } from "../../core/index.js";
+import { paperPickItem } from "../paperPick/index.js";
 import type { ActiveServices } from "./types.js";
 
 const LOG_MODULE = "commands/registerCommands";
@@ -56,12 +57,7 @@ export async function resolvePaper(
   const direct = paperId ? papers.find((paper) => paper.id === paperId) : undefined;
   if (direct) { return direct; }
 
-  const items = papers.map((paper) => ({
-    label: paper.title,
-    description: `@${paper.citeKey}`,
-    detail: `${STATUS_LABEL[paper.status]}${paper.year ? ` · ${paper.year}` : ""}`,
-    paper,
-  }));
+  const items = papers.map(paperPickItem);
   const picked = await vscode.window.showQuickPick(items, { placeHolder: placeholder, matchOnDescription: true });
   return picked?.paper;
 }

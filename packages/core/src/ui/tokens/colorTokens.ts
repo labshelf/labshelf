@@ -105,5 +105,12 @@ export const FILE_TYPE_TOKENS = {
   "file-pdf": token("#d9837c", "#b84a42"),
   "file-md": token("#7d9fe0", "#4069b8"),
   "file-ref": token("#7d9fe0", "#4069b8"),
+  "file-tex": token("#8cc27a", "#4a8a3a"),
+  "file-typ": token("#4cc4c9", "#1f8a93"),
   "file-dir": token("#d2a865", "#946618"),
+} satisfies Record<string, DesignToken>;
+
+// The warm off-white of a light PDF sheet in the preview; the canvas multiplies over it, so the white of the page takes this tint.
+export const SHEET_TOKENS = {
+  "sheet-light": token("#f4f3f0"),
 } satisfies Record<string, DesignToken>;

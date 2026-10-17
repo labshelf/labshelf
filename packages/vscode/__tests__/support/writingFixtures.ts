@@ -35,9 +35,9 @@ export function fakeProjectData(): { [K in keyof ProjectDataPort]: jest.Mock } {
 }
 
 export function fakeProjects(entries: ProjectEntry[] = []): {
-  reload: jest.Mock; list: jest.Mock; paths: typeof path; data: ReturnType<typeof fakeProjectData>;
+  reload: jest.Mock; list: jest.Mock; onDidChange: jest.Mock; paths: typeof path; data: ReturnType<typeof fakeProjectData>;
 } {
-  return { reload: jest.fn(async () => {}), list: jest.fn(() => entries), paths: path, data: fakeProjectData() };
+  return { reload: jest.fn(async () => {}), list: jest.fn(() => entries), onDidChange: jest.fn(() => ({ dispose() {} })), paths: path, data: fakeProjectData() };
 }
 
 export function readyEntry(folder: string, over: Partial<Extract<ProjectEntry, { kind: "ready" }>> = {}): ProjectEntry {

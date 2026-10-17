@@ -13,6 +13,8 @@ export class ThemeController {
   preference: PdfTheme;
   effective: EffectiveTheme;
   private bg: string;
+  /** The page preset the preview pins; null follows the effective theme. */
+  private pagesLock: EffectiveTheme | null = null;
   private text: string;
   private pdfViewer: PDFViewer | null = null;
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
@@ -36,6 +38,8 @@ export class ThemeController {
   }
 
   get pageColors(): PageColors { return toPageColors(this.bg, this.text); }
+  /** The preset the page pixels are drawn with: the lock while one is set, otherwise the effective theme. */
+  get pageTheme(): EffectiveTheme { return this.pagesLock ?? this.effective; }
   get colors(): { bg: string; text: string } { return { bg: this.bg, text: this.text }; }
 
   /**
@@ -49,15 +53,28 @@ export class ThemeController {
   onEffectiveChange(fn: (effective: EffectiveTheme) => void): void { this.effectiveListeners.push(fn); }
 
   /**
-   * Applies a theme preference/effective pair: updates the chrome's data attribute and the page preset colours.
+   * Pins the pages to one preset: later themes update the chrome only. The preview uses it so pages stay light paper unless Dark PDF is pressed.
+   */
+  lockPages(preset: "light" | "dark"): void {
+    this.pagesLock = preset;
+    document.documentElement.dataset["pdfPages"] = preset;
+    this.container.style.background = "";
+    const colors = presetFor(preset);
+    this.applyPageColors(colors.bg, colors.text);
+  }
+
+  /**
+   * Applies a theme preference/effective pair: updates the chrome's data attribute and, unless the pages are locked, the page preset colours.
    */
   apply(preference: PdfTheme | undefined, effective: EffectiveTheme | undefined): void {
     if (preference) { this.preference = preference; }
     if (!effective) { return; }
     this.effective = effective;
     document.documentElement.dataset["pdfTheme"] = effective;
-    const preset = presetFor(effective);
-    this.applyPageColors(preset.bg, preset.text);
+    if (this.pagesLock === null) {
+      const preset = presetFor(effective);
+      this.applyPageColors(preset.bg, preset.text);
+    }
     for (const fn of this.effectiveListeners) { fn(effective); }
   }
 
@@ -67,7 +84,8 @@ export class ThemeController {
   applyPageColors(bg: string, text: string): void {
     this.bg = bg;
     this.text = text;
-    this.container.style.background = bg;
+    // A locked page preset leaves the desk to the preview stylesheet.
+    if (this.pagesLock === null) { this.container.style.background = bg; }
     const viewer = this.pdfViewer;
     if (!viewer) { return; }
     const colors = toPageColors(bg, text);

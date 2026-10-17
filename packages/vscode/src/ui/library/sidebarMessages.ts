@@ -1,6 +1,6 @@
 // Declares the messages between the Library sidebar webview and the extension host, and checks the ones the webview sends.
 import { PROJECT_COMMANDS } from "./projectCommands.js";
-import { PAPERS_DIR, type ArcProgress, type ArcTone, type FolderTreeNode, type TreePaper } from "@labshelf/core";
+import { PAPERS_DIR, type FolderTreeNode, type ProjectTreeView, type SidebarOpenProject, type TreePaper } from "@labshelf/core";
 
 /**
  * A writing project as the sidebar lists it, plus what the host needs to offer the right menu.
@@ -9,8 +9,9 @@ import { PAPERS_DIR, type ArcProgress, type ArcTone, type FolderTreeNode, type T
 export interface SidebarProjectItem {
   id: string;
   name: string;
-  group: string;
-  mark: { tone: ArcTone; progress: ArcProgress };
+  format?: "latex" | "typst";
+  folder?: string;
+  archived?: boolean;
   count?: string;
   tooltip: string;
   kind: "ready" | "broken";
@@ -22,9 +23,30 @@ export type HostToSidebar =
   /** The folder the list panel shows; `papers` for the library root. */
   | { type: "current"; folder: string }
   | { type: "selected"; id: string | null }
-  | { type: "projects"; projects: SidebarProjectItem[] };
+  | { type: "projects"; projects: SidebarProjectItem[] }
+  /** The project open in the window with its trees, or null when none is open. */
+  | { type: "openProject"; project: SidebarOpenProject | null };
 
-export type ProjectAction = "browseTemplates" | "newBlank" | "addExisting";
+/** What a row or title action of the open project's trees asks for; `view` and `key` name the row. */
+export interface ProjectTreeMessage {
+  type: "projectTree";
+  op: "close" | "action" | "click" | "toggle" | "check" | "menu" | "add";
+  view?: ProjectTreeView;
+  key?: string;
+  action?: string;
+  open?: boolean;
+  checked?: boolean;
+  /** The typed text of an inline add input. */
+  text?: string;
+}
+
+export type ProjectAction = "browseTemplates" | "newBlank" | "addExisting" | "refresh";
+
+/** What a project folder row or the My projects heading asks for; `path` is "" for the top level. */
+export type ProjectFolderAction = "new" | "rename" | "delete";
+
+/** What the project menu asks for beyond the project commands. */
+export type ProjectEdit = "move" | "archive" | "unarchive";
 
 export type SidebarToHost =
   | { type: "ready" }
@@ -43,9 +65,34 @@ export type SidebarToHost =
   | { type: "openProject"; id: string }
   /** A command from the project menu; `command` is one of PROJECT_COMMANDS. */
   | { type: "projectCommand"; id: string; command: string }
-  | { type: "projectAction"; action: ProjectAction };
+  | { type: "projectAction"; action: ProjectAction }
+  | { type: "projectFolder"; action: ProjectFolderAction; path: string }
+  | { type: "projectEdit"; id: string; edit: ProjectEdit }
+  | ProjectTreeMessage;
 
-const PROJECT_ACTIONS: readonly string[] = ["browseTemplates", "newBlank", "addExisting"];
+const PROJECT_ACTIONS: readonly string[] = ["browseTemplates", "newBlank", "addExisting", "refresh"];
+const PROJECT_FOLDER_ACTIONS: readonly string[] = ["new", "rename", "delete"];
+const PROJECT_EDITS: readonly string[] = ["move", "archive", "unarchive"];
+const TREE_VIEWS: readonly string[] = ["files", "outline", "checklist"];
+const TREE_OPS: readonly string[] = ["close", "action", "click", "toggle", "check", "menu", "add"];
+const MAX_ADD_TEXT = 500;
+
+// Each op carries exactly the fields it needs, with the right types.
+function isProjectTreeMessage(m: Record<string, unknown>): boolean {
+  const op = m["op"];
+  if (!TREE_OPS.includes(op as string)) { return false; }
+  if (op === "close") { return true; }
+  if (op === "action") { return typeof m["action"] === "string"; }
+  if (!TREE_VIEWS.includes(m["view"] as string) || typeof m["key"] !== "string") { return false; }
+  if (op === "toggle") { return typeof m["open"] === "boolean"; }
+  if (op === "check") { return typeof m["checked"] === "boolean"; }
+  if (op === "menu") { return typeof m["action"] === "string"; }
+  if (op === "add") { return typeof m["text"] === "string" && m["text"].trim() !== "" && m["text"].length <= MAX_ADD_TEXT; }
+  return true;
+}
+
+// A project folder path is "" or "/"-joined names, none of them blank.
+const isProjectFolderPath = (v: unknown): v is string => typeof v === "string" && (v === "" || !v.split("/").some((s) => s.trim() === ""));
 const PATH_KEYS = ["openFolder", "createFolder", "addFiles", "renameFolder", "removeFolder", "import", "moveFolder"];
 
 // A tree path starts at papers/ and never climbs out of it.
@@ -67,7 +114,10 @@ export function parseSidebarMessage(raw: unknown): SidebarToHost | null {
     case "projectCommand":
       return typeof m["id"] === "string" && PROJECT_COMMANDS.some((c) => c.command === m["command"]) ? (m as SidebarToHost) : null;
     case "projectAction": return PROJECT_ACTIONS.includes(m["action"] as string) ? (m as SidebarToHost) : null;
+    case "projectFolder": return PROJECT_FOLDER_ACTIONS.includes(m["action"] as string) && isProjectFolderPath(m["path"]) ? (m as SidebarToHost) : null;
+    case "projectEdit": return typeof m["id"] === "string" && PROJECT_EDITS.includes(m["edit"] as string) ? (m as SidebarToHost) : null;
     case "moveFolder": return isTreePath(m["target"]) ? (m as SidebarToHost) : null;
+    case "projectTree": return isProjectTreeMessage(m) ? (m as SidebarToHost) : null;
     default: return null;
   }
 }

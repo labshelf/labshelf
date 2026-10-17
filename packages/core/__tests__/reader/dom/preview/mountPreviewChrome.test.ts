@@ -10,14 +10,11 @@ function setup() {
     `<main id="pdf-shell"><div id="viewerContainer"></div><div id="status-pill"></div><div id="build-banner" hidden></div></main>`;
   const post = jest.fn();
   const logs = { open: jest.fn(), setRoots: jest.fn() };
-  const find = {
-    isOpen: false, show: jest.fn(), close: jest.fn(), onToggle: jest.fn(),
-  };
-  const sidebar = { isOpen: false, toggle: jest.fn(), onChange: jest.fn() };
   const outline = {
     load: async () => ({ rows: [], pages: [] }), currentPage: () => 1, onPageChange: jest.fn(), jump: jest.fn(),
   };
-  const chrome = mountPreviewChrome({ post, logs, find, sidebar, countBodyPages: async () => 1, outline });
+  const pdfViewer = { pagesCount: 0, getPageView: () => undefined, eventBus: { on: jest.fn() } } as unknown as Parameters<typeof mountPreviewChrome>[0]["pdfViewer"];
+  const chrome = mountPreviewChrome({ post, logs, countBodyPages: async () => 1, outline, pdfViewer, scrollTo: jest.fn(), setPagesDark: jest.fn() });
   const header = () => document.querySelector<HTMLElement>("header.rd-preview-header")!;
   const recompile = () => header().querySelector<HTMLElement>(".rd-preview-recompile")!;
   return { chrome, post, header, recompile };

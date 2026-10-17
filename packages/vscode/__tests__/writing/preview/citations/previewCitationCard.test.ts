@@ -1,19 +1,18 @@
 // Tests the preview citation card data: the citing command, the cited page, page-first highlights and the .bib record.
-import * as fs from "node:fs";
-import * as os from "node:os";
-import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { sourceAt, type Annotation, type PaperRecord } from "@labshelf/core";
+import { BIBLIOGRAPHY_HEADER, sourceAt, type Annotation, type PaperRecord } from "@labshelf/core";
 import { lookupCitation, type PreviewCitationDeps } from "../../../../src/writing/preview/citations";
 import type { SynctexLookup } from "../../../../src/writing/preview/sourceLinks";
+import { fakeDocument } from "../../../support/textDocument";
 import { fakeLogger } from "../../../support/writingFixtures";
 
 jest.mock("@labshelf/core", () => ({ ...jest.requireActual("@labshelf/core"), sourceAt: jest.fn() }));
 
 const source = sourceAt as jest.Mock;
 const workspace = vscode.workspace as unknown as { textDocuments: unknown[] };
-const readDirectory = vscode.workspace.fs.readDirectory as jest.Mock;
+const findFiles = jest.fn();
+const openTextDocument = jest.fn();
 const area = { page: 1, left: 10, top: 10, right: 30, bottom: 20 };
 const smith = { id: "smith-1", title: "Smith on cats", path: "smith-1", citeKey: "smith2020", status: "unread" } as PaperRecord;
 const found: SynctexLookup = { status: "found", index: { files: [], pages: [], byFile: new Map() } as never };
@@ -22,7 +21,7 @@ const text = "intro\nas shown by \\cite[see][p.~4]{smith2020, doe2019}\n";
 function deps(over: Partial<PreviewCitationDeps> = {}): PreviewCitationDeps {
   return {
     logger: fakeLogger(), projectFolder: "/p/paper", format: "latex", listPapers: async () => [smith],
-    highlightsOf: async () => [], citeSections: async () => ({ byKey: new Map() }),
+    highlightsOf: async () => [],
     typstCites: () => [], synctex: async () => found, ...over,
   };
 }
@@ -32,7 +31,8 @@ const highlight = (page: number, content: string, color?: Annotation["color"]): 
 
 beforeEach(() => {
   jest.clearAllMocks();
-  readDirectory.mockResolvedValue([]);
+  Object.assign(vscode.workspace, { findFiles, openTextDocument });
+  findFiles.mockResolvedValue([]);
   source.mockReturnValue({ file: "/p/paper/chapters/main.tex", line: 2 });
   workspace.textDocuments = [{ uri: vscode.Uri.file("/p/paper/chapters/main.tex"), getText: () => text }];
 });
@@ -75,21 +75,19 @@ describe("lookupCitation highlights", () => {
 });
 
 describe("lookupCitation .bib record", () => {
-  it("fills the record of a key no library paper has from the project's .bib file", async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "labshelf-bib-"));
-    fs.writeFileSync(path.join(dir, "refs.bib"), "@article{doe2019,\n  title = {{A} study},\n  author = {Doe, Jane and Roe, Rick},\n  year = {2019},\n  journal = {Nature},\n}\n");
-    readDirectory.mockResolvedValue([["refs.bib", vscode.FileType.File], ["notes.txt", vscode.FileType.File]]);
-    try {
-      const entries = await lookupCitation(deps({ projectFolder: dir }), { area, link: false });
-      expect(entries[1]).toMatchObject({ key: "doe2019", bib: { title: "A study", authors: ["Doe, Jane", "Roe, Rick"], year: 2019, venue: "Nature" } });
-      expect(entries[0]).not.toHaveProperty("bib");
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
+  it("fills the record of a key no library paper has from the project's user-written .bib file", async () => {
+    const refs = fakeDocument("/p/paper/refs.bib", "@article{doe2019,\n  title = {{A} study},\n  author = {Doe, Jane and Roe, Rick},\n  year = {2019},\n  journal = {Nature},\n}\n");
+    const generated = fakeDocument("/p/paper/labshelf.bib", `${BIBLIOGRAPHY_HEADER}\n\n@article{doe2019,\n  title = {Generated}\n}\n`);
+    const documents = new Map([generated, refs].map((document) => [document.uri.fsPath, document]));
+    findFiles.mockResolvedValue([...documents.keys()].map((file) => vscode.Uri.file(file)));
+    openTextDocument.mockImplementation(async (uri: vscode.Uri) => documents.get(uri.fsPath));
+    const entries = await lookupCitation(deps(), { area, link: false });
+    expect(entries[1]).toMatchObject({ key: "doe2019", bib: { title: "A study", authors: ["Doe, Jane", "Roe, Rick"], year: 2019, venue: "Nature" } });
+    expect(entries[0]).not.toHaveProperty("bib");
   });
 
-  it("answers without a record when the project folder cannot be listed, and logs it", async () => {
-    readDirectory.mockRejectedValue(new Error("denied"));
+  it("answers without a record when the project's .bib files cannot be listed, and logs it", async () => {
+    findFiles.mockRejectedValue(new Error("denied"));
     const logger = fakeLogger();
     const entries = await lookupCitation(deps({ logger }), { area, link: false });
     expect(entries[1]).toEqual(expect.objectContaining({ key: "doe2019" }));

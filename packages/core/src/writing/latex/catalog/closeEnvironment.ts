@@ -1,13 +1,11 @@
 // Finds the environment a line ending in \begin{name} opens and that no \end{name} closes yet.
 
+import { escapeRegExp } from "../../search/index.js";
+
 // Arguments written after the name, such as [htbp] or {ll}, may follow the closing brace.
 const BEGIN_AT_END = /\\begin\{([A-Za-z]+\*?)\}(?:\s*(?:\[[^\]]*\]|\{[^{}]*\}))*\s*$/;
 const COMMENT_START = /(^|[^\\])%/;
 const COMMENT_TO_LINE_END = /(^|[^\\])%.*$/gm;
-
-function escapeRegExp(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
 
 // Nested pairs of the same name are balanced; an \end{name} met at depth zero closes the typed \begin.
 function hasUnmatchedEnd(name: string, text: string): boolean {

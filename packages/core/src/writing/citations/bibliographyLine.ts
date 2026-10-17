@@ -1,13 +1,12 @@
 /** Adds the line that loads the generated bibliography to a project's main file, once. */
 
 import type { ProjectFormat } from "../project/index.js";
+import { escapeRegExp } from "../search/index.js";
 
 export type BibliographyLineResult =
   | { kind: "present" | "added"; text: string }
   /** Typst accepts one bibliography call; an existing one is the user's to extend. */
   | { kind: "conflict"; text: string };
-
-const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 function latexLine(text: string, bibFile: string): BibliographyLineResult {
   const base = bibFile.replace(/\.bib$/, "");

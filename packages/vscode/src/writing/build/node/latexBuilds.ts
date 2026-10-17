@@ -19,8 +19,10 @@ export interface LatexBuildsDeps extends ToolchainDeps {
 interface ProjectBuilds {
   chain: Promise<FinishedBuild | undefined>;
   // INVARIANT: set while a build waits in the chain; a later request overwrites it, so the latest root and trigger run.
-  queued?: { root: string; trigger: BuildTrigger } | undefined;
+  queued?: { root: string; trigger: BuildTrigger; includeOnly?: string | undefined } | undefined;
   running?: AbortController | undefined;
+  // Roots whose last build typeset one chapter; latexmk skips the full rebuild unless it is forced.
+  partial: Set<string>;
 }
 
 const MODULE = "writing/build";
@@ -38,18 +40,21 @@ export class LatexBuilds {
 
   constructor(private readonly deps: LatexBuildsDeps) {}
 
-  /** Resolves with the build's result, or `undefined` when it did not finish: cancelled, declined or failed to start. */
-  request(projectFolder: string, root: string, trigger: BuildTrigger): Promise<FinishedBuild | undefined> {
-    const state: ProjectBuilds = this.builds.get(projectFolder) ?? { chain: Promise.resolve(undefined) };
+  /**
+   * Resolves with the build's result, or `undefined` when it did not finish: cancelled, declined or failed to start.
+   * `includeOnly` is the `\include` path to typeset alone; absent builds the whole root.
+   */
+  request(projectFolder: string, root: string, trigger: BuildTrigger, includeOnly?: string): Promise<FinishedBuild | undefined> {
+    const state: ProjectBuilds = this.builds.get(projectFolder) ?? { chain: Promise.resolve(undefined), partial: new Set() };
     this.builds.set(projectFolder, state);
     state.running?.abort();
     const waiting = state.queued !== undefined;
-    state.queued = { root, trigger };
+    state.queued = { root, trigger, includeOnly };
     if (waiting) { return state.chain; }
     state.chain = state.chain.then(async () => {
       const next = state.queued!;
       state.queued = undefined;
-      return this.run(projectFolder, next.root, next.trigger, state);
+      return this.run(projectFolder, next.root, next.trigger, state, next.includeOnly);
     });
     return state.chain;
   }
@@ -73,7 +78,7 @@ export class LatexBuilds {
     }
   }
 
-  private async run(projectFolder: string, root: string, trigger: BuildTrigger, state: ProjectBuilds): Promise<FinishedBuild | undefined> {
+  private async run(projectFolder: string, root: string, trigger: BuildTrigger, state: ProjectBuilds, includeOnly?: string): Promise<FinishedBuild | undefined> {
     const session = this.deps.host.current();
     const project = this.project(projectFolder);
     if (!session || !project || (trigger === "save" && this.declined.has(projectFolder))) { return undefined; }
@@ -98,9 +103,11 @@ export class LatexBuilds {
       const result = await runLatexBuild({
         toolchain, projectFolder, main: root, outDir: path.join(buildDir, rootBuildFolder(root)),
         signal: controller.signal, logger: session.logger,
+        ...(includeOnly !== undefined && { includeOnly }), ...(includeOnly === undefined && state.partial.has(root) && { force: true }),
       }).finally(() => building.dispose());
       if (state.running === controller) { state.running = undefined; }
       if (result.status === "cancelled") { return undefined; }
+      if (includeOnly === undefined) { state.partial.delete(root); } else { state.partial.add(root); }
       this.deps.diagnostics.publish(path.join(projectFolder, root), result.problems);
       this.deps.previews.finished(project, root, result, trigger);
       vscode.window.setStatusBarMessage(summary(result, root), 5000);

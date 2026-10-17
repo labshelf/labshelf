@@ -8,7 +8,7 @@ import * as vscode from "vscode";
 import { rootBuildFolder } from "@labshelf/core";
 import { nodeProjectData } from "@labshelf/core/node";
 import { ReaderPanel } from "../../../src/pdf-viewer";
-import { BuildPreviews } from "../../../src/writing/preview";
+import { BuildPreviews, CheckCounts } from "../../../src/writing/preview";
 import { registerShowInPreview } from "../../../src/writing/preview/commands/registerShowInPreview";
 import { commandHandler, fakeHost, fakeProjects, openInEditor, readyEntry } from "../../support/writingFixtures";
 
@@ -45,7 +45,7 @@ function setup() {
   const host = fakeHost();
   const controller = { setBuildStatus: jest.fn(), reloadDocument: jest.fn(), revealPoint: jest.fn() };
   create.mockImplementation(() => ({ controller }));
-  const previews = new BuildPreviews({ host, paths: path, data: nodeProjectData(host.session.logger), listPapers: async () => [], highlightsOf: async () => [], citeSections: async () => ({ byKey: new Map(), sectionAt: () => undefined }), extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false, buildRootOf: async (_folder: string, main: string) => main, recompile: async () => {} });
+  const previews = new BuildPreviews({ host, paths: path, data: nodeProjectData(host.session.logger), listPapers: async () => [], highlightsOf: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false, buildRootOf: async (_folder: string, main: string) => main, recompile: async () => {}, projects: fakeProjects(), checkCounts: new CheckCounts(), setEngine: async () => {}, fixes: () => undefined });
   const project = readyEntry(dir) as Project;
   const ports = () => create.mock.calls[0][1].preview;
   return { host, controller, previews, project, ports };

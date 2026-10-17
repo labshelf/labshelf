@@ -6,10 +6,7 @@ import {
 } from "@labshelf/core";
 import type { CitationSession } from "../citationWorkspace.js";
 import { highlightItems } from "./highlightItems.js";
-
-// A highlight without text cannot be quoted or recognised in a list.
-const quotableHighlights = (annotations: readonly Annotation[]): Annotation[] =>
-  annotations.filter((annotation) => annotation.type === "highlight" && annotation.content.trim() !== "");
+import { quotableHighlights } from "./quotableHighlights.js";
 
 async function highlightsOfPapers(
   session: CitationSession, papers: readonly PaperRecord[],

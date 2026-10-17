@@ -1,9 +1,10 @@
 // Assembles the build roots a preview reader is told about: one entry per built root with its problems and what the host can open.
-import type { LocatedProblem, PathOps, PreviewRoot, PreviewRoots } from "@labshelf/core";
+import type { BuildOptions, LocatedProblem, PathOps, PreviewRoot, PreviewRoots } from "@labshelf/core";
 import type { ReadyProject } from "../../mainDocument.js";
 import { rawLogFile, type RawLogDeps } from "./rawLogFile.js";
+import { rootFindings, type RootFindingsInput } from "./rootFindings.js";
 
-export interface PreviewRootsInput extends RawLogDeps {
+export interface PreviewRootsInput extends RawLogDeps, RootFindingsInput {
   project: ReadyProject;
   /** The roots built so far, in build order. */
   built: Iterable<string>;
@@ -11,6 +12,9 @@ export interface PreviewRootsInput extends RawLogDeps {
   shown: string;
   problemsOf: (root: string) => readonly LocatedProblem[];
   failed: (root: string) => boolean;
+  options?: BuildOptions;
+  /** Findings of the last pre-submission check. */
+  checks?: number;
 }
 
 function projectRelative(paths: PathOps, folder: string, file: string): string {
@@ -21,6 +25,7 @@ function projectRelative(paths: PathOps, folder: string, file: string): string {
 async function previewRoot(input: PreviewRootsInput, root: string): Promise<PreviewRoot> {
   const { paths, project } = input;
   return {
+    ...(await rootFindings(input, root)),
     path: root,
     failed: input.failed(root),
     rawLog: (await rawLogFile(input, project, root)) !== undefined,
@@ -37,9 +42,13 @@ async function previewRoot(input: PreviewRootsInput, root: string): Promise<Prev
 
 export async function previewRootsMessage(input: PreviewRootsInput): Promise<PreviewRoots> {
   const roots = await Promise.all([...input.built].map((root) => previewRoot(input, root)));
-  const pageLimit = input.project.settings.check?.pages;
+  const { pages: pageLimit, words: wordLimit, countUpTo } = input.project.settings.check ?? {};
   return {
     main: input.project.main ?? input.shown, focused: input.focused, shown: input.shown, roots,
     ...(pageLimit !== undefined ? { pageLimit } : {}),
+    ...(wordLimit !== undefined ? { wordLimit } : {}),
+    ...(countUpTo !== undefined ? { countUpTo } : {}),
+    ...(input.checks !== undefined ? { checks: input.checks } : {}),
+    ...(input.options ? { options: input.options } : {}),
   };
 }

@@ -60,17 +60,23 @@
 .tree-row.collapsed .tree-twisty { transform: rotate(-90deg); }
 .tree-icon { color: var(--ls-desc); }
 .tree-icon svg { width: 16px; height: 16px; }
-.tree-icon .ls-arc { width: 16px; height: 16px; }
+.tree-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ls-desc); }
+.tree-dot.err { background: var(--ls-mark-err); }
+.tree-dot.warn { background: var(--ls-mark-warn); }
+.tree-dot.accent { background: var(--ls-mark-accent); }
+.tree-dot.ok { background: var(--ls-mark-ok); }
 .tree-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 /* REF sits in the 16px icon column, small and centred like the file-type glyphs of VS Code's Explorer. */
 .tree-ref {
   width: 16px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; margin-right: var(--ls-space-3);
   font-family: var(--ls-mono); font-size: calc(var(--ls-text-xs) * .8); font-weight: 700; letter-spacing: -.02em; line-height: 1; color: var(--ls-file-ref);
 }
+.tree-ref.tex { color: var(--ls-file-tex); }
+.tree-ref.typ { color: var(--ls-file-typ); }
 .tree-count { flex-shrink: 0; margin-left: var(--ls-space-4); font-family: var(--ls-mono); font-size: var(--ls-text-md); font-variant-numeric: tabular-nums; color: var(--ls-desc); }
 /* A folder's paper count shows only under the pointer, so the tree reads as plain names like the Explorer. */
-.tree-row[data-path] .tree-count, .tree-row[data-tag] .tree-count { visibility: hidden; }
-.tree-row[data-path]:hover .tree-count, .tree-row[data-tag]:hover .tree-count { visibility: visible; }
+.tree-row[data-path] .tree-count, .tree-row[data-tag] .tree-count, .tree-row[data-project-folder] .tree-count { visibility: hidden; }
+.tree-row[data-path]:hover .tree-count, .tree-row[data-tag]:hover .tree-count, .tree-row[data-project-folder]:hover .tree-count { visibility: visible; }
 .tree-hash { color: var(--ls-link); }
 .tree:focus .tree-row.current .tree-count { color: inherit; opacity: .8; }
 .tree-empty { padding: var(--ls-space-3) var(--ls-space-4); font-size: var(--ls-text-md); line-height: 1.5; color: var(--ls-desc); }
@@ -88,3 +94,40 @@
 /* A clicked heading shows no ring; only keyboard focus does. */
 .tree:focus-visible .tree-group.focused { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
 .tree-heading:not(.tree-section), .tree-empty { padding-left: calc(var(--ls-space-4) * 2); }
+/* The open project leads Projects: a taller, bolder row on the hover tint, with its close button shown on hover. */
+.tree-open-project { height: calc(var(--ls-row-h) + var(--ls-space-3)); padding-left: var(--ls-space-5); font-weight: 600; background: var(--ls-list-hover); cursor: default; }
+.tree-row-actions { display: none; margin-left: auto; }
+.tree-open-project:hover .tree-row-actions, .tree-open-project.focused .tree-row-actions { display: inline-flex; }
+.tree-ref.pdf { color: var(--ls-file-pdf); }
+.tree-ref.ref { color: var(--ls-file-ref); }
+.tree-ref.plain { color: var(--ls-desc); }
+.tree-desc { flex-shrink: 0; margin-left: var(--ls-space-3); font-size: var(--ls-text-sm); color: var(--ls-desc); }
+.tree-check { appearance: none; flex-shrink: 0; width: 12px; height: 12px; box-sizing: border-box; margin: 0 calc(var(--ls-space-3) + 2px) 0 2px; border: 1px solid var(--ls-desc); border-radius: 50%; background: none; cursor: pointer; }
+.tree-check:checked { border-color: var(--ls-mark-ok); background: var(--ls-mark-ok); }
+.tree-check:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 2px; }
+.tree-row.dim { opacity: .6; }
+.tree-row.struck .tree-label { text-decoration: line-through; color: var(--ls-desc); }
+.tree-inline-action, .tree-trailing { flex-shrink: 0; margin-left: var(--ls-space-3); padding: 0; border: 0; background: none; cursor: pointer; font: inherit; }
+.tree-inline-action { font-size: var(--ls-text-sm); color: var(--ls-link); }
+.tree-inline-action:hover { text-decoration: underline; }
+.tree-trailing { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: var(--ls-radius-sm); }
+.tree-trailing:hover { background: var(--ls-list-hover); }
+.tree-trailing .tree-icon { margin: 0; }
+.tree-toggle-row { display: flex; align-items: center; padding: var(--ls-space-2) var(--ls-space-4) var(--ls-space-2) calc(var(--ls-space-4) * 2 + var(--depth, 0) * var(--ls-space-4)); }
+.tree-toggle { display: inline-flex; max-width: 100%; gap: var(--ls-space-4); }
+.tree-toggle button { padding: 0 0 1px; border: 0; border-bottom: 1px solid transparent; background: none; color: var(--ls-desc); font: inherit; font-weight: 400; font-size: var(--ls-text-xs); line-height: 16px; cursor: pointer; }
+.tree-toggle button:hover { color: var(--ls-fg); }
+.tree-toggle button[aria-pressed="true"] { color: var(--ls-fg); border-bottom-color: currentColor; }
+.tree-toggle button:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 2px; }
+
+.tree-add { display: none; flex-shrink: 0; margin-left: auto; width: 20px; height: 20px; }
+.tree-add svg { width: 14px; height: 14px; }
+.tree-row:hover .tree-add, .tree-row.focused .tree-add { display: inline-flex; }
+.tree-add-row {
+  display: flex; align-items: center; height: var(--ls-row-h); padding-right: var(--ls-space-4);
+  padding-left: calc(var(--ls-space-4) * 2 + var(--depth, 0) * var(--ls-space-4) + 16px + var(--ls-space-3));
+}
+.tree-add-input {
+  flex: 1; min-width: 0; height: calc(var(--ls-row-h) - 4px); padding: 0 var(--ls-space-3); font: inherit; font-size: var(--ls-font-size);
+  color: var(--ls-input-fg); background: var(--ls-input-bg); border: 1px solid var(--ls-focus); border-radius: var(--ls-radius-sm); outline: none;
+}

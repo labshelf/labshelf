@@ -6,7 +6,7 @@ import { escapeHtml, icon } from "../../../ui/index.js";
 export type SectionId = "library" | "projects";
 
 /** Ids of the groups the Library section can collapse; they share the collapsed set with the sections. */
-export type GroupId = "library.folders" | "library.tags";
+export type GroupId = "library.folders" | "library.tags" | "projects.list" | "projects.archived" | `project.${string}`;
 
 const chevronHtml = `<span class="tree-section-chevron">${icon("chevron-right")}</span>`;
 

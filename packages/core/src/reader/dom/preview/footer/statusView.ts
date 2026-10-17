@@ -26,9 +26,12 @@ export function createStatusView({ openLogs, now }: StatusViewDeps): StatusView 
     latest = { roots, build };
     const { text, tone, logsRoot, timed } = buildStatusText(roots, build, now());
     element.dataset["tone"] = tone;
-    const glyph = tone === "busy" ? "loader" : tone === "error" ? "warning" : null;
+    const glyph = tone === "error" ? "warning" : null;
     const label = el("span", { class: "rd-preview-status-text" }, text);
-    const content = glyph ? [el("span", { class: "rd-preview-status-icon", "aria-hidden": "true", html: icon(glyph) }), label] : [label];
+    const lead = glyph
+      ? el("span", { class: "rd-preview-status-icon", "aria-hidden": "true", html: icon(glyph) })
+      : el("span", { class: "rd-preview-status-dot", "aria-hidden": "true" });
+    const content = text === "" ? [label] : [lead, label];
     if (logsRoot === undefined) {
       element.replaceChildren(...content);
     } else {

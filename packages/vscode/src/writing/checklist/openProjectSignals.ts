@@ -1,4 +1,4 @@
-// Keeps the open project's checklist signals current: re-read on open and, debounced, on save, plus its page overflow.
+// Keeps the open project's checklist signals current: re-read on open and, debounced, on save, plus its page count.
 import * as path from "node:path";
 import * as vscode from "vscode";
 
@@ -13,6 +13,8 @@ export interface ProjectSignals {
   project: ReadyProject;
   signals: ChecklistSignals;
   pageOverflow: PageOverflow | undefined;
+  /** The body's page count against its limit; set whenever a limit and a count exist. */
+  pageCount: PageOverflow | undefined;
 }
 
 export interface OpenProjectSignalsDeps {
@@ -86,15 +88,15 @@ export class OpenProjectSignals implements vscode.Disposable {
       return;
     }
     if (generation !== this.generation) { return; }
-    this.state = { project, signals, pageOverflow: this.overflow(project) };
+    this.state = { project, signals, ...this.pages(project) };
     this.changeEmitter.fire();
   }
 
-  private overflow(project: ReadyProject): PageOverflow | undefined {
+  private pages(project: ReadyProject): Pick<ProjectSignals, "pageOverflow" | "pageCount"> {
     const limit = project.settings.check?.pages;
     const pages = this.bodyPages?.folder === project.folder ? this.bodyPages.pages : undefined;
-    if (limit === undefined || pages === undefined || pages <= limit) { return undefined; }
-    return { pages, limit };
+    if (limit === undefined || pages === undefined) { return { pageOverflow: undefined, pageCount: undefined }; }
+    return { pageOverflow: pages > limit ? { pages, limit } : undefined, pageCount: { pages, limit } };
   }
 
   private onSaved(document: vscode.TextDocument): void {
@@ -112,7 +114,7 @@ export class OpenProjectSignals implements vscode.Disposable {
     if (!project || count.folder !== project.folder || count.root !== project.main) { return; }
     this.bodyPages = { folder: project.folder, pages: count.contentPages };
     if (!this.state) { return; }
-    this.state = { ...this.state, pageOverflow: this.overflow(project) };
+    this.state = { ...this.state, ...this.pages(project) };
     this.changeEmitter.fire();
   }
 

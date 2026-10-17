@@ -11,6 +11,12 @@ interface LimitMeterDeps {
 
 const NEAR = 0.9;
 
+const number = (n: number): string => n.toLocaleString("en-US");
+
+/** `2 / 9 pp` against a limit, `2 pp` without one. */
+const figure = (value: number, limit: number | undefined, unit: string): string =>
+  limit === undefined ? `${number(value)} ${unit}` : `${number(value)} / ${number(limit)} ${unit}`;
+
 /**
  * Mounts the limit meter into the footer's `limit` slot and reveals the slot.
  * Body pages are counted once per shown PDF and reported with `bodyPages`.
@@ -36,7 +42,7 @@ export function mountLimitMeter(slot: HTMLElement, { post, countBodyPages }: Lim
 
   button.addEventListener("click", () => {
     if (!roots) { return; }
-    const values = { pages: roots.pageLimit, words: roots.wordLimit, countUpTo: roots.countUpTo ?? "references" };
+    const values = { file: roots.shown, pages: roots.pageLimit, words: roots.wordLimit, countUpTo: roots.countUpTo ?? "references" };
     togglePopover(button, buildLimitPopover(values, (limits) => post({ command: "setCheckLimits", limits }), closeAndFocus), "above");
   });
 
@@ -44,13 +50,13 @@ export function mountLimitMeter(slot: HTMLElement, { post, countBodyPages }: Lim
     const shown = roots?.roots.find((r) => r.path === roots?.shown);
     const parts: string[] = [];
     const ratios: number[] = [];
-    if (roots?.pageLimit !== undefined && counted?.root === roots.shown) {
-      parts.push(`p. ${counted.pages} / ${roots.pageLimit}`);
-      ratios.push(counted.pages / roots.pageLimit);
+    if (counted?.root === roots?.shown && counted) {
+      parts.push(figure(counted.pages, roots?.pageLimit, "pp"));
+      if (roots?.pageLimit !== undefined) { ratios.push(counted.pages / roots.pageLimit); }
     }
-    if (roots?.wordLimit !== undefined && shown?.words !== undefined) {
-      parts.push(`${shown.words} words / ${roots.wordLimit}`);
-      ratios.push(shown.words / roots.wordLimit);
+    if (shown?.words !== undefined) {
+      parts.push(figure(shown.words, roots?.wordLimit, "words"));
+      if (roots?.wordLimit !== undefined) { ratios.push(shown.words / roots.wordLimit); }
     }
     const ratio = Math.max(0, ...ratios);
     const state = ratio > 1 ? "over" : ratio >= NEAR ? "near" : "";
@@ -81,7 +87,7 @@ export function mountLimitMeter(slot: HTMLElement, { post, countBodyPages }: Lim
 
   function refresh(): void {
     render();
-    if (!roots || roots.pageLimit === undefined) { return; }
+    if (!roots) { return; }
     if (fresh && counted?.root === roots.shown) { return; }
     if (counting !== roots.shown) { void count(roots.shown); }
   }

@@ -19,6 +19,14 @@
     "onStartupFinished"
   ],
   "contributes": {
+    "configurationDefaults": {
+      "[latex]": {
+        "editor.wordWrap": "on"
+      },
+      "[typst]": {
+        "editor.wordWrap": "on"
+      }
+    },
     "commands": [
       {
         "command": "labshelf.addPaper",
@@ -392,33 +400,52 @@
         "icon": "$(italic)"
       },
       {
-        "command": "labshelf.writing.checklist.bySection",
-        "title": "Group by Section",
+        "command": "labshelf.writing.undo",
+        "title": "Research: Undo",
         "category": "LabShelf",
-        "icon": "$(list-flat)"
+        "icon": "$(discard)"
       },
       {
-        "command": "labshelf.writing.checklist.byKind",
-        "title": "Group by Kind",
+        "command": "labshelf.writing.redo",
+        "title": "Research: Redo",
         "category": "LabShelf",
-        "icon": "$(list-tree)"
+        "icon": "$(redo)"
+      },
+      {
+        "command": "labshelf.writing.insertSymbol",
+        "title": "Research: Insert Symbol",
+        "category": "LabShelf",
+        "icon": "$(symbol-operator)"
+      },
+      {
+        "command": "labshelf.writing.insertTable",
+        "title": "Research: Insert Table",
+        "category": "LabShelf",
+        "icon": "$(table)"
+      },
+      {
+        "command": "labshelf.writing.insertImage",
+        "title": "Research: Insert Image",
+        "category": "LabShelf",
+        "icon": "$(file-media)"
+      },
+      {
+        "command": "labshelf.writing.citeFromLibrary",
+        "title": "Research: Cite from Library",
+        "category": "LabShelf",
+        "icon": "$(quote)"
+      },
+      {
+        "command": "labshelf.writing.searchInProject",
+        "title": "Research: Search in Project",
+        "category": "LabShelf",
+        "icon": "$(search)"
       },
       {
         "command": "labshelf.writing.checklist.addItem",
         "title": "Add Checklist Item",
         "category": "LabShelf",
         "icon": "$(add)"
-      },
-      {
-        "command": "labshelf.writing.checklist.removeItem",
-        "title": "Delete",
-        "category": "LabShelf",
-        "icon": "$(trash)"
-      },
-      {
-        "command": "labshelf.writing.checklist.nextStatus",
-        "title": "Next Status",
-        "category": "LabShelf"
       },
       {
         "command": "labshelf.writing.checklist.runCheck",
@@ -445,32 +472,29 @@
           "title": "LabShelf",
           "icon": "media/labshelf.svg"
         }
+      ],
+      "panel": [
+        {
+          "id": "labshelfSearch",
+          "title": "Project Search",
+          "icon": "$(search)"
+        }
       ]
     },
     "views": {
+      "labshelfSearch": [
+        {
+          "id": "labshelf.writing.projectSearch",
+          "name": "Project Search",
+          "type": "webview",
+          "when": "labshelf.writing.projectOpen || labshelf.writing.inProject"
+        }
+      ],
       "labshelfContainer": [
         {
           "id": "labshelf.library",
           "name": "LabShelf",
           "type": "webview"
-        },
-        {
-          "id": "labshelf.writing.files",
-          "name": "Files",
-          "type": "tree",
-          "when": "labshelf.writing.projectOpen"
-        },
-        {
-          "id": "labshelf.writing.outline",
-          "name": "Outline",
-          "type": "tree",
-          "when": "labshelf.writing.projectOpen"
-        },
-        {
-          "id": "labshelf.writing.checklist",
-          "name": "Checklist",
-          "type": "tree",
-          "when": "labshelf.writing.projectOpen && labshelf.writing.hasChecklist"
         },
         {
           "id": "labshelf.writing.figures",
@@ -490,21 +514,6 @@
     },
     "menus": {
       "view/title": [
-        {
-          "command": "labshelf.writing.closeProject",
-          "when": "view == labshelf.writing.files",
-          "group": "navigation@0"
-        },
-        {
-          "command": "labshelf.writing.newFile",
-          "when": "view == labshelf.writing.files",
-          "group": "navigation@1"
-        },
-        {
-          "command": "labshelf.writing.newFolder",
-          "when": "view == labshelf.writing.files",
-          "group": "navigation@2"
-        },
         {
           "command": "labshelf.addPaper",
           "when": "view == labshelf.library",
@@ -531,37 +540,12 @@
           "group": "2_view@1"
         },
         {
-          "command": "labshelf.writing.checklist.bySection",
-          "when": "view == labshelf.writing.checklist && !labshelf.writing.checklistBySection",
-          "group": "navigation@1"
-        },
-        {
-          "command": "labshelf.writing.checklist.byKind",
-          "when": "view == labshelf.writing.checklist && labshelf.writing.checklistBySection",
-          "group": "navigation@1"
-        },
-        {
-          "command": "labshelf.writing.checklist.addItem",
-          "when": "view == labshelf.writing.checklist",
-          "group": "navigation@2"
-        },
-        {
-          "command": "labshelf.writing.checklist.runCheck",
-          "when": "view == labshelf.writing.checklist",
-          "group": "navigation@3"
-        },
-        {
           "command": "labshelf.settingsMenu",
           "when": "view == labshelf.library",
           "group": "navigation@2"
         }
       ],
       "view/item/context": [
-        {
-          "command": "labshelf.writing.checklist.removeItem",
-          "when": "view == labshelf.writing.checklist && viewItem == labshelfChecklistManual",
-          "group": "1_modify@1"
-        },
         {
           "command": "labshelf.writing.regenerateFigure",
           "when": "view == labshelf.writing.figures && viewItem == labshelfFigureStale",
@@ -581,26 +565,6 @@
           "command": "labshelf.writing.compareWith",
           "when": "view == labshelf.writing.versions && viewItem == labshelfVersion",
           "group": "1_compare@2"
-        },
-        {
-          "command": "labshelf.writing.newFile",
-          "when": "view == labshelf.writing.files && viewItem == labshelfProjectFolder",
-          "group": "1_create@1"
-        },
-        {
-          "command": "labshelf.writing.newFolder",
-          "when": "view == labshelf.writing.files && viewItem == labshelfProjectFolder",
-          "group": "1_create@2"
-        },
-        {
-          "command": "labshelf.writing.renameFile",
-          "when": "view == labshelf.writing.files && viewItem =~ /^labshelfProject(Folder|File)$/",
-          "group": "2_modify@1"
-        },
-        {
-          "command": "labshelf.writing.deleteFile",
-          "when": "view == labshelf.writing.files && viewItem =~ /^labshelfProject(Folder|File)$/",
-          "group": "2_modify@2"
         }
       ],
       "commandPalette": [
@@ -618,22 +582,6 @@
         },
         {
           "command": "labshelf.writing.revealOutline",
-          "when": "false"
-        },
-        {
-          "command": "labshelf.writing.checklist.bySection",
-          "when": "false"
-        },
-        {
-          "command": "labshelf.writing.checklist.byKind",
-          "when": "false"
-        },
-        {
-          "command": "labshelf.writing.checklist.removeItem",
-          "when": "false"
-        },
-        {
-          "command": "labshelf.writing.checklist.nextStatus",
           "when": "false"
         },
         {
@@ -655,6 +603,34 @@
         {
           "command": "labshelf.writing.italic",
           "when": "labshelf.writing.inProject"
+        },
+        {
+          "command": "labshelf.writing.undo",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.redo",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.citeFromLibrary",
+          "when": "labshelf.writing.inProject && editorLangId =~ /^(latex|typst)$/"
+        },
+        {
+          "command": "labshelf.writing.searchInProject",
+          "when": "labshelf.writing.inProject && editorLangId =~ /^(latex|typst)$/"
+        },
+        {
+          "command": "labshelf.writing.insertSymbol",
+          "when": "labshelf.writing.inProject && editorLangId =~ /^(latex|typst)$/"
+        },
+        {
+          "command": "labshelf.writing.insertTable",
+          "when": "labshelf.writing.inProject && editorLangId =~ /^(latex|typst)$/"
+        },
+        {
+          "command": "labshelf.writing.insertImage",
+          "when": "labshelf.writing.inProject && editorLangId =~ /^(latex|typst)$/"
         },
         {
           "command": "labshelf.reader.zoomIn",
@@ -739,24 +715,49 @@
       ],
       "editor/title": [
         {
-          "command": "labshelf.writing.build",
+          "command": "labshelf.writing.undo",
           "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject",
           "group": "navigation@1"
         },
         {
-          "command": "labshelf.writing.showInPreview",
-          "when": "resourceLangId == latex && labshelf.writing.inProject",
+          "command": "labshelf.writing.redo",
+          "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject",
           "group": "navigation@2"
         },
         {
-          "command": "labshelf.writing.bold",
+          "command": "labshelf.writing.insertSymbol",
           "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject",
           "group": "navigation@3"
         },
         {
-          "command": "labshelf.writing.italic",
+          "command": "labshelf.writing.insertTable",
           "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject",
           "group": "navigation@4"
+        },
+        {
+          "command": "labshelf.writing.insertImage",
+          "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject",
+          "group": "navigation@5"
+        },
+        {
+          "command": "labshelf.writing.searchInProject",
+          "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject",
+          "group": "navigation@6"
+        },
+        {
+          "command": "labshelf.writing.citeFromLibrary",
+          "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject",
+          "group": "navigation@7"
+        },
+        {
+          "command": "labshelf.writing.bold",
+          "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject",
+          "group": "1_format@1"
+        },
+        {
+          "command": "labshelf.writing.italic",
+          "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject",
+          "group": "1_format@2"
         }
       ],
       "editor/context": [
@@ -951,6 +952,12 @@
         "command": "labshelf.writing.build",
         "key": "ctrl+enter",
         "mac": "cmd+enter",
+        "when": "editorTextFocus && editorLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject"
+      },
+      {
+        "command": "labshelf.writing.searchInProject",
+        "key": "ctrl+shift+f",
+        "mac": "cmd+shift+f",
         "when": "editorTextFocus && editorLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject"
       },
       {

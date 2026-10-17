@@ -4,7 +4,7 @@
 import { clampPage, type WebviewToHost } from "../../index.js";
 import { BuildBanner, Cheatsheet, SelectionBubble, StatusPill, type ThemeController, openThemePopover, Toolbar } from "../chrome/index.js";
 import { FindBar, NavHistory, ZoomController } from "../navigation/index.js";
-import { countBodyPages, LogsView, mountPreviewChrome, type PreviewChrome, previewOutlineSource } from "../preview/index.js";
+import { areaScroller, countBodyPages, LogsView, mountPreviewChrome, type PreviewChrome, previewOutlineSource } from "../preview/index.js";
 import type { ReaderContext } from "../session/index.js";
 import { AnnotationsTab, OutlineTab, Sidebar, ThumbnailsTab } from "../sidebar/index.js";
 import { ReadingStateReporter } from "./readingStateReporter.js";
@@ -69,8 +69,10 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
     const logs = new LogsView({ parent: ctx.container.parentElement ?? ctx.container, post });
     ui.openLogs = (rootPath) => logs.open(rootPath);
     ui.previewChrome = mountPreviewChrome({
-      post, logs, find: findBar, sidebar, outline: previewOutlineSource(ctx),
+      post, logs, outline: previewOutlineSource(ctx),
       countBodyPages: () => countBodyPages(ctx.pdfDocument),
+      pdfViewer: ctx.pdfViewer, scrollTo: areaScroller(ctx),
+      setPagesDark: (dark) => theme.lockPages(dark ? "dark" : "light"),
     });
   }
   return ui;

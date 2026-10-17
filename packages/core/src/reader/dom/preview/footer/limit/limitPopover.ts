@@ -4,6 +4,8 @@ import type { CheckLimitsChange } from "../../../../index.js";
 import type { CountUpTo } from "../../../../../writing/project/index.js";
 
 export interface LimitValues {
+  /** The shown root's path; limits are saved per root. */
+  file: string;
   pages: number | undefined;
   words: number | undefined;
   countUpTo: CountUpTo;
@@ -60,7 +62,7 @@ export function buildLimitPopover(values: LimitValues, post: (limits: CheckLimit
     limitRow("rd-limit-pages", "Page limit", base.pages, commit("pages")),
     limitRow("rd-limit-words", "Word limit", base.words, commit("words")),
     el("div", { class: "rd-limit-row" }, el("span", {}, "Count up to"), segment),
-    el("p", {}, "Counts the main text of the shown document and every file it pulls in with \\include or \\input."),
+    el("p", {}, "Counts the main text of ", el("code", {}, base.file), " and every file it pulls in with ", el("code", {}, "\\include"), " or ", el("code", {}, "\\input"), `. Saved for ${base.file}.`),
   );
   content.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.stopPropagation(); close(); } });
   return content;

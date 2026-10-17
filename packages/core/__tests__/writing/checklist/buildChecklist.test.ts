@@ -103,6 +103,18 @@ describe("buildChecklist by section", () => {
     expect(readingIn("Reading")).toHaveLength(1);
   });
 
+  it("places a manual item under its section after the section's own rows, and a vanished section under Whole project", () => {
+    const manual = [
+      { id: "s1", text: "Cut intro", done: false, createdAt: "2026-10-16T09:00:00.000Z", section: intro.id },
+      { id: "s2", text: "Lost", done: false, createdAt: "2026-10-16T09:00:00.000Z", section: "gone.tex#Gone" },
+    ];
+    const placed = buildChecklist({ ...base, manual }, "section");
+    const introKinds = placed.groups.find((g) => g.title === "Intro")!.items.map((i) => i.kind);
+    expect(introKinds[introKinds.length - 1]).toBe("manual");
+    expect(placed.groups.find((g) => g.title === "Whole project")!.items.filter((i) => i.kind === "manual")).toHaveLength(1);
+    expect(buildChecklist({ ...base, manual }, "kind").groups.find((g) => g.id === "manual")!.items).toHaveLength(2);
+  });
+
   it("counts each item once and excludes reading", () => {
     expect(list.openCount).toBe(3 + 1 + 1 + 1 + 1);
     expect(list.openCount).toBe(buildChecklist(base, "kind").openCount);

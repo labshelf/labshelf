@@ -4,7 +4,7 @@ import { el } from "../../../../ui/dom/index.js";
 import { outlineTrail, type OutlineRow } from "../../../logic/index.js";
 import { buildMenu, togglePopover } from "../../elements/index.js";
 import type { PreviewOutlineSource } from "../mountPreviewChrome.js";
-import { fileName } from "../fileName.js";
+import { pdfName } from "../fileName.js";
 
 export interface LoadedOutline {
   rows: OutlineRow[];
@@ -32,7 +32,7 @@ export function createCrumbs(outline: PreviewOutlineSource): Crumbs {
   return {
     element,
     render(path, loaded) {
-      const name = path === undefined ? "" : fileName(path);
+      const name = path === undefined ? "" : pdfName(path);
       const trail = outlineTrail(loaded.rows, loaded.pages, outline.currentPage());
       const next = `${name}|${loaded.rows.length > 0}|${trail.map((r) => r.id).join(",")}`;
       if (next === key) { return; }

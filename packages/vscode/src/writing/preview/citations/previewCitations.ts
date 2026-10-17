@@ -5,7 +5,6 @@ import {
   citationEntries, citedKeysAt,
   type Annotation, type CitationEntry, type CitationQuery, type ILogger, type PagePoint, type PaperRecord, type ProjectFormat, type TypstCite,
 } from "@labshelf/core";
-import type { CiteSections } from "../../citations/index.js";
 import { PREVIEW_LOG_MODULE } from "../previewStrings.js";
 import type { SynctexLookup } from "../sourceLinks/index.js";
 import { cardDetails, warn } from "./citationCardDetails.js";
@@ -21,8 +20,6 @@ export interface PreviewCitationDeps {
   typstCites: () => readonly TypstCite[];
   synctex: () => Promise<SynctexLookup>;
   highlightsOf: (paperId: string) => Promise<Annotation[]>;
-  /** Which sections of the previewed project cite each key. */
-  citeSections: () => Promise<Pick<CiteSections, "byKey">>;
 }
 
 function areaCenter(area: CitationQuery["area"]): PagePoint {

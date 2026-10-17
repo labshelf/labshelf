@@ -8,3 +8,4 @@ export type { ActiveServices } from "./registerCommands/index.js";
 export { registerAiCommands } from "./registerAiCommands";
 export { importPapers, importPapersFromDialog, queueTextLayersOfAdded } from "./importProgress";
 export { currentTextLayerJobs, onTextLayerJobsChanged, queueTextLayers } from "./textLayerQueue.js";
+export { paperPickItem } from "./paperPick/index.js";

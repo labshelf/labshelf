@@ -1,28 +1,34 @@
 // Registers the Writing sidebar view with its commands, builds, previews, citations and editing support.
+import * as path from "node:path";
 import * as vscode from "vscode";
 
-import type { ILogger, PaperRecord, PaperStatus } from "@labshelf/core";
+import { publishedVersionLookup, type ILogger, type PaperRecord, type PaperStatus, type PublishedVersionLookup } from "@labshelf/core";
 import {
   WritingProjects, registerMainCommands, registerMainStatusBar, registerProjectCommands,
   registerProjectItemCommands, registerReadingListCommands, ProjectBacklinkIndex, ProjectReadingLists, type WritingHost,
 } from "../../writing/index.js";
 import {
   BuildDiagnostics, BuildOutcomes, registerBuildCommand, registerCompilerStatusBar, registerLatexWorkshopNotice, registerPickCompiler,
-  type ProjectBuilders,
+  setEngine, type ProjectBuilders,
 } from "../../writing/build/index.js";
+import { IncludeOnlyState, type IncludeOnlyTarget } from "../../writing/build/node/index.js";
 import { registerInstallCommand } from "../../writing/install/index.js";
-import { registerEditorActions } from "../../writing/editorActions/index.js";
+import { registerEditorActions, registerInsertActions } from "../../writing/editorActions/index.js";
+import { registerProjectSearch } from "../../writing/search/index.js";
 import { registerMarkVersionCommand } from "../../writing/versions/index.js";
 import { registerTinymistBridge } from "../../writing/typst/index.js";
-import { BuildPreviews, FocusFollower, registerShowInPreview, registerShowPreview } from "../../writing/preview/index.js";
+import { BuildPreviews, CheckCounts, FocusFollower, registerShowInPreview, registerShowPreview } from "../../writing/preview/index.js";
 import { CiteSectionsCache, registerCitationProviders, type CitationWorkspace } from "../../writing/citations/index.js";
 import { readCiteSources } from "../../writing/citations/node/index.js";
 import { registerLabshelfLinks } from "../../writing/links/index.js";
 import { registerProjectSession, type ProjectSession } from "../../writing/session/index.js";
 import { registerProjectViews } from "../../writing/tree/index.js";
-import type { SidebarProjectsSource } from "../../writing/sidebar/index.js";
+import type { ProjectTreeMirror, SidebarProjectsSource } from "../../writing/sidebar/index.js";
 import { ProjectFigures, watchFigureFiles } from "../../writing/figures/index.js";
 import { registerLatexCommandCompletion, registerLatexEditing } from "../../writing/latexEditing/index.js";
+import { createProjectSourceReader } from "../../writing/latexEditing/project/index.js";
+import { activeProjectEditor } from "../../writing/preview/roots/index.js";
+import type { CitationFixDeps } from "../../writing/preview/citationFixes/index.js";
 import type { RegisterNodeWriting } from "../../writing/nodePort/index.js";
 import { registerWritingValues } from "../../writing/values/index.js";
 import { registerBibliographyLint } from "../../writing/bibliography/index.js";
@@ -37,6 +43,8 @@ export interface WritingViewHandles {
   backlinks: ProjectBacklinkIndex;
   /** The library sidebar renders it as the Projects section. */
   projectsSource: SidebarProjectsSource;
+  /** The library sidebar renders the open project's Files, Outline and Checklist from it. */
+  projectTrees: ProjectTreeMirror;
 }
 
 type Controller = LibraryRootController;
@@ -86,6 +94,9 @@ interface WritingParts {
   readingLists: ProjectReadingLists;
   listPapers: () => Promise<PaperRecord[]>;
   citeSections: CiteSectionsCache;
+  includeOnly: IncludeOnlyState;
+  includeOnlyTarget: IncludeOnlyTarget;
+  publishedLookup: PublishedVersionLookup;
 }
 
 function registerProjectAndFigureCommands(parts: WritingParts): void {
@@ -100,26 +111,45 @@ function registerProjectAndFigureCommands(parts: WritingParts): void {
 
 /** Saves the editors and builds a root of the project with the builder of its format, as Build Project does. */
 async function recompileRoot(
-  projects: WritingProjects, builders: () => ProjectBuilders | undefined, folder: string, root: string,
+  projects: WritingProjects, builders: () => ProjectBuilders | undefined, includeOnlyTarget: IncludeOnlyTarget, folder: string, root: string,
 ): Promise<unknown> {
   const entry = projects.list().find((project) => project.kind === "ready" && project.folder === folder);
-  const format = entry?.kind === "ready" ? entry.settings.format : undefined;
-  if (!format) { return undefined; }
+  if (entry?.kind !== "ready") { return undefined; }
+  const format = entry.settings.format;
   await vscode.workspace.saveAll(false);
-  return await builders()?.[format].request(folder, root, "command");
+  return await builders()?.[format].request(folder, root, "command", await includeOnlyTarget(entry, root));
+}
+
+/** What the preview's citation cards need to fix a citation, while a library is open. */
+function citationFixDeps(
+  controller: Controller, listPapers: () => Promise<PaperRecord[]>, publishedLookup: PublishedVersionLookup, projectFolder: string,
+): CitationFixDeps | undefined {
+  const services = controller.currentServices();
+  if (!services) { return undefined; }
+  return {
+    projectFolder, logger: services.logger, publishedLookup, importer: services.importer, ctx: services.mutations,
+    reindex: services.reindexLibrary, takenIds: () => [...services.library.snapshot.papers.keys()],
+    shelfKeys: async () => (await listPapers()).map((paper) => ({
+      key: paper.citeKey, authors: paper.authors ?? [], ...(paper.year !== undefined ? { year: String(paper.year) } : {}),
+    })),
+  };
 }
 
 function registerBuildAndPreviewCommands(
   parts: WritingParts, reader: HostAdapters["reader"], registerNodeWriting: RegisterNodeWriting, outcomes: BuildOutcomes,
 ): { session: ProjectSession; previews: BuildPreviews } {
-  const { context, controller, host, projects, figures, listPapers, citeSections } = parts;
+  const { context, controller, host, projects, figures, listPapers, includeOnly, includeOnlyTarget, publishedLookup } = parts;
   // The node registrations need `previews`, and `previews` needs their builders, so it reaches them through this variable once assigned.
   let node: ReturnType<RegisterNodeWriting> | undefined;
+  const counts = new CheckCounts();
   const previews = new BuildPreviews({
-    host, listPapers, citeSections: (project, logger) => citeSections.get(project, logger), paths: projects.paths,
+    host, listPapers, paths: projects.paths,
     highlightsOf: async (paperId) => await controller.currentServices()?.paperDataStore.getAnnotations(paperId) ?? [], data: projects.data, extensionUri: context.extensionUri, ...reader,
     buildRootOf: async (...args) => (node ? await node.buildRootOf(...args) : args[1]),
-    recompile: (folder, root) => recompileRoot(projects, () => node?.builders, folder, root),
+    recompile: (folder, root) => recompileRoot(projects, () => node?.builders, includeOnlyTarget, folder, root),
+    projects, checkCounts: counts, includeOnly,
+    setEngine: async (project, engine) => { await setEngine({ host, projects }, project, engine); },
+    fixes: (projectFolder) => citationFixDeps(controller, listPapers, publishedLookup, projectFolder),
   });
   const session = registerProjectSession({ context, host, projects, previews });
   const diagnostics = new BuildDiagnostics();
@@ -129,7 +159,7 @@ function registerBuildAndPreviewCommands(
     finished: (...args: Parameters<BuildPreviews["finished"]>) => { previews.finished(...args); outcomes.finished(...args); },
     hasPreview: (folder: string) => previews.hasPreview(folder),
   };
-  node = registerNodeWriting({ context, host, projects, figures, previews: builds, diagnostics, reader });
+  node = registerNodeWriting({ context, host, projects, figures, previews: builds, diagnostics, reader, onFindings: (folder, count) => counts.record(folder, count), includeOnlyTarget });
   const { builders, buildRootOf } = node;
   registerBuildCommand({ context, projects, builders, buildRootOf });
   context.subscriptions.push(new FocusFollower({ session, projects, buildRootOf, builders, previews, host }));
@@ -138,6 +168,8 @@ function registerBuildAndPreviewCommands(
   registerShowPreview({ context, projects, previews });
   registerShowInPreview({ context, projects, previews });
   registerEditorActions({ context, host });
+  registerInsertActions({ context, host, projects });
+  registerProjectSearch({ context, projects, host });
   registerPickCompiler({ context, host, projects });
   registerCompilerStatusBar(context, projects);
   registerLatexWorkshopNotice({ context, host, projects });
@@ -188,7 +220,20 @@ export function registerWritingView(
     readSources: readCiteSources, onDidSaveTextDocument: vscode.workspace.onDidSaveTextDocument, paths: projects.paths,
   });
   context.subscriptions.push(citeSections);
-  const parts: WritingParts = { context, controller, host, projects, figures, readingLists, listPapers, citeSections };
+  const includeOnly = new IncludeOnlyState({
+    readerFor: (folder) => createProjectSourceReader(vscode.Uri.file(folder), () => controller.currentServices()?.logger),
+  });
+  const includeOnlyTarget: IncludeOnlyTarget = async (project, root) => {
+    const editor = activeProjectEditor(projects.paths, project.folder);
+    if (!editor) { return undefined; }
+    const focused = path.relative(project.folder, editor.document.uri.fsPath).split(path.sep).join("/");
+    return includeOnly.target(project, root, focused);
+  };
+  // The library root, and with it the logger, can change after activation.
+  const publishedLookup = publishedVersionLookup({ fetch: globalThis.fetch, get logger() { return logger; } });
+  const parts: WritingParts = {
+    context, controller, host, projects, figures, readingLists, listPapers, citeSections, includeOnly, includeOnlyTarget, publishedLookup,
+  };
   registerProjectAndFigureCommands(parts);
   const outcomes = new BuildOutcomes();
   context.subscriptions.push(outcomes);
@@ -197,10 +242,10 @@ export function registerWritingView(
   // With no library open every id failed, so the Checklist reports the write as failed.
   const setStatus = async (ids: string[], status: PaperStatus): Promise<string[]> =>
     await controller.currentServices()?.paperService.updatePapersStatus(ids, status) ?? ids;
-  const projectsSource = registerProjectViews({
+  const { projectsSource, projectTrees } = registerProjectViews({
     context, projects, figures, session, logger, arcIcon, readingLists, outcomes, previews, onDidChangeBacklinks: backlinks.onDidChange, setStatus,
   });
   registerEditingSupport(parts);
   void projects.reload();
-  return { projects, backlinks, projectsSource };
+  return { projects, backlinks, projectsSource, projectTrees };
 }

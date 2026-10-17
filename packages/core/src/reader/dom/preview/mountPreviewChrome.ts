@@ -1,10 +1,14 @@
-// Composes a preview's chrome around the reader: the header above the pages, the footer below them, and the logs and page-count pieces beside them.
+// Composes a preview's chrome around the reader: the header above the pages, the footer below them, and the logs and problem marks over them.
 import { $ } from "../../../ui/dom/index.js";
-import type { PreviewRoots, WebviewToHost } from "../../index.js";
+import type { PageArea, PreviewRoots, WebviewToHost } from "../../index.js";
 import type { OutlineRow } from "../../logic/index.js";
-import { mountPreviewHeader, type RecompileState } from "./header/index.js";
+import type { ReaderContext } from "../session/index.js";
+import { mountExportMenu, mountLogsButton, mountOnlyToggle, mountOptionsMenu, mountPreviewHeader, type RecompileState } from "./header/index.js";
 import type { LogsView } from "./logs/index.js";
-import { mountPreviewFooter, PageChip, type PreviewBuildStatus } from "./footer/index.js";
+import { mountProblemMarks } from "./marks/index.js";
+import {
+  mountChecksButton, mountLimitMeter, mountPreviewFooter, mountProblems, type PreviewBuildStatus, type PreviewProblems,
+} from "./footer/index.js";
 
 export interface PreviewOutlineSource {
   load(): Promise<{ rows: OutlineRow[]; pages: Array<number | null> }>;
@@ -16,21 +20,25 @@ export interface PreviewOutlineSource {
 interface PreviewChromeDeps {
   post: (msg: WebviewToHost) => void;
   logs: Pick<LogsView, "open" | "setRoots">;
-  find: Parameters<typeof mountPreviewHeader>[0]["find"];
-  sidebar: Parameters<typeof mountPreviewHeader>[0]["sidebar"];
   /** The PDF outline the footer's breadcrumb follows. */
   outline: PreviewOutlineSource;
   /** Counts the body pages of the open document. */
   countBodyPages: () => Promise<number>;
+  /** The viewer the problem marks are drawn over. */
+  pdfViewer: ReaderContext["pdfViewer"];
+  /** Brings a problem's area into view. */
+  scrollTo(area: PageArea): void;
+  /** Draws the pages dark (true) or as light paper (false); the Dark PDF button calls it. */
+  setPagesDark(dark: boolean): void;
 }
 
 export interface PreviewChrome {
   applyRoots(roots: PreviewRoots): void;
   applyBuild(build: PreviewBuildStatus): void;
-  /** Follows the host's effective theme. */
-  setDark(dark: boolean): void;
   /** The open document was replaced, so its body pages are counted again. */
   documentChanged(): void;
+  /** Steps through the shown PDF's problems; the Next/Previous problem keys call it. */
+  problems: PreviewProblems;
 }
 
 function recompileState({ state, stale }: PreviewBuildStatus): RecompileState {
@@ -39,32 +47,40 @@ function recompileState({ state, stale }: PreviewBuildStatus): RecompileState {
 }
 
 /**
- * Inserts the preview header and footer into the shell and switches the document to preview layout.
+ * Inserts the preview header and footer into the shell, draws the problem marks over the pages and switches the document to preview layout.
  * @returns handles the reader's host messages call to refresh the chrome.
  */
-export function mountPreviewChrome({ post, logs, find, sidebar, outline, countBodyPages }: PreviewChromeDeps): PreviewChrome {
-  const header = mountPreviewHeader({ post, find, sidebar, pill: $("status-pill") });
+export function mountPreviewChrome({ post, logs, outline, countBodyPages, pdfViewer, scrollTo, setPagesDark }: PreviewChromeDeps): PreviewChrome {
+  const header = mountPreviewHeader({ post, pill: $("status-pill"), setPagesDark });
   $("viewerContainer").before(header.element);
   document.documentElement.classList.add("rd-preview");
   const footer = mountPreviewFooter({ openLogs: (path) => logs.open(path), outline });
   $("viewerContainer").after(footer.element);
-  footer.slots.limit.hidden = false;
-  const chip = new PageChip({ actions: footer.slots.limit, post, countBodyPages });
+
+  const marks = mountProblemMarks({ container: $("viewerContainer"), pdfViewer });
+  const options = mountOptionsMenu(header.slots.options, { post });
+  const only = mountOnlyToggle(header.slots.only, { post });
+  const logsButton = mountLogsButton(header.slots.logs, { post, openLogs: (path) => logs.open(path) });
+  const exportMenu = mountExportMenu(header.slots.export, { post });
+  const problems = mountProblems(footer.slots.cites, { marks, scrollTo, post });
+  const limit = mountLimitMeter(footer.slots.limit, { post, countBodyPages });
+  const checks = mountChecksButton(footer.slots.checks, { post });
 
   return {
     applyRoots(roots) {
       logs.setRoots(roots);
       footer.setRoots(roots);
-      chip.setRoots(roots);
+      for (const piece of [options, only, logsButton, exportMenu, problems, limit, checks]) { piece.setRoots(roots); }
+      marks.setProblems(roots.roots.find((r) => r.path === roots.shown)?.pdfProblems ?? []);
     },
     applyBuild(build) {
       header.setBuild(recompileState(build));
       footer.setBuild(build);
     },
-    setDark: (dark) => header.setDark(dark),
     documentChanged() {
       footer.documentChanged();
-      chip.documentChanged();
+      limit.documentChanged();
     },
+    problems,
   };
 }

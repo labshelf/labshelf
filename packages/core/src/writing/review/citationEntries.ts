@@ -9,8 +9,6 @@ import type { QuotedHighlight } from "./quotedHighlights.js";
 /** What the card shows beyond the library record: highlights by paper id; the rest by cite key. */
 export interface CitationDetails {
   highlights?: ReadonlyMap<string, QuotedHighlight[]>;
-  /** Titles of the sections that cite the key. */
-  citedIn?: ReadonlyMap<string, string[]>;
   /** The `.bib` record of a key, shown only when no library paper has the key. */
   bib?: ReadonlyMap<string, CitationBibEntry>;
   /** The citing command at the queried place. */
@@ -26,9 +24,8 @@ function folderOf(path: string): string | undefined {
   return folders.length > 0 ? folders.join(" / ") : undefined;
 }
 
-function citedPaper(key: string, paper: PaperRecord, details: CitationDetails): CitationCardPaper {
+function citedPaper(paper: PaperRecord, details: CitationDetails): CitationCardPaper {
   const highlights = details.highlights?.get(paper.id);
-  const citedIn = details.citedIn?.get(key);
   const folder = folderOf(paper.path);
   return {
     id: paper.id,
@@ -36,11 +33,9 @@ function citedPaper(key: string, paper: PaperRecord, details: CitationDetails): 
     authors: paper.authors ?? [],
     status: paper.status,
     ...(paper.year !== undefined ? { year: paper.year } : {}),
-    ...(paper.summary ? { summary: paper.summary } : {}),
     ...(paper.journal ? { venue: paper.journal } : {}),
     ...(folder ? { folder } : {}),
     ...(highlights ? { highlights } : {}),
-    ...(citedIn ? { citedIn } : {}),
   };
 }
 
@@ -54,7 +49,7 @@ export function citationEntries(keys: readonly string[], papers: readonly PaperR
     const citedPage = details.citedPage?.get(key);
     return {
       key,
-      ...(paper ? { paper: citedPaper(key, paper, details) } : {}),
+      ...(paper ? { paper: citedPaper(paper, details) } : {}),
       ...(bib ? { bib } : {}),
       ...(site ? { site } : {}),
       ...(citedPage !== undefined ? { citedPage } : {}),

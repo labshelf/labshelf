@@ -24,13 +24,13 @@ export function createViewer(
   pdfDocument: PDFDocumentProxy,
   container: HTMLDivElement,
   viewer: HTMLDivElement,
-  effectiveTheme: string,
+  pageTheme: string,
 ): ViewerParts {
   const eventBus = new viewerLib.EventBus();
   // A link's stored zoom ("XYZ ... 0.8") would silently undo the reader's chosen zoom on every click.
   const linkService = new viewerLib.PDFLinkService({ eventBus, ignoreDestinationZoom: true });
   const { findController, markFindOrigin } = createReaderFind(viewerLib, container, linkService, eventBus);
-  const preset = presetFor(effectiveTheme);
+  const preset = presetFor(pageTheme);
   const pdfViewer = new viewerLib.PDFViewer({
     container,
     viewer,

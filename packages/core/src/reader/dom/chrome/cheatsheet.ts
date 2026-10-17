@@ -30,7 +30,7 @@ export class Cheatsheet {
   }
 
   private open(): void {
-    const rows = cheatsheetRows({ vimKeys: this.ctx.prefs.vimKeys, isMac: this.ctx.boot.isMac });
+    const rows = cheatsheetRows({ vimKeys: this.ctx.prefs.vimKeys, isMac: this.ctx.boot.isMac, preview: this.ctx.boot.preview });
     const card = el("div", { class: "rd-cheat-card", role: "dialog", "aria-label": "Keyboard shortcuts" });
     card.append(el("div", { class: "rd-cheat-title" }, "Keyboard shortcuts"));
     const grid = el("div", { class: "rd-cheat-grid" });

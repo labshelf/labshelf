@@ -4,9 +4,11 @@ import { el } from "../../../ui/dom/index.js";
 import { icon } from "../../../ui/index.js";
 import type { LibraryTree, TagCount } from "../../derive/index.js";
 import { tagQuery } from "../../searchQueries.js";
-import { PROJECT_HEADER_ACTIONS, projectNodes, type SidebarProject, type SidebarProjectActions } from "./sidebarProjects.js";
-import { GROUP_ROW_DEPTH, folderRow, paperRow, rowKey, allPapersRow, tagRow } from "./sidebarRows.js";
+import { PROJECT_LIST_ACTIONS, archivedNodes, projectTreeNodes, type SidebarProject, type SidebarProjectActions } from "./sidebarProjects.js";
+import { GROUP_ROW_DEPTH, exploreTemplatesRow, folderRow, paperRow, rowKey, allPapersRow, tagRow } from "./sidebarRows.js";
 import { groupRow, sectionRow, type GroupId, type SectionId } from "./sidebarSections.js";
+import { appendOpenProject } from "./sidebarOpenProject.js";
+import type { SidebarOpenProject } from "../../sidebarTrees.js";
 
 /** Every focusable row: section headers, group headings and tree rows. */
 export const NAV_ROWS = ".tree-row, .tree-section, .tree-group";
@@ -36,6 +38,12 @@ export interface SidebarState {
   /** Absent when the host has no Projects section. */
   projects: SidebarProjectActions | undefined;
   projectList: readonly SidebarProject[];
+  /** The project open in the window; its trees lead the Projects section. */
+  openProject: SidebarOpenProject | null;
+  /** Fold state of the open project's tree nodes the user toggled, keyed `<view>:<key>`. */
+  treeOpen: Map<string, boolean>;
+  /** The open inline add input of a project tree, with its text so far, kept across renders. */
+  treeInput: { view: string; key: string; placeholder: string; text: string } | null;
   /** Lets the host accept drops on a folder row; called on every render. */
   dropTarget?: ((row: HTMLElement, path: string) => void) | undefined;
   /** The focused row's key (see `rowKey`). */
@@ -116,8 +124,19 @@ function appendLibrary(t: SidebarState, tree: LibraryTree, frag: DocumentFragmen
 
 function appendProjects(t: SidebarState, frag: DocumentFragment): void {
   const open = !t.collapsed.has("projects");
-  const body = appendPane(frag, "projects", sectionRow("projects", "Projects", open, PROJECT_HEADER_ACTIONS), open);
-  if (open) body.append(...projectNodes(t.projectList));
+  const body = appendPane(frag, "projects", sectionRow("projects", "Projects", open), open);
+  if (!open) return;
+  body.classList.add("tree-pane-stack");
+  appendOpenProject(t, body, appendPane, () => render(t));
+  body.append(exploreTemplatesRow());
+  const listOpen = !t.collapsed.has("projects.list");
+  const list = appendPane(body, "projects.list", groupRow("projects.list", "My projects", listOpen, PROJECT_LIST_ACTIONS), listOpen);
+  if (listOpen) list.append(...projectTreeNodes(t.projectList, t.expanded));
+  const archived = archivedNodes(t.projectList);
+  if (archived.length === 0) return;
+  const archivedOpen = !t.collapsed.has("projects.archived");
+  const archive = appendPane(body, "projects.archived", groupRow("projects.archived", "Archived", archivedOpen), archivedOpen);
+  if (archivedOpen) archive.append(...archived);
 }
 
 export function render(t: SidebarState): void {

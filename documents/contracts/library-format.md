@@ -198,6 +198,8 @@ A project's Checklist keeps the items its users add by hand in `<project>/.labsh
 ```
 
 - `id` is a non-empty string, unique in the file, and never reused. `text` is a non-empty string. `done` is a boolean. `createdAt` and `doneAt` are ISO timestamps; `doneAt` is present only while `done` is true.
+- `group` is optional: the By kind group the item sits in, one of `"todo"`, `"ref"`, `"figure"`, `"pages"` or `"reading"`. Without it, or with any other value (kept on rewrite), the item sits in My items.
+- `section` is optional: the By section group id (a non-empty string of at most 200 characters) the item sits in. Without it, or when invalid (kept on rewrite), the item sits in Whole project; an id that matches no section shows the item in Whole project too. In By kind the item sits in My items unless it has a `group`.
 - A missing file reads as no items.
 - An item with a missing or invalid key is not shown and is kept unchanged on rewrite. Unknown keys, at the top level and in items, are preserved on rewrite.
 - A file that is not a JSON object with an `items` array is reported and never overwritten.

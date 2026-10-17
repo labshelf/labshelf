@@ -1,5 +1,5 @@
 // Chooses what the preview footer's status says from the build state and the build roots.
-import { relativeTime } from "../../../../library/format/elapsedTime.js";
+import { compactTime } from "../../../../library/format/elapsedTime.js";
 import type { BuildState, PreviewRoot, PreviewRoots } from "../../../index.js";
 import { fileName } from "../fileName.js";
 
@@ -22,6 +22,11 @@ export interface BuildStatusText {
 }
 
 const errorCount = (root: PreviewRoot): number => root.problems.filter((p) => p.severity === "error").length;
+/** Sentence text for the build's age: "just now", "2 min ago", "3 h ago". */
+function age(builtAt: number, now: number): string {
+  const elapsed = compactTime(builtAt, now);
+  return elapsed === "now" ? "just now" : `${elapsed} ago`;
+}
 const count = (n: number): string => `${n} ${n === 1 ? "error" : "errors"}`;
 
 function failure(label: string, errors: number, separator: string, logsRoot?: string): BuildStatusText {
@@ -40,7 +45,7 @@ export function buildStatusText(roots: PreviewRoots | null, build: PreviewBuildS
   if (focused?.failed) { return failure(fileName(focused.path), errorCount(focused), ": ", focused.path); }
   if (build.stale) { return { text: "Source changed", tone: "warning" }; }
   if (build.builtAt !== undefined) {
-    return { text: `Compiled ${relativeTime(new Date(build.builtAt).toISOString(), now)}`, tone: "", timed: true };
+    return { text: `Compiled ${age(build.builtAt, now)}`, tone: "", timed: true };
   }
   return { text: "", tone: "" };
 }

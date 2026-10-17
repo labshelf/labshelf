@@ -1,4 +1,4 @@
-// Creates the Files, Outline, Checklist, Figures and Versions views of the open project with their commands.
+// Creates the open project's views with their commands: Figures and Versions as native trees, Files, Outline and Checklist through the sidebar mirror.
 import { access } from "node:fs/promises";
 import * as vscode from "vscode";
 
@@ -10,12 +10,12 @@ import { registerChecklistView } from "../checklist/index.js";
 import { OutlineTreeProvider, REVEAL_OUTLINE_COMMAND, registerTypstOutline, revealOutline } from "../outline/index.js";
 import { ProjectFiguresView, type ProjectFigures } from "../figures/index.js";
 import type { BuildPreviews } from "../preview/index.js";
-import { SidebarProjectsSource } from "../sidebar/index.js";
+import { ProjectTreeMirror, SidebarProjectsSource, type ProjectTreeSpec } from "../sidebar/index.js";
 import { ProjectVersionsView } from "../versions/index.js";
 import type { ProjectReadingLists } from "../readingList/index.js";
 import type { ProjectSession, WritingProjects } from "../session/index.js";
 import { registerProjectFileCommands } from "./projectFileCommands.js";
-import { ProjectFilesProvider } from "./projectFilesProvider.js";
+import { ProjectFilesProvider, type ProjectFileNode } from "./projectFilesProvider.js";
 import { watchProjectFiles } from "./projectFilesWatcher.js";
 
 /** Reports every create, change or delete under a project folder. */
@@ -38,8 +38,36 @@ interface ProjectViewsDeps {
   setStatus: (paperIds: string[], status: PaperStatus) => Promise<string[]>;
 }
 
-/** @returns the source of the sidebar Projects section, which the library sidebar view renders */
-export function registerProjectViews(deps: ProjectViewsDeps): SidebarProjectsSource {
+/** What the library sidebar view renders in its Projects section. */
+export interface ProjectViewsHandles {
+  projectsSource: SidebarProjectsSource;
+  projectTrees: ProjectTreeMirror;
+}
+
+const RENAME = { label: "Rename…", action: "rename", command: "labshelf.writing.renameFile" };
+const DELETE = { label: "Delete", action: "delete", danger: true, command: "labshelf.writing.deleteFile" };
+
+function filesSpec(provider: ProjectFilesProvider): ProjectTreeSpec<ProjectFileNode> {
+  const run = (id: string) => (): unknown => vscode.commands.executeCommand(id);
+  return {
+    view: "files", title: "Files", provider, empty: "No files.",
+    actions: [
+      { action: "newFile", label: "New file", icon: "new-file", run: run("labshelf.writing.newFile") },
+      { action: "newFolder", label: "New folder", icon: "new-folder", run: run("labshelf.writing.newFolder") },
+    ],
+    menus: {
+      labshelfProjectFolder: [
+        { label: "New File…", action: "newFile", command: "labshelf.writing.newFile" },
+        { label: "New Folder…", action: "newFolder", command: "labshelf.writing.newFolder" },
+        RENAME, DELETE,
+      ],
+      labshelfProjectFile: [RENAME, DELETE],
+      labshelfProjectSource: [{ label: "Set as Main File", action: "setMain", command: "labshelf.writing.setMain" }, RENAME, DELETE],
+    },
+  };
+}
+
+export function registerProjectViews(deps: ProjectViewsDeps): ProjectViewsHandles {
   const { context, projects, figures, session, logger, arcIcon, readingLists, outcomes } = deps;
   const projectsSource = new SidebarProjectsSource({
     projects, logger, readingLists, buildOutcomes: outcomes, readSignals: readChecklistSignals, watchFolder,
@@ -62,14 +90,17 @@ export function registerProjectViews(deps: ProjectViewsDeps): SidebarProjectsSou
     versionsTree,
     watchProjectFiles(session, () => void versionsView.refresh(), ".labshelf/versions/**"),
     watchProjectFiles(session, () => files.refresh()),
-    vscode.window.createTreeView("labshelf.writing.files", { treeDataProvider: files }),
-    vscode.window.createTreeView("labshelf.writing.outline", { treeDataProvider: outline }),
     figuresTree,
     outline.follow(),
     vscode.commands.registerCommand(REVEAL_OUTLINE_COMMAND, revealOutline),
     registerTypstOutline(),
   );
   registerProjectFileCommands({ context, session, logger });
-  registerChecklistView({ context, session, previews: deps.previews, readingLists, onDidChangeBacklinks: deps.onDidChangeBacklinks, setStatus: deps.setStatus, logger, arcIcon });
-  return projectsSource;
+  const checklist = registerChecklistView({ context, session, previews: deps.previews, readingLists, onDidChangeBacklinks: deps.onDidChangeBacklinks, setStatus: deps.setStatus, logger });
+  const outlineSpec: ProjectTreeSpec<unknown> = {
+    view: "outline", title: "Outline", provider: outline, empty: "Open a source file to see its outline.", actions: [], menus: {},
+  };
+  const projectTrees = new ProjectTreeMirror({ session, logger, specs: [filesSpec(files), outlineSpec, checklist] as Array<ProjectTreeSpec<unknown>> });
+  context.subscriptions.push(projectTrees);
+  return { projectsSource, projectTrees };
 }

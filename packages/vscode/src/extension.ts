@@ -56,7 +56,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   const writing = registerWritingView(context, controller, adapters.reader, adapters, registerNodeWriting);
   const { librarySidebar, showFolderInSidebar, showPaperInSidebar, refreshLibraryViews: refreshViews } = registerLibrarySidebar({
-    context, events, controller, papersRootUri, folderHost, adapters, projects: writing.projectsSource,
+    context, events, controller, papersRootUri, folderHost, adapters, projects: writing.projectsSource, projectTrees: writing.projectTrees,
   });
   refreshLibraryViews = refreshViews;
 

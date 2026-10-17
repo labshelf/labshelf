@@ -23,6 +23,10 @@ export interface ProjectSettings extends UserKeys {
   bibliography?: string | undefined;
   /** Typst compiler version of the last build. */
   typst?: string | undefined;
+  /** Sidebar folder the project sits in, segments joined by "/"; absent at the top level. */
+  folder?: string | undefined;
+  /** Archived projects leave My projects for the Archived group. */
+  archived?: boolean | undefined;
   /** Papers the project cites plus those the user added, each with its DOI when known. */
   papers?: ListedPaper[] | undefined;
 }
@@ -78,6 +82,14 @@ export function parseProjectFile(text: string): ProjectFileResult {
     }
     settings[key] = value ?? undefined;
   }
+  if (typeof raw["folder"] === "string") {
+    const folder = raw["folder"].split("/").map((segment) => segment.trim()).filter(Boolean).join("/");
+    settings.folder = folder || undefined;
+  } else if (raw["folder"] !== undefined && raw["folder"] !== null) { return { ok: false, reason: "folder must be text" }; }
+  if (raw["archived"] !== undefined && raw["archived"] !== null && typeof raw["archived"] !== "boolean") {
+    return { ok: false, reason: "archived must be true or false" };
+  }
+  if (raw["archived"] === true) { settings.archived = true; }
   const userKeys = readUserKeys(raw);
   if (typeof userKeys === "string") { return { ok: false, reason: userKeys }; }
   if (raw["papers"] !== undefined && raw["papers"] !== null) {

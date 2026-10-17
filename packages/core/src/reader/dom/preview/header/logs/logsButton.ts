@@ -33,8 +33,8 @@ export function mountLogsButton(slot: HTMLElement, deps: LogsButtonDeps): { setR
   const button = iconButton(icon("log"), "Logs");
   button.setAttribute("aria-haspopup", "menu");
   button.setAttribute("aria-expanded", "false");
-  const badge = el("span", { class: "rd-logs-badge", "aria-hidden": "true", hidden: true });
-  button.append(badge);
+  const count = el("span", { class: "rd-logs-count", "aria-hidden": "true", hidden: true });
+  button.append(count);
   let shown: PreviewRoot | undefined;
 
   button.addEventListener("click", () => {
@@ -48,9 +48,9 @@ export function mountLogsButton(slot: HTMLElement, deps: LogsButtonDeps): { setR
       shown = roots.roots.find((r) => r.path === roots.shown);
       const problems = shown?.problems.filter(isProblem) ?? [];
       const label = problems.length === 0 ? "Logs" : `Logs, ${problems.length} ${problems.length === 1 ? "problem" : "problems"}`;
-      badge.hidden = problems.length === 0;
-      badge.textContent = String(problems.length);
-      badge.dataset["tone"] = problems.some((p) => p.severity === "error") ? "error" : "warning";
+      count.hidden = problems.length === 0;
+      count.textContent = String(problems.length);
+      count.dataset["tone"] = problems.some((p) => p.severity === "error") ? "error" : "warning";
       button.title = label;
       button.setAttribute("aria-label", label);
     },

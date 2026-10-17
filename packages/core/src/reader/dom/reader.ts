@@ -53,11 +53,12 @@ export function startReader({ boot, transport, perf, pdf }: ReaderStartOptions):
   const errorMsg = $("error-msg");
   const restore = new PositionRestore(host);
   const theme = new ThemeController(container, boot.themePreference, boot.effectiveTheme);
+  if (boot.preview) { theme.lockPages("light"); }
   host.on("applyTheme", (msg) => theme.apply(msg.theme, msg.effectiveTheme));
 
   async function start(): Promise<void> {
     const loaded = await loadPdf(boot.assets, perf, pdf);
-    const parts = createViewer(loaded.viewerLib, loaded.pdfDocument, container, $<HTMLDivElement>("viewer"), theme.effective);
+    const parts = createViewer(loaded.viewerLib, loaded.pdfDocument, container, $<HTMLDivElement>("viewer"), theme.pageTheme);
     const ctx: ReaderContext = { boot, host, container, prefs: boot.prefs, ...loaded, ...parts };
     theme.attach(ctx.pdfViewer);
     wireReader(ctx, theme, perf, restore, loadingMsg, new DocumentReloader(ctx, pdf ?? {}));
@@ -81,8 +82,6 @@ function wireReader(
   reloader: DocumentReloader,
 ): void {
   const ui = buildReaderUi(ctx, theme);
-  ui.previewChrome?.setDark(theme.effective === "dark");
-  theme.onEffectiveChange((effective) => ui.previewChrome?.setDark(effective === "dark"));
   const citations = new PreviewCitations(ctx);
   const hover = new DeferredHover(ctx, theme, citations);
   const keyboard = new Keyboard(ctx, createActionRunner({ ctx, ui, hover }));

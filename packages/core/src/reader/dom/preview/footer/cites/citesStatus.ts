@@ -1,4 +1,4 @@
-// Shows the cite count and the problems left in the shown PDF, and steps through them with prev/next arrows.
+// Shows the cite count and the problems left in the shown PDF, and steps through them with prev/next chevrons.
 import { icon } from "../../../../../ui/index.js";
 import { el, toast } from "../../../../../ui/dom/index.js";
 import type { PageArea, PdfProblem, PreviewRoots, WebviewToHost } from "../../../../index.js";
@@ -18,7 +18,7 @@ export interface PreviewProblems {
 
 const plural = (n: number, noun: string): string => `${n} ${noun}${n === 1 ? "" : "s"}`;
 
-function arrow(label: string, glyph: "arrow-left" | "arrow-right", onClick: () => void): HTMLButtonElement {
+function arrow(label: string, glyph: "chevron-left" | "chevron-right", onClick: () => void): HTMLButtonElement {
   const button = el("button", { class: "rd-preview-problem-step", type: "button", title: label, "aria-label": label, html: icon(glyph) });
   button.addEventListener("click", onClick);
   return button;
@@ -59,11 +59,14 @@ export function mountProblems(slot: HTMLElement, { marks, scrollTo, post }: Prob
       at = -1;
       const cites = shown?.cites;
       slot.hidden = cites === undefined && problems.length === 0;
-      const text = `${plural(cites ?? 0, "cite")}${problems.length > 0 ? ` · ${problems.length} to fix` : ""}`;
-      const status = el("span", { class: "rd-preview-cites", role: "status", "aria-live": "polite" }, text);
+      const status = el("span", { class: "rd-preview-cites", role: "status", "aria-live": "polite" }, plural(cites ?? 0, "cite"));
+      if (problems.length > 0) {
+        const tone = problems.some((p) => p.kind === "undefinedCitation") ? "error" : "warning";
+        status.append(" · ", el("span", { class: "rd-preview-to-fix", "data-tone": tone }, `${problems.length} to fix`));
+      }
       slot.replaceChildren(status);
       if (problems.length > 0) {
-        slot.append(arrow("Previous problem", "arrow-left", () => step(-1)), arrow("Next problem", "arrow-right", () => step(1)));
+        slot.append(arrow("Previous problem", "chevron-left", () => step(-1)), arrow("Next problem", "chevron-right", () => step(1)));
       }
     },
   };

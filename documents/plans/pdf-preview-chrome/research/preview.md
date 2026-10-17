@@ -15,5 +15,5 @@ source: Explore scout, 2026-10-16 (refresh for session 2b)
 - **Shell** (`reader/shell.ts:7-22`): `#app > aside#sidebar, #sidebar-resizer, main#pdf-shell > #toolbar, #find-bar, #viewerContainer > #viewer, #status-pill, #build-banner, #loading-msg, #error-msg`; then `#selection-toolbar`, `#hover-popup`, `#cheatsheet`.
 - **Outline:** breadcrumb uses `preview/outlineSource.ts` `previewOutlineSource(ctx)` → `{load, currentPage, onPageChange, jump}`.
 - **Tests:** `packages/core/__tests__/reader/dom/preview/{mountPreviewChrome.test.ts, footer/, header/, logs/}`.
-- **CSS:** `reader/dom/styles/preview.css` (62 lines) `@import`s `preview-header.css` and `preview-footer.css`; new preview CSS hangs off `preview.css` (3b adds the import).
+- **CSS:** `reader/dom/styles/preview.css` `@import`s the parts in `styles/preview/` (header, footer, limit, logs-button, marks, options, only).
 - **Not rechecked:** `reader.css` line count, `core/package.json` CSS exports.

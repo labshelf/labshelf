@@ -7,11 +7,11 @@ import type { ReadyProject } from "../../mainDocument.js";
 import type { BuildPreviewsDeps } from "../previewPanelInput.js";
 import type { BodyPagesCount } from "../previewPorts.js";
 import { PREVIEW_LOG_MODULE } from "../previewStrings.js";
-import { focusedRoot, previewRootsMessage } from "../roots/index.js";
 import { ProjectSynctex, revealInPreview } from "../sourceLinks/index.js";
 import { StaleSources, vscodeSourceEvents } from "../stale/index.js";
 import { previewPanelSource } from "./previewPanelSource.js";
 import { RootBuilds } from "./rootBuilds.js";
+import { RootsPublisher } from "./rootsPublisher.js";
 
 export class BuildPreviews implements BuildListener {
   private readonly panels = new Map<string, ReaderPanel>();
@@ -20,6 +20,7 @@ export class BuildPreviews implements BuildListener {
   private readonly builds: RootBuilds;
   private readonly synctex: ProjectSynctex;
   private readonly stale: StaleSources;
+  private readonly roots: RootsPublisher;
   private readonly bodyPagesCounted = new vscode.EventEmitter<BodyPagesCount>();
   /** Fires when a preview's reader reports the body pages of the root it shows. */
   readonly onDidCountBodyPages = this.bodyPagesCounted.event;
@@ -28,11 +29,18 @@ export class BuildPreviews implements BuildListener {
     this.builds = new RootBuilds(deps.paths);
     this.synctex = new ProjectSynctex(deps.host, deps.paths, deps.data);
     this.stale = new StaleSources(vscodeSourceEvents, Date.now, (folder, root) => this.resendStatus(folder, root));
+    this.roots = new RootsPublisher(deps, { panels: this.panels, shown: this.shown, builds: this.builds, synctex: this.synctex });
   }
 
   dispose(): void {
+    this.roots.dispose();
     this.stale.dispose();
     this.bodyPagesCounted.dispose();
+  }
+
+  /** Sends the roots of every open preview again. */
+  resendRoots(): void {
+    this.roots.resendAll();
   }
 
   // An edit sends the shown root's state again with `stale` set; only a successful build clears it.
@@ -51,10 +59,11 @@ export class BuildPreviews implements BuildListener {
 
   /** Reloads an open preview after a build of the root it shows, or opens one when the build was asked for with the command. */
   finished(project: ReadyProject, root: string, result: FinishedBuild, trigger: BuildTrigger): void {
+    this.roots.invalidate(project.folder, root);
     this.applyFinished(project, root, result, trigger);
     // A failed main build opens the reader's logs once the reader knows the roots.
     const logsOf = result.status === "failed" && root === project.main ? root : undefined;
-    void this.publishRoots(project).then(() => { if (logsOf !== undefined) { this.panels.get(project.folder)?.controller.showLogs(logsOf); } });
+    void this.roots.publish(project).then(() => { if (logsOf !== undefined) { this.panels.get(project.folder)?.controller.showLogs(logsOf); } });
   }
 
   private applyFinished(project: ReadyProject, root: string, result: FinishedBuild, trigger: BuildTrigger): void {
@@ -117,6 +126,7 @@ export class BuildPreviews implements BuildListener {
       const panel = ReaderPanel.createOrShow({ ...this.deps, logger: session.logger }, previewPanelSource({
         deps: this.deps, logger: session.logger, project, pdf, builds: this.builds, synctex: this.synctex, beside: options.beside,
         shownRoot: () => this.shown.get(project.folder),
+        resendRoots: () => this.roots.resend(project.folder),
         bodyPages: (reported, contentPages) => this.bodyPagesCounted.fire({ folder: project.folder, root: reported, contentPages }),
         reveal: (file, line) => this.revealSource(project, file, line),
         onClosed: () => { this.panels.delete(project.folder); this.shown.delete(project.folder); },
@@ -125,7 +135,7 @@ export class BuildPreviews implements BuildListener {
       this.shown.set(project.folder, root);
       const last = this.builds.stateOf(project.folder, root);
       if (last) { panel.controller.setBuildStatus(last.state, last.errors, this.stale.statusOf(project.folder, root)); }
-      void this.publishRoots(project);
+      void this.roots.publish(project);
       void session.logger.log("INFO", PREVIEW_LOG_MODULE, "Opened preview", { projectFolder: project.folder, root, pdf });
     } catch (error) {
       void session.logger.error(PREVIEW_LOG_MODULE, error, { projectFolder: project.folder, root, pdf });
@@ -140,26 +150,8 @@ export class BuildPreviews implements BuildListener {
     // The banner follows the new root: its running or failed build, or cleared after a success.
     const last = this.builds.stateOf(project.folder, root) ?? { state: "succeeded" as const, errors: 0 };
     panel.controller.setBuildStatus(last.state, last.errors, this.stale.statusOf(project.folder, root));
-    void this.publishRoots(project);
+    void this.roots.publish(project);
     void this.deps.host.current()?.logger.log("INFO", PREVIEW_LOG_MODULE, "Switched preview to another root", { projectFolder: project.folder, root, pdf });
-  }
-
-  // Tells the open preview which roots exist and which one each of main, the editor focus and the reader shows.
-  private async publishRoots(project: ReadyProject): Promise<void> {
-    const panel = this.panels.get(project.folder);
-    const shown = this.shown.get(project.folder);
-    if (!panel || shown === undefined) { return; }
-    const { paths, data } = this.deps;
-    try {
-      const focused = await focusedRoot(paths, this.deps.buildRootOf, project);
-      panel.controller.setPreviewRoots(await previewRootsMessage({
-        paths, data, project, focused, shown, built: this.builds.builtRoots(project.folder),
-        problemsOf: (root) => this.builds.problemsOf(project.folder, root) ?? [],
-        failed: (root) => this.builds.stateOf(project.folder, root)?.state === "failed",
-      }));
-    } catch (error) {
-      void this.deps.host.current()?.logger.error(PREVIEW_LOG_MODULE, error, { projectFolder: project.folder, shown });
-    }
   }
 
   /** Scrolls the project's open preview to the output of a source line (1-based) and marks it. */

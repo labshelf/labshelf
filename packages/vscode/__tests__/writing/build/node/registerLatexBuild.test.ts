@@ -22,12 +22,13 @@ const save = (fsPath: string) => workspace._fireDocumentEvent("save", doc(fsPath
 
 let context: { subscriptions: { dispose(): void }[]; globalStorageUri: vscode.Uri };
 
-function setup(host = fakeHost()) {
+function setup(host = fakeHost(), includeOnlyTarget?: jest.Mock) {
   const projects = fakeProjects([readyEntry("/p/tex", { main: "main.tex" }), readyEntry("/p/typ", { main: "main.typ", settings: { id: "typ", format: "typst" } })]);
   context = { subscriptions: [], globalStorageUri: vscode.Uri.file("/storage") };
   registerLatexBuild({
     context: context as never, host, projects: projects as never,
     diagnostics: { publish: jest.fn() }, previews: { building: jest.fn(), finished: jest.fn() },
+    ...(includeOnlyTarget ? { includeOnlyTarget } : {}),
   });
 }
 
@@ -51,7 +52,16 @@ describe("registerLatexBuild saves", () => {
     expect(request).not.toHaveBeenCalled();
     await jest.advanceTimersByTimeAsync(1);
     expect(rootOf).toHaveBeenCalledWith("/p/tex", "main.tex", "/p/tex/chapters/one.tex");
-    expect(request).toHaveBeenCalledWith("/p/tex", "main.tex", "save");
+    expect(request).toHaveBeenCalledWith("/p/tex", "main.tex", "save", undefined);
+  });
+
+  it("passes the include-only target of the root to the build", async () => {
+    const target = jest.fn(async () => "chapters/one");
+    setup(fakeHost(), target);
+    save("/p/tex/chapters/one.tex");
+    await jest.advanceTimersByTimeAsync(300);
+    expect(target).toHaveBeenCalledWith(expect.objectContaining({ folder: "/p/tex" }), "main.tex");
+    expect(request).toHaveBeenCalledWith("/p/tex", "main.tex", "save", "chapters/one");
   });
 
   it("builds a second root itself, one build per root for a burst", async () => {
@@ -96,7 +106,7 @@ describe("registerLatexBuild auto compile", () => {
     setAutoCompile(true);
     save("/p/tex/main.tex");
     await jest.advanceTimersByTimeAsync(300);
-    expect(request).toHaveBeenCalledWith("/p/tex", "main.tex", "save");
+    expect(request).toHaveBeenCalledWith("/p/tex", "main.tex", "save", undefined);
   });
 
   it("logs the skip once per setting value, not once per save", async () => {

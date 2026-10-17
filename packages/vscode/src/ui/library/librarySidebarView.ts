@@ -1,18 +1,26 @@
 // Hosts the Library sidebar webview: sends it the folders and papers, and runs what its rows ask for.
 import * as vscode from "vscode";
-import { PAPERS_DIR, folderTreeFromSnapshot, type LibrarySnapshot, type PathOps } from "@labshelf/core";
+import { PAPERS_DIR, folderTreeFromSnapshot, type LibrarySnapshot, type PathOps, type SidebarOpenProject } from "@labshelf/core";
 import { onPaperChange, type LibraryEvents } from "../../events/index.js";
 import { libraryBundleDirectory, libraryPaths, listPanelHtml, type LibraryPaths } from "../list/index.js";
 import { rootNode, type LibraryNode } from "./libraryNode.js";
+import { runProjectEdit, runProjectFolderAction, type ProjectOrganizerPort } from "./projectOrganizer.js";
 import { handleProjectMessage, isProjectMessage, type SidebarProjectsPort } from "./sidebarProjectMessages.js";
-import { parseSidebarMessage, type HostToSidebar, type SidebarProjectItem, type SidebarToHost } from "./sidebarMessages.js";
+import { parseSidebarMessage, type HostToSidebar, type ProjectTreeMessage, type SidebarProjectItem, type SidebarToHost } from "./sidebarMessages.js";
 
 const REFRESH_DEBOUNCE_MS = 60;
 
 /** The writing projects the Projects section lists. */
-export interface SidebarProjectsDep extends SidebarProjectsPort {
+export interface SidebarProjectsDep extends SidebarProjectsPort, ProjectOrganizerPort {
   onDidChange: vscode.Event<void>;
   rows(): Promise<SidebarProjectItem[]>;
+}
+
+/** The open project's Files, Outline and Checklist, as the Projects section shows them. */
+export interface SidebarProjectTreesDep {
+  onDidChange: vscode.Event<void>;
+  snapshot(): Promise<SidebarOpenProject | null>;
+  handle(request: Omit<ProjectTreeMessage, "type">): Promise<void>;
 }
 
 export interface LibrarySidebarDeps {
@@ -24,6 +32,7 @@ export interface LibrarySidebarDeps {
   importFiles: (uris: vscode.Uri[], targetDir: string) => Promise<void>;
   moveFolder: (sourceDir: string, targetDir: string) => Promise<void>;
   projects: SidebarProjectsDep;
+  projectTrees: SidebarProjectTreesDep;
 }
 
 function parseUriList(raw: string): vscode.Uri[] {
@@ -47,6 +56,7 @@ export class LibrarySidebarView implements vscode.WebviewViewProvider {
     const refresh = (): void => this.refresh();
     onPaperChange(_deps.events, refresh);
     _deps.projects.onDidChange(() => this._refreshProjects());
+    _deps.projectTrees.onDidChange(() => void this._pushOpenProject());
   }
 
   async resolveWebviewView(view: vscode.WebviewView): Promise<void> {
@@ -110,6 +120,11 @@ export class LibrarySidebarView implements vscode.WebviewViewProvider {
     await this._post({ type: "projects", projects: await this._deps.projects.rows() });
   }
 
+  private async _pushOpenProject(): Promise<void> {
+    if (!this._ready) { return; }
+    await this._post({ type: "openProject", project: await this._deps.projectTrees.snapshot() });
+  }
+
   private _node(ui: string): LibraryNode {
     const dirPath = this._paths()!.fromUi(ui);
     return ui === PAPERS_DIR ? rootNode(dirPath) : { label: ui.slice(ui.lastIndexOf("/") + 1), dirPath };
@@ -121,10 +136,14 @@ export class LibrarySidebarView implements vscode.WebviewViewProvider {
       this._ready = true;
       // Neither push waits for the other: a slow project count must not delay the library.
       void this._pushProjects();
+      void this._pushOpenProject();
       await this._push();
       for (const replay of [this._current, this._selected]) { if (replay) { await this._post(replay); } }
       return;
     }
+    if (m.type === "projectFolder") { await runProjectFolderAction(this._deps.projects, m.action, m.path); return; }
+    if (m.type === "projectTree") { const { type: _, ...request } = m; await this._deps.projectTrees.handle(request); return; }
+    if (m.type === "projectEdit") { await runProjectEdit(this._deps.projects, m.id, m.edit); return; }
     if (isProjectMessage(m)) { await handleProjectMessage(m, this._deps.projects); return; }
     if (m.type === "searchTag") { await vscode.commands.executeCommand("labshelf.searchListTag", m.tag); return; }
     if (m.type === "revealPaper") { await vscode.commands.executeCommand("labshelf.revealPaper", m.id); return; }

@@ -19,8 +19,7 @@ export function mountChecksButton(slot: HTMLElement, { post }: ChecksButtonDeps)
     setRoots({ checks }) {
       slot.hidden = checks === undefined;
       if (checks === undefined) { return; }
-      button.textContent = `${checks} ${checks === 1 ? "check" : "checks"}`;
-      button.dataset["tone"] = checks > 0 ? "warning" : "ok";
+      button.replaceChildren(el("span", { class: "rd-checks-count", "data-tone": checks > 0 ? "warning" : "ok" }, String(checks)), ` ${checks === 1 ? "check" : "checks"}`);
     },
   };
 }

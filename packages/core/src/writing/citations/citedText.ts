@@ -1,4 +1,4 @@
-/** Formats the page argument and the quotation a highlight contributes to a citation. */
+/** Formats the citation text, the page argument and the quotation a highlight contributes to it. */
 
 import type { ProjectFormat } from "../project/index.js";
 
@@ -22,4 +22,15 @@ export function quotationBefore(format: ProjectFormat, text: string): string {
     return `\`\`${quote.replace(LATEX_SPECIAL, (char) => LATEX_ESCAPE[char] ?? `\\${char}`)}''~`;
   }
   return `"${quote.replace(TYPST_SPECIAL, (char) => `\\${char}`)}" `;
+}
+
+/** The citation of a key as the format writes it, with the page argument and the quotation of a highlight when given. */
+export function citationSnippet(
+  format: ProjectFormat, key: string, options: { page?: number; quotation?: string } = {},
+): string {
+  const supplement = options.page === undefined ? undefined : pageSupplement(format, options.page);
+  const citation = format === "latex"
+    ? `\\cite${supplement === undefined ? "" : `[${supplement}]`}{${key}}`
+    : `@${key}${supplement === undefined ? "" : `[${supplement}]`}`;
+  return `${options.quotation === undefined ? "" : quotationBefore(format, options.quotation)}${citation}`;
 }

@@ -1,16 +1,21 @@
-// Builds the head of a single-entry citation card: tag, byline, title, venue, key and the citing command.
+// Builds the head of a single-entry citation card: tag, byline, title, venue and the citing command.
 import type { CitationBibEntry, CitationCardPaper, CitationEntry } from "../../../../index.js";
-import { STATUS_LABEL } from "../../../../../model/index.js";
-import { arcMarkElement, el } from "../../../../../ui/dom/index.js";
-import { STATUS_ARC } from "../../../../../ui/icons/index.js";
+import { el } from "../../../../../ui/dom/index.js";
 
 /** Authors and year on one line; either may be missing. */
 export function byline(record: Pick<CitationBibEntry, "authors" | "year">): string {
   return [record.authors.join(", "), record.year === undefined ? "" : String(record.year)].filter(Boolean).join(" · ");
 }
 
+/** The first author's surname and "et al." for several authors; either part may be missing. */
+function shortByline(record: Pick<CitationBibEntry, "authors" | "year">): string {
+  const [first] = record.authors;
+  const lead = record.authors.length > 1 && first ? `${first.trim().split(/\s+/).pop()} et al.` : record.authors.join(", ");
+  return [lead, record.year === undefined ? "" : String(record.year)].filter(Boolean).join(" · ");
+}
+
 function venueLine(entry: CitationEntry): string {
-  const folder = entry.paper?.folder;
+  const folder = entry.paper?.folder?.split("/").join(" › ");
   return [entry.paper?.venue ?? entry.bib?.venue, folder].filter(Boolean).join(" · ");
 }
 
@@ -23,19 +28,17 @@ function tag(entry: CitationEntry): HTMLElement | null {
 export function citationHead(entry: CitationEntry): HTMLElement {
   const record: CitationCardPaper | CitationBibEntry | undefined = entry.paper ?? entry.bib;
   const title = record?.title ?? entry.key;
-  const status = entry.paper?.status;
   const { site } = entry;
   const venue = venueLine(entry);
+  const names = record && shortByline(record);
   return el("div", { class: "rd-cite-head" },
-    status && arcMarkElement(...STATUS_ARC[status], STATUS_LABEL[status]),
     el("div", { class: "rd-cite-head-text" },
       el("div", { class: "rd-cite-top" },
-        record && byline(record) && el("p", { class: "rd-cite-byline" }, byline(record)),
+        names && el("p", { class: "rd-cite-byline" }, names),
         tag(entry),
       ),
       el("p", { class: "rd-cite-title" }, title),
       venue && el("p", { class: "rd-cite-venue" }, venue),
-      el("code", { class: "rd-cite-key" }, entry.key),
       site && el("p", { class: "rd-cite-site" }, `${site.file}:${site.line} · ${site.text}`),
     ),
   );

@@ -1,4 +1,4 @@
-// Gathers what the citation card shows beyond the library record: highlights, citing sections, the cited page and the .bib record.
+// Gathers what the citation card shows beyond the library record: highlights, the cited page and the .bib record.
 import {
   papersByCiteKey, quotedHighlights,
   type CitationBibEntry, type CitationDetails, type CitingCommand, type PaperRecord,
@@ -10,7 +10,7 @@ import type { CitingSite } from "./citingCommands.js";
 
 const HIGHLIGHTS_SHOWN = 5;
 
-type CardDeps = Pick<PreviewCitationDeps, "logger" | "projectFolder" | "highlightsOf" | "citeSections">;
+type CardDeps = Pick<PreviewCitationDeps, "logger" | "projectFolder" | "highlightsOf">;
 
 export async function warn(deps: Pick<PreviewCitationDeps, "logger" | "projectFolder">, message: string, error: unknown, context: object = {}): Promise<void> {
   await deps.logger.log("WARN", PREVIEW_LOG_MODULE, message, { projectFolder: deps.projectFolder, ...context, error: String(error) });
@@ -31,20 +31,6 @@ async function highlightsByPaper(deps: CardDeps, keys: readonly string[], papers
     }
   }
   return highlights;
-}
-
-async function citingSections(deps: CardDeps, keys: readonly string[]): Promise<Map<string, string[]>> {
-  const citedIn = new Map<string, string[]>();
-  try {
-    const { byKey } = await deps.citeSections();
-    for (const key of keys) {
-      const titles = [...new Set((byKey.get(key) ?? []).map((section) => section.title))];
-      if (titles.length > 0) { citedIn.set(key, titles); }
-    }
-  } catch (error) {
-    await warn(deps, "Reading the citing sections for the citation card failed", error);
-  }
-  return citedIn;
 }
 
 async function bibRecords(deps: CardDeps, keys: readonly string[], papers: readonly PaperRecord[]): Promise<Map<string, CitationBibEntry>> {
@@ -70,7 +56,6 @@ export async function cardDetails(
   }
   return {
     highlights: await highlightsByPaper(deps, keys, papers, sites),
-    citedIn: await citingSections(deps, keys),
     bib: await bibRecords(deps, keys, papers),
     site,
     citedPage,

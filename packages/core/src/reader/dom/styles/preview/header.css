@@ -1,0 +1,57 @@
+/* Lays out the preview header above the pages and the footer below them in the shell grid; the overlay toolbar gives way to it. Library mode has no .rd-preview. */
+.rd-preview #pdf-shell {
+  display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto;
+}
+.rd-preview #toolbar { display: none; }
+.rd-preview #viewerContainer { position: relative; inset: auto; min-height: 0; padding-top: var(--ls-space-6); }
+
+/* The logs view takes the page row; it is appended to the positioned shell. */
+.rd-preview .rd-logs { grid-row: 2; grid-column: 1; inset: 0; }
+
+.rd-preview-header {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-2); flex-shrink: 0;
+  min-height: var(--ls-reader-toolbar-h); padding: 0 var(--ls-space-3);
+  background: var(--ls-bg); border-bottom: 1px solid var(--ls-border); box-shadow: none;
+  font-size: var(--ls-text-md); color: var(--ls-reader-fg);
+}
+.rd-preview-build, .rd-preview-view { display: flex; align-items: center; gap: var(--ls-space-1); min-width: 0; }
+.rd-preview-view { margin-left: auto; flex-wrap: wrap; }
+.rd-preview-rule { align-self: stretch; margin: var(--ls-space-2) var(--ls-space-2); border-left: 1px solid var(--ls-border); }
+.rd-preview-slot { display: inline-flex; align-items: center; gap: var(--ls-space-1); }
+.rd-preview-slot[hidden] { display: none; }
+
+/* Recompile: muted while the PDF is current, full colour with a dot when the source moved on, spinning while it builds. */
+.rd-preview-recompile {
+  position: relative; width: auto; gap: var(--ls-space-2); padding: 0 var(--ls-space-3);
+  font-size: var(--ls-text-md); color: var(--ls-reader-desc);
+}
+.rd-preview-recompile-icon { display: inline-flex; }
+.rd-preview-recompile[data-state="stale"], .rd-preview-recompile[data-state="building"] { color: var(--ls-reader-fg); }
+.rd-preview-dot {
+  --rd-preview-dot-size: calc(var(--ls-space-5) / 2);
+  display: none; width: var(--rd-preview-dot-size); height: var(--rd-preview-dot-size); border-radius: 50%; background: var(--ls-warning);
+}
+.rd-preview-recompile[data-state="stale"] .rd-preview-dot { display: inline-block; }
+.rd-preview-recompile[aria-busy="true"] svg { animation: rd-spin 1s linear infinite; }
+.rd-preview-recompile:focus-visible, .rd-preview-view .rd-btn:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
+
+/* The reader's status pill sits inline in the header: page field, total and zoom, without its floating look. */
+.rd-preview #status-pill {
+  position: static; padding: 0; background: none; backdrop-filter: none; border: 0; border-radius: 0; box-shadow: none;
+  opacity: 1; font-family: var(--ls-mono); font-size: var(--ls-text-sm); color: var(--ls-reader-desc);
+}
+/* The page field reads as an input: a filled box, one digit group wide, with the total beside it. */
+.rd-preview .rd-page-input {
+  box-sizing: border-box; width: 28px; min-width: 0; height: 24px; padding: 0; text-align: center; font-family: inherit; font-size: var(--ls-text-md);
+  color: var(--ls-input-fg); background: var(--ls-input-bg); border: 1px solid var(--ls-input-border);
+}
+.rd-preview .rd-page-input:focus { border-color: var(--ls-focus); }
+.rd-preview .rd-page-total { padding: 0 var(--ls-space-2); }
+.rd-preview .rd-pill-sep { height: auto; align-self: stretch; margin: var(--ls-space-2); background: var(--ls-border); }
+.rd-preview .rd-zoom-label { display: inline-flex; align-items: center; gap: var(--ls-space-1); }
+.rd-preview .rd-zoom-caret { display: inline-flex; }
+.rd-preview .rd-zoom-caret svg { width: var(--ls-space-5); height: var(--ls-space-5); fill: currentColor; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rd-preview-recompile[aria-busy="true"] svg { animation: none; }
+}

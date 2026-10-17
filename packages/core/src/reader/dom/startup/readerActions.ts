@@ -45,6 +45,9 @@ export function createActionRunner({ ctx, ui, hover }: ActionDeps): (action: Rea
       case "goToPage": pill.focusPageInput(); break;
       case "toggleSidebar": sidebar.toggle(); break;
       case "cheatsheet": cheatsheet.toggle(); break;
+      case "recompile": ctx.host.post({ command: "recompile" }); break;
+      case "nextProblem": ui.previewChrome?.problems.step(1); break;
+      case "prevProblem": ui.previewChrome?.problems.step(-1); break;
       case "copyWithCitation": bubble.copyWithCitation(); break;
       case "escape": closeInnermost(ui, hover); break;
       // Held-key scrolling is driven by Keyboard itself.

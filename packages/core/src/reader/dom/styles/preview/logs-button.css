@@ -1,0 +1,4 @@
+/* Styles the header logs button: the problem count as plain text beside the file icon. */
+.rd-logs-count { margin-left: var(--ls-space-1); font-size: var(--ls-text-md); line-height: 1; color: var(--ls-mark-warn); }
+.rd-logs-count[hidden] { display: none; }
+.rd-logs-count[data-tone="error"] { color: var(--ls-mark-err); }

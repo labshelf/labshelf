@@ -18,9 +18,9 @@ const entry: CitationEntry = { key: "smith2020", paper, site, citedPage: 3 };
 const noPage: CitationEntry = { key: "smith2020", paper, site };
 const noSite: CitationEntry = { key: "smith2020", paper, citedPage: 3 };
 
-function render(e: CitationEntry, open = jest.fn(), post: jest.Mock | null = jest.fn()) {
+function render(e: CitationEntry, open = jest.fn(), post = jest.fn()) {
   document.body.innerHTML = "";
-  const card = citationContent([e], open, post ?? undefined);
+  const card = citationContent([e], open, post);
   document.body.append(card!.body);
   const buttons = (): HTMLButtonElement[] => [...card!.body.querySelectorAll<HTMLButtonElement>(".rd-cite-acts button, .rd-cite-fix button")];
   const button = (label: string): HTMLButtonElement | undefined => buttons().find((b) => b.textContent === label);
@@ -41,12 +41,11 @@ describe("citation card head", () => {
     expect(body.querySelector(".rd-cite-tag")?.textContent).toBe("BIB");
     expect(body.querySelector(".rd-cite-title")?.textContent).toBe("Plain Notes");
     expect(body.querySelector(".rd-cite-venue")?.textContent).toBe("arXiv");
-    expect(body.querySelector("[role=tablist]")).toBeNull();
     expect(card.copyText).toBe("doe19");
   });
 
   it("omits venue and site lines when the entry has none", () => {
-    const { body } = render({ key: "k", paper: { id: "p", title: "T", authors: [] } }, jest.fn(), null);
+    const { body } = render({ key: "k", paper: { id: "p", title: "T", authors: [] } });
     expect(body.querySelector(".rd-cite-venue")).toBeNull();
     expect(body.querySelector(".rd-cite-site")).toBeNull();
   });
@@ -97,9 +96,8 @@ describe("citation card actions", () => {
     expect(post).toHaveBeenCalledWith({ command: "openSourceLine", file: "chapters/intro.tex", line: 42 });
   });
 
-  it("has no Go to source without a citing command or a preview host", () => {
+  it("has no Go to source without a citing command", () => {
     expect(render(noSite).button("Go to source")).toBeUndefined();
-    expect(render(entry, jest.fn(), null).button("Go to source")).toBeUndefined();
   });
 });
 

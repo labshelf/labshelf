@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import { libraryLayout } from "@labshelf/core";
-import { LibrarySidebarView, type SidebarProjectsDep } from "../../ui/library/index.js";
+import { LibrarySidebarView, type SidebarProjectTreesDep, type SidebarProjectsDep } from "../../ui/library/index.js";
 import type { LibraryNode } from "../../ui/library/index.js";
 import { ListWebviewPanel } from "../../ui/list/index.js";
 import { importPapers, moveFolders, type FolderCommandHost } from "../../commands/index.js";
@@ -19,6 +19,8 @@ export interface LibrarySidebarDeps {
   adapters: HostAdapters;
   /** The writing projects the Projects section lists. */
   projects: SidebarProjectsDep;
+  /** The open project's trees the Projects section shows. */
+  projectTrees: SidebarProjectTreesDep;
 }
 
 export interface LibrarySidebarHandles {
@@ -31,13 +33,14 @@ export interface LibrarySidebarHandles {
 }
 
 export function registerLibrarySidebar(deps: LibrarySidebarDeps): LibrarySidebarHandles {
-  const { context, events, controller, papersRootUri, folderHost, adapters, projects } = deps;
+  const { context, events, controller, papersRootUri, folderHost, adapters, projects, projectTrees } = deps;
   const view = new LibrarySidebarView({
     extensionUri: context.extensionUri,
     getSnapshot: () => controller.currentServices()?.library.snapshot,
     events,
     paths: adapters.paths,
     projects,
+    projectTrees,
     importFiles: async (uris, targetDir) => {
       const services = await folderHost.requireServices();
       if (services) { await importPapers(services, uris, targetDir); }

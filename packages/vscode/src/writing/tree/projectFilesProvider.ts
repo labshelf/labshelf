@@ -64,9 +64,16 @@ export class ProjectFilesProvider implements vscode.TreeDataProvider<ProjectFile
     item.id = node.uri.toString();
     item.contextValue = folder ? "labshelfProjectFolder" : "labshelfProjectFile";
     if (folder) { return item; }
+    // A source of the project's format that is not already the main file can become it.
+    if (!this.isMain(node.uri) && this.isSource(name)) { item.contextValue = "labshelfProjectSource"; }
     item.command = { command: "vscode.open", title: "Open File", arguments: [node.uri] };
     if (this.isMain(node.uri)) { item.description = "main"; }
     return item;
+  }
+
+  private isSource(name: string): boolean {
+    const format = this.deps.session.project?.settings.format;
+    return format !== undefined && name.toLowerCase().endsWith(format === "latex" ? ".tex" : ".typ");
   }
 
   private isMain(uri: vscode.Uri): boolean {

@@ -1,4 +1,4 @@
-// Builds the right-click menu of a project row from the project commands that apply to it.
+// Builds the right-click menu of a project row: the project commands that apply to it, then Move to Folder and Archive.
 import { showMenu, type MenuEntry } from "@labshelf/core/dom";
 import { PROJECT_COMMANDS, projectCommandApplies } from "../ui/library/projectCommands.js";
 import type { SidebarProjectItem, SidebarToHost } from "../ui/library/sidebarMessages.js";
@@ -12,6 +12,13 @@ export function projectMenuEntries(project: SidebarProjectItem, post: (m: Sideba
     if (group !== null && g !== group) { entries.push("separator"); }
     group = g;
     entries.push({ label, onSelect: () => post({ type: "projectCommand", id: project.id, command }) });
+  }
+  if (project.kind === "ready") {
+    entries.push("separator",
+      { label: "Move to Folder…", icon: "folder-move", onSelect: () => post({ type: "projectEdit", id: project.id, edit: "move" }) },
+      project.archived
+        ? { label: "Unarchive", onSelect: () => post({ type: "projectEdit", id: project.id, edit: "unarchive" }) }
+        : { label: "Archive", onSelect: () => post({ type: "projectEdit", id: project.id, edit: "archive" }) });
   }
   return entries;
 }

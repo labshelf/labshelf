@@ -47,7 +47,8 @@ export function mountPreviewFooter({ openLogs, outline, now = Date.now }: Previe
   const slots = createSlots();
   const crumbs = createCrumbs(outline);
   const status = createStatusView({ openLogs, now });
-  const element = el("footer", { class: "rd-preview-footer" }, crumbs.element, slots.cites, status.element, slots.limit, slots.checks);
+  const element = el("footer", { class: "rd-preview-footer" }, crumbs.element,
+    el("div", { class: "rd-preview-footer-end" }, status.element, slots.cites, slots.limit, slots.checks));
 
   const renderCrumbs = (): void => crumbs.render(roots?.shown, loaded);
   const renderStatus = (): void => status.render(roots, build);

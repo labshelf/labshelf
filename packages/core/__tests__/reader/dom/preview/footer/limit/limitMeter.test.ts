@@ -29,7 +29,7 @@ describe("limit meter", () => {
     meter.setRoots(roots({ pageLimit: 6 }));
     await flush();
     expect(slot.hidden).toBe(false);
-    expect(button().textContent).toContain("p. 5 / 6");
+    expect(button().textContent).toContain("5 / 6 pp");
   });
 
   it.each([
@@ -49,17 +49,22 @@ describe("limit meter", () => {
     const { meter, flush, button, fill } = setup(2);
     meter.setRoots(roots({ pageLimit: 10, wordLimit: 1000 }, 1200));
     await flush();
-    expect(button().textContent).toContain("1200 words / 1000");
+    expect(button().textContent).toContain("2 / 10 pp · 1,200 / 1,000 words");
     expect(fill().className).toBe("over");
   });
 
-  it("shows words without a page limit and counts no pages", async () => {
-    const { meter, flush, button, countBodyPages } = setup();
-    meter.setRoots(roots({ wordLimit: 1000 }, 950));
+  it("omits the limit of a half that has none", async () => {
+    const { meter, flush, button } = setup(2);
+    meter.setRoots(roots({ wordLimit: 5000 }, 378));
     await flush();
-    expect(button().textContent).toContain("950 words / 1000");
-    expect(button().textContent).not.toContain("p.");
-    expect(countBodyPages).not.toHaveBeenCalled();
+    expect(button().textContent).toBe("2 pp · 378 / 5,000 words");
+  });
+
+  it("shows plain counts when no limit is set", async () => {
+    const { meter, flush, button } = setup(2);
+    meter.setRoots(roots({}, 1378));
+    await flush();
+    expect(button().textContent).toBe("2 pp · 1,378 words");
   });
 
   it("offers the popover with no limits set", () => {

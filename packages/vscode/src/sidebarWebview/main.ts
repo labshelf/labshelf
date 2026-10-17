@@ -4,7 +4,7 @@ import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
 import "@labshelf/core/styles/library-sidebar.css";
 import { $, mountLibrarySidebar } from "@labshelf/core/dom";
-import type { HostToSidebar, SidebarProjectItem, SidebarToHost } from "../ui/library/sidebarMessages.js";
+import type { HostToSidebar, ProjectTreeMessage, SidebarProjectItem, SidebarToHost } from "../ui/library/sidebarMessages.js";
 import { folderDropTarget, showProjectMenu } from "./index.js";
 
 const EXPANDED_KEY = "treeExpanded";
@@ -18,6 +18,9 @@ const post = (m: SidebarToHost): void => api.postMessage(m);
 const state = (): SidebarState => (api.getState() as SidebarState | undefined) ?? {};
 const saveState = (patch: SidebarState): void => api.setState({ ...state(), ...patch });
 let projects: SidebarProjectItem[] = [];
+// The core sidebar names a tree by string; the host checks it is one of its views.
+const tree = (m: Omit<ProjectTreeMessage, "type" | "view"> & { view?: string }): void =>
+  post({ ...m, type: "projectTree" } as ProjectTreeMessage);
 
 const root = $("root");
 root.classList.add("sidebar-shell");
@@ -42,6 +45,17 @@ const sidebar = mountLibrarySidebar(root.appendChild(document.createElement("div
     browseTemplates: () => post({ type: "projectAction", action: "browseTemplates" }),
     newBlank: () => post({ type: "projectAction", action: "newBlank" }),
     addExisting: () => post({ type: "projectAction", action: "addExisting" }),
+    refresh: () => post({ type: "projectAction", action: "refresh" }),
+    newFolder: (path) => post({ type: "projectFolder", action: "new", path }),
+    renameFolder: (path) => post({ type: "projectFolder", action: "rename", path }),
+    deleteFolder: (path) => post({ type: "projectFolder", action: "delete", path }),
+    closeProject: () => tree({ op: "close" }),
+    treeAction: (action) => tree({ op: "action", action }),
+    treeClick: (view, key) => tree({ op: "click", view, key }),
+    treeToggle: (view, key, open) => tree({ op: "toggle", view, key, open }),
+    treeCheck: (view, key, checked) => tree({ op: "check", view, key, checked }),
+    treeMenu: (view, key, action) => tree({ op: "menu", view, key, action }),
+    treeAdd: (view, key, text) => tree({ op: "add", view, key, text }),
   },
   dropTarget: folderDropTarget(post),
 });
@@ -52,5 +66,6 @@ window.addEventListener("message", (e: MessageEvent<HostToSidebar>) => {
   else if (m.type === "current") { sidebar.setCurrent(m.folder); }
   else if (m.type === "selected") { sidebar.setSelected(m.id); }
   else if (m.type === "projects") { projects = m.projects; sidebar.setProjects(m.projects); }
+  else if (m.type === "openProject") { sidebar.setOpenProject(m.project); }
 });
 post({ type: "ready" });

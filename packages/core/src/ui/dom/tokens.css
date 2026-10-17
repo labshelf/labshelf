@@ -80,7 +80,10 @@
   --ls-file-pdf: #d9837c;
   --ls-file-md: #7d9fe0;
   --ls-file-ref: #7d9fe0;
+  --ls-file-tex: #8cc27a;
+  --ls-file-typ: #4cc4c9;
   --ls-file-dir: #d2a865;
+  --ls-sheet-light: #f4f3f0;
   --ls-hl-yellow: #f5c518;
   --ls-hl-green: #4caf50;
   --ls-hl-blue: #2196f3;
@@ -95,6 +98,8 @@
   --ls-text-sm: 11px;
   --ls-text-md: 12px;
   --ls-text-lg: 14px;
+  --ls-text-xl: 15px;
+  --ls-text-2xl: 17px;
   --ls-space-1: 2px;
   --ls-space-2: 4px;
   --ls-space-3: 6px;
@@ -190,6 +195,8 @@
   --ls-file-pdf: #b84a42;
   --ls-file-md: #4069b8;
   --ls-file-ref: #4069b8;
+  --ls-file-tex: #4a8a3a;
+  --ls-file-typ: #1f8a93;
   --ls-file-dir: #946618;
   --ls-widget-shadow: 0 0 8px 2px rgba(0, 0, 0, .16);
   --ls-popup-shadow: 0 4px 18px rgba(0, 0, 0, .18);

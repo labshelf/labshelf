@@ -13,6 +13,7 @@ const ACTION_COMMANDS: Record<ProjectAction, string> = {
   browseTemplates: "labshelf.templates.open",
   newBlank: "labshelf.writing.newBlankProject",
   addExisting: "labshelf.writing.addExistingFolder",
+  refresh: "labshelf.writing.refresh",
 };
 
 type ProjectMessage = Extract<SidebarToHost, { type: "openProject" | "projectCommand" | "projectAction" }>;

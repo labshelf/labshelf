@@ -1,20 +1,16 @@
-// Creates the Checklist view of the open project and registers its commands.
+// Creates the open project's Checklist and describes it for the sidebar mirror.
 import { randomUUID } from "node:crypto";
 import * as vscode from "vscode";
 
 import type { ILogger, PaperStatus } from "@labshelf/core";
 import { readChecklistSignals, updateChecklist } from "@labshelf/core/node";
-import type { ArcIcon } from "../../ui/index.js";
 import { CHECK_COMMAND } from "../check/index.js";
 import type { BuildPreviews } from "../preview/index.js";
 import type { ProjectReadingLists } from "../readingList/index.js";
 import type { ProjectSession } from "../session/index.js";
-import type { ChecklistNode } from "./checklistNodes.js";
-import { NEXT_STATUS_COMMAND } from "./checklistTreeItem.js";
+import type { BuiltTreeSpec } from "../sidebar/index.js";
 import { ChecklistView } from "./checklistView.js";
 import { OpenProjectSignals } from "./openProjectSignals.js";
-
-const VIEW_ID = "labshelf.writing.checklist";
 
 export interface ChecklistViewRegistration {
   context: vscode.ExtensionContext;
@@ -26,10 +22,10 @@ export interface ChecklistViewRegistration {
   /** Writes paper statuses through the open library and returns the ids that failed; with no library open every id failed. */
   setStatus: (paperIds: string[], status: PaperStatus) => Promise<string[]>;
   logger: ILogger;
-  arcIcon: ArcIcon;
 }
 
-export function registerChecklistView(deps: ChecklistViewRegistration): void {
+/** @returns the Checklist as the sidebar mirrors it */
+export function registerChecklistView(deps: ChecklistViewRegistration): BuiltTreeSpec {
   const { context, session, logger } = deps;
   const signals = new OpenProjectSignals({
     session, readSignals: readChecklistSignals, onDidSaveTextDocument: vscode.workspace.onDidSaveTextDocument,
@@ -42,25 +38,28 @@ export function registerChecklistView(deps: ChecklistViewRegistration): void {
     setStatus: deps.setStatus,
     updateChecklist,
     logger,
-    arcIcon: deps.arcIcon,
     newId: randomUUID,
     now: () => new Date(),
   });
-  const tree = vscode.window.createTreeView(VIEW_ID, { treeDataProvider: view, showCollapseAll: false, manageCheckboxStateManually: true });
-  view.attach(tree);
   const command = vscode.commands.registerCommand;
   context.subscriptions.push(
     signals,
     view,
-    tree,
-    tree.onDidExpandElement((e) => void view.onDidExpand(e.element)),
-    tree.onDidCollapseElement((e) => void view.onDidCollapse(e.element)),
-    tree.onDidChangeCheckboxState((e) => { for (const [node, state] of e.items) { void view.setChecked(node, state); } }),
-    command("labshelf.writing.checklist.bySection", () => view.toggleGrouping()),
-    command("labshelf.writing.checklist.byKind", () => view.toggleGrouping()),
     command("labshelf.writing.checklist.addItem", () => view.addItem()),
-    command("labshelf.writing.checklist.removeItem", (node: ChecklistNode) => view.removeItem(node)),
-    command(NEXT_STATUS_COMMAND, (node: ChecklistNode) => view.nextStatus(node)),
     command("labshelf.writing.checklist.runCheck", () => vscode.commands.executeCommand(CHECK_COMMAND, session.project)),
   );
+  return {
+    view: "checklist", title: "Checklist", empty: "Nothing to do.",
+    onDidChange: view.onDidChange,
+    nodes: () => view.nodes(),
+    toggle: () => ({
+      options: [
+        { action: "byKind", label: "By kind", run: () => view.setGrouping("kind") },
+        { action: "bySection", label: "By section", run: () => view.setGrouping("section") },
+      ],
+      selected: view.grouping === "kind" ? "byKind" : "bySection",
+    }),
+    actions: [],
+    handle: (request) => view.handle(request),
+  };
 }

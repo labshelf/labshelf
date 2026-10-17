@@ -88,3 +88,4 @@
 - 2026-10-16 2b.4 unfinished (main thread over budget at 73.6k) → sessions/2b4-finish-commit.md
 - 2026-10-16 2b3 peaks: main 73.6k (over budget, handed off), largest subagent 21.5k (architecture-reviewer)
 - 2026-10-16 2b.4 finish (Sonnet) on 2b Owns: gate PASS (core 14 tests, vscode build + typst/node 91 tests, both typechecks), no fixes, no findings; A3 host + menu done, mounting is 3b's
+- 2026-10-17 2g, 2h, 3a, 3b, 4a done in one session (agents, Sonnet/Opus): `suggestKey` + card fixes, `\includeonly` (latexmk `-usepretex` + `-g`, hidden for Tectonic), host handlers and roots fields with resend and a findings cache, slots/marks/keys mounted, layout matched to the user's screenshots (D4 changed: no Find/Sidebar in the header; Dark PDF local, off by default), tabbed citation card and `summary`/`citedIn` deleted, preview colours moved to tokens; headless harness checks dark/light/420 px; 4b remains

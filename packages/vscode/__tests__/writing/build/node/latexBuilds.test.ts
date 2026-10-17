@@ -189,4 +189,17 @@ describe("BuildDiagnostics", () => {
     diagnostics.publish("/p/b/main.tex", []);
     expect(collection.delete.mock.calls.map(([uri]: [vscode.Uri]) => uri.fsPath)).toEqual(["/p/b/main.tex"]);
   });
+
+  it("builds one chapter alone, then forces the full rebuild latexmk would skip", async () => {
+    const { builds } = setup();
+    run.mockResolvedValue({ status: "succeeded", pdf: "/p/paper/main.pdf", problems: [] });
+    await builds.request("/p/paper", "main.tex", "command", "ch/two");
+    await builds.request("/p/paper", "main.tex", "command");
+    await builds.request("/p/paper", "main.tex", "command");
+    const [partial, whole, again] = run.mock.calls.map(([request]) => request);
+    expect(partial).toEqual(expect.objectContaining({ includeOnly: "ch/two" }));
+    expect(whole).toEqual(expect.objectContaining({ force: true }));
+    expect(whole).not.toHaveProperty("includeOnly");
+    expect(again).not.toHaveProperty("force");
+  });
 });

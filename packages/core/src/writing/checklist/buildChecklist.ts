@@ -68,14 +68,17 @@ function toItems(input: ChecklistInput): Items {
 
 const group = (id: string, title: string, items: ChecklistItem[]): ChecklistGroup => ({ id, title, items, open: items.filter((item) => !item.done).length });
 
+/** A manual item with a group follows that group's own items; one without stays in Manual, a section-only one included. */
 function byKind(items: Items): ChecklistGroup[] {
+  const placed = (id: string, own: ChecklistItem[]): ChecklistItem[] =>
+    [...own, ...items.manual.filter((item) => item.kind === "manual" && item.manual.group === id)];
   return [
-    group("todo", "TODOs", items.todos),
-    group("ref", "References", items.refs),
-    group("figure", "Figures", items.figures),
-    group("pages", "Pages", items.pages),
-    group("manual", "Manual", items.manual),
-    group("reading", "Reading", items.reading),
+    group("todo", "TODOs", placed("todo", items.todos)),
+    group("ref", "References", placed("ref", items.refs)),
+    group("figure", "Figures", placed("figure", items.figures)),
+    group("pages", "Pages", placed("pages", items.pages)),
+    group("manual", "Manual", items.manual.filter((item) => item.kind === "manual" && item.manual.group === undefined)),
+    group("reading", "Reading", placed("reading", items.reading)),
   ];
 }
 
@@ -101,10 +104,15 @@ function bySection(input: ChecklistInput, items: Items): ChecklistGroup[] {
     for (const section of citing) { add(section, item); }
   }
   const ordered = sortSections([...sections.values()].map((entry) => entry.section));
+  // A manual item follows its section's own rows; a section that no longer exists sends it to Whole project.
+  const sectionIds = new Set<string>(ordered.map((section) => section.id));
+  const manualIn = (id: string): ChecklistItem[] => items.manual.filter((item) => item.kind === "manual" && item.manual.section === id);
+  const wholeManual = items.manual.filter((item) => item.kind === "manual"
+    && (item.manual.section === undefined || item.manual.section === "#whole-project" || !sectionIds.has(item.manual.section)));
   return [
-    ...ordered.map((section) => group(section.id, section.title, sections.get(section.id)!.items)),
+    ...ordered.map((section) => group(section.id, section.title, [...sections.get(section.id)!.items, ...manualIn(section.id)])),
     // Ids start with "#" so they never collide with a section id, which starts with a file path.
-    group("#whole-project", "Whole project", [...items.figures, ...items.pages, ...items.manual]),
+    group("#whole-project", "Whole project", [...items.figures, ...items.pages, ...wholeManual]),
     group("#reading", "Reading", uncited),
   ];
 }

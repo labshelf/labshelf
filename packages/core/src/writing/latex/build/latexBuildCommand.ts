@@ -9,19 +9,35 @@ export interface BuildCommand {
 
 const LATEXMK_ENGINE = { xelatex: "-xelatex", pdflatex: "-pdf", lualatex: "-lualatex" } as const;
 
-/** `mainFile` is the main file's name; the build runs in its folder, so \input paths resolve as the user wrote them. */
-export function latexBuildCommand(toolchain: LatexToolchain, mainFile: string, outDir: string): BuildCommand {
+export interface PartialBuild {
+  /** An `\include` path relative to the project folder, without extension; only that chapter is typeset. */
+  includeOnly?: string;
+  /** Rebuilds even when no source changed. */
+  force?: boolean;
+}
+
+/**
+ * `mainFile` is the main file's name; the build runs in its folder, so \input paths resolve as the user wrote them.
+ * `\includeonly` goes in through latexmk's pretex, so the other chapters keep the numbering of their `.aux` files; Tectonic has no pretex and ignores it.
+ */
+export function latexBuildCommand(toolchain: LatexToolchain, mainFile: string, outDir: string, partial: PartialBuild = {}): BuildCommand {
   if (toolchain.engine === "tectonic") {
     return {
       executable: toolchain.executable,
       args: ["-X", "compile", mainFile, "--outdir", outDir, "--synctex", "--keep-logs", "--keep-intermediates"],
     };
   }
+  // TRAP: latexmk does not track the pretex, so a changed `\includeonly` rebuilds only when forced.
+  const { includeOnly } = partial;
+  const partialArgs = [
+    ...(partial.force || includeOnly !== undefined ? ["-g"] : []),
+    ...(includeOnly !== undefined ? [`-usepretex=\\includeonly{${includeOnly}}`] : []),
+  ];
   return {
     executable: toolchain.executable,
     args: [
       LATEXMK_ENGINE[toolchain.engine], "-interaction=nonstopmode", "-file-line-error", "-synctex=1",
-      `-auxdir=${outDir}`, `-outdir=${outDir}`, mainFile,
+      `-auxdir=${outDir}`, `-outdir=${outDir}`, ...partialArgs, mainFile,
     ],
   };
 }

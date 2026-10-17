@@ -59,6 +59,7 @@ export class Keyboard {
         isMac: this.ctx.boot.isMac,
         inTextInput: isTextInput(e.target),
         pendingPrefix: this.pendingPrefix,
+        preview: this.ctx.boot.preview,
       },
     );
     this.setPrefix(pendingPrefix);

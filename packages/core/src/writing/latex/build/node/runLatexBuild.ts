@@ -7,11 +7,11 @@ import type { ILogger } from "../../../../ports/index.js";
 import { parseTexLog } from "../../log/index.js";
 import { engineLabel, type LatexToolchain } from "../../toolchain/index.js";
 import type { LatexBuildResult, LocatedProblem } from "../buildResult.js";
-import { latexBuildCommand } from "../latexBuildCommand.js";
+import { latexBuildCommand, type PartialBuild } from "../latexBuildCommand.js";
 import { locateProblems, type ProblemPlaces } from "./locateProblems.js";
 import { BuildCancelled, runCancellable } from "./runCancellable.js";
 
-export interface LatexBuildRequest {
+export interface LatexBuildRequest extends PartialBuild {
   toolchain: LatexToolchain;
   projectFolder: string;
   /** The main file, relative to the project folder. */
@@ -35,7 +35,7 @@ function failureReason(output: string, request: LatexBuildRequest, code: number 
 }
 
 async function compile(request: LatexBuildRequest, places: ProblemPlaces, base: string): Promise<LatexBuildResult> {
-  const command = latexBuildCommand(request.toolchain, path.basename(request.main), request.outDir);
+  const command = latexBuildCommand(request.toolchain, path.basename(request.main), request.outDir, request);
   let outcome;
   try {
     outcome = await runCancellable(command.executable, command.args, places.workDir, request.signal);

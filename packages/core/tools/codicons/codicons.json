@@ -4,5 +4,10 @@
   "new-file": "new-file",
   "new-folder": "new-folder",
   "reload": "refresh",
-  "collapse-all": "collapse-all"
+  "collapse-all": "collapse-all",
+  "case-sensitive": "case-sensitive",
+  "whole-word": "whole-word",
+  "regex": "regex",
+  "replace": "replace",
+  "replace-all": "replace-all"
 }

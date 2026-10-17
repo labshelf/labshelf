@@ -1,11 +1,14 @@
-// Remembers, per project folder, the Checklist grouping and which of its groups are expanded.
+// Remembers, per project folder, the Checklist grouping and which of its groups the user opened or closed.
 import type * as vscode from "vscode";
 
 import type { ChecklistGrouping } from "@labshelf/core";
 
+type GroupIds = Partial<Record<ChecklistGrouping, string[]>>;
+
 interface ProjectMemory {
   grouping: ChecklistGrouping;
-  expanded: Partial<Record<ChecklistGrouping, string[]>>;
+  expanded: GroupIds;
+  collapsed?: GroupIds;
 }
 
 const keyOf = (folder: string): string => `labshelf.writing.checklist:${folder}`;
@@ -21,14 +24,24 @@ export class ChecklistMemory {
     await this.write(folder, { ...this.read(folder), grouping });
   }
 
-  isExpanded(folder: string, grouping: ChecklistGrouping, groupId: string): boolean {
-    return this.read(folder).expanded[grouping]?.includes(groupId) ?? false;
+  /** @returns the user's last toggle of the group, else `byDefault` */
+  isExpanded(folder: string, grouping: ChecklistGrouping, groupId: string, byDefault: boolean): boolean {
+    const memory = this.read(folder);
+    if (memory.expanded[grouping]?.includes(groupId)) { return true; }
+    if (memory.collapsed?.[grouping]?.includes(groupId)) { return false; }
+    return byDefault;
   }
 
   async setExpanded(folder: string, grouping: ChecklistGrouping, groupId: string, expanded: boolean): Promise<void> {
     const memory = this.read(folder);
-    const others = (memory.expanded[grouping] ?? []).filter((id) => id !== groupId);
-    await this.write(folder, { ...memory, expanded: { ...memory.expanded, [grouping]: expanded ? [...others, groupId] : others } });
+    const without = (ids: GroupIds | undefined) => (ids?.[grouping] ?? []).filter((id) => id !== groupId);
+    const open = without(memory.expanded);
+    const closed = without(memory.collapsed);
+    await this.write(folder, {
+      ...memory,
+      expanded: { ...memory.expanded, [grouping]: expanded ? [...open, groupId] : open },
+      collapsed: { ...memory.collapsed, [grouping]: expanded ? closed : [...closed, groupId] },
+    });
   }
 
   private read(folder: string): ProjectMemory {

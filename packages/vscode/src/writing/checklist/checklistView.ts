@@ -1,21 +1,23 @@
-// Shows the open project's checklist as the Checklist view and publishes its open count, grouping and visibility.
+// Builds the open project's Checklist for the sidebar and runs what its rows ask for.
+import * as path from "node:path";
 import * as vscode from "vscode";
 
 import {
-  addManualItem, buildChecklist, citeSections, nextStatus, removeManualItem, sectionPlacer, setManualItemDone,
-  type ChecklistDocument, type ChecklistGrouping, type ILogger, type PaperStatus, type ReadingItem,
+  MANUAL_ITEM_GROUPS, addManualItem, buildChecklist, citeSections, nextStatus, removeManualItem, sectionPlacer, setManualItemDone,
+  type Checklist, type ChecklistDocument, type ChecklistGrouping, type ChecklistItem, type ILogger, type ManualItemGroup, type PaperStatus,
+  type ReadingItem, type SidebarTreeNode,
 } from "@labshelf/core";
-import type { ArcIcon } from "../../ui/index.js";
-import type { ReadyProject } from "../figures/index.js";
+import type { FigureNode, ReadyProject } from "../figures/index.js";
+import { REVEAL_OUTLINE_COMMAND } from "../outline/index.js";
 import type { ProjectReadingLists } from "../readingList/index.js";
+import type { ProjectTreeRequest } from "../sidebar/index.js";
 import { ChecklistMemory } from "./checklistMemory.js";
-import { checklistNodes, type ChecklistNode } from "./checklistNodes.js";
-import { checklistTreeItem } from "./checklistTreeItem.js";
-import type { OpenProjectSignals } from "./openProjectSignals.js";
+import type { ReadingPaper } from "./checklistRows.js";
+import { checklistSidebarNodes } from "./checklistSidebarNodes.js";
+import type { OpenProjectSignals, ProjectSignals } from "./openProjectSignals.js";
 
 const MODULE = "writing/checklist";
-const HAS_CHECKLIST_KEY = "labshelf.writing.hasChecklist";
-const BY_SECTION_KEY = "labshelf.writing.checklistBySection";
+const REGENERATE_FIGURE_COMMAND = "labshelf.writing.regenerateFigure";
 
 export interface ChecklistViewDeps {
   signals: Pick<OpenProjectSignals, "current" | "onDidChange" | "refresh">;
@@ -24,24 +26,26 @@ export interface ChecklistViewDeps {
   setStatus: (paperIds: string[], status: PaperStatus) => Promise<string[]>;
   updateChecklist: (folder: string, edit: (doc: ChecklistDocument) => ChecklistDocument) => Promise<void>;
   logger: ILogger;
-  arcIcon: ArcIcon;
   newId: () => string;
   now: () => Date;
 }
 
-interface ReadingCache { folder: string; items: ReadingItem[]; paperIds: Map<string, string> }
+interface ReadingCache { folder: string; items: ReadingItem[]; papers: Map<string, ReadingPaper> }
 
-export class ChecklistView implements vscode.TreeDataProvider<ChecklistNode>, vscode.Disposable {
+interface Rendered { project: ReadyProject; grouping: ChecklistGrouping; checklist: Checklist; pageCount: ProjectSignals["pageCount"] }
+
+export class ChecklistView implements vscode.Disposable {
   private readonly changeEmitter = new vscode.EventEmitter<void>();
-  readonly onDidChangeTreeData = this.changeEmitter.event;
+  readonly onDidChange = this.changeEmitter.event;
   private readonly subscriptions: vscode.Disposable[];
   private readonly memory: ChecklistMemory;
-  private nodes: ChecklistNode[] = [];
-  private rendered: { project: ReadyProject; grouping: ChecklistGrouping } | undefined;
+  private rendered: Rendered | undefined;
+  /** The last built tree's items and groups by row key, so a row request finds what it names. */
+  private items = new Map<string, ChecklistItem>();
+  private groups = new Map<string, string>();
   private reading: ReadingCache | undefined;
   /** Bumped on every reading-list load so a load that finishes late is dropped. */
   private readingLoads = 0;
-  private view: Pick<vscode.TreeView<ChecklistNode>, "description"> | undefined;
 
   constructor(private readonly deps: ChecklistViewDeps) {
     this.memory = new ChecklistMemory(deps.memory);
@@ -49,33 +53,47 @@ export class ChecklistView implements vscode.TreeDataProvider<ChecklistNode>, vs
     this.onSignals();
   }
 
-  /** Binds the tree view whose description shows the open count. */
-  attach(view: Pick<vscode.TreeView<ChecklistNode>, "description">): void {
-    this.view = view;
-    this.render();
+  get grouping(): ChecklistGrouping { return this.rendered?.grouping ?? "kind"; }
+
+  nodes(): SidebarTreeNode[] {
+    const rendered = this.rendered;
+    if (!rendered) { this.items.clear(); this.groups.clear(); return []; }
+    const { project, grouping, checklist, pageCount } = rendered;
+    const tree = checklistSidebarNodes({
+      checklist, grouping, pageCount, reading: this.reading?.folder === project.folder ? this.reading.papers : new Map(),
+      isExpanded: (groupId, byDefault) => this.memory.isExpanded(project.folder, grouping, groupId, byDefault),
+    });
+    this.items = tree.items;
+    this.groups = tree.groups;
+    return tree.nodes;
   }
 
-  getTreeItem(node: ChecklistNode): vscode.TreeItem {
-    const { project, grouping } = this.rendered!;
-    const isExpanded = (groupId: string) => this.memory.isExpanded(project.folder, grouping, groupId);
-    return checklistTreeItem(node, { project, grouping, isExpanded, arcIcon: this.deps.arcIcon });
-  }
-
-  getChildren(parent?: ChecklistNode): ChecklistNode[] {
-    if (!parent) { return this.nodes; }
-    return parent.type === "group" || parent.type === "read" ? parent.children : [];
-  }
-
-  onDidExpand(node: ChecklistNode): Promise<void> { return this.rememberExpanded(node, true); }
-
-  onDidCollapse(node: ChecklistNode): Promise<void> { return this.rememberExpanded(node, false); }
-
-  async toggleGrouping(): Promise<void> {
+  async setGrouping(grouping: ChecklistGrouping): Promise<void> {
     const project = this.deps.signals.current?.project;
-    if (!project) { return; }
-    const grouping = this.memory.grouping(project.folder) === "kind" ? "section" : "kind";
+    if (!project || this.memory.grouping(project.folder) === grouping) { return; }
     await this.memory.setGrouping(project.folder, grouping);
     this.render();
+  }
+
+  /** Runs a Checklist row's request; a request for a row the last tree did not have is logged and ignored. */
+  async handle(request: ProjectTreeRequest): Promise<void> {
+    const key = request.key ?? "";
+    if (request.op === "toggle") {
+      const groupId = this.groups.get(key);
+      if (groupId && this.rendered) { await this.memory.setExpanded(this.rendered.project.folder, this.rendered.grouping, groupId, request.open === true); }
+      return;
+    }
+    if (request.op === "add") { await this.addToRow(key, request.text ?? ""); return; }
+    const item = this.items.get(key);
+    if (!item) {
+      void this.deps.logger.log("WARN", MODULE, "Checklist request for an unknown row", { ...request });
+      return;
+    }
+    if (request.op === "click") { await this.reveal(item); }
+    else if (request.op === "check") { await this.setChecked(item, request.checked === true); }
+    else if (request.op === "menu" && request.action === "removeItem") { await this.removeItem(item); }
+    else if (request.op === "menu" && request.action === "nextStatus") { await this.nextStatus(item); }
+    else if (request.op === "menu" && request.action === "regenerate") { await this.regenerate(item); }
   }
 
   async addItem(): Promise<void> {
@@ -83,31 +101,68 @@ export class ChecklistView implements vscode.TreeDataProvider<ChecklistNode>, vs
     const project = this.deps.signals.current?.project;
     if (!project) { return; }
     const text = (await vscode.window.showInputBox({ prompt: "New checklist item", ignoreFocusOut: true }))?.trim();
-    if (!text) { return; }
-    const id = this.deps.newId();
-    await this.editChecklist(project, "add", (doc) => addManualItem(doc, { id, text, now: this.deps.now().toISOString() }));
+    if (text) { await this.add(project, text, {}); }
   }
 
-  async setChecked(node: ChecklistNode, state: vscode.TreeItemCheckboxState): Promise<void> {
+  /** Adds an item typed under a group row: to that By kind group (My items for "manual"), or to that By section group. */
+  private async addToRow(key: string, raw: string): Promise<void> {
     const project = this.deps.signals.current?.project;
-    if (!project || node.type !== "item" || node.item.kind !== "manual") { return; }
-    const { id } = node.item.manual;
-    const done = state === vscode.TreeItemCheckboxState.Checked;
+    const text = raw.trim();
+    const groupId = this.groups.get(key);
+    const bySection = this.rendered?.grouping === "section";
+    const group = !bySection && (MANUAL_ITEM_GROUPS as readonly string[]).includes(groupId ?? "") ? groupId as ManualItemGroup : undefined;
+    const known = groupId !== undefined && (bySection ? groupId !== "#reading" : group !== undefined || groupId === "manual");
+    if (!project || !text || !known) {
+      void this.deps.logger.log("WARN", MODULE, "Checklist add for an unknown row", { key, project: project?.folder });
+      return;
+    }
+    await this.add(project, text, bySection ? { section: groupId } : group ? { group } : {});
+  }
+
+  private async add(project: ReadyProject, text: string, place: { group?: ManualItemGroup; section?: string }): Promise<void> {
+    const id = this.deps.newId();
+    await this.editChecklist(project, "add", (doc) => addManualItem(doc, { id, text, now: this.deps.now().toISOString(), ...place }));
+  }
+
+  private async setChecked(item: ChecklistItem, done: boolean): Promise<void> {
+    const project = this.deps.signals.current?.project;
+    if (!project || item.kind !== "manual") { return; }
+    const { id } = item.manual;
     await this.editChecklist(project, "set-done", (doc) => setManualItemDone(doc, id, done, this.deps.now().toISOString()));
   }
 
-  async removeItem(node: ChecklistNode): Promise<void> {
+  private async removeItem(item: ChecklistItem): Promise<void> {
     const project = this.deps.signals.current?.project;
-    if (!project || node.type !== "item" || node.item.kind !== "manual") { return; }
-    const { id } = node.item.manual;
+    if (!project || item.kind !== "manual") { return; }
+    const { id } = item.manual;
     await this.editChecklist(project, "remove", (doc) => removeManualItem(doc, id));
   }
 
+  private async reveal(item: ChecklistItem): Promise<void> {
+    const project = this.rendered?.project;
+    const at = item.kind === "todo" ? item.todo : item.kind === "ref" ? item.ref : undefined;
+    if (!project || !at) { return; }
+    const range = new vscode.Range(at.line, 0, at.line, 0);
+    await vscode.commands.executeCommand(REVEAL_OUTLINE_COMMAND, vscode.Uri.file(path.join(project.folder, at.file)), range);
+  }
+
+  private async regenerate(item: ChecklistItem): Promise<void> {
+    const project = this.rendered?.project;
+    if (!project || item.kind !== "figure") { return; }
+    const recipe = project.settings.figures?.[item.figure.name];
+    if (!recipe) {
+      void this.deps.logger.log("WARN", MODULE, "Stale figure has no recipe", { folder: project.folder, figure: item.figure.name });
+      return;
+    }
+    const node: FigureNode = { kind: "figure", project, path: item.figure.name, recipe, state: { status: "stale", newerInputs: [], missingInputs: [] } };
+    await vscode.commands.executeCommand(REGENERATE_FIGURE_COMMAND, node);
+  }
+
   /** Moves a reading-list paper to its next status, then reloads the reading list. */
-  async nextStatus(node: ChecklistNode): Promise<void> {
-    if (node.type !== "item" || node.item.kind !== "reading") { return; }
-    const { key, status } = node.item.paper;
-    const paperId = this.reading?.paperIds.get(key);
+  private async nextStatus(item: ChecklistItem): Promise<void> {
+    if (item.kind !== "reading") { return; }
+    const { key, status } = item.paper;
+    const paperId = this.reading?.papers.get(key)?.paperId;
     if (!paperId) { return; }
     const target = nextStatus(status);
     try {
@@ -135,12 +190,6 @@ export class ChecklistView implements vscode.TreeDataProvider<ChecklistNode>, vs
     await this.deps.logger.error(MODULE, error, context);
   }
 
-  private async rememberExpanded(node: ChecklistNode, expanded: boolean): Promise<void> {
-    if (node.type !== "group" || !this.rendered) { return; }
-    const { project, grouping } = this.rendered;
-    await this.memory.setExpanded(project.folder, grouping, node.group.id, expanded);
-  }
-
   private onSignals(): void {
     const project = this.deps.signals.current?.project;
     if (project && this.reading?.folder !== project.folder) { void this.loadReading(); }
@@ -154,36 +203,27 @@ export class ChecklistView implements vscode.TreeDataProvider<ChecklistNode>, vs
     const list = await this.deps.reading.of(project);
     if (load !== this.readingLoads) { return; }
     const items: ReadingItem[] = [];
-    const paperIds = new Map<string, string>();
-    for (const { key, paper } of list.entries) {
+    const papers = new Map<string, ReadingPaper>();
+    for (const { key, paper, cited, listed } of list.entries) {
       if (!paper) { continue; }
       items.push({ key, title: paper.title, status: paper.status, ...(paper.statusChangedAt ? { statusChangedAt: paper.statusChangedAt } : {}) });
-      paperIds.set(key, paper.id);
+      papers.set(key, { paperId: paper.id, cited, listed, authors: paper.authors, year: paper.year });
     }
-    this.reading = { folder: project.folder, items, paperIds };
+    this.reading = { folder: project.folder, items, papers };
     this.render();
   }
 
-  // INVARIANT: the context keys are set from here, not from getChildren, because a hidden view is never asked for children.
   private render(): void {
     const current = this.deps.signals.current;
-    if (!current) { return this.show([], undefined, 0); }
-    const { project, signals, pageOverflow } = current;
+    if (!current) { this.rendered = undefined; this.changeEmitter.fire(); return; }
+    const { project, signals, pageOverflow, pageCount } = current;
     const main = project.main ?? "";
     const grouping = this.memory.grouping(project.folder);
     const reading = this.reading?.folder === project.folder ? this.reading.items : [];
     const checklist = buildChecklist({
       ...signals, pageOverflow, reading, placeSection: sectionPlacer(signals.sources, main), citeSections: citeSections(signals.sources, main),
     }, grouping);
-    this.show(checklistNodes(checklist), { project, grouping }, checklist.openCount);
-  }
-
-  private show(nodes: ChecklistNode[], rendered: ChecklistView["rendered"], openCount: number): void {
-    this.nodes = nodes;
-    this.rendered = rendered;
-    if (this.view) { this.view.description = openCount > 0 ? String(openCount) : ""; }
-    void vscode.commands.executeCommand("setContext", HAS_CHECKLIST_KEY, this.nodes.length > 0);
-    void vscode.commands.executeCommand("setContext", BY_SECTION_KEY, rendered?.grouping === "section");
+    this.rendered = { project, grouping, checklist, pageCount };
     this.changeEmitter.fire();
   }
 

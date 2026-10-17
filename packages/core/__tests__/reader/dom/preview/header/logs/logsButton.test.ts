@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-// Tests the header logs button: problem count, hidden badge at zero, menu entries and their messages.
+// Tests the header logs button: problem count, hidden count at zero, menu entries and their messages.
 import { mountLogsButton } from "../../../../../../src/reader/dom/preview/header/logs/index";
 import type { PreviewProblem, PreviewRoot, PreviewRoots } from "../../../../../../src/reader/index";
 
@@ -25,10 +25,10 @@ function setup() {
   document.body.replaceChildren(slot);
   const logs = mountLogsButton(slot, { post, openLogs });
   const button = () => slot.querySelector<HTMLButtonElement>("button")!;
-  const badge = () => slot.querySelector<HTMLElement>(".rd-logs-badge")!;
+  const count = () => slot.querySelector<HTMLElement>(".rd-logs-count")!;
   const items = () => [...document.querySelectorAll<HTMLButtonElement>(".rd-menu-item")];
   const item = (text: string) => items().find((b) => b.textContent?.includes(text))!;
-  return { logs, post, openLogs, slot, button, badge, items, item };
+  return { logs, post, openLogs, slot, button, count, items, item };
 }
 
 describe("mountLogsButton", () => {
@@ -38,15 +38,15 @@ describe("mountLogsButton", () => {
     const t = setup();
     t.logs.setRoots(roots("a.tex", [root("a.tex", PROBLEMS)]));
     expect(t.slot.hidden).toBe(false);
-    expect(t.badge().textContent).toBe("2");
-    expect(t.badge().hidden).toBe(false);
+    expect(t.count().textContent).toBe("2");
+    expect(t.count().hidden).toBe(false);
     expect(t.button().getAttribute("aria-label")).toBe("Logs, 2 problems");
   });
 
-  it("hides the badge at zero problems", () => {
+  it("hides the count at zero problems", () => {
     const t = setup();
     t.logs.setRoots(roots("a.tex", [root("a.tex", [PROBLEMS[0]!])]));
-    expect(t.badge().hidden).toBe(true);
+    expect(t.count().hidden).toBe(true);
     expect(t.button().getAttribute("aria-label")).toBe("Logs");
   });
 
@@ -55,7 +55,7 @@ describe("mountLogsButton", () => {
     const list = [root("a.tex", PROBLEMS), root("b.tex", [PROBLEMS[1]!])];
     t.logs.setRoots(roots("a.tex", list));
     t.logs.setRoots(roots("b.tex", list));
-    expect(t.badge().textContent).toBe("1");
+    expect(t.count().textContent).toBe("1");
     expect(t.button().getAttribute("aria-label")).toBe("Logs, 1 problem");
   });
 
@@ -92,11 +92,11 @@ describe("mountLogsButton", () => {
     expect(t.post).toHaveBeenCalledWith({ command: "openRawLog", root: "a.tex" });
   });
 
-  it("marks the badge with the error tone only when an error exists", () => {
+  it("marks the count with the error tone only when an error exists", () => {
     const t = setup();
     t.logs.setRoots(roots("a.tex", [root("a.tex", PROBLEMS)]));
-    expect(t.badge().dataset["tone"]).toBe("error");
+    expect(t.count().dataset["tone"]).toBe("error");
     t.logs.setRoots(roots("a.tex", [root("a.tex", [PROBLEMS[2]!])]));
-    expect(t.badge().dataset["tone"]).toBe("warning");
+    expect(t.count().dataset["tone"]).toBe("warning");
   });
 });
