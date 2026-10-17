@@ -77,6 +77,7 @@ export function mountAllProjects(root: HTMLElement, transport: AllProjectsTransp
   transport.subscribe((message) => {
     if (message.type === "error") { toast(message.message, "error"); return; }
     if (message.type === "files") { expansion.receive(message); return; }
+    if (message.type === "detail") { return; }
     s.rows = message.rows;
     s.commands = message.commands;
     render();

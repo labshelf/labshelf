@@ -1,5 +1,6 @@
 // Serves the All projects page from a host's project library: posts the rows and runs the page's actions.
 import type { ILogger } from "../../ports/index.js";
+import type { ProjectTarget } from "../project/index.js";
 import type { AllProjectsEndpoint, AllProjectsToHost } from "./protocol/index.js";
 import type { ProjectLibraryPort } from "./projectLibraryPort.js";
 
@@ -19,9 +20,15 @@ const ACTION_LABELS: Record<AllProjectsToHost["type"], string> = {
   command: "Command",
   files: "List files",
   openFile: "Open file",
+  detail: "Load detail",
+  build: "Build",
+  preview: "Preview",
+  openLog: "Open log",
+  createFile: "Create file",
+  setTarget: "Set target",
 };
 
-function run(port: ProjectLibraryPort, message: Exclude<AllProjectsToHost, { type: "files" }>): Promise<void> {
+function run(port: ProjectLibraryPort, message: Exclude<AllProjectsToHost, { type: "files" | "detail" }>): Promise<void> {
   switch (message.type) {
     case "ready": return Promise.resolve();
     case "open": return port.open(message.id);
@@ -35,7 +42,18 @@ function run(port: ProjectLibraryPort, message: Exclude<AllProjectsToHost, { typ
     case "emptyTrash": return emptyTrash(port);
     case "command": return port.runCommand(message.id, message.command);
     case "openFile": return port.openFile(message.id, message.path);
+    case "build": return port.build(message.id);
+    case "preview": return port.preview(message.id);
+    case "openLog": return port.openLog(message.id);
+    case "createFile": return port.createFile(message.id, message.path);
+    case "setTarget": return port.setTarget(message.id, toTarget(message));
   }
+}
+
+/** Both fields absent clears the target. */
+function toTarget({ venue, deadline }: { venue?: string; deadline?: string }): ProjectTarget | null {
+  if (venue === undefined && deadline === undefined) { return null; }
+  return { ...(venue !== undefined ? { venue } : {}), ...(deadline !== undefined ? { deadline } : {}) };
 }
 
 async function emptyTrash(port: ProjectLibraryPort): Promise<void> {
@@ -64,10 +82,19 @@ export function serveAllProjects(endpoint: AllProjectsEndpoint, port: ProjectLib
     }
   };
 
+  // The pane shows a detail failure in place, so it gets no toast.
+  const postDetail = async (id: string): Promise<void> => {
+    try {
+      endpoint.post({ type: "detail", id, detail: await port.detail(id) });
+    } catch (error) {
+      endpoint.post({ type: "detail", id, error: logFailure(ACTION_LABELS.detail, error, { type: "detail", id }) });
+    }
+  };
+
   const post = async (): Promise<void> => {
     if (!ready) { return; }
     try {
-      endpoint.post({ type: "projects", rows: await port.list(), commands: port.commands() });
+      endpoint.post({ type: "projects", rows: await port.list(), commands: port.commands(), openLabel: port.openLabel() });
     } catch (error) {
       fail(ACTION_LABELS.ready, error, { type: "projects" });
     }
@@ -76,6 +103,7 @@ export function serveAllProjects(endpoint: AllProjectsEndpoint, port: ProjectLib
   const stopMessages = endpoint.subscribe((message) => {
     if (message.type === "ready") { ready = true; void post(); return; }
     if (message.type === "files") { void postFiles(message.id); return; }
+    if (message.type === "detail") { void postDetail(message.id); return; }
     const context = { type: message.type, id: "id" in message ? message.id : undefined };
     run(port, message).catch((error: unknown) => fail(ACTION_LABELS[message.type], error, context));
   });

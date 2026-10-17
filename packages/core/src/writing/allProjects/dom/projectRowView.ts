@@ -1,4 +1,4 @@
-// Builds one project as a treegrid row: files twistie, format badge and title, open items, last modified (or trashed) time and the actions button.
+// Builds one project as a treegrid row: files twistie, format badge and title, last modified (or trashed) time and the actions button.
 import { relativeTime } from "../../../library/index.js";
 import { formatLabel } from "../../../library-ui/dom/index.js";
 import { el, highlight } from "../../../ui/dom/index.js";
@@ -39,11 +39,10 @@ function timeCell(row: ProjectRow, v: ProjectRowView): string {
 }
 
 function rowHtml(row: ProjectRow, v: ProjectRowView): string {
-  const open = row.openItems ? String(row.openItems) : "";
   const expandable = row.broken ? "" : ` aria-expanded="false"`;
   return `<div class="paper-row-main${row.broken ? " is-broken" : ""}" role="row" aria-level="1" aria-selected="false" tabindex="-1"${expandable}>` +
     twistieCell(row) + titleCell(row, v.terms) +
-    `<div class="col-meta col-open">${open}</div>` + timeCell(row, v) +
+    timeCell(row, v) +
     `<div class="col-actions"><button class="ls-icon-btn" type="button" tabindex="-1" title="Project actions" aria-label="Project actions" data-act="menu">${icon("more")}</button></div>` +
     `</div>` +
     `<div class="paper-children" role="none"></div>`;

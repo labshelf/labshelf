@@ -33,6 +33,14 @@ export interface ProjectSettings extends UserKeys {
   trashed?: string | undefined;
   /** Papers the project cites plus those the user added, each with its DOI when known. */
   papers?: ListedPaper[] | undefined;
+  target?: ProjectTarget | undefined;
+}
+
+/** Where the project is headed: the venue and its submission deadline. */
+export interface ProjectTarget {
+  venue?: string | undefined;
+  /** A calendar date, `YYYY-MM-DD`, without a time. */
+  deadline?: string | undefined;
 }
 
 /** The `check:` limits the preview edits. */
@@ -42,9 +50,10 @@ export interface CheckLimits {
   countUpTo: CountUpTo;
 }
 
-/** Settings LabShelf may rewrite after creation; undefined removes the key, an absent key stays as it is. Of the user keys only the check limits are LabShelf's to write. */
-export type ProjectSettingsPatch = Partial<Omit<ProjectSettings, "id" | "format" | keyof UserKeys>> & {
+/** Settings LabShelf may rewrite after creation; undefined removes the key, an absent key stays as it is. Of the user keys only the check limits are LabShelf's to write. `target` writes the keys it holds, clears a key that is empty or undefined, and `null` removes the whole mapping. */
+export type ProjectSettingsPatch = Partial<Omit<ProjectSettings, "id" | "format" | "target" | keyof UserKeys>> & {
   check?: { [K in keyof CheckLimits]?: CheckLimits[K] | undefined };
+  target?: ProjectTarget | null;
 };
 
 export type ProjectFileResult =
@@ -55,6 +64,28 @@ const OPTIONAL_STRING_KEYS = ["main", "bibliography", "typst"] as const;
 
 function isOneOf<T extends string>(values: readonly T[], value: unknown): value is T {
   return typeof value === "string" && (values as readonly string[]).includes(value);
+}
+
+function isCalendarDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) { return false; }
+  // The round trip rejects days the month does not have, such as 2026-02-30.
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
+}
+
+function readTarget(value: unknown): ProjectTarget | undefined | string {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) { return "target must be a mapping"; }
+  const { venue, deadline } = value as Record<string, unknown>;
+  const target: ProjectTarget = {};
+  if (venue !== undefined && venue !== null) {
+    if (typeof venue !== "string") { return "target.venue must be text"; }
+    if (venue.trim() !== "") { target.venue = venue.trim(); }
+  }
+  if (deadline !== undefined && deadline !== null) {
+    if (typeof deadline !== "string" || !isCalendarDate(deadline)) { return "target.deadline must be a date as YYYY-MM-DD"; }
+    target.deadline = deadline;
+  }
+  return Object.keys(target).length > 0 ? target : undefined;
 }
 
 function readMapping(text: string): Record<string, unknown> | string {
@@ -99,6 +130,11 @@ export function parseProjectFile(text: string): ProjectFileResult {
     if (value !== undefined && value !== null && typeof value !== "string") { return { ok: false, reason: `${key} must be text` }; }
     if (typeof value === "string" && value.trim() !== "") { settings[key] = value.trim(); }
   }
+  if (raw["target"] !== undefined && raw["target"] !== null) {
+    const target = readTarget(raw["target"]);
+    if (typeof target === "string") { return { ok: false, reason: target }; }
+    settings.target = target;
+  }
   const userKeys = readUserKeys(raw);
   if (typeof userKeys === "string") { return { ok: false, reason: userKeys }; }
   if (raw["papers"] !== undefined && raw["papers"] !== null) {
@@ -118,11 +154,12 @@ export function serializeProjectFile(settings: ProjectSettings): string {
 /** Applies a patch to existing labshelf.yaml text, leaving comments, key order and unknown keys as they are. */
 export function updateProjectFile(text: string, patch: ProjectSettingsPatch): string {
   const doc = YAML.parseDocument(text);
-  const { check, ...rest } = patch;
+  const { check, target, ...rest } = patch;
   for (const [key, value] of Object.entries(rest)) {
     if (value === undefined) { doc.delete(key); } else { doc.set(key, value); }
   }
   if (check !== undefined) { patchCheckLimits(doc, check); }
+  if (target === null) { doc.delete("target"); } else if (target !== undefined) { patchTarget(doc, target); }
   return doc.toString();
 }
 
@@ -139,4 +176,15 @@ function patchCheckLimits(doc: YAML.Document, check: NonNullable<ProjectSettings
   }
   const mapping = doc.get("check");
   if (YAML.isMap(mapping) && mapping.items.length === 0) { doc.delete("check"); }
+}
+
+function patchTarget(doc: YAML.Document, target: ProjectTarget): void {
+  // INVARIANT: a written deadline must parse again, or the whole project file becomes unreadable.
+  const deadline = target.deadline?.trim();
+  if (deadline && !isCalendarDate(deadline)) { throw new Error(`target.deadline must be a date as YYYY-MM-DD, got "${deadline}"`); }
+  for (const [key, value] of Object.entries(target)) {
+    if (value === undefined || value.trim() === "") { doc.deleteIn(["target", key]); } else { doc.setIn(["target", key], value.trim()); }
+  }
+  const mapping = doc.get("target");
+  if (YAML.isMap(mapping) && mapping.items.length === 0) { doc.delete("target"); }
 }

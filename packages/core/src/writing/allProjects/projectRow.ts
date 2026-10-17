@@ -1,8 +1,17 @@
 // Declares a writing project as the All projects page lists it, independent of where the host stores it.
-import type { ProjectFormat } from "../project/index.js";
+import type { ProjectFormat, ProjectTarget } from "../project/index.js";
 
 /** The page keeps each place apart: archived and trashed projects never mix with the others. */
 export type ProjectPlace = "projects" | "archived" | "trash";
+
+/** `earlier` is a PDF from before this session (`at` is its mtime); `never` is no PDF and no outcome. */
+export type ProjectBuildState = "ok" | "warnings" | "failed" | "building" | "earlier" | "never";
+
+export interface BuildMark {
+  state: ProjectBuildState;
+  /** Epoch ms of the outcome, or of the PDF for `earlier`. */
+  at?: number;
+}
 
 export type NewProjectKind = "blank" | "template" | "folder";
 
@@ -19,7 +28,12 @@ export interface ProjectRow {
   modified?: number;
   /** ISO time the project went to the trash. */
   trashedAt?: string;
-  openItems?: number;
+  /** Distinct keys the project cites. */
+  cites?: number;
+  /** Cited keys found neither in the library nor in the project's bibliography. */
+  unresolvedCites?: number;
+  build?: BuildMark;
+  target?: ProjectTarget;
   /** The project lives outside the library, so deleting it forever only removes it from LabShelf. */
   external?: boolean;
   /** Why the project cannot be read. */

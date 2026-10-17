@@ -1,4 +1,6 @@
 // Declares the project storage operations a host implements for the All projects page.
+import type { ProjectTarget } from "../project/index.js";
+import type { ProjectDetail } from "./projectDetail.js";
 import type { NewProjectKind, ProjectMenuCommand, ProjectRow } from "./projectRow.js";
 
 /** Every `id` is a ProjectRow id; the implementation binds the logger and the library. */
@@ -21,4 +23,16 @@ export interface ProjectLibraryPort {
   files(id: string): Promise<string[]>;
   /** Opens one of `files(id)`, opening the project first when another one is open. */
   openFile(id: string, path: string): Promise<void>;
+  detail(id: string): Promise<ProjectDetail>;
+  build(id: string): Promise<void>;
+  /** Opens the project's last PDF. */
+  preview(id: string): Promise<void>;
+  /** Opens the last LaTeX log. */
+  openLog(id: string): Promise<void>;
+  /** Creates an empty file at a project-relative `path`, then opens it. */
+  createFile(id: string, path: string): Promise<void>;
+  /** Writes the project's `target` to labshelf.yaml; `null` removes it. */
+  setTarget(id: string, target: ProjectTarget | null): Promise<void>;
+  /** The host's name for opening a project in its editor, such as "Open in VS Code". */
+  openLabel(): string;
 }

@@ -115,3 +115,86 @@ describe("parseProjectFile title and trashed", () => {
     expect(parseProjectFile("id: a\nformat: latex\ntrashed: true\n")).toEqual({ ok: false, reason: "trashed must be text" });
   });
 });
+
+describe("target", () => {
+  const head = "id: a\nformat: latex\n";
+
+  it("reads venue and deadline", () => {
+    const result = parseProjectFile(`${head}target:\n  venue: NeurIPS 2027\n  deadline: 2027-05-15\n`);
+    expect(result.ok && result.settings.target).toEqual({ venue: "NeurIPS 2027", deadline: "2027-05-15" });
+  });
+
+  it("reads one key alone and trims the venue", () => {
+    const result = parseProjectFile(`${head}target:\n  venue: '  ICML  '\n`);
+    expect(result.ok && result.settings.target).toEqual({ venue: "ICML" });
+  });
+
+  it("reads an empty or blank target as absent", () => {
+    for (const body of ["target: {}\n", "target:\n", "target: { venue: '  ', deadline: null }\n"]) {
+      const result = parseProjectFile(head + body);
+      expect(result.ok && result.settings.target).toBeUndefined();
+    }
+  });
+
+  it("rejects a target that is not a mapping or has wrong types", () => {
+    expect(parseProjectFile(`${head}target: soon\n`)).toEqual({ ok: false, reason: "target must be a mapping" });
+    expect(parseProjectFile(`${head}target: { venue: [x] }\n`)).toEqual({ ok: false, reason: "target.venue must be text" });
+    expect(parseProjectFile(`${head}target: { deadline: 20270515 }\n`)).toEqual({ ok: false, reason: "target.deadline must be a date as YYYY-MM-DD" });
+  });
+
+  it("rejects an impossible or misformatted date", () => {
+    for (const deadline of ["2026-02-30", "2027-13-01", "2026-2-3", "May 15"]) {
+      const result = parseProjectFile(`${head}target: { deadline: '${deadline}' }\n`);
+      expect(result).toEqual({ ok: false, reason: "target.deadline must be a date as YYYY-MM-DD" });
+    }
+  });
+
+  it("accepts a leap day", () => {
+    const result = parseProjectFile(`${head}target: { deadline: 2028-02-29 }\n`);
+    expect(result.ok && result.settings.target).toEqual({ deadline: "2028-02-29" });
+  });
+
+  const source = "# my project\nid: a\nformat: latex\ntarget:\n  venue: ICML # where\n  deadline: 2027-01-31\nzeta: keep\n";
+
+  it("writes the given keys and keeps comments, order and unknown keys", () => {
+    const out = updateProjectFile(source, { target: { deadline: "2027-02-01" } });
+    expect(out).toBe(source.replace("2027-01-31", "2027-02-01"));
+  });
+
+  it("adds target to a file without one", () => {
+    const out = updateProjectFile("# c\nid: a\nformat: latex\n", { target: { venue: "ACL", deadline: "2027-03-01" } });
+    expect(out).toContain("# c");
+    const parsed = parseProjectFile(out);
+    expect(parsed.ok && parsed.settings.target).toEqual({ venue: "ACL", deadline: "2027-03-01" });
+  });
+
+  it("removes a cleared key and keeps the other", () => {
+    const out = updateProjectFile(source, { target: { venue: undefined } });
+    expect(out).not.toContain("venue");
+    expect(out).toContain("deadline: 2027-01-31");
+    const empty = updateProjectFile(source, { target: { deadline: "" } });
+    expect(empty).not.toContain("deadline");
+    expect(empty).toContain("venue: ICML # where");
+  });
+
+  it("drops target when both keys are cleared", () => {
+    const out = updateProjectFile(source, { target: { venue: undefined, deadline: undefined } });
+    expect(out).not.toContain("target");
+    expect(out).toContain("# my project");
+    expect(out).toContain("zeta: keep");
+  });
+
+  it("removes target when the patch is null", () => {
+    const out = updateProjectFile(source, { target: null });
+    expect(out).not.toContain("target");
+    expect(out).toContain("zeta: keep");
+  });
+
+  it("refuses to write a deadline that would not parse", () => {
+    expect(() => updateProjectFile(source, { target: { deadline: "2026-02-30" } })).toThrow("target.deadline");
+  });
+
+  it("leaves target alone when the patch has none", () => {
+    expect(updateProjectFile(source, { main: "m.tex" })).toContain("venue: ICML");
+  });
+});

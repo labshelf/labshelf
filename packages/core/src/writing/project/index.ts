@@ -6,7 +6,7 @@ export {
   DEFAULT_BIBLIOGRAPHY, LATEX_ENGINES, PROJECT_FILE, PROJECT_FORMATS,
   parseProjectFile, projectFileWithId, serializeProjectFile, updateProjectFile,
 } from "./projectFile.js";
-export type { CheckLimits, LatexEngine, ProjectFileResult, ProjectFormat, ProjectSettings, ProjectSettingsPatch } from "./projectFile.js";
+export type { CheckLimits, LatexEngine, ProjectFileResult, ProjectFormat, ProjectSettings, ProjectSettingsPatch, ProjectTarget } from "./projectFile.js";
 export { parseJsonObject } from "./deviceLocal/index.js";
 export type { OpenSources } from "./openSources.js";
 export type { ProjectEntry, ProjectLocation } from "./projectEntry.js";

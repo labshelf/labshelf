@@ -1,6 +1,6 @@
 // Tests that the host side of the All projects page posts rows after ready and runs its actions.
 import {
-  serveAllProjects, type AllProjectsToHost, type HostToAllProjects, type ProjectLibraryPort, type ProjectRow,
+  serveAllProjects, type AllProjectsToHost, type HostToAllProjects, type ProjectLibraryPort, type ProjectDetail, type ProjectRow,
 } from "../../../src/writing/allProjects/index";
 import type { ILogger } from "../../../src/ports/index";
 
@@ -9,6 +9,11 @@ const rows: ProjectRow[] = [
   { id: "t1", title: "T1", place: "trash" },
   { id: "t2", title: "T2", place: "trash" },
 ];
+
+const detail: ProjectDetail = {
+  id: "a", location: "/p/a", limits: { countUpTo: "end" }, build: { state: "never", warnings: 0, errors: 0 },
+  citations: [], versions: [], sources: ["main.tex"],
+};
 
 function setup() {
   const posted: HostToAllProjects[] = [];
@@ -23,6 +28,13 @@ function setup() {
     deleteForever: jest.fn(async () => undefined),
     files: jest.fn(async () => ["main.tex", "sec/intro.tex"]),
     openFile: jest.fn(async () => undefined),
+    detail: jest.fn(async (id: string) => ({ ...detail, id })),
+    build: jest.fn(async () => undefined),
+    preview: jest.fn(async () => undefined),
+    openLog: jest.fn(async () => undefined),
+    createFile: jest.fn(async () => undefined),
+    setTarget: jest.fn(async () => undefined),
+    openLabel: jest.fn(() => "Open in VS Code"),
   } as unknown as ProjectLibraryPort;
   const logger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) } as unknown as ILogger;
   const endpoint = {
@@ -45,7 +57,7 @@ describe("serveAllProjects", () => {
     await flush();
     change();
     await flush();
-    expect(posted).toEqual([{ type: "projects", rows, commands: [] }, { type: "projects", rows, commands: [] }]);
+    expect(posted).toEqual([{ type: "projects", rows, commands: [], openLabel: "Open in VS Code" }, { type: "projects", rows, commands: [], openLabel: "Open in VS Code" }]);
   });
 
   it("dispatches an action to the port", async () => {
@@ -96,6 +108,54 @@ describe("serveAllProjects", () => {
     send({ type: "emptyTrash" });
     await flush();
     expect((port.deleteForever as jest.Mock).mock.calls).toEqual([["t1"], ["t2"]]);
+  });
+
+  it("posts the detail a page asks for", async () => {
+    const { posted, send } = setup();
+    send({ type: "detail", id: "a" });
+    await flush();
+    expect(posted).toEqual([{ type: "detail", id: "a", detail }]);
+  });
+
+  it("logs a failed detail and posts it as the detail's error, not as a toast", async () => {
+    const { port, logger, posted, send } = setup();
+    (port.detail as jest.Mock).mockRejectedValueOnce(new Error("unreadable"));
+    send({ type: "detail", id: "a" });
+    await flush();
+    expect(posted).toEqual([{ type: "detail", id: "a", error: "unreadable" }]);
+    expect(logger.log).toHaveBeenCalledWith("ERROR", "allProjects", "Load detail failed", { type: "detail", id: "a", error: "unreadable" });
+  });
+
+  it("dispatches build, preview, openLog and createFile to the port", async () => {
+    const { port, send } = setup();
+    send({ type: "build", id: "a" });
+    send({ type: "preview", id: "a" });
+    send({ type: "openLog", id: "a" });
+    send({ type: "createFile", id: "a", path: "refs.bib" });
+    await flush();
+    expect(port.build).toHaveBeenCalledWith("a");
+    expect(port.preview).toHaveBeenCalledWith("a");
+    expect(port.openLog).toHaveBeenCalledWith("a");
+    expect(port.createFile).toHaveBeenCalledWith("a", "refs.bib");
+  });
+
+  it("reports a failed build as Build failed", async () => {
+    const { port, posted, send } = setup();
+    (port.build as jest.Mock).mockRejectedValueOnce(new Error("no engine"));
+    send({ type: "build", id: "a" });
+    await flush();
+    expect(posted).toEqual([{ type: "error", message: "Build failed: no engine" }]);
+  });
+
+  it("maps setTarget to a target, and to null when both fields are absent", async () => {
+    const { port, send } = setup();
+    send({ type: "setTarget", id: "a", venue: "ICML", deadline: "2027-02-28" });
+    send({ type: "setTarget", id: "a", venue: "ICML" });
+    send({ type: "setTarget", id: "a" });
+    await flush();
+    expect((port.setTarget as jest.Mock).mock.calls).toEqual([
+      ["a", { venue: "ICML", deadline: "2027-02-28" }], ["a", { venue: "ICML" }], ["a", null],
+    ]);
   });
 
   it("stops listening on dispose", () => {

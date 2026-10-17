@@ -1,5 +1,6 @@
 // Declares the messages between the All projects page and its host, and the channel that carries them.
 import type { MessageEnd } from "../../../library-ui/protocol/index.js";
+import type { ProjectDetail } from "../projectDetail.js";
 import type { NewProjectKind, ProjectMenuCommand, ProjectRow } from "../projectRow.js";
 
 export type AllProjectsToHost =
@@ -19,13 +20,24 @@ export type AllProjectsToHost =
   /** Asks for the project's file listing each time its row expands. */
   | { type: "files"; id: string }
   /** `path` is one of the listed files: relative and "/"-separated. */
-  | { type: "openFile"; id: string; path: string };
+  | { type: "openFile"; id: string; path: string }
+  /** Asks for the detail pane's data each time a row is selected. */
+  | { type: "detail"; id: string }
+  | { type: "build"; id: string }
+  | { type: "preview"; id: string }
+  | { type: "openLog"; id: string }
+  /** `path` is project-relative and "/"-separated. */
+  | { type: "createFile"; id: string; path: string }
+  /** `deadline` is YYYY-MM-DD; both fields absent removes the target. */
+  | { type: "setTarget"; id: string; venue?: string; deadline?: string };
 
 export type HostToAllProjects =
-  | { type: "projects"; rows: ProjectRow[]; commands: ProjectMenuCommand[] }
+  | { type: "projects"; rows: ProjectRow[]; commands: ProjectMenuCommand[]; openLabel: string }
   | { type: "error"; message: string }
   | { type: "files"; id: string; files: string[] }
-  | { type: "files"; id: string; error: string };
+  | { type: "files"; id: string; error: string }
+  | { type: "detail"; id: string; detail: ProjectDetail }
+  | { type: "detail"; id: string; error: string };
 
 /** The page side of the channel. */
 export type AllProjectsTransport = MessageEnd<AllProjectsToHost, HostToAllProjects>;

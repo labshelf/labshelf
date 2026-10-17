@@ -7,4 +7,4 @@ export type { PdfTextItem } from "./pdfTextLines.js";
 export { walkOperators } from "./operatorWalk.js";
 export type { OperatorList, PageOperators } from "./operatorWalk.js";
 export type { CheckFinding, CheckLocation, CheckRule, CheckSource, PdfFacts, PdfPageFacts, PlacedImage } from "./checkTypes.js";
-export { readingOrderTexts, wordsUpTo } from "./limits/index.js";
+export { countedPages, readingOrderTexts, wordsUpTo } from "./limits/index.js";

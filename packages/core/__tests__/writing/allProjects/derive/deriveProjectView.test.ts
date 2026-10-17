@@ -1,5 +1,5 @@
 // Tests how the All projects page filters, sorts and groups project rows.
-import { DEFAULT_PROJECT_VIEW, deriveProjectView, moveTargets, placeCounts, type ProjectRow } from "../../../../src/writing/allProjects/index";
+import { DEFAULT_PROJECT_VIEW, deriveProjectView, firstProjectSortDir, moveTargets, placeCounts, type ProjectRow } from "../../../../src/writing/allProjects/index";
 
 const row = (id: string, extra: Partial<ProjectRow> = {}): ProjectRow => ({ id, title: id, place: "projects", ...extra });
 const ids = (groups: ReturnType<typeof deriveProjectView>): string[][] => groups.map((group) => group.rows.map((r) => r.id));
@@ -27,6 +27,14 @@ describe("deriveProjectView", () => {
     expect(sorted("asc")).toEqual(["a", "d", "c", "b"]);
     const titles = [row("p10"), row("p2")];
     expect(ids(deriveProjectView(titles, { ...DEFAULT_PROJECT_VIEW, sort: { key: "title", dir: "asc" } })).flat()).toEqual(["p2", "p10"]);
+  });
+
+  it("sorts by cites like other numbers: missing last in both directions, ties by title", () => {
+    const rows = [row("a", { cites: 2 }), row("b"), row("c", { cites: 9 }), row("d", { cites: 2 }), row("e", { cites: 0 })];
+    const sorted = (dir: "asc" | "desc") => ids(deriveProjectView(rows, { ...DEFAULT_PROJECT_VIEW, sort: { key: "cites", dir } })).flat();
+    expect(sorted("desc")).toEqual(["c", "a", "d", "e", "b"]);
+    expect(sorted("asc")).toEqual(["e", "a", "d", "c", "b"]);
+    expect(firstProjectSortDir("cites")).toBe("desc");
   });
 
   it("puts top-level rows first, then one group per folder by path", () => {
