@@ -1,0 +1,11 @@
+/* Lays out the reader demo inside its container; the reader's own styles come scoped from dist/demos/reader.js. */
+@import url("../../dist/pdfjs/web/pdf_viewer.css");
+
+[data-demo="reader"] {
+  position: relative; overflow: hidden;
+  font-family: var(--ls-font); font-size: var(--ls-font-size);
+  background: var(--ls-reader-bg); color: var(--ls-reader-fg);
+}
+/* The shell expects the viewport; the demo gives it the container instead. */
+[data-demo="reader"] #app { position: absolute; inset: 0; }
+[data-demo="reader"] #cheatsheet { position: absolute; }

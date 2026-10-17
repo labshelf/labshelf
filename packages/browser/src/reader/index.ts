@@ -11,11 +11,10 @@ import {
   type ReaderPrefs,
 } from "@labshelf/core";
 import { PDF_FILE, errorMessage } from "@labshelf/core";
-import { startReader, PerfMarks, resolveTheme, toast } from "@labshelf/core/dom";
+import { createInPageChannel, startReader, PerfMarks, resolveTheme, toast } from "@labshelf/core/dom";
 import { bx, createBrowserLogger, downloadTextFile } from "../platform";
 import { IndexedDbFileSystem, createIdbSidecarPort, getRecord } from "../storage";
 import { getThemePref, onThemeChange } from "../ui";
-import { createInPageChannel } from "./inPageTransport";
 import { loadReaderPrefs, onReaderPrefsChange } from "./access";
 import { installPageGuards, isMacPlatform } from "./pageGuards";
 import { parseReaderQuery } from "./access";

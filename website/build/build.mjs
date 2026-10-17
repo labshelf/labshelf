@@ -4,6 +4,7 @@ import { cp, mkdir, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { writeDemoData } from "./demoData.mjs";
 
 const pkgRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const outDir = join(pkgRoot, "dist");
@@ -41,3 +42,5 @@ await build({
   logLevel: "info",
 });
 await copyPdfjs();
+await writeDemoData(pkgRoot, outDir);
+await cp(join(pkgRoot, "demo-library/papers/Language models/Reasoning/wei2022chainofthought/paper.pdf"), join(outDir, "demos/paper.pdf"));

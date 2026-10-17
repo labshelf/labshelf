@@ -1,7 +1,7 @@
-// Provides the reader transport for an extension page where host and reader UI share one document.
+// Provides the reader transport for a page where host and reader UI share one document.
 // INVARIANT: messages are structured-cloned and delivered asynchronously, as across a VS Code webview boundary.
-import type { HostToWebview, WebviewToHost } from "@labshelf/core";
-import type { ReaderTransport } from "@labshelf/core/dom";
+import type { HostToWebview, WebviewToHost } from "../../index.js";
+import type { ReaderTransport } from "./session/index.js";
 
 export interface InPageChannel {
   /** Handed to startReader. */

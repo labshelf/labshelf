@@ -93,6 +93,23 @@
         "pdfjs-dist",
         "tesseract.js"
       ]
+    },
+    "website": {
+      "entry": [
+        "js/main.js",
+        "src/demos/library.ts",
+        "src/demos/reader.ts",
+        "build/*.mjs",
+        "tools/*.mjs",
+        "__tests__/**/*.ts"
+      ],
+      "project": [
+        "js/**/*.js",
+        "src/**/*.ts",
+        "build/*.mjs",
+        "tools/*.mjs",
+        "__tests__/**/*.ts"
+      ]
     }
   }
 }

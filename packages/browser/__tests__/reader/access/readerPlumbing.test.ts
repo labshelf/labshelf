@@ -1,11 +1,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { READER_SHELL_BODY } from "@labshelf/core";
+import { createInPageChannel } from "@labshelf/core/dom";
 
 jest.mock("webextension-polyfill", () => ({ runtime: { getURL: (p: string) => `chrome-extension://ext/${p}` } }));
 
 import { createIdbSidecarPort, sidecarPath } from "../../../src/storage/idbSidecarPort";
-import { createInPageChannel } from "../../../src/reader/inPageTransport";
 import { parseReaderQuery, readerUrl } from "../../../src/reader/access/readerTabs";
 
 describe("reader page shell", () => {
