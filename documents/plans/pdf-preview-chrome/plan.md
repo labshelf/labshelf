@@ -26,8 +26,6 @@ Facts: [research/preview.md](research/preview.md), [research/writing-core.md](re
 
 Open: none.
 
-Cross-plan caveat: writing-2-submission-tools also touches the preview messages; run `git worktree list` before a session that edits them.
-
 ## 3. Acceptance
 
 Checked headless on fixture messages (dark, light, 420 px) unless marked; the host half of each is session 4b.

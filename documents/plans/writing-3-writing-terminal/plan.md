@@ -7,7 +7,7 @@ Size: 5 sessions — terminal commands over core logic built by the other writin
 
 People who write in Neovim, Helix or Emacs get the same writing environment from the `labshelf` command: the zero-configuration build with clear errors, a citation picker their editor can call, the pre-submission check, and all of it in CI so a pull request fails before a broken or de-anonymised paper goes out.
 
-Builds on the archived writing-core plan, writing-2-submission-tools and writing-2-research-links. The submission check (`checkProject` in `packages/core/src/writing/checks/node/`) and `labshelf install` (`packages/terminal/src/cli/project/installCommand.ts`) exist, so those plans block nothing here.
+Builds on the archived writing-core plan. The submission check (`checkProject` in `packages/core/src/writing/checks/node/`) and `labshelf install` (`packages/terminal/src/cli/project/installCommand.ts`) exist.
 
 ## 2. Decisions
 
