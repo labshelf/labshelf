@@ -1,41 +1,80 @@
 // Watches the library on disk so changes made elsewhere show up in the TUI within a fraction of a second.
 // Uses recursive fs.watch and polls the papers folder when recursive watching is unavailable.
-import { watch, type FSWatcher } from "node:fs";
+// Also notices when the library folder disappears (unmounted drive, sync client) and re-arms when it returns.
+import { promises as fsp, watch, type FSWatcher } from "node:fs";
 
-import { errorMessage, isExternalChangeNoise, type ILogger } from "@labshelf/core";
+import { RootPresenceMonitor, errorMessage, isExternalChangeNoise, type ILogger } from "@labshelf/core";
 
 import { LibraryRoot } from "./libraryRoot.js";
 
 const DEBOUNCE_MS = 250;
 const POLL_MS = 5_000;
 
+async function folderExists(dir: string): Promise<boolean> {
+  try {
+    await fsp.stat(dir);
+    return true;
+  } catch (error) {
+    if ((error as { code?: string }).code === "ENOENT") { return false; }
+    throw error;
+  }
+}
+
 export class LibraryWatcher {
   private watchers: FSWatcher[] = [];
   private timer: ReturnType<typeof setTimeout> | undefined;
   private poll: ReturnType<typeof setInterval> | undefined;
 
+  private readonly monitor: RootPresenceMonitor;
+
   constructor(
     private readonly paths: LibraryRoot,
     private readonly onChange: () => void,
-    private readonly logger?: ILogger,
-  ) {}
+    private readonly logger: ILogger,
+    onRootLost: () => void,
+  ) {
+    this.monitor = new RootPresenceMonitor({
+      exists: () => folderExists(paths.root),
+      logger,
+      onLost: () => { this.disarm(); onRootLost(); },
+      onReturned: () => { this.arm(); this.onChange(); },
+    });
+  }
 
   /**
-   * Starts watching papers/ and the sidecar folder.
+   * Starts watching papers/, the sidecar folder and projects/, and checks that the library folder stays present.
    */
   start(): void {
-    for (const dir of [this.paths.layout.papersRoot(), this.paths.layout.paperDataRoot()]) {
+    this.arm();
+    this.monitor.start();
+  }
+
+  stop(): void {
+    this.monitor.stop();
+    this.disarm();
+  }
+
+  /** Whether the library folder exists right now. */
+  rootPresent(): Promise<boolean> {
+    return this.monitor.check();
+  }
+
+  private arm(): void {
+    const { layout } = this.paths;
+    for (const dir of [layout.papersRoot(), layout.paperDataRoot(), layout.projectsRoot()]) {
       try {
         const watcher = watch(dir, { recursive: true, persistent: false }, (_event, file) => {
           if (typeof file !== "string" || !isExternalChangeNoise(file)) { this.schedule(); }
         });
         watcher.on("error", (error) => {
-          void this.logger?.log("WARN", "terminal/libraryWatcher", "Watcher failed, polling instead", { dir, message: String(error) });
+          void this.logger.log("WARN", "terminal/libraryWatcher", "Watcher failed, polling instead", { dir, message: String(error) });
           this.startPolling();
         });
         this.watchers.push(watcher);
       } catch (error) {
-        void this.logger?.log("WARN", "terminal/libraryWatcher", "Recursive watch unavailable, polling instead", {
+        // projects/ does not exist until the first writing project is created; there is nothing to poll for.
+        if ((error as { code?: string }).code === "ENOENT") { continue; }
+        void this.logger.log("WARN", "terminal/libraryWatcher", "Recursive watch unavailable, polling instead", {
           dir, message: errorMessage(error),
         });
         this.startPolling();
@@ -54,9 +93,10 @@ export class LibraryWatcher {
     this.timer = setTimeout(() => this.onChange(), DEBOUNCE_MS);
   }
 
-  stop(): void {
+  private disarm(): void {
     clearTimeout(this.timer);
     if (this.poll) { clearInterval(this.poll); }
+    this.poll = undefined;
     for (const watcher of this.watchers) { watcher.close(); }
     this.watchers = [];
   }

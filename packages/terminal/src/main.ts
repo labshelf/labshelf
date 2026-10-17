@@ -4,7 +4,7 @@ import * as path from "node:path";
 import { createInterface } from "node:readline/promises";
 
 import { PAPERS_DIR, RESEARCH_DIR, errorMessage } from "@labshelf/core";
-import { sharedConfigPath, updateSharedConfig } from "@labshelf/core/node";
+import { deviceLocalLayout, sharedConfigPath, updateSharedConfig } from "@labshelf/core/node";
 
 import { loadTerminalConfig, resolveLibraryRoot, type TerminalConfig } from "./app/index.js";
 import { openLibrary, type AppContext } from "./app/index.js";
@@ -74,7 +74,7 @@ function printWhere(root: string, source: string): void {
   const paths = new LibraryRoot(root);
   io.out(`library  ${paths.root}  (from ${source})`);
   io.out(`config   ${sharedConfigPath()}`);
-  io.out(`log      ${paths.layout.terminalLogPath()}`);
+  io.out(`log      ${deviceLocalLayout(paths.root).terminalLogPath}`);
 }
 
 async function runTui(ctx: AppContext): Promise<number> {

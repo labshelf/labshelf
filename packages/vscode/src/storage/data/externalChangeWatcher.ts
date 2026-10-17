@@ -1,5 +1,5 @@
 // Detects library changes made outside this window (terminal app, sync, file manager) and triggers a re-index.
-// Watches papers/** and the sidecars; a burst of events is debounced into one re-index.
+// Watches papers/**, the sidecars and projects/** (conflict copies of writing projects); a burst of events is debounced into one re-index.
 import * as vscode from "vscode";
 
 import { SIDECAR_FILE, isExternalChangeNoise, type LibraryLayout } from "@labshelf/core";
@@ -14,6 +14,7 @@ export class ExternalChangeWatcher implements vscode.Disposable {
     const patterns = [
       new vscode.RelativePattern(paths.papersRoot(), "**"),
       new vscode.RelativePattern(paths.paperDataRoot(), `**/${SIDECAR_FILE}`),
+      new vscode.RelativePattern(paths.projectsRoot(), "**"),
     ];
     for (const pattern of patterns) {
       const watcher = vscode.workspace.createFileSystemWatcher(pattern);

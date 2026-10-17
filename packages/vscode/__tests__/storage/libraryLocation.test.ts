@@ -14,7 +14,7 @@ function makeUri(fsPath: string): vscode.Uri {
   return vscode.Uri.file(fsPath);
 }
 
-const fsService = new VscodeFileSystem('/tmp/mylib/.research/tmp', path);
+const fsService = new VscodeFileSystem('/tmp/mylib', path);
 const createFileSystem = () => fsService;
 
 beforeEach(() => {
@@ -54,7 +54,7 @@ describe('resolveLibraryRoot', () => {
 // ─── ensureLibraryStructure ───────────────────────────────────────────────────
 
 describe('ensureLibraryStructure', () => {
-  it('creates .research/, .research/logs/, and papers/ directories', async () => {
+  it('creates .research/, .research/papers/ and papers/ directories', async () => {
     (vscode.workspace.fs.createDirectory as jest.Mock).mockResolvedValue(undefined);
     const root = makeUri('/tmp/mylib');
 
@@ -64,7 +64,7 @@ describe('ensureLibraryStructure', () => {
       ([uri]: [vscode.Uri]) => uri.fsPath,
     );
     expect(created.some(p => p.endsWith('.research'))).toBe(true);
-    expect(created.some(p => p.endsWith('logs'))).toBe(true);
+    expect(created.some(p => p.endsWith('logs'))).toBe(false);
     expect(created.some(p => p.endsWith('papers'))).toBe(true);
   });
 });

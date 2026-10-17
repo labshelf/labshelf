@@ -1,8 +1,7 @@
 import * as path from "node:path";
 
 import {
-  AI_DATABASE_FILE, APPDATA_DIR, APP_LOG_FILE, BIB_FILE, METADATA_FILE, PAPERS_DIR, PDF_FILE,
-  RESEARCH_DIR, SIDECAR_FILE, TERMINAL_LOG_FILE,
+  APPDATA_DIR, BIB_FILE, METADATA_FILE, PAPERS_DIR, PDF_FILE, RESEARCH_DIR, SIDECAR_FILE,
   joinWith, libraryLayout, paperFiles,
 } from "@labshelf/core";
 
@@ -10,7 +9,6 @@ describe("layout constants", () => {
   it("pin the on-disk names", () => {
     expect([PAPERS_DIR, RESEARCH_DIR, APPDATA_DIR]).toEqual(["papers", ".research", "appdata"]);
     expect([PDF_FILE, METADATA_FILE, BIB_FILE, SIDECAR_FILE]).toEqual(["paper.pdf", "metadata.yaml", "bib.bib", "data.json"]);
-    expect([AI_DATABASE_FILE, APP_LOG_FILE, TERMINAL_LOG_FILE]).toEqual(["index.sqlite", "app.log", "terminal.log"]);
   });
 });
 
@@ -28,10 +26,6 @@ describe.each([
     expect(l.paperDataRoot()).toBe(at(".research", "papers"));
     expect(l.paperDataDir("p1")).toBe(at(".research", "papers", "p1"));
     expect(l.paperDataPath("p1")).toBe(at(".research", "papers", "p1", "data.json"));
-    expect(l.logsDir()).toBe(at(".research", "logs"));
-    expect(l.appLogPath()).toBe(at(".research", "logs", "app.log"));
-    expect(l.terminalLogPath()).toBe(at(".research", "logs", "terminal.log"));
-    expect(l.aiDatabasePath()).toBe(at(".research", "index.sqlite"));
     expect(l.tmpDir()).toBe(at(".research", "tmp"));
   });
 
@@ -43,7 +37,7 @@ describe.each([
 
   it("lists the folders to create and the folders that mark a library", () => {
     expect(l.requiredDirs()).toEqual([
-      at(".research"), at(".research", "logs"), at(".research", "papers"), at("papers"),
+      at(".research"), at(".research", "papers"), at("papers"),
     ]);
     expect(l.markerDirs()).toEqual([at("papers"), at(".research")]);
   });
@@ -69,7 +63,7 @@ describe("a generic join", () => {
     const join = (base: Uri, ...segments: string[]): Uri => ({ parts: [...base.parts, ...segments] });
     const l = libraryLayout<Uri>({ parts: ["lib"] }, join);
     expect(l.paperDataPath("p1").parts).toEqual(["lib", ".research", "papers", "p1", "data.json"]);
-    expect(l.requiredDirs().map((u) => u.parts.join("/"))).toContain("lib/.research/logs");
+    expect(l.requiredDirs().map((u) => u.parts.join("/"))).toContain("lib/.research/papers");
   });
 });
 

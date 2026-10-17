@@ -6,7 +6,7 @@ const TMP = '/lib/.research/tmp';
 const wfs = vscode.workspace.fs as unknown as Record<string, jest.Mock>;
 
 function makeFs(): VscodeFileSystem {
-  return new VscodeFileSystem(TMP, path);
+  return new VscodeFileSystem('/lib', path);
 }
 
 function notFound(): Error {
@@ -47,6 +47,12 @@ describe('VscodeFileSystem atomic writes', () => {
     await makeFs().writeFile('/lib/papers/new/f.bin', new Uint8Array([1]));
     const created = wfs['createDirectory']!.mock.calls.map(([uri]: [vscode.Uri]) => uri.fsPath);
     expect(created).toEqual(['/lib/papers/new', TMP]);
+  });
+
+  it('stages a write outside the library next to its target, so the rename never crosses volumes', async () => {
+    await makeFs().writeText('/cache/libraries/k/openalex/W1.json', '{}');
+    const tmp = (wfs['writeFile']!.mock.calls[0] as [vscode.Uri])[0];
+    expect(tmp.fsPath).toMatch(/^\/cache\/libraries\/k\/openalex\/\.W1\.json\.[0-9a-f-]{36}\.tmp$/);
   });
 
   it('removes the temp file and rejects with the path when the rename fails', async () => {

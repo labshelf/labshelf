@@ -112,3 +112,39 @@ describe("scanLibrary: unreadable folders", () => {
     await expect(scan(h)).rejects.toThrow("EACCES");
   });
 });
+
+describe("scanLibrary: metadata.yaml that fails to parse", () => {
+  const previousOf = async (h: MutationHarness) => new Map((await scan(h)).papers.map((p) => [p.record.path, p]));
+
+  it.each([["unclosed YAML", "title: [unclosed\n"], ["plain text", "just some text"], ["empty file", ""]])(
+    "keeps the previous record and logs a WARN for %s, then reads the paper again once the file is valid",
+    async (_name, broken) => {
+      const h = makeHarness();
+      await h.seedPaper(`${PAPERS}/ML/p1`, { title: "One" });
+      await h.seedPaper(`${PAPERS}/p2`, { title: "Two" });
+      const previous = await previousOf(h);
+      const metadata = `${PAPERS}/ML/p1/metadata.yaml`;
+      const good = await h.fs.readText(metadata);
+
+      await h.fs.writeText(metadata, broken);
+      const kept = await scanLibrary(h.fs, posixPathOps, PAPERS, h.ctx.logger, previous);
+      expect(ids(kept.papers)).toEqual(["p1", "p2"]);
+      expect(kept.papers.find((p) => p.record.id === "p1")).toMatchObject({ record: { title: "One" }, collection: "ML" });
+      expect(h.logs.some((l) => l.level === "WARN" && l.context?.["folder"] === `${PAPERS}/ML/p1`)).toBe(true);
+
+      await h.fs.writeText(metadata, good.replace("One", "Renamed"));
+      const retried = await scanLibrary(h.fs, posixPathOps, PAPERS, h.ctx.logger, previous);
+      expect(retried.papers.find((p) => p.record.id === "p1")?.record.title).toBe("Renamed");
+    },
+  );
+
+  it("still drops a paper whose folder is gone and skips a broken paper that was never indexed", async () => {
+    const h = makeHarness();
+    await h.seedPaper(`${PAPERS}/p1`, { title: "One" });
+    const previous = await previousOf(h);
+    await h.fs.trash(`${PAPERS}/p1`);
+    await h.fs.writeText(`${PAPERS}/new/metadata.yaml`, "just some text");
+    const result = await scanLibrary(h.fs, posixPathOps, PAPERS, h.ctx.logger, previous);
+    expect(result.papers).toEqual([]);
+  });
+});

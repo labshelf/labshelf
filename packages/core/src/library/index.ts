@@ -6,7 +6,6 @@ export type { PaperLocation } from "./paperMetadata.js";
 export {
   PAPERS_DIR, RESEARCH_DIR, APPDATA_DIR, PROJECTS_DIR,
   PDF_FILE, METADATA_FILE, BIB_FILE, SIDECAR_FILE,
-  AI_DATABASE_FILE, APP_LOG_FILE, TERMINAL_LOG_FILE, PROJECT_REGISTRY_FILE,
   joinWith, libraryLayout, paperFiles,
 } from "./layout.js";
 export type { Join, LibraryLayout, PaperFiles } from "./layout.js";
@@ -25,3 +24,4 @@ export * from "./scan/index.js";
 export * from "./search/index.js";
 export * from "./links/index.js";
 export * from "./paperFiles/index.js";
+export * from "./conflicts/index.js";

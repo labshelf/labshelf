@@ -2,6 +2,7 @@
 import * as vscode from "vscode";
 
 import { libraryLayout, type AiService } from "@labshelf/core";
+import { deviceLocalLayout } from "@labshelf/core/node";
 import { resolveLibraryRoot } from "./storage/paths/index.js";
 import { migrateLibraryRootFromGlobalState } from "./storage/migrations/index.js";
 import { createNodeAdapters } from "./activation/node/index.js";
@@ -106,7 +107,7 @@ async function loadConfiguredLibrary(
   adapters: ReturnType<typeof createNodeAdapters>,
 ): Promise<AiService | null> {
   const unmigratedRoot = await migrateLibraryRootFromGlobalState(context.globalState, adapters.sharedLibraryConfig, (root) =>
-    adapters.createLogger(libraryLayout(vscode.Uri.file(root), vscode.Uri.joinPath).appLogPath().fsPath));
+    adapters.createLogger(deviceLocalLayout(root).appLogPath));
   const initialRoot = await resolveLibraryRoot(adapters.sharedLibraryConfig)
     ?? (unmigratedRoot ? vscode.Uri.file(unmigratedRoot) : undefined);
   if (!initialRoot) {

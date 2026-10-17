@@ -1,5 +1,5 @@
 // Handles the citationMap.* runtime messages: builds the library's citation map and imports a listed work by its DOI.
-import { buildCitationMap, joinWith, libraryLayout, type CitationMap, type ILogger } from "@labshelf/core";
+import { buildCitationMap, type CitationMap, type ILogger } from "@labshelf/core";
 import type { ImportedDoiData } from "../../platform";
 import { getSettings } from "../../platform";
 import { draftFromDoi, saveOrAsk } from "../../capture/index";
@@ -8,8 +8,8 @@ import { broadcastChanged } from "../broadcast";
 
 const MODULE = "citationMap";
 
-// The cache sits outside the library papers, so it stays on this device.
-const CACHE_DIR = libraryLayout("", joinWith("/")).openAlexCacheDir();
+// The key sits beside the library files in IndexedDB, which never leaves this device.
+const CACHE_DIR = ".research/openalex";
 
 export async function handleCitationMapBuild(log: ILogger): Promise<CitationMap> {
   const [records, settings] = await Promise.all([listAllRecords(), getSettings()]);

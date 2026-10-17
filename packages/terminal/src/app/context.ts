@@ -4,9 +4,12 @@ import * as path from "node:path";
 
 import {
   BibTeXService, Logger, PdfImportParser, errorMessage,
-  type ILogger, type LibraryStore, type PdfjsLoader,
+  processChangeBatch, type ILogger, type LibraryStore, type PdfjsLoader,
 } from "@labshelf/core";
-import { FileLogSink, NodeLibraryFileSystem, NodePdfOpener, TesseractOcrEngine, cacheDir, createPdfjsLoader } from "@labshelf/core/node";
+import {
+  FileLogSink, NodeLibraryFileSystem, NodePdfOpener, TesseractOcrEngine, cacheDir, createPdfjsLoader, deviceLocalLayout,
+  scanConflictCopies,
+} from "@labshelf/core/node";
 
 import type { TerminalConfig } from "./config.js";
 import {
@@ -20,6 +23,8 @@ export interface AppContext {
   paths: LibraryRoot;
   config: TerminalConfig;
   logger: ILogger;
+  /** The terminal log file, device-local. */
+  logPath: string;
   store: LibraryStore;
   /** The terminal's query language over the store; it also holds the annotation text that searches see. */
   papers: TerminalPaperService;
@@ -29,6 +34,8 @@ export interface AppContext {
   imageProtocol: ImageProtocol;
   /** Resolves once highlights and notes are in the search index (one-shot CLI searches wait for it). */
   annotationsReady: Promise<void>;
+  /** Calls the listener when the library folder disappears (unmounted drive, sync client). */
+  onRootLost(listener: () => void): void;
   /** Stops watchers and releases the OCR engine. */
   dispose(): Promise<void>;
 }
@@ -79,13 +86,26 @@ function createThumbnails(env: NodeJS.ProcessEnv, workerUrl: URL, logger: ILogge
 }
 
 function startWatcher(
-  paths: LibraryRoot, store: LibraryStore, logger: ILogger, indexAnnotations: () => Promise<void>,
+  paths: LibraryRoot, store: LibraryStore, logger: ILogger, indexAnnotations: () => Promise<void>, onRootLost: () => void,
 ): LibraryWatcher {
-  const watcher = new LibraryWatcher(paths, () => {
-    void store.reload().then(() => void indexAnnotations());
-  }, logger);
+  const watcher: LibraryWatcher = new LibraryWatcher(paths, () => {
+    void processChangeBatch({
+      logger,
+      isRootPresent: () => watcher.rootPresent(),
+      scanConflicts: () => scanConflictCopies(paths.root, logger),
+      reindex: () => store.reload().then(() => void indexAnnotations()),
+    });
+  }, logger, onRootLost);
   watcher.start();
   return watcher;
+}
+
+// Highlights and notes become searchable; refreshed in the background whenever the library changes.
+function annotationIndexer(sidecars: SidecarReader, store: AppContext["store"], logger: ILogger): () => Promise<void> {
+  return () => sidecars.annotationIndex(store.snapshot.papers.keys()).then(
+    (index) => store.setAnnotationText(index),
+    (error: unknown) => logger.log("WARN", "terminal/app", "Annotation text not indexed for search", { message: errorMessage(error) }),
+  );
 }
 
 /**
@@ -97,7 +117,8 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
   const paths = new LibraryRoot(root);
   await ensureLibraryStructure(paths);
   // The TUI owns the terminal, so the log file is the only channel and there is nowhere else to report a failure.
-  const logger = new Logger([new FileLogSink(paths.layout.terminalLogPath())], { onSinkError: () => undefined });
+  const logPath = deviceLocalLayout(paths.root, env).terminalLogPath;
+  const logger = new Logger([new FileLogSink(logPath)], { onSinkError: () => undefined });
   const store = createLibraryStore(paths, logger);
   await store.reload();
 
@@ -107,15 +128,13 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
   const { thumbnails, renderer } = createThumbnails(env, options.thumbnailWorkerUrl, logger);
   const imageProtocol = detectImageProtocol(env, env["LABSHELF_IMAGES"] ?? options.config.terminal?.images ?? "auto");
 
-  // Highlights and notes become searchable; refreshed in the background whenever the library changes.
-  const indexAnnotations = (): Promise<void> =>
-    sidecars.annotationIndex(store.snapshot.papers.keys()).then(
-      (index) => store.setAnnotationText(index),
-      (error: unknown) => logger.log("WARN", "terminal/app", "Annotation text not indexed for search", { message: errorMessage(error) }),
-    );
+  const indexAnnotations = annotationIndexer(sidecars, store, logger);
   const annotationsReady = indexAnnotations();
 
-  const watcher = options.watch ? startWatcher(paths, store, logger, indexAnnotations) : undefined;
+  const rootLostListeners: Array<() => void> = [];
+  const watcher = options.watch
+    ? startWatcher(paths, store, logger, indexAnnotations, () => rootLostListeners.forEach((listener) => listener()))
+    : undefined;
 
   await logger.log("INFO", "terminal/app", "Library opened", {
     root: paths.root, papers: store.snapshot.papers.size, images: imageProtocol, renderer: renderer.name,
@@ -125,6 +144,7 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
     paths,
     config: options.config,
     logger,
+    logPath,
     store,
     papers,
     sidecars,
@@ -132,6 +152,7 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
     thumbnailRenderer: renderer.name,
     imageProtocol,
     annotationsReady,
+    onRootLost: (listener) => { rootLostListeners.push(listener); },
     async dispose() {
       watcher?.stop();
       await ocr.dispose();

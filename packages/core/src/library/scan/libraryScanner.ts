@@ -56,10 +56,13 @@ async function keepFirstPerId(env: ScanEnv, papers: PaperEntry[]): Promise<{ pap
 }
 
 /**
+ * @param previous the entries of the last scan by folder path; a paper whose metadata.yaml fails to parse keeps its entry
  * @returns what is under `papersRoot`; skipped folders are logged as warnings, and a failure to list `papersRoot` is thrown
  */
-export async function scanLibrary(fs: ScanFileSystem, ops: PathOps, papersRoot: string, logger: ILogger): Promise<LibraryScan> {
-  const env = createScanEnv(fs, ops, logger);
+export async function scanLibrary(
+  fs: ScanFileSystem, ops: PathOps, papersRoot: string, logger: ILogger, previous?: ReadonlyMap<string, PaperEntry>,
+): Promise<LibraryScan> {
+  const env = createScanEnv(fs, ops, logger, previous);
   const found: Found = { folders: [], orphans: [], papers: [] };
   await walk(env, papersRoot, "", found);
   const { papers, duplicates } = await keepFirstPerId(env, found.papers);

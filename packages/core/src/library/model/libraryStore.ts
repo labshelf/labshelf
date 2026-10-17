@@ -20,8 +20,8 @@ export interface ListOptions {
 
 export interface LibraryStoreOptions {
   root: string;
-  /** Reads the library from disk. */
-  scan: () => Promise<LibraryScan>;
+  /** Reads the library from disk. `previous` holds the current entries by folder path, so a paper that fails to parse keeps its entry. */
+  scan: (previous: ReadonlyMap<string, PaperEntry>) => Promise<LibraryScan>;
 }
 
 type Listener = (snapshot: LibrarySnapshot) => void;
@@ -131,11 +131,15 @@ export class LibraryStore {
     return [...counts.values()].sort((a, b) => b.count - a.count || nameCollator.compare(a.tag, b.tag));
   }
 
+  private previousByPath(): ReadonlyMap<string, PaperEntry> {
+    return new Map([...this.current.papers.values()].map((paper) => [paper.record.path, paper]));
+  }
+
   private async scanUntilSettled(): Promise<LibrarySnapshot> {
     let snapshot: LibrarySnapshot;
     do {
       this.reloadAgain = false;
-      snapshot = snapshotFromScan(this.options.root, await this.options.scan());
+      snapshot = snapshotFromScan(this.options.root, await this.options.scan(this.previousByPath()));
     } while (this.reloadAgain);
     this.current = snapshot;
     for (const listener of this.listeners) { listener(snapshot); }

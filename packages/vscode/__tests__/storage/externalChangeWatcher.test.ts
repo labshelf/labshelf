@@ -15,11 +15,12 @@ afterEach(() => {
 });
 
 describe('ExternalChangeWatcher', () => {
-  it('watches the papers folder and the sidecars', () => {
+  it('watches the papers folder, the sidecars and the projects folder', () => {
     const watcher = new ExternalChangeWatcher(libraryLayout(vscode.Uri.file('/lib'), vscode.Uri.joinPath), jest.fn());
     expect(watchers.map((w) => [w.pattern.base.fsPath, w.pattern.pattern])).toEqual([
       ['/lib/papers', '**'],
       ['/lib/.research/papers', '**/data.json'],
+      ['/lib/projects', '**'],
     ]);
     watcher.dispose();
     expect(watchers.every((w) => w.dispose.mock.calls.length === 1)).toBe(true);

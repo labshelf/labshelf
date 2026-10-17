@@ -30,7 +30,7 @@ export function runCommand(app: App, line: string): void {
     case "sort": return runSort(app, args);
     case "cd": return runCd(app, rest);
     case "where":
-      app.taskStatus.notify(`Library: ${app.ctx.paths.root} · log: ${app.ctx.paths.layout.terminalLogPath()}`);
+      app.taskStatus.notify(`Library: ${app.ctx.paths.root} · log: ${app.ctx.logPath}`);
       return;
     default:
       app.taskStatus.notify(`Unknown command "${name}" — ? lists the keys`, "warn");

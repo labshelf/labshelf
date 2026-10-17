@@ -139,7 +139,7 @@ export async function openApp(root: string, tmp: string): Promise<{ ctx: AppCont
     config: { version: 1 },
     watch: false,
     thumbnailWorkerUrl: new URL("file:///unused/thumbnailWorker.mjs"),
-    env: { ...process.env, XDG_CONFIG_HOME: tmp, XDG_CACHE_HOME: tmp, LABSHELF_TOKEN_STORE: "file", LABSHELF_IMAGES: "off" },
+    env: { ...process.env, XDG_CONFIG_HOME: tmp, XDG_CACHE_HOME: tmp, XDG_STATE_HOME: tmp, LABSHELF_TOKEN_STORE: "file", LABSHELF_IMAGES: "off" },
   });
   const term = new FakeTerminal();
   const app = new App(ctx, term);

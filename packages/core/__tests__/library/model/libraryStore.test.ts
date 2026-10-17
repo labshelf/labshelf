@@ -48,6 +48,15 @@ describe("LibraryStore.reload", () => {
     expect(store.snapshot.papers.size).toBe(4);
   });
 
+  it("passes the current entries by folder path to each scan", async () => {
+    const seen: Array<string[]> = [];
+    const store = new LibraryStore({ root: "/lib", scan: async (previous) => { seen.push([...previous.keys()].sort()); return scanOf(PAPERS); } });
+    await store.reload();
+    await store.reload();
+    expect(seen[0]).toEqual([]);
+    expect(seen[1]).toEqual(PAPERS.map((p) => p.record.path).sort());
+  });
+
   it("stops notifying an unsubscribed listener", async () => {
     const store = new LibraryStore({ root: "/lib", scan: async () => scanOf(PAPERS) });
     const listener = jest.fn();

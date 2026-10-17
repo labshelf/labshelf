@@ -23,14 +23,25 @@ A LabShelf library is a folder that the user owns. Every app reads and writes th
       template.yaml                required: a folder holding it is a template
   .research/                       hidden, owned by the apps
     papers/<paper id>/data.json    the sidecar
-    projects.json                  project folders registered outside the library
-    openalex/                      OpenAlex citation data for the citation map
     staging/                       a project install (<project id>/) or a template save (template-*/) in progress, renamed into projects/ or templates/ when complete
     templates/                     Community and Typst Universe indexes and thumbnails, see templates.md
-    index.sqlite                   VS Code's text index for the Related tab: chunk embeddings and the content hash of each indexed PDF
-    logs/app.log                   VS Code log (JSON lines)
-    logs/terminal.log              terminal log (JSON lines)
 ```
+
+## Device-local files
+
+The library folder may be synced between devices by any file sync tool, so everything inside it is shared state. Files that belong to one device live outside it, in a folder per library named by the library key: the first 16 hex chars of the SHA-256 of the normalised library root (resolved to an absolute path, symlinks resolved when the folder exists, Windows drive letter in upper case). In `.research/`, only the sidecars (`papers/<paper id>/data.json`) are meant to be synced; `tmp/`, `staging/` and `templates/` are scratch the apps rebuild, and the user may exclude them from their sync tool.
+
+```
+<cache dir>/libraries/<library key>/      $XDG_CACHE_HOME/labshelf (default ~/Library/Caches/labshelf on macOS, ~/.cache/labshelf elsewhere, Windows included)
+  index.sqlite                     VS Code's text index for the Related tab: chunk embeddings and the content hash of each indexed PDF
+  openalex/                        OpenAlex citation data for the citation map
+<state dir>/libraries/<library key>/      $XDG_STATE_HOME/labshelf (default ~/Library/Application Support/labshelf on macOS, ~/.local/state/labshelf elsewhere, Windows included)
+  projects.json                    project folders registered outside the library
+  logs/app.log                     VS Code log (JSON lines)
+  logs/terminal.log                terminal log (JSON lines)
+```
+
+An empty `XDG_CACHE_HOME` or `XDG_STATE_HOME` counts as unset. Moving the library to another path gives it a new key, so these files start empty there.
 
 Each log file is append-only. Past 2 MiB it moves to `<name>.log.1` (one rotated file is kept, overwritten on the next rotation).
 
@@ -87,7 +98,7 @@ Rules:
 
 ## labshelf.yaml
 
-A writing project is a folder with `labshelf.yaml` at its root. It lives either under `projects/` or anywhere else on the device, registered in `.research/projects.json`.
+A writing project is a folder with `labshelf.yaml` at its root. It lives either under `projects/` or anywhere else on the device, registered in the device-local [`projects.json`](#projectsjson).
 
 ```yaml
 id: deep-nets-survey
@@ -166,7 +177,7 @@ LabShelf owns this file in a LaTeX project with `values:`. It is written next to
 - Each JSON leaf (number, string, boolean) becomes one key: `<file>.<path>`, dot-separated. Strings are escaped for LaTeX. A key with a character outside letters, digits, `.`, `-` and `_` is skipped.
 - The main file gets `\input{labshelf-values}` before `\begin{document}`, once. A main file without `\begin{document}` is left as it is, and the build logs a warning.
 
-## .research/projects.json
+## projects.json
 
 The device's list of project folders outside the library. Absolute paths differ per machine.
 
@@ -181,9 +192,9 @@ The device's list of project folders outside the library. Absolute paths differ 
 - Removing a project from LabShelf removes its entry and never deletes the folder.
 - A project may contain `.labshelf/state.json`, a per-device file; LabShelf does not read it.
 
-## .research/openalex/
+## openalex/
 
-The citation map's cache of OpenAlex works. It can be rebuilt from OpenAlex at any time, so it is not part of the library's shared state; the browser keeps it under the same relative path in IndexedDB.
+The citation map's cache of OpenAlex works. It can be rebuilt from OpenAlex at any time, so it is device-local; the browser keeps it under `.research/openalex/` in IndexedDB.
 
 - `papers/<paper id>.json` holds the work a library paper's DOI resolved to; `works/<work id>.json` holds a work that library papers cite.
 - Each file is `{ "fetchedAt": "<ISO timestamp>", "doi": "<DOI looked up>", "work": { "workId": "W…", "doi", "title", "authors": [], "year", "citedByCount", "references": ["W…"] } }`. `doi` at the top is present only under `papers/`, and `references` is empty under `works/`.
@@ -253,6 +264,23 @@ The sidecar holds per-paper state from the reader: annotations, the reader theme
 - `position` is normalised to the page: every value is in 0..1, width and height are positive, and the box stays inside the page.
 - `scaleValue` is a pdf.js preset (`page-width`, `page-fit`, `page-actual`, `auto`) or a number in (0, 64] written as a string. `left` and `top` are in PDF points from the top-left of the page.
 - Reading is defensive. A corrupt or hand-edited sidecar never throws: invalid fields fall back to their defaults, and annotations without an `id` are dropped.
+
+## Conflict copies
+
+When two devices change the same file before the sync tool reconciles them, the tool keeps both versions and gives one a conflict name. The apps recognise these names:
+
+| Tool | Conflict copy of `name.ext` |
+|---|---|
+| Syncthing | `name.sync-conflict-<yyyyMMdd>-<HHmmss>-<device>.ext` |
+| Nextcloud | `name (conflicted copy [<user> ]<yyyy-MM-dd> <hhmmss>).ext` |
+| Dropbox | `name (<user>'s conflicted copy <yyyy-MM-dd>[ (<n>)]).ext` |
+| rclone bisync | `name.ext.conflict<n>`, `name.conflict<n>.ext`, `name.ext.path1`/`.path2` (or `..path1`/`..path2`) |
+
+Google Drive, OneDrive and iCloud Drive are not recognised: their conflict names are not documented and look like ordinary file names (`name (1).ext`, `name-Computer.ext`, `name 2.ext`). Folders are never treated as conflict copies, and hidden files and folders are skipped.
+
+- A conflict copy of a sidecar is merged into `data.json` without asking. The copies of one sidecar are folded into `data.json` from the oldest modification time to the newest: annotations are the union by `id`; for an `id` in both, `theme` and `reading`, the side with the newer modification time wins, where the merged result counts as old as the newest file folded into it. Every annotation that has an `id` is kept; annotations without an `id` and unknown top-level fields are dropped, as by any LabShelf write of `data.json`. A deleted annotation may come back. If `data.json` changes during the merge, the merge starts again (at most three times, then the copies are kept and shown to the user). The result is written atomically, read back, and only when `data.json` holds exactly the merged result are the copies deleted. A copy whose `data.json` is missing takes its place if it is a sidecar (a JSON object). A copy that is not, or whose `data.json` is not, is kept and shown to the user like any other copy.
+- A conflict copy of any other file inside a paper folder (`metadata.yaml`, the PDF, an attachment) is shown to the user, who resolves it: keep mine (delete the copy), keep the other (the copy replaces the original), or keep both (the copy is renamed to `<name> (copy <n>).<ext>` with the lowest free `n`). Keep both is not offered for `metadata.yaml`, because a paper has exactly one.
+- A conflict copy is deleted only by a resolution or after a successful sidecar merge.
 
 ## Shared configuration
 

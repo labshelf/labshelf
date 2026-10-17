@@ -1,8 +1,7 @@
-/** Reads and writes the library's device-local registry of project folders, .research/projects.json. */
+/** Reads and writes the library's device-local registry of project folders, projects.json in the state directory. */
 import * as path from "node:path";
 
-import { joinWith, libraryLayout } from "../../../library/index.js";
-import { readOptionalFile, writeFileAtomic } from "../../../library/node/index.js";
+import { deviceLocalLayout, readOptionalFile, writeFileAtomic } from "../../../library/node/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import {
   parseProjectRegistry, serializeProjectRegistry, withFolder, withoutFolder, type ProjectRegistry,
@@ -11,7 +10,7 @@ import {
 const MODULE = "projectRegistry";
 
 function registryPath(libraryRoot: string): string {
-  return libraryLayout(libraryRoot, joinWith(path.sep as "/" | "\\")).projectRegistryPath();
+  return deviceLocalLayout(libraryRoot).projectRegistryPath;
 }
 
 /** @returns the registered folders; an unreadable or corrupt registry reads as empty and is logged */

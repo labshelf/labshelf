@@ -21,7 +21,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   (vscode.workspace.fs.writeFile as jest.Mock).mockResolvedValue(undefined);
   (vscode.workspace.fs.createDirectory as jest.Mock).mockResolvedValue(undefined);
-  svc = new BibTeXService(new VscodeFileSystem('/tmp/labshelf-test/.research/tmp', path));
+  svc = new BibTeXService(new VscodeFileSystem('/tmp/labshelf-test', path));
 });
 
 describe('bibtexEntry', () => {

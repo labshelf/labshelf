@@ -12,7 +12,14 @@ export async function writeFileAtomic(target: string, content: string | Uint8Arr
   await fs.mkdir(dir, { recursive: true });
   const tmp = path.join(dir, `.${path.basename(target)}.${randomUUID()}.tmp`);
   try {
-    await fs.writeFile(tmp, content);
+    // INVARIANT: the temp file is on disk before the rename, so a crash never leaves the target empty.
+    const handle = await fs.open(tmp, "w");
+    try {
+      await handle.writeFile(content);
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
     await fs.rename(tmp, target);
   } catch (error) {
     await fs.rm(tmp, { force: true }).catch(() => undefined);

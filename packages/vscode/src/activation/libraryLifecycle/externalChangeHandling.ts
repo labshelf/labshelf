@@ -1,7 +1,9 @@
 // Watches the library for changes made outside this window and re-indexes from disk when one is seen.
+// Also notices when the library folder disappears (unmounted drive, sync client) and re-arms when it returns.
 import * as vscode from "vscode";
 
-import { errorMessage, libraryLayout } from "@labshelf/core";
+import { RootPresenceMonitor, errorMessage, libraryLayout, processChangeBatch, type ILogger } from "@labshelf/core";
+import { scanConflictCopies } from "@labshelf/core/node";
 import { ExternalChangeWatcher } from "../../storage/data/index.js";
 import type { ActiveServices } from "../../commands/index.js";
 
@@ -12,32 +14,70 @@ export interface ExternalChangeHandlingDeps {
   onRefresh: () => void;
 }
 
+async function folderExists(root: vscode.Uri): Promise<boolean> {
+  try {
+    await vscode.workspace.fs.stat(root);
+    return true;
+  } catch (error) {
+    if ((error as { code?: string }).code === "FileNotFound") { return false; }
+    throw error;
+  }
+}
+
 export class ExternalChangeHandling {
   private watcher: ExternalChangeWatcher | undefined;
+  private monitor: RootPresenceMonitor | undefined;
 
-  constructor(private readonly deps: ExternalChangeHandlingDeps) {}
+  constructor(private readonly deps: ExternalChangeHandlingDeps) {
+    deps.context.subscriptions.push({ dispose: () => this.stop() });
+  }
 
   // Changes made outside this window (the LabShelf terminal app, a folder sync tool, another window) are picked up from
   // disk: the re-index adds, updates and drops papers, then the views refresh.
   watch(root: vscode.Uri): void {
-    this.watcher?.dispose();
-    this.watcher = new ExternalChangeWatcher(libraryLayout(root, vscode.Uri.joinPath), () => {
-      void this.reindexAndRefresh("an external change");
+    this.stop();
+    const logger = this.deps.getActiveServices()?.logger;
+    if (!logger) { return; }
+    const onChange = (): void => { void this.processBatch(root, logger); };
+    this.watcher = new ExternalChangeWatcher(libraryLayout(root, vscode.Uri.joinPath), onChange);
+    this.monitor = new RootPresenceMonitor({
+      exists: () => folderExists(root),
+      logger,
+      onLost: () => {
+        this.watcher?.dispose();
+        this.watcher = undefined;
+        void vscode.window.showWarningMessage("Library folder not found");
+      },
+      onReturned: () => {
+        this.watcher ??= new ExternalChangeWatcher(libraryLayout(root, vscode.Uri.joinPath), onChange);
+        onChange();
+      },
     });
-    this.deps.context.subscriptions.push(this.watcher);
+    this.monitor.start();
   }
 
-  // Re-indexes from disk and refreshes the views. The list panel, Library sidebar and AI
+  private stop(): void {
+    this.monitor?.stop();
+    this.watcher?.dispose();
+    this.monitor = undefined;
+    this.watcher = undefined;
+  }
+
+  // Scans conflict copies and re-indexes from disk, then refreshes the views. The list panel, Library sidebar and AI
   // indexer update through the paper events the re-index emits.
-  private async reindexAndRefresh(trigger: string): Promise<void> {
+  private async processBatch(root: vscode.Uri, logger: ILogger): Promise<void> {
+    const monitor = this.monitor;
     const services = this.deps.getActiveServices();
-    if (!services) { return; }
+    if (!monitor || !services) { return; }
     try {
-      await services.reindexLibrary();
-    } catch (error) {
-      await services.logger.log("WARN", "extension", `Re-index after ${trigger} failed`, {
-        message: errorMessage(error),
+      await processChangeBatch({
+        logger,
+        isRootPresent: () => monitor.check(),
+        scanConflicts: () => scanConflictCopies(root.fsPath, logger),
+        reindex: async () => { await services.reindexLibrary(); },
       });
+    } catch (error) {
+      await logger.log("WARN", "extension", "Re-index after an external change failed", { message: errorMessage(error) });
       return;
     }
     this.deps.onRefresh();

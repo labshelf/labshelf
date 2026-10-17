@@ -36,7 +36,7 @@ The minimum versions are the floor for pdf.js 6.3.
 
 ## Citation map
 
-A fixed **Citation map** row at the top of the library page's sidebar opens the citation map in place of the paper list ([contract](../contracts/library-ui-host.md#citation-map)). The background builds it from OpenAlex and caches the data in IndexedDB ([contract](../contracts/library-format.md#researchopenalex)).
+A fixed **Citation map** row at the top of the library page's sidebar opens the citation map in place of the paper list ([contract](../contracts/library-ui-host.md#citation-map)). The background builds it from OpenAlex and caches the data in IndexedDB ([contract](../contracts/library-format.md#openalex)).
 
 ## Capture structure
 

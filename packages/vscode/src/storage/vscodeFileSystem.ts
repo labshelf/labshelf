@@ -1,14 +1,17 @@
 /** Implements the LibraryFileSystem port over vscode.workspace.fs, the extension's only file-system adapter. */
 import * as vscode from "vscode";
-import { errorMessage, type LibraryFileSystem, type LocalStat, type PathOps } from "@labshelf/core";
+import { errorMessage, libraryLayout, type LibraryFileSystem, type LocalStat, type PathOps } from "@labshelf/core";
 
 const uriOf = (target: string): vscode.Uri => vscode.Uri.file(target);
 
 const isNotFound = (error: unknown): boolean => (error as { code?: string }).code === "FileNotFound";
 
 export class VscodeFileSystem implements LibraryFileSystem {
-  /** tmpDir holds the temp files of atomic writes; it lives outside the synced roots. */
-  constructor(private readonly tmpDir: string, private readonly paths: PathOps) {}
+  private readonly tmpDir: string;
+
+  constructor(private readonly root: string, private readonly paths: PathOps) {
+    this.tmpDir = libraryLayout(root, paths.join).tmpDir();
+  }
 
   async ensureDir(dirPath: string): Promise<void> {
     try {
@@ -26,8 +29,9 @@ export class VscodeFileSystem implements LibraryFileSystem {
   // Written to a temp file and renamed into place, so a reader, a sync scan or the other app never sees half a file.
   async writeFile(filePath: string, content: Uint8Array): Promise<void> {
     await this.ensureDir(this.paths.dirname(filePath));
-    await this.ensureDir(this.tmpDir);
-    const tmp = uriOf(this.paths.join(this.tmpDir, `.${this.paths.basename(filePath)}.${globalThis.crypto.randomUUID()}.tmp`));
+    const tmpDir = this.tmpDirFor(filePath);
+    await this.ensureDir(tmpDir);
+    const tmp = uriOf(this.paths.join(tmpDir, `.${this.paths.basename(filePath)}.${globalThis.crypto.randomUUID()}.tmp`));
     try {
       await vscode.workspace.fs.writeFile(tmp, content);
       await vscode.workspace.fs.rename(tmp, uriOf(filePath), { overwrite: true });
@@ -37,6 +41,14 @@ export class VscodeFileSystem implements LibraryFileSystem {
       const message = errorMessage(error);
       throw new Error(`Failed to write ${filePath}: ${message}`, { cause: error });
     }
+  }
+
+  // TRAP: device-local caches live on another volume than the library, and a rename across volumes fails with EXDEV,
+  // so a target outside the library stages next to itself.
+  private tmpDirFor(filePath: string): string {
+    const relative = this.paths.relative(this.root, filePath);
+    const insideLibrary = relative !== "" && relative.split(this.paths.sep)[0] !== ".." && !this.paths.isAbsolute(relative);
+    return insideLibrary ? this.tmpDir : this.paths.dirname(filePath);
   }
 
   async readText(filePath: string): Promise<string> {

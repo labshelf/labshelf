@@ -2,6 +2,7 @@
 import * as vscode from "vscode";
 
 import { LibraryStore, PaperDataStore, PdfImportParser, BibTeXService, libraryLayout, scanLibrary, type MutationContext } from "@labshelf/core";
+import { deviceLocalLayout } from "@labshelf/core/node";
 import { PaperImporter, PaperService, PaperTextLayers } from "../../core/index.js";
 import { ensureLibraryStructure } from "../../storage/paths/index.js";
 import { VscodeFileSystem } from "../../storage/index.js";
@@ -13,8 +14,7 @@ import type { ILogger, PathOps } from "@labshelf/core";
 import type { HostAdapters } from "./hostAdapters.js";
 
 // The adapter belongs to one library root: its temp folder for atomic writes sits inside that root.
-export const createFileSystem = (root: vscode.Uri, paths: PathOps): VscodeFileSystem =>
-  new VscodeFileSystem(libraryLayout(root, vscode.Uri.joinPath).tmpDir().fsPath, paths);
+export const createFileSystem = (root: vscode.Uri, paths: PathOps): VscodeFileSystem => new VscodeFileSystem(root.fsPath, paths);
 
 // textLayers is read lazily (through getTextLayers) because PaperService, which PaperTextLayers wraps, needs this
 // same reindexer before it exists yet.
@@ -41,7 +41,8 @@ export async function buildServices(
   const paths = libraryLayout(root, vscode.Uri.joinPath);
   const fileSystem = createFileSystem(root, adapters.paths);
   await ensureLibraryStructure(root, fileSystem);
-  const logger = adapters.createLogger(paths.appLogPath().fsPath);
+  const device = deviceLocalLayout(root.fsPath);
+  const logger = adapters.createLogger(device.appLogPath);
   const { ocr, textLayerBuilder } = adapters.createPdfTextServices(logger);
   const pdfImportParser = new PdfImportParser(adapters.pdfOpener, { ocr, logger });
   const bibTeXService = new BibTeXService(fileSystem);
@@ -49,8 +50,8 @@ export async function buildServices(
     fs: fileSystem, paths: adapters.paths, artifacts: bibTeXService, logger, papersRoot: paths.papersRoot().fsPath,
   };
   const parse = (bytes: Uint8Array, stem: string) => pdfImportParser.parse(bytes, stem);
-  const scan = () => scanLibrary(fileSystem, adapters.paths, paths.papersRoot().fsPath, logger);
-  const store = new LibraryStore({ root: paths.papersRoot().fsPath, scan });
+  const papersRoot = paths.papersRoot().fsPath;
+  const store = new LibraryStore({ root: papersRoot, scan: (previous) => scanLibrary(fileSystem, adapters.paths, papersRoot, logger, previous) });
 
   // textLayers is assigned right below, once paperService exists; the first reindex run is the seed call further
   // down, after every const in this function is assigned, so the forward reference is safe.
@@ -74,7 +75,7 @@ export async function buildServices(
   return {
     paperService, importer, textLayers, mutations, logger, library: store, paperDataStore, fileSystem,
     reindexLibrary: reindex,
-    aiDatabasePath: paths.aiDatabasePath().fsPath,
-    citationCacheDir: paths.openAlexCacheDir().fsPath,
+    aiDatabasePath: device.aiDatabasePath,
+    citationCacheDir: device.openAlexCacheDir,
   };
 }

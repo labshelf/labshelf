@@ -6,7 +6,7 @@ import { parseArgs } from "../../src/cli/args";
 import { runLibraryCommand, type Output } from "../../src/cli";
 import { createTempLibrary, makeTempDir, cleanupTempDirs, type PaperFixture, type TempLibrary } from "./library";
 
-const ENV_KEYS = ["XDG_CONFIG_HOME", "XDG_CACHE_HOME", "LABSHELF_IMAGES", "LABSHELF_PDF_VIEWER"];
+const ENV_KEYS = ["XDG_CONFIG_HOME", "XDG_CACHE_HOME", "XDG_STATE_HOME", "LABSHELF_IMAGES", "LABSHELF_PDF_VIEWER"];
 
 export const NOW = "2025-01-01T00:00:00.000Z";
 
@@ -70,6 +70,7 @@ export class CliSessionHarness {
     this.xdgCache = await makeTempDir("labshelf-xdgx-");
     process.env["XDG_CONFIG_HOME"] = this.xdgConfig;
     process.env["XDG_CACHE_HOME"] = this.xdgCache;
+    process.env["XDG_STATE_HOME"] = this.xdgCache;
     process.env["LABSHELF_IMAGES"] = "off";
     delete process.env["LABSHELF_PDF_VIEWER"];
   }
@@ -89,6 +90,7 @@ export class CliSessionHarness {
     const env: NodeJS.ProcessEnv = {
       XDG_CONFIG_HOME: this.xdgConfig,
       XDG_CACHE_HOME: this.xdgCache,
+      XDG_STATE_HOME: this.xdgCache,
       LABSHELF_IMAGES: "off",
       ...(process.env["PATH"] ? { PATH: process.env["PATH"] } : {}),
       ...(options.env ?? {}),

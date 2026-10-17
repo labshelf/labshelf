@@ -13,7 +13,7 @@ const CONCURRENT_LOOKUPS = 4;
 export interface CitationMapEnv {
   registry: RegistryEnv;
   fs: IFileSystem;
-  /** The library's `openAlexCacheDir()`. */
+  /** The library's device-local OpenAlex cache folder. */
   cacheDir: string;
   logger?: ILogger | undefined;
   now?: () => Date;
