@@ -4,6 +4,7 @@
 - **Starts from:** session 1 committed.
 - **Ends with:** A1, A2 (core side; the facts fill in once session 3 serves `detail`).
 - **Owns:** `packages/core/src/writing/allProjects/deadlineText.ts`, `packages/core/__tests__/writing/allProjects/deadlineText.test.ts`, `packages/core/src/writing/allProjects/dom/{projectList,projectRowView,mountAllProjects}.ts`, `packages/core/src/writing/allProjects/dom/tray/`, `packages/core/src/writing/allProjects/dom/detail/{index,detailRequests}.ts` (new), `packages/core/src/writing/allProjects/dom/styles/all-projects.css`, `packages/core/__tests__/writing/allProjects/dom/`.
+- **From session 1:** the row build type is `ProjectBuildState` (not `BuildState`, which the reader already exports); `ProjectRow` has `cites`, `unresolvedCites`, `build?`, `target?`; `all-projects.css` still has the `.col-open` rules and the old `--cols` grid track, to remove here.
 - **Runs with:** session 3.
 
 | Id | Package | Level | Runner | Done when | OK |

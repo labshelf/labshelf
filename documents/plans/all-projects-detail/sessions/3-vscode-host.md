@@ -4,6 +4,7 @@
 - **Starts from:** session 1 committed.
 - **Ends with:** A2–A6 on the host side (seen once session 4 lands); `pnpm --filter @labshelf/vscode typecheck` and test pass.
 - **Owns:** `packages/vscode/src/writing/allProjects/` except `webview/`, `packages/vscode/src/activation/registration/registerWritingView.ts` (the `registerAllProjects` call only), `packages/vscode/__tests__/writing/allProjects/`.
+- **From session 1:** `ProjectLibraryPort` needs `detail`, `build`, `preview`, `openLog`, `createFile`, `setTarget`, `openLabel` (vscode typecheck fails until then); `openItems` is still referenced in `packages/vscode/src/writing/allProjects/projectRows.ts` and its test, to delete; `readProjectDetail`/`readProjectCites` (from `@labshelf/core/node`) read sources only from `settings.main`, so pass settings with `main` filled in; `updateProjectFile` throws on a deadline that is not a real date.
 - **Runs with:** sessions 2 and 4.
 - **Last session:** if session 4 is already committed when this one ends, run `finish` on everything the plan touched (docs: `documents/apps/vscode.md` All projects section), then delete `documents/plans/all-projects-detail/`.
 
