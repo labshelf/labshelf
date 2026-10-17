@@ -1,9 +1,9 @@
-# Session 9 — Reconcile plan writing-4-browser-editor
+# Session 9 — Reconcile plan browser-editor
 
 - **Goal:** the browser-editor plan joins shared projects with this plan's protocol instead of Open Collaboration Tools.
 - **Starts from:** plan approved; may run beside session 2.
 - **Ends with:** A12; documents only, no code.
-- **Owns:** `documents/plans/writing-4-browser-editor/**`.
+- **Owns:** `documents/plans/browser-editor/**`.
 
 | Id | Package | Level | Runner | Done when | OK |
 |---|---|---|---|---|---|
@@ -12,7 +12,7 @@
 
 ## 9.1 — Rewrite the collaboration parts
 
-- **Read only:** `documents/plans/writing-4-browser-editor/plan.md`, `sessions/04.md`; `documents/plans/project-collaboration/research/plan-overlaps.md`; `documents/plans/project-collaboration/plan.md` (D2, D4, D6, D8, D10, D11).
+- **Read only:** `documents/plans/browser-editor/plan.md`, `sessions/04.md`; `documents/plans/project-collaboration/research/plan-overlaps.md`; `documents/plans/project-collaboration/plan.md` (D2, D4, D6, D8, D10, D11).
 - **Steps:**
   - `plan.md` D6: "The editor page joins shared projects through plan `project-collaboration`'s protocol (`documents/contracts/collaboration.md`): Yjs over the same trystero transport, which the page runs natively; `y-monaco` binds the page's Monaco models; keys come from the same invite link; the page uses the project's relay list (`relay.md`). — One protocol for VS Code and the browser."
   - `plan.md` D7: the collaboration wiring in `packages/browser/src/editor/collab/` uses core `collab/` and `collab/dom/`; nothing is copied.

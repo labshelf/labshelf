@@ -11,7 +11,7 @@ The PDF preview beside a `.tex` or `.typ` source gets the layout of the mockup (
 
 Facts: [research/preview.md](research/preview.md), [research/writing-core.md](research/writing-core.md), [research/ui-kit.md](research/ui-kit.md).
 
-- [x] **D1** The chrome lives in core under `reader/dom/preview/` subfolders (header, footer, card, marks), mounted only in preview mode; the library reader keeps its toolbar — the browser editor (writing-4) reuses them later.
+- [x] **D1** The chrome lives in core under `reader/dom/preview/` subfolders (header, footer, card, marks), mounted only in preview mode; the library reader keeps its toolbar — the browser editor (browser-editor) reuses them later.
 - [x] **D2** Citation card highlights show their colour only, with no meaning label — no annotation format change (user choice).
 - [x] **D3** Page and word limit, and "count up to References / End", live in `labshelf.yaml` `check:` next to the existing `pages` key, per project — syncs with coauthors (user choice; contract change in `documents/contracts/library-format.md#labshelfyaml`: `check.words`, `check.countUpTo`).
 - [x] **D4** The View group holds Compare, Mark, Dark PDF, page arrows with a page box, and zoom (− + and a % menu). Find stays on Ctrl/Cmd+F and the sidebar leaves the header; help stays on `?` (user choice, target screenshots of 2026-10-17). Dark PDF is a local toggle, off by default: sheets stay light paper on every VS Code theme.
@@ -22,11 +22,11 @@ Facts: [research/preview.md](research/preview.md), [research/writing-core.md](re
 - [x] **D9** Export writes through a save dialog: project `.zip`, arXiv bundle whose `.bib` holds only cited entries (built from the user's `.bib`, never `labshelf.bib`), and "Open PDF in system viewer".
 - [x] **D10** The undefined-key suggestion ranks shelf cite keys by edit distance and author/year overlap in core; Replace edits the `\cite` in the source through a WorkspaceEdit.
 - [x] **D11** Placement: header, footer, menus and limit popover in `core/src/reader/dom/preview/{header,footer}/`; problem list in `core/src/writing/problems/` with PDF marks in `reader/dom/preview/marks/`; key suggestion in `core/src/writing/citations/`; `\includeonly` in `core/src/writing/latex/build/`; export in `core/src/writing/project/export`; stale state, auto compile, Ctrl+S and engine in `packages/vscode/src/writing/{build,preview}/`. Protocol messages (`core/src/reader/protocol.ts`, `previewProtocol.ts`, `previewRequests.ts`, contract `documents/contracts/reader-host.md#preview`) are frozen.
-- [x] **D12** Out of scope: browser and terminal UIs (writing-4 adopts the core chrome later), highlight meanings, venue presets for limits, Typst SyncTeX (plan typst-source-sync).
+- [x] **D12** Out of scope: browser and terminal UIs (browser-editor adopts the core chrome later), highlight meanings, venue presets for limits.
 
 Open: none.
 
-Cross-plan caveat: writing-2-submission-tools and typst-source-sync also touch the preview messages; run `git worktree list` before a session that edits them.
+Cross-plan caveat: writing-2-submission-tools also touches the preview messages; run `git worktree list` before a session that edits them.
 
 ## 3. Acceptance
 

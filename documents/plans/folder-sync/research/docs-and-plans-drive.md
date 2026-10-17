@@ -16,6 +16,6 @@ Plans:
 - `browser-sync-drive-check` — entirely Drive: delete (user approved).
 - `writing-project-templates` — session 6 is the Drive `templates` namespace (`plan.md:4,20,28,50` D15): delete session 6 and its row/decision (user approved).
 - `writing-2-writing-sync` — partly: `plan.md:8,12,15,19,29,33`; sessions 01 (1.1), 2-merge, 3a-exchange (Drive file ids, `googleDriveProvider.ts`), 3c-live-sessions (Drive `lastModified`); 3b-comments unrelated.
-- `writing-3-writing-browser-bridge` — partly: `plan.md:14,17,19,28,48,52`; sessions 1a-projects-store (browser joins Drive `projects` namespace), 2a-writing-tab, 2c-bibliography (Drive permissions API); 2d only wording.
-- `writing-4-browser-editor` — partly: `plan.md:4,8,17,32`; `sessions/03.md:8,27,40`.
+- `browser-writing-companion` — partly: `plan.md:14,17,19,28,48,52`; sessions 1a-projects-store (browser joins Drive `projects` namespace), 2a-writing-tab, 2c-bibliography (Drive permissions API); 2d only wording.
+- `browser-editor` — partly: `plan.md:4,8,17,32`; `sessions/03.md:8,27,40`.
 - Unrelated: google-search-capture, pdf-finding-checks, pdf-preview-chrome, typst-source-sync, writing-2-research-links, writing-2-submission-tools, writing-3-writing-terminal.

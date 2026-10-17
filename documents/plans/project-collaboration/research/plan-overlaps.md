@@ -1,5 +1,5 @@
 sha: 3159f508
-files: documents/plans/writing-2-writing-sync/{plan.md,sessions/3b-comments.md,sessions/3c-live-sessions.md}, documents/plans/writing-4-browser-editor/{plan.md,sessions/04.md}
+files: documents/plans/writing-2-writing-sync/{plan.md,sessions/3b-comments.md,sessions/3c-live-sessions.md}, documents/plans/browser-editor/{plan.md,sessions/04.md}
 source: planner read the plans, 2026-10-17
 
 # Overlaps with other plans
@@ -11,6 +11,6 @@ source: planner read the plans, 2026-10-17
 - Session 2 (three-way merge of text conflict copies) stays: the disk mirror relies on it for two devices of one user.
 - Decided (D15): this plan absorbs 3b as session 5; 3c, D5–D8 and A5–A7 are deleted from writing-2.
 
-## writing-4-browser-editor (draft)
+## browser-editor (draft)
 - D6, A4, A5 and session 04 use OCT and `open-collaboration-monaco`. Session 9 of this plan rewrites them: the page joins shared projects with this plan's protocol (`documents/contracts/collaboration.md`): Yjs over the same trystero transport (the page has WebRTC natively), `y-monaco` on the page's Monaco models, the same keys from the invite, the same relay list. Comments flow through the `comments` map. Depends on this plan's sessions 2–5 (7 for the relay list).
 - Keep the rest unchanged; plan.md ≤ 12,000 chars, sessions ≤ 6,000.

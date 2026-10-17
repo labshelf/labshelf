@@ -22,7 +22,7 @@ LabShelf users share a writing project (a LaTeX or Typst folder) with other LabS
 - [ ] **D11** Later phase: a project carries a list of relays from members who connected Cloudflare; clients use the first that answers in list order and fail over together. CRDT state lives in clients, so relays are interchangeable. — The only way pooling adds capacity.
 - [ ] **D12** Paper share links: LabShelf uploads copies of the chosen papers (with or without the user's annotations, the user chooses) to the owner's Worker KV; a page of `website/` shows the folder read-only without sign-in, with Install LabShelf, Open in LabShelf (import) and Download. Revoke deletes. A notice says the sharer is responsible for the right to share. Detail: `research/share-links.md`. — Free at course scale (20 papers × 100 students).
 - [ ] **D13** Contracts this plan adds, tests first with `architecture-reviewer`: `documents/contracts/collaboration.md` (invite link, key derivation, encryption framing, doc layout, awareness, sync messages), `documents/contracts/relay.md` (Worker endpoints, versioning, auth), `documents/contracts/share-link.md`. `library-format.md` gains `shared:` in `labshelf.yaml` and `.labshelf/comments.json`.
-- [ ] **D14** Out of scope: mobile; the browser editor (plan `writing-4-browser-editor` joins through this protocol, session 9); sharing whole libraries live; any server Luca pays for.
+- [ ] **D14** Out of scope: mobile; the browser editor (plan `browser-editor` joins through this protocol, session 9); sharing whole libraries live; any server Luca pays for.
 
 - [ ] **D15** This plan absorbs `writing-2-writing-sync` session 3b (comments, controller, review-PDF note) as session 5; its session 3c (OCT bridge, coauthor notice) and decisions D5–D8 are deleted from that plan, whose three-way merge stays. — user choice, 2026-10-17.
 - [ ] **D16** Share-link contents (manifest and PDFs) are encrypted with a key in the link `#fragment`; the owner's account holds only ciphertext. — user choice, 2026-10-17.
@@ -43,7 +43,7 @@ Open: none.
 - [ ] **A9** On a network where direct P2P fails, the session connects through the owner's TURN or WebSocket relay.
 - [ ] **A10** With two relays in the list, stopping the first moves every client to the second without losing edits.
 - [ ] **A11** "Share Folder as Link…" gives a link that opens the folder read-only in a browser without LabShelf; Open in LabShelf imports the papers; after revoke the page says the link was removed.
-- [ ] **A12** `writing-4-browser-editor` joins shared projects through this plan's protocol and stays within its file limits.
+- [ ] **A12** `browser-editor` joins shared projects through this plan's protocol and stays within its file limits.
 
 ## 4. Sessions
 
@@ -59,4 +59,4 @@ Sessions run in order. Every session from 2 to 8 adds a dependency or changes a 
 | 6 | [sessions/6-cloudflare-relay.md](sessions/6-cloudflare-relay.md) | Worker, API deploy, persistence, relay, TURN | `packages/core/src/relay/`, `packages/vscode/src/relay/`, `documents/contracts/relay.md` | alone |
 | 7 | [sessions/7-relay-list.md](sessions/7-relay-list.md) | relay list and failover | `packages/core/src/collab/relays/`, relay-offer glue in `packages/vscode/src/relay/` | alone |
 | 8 | [sessions/8-share-links.md](sessions/8-share-links.md) | paper-folder share links and page | `packages/core/src/share/`, share endpoints in `relay/worker/`, `packages/vscode/src/share/`, `website/`, `documents/contracts/share-link.md` | alone |
-| 9 | [sessions/9-browser-editor-plan.md](sessions/9-browser-editor-plan.md) | `writing-4-browser-editor` reconciled | `documents/plans/writing-4-browser-editor/**` | 2 |
+| 9 | [sessions/9-browser-editor-plan.md](sessions/9-browser-editor-plan.md) | `browser-editor` reconciled | `documents/plans/browser-editor/**` | 2 |
