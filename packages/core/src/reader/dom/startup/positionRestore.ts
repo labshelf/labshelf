@@ -64,6 +64,7 @@ export class PositionRestore {
     ui.toolbar.setAutoHide(msg.prefs.toolbarAutoHide);
     theme.apply(msg.theme, msg.effectiveTheme);
     ui.annotationsTab.setAnnotations(msg.annotations);
+    ui.highlights.show(msg.annotations);
     if (!this.pagesReady || this.restored) { return; }
     this.restored = true;
     const reading = msg.prefs.restorePosition && !this.readerMoved ? msg.reading : null;

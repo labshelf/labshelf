@@ -252,6 +252,9 @@ kbd {
   border: 2px solid var(--ls-focus); border-radius: 50%; background: var(--ls-reader-active);
   pointer-events: none; animation: rd-sync-pulse 1.6s ease-out forwards;
 }
+/* Highlights sit under the text layer so selection still reaches the text; translucency keeps the ink readable. */
+.rd-hl-layer { position: absolute; inset: 0; pointer-events: none; }
+.rd-hl { position: absolute; opacity: .38; border-radius: 1px; }
 .rd-change-mark {
   position: absolute; z-index: 4; pointer-events: none;
   background: var(--ls-reader-change); box-shadow: inset 2px 0 0 var(--ls-reader-find-current);

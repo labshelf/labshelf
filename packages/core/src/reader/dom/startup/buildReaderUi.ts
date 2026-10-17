@@ -3,6 +3,7 @@
  */
 import { clampPage, type WebviewToHost } from "../../index.js";
 import { BuildBanner, Cheatsheet, SelectionBubble, StatusPill, type ThemeController, openThemePopover, Toolbar } from "../chrome/index.js";
+import { PageHighlights } from "../highlights/index.js";
 import { FindBar, NavHistory, ZoomController } from "../navigation/index.js";
 import { areaScroller, countBodyPages, LogsView, mountPreviewChrome, type PreviewChrome, previewOutlineSource } from "../preview/index.js";
 import type { ReaderContext } from "../session/index.js";
@@ -14,6 +15,7 @@ export interface ReaderUi {
   zoom: ZoomController;
   goToPage(page: number): void;
   annotationsTab: AnnotationsTab;
+  highlights: PageHighlights;
   sidebar: Sidebar;
   findBar: FindBar;
   cheatsheet: Cheatsheet;
@@ -36,6 +38,7 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
   const zoom = new ZoomController(ctx);
   const goToPage = pageJumper(ctx, history);
   const annotationsTab = new AnnotationsTab(ctx.host, goToPage);
+  const highlights = new PageHighlights(ctx);
   const sidebar = new Sidebar({
     thumbnails: new ThumbnailsTab(ctx, theme, goToPage),
     outline: new OutlineTab(ctx),
@@ -59,7 +62,7 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
   findBar.onToggle((open) => toolbar.setFindOpen(open));
   const buildBanner = new BuildBanner();
   const ui: ReaderUi = {
-    history, zoom, goToPage, annotationsTab, sidebar, findBar, cheatsheet, pill, bubble, reporter, toolbar, buildBanner,
+    history, zoom, goToPage, annotationsTab, highlights, sidebar, findBar, cheatsheet, pill, bubble, reporter, toolbar, buildBanner,
     previewChrome: null,
     openLogs: (rootPath) => console.warn(`LabShelf reader: no logs view to open for ${rootPath}`),
   };

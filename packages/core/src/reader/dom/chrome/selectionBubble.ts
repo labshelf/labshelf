@@ -4,6 +4,7 @@
 import { ANNOTATION_COLORS, type AnnotationColor } from "../../../model/index.js";
 import type { ReaderContext } from "../session/index.js";
 import { clamp, iconButton } from "../elements/index.js";
+import { boxInPage, pageFrame } from "../highlights/index.js";
 import { icon } from "../../../ui/index.js";
 import { $, el } from "../../../ui/dom/index.js";
 
@@ -12,6 +13,7 @@ const HIDE_GRACE_MS = 150;
 export interface SelectionInfo {
   text: string;
   pageNumber: number;
+  page: HTMLElement;
 }
 
 export class SelectionBubble {
@@ -59,7 +61,7 @@ export class SelectionBubble {
     const pageEl = startEl?.closest<HTMLElement>("#viewer .page");
     if (!pageEl) { return null; }
     const pageNumber = Number(pageEl.dataset["pageNumber"]) || this.ctx.pdfViewer.currentPageNumber;
-    return { text, pageNumber };
+    return { text, pageNumber, page: pageEl };
   }
 
   /**
@@ -81,9 +83,16 @@ export class SelectionBubble {
 
   private highlight(color: AnnotationColor): void {
     const info = this.currentSelection();
-    if (!info) { return; }
-    this.ctx.host.post({ command: "createAnnotation", type: "highlight", pageNumber: info.pageNumber, content: info.text, color });
-    window.getSelection()?.removeAllRanges();
+    const sel = window.getSelection();
+    if (!info || !sel) { return; }
+    // Measured before the selection is cleared; a page without a size yet gives a highlight that is only listed.
+    const frame = pageFrame(info.page);
+    const position = frame ? boxInPage(sel.getRangeAt(0).getBoundingClientRect(), frame) : null;
+    this.ctx.host.post({
+      command: "createAnnotation", type: "highlight", pageNumber: info.pageNumber, content: info.text, color,
+      ...(position ? { position: { ...position } } : {}),
+    });
+    sel.removeAllRanges();
     this.hide();
   }
 

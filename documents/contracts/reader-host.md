@@ -21,6 +21,7 @@ One host controller in core answers every message the reader sends. Each host im
 - **The host validates untrusted input.** Messages from the reader go through `isWebviewMessage`, so a malformed message is rejected and never half-applied. External links go through `isSafeExternalUrl`, which allows only `http:`, `https:` and `mailto:`, so a crafted PDF cannot open `file:`, `command:` or `vscode:` URIs.
 - **Preferences are validated once.** Both hosts pass stored preferences through the shared `normalizeReaderPrefs`. VS Code reads them from settings; the browser reads them from extension storage.
 - **The sidecar format is shared.** The host persists annotations, theme and reading position through the shared `PaperDataStore` over a `SidecarPort`, which keeps the bytes identical everywhere ([library-format.md](library-format.md#sidecar-datajson)).
+- **Highlights are drawn on their page.** A highlight the reader creates carries its selection's box in the page as `position` ([library-format.md](library-format.md#sidecar-datajson)); the reader draws every annotation with a `position` over its text on that page, and lists the ones without one in the Annotations tab only.
 - **Reading position is saved only after restore.** The reader does not report a position until it has restored the stored one, so the initial page-1 layout never overwrites it.
 - **`PROTOCOL_VERSION` changes whenever a message changes shape.**
 

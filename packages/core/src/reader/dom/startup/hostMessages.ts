@@ -27,7 +27,10 @@ export function bindHostMessages({ ctx, ui, keyboard, hover, reloader, sourceSyn
   const { host } = ctx;
   host.on("command", (msg) => keyboard.dispatch(msg.id, "host"));
   host.on("scrollToPage", (msg) => ui.goToPage(msg.pageNumber));
-  host.on("updateAnnotations", (msg) => ui.annotationsTab.setAnnotations(msg.annotations ?? []));
+  host.on("updateAnnotations", (msg) => {
+    ui.annotationsTab.setAnnotations(msg.annotations ?? []);
+    ui.highlights.show(msg.annotations ?? []);
+  });
   host.on("prefsChanged", (msg) => {
     ctx.prefs = msg.prefs;
     ui.toolbar.setAutoHide(msg.prefs.toolbarAutoHide);
