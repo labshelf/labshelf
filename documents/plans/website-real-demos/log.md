@@ -3,3 +3,4 @@
 <!-- Append-only. One line per finished step or session. Add lines with `>>`; never read the file whole. -->
 - 2026-10-17 · session 1 (foundation) · done: website package + build, demo library (9 CC BY papers, 1 PDF), architecture/apps docs · left: none · 18723264
 - 2026-10-17 · session 2 · done: library and reader demos on dev.html (A1–A3); in-page reader channel moved to core; seeded highlight is listed but not painted, because core's reader never paints highlights on the page · left: sessions 3–5
+- 2026-10-17 · session 3 · done: terminal tui/cli and browser capture clips; left: browser/scholar not attempted · 64b3cd95
