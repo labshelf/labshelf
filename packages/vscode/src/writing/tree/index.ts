@@ -1,5 +1,4 @@
-// The Projects and Files side-bar views of the writing projects.
-export { WritingTreeProvider } from "./projectsTreeProvider.js";
+// The Files, Outline, Checklist, Figures and Versions views of the open writing project.
 export { ProjectFilesProvider, type ProjectFileNode } from "./projectFilesProvider.js";
 export { watchProjectFiles } from "./projectFilesWatcher.js";
 export { registerProjectFileCommands } from "./projectFileCommands.js";

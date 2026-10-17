@@ -49,12 +49,12 @@ describe("groupPapers", () => {
 
 describe("groupLabel", () => {
   it("joins up to three segments with a separator and repeats them in the title", () => {
-    expect(groupLabel(["a"])).toEqual({ text: "a", title: "a" });
-    expect(groupLabel(["a", "b", "c"])).toEqual({ text: "a › b › c", title: "a › b › c" });
+    expect(groupLabel(["a"])).toEqual({ shown: [0], title: "a" });
+    expect(groupLabel(["a", "b", "c"])).toEqual({ shown: [0, 1, 2], title: "a › b › c" });
   });
 
   it("collapses more than three segments to first, ellipsis, second-last and last", () => {
-    expect(groupLabel(["a", "b", "c", "d"])).toEqual({ text: "a … c › d", title: "a › b › c › d" });
-    expect(groupLabel(["a", "b", "c", "d", "e"])).toEqual({ text: "a … d › e", title: "a › b › c › d › e" });
+    expect(groupLabel(["a", "b", "c", "d"])).toEqual({ shown: [0, 2, 3], title: "a › b › c › d" });
+    expect(groupLabel(["a", "b", "c", "d", "e"])).toEqual({ shown: [0, 3, 4], title: "a › b › c › d › e" });
   });
 });

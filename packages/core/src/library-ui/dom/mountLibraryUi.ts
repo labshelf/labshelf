@@ -49,7 +49,7 @@ function reportFolder(ctx: UiContext): () => void {
 
 export function mountLibraryUi(host: HTMLElement, options: LibraryUiOptions): LibraryUi {
   const saved = options.prefs.load();
-  const store = new LibraryViewStore({ sortKey: saved.sortKey, sortDir: saved.sortDir });
+  const store = new LibraryViewStore({ sortKey: saved.sortKey, sortDir: saved.sortDir, columns: saved.columns });
   const { transport, prefs, capabilities: caps, labels } = options;
   const frame = buildFrame(host, prefs, options.withSidebar ?? false);
   const ctx = createUiContext(frame.root, { store, transport, prefs, caps, labels });

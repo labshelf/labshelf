@@ -18,7 +18,7 @@ export interface Query {
   terms: string[];
   /** Folded words that must occur nowhere. */
   excluded: string[];
-  /** Folded tag prefixes; each must start one of the paper's tags. */
+  /** Folded tag names; each must equal one of the paper's tags. */
   tags: string[];
   fields: FieldFilter[];
   /** A paper matches any of these; empty means every status. */

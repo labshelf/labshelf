@@ -29,7 +29,7 @@ async function describe(ctx: UiContext, id: string, name: string): Promise<void>
 function menuEntries(ctx: UiContext, id: string, e: TrayEntry, activate: () => void): MenuEntry[] {
   const entries: MenuEntry[] = [{ icon: "file", label: "Open", onSelect: activate }];
   for (const a of offered(e)) entries.push({ icon: a.glyph, label: a.label, onSelect: () => ctx.transport.post({ type: a.message, id, name: e.name }) });
-  // paper.pdf is the paper's own file, so its description is the abstract.
+  // paper.pdf's description is the short note, edited inline in its row.
   if (e.kind !== "pdf") entries.push("separator", { icon: "edit", label: "Describe…", onSelect: () => { void describe(ctx, id, e.name); } });
   return entries;
 }

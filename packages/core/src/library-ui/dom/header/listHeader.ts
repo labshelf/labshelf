@@ -1,11 +1,10 @@
 /**
- * Renders the list header: sidebar toggle, scope title with its count, search box, and toolbar (new subfolder,
- * Add, details toggle).
+ * Renders the list header: sidebar toggle, scope title with a match count while narrowed, search box, and toolbar (Add, details toggle).
  */
 import { SYNTAX_HELP } from "../../../library/index.js";
 import { escapeHtml, icon } from "../../../ui/index.js";
 import { deriveScope } from "../../derive/index.js";
-import { promptNewFolder, requestAddPaper } from "../flows/index.js";
+import { requestAddPaper } from "../flows/index.js";
 import { togglePane } from "../shell/index.js";
 import type { UiContext } from "../uiContext.js";
 import { renderCrumbs } from "./breadcrumb.js";
@@ -18,11 +17,11 @@ const headerHtml = (addTooltip: string): string => `
   <nav class="breadcrumb" aria-label="List scope"></nav>
   <div class="ls-search" title="${escapeHtml(SEARCH_SYNTAX_TIP)}">
     ${icon("search")}
-    <input class="ls-library-search" type="text" placeholder="Search title, author, year, keyword  ( / )" spellcheck="false" autocomplete="off" aria-label="Search papers"/>
+    <input class="ls-library-search" type="text" placeholder="Search papers" spellcheck="false" autocomplete="off" aria-label="Search papers"/>
+    <kbd class="ls-search-key" aria-hidden="true">/</kbd>
     <button class="ls-search-clear" data-act="clear" title="Clear search (Esc)">${icon("x")}</button>
   </div>
-  <button class="ls-icon-btn" data-act="newFolder" title="New subfolder">${icon("folder-plus")}</button>
-  <button class="ls-btn ls-btn-primary" data-act="add" title="${escapeHtml(addTooltip)}">${icon("plus")}<span>Add</span></button>
+  <button class="ls-btn ls-btn-ghost" data-act="add" title="${escapeHtml(addTooltip)}">${icon("plus")}<span>Add</span></button>
   <button class="ls-icon-btn" data-act="detail" title="Toggle details panel">${icon("panel-right")}</button>`;
 
 function wireSearch(ctx: UiContext, search: HTMLInputElement): void {
@@ -44,7 +43,6 @@ function wireSearch(ctx: UiContext, search: HTMLInputElement): void {
 function onToolbarClick(ctx: UiContext, act: string | undefined, search: HTMLInputElement): void {
   switch (act) {
     case "clear": ctx.store.set({ query: "" }); search.value = ""; search.focus(); return;
-    case "newFolder": void promptNewFolder(ctx, ctx.store.get().folder); return;
     case "add": requestAddPaper(ctx); return;
     case "detail": togglePane(ctx.root, ctx.prefs, "detail"); return;
     case "sidebar": togglePane(ctx.root, ctx.prefs, "sidebar"); return;
@@ -63,13 +61,13 @@ export function mountListHeader(ctx: UiContext, container: HTMLElement): () => v
     if (btn) onToolbarClick(ctx, btn.dataset["act"], search);
   });
   return ctx.store.select(
-    (s) => ({ folder: s.folder, papers: s.papers, query: s.query, status: s.status, pdfDirs: s.pdfDirs }),
+    (s) => ({ folder: s.folder, papers: s.papers, query: s.query, pdfDirs: s.pdfDirs }),
     (slice) => {
       if (search.value !== slice.query) search.value = slice.query;
       searchBox.classList.toggle("has-query", slice.query.length > 0);
       const view = deriveScope(slice);
-      const narrowed = slice.query.length > 0 || slice.status !== "all";
-      renderCrumbs(ctx, crumbs, slice.folder, slice.status, narrowed ? `${view.shown.length} / ${view.inFolder.length}` : view.scope.length ? String(view.scope.length) : "");
+      const narrowed = slice.query.length > 0;
+      renderCrumbs(ctx, crumbs, slice.folder, narrowed ? `${view.shown.length} / ${view.inFolder.length}` : "");
     },
   );
 }

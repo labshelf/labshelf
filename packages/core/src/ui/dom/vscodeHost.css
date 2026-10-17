@@ -28,7 +28,6 @@
   --ls-list-inactive-bg: var(--vscode-list-inactiveSelectionBackground);
   --ls-list-drop-bg: var(--vscode-list-dropBackground);
   --ls-list-focus-outline: var(--vscode-list-focusOutline);
-  --ls-indent-guide: var(--vscode-tree-indentGuidesStroke);
   --ls-menu-bg: var(--vscode-menu-background);
   --ls-menu-fg: var(--vscode-menu-foreground);
   --ls-menu-border: var(--vscode-menu-border, var(--vscode-widget-border));

@@ -1,13 +1,11 @@
 /**
- * Builds the markup pieces every part of the detail pane uses: collapsible sections drawn like a native pane header,
- * label and value rows, icon buttons, copy buttons, muted notes and a loading line.
+ * Builds the markup pieces every part of the detail pane uses: collapsible sections with a muted label led by a
+ * chevron, label and value rows, icon buttons, copy buttons, muted notes and a loading line.
  */
 import { escapeHtml, icon, type IconName } from "../../../ui/index.js";
 
 export interface SectionOptions {
   count?: number;
-  /** Icon buttons shown on the header while it is hovered. */
-  actions?: string;
 }
 
 /** A section, open unless the user folded it. */
@@ -15,9 +13,9 @@ export function section(id: string, title: string, body: string, collapsed: Reco
   const closed = !!collapsed[id];
   return `<div class="detail-section">` +
     `<div class="sec-head${closed ? " collapsed" : ""}" data-sec="${id}" role="button" tabindex="0" aria-expanded="${!closed}">` +
-      `<div class="sec-head-left"><span class="sec-chevron">${icon("chevron-down")}</span><span class="sec-title">${escapeHtml(title)}</span>` +
-      (o.count ? `<span class="sec-count">${o.count}</span>` : "") + `</div>` +
-      (o.actions ? `<div class="sec-actions">${o.actions}</div>` : "") +
+      `<span class="sec-chevron">${icon("chevron-down")}</span>` +
+      `<span class="sec-title">${escapeHtml(title)}</span>` +
+      (o.count ? `<span class="sec-count">${o.count}</span>` : "") +
     `</div>` +
     `<div class="sec-body${closed ? " hidden" : ""}" data-sec-body="${id}">${body}</div></div>`;
 }

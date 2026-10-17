@@ -30,11 +30,10 @@ export function groupPapers(papers: readonly ListPaper[], scope: string): PaperG
   return [...byFolder.values()].sort((a, b) => path(a).localeCompare(path(b)));
 }
 
-/** The label text, shortened past three segments, and the full path for its tooltip. */
-export function groupLabel(segments: readonly string[]): { text: string; title: string } {
-  const title = segments.join(LABEL_SEP);
-  if (segments.length <= MAX_SEGMENTS) return { text: title, title };
-  return { text: `${segments[0]} … ${segments.slice(-2).join(LABEL_SEP)}`, title };
+/** The indices of the segments the label shows (first, second-last and last past three) and the full path for its tooltip. */
+export function groupLabel(segments: readonly string[]): { shown: number[]; title: string } {
+  const n = segments.length;
+  return { shown: n <= MAX_SEGMENTS ? segments.map((_, i) => i) : [0, n - 2, n - 1], title: segments.join(LABEL_SEP) };
 }
 
 /** The accessible name of a group: its full path and paper count. */

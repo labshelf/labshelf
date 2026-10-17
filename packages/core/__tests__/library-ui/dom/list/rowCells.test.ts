@@ -1,14 +1,17 @@
 /**
  * @jest-environment jsdom
  */
+import { DEFAULT_COLUMNS } from "../../../../src/library-ui/state";
 import { mountForTest, paper } from "../mountHarness";
+
+const WITH_READ = { columns: [...DEFAULT_COLUMNS, "lastRead" as const] };
 
 const DAY = 86_400_000;
 const daysAgo = (d: number): string => new Date(Date.now() - d * DAY).toISOString();
 
 describe("Last read cell", () => {
   it("shows the compact time, and the full date, time and page as its title", () => {
-    const t = mountForTest();
+    const t = mountForTest(WITH_READ);
     const lastRead = daysAgo(3);
     t.snapshot([paper("a", "papers")], [], [], { a: { annotations: 0, lastPage: 2, lastRead } });
     const cell = t.container.querySelector<HTMLElement>(".paper-row .col-read")!;
@@ -17,7 +20,7 @@ describe("Last read cell", () => {
   });
 
   it("shows a dash and no title for a paper never read", () => {
-    const t = mountForTest();
+    const t = mountForTest(WITH_READ);
     t.snapshot([paper("a", "papers")]);
     const cell = t.container.querySelector<HTMLElement>(".paper-row .col-read")!;
     expect(cell.textContent).toBe("—");
@@ -27,7 +30,7 @@ describe("Last read cell", () => {
 
 describe("Status cell", () => {
   const markOf = (status: "unread" | "reading" | "done"): HTMLElement => {
-    const t = mountForTest();
+    const t = mountForTest(WITH_READ);
     t.snapshot([paper("a", "papers", { status })]);
     const main = t.container.querySelector<HTMLElement>(".paper-row-main")!;
     expect(main.querySelector("[class*='ls-badge']")).toBeNull();

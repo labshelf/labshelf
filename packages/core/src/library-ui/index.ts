@@ -14,5 +14,3 @@ export { cleanTags, keptFieldNotice, moveNotice, papersLabel, removeNotice } fro
 export type { BatchFailure, OutcomeNotice } from "./outcomeCopy.js";
 export { createSidecarReader } from "./sidecarReads.js";
 export type { SidecarReader } from "./sidecarReads.js";
-export { lastReadPaper } from "./lastReadPaper.js";
-export type { LastReadPaper } from "./lastReadPaper.js";

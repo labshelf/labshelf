@@ -6,7 +6,6 @@ import type { PaperStatus } from "../../model/index.js";
 import type {
   AddSource, CitationMapState, IfNoPdf, LibraryUiSnapshot, PaperDetails, PaperFilesState, PdfAccess, PdfMiss, SimilarPaper, TextLayerJobView,
 } from "./payloads.js";
-import type { StatusFilter } from "../state/index.js";
 
 export type UiToHost =
   | { type: "ready" }
@@ -51,8 +50,8 @@ export type UiToHost =
 export type HostToUi =
   | { type: "snapshot"; snapshot: LibraryUiSnapshot }
   | { type: "navigate"; folder: string }
-  /** Opens the library root showing only papers with this status, as a host's status scope row asks. */
-  | { type: "scope"; status: StatusFilter }
+  /** Narrows the list to the papers with this tag, as a host's Tags row asks. */
+  | { type: "searchTag"; tag: string }
   | { type: "select"; id: string }
   /** Shows the paper wherever it is: opens its folder, clears filters that hide it, selects it and opens its files. */
   | { type: "reveal"; id: string }

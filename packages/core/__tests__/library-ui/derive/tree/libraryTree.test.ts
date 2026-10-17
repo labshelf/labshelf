@@ -1,4 +1,4 @@
-// Tests that the library tree lists scopes, folders with recursive counts, and papers by title.
+// Tests that the library tree counts papers, lists folders with recursive counts, and papers by title.
 import type { PaperRecord } from "@labshelf/core";
 import { libraryTree } from "../../../../src/library-ui/derive/tree";
 
@@ -22,14 +22,12 @@ const papers = [
 const tree = () => libraryTree({ folders, papers });
 
 describe("libraryTree", () => {
-  it("lists the scopes with their paper counts in a fixed order", () => {
-    expect(tree().scopes()).toEqual([
-      { scope: "all", count: 6 }, { scope: "unread", count: 1 }, { scope: "reading", count: 3 }, { scope: "done", count: 2 },
-    ]);
+  it("counts every paper in the library", () => {
+    expect(tree().total()).toBe(6);
   });
 
-  it("counts zero for every scope of an empty library", () => {
-    expect(libraryTree({ folders: [], papers: [] }).scopes().map((s) => s.count)).toEqual([0, 0, 0, 0]);
+  it("counts zero papers in an empty library", () => {
+    expect(libraryTree({ folders: [], papers: [] }).total()).toBe(0);
     expect(libraryTree({ folders: [], papers: [] }).children("papers")).toEqual([]);
   });
 

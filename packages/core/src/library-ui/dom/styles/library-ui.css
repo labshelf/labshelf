@@ -30,7 +30,7 @@ body, #root { display: flex; flex-direction: column; }
   background: var(--ls-sidebar-bg); border-right: 1px solid var(--ls-sidebar-border);
 }
 .ls-library.sidebar-collapsed .sidebar { display: none; }
-.ls-library .list-pane { container: list-pane / inline-size; flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+.ls-library .list-pane { container: list-pane / inline-size; flex: 1; background: var(--ls-sidebar-bg); display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
 .ls-library .list-body { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .ls-library .detail-pane {
   position: relative; width: 360px; min-width: 260px; max-width: 760px; flex-shrink: 0; overflow-y: auto; overflow-x: hidden;
@@ -40,23 +40,35 @@ body, #root { display: flex; flex-direction: column; }
 
 /* ── Header and breadcrumb ──────────────────────────────────────── */
 .ls-library .list-header {
-  display: flex; align-items: center; gap: var(--ls-space-3); padding: 5px var(--ls-space-4); flex-shrink: 0;
-  border-bottom: 1px solid var(--ls-border-soft); background: var(--ls-sidebar-bg);
+  display: flex; align-items: center; gap: var(--ls-space-3); min-height: 54px; padding: var(--ls-space-5) var(--ls-space-6) var(--ls-space-4) var(--ls-space-7);
+  flex-shrink: 0; background: var(--ls-sidebar-bg);
 }
-.ls-library .breadcrumb { display: flex; align-items: center; gap: 1px; flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; }
+.ls-library .breadcrumb { display: flex; align-items: baseline; gap: var(--ls-space-2); flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; }
 .ls-library .crumb {
-  display: inline-flex; align-items: center; gap: var(--ls-space-2); flex-shrink: 1; min-width: 0;
-  padding: var(--ls-space-1) 5px; border-radius: var(--ls-radius-sm); border: 1px solid transparent;
-  background: none; color: var(--ls-desc); font-size: var(--ls-text-md); cursor: pointer;
+  display: inline-flex; align-items: center; flex-shrink: 1; min-width: 0; padding: 0; border: 1px solid transparent; border-radius: var(--ls-radius-sm);
+  background: none; color: var(--ls-desc); font-size: var(--ls-font-size); cursor: pointer;
 }
 .ls-library .crumb > span { overflow: hidden; text-overflow: ellipsis; }
-.ls-library .crumb svg { width: 13px; height: 13px; flex-shrink: 0; opacity: .8; }
-.ls-library .crumb:hover { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
-.ls-library .crumb.current { color: var(--ls-fg); font-weight: 600; font-size: var(--ls-font-size); cursor: default; flex-shrink: 0; }
-.ls-library .crumb.current:hover { background: none; }
-.ls-library .crumb-sep { display: inline-flex; width: 14px; height: 14px; flex-shrink: 0; opacity: .5; }
+.ls-library .crumb:hover { color: var(--ls-fg); }
+.ls-library .crumb.current { color: var(--ls-fg); font-weight: 600; font-size: var(--ls-text-lg); cursor: default; flex-shrink: 0; }
+.ls-library .crumb-sep { align-self: center; display: inline-flex; width: 14px; height: 14px; flex-shrink: 0; color: var(--ls-desc); opacity: .6; }
 .ls-library .crumb-sep svg { width: 14px; height: 14px; }
-.ls-library .list-header .ls-search { width: 260px; flex-shrink: 1; min-width: 90px; }
+/* The scope count is plain muted text, not the shared badge. */
+.ls-library .breadcrumb .ls-count { margin-left: var(--ls-space-2); padding: 0; background: none; color: var(--ls-desc); font-family: var(--ls-mono); font-size: var(--ls-text-md); }
+/* The search field is a soft well that turns into a real input only while it has focus. */
+.ls-library .list-header .ls-search {
+  width: 220px; flex-shrink: 1; min-width: 120px; height: 28px; gap: var(--ls-space-3); padding: 0 var(--ls-space-3) 0 var(--ls-space-4);
+  border: 1px solid transparent; border-radius: var(--ls-radius); background: color-mix(in srgb, var(--ls-fg) 6%, transparent);
+}
+.ls-library .list-header .ls-search:focus-within { border-color: var(--ls-focus); background: var(--ls-input-bg); }
+.ls-library .list-header .ls-search input { font-size: var(--ls-text-md); }
+.ls-library .list-header .ls-search > svg { width: 14px; height: 14px; }
+.ls-library .ls-search-key {
+  padding: 0 var(--ls-space-3); border: none; border-radius: var(--ls-radius); background: color-mix(in srgb, var(--ls-fg) 9%, transparent); color: var(--ls-desc);
+  font-family: var(--ls-mono); font-size: var(--ls-text-sm); line-height: 16px;
+}
+.ls-library .ls-search:focus-within .ls-search-key, .ls-library .ls-search.has-query .ls-search-key { display: none; }
+.ls-library .list-header .ls-btn { height: 28px; padding: 0 var(--ls-space-4); font-size: var(--ls-text-md); }
 .ls-library .sidebar-toggle { margin-right: var(--ls-space-1); }
 .ls-library:not(.sidebar-collapsed) .sidebar-toggle, .ls-library:not(.has-sidebar) .sidebar-toggle { display: none; }
 

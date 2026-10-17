@@ -173,6 +173,7 @@ The device's list of project folders outside the library. Absolute paths differ 
 - Paths are absolute, kept in the order they were added, each at most once.
 - Unknown keys are preserved on rewrite. A file that is not a JSON object is never overwritten: projects outside the library stay hidden until the user fixes or deletes it.
 - Removing a project from LabShelf removes its entry and never deletes the folder.
+- A project may contain `.labshelf/state.json`, a per-device file that never syncs ([sync](sync.md#projects)); LabShelf does not read it.
 
 ## .research/openalex/
 
@@ -182,24 +183,6 @@ The citation map's cache of OpenAlex works. It can be rebuilt from OpenAlex at a
 - Each file is `{ "fetchedAt": "<ISO timestamp>", "doi": "<DOI looked up>", "work": { "workId": "W…", "doi", "title", "authors": [], "year", "citedByCount", "references": ["W…"] } }`. `doi` at the top is present only under `papers/`, and `references` is empty under `works/`.
 - An entry older than 30 days, or a paper entry whose `doi` differs from the paper's current DOI, is fetched again. A DOI OpenAlex does not return leaves no file.
 - A file that is not valid JSON or lacks `fetchedAt`, a `W<digits>` work id, or the `authors` and `references` arrays reads as missing and is overwritten on the next fetch.
-
-## .labshelf/state.json
-
-A project folder keeps where its user last edited in `<project>/.labshelf/state.json`. The cursor belongs to one person on one device, so the file is never synced, and project sync skips `.labshelf/state.json`.
-
-```json
-{
-  "file": "sections/intro.tex",
-  "line": 41,
-  "character": 8,
-  "updatedAt": "2026-10-15T21:40:12.000Z"
-}
-```
-
-- `file` is relative to the project folder, with `/` separators, and stays inside it. `line` and `character` are 0-based non-negative integers. `updatedAt` is an ISO timestamp.
-- An app that edits a project's source writes the file after the cursor settles, and the Library view offers "Continue" for the project edited last.
-- A file with a missing or invalid key, or a `file` that leaves the project, reads as having no saved position.
-- Unknown keys are preserved on rewrite. A file that is not a JSON object is never overwritten.
 
 ## .labshelf/checklist.json
 

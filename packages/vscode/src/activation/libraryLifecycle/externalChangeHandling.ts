@@ -8,7 +8,7 @@ import type { ActiveServices } from "../../commands/index.js";
 export interface ExternalChangeHandlingDeps {
   context: vscode.ExtensionContext;
   getActiveServices: () => ActiveServices | null;
-  // Refreshes the tree and the open list panel once the re-index has settled.
+  // Refreshes the Library sidebar and the open list panel once the re-index has settled.
   onRefresh: () => void;
 }
 
@@ -27,7 +27,7 @@ export class ExternalChangeHandling {
     this.deps.context.subscriptions.push(this.watcher);
   }
 
-  // Re-indexes from disk and refreshes the views. The list panel, tree and AI
+  // Re-indexes from disk and refreshes the views. The list panel, Library sidebar and AI
   // indexer update through the paper events the re-index emits. Shared by the
   // external-change watcher and a sync that pulled files in from Drive.
   async reindexAndRefresh(trigger: string): Promise<void> {

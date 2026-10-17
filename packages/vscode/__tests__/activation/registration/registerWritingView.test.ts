@@ -48,10 +48,10 @@ describe("registerWritingView", () => {
     expect(registered).toEqual(contributed);
   });
 
-  it("creates the contributed Projects, Files, Outline, Checklist, Figures and Versions tree views", () => {
+  it("creates the contributed Files, Outline, Checklist, Figures and Versions tree views", () => {
     setup("/lib");
     const created = (vscode.window.createTreeView as jest.Mock).mock.calls.map(([id]) => id as string);
-    expect(created).toEqual(["labshelf.writing.figures", "labshelf.writing.versions", "labshelf.writing", "labshelf.writing.files", "labshelf.writing.outline", "labshelf.writing.checklist"]);
+    expect(created).toEqual(["labshelf.writing.figures", "labshelf.writing.versions", "labshelf.writing.files", "labshelf.writing.outline", "labshelf.writing.checklist"]);
     expect(manifest.contributes.views.labshelfContainer.map((v) => v.id)).toEqual(expect.arrayContaining(created));
   });
 

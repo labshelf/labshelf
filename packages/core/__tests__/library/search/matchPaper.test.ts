@@ -153,14 +153,24 @@ describe("matchPaper: operators", () => {
     expect(score(clean, "transformers -survey")).toBeGreaterThan(0);
   });
 
-  it("tag: matches by prefix, case-insensitively, and requires every tag", () => {
-    const paper = rec({ tags: ["NLP-models", "Vision"] });
+  it("tag: matches a whole tag, case- and accent-insensitively, and requires every tag", () => {
+    const paper = rec({ tags: ["NLP", "Vision", "Café"] });
     expect(score(paper, "tag:nlp")).toBeGreaterThan(0);
     expect(score(paper, "#NLP")).toBeGreaterThan(0);
-    expect(score(paper, "tag:models")).toBe(0);
-    expect(score(paper, "tag:nlp tag:vis")).toBeGreaterThan(0);
+    expect(score(paper, "tag:cafe")).toBeGreaterThan(0);
+    expect(score(paper, "tag:vis")).toBe(0);
+    expect(score(paper, "tag:nlp tag:vision")).toBeGreaterThan(0);
     expect(score(paper, "tag:nlp tag:rl")).toBe(0);
     expect(score(rec(), "tag:nlp")).toBe(0);
+  });
+
+  it("tag:ai matches AI but not air; a quoted multi-word tag matches as one tag", () => {
+    expect(score(rec({ tags: ["AI"] }), "tag:ai")).toBeGreaterThan(0);
+    expect(score(rec({ tags: ["air"] }), "tag:ai")).toBe(0);
+    const paper = rec({ tags: ["Deep Learning"] });
+    expect(score(paper, 'tag:"deep learning"')).toBeGreaterThan(0);
+    expect(score(paper, 'tag:"deep"')).toBe(0);
+    expect(score(paper, "tag:deep")).toBe(0);
   });
 
   it("status: matches any of the listed statuses", () => {

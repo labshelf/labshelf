@@ -13,7 +13,7 @@ export function revealPaper(ctx: UiContext, id: string): void {
   // CONTRACT: documents/contracts/library-ui-host.md#messages
   if (s.folder !== PAPERS_DIR && !isUnderDir(paper.path, s.folder, "/")) ctx.store.openFolder(parentDir(paper.path, "/"));
   else if (!deriveListView(ctx.store.get()).rows.some((p) => p.id === id)) {
-    ctx.store.set({ status: "all", query: "" });
+    ctx.store.set({ query: "" });
   }
   ctx.store.selectOnly(id);
   ctx.store.openPaper(id);

@@ -7,7 +7,7 @@ The library UI (folder header, paper list, paper menu, detail pane, citation map
 Two hosts mount it:
 
 - **VS Code** runs it in the list webview and answers over `postMessage`. The webview is untrusted: the extension host passes every message through `parseUiMessage` and drops what fails it. Prefs live in the webview state.
-- **The browser library page** runs it in the page and answers over an in-page loopback channel. Its own glue sits around the mounted UI: the folder tree in the sidebar slot, the URL hash and the sync status bar. Prefs live in localStorage under `labshelf.library.prefs`, together with the tree's expanded folders.
+- **The browser library page** runs it in the page and answers over an in-page loopback channel. Its own glue sits around the mounted UI: the shared folder tree (`mountLibrarySidebar`) in the sidebar slot, the URL hash and the sync status bar. Prefs live in localStorage under `labshelf.library.prefs`, together with the tree's expanded folders.
 
 ## Paths
 
@@ -77,10 +77,9 @@ Host to UI:
 | Message | UI does |
 |---|---|
 | `snapshot` | replaces the library; records and stats equal to the ones it holds keep their identity, so unchanged rows keep their DOM nodes; asks again for the shown paper's details |
-| `navigate` | opens the folder, with its subfolders' papers grouped below its own (search, status filter and selection reset) |
-| `scope` | opens the library root showing only papers with `status` (`all`, `unread`, `reading`, `done`); the host sends it for a side bar scope row; reports the folder change with `navigate` |
+| `navigate` | opens the folder, with its subfolders' papers grouped below its own (search and selection reset) |
 | `select` | selects one paper |
-| `reveal` | shows the paper wherever it is: opens its folder unless the open scope already holds it, clears the search and status filter when they hide it, selects it, opens its files and scrolls it into view; reports a folder change with `navigate`; an unknown id does nothing |
+| `reveal` | shows the paper wherever it is: opens its folder unless the open scope already holds it, clears the search when it hides it, selects it, opens its files and scrolls it into view; reports a folder change with `navigate`; an unknown id does nothing |
 | `files` | fills the paper's file rows, or shows an inline error row when `state` is `failed` |
 | `details` | shows the paper's annotations, reading position and file, and Cited in from `citedIn`: one row per project file and heading that cites the paper. Only a host that knows writing projects sends `citedIn` (VS Code); it answers `project.openSource` |
 | `similar` | fills Related's similar content |

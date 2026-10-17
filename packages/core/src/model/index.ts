@@ -4,6 +4,7 @@
 export { BIBLIOGRAPHIC_FIELDS, BIBLIOGRAPHIC_STRING_FIELDS } from "./bibliographicFields.js";
 export type { BibliographicFields } from "./bibliographicFields.js";
 export type { PaperRecord } from "./paperRecord.js";
+export { venueOf } from "./paperVenue.js";
 export { PAPER_STATUSES, STATUS_LABEL, isPaperStatus, nextStatus } from "./paperStatus.js";
 export type { PaperStatus } from "./paperStatus.js";
 export { TEXT_LAYER_STATES, parseTextLayerInfo } from "./textLayer.js";

@@ -10,19 +10,10 @@ export interface SidecarSummarySource {
 
 export function paperStatsOf(data: SidecarSummarySource): PaperStats {
   const { annotations, reading } = data;
-  const lastHighlight = lastHighlightOf(annotations);
   return {
     annotations: annotations.length,
     ...(reading ? { lastPage: reading.page, lastRead: reading.updatedAt } : {}),
-    ...(lastHighlight ? { lastHighlight } : {}),
   };
-}
-
-// INVARIANT: updatedAt is an ISO timestamp, so string order is time order; `>=` lets the later one win a tie.
-function lastHighlightOf(annotations: Annotation[]): PaperStats["lastHighlight"] {
-  let latest: Annotation | undefined;
-  for (const a of annotations) if (a.type === "highlight" && (!latest || a.updatedAt >= latest.updatedAt)) latest = a;
-  return latest && { page: latest.pageNumber, text: latest.content };
 }
 
 export function paperDetailsOf(data: SidecarSummarySource, pdf: PaperDetails["pdf"]): PaperDetails {

@@ -7,7 +7,7 @@ import type { SortDir, SortKey } from "../state/index.js";
 import type { ListPaper } from "./listPapers.js";
 
 const CORE_SORT_KEY: Record<SortKey, PaperSortKey> = {
-  title: "title", creator: "author", year: "year", lastRead: "lastRead", status: "status",
+  title: "title", creator: "author", venue: "venue", year: "year", lastRead: "lastRead", status: "status",
 };
 
 // Core orders these newest first; their ascending arrow (dir 1) means oldest first, so they read the direction the other way round.

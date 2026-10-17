@@ -37,7 +37,6 @@ export const COLOR_TOKENS = {
   "list-inactive-bg": token("#37373d", "#e4e6f1"),
   "list-drop-bg": token("#383b3d", "#d6ebff"),
   "list-focus-outline": token("#0078d4", "#005fb8"),
-  "indent-guide": token("rgba(88, 88, 88, .4)", "rgba(163, 163, 163, .4)"),
 
   "menu-bg": token("#1f1f1f", "#ffffff"),
   "menu-fg": token("#cccccc", "#3b3b3b"),
@@ -53,7 +52,7 @@ export const COLOR_TOKENS = {
   // Tints over the foreground and focus colours follow any host theme without a map entry.
   "button-soft-bg": token("color-mix(in srgb, var(--ls-focus) 16%, transparent)"),
   "button-soft-hover": token("color-mix(in srgb, var(--ls-focus) 24%, transparent)"),
-  "row-zebra": token("color-mix(in srgb, var(--ls-fg) 3%, transparent)"),
+  "row-rule": token("color-mix(in srgb, var(--ls-fg) 8%, transparent)"),
   "row-open": token("color-mix(in srgb, var(--ls-fg) 7%, transparent)"),
   "row-selected": token("color-mix(in srgb, var(--ls-focus) 15%, transparent)"),
   "button2-bg": token("#313131", "#e5e5e5"),

@@ -4,7 +4,9 @@
   "scripts": {
     "typecheck": "tsc --noEmit -p ./ && tsc --noEmit -p tools/pdf-eval",
     "eval:pdf": "node --import ./tools/pdf-eval/loader/registerTypeScript.mjs --no-warnings tools/pdf-eval/run.ts",
-    "lint": "node ../../scripts/run-eslint.mjs && pnpm run lint:runtime",
+    "lint": "node ../../scripts/run-eslint.mjs && pnpm run lint:runtime && pnpm run lint:codicons",
+    "lint:codicons": "node tools/codicons/generateCodicons.mjs --check",
+    "codicons": "node tools/codicons/generateCodicons.mjs",
     "lint:runtime": "node ../../scripts/check-runtime-tsconfigs.mjs",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "tokens": "WRITE_TOKENS=1 node --experimental-vm-modules node_modules/jest/bin/jest.js __tests__/ui"
@@ -22,6 +24,7 @@
   "devDependencies": {
     "@types/jest": "^29.5.14",
     "@types/node": "^22.13.10",
+    "@vscode/codicons": "0.0.46-24",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
     "ts-jest": "^29.4.9",
@@ -46,6 +49,7 @@
     "./styles/library-detail.css": "./src/library-ui/dom/styles/library-detail.css",
     "./styles/library-tabs.css": "./src/library-ui/dom/styles/library-tabs.css",
     "./styles/library-citation-map.css": "./src/library-ui/dom/styles/library-citation-map.css",
+    "./styles/library-sidebar.css": "./src/library-ui/dom/styles/library-sidebar.css",
     "./styles/template-gallery.css": "./src/writing/templates/dom/styles/template-gallery.css",
     "./styles/template-publish.css": "./src/writing/templates/dom/styles/template-publish.css",
     "./styles/tokens.css": "./src/ui/dom/tokens.css",

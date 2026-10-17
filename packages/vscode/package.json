@@ -158,16 +158,16 @@
         "category": "LabShelf"
       },
       {
-        "command": "labshelf.openSettings",
-        "title": "Open Settings",
+        "command": "labshelf.settingsMenu",
+        "title": "Settings",
         "category": "LabShelf",
         "icon": "$(gear)"
       },
       {
-        "command": "labshelf.collapseAllSections",
-        "title": "Collapse All Sections",
+        "command": "labshelf.openSettings",
+        "title": "Open Settings",
         "category": "LabShelf",
-        "icon": "$(collapse-all)"
+        "icon": "$(gear)"
       },
       {
         "command": "labshelf.ai.rebuildIndex",
@@ -451,14 +451,8 @@
       "labshelfContainer": [
         {
           "id": "labshelf.library",
-          "name": "Library",
-          "type": "tree"
-        },
-        {
-          "id": "labshelf.writing",
-          "name": "Projects",
-          "type": "tree",
-          "when": "!labshelf.writing.projectOpen"
+          "name": "LabShelf",
+          "type": "webview"
         },
         {
           "id": "labshelf.writing.files",
@@ -491,48 +485,9 @@
           "type": "tree",
           "when": "labshelf.writing.projectOpen && labshelf.writing.hasVersions",
           "visibility": "collapsed"
-        },
-        {
-          "id": "labshelf.settings",
-          "name": "Settings",
-          "type": "tree"
         }
       ]
     },
-    "viewsWelcome": [
-      {
-        "view": "labshelf.library",
-        "contents": "Loading your library…",
-        "when": "!labshelf.libraryLoaded"
-      },
-      {
-        "view": "labshelf.library",
-        "contents": "No folders yet.\n[New folder](command:labshelf.newFolder)\nYou can also drag PDFs here.",
-        "when": "labshelf.libraryLoaded"
-      },
-      {
-        "view": "labshelf.writing",
-        "contents": "No projects yet.\n[Browse templates](command:labshelf.templates.open)\n[New blank project](command:labshelf.writing.newBlankProject)\n[Add existing folder](command:labshelf.writing.addExistingFolder)"
-      },
-      {
-        "view": "labshelf.settings",
-        "contents": "Library, Drive sync, preferences.\n[Change library folder](command:labshelf.configureLibrary)"
-      },
-      {
-        "view": "labshelf.settings",
-        "contents": "[Connect to Google Drive](command:labshelf.sync.connect)",
-        "when": "!labshelf.driveConnected"
-      },
-      {
-        "view": "labshelf.settings",
-        "contents": "[Sync now](command:labshelf.sync.now)\n[Disconnect from Google Drive](command:labshelf.sync.disconnect)",
-        "when": "labshelf.driveConnected"
-      },
-      {
-        "view": "labshelf.settings",
-        "contents": "Sync interval and AI options live in the VS Code settings.\n[Open settings](command:labshelf.openSettings)"
-      }
-    ],
     "menus": {
       "view/title": [
         {
@@ -553,27 +508,27 @@
         {
           "command": "labshelf.addPaper",
           "when": "view == labshelf.library",
-          "group": "navigation@1"
+          "group": "1_add@0"
         },
         {
           "command": "labshelf.addPaperByIdentifier",
           "when": "view == labshelf.library",
-          "group": "navigation@2"
+          "group": "1_add@1"
         },
         {
           "command": "labshelf.newFolderAtRoot",
           "when": "view == labshelf.library",
-          "group": "navigation@3"
+          "group": "1_add@2"
         },
         {
           "command": "labshelf.library.refresh",
           "when": "view == labshelf.library",
-          "group": "navigation@4"
+          "group": "2_view@2"
         },
         {
           "command": "labshelf.showCitationMap",
           "when": "view == labshelf.library",
-          "group": "navigation@5"
+          "group": "2_view@1"
         },
         {
           "command": "labshelf.writing.checklist.bySection",
@@ -596,77 +551,12 @@
           "group": "navigation@3"
         },
         {
-          "command": "labshelf.templates.open",
-          "when": "view == labshelf.writing",
-          "group": "navigation@1"
-        },
-        {
-          "command": "labshelf.writing.addExistingFolder",
-          "when": "view == labshelf.writing",
+          "command": "labshelf.settingsMenu",
+          "when": "view == labshelf.library",
           "group": "navigation@2"
-        },
-        {
-          "command": "labshelf.writing.refresh",
-          "when": "view == labshelf.writing",
-          "group": "navigation@3"
         }
       ],
       "view/item/context": [
-        {
-          "command": "labshelf.addPaperHere",
-          "when": "view == labshelf.library && viewItem =~ /^labshelf(Folder|Root)$/",
-          "group": "inline@1"
-        },
-        {
-          "command": "labshelf.newFolder",
-          "when": "view == labshelf.library && viewItem =~ /^labshelf(Folder|Root)$/",
-          "group": "1_modify@1"
-        },
-        {
-          "command": "labshelf.renameFolder",
-          "when": "view == labshelf.library && viewItem == labshelfFolder",
-          "group": "1_modify@2"
-        },
-        {
-          "command": "labshelf.deleteFolder",
-          "when": "view == labshelf.library && viewItem == labshelfFolder",
-          "group": "1_modify@3"
-        },
-        {
-          "command": "labshelf.writing.openProject",
-          "when": "view == labshelf.writing && viewItem =~ /^labshelfProject(External)?$/",
-          "group": "1_open@1"
-        },
-        {
-          "command": "labshelf.writing.checkBeforeSubmitting",
-          "when": "view == labshelf.writing && viewItem =~ /^labshelfProject(External)?$/",
-          "group": "1_open@2"
-        },
-        {
-          "command": "labshelf.writing.markVersion",
-          "when": "view == labshelf.writing && viewItem =~ /^labshelfProject(External)?$/",
-          "group": "1_open@4"
-        },
-        {
-          "command": "labshelf.writing.compareVersions",
-          "when": "view == labshelf.writing && viewItem =~ /^labshelfProject(External)?$/",
-          "group": "1_open@5"
-        },
-        {
-          "command": "labshelf.installProjectPapers",
-          "when": "view == labshelf.writing && viewItem =~ /^labshelfProject(External)?$/",
-          "group": "1_open@6"
-        },
-        {
-          "command": "labshelf.writing.reveal",
-          "when": "view == labshelf.writing && viewItem =~ /^labshelfProject/",
-          "group": "1_open@3"
-        },
-        {
-          "command": "labshelf.writing.removeProject",
-          "when": "view == labshelf.writing && viewItem =~ /External$/",
-          "group": "2_remove@1"
-        },
         {
           "command": "labshelf.writing.checklist.removeItem",
           "when": "view == labshelf.writing.checklist && viewItem == labshelfChecklistManual",
@@ -691,21 +581,6 @@
           "command": "labshelf.writing.compareWith",
           "when": "view == labshelf.writing.versions && viewItem == labshelfVersion",
           "group": "1_compare@2"
-        },
-        {
-          "command": "labshelf.templates.saveProject",
-          "when": "view == labshelf.writing && viewItem =~ /^labshelfProject(External)?$/",
-          "group": "1_open@7"
-        },
-        {
-          "command": "labshelf.templates.publish",
-          "when": "view == labshelf.writing && viewItem =~ /^labshelfProject(External)?$/",
-          "group": "1_open@8"
-        },
-        {
-          "command": "labshelf.writing.addToReadingList",
-          "when": "view == labshelf.writing && viewItem =~ /^labshelfProject(External)?$/",
-          "group": "3_reading@1"
         },
         {
           "command": "labshelf.writing.newFile",

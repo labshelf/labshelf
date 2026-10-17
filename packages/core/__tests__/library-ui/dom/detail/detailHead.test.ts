@@ -26,13 +26,14 @@ describe("detail head venue line (A12)", () => {
   it("ends the venue line with the folder name", () => {
     const meta = head(show("a")).querySelector(".detail-meta")!.textContent!;
     expect(meta).toContain("NeurIPS");
-    expect(meta.trim().endsWith("› Deep")).toBe(true);
+    expect(meta.trim().endsWith("Deep")).toBe(true);
+    expect(head(show("a")).querySelector('[data-action="goFolder"] svg')).not.toBeNull();
   });
 
   it("shows no folder suffix for a paper at the library root", () => {
     const meta = head(show("r")).querySelector(".detail-meta")!.textContent!;
     expect(meta).toContain("Nature");
-    expect(meta).not.toContain("›");
+    expect(head(show("r")).querySelector('[data-action="goFolder"]')).toBeNull();
   });
 });
 
@@ -110,6 +111,22 @@ describe("detail head tags (A13)", () => {
     input.value = "transformers";
     input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     expect(t.sent).toContainEqual({ type: "paper.setTags", ids: ["a"], add: ["transformers"], remove: [] });
+  });
+
+  it("lists the library's other tags in a menu and adds the chosen one", () => {
+    const t = show("r");
+    byLabel(head(t), "Add tag")!.click();
+    expect(head(t).querySelector("datalist")).toBeNull();
+    byLabel(head(t), "Choose an existing tag")!.click();
+    menuItem("#nlp")!.click();
+    expect(t.sent).toContainEqual({ type: "paper.setTags", ids: ["r"], add: ["nlp"], remove: [] });
+    expect(head(t).querySelector(".tag-input")).not.toBeNull();
+  });
+
+  it("disables the existing-tag button when the paper already carries every library tag", () => {
+    const t = show("a");
+    byLabel(head(t), "Add tag")!.click();
+    expect(byLabel(head(t), "Choose an existing tag")!.disabled).toBe(true);
   });
 
   it("closes the field on Escape and when the selection changes", () => {

@@ -4,8 +4,8 @@ import { projectBacklinks } from "../../backlinks/node/index.js";
 import { updateProjectBibliography } from "../../citations/node/index.js";
 import { readFigureStates } from "../../figures/node/index.js";
 import {
-  addExistingFolder, createProjectFromTemplate, latestProjectEdit, listProjects, projectBuildDir, rootFileNames,
-  unregisterProjectFolder, updateProjectSettings, writeProjectCursor,
+  addExistingFolder, createProjectFromTemplate, listProjects, projectBuildDir, rootFileNames,
+  unregisterProjectFolder, updateProjectSettings,
 } from "../../project/node/index.js";
 import { readSynctexFile } from "../../synctex/node/index.js";
 import { readProjectValues } from "../../values/node/index.js";
@@ -20,8 +20,6 @@ export function nodeProjectData(logger: ILogger): ProjectDataPort {
     unregisterProjectFolder: (libraryRoot, folder) => unregisterProjectFolder(libraryRoot, folder, logger),
     rootFileNames,
     updateProjectSettings: (folder, patch) => updateProjectSettings(folder, patch, logger),
-    writeProjectCursor,
-    latestProjectEdit: (entries) => latestProjectEdit(entries, logger),
     listVersions: (folder) => listVersions(folder, logger),
     markVersion: (request) => markVersion(request, logger),
     readProjectValues: (project) => readProjectValues(project, logger),

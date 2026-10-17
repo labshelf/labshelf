@@ -15,8 +15,6 @@ export interface PaperStats {
   lastPage?: number;
   /** ISO timestamp of the last reading position. */
   lastRead?: string;
-  /** The most recently changed highlight: its 1-based page and its text. */
-  lastHighlight?: { page: number; text: string };
 }
 
 /**

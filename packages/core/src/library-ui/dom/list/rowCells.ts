@@ -1,5 +1,5 @@
 /**
- * Renders the parts of a paper row that say more than the record: the state icon (no PDF, no text layer, OCR running),
+ * Renders the parts of a paper row that say more than the record: the state icon (no text layer, OCR running),
  * the PDF version chip, the Last read cell and the status mark.
  */
 import { compactTime } from "../../../library/index.js";
@@ -8,12 +8,12 @@ import { escapeHtml, icon, statusMark } from "../../../ui/index.js";
 import { hasNoText, jobText, type ListPaper } from "../../derive/index.js";
 import type { PaperStats, TextLayerJobView } from "../../protocol/index.js";
 
-/** An icon after the title for a paper that needs attention; a readable PDF shows none. */
+/** An icon after the title for a PDF that needs attention; a readable PDF shows none. */
 export function stateIconHtml(p: ListPaper, job: TextLayerJobView | undefined, textLayer: boolean): string {
   const cell = (cls: string, title: string, html: string): string =>
     `<span class="title-state ${cls}" role="img" aria-label="${escapeHtml(title)}" title="${escapeHtml(title)}">${html}</span>`;
   if (job) return cell("tl-busy", jobText(job), `<span class="spin">${icon("loader")}</span>`);
-  if (!p.hasPdf) return cell("no-pdf", "No PDF: this paper was saved without one.", icon("file-minus"));
+  // A missing PDF gets no icon: the detail pane says so and offers Find PDF.
   if (textLayer && hasNoText(p)) {
     return cell("tl-missing", "No text layer: search and text selection do not work in this PDF. Select the paper to make it searchable.", icon("file-no-text"));
   }

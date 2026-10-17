@@ -3,6 +3,7 @@
 import { matchesInputPattern } from "../../../writing/figures/index.js";
 import { isSafeFolderName } from "../naming/index.js";
 
+// Projects may hold a per-device cursor file; it never syncs.
 const STATE_FILE = ".labshelf/state.json";
 const VERSIONS_DIR = [".labshelf", "versions"];
 

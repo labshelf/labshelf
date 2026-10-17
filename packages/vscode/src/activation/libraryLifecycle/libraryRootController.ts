@@ -59,7 +59,7 @@ export class LibraryRootController {
   }
 
   // The single place that builds services for a root and wires everything that follows it:
-  // the tree view (via onDidChangeRoot), the external-change watcher and the sync controller.
+  // the Library sidebar (via onDidChangeRoot), the external-change watcher and the sync controller.
   private async applyRoot(root: vscode.Uri): Promise<ActiveServices> {
     const services = await buildServices(this.context, root, this.events, this.adapters);
     this.root = root;

@@ -3,7 +3,7 @@
  */
 import { PAPER_STATUSES, STATUS_LABEL, type PaperStatus } from "../../../../model/index.js";
 import { showMenu, type MenuEntry } from "../../../../ui/dom/index.js";
-import { icon } from "../../../../ui/index.js";
+import { icon, statusMark } from "../../../../ui/index.js";
 import type { CiteFormat } from "../../../state/index.js";
 import { CITE_LABEL, copyCitation, setPaperStatus } from "../../flows/index.js";
 import { showPaperMenu } from "../../menu/index.js";
@@ -12,14 +12,17 @@ import type { PaneState } from "../paneState.js";
 const POPUP = `aria-haspopup="menu" aria-expanded="false"`;
 
 export function citeMenuButton(): string {
-  return `<button class="ls-btn cite-btn" type="button" aria-label="Cite" ${POPUP} data-action="citeMenu">` +
-    `${icon("quote")}<span>Cite</span>${icon("chevron-down")}</button>`;
+  return `<button class="ls-btn ls-btn-ghost cite-btn" type="button" aria-label="Cite" ${POPUP} data-action="citeMenu">` +
+    `<span>Cite</span>${icon("chevron-down")}</button>`;
 }
 
-/** `null` is a selection whose papers have different statuses: the button says "Status" with a neutral dot. */
+/** The status glyph the list's Status column shows, so the button and menu read the same as the list. */
+const mark = (status: PaperStatus): string => `<span class="ls-status-mark s-${status}" aria-hidden="true">${statusMark(status)}</span>`;
+
+/** `null` is a selection whose papers have different statuses: the button says "Status" without a glyph. */
 export function statusMenuButton(current: PaperStatus | null): string {
-  return `<button class="ls-btn status-btn" type="button" ${POPUP} data-action="statusMenu" title="Reading status">` +
-    `<span class="ls-dot${current ? ` s-${current}` : ""}"></span><span>${current ? STATUS_LABEL[current] : "Status"}</span>${icon("chevron-down")}</button>`;
+  return `<button class="ls-btn ls-btn-ghost status-btn" type="button" ${POPUP} data-action="statusMenu" title="Reading status">` +
+    `${current ? mark(current) : ""}<span>${current ? STATUS_LABEL[current] : "Status"}</span>${icon("chevron-down")}</button>`;
 }
 
 export function moreMenuButton(): string {
@@ -39,7 +42,7 @@ function statusEntries(pane: PaneState, ids: readonly string[]): MenuEntry[] {
   const current = statuses.size === 1 ? [...statuses][0] : undefined;
   return PAPER_STATUSES.map((status) => ({
     label: STATUS_LABEL[status],
-    lead: `<span class="ls-dot s-${status}"></span>`,
+    lead: mark(status),
     ...(current === undefined ? {} : { checked: status === current }),
     onSelect: () => setPaperStatus(pane.ctx, [...ids], status),
   }));

@@ -3,11 +3,11 @@
  * the open folder, the list controls, the selection and the citation map view.
  */
 import { PAPERS_DIR, type FolderTreeNode } from "../../library/index.js";
-import type { PaperRecord, PaperStatus } from "../../model/index.js";
+import type { PaperRecord } from "../../model/index.js";
 import type { CitationMapState, PaperDetails, PaperFilesState, PaperStats, SimilarPaper, TextLayerJobView } from "../protocol/index.js";
+import { DEFAULT_COLUMNS, type ColumnKey } from "./columns.js";
 
-export type StatusFilter = "all" | PaperStatus;
-export type SortKey = "title" | "creator" | "year" | "lastRead" | "status";
+export type SortKey = "title" | "creator" | "venue" | "year" | "lastRead" | "status";
 export type SortDir = 1 | -1;
 
 export interface LibraryViewState {
@@ -19,9 +19,10 @@ export interface LibraryViewState {
   /** "papers/foo/bar"-style path; "papers" is the library root. */
   folder: string;
   query: string;
-  status: StatusFilter;
   sortKey: SortKey;
   sortDir: SortDir;
+  /** The optional columns the list shows, in display order. */
+  columns: readonly ColumnKey[];
   /** Replaced on every change so slice equality stays a reference check. */
   selected: ReadonlySet<string>;
   anchor: string | null;
@@ -54,9 +55,9 @@ export const INITIAL_VIEW_STATE: LibraryViewState = {
   stats: {},
   folder: PAPERS_DIR,
   query: "",
-  status: "all",
   sortKey: "title",
   sortDir: 1,
+  columns: DEFAULT_COLUMNS,
   selected: new Set(),
   anchor: null,
   cursor: null,

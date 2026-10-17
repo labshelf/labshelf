@@ -28,6 +28,16 @@ describe("sortPapers", () => {
     // no authors, then by the first author's family name: Kay, Young, Zed
     expect(sortPapers(all, "creator", 1).map((p) => p.id)).toEqual(["b1", "a11", "a1", "root1"]);
   });
+  it("sorts by venue A to Z, falling back to the publisher, papers without one last in both directions", () => {
+    const withVenues = listPapersUnder([
+      paper("n", "papers", { title: "N", journal: "Nature" }),
+      paper("e", "papers", { title: "E", publisher: "Elsevier" }),
+      paper("x", "papers", { title: "X" }),
+      paper("c", "papers", { title: "C", journal: "Cell", publisher: "Elsevier" }),
+    ], PAPERS_DIR);
+    expect(sortPapers(withVenues, "venue", firstSortDir("venue")).map((p) => p.id)).toEqual(["c", "e", "n", "x"]);
+    expect(sortPapers(withVenues, "venue", -1).map((p) => p.id)).toEqual(["n", "e", "c", "x"]);
+  });
   it("sorts by Last read newest first on the first click, papers never read last in both directions", () => {
     const stats = { a1: { annotations: 0, lastRead: "2024-05-01T10:00:00Z" }, b1: { annotations: 0, lastRead: "2025-01-02T10:00:00Z" } };
     expect(sortPapers(all, "lastRead", firstSortDir("lastRead"), stats).map((p) => p.id)).toEqual(["b1", "a1", "a11", "root1"]);

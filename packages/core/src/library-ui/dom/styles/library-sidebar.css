@@ -1,0 +1,90 @@
+/*
+ * Styles the library sidebar: collapsible section headers, 28px rows with a rounded current-row pill, right-aligned counts, and
+ * the fixed entries above the tree. Requires tokens.css and base.css.
+ */
+.sidebar-entry {
+  display: flex; align-items: center; gap: var(--ls-space-5); width: calc(100% - 2 * var(--ls-space-3)); height: 28px; margin: 0 var(--ls-space-3);
+  padding: 0 var(--ls-space-4); flex-shrink: 0; border: 0; border-radius: var(--ls-radius-lg); background: none; color: var(--ls-fg);
+  font: inherit; text-align: left; cursor: pointer; white-space: nowrap; overflow: hidden;
+}
+.sidebar-entry:hover { background: var(--ls-list-hover); }
+.sidebar-entry:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
+.sidebar-entry svg { width: 16px; height: 16px; flex-shrink: 0; color: var(--ls-desc); }
+
+.tree { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; outline: none; }
+/* Open panes share the height and scroll on their own; a closed pane is only its header, so closed ones gather below the open ones. */
+.tree-pane { display: flex; flex-direction: column; flex: none; min-height: 0; padding: 0 var(--ls-space-3); }
+.tree-pane.open { flex: 1 1 0; }
+.tree-pane-body { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding-bottom: var(--ls-space-2); }
+/* The Library body holds nested panes (Folders, Tags) under the All papers row: they share its height and scroll on their own. */
+.tree-pane-stack { display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0; }
+.tree-pane-stack > .tree-row { flex: none; }
+.tree-pane-stack > .tree-pane { padding: 0; }
+.tree-heading {
+  display: flex; align-items: center; justify-content: space-between; height: 28px; margin-top: var(--ls-space-5); padding: 0 var(--ls-space-4);
+  font-size: var(--ls-text-md); font-weight: 600; color: var(--ls-desc); user-select: none;
+}
+.tree-heading:first-child { margin-top: var(--ls-space-2); }
+/* Section headers look like VS Code's view pane headers: bold, full-strength text, a divider above every one but the first. */
+.tree-section {
+  height: var(--ls-row-h); margin-top: 0; padding-left: var(--ls-space-2); cursor: pointer;
+  font-size: var(--ls-font-size); font-weight: 700; color: var(--ls-section-fg, var(--ls-fg));
+}
+.tree-pane + .tree-pane > .tree-section { margin-top: 0; border-top: 1px solid var(--ls-border-soft); height: calc(var(--ls-row-h) + var(--ls-space-4)); padding-top: var(--ls-space-2); }
+.tree-section-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tree-section-chevron { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-right: var(--ls-space-2); flex-shrink: 0; transition: transform var(--ls-fast); }
+.tree-section-chevron svg { width: 14px; height: 14px; }
+.tree-section[aria-expanded="true"] .tree-section-chevron, .tree-group[aria-expanded="true"] .tree-section-chevron { transform: rotate(90deg); }
+.tree-heading-actions { display: flex; align-items: center; opacity: 0; transition: opacity var(--ls-fast); }
+.tree-heading:hover .tree-heading-actions, .tree-heading-actions:focus-within { opacity: 1; }
+.tree-heading-actions .ls-icon-btn { width: 20px; height: 20px; }
+.tree-heading-actions .ls-icon-btn svg { width: 14px; height: 14px; }
+
+.tree-row {
+  position: relative; display: flex; align-items: center; height: var(--ls-row-h); padding-right: var(--ls-space-4);
+  padding-left: calc(var(--ls-space-4) * 2 + var(--depth, 0) * var(--ls-space-4)); border-radius: var(--ls-radius-sm);
+  cursor: pointer; white-space: nowrap; color: var(--ls-fg); font-size: var(--ls-font-size);
+}
+.tree-row:hover { background: var(--ls-list-hover); }
+.tree-row.current { background: var(--ls-list-inactive-bg); }
+.tree:focus .tree-row.current { background: var(--ls-list-active-bg); color: var(--ls-list-active-fg); }
+.tree-row.focused { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
+.tree-row.drop-target { background: var(--ls-list-drop-bg) !important; outline: 1px dashed var(--ls-focus); outline-offset: -1px; }
+.tree-row[aria-selected="true"] .tree-label { font-weight: 600; }
+
+.tree-twisty, .tree-icon { width: 16px; height: 16px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; margin-right: var(--ls-space-3); }
+.tree-twisty { margin-right: var(--ls-space-2); }
+.tree-twisty { color: var(--ls-desc); transition: transform var(--ls-fast); }
+.tree-twisty svg { width: 14px; height: 14px; }
+.tree-twisty.leaf { visibility: hidden; }
+.tree-row.collapsed .tree-twisty { transform: rotate(-90deg); }
+.tree-icon { color: var(--ls-desc); }
+.tree-icon svg { width: 16px; height: 16px; }
+.tree-icon .ls-arc { width: 16px; height: 16px; }
+.tree-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* REF sits in the 16px icon column, small and centred like the file-type glyphs of VS Code's Explorer. */
+.tree-ref {
+  width: 16px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; margin-right: var(--ls-space-3);
+  font-family: var(--ls-mono); font-size: calc(var(--ls-text-xs) * .8); font-weight: 700; letter-spacing: -.02em; line-height: 1; color: var(--ls-file-ref);
+}
+.tree-count { flex-shrink: 0; margin-left: var(--ls-space-4); font-family: var(--ls-mono); font-size: var(--ls-text-md); font-variant-numeric: tabular-nums; color: var(--ls-desc); }
+/* A folder's paper count shows only under the pointer, so the tree reads as plain names like the Explorer. */
+.tree-row[data-path] .tree-count, .tree-row[data-tag] .tree-count { visibility: hidden; }
+.tree-row[data-path]:hover .tree-count, .tree-row[data-tag]:hover .tree-count { visibility: visible; }
+.tree-hash { color: var(--ls-link); }
+.tree:focus .tree-row.current .tree-count { color: inherit; opacity: .8; }
+.tree-empty { padding: var(--ls-space-3) var(--ls-space-4); font-size: var(--ls-text-md); line-height: 1.5; color: var(--ls-desc); }
+
+.tree-empty-actions { display: flex; flex-direction: column; align-items: flex-start; gap: var(--ls-space-3); margin-top: var(--ls-space-4); }
+
+.sidebar-shell { display: flex; flex-direction: column; height: 100vh; padding-top: var(--ls-space-2); box-sizing: border-box; background: var(--ls-sidebar-bg); }
+
+/* Rows, sub-headings and empty states sit one level inside their section header. */
+/* Group headings are the sub-level of the section headers: the same pane header, smaller and lighter. */
+.tree-heading.tree-group { cursor: pointer; margin-top: 0; height: calc(var(--ls-row-h) + var(--ls-space-2)); border-top: 1px solid var(--ls-border-soft); font-weight: 500; }
+/* All papers reads as a sibling of the Folders and Tags headings: same type and left edge, its icon in the chevron slot. */
+.tree-row[data-all-papers] { font-size: var(--ls-text-md); font-weight: 500; color: var(--ls-desc); }
+.tree-row[data-all-papers] .tree-icon { margin-right: var(--ls-space-2); }
+/* A clicked heading shows no ring; only keyboard focus does. */
+.tree:focus-visible .tree-group.focused { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
+.tree-heading:not(.tree-section), .tree-empty { padding-left: calc(var(--ls-space-4) * 2); }

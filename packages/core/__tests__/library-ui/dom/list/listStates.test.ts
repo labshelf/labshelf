@@ -33,20 +33,6 @@ describe("empty states", () => {
     expect(t.container.querySelector(".ls-empty button")?.textContent).toBe("Clear filters");
   });
 
-  it("names the status scope when it holds no paper", () => {
-    const t = mountForTest();
-    t.snapshot(library);
-    t.lib.store.set({ status: "done" });
-    expect(text(t)).toBe("No papers marked Done");
-  });
-
-  it("names the status scope when a search in it finds no paper", () => {
-    const t = mountForTest();
-    t.snapshot(library);
-    t.lib.store.set({ status: "unread", query: "zzz" });
-    expect(text(t)).toBe("No papers match “zzz” in Unread");
-  });
-
   it("keeps the three messages distinct", () => {
     const t = mountForTest();
     t.snapshot([]);
@@ -138,16 +124,13 @@ describe("narrow list pane", () => {
   const css = readFileSync(join(__dirname, "../../../../src/library-ui/dom/styles/library-list.css"), "utf8");
   const block = (width: number): string => css.match(new RegExp(`@container list-pane \\(max-width: ${width}px\\) \\{([\\s\\S]*?)\\n\\}`))?.[1] ?? "";
 
-  it("hides Last read first, then Authors, then Year, from wider to narrower", () => {
-    expect(block(600)).toContain(".col-read");
-    expect(block(460)).toContain(".col-creator");
-    expect(block(340)).toContain(".col-year");
-    expect(block(600)).not.toContain(".col-creator");
-    expect(block(460)).not.toContain(".col-year");
+  it("scrolls sideways instead of hiding a column when the pane is narrow", () => {
+    expect(css).not.toMatch(/display: none !important/);
+    expect(css).toMatch(/flex: 1; overflow: auto; outline: none;/);
   });
 
   it("moves the tray fact under the name instead of squeezing it into a hidden column", () => {
-    expect(block(460)).toMatch(/\.file-row \{[^}]*flex-wrap: wrap/);
-    expect(block(460)).toMatch(/\.file-fact \{[^}]*flex-basis/);
+    expect(block(470)).toMatch(/\.file-row \{[^}]*flex-wrap: wrap/);
+    expect(block(470)).toMatch(/\.file-fact \{[^}]*flex-basis/);
   });
 });

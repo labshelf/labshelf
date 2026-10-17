@@ -1,6 +1,6 @@
 /**
  * Derives from one state everything the header and list show: the folder's papers with its subfolders', the search
- * scope, the status filter and the sorted rows.
+ * scope and the sorted rows.
  */
 import { parseQuery } from "../../library/search/index.js";
 import type { LibraryViewState } from "../state/index.js";
@@ -10,9 +10,7 @@ import { sortPapers } from "./sortPapers.js";
 export interface ListScope {
   /** Every paper under the open folder, nested ones included. */
   inFolder: ListPaper[];
-  /** The papers the search leaves, before the status filter. */
-  scope: ListPaper[];
-  /** The papers the search and the status filter let through, unsorted. */
+  /** The papers the search lets through, unsorted. */
   shown: ListPaper[];
   /** The search terms to highlight. */
   terms: string[];
@@ -23,14 +21,13 @@ export interface ListView extends ListScope {
   rows: ListPaper[];
 }
 
-type ScopeInputs = Pick<LibraryViewState, "papers" | "folder" | "pdfDirs" | "query" | "status">;
+type ScopeInputs = Pick<LibraryViewState, "papers" | "folder" | "pdfDirs" | "query">;
 
 export function deriveScope(s: ScopeInputs): ListScope {
   const query = parseQuery(s.query);
   const inFolder = listPapersUnder(s.papers, s.folder, s.pdfDirs);
-  const scope = papersInScope(inFolder, query);
-  const shown = s.status === "all" ? scope : scope.filter((p) => p.status === s.status);
-  return { inFolder, scope, shown, terms: query.terms };
+  const shown = papersInScope(inFolder, query);
+  return { inFolder, shown, terms: query.terms };
 }
 
 export function deriveListView(s: ScopeInputs & Pick<LibraryViewState, "sortKey" | "sortDir" | "stats">): ListView {

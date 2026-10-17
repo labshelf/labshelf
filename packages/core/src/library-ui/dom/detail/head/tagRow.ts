@@ -1,12 +1,13 @@
 /**
  * Renders the tag row: #tag chips that search their tag, an x that removes one, and an Add tag button that opens a
- * field (Enter or a comma adds, Backspace on an empty field takes back the last tag).
+ * field (Enter or a comma adds, Backspace on an empty field takes back the last tag) with a menu of the library's
+ * other tags.
  */
+import { showMenu } from "../../../../ui/dom/index.js";
 import { escapeHtml, icon } from "../../../../ui/index.js";
+import { libraryTags } from "../../../derive/index.js";
 import { changeTags } from "../../flows/index.js";
 import type { UiContext } from "../../uiContext.js";
-
-const TAG_OPTIONS_ID = "ls-tag-options";
 
 function chip(tag: string): string {
   const hash = `<span class="tag-hash" aria-hidden="true">#</span>`;
@@ -15,16 +16,27 @@ function chip(tag: string): string {
   return `<span class="tag-chip">${hash}${name}${remove}</span>`;
 }
 
-/** Every tag in the library, once each (first spelling wins), A to Z: the field's suggestions. */
-function libraryTags(ctx: UiContext): string[] {
-  const seen = new Map<string, string>();
-  for (const p of ctx.store.get().papers) for (const t of p.tags ?? []) if (!seen.has(t.toLowerCase())) seen.set(t.toLowerCase(), t);
-  return [...seen.values()].sort((a, b) => a.localeCompare(b));
+/** The library's tags that not every selected paper carries yet, A to Z. */
+function otherTags(ctx: UiContext): string[] {
+  const { papers, selected } = ctx.store.get();
+  const chosen = papers.filter((p) => selected.has(p.id));
+  return libraryTags(papers).map(({ tag }) => tag)
+    .filter((tag) => !chosen.every((p) => (p.tags ?? []).some((t) => t.toLowerCase() === tag.toLowerCase())));
 }
 
 function tagInput(ctx: UiContext): string {
-  return `<input class="tag-input" list="${TAG_OPTIONS_ID}" placeholder="Tag" title="Type a tag and press Enter; commas add several" spellcheck="false" autocomplete="off" aria-label="Add tag"/>` +
-    `<datalist id="${TAG_OPTIONS_ID}">${libraryTags(ctx).map((t) => `<option value="${escapeHtml(t)}"></option>`).join("")}</datalist>`;
+  return `<span class="tag-field"><input class="tag-input" placeholder="tag" title="Type a tag and press Enter; commas add several" spellcheck="false" autocomplete="off" aria-label="Add tag"/>` +
+    `<button class="ls-icon-btn tag-pick" type="button" tabindex="-1" data-action="pickTag" aria-haspopup="menu" aria-label="Choose an existing tag" title="Choose an existing tag"${otherTags(ctx).length ? "" : " disabled"}>${icon("chevron-down")}</button></span>`;
+}
+
+// PLATFORM: the pane closes the field when focus leaves it, so the menu hands focus back on close.
+/** Lists the library's other tags under `anchor`; picking one adds it to the selection and keeps the field open. */
+export function openTagMenu(ctx: UiContext, anchor: HTMLElement): void {
+  const ids = [...ctx.store.get().selected];
+  const input = anchor.closest(".tag-field")?.querySelector<HTMLInputElement>(".tag-input");
+  showMenu(anchor, otherTags(ctx).map((tag) => ({ label: `#${tag}`, onSelect: () => changeTags(ctx, ids, [tag], []) })), {
+    onClose: () => { if (input?.isConnected) input.focus(); },
+  });
 }
 
 /** The row of `tags`; `editing` shows the field in place of the Add tag button. */
@@ -40,6 +52,10 @@ export function onTagKey(ctx: UiContext, e: KeyboardEvent, input: HTMLInputEleme
     const add = input.value.split(",").map((s) => s.trim()).filter(Boolean);
     input.value = "";
     changeTags(ctx, ids, add, []);
+    e.preventDefault();
+  } else if (e.key === "ArrowDown") {
+    const pick = input.parentElement?.querySelector<HTMLButtonElement>(".tag-pick");
+    if (pick && !pick.disabled) openTagMenu(ctx, pick);
     e.preventDefault();
   } else if (e.key === "Escape") {
     input.value = "";

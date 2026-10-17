@@ -10,10 +10,10 @@ const file = (name: string, extra: Partial<PaperFile> = {}): PaperFile => ({ nam
 const folder = (name: string, extra: Partial<PaperFile> = {}): PaperFile => ({ name, kind: "folder", modified: MOD, ...extra });
 
 type T = ReturnType<typeof mountForTest>;
-type Setup = { record?: Parameters<typeof paper>[2]; stats?: { annotations: number; lastHighlight?: { page: number; text: string } } };
+type Setup = { record?: Parameters<typeof paper>[2] };
 function openWith(files: PaperFile[], setup: Setup = {}): T {
   const t = mountForTest();
-  t.snapshot([paper("a", "papers", { title: "Alpha", ...setup.record })], ["papers/a"], [], setup.stats ? { a: setup.stats } : {});
+  t.snapshot([paper("a", "papers", { title: "Alpha", ...setup.record })], ["papers/a"]);
   t.click(".expand-btn");
   t.files("a", { status: "ready", files });
   return t;
@@ -79,23 +79,13 @@ describe("type labels", () => {
 });
 
 describe("facts", () => {
-  it("shows the last highlight with its page on paper.pdf", () => {
-    const t = openWith([file("paper.pdf")], { record: { summary: "An abstract." }, stats: { annotations: 1, lastHighlight: { page: 7, text: "key claim" } } });
-    expect(text(t, "paper.pdf")).toContain("Last highlight · p. 7");
-    expect(text(t, "paper.pdf")).toContain("key claim");
-    expect(text(t, "paper.pdf")).not.toContain("An abstract");
-  });
-
-  it("falls back to the first sentence of the abstract", () => {
-    const t = openWith([file("paper.pdf")], { record: { summary: "First sentence. Second sentence." } });
-    expect(text(t, "paper.pdf")).toContain("Abstract");
-    expect(text(t, "paper.pdf")).toContain("First sentence.");
-    expect(text(t, "paper.pdf")).not.toContain("Second sentence");
-  });
-
-  it("shows no fact on paper.pdf without a highlight or abstract", () => {
-    const t = openWith([file("paper.pdf")]);
-    expect(rowNamed(t, "paper.pdf").querySelector(".file-fact")?.textContent ?? "").toBe("");
+  it("shows the paper.pdf description, or a placeholder hint when it is empty", () => {
+    const described = openWith([file("paper.pdf", { description: "the one about X" })]);
+    expect(text(described, "paper.pdf")).toContain("the one about X");
+    expect(rowNamed(described, "paper.pdf").querySelector(".file-fact-btn.empty")).toBeNull();
+    const bare = openWith([file("paper.pdf")], { record: { summary: "An abstract." } });
+    expect(rowNamed(bare, "paper.pdf").querySelector(".file-fact-btn.empty")?.textContent).toBe("Add a short note");
+    expect(text(bare, "paper.pdf")).not.toContain("An abstract");
   });
 
   it("shows the start of the note, trimmed to its first line, or Empty", () => {

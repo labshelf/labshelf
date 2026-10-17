@@ -10,7 +10,7 @@ interface GroupShell {
   body: HTMLElement;
   rows: RowReconciler<ListPaper>;
   label: HTMLElement | null;
-  /** The count and path the current label shows. */
+  /** The accessible name (path and count) the current label was built for. */
   labelSig: string;
 }
 
@@ -49,7 +49,7 @@ export class GroupedRows {
     const aria = groupAriaLabel(group.segments, group.papers.length);
     if (shell.labelSig === aria) return;
     shell.node.setAttribute("aria-label", aria);
-    const label = buildGroupLabel(group.segments, group.papers.length);
+    const label = buildGroupLabel(group.key, group.segments);
     if (shell.label) shell.label.replaceWith(label);
     else shell.node.insertBefore(label, shell.body);
     shell.label = label;

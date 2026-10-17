@@ -1,41 +1,89 @@
 /*
  * Styles the paper list under .ls-library: sortable column heads, folder group labels and paper rows (state icon, Last read, status mark,
- * the file tray). Rows alternate on a faint band; a narrow list pane drops Last read, then Authors, then Year.
+ * the file tray). Rows are parted by a hairline that starts at the title; the reader picks the optional columns, and a narrow list pane drops Last read, then Venue, Authors and Year.
  */
 /* ── Folder groups ──────────────────────────────────────────────── */
+/* A section label is a small muted path, not a folder row: the sidebar navigates folders, the list groups papers.
+   Like siblings in a VS Code tree, a label lines up with the titles of the scope's own papers, past the twistie column. */
+.ls-library .paper-group + .paper-group { margin-top: var(--ls-space-4); }
 .ls-library .group-label {
-  position: sticky; top: var(--heads-h, 0); z-index: 1; display: flex; align-items: baseline; gap: var(--ls-space-3); min-width: 0;
-  padding: var(--ls-space-2) var(--ls-space-4); font-size: var(--ls-text-sm); background: var(--ls-sidebar-bg);
-  border-bottom: 1px solid var(--ls-border-faint); user-select: none; white-space: nowrap; overflow: hidden;
+  position: sticky; top: var(--heads-h, 0); z-index: 1; display: flex; align-items: center; gap: var(--ls-space-2); min-width: 0;
+  min-height: 32px; padding: var(--ls-space-5) var(--ls-space-6) var(--ls-space-3) calc(var(--ls-space-2) * 2 + 28px); box-sizing: border-box;
+  font-size: var(--ls-text-sm); font-weight: 600; color: var(--ls-desc); background: var(--ls-sidebar-bg);
+  user-select: none; white-space: nowrap; overflow: hidden;
 }
-.ls-library .group-parents { color: var(--ls-desc); }
-.ls-library .group-last { font-weight: 600; }
-.ls-library .group-count { color: var(--ls-desc); font-variant-numeric: tabular-nums; }
-.ls-library .paper-row.in-group .title-cell { padding-left: var(--ls-space-7); }
-.ls-library .paper-row.in-group .file-row { padding-left: calc(28px + var(--ls-space-4) + var(--ls-space-7)); }
+.ls-library .group-label button {
+  min-width: 0; padding: 0; border: none; background: none; color: inherit; font: inherit; cursor: pointer; overflow: hidden; text-overflow: ellipsis;
+}
+.ls-library .group-label button:hover { color: var(--ls-fg); text-decoration: underline; text-underline-offset: 2px; }
+.ls-library .group-parent, .ls-library .group-gap { font-weight: 400; opacity: .85; }
+.ls-library .group-label button.group-parent:hover { opacity: 1; }
+.ls-library .group-sep { display: inline-flex; flex-shrink: 0; opacity: .6; }
+.ls-library .group-sep svg { width: var(--ls-space-6); height: var(--ls-space-6); }
+/* Grouped papers nest one step inside their label, twistie included. */
+.ls-library .paper-row.in-group .paper-row-main { padding-left: calc(var(--ls-space-6) + var(--ls-space-7)); }
+.ls-library .paper-row.in-group .file-row { padding-left: calc(28px + var(--ls-space-4) + var(--ls-space-7) + var(--ls-space-4)); }
 
 /* ── Column heads ───────────────────────────────────────────────── */
 .ls-library .col-heads {
-  position: sticky; top: 0; z-index: 1; display: grid; grid-template-columns: var(--cols); padding: var(--ls-space-2) var(--ls-space-2); user-select: none;
-  border-bottom: 1px solid var(--ls-border-soft); font-size: var(--ls-text-sm); color: var(--ls-desc); background: var(--ls-sidebar-bg);
+  position: sticky; top: 0; z-index: 1; display: grid; grid-template-columns: var(--cols); align-items: center; min-height: 30px;
+  padding: 0 var(--ls-space-2); user-select: none; border-bottom: 1px solid var(--ls-border-soft);
+  font-size: var(--ls-text-sm); font-weight: 500; color: var(--ls-desc); background: var(--ls-sidebar-bg);
 }
 .ls-library .col-heads > div { padding: 0 var(--ls-space-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ls-library .col-head.sortable { cursor: pointer; display: flex; align-items: center; gap: var(--ls-space-1); }
 .ls-library .col-head.sortable:hover, .ls-library .col-head:not([aria-sort="none"]) { color: var(--ls-fg); }
-.ls-library .sort-ind { display: none; width: var(--ls-space-6); height: var(--ls-space-6); flex-shrink: 0; }
+.ls-library .paper-row-main > :is(.col-year, .col-read, .col-status) { text-align: center; }
+.ls-library .sort-ind { display: inline-flex; width: var(--ls-space-6); height: var(--ls-space-6); flex-shrink: 0; opacity: 0; }
 .ls-library .sort-ind svg { width: 100%; height: 100%; }
-.ls-library .col-head:not([aria-sort="none"]) .sort-ind { display: inline-flex; }
+.ls-library .col-head:hover .sort-ind { opacity: .45; }
+.ls-library .col-head:not([aria-sort="none"]) .sort-ind { opacity: .8; }
 .ls-library .col-head[aria-sort="ascending"] .sort-ind { transform: rotate(180deg); }
+/* A centred head hangs its indicator past its label, so the label stays centred over its column. */
+.ls-library .col-heads :is(.col-year, .col-read, .col-status) { justify-self: center; position: relative; overflow: visible; padding: 0; }
+.ls-library .col-heads :is(.col-year, .col-read, .col-status) .sort-ind { position: absolute; left: 100%; }
 
 /* ── Rows ───────────────────────────────────────────────────────── */
-.ls-library .list-body { --cols: 28px minmax(120px, 1fr) 150px 52px 84px 86px; }
-.ls-library .paper-list { flex: 1; overflow-y: auto; outline: none; }
+/* Every optional column keeps its grid track and its explicit slot; a hidden column's track is 0px, so the others do not shift. */
+.ls-library .paper-list {
+  /* Text columns share the free width; short ones keep their size. Each --m-* is a column's floor, 0 while it is hidden. */
+  --m-creator: 140px; --m-venue: 120px; --m-year: 52px; --m-read: 84px; --m-status: 86px;
+  --w-creator: minmax(var(--m-creator), 1.4fr); --w-venue: minmax(var(--m-venue), 1fr); --w-year: 52px; --w-read: 84px; --w-status: 86px;
+  --cols: 28px minmax(240px, 3fr) var(--w-creator) var(--w-venue) var(--w-year) var(--w-read) var(--w-status) 28px;
+  flex: 1; overflow: auto; outline: none;
+}
+.ls-library .paper-list:not(:has(.col-head.col-creator)) { --m-creator: 0px; }
+.ls-library .paper-list:not(:has(.col-head.col-venue)) { --m-venue: 0px; }
+.ls-library .paper-list:not(:has(.col-head.col-year)) { --m-year: 0px; }
+.ls-library .paper-list:not(:has(.col-head.col-read)) { --m-read: 0px; }
+.ls-library .paper-list:not(:has(.col-head.col-status)) { --m-status: 0px; }
+/* Below the sum of the column floors (plus padding, twistie, the 240px title floor, the menu track and the nested indent)
+   the list scrolls sideways instead of squeezing or hiding a column. */
+.ls-library .col-heads, .ls-library .paper-rows {
+  min-width: calc(var(--ls-space-2) * 2 + 28px + 240px + var(--m-creator) + var(--m-venue) + var(--m-year) + var(--m-read) + var(--m-status) + 28px + var(--ls-space-6) + var(--ls-space-4));
+}
+.ls-library :is(.col-heads, .paper-row-main) > :nth-child(1) { grid-column: 1; }
+.ls-library .col-heads > [data-sort="title"], .ls-library .title-cell { grid-column: 2; }
+.ls-library :is(.col-heads, .paper-row-main) > .col-creator { grid-column: 3; }
+.ls-library :is(.col-heads, .paper-row-main) > .col-venue { grid-column: 4; }
+.ls-library :is(.col-heads, .paper-row-main) > .col-year { grid-column: 5; }
+.ls-library :is(.col-heads, .paper-row-main) > .col-read { grid-column: 6; }
+.ls-library :is(.col-heads, .paper-row-main) > .col-status { grid-column: 7; }
+.ls-library .col-heads > .col-menu { grid-column: 8; display: flex; justify-content: center; padding: 0; overflow: visible; }
+.ls-library .col-menu button { opacity: .5; }
+.ls-library .col-heads:hover .col-menu button, .ls-library .col-menu button:focus-visible { opacity: 1; }
 .ls-library .paper-row { cursor: pointer; }
-/* A paper's child rows share its band, so the stripe sits on the whole unit. */
-.ls-library .paper-row:nth-child(odd of .paper-row) { background: var(--ls-row-zebra); }
+/* A hairline parts consecutive papers from the title column on, so every group starts and ends alike and the line
+   follows the nesting. It hides next to a hovered or selected row, whose band already marks the edge. */
+.ls-library .paper-row { position: relative; --rule-left: calc(var(--ls-space-2) * 2 + 28px); }
+.ls-library .paper-row.in-group { --rule-left: calc(var(--ls-space-6) + var(--ls-space-7) + var(--ls-space-2) + 28px); }
+.ls-library .paper-row + .paper-row::before {
+  content: ""; position: absolute; top: 0; left: var(--rule-left); right: var(--ls-space-7); height: 1px; background: var(--ls-row-rule); pointer-events: none;
+}
+.ls-library .paper-row:is(.selected, .expanded, :has(> .paper-row-main:hover))::before,
+.ls-library .paper-row:is(.selected, .expanded, :has(> .paper-row-main:hover)) + .paper-row::before { opacity: 0; }
 .ls-library .paper-row-main {
-  display: grid; grid-template-columns: var(--cols); align-items: center; min-height: var(--ls-row-h);
-  padding: var(--ls-space-3) var(--ls-space-2); gap: 0; border-bottom: 1px solid var(--ls-border-faint);
+  display: grid; grid-template-columns: var(--cols); align-items: center; min-height: 34px; padding: 0 var(--ls-space-2); gap: 0;
 }
 .ls-library .paper-row-main:hover { background: var(--ls-list-hover); }
 .ls-library .paper-row.expanded .paper-row-main { background: var(--ls-row-open); }
@@ -46,11 +94,12 @@
 .ls-library .paper-row-main > div { padding: 0 var(--ls-space-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ls-library .expand-btn {
   display: flex; align-items: center; justify-content: center; width: var(--ls-space-7); height: var(--ls-space-7); flex-shrink: 0;
-  color: var(--ls-fg); transition: transform var(--ls-fast);
+  color: var(--ls-desc); opacity: .4; transition: transform var(--ls-fast), opacity var(--ls-fast);
 }
-.ls-library .expand-btn svg { width: 100%; height: 100%; }
+.ls-library .paper-row-main:hover .expand-btn, .ls-library .paper-row.selected .expand-btn, .ls-library .paper-row.expanded .expand-btn { opacity: 1; }
+.ls-library .expand-btn svg { width: 14px; height: 14px; }
 .ls-library .expand-btn.collapsed { transform: rotate(-90deg); }
-.ls-library .paper-row-main > .expand-btn { padding: 0; overflow: visible; }
+.ls-library .paper-row-main > .expand-btn { justify-self: center; padding: 0; overflow: visible; }
 /* The state icon follows the title, so a paper that needs attention says so without a column of its own. */
 .ls-library .title-state { display: inline-flex; flex-shrink: 0; color: var(--ls-desc); }
 .ls-library .title-state svg { width: var(--ls-space-6); height: var(--ls-space-6); }
@@ -58,9 +107,17 @@
 .ls-library .title-state.tl-busy { color: var(--ls-link); }
 .ls-library .col-title { font-size: var(--ls-font-size); }
 .ls-library .col-meta { font-size: var(--ls-text-md); color: var(--ls-desc); }
-.ls-library .col-year, .ls-library .col-read { font-family: var(--ls-mono); font-size: var(--ls-text-sm); font-variant-numeric: tabular-nums; }
+.ls-library .paper-row .col-year, .ls-library .paper-row .col-read { font-family: var(--ls-mono); font-size: var(--ls-text-sm); font-variant-numeric: tabular-nums; }
 .ls-library .title-cell { display: flex; align-items: center; gap: var(--ls-space-3); min-width: 0; }
 .ls-library .title-cell > .title-text { overflow: hidden; text-overflow: ellipsis; min-width: 0; flex-shrink: 1; }
+/* The tags give way before the title does: their shrink factor dwarfs the title's. */
+.ls-library .row-tags { display: flex; align-items: baseline; gap: var(--ls-space-2); min-width: 0; overflow: hidden; flex: 0 1000 auto; }
+.ls-library .row-tag {
+  flex-shrink: 0; padding: 0; border: none; background: none; cursor: pointer; white-space: nowrap;
+  font-family: var(--ls-mono); font-size: var(--ls-text-xs); color: color-mix(in srgb, var(--ls-link) 65%, var(--ls-desc));
+}
+.ls-library .row-tag .row-tag-hash { color: var(--ls-desc); opacity: .7; }
+.ls-library .row-tag:hover { text-decoration: underline; }
 .ls-library .status-mark {
   display: inline-flex; align-items: center; justify-content: center; width: var(--ls-space-7); height: var(--ls-space-7); padding: 0;
   border: none; border-radius: var(--ls-radius-pill); background: none; cursor: pointer; color: var(--ls-mark-accent);
@@ -75,12 +132,11 @@
 .ls-library .paper-row.expanded .paper-children { display: block; }
 .ls-library .list-loading { padding: 32px var(--ls-space-7); color: var(--ls-desc); font-size: var(--ls-text-md); text-align: center; }
 
-/* ── File tray: the open paper's files under its title, on the paper's zebra band ─────────────── */
+/* ── File tray: the open paper's files under its title ─────────────── */
 /* The fact runs on from the name like a sentence, so it never lines up under a paper column. */
 .ls-library .file-row {
   position: relative; display: flex; align-items: baseline; gap: var(--ls-space-4); min-height: var(--ls-row-h);
-  padding: var(--ls-space-2) var(--ls-space-4) var(--ls-space-2) calc(28px + var(--ls-space-4));
-  border-bottom: 1px solid var(--ls-border-faint); font-size: var(--ls-text-md);
+  padding: var(--ls-space-2) var(--ls-space-4) var(--ls-space-2) calc(28px + var(--ls-space-4)); font-size: var(--ls-text-md);
 }
 .ls-library .file-row:hover { background: var(--ls-list-hover); }
 .ls-library .file-row > div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
@@ -95,32 +151,29 @@
 .ls-library .file-name { flex: none; max-width: 45%; font-size: var(--ls-font-size); }
 .ls-library .file-fact { flex: 1; margin-left: var(--ls-space-4); font-style: italic; }
 .ls-library .file-fact-label { font-style: normal; font-size: var(--ls-text-sm); color: var(--ls-desc); }
+/* The short note on paper.pdf is a button that becomes a field of the same size when clicked. */
+.ls-library .file-fact-btn {
+  display: block; max-width: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; font-style: inherit;
+  text-align: left; cursor: text; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ls-library .file-fact-btn.empty { color: var(--ls-desc); }
+.ls-library .file-fact-btn:hover, .ls-library .file-fact-btn:focus-visible { text-decoration: underline dotted; }
+.ls-library .file-fact-input {
+  box-sizing: border-box; width: 100%; padding: 0 var(--ls-space-2); font: inherit; font-style: italic; color: var(--ls-input-fg);
+  background: var(--ls-input-bg); border: 1px solid var(--ls-focus); border-radius: var(--ls-radius-sm); outline: none;
+}
 /* The actions float over the end of the fact, which runs to the edge while they are hidden. */
 .ls-library .file-actions {
   position: absolute; right: var(--ls-space-2); top: 50%; transform: translateY(-50%); display: flex; gap: var(--ls-space-2);
-  padding-left: var(--ls-space-7); background: linear-gradient(to right, transparent, var(--ls-bg) var(--ls-space-7)); visibility: hidden;
+  padding-left: var(--ls-space-7); background: linear-gradient(to right, transparent, var(--ls-sidebar-bg) var(--ls-space-7)); visibility: hidden;
 }
 .ls-library .file-row:hover .file-actions, .ls-library .file-row:focus-within .file-actions { visibility: visible; }
 .ls-library .file-state { color: var(--ls-desc); }
 .ls-library .file-message { flex: 1; }
 .ls-library .file-state.failed .file-type { color: var(--ls-warning); }
 
-/* A narrow list pane drops columns before the title gets squeezed: Last read first, then Authors, then Year. Title and
-   Status stay. The pane shares the window with the sidebar and the detail pane, so its own width decides, not the window's.
-   INVARIANT: each threshold is at least the next wider layout's fixed columns + 8px row padding + a 14px scrollbar + the
-   120px title floor (full 542, ≤600 438, ≤460 308), so the title never drops under its floor before a column goes.
-   Below 460px the tray fact would shrink to a few letters, so it takes its own line under the name. */
-@container list-pane (max-width: 600px) {
-  .ls-library .list-body { --cols: 28px minmax(120px, 1fr) 130px 52px 86px; }
-  .ls-library .col-read { display: none !important; }
-}
-@container list-pane (max-width: 460px) {
-  .ls-library .list-body { --cols: 28px minmax(120px, 1fr) 52px 86px; }
-  .ls-library .col-creator { display: none !important; }
+/* Below 470px the tray fact would shrink to a few letters, so it takes its own line under the name. */
+@container list-pane (max-width: 470px) {
   .ls-library .file-row { flex-wrap: wrap; }
   .ls-library .file-fact { flex-basis: calc(100% - 28px - var(--ls-space-4)); margin-left: calc(28px + var(--ls-space-4)); }
-}
-@container list-pane (max-width: 340px) {
-  .ls-library .list-body { --cols: 28px minmax(120px, 1fr) 86px; }
-  .ls-library .col-year { display: none !important; }
 }

@@ -55,9 +55,9 @@ describe("list keys", () => {
   it("Escape clears the filters first, then the selection", () => {
     const t = mountForTest();
     selected(t, "a");
-    t.lib.store.set({ query: "alpha", status: "unread" });
+    t.lib.store.set({ query: "alpha" });
     t.key("Escape");
-    expect(t.lib.store.get()).toMatchObject({ query: "", status: "all" });
+    expect(t.lib.store.get()).toMatchObject({ query: "" });
     expect(t.lib.store.get().selected.size).toBe(1);
     t.key("Escape");
     expect(t.lib.store.get().selected.size).toBe(0);

@@ -2,9 +2,9 @@
 export { startAiService } from "./serviceComposition/index.js";
 export { LibraryRootController, SyncControllerLifecycle, ExternalChangeHandling } from "./libraryLifecycle/index.js";
 export {
-  registerLibraryTreeView,
+  registerLibrarySidebar,
   registerLibraryCommands,
-  registerSettingsWelcomeView,
+  registerSettingsMenu,
   registerPanelCommands,
   registerSyncCommands,
   registerWritingView,

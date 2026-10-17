@@ -28,8 +28,21 @@ describe("sanitizePrefs", () => {
   });
 
   it("keeps valid values", () => {
-    expect(sanitizePrefs({ sortKey: "lastRead", sortDir: 1, secCollapsed: { info: true } }))
+    expect(sanitizePrefs({ sortKey: "lastRead", sortDir: 1, columns: ["lastRead"], secCollapsed: { info: true } }))
       .toMatchObject({ sortKey: "lastRead", sortDir: 1, secCollapsed: { info: true } });
+  });
+
+  it("reads the columns: a non-array is the default, unknown names and repeats drop out, the order is fixed, empty is valid", () => {
+    expect(sanitizePrefs({ columns: "year" }).columns).toEqual(DEFAULT_PREFS.columns);
+    expect(sanitizePrefs({}).columns).toEqual(DEFAULT_PREFS.columns);
+    expect(sanitizePrefs({ columns: ["status", "bogus", "year", "status", 3, "venue"] }).columns).toEqual(["venue", "year", "status"]);
+    expect(sanitizePrefs({ columns: [] }).columns).toEqual([]);
+  });
+
+  it("sorts by title when the sort column is hidden", () => {
+    expect(sanitizePrefs({ sortKey: "venue", sortDir: -1, columns: ["year"] })).toMatchObject({ sortKey: "title", sortDir: 1 });
+    expect(sanitizePrefs({ sortKey: "venue", sortDir: -1, columns: ["venue"] })).toMatchObject({ sortKey: "venue", sortDir: -1 });
+    expect(sanitizePrefs({ sortKey: "title", sortDir: -1, columns: [] })).toMatchObject({ sortKey: "title", sortDir: -1 });
   });
 
   it("drops stored keys that are not prefs", () => {

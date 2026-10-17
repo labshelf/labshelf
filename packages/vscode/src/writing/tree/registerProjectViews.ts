@@ -1,4 +1,4 @@
-// Creates the Projects view, shown while no project is open, and the Files, Outline, Checklist, Figures and Versions views of the open project with their commands.
+// Creates the Files, Outline, Checklist, Figures and Versions views of the open project with their commands.
 import { access } from "node:fs/promises";
 import * as vscode from "vscode";
 
@@ -10,13 +10,13 @@ import { registerChecklistView } from "../checklist/index.js";
 import { OutlineTreeProvider, REVEAL_OUTLINE_COMMAND, registerTypstOutline, revealOutline } from "../outline/index.js";
 import { ProjectFiguresView, type ProjectFigures } from "../figures/index.js";
 import type { BuildPreviews } from "../preview/index.js";
+import { SidebarProjectsSource } from "../sidebar/index.js";
 import { ProjectVersionsView } from "../versions/index.js";
 import type { ProjectReadingLists } from "../readingList/index.js";
 import type { ProjectSession, WritingProjects } from "../session/index.js";
 import { registerProjectFileCommands } from "./projectFileCommands.js";
 import { ProjectFilesProvider } from "./projectFilesProvider.js";
 import { watchProjectFiles } from "./projectFilesWatcher.js";
-import { WritingTreeProvider } from "./projectsTreeProvider.js";
 
 /** Reports every create, change or delete under a project folder. */
 function watchFolder(folder: string, onChange: () => void): vscode.Disposable {
@@ -38,10 +38,11 @@ interface ProjectViewsDeps {
   setStatus: (paperIds: string[], status: PaperStatus) => Promise<string[]>;
 }
 
-export function registerProjectViews(deps: ProjectViewsDeps): void {
+/** @returns the source of the sidebar Projects section, which the library sidebar view renders */
+export function registerProjectViews(deps: ProjectViewsDeps): SidebarProjectsSource {
   const { context, projects, figures, session, logger, arcIcon, readingLists, outcomes } = deps;
-  const list = new WritingTreeProvider({
-    projects, logger, arcIcon, readingLists, buildOutcomes: outcomes, readSignals: readChecklistSignals, watchFolder,
+  const projectsSource = new SidebarProjectsSource({
+    projects, logger, readingLists, buildOutcomes: outcomes, readSignals: readChecklistSignals, watchFolder,
   });
   const files = new ProjectFilesProvider({ session, projects, logger });
   const outline = new OutlineTreeProvider(logger);
@@ -54,14 +55,13 @@ export function registerProjectViews(deps: ProjectViewsDeps): void {
   const versionsTree = vscode.window.createTreeView("labshelf.writing.versions", { treeDataProvider: versionsView });
   versionsView.attach(versionsTree);
   context.subscriptions.push(
-    list,
+    projectsSource,
     files,
     figuresView,
     versionsView,
     versionsTree,
     watchProjectFiles(session, () => void versionsView.refresh(), ".labshelf/versions/**"),
     watchProjectFiles(session, () => files.refresh()),
-    vscode.window.createTreeView("labshelf.writing", { treeDataProvider: list }),
     vscode.window.createTreeView("labshelf.writing.files", { treeDataProvider: files }),
     vscode.window.createTreeView("labshelf.writing.outline", { treeDataProvider: outline }),
     figuresTree,
@@ -71,4 +71,5 @@ export function registerProjectViews(deps: ProjectViewsDeps): void {
   );
   registerProjectFileCommands({ context, session, logger });
   registerChecklistView({ context, session, previews: deps.previews, readingLists, onDidChangeBacklinks: deps.onDidChangeBacklinks, setStatus: deps.setStatus, logger, arcIcon });
+  return projectsSource;
 }

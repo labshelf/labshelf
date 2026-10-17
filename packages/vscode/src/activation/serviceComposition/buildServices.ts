@@ -67,7 +67,7 @@ export async function buildServices(
   const paperDataStore = new PaperDataStore(adapters.createSidecarPort(libraryLayout(root.fsPath, adapters.paths.join), logger), { logger });
 
   // Seeds the store from disk. Nothing has subscribed to events for this root yet — the AI service, the
-  // library tree and the list panel all attach after buildServices returns — so the paper:added events this
+  // Library sidebar and the list panel all attach after buildServices returns — so the paper:added events this
   // first reindex fires are not seen by anyone.
   await reindex();
 

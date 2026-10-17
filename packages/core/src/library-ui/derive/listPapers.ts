@@ -27,7 +27,7 @@ export function listPapersUnder(all: readonly PaperRecord[], folder: string, pdf
     .map((p) => ({ ...p, folderPath: parentDir(p.path, SEP), relFolder: relativeFolder(p.path, folder, SEP), hasPdf: pdfDirs.has(p.path) }));
 }
 
-/** Papers in scope before the status filter applies. A search also matches the folder path shown in the row. */
+/** Papers a search lets through. A search also matches the folder path shown in the row. */
 export function papersInScope(papers: ListPaper[], query: Query): ListPaper[] {
   if (isEmptyQuery(query)) return papers;
   return papers.filter((p) => paperMatches(p, searchDoc(p, { folder: p.relFolder }), query));

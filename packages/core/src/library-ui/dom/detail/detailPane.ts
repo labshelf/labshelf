@@ -126,10 +126,10 @@ function onInput(pane: Pane, e: Event): void {
   else if (t.classList.contains("tag-input")) onTagInput(pane.ctx, t, ids);
 }
 
-// Leaving the tag field closes it, unless a rebuild only moved the focus to its replacement.
+// Leaving the tag field closes it, unless a rebuild only moved the focus to its replacement or its tag menu took the focus.
 function closeTagField(pane: Pane): void {
   setTimeout(() => {
-    if (!pane.tagEditing || document.activeElement?.classList.contains("tag-input")) return;
+    if (!pane.tagEditing || document.activeElement?.classList.contains("tag-input") || document.querySelector(".ls-menu")) return;
     pane.tagEditing = false;
     render(pane);
   }, 0);
@@ -144,7 +144,10 @@ function wirePointer(pane: Pane): () => void {
     pane.pointerDown = false;
     setTimeout(catchUp, 0);
   };
-  pane.el.addEventListener("mousedown", () => { pane.pointerDown = true; }, true);
+  pane.el.addEventListener("mousedown", (e) => {
+    pane.pointerDown = true;
+    if ((e.target as HTMLElement).closest(".tag-pick")) e.preventDefault();
+  }, true);
   pane.el.addEventListener("focusout", (e) => {
     if ((e.target as HTMLElement).classList.contains("tag-input")) closeTagField(pane);
     if (!(e.target as HTMLElement).classList.contains("note-input")) return;

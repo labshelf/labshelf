@@ -1,9 +1,9 @@
 // Fills the open paper's tray with its file rows and empties every other tray, rebuilding only when its inputs changed.
 import type { PaperRecord } from "../../../../model/index.js";
-import type { PaperStats } from "../../../protocol/index.js";
 import { openPaper } from "../../flows/index.js";
 import type { UiContext } from "../../uiContext.js";
 import { trayEntries, type TrayEntry } from "./fileFacts.js";
+import { addShortNote } from "./shortNote.js";
 import { addRowActions } from "./trayActions.js";
 import { buildFailedRow, buildLoadingRow, buildTrayRow } from "./trayRows.js";
 
@@ -18,19 +18,21 @@ function activate(ctx: UiContext, id: string, e: TrayEntry): void {
   else ctx.store.selectOnly(id);
 }
 
-function trayRows(ctx: UiContext, id: string, record: PaperRecord, stats: PaperStats | undefined): HTMLElement[] {
+function trayRows(ctx: UiContext, id: string, record: PaperRecord): HTMLElement[] {
   const state = ctx.store.get().files[id];
   if (!state || state.status === "loading") return [buildLoadingRow()];
   if (state.status === "failed") return [buildFailedRow(state.message)];
-  return trayEntries(record, stats, state.files).map((e) => {
+  return trayEntries(record, state.files).map((e) => {
     const open = (): void => activate(ctx, id, e);
     const row = buildTrayRow(e, open);
     addRowActions(ctx, id, e, row, open);
+    addShortNote(ctx, id, e, row);
     return row;
   });
 }
 
-function rowKey(r: Element | null): string | null {
+function rowKey(el: Element | null): string | null {
+  const r = el?.closest(".file-row");
   const kind = r?.getAttribute("data-kind");
   return kind ? `${kind}:${r?.getAttribute("data-name")}` : null;
 }
@@ -47,7 +49,7 @@ function replaceRows(tray: HTMLElement, rows: HTMLElement[]): void {
 
 /** Paints the tray of the expanded unit and clears the rest; call after the units are rendered and `.expanded` is set. */
 export function paintTray(ctx: UiContext, root: HTMLElement, records: ReadonlyMap<string, PaperRecord>): void {
-  const { stats, files } = ctx.store.get();
+  const { files } = ctx.store.get();
   root.querySelectorAll<HTMLElement>(".paper-row").forEach((unit) => {
     const tray = unit.querySelector<HTMLElement>(".paper-children");
     if (!tray) return;
@@ -57,10 +59,10 @@ export function paintTray(ctx: UiContext, root: HTMLElement, records: ReadonlyMa
       if (built.delete(tray)) tray.replaceChildren();
       return;
     }
-    const inputs = [record, stats[id], files[id]];
+    const inputs = [record, files[id]];
     const last = built.get(tray);
     if (last && inputs.every((v, i) => v === last[i])) return;
     built.set(tray, inputs);
-    replaceRows(tray, trayRows(ctx, id, record, stats[id]));
+    replaceRows(tray, trayRows(ctx, id, record));
   });
 }

@@ -12,7 +12,7 @@ const library = [
 const PDFS = ["papers/a", "papers/b", "papers/c"];
 
 type T = ReturnType<typeof mountForTest>;
-const mounted = (): T => { const t = mountForTest(); t.snapshot(library, PDFS); return t; };
+const mounted = (): T => { const t = mountForTest({ columns: ["creator", "year", "lastRead", "status"] }); t.snapshot(library, PDFS); return t; };
 const heads = (t: T): HTMLElement[] => [...t.container.querySelectorAll<HTMLElement>('[role="columnheader"]')];
 const mains = (t: T): HTMLElement[] => [...t.container.querySelectorAll<HTMLElement>('[role="row"][aria-level="1"]')];
 const childRows = (t: T): HTMLElement[] => [...t.container.querySelectorAll<HTMLElement>('[role="row"][aria-level="2"]')];
@@ -34,10 +34,9 @@ describe("A1 column heads", () => {
     expect(head(t, "Year").getAttribute("aria-sort")).toBe("ascending");
   });
 
-  it("puts no tag chip, location chip or version chip in a row", () => {
+  it("puts no location chip or version chip in a row", () => {
     const t = mounted();
-    expect(t.container.querySelector(".row-tag, .loc-chip, .version-chip")).toBeNull();
-    expect(t.rows()[0]!.textContent).not.toContain("nlp");
+    expect(t.container.querySelector(".loc-chip, .version-chip")).toBeNull();
   });
 });
 

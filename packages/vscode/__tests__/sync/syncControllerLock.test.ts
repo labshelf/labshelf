@@ -127,10 +127,10 @@ describe('SyncController and the cross-app sync lock', () => {
     controller.dispose();
   });
 
-  it('tells the Settings view whether Drive is connected', async () => {
+  it('reports whether Drive is connected', async () => {
     const controller = await makeController(root);
     await controller.initialize();
-    expect(vscode.commands.executeCommand).toHaveBeenLastCalledWith('setContext', 'labshelf.driveConnected', true);
+    expect(controller.isConnected()).toBe(true);
     controller.dispose();
   });
 
@@ -193,7 +193,7 @@ describe('SyncController and the cross-app sync lock', () => {
 
     expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(expect.stringContaining('Run the connect command.'));
     expect(tokens.tokens).toBeNull();
-    expect(vscode.commands.executeCommand).toHaveBeenLastCalledWith('setContext', 'labshelf.driveConnected', false);
+    expect(controller.isConnected()).toBe(false);
     const statusBar = (vscode.window.createStatusBarItem as jest.Mock).mock.results.at(-1)!.value as vscode.StatusBarItem;
     expect(statusBar.command).toBe('labshelf.sync.connect');
     controller.dispose();

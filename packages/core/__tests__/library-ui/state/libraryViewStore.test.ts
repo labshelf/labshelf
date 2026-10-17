@@ -9,7 +9,6 @@ describe("LibraryViewStore", () => {
     const seen: string[] = [];
     store.select((s) => s.query, (q) => seen.push(q));
     store.set({ query: "a" });
-    store.set({ status: "done" });
     store.set({ query: "a" });
     store.set({ query: "b" });
     expect(seen).toEqual(["", "a", "b"]);
@@ -103,9 +102,9 @@ describe("LibraryViewStore", () => {
     });
   });
 
-  it("openFolder resets query, status tab and selection, and ignores the same folder", () => {
+  it("openFolder resets query and selection, and ignores the same folder", () => {
     const store = new LibraryViewStore();
-    store.set({ query: "x", status: "done" });
+    store.set({ query: "x" });
     store.selectOnly("a");
     let calls = 0;
     store.select((s) => s.folder, () => calls++);
@@ -113,7 +112,7 @@ describe("LibraryViewStore", () => {
     expect(calls).toBe(1);
     expect(store.get().query).toBe("x");
     store.openFolder("papers/A");
-    expect(store.get()).toMatchObject({ folder: "papers/A", query: "", status: "all", anchor: null, cursor: null });
+    expect(store.get()).toMatchObject({ folder: "papers/A", query: "", anchor: null, cursor: null });
     expect(store.get().selected.size).toBe(0);
   });
 });

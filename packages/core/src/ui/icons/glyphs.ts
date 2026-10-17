@@ -1,6 +1,7 @@
 /**
- * Declares the SVG bodies of every LabShelf icon, keyed by name. Stroke bodies are Lucide geometry on a 24x24 grid, codicon bodies are on a 16x16 grid.
+ * Declares the SVG bodies of every LabShelf icon, keyed by name. Stroke bodies are Lucide geometry on a 24x24 grid, filled bodies are codicons on a 16x16 grid.
  */
+import { CODICON_GLYPHS } from "./codiconGlyphs.js";
 
 /** Outline icons: Lucide paths drawn with `currentColor` strokes on a 24x24 grid; licences in LICENSE-lucide.md. */
 export const STROKE_GLYPHS = {
@@ -63,13 +64,10 @@ export const STROKE_GLYPHS = {
   log: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h8"/><path d="M8 17h5"/>',
 } as const;
 
-const CODICON_CHEVRON_DOWN = 'fill-rule="evenodd" clip-rule="evenodd" d="M7.976 10.072l4.357-4.357.62.618L8.284 11h-.618L3 6.333l.62-.618 4.356 4.357z"';
-
-/** Filled codicon chevrons (the VS Code tree twistie); up is the down path turned half a circle. */
-export const CODICON_GLYPHS = {
-  "chevron-down": `<path ${CODICON_CHEVRON_DOWN}/>`,
-  "chevron-up": `<path ${CODICON_CHEVRON_DOWN} transform="rotate(180 8 8)"/>`,
-  "chevron-right": '<path fill-rule="evenodd" clip-rule="evenodd" d="M10.072 8.024L5.715 3.667l.618-.62L11 7.716v.618L6.333 13l-.618-.619 4.357-4.357z"/>',
+/** Filled codicons; the up chevron is the generated down chevron turned half a circle. */
+export const FILLED_GLYPHS = {
+  ...CODICON_GLYPHS,
+  "chevron-up": `<g transform="rotate(180 8 8)">${CODICON_GLYPHS["chevron-down"]}</g>`,
 } as const;
 
 /** The ">" prompt of the wordmark. The brand blue is fixed, not `currentColor`, so it reads as the accent on light and dark themes. */

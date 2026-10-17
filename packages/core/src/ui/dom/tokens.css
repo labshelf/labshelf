@@ -30,7 +30,6 @@
   --ls-list-inactive-bg: #37373d;
   --ls-list-drop-bg: #383b3d;
   --ls-list-focus-outline: #0078d4;
-  --ls-indent-guide: rgba(88, 88, 88, .4);
   --ls-menu-bg: #1f1f1f;
   --ls-menu-fg: #cccccc;
   --ls-menu-border: #454545;
@@ -43,7 +42,7 @@
   --ls-button-soft-fg: #66b1f3;
   --ls-button-soft-bg: color-mix(in srgb, var(--ls-focus) 16%, transparent);
   --ls-button-soft-hover: color-mix(in srgb, var(--ls-focus) 24%, transparent);
-  --ls-row-zebra: color-mix(in srgb, var(--ls-fg) 3%, transparent);
+  --ls-row-rule: color-mix(in srgb, var(--ls-fg) 8%, transparent);
   --ls-row-open: color-mix(in srgb, var(--ls-fg) 7%, transparent);
   --ls-row-selected: color-mix(in srgb, var(--ls-focus) 15%, transparent);
   --ls-button2-bg: #313131;
@@ -148,7 +147,6 @@
   --ls-list-inactive-bg: #e4e6f1;
   --ls-list-drop-bg: #d6ebff;
   --ls-list-focus-outline: #005fb8;
-  --ls-indent-guide: rgba(163, 163, 163, .4);
   --ls-menu-bg: #ffffff;
   --ls-menu-fg: #3b3b3b;
   --ls-menu-border: #cecece;

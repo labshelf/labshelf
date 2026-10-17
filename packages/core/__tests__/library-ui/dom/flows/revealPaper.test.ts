@@ -35,17 +35,6 @@ describe("reveal", () => {
     expect(t.rowIds()).toContain("x");
   });
 
-  it("clears a status filter that hides the paper in the open folder", () => {
-    const t = mountForTest();
-    t.snapshot(library, [], folders);
-    t.lib.store.openFolder("papers/A");
-    t.lib.store.set({ status: "done" });
-    t.host.post({ type: "reveal", id: "x" });
-    expect(t.lib.store.get().status).toBe("all");
-    expect(t.rowIds()).toContain("x");
-    expect(t.lib.store.get().open).toBe("x");
-  });
-
   it("clears a search that hides the paper", () => {
     const t = mountForTest();
     t.snapshot(library, [], folders);
@@ -68,11 +57,11 @@ describe("reveal", () => {
   it("changes nothing for an unknown id", () => {
     const t = mountForTest();
     t.snapshot(library, [], folders);
-    t.lib.store.set({ status: "done", query: "q", selected: new Set(["r"]) });
+    t.lib.store.set({ query: "q", selected: new Set(["r"]) });
     const before = t.lib.store.get();
     t.host.post({ type: "reveal", id: "ghost" });
     const after = t.lib.store.get();
-    expect(after).toMatchObject({ folder: before.folder, status: "done", query: "q", open: null });
+    expect(after).toMatchObject({ folder: before.folder, query: "q", open: null });
     expect([...after.selected]).toEqual(["r"]);
   });
 });

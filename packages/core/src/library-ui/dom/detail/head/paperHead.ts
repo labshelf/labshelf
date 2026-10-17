@@ -50,13 +50,14 @@ function findBetterButton(busy: boolean): string {
     (busy ? `<span class="spin">${icon("refresh")}</span><span>Searching…</span>` : `${icon("search")}<span>Find Published Version</span>`) + `</button>`;
 }
 
-// The venue line ends with the paper's folder, which opens it, unless the paper sits at the library root.
+// The meta line reads venue, version, then the paper's folder (a chevron and its name, which opens it) unless the paper sits at the library root.
 function metaHtml(p: PaperView["p"], version: string): string {
-  const meta = escapeHtml(venueLine(p));
   const dir = parentDir(p.path, "/");
   const folder = dir === PAPERS_DIR ? ""
-    : `${meta ? " › " : ""}<button class="link-btn" type="button" data-action="goFolder">${escapeHtml(dir.slice(dir.lastIndexOf("/") + 1))}</button>`;
-  return meta || version || folder ? `<div class="detail-meta">${version}${meta}${folder}</div>` : "";
+    : `<button class="link-btn" type="button" data-action="goFolder">${icon("chevron-right")}${escapeHtml(dir.slice(dir.lastIndexOf("/") + 1))}</button>`;
+  const text = [escapeHtml(venueLine(p)), version].filter(Boolean).join(" · ");
+  const line = [text, folder].filter(Boolean).join(" · ");
+  return line ? `<div class="detail-meta">${line}</div>` : "";
 }
 
 export function paperHeadHtml(pane: PaneState, v: PaperView): string {

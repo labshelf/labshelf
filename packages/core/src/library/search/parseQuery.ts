@@ -45,7 +45,7 @@ function applyOperator(token: string, q: Query): boolean {
 //   attention transformer        every word must match (title, authors, venue, abstract, tags, note, ids…)
 //   "exact phrase"               quoted phrase
 //   -survey                      exclude a word
-//   tag:nlp  #nlp                has the tag (prefix match)
+//   tag:nlp  #nlp                has exactly this tag
 //   status:reading  is:unread    reading status
 //   year:2017  year:2015..2020   year:>2018  year:<2000
 //   author:vaswani               one field: author, kw, venue, note, key, abstract

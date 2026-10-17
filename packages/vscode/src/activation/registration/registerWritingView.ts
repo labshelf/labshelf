@@ -20,6 +20,7 @@ import { readCiteSources } from "../../writing/citations/node/index.js";
 import { registerLabshelfLinks } from "../../writing/links/index.js";
 import { registerProjectSession, type ProjectSession } from "../../writing/session/index.js";
 import { registerProjectViews } from "../../writing/tree/index.js";
+import type { SidebarProjectsSource } from "../../writing/sidebar/index.js";
 import { ProjectFigures, watchFigureFiles } from "../../writing/figures/index.js";
 import { registerLatexCommandCompletion, registerLatexEditing } from "../../writing/latexEditing/index.js";
 import type { RegisterNodeWriting } from "../../writing/nodePort/index.js";
@@ -34,6 +35,8 @@ export interface WritingViewHandles {
   projects: WritingProjects;
   /** The list panel reads it to show where papers are cited. */
   backlinks: ProjectBacklinkIndex;
+  /** The library sidebar renders it as the Projects section. */
+  projectsSource: SidebarProjectsSource;
 }
 
 type Controller = LibraryRootController;
@@ -194,10 +197,10 @@ export function registerWritingView(
   // With no library open every id failed, so the Checklist reports the write as failed.
   const setStatus = async (ids: string[], status: PaperStatus): Promise<string[]> =>
     await controller.currentServices()?.paperService.updatePapersStatus(ids, status) ?? ids;
-  registerProjectViews({
+  const projectsSource = registerProjectViews({
     context, projects, figures, session, logger, arcIcon, readingLists, outcomes, previews, onDidChangeBacklinks: backlinks.onDidChange, setStatus,
   });
   registerEditingSupport(parts);
   void projects.reload();
-  return { projects, backlinks };
+  return { projects, backlinks, projectsSource };
 }

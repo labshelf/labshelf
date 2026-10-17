@@ -4,6 +4,7 @@
  */
 import { editedTags } from "../../library/index.js";
 import type { PaperRecord, PaperStatus } from "../../model/index.js";
+import { tagQuery } from "../searchQueries.js";
 import type { CitationMapState, LibraryUiSnapshot, PaperDetails, PaperFilesState, SimilarPaper, TextLayerJobView } from "../protocol/index.js";
 import { shallowEqual } from "./shallowEqual.js";
 import { mergeSnapshot } from "./snapshotIdentity.js";
@@ -139,7 +140,12 @@ export class LibraryViewStore {
       if (this.state.citationMap) this.set({ citationMap: null });
       return;
     }
-    this.set({ folder: path, query: "", status: "all", selected: new Set(), anchor: null, cursor: null, citationMap: null });
+    this.set({ folder: path, query: "", selected: new Set(), anchor: null, cursor: null, citationMap: null });
+  }
+
+  /** Narrows the list to the papers with this tag, */
+  searchTag(tag: string): void {
+    this.set({ query: tagQuery(tag) });
   }
 
   /** Shows the citation map in place of the paper list; null goes back to the paper list. */

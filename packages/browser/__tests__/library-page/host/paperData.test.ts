@@ -71,7 +71,7 @@ describe("reading stats", () => {
     const app = start();
     await app.send({ type: "ready" });
     expect(app.last("snapshot")?.snapshot.stats).toEqual({
-      smith2020: { annotations: 2, lastPage: 4, lastRead: "2026-03-01T10:00:00.000Z", lastHighlight: { page: 1, text: "quote a" } },
+      smith2020: { annotations: 2, lastPage: 4, lastRead: "2026-03-01T10:00:00.000Z" },
     });
   });
 

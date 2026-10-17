@@ -39,7 +39,7 @@ describe("folder groups in a folder scope", () => {
     expect(groups(t)[0]!.querySelectorAll(".paper-row")).toHaveLength(2);
   });
 
-  it("shows a hidden visible label with the path segments and the count that is not a row", () => {
+  it("shows a hidden visible label with the path segments, without the count, that is not a row", () => {
     const t = mounted();
     const label = labels(t)[1]!;
     expect(label.getAttribute("aria-hidden")).toBe("true");
@@ -47,7 +47,7 @@ describe("folder groups in a folder scope", () => {
     expect(label.closest('[role="row"]')).toBeNull();
     expect(label.textContent).toContain("rl");
     expect(label.textContent).toContain("policy");
-    expect(label.textContent).toContain("1");
+    expect(label.textContent).not.toContain("1");
     expect(label.hasAttribute("tabindex")).toBe(false);
   });
 
@@ -78,9 +78,18 @@ describe("folder groups in a folder scope", () => {
     t.snapshot([deep], [deep.path]);
     t.lib.store.set({ folder: "papers/ml" });
     const label = labels(t)[0]!;
-    expect(label.textContent).toContain("a … c › d");
+    expect([...label.querySelectorAll(".group-parent, .group-gap, .group-last")].map((e) => e.textContent)).toEqual(["a", "…", "c", "d"]);
     expect([label, ...label.querySelectorAll("[title]")].some((e) => e.getAttribute("title") === "a › b › c › d")).toBe(true);
     expect(groups(t)[0]!.getAttribute("aria-label")).toBe("a › b › c › d, 1 paper");
+  });
+
+  it("opens the folder of a clicked label segment", () => {
+    const t = mountForTest({ sortKey: "title", sortDir: 1 });
+    const deep = paper("x", "papers/ml/a/b", { title: "X" });
+    t.snapshot([deep], [deep.path]);
+    t.lib.store.set({ folder: "papers/ml" });
+    labels(t)[0]!.querySelector<HTMLElement>(".group-parent")!.click();
+    expect(t.lib.store.get().folder).toBe("papers/ml/a");
   });
 });
 

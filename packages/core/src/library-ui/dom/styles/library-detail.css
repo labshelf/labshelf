@@ -1,6 +1,6 @@
 /*
- * Styles the detail pane's frame under .ls-library: the placeholder, the head (title, authors, venue line, toolbar,
- * status menu, tag row, text-layer banner), the sticky tab bar and the collapsible sections like native pane headers.
+ * Styles the detail pane's frame under .ls-library: the placeholder, the head (title, authors, venue line, actions,
+ * status menu, tag row, text-layer banner), text-layer banner.
  */
 .ls-library .detail-placeholder {
   display: flex; flex-direction: column; align-items: center; gap: var(--ls-space-5);
@@ -10,40 +10,55 @@
 .ls-library .kbd-help kbd { margin-right: var(--ls-space-1); }
 
 /* ── Head: what the paper is, then what you can do with it ─────── */
-.ls-library .detail-head { position: relative; padding: var(--ls-space-6) 14px; display: flex; flex-direction: column; gap: var(--ls-space-3); }
-.ls-library .detail-head > .head-more { position: absolute; top: var(--ls-space-6); right: var(--ls-space-4); }
-.ls-library .detail-head > .detail-title { padding-right: 30px; }
-.ls-library .detail-title { font-family: var(--ls-serif); font-weight: 600; font-size: var(--ls-text-lg); line-height: 1.35; user-select: text; overflow-wrap: anywhere; }
-.ls-library .detail-byline { font-size: var(--ls-text-md); line-height: 1.45; color: var(--ls-fg); opacity: .9; }
-.ls-library .detail-meta { font-size: var(--ls-text-sm); color: var(--ls-desc); }
+.ls-library .detail-head {
+  --head-x: calc(var(--ls-space-7) + var(--ls-space-4));
+  position: relative; display: flex; flex-direction: column;
+  padding: calc(var(--ls-space-7) + var(--ls-space-2)) var(--head-x) var(--ls-space-7);
+}
+.ls-library .detail-head > .head-more { position: absolute; top: calc(var(--ls-space-7) + var(--ls-space-2)); right: var(--ls-space-6); color: var(--ls-desc); }
+.ls-library .detail-head > .head-more:hover { color: var(--ls-fg); }
+.ls-library .detail-head > .detail-title { padding-right: calc(var(--ls-space-7) + var(--ls-space-6)); }
+.ls-library .detail-title {
+  font-family: var(--ls-serif); font-weight: 600; font-size: calc(var(--ls-font-size) * 1.7); line-height: 1.3;
+  user-select: text; overflow-wrap: anywhere; text-wrap: balance;
+}
+.ls-library .detail-byline { margin-top: var(--ls-space-4); font-size: var(--ls-font-size); line-height: 1.5; color: var(--ls-desc); }
+.ls-library .detail-meta { margin-top: var(--ls-space-2); font-size: var(--ls-font-size); color: var(--ls-desc); }
 .ls-library .version-chip {
   flex-shrink: 0; font-size: var(--ls-text-xs); line-height: 15px; padding: 0 var(--ls-space-3); border-radius: var(--ls-radius-pill);
   color: var(--ls-desc); border: 1px dashed var(--ls-border-soft); cursor: default;
 }
-.ls-library .detail-meta .version-chip { margin-right: var(--ls-space-3); }
+.ls-library .detail-meta .version-chip { padding: 0; border: none; border-radius: 0; font-size: inherit; line-height: inherit; }
 .ls-library .link-btn {
   border: none; background: none; padding: 0; cursor: pointer; color: inherit; text-align: left; font: inherit;
   display: inline-flex; align-items: center; gap: var(--ls-space-2); max-width: 100%;
 }
-.ls-library .link-btn:hover { color: var(--ls-link); text-decoration: underline; }
+.ls-library .link-btn:hover { color: var(--ls-fg); text-decoration: underline; }
 .ls-library .link-btn svg { width: 12px; height: 12px; flex-shrink: 0; opacity: .8; }
-.ls-library .link-btn.more, .ls-library .more-link { color: var(--ls-link); font-size: var(--ls-text-sm); }
+.ls-library .link-btn.more, .ls-library .more-link { color: var(--ls-link); font-size: inherit; }
 .ls-library .link-btn.url { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; }
 .ls-library .detail-byline .link-btn { display: inline; }
-.ls-library .detail-toolbar { display: flex; align-items: center; gap: var(--ls-space-1); margin-top: var(--ls-space-2); flex-wrap: wrap; }
-.ls-library .detail-toolbar .ls-btn + .ls-btn { margin-left: var(--ls-space-2); }
-.ls-library .open-btn { padding: 5px var(--ls-space-6); }
+.ls-library .detail-meta .link-btn { vertical-align: bottom; }
+.ls-library .detail-toolbar { display: flex; align-items: center; gap: var(--ls-space-2); margin-top: var(--ls-space-7); flex-wrap: wrap; }
+.ls-library .detail-toolbar .ls-btn, .ls-library .status-btn {
+  height: calc(var(--ls-row-h) + var(--ls-space-5)); font-size: var(--ls-font-size); border-radius: var(--ls-radius-lg);
+}
+.ls-library .open-btn { padding: 0 var(--ls-space-6); font-weight: 600; }
+.ls-library .cite-btn, .ls-library .status-btn { color: var(--ls-fg); }
 .ls-library .detail-pane .ls-icon-btn { width: 26px; height: 26px; }
 .ls-library .detail-pane .ls-icon-btn svg { width: 15px; height: 15px; }
 
-/* Status and Cite open menus; a chevron marks them as dropdowns. */
-.ls-library .detail-status-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--ls-space-3) var(--ls-space-6); }
+/* Status and Cite open menus; a chevron marks them as dropdowns. Both are ghost buttons that align with the text column. */
+.ls-library .detail-status-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--ls-space-3) var(--ls-space-6); margin-top: var(--ls-space-7); }
+.ls-library .cite-btn, .ls-library .status-btn { padding: 0 var(--ls-space-4); }
 .ls-library .status-btn { margin-left: calc(-1 * var(--ls-space-4)); }
 .ls-library .status-btn svg:last-child, .ls-library .cite-btn svg:last-child { width: 12px; height: 12px; opacity: .6; }
 
 /* Tags: #tag links that search, an x that appears on hover or focus and removes, and Add tag that opens a field. */
-.ls-library .tag-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-1) var(--ls-space-4); margin-top: var(--ls-space-1); }
-.ls-library .tag-chip { display: inline-flex; align-items: center; font-family: var(--ls-mono); font-size: var(--ls-text-sm); color: var(--ls-link); }
+.ls-library .tag-row { display: flex; flex: 1; min-width: 0; flex-wrap: wrap; align-items: center; gap: var(--ls-space-1) var(--ls-space-6); }
+.ls-library .tag-chip { display: inline-flex; align-items: center; font-family: var(--ls-mono); font-size: var(--ls-text-md); color: var(--ls-link); }
+.ls-library .tag-add { border-radius: var(--ls-radius-pill); color: var(--ls-desc); }
+.ls-library .detail-pane .tag-add { width: 20px; height: 20px; }
 .ls-library .tag-name { border: none; background: none; cursor: pointer; color: inherit; padding: 0; font: inherit; }
 .ls-library .tag-name:hover { text-decoration: underline; }
 .ls-library .tag-x {
@@ -53,14 +68,19 @@
 .ls-library .tag-chip:hover .tag-x, .ls-library .tag-chip:focus-within .tag-x { width: 16px; opacity: 1; }
 .ls-library .tag-x svg { width: 10px; height: 10px; }
 .ls-library .tag-x:hover { color: var(--ls-fg); background: var(--ls-toolbar-hover); }
+.ls-library .tag-field { display: inline-flex; align-items: center; gap: var(--ls-space-1); }
 .ls-library .tag-input {
-  min-width: 70px; max-width: 160px; height: 20px; padding: 0 var(--ls-space-2); font-family: var(--ls-mono); font-size: var(--ls-text-sm);
-  border: 1px solid var(--ls-focus); border-radius: var(--ls-radius-sm); background: var(--ls-input-bg); color: var(--ls-input-fg); outline: none;
+  width: 90px; height: 20px; padding: 0; font-family: var(--ls-mono); font-size: var(--ls-text-md); color: var(--ls-link);
+  border: none; border-bottom: 1px solid transparent; border-radius: 0; background: none; outline: none; caret-color: var(--ls-link);
 }
+.ls-library .tag-input::placeholder { color: var(--ls-desc); opacity: 1; }
+.ls-library .tag-input:focus { border-bottom-color: var(--ls-focus); }
+.ls-library .tag-pick { width: 16px; height: 16px; color: var(--ls-desc); }
+.ls-library .tag-pick svg { width: 12px; height: 12px; }
 
 /* ── Text-layer banner ──────────────────────────────────────────── */
 .ls-library .tl-banner {
-  display: flex; align-items: flex-start; gap: var(--ls-space-4); margin-top: var(--ls-space-2); padding: 7px 9px;
+  display: flex; align-items: flex-start; gap: var(--ls-space-4); margin-top: var(--ls-space-5); padding: 7px 9px;
   border-radius: var(--ls-radius); font-size: var(--ls-text-sm); line-height: 1.45;
   background: var(--ls-warning-bg); border: 1px solid var(--ls-warning-border);
 }
@@ -78,46 +98,3 @@
 .ls-library .tl-progress progress::-webkit-progress-bar { background: var(--ls-border); }
 .ls-library .tl-progress progress::-webkit-progress-value { background: var(--ls-progress); transition: width .3s; }
 .ls-library .tl-progress progress::-moz-progress-bar { background: var(--ls-progress); }
-
-/* ── Tabs, which stay in reach while a long tab scrolls ─────────── */
-.ls-library .detail-tabs {
-  position: sticky; top: 0; z-index: 2; display: flex; gap: var(--ls-space-1); padding: 0 var(--ls-space-5); flex-shrink: 0;
-  background: var(--ls-sidebar-bg); border-top: 1px solid var(--ls-border-soft); border-bottom: 1px solid var(--ls-border);
-}
-.ls-library .detail-tab {
-  position: relative; display: inline-flex; align-items: center; gap: 5px; padding: 7px var(--ls-space-3) var(--ls-space-3);
-  border: none; background: none; cursor: pointer; font-size: var(--ls-text-sm); letter-spacing: .02em; color: var(--ls-desc); white-space: nowrap;
-}
-.ls-library .detail-tab:hover, .ls-library .detail-tab.active { color: var(--ls-fg); }
-.ls-library .detail-tab.active::after {
-  content: ""; position: absolute; left: var(--ls-space-2); right: var(--ls-space-2); bottom: -1px; height: 2px; background: var(--ls-tab-active-border);
-}
-.ls-library .tab-badge {
-  min-width: 16px; padding: 0 var(--ls-space-2); border-radius: var(--ls-radius-pill); font-size: var(--ls-text-xs); line-height: 15px;
-  text-align: center; background: var(--ls-badge-bg); color: var(--ls-badge-fg);
-}
-.ls-library .tab-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--ls-link); }
-.ls-library .tab-body { flex: 1; padding-bottom: var(--ls-space-7); }
-.ls-library .tab-toolbar { display: flex; align-items: center; gap: var(--ls-space-2); padding: var(--ls-space-4) 14px var(--ls-space-3); }
-.ls-library .pane-loading { display: flex; align-items: center; gap: var(--ls-space-3); padding: var(--ls-space-5) 14px; font-style: normal; }
-.ls-library .pane-loading svg { width: 12px; height: 12px; }
-
-/* ── Sections: VS Code pane headers ─────────────────────────────── */
-.ls-library .sec-head {
-  display: flex; align-items: center; justify-content: space-between; height: var(--ls-row-h); padding: 0 var(--ls-space-4) 0 var(--ls-space-2);
-  cursor: pointer; user-select: none; font-size: var(--ls-text-sm); font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
-  color: var(--ls-section-fg); background: var(--ls-section-bg); border-top: 1px solid var(--ls-section-border);
-}
-.ls-library .sec-head:hover { background: var(--ls-list-hover); }
-.ls-library .sec-head-left { display: flex; align-items: center; gap: 3px; min-width: 0; }
-.ls-library .sec-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ls-library .sec-count { margin-left: var(--ls-space-2); font-weight: 400; opacity: .65; }
-.ls-library .sec-chevron { width: 16px; height: 16px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; transition: transform var(--ls-fast); }
-.ls-library .sec-chevron svg { width: 16px; height: 16px; }
-.ls-library .sec-head.collapsed .sec-chevron { transform: rotate(-90deg); }
-.ls-library .sec-actions { display: flex; align-items: center; gap: var(--ls-space-1); visibility: hidden; }
-.ls-library .sec-head:hover .sec-actions, .ls-library .sec-head:focus-within .sec-actions { visibility: visible; }
-.ls-library .detail-pane .sec-actions .ls-icon-btn { width: 20px; height: 20px; }
-.ls-library .detail-pane .sec-actions .ls-icon-btn svg { width: 13px; height: 13px; }
-.ls-library .sec-body { padding: var(--ls-space-4) 14px var(--ls-space-6) 22px; font-size: var(--ls-text-md); }
-.ls-library .sec-body.hidden { display: none; }

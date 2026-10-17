@@ -13,7 +13,8 @@ function row(extra: string, title: string, html: string, attrs: Record<string, s
 export function buildTrayRow(e: TrayEntry, onActivate: () => void): HTMLElement {
   const type = e.kind === "folder" ? icon("chevron-right") : escapeHtml(e.type);
   const label = e.fact?.label ? `<span class="file-fact-label">${escapeHtml(e.fact.label)}</span> ` : "";
-  const fact = e.fact ? label + escapeHtml(e.fact.text) : "";
+  // The paper.pdf fact is a button the short-note editor fills in.
+  const fact = e.fact && e.kind !== "pdf" ? label + escapeHtml(e.fact.text) : "";
   const r = row("", e.title,
     cell(`file-type tone-${e.tone}`, type) + cell("file-name", escapeHtml(e.name)) + cell("file-fact", fact) + cell("file-actions", ""),
     { "data-kind": e.kind, "data-name": e.name });

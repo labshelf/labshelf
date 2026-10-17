@@ -11,8 +11,6 @@ export interface EmptyStateOptions {
   libraryEmpty: boolean;
   query: string;
   folderLabel: string;
-  /** Label of the status scope the list is narrowed to, or null for every status. */
-  statusLabel: string | null;
   /** How papers get into the library on this host. */
   hint: string;
   onClearFilters: () => void;
@@ -25,8 +23,7 @@ export function buildLoading(): HTMLElement {
 
 function matchText(o: EmptyStateOptions): string {
   const query = o.query.trim();
-  const scope = escapeHtml(o.statusLabel ?? o.folderLabel);
-  if (!query && o.statusLabel) return `No papers marked ${scope}`;
+  const scope = escapeHtml(o.folderLabel);
   return `No papers match ${query ? `“${escapeHtml(query)}” ` : ""}in ${scope}`;
 }
 

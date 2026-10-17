@@ -2,3 +2,4 @@
 export { mountLibraryUi } from "./mountLibraryUi.js";
 export type { LibraryUi, LibraryUiOptions } from "./mountLibraryUi.js";
 export { askNoPdf, type NoPdfChoice } from "./flows/index.js";
+export { mountLibrarySidebar, type LibrarySidebar, type LibrarySidebarOptions, type SidebarActions, type SidebarPaper, type SidebarProject, type SidebarProjectActions } from "./sidebar/index.js";

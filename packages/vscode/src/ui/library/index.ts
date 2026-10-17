@@ -1,6 +1,7 @@
-/** Exports the library tree: data provider, drag-and-drop and the folder node it shares with the list panel. */
-export { LibraryTreeDataProvider } from './libraryTreeDataProvider.js';
-export { LibraryDragAndDropController } from './libraryDragAndDrop.js';
+/** Exports the Library sidebar view, the folder node it shares with the list panel and the folder-name validator. */
+export { LibrarySidebarView } from './librarySidebarView.js';
+export type { SidebarProjectsDep } from './librarySidebarView.js';
 export { rootNode } from './libraryNode.js';
-export type { LibraryNode, LibraryTreeNode } from './libraryNode.js';
+export type { LibraryNode } from './libraryNode.js';
 export { validateFolderNameInput } from './folderNameInput.js';
+export type { SidebarProjectItem } from './sidebarMessages.js';

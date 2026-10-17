@@ -18,7 +18,7 @@ function passesFilters(record: PaperRecord, doc: SearchDoc, q: Query): boolean {
   if (q.statuses.length && !q.statuses.includes(record.status)) { return false; }
   if (q.yearMin !== undefined && (record.year === undefined || record.year < q.yearMin)) { return false; }
   if (q.yearMax !== undefined && (record.year === undefined || record.year > q.yearMax)) { return false; }
-  if (q.tags.some((tag) => !doc.tags.some((t) => t.startsWith(tag)))) { return false; }
+  if (q.tags.some((tag) => !doc.tags.includes(tag))) { return false; }
   if (q.fields.some((f) => !doc[f.field].includes(f.value))) { return false; }
   if (q.has.some((h) => !has(record, h))) { return false; }
   return !q.missing.some((m) => has(record, m));

@@ -35,7 +35,7 @@ The `projects` namespace mirrors writing projects, both those under `<library>/p
 - **Only on Drive.** A folder in `LabShelf Projects` whose id has no project on the device is reported by the run and is never downloaded on its own. The user chooses where it goes: under `<library>/projects/`, or into a folder that is then registered.
 - **Ignored paths.** The engine neither uploads, downloads nor deletes:
   - any path with a segment named `.git` (the project's repository stays the user's);
-  - `.labshelf/state.json` (one person's cursor on one device);
+  - `.labshelf/state.json` (a per-device file);
   - a hidden folder directly under `.labshelf/versions/` (a version being written);
   - a path matching a pattern in the project's `labshelf.yaml` `ignore:` list ([library-format.md](library-format.md#labshelfyaml)).
 

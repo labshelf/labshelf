@@ -23,8 +23,6 @@ export function fakeProjectData(): { [K in keyof ProjectDataPort]: jest.Mock } {
     unregisterProjectFolder: jest.fn(async () => {}),
     rootFileNames: jest.fn(async () => []),
     updateProjectSettings: jest.fn(async () => {}),
-    writeProjectCursor: jest.fn(async () => {}),
-    latestProjectEdit: jest.fn(async () => undefined),
     listVersions: jest.fn(async () => []),
     markVersion: jest.fn(async () => { throw new Error("markVersion is not stubbed"); }),
     readProjectValues: jest.fn(async () => []),

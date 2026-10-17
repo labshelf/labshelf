@@ -1,4 +1,4 @@
-/** Activates the extension: wires services, commands, library folder tree, sync controller and list panel. */
+/** Activates the extension: wires services, commands, Library sidebar, sync controller and list panel. */
 import * as vscode from "vscode";
 
 import { libraryChanged, libraryLayout, type AiService } from "@labshelf/core";
@@ -18,9 +18,9 @@ import {
   LibraryRootController,
   SyncControllerLifecycle,
   ExternalChangeHandling,
-  registerLibraryTreeView,
+  registerLibrarySidebar,
   registerLibraryCommands,
-  registerSettingsWelcomeView,
+  registerSettingsMenu,
   registerPanelCommands,
   registerSyncCommands,
   registerWritingView,
@@ -33,7 +33,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(...Object.values(events));
   const adapters = createNodeAdapters(context);
 
-  // Reassigned once the Library tree view is registered; the lifecycle modules below only ever
+  // Reassigned once the Library sidebar is registered; the lifecycle modules below only ever
   // call it after that point, so the forward reference is safe.
   let refreshLibraryViews: () => void = () => {};
 
@@ -55,19 +55,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   };
 
   const writing = registerWritingView(context, controller, adapters.reader, adapters, registerNodeWriting);
-  const { libraryProvider, syncTreeToPanel, revealPaperInTree, refreshLibraryViews: refreshViews } = registerLibraryTreeView({
-    context, events, controller, papersRootUri, folderHost, adapters, projects: writing.projects,
+  const { librarySidebar, showFolderInSidebar, showPaperInSidebar, refreshLibraryViews: refreshViews } = registerLibrarySidebar({
+    context, events, controller, papersRootUri, folderHost, adapters, projects: writing.projectsSource,
   });
   refreshLibraryViews = refreshViews;
 
-  registerSettingsWelcomeView(context, controller);
+  registerSettingsMenu(context, controller);
 
   registerPanelCommands({
-    context, events, requireServices, papersRootUri, folderHost, syncTreeToPanel, revealPaperInTree, adapters,
+    context, events, requireServices, papersRootUri, folderHost, showFolderInSidebar, showPaperInSidebar, adapters,
     getAiService: () => aiService, projectBacklinks: writing.backlinks,
   });
 
-  registerLibraryCommands({ context, controller, folderHost, libraryProvider });
+  registerLibraryCommands({ context, controller, folderHost, librarySidebar });
 
   registerSyncCommands({ context, controller, requireServices });
 
@@ -137,9 +137,7 @@ async function loadConfiguredLibrary(
     return null;
   }
 
-  // The Library tree is only registered once the index is open. Until then the view shows
-  // "Loading your library…" (package.json viewsWelcome, keyed on labshelf.libraryLoaded) under
-  // VS Code's own progress bar, never "No folders yet", which would read as a lost library.
+  // The progress bar on the Library view covers the time the index takes to open.
   let aiService: AiService | null = null;
   await vscode.window.withProgress({ location: { viewId: "labshelf.library" } }, async () => {
     const services = await controller.loadInitial(initialRoot);

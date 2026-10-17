@@ -1,6 +1,8 @@
 /** Computes paths for browsing the folder tree: breadcrumbs, labels and recursive counts. Every function takes the
  * separator, so absolute file paths (VS Code) and "papers/..." store keys (browser) share one implementation. */
 export const ROOT_LABEL = "All papers";
+/** What a folder view and a paper's Folder field call the library root. */
+export const LIBRARY_LABEL = "Library";
 
 /** @returns whether `paperPath` is `dirPath` or lies beneath it, for the given separator */
 export function isUnderDir(paperPath: string, dirPath: string, sep: string): boolean {

@@ -1,5 +1,5 @@
 /** Orders papers by a sort key with title as the tie-break; one rule set for every app. */
-import { PAPER_STATUSES, type PaperRecord } from "../../model/index.js";
+import { PAPER_STATUSES, venueOf, type PaperRecord } from "../../model/index.js";
 import { familyName } from "../format/index.js";
 import type { PaperEntry, SortSpec } from "./types.js";
 
@@ -10,6 +10,8 @@ function compareRecords(key: SortSpec["key"], a: PaperRecord, b: PaperRecord): n
   switch (key) {
     case "author":
       return nameCollator.compare(familyName(a.authors?.[0] ?? ""), familyName(b.authors?.[0] ?? ""));
+    case "venue":
+      return nameCollator.compare(venueOf(a), venueOf(b));
     case "year":
       // Newest first; `reverse` flips it.
       return (b.year ?? 0) - (a.year ?? 0);
@@ -26,8 +28,7 @@ interface ItemAccess<T> {
   lastRead: (item: T) => string | undefined;
 }
 
-// Years and reading times run newest first, and an item without one sorts after those with one, whichever way the
-// list runs.
+// Years, reading times and venues: an item without one sorts after those with one, whichever way the list runs.
 function missingLast(a: unknown, b: unknown): number {
   return (a === undefined) === (b === undefined) ? 0 : a === undefined ? 1 : -1;
 }
@@ -39,6 +40,10 @@ function comparatorFor<T>(sort: SortSpec, access: ItemAccess<T>) {
     const rb = access.record(b);
     if (sort.key === "year") {
       const missing = missingLast(ra.year, rb.year);
+      if (missing) { return missing; }
+    }
+    if (sort.key === "venue") {
+      const missing = missingLast(venueOf(ra) || undefined, venueOf(rb) || undefined);
       if (missing) { return missing; }
     }
     if (sort.key === "lastRead") {

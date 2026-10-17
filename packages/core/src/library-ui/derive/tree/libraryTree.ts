@@ -1,37 +1,37 @@
-// Derives the library tree the host shows: status scopes with counts, and each folder's subfolders then papers.
+// Derives the library tree the host shows: the paper total, and each folder's subfolders then papers.
 import { PAPERS_DIR, type FolderTreeNode } from "../../../library/index.js";
 import type { PaperRecord } from "../../../model/index.js";
-import type { StatusFilter } from "../../state/index.js";
 
 export type TreeChild =
   | { kind: "folder"; name: string; path: string; count: number }
   | { kind: "paper"; id: string; title: string };
 
 export interface LibraryTree {
-  /** All papers, then Unread, Reading and Done, each with its paper count. */
-  scopes(): Array<{ scope: StatusFilter; count: number }>;
+  /** The number of papers in the whole library. */
+  total(): number;
   /** The subfolders of a folder with their recursive paper counts, then its own papers by title; computed on demand. */
   children(path: string): TreeChild[];
   /** The folder that holds a paper; undefined for an unknown id. */
   parentOf(id: string): string | undefined;
 }
 
-const SCOPES: StatusFilter[] = ["all", "unread", "reading", "done"];
-const byTitle = (a: PaperRecord, b: PaperRecord): number => a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
+/** The fields the tree reads, so a host can send slim records. */
+export type TreePaper = Pick<PaperRecord, "id" | "title" | "status" | "tags">;
+
+const byTitle = (a: TreePaper, b: TreePaper): number => a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
 
 /**
  * Each paper's `folder` is keyed like `FolderTreeNode.path`: `PAPERS_DIR` for the root, `papers/A/B` below.
  * TRAP: the caller supplies it because `record.path` is absolute in a Node scan and relative in the browser.
  */
-export function libraryTree(input: { folders: readonly FolderTreeNode[]; papers: readonly { record: PaperRecord; folder: string }[] }): LibraryTree {
+export function libraryTree(input: { folders: readonly FolderTreeNode[]; papers: readonly { record: TreePaper; folder: string }[] }): LibraryTree {
   // Indexed once: thousands of papers must not be scanned per expanded folder.
-  const papersIn = new Map<string, PaperRecord[]>();
+  const papersIn = new Map<string, TreePaper[]>();
   const folderOf = new Map<string, string>();
-  const records = input.papers.map(({ record, folder }) => {
+  input.papers.forEach(({ record, folder }) => {
     folderOf.set(record.id, folder);
     const list = papersIn.get(folder);
     if (list) list.push(record); else papersIn.set(folder, [record]);
-    return record;
   });
   const subfolders = new Map<string, readonly FolderTreeNode[]>([[PAPERS_DIR, input.folders]]);
   const counts = new Map<string, number>();
@@ -44,7 +44,7 @@ export function libraryTree(input: { folders: readonly FolderTreeNode[]; papers:
   input.folders.forEach(count);
 
   return {
-    scopes: () => SCOPES.map((scope) => ({ scope, count: scope === "all" ? records.length : records.filter((p) => p.status === scope).length })),
+    total: () => input.papers.length,
     children: (path) => [
       ...(subfolders.get(path) ?? []).map((f): TreeChild => ({ kind: "folder", name: f.name, path: f.path, count: counts.get(f.path) ?? 0 })),
       ...[...(papersIn.get(path) ?? [])].sort(byTitle).map((p): TreeChild => ({ kind: "paper", id: p.id, title: p.title })),

@@ -50,7 +50,7 @@ function perform(ctx: UiContext, cursor: ListCursor, action: ListKeyAction): boo
     case "expand": return expandOrEnter(ctx.root, s.cursor);
     case "collapse": return collapseOrLeave(ctx.root, s.cursor);
     case "escape":
-      if (s.query || s.status !== "all") ctx.store.set({ status: "all", query: "" });
+      if (s.query) ctx.store.set({ query: "" });
       else ctx.store.clearSelection();
       return true;
     case "selectAll": ctx.store.set({ selected: new Set(cursor.order()) }); return true;

@@ -1,6 +1,6 @@
 /*
- * Styles the library page around the shared library UI: the status bar along the bottom and the folder tree in the
- * sidebar slot, drawn like VS Code's. Requires tokens.css, base.css and the library UI sheets.
+ * Styles the library page around the shared library UI: the status bar along the bottom and the brand above the
+ * sidebar. Requires tokens.css, base.css and the library UI sheets.
  */
 
 /* ── Status bar (22px, VS Code) ─────────────────────────────────── */
@@ -21,71 +21,9 @@
 .status-item.error { color: var(--ls-error); }
 .status-item .spin { animation: ls-spin 1.2s linear infinite; }
 
-/* ── Folder tree: section header, 22px rows, 8px indent per level ─ */
+/* ── Sidebar head: the brand above the shared library sidebar ───── */
 .tree-head {
   display: flex; align-items: center; justify-content: space-between; height: 35px; padding: 0 var(--ls-space-4) 0 var(--ls-space-2); flex-shrink: 0;
-  border-bottom: 1px solid var(--ls-sidebar-border);
+  border-bottom: 1px solid var(--ls-sidebar-border); margin-bottom: var(--ls-space-2);
 }
 .tree-head .ls-brand { color: var(--ls-fg); padding-left: var(--ls-space-4); }
-.sidebar-entry {
-  display: flex; align-items: center; gap: var(--ls-space-3); height: var(--ls-row-h); padding: 0 var(--ls-space-4); flex-shrink: 0;
-  border: 0; background: none; color: var(--ls-fg); font: inherit; text-align: left; cursor: pointer;
-}
-.sidebar-entry:hover { background: var(--ls-list-hover); }
-.sidebar-entry:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
-.sidebar-entry svg { width: 15px; height: 15px; flex-shrink: 0; opacity: .9; }
-.tree-section {
-  display: flex; align-items: center; justify-content: space-between; height: var(--ls-row-h); padding: 0 var(--ls-space-2) 0 var(--ls-space-1); flex-shrink: 0;
-  font-size: var(--ls-text-sm); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ls-section-fg);
-  user-select: none; cursor: pointer;
-}
-.tree-section-left { display: flex; align-items: center; gap: var(--ls-space-1); min-width: 0; }
-.tree-section .twisty { width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; transition: transform var(--ls-fast); }
-.tree-section .twisty svg { width: 16px; height: 16px; }
-.tree-section.collapsed .twisty { transform: rotate(-90deg); }
-.tree-actions { display: flex; align-items: center; gap: 0; opacity: 0; transition: opacity var(--ls-fast); }
-.tree-section:hover .tree-actions, .sidebar:focus-within .tree-actions, .tree-actions:focus-within { opacity: 1; }
-.tree-actions .ls-icon-btn { width: 20px; height: 20px; }
-.tree-actions .ls-icon-btn svg { width: 15px; height: 15px; }
-
-.tree { flex: 1; overflow-y: auto; overflow-x: hidden; padding-bottom: var(--ls-space-4); outline: none; }
-.tree-section.collapsed + .tree { display: none; }
-.tree-heading {
-  display: flex; align-items: center; height: var(--ls-row-h); padding: 0 var(--ls-space-4); margin-top: var(--ls-space-2);
-  font-size: var(--ls-text-sm); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ls-section-fg); user-select: none;
-}
-.tree-row {
-  position: relative; display: flex; align-items: center; height: var(--ls-row-h); padding-right: var(--ls-space-3);
-  padding-left: calc(var(--ls-space-4) + var(--depth, 0) * var(--ls-space-4)); cursor: pointer; white-space: nowrap; color: var(--ls-fg);
-}
-.tree-row:hover { background: var(--ls-list-hover); }
-.tree-row.selected { background: var(--ls-list-inactive-bg); }
-.tree:focus .tree-row.selected, .tree-row.selected.focused { background: var(--ls-list-active-bg); color: var(--ls-list-active-fg); }
-.tree:focus .tree-row.selected .tree-count, .tree-row.selected.focused .tree-count { color: inherit; opacity: .8; }
-.tree-row.focused { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
-.tree-row.drop-target { background: var(--ls-list-drop-bg) !important; outline: 1px dashed var(--ls-focus); outline-offset: -1px; }
-.ls-library.dragging-papers .tree-row { transition: none; }
-
-/* Indent guides appear while the pointer is over the tree, as in VS Code. */
-.tree-row .guide { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--ls-indent-guide); opacity: 0; transition: opacity var(--ls-fast); }
-.tree:hover .tree-row .guide { opacity: 1; }
-
-.tree-twisty {
-  width: 16px; height: 16px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
-  color: inherit; opacity: .9; transition: transform var(--ls-fast); border-radius: var(--ls-radius-sm);
-}
-.tree-twisty svg { width: 16px; height: 16px; }
-.tree-twisty.leaf { visibility: hidden; }
-.tree-row.collapsed .tree-twisty { transform: rotate(-90deg); }
-.tree-icon { width: 16px; height: 16px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; margin-right: var(--ls-space-3); opacity: .9; }
-.tree-icon svg { width: 15px; height: 15px; }
-.tree-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: var(--ls-font-size); }
-.tree-icon .ls-arc { width: var(--ls-space-6); height: var(--ls-space-6); }
-.tree-ref { flex-shrink: 0; margin-right: var(--ls-space-3); font-family: var(--ls-mono); font-size: var(--ls-text-xs); color: var(--ls-file-ref); }
-.tree-count { margin-left: var(--ls-space-3); font-size: var(--ls-text-md); color: var(--ls-desc); }
-.tree-row-actions { display: none; align-items: center; margin-left: var(--ls-space-2); }
-.tree-row:hover .tree-row-actions, .tree-row.focused .tree-row-actions { display: inline-flex; }
-.tree-row-actions .ls-icon-btn { width: 20px; height: 20px; opacity: .9; }
-.tree-row-actions .ls-icon-btn svg { width: 14px; height: 14px; }
-.tree:focus .tree-row.selected .ls-icon-btn { color: inherit; }
-.tree-empty { padding: var(--ls-space-5) var(--ls-space-6) var(--ls-space-6); font-size: var(--ls-text-md); line-height: 1.5; color: var(--ls-desc); }

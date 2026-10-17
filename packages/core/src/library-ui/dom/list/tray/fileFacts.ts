@@ -1,6 +1,6 @@
-// Turns a paper's record, reading stats and file listing into the ordered rows of its file tray.
+// Turns a paper's record and file listing into the ordered rows of its file tray.
 import type { PaperRecord } from "../../../../model/index.js";
-import type { PaperFile, PaperStats } from "../../../protocol/index.js";
+import type { PaperFile } from "../../../protocol/index.js";
 
 type TrayKind = "pdf" | "note" | "file" | "folder";
 type TypeTone = "pdf" | "md" | "dir" | "other";
@@ -11,8 +11,8 @@ export interface TrayEntry {
   /** Text of the type cell; empty for a folder, which shows a chevron. */
   type: string;
   tone: TypeTone;
-  /** The label is empty when the type and name already say what the fact is, as for the Note. */
-  fact: { label: string; text: string } | null;
+  /** The label is empty when the type and name already say what the fact is, as for the Note. `placeholder` marks the hint shown for an empty short note. */
+  fact: { label: string; text: string; placeholder?: true } | null;
   title: string;
 }
 
@@ -45,11 +45,11 @@ function typeOf(f: PaperFile): Pick<TrayEntry, "type" | "tone"> {
   return { type: ext ? ext.toUpperCase() : "FILE", tone: "other" };
 }
 
-function pdfFact(record: PaperRecord, stats: PaperStats | undefined): TrayEntry["fact"] {
-  const last = stats?.lastHighlight;
-  if (last) return { label: `Last highlight · p. ${last.page}`, text: `“${last.text}”` };
-  const first = record.summary?.trim().split(/(?<=[.!?])\s/)[0];
-  return first ? { label: "Abstract", text: first } : null;
+export const SHORT_NOTE_PLACEHOLDER = "Add a short note";
+
+// The paper.pdf row carries the user's short description of the paper, which identifies it in the list.
+function pdfFact(f: PaperFile): TrayEntry["fact"] {
+  return f.description ? { label: "", text: f.description } : { label: "", text: SHORT_NOTE_PLACEHOLDER, placeholder: true };
 }
 
 function fileFact(f: PaperFile): TrayEntry["fact"] {
@@ -62,11 +62,11 @@ function noteEntry(record: PaperRecord): TrayEntry {
 }
 
 /** The tray rows in display order: paper.pdf, the Note, other files, then subfolders. */
-export function trayEntries(record: PaperRecord, stats: PaperStats | undefined, listed: readonly PaperFile[]): TrayEntry[] {
+export function trayEntries(record: PaperRecord, listed: readonly PaperFile[]): TrayEntry[] {
   const shown = listed.filter((f) => f.name !== "metadata.yaml");
   const toEntry = (f: PaperFile): TrayEntry => {
     const isPdf = f.kind === "file" && f.name === PDF_NAME;
-    return { kind: isPdf ? "pdf" : f.kind, name: f.name, ...typeOf(f), fact: isPdf ? pdfFact(record, stats) : fileFact(f), title: tooltip(f) };
+    return { kind: isPdf ? "pdf" : f.kind, name: f.name, ...typeOf(f), fact: isPdf ? pdfFact(f) : fileFact(f), title: tooltip(f) };
   };
   const pdf = shown.filter((f) => f.kind === "file" && f.name === PDF_NAME).map(toEntry);
   const rest = shown.filter((f) => !(f.kind === "file" && f.name === PDF_NAME)).map(toEntry);

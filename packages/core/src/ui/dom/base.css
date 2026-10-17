@@ -41,6 +41,8 @@ svg { display: block; }
 .ls-btn-primary:hover:not(:disabled) { background: var(--ls-button-hover); }
 .ls-button-soft { background: var(--ls-button-soft-bg); color: var(--ls-button-soft-fg); }
 .ls-button-soft:hover:not(:disabled) { background: var(--ls-button-soft-hover); }
+.ls-btn-ghost { background: none; color: var(--ls-desc); }
+.ls-btn-ghost:hover:not(:disabled) { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
 .ls-btn-danger { color: var(--ls-error); }
 .ls-btn-lg { padding: 6px 14px; font-size: 13px; line-height: 18px; }
 .ls-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
@@ -96,9 +98,11 @@ svg { display: block; }
 }
 .ls-count:empty { display: none; }
 .ls-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: var(--ls-desc); display: inline-block; }
-.ls-dot.s-unread { background: var(--ls-status-unread); }
-.ls-dot.s-reading { background: var(--ls-status-reading); }
-.ls-dot.s-done { background: var(--ls-status-done); }
+/* A paper's status glyph outside the list (status button and menu), tinted like the list's Status column. */
+.ls-status-mark { display: inline-flex; width: 12px; height: 12px; flex-shrink: 0; color: var(--ls-desc); }
+.ls-status-mark svg { width: 100%; height: 100%; }
+.ls-status-mark.s-reading { color: var(--ls-mark-accent); }
+.ls-status-mark.s-done { color: var(--ls-mark-ok); }
 .ls-dot.s-ok { background: var(--ls-green); }
 .ls-dot.s-error { background: var(--ls-error); }
 mark { background: var(--ls-find-match); color: inherit; border-radius: 2px; }

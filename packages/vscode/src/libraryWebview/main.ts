@@ -24,7 +24,7 @@ mountLibraryUi($("root"), {
   },
   labels: {
     addTooltip: "Add PDF or folder here",
-    emptyHint: "To import by drag and drop, drop PDF files onto a folder in the LabShelf tree in the sidebar — not onto this panel.",
+    emptyHint: "Or drag PDFs onto a folder in the LabShelf sidebar.",
     revealPaper: "Reveal in Explorer",
   },
 });

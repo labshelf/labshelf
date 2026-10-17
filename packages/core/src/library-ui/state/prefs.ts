@@ -2,6 +2,7 @@
  * Declares the library UI preferences a host persists (sort, panes, folded sections, detail tab, citation style),
  * the port it persists them through, and `sanitizePrefs`, which turns whatever storage returns into valid prefs.
  */
+import { COLUMN_KEYS, DEFAULT_COLUMNS, type ColumnKey } from "./columns.js";
 import type { SortDir, SortKey } from "./viewState.js";
 
 export const DETAIL_TABS = ["details", "annotations", "notes", "related"] as const;
@@ -13,6 +14,7 @@ export type CiteFormat = (typeof CITE_FORMATS)[number];
 export interface LibraryUiPrefs {
   sortKey: SortKey;
   sortDir: SortDir;
+  columns: ColumnKey[];
   detailWidth: number;
   detailCollapsed: boolean;
   sidebarWidth: number;
@@ -37,6 +39,7 @@ export const PANE_LIMITS = {
 export const DEFAULT_PREFS: LibraryUiPrefs = {
   sortKey: "title",
   sortDir: 1,
+  columns: DEFAULT_COLUMNS,
   detailWidth: 360,
   detailCollapsed: false,
   sidebarWidth: 220,
@@ -46,10 +49,15 @@ export const DEFAULT_PREFS: LibraryUiPrefs = {
   citeFormat: "bibtex",
 };
 
-const SORT_KEYS: readonly SortKey[] = ["title", "creator", "year", "lastRead", "status"];
+const SORT_KEYS: readonly SortKey[] = ["title", "creator", "venue", "year", "lastRead", "status"];
 
 function isBoolMap(v: unknown): v is Record<string, boolean> {
   return !!v && typeof v === "object" && !Array.isArray(v) && Object.values(v as object).every((x) => typeof x === "boolean");
+}
+
+// Unknown names and repeats drop out and the rest take the fixed column order; an empty list is a valid choice.
+function sanitizeColumns(v: unknown): ColumnKey[] {
+  return Array.isArray(v) ? COLUMN_KEYS.filter((key) => v.includes(key)) : [...DEFAULT_COLUMNS];
 }
 
 /** Validates each field; a missing or corrupt one falls back to its default and widths are clamped. */
@@ -61,9 +69,14 @@ export function sanitizePrefs(raw: unknown): LibraryUiPrefs {
     typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.min(lim.max, Math.max(lim.min, v)) : fallback;
   const oneOf = <T extends string>(v: unknown, allowed: readonly T[], fallback: T): T => (allowed.includes(v as T) ? (v as T) : fallback);
   const bool = (v: unknown, fallback: boolean): boolean => (typeof v === "boolean" ? v : fallback);
+  const columns = sanitizeColumns(r["columns"]);
+  const sortKey = oneOf(r["sortKey"], SORT_KEYS, d.sortKey);
+  // A sort by a hidden column would order the list by something the user cannot see.
+  const sortHidden = sortKey !== "title" && !columns.includes(sortKey);
   return {
-    sortKey: oneOf(r["sortKey"], SORT_KEYS, d.sortKey),
-    sortDir: r["sortDir"] === -1 ? -1 : 1,
+    sortKey: sortHidden ? "title" : sortKey,
+    sortDir: sortHidden || r["sortDir"] !== -1 ? 1 : -1,
+    columns,
     detailWidth: num(r["detailWidth"], d.detailWidth, PANE_LIMITS.detail),
     detailCollapsed: bool(r["detailCollapsed"], d.detailCollapsed),
     sidebarWidth: num(r["sidebarWidth"], d.sidebarWidth, PANE_LIMITS.sidebar),

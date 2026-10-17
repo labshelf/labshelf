@@ -5,13 +5,13 @@
 import { parentDir } from "../../../library/index.js";
 import type { AnnotationColor } from "../../../model/index.js";
 import { formatAnnotationsMarkdown, formatQuoteWithCitation } from "../../../reader/index.js";
-import { authorQuery, keywordQuery, tagQuery } from "../../searchQueries.js";
+import { authorQuery, keywordQuery } from "../../searchQueries.js";
 import type { CiteFormat, DetailTab } from "../../state/index.js";
 import {
   askAuthor, attachPdf, changeTags, confirmFindBetterPdf, copyCitation, copyText, findPdf, fixableIds, hostFileAction,
   makeSearchable, openPaper, openSource, pickMoveTarget, revealPaper,
 } from "../flows/index.js";
-import { runHeadMenu } from "./head/index.js";
+import { openTagMenu, runHeadMenu } from "./head/index.js";
 import type { PaneState } from "./paneState.js";
 import { filteredAnnotations } from "./tabs/index.js";
 
@@ -56,8 +56,8 @@ function paperAction(pane: PaneState, a: string, el: HTMLElement): boolean {
 
 // Clicks that narrow the list to papers like this one.
 function searchAction(pane: PaneState, a: string, el: HTMLElement): boolean {
-  const query = a === "searchTag" ? tagQuery(el.dataset["tag"] ?? "")
-    : a === "searchAuthor" ? authorQuery(el.dataset["q"] ?? "")
+  if (a === "searchTag") { pane.ctx.store.searchTag(el.dataset["tag"] ?? ""); return true; }
+  const query = a === "searchAuthor" ? authorQuery(el.dataset["q"] ?? "")
     : a === "searchKeyword" ? keywordQuery(el.dataset["keyword"] ?? "")
     : null;
   if (query === null) {
@@ -66,7 +66,7 @@ function searchAction(pane: PaneState, a: string, el: HTMLElement): boolean {
     if (p) pane.ctx.store.openFolder(parentDir(p.path, "/"));
     return true;
   }
-  pane.ctx.store.set({ status: "all", query });
+  pane.ctx.store.set({ query });
   return true;
 }
 
@@ -116,6 +116,7 @@ function paneAction(pane: PaneState, a: string, el: HTMLElement, rerender: Reren
     case "toggleAbstract": pane.abstractOpen = !pane.abstractOpen; break;
     case "toggleAuthors": pane.authorsOpen = !pane.authorsOpen; break;
     case "addTag": pane.tagEditing = true; break;
+    case "pickTag": openTagMenu(ctx, el); return true;
     case "copyAbstract": copyText(ctx, paper(pane)?.summary ?? "", "abstract"); return true;
     case "copyNote": { const p = paper(pane); if (p) copyText(ctx, pane.notes.text(p).trim() ? pane.notes.text(p) : "", "note"); return true; }
     default: return false;

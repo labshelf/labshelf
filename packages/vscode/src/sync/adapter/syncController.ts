@@ -165,16 +165,19 @@ export class SyncController implements vscode.Disposable {
     }
   }
 
-  // Updates the status bar item and the context key that picks the Settings view's Drive buttons to reflect the auth state.
+  isConnected(): boolean {
+    return this.auth.isAuthenticated();
+  }
+
+  // Updates the status bar item to reflect the auth state.
   private updateStatusBar(): void {
-    const connected = this.auth.isAuthenticated();
+    const connected = this.isConnected();
     this.statusBar.text = connected ? "$(cloud) LabShelf" : "$(cloud-upload) LabShelf";
     this.statusBar.tooltip = connected
       ? "LabShelf: synced with Google Drive. Click to sync."
       : "LabShelf: not synced. Click to connect to Drive.";
     this.statusBar.command = connected ? "labshelf.sync.now" : "labshelf.sync.connect";
     this.statusBar.show();
-    void vscode.commands.executeCommand("setContext", "labshelf.driveConnected", connected);
   }
 
   dispose(): void {

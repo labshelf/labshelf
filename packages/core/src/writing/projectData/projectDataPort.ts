@@ -4,7 +4,7 @@ import type { BacklinkIndex } from "../backlinks/index.js";
 import type { BibliographyUpdate, CitingProject } from "../citations/index.js";
 import type { FigureState } from "../figures/index.js";
 import type {
-  FigureRecipe, OpenSources, ProjectCursor, ProjectEntry, ProjectFormat, ProjectLastEdit, ProjectSettingsPatch,
+  FigureRecipe, OpenSources, ProjectEntry, ProjectFormat, ProjectSettingsPatch,
 } from "../project/index.js";
 import type { ProjectTemplate, TemplateFile } from "../templates/index.js";
 import type { SynctexRead } from "../synctex/index.js";
@@ -22,8 +22,6 @@ export interface ProjectDataPort {
   /** Names of the files directly inside `folder`, for picking a main file. */
   rootFileNames(folder: string): Promise<string[]>;
   updateProjectSettings(folder: string, patch: ProjectSettingsPatch): Promise<void>;
-  writeProjectCursor(folder: string, cursor: ProjectCursor): Promise<void>;
-  latestProjectEdit(entries: readonly ProjectEntry[]): Promise<ProjectLastEdit | undefined>;
   listVersions(folder: string): Promise<ProjectVersion[]>;
   /** Returns the folder of the marked version. */
   markVersion(request: MarkVersionRequest): Promise<string>;
