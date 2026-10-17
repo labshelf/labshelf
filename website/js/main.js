@@ -3,7 +3,7 @@
 import { initAnchorScroll } from "./anchorScroll.js";
 import { initCopyButtons } from "./copyButtons.js";
 import { initPopover } from "./popover.js";
-import { initCitationDemo, initCliRecording, initHeroTyping } from "./page/index.js";
+import { initCitationDemo, initClips, initHeroTyping } from "./page/index.js";
 import {
   initHighlightsList,
   initOutline,
@@ -18,7 +18,7 @@ initAnchorScroll();
 initCopyButtons();
 
 initHeroTyping();
-initCliRecording();
+initClips();
 initCitationDemo();
 
 initOutline();

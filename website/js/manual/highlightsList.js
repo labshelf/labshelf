@@ -1,4 +1,4 @@
-// Lists the manual's highlights in the side panel with their meaning and section, and scrolls to one on click.
+// Lists the manual's highlights in the side panel with their colour and section, and scrolls to one on click.
 
 import { $, $$, escapeHtml, reducedMotion } from "../dom.js";
 
@@ -9,8 +9,8 @@ export function renderHighlights() {
     .map((mark, k) => {
       mark.dataset.k = k;
       const section = mark.closest("section")?.querySelector("h2 .n")?.textContent;
-      const meaning = mark.dataset.m;
-      return `<button data-m="${meaning}" data-k="${k}">${escapeHtml(mark.textContent)}<small>${meaning}${section ? ` · §${section}` : ""}</small></button>`;
+      const colour = mark.dataset.m;
+      return `<button data-m="${colour}" data-k="${k}">${escapeHtml(mark.textContent)}<small>${colour}${section ? ` · §${section}` : ""}</small></button>`;
     })
     .join("");
 }

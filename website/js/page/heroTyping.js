@@ -3,7 +3,7 @@
 
 import { $, escapeHtml, reducedMotion } from "../dom.js";
 
-const COMMAND = " labshelf ls --cited-by thesis.tex";
+const COMMAND = " labshelf search status:reading";
 const PROMPT = '<span class="prompt">&gt;</span>';
 const CURSOR = '<span class="cur"></span>';
 

@@ -1,0 +1,7 @@
+/* Styles the support section: a short appeal and the button to the sponsor page. */
+
+.support{display:flex;flex-wrap:wrap;align-items:center;gap:28px 56px}
+.support p{margin:0;flex:1 1 32ch;max-width:52ch;font-size:clamp(18px,1.8vw,21px);line-height:1.5;color:var(--tx)}
+.sponsor{flex:none;background:var(--blue);color:var(--ink);font:500 14px var(--mono);padding:15px 24px;border-radius:6px}
+.sponsor:hover{text-decoration:none;background:var(--tx)}
+.sponsor:focus-visible{outline:2px solid var(--tx);outline-offset:3px}

@@ -4,11 +4,11 @@ import { $ } from "../dom.js";
 import { toast } from "../toast.js";
 import { hidePopover, hidePopoverSoon, onPopoverClick, popoverOwner, showPopover } from "../popover.js";
 
-const UNDEFINED_CARD = `<div class="t1">undefined citation</div><h5 class="citekey">vaswani2018</h5><div class="ve">intro.tex:44 · \\citep{vaswani2018}</div>
-  <div class="err">vaswani2018 is not in refs.bib</div><div class="row"><div>use <b>vaswani2017</b><small>Attention is all you need · on your shelf</small></div><button class="hi" data-fix>Replace</button></div>`;
-const PAPER_CARD = `<div class="t1">Vaswani et al. · 2017<span class="r">REF</span></div><h5>Attention is all you need</h5><div class="ve">NeurIPS 2017 · Deep learning › Transformers</div>
-  <div class="hl">Without the scaling, large values of d_k make the dot products large and the gradients tiny.<small>your highlight on p. 4 · Key claim</small></div>
-  <div class="acts"><button data-t="opens the paper at p. 4 in the reader">Open at p. 4</button><button data-t="opens intro.tex">Go to source</button></div>`;
+const UNDEFINED_CARD = `<div class="t1">Cited key</div><h5 class="citekey">vaswani2018attention</h5><div class="ve">intro.tex:44</div>
+  <div class="err">Not in your library</div><div class="acts"><button class="hi" data-fix>Replace with vaswani2017attention</button></div>`;
+const PAPER_CARD = `<div class="t1">Cited paper</div><h5>Attention Is All You Need</h5><div class="ve">Vaswani et al. · 2017 · vaswani2017attention</div>
+  <div class="hl">Without the scaling, large values of d_k make the dot products large and the gradients tiny.<small>your yellow highlight on p. 4</small></div>
+  <div class="acts"><button data-t="opens the paper in the reader">Open paper</button><button data-t="opens intro.tex">Go to source</button></div>`;
 
 let fixed = false;
 
@@ -24,7 +24,7 @@ function replaceKey() {
   const key = $("#k44");
   const status = $("#dst");
   const label = status.querySelector("span");
-  key.textContent = "vaswani2017";
+  key.textContent = "vaswani2017attention";
   key.classList.replace("bad", "new");
   status.classList.add("ch");
   label.textContent = "Source changed";
@@ -34,7 +34,7 @@ function replaceKey() {
     label.textContent = "Compiled just now";
     const citation = $("#out .undef");
     citation.classList.remove("undef");
-    citation.textContent = "(Vaswani et al., 2017)";
+    citation.textContent = "[1]";
     citation.dataset.c = "ok";
     key.classList.remove("new");
     toast("fixed · 0 problems");

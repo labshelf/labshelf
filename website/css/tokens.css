@@ -1,5 +1,5 @@
-/* Declares the site palette, the two type families and the colour of each highlight meaning. */
-/* The page is a terminal session on an ink-dark desk; LabShelf blue is the only marker, yellow stays only as the Key claim highlight. */
+/* Declares the site palette, the two type families and the colour of each highlight. */
+/* The page is a terminal session on an ink-dark desk; LabShelf blue is the only marker, yellow appears only as a highlight colour. */
 
 :root{
   --ink:#0d1118; --ink2:#141a24; --ink3:#1c2431; --line:#273041; --tx:#d9dee7; --dim:#8c95a6; --faint:#5b6476;
@@ -9,4 +9,4 @@
   color-scheme:dark;
 }
 
-[data-m="Key claim"]{--c:#e7b52f} [data-m="Method"]{--c:#5fae7d} [data-m="Definition"]{--c:#6f95dd} [data-m="Doubt"]{--c:#d9776f}
+[data-m="yellow"]{--c:#f5c518} [data-m="green"]{--c:#4caf50} [data-m="blue"]{--c:#2196f3} [data-m="red"]{--c:#f44336} [data-m="pink"]{--c:#e91e63}

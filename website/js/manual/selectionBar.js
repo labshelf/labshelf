@@ -1,4 +1,4 @@
-// Highlights a text selection in the manual with the meaning picked from a floating bar, as the reader does.
+// Highlights a text selection in the manual with the colour picked from a floating bar, as the reader does.
 
 import { $ } from "../dom.js";
 import { toast } from "../toast.js";
@@ -14,14 +14,14 @@ function showAbove(rect) {
   bar.style.left = `${Math.max(8, Math.min(centred, innerWidth - bar.offsetWidth - 8))}px`;
 }
 
-function highlight(meaning) {
+function highlight(colour) {
   const mark = document.createElement("mark");
   mark.className = "h";
-  mark.dataset.m = meaning;
-  mark.title = meaning;
+  mark.dataset.m = colour;
+  mark.title = colour;
   try {
     range.surroundContents(mark);
-    toast(`highlighted as ${meaning}`);
+    toast(`highlighted ${colour}`);
     renderHighlights();
   } catch {
     // TRAP: surroundContents throws when the selection crosses an element boundary, such as two paragraphs.
@@ -47,7 +47,7 @@ export function initSelectionBar() {
   document.addEventListener("mousedown", (e) => {
     if (!e.target.closest("#selbar")) bar.hidden = true;
   });
-  // Keeps the selection alive while a meaning is clicked.
+  // Keeps the selection alive while a colour is clicked.
   bar.addEventListener("mousedown", (e) => e.preventDefault());
   bar.addEventListener("click", (e) => {
     const button = e.target.closest("[data-m]");

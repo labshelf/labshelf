@@ -20,15 +20,14 @@
 .copyc li b{color:var(--tx);font-weight:500}
 @media (max-width:900px){.two,.two.rev{grid-template-columns:minmax(0,1fr);gap:28px}.two.rev>.copyc{order:0}}
 
-/* Figures: slots for the real GIFs and screenshots, drawn as mock-ups until the recordings exist. Captions are set like a paper's. */
+/* Figures: recorded clips and live demos, with captions set like a paper's. */
 figure{margin:0}
-.fig{position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--ink2)}
-.fig .chrome{display:flex;align-items:center;gap:10px;height:30px;padding:0 12px;border-bottom:1px solid var(--line);font:11px var(--mono);color:var(--faint)}
-.fig .chrome b{font-weight:400;color:var(--dim)}
-.slot{position:absolute;right:10px;bottom:10px;display:inline-flex;gap:8px;align-items:center;font:10.5px var(--mono);color:var(--dim);background:color-mix(in srgb,var(--ink) 88%,transparent);border:1px dashed var(--faint);border-radius:5px;padding:5px 8px;z-index:2}
-.slot i{width:6px;height:6px;border-radius:50%;background:var(--red);animation:blink 1.4s steps(1) infinite}
+.fig{border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--ink2)}
+.fig+.fig{margin-top:18px}
+.fig video{display:block;width:100%;height:auto}
 figcaption{margin-top:18px;font:15px/1.5 var(--serif);color:var(--dim)}
 figcaption b{font-style:normal;font-weight:500;color:var(--tx)}
-.ar{aspect-ratio:16/10;max-width:100%;position:relative}
-.fig-gap{margin-top:80px}
-.wide{aspect-ratio:21/8;max-width:100%}
+.live{margin-top:72px}
+.live [data-demo]{height:min(640px,80vh);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.clips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(28px,4vw,56px);margin-top:80px}
+@media (max-width:900px){.clips{grid-template-columns:minmax(0,1fr)}}
