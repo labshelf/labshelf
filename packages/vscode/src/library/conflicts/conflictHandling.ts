@@ -2,7 +2,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { errorMessage, type ConflictCopy, type ConflictResolution } from "@labshelf/core";
-import { resolveConflictCopy, scanConflictCopies } from "@labshelf/core/node";
+import { FileMergeBaseStore, resolveConflictCopy, scanLibraryConflicts } from "@labshelf/core/node";
 import type { ActiveServices } from "../../commands/index.js";
 import { conflictChoices, toolName } from "./conflictChoices.js";
 import { ConflictNotifier, conflictMessage } from "./conflictNotifier.js";
@@ -37,7 +37,7 @@ export class ConflictHandling {
     this.resolving = true;
     let remaining = 0;
     try {
-      const copies = await scanConflictCopies(root, services.logger);
+      const copies = await scanLibraryConflicts(root, new FileMergeBaseStore(root), services.logger);
       if (copies.length === 0) { void vscode.window.showInformationMessage("No conflicting copies"); return; }
       remaining = await walkConflicts(copies, {
         ask: (copy, index, total) => this.ask(copy, index, total, services),
@@ -58,7 +58,7 @@ export class ConflictHandling {
   }
 
   private async ask(copy: ConflictCopy, index: number, total: number, services: ActiveServices): Promise<ConflictResolution | undefined> {
-    const title = services.library.paper(copy.paperId)?.record.title || copy.paperId;
+    const title = (copy.owner.kind === "paper" && services.library.paper(copy.owner.id)?.record.title) || copy.owner.id;
     const picked = await vscode.window.showQuickPick(
       conflictChoices(copy).map((choice) => ({ label: choice.label, resolution: choice.resolution })),
       {

@@ -3,7 +3,7 @@ import type { ConflictCopy } from "@labshelf/core";
 import { conflictChoices, conflictCountLabel, conflictItems } from "../../../../src/ui/app/conflicts/conflictItems.js";
 
 const copy = (file: string, paperId = "p1"): ConflictCopy => ({
-  paperId, original: `/lib/papers/${paperId}/${file}`, copy: `/lib/papers/${paperId}/x`, tool: "dropbox",
+  owner: { kind: "paper", id: paperId }, original: `/lib/papers/${paperId}/${file}`, copy: `/lib/papers/${paperId}/x`, tool: "dropbox",
 });
 
 describe("conflictCountLabel", () => {

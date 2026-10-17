@@ -16,11 +16,11 @@ export function conflictCountLabel(count: number): string {
   return count === 0 ? "" : `${count} conflict${count === 1 ? "" : "s"}`;
 }
 
-/** One picker row per copy: the paper's title (its id when the store lacks it), the file name and the sync tool. */
+/** One picker row per copy: the paper's title (its id when the store lacks it) or the project id, the file name and the sync tool. */
 export function conflictItems(copies: readonly ConflictCopy[], titleOf: (paperId: string) => string | undefined): PickerItem[] {
   return copies.map((copy, index) => ({
     id: String(index),
-    label: `${titleOf(copy.paperId) ?? copy.paperId} · ${path.basename(copy.original)}`,
+    label: `${(copy.owner.kind === "paper" ? titleOf(copy.owner.id) : undefined) ?? copy.owner.id} · ${path.basename(copy.original)}`,
     detail: copy.tool,
   }));
 }

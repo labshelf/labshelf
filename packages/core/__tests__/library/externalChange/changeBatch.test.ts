@@ -1,6 +1,6 @@
 import { processChangeBatch, type ConflictCopy, type ILogger } from "@labshelf/core";
 
-const copy: ConflictCopy = { paperId: "p", original: "/lib/papers/p/metadata.yaml", copy: "/lib/papers/p/m (conflicted copy).yaml", tool: "dropbox" };
+const copy: ConflictCopy = { owner: { kind: "paper", id: "p" }, original: "/lib/papers/p/metadata.yaml", copy: "/lib/papers/p/m (conflicted copy).yaml", tool: "dropbox" };
 
 function setup(overrides: { scan?: () => Promise<ConflictCopy[]>; present?: boolean } = {}) {
   const order: string[] = [];

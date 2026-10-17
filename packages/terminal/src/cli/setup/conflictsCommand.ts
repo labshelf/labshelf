@@ -2,7 +2,7 @@
 import * as path from "node:path";
 
 import { conflictResolutions, type ConflictCopy, type ConflictResolution, type ILogger } from "@labshelf/core";
-import { resolveConflictCopy, scanConflictCopies } from "@labshelf/core/node";
+import { FileMergeBaseStore, resolveConflictCopy, scanLibraryConflicts } from "@labshelf/core/node";
 
 import type { Output } from "../usage.js";
 import type { Ask } from "./prompt.js";
@@ -10,7 +10,7 @@ import type { Ask } from "./prompt.js";
 const RESOLUTIONS: Record<string, ConflictResolution> = { m: "keepMine", o: "keepOther", b: "keepBoth" };
 
 function describe(root: string, conflict: ConflictCopy): string {
-  return `${conflict.paperId}  ${path.relative(root, conflict.copy)}  (${conflict.tool})`;
+  return `${conflict.owner.id}  ${path.relative(root, conflict.copy)}  (${conflict.tool})`;
 }
 
 const PROMPTS: Record<ConflictResolution, string> = { keepMine: "[m]ine", keepOther: "[o]ther", keepBoth: "[b]oth" };
@@ -37,7 +37,7 @@ async function resolveInteractively(root: string, conflict: ConflictCopy, io: Ou
  * @returns the exit code: 0
  */
 export async function runConflicts(root: string, io: Output, ask: Ask | undefined, logger: ILogger): Promise<number> {
-  const conflicts = await scanConflictCopies(root, logger);
+  const conflicts = await scanLibraryConflicts(root, new FileMergeBaseStore(root), logger);
   if (conflicts.length === 0) {
     io.out("No conflicting copies.");
     return 0;

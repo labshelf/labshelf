@@ -122,7 +122,7 @@ export async function mergeSidecarConflicts(root: string, logger: ILogger): Prom
     for (const entry of await readDirOrEmpty(dir)) {
       const parsed = entry.isFile() ? parseConflictName(entry.name) : null;
       if (parsed?.original === SIDECAR_FILE) {
-        conflicts.push({ paperId: paper.name, original: dataJson, copy: path.join(dir, entry.name), tool: parsed.tool });
+        conflicts.push({ owner: { kind: "paper", id: paper.name }, original: dataJson, copy: path.join(dir, entry.name), tool: parsed.tool });
       }
     }
     if (conflicts.length === 0) { continue; }

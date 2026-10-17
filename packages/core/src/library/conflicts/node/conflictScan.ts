@@ -19,7 +19,7 @@ async function collectPaperConflicts(dir: string, paperId: string | null, found:
       continue;
     }
     const parsed = entry.isFile() && owner ? parseConflictName(entry.name) : null;
-    if (parsed && owner) { found.push({ paperId: owner, original: path.join(dir, parsed.original), copy: full, tool: parsed.tool }); }
+    if (parsed && owner) { found.push({ owner: { kind: "paper", id: owner }, original: path.join(dir, parsed.original), copy: full, tool: parsed.tool }); }
   }
 }
 

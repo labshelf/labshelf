@@ -3,9 +3,11 @@ import { METADATA_FILE } from "../layout.js";
 
 export type SyncTool = "syncthing" | "nextcloud" | "dropbox" | "rclone";
 
+/** A paper (its paper folder or its sidecar folder) or a writing project, by id. */
+export type ConflictOwner = { kind: "paper"; id: string } | { kind: "project"; id: string };
+
 export interface ConflictCopy {
-  /** The paper the file belongs to: its paper folder, or its sidecar folder. */
-  paperId: string;
+  owner: ConflictOwner;
   /** Absolute path of the file the copy conflicts with; it may be missing. */
   original: string;
   /** Absolute path of the conflict copy. */

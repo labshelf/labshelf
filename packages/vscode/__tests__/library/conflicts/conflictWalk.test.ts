@@ -2,7 +2,7 @@ import type { ConflictCopy, ConflictResolution } from '@labshelf/core';
 import { walkConflicts } from '../../../src/library/conflicts/conflictWalk';
 
 const copies: ConflictCopy[] = ['a', 'b', 'c'].map((id) => ({
-  paperId: id, original: `/l/${id}/f`, copy: `/l/${id}/f.conflict`, tool: 'dropbox',
+  owner: { kind: 'paper', id }, original: `/l/${id}/f`, copy: `/l/${id}/f.conflict`, tool: 'dropbox',
 }));
 
 function deps(answers: Array<ConflictResolution | undefined>, failOn?: string) {
@@ -13,10 +13,10 @@ function deps(answers: Array<ConflictResolution | undefined>, failOn?: string) {
     walk: {
       ask: async () => answers.shift(),
       apply: async (copy: ConflictCopy, resolution: ConflictResolution) => {
-        if (copy.paperId === failOn) { throw new Error('boom'); }
-        applied.push(`${copy.paperId}:${resolution}`);
+        if (copy.owner.id === failOn) { throw new Error('boom'); }
+        applied.push(`${copy.owner.id}:${resolution}`);
       },
-      onFailure: (copy: ConflictCopy) => { failures.push(copy.paperId); },
+      onFailure: (copy: ConflictCopy) => { failures.push(copy.owner.id); },
     },
   };
 }

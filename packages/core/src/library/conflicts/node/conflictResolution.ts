@@ -1,4 +1,4 @@
-// Applies the user's choice to one conflict copy in a paper folder.
+// Applies the user's choice to one conflict copy in a paper or project folder.
 import { constants as fsConstants, promises as fs } from "node:fs";
 import * as path from "node:path";
 

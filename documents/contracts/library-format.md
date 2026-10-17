@@ -37,6 +37,7 @@ The library folder may be synced between devices by any file sync tool, so every
   openalex/                        OpenAlex citation data for the citation map
 <state dir>/libraries/<library key>/      $XDG_STATE_HOME/labshelf (default ~/Library/Application Support/labshelf on macOS, ~/.local/state/labshelf elsewhere, Windows included)
   projects.json                    project folders registered outside the library
+  merge-bases/<project id>/<path>  per writing-project text file, the content this device last knew to be common with other devices: the base of a three-way merge of a conflict copy
   logs/app.log                     VS Code log (JSON lines)
   logs/terminal.log                terminal log (JSON lines)
 ```
@@ -280,7 +281,8 @@ Google Drive, OneDrive and iCloud Drive are not recognised: their conflict names
 
 - A conflict copy of a sidecar is merged into `data.json` without asking. The copies of one sidecar are folded into `data.json` from the oldest modification time to the newest: annotations are the union by `id`; for an `id` in both, `theme` and `reading`, the side with the newer modification time wins, where the merged result counts as old as the newest file folded into it. Every annotation that has an `id` is kept; annotations without an `id` and unknown top-level fields are dropped, as by any LabShelf write of `data.json`. A deleted annotation may come back. If `data.json` changes during the merge, the merge starts again (at most three times, then the copies are kept and shown to the user). The result is written atomically, read back, and only when `data.json` holds exactly the merged result are the copies deleted. A copy whose `data.json` is missing takes its place if it is a sidecar (a JSON object). A copy that is not, or whose `data.json` is not, is kept and shown to the user like any other copy.
 - A conflict copy of any other file inside a paper folder (`metadata.yaml`, the PDF, an attachment) is shown to the user, who resolves it: keep mine (delete the copy), keep the other (the copy replaces the original), or keep both (the copy is renamed to `<name> (copy <n>).<ext>` with the lowest free `n`). Keep both is not offered for `metadata.yaml`, because a paper has exactly one.
-- A conflict copy is deleted only by a resolution or after a successful sidecar merge.
+- A conflict copy of a writing project's text file is merged three-way when the device has a base for it ([sync.md#conflict-copies](sync.md#conflict-copies)); otherwise it is shown to the user with the same three choices.
+- A conflict copy is deleted only by a resolution or after a successful sidecar or project-file merge.
 
 ## Shared configuration
 

@@ -1,7 +1,7 @@
 import { conflictResolutions, type ConflictCopy } from "@labshelf/core";
 
 function copyOf(original: string): ConflictCopy {
-  return { paperId: "p", original, copy: `${original}.conflict`, tool: "syncthing" };
+  return { owner: { kind: "paper", id: "p" }, original, copy: `${original}.conflict`, tool: "syncthing" };
 }
 
 describe("conflictResolutions", () => {

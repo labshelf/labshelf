@@ -36,7 +36,7 @@ describe("scanConflictCopies", () => {
       "paper.sync-conflict-20240301-123456-ABCDEFG.pdf",
     ]);
     expect(byCopy["paper.sync-conflict-20240301-123456-ABCDEFG.pdf"]).toEqual({
-      paperId: "smith2020x",
+      owner: { kind: "paper", id: "smith2020x" },
       original: path.join(paper, "paper.pdf"),
       copy: path.join(paper, "paper.sync-conflict-20240301-123456-ABCDEFG.pdf"),
       tool: "syncthing",
@@ -90,7 +90,7 @@ describe("scanConflictCopies", () => {
     const logger = fakeLogger();
 
     expect(await scanConflictCopies(root, logger)).toEqual([
-      { paperId: "smith2020x", original: path.join(dir, "data.json"), copy, tool: "dropbox" },
+      { owner: { kind: "paper", id: "smith2020x" }, original: path.join(dir, "data.json"), copy, tool: "dropbox" },
     ]);
     expect(await fs.readFile(copy, "utf8")).toBe("{ broken");
     expect(logger.logs.some((l) => l.level === "WARN")).toBe(true);

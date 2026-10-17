@@ -1,4 +1,4 @@
-/** Locates a library's device-local files (AI index, OpenAlex cache, logs, project registry) outside the synced
+/** Locates a library's device-local files (AI index, OpenAlex cache, logs, project registry, merge bases) outside the synced
  * library folder, in per-library folders of the cache and state directories. */
 import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
@@ -17,6 +17,8 @@ export interface DeviceLocalLayout {
   readonly terminalLogPath: string;
   /** The list of project folders that live outside the library. */
   readonly projectRegistryPath: string;
+  /** Per project text file, the content last known to be common with other devices (writing merge bases). */
+  readonly mergeBasesDir: string;
 }
 
 /**
@@ -53,5 +55,6 @@ export function deviceLocalLayout(libraryRoot: string, env: NodeJS.ProcessEnv = 
     appLogPath: path.join(logsDir, "app.log"),
     terminalLogPath: path.join(logsDir, "terminal.log"),
     projectRegistryPath: path.join(state, "projects.json"),
+    mergeBasesDir: path.join(state, "merge-bases"),
   };
 }

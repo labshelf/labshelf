@@ -3,7 +3,7 @@
 import * as vscode from "vscode";
 
 import { RootPresenceMonitor, errorMessage, libraryLayout, processChangeBatch, type ConflictCopy, type ILogger } from "@labshelf/core";
-import { scanConflictCopies } from "@labshelf/core/node";
+import { FileMergeBaseStore, scanLibraryConflicts } from "@labshelf/core/node";
 import { ExternalChangeWatcher } from "../../storage/data/index.js";
 import type { ActiveServices } from "../../commands/index.js";
 
@@ -57,7 +57,7 @@ export class ExternalChangeHandling {
     });
     this.monitor.start();
     // The first scan reports copies a sync tool left while the library was closed.
-    void scanConflictCopies(root.fsPath, logger).then(this.deps.onConflicts, (error: unknown) => {
+    void scanLibraryConflicts(root.fsPath, new FileMergeBaseStore(root.fsPath), logger).then(this.deps.onConflicts, (error: unknown) => {
       void logger.log("WARN", "extension", "Conflict scan failed", { message: errorMessage(error) });
     });
   }
@@ -79,7 +79,7 @@ export class ExternalChangeHandling {
       await processChangeBatch({
         logger,
         isRootPresent: () => monitor.check(),
-        scanConflicts: () => scanConflictCopies(root.fsPath, logger),
+        scanConflicts: () => scanLibraryConflicts(root.fsPath, new FileMergeBaseStore(root.fsPath), logger),
         onConflicts: this.deps.onConflicts,
         reindex: async () => { await services.reindexLibrary(); },
       });

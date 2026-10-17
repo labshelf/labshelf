@@ -2,7 +2,7 @@ import type { ConflictCopy } from '@labshelf/core';
 import { conflictChoices, toolName } from '../../../src/library/conflicts/conflictChoices';
 
 const copy = (name: string): ConflictCopy => ({
-  paperId: 'p1', original: `/lib/papers/p1/${name}`, copy: `/lib/papers/p1/${name}.sync-conflict`, tool: 'syncthing',
+  owner: { kind: 'paper', id: 'p1' }, original: `/lib/papers/p1/${name}`, copy: `/lib/papers/p1/${name}.sync-conflict`, tool: 'syncthing',
 });
 
 describe('conflictChoices', () => {

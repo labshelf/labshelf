@@ -15,7 +15,7 @@ async function paperWith(original: string, copyName: string): Promise<{ dir: str
   const dir = await makeTempDir();
   await fs.writeFile(path.join(dir, original), "mine");
   await fs.writeFile(path.join(dir, copyName), "other");
-  return { dir, copy: { paperId: "p", original: path.join(dir, original), copy: path.join(dir, copyName), tool: "syncthing" } };
+  return { dir, copy: { owner: { kind: "paper", id: "p" }, original: path.join(dir, original), copy: path.join(dir, copyName), tool: "syncthing" } };
 }
 
 const PDF_COPY = "paper.sync-conflict-20240301-123456-ABCDEFG.pdf";
@@ -81,7 +81,7 @@ describe("resolveConflictCopy", () => {
     await fs.mkdir(path.join(dir, subdir), { recursive: true });
     await fs.writeFile(path.join(dir, "paper.pdf"), "mine");
     await fs.writeFile(path.join(dir, subdir, copyName), "other");
-    const conflict: ConflictCopy = { paperId: "p", original: path.join(dir, "paper.pdf"), copy: path.join(dir, subdir, copyName), tool: "syncthing" };
+    const conflict: ConflictCopy = { owner: { kind: "paper", id: "p" }, original: path.join(dir, "paper.pdf"), copy: path.join(dir, subdir, copyName), tool: "syncthing" };
 
     for (const resolution of ["keepMine", "keepOther", "keepBoth"] as const) {
       await expect(resolveConflictCopy(conflict, resolution, fakeLogger())).rejects.toThrow(/not a conflict copy/);

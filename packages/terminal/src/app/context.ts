@@ -7,8 +7,8 @@ import {
   processChangeBatch, type ILogger, type LibraryStore, type PdfjsLoader,
 } from "@labshelf/core";
 import {
-  FileLogSink, NodeLibraryFileSystem, NodePdfOpener, TesseractOcrEngine, cacheDir, createPdfjsLoader, deviceLocalLayout,
-  scanConflictCopies,
+  FileLogSink, FileMergeBaseStore, NodeLibraryFileSystem, NodePdfOpener, TesseractOcrEngine, cacheDir, createPdfjsLoader,
+  deviceLocalLayout, scanLibraryConflicts,
 } from "@labshelf/core/node";
 
 import { ConflictFeed } from "./conflictFeed.js";
@@ -98,7 +98,7 @@ function startWatcher(
     void processChangeBatch({
       logger,
       isRootPresent: () => watcher.rootPresent(),
-      scanConflicts: () => scanConflictCopies(paths.root, logger),
+      scanConflicts: () => scanLibraryConflicts(paths.root, new FileMergeBaseStore(paths.root), logger),
       onConflicts: (copies) => conflicts.set(copies),
       reindex: () => store.reload().then(() => void indexAnnotations()),
     });
@@ -120,7 +120,7 @@ async function openConflictFeed(
   root: string, logger: ILogger, scanAtStart: boolean | undefined,
 ): Promise<{ conflicts: ConflictFeed; rescanConflicts: () => Promise<void> }> {
   const conflicts = new ConflictFeed();
-  const rescanConflicts = async (): Promise<void> => { conflicts.set(await scanConflictCopies(root, logger)); };
+  const rescanConflicts = async (): Promise<void> => { conflicts.set(await scanLibraryConflicts(root, new FileMergeBaseStore(root), logger)); };
   if (scanAtStart) {
     await rescanConflicts().catch((error: unknown) => logger.log("WARN", "terminal/app", "Startup conflict scan failed", { message: errorMessage(error) }));
   }

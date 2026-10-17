@@ -12,6 +12,9 @@
     "paths": {
       "@labshelf/core": [
         "./src/index.ts"
+      ],
+      "node-diff3": [
+        "./node_modules/node-diff3/src/diff3.d.ts"
       ]
     }
   },
