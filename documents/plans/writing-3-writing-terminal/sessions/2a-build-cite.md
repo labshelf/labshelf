@@ -14,7 +14,7 @@
 ## Shared shapes
 
 - Command module: `cli/<command>/index.ts` exports `run<Name>(ctx: AppContext, positionals, flags, io: Output): Promise<number>`. Exit 0 ok, 1 findings or errors, 2 toolchain missing. Wave-mates (2b, 2c) own other `cli/` folders; session 3 wires dispatch and flags (`--watch` boolean, `--format latex|typst|key` value flag); tests here pass already-parsed flags.
-- Core build seam (session 1), in `packages/core/src/writing/build/node/index.ts`: `buildProject(project, deps): Promise<ProjectBuildResult>`; `deps.toolchain: ToolchainPrompt`; `ProjectBuildQueue.request(project)`; `builtPdfPath(project)`.
+- Core build seam (session 1), in `packages/core/src/writing/build/node/index.ts`: `buildProject(project, deps, options?): Promise<ProjectBuildResult>` (`options`: `root`, `includeOnly`, `force`, `unsaved`, `signal`, `onCompile`); `ProjectBuildDeps` = `{ logger, toolchain: ToolchainPrompt, storageDir, projects, typst }`; `ProjectBuildQueue.request(project, options?)`: a newer request aborts the running build, and a waiting request that a newer one replaces resolves `{ status: "cancelled" }`; `builtPdfPath(project, root?)`; `ensureToolchain(project, deps)`. A missing toolchain is `{ status: "toolchain-missing", reason }`. The VS Code adapters to mirror are `packages/vscode/src/writing/build/toolchain/vscodeToolchainPrompt.ts` and `packages/vscode/src/writing/build/node/projectBuildDeps.ts`.
 
 ## 2a.1 — Build
 
