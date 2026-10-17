@@ -1,10 +1,11 @@
 // Registers the Typst compiles: live into an open preview while the user types, and a build after every save of a Typst project's files.
-import { buildRootOf } from "@labshelf/core/node";
+import { buildRootOf, ProjectBuildQueue } from "@labshelf/core/node";
 import * as vscode from "vscode";
 
 import { owningProject, type ReadyProject } from "../../mainDocument.js";
 import type { WritingHost, WritingProjects } from "../../session/index.js";
 import { autoCompileGate } from "../../build/options/index.js";
+import { projectBuildDeps } from "../../build/node/index.js";
 import { TypstBuilds, type TypstBuildsDeps } from "./typstBuilds.js";
 import { TypstCompilerHost } from "./typstCompilerHost.js";
 
@@ -12,7 +13,7 @@ import { TypstCompilerHost } from "./typstCompilerHost.js";
 const LIVE_DEBOUNCE_MS = 150;
 const SAVE_DEBOUNCE_MS = 300;
 
-interface TypstBuildRegistration extends Omit<TypstBuildsDeps, "compiler"> {
+interface TypstBuildRegistration extends Omit<TypstBuildsDeps, "queue" | "buildDeps"> {
   context: vscode.ExtensionContext;
   host: WritingHost;
   projects: WritingProjects;
@@ -27,7 +28,9 @@ function typstProjectOf(projects: WritingProjects, file: vscode.Uri): ReadyProje
 
 /** Registers the listeners and returns the builds, which the Build Project command also uses. */
 export function registerTypstBuild(deps: TypstBuildRegistration): TypstBuilds {
-  const builds = new TypstBuilds({ ...deps, compiler: new TypstCompilerHost(deps.context.globalStorageUri.fsPath) });
+  const storageDir = deps.context.globalStorageUri.fsPath;
+  const buildDeps = projectBuildDeps({ host: deps.host, projects: deps.projects, storageDir, typst: new TypstCompilerHost(storageDir) });
+  const builds = new TypstBuilds({ ...deps, buildDeps, queue: new ProjectBuildQueue(buildDeps) });
   const timers = new Map<string, NodeJS.Timeout>();
   let disposed = false;
   const autoCompile = autoCompileGate(() => deps.host.current()?.logger);

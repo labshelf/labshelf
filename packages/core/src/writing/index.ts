@@ -20,3 +20,4 @@ export * from "./problems/index.js";
 export * from "./insert/index.js";
 export * from "./search/index.js";
 export * from "./allProjects/index.js";
+export * from "./build/index.js";

@@ -1,5 +1,5 @@
 // Registers the build that follows every save of a LaTeX project's sources.
-import { buildRootOf } from "@labshelf/core/node";
+import { buildRootOf, ProjectBuildQueue } from "@labshelf/core/node";
 import * as vscode from "vscode";
 
 import { owningProject, type ReadyProject } from "../../mainDocument.js";
@@ -8,6 +8,7 @@ import type { BuildPreviews } from "../../preview/index.js";
 import type { BuildDiagnostics } from "../buildDiagnostics.js";
 import { autoCompileGate } from "../options/index.js";
 import { LatexBuilds } from "./latexBuilds.js";
+import { projectBuildDeps } from "./projectBuildDeps.js";
 import type { IncludeOnlyTarget } from "./includeOnly.js";
 
 const SOURCE_EXTENSIONS = new Set([".tex", ".bib", ".sty", ".cls"]);
@@ -32,7 +33,12 @@ function latexProjectOf(projects: LatexBuildDeps["projects"], file: vscode.Uri):
 
 /** Registers the save listener and returns the builds, which the Build Project command also uses. */
 export function registerLatexBuild(deps: LatexBuildDeps): LatexBuilds {
-  const builds = new LatexBuilds({ storageDir: deps.context.globalStorageUri.fsPath, host: deps.host, projects: deps.projects, diagnostics: deps.diagnostics, previews: deps.previews });
+  const queue = new ProjectBuildQueue(projectBuildDeps({
+    host: deps.host, projects: deps.projects, storageDir: deps.context.globalStorageUri.fsPath,
+    // INVARIANT: this queue only builds LaTeX projects (latexProjectOf), so the Typst compiler is never requested.
+    typst: { get: () => Promise.reject(new Error("The LaTeX build queue does not compile Typst projects.")) },
+  }));
+  const builds = new LatexBuilds({ host: deps.host, projects: deps.projects, queue, diagnostics: deps.diagnostics, previews: deps.previews });
   const timers = new Map<string, NodeJS.Timeout>();
   let disposed = false;
   const autoCompile = autoCompileGate(() => deps.host.current()?.logger);
