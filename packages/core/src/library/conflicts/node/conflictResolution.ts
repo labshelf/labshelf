@@ -3,8 +3,7 @@ import { constants as fsConstants, promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import type { ILogger } from "../../../ports/index.js";
-import { METADATA_FILE } from "../../layout.js";
-import type { ConflictCopy, ConflictResolution } from "../conflictCopy.js";
+import { conflictResolutions, type ConflictCopy, type ConflictResolution } from "../conflictCopy.js";
 import { parseConflictName } from "../conflictNames.js";
 
 /** Copies `copy` to the first free `<name> (copy N).<ext>` next to the original, then deletes it. */
@@ -32,13 +31,13 @@ function assertConflictPair(conflict: ConflictCopy): void {
 
 /**
  * Resolves a conflict copy: keepMine deletes it, keepOther moves it over the original, keepBoth moves it
- * to `<name> (copy N).<ext>`. keepBoth is refused for metadata.yaml, because a paper has exactly one.
+ * to `<name> (copy N).<ext>`. Refuses a resolution `conflictResolutions` does not offer.
  */
 export async function resolveConflictCopy(conflict: ConflictCopy, resolution: ConflictResolution, logger: ILogger): Promise<void> {
   try {
     assertConflictPair(conflict);
-    if (resolution === "keepBoth" && path.basename(conflict.original) === METADATA_FILE) {
-      throw new Error(`keepBoth is not offered for ${METADATA_FILE}: ${conflict.copy}`);
+    if (!conflictResolutions(conflict).includes(resolution)) {
+      throw new Error(`${resolution} is not offered for ${conflict.original}: ${conflict.copy}`);
     }
     if (resolution === "keepMine") {
       await fs.rm(conflict.copy);

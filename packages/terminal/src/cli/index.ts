@@ -4,3 +4,4 @@ export { runLibraryCommand } from "./libraryCommands.js";
 export { USAGE, UsageError, type Output } from "./usage.js";
 export { parseArgs, stringFlag, type ParsedArgs } from "./args.js";
 export { dumpFrame } from "./dumpFrame.js";
+export { promptForLibrary, runConflicts, runMove, syncGuideText, withPrompt } from "./setup/index.js";

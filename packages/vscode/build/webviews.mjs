@@ -19,6 +19,7 @@ const BUNDLES = {
   "search/search": "src/writing/search/webview/main.ts",
   "history/history": "src/writing/history/webview/main.ts",
   "projects/projects": "src/writing/allProjects/webview/main.ts",
+  "syncGuide/syncGuide": "src/library/syncGuidePanel/webview/main.ts",
 };
 
 const watch = process.argv.includes("--watch");

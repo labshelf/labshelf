@@ -16,6 +16,7 @@
     "src/writing/search/webview",
     "src/writing/history/webview",
     "src/writing/allProjects/webview",
+    "src/library/syncGuidePanel/webview",
     "src/webviewGlobals.d.ts",
     ".vscode-test"
   ]

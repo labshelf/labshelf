@@ -21,6 +21,7 @@ When a user moves from one app to another, it should feel like the same product:
 - **Same look.** Colours, type, spacing, icons and components come from the design system in core (see [architecture.md](architecture.md#design-system)). The VS Code extension and the browser extension share those components. The terminal maps the same colour tokens onto its palette.
 - **Same words.** A folder is a "folder" and a paper is a "paper" in every app. The reading statuses are Unread, Reading and Done.
 - **Same behaviour.** A feature that exists in two apps behaves the same in both, because its logic lives once in core. Examples are search and filters, citation formats, metadata lookup, and the reader with its keys.
+- **Same first run.** LabShelf suggests a folder inside a sync tool the user already runs and never calls a cloud API itself.
 - **Same data.** A paper added, read or annotated in one app shows up in the others: through the shared folder, which the user's sync tool carries between devices ([contracts/sync.md](contracts/sync.md)).
 
 ## UX principles

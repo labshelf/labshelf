@@ -63,7 +63,7 @@ export async function runLibraryCommand(ctx: AppContext, args: ParsedArgs, io: O
     case "open": return runOpen(ctx, positionals, io);
     case "status": return runStatus(ctx, positionals, io);
     case "tag": case "tags": return runTag(ctx, positionals, io);
-    case "mv": case "move": return runMv(ctx, positionals, io);
+    case "mv": return runMv(ctx, positionals, io);
     case "copy": return runCopy(ctx, positionals, io);
     case "install": return runInstall(ctx, positionals, io);
     default:

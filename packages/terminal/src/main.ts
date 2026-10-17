@@ -1,16 +1,16 @@
 // Runs the `labshelf` command: resolves the library, then opens the TUI or runs a subcommand.
 // A first run without a configured library asks for its folder and saves it in the shared config file.
 import * as path from "node:path";
-import { createInterface } from "node:readline/promises";
+import * as os from "node:os";
 
-import { PAPERS_DIR, RESEARCH_DIR, errorMessage } from "@labshelf/core";
-import { deviceLocalLayout, sharedConfigPath, updateSharedConfig } from "@labshelf/core/node";
+import { Logger, PAPERS_DIR, RESEARCH_DIR, errorMessage, syncGuide } from "@labshelf/core";
+import { FileLogSink, deviceLocalLayout, sharedConfigPath, updateSharedConfig } from "@labshelf/core/node";
 
 import { loadTerminalConfig, resolveLibraryRoot, type TerminalConfig } from "./app/index.js";
 import { openLibrary, type AppContext } from "./app/index.js";
 import { parseArgs, stringFlag, type ParsedArgs } from "./cli/index.js";
 import { runDoctor, runLibraryCommand, USAGE, UsageError, type Output } from "./cli/index.js";
-import { dumpFrame } from "./cli/index.js";
+import { dumpFrame, promptForLibrary, runConflicts, runMove, syncGuideText, withPrompt } from "./cli/index.js";
 import { ensureLibraryStructure, LibraryRoot, looksLikeLibrary } from "./library/index.js";
 import { expandHome } from "./platform/index.js";
 import { App } from "./ui/app/index.js";
@@ -18,7 +18,7 @@ import { sanitizeForTerminal } from "./tui/index.js";
 import { Terminal } from "./tui/index.js";
 
 const VERSION = "0.1.0";
-const DEFAULT_LIBRARY = "~/LabShelfLibrary";
+const DEFAULT_LIBRARY = "~/LabShelf";
 
 // Everything the CLI prints may contain metadata from PDFs or other devices; control characters never pass through.
 const io: Output = {
@@ -37,19 +37,14 @@ async function adoptLibrary(raw: string): Promise<string> {
   return root;
 }
 
-async function askForLibrary(): Promise<string | undefined> {
-  const rl = createInterface({ input: process.stdin, output: process.stderr });
-  try {
-    io.err("No LabShelf library is configured yet.");
-    io.err(`If you use the VS Code extension, give the same folder (it contains ${PAPERS_DIR}/ and ${RESEARCH_DIR}/),`);
-    io.err("so both apps work on one library.");
-    const answer = (await rl.question(`Library folder [${DEFAULT_LIBRARY}]: `)).trim();
-    return answer || DEFAULT_LIBRARY;
-  } catch {
-    return undefined;
-  } finally {
-    rl.close();
-  }
+function askForLibrary(): Promise<string | undefined> {
+  const site = { home: os.homedir(), env: process.env, platform: process.platform };
+  return withPrompt((ask) => promptForLibrary(site, io, ask));
+}
+
+// The move and conflict commands run outside the TUI, so their log goes to the library's terminal log file.
+function fileLogger(root: string): Logger {
+  return new Logger([new FileLogSink(deviceLocalLayout(root).terminalLogPath)], { onSinkError: () => undefined });
 }
 
 async function resolveRoot(flag: string | undefined, config: TerminalConfig, interactive: boolean): Promise<{ root: string; source: string } | undefined> {
@@ -113,6 +108,40 @@ async function runOpenedLibrary(ctx: AppContext, args: ParsedArgs, tuiWanted: bo
   }
 }
 
+// Runs a command that needs no opened library and turns its failure into a message and an exit code.
+async function runCommand(run: () => Promise<number>): Promise<number> {
+  try {
+    return await run();
+  } catch (error) {
+    io.err(errorMessage(error));
+    return error instanceof UsageError ? 2 : 1;
+  }
+}
+
+// Runs the commands that work on the library's location rather than an opened library; undefined for any other.
+async function runLibraryFreeCommand(
+  args: ReturnType<typeof parseArgs>, config: Awaited<ReturnType<typeof loadTerminalConfig>>, libraryFlag: string | undefined,
+): Promise<number | undefined> {
+  if (args.command === "init") {
+    await adoptLibrary(args.positionals[0] ?? libraryFlag ?? config.libraryRoot ?? DEFAULT_LIBRARY);
+    return 0;
+  }
+  if (args.command === "sync-help") {
+    io.out(syncGuideText(syncGuide));
+    return 0;
+  }
+  if (args.command === "move") {
+    const root = resolveLibraryRoot(libraryFlag, process.env, config).root;
+    const progress = process.stderr.isTTY ? (text: string) => process.stderr.write(text) : () => undefined;
+    return runCommand(() => runMove(args.positionals, root, io, { logger: fileLogger, env: process.env, progress }));
+  }
+  if (args.command === "doctor") {
+    const resolution = resolveLibraryRoot(libraryFlag, process.env, config);
+    return runDoctor(resolution.root, resolution.source, config, io);
+  }
+  return undefined;
+}
+
 async function main(argv: string[]): Promise<number> {
   const args = parseArgs(argv);
   if (args.flags["version"] === true) {
@@ -126,14 +155,8 @@ async function main(argv: string[]): Promise<number> {
   const config = await loadTerminalConfig();
   const libraryFlag = stringFlag(args.flags, "library");
 
-  if (args.command === "init") {
-    await adoptLibrary(args.positionals[0] ?? libraryFlag ?? config.libraryRoot ?? DEFAULT_LIBRARY);
-    return 0;
-  }
-  if (args.command === "doctor") {
-    const resolution = resolveLibraryRoot(libraryFlag, process.env, config);
-    return runDoctor(resolution.root, resolution.source, config, io);
-  }
+  const code = await runLibraryFreeCommand(args, config, libraryFlag);
+  if (code !== undefined) { return code; }
 
   const tuiWanted = args.command === undefined && !args.flags["dump-frame"];
   if (tuiWanted && (!process.stdin.isTTY || !process.stdout.isTTY)) {
@@ -145,6 +168,12 @@ async function main(argv: string[]): Promise<number> {
   if (args.command === "where") {
     printWhere(resolved.root, resolved.source);
     return 0;
+  }
+
+  if (args.command === "conflicts") {
+    const logger = fileLogger(resolved.root);
+    const interactive = Boolean(process.stdin.isTTY);
+    return runCommand(() => withPrompt((ask) => runConflicts(resolved.root, io, interactive ? ask : undefined, logger)));
   }
 
   const ctx = await openLibrary(resolved.root, {

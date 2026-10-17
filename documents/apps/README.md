@@ -30,7 +30,7 @@ Unit tests do not cover webview DOM, the real extension host or a real terminal.
 
 Rules for every recipe:
 
-- **Never run against the user's real library.** Use a copy: `cp -R ~/Documents/LabShelfLibrary <scratch>/lib`.
+- **Never run against the user's real library.** Use a copy: `cp -R ~/LabShelf <scratch>/lib`.
 - **Isolate config and tokens.** Point `XDG_CONFIG_HOME` and `XDG_CACHE_HOME` at scratch directories, and use a throwaway `--user-data-dir`.
 - **Use a real paper as well as synthetic fixtures.** Synthetic PDFs miss real-world failures: OCR layers, scans, margin stamps, missing link annotations.
 - **Look at the screenshots.** A passing DOM assertion does not prove the layout is right.

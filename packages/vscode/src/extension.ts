@@ -24,6 +24,7 @@ import {
   registerPanelCommands,
   registerWritingView,
 } from "./activation/index.js";
+import { chooseLibraryRoot, ConflictHandling, offerLibraryMove, registerConflictCommand, registerSyncGuideCommand } from "./library/index.js";
 import { registerNodeWriting } from "./writing/node/index.js";
 
 /** Activates the extension, initializing services if a library is already configured */
@@ -67,6 +68,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   });
 
   registerLibraryCommands({ context, controller, folderHost, librarySidebar });
+  registerSyncGuideCommand(context, () => controller.currentServices()?.logger);
 
   registerCommands(context, requireServices);
   registerAiCommands(context, () => aiService);
@@ -90,16 +92,22 @@ interface LibraryControllerDeps {
 
 function createLibraryController(deps: LibraryControllerDeps): LibraryRootController {
   const { context, events, adapters, refreshViews } = deps;
+  const conflicts = new ConflictHandling({
+    getServices: () => controller.currentServices(),
+    getRoot: () => controller.currentRoot()?.fsPath ?? null,
+  });
+  registerConflictCommand(context, conflicts);
   const externalChangeHandling = new ExternalChangeHandling({
     context,
     getActiveServices: () => controller.currentServices(),
     onRefresh: refreshViews,
+    onConflicts: (copies) => conflicts.onConflicts(copies),
   });
-  const controller = new LibraryRootController(context, events, externalChangeHandling, adapters);
+  const controller = new LibraryRootController(context, events, externalChangeHandling, adapters, () => chooseLibraryRoot(adapters));
   return controller;
 }
 
-/** Opens the configured library, or tells the user to configure one. @returns the AI service, when one started. */
+/** Opens the configured library, or asks where a new one lives. @returns the AI service, when one started. */
 async function loadConfiguredLibrary(
   context: vscode.ExtensionContext,
   events: LibraryEvents,
@@ -108,28 +116,24 @@ async function loadConfiguredLibrary(
 ): Promise<AiService | null> {
   const unmigratedRoot = await migrateLibraryRootFromGlobalState(context.globalState, adapters.sharedLibraryConfig, (root) =>
     adapters.createLogger(deviceLocalLayout(root).appLogPath));
-  const initialRoot = await resolveLibraryRoot(adapters.sharedLibraryConfig)
+  const savedRoot = await resolveLibraryRoot(adapters.sharedLibraryConfig)
     ?? (unmigratedRoot ? vscode.Uri.file(unmigratedRoot) : undefined);
-  if (!initialRoot) {
-    // Library not configured — inform the user without blocking activation.
-    vscode.window.showInformationMessage(
-      'LabShelf: No library configured. Run "Configure Library" to get started.',
-      "Configure Library",
-    ).then((choice) => {
-      if (choice === "Configure Library") {
-        vscode.commands.executeCommand("labshelf.configureLibrary");
-      }
-    });
-    return null;
-  }
+  const initialRoot = savedRoot ?? await chooseLibraryRoot(adapters);
+  if (!initialRoot) { return null; }
 
   // The progress bar on the Library view covers the time the index takes to open.
   let aiService: AiService | null = null;
   await vscode.window.withProgress({ location: { viewId: "labshelf.library" } }, async () => {
-    const services = await controller.loadInitial(initialRoot);
+    const services = await controller.applyRoot(initialRoot);
     aiService = await startAiService(context, events, services, adapters);
     return services;
   });
+  // A root chosen a moment ago already answered where the library lives, so only a saved root is offered a move.
+  if (savedRoot) {
+    offerLibraryMove(controller).catch((error: unknown) => {
+      void controller.currentServices()?.logger.error("libraryMove", error, { action: "offer library move" });
+    });
+  }
   return aiService;
 }
 

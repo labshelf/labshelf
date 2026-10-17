@@ -61,6 +61,7 @@ export class App {
     this.selectionState = new SelectionState(this);
     this.taskStatus = new TaskStatus(this, options.now ?? Date.now);
     ctx.onRootLost(() => this.taskStatus.notify("Library folder not found", "warn"));
+    ctx.conflicts.onChange(() => this.scheduleRender());
     ctx.store.onChange(() => {
       this.listModel.invalidateCaches();
       this.sidecars.clear();

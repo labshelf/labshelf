@@ -127,3 +127,14 @@ describe("stringFlag", () => {
     expect(stringFlag(flags, "missing")).toBeUndefined();
   });
 });
+
+describe("library setup commands", () => {
+  it("reads `move <path>` as the command move with the path as its positional", () => {
+    expect(parseArgs(["move", "~/Dropbox/LabShelf"])).toEqual({ command: "move", positionals: ["~/Dropbox/LabShelf"], flags: {} });
+  });
+
+  it("parses sync-help and conflicts without positionals", () => {
+    expect(parseArgs(["sync-help"])).toEqual({ command: "sync-help", positionals: [], flags: {} });
+    expect(parseArgs(["conflicts", "-L", "/lib"])).toEqual({ command: "conflicts", positionals: [], flags: { library: "/lib" } });
+  });
+});

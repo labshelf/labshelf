@@ -1,7 +1,6 @@
-/** Exports the library location: where the library root is stored and how a fresh one is set up. */
+/** Exports the library location: where the library root is stored and how its folders are created. */
 export {
   ensureLibraryStructure,
   resolveLibraryRoot,
-  runLibrarySetupWizard,
 } from "./libraryLocation.js";
 export type { SharedLibraryConfig } from "./sharedLibraryConfig.js";

@@ -1,9 +1,8 @@
 // Owns the active library root and its built services, rebuilding both through one path whether the root
-// comes from the setup wizard or from a saved setting.
+// comes from the first-run question, a move or a saved setting.
 import * as vscode from "vscode";
 
-import { runLibrarySetupWizard } from "../../storage/paths/index.js";
-import { buildServices, createFileSystem, type HostAdapters } from "../serviceComposition/index.js";
+import { buildServices, type HostAdapters } from "../serviceComposition/index.js";
 import type { ActiveServices } from "../../commands/index.js";
 import type { LibraryEvents } from "../../events/index.js";
 import { ExternalChangeHandling } from "./externalChangeHandling.js";
@@ -24,6 +23,7 @@ export class LibraryRootController {
     private readonly events: LibraryEvents,
     private readonly externalChangeHandling: ExternalChangeHandling,
     private readonly adapters: HostAdapters,
+    private readonly chooseRoot: () => Promise<vscode.Uri | undefined>,
   ) {
     context.subscriptions.push(this.changeEmitter);
   }
@@ -36,25 +36,20 @@ export class LibraryRootController {
     return this.activeServices;
   }
 
-  // Returns the current services or triggers the setup wizard and builds services from the chosen root.
+  // Returns the current services or asks where the library lives and builds services from the answer.
   async require(): Promise<ActiveServices | null> {
     return this.activeServices ?? this.reconfigure();
   }
 
-  // Always runs the setup wizard, even when a library is already configured.
+  // Always asks where the library lives, even when a library is already configured.
   async reconfigure(): Promise<ActiveServices | null> {
-    const root = await runLibrarySetupWizard(this.adapters.sharedLibraryConfig, (target) => createFileSystem(target, this.adapters.paths));
+    const root = await this.chooseRoot();
     return root ? this.applyRoot(root) : null;
-  }
-
-  // Applies an already-resolved root at activation, without the setup wizard.
-  async loadInitial(root: vscode.Uri): Promise<ActiveServices> {
-    return this.applyRoot(root);
   }
 
   // The single place that builds services for a root and wires everything that follows it:
   // the Library sidebar (via onDidChangeRoot), the external-change watcher.
-  private async applyRoot(root: vscode.Uri): Promise<ActiveServices> {
+  async applyRoot(root: vscode.Uri): Promise<ActiveServices> {
     const services = await buildServices(this.context, root, this.events, this.adapters);
     this.root = root;
     this.activeServices = services;

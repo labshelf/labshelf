@@ -1,9 +1,10 @@
 // Registers the Library view's own commands: refreshing, folder commands,
-// importing into a folder, and configuring the library root.
+// importing into a folder, and configuring or moving the library root.
 import * as vscode from "vscode";
 
 import { importPapersFromDialog, registerFolderCommands, type FolderCommandHost } from "../../commands/index.js";
 import type { LibraryNode, LibrarySidebarView } from "../../ui/library/index.js";
+import { runMoveLibraryCommand } from "../../library/index.js";
 import type { LibraryRootController } from "../libraryLifecycle/index.js";
 
 export interface LibraryCommandsDeps {
@@ -39,13 +40,14 @@ function registerAddPaperAndConfigureCommands(deps: LibraryCommandsDeps): void {
     }),
   );
 
-  // Configure or reconfigure the library root via the setup wizard.
+  // Configure or reconfigure the library root through the first-run question.
   context.subscriptions.push(
     vscode.commands.registerCommand("labshelf.configureLibrary", async () => {
       const services = await controller.reconfigure();
       if (!services) { return; }
       vscode.window.showInformationMessage(`LabShelf: Library configured at ${controller.currentRoot()?.fsPath}`);
     }),
+    vscode.commands.registerCommand("labshelf.moveLibrary", () => runMoveLibraryCommand(controller)),
   );
 }
 

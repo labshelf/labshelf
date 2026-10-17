@@ -3,6 +3,7 @@ import { isSortKey, SORT_KEYS } from "../../../app/index.js";
 import { textInput } from "../../textInput.js";
 import { ALL } from "../types.js";
 import type { App } from "../app.js";
+import { openConflicts } from "../conflicts/index.js";
 import { submitPrompt } from "../input/index.js";
 import { importInputs, targetFolder } from "./createAndRename.js";
 import { setSort } from "./paperExportActions.js";
@@ -27,6 +28,7 @@ export function runCommand(app: App, line: string): void {
       if (!rest) { app.taskStatus.notify("Usage: :add <pdf | folder | url | doi | arxiv id>", "warn"); return; }
       void importInputs(app, [rest], targetFolder(app));
       return;
+    case "conflicts": openConflicts(app); return;
     case "sort": return runSort(app, args);
     case "cd": return runCd(app, rest);
     case "where":

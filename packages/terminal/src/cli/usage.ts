@@ -27,6 +27,9 @@ Library:
 
 Setup:
   init [path]                      create or adopt a library and remember it
+  move <path>                      move the library to another folder (a non-empty folder gets a LabShelf subfolder)
+  sync-help                        how to sync the library between computers
+  conflicts                        list and resolve conflicting copies left by a sync tool
   where                            print the library, config and log paths
   doctor                           check the setup
 

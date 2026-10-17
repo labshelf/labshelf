@@ -11,6 +11,7 @@ import {
   scanConflictCopies,
 } from "@labshelf/core/node";
 
+import { ConflictFeed } from "./conflictFeed.js";
 import type { TerminalConfig } from "./config.js";
 import {
   LibraryRoot, LibraryWatcher, SidecarReader, TerminalPaperService, createLibraryStore, ensureLibraryStructure,
@@ -34,6 +35,10 @@ export interface AppContext {
   imageProtocol: ImageProtocol;
   /** Resolves once highlights and notes are in the search index (one-shot CLI searches wait for it). */
   annotationsReady: Promise<void>;
+  /** The unresolved sync conflict copies, updated after every library scan. */
+  conflicts: ConflictFeed;
+  /** Scans for conflict copies now and updates `conflicts`. */
+  rescanConflicts(): Promise<void>;
   /** Calls the listener when the library folder disappears (unmounted drive, sync client). */
   onRootLost(listener: () => void): void;
   /** Stops watchers and releases the OCR engine. */
@@ -86,13 +91,15 @@ function createThumbnails(env: NodeJS.ProcessEnv, workerUrl: URL, logger: ILogge
 }
 
 function startWatcher(
-  paths: LibraryRoot, store: LibraryStore, logger: ILogger, indexAnnotations: () => Promise<void>, onRootLost: () => void,
+  paths: LibraryRoot, store: LibraryStore, logger: ILogger, conflicts: ConflictFeed,
+  indexAnnotations: () => Promise<void>, onRootLost: () => void,
 ): LibraryWatcher {
   const watcher: LibraryWatcher = new LibraryWatcher(paths, () => {
     void processChangeBatch({
       logger,
       isRootPresent: () => watcher.rootPresent(),
       scanConflicts: () => scanConflictCopies(paths.root, logger),
+      onConflicts: (copies) => conflicts.set(copies),
       reindex: () => store.reload().then(() => void indexAnnotations()),
     });
   }, logger, onRootLost);
@@ -106,6 +113,18 @@ function annotationIndexer(sidecars: SidecarReader, store: AppContext["store"], 
     (index) => store.setAnnotationText(index),
     (error: unknown) => logger.log("WARN", "terminal/app", "Annotation text not indexed for search", { message: errorMessage(error) }),
   );
+}
+
+// Only a watched library scans at start, since nothing would keep an unwatched feed current.
+async function openConflictFeed(
+  root: string, logger: ILogger, scanAtStart: boolean | undefined,
+): Promise<{ conflicts: ConflictFeed; rescanConflicts: () => Promise<void> }> {
+  const conflicts = new ConflictFeed();
+  const rescanConflicts = async (): Promise<void> => { conflicts.set(await scanConflictCopies(root, logger)); };
+  if (scanAtStart) {
+    await rescanConflicts().catch((error: unknown) => logger.log("WARN", "terminal/app", "Startup conflict scan failed", { message: errorMessage(error) }));
+  }
+  return { conflicts, rescanConflicts };
 }
 
 /**
@@ -131,9 +150,10 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
   const indexAnnotations = annotationIndexer(sidecars, store, logger);
   const annotationsReady = indexAnnotations();
 
+  const { conflicts, rescanConflicts } = await openConflictFeed(paths.root, logger, options.watch);
   const rootLostListeners: Array<() => void> = [];
   const watcher = options.watch
-    ? startWatcher(paths, store, logger, indexAnnotations, () => rootLostListeners.forEach((listener) => listener()))
+    ? startWatcher(paths, store, logger, conflicts, indexAnnotations, () => rootLostListeners.forEach((listener) => listener()))
     : undefined;
 
   await logger.log("INFO", "terminal/app", "Library opened", {
@@ -152,6 +172,8 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
     thumbnailRenderer: renderer.name,
     imageProtocol,
     annotationsReady,
+    conflicts,
+    rescanConflicts,
     onRootLost: (listener) => { rootLostListeners.push(listener); },
     async dispose() {
       watcher?.stop();

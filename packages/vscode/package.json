@@ -166,6 +166,21 @@
         "category": "LabShelf"
       },
       {
+        "command": "labshelf.moveLibrary",
+        "title": "Move Library…",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.syncGuide",
+        "title": "How to Sync Between Computers",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.resolveConflicts",
+        "title": "Resolve Conflicting Copies",
+        "category": "LabShelf"
+      },
+      {
         "command": "labshelf.settingsMenu",
         "title": "Settings",
         "category": "LabShelf",

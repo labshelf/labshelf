@@ -6,3 +6,4 @@ export { icon, type IconName } from "../icons/index.js";
 export { resolveTheme, applyThemeToDocument, nextThemePref, type ThemePref, type ResolvedTheme } from "./theme.js";
 export * from "./widgets/index.js";
 export * from "./settings/index.js";
+export * from "./syncGuide/index.js";

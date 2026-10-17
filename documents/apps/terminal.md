@@ -12,7 +12,9 @@ ln -s "$PWD/packages/terminal/dist/labshelf.mjs" /opt/homebrew/bin/labshelf
 labshelf doctor                             # checks library, config and the image protocol
 ```
 
-- The app finds the library through `--library`, then `LABSHELF_LIBRARY`, then the shared config ([library-format.md](../contracts/library-format.md#shared-configuration)). `labshelf init <path>` writes the shared config.
+- The app finds the library through `--library`, then `LABSHELF_LIBRARY`, then the shared config ([library-format.md](../contracts/library-format.md#shared-configuration)). `labshelf init <path>` writes the shared config. The default library folder is `~/LabShelf`.
+- With no library configured, the first run shows a numbered prompt with the same choices as VS Code: `<sync folder>/LabShelf` for each detected sync folder, `~/LabShelf` (only on this computer) and another folder ([sync.md](../contracts/sync.md)).
+- `labshelf move <path>` moves the library (a non-empty folder that is not a library gets `<path>/LabShelf`); there is no `mv` alias. `labshelf sync-help` prints the guide for syncing between computers. `labshelf conflicts` lists conflicting copies; on a TTY it asks `[m]ine / [o]ther / [b]oth / [s]kip` for each. The explorer's status line shows an "N conflicts" segment, and `:conflicts` opens the same list as an overlay.
 - Thumbnails need kitty, Ghostty, iTerm2 or WezTerm. In the VS Code terminal, set `terminal.integrated.enableImages` and `LABSHELF_IMAGES=iterm`. Inside tmux, images are off unless forced.
 - Thumbnails are faster with `brew install poppler` (pdftoppm). Without it, pdf.js renders them through `@napi-rs/canvas`.
 - Imports read scans and broken-font PDFs with Tesseract (English). The first such import downloads the language data into the cache folder, so it needs the network once.
@@ -32,7 +34,7 @@ Always rebuild first (`node build/build.mjs`). A stale bundle silently shows the
 Isolate every run from your real setup. Put this in a wrapper script, because zsh does not word-split `$VAR` commands:
 
 ```bash
-cp -R ~/Documents/LabShelfLibrary <scratch>/lib
+cp -R ~/LabShelf <scratch>/lib
 XDG_CONFIG_HOME=<scratch>/config XDG_CACHE_HOME=<scratch>/cache LABSHELF_TOKEN_STORE=file \
   node packages/terminal/dist/labshelf.mjs -L <scratch>/lib "$@"
 ```

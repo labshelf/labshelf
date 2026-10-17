@@ -25,3 +25,4 @@ export * from "./search/index.js";
 export * from "./links/index.js";
 export * from "./paperFiles/index.js";
 export * from "./conflicts/index.js";
+export * from "./syncGuide/index.js";

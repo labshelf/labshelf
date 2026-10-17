@@ -11,6 +11,7 @@ function setup(overrides: { scan?: () => Promise<ConflictCopy[]>; present?: bool
     isRootPresent: async () => overrides.present ?? true,
     scanConflicts: overrides.scan ?? (async () => { order.push("scan"); return [copy]; }),
     reindex: async () => { order.push("reindex"); },
+    onConflicts: (copies: ConflictCopy[]) => { order.push(`conflicts:${copies.length}`); },
   };
   return { deps, order, logs };
 }
@@ -19,7 +20,7 @@ describe("processChangeBatch", () => {
   it("scans conflict copies, logs how many are unresolved, then re-indexes", async () => {
     const { deps, order, logs } = setup();
     await processChangeBatch(deps);
-    expect(order).toEqual(["scan", "reindex"]);
+    expect(order).toEqual(["scan", "conflicts:1", "reindex"]);
     expect(logs.find((l) => l.level === "INFO")?.context).toMatchObject({ unresolved: 1 });
   });
 

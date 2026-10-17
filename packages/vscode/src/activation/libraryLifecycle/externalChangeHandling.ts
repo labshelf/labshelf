@@ -2,7 +2,7 @@
 // Also notices when the library folder disappears (unmounted drive, sync client) and re-arms when it returns.
 import * as vscode from "vscode";
 
-import { RootPresenceMonitor, errorMessage, libraryLayout, processChangeBatch, type ILogger } from "@labshelf/core";
+import { RootPresenceMonitor, errorMessage, libraryLayout, processChangeBatch, type ConflictCopy, type ILogger } from "@labshelf/core";
 import { scanConflictCopies } from "@labshelf/core/node";
 import { ExternalChangeWatcher } from "../../storage/data/index.js";
 import type { ActiveServices } from "../../commands/index.js";
@@ -12,6 +12,8 @@ export interface ExternalChangeHandlingDeps {
   getActiveServices: () => ActiveServices | null;
   // Refreshes the Library sidebar and the open list panel once the re-index has settled.
   onRefresh: () => void;
+  // Receives the unresolved conflict copies after every scan, including an empty list.
+  onConflicts: (copies: ConflictCopy[]) => void;
 }
 
 async function folderExists(root: vscode.Uri): Promise<boolean> {
@@ -54,6 +56,10 @@ export class ExternalChangeHandling {
       },
     });
     this.monitor.start();
+    // The first scan reports copies a sync tool left while the library was closed.
+    void scanConflictCopies(root.fsPath, logger).then(this.deps.onConflicts, (error: unknown) => {
+      void logger.log("WARN", "extension", "Conflict scan failed", { message: errorMessage(error) });
+    });
   }
 
   private stop(): void {
@@ -74,6 +80,7 @@ export class ExternalChangeHandling {
         logger,
         isRootPresent: () => monitor.check(),
         scanConflicts: () => scanConflictCopies(root.fsPath, logger),
+        onConflicts: this.deps.onConflicts,
         reindex: async () => { await services.reindexLibrary(); },
       });
     } catch (error) {

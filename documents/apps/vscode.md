@@ -21,6 +21,10 @@ pnpm dev:vscode                        # watches the host and the webview bundle
 - esbuild bundles the extension host from source, including `@labshelf/*`. Other dependencies (pdf.js, Tesseract, the native canvas) stay external and load from `node_modules`, because they locate their data files and binaries next to themselves. `tsc` only typechecks.
 
 - Open the repository in VS Code and press F5. This launches an Extension Development Host. On first run, use **LabShelf: Configure Library**.
+- The default local library folder is `~/LabShelf`. When no library is configured, and in **Configure Library**, a pick offers `<sync folder>/LabShelf` for each detected sync folder (Dropbox, Google Drive, OneDrive, iCloud Drive, Nextcloud, Syncthing), `~/LabShelf` (only on this computer), **Choose a folder…** and **How to sync between computers…**. A folder that already holds a library asks "Found your library with N papers. Open it?". When the library is local-only and a sync folder appears, a notification offers to move it; "Not now" stops asking for that tool.
+- **LabShelf: Move Library…** moves the library with progress: on the same disk it renames, otherwise it copies, verifies every file and deletes the source. It refuses a target inside the library or a folder that holds files. The device-local cache and state follow the move.
+- **LabShelf: How to Sync Between Computers** opens the guide panel.
+- **LabShelf: Resolve Conflicting Copies**, also offered by the notification "N files have conflicting copies", asks per copy **Keep mine**, **Keep the other** or **Keep both**; `metadata.yaml` has no Keep both ([contract](../contracts/sync.md)).
 - The paper list is an in-memory library store rebuilt from the library files on activation. The device-local `index.sqlite` ([contract](../contracts/library-format.md#device-local-files)) holds the embeddings and the content hash of each indexed PDF; deleting it drops them and papers re-index on rebuild.
 
 ## Writing projects

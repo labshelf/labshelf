@@ -7,6 +7,7 @@ import { drawField, type InlineInput } from "../../overlays.js";
 import { drawSegments, type Rect } from "../../render.js";
 import { theme } from "../../theme.js";
 import type { App } from "../app.js";
+import { conflictCountLabel } from "../conflicts/index.js";
 
 export function drawStatus(app: App, screen: Screen, rect: Rect): void {
   const y = rect.y;
@@ -56,6 +57,8 @@ function pushPendingHints(app: App, left: Array<{ text: string; style?: Style }>
 
 function statusRight(app: App): Array<{ text: string; style?: Style }> {
   const out: Array<{ text: string; style?: Style }> = [];
+  const conflicts = conflictCountLabel(app.ctx.conflicts.copies.length);
+  if (conflicts) { out.push({ text: ` ${conflicts} `, style: theme.warn }); }
   for (const label of app.tasks.values()) { out.push({ text: ` ${label}… `, style: theme.warn }); }
   out.push({ text: ` ${app.sort.key}${app.sort.reverse ? "↓" : "↑"} `, style: theme.dim });
   out.push({ text: " ? help ", style: theme.dim });
