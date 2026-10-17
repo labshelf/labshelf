@@ -33,10 +33,10 @@ export function readyProjectItem(
   const tooltip = [entry.settings.id, ...detailLines(entry, counted, build, reading), ...(external ? [entry.folder] : [])];
   return {
     id: entry.folder,
-    name: entry.settings.id,
+    name: entry.settings.title ?? entry.settings.id,
     format: entry.settings.format,
     ...(entry.settings.folder ? { folder: entry.settings.folder } : {}),
-    ...(entry.settings.archived ? { archived: true } : {}),
+    ...(entry.settings.archived || entry.settings.trashed ? { hidden: true as const } : {}),
     ...(counted && counted.open > 0 ? { count: String(counted.open) } : {}),
     tooltip: tooltip.join("\n"),
     kind: "ready",

@@ -2,7 +2,7 @@
 import { el, showMenu } from "../../../ui/dom/index.js";
 import { escapeHtml, icon } from "../../../ui/index.js";
 import type { SidebarNodeIcon, SidebarOpenProject, SidebarProjectTree, SidebarTreeNode } from "../../sidebarTrees.js";
-import { GROUP_ROW_DEPTH, treeItem } from "./sidebarRows.js";
+import { GROUP_ROW_DEPTH, formatLabel, treeItem } from "./sidebarRows.js";
 import { groupRow } from "./sidebarSections.js";
 import { openTreeInput, treeInputRow } from "./sidebarTreeInput.js";
 import type { SidebarState } from "./sidebarView.js";
@@ -13,9 +13,6 @@ const iconHtml = (i: SidebarNodeIcon | undefined): string => {
   if (i.kind === "dot") return `<span class="tree-icon"><span class="tree-dot ${i.tone}"></span></span>`;
   return `<span class="tree-ref ${i.tone}">${escapeHtml(i.text)}</span>`;
 };
-
-const formatLabel = (format: SidebarOpenProject["format"]): string =>
-  format ? `<span class="tree-ref ${format === "latex" ? "tex" : "typ"}">${format === "latex" ? "TEX" : "TYP"}</span>` : "";
 
 const nodeKey = (view: string, key: string): string => `${view}:${key}`;
 
@@ -59,7 +56,8 @@ function toggleRow(toggle: NonNullable<SidebarProjectTree["toggle"]>): HTMLEleme
 function openProjectRow(p: SidebarOpenProject): HTMLElement {
   return el("div", {
     class: "tree-row tree-open-project", role: "treeitem", "data-key": "open-project", "data-open-project": p.id, style: "--depth:0", title: p.name,
-    html: `${formatLabel(p.format)}<span class="tree-label">${escapeHtml(p.name)}</span>` +
+    "aria-haspopup": "menu",
+    html: `${formatLabel(p.format)}<span class="tree-label">${escapeHtml(p.name)}</span><span class="tree-open-project-chevron" aria-hidden="true">${icon("chevron-down")}</span>` +
       `<span class="tree-row-actions"><button class="ls-icon-btn" data-tree="close-project" title="Close project">${icon("x")}</button></span>`,
   });
 }
@@ -110,8 +108,9 @@ function toggle(t: SidebarState, view: string, n: SidebarTreeNode, render: () =>
   render();
 }
 
-/** Runs a tree row as a click or Enter does: its command, else a fold; `onTwisty` folds without running. */
+/** Runs a tree row as a click or Enter does: the open project's menu, a row's command, else a fold; `onTwisty` folds without running. */
 export function activateTreeRow(t: SidebarState, r: HTMLElement, render: () => void, onTwisty = false): boolean {
+  if (r.dataset["openProject"] !== undefined) { t.projects?.openProjectMenu(r); return true; }
   const hit = rowNode(t, r);
   if (!hit) return false;
   const { view, node } = hit;
@@ -126,11 +125,13 @@ function addUnder(t: SidebarState, view: string, n: SidebarTreeNode, render: () 
   openTreeInput(t, view, n.key, n.addable?.placeholder ?? "", render);
 }
 
-/** Handles the open project's buttons and checkboxes; false when the click is not theirs. */
+/** Handles the open project's title row, buttons and checkboxes; false when the click is not theirs. */
 export function onOpenProjectClick(e: MouseEvent, t: SidebarState, render: () => void): boolean {
   const target = e.target as HTMLElement;
   const action = target.closest<HTMLElement>("[data-tree]");
   if (action?.dataset["tree"] === "close-project") { t.projects?.closeProject(); return true; }
+  const projectRow = target.closest<HTMLElement>("[data-open-project]");
+  if (projectRow) { t.projects?.openProjectMenu(projectRow); return true; }
   if (action?.dataset["tree"] === "node-add") {
     const r = action.closest<HTMLElement>("[data-tree-key]");
     const hit = r && rowNode(t, r);

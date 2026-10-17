@@ -1,0 +1,31 @@
+/* Draws the reader around the manual: toolbar, outline and highlights panel, and the grey desk. */
+
+.rdr{margin-top:0;border:1px solid var(--line);border-radius:12px;background:#1a202b;overflow:clip}
+.rtb{position:sticky;top:calc(68px + env(safe-area-inset-top,0px));z-index:4;display:flex;align-items:center;gap:14px;height:44px;padding:0 14px;background:#151a23;border-bottom:1px solid var(--line);font:12px var(--mono);color:var(--dim)}
+.rtb b{font-weight:500;color:var(--tx)}
+.rtb .sp{flex:1}
+.rtb .sw{display:inline-flex;gap:6px;align-items:center}
+.rtb .sw i{width:10px;height:10px;border-radius:50%;background:var(--c)}
+.rtb .pg{padding:3px 8px;border:1px solid var(--line);border-radius:5px;color:var(--tx)}
+.rgrid{display:grid;grid-template-columns:250px minmax(0,1fr)}
+.rside{border-right:1px solid var(--line);background:#151a23}
+.rside .in{position:sticky;top:calc(112px + env(safe-area-inset-top,0px));max-height:calc(100vh - 130px);overflow:auto;padding:14px 0 24px}
+.rtabs{display:flex;gap:16px;padding:0 18px 10px;border-bottom:1px solid var(--line);font:12px var(--mono)}
+.rtabs button{all:unset;cursor:pointer;color:var(--dim);padding:4px 0;border-bottom:1px solid transparent}
+.rtabs button[aria-selected="true"]{color:var(--tx);border-bottom-color:var(--blue)}
+.rtabs button span{color:var(--faint);margin-left:4px}
+#toc{padding:10px 0;font:13px/1.45 var(--serif)}
+#toc a{display:flex;gap:10px;padding:5px 18px;color:var(--dim)}
+#toc a span{font:11px var(--mono);color:var(--faint);min-width:2.2em;padding-top:2px}
+#toc a.s{padding-left:30px;font-size:12.5px}
+#toc a:hover,#toc a.on{color:var(--tx);text-decoration:none;background:rgba(255,255,255,.03)}
+#toc a.on span{color:var(--blue)}
+#hls{padding:10px 0}
+#hls button{all:unset;cursor:pointer;display:block;box-sizing:border-box;width:100%;padding:8px 18px 9px 30px;position:relative;font:13.5px/1.45 var(--serif);color:var(--tx)}
+#hls button::before{content:"";position:absolute;left:16px;top:14px;width:7px;height:7px;border-radius:50%;background:var(--c)}
+#hls button small{display:block;font:10.5px var(--mono);color:var(--faint);margin-top:2px}
+#hls button:hover{background:rgba(255,255,255,.03)}
+.rdesk{background:#262d3a;padding:clamp(16px,4vw,56px) clamp(10px,3vw,48px);min-width:0}
+
+@media (max-width:900px){.rgrid{grid-template-columns:minmax(0,1fr)}.rside{display:none}.rtb .sw{display:none}}
+@media (max-width:560px){.rtb>span:nth-child(2){display:none}.rtb b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}}

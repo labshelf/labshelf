@@ -122,4 +122,18 @@ describe("parseCatalogIndex entries", () => {
   it("ignores unknown keys on an entry", () => {
     expect(parsed(index([entry("a", { extra: 1 })])).entries).toHaveLength(1);
   });
+
+  it("keeps a safe non-negative integer download count", () => {
+    expect(parsed(index([entry("a", { downloads: 12 })])).entries[0]!.downloads).toBe(12);
+    expect(parsed(index([entry("a", { downloads: 0 })])).entries[0]!.downloads).toBe(0);
+  });
+
+  it("drops an invalid download count and keeps the entry", () => {
+    for (const downloads of [-1, 1.5, "12", Number.MAX_SAFE_INTEGER + 1]) {
+      const result = parsed(index([entry("a", { downloads })]));
+      expect(result.entries).toHaveLength(1);
+      expect(result.skipped).toHaveLength(0);
+      expect("downloads" in result.entries[0]!).toBe(false);
+    }
+  });
 });

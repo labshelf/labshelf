@@ -4,8 +4,8 @@ import { el } from "../../../ui/dom/index.js";
 import { icon } from "../../../ui/index.js";
 import type { LibraryTree, TagCount } from "../../derive/index.js";
 import { tagQuery } from "../../searchQueries.js";
-import { PROJECT_LIST_ACTIONS, archivedNodes, projectTreeNodes, type SidebarProject, type SidebarProjectActions } from "./sidebarProjects.js";
-import { GROUP_ROW_DEPTH, exploreTemplatesRow, folderRow, paperRow, rowKey, allPapersRow, tagRow } from "./sidebarRows.js";
+import { PROJECT_LIST_ACTIONS, projectTreeNodes, type SidebarProject, type SidebarProjectActions } from "./sidebarProjects.js";
+import { GROUP_ROW_DEPTH, allProjectsRow, exploreTemplatesRow, folderRow, paperRow, rowKey, allPapersRow, tagRow } from "./sidebarRows.js";
 import { groupRow, sectionRow, type GroupId, type SectionId } from "./sidebarSections.js";
 import { appendOpenProject } from "./sidebarOpenProject.js";
 import type { SidebarOpenProject } from "../../sidebarTrees.js";
@@ -127,16 +127,12 @@ function appendProjects(t: SidebarState, frag: DocumentFragment): void {
   const body = appendPane(frag, "projects", sectionRow("projects", "Projects", open), open);
   if (!open) return;
   body.classList.add("tree-pane-stack");
-  appendOpenProject(t, body, appendPane, () => render(t));
-  body.append(exploreTemplatesRow());
+  // An open project owns the section; the project list and the gallery return when it closes.
+  if (t.openProject) { appendOpenProject(t, body, appendPane, () => render(t)); return; }
+  body.append(exploreTemplatesRow(), allProjectsRow());
   const listOpen = !t.collapsed.has("projects.list");
   const list = appendPane(body, "projects.list", groupRow("projects.list", "My projects", listOpen, PROJECT_LIST_ACTIONS), listOpen);
   if (listOpen) list.append(...projectTreeNodes(t.projectList, t.expanded));
-  const archived = archivedNodes(t.projectList);
-  if (archived.length === 0) return;
-  const archivedOpen = !t.collapsed.has("projects.archived");
-  const archive = appendPane(body, "projects.archived", groupRow("projects.archived", "Archived", archivedOpen), archivedOpen);
-  if (archivedOpen) archive.append(...archived);
 }
 
 export function render(t: SidebarState): void {

@@ -11,4 +11,6 @@ export interface TemplateEntry extends TemplateManifest {
   version?: string;
   /** Paths relative to the template's files/ folder, when the source knows them without downloading. */
   files?: string[];
+  /** Downloads over the past 365 days, when the source counts them. */
+  downloads?: number;
 }

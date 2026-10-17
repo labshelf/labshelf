@@ -1,0 +1,15 @@
+/* Styles the sticky top bar: the logo as a prompt and the navigation as ls output. */
+
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;background:color-mix(in srgb,var(--ink) 90%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);margin:0 calc(-1 * max(16px,env(safe-area-inset-left,0px)));padding:0 max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px));border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:22px;height:68px;font:13px var(--mono)}
+.logo{font:500 17px var(--mono);color:var(--tx);letter-spacing:-.02em;white-space:nowrap}
+.logo:hover{text-decoration:none}
+.logo .cur{width:.55em}
+.lsnav{display:flex;gap:26px;margin-left:auto;align-items:center}
+.lsnav a{color:var(--blue);font-weight:500}
+.lsnav a::after{content:"/";color:var(--faint)}
+.lsnav a.f{color:var(--tx)}
+.lsnav a.f::after{content:""}
+.k{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 10px;border:1px solid var(--line);border-radius:6px;color:var(--dim);font:12px var(--mono)}
+.k:hover{color:var(--tx);border-color:var(--faint)}
+@media (max-width:760px){.lsnav a.opt{display:none}.k span{display:none}}

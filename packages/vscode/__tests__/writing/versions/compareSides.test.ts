@@ -42,17 +42,4 @@ describe("pickSides", () => {
     picks();
     expect(await pickSides([A, B])).toBeUndefined();
   });
-
-  it("skips the first pick when a base is given and shows only the other pick without the base", async () => {
-    picks("c");
-    expect(await pickSides([A, B, C], B)).toEqual({ base: B, other: C });
-    expect(quickPick).toHaveBeenCalledTimes(1);
-    expect(labels(0)).toEqual(["Current build", "a", "c"]);
-  });
-
-  it("returns undefined when the only pick is cancelled with a base given", async () => {
-    picks();
-    expect(await pickSides([A, B], A)).toBeUndefined();
-    expect(quickPick).toHaveBeenCalledTimes(1);
-  });
 });

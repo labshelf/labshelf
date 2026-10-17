@@ -17,7 +17,6 @@ The recipes live in `documents/apps/`. Pick the one for the change:
 | reader UI, list panel, any VS Code webview | "Browser and webview pages" below, with the stubs from `documents/apps/vscode.md` → "Webview harness" |
 | browser pages, popup, Scholar button, capture | "Browser and webview pages" below; `documents/apps/browser.md` → "Headless run" for what the tools cannot reach |
 | TUI layout, keys, terminal output | `documents/apps/terminal.md` → "Verification" |
-| website sheets (text overflow at 1440/768/390, every theme) | run `node .claude/skills/verify/website-sheet-fit.mjs` outside the sandbox; prints one `OVERFLOW` line per sheet, exits 1 on any |
 
 ## Browser and webview pages
 
@@ -27,8 +26,6 @@ Drive them with the `mcp__chrome-devtools__*` tools. The server in `.mcp.json` r
 2. Browser extension: `install_extension` with the absolute `packages/browser/dist/chrome` path returns the id; `new_page` on `chrome-extension://<id>/popup/index.html` (or `library-page/`, `options/`); `trigger_extension_action` opens the popup the way the toolbar button does; `reload_extension` after a rebuild.
 3. Webview: serve the built HTML and the repo statically, then `new_page` and `navigate_page` with `initScript` holding the `acquireVsCodeApi` stub described in the webview harness and the `:root{--vscode-*}` block. TRAP: `initScript` runs before `<html>` exists, so append the `<style>` on `DOMContentLoaded`; touching `document.documentElement` throws and the page falls back to serif fonts.
 4. Check every page with `take_screenshot` (`filePath` under `<repo>/.verify/`, which git ignores; the server refuses paths outside the workspace, the scratchpad included; empty `.verify/` before the run so only this run's shots stay) and `list_console_messages`; a page with console errors fails. `take_snapshot`, `click` and `evaluate_script` (pass the `pageId` that `new_page` lists) cover interaction and DOM asserts.
-
-Scripted checks that must repeat the same way, such as `website-sheet-fit.mjs`, stay Playwright scripts.
 
 ## Always
 1. Rebuild the app first; a stale bundle shows old behavior.

@@ -11,6 +11,7 @@ export interface SidebarProjectsPort {
 
 const ACTION_COMMANDS: Record<ProjectAction, string> = {
   browseTemplates: "labshelf.templates.open",
+  allProjects: "labshelf.projects.all",
   newBlank: "labshelf.writing.newBlankProject",
   addExisting: "labshelf.writing.addExistingFolder",
   refresh: "labshelf.writing.refresh",

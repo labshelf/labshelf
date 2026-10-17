@@ -45,6 +45,13 @@
   padding-left: calc(var(--ls-space-4) * 2 + var(--depth, 0) * var(--ls-space-4)); border-radius: var(--ls-radius-sm);
   cursor: pointer; white-space: nowrap; color: var(--ls-fg); font-size: var(--ls-font-size);
 }
+/* Indent guides as in VS Code's trees: one line under each ancestor's chevron, the first under the group heading's, shown while the tree is hovered. */
+.tree-row::before, .tree-add-row::before {
+  content: ""; position: absolute; top: 0; bottom: 0; left: calc(var(--ls-space-4) * 3); width: calc(var(--depth, 0) * var(--ls-space-4));
+  background: repeating-linear-gradient(to right, var(--ls-tree-guide) 0 1px, transparent 1px var(--ls-space-4)); pointer-events: none;
+  opacity: 0; transition: opacity var(--ls-fast);
+}
+.tree:hover .tree-row::before, .tree:hover .tree-add-row::before { opacity: 1; }
 .tree-row:hover { background: var(--ls-list-hover); }
 .tree-row.current { background: var(--ls-list-inactive-bg); }
 .tree:focus .tree-row.current { background: var(--ls-list-active-bg); color: var(--ls-list-active-fg); }
@@ -57,6 +64,8 @@
 .tree-twisty { color: var(--ls-desc); transition: transform var(--ls-fast); }
 .tree-twisty svg { width: 14px; height: 14px; }
 .tree-twisty.leaf { visibility: hidden; }
+/* PLATFORM: as VS Code's align-icons-and-twisties, a leaf with a badge or icon drops its empty twisty so the badge sits in the chevron column of its sibling folders. */
+.tree-twisty.leaf:has(+ .tree-ref, + .tree-icon) { display: none; }
 .tree-row.collapsed .tree-twisty { transform: rotate(-90deg); }
 .tree-icon { color: var(--ls-desc); }
 .tree-icon svg { width: 16px; height: 16px; }
@@ -94,8 +103,10 @@
 /* A clicked heading shows no ring; only keyboard focus does. */
 .tree:focus-visible .tree-group.focused { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
 .tree-heading:not(.tree-section), .tree-empty { padding-left: calc(var(--ls-space-4) * 2); }
-/* The open project leads Projects: a taller, bolder row on the hover tint, with its close button shown on hover. */
-.tree-open-project { height: calc(var(--ls-row-h) + var(--ls-space-3)); padding-left: var(--ls-space-5); font-weight: 600; background: var(--ls-list-hover); cursor: default; }
+/* The open project leads Projects: a taller, bolder row on the hover tint that opens its menu, with its close button shown on hover. */
+.tree-open-project { height: calc(var(--ls-row-h) + var(--ls-space-3)); padding-left: var(--ls-space-5); font-weight: 600; background: var(--ls-list-hover); cursor: pointer; }
+.tree-open-project-chevron { display: inline-flex; margin-left: var(--ls-space-2); color: var(--ls-desc); }
+.tree-open-project-chevron svg { width: 14px; height: 14px; }
 .tree-row-actions { display: none; margin-left: auto; }
 .tree-open-project:hover .tree-row-actions, .tree-open-project.focused .tree-row-actions { display: inline-flex; }
 .tree-ref.pdf { color: var(--ls-file-pdf); }
@@ -124,7 +135,7 @@
 .tree-add svg { width: 14px; height: 14px; }
 .tree-row:hover .tree-add, .tree-row.focused .tree-add { display: inline-flex; }
 .tree-add-row {
-  display: flex; align-items: center; height: var(--ls-row-h); padding-right: var(--ls-space-4);
+  position: relative; display: flex; align-items: center; height: var(--ls-row-h); padding-right: var(--ls-space-4);
   padding-left: calc(var(--ls-space-4) * 2 + var(--depth, 0) * var(--ls-space-4) + 16px + var(--ls-space-3));
 }
 .tree-add-input {

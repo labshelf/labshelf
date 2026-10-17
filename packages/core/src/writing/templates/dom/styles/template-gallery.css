@@ -38,6 +38,14 @@ body { overflow: hidden; }
 .ls-tpl-title { margin: 0; flex-shrink: 0; font-size: var(--ls-text-lg); font-weight: 600; }
 .ls-tpl-facets .ls-search { flex: 1; min-width: 0; }
 .ls-tpl-facets input[type=search]::-webkit-search-cancel-button { appearance: none; }
+.ls-tpl-sort {
+  display: inline-flex; align-items: center; gap: var(--ls-space-2); flex-shrink: 0; height: var(--ls-row-h); padding: 0 var(--ls-space-5);
+  border: 1px solid var(--ls-border); border-radius: var(--ls-radius-sm); background: transparent; color: var(--ls-fg);
+  font: inherit; font-size: var(--ls-text-md); cursor: pointer;
+}
+.ls-tpl-sort:hover { background: var(--ls-list-hover); }
+.ls-tpl-sort-chevron { display: flex; color: var(--ls-desc); }
+.ls-tpl-sort-chevron svg { width: 12px; height: 12px; }
 .ls-tpl-categories { display: flex; flex-wrap: wrap; gap: var(--ls-space-4); }
 .ls-tpl-category {
   height: var(--ls-row-h); padding: 0 var(--ls-space-5); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-sm);

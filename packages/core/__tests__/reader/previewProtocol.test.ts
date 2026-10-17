@@ -53,12 +53,6 @@ describe('preview webview messages', () => {
     bad({ command: 'fixCitation' });
   });
 
-  it('exportProject accepts the three targets only', () => {
-    for (const target of ['projectZip', 'arxivZip', 'systemViewer']) { ok({ command: 'exportProject', target }); }
-    bad({ command: 'exportProject', target: 'docx' });
-    bad({ command: 'exportProject' });
-  });
-
   it('openSourceLine needs a file and a line number', () => {
     ok({ command: 'openSourceLine', file: 'main.tex', line: 12 });
     bad({ command: 'openSourceLine', file: 'main.tex' });

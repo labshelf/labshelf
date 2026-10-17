@@ -27,6 +27,21 @@
         "editor.wordWrap": "on"
       }
     },
+    "languages": [
+      {
+        "id": "typst",
+        "aliases": [
+          "Typst"
+        ],
+        "extensions": [
+          ".typ"
+        ],
+        "icon": {
+          "light": "./media/typst.png",
+          "dark": "./media/typst.png"
+        }
+      }
+    ],
     "commands": [
       {
         "command": "labshelf.addPaper",
@@ -247,6 +262,12 @@
         "icon": "$(add)"
       },
       {
+        "command": "labshelf.projects.all",
+        "title": "All Projects",
+        "category": "LabShelf",
+        "icon": "$(list-flat)"
+      },
+      {
         "command": "labshelf.writing.newBlankProject",
         "title": "Research: New Blank Project…",
         "category": "LabShelf"
@@ -312,6 +333,46 @@
         "category": "LabShelf"
       },
       {
+        "command": "labshelf.writing.downloadPdf",
+        "title": "Research: Download PDF",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.openPdfExternally",
+        "title": "Research: Open PDF in System Viewer",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.downloadSource",
+        "title": "Research: Download Source (.zip)",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.downloadArxiv",
+        "title": "Research: Download for arXiv (.zip)",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.exportWord",
+        "title": "Research: Export as Word (.docx)",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.exportMarkdown",
+        "title": "Research: Export as Markdown (.md)",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.exportHtml",
+        "title": "Research: Export as HTML (.html)",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.copyProject",
+        "title": "Research: Make a Copy of Project…",
+        "category": "LabShelf"
+      },
+      {
         "command": "labshelf.writing.revealOutline",
         "title": "Research: Go to Heading",
         "category": "LabShelf"
@@ -358,19 +419,10 @@
         "category": "LabShelf"
       },
       {
-        "command": "labshelf.writing.compareWithCurrent",
-        "title": "Compare with current",
-        "category": "LabShelf"
-      },
-      {
-        "command": "labshelf.writing.compareWith",
-        "title": "Compare with…",
-        "category": "LabShelf"
-      },
-      {
-        "command": "labshelf.writing.openVersion",
-        "title": "Open Version",
-        "category": "LabShelf"
+        "command": "labshelf.writing.showHistory",
+        "title": "Research: Show Project History",
+        "category": "LabShelf",
+        "icon": "$(history)"
       },
       {
         "command": "labshelf.installProjectPapers",
@@ -398,18 +450,6 @@
         "title": "Research: Italic",
         "category": "LabShelf",
         "icon": "$(italic)"
-      },
-      {
-        "command": "labshelf.writing.undo",
-        "title": "Research: Undo",
-        "category": "LabShelf",
-        "icon": "$(discard)"
-      },
-      {
-        "command": "labshelf.writing.redo",
-        "title": "Research: Redo",
-        "category": "LabShelf",
-        "icon": "$(redo)"
       },
       {
         "command": "labshelf.writing.insertSymbol",
@@ -502,13 +542,6 @@
           "type": "tree",
           "when": "labshelf.writing.projectOpen && labshelf.writing.hasFigures",
           "visibility": "collapsed"
-        },
-        {
-          "id": "labshelf.writing.versions",
-          "name": "Versions",
-          "type": "tree",
-          "when": "labshelf.writing.projectOpen && labshelf.writing.hasVersions",
-          "visibility": "collapsed"
         }
       ]
     },
@@ -555,31 +588,9 @@
           "command": "labshelf.writing.regenerateFigure",
           "when": "view == labshelf.writing.figures && viewItem =~ /^labshelfFigure/",
           "group": "1_figure@1"
-        },
-        {
-          "command": "labshelf.writing.compareWithCurrent",
-          "when": "view == labshelf.writing.versions && viewItem == labshelfVersion",
-          "group": "1_compare@1"
-        },
-        {
-          "command": "labshelf.writing.compareWith",
-          "when": "view == labshelf.writing.versions && viewItem == labshelfVersion",
-          "group": "1_compare@2"
         }
       ],
       "commandPalette": [
-        {
-          "command": "labshelf.writing.compareWithCurrent",
-          "when": "false"
-        },
-        {
-          "command": "labshelf.writing.compareWith",
-          "when": "false"
-        },
-        {
-          "command": "labshelf.writing.openVersion",
-          "when": "false"
-        },
         {
           "command": "labshelf.writing.revealOutline",
           "when": "false"
@@ -603,14 +614,6 @@
         {
           "command": "labshelf.writing.italic",
           "when": "labshelf.writing.inProject"
-        },
-        {
-          "command": "labshelf.writing.undo",
-          "when": "false"
-        },
-        {
-          "command": "labshelf.writing.redo",
-          "when": "false"
         },
         {
           "command": "labshelf.writing.citeFromLibrary",
@@ -689,6 +692,38 @@
           "when": "false"
         },
         {
+          "command": "labshelf.writing.downloadPdf",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.openPdfExternally",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.downloadSource",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.downloadArxiv",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.exportWord",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.exportMarkdown",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.exportHtml",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.copyProject",
+          "when": "false"
+        },
+        {
           "command": "labshelf.writing.removeProject",
           "when": "false"
         },
@@ -711,18 +746,17 @@
         {
           "command": "labshelf.writing.addToReadingList",
           "when": "false"
+        },
+        {
+          "command": "labshelf.writing.showHistory",
+          "when": "labshelf.writing.projectOpen || labshelf.writing.inProject"
         }
       ],
       "editor/title": [
         {
-          "command": "labshelf.writing.undo",
+          "command": "labshelf.writing.showHistory",
           "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject",
           "group": "navigation@1"
-        },
-        {
-          "command": "labshelf.writing.redo",
-          "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject",
-          "group": "navigation@2"
         },
         {
           "command": "labshelf.writing.insertSymbol",

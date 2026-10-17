@@ -31,10 +31,10 @@ describe("mountPreviewHeader structure", () => {
     expect(view.parentElement).toBe(header.element);
   });
 
-  it("offers four hidden empty slots named options, only, logs and export in the build group", () => {
+  it("offers three hidden empty slots named options, only and logs in the build group", () => {
     const { header, q } = setup();
-    expect(Object.keys(header.slots).sort()).toEqual(["export", "logs", "only", "options"]);
-    for (const name of ["options", "only", "logs", "export"] as const) {
+    expect(Object.keys(header.slots).sort()).toEqual(["logs", "only", "options"]);
+    for (const name of ["options", "only", "logs"] as const) {
       const slot = header.slots[name];
       expect(slot.getAttribute("data-slot")).toBe(name);
       expect(slot.classList.contains("rd-preview-slot")).toBe(true);
@@ -44,12 +44,12 @@ describe("mountPreviewHeader structure", () => {
     }
   });
 
-  it("orders the build group Recompile then options, only, logs, export", () => {
+  it("orders the build group Recompile then options, only, logs", () => {
     const { q } = setup();
     const order = [...q<HTMLElement>(".rd-preview-build").children].map(
       (c) => c.getAttribute("data-slot") ?? (c.matches(".rd-preview-recompile") ? "recompile" : ""),
     );
-    expect(order.filter(Boolean)).toEqual(["recompile", "options", "only", "logs", "export"]);
+    expect(order.filter(Boolean)).toEqual(["recompile", "options", "only", "logs"]);
   });
 
   it("puts the passed pill element inside the view group", () => {

@@ -1,5 +1,7 @@
 /** Exports the Node side of writing projects: project folders, their build folders, the library's project catalog and the folder registry. */
 export { addExistingFolder, createProjectFromTemplate, listProjects } from "./projectCatalog.js";
+export { deleteProjectForever } from "./deleteProjectForever.js";
+export { lastModified } from "./lastModified.js";
 export { listSyncProjects } from "./projectSyncList.js";
 export { listProjectFiles } from "./projectFiles.js";
 export { projectBuildDir } from "./projectBuildDir.js";

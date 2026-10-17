@@ -30,7 +30,8 @@ function toGalleryEntry(entry: CatalogEntry): TemplateEntry {
   return {
     id: entry.id, name: entry.name, description: entry.description, category: entry.category, format: entry.format,
     engine: entry.engine, main: entry.main, license: entry.license, authors: entry.authors,
-    ...(entry.compiler === undefined ? {} : { compiler: entry.compiler }), source: "community",
+    ...(entry.compiler === undefined ? {} : { compiler: entry.compiler }),
+    ...(entry.downloads === undefined ? {} : { downloads: entry.downloads }), source: "community",
     files: entry.files.map((file) => file.path),
   };
 }

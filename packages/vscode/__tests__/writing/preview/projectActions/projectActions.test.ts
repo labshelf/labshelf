@@ -10,7 +10,6 @@ import { fakeLogger, readyEntry } from "../../../support/writingFixtures";
 jest.mock("../../../../src/writing/build/options", () => ({ setAutoCompile: jest.fn(async () => {}) }));
 jest.mock("../../../../src/writing/preview/limits", () => ({ setCheckLimits: jest.fn(async () => {}) }));
 jest.mock("../../../../src/writing/preview/citationFixes", () => ({ fixCitation: jest.fn(async () => {}) }));
-jest.mock("../../../../src/writing/export", () => ({ exportProject: jest.fn(async () => {}) }));
 
 const project = readyEntry("/lib/paper") as ReturnType<ProjectActionsDeps["project"]> & object;
 
@@ -18,7 +17,6 @@ function setup(over: Partial<ProjectActionsDeps> = {}) {
   const deps = {
     logger: fakeLogger(),
     project: () => project,
-    shownRoot: () => "main.tex",
     projects: { data: {}, paths: {}, reload: jest.fn() },
     setEngine: jest.fn(async () => {}),
     includeOnly: { set: jest.fn() },

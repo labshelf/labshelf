@@ -33,7 +33,7 @@ const folderName = (prompt: string, value = ""): Thenable<string | undefined> =>
 function knownFolders(port: ProjectOrganizerPort): string[] {
   const all = new Set<string>();
   for (const entry of ready(port)) {
-    const parts = entry.settings.archived ? [] : entry.settings.folder?.split("/") ?? [];
+    const parts = entry.settings.archived || entry.settings.trashed ? [] : entry.settings.folder?.split("/") ?? [];
     parts.forEach((_, i) => all.add(parts.slice(0, i + 1).join("/")));
   }
   return [...all].sort();
@@ -45,7 +45,7 @@ async function newFolder(port: ProjectOrganizerPort, parent: string): Promise<vo
   const path = parent ? `${parent}/${name.trim()}` : name.trim();
   // A folder exists only while a project sits in it, so the new one is filled at once.
   const picks = await vscode.window.showQuickPick(
-    ready(port).filter((entry) => !entry.settings.archived).map((entry) => ({ label: entry.settings.id, description: entry.settings.folder ?? "", entry })),
+    ready(port).filter((entry) => !entry.settings.archived && !entry.settings.trashed).map((entry) => ({ label: entry.settings.title ?? entry.settings.id, description: entry.settings.folder ?? "", entry })),
     { canPickMany: true, title: `Projects to move into ${path}` },
   );
   if (!picks || picks.length === 0) { return; }
@@ -92,12 +92,12 @@ async function moveProject(port: ProjectOrganizerPort, entry: ReadyEntry): Promi
     if (!name) { return; }
     path = name.trim();
   }
-  await applyAll(port, [[entry, { folder: path || undefined, archived: undefined }]]);
+  await applyAll(port, [[entry, { folder: path || undefined }]]);
 }
 
 export async function runProjectEdit(port: ProjectOrganizerPort, id: string, edit: ProjectEdit): Promise<void> {
   const entry = ready(port).find((candidate) => candidate.folder === id);
   if (!entry) { return; }
   if (edit === "move") { await moveProject(port, entry); return; }
-  await applyAll(port, [[entry, { archived: edit === "archive" ? true : undefined }]]);
+  await applyAll(port, [[entry, { archived: true }]]);
 }

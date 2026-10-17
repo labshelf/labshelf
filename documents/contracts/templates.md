@@ -70,6 +70,7 @@ The Community catalog is the repository `labshelf/labshelf-templates`.
 
 ```
 index.json
+downloads.json
 templates/<template id>/       one template folder per id, laid out as in Manifest
 ```
 
@@ -86,19 +87,25 @@ The CI validates every pull request with the same validator the apps use and nev
       "license": "LPPL-1.3c", "authors": ["Jane Doe"],
       "files": [{ "path": "main.tex", "size": 5120, "sha256": "9b1e…" }],
       "thumbnail": { "size": 48213, "sha256": "…" },
-      "sample": { "size": 201733, "sha256": "…" }
+      "sample": { "size": 201733, "sha256": "…" },
+      "downloads": 412
     }
   ]
 }
 ```
 
 - `commit` is the full commit hash `C` that the index was built from. `templates[]` holds the manifest keys plus the lists above; `files[].path` is relative to `files/`, and `sha256` is lowercase hex.
+- `downloads` is optional: the number of downloads of the template's `main` file through jsDelivr over the past 365 days, counted across all catalog versions. It is a usage signal, not a count of unique users. A value that is not a safe non-negative integer is dropped and the entry is kept. The gallery sort menu offers Most used (the default; entries without `downloads` come last) and Name. A card shows the count as a "uses" label ("1.2k uses", "1 use"), and the detail page shows it in a Uses row. Installed apps that predate it ignore it, so `schema` stays 1.
 - An index with `schema` above 1 is refused as a whole and the cached one stays in use. An entry that fails the manifest or path rules, or repeats an earlier entry's `id`, is left out and logged; the others are listed in index order.
 - URLs:
   - index: `https://cdn.jsdelivr.net/gh/labshelf/labshelf-templates@main/index.json`, fetched with `If-None-Match`;
   - template file: `https://cdn.jsdelivr.net/gh/labshelf/labshelf-templates@<commit>/templates/<id>/files/<path>`;
   - preview: the same, with `preview/thumbnail.png` or `preview/sample.pdf` in place of `files/<path>`.
 - TRAP: jsDelivr caches `@main` for up to 12 hours. Files are fetched at `@<commit>`, which never changes, so an index and its files always match. A download whose size or `sha256` differs from the index is refused with "The catalog is updating, try again later", and nothing is written.
+
+### downloads.json
+
+A scheduled CI job queries the jsDelivr stats API and commits `downloads.json` at the catalog root: one JSON object mapping template id to a non-negative integer, e.g. `{"article": 12, "thesis": 3}`. Building `index.json` copies each count into the entry with that id, after `sample`; ids not in the catalog are ignored, and a missing file means no entry has `downloads`. Invalid JSON, a value that is not an object, or a count that is not a non-negative integer fails the build with an error naming the file.
 
 ## Typst Universe
 

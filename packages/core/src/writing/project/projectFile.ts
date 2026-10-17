@@ -27,6 +27,10 @@ export interface ProjectSettings extends UserKeys {
   folder?: string | undefined;
   /** Archived projects leave My projects for the Archived group. */
   archived?: boolean | undefined;
+  /** Display name; the shown name is `title ?? id`. Renaming writes it and never changes `id` or the folder. */
+  title?: string | undefined;
+  /** ISO 8601 time since which the project is in the trash; restoring removes the key. */
+  trashed?: string | undefined;
   /** Papers the project cites plus those the user added, each with its DOI when known. */
   papers?: ListedPaper[] | undefined;
 }
@@ -90,6 +94,11 @@ export function parseProjectFile(text: string): ProjectFileResult {
     return { ok: false, reason: "archived must be true or false" };
   }
   if (raw["archived"] === true) { settings.archived = true; }
+  for (const key of ["title", "trashed"] as const) {
+    const value = raw[key];
+    if (value !== undefined && value !== null && typeof value !== "string") { return { ok: false, reason: `${key} must be text` }; }
+    if (typeof value === "string" && value.trim() !== "") { settings[key] = value.trim(); }
+  }
   const userKeys = readUserKeys(raw);
   if (typeof userKeys === "string") { return { ok: false, reason: userKeys }; }
   if (raw["papers"] !== undefined && raw["papers"] !== null) {
@@ -114,6 +123,13 @@ export function updateProjectFile(text: string, patch: ProjectSettingsPatch): st
     if (value === undefined) { doc.delete(key); } else { doc.set(key, value); }
   }
   if (check !== undefined) { patchCheckLimits(doc, check); }
+  return doc.toString();
+}
+
+/** The labshelf.yaml of a copy: every key and comment of `text`, under the copy's id. */
+export function projectFileWithId(text: string, id: string): string {
+  const doc = YAML.parseDocument(text);
+  doc.set("id", id);
   return doc.toString();
 }
 

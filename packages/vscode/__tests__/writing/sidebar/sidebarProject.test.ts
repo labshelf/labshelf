@@ -1,4 +1,4 @@
-// Tests the sidebar project row mapper: marks, counts, groups, tooltips and broken rows.
+// Tests the sidebar project row mapper: counts, hidden flags, tooltips and broken rows.
 import type { ProjectEntry, ReadingList } from "@labshelf/core";
 
 import { brokenProjectItem, detailLines, readyProjectItem, type ReadyEntry } from "../../../src/writing/sidebar/sidebarProject";
@@ -9,48 +9,46 @@ const reading = (entries: Array<{ paper: { status: string } | undefined }> = [])
 const entry = ready("/lib/projects/a");
 
 describe("readyProjectItem", () => {
-  it("shows a counting accent mark with no count before the count is known", () => {
+  it("maps a library project to its row without a count before the count is known", () => {
     const item = readyProjectItem(entry, undefined, undefined, reading());
-    expect(item).toMatchObject({ id: "/lib/projects/a", name: "a", group: "In library", kind: "ready", external: false });
-    expect(item.mark).toEqual({ tone: "accent", progress: "none" });
+    expect(item).toMatchObject({ id: "/lib/projects/a", name: "a", kind: "ready", external: false });
     expect(item).not.toHaveProperty("count");
-    expect(item.tooltip.split("\n")[1]).toBe("Counting…");
+    expect(item).not.toHaveProperty("hidden");
   });
 
-  it("shows a warn mark and the open count once counted", () => {
+  it("shows the open count once counted", () => {
     const item = readyProjectItem(entry, { open: 2, stale: 0 }, undefined, reading());
-    expect(item.mark).toEqual({ tone: "warn", progress: "full" });
     expect(item.count).toBe("2");
-    expect(item.tooltip).toContain("2 open");
   });
 
-  it("shows an ok mark without a count when nothing is open", () => {
+  it("shows no count when nothing is open", () => {
     const item = readyProjectItem(entry, { open: 0, stale: 0 }, undefined, reading());
-    expect(item.mark).toEqual({ tone: "ok", progress: "full" });
     expect(item).not.toHaveProperty("count");
-    expect(item.tooltip).toContain("Nothing open");
   });
 
-  it("shows an err mark when the last build failed", () => {
+  it("puts the last failed build in the tooltip", () => {
     const item = readyProjectItem(entry, { open: 0, stale: 0 }, { ok: false, at: new Date(2026, 0, 1, 9, 7) }, reading());
-    expect(item.mark).toEqual({ tone: "err", progress: "full" });
     expect(item.tooltip).toContain("Last build failed");
   });
 
-  it("groups an external project apart and adds its folder to the tooltip", () => {
+  it("flags an external project and adds its folder to the tooltip", () => {
     const item = readyProjectItem(ready("/code/p", { location: "external" }), undefined, undefined, reading());
-    expect(item).toMatchObject({ group: "External folders", external: true });
+    expect(item.external).toBe(true);
     expect(item.tooltip.endsWith("/code/p")).toBe(true);
     expect(readyProjectItem(entry, undefined, undefined, reading()).tooltip).not.toContain("/lib/projects/a");
+  });
+
+  it("hides an archived or trashed project from the tree", () => {
+    expect(readyProjectItem(ready("/lib/projects/a", { settings: { id: "a", format: "latex", archived: true } }), undefined, undefined, reading()).hidden).toBe(true);
+    expect(readyProjectItem(ready("/lib/projects/a", { settings: { id: "a", format: "latex", trashed: "2026-01-01" } }), undefined, undefined, reading()).hidden).toBe(true);
   });
 });
 
 describe("brokenProjectItem", () => {
-  it("names the missing folder with an err mark and the reason in the tooltip", () => {
+  it("names the missing folder with the reason in the tooltip", () => {
     const broken: Extract<ProjectEntry, { kind: "broken" }> = { kind: "broken", folder: "/code/gone", location: "external", reason: "no such folder" };
     expect(brokenProjectItem(broken)).toEqual({
-      id: "/code/gone", name: "gone", group: "External folders", mark: { tone: "err", progress: "full" },
-      count: "missing", tooltip: "/code/gone\nno such folder", kind: "broken", external: true,
+      id: "/code/gone", name: "gone", count: "missing", tooltip: "/code/gone\nno such folder", kind: "broken", external: true,
     });
   });
 });

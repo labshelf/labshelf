@@ -7,9 +7,6 @@ import { isCitationQuery, isPagePoint, type CitationQuery, type PagePoint } from
 export const PROJECT_COMMANDS = ["compareVersions", "markVersion", "checkBeforeSubmitting"] as const;
 export type ProjectCommandId = (typeof PROJECT_COMMANDS)[number];
 
-export const EXPORT_TARGETS = ["projectZip", "arxivZip", "systemViewer"] as const;
-export type ExportTarget = (typeof EXPORT_TARGETS)[number];
-
 /** A change to the project's check limits: a number sets a limit, null removes it, an absent field keeps it. */
 export interface CheckLimitsChange {
   pages?: number | null;
@@ -45,7 +42,6 @@ export type PreviewRequest =
   | { command: "setIncludeOnly"; on: boolean }
   | { command: "setCheckLimits"; limits: CheckLimitsChange }
   | { command: "fixCitation"; fix: CitationFix }
-  | { command: "exportProject"; target: ExportTarget }
   /** Opens a source line; `file` is relative to the project folder, `line` counts from 1. */
   | { command: "openSourceLine"; file: string; line: number };
 
@@ -87,7 +83,6 @@ const GUARDS: { [C in PreviewRequest["command"]]: (m: Fields) => boolean } = {
   setIncludeOnly: (m) => isBool(m["on"]),
   setCheckLimits: (m) => isLimitsChange(m["limits"]),
   fixCitation: (m) => isCitationFix(m["fix"]),
-  exportProject: (m) => isOneOf(EXPORT_TARGETS, m["target"]),
   openSourceLine: (m) => isFilled(m["file"]) && isLine(m["line"]),
 };
 

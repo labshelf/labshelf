@@ -1,4 +1,4 @@
-// Builds the Projects section rows: the project folder tree with its projects, the archived list, or an empty state with three actions.
+// Builds the Projects section rows: the project folder tree with its projects, or an empty state with three actions.
 import { el } from "../../../ui/dom/index.js";
 import { icon } from "../../../ui/index.js";
 import { GROUP_ROW_DEPTH, projectFolderRow, projectRow } from "./sidebarRows.js";
@@ -11,7 +11,8 @@ export interface SidebarProject {
   format?: "latex" | "typst";
   /** Folder path inside My projects, segments joined by "/"; absent at the top level. */
   folder?: string;
-  archived?: boolean;
+  /** Archived or trashed: left out of the tree, listed only in the All projects tab. */
+  hidden?: true;
   /** Right-aligned text, like a folder's count. */
   count?: string;
   /** Multi-line `title` attribute. */
@@ -24,6 +25,8 @@ export interface SidebarProjectActions {
   /** The host shows its own menu at the pointer. */
   menu(id: string, at: { x: number; y: number }): void;
   browseTemplates(): void;
+  /** Opens the tab that lists every project, archived and trashed ones included. */
+  allProjects(): void;
   newBlank(): void;
   addExisting(): void;
   newFolder(parent: string): void;
@@ -31,6 +34,8 @@ export interface SidebarProjectActions {
   deleteFolder(path: string): void;
   refresh(): void;
   closeProject(): void;
+  /** The host shows the open project's menu below its title row. */
+  openProjectMenu(anchor: HTMLElement): void;
   /** A button in a tree pane's header; `action` is the tree's own action id. */
   treeAction(action: string): void;
   treeClick(view: string, key: string): void;
@@ -63,7 +68,7 @@ const byName = (a: SidebarProject, b: SidebarProject): number => a.name.localeCo
 
 /** My projects: folders first, then projects, each level sorted by name; a folder's count is every project under it. */
 export function projectTreeNodes(projects: readonly SidebarProject[], expanded: ReadonlySet<string>): HTMLElement[] {
-  const active = projects.filter((p) => !p.archived);
+  const active = projects.filter((p) => !p.hidden);
   if (active.length === 0) return [emptyState()];
   const rows: HTMLElement[] = [];
   const walk = (prefix: string, depth: number): void => {
@@ -81,6 +86,3 @@ export function projectTreeNodes(projects: readonly SidebarProject[], expanded: 
   walk("", GROUP_ROW_DEPTH);
   return rows;
 }
-
-export const archivedNodes = (projects: readonly SidebarProject[]): HTMLElement[] =>
-  projects.filter((p) => p.archived).sort(byName).map((p) => projectRow(p, GROUP_ROW_DEPTH));

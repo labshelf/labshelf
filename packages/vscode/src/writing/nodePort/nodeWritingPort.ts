@@ -6,6 +6,7 @@ import type { BuildDiagnostics, BuildListener, ProjectBuilders } from "../build/
 import type { IncludeOnlyTarget } from "../build/node/index.js";
 import type { ProjectFigures } from "../figures/index.js";
 import type { BuildPreviews } from "../preview/index.js";
+import type { ProjectHistoryRecorder } from "../history/node/index.js";
 import type { WritingHost, WritingProjects } from "../index.js";
 
 interface NodeWritingDeps {
@@ -26,4 +27,4 @@ interface NodeWritingDeps {
 /** Project-relative root that a save or build of `file` (absolute) targets: the file when it is a root, else `main`. */
 export type BuildRootOf = (projectFolder: string, main: string, file: string) => Promise<string>;
 
-export type RegisterNodeWriting = (deps: NodeWritingDeps) => { builders: ProjectBuilders; buildRootOf: BuildRootOf };
+export type RegisterNodeWriting = (deps: NodeWritingDeps) => { builders: ProjectBuilders; buildRootOf: BuildRootOf; history: ProjectHistoryRecorder };

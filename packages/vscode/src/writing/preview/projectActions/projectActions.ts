@@ -1,23 +1,21 @@
-// Answers the preview toolbar's project actions: commands, build settings, check limits, citation fixes and export.
+// Answers the preview toolbar's project actions: commands, build settings, check limits, and citation fixes.
 import * as vscode from "vscode";
 
 import type { ILogger, LatexEngine, PreviewPorts } from "@labshelf/core";
 import type { IncludeOnlyState } from "../../build/node/includeOnly.js";
 import { setAutoCompile } from "../../build/options/index.js";
-import { exportProject } from "../../export/index.js";
 import type { ReadyProject } from "../../mainDocument.js";
 import type { WritingProjects } from "../../session/index.js";
 import { fixCitation, type CitationFixDeps } from "../citationFixes/index.js";
 import { setCheckLimits } from "../limits/index.js";
 import { PREVIEW_LOG_MODULE } from "../previewStrings.js";
 
-export type ProjectActions = Required<Pick<PreviewPorts, "runCommand" | "setAutoCompile" | "setEngine" | "setIncludeOnly" | "setCheckLimits" | "fixCitation" | "exportProject">>;
+export type ProjectActions = Required<Pick<PreviewPorts, "runCommand" | "setAutoCompile" | "setEngine" | "setIncludeOnly" | "setCheckLimits" | "fixCitation">>;
 
 export interface ProjectActionsDeps {
   logger: ILogger;
   /** Resolved on every call: the project the preview was shown for goes stale when the projects reload. */
   project(): ReadyProject | undefined;
-  shownRoot(): string | undefined;
   projects: Pick<WritingProjects, "data" | "paths" | "reload">;
   setEngine(project: ReadyProject, engine: LatexEngine): Promise<void>;
   includeOnly: Pick<IncludeOnlyState, "set">;
@@ -77,10 +75,5 @@ export function projectActions(deps: ProjectActionsDeps): ProjectActions {
       }
       await fixCitation(fixes, fix);
     },
-    exportProject: (target) => onProject(deps, "export the project", async (project) => {
-      const root = deps.shownRoot();
-      if (root === undefined) { throw new Error("No build root is shown"); }
-      await exportProject({ logger: deps.logger, projects: deps.projects }, project, root, target);
-    }),
   };
 }

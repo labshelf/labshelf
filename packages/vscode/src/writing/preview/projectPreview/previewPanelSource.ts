@@ -44,7 +44,7 @@ function previewProjectActions(context: PreviewPanelContext, fixes: () => Citati
   const { includeOnly } = deps;
   if (!includeOnly) { return undefined; }
   return projectActions({
-    logger, project: () => currentProject(deps, project.folder), shownRoot, projects: deps.projects,
+    logger, project: () => currentProject(deps, project.folder), projects: deps.projects,
     setEngine: deps.setEngine, includeOnly, fixes, resendRoots: context.resendRoots,
     recompile: () => {
       deps.recompile(project.folder, shownRoot() ?? project.main ?? "").catch((error: unknown) => {

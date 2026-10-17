@@ -1,5 +1,5 @@
 // Exports the template manifest model: validation, serialization, path and licence rules, and the catalog index reader.
-export { parseCatalogIndex } from "./catalogIndex.js";
+export { isDownloadCount, parseCatalogIndex } from "./catalogIndex.js";
 export type { CatalogBlob, CatalogEntry, CatalogFile, CatalogIndexResult, SkippedEntry } from "./catalogIndex.js";
 export { isRecord, parseIndexJson } from "./indexJson.js";
 export { isLicenseExpression } from "./licenseExpression.js";

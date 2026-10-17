@@ -16,7 +16,7 @@ export interface LibrarySidebarOptions {
   actions: SidebarActions;
   expanded: readonly string[];
   saveExpanded(paths: string[]): void;
-  /** Ids of the collapsed sections and groups: `library`, `projects`, `library.folders`, `library.tags`, `projects.list` or `projects.archived`. */
+  /** Ids of the collapsed sections and groups: `library`, `projects`, `library.folders`, `library.tags` or `projects.list`. */
   collapsed: readonly string[];
   saveCollapsed(ids: string[]): void;
   /** Absent → the sidebar has no Projects section. */
@@ -36,7 +36,7 @@ export interface LibrarySidebar {
   /** Marks the tag row whose search is `query`; any other text clears the mark. */
   setQuery(query: string): void;
   setProjects(projects: readonly SidebarProject[]): void;
-  /** Leads Projects with the open project's trees and folds My projects; null restores My projects. */
+  /** Shows only the open project's trees under Projects; null restores My projects and the gallery row. */
   setOpenProject(project: SidebarOpenProject | null): void;
 }
 
@@ -44,10 +44,11 @@ const rowAt = (e: Event): HTMLElement | null => (e.target as HTMLElement).closes
 
 /** Opens a project, folder (All papers opens the root) or tag search, reveals a paper or toggles a section or group; a folder or tag is marked at once, before the host answers. */
 function activate(t: SidebarState, r: HTMLElement): void {
-  const { allPapers, id, project, section, group, tag, templates, projectFolder } = r.dataset;
+  const { allPapers, allProjects, id, project, section, group, tag, templates, projectFolder } = r.dataset;
   if (activateTreeRow(t, r, () => render(t))) return;
   if (projectFolder !== undefined) { const key = projectFolderKey(projectFolder); setExpanded(t, key, !t.expanded.has(key)); return; }
   if (templates !== undefined) { t.projects?.browseTemplates(); return; }
+  if (allProjects !== undefined) { t.projects?.allProjects(); return; }
   const path = allPapers === undefined ? r.dataset["path"] : PAPERS_DIR;
   if (section ?? group) { toggleSection(t, (section ?? group) as SectionId | GroupId); return; }
   if (tag !== undefined) {
@@ -152,12 +153,9 @@ export function mountLibrarySidebar(slot: HTMLElement, o: LibrarySidebarOptions)
     setQuery: (query) => { t.query = query; render(t); },
     setProjects: (projects) => { t.projectList = projects; render(t); },
     setOpenProject: (project) => {
-      const before = t.openProject?.id;
-      if (project?.id !== before) {
+      if (project?.id !== t.openProject?.id) {
         t.treeOpen.clear();
         t.treeInput = null;
-        if (project) t.collapsed.add("projects.list"); else t.collapsed.delete("projects.list");
-        t.saveCollapsed([...t.collapsed]);
       }
       t.openProject = project;
       render(t);

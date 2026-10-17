@@ -53,6 +53,8 @@
     "./styles/template-gallery.css": "./src/writing/templates/dom/styles/template-gallery.css",
     "./styles/template-publish.css": "./src/writing/templates/dom/styles/template-publish.css",
     "./styles/project-search.css": "./src/writing/search/dom/styles/project-search.css",
+    "./styles/project-history.css": "./src/writing/history/dom/styles/project-history.css",
+    "./styles/all-projects.css": "./src/writing/allProjects/dom/styles/all-projects.css",
     "./styles/tokens.css": "./src/ui/dom/tokens.css",
     "./styles/vscodeHost.css": "./src/ui/dom/vscodeHost.css",
     "./test-support/sync-fakes": "./__tests__/support/syncFakes.ts",

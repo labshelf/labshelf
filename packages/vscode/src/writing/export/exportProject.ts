@@ -1,8 +1,9 @@
-// Runs the preview's Export items: saves the project or an arXiv bundle as a zip, or opens the built PDF in the system viewer.
+// Runs the project's export actions: saves its PDF, its source or an arXiv bundle as a zip, or a pandoc document, or opens the PDF in the system viewer.
 import { zipSync } from "fflate";
 import * as vscode from "vscode";
 
-import type { ExportTarget, ILogger } from "@labshelf/core";
+import { DOCUMENT_EXPORT_EXTENSIONS, type DocumentExport, type ILogger } from "@labshelf/core";
+import { convertWithPandoc } from "@labshelf/core/node";
 
 import type { ReadyProject } from "../mainDocument.js";
 import { builtPdf } from "../preview/builtPdf.js";
@@ -11,26 +12,34 @@ import { arxivZipEntries, projectZipEntries } from "./exportBundle.js";
 
 const MODULE = "writing.export";
 
+export type ExportTarget = "pdf" | "systemViewer" | "projectZip" | "arxivZip" | DocumentExport;
+
 export interface ExportProjectDeps {
   logger: ILogger;
   projects: Pick<WritingProjects, "data" | "paths">;
 }
 
-async function openBuiltPdf(deps: ExportProjectDeps, project: ReadyProject, root: string): Promise<void> {
+const DOCUMENT_FILTERS: Record<DocumentExport, string> = { docx: "Word", markdown: "Markdown", html: "HTML" };
+
+/** Asks where to save, starting in the project folder at `<project id><suffix>.<extension>`; undefined when cancelled. */
+async function askDestination(project: ReadyProject, suffix: string, extension: string, filter: string): Promise<vscode.Uri | undefined> {
+  return await vscode.window.showSaveDialog({
+    defaultUri: vscode.Uri.joinPath(vscode.Uri.file(project.folder), `${project.settings.id}${suffix}.${extension}`),
+    filters: { [filter]: [extension] },
+  });
+}
+
+async function withBuiltPdf(deps: ExportProjectDeps, project: ReadyProject, root: string, use: (pdf: string) => PromiseLike<unknown>): Promise<void> {
   const pdf = await builtPdf(deps.projects, project, root);
   if (!pdf) {
-    void vscode.window.showInformationMessage(`Build ${root} to open its PDF.`);
+    void vscode.window.showInformationMessage(`Build ${root} to get its PDF.`);
     return;
   }
-  await vscode.env.openExternal(vscode.Uri.file(pdf));
+  await use(pdf);
 }
 
 async function saveZip(deps: ExportProjectDeps, project: ReadyProject, root: string, target: "projectZip" | "arxivZip"): Promise<void> {
-  const name = `${project.settings.id}${target === "arxivZip" ? "-arxiv" : ""}.zip`;
-  const destination = await vscode.window.showSaveDialog({
-    defaultUri: vscode.Uri.joinPath(vscode.Uri.file(project.folder), name),
-    filters: { Zip: ["zip"] },
-  });
+  const destination = await askDestination(project, target === "arxivZip" ? "-arxiv" : "", "zip", "Zip");
   if (!destination) { return; }
   const entries = target === "arxivZip"
     ? await arxivZipEntries(deps.projects.paths, project, root)
@@ -38,11 +47,28 @@ async function saveZip(deps: ExportProjectDeps, project: ReadyProject, root: str
   await vscode.workspace.fs.writeFile(destination, zipSync(entries));
 }
 
+async function saveDocument(project: ReadyProject, root: string, target: DocumentExport): Promise<void> {
+  const destination = await askDestination(project, "", DOCUMENT_EXPORT_EXTENSIONS[target], DOCUMENT_FILTERS[target]);
+  if (!destination) { return; }
+  await convertWithPandoc({ format: project.settings.format, folder: project.folder, main: root, target, output: destination.fsPath });
+}
+
+async function run(deps: ExportProjectDeps, project: ReadyProject, root: string, target: ExportTarget): Promise<void> {
+  switch (target) {
+    case "pdf": return await withBuiltPdf(deps, project, root, async (pdf) => {
+      const destination = await askDestination(project, "", "pdf", "PDF");
+      if (destination) { await vscode.workspace.fs.copy(vscode.Uri.file(pdf), destination, { overwrite: true }); }
+    });
+    case "systemViewer": return await withBuiltPdf(deps, project, root, (pdf) => vscode.env.openExternal(vscode.Uri.file(pdf)));
+    case "projectZip": case "arxivZip": return await saveZip(deps, project, root, target);
+    default: return await saveDocument(project, root, target);
+  }
+}
+
 /** Exports the project for the target; a cancelled save dialog does nothing and a failure is logged and shown. */
 export async function exportProject(deps: ExportProjectDeps, project: ReadyProject, root: string, target: ExportTarget): Promise<void> {
   try {
-    if (target === "systemViewer") { await openBuiltPdf(deps, project, root); }
-    else { await saveZip(deps, project, root, target); }
+    await run(deps, project, root, target);
   } catch (error) {
     await deps.logger.error(MODULE, error, { project: project.settings.id, root, target });
     void vscode.window.showErrorMessage(`Could not export ${project.settings.id}: ${error instanceof Error ? error.message : String(error)}`);

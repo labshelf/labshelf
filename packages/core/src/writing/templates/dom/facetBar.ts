@@ -1,8 +1,9 @@
-// Renders the gallery title, search box and category buttons, and writes their choices to the filter.
+// Renders the gallery title, search box, sort menu and category buttons, and writes their choices to the filter.
 import { icon } from "../../../ui/index.js";
-import { el } from "../../../ui/dom/index.js";
+import { el, showMenu } from "../../../ui/dom/index.js";
 import { TEMPLATE_CATEGORIES, type TemplateCategory } from "../manifest/index.js";
 import { CATEGORY_LABELS } from "../templateLabels.js";
+import type { TemplateSort } from "../sortTemplates.js";
 import type { GalleryState } from "./galleryState.js";
 
 export interface FacetBar {
@@ -25,6 +26,22 @@ function buildSearch(onQuery: (query: string) => void): HTMLElement {
   input.addEventListener("keydown", (event) => { if (event.key === "Escape") set(""); });
   clear.addEventListener("click", () => { set(""); input.focus(); });
   return box;
+}
+
+const SORT_LABELS: Record<TemplateSort, string> = { "most-used": "Most used", name: "Name" };
+
+function buildSort(state: GalleryState, onSort: () => void): HTMLElement {
+  const label = el("span", { text: SORT_LABELS[state.sort] });
+  const button = el("button", { class: "ls-tpl-sort", type: "button", "aria-haspopup": "menu", "aria-label": "Sort templates" },
+    label, el("span", { class: "ls-tpl-sort-chevron", html: icon("chevron-down") }));
+  button.addEventListener("click", () => {
+    const rect = button.getBoundingClientRect();
+    showMenu({ x: rect.left, y: rect.bottom + 2 }, (Object.keys(SORT_LABELS) as TemplateSort[]).map((sort) => ({
+      label: SORT_LABELS[sort], checked: state.sort === sort, radio: true,
+      onSelect: () => { state.sort = sort; label.textContent = SORT_LABELS[sort]; onSort(); },
+    })), { onClose: () => button.focus() });
+  });
+  return button;
 }
 
 function buildCategories(onCategory: (category: Choice) => void): HTMLElement {
@@ -52,7 +69,8 @@ function buildCategories(onCategory: (category: Choice) => void): HTMLElement {
 export function createFacetBar(state: GalleryState, onFilterChange: () => void): FacetBar {
   const element = el("div", { class: "ls-tpl-facets" },
     el("div", { class: "ls-tpl-facets-row" }, el("h1", { class: "ls-tpl-title", text: "Templates" }),
-      buildSearch((query) => { state.filter = { ...state.filter, query }; onFilterChange(); })),
+      buildSearch((query) => { state.filter = { ...state.filter, query }; onFilterChange(); }),
+      buildSort(state, onFilterChange)),
     buildCategories((category) => {
       const { category: _previous, ...rest } = state.filter;
       state.filter = category === undefined ? rest : { ...rest, category };

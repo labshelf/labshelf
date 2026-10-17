@@ -81,10 +81,6 @@ export const previewHandlers: Pick<
     await previewPorts(ctx, "fixCitation")?.fixCitation?.(msg.fix);
   },
 
-  exportProject: async (ctx, msg) => {
-    await previewPorts(ctx, "exportProject")?.exportProject?.(msg.target);
-  },
-
   openSourceLine: async (ctx, msg) => {
     await previewPorts(ctx, "openSourceLine")?.openSourceLine?.(msg.file, msg.line);
   },

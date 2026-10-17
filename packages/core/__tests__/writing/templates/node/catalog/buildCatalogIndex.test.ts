@@ -65,6 +65,37 @@ describe("buildCatalogIndex", () => {
     await expect(buildCatalogIndex(root, COMMIT)).rejects.toThrow(/beta/);
   });
 
+  it("adds no downloads key without a downloads.json", async () => {
+    const index = JSON.parse(await buildCatalogIndex(await catalogWith("alpha"), COMMIT));
+    expect("downloads" in index.templates[0]).toBe(false);
+  });
+
+  it("writes the counts of downloads.json after sample, ignoring unknown ids", async () => {
+    const root = await catalogWith("alpha", "beta");
+    await put(root, "downloads.json", JSON.stringify({ beta: 3, gone: 9, alpha: 12 }));
+    const text = await buildCatalogIndex(root, COMMIT);
+    const index = JSON.parse(text);
+    expect(index.templates.map((t: { downloads: number }) => t.downloads)).toEqual([12, 3]);
+    expect(Object.keys(index.templates[0]).slice(-2)).toEqual(["sample", "downloads"]);
+    expect(text).not.toContain("gone");
+    expect(await buildCatalogIndex(root, COMMIT)).toBe(text);
+  });
+
+  it("leaves out downloads for a template missing from downloads.json", async () => {
+    const root = await catalogWith("alpha", "beta");
+    await put(root, "downloads.json", JSON.stringify({ alpha: 1 }));
+    const index = JSON.parse(await buildCatalogIndex(root, COMMIT));
+    expect("downloads" in index.templates[1]).toBe(false);
+  });
+
+  it("throws naming downloads.json when it is invalid JSON, the wrong shape or holds a bad count", async () => {
+    for (const text of ["{nope", "[1]", "null", JSON.stringify({ alpha: -1 }), JSON.stringify({ alpha: "3" }), JSON.stringify({ alpha: 1.5 })]) {
+      const root = await catalogWith("alpha");
+      await put(root, "downloads.json", text);
+      await expect(buildCatalogIndex(root, COMMIT)).rejects.toThrow(/downloads\.json/);
+    }
+  });
+
   it("throws when the templates folder is missing", async () => {
     await expect(buildCatalogIndex(await makeTempDir(), COMMIT)).rejects.toThrow();
   });

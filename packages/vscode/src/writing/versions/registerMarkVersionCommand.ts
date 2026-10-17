@@ -17,6 +17,8 @@ interface MarkVersionDeps {
   host: WritingHost;
   projects: Pick<WritingProjects, "list" | "paths" | "data">;
   builders: ProjectBuilders;
+  /** Hears each marked version, which the project history keeps as a milestone. */
+  onMarked(project: ReadyProject, name: string): void;
 }
 
 async function confirmReplace(deps: MarkVersionDeps, project: ReadyProject, name: string): Promise<boolean> {
@@ -48,6 +50,7 @@ async function markProjectVersion(deps: MarkVersionDeps, entry: ProjectEntry | u
     const options = { location: vscode.ProgressLocation.Notification, title: `Marking version "${name}"` };
     await vscode.window.withProgress(options, () =>
       deps.projects.data.markVersion({ folder: project.folder, pdfPath, name, now: new Date() }));
+    deps.onMarked(project, name);
     void vscode.window.showInformationMessage(`Marked version “${name}”.`);
   });
 }

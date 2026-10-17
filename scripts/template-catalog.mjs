@@ -1,4 +1,4 @@
-// Emits the standalone validate.mjs and build-index.mjs for the template catalog repository, bundled from core.
+// Emits the standalone validate.mjs, build-index.mjs and count-downloads.mjs for the template catalog repository, bundled from core.
 import { build } from 'esbuild';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,7 +11,11 @@ if (outDir === undefined) {
 
 const entries = join(dirname(fileURLToPath(import.meta.url)), 'template-catalog');
 await build({
-  entryPoints: { validate: join(entries, 'validateCli.mjs'), 'build-index': join(entries, 'buildIndexCli.mjs') },
+  entryPoints: {
+    validate: join(entries, 'validateCli.mjs'),
+    'build-index': join(entries, 'buildIndexCli.mjs'),
+    'count-downloads': join(entries, 'countDownloadsCli.mjs'),
+  },
   outdir: outDir,
   outExtension: { '.js': '.mjs' },
   bundle: true,

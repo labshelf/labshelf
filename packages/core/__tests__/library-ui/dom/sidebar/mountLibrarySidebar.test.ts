@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 // Tests the library sidebar through its mount handle: rows, counts, expansion, current folder, selection and keyboard.
-import { mountLibrarySidebar, type SidebarPaper } from "../../../../src/library-ui/dom";
+import { mountLibrarySidebar, type SidebarPaper, type SidebarProjectActions } from "../../../../src/library-ui/dom";
 
 const paper = (id: string, folder: string, title: string, status: "unread" | "reading" | "done"): SidebarPaper =>
   ({ record: { id, title, status }, folder });
@@ -27,7 +27,7 @@ function mount(expanded: string[] = [], collapsed: string[] = [], withProjects =
   const actions = { ...(withAddFiles ? { addFiles: jest.fn() } : {}), openFolder: jest.fn(), revealPaper: jest.fn(), createFolder: jest.fn(), renameFolder: jest.fn(), removeFolder: jest.fn(), searchTag: jest.fn() };
   const saveExpanded = jest.fn();
   const saveCollapsed = jest.fn();
-  const projects = { open: jest.fn(), menu: jest.fn(), browseTemplates: jest.fn(), newBlank: jest.fn(), addExisting: jest.fn() };
+  const projects = { open: jest.fn(), menu: jest.fn(), browseTemplates: jest.fn(), allProjects: jest.fn(), newBlank: jest.fn(), addExisting: jest.fn() } as unknown as SidebarProjectActions & Record<string, jest.Mock>;
   const slot = document.createElement("div");
   document.body.replaceChildren(slot);
   const sidebar = mountLibrarySidebar(slot, { actions, expanded, saveExpanded, collapsed, saveCollapsed, ...(withProjects ? { projects } : {}) });
@@ -35,8 +35,8 @@ function mount(expanded: string[] = [], collapsed: string[] = [], withProjects =
   return { slot, sidebar, actions, saveExpanded, saveCollapsed, projects };
 }
 
-const project = (id: string, group = "In library", count?: string) =>
-  ({ id, name: `P ${id}`, group, mark: { tone: "accent" as const, progress: "half" as const }, tooltip: `tip ${id}`, ...(count ? { count } : {}) });
+const project = (id: string, group = "", count?: string) =>
+  ({ id, name: `P ${id}`, format: "latex" as const, tooltip: `tip ${id}`, ...(group ? { folder: group } : {}), ...(count ? { count } : {}) });
 const section = (slot: HTMLElement, id: string): HTMLElement => slot.querySelector<HTMLElement>(`[data-section="${id}"]`)!;
 const rows = (slot: HTMLElement): HTMLElement[] => [...slot.querySelectorAll<HTMLElement>(".tree-row")];
 const compact = (el: Element | null): string => (el?.textContent ?? "").replace(/\s+/g, "");
@@ -191,7 +191,7 @@ describe("mountLibrarySidebar", () => {
 
     it("keeps the Projects header's Add existing folder separate from Add files", () => {
       const { slot, projects, actions } = mount([], [], true, true);
-      section(slot, "projects").querySelector<HTMLElement>('[data-tree="add"]')!.click();
+      section(slot, "projects").parentElement!.querySelector<HTMLElement>('.tree-empty-actions [data-tree="add"]')!.click();
       expect(projects.addExisting).toHaveBeenCalledTimes(1);
       expect((actions as { addFiles: jest.Mock }).addFiles).not.toHaveBeenCalled();
     });
@@ -270,9 +270,9 @@ describe("mountLibrarySidebar", () => {
   describe("projects", () => {
     it("renders project rows with mark, name and count, and opens one on click", () => {
       const { slot, sidebar, projects } = mount([], [], true);
-      sidebar.setProjects([project("/a", "In library", "3"), project("/b")]);
+      sidebar.setProjects([project("/a", "", "3"), project("/b")]);
       const row = slot.querySelector<HTMLElement>('[data-project="/a"]')!;
-      expect(row.querySelector(".tree-icon svg")).not.toBeNull();
+      expect(row.querySelector(".tree-ref")?.textContent).toBe("TEX");
       expect(row.querySelector(".tree-label")?.textContent).toBe("P /a");
       expect(row.querySelector(".tree-count")?.textContent).toBe("3");
       expect(row.getAttribute("title")).toBe("tip /a");
@@ -284,8 +284,7 @@ describe("mountLibrarySidebar", () => {
     it("opens the focused project with Enter", () => {
       const { slot, sidebar, projects } = mount([], ["library"], true);
       sidebar.setProjects([project("/a")]);
-      key(slot, "ArrowDown");
-      key(slot, "ArrowDown");
+      for (let i = 0; i < 5; i++) { key(slot, "ArrowDown"); }
       key(slot, "Enter");
       expect(projects.open).toHaveBeenCalledWith("/a");
     });
@@ -299,14 +298,25 @@ describe("mountLibrarySidebar", () => {
       expect(projects.menu).toHaveBeenCalledWith("/a", { x: 12, y: 34 });
     });
 
-    it("shows group sub-headings only when projects span more than one group, in first-seen order", () => {
-      const { slot, sidebar } = mount([], [], true);
-      sidebar.setProjects([project("/a", "In library"), project("/b", "In library")]);
-      const headings = (): string[] => [...slot.querySelectorAll(".tree-heading:not(.tree-section)")].map((h) => h.textContent ?? "");
-      expect(headings()).toEqual(["Folders"]);
-      sidebar.setProjects([project("/a", "External folders"), project("/b", "In library"), project("/c", "External folders")]);
-      expect(headings()).toEqual(["Folders", "External folders", "In library"]);
-      expect(rows(slot).map((r) => r.dataset["project"]).filter(Boolean)).toEqual(["/a", "/c", "/b"]);
+    it("nests projects under their folder row, folders first, and shows them only while the folder is expanded", () => {
+      const list = [project("/a", "Thesis"), project("/b"), project("/c", "Thesis")];
+      const closed = mount([], [], true);
+      closed.sidebar.setProjects(list);
+      expect([...closed.slot.querySelectorAll<HTMLElement>("[data-project-folder]")].map((r) => compact(r))).toEqual(["Thesis2"]);
+      expect(rows(closed.slot).map((r) => r.dataset["project"]).filter(Boolean)).toEqual(["/b"]);
+      const open = mount(["project-folder:Thesis"], [], true);
+      open.sidebar.setProjects(list);
+      expect(rows(open.slot).map((r) => r.dataset["project"]).filter(Boolean)).toEqual(["/a", "/c", "/b"]);
+    });
+
+    it("opens the All projects tab from its row under Explore templates, and keeps archived projects out of the tree", () => {
+      const { slot, sidebar, projects } = mount([], [], true);
+      sidebar.setProjects([project("/a"), { ...project("/b"), hidden: true }]);
+      const keys = [...slot.querySelectorAll<HTMLElement>(".tree-row[data-key]")].map((r) => r.dataset["key"]);
+      expect(keys.indexOf("allProjects")).toBe(keys.indexOf("templates") + 1);
+      expect(slot.querySelector('[data-project="/b"]')).toBeNull();
+      slot.querySelector<HTMLElement>("[data-all-projects]")!.click();
+      expect(projects.allProjects).toHaveBeenCalledTimes(1);
     });
 
     it("shows an empty state whose buttons call the host actions", () => {
@@ -321,12 +331,13 @@ describe("mountLibrarySidebar", () => {
       expect(slot.textContent).toContain("No projects yet.");
     });
 
-    it("offers Browse templates and Add existing folder from the section header", () => {
-      const { slot, projects } = mount([], [], true);
-      section(slot, "projects").querySelector<HTMLElement>('[data-tree="browse"]')!.click();
-      section(slot, "projects").querySelector<HTMLElement>('[data-tree="add"]')!.click();
+    it("opens the template gallery from the Explore templates row and creates a blank project from the list header", () => {
+      const { slot, sidebar, projects } = mount([], [], true);
+      sidebar.setProjects([project("/a")]);
+      slot.querySelector<HTMLElement>("[data-templates]")!.click();
+      slot.querySelector<HTMLElement>('[data-tree="blank"]')!.click();
       expect(projects.browseTemplates).toHaveBeenCalledTimes(1);
-      expect(projects.addExisting).toHaveBeenCalledTimes(1);
+      expect(projects.newBlank).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -343,7 +354,7 @@ describe("mountLibrarySidebar", () => {
       const { slot, sidebar } = mount([], [], true);
       sidebar.setLibrary(folders, tagged);
       expect([...slot.querySelectorAll(".tree-section")].map((h) => h.getAttribute("data-section"))).toEqual(["library", "projects"]);
-      expect(headings(slot)).toEqual(["Folders", "Tags"]);
+      expect(headings(slot)).toEqual(["Folders", "Tags", "My projects"]);
       expect(tagRows(slot).map((r) => compact(r))).toEqual(["#Deeplearning1", "#NLP2"]);
       expect(tagRows(slot)[0]!.querySelector(".tree-hash")?.textContent).toBe("#");
     });

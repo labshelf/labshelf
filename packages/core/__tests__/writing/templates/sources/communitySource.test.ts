@@ -137,6 +137,13 @@ describe("createCommunitySource list freshness and files", () => {
     const { source } = await setup([await entry("a")]);
     expect((await source.list()).entries[0]!.files).toEqual(["main.tex", "refs/refs.bib"]);
   });
+
+  it("carries the download count when the index has one", async () => {
+    const { source } = await setup([await entry("a", { downloads: 42 }), await entry("b")]);
+    const { entries } = await source.list();
+    expect(entries[0]!.downloads).toBe(42);
+    expect(entries[1]).not.toHaveProperty("downloads");
+  });
 });
 
 describe("createCommunitySource thumbnail", () => {

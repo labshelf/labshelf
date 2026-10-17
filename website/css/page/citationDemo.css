@@ -1,0 +1,24 @@
+/* Styles the live citation demo: the LaTeX source pane and the compiled sheet. */
+
+.demo{display:grid;gap:18px}
+.pane{background:var(--ink2);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.pane .chrome{display:flex;align-items:center;gap:10px;height:32px;padding:0 12px;border-bottom:1px solid var(--line);font:11px var(--mono);color:var(--faint)}
+.pane .chrome .st{margin-left:auto;display:flex;align-items:center;gap:6px;color:var(--dim)}
+.pane .chrome .st i{width:6px;height:6px;border-radius:50%;background:var(--faint)}
+.pane .chrome .st.ch{color:var(--amber)} .pane .chrome .st.ch i{background:var(--amber)}
+.src{margin:0;padding:18px 0;font:12.5px/2 var(--mono);overflow-x:auto}
+.src .l{display:block;padding:0 20px;white-space:pre}
+.src .l b{display:inline-block;width:2.4em;color:var(--faint);font-weight:400}
+.src .kw{color:var(--blue)}
+.src .key{border-radius:3px;transition:background-color .6s}
+.src .key.bad{text-decoration:underline wavy var(--red);text-decoration-thickness:1px;text-underline-offset:4px}
+.src .key.new{background:color-mix(in srgb,var(--green) 30%,transparent)}
+.sheetw{background:#262d3a;padding:26px}
+.sheet{background:var(--paper);color:var(--pink);padding:30px 34px;font:17px/1.65 var(--serif);border-radius:2px}
+.sheet .sec{font:600 15px var(--serif);margin:0 0 6px}
+.sheet p{margin:0;text-align:justify;hyphens:auto}
+.cit{cursor:pointer;border-radius:3px;outline:none}
+.cit:hover,.cit:focus-visible,.cit.on{background:rgba(42,85,168,.14)}
+.cit.undef{font-weight:600;text-decoration:underline wavy #c0504a;text-decoration-thickness:1px;text-underline-offset:3px}
+.try{font:12px var(--mono);color:var(--dim)}
+.try .prompt{margin-right:6px}

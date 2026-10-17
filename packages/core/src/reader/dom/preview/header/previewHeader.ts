@@ -5,7 +5,7 @@ import type { WebviewToHost } from "../../../index.js";
 import { iconButton } from "../../elements/index.js";
 
 export type RecompileState = "current" | "stale" | "building";
-type HeaderSlotName = "options" | "only" | "logs" | "export";
+type HeaderSlotName = "options" | "only" | "logs";
 
 interface PreviewHeaderDeps {
   post: (msg: WebviewToHost) => void;
@@ -21,7 +21,7 @@ export interface PreviewHeader {
   setBuild(state: RecompileState): void;
 }
 
-const SLOT_NAMES: HeaderSlotName[] = ["options", "only", "logs", "export"];
+const SLOT_NAMES: HeaderSlotName[] = ["options", "only", "logs"];
 
 function pressable(button: HTMLButtonElement, pressed: boolean): void {
   button.setAttribute("aria-pressed", String(pressed));
@@ -57,7 +57,7 @@ export function mountPreviewHeader({ post, pill, setPagesDark }: PreviewHeaderDe
   });
 
   const rule = el("span", { class: "rd-preview-rule", "aria-hidden": "true" });
-  const build = el("div", { class: "rd-preview-build" }, recompile, slots.options, slots.only, rule, slots.logs, slots.export);
+  const build = el("div", { class: "rd-preview-build" }, recompile, slots.options, slots.only, rule, slots.logs);
   const viewRule = el("span", { class: "rd-preview-rule", "aria-hidden": "true" });
   const view = el("div", { class: "rd-preview-view" }, compare, mark, dark, viewRule, pill);
   const element = el("header", { class: "rd-preview-header", role: "toolbar", "aria-label": "Preview" }, build, view);

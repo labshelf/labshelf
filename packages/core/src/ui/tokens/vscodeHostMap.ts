@@ -37,6 +37,7 @@ const VSCODE_HOST_MAP: Partial<Record<MappedToken, string>> = {
   "list-inactive-bg": "var(--vscode-list-inactiveSelectionBackground)",
   "list-drop-bg": "var(--vscode-list-dropBackground)",
   "list-focus-outline": "var(--vscode-list-focusOutline)",
+  "tree-guide": "var(--vscode-tree-indentGuidesStroke)",
   "menu-bg": "var(--vscode-menu-background)",
   "menu-fg": "var(--vscode-menu-foreground)",
   "menu-border": "var(--vscode-menu-border, var(--vscode-widget-border))",

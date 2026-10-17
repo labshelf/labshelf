@@ -4,7 +4,7 @@ export type { ListedPaper } from "./listedPapers.js";
 export { detectFormat, detectMainFile, findRoots, mainCandidates, rootBuildFolder } from "./roots/index.js";
 export {
   DEFAULT_BIBLIOGRAPHY, LATEX_ENGINES, PROJECT_FILE, PROJECT_FORMATS,
-  parseProjectFile, serializeProjectFile, updateProjectFile,
+  parseProjectFile, projectFileWithId, serializeProjectFile, updateProjectFile,
 } from "./projectFile.js";
 export type { CheckLimits, LatexEngine, ProjectFileResult, ProjectFormat, ProjectSettings, ProjectSettingsPatch } from "./projectFile.js";
 export { parseJsonObject } from "./deviceLocal/index.js";

@@ -1,9 +1,13 @@
-// Tests the three Export items of the preview: the project zip, the arXiv zip and the system viewer, over a fake workspace file system.
+// Tests the project export actions: the zips, the PDF, the system viewer and the pandoc documents, over a fake workspace file system.
 import * as path from "node:path";
 import { unzipSync, strFromU8 } from "fflate";
 import * as vscode from "vscode";
 
+import { convertWithPandoc } from "@labshelf/core/node";
 import { exportProject } from "../../../src/writing/export/exportProject";
+
+jest.mock("@labshelf/core/node", () => ({ ...jest.requireActual("@labshelf/core/node"), convertWithPandoc: jest.fn(async () => {}) }));
+const pandoc = convertWithPandoc as jest.Mock;
 import { fakeLogger, fakeProjects, readyEntry } from "../../support/writingFixtures";
 
 type Project = Parameters<typeof exportProject>[1];
@@ -47,6 +51,8 @@ beforeEach(() => {
   window["showInformationMessage"]!.mockClear();
   window["showErrorMessage"]!.mockClear();
   env.openExternal.mockClear();
+  workspace.fs["copy"] = jest.fn(async () => {});
+  pandoc.mockReset().mockResolvedValue(undefined);
   logger.error.mockClear();
   fileSystem({
     "main.tex": MAIN, "refs.bib": REFS, "labshelf.bib": GENERATED, "gen.bib": GENERATED,
@@ -103,5 +109,33 @@ describe("exportProject", () => {
     await exportProject(deps, project(), "main.tex", "projectZip");
     expect(logger.error).toHaveBeenCalledWith(expect.any(String), failure, { project: "paper", root: "main.tex", target: "projectZip" });
     expect(window["showErrorMessage"]).toHaveBeenCalledTimes(1);
+  });
+
+  it("saves the built PDF where the user picks, offering <id>.pdf", async () => {
+    window["showSaveDialog"]!.mockResolvedValue(vscode.Uri.file("/out/paper.pdf"));
+    await exportProject(deps, project(), "main.tex", "pdf");
+    expect(window["showSaveDialog"]!.mock.calls[0]![0].defaultUri.fsPath).toMatch(/paper\.pdf$/);
+    expect(workspace.fs["copy"]!.mock.calls[0]![0].fsPath).toBe(path.join(dir, "main.pdf"));
+    expect(workspace.fs["copy"]!.mock.calls[0]![1].fsPath).toBe(path.resolve("/out/paper.pdf"));
+  });
+
+  it("asks for a build before saving a PDF that does not exist", async () => {
+    workspace.fs["stat"]!.mockRejectedValueOnce(new Error("FileNotFound"));
+    await exportProject(deps, project(), "main.tex", "pdf");
+    expect(window["showSaveDialog"]).not.toHaveBeenCalled();
+    expect(window["showInformationMessage"]).toHaveBeenCalledTimes(1);
+  });
+
+  it("converts the root with pandoc to the picked Word file", async () => {
+    window["showSaveDialog"]!.mockResolvedValue(vscode.Uri.file("/out/paper.docx"));
+    await exportProject(deps, project(), "main.tex", "docx");
+    expect(window["showSaveDialog"]!.mock.calls[0]![0].defaultUri.fsPath).toMatch(/paper\.docx$/);
+    expect(pandoc).toHaveBeenCalledWith({ format: "latex", folder: dir, main: "main.tex", target: "docx", output: path.resolve("/out/paper.docx") });
+  });
+
+  it("shows pandoc's failure, such as pandoc missing, as an export error", async () => {
+    pandoc.mockRejectedValueOnce(new Error("Exporting to Word, Markdown or HTML needs pandoc."));
+    await exportProject(deps, project(), "main.tex", "markdown");
+    expect(window["showErrorMessage"]!.mock.calls[0]![0]).toContain("needs pandoc");
   });
 });

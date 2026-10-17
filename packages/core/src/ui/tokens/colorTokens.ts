@@ -37,6 +37,7 @@ export const COLOR_TOKENS = {
   "list-inactive-bg": token("#37373d", "#e4e6f1"),
   "list-drop-bg": token("#383b3d", "#d6ebff"),
   "list-focus-outline": token("#0078d4", "#005fb8"),
+  "tree-guide": token("#585858", "#a9a9a9"),
 
   "menu-bg": token("#1f1f1f", "#ffffff"),
   "menu-fg": token("#cccccc", "#3b3b3b"),

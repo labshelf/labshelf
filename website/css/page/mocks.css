@@ -1,0 +1,51 @@
+/* Draws the mock-ups that stand in for the library, reader, browser and preview recordings. */
+
+/* Mock: library window */
+.mlib{position:absolute;inset:30px 0 0;display:grid;grid-template-columns:28% 1fr 30%;font:10px/1.2 var(--mono);color:var(--dim)}
+.mlib .sb{background:#10151d;border-right:1px solid var(--line);padding:10px 8px}
+.mlib .sb div{padding:4px 6px;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mlib .sb .r{color:var(--blue);font-weight:700;font-size:8px;margin-right:6px}
+.mlib .sb .on{background:var(--ink3);color:var(--tx)}
+.mlib .ls{padding:10px 0}
+.mlib .ls div{display:flex;gap:10px;padding:7px 12px;white-space:nowrap;overflow:hidden}
+.mlib .ls div:nth-child(odd){background:rgba(255,255,255,.025)}
+.mlib .ls .sel{background:color-mix(in srgb,var(--blue) 18%,transparent)!important;color:var(--tx)}
+.mlib .ls span:first-child{flex:1;overflow:hidden;text-overflow:ellipsis;color:var(--tx)}
+.mlib .dt{border-left:1px solid var(--line);padding:14px 12px;font:12px/1.35 var(--serif);color:var(--tx)}
+.mlib .dt small{display:block;font:9px var(--mono);color:var(--dim);margin:6px 0 10px}
+.mlib .dt .b{height:6px;border-radius:2px;background:var(--line);margin:0 0 7px}
+/* Mock: reader page with a highlighter sweeping */
+.mread{position:absolute;inset:30px 0 0;background:#262d3a;display:flex;justify-content:center;padding:18px 0 0;overflow:hidden}
+.mread .pg{width:min(72%,420px);background:var(--paper);color:var(--pink);padding:22px 26px;font:12.5px/1.6 var(--serif);border-radius:2px}
+.mread h4{margin:0 0 8px;font:600 15px var(--serif)}
+.mread p{margin:0 0 8px;text-align:justify}
+.mread .sw{background:linear-gradient(90deg,rgba(242,203,78,.75),rgba(242,203,78,.75)) no-repeat 0 60%/0% 60%;animation:sweep 5s ease-in-out infinite}
+.mread .sw.g{background-image:linear-gradient(90deg,rgba(134,199,159,.7),rgba(134,199,159,.7));animation-delay:1.2s}
+@keyframes sweep{0%,8%{background-size:0% 60%}30%,85%{background-size:100% 60%}100%{background-size:100% 60%}}
+.mread .bar2{position:absolute;left:50%;top:44%;transform:translateX(-50%);display:flex;gap:4px;background:#1b212c;border:1px solid var(--line);border-radius:6px;padding:4px;font:9.5px var(--mono);color:var(--tx);box-shadow:0 8px 20px rgba(0,0,0,.4);animation:pop 5s ease-in-out infinite}
+.mread .bar2 span{padding:3px 6px;border-radius:3px;display:inline-flex;gap:5px;align-items:center}
+.mread .bar2 i{width:6px;height:6px;border-radius:50%;background:var(--c)}
+@keyframes pop{0%,10%{opacity:0;transform:translate(-50%,4px)}18%,26%{opacity:1;transform:translate(-50%,0)}32%,100%{opacity:0}}
+/* Mock: browser */
+.mweb{position:absolute;inset:30px 0 0;background:#f4f5f7;color:#20242c;font:12px/1.5 var(--serif);padding:22px 26px}
+.mweb .u{font:10px var(--mono);color:#69707d;margin-bottom:14px}
+.mweb h4{margin:0 0 6px;font:600 17px/1.25 var(--serif)}
+.mweb .au{font-size:12px;color:#5c6370;margin-bottom:12px}
+.mweb .lnb{height:7px;border-radius:2px;background:#dcdfe5;margin:0 0 8px}
+.mweb .pin{position:absolute;right:16px;top:12px;width:min(58%,250px);background:#151a23;color:var(--tx);border-radius:8px;padding:12px 14px;font:10.5px/1.5 var(--mono);box-shadow:0 10px 26px rgba(0,0,0,.3);animation:pin 6s ease-in-out infinite}
+.mweb .pin b{color:var(--hi);font-weight:500}
+.mweb .pin .ok{color:var(--green)}
+@keyframes pin{0%,12%{opacity:0;transform:translateY(-6px)}22%,86%{opacity:1;transform:none}100%{opacity:0}}
+
+/* Mock: preview pane, a wireframe until the recording exists */
+.mprev{position:absolute;inset:30px 0 0;display:flex;flex-direction:column}
+.mprev .tb2,.mprev .ft2{display:flex;gap:10px;align-items:center;height:26px;padding:0 12px;border-bottom:1px solid var(--line)}
+.mprev .ft2{border-bottom:0;border-top:1px solid var(--line);height:22px}
+.mprev .tb2 i,.mprev .ft2 i{height:6px;border-radius:2px;background:var(--line)}
+.mprev .ft2 i.w{background:color-mix(in srgb,var(--red) 60%,transparent)}
+.mprev span{flex:1}
+.mprev .desk2{flex:1;display:flex;justify-content:center;gap:18px;padding:16px;background:#1a212d;overflow:hidden}
+.mprev .s2{width:min(34%,300px);background:var(--paper);border-radius:2px;padding:18px 20px}
+.mprev .s2 b{display:block;height:9px;width:55%;background:#c9ccd3;margin:0 0 12px;border-radius:2px}
+.mprev .s2 i{display:block;height:5px;background:#dcdfe5;margin:0 0 7px;border-radius:2px}
+.mprev .s2 i.u{background:linear-gradient(90deg,#dcdfe5 0 70%,#ee8a80 70% 82%,#dcdfe5 82%)}

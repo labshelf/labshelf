@@ -1,6 +1,7 @@
-// Holds what the template gallery knows (listings, filter, thumbnails, busy and open templates) and derives the entries to show.
+// Holds what the template gallery knows (listings, filter, sort, thumbnails, busy and open templates) and derives the entries to show.
 import type { ProjectFormat } from "../../project/index.js";
 import { filterTemplates, type TemplateFilter } from "../filterTemplates.js";
+import { sortTemplates, type TemplateSort } from "../sortTemplates.js";
 import { TEMPLATE_SOURCES, type TemplateEntry, type TemplateSourceId } from "../templateEntry.js";
 import type { SourceListing, TemplateKey } from "../protocol/index.js";
 
@@ -9,6 +10,7 @@ export const keyOf = (template: TemplateKey): string => `${template.source}/${te
 export class GalleryState {
   readonly listings: Record<TemplateSourceId, SourceListing> = { community: { status: "loading" }, universe: { status: "loading" }, mine: { status: "loading" } };
   filter: TemplateFilter = {};
+  sort: TemplateSort = "most-used";
   /** The entry whose detail page is open. */
   open: TemplateEntry | null = null;
   /** What the host said this machine lacks to build the open template. */
@@ -36,7 +38,7 @@ export class GalleryState {
   }
 
   visible(): TemplateEntry[] {
-    return filterTemplates(this.listed(), this.filter);
+    return sortTemplates(filterTemplates(this.listed(), this.filter), this.sort);
   }
 
   count(source: TemplateSourceId): number {

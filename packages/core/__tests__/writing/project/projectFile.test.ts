@@ -1,6 +1,6 @@
 /** Verifies labshelf.yaml parsing, serializing and in-place updates. */
 import {
-  parseProjectFile, serializeProjectFile, updateProjectFile,
+  parseProjectFile, projectFileWithId, serializeProjectFile, updateProjectFile,
 } from "../../../src/writing/project/index";
 
 describe("parseProjectFile", () => {
@@ -88,5 +88,30 @@ describe("updateProjectFile", () => {
     const out = updateProjectFile(source, { engine: "xelatex" });
     expect(out).toContain("engine: xelatex");
     expect(out.startsWith("# my project\nid: a\nzeta")).toBe(true);
+  });
+});
+
+describe("projectFileWithId", () => {
+  it("keeps every key and comment and sets only the id", () => {
+    const source = "# notes\nid: paper\nformat: latex\nfigures:\n  fig/a.pdf: { script: plot.py }\n";
+    const out = projectFileWithId(source, "paper-copy");
+    expect(out).toBe(source.replace("id: paper", "id: paper-copy"));
+  });
+});
+
+describe("parseProjectFile title and trashed", () => {
+  it("reads title and trashed", () => {
+    const result = parseProjectFile("id: a\nformat: latex\ntitle: My paper\ntrashed: 2026-10-17T09:00:00.000Z\n");
+    expect(result.ok && result.settings).toMatchObject({ title: "My paper", trashed: "2026-10-17T09:00:00.000Z" });
+  });
+
+  it("reads a blank title as absent", () => {
+    const result = parseProjectFile("id: a\nformat: latex\ntitle: '  '\n");
+    expect(result.ok && result.settings.title).toBeUndefined();
+  });
+
+  it("rejects a title or trashed that is not text", () => {
+    expect(parseProjectFile("id: a\nformat: latex\ntitle: [x]\n")).toEqual({ ok: false, reason: "title must be text" });
+    expect(parseProjectFile("id: a\nformat: latex\ntrashed: true\n")).toEqual({ ok: false, reason: "trashed must be text" });
   });
 });

@@ -1,9 +1,8 @@
-// Creates the open project's views with their commands: Figures and Versions as native trees, Files, Outline and Checklist through the sidebar mirror.
-import { access } from "node:fs/promises";
+// Creates the open project's views with their commands: Figures as a native tree, Files, Outline and Checklist through the sidebar mirror.
 import * as vscode from "vscode";
 
 import type { ILogger, PaperStatus } from "@labshelf/core";
-import { listVersions, readChecklistSignals } from "@labshelf/core/node";
+import { readChecklistSignals } from "@labshelf/core/node";
 import type { ArcIcon } from "../../ui/index.js";
 import type { BuildOutcomes } from "../build/index.js";
 import { registerChecklistView } from "../checklist/index.js";
@@ -11,7 +10,6 @@ import { OutlineTreeProvider, REVEAL_OUTLINE_COMMAND, registerTypstOutline, reve
 import { ProjectFiguresView, type ProjectFigures } from "../figures/index.js";
 import type { BuildPreviews } from "../preview/index.js";
 import { ProjectTreeMirror, SidebarProjectsSource, type ProjectTreeSpec } from "../sidebar/index.js";
-import { ProjectVersionsView } from "../versions/index.js";
 import type { ProjectReadingLists } from "../readingList/index.js";
 import type { ProjectSession, WritingProjects } from "../session/index.js";
 import { registerProjectFileCommands } from "./projectFileCommands.js";
@@ -77,18 +75,10 @@ export function registerProjectViews(deps: ProjectViewsDeps): ProjectViewsHandle
   const figuresView = new ProjectFiguresView({ session, figures, paths: projects.paths, arcIcon });
   const figuresTree = vscode.window.createTreeView("labshelf.writing.figures", { treeDataProvider: figuresView });
   figuresView.attach(figuresTree);
-  const versionsView = new ProjectVersionsView({
-    session, listVersions: (folder) => listVersions(folder, logger), pdfExists: (file) => access(file).then(() => true, () => false),
-  });
-  const versionsTree = vscode.window.createTreeView("labshelf.writing.versions", { treeDataProvider: versionsView });
-  versionsView.attach(versionsTree);
   context.subscriptions.push(
     projectsSource,
     files,
     figuresView,
-    versionsView,
-    versionsTree,
-    watchProjectFiles(session, () => void versionsView.refresh(), ".labshelf/versions/**"),
     watchProjectFiles(session, () => files.refresh()),
     figuresTree,
     outline.follow(),

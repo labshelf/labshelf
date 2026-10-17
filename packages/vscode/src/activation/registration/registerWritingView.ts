@@ -13,7 +13,9 @@ import {
 } from "../../writing/build/index.js";
 import { IncludeOnlyState, type IncludeOnlyTarget } from "../../writing/build/node/index.js";
 import { registerInstallCommand } from "../../writing/install/index.js";
+import { registerExportCommands } from "../../writing/export/index.js";
 import { registerEditorActions, registerInsertActions } from "../../writing/editorActions/index.js";
+import { registerAllProjects } from "../../writing/allProjects/index.js";
 import { registerProjectSearch } from "../../writing/search/index.js";
 import { registerMarkVersionCommand } from "../../writing/versions/index.js";
 import { registerTinymistBridge } from "../../writing/typst/index.js";
@@ -103,6 +105,7 @@ function registerProjectAndFigureCommands(parts: WritingParts): void {
   const { context, controller, host, projects, figures, readingLists, listPapers } = parts;
   registerProjectCommands({ context, host, projects });
   registerProjectItemCommands({ context, host, projects });
+  registerExportCommands({ context, host, projects });
   registerMainCommands({ context, host, projects });
   registerMainStatusBar(context, projects);
   registerReadingListCommands({ context, host, projects, readingLists, listPapers });
@@ -160,10 +163,10 @@ function registerBuildAndPreviewCommands(
     hasPreview: (folder: string) => previews.hasPreview(folder),
   };
   node = registerNodeWriting({ context, host, projects, figures, previews: builds, diagnostics, reader, onFindings: (folder, count) => counts.record(folder, count), includeOnlyTarget });
-  const { builders, buildRootOf } = node;
+  const { builders, buildRootOf, history } = node;
   registerBuildCommand({ context, projects, builders, buildRootOf });
   context.subscriptions.push(new FocusFollower({ session, projects, buildRootOf, builders, previews, host }));
-  registerMarkVersionCommand({ context, host, projects, builders });
+  registerMarkVersionCommand({ context, host, projects, builders, onMarked: (project, name) => history.recordVersion(project, name) });
   registerTinymistBridge(context, { host, projects });
   registerShowPreview({ context, projects, previews });
   registerShowInPreview({ context, projects, previews });
@@ -245,6 +248,7 @@ export function registerWritingView(
   const { projectsSource, projectTrees } = registerProjectViews({
     context, projects, figures, session, logger, arcIcon, readingLists, outcomes, previews, onDidChangeBacklinks: backlinks.onDidChange, setStatus,
   });
+  registerAllProjects({ context, host, projects, session, source: projectsSource, logger });
   registerEditingSupport(parts);
   void projects.reload();
   return { projects, backlinks, projectsSource, projectTrees };

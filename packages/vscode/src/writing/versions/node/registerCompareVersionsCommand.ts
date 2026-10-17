@@ -2,7 +2,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import type { ILogger, PdfjsLoader, ProjectEntry, ProjectVersion } from "@labshelf/core";
+import type { ILogger, PdfjsLoader, ProjectEntry } from "@labshelf/core";
 import { buildMarkedUpDiff, comparePdfs, findExecutable, listVersions, projectBuildDir } from "@labshelf/core/node";
 import { executeSafely } from "../../../commands/index.js";
 import type { ReaderPanelDeps } from "../../../pdf-viewer/index.js";
@@ -14,15 +14,8 @@ import type { ProjectBuilders } from "../../build/index.js";
 import { buildCurrentPdf } from "../buildCurrentPdf.js";
 import { ComparePanels } from "../ComparePanels.js";
 import { CURRENT_SLUG, pickMode, pickSides, versionSide, type CompareMode, type CompareSide } from "../compareSides.js";
-import type { VersionRow } from "../projectVersionsView.js";
-import { OPEN_VERSION_COMMAND } from "../versionTreeItem.js";
 
 export const COMPARE_VERSIONS_COMMAND = "labshelf.writing.compareVersions";
-const COMPARE_WITH_CURRENT_COMMAND = "labshelf.writing.compareWithCurrent";
-const COMPARE_WITH_COMMAND = "labshelf.writing.compareWith";
-
-/** How a command picks the two versions: both, or only the other one for a row's version. */
-type PickSides = (versions: ProjectVersion[]) => Promise<{ base: ProjectVersion; other: ProjectVersion | undefined } | undefined>;
 
 interface CompareVersionsDeps {
   context: vscode.ExtensionContext;
@@ -78,10 +71,10 @@ async function markedUp(deps: CompareVersionsDeps, panels: ComparePanels, projec
   panels.showPdf(logger, project, { slug: name, name: `${sides.base.name} vs ${sides.other.name}`, pdfPath, sourcesDir: sides.other.sourcesDir }, `${name}:marked-up`);
 }
 
-async function compareProject(deps: CompareVersionsDeps, panels: ComparePanels, commandName: string, project: ReadyProject | undefined, pick: PickSides): Promise<void> {
+async function compareProject(deps: CompareVersionsDeps, panels: ComparePanels, project: ReadyProject | undefined): Promise<void> {
   const session = deps.host.current();
   if (!session) { return; }
-  await executeSafely(session.logger, commandName, async () => {
+  await executeSafely(session.logger, COMPARE_VERSIONS_COMMAND, async () => {
     const target = project ?? activeProject(deps.projects);
     if (!target) {
       await vscode.window.showInformationMessage("Open a file of a writing project to compare its versions.");
@@ -92,7 +85,7 @@ async function compareProject(deps: CompareVersionsDeps, panels: ComparePanels, 
       await vscode.window.showInformationMessage("Mark a version first with Research: Mark Version.");
       return;
     }
-    const picked = await pick(versions);
+    const picked = await pickSides(versions);
     const mode = picked && await chooseMode(target);
     if (!picked || !mode) { return; }
     const other = picked.other ? versionSide(picked.other) : await currentSide(deps, target);
@@ -102,20 +95,8 @@ async function compareProject(deps: CompareVersionsDeps, panels: ComparePanels, 
   });
 }
 
-function openVersion(deps: CompareVersionsDeps, panels: ComparePanels, row: VersionRow): void {
-  const session = deps.host.current();
-  if (!session) { return; }
-  panels.showPdf(session.logger, row.project, versionSide(row.version), `open:${row.version.slug}`);
-}
-
 export function registerCompareVersionsCommand(deps: CompareVersionsDeps): void {
   const panels = new ComparePanels({ extensionUri: deps.context.extensionUri, ...deps.reader }, deps.projects.paths);
-  const compare = (name: string, project: ReadyProject | undefined, pick: PickSides) => compareProject(deps, panels, name, project, pick);
-  const register = vscode.commands.registerCommand;
-  deps.context.subscriptions.push(
-    register(COMPARE_VERSIONS_COMMAND, (entry?: ProjectEntry) => compare(COMPARE_VERSIONS_COMMAND, entry?.kind === "ready" ? entry : undefined, (versions) => pickSides(versions))),
-    register(COMPARE_WITH_CURRENT_COMMAND, (row: VersionRow) => compare(COMPARE_WITH_CURRENT_COMMAND, row.project, async () => ({ base: row.version, other: undefined }))),
-    register(COMPARE_WITH_COMMAND, (row: VersionRow) => compare(COMPARE_WITH_COMMAND, row.project, (versions) => pickSides(versions, row.version))),
-    register(OPEN_VERSION_COMMAND, (row: VersionRow) => openVersion(deps, panels, row)),
-  );
+  deps.context.subscriptions.push(vscode.commands.registerCommand(COMPARE_VERSIONS_COMMAND, (entry?: ProjectEntry) =>
+    compareProject(deps, panels, entry?.kind === "ready" ? entry : undefined)));
 }

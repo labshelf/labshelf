@@ -7,8 +7,8 @@ import type { SidebarProject } from "./sidebarProjects.js";
 /** Row identity shared by focus, keyboard and click handling: `section:<id>`, `group:<id>`, `all-papers`, `folder:<path>`, `paper:<id>`, `tag:<tag>` or `project:<id>`. */
 export const rowKey = (r: HTMLElement): string => r.dataset["key"] ?? "";
 
-/** The depth of the rows directly under a Library group heading (Folders, Tags): their twisty starts past its label's start. */
-export const GROUP_ROW_DEPTH = 3;
+/** The depth of the rows directly under a Library group heading (Folders, Tags): one indent step past its chevron, as in VS Code's trees. */
+export const GROUP_ROW_DEPTH = 1;
 
 const countHtml = (count: number): string => (count > 0 ? `<span class="tree-count">${count}</span>` : "");
 
@@ -33,6 +33,12 @@ export function allPapersRow(count: number, current: boolean): HTMLElement {
 export function exploreTemplatesRow(): HTMLElement {
   return treeItem("templates", 0, false, { "data-templates": "", "aria-selected": "false" },
     `<span class="tree-icon">${icon("layers")}</span><span class="tree-label">Explore templates</span>`);
+}
+
+/** The fixed row that opens the All projects tab, where archived and trashed projects live. */
+export function allProjectsRow(): HTMLElement {
+  return treeItem("allProjects", 0, false, { "data-all-projects": "", "aria-selected": "false" },
+    `<span class="tree-icon">${icon("list")}</span><span class="tree-label">All projects</span>`);
 }
 
 export interface FolderRowState { depth: number; count: number; open: boolean; current: boolean }
@@ -61,7 +67,7 @@ export function tagRow(tag: string, count: number, current: boolean): HTMLElemen
     `<span class="tree-twisty leaf">${icon("chevron-down")}</span><span class="tree-label"><span class="tree-hash" aria-hidden="true">#</span>${escapeHtml(tag)}</span>${countHtml(count)}`);
 }
 
-const formatLabel = (format: SidebarProject["format"]): string =>
+export const formatLabel = (format: SidebarProject["format"]): string =>
   format ? `<span class="tree-ref ${format === "latex" ? "tex" : "typ"}">${format === "latex" ? "TEX" : "TYP"}</span>` : `<span class="tree-ref"></span>`;
 
 /** A folder of My projects; it exists only while a project sits under it. */

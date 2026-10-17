@@ -123,6 +123,10 @@ ignore: [data/raw/**, "*.log"]
 | `engine` | `tectonic` \| `xelatex` \| `pdflatex` \| `lualatex` | LaTeX only |
 | `bibliography` | string | the bibliography file the main file loads, `labshelf.bib` by default; written once the main file loads it |
 | `typst` | string | Typst compiler version of the last successful Typst build, written after each one; a YAML number reads as its text |
+| `folder` | string | the sidebar folder the project sits in, segments joined by `/`; absent at the top level |
+| `archived` | boolean | `true` hides the project from My projects and lists it in the All projects tab; `false` reads as absent |
+| `title` | string | the name shown for the project; the shown name is `title`, or `id` when `title` is absent or blank. Renaming writes `title` and never changes `id` or the folder, because `id` is the Drive identity of the project ([sync.md](sync.md#projects)) |
+| `trashed` | string | ISO 8601 time since which the project is in the trash; restoring removes the key. Trash and restore leave `archived` as it is, so a restored project returns to where it was. A trashed project still syncs: the key syncs like any other |
 | `figures` | mapping | figure path → `{run, inputs}`; `run` is the shell command that makes the figure, run in the project folder; `inputs` lists paths or globs (`*`, `**`, `?`). A figure is stale when it is missing or an input is newer than it |
 | `values` | string[] | JSON files whose leaves the sources read: `\lsvalue{<file>.<path>}` in LaTeX, `json("…")` in Typst. `<file>` is the file name without `.json`, and of two files with the same name only the first is read; array items are numbered from 0 |
 | `check` | mapping | what the pre-submission check holds the built PDF to: `pages` is the most pages allowed, counted as `countUpTo` says; `authors` lists names an anonymous submission must not show, besides the git user's and the PDF's Author field; the anonymity rules run unless `anonymous` is `false`, as for a camera-ready |
@@ -131,13 +135,14 @@ ignore: [data/raw/**, "*.log"]
 | `papers` | `{key, doi?, cited?}`[] | the papers the project depends on; `key` is the cite key. LabShelf lists every key the sources cite that matches a library paper with `cited: true` and takes the DOI from the library paper with that cite key; an entry without `cited` is one the user added (Add to Reading List). A cited key with no library paper, such as a Typst label or a key from the user's own `.bib`, is not added, and an entry already listed for it stays while it is cited. Sync adds new cited entries in key order after the existing ones, fills a missing DOI from the library, never changes or removes a DOI already listed, and removes a `cited: true` entry once the sources stop citing the key; entries without `cited` are never removed, and Add to Reading List on a `cited: true` entry drops the flag. `labshelf install` imports the listed papers it cannot find in the library under their listed `key`. A rewrite of the list keeps only `key`, `doi` and `cited`; `cited: false` reads as absent |
 | `ignore` | string[] | paths that project sync leaves on the device, as patterns relative to the project folder with `*`, `**` and `?` like `figures` inputs; a pattern that matches a folder covers everything under it ([sync.md](sync.md#projects)) |
 
-LabShelf writes `check.pages`, `check.words` and `check.countUpTo` from the preview, removes a limit the user clears and drops `check` when that leaves it empty. It never writes `figures`, `values`, `ignore` or the other `check` keys. A malformed `figures`, `values`, `check`, `papers` or `ignore` makes the file fail to parse, with the key in the reason. A `run` command executes only after the user confirms it on that machine; the confirmation covers that project and that exact command.
+LabShelf writes `check.pages`, `check.words` and `check.countUpTo` from the preview, removes a limit the user clears and drops `check` when that leaves it empty. It never writes `figures`, `values`, `ignore` or the other `check` keys. A malformed `folder`, `archived`, `title`, `trashed`, `figures`, `values`, `check`, `papers` or `ignore` makes the file fail to parse, with the key in the reason. A `run` command executes only after the user confirms it on that machine; the confirmation covers that project and that exact command.
 
 Rules:
 
 - A new id is the title folded to lowercase ASCII, with every run of other characters turned into one hyphen; `project` when nothing is left. A registered folder takes its folder name as the title. Collisions take the paper suffixes (`a` to `z`, then `aa`, …).
 - Rewrites change only the keys being set and keep the user's comments, key order and unknown keys.
 - A `labshelf.yaml` that does not parse is never rewritten.
+- Deleting a project forever removes its folder from the device when it is under `projects/`, and only unregisters it when it is a registered folder, leaving its files. The Drive copy stays: a project missing locally never deletes anything on Drive ([sync.md](sync.md#projects)).
 - Registering a folder writes `labshelf.yaml` when the folder has none and touches nothing else in it. A folder inside the library cannot be registered.
 
 ## labshelf.bib

@@ -1,5 +1,5 @@
 // Declares the messages between the Library sidebar webview and the extension host, and checks the ones the webview sends.
-import { PROJECT_COMMANDS } from "./projectCommands.js";
+import { isSidebarProjectCommand } from "./projectCommands.js";
 import { PAPERS_DIR, type FolderTreeNode, type ProjectTreeView, type SidebarOpenProject, type TreePaper } from "@labshelf/core";
 
 /**
@@ -11,7 +11,7 @@ export interface SidebarProjectItem {
   name: string;
   format?: "latex" | "typst";
   folder?: string;
-  archived?: boolean;
+  hidden?: true;
   count?: string;
   tooltip: string;
   kind: "ready" | "broken";
@@ -40,13 +40,13 @@ export interface ProjectTreeMessage {
   text?: string;
 }
 
-export type ProjectAction = "browseTemplates" | "newBlank" | "addExisting" | "refresh";
+export type ProjectAction = "browseTemplates" | "allProjects" | "newBlank" | "addExisting" | "refresh";
 
 /** What a project folder row or the My projects heading asks for; `path` is "" for the top level. */
 export type ProjectFolderAction = "new" | "rename" | "delete";
 
 /** What the project menu asks for beyond the project commands. */
-export type ProjectEdit = "move" | "archive" | "unarchive";
+export type ProjectEdit = "move" | "archive";
 
 export type SidebarToHost =
   | { type: "ready" }
@@ -63,16 +63,16 @@ export type SidebarToHost =
   | { type: "import"; path: string; uris: string }
   | { type: "moveFolder"; path: string; target: string }
   | { type: "openProject"; id: string }
-  /** A command from the project menu; `command` is one of PROJECT_COMMANDS. */
+  /** A command from a project menu; `command` is one of PROJECT_COMMANDS or OPEN_PROJECT_COMMANDS. */
   | { type: "projectCommand"; id: string; command: string }
   | { type: "projectAction"; action: ProjectAction }
   | { type: "projectFolder"; action: ProjectFolderAction; path: string }
   | { type: "projectEdit"; id: string; edit: ProjectEdit }
   | ProjectTreeMessage;
 
-const PROJECT_ACTIONS: readonly string[] = ["browseTemplates", "newBlank", "addExisting", "refresh"];
+const PROJECT_ACTIONS: readonly string[] = ["browseTemplates", "allProjects", "newBlank", "addExisting", "refresh"];
 const PROJECT_FOLDER_ACTIONS: readonly string[] = ["new", "rename", "delete"];
-const PROJECT_EDITS: readonly string[] = ["move", "archive", "unarchive"];
+const PROJECT_EDITS: readonly string[] = ["move", "archive"];
 const TREE_VIEWS: readonly string[] = ["files", "outline", "checklist"];
 const TREE_OPS: readonly string[] = ["close", "action", "click", "toggle", "check", "menu", "add"];
 const MAX_ADD_TEXT = 500;
@@ -112,7 +112,7 @@ export function parseSidebarMessage(raw: unknown): SidebarToHost | null {
     case "import": return typeof m["uris"] === "string" ? (m as SidebarToHost) : null;
     case "openProject": return typeof m["id"] === "string" ? (m as SidebarToHost) : null;
     case "projectCommand":
-      return typeof m["id"] === "string" && PROJECT_COMMANDS.some((c) => c.command === m["command"]) ? (m as SidebarToHost) : null;
+      return typeof m["id"] === "string" && isSidebarProjectCommand(m["command"] as string) ? (m as SidebarToHost) : null;
     case "projectAction": return PROJECT_ACTIONS.includes(m["action"] as string) ? (m as SidebarToHost) : null;
     case "projectFolder": return PROJECT_FOLDER_ACTIONS.includes(m["action"] as string) && isProjectFolderPath(m["path"]) ? (m as SidebarToHost) : null;
     case "projectEdit": return typeof m["id"] === "string" && PROJECT_EDITS.includes(m["edit"] as string) ? (m as SidebarToHost) : null;

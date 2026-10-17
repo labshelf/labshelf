@@ -1,424 +1,383 @@
 <!doctype html>
-<!-- The LabShelf site: the guide to LabShelf, open in a working copy of the LabShelf reader. -->
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>LabShelf — a paper manager for people who write</title>
-  <meta name="description" content="LabShelf is a free, open-source paper manager for VS Code, the browser and the terminal. Save papers from the page you find them on, read them with every reference one hover away, and keep the library as a folder you own.">
-  <meta property="og:title" content="LabShelf — a paper manager for people who write">
-  <meta property="og:description" content="Save, read and cite papers in VS Code, your browser and your terminal. Your library stays a folder you own.">
-  <meta property="og:image" content="media/vscode/vscode-overview.png">
-  <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="icon" href="favicon-64.png" sizes="64x64" type="image/png">
-  <script>
-    (function () {
-      var theme = "auto";
-      try { theme = JSON.parse(localStorage.getItem("labshelf.site.theme")) || "auto"; } catch (e) {}
-      if (theme === "auto") theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-      document.documentElement.setAttribute("data-theme", theme);
-    })();
-  </script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&display=swap">
-  <link rel="stylesheet" href="css/tokens.css">
-  <link rel="stylesheet" href="css/chrome.css">
-  <link rel="stylesheet" href="css/overlays.css">
-  <link rel="stylesheet" href="css/page.css">
-  <link rel="stylesheet" href="css/blocks.css">
-  <script type="module" src="js/main.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>LabShelf</title>
+<meta name="description" content="LabShelf is a local-first reference manager for VS Code, the terminal and the browser. Your library is a folder of plain files, and your citations are checked against what you read.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@300;400;500;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400;1,8..60,500&display=swap">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/page/topbar.css">
+<link rel="stylesheet" href="css/page/hero.css">
+<link rel="stylesheet" href="css/page/terminal.css">
+<link rel="stylesheet" href="css/page/sections.css">
+<link rel="stylesheet" href="css/page/mocks.css">
+<link rel="stylesheet" href="css/page/citationDemo.css">
+<link rel="stylesheet" href="css/manual/reader.css">
+<link rel="stylesheet" href="css/manual/article.css">
+<link rel="stylesheet" href="css/manual/blocks.css">
+<link rel="stylesheet" href="css/overlays.css">
+<script type="module" src="js/main.js"></script>
 </head>
 <body>
-<div id="app">
-  <aside id="sidebar" aria-label="Sidebar" hidden>
-    <div class="rd-tabs" role="tablist" aria-label="Sidebar">
-      <button class="rd-tab" type="button" role="tab" data-tab="thumbnails" title="Thumbnails" aria-label="Thumbnails" aria-selected="false"><span data-icon="grid"></span></button>
-      <button class="rd-tab" type="button" role="tab" data-tab="outline" title="Outline" aria-label="Outline" aria-selected="true"><span data-icon="list"></span></button>
-      <button class="rd-tab" type="button" role="tab" data-tab="annotations" title="Annotations" aria-label="Annotations" aria-selected="false"><span data-icon="edit"></span></button>
-    </div>
-    <div class="rd-sidebar-body">
-      <section class="rd-panel" data-panel="thumbnails" hidden><div class="rd-panel-header">Thumbnails</div><div class="rd-thumb-list" id="thumbnails"></div></section>
-      <section class="rd-panel" data-panel="outline"><div class="rd-panel-header">Outline</div><nav id="outline" aria-label="Outline"></nav></section>
-      <section class="rd-panel" data-panel="annotations" hidden>
-        <div class="rd-panel-header">Annotations<div class="rd-panel-actions"><button class="rd-btn rd-btn-sm" type="button" id="annotations-copy" title="Copy annotations as Markdown"><span data-icon="clipboard"></span></button></div></div>
-        <div id="annotations"></div>
-      </section>
-    </div>
-  </aside>
-  <div id="sidebar-resizer" hidden></div>
-  <main id="pdf-shell">
-    <div id="toolbar" role="toolbar" aria-label="Reader">
-      <div class="rd-toolbar-group">
-        <button class="rd-btn" type="button" id="sidebar-toggle" title="Toggle sidebar (F4)" aria-pressed="false"><span data-icon="sidebar"></span></button>
-        <button class="rd-btn" type="button" id="nav-back" title="Back (Alt+Left)" disabled><span data-icon="arrow-left"></span></button>
-        <button class="rd-btn" type="button" id="nav-forward" title="Forward (Alt+Right)" disabled><span data-icon="arrow-right"></span></button>
-      </div>
-      <div class="rd-toolbar-title" title="LabShelf Guide">LabShelf Guide</div>
-      <div class="rd-toolbar-group">
-        <button class="rd-btn" type="button" id="find-toggle" title="Find (Ctrl+F)" aria-pressed="false"><span data-icon="search"></span></button>
-        <button class="rd-btn" type="button" id="theme-toggle" title="Page theme" aria-haspopup="menu" aria-expanded="false"><span data-icon="droplet"></span></button>
-        <button class="rd-btn" type="button" id="help-toggle" title="Keyboard shortcuts (?)"><span data-icon="help"></span></button>
-        <a class="rd-btn" href="https://github.com/lucaanasser/labshelf" title="Source on GitHub"><span data-icon="github"></span></a>
+<header class="top" id="top">
+  <div class="wrap">
+    <a class="logo" href="#home" aria-label="labshelf home"><span class="prompt">&gt;</span> labshelf<span class="cur" aria-hidden="true"></span></a>
+    <nav class="lsnav" aria-label="Site">
+      <a href="#read" class="opt">read</a><a href="#write" class="opt">write</a><a href="#cli" class="opt">cli</a><a href="#man">man</a>
+      <button class="k" id="openPal" aria-haspopup="dialog"><span>man -k</span><kbd id="kk">⌘K</kbd></button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap" id="home">
+  <section class="hero">
+    <h1><span class="ls">ls</span>your<br><em>literature.</em></h1>
+    <div class="sub">
+      <p>LabShelf is a local-first reference manager that lives where you write: <span class="mark">VS Code</span>, the terminal and the browser. <span class="d">It knows what you read, what you marked, and what your thesis cites.</span></p>
+      <div class="install">
+        <div class="row"><span class="prompt">&gt;</span><code id="ic">code --install-extension labshelf.labshelf</code><button class="cp" data-copy="#ic">copy</button></div>
+        <div class="row"><span class="prompt">&gt;</span><code id="ic2">npm i -g @labshelf/cli</code><button class="cp" data-copy="#ic2">copy</button></div>
+        <span class="alt">Free and open source · no account · your library is a folder</span>
       </div>
     </div>
-    <div id="find-bar" role="search" hidden>
-      <input class="rd-find-input" id="find-input" type="text" placeholder="Find in document" aria-label="Find in document" autocomplete="off" spellcheck="false">
-      <span class="rd-find-count" id="find-count"></span>
-      <button class="rd-toggle" type="button" id="find-case" title="Match case" aria-pressed="false">Aa</button>
-      <button class="rd-toggle" type="button" id="find-word" title="Whole words" aria-pressed="false">W</button>
-      <button class="rd-btn rd-btn-sm" type="button" id="find-prev" title="Previous match (Shift+Enter)"><span data-icon="chevron-up"></span></button>
-      <button class="rd-btn rd-btn-sm" type="button" id="find-next" title="Next match (Enter)"><span data-icon="chevron-down"></span></button>
-      <button class="rd-btn rd-btn-sm" type="button" id="find-close" title="Close (Esc)"><span data-icon="x"></span></button>
-    </div>
-    <div id="viewerContainer" tabindex="0">
-      <div id="viewer">
 
-<article class="page cover" data-page="1">
-  <div class="cover-meta"><span>LabShelf Guide, 2026</span><a href="https://github.com/lucaanasser/labshelf">Free software, AGPL-3.0</a></div>
-  <h1 id="cover" class="wordmark" data-outline="Cover"><svg viewBox="6 3 12 18" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 5 16 12 8 19"/></svg><span class="word"><span class="t">labshelf</span><span class="caret" aria-hidden="true"></span></span></h1>
-  <p class="pull">A paper manager for people who write.</p>
-  <p class="lead">Save papers from the page you find them on, read them with every reference one hover away, and keep the library as a folder you own. In VS Code, your browser and your terminal.</p>
-  <div class="actions">
-    <a class="button primary" href="#get-started" data-sec="get-started"><span data-icon="download"></span>Get LabShelf</a>
-    <a class="button" href="https://github.com/lucaanasser/labshelf"><span data-icon="github"></span>Source on GitHub</a>
-  </div>
-  <ol class="reading-list" aria-label="Contents">
-    <li><a href="#why" data-sec="why" data-page="2"><span class="dot" data-status="unread"></span><span class="n">01</span><span>Why LabShelf</span><span class="pg">2</span></a></li>
-    <li><a href="#folder" data-sec="folder" data-page="3"><span class="dot" data-status="unread"></span><span class="n">02</span><span>Your library is a folder you own</span><span class="pg">3</span></a></li>
-    <li><a href="#get-started" data-sec="get-started" data-page="4"><span class="dot" data-status="unread"></span><span class="n">03</span><span>Get started</span><span class="pg">4</span></a></li>
-    <li><a href="#save" data-sec="save" data-page="5"><span class="dot" data-status="unread"></span><span class="n">04</span><span>Save papers from where you find them</span><span class="pg">5</span></a></li>
-    <li><a href="#organize" data-sec="organize" data-page="6"><span class="dot" data-status="unread"></span><span class="n">05</span><span>Organize and find</span><span class="pg">6</span></a></li>
-    <li><a href="#read" data-sec="read" data-page="7"><span class="dot" data-status="unread"></span><span class="n">06</span><span>Read with everything one hover away</span><span class="pg">7</span></a></li>
-    <li><a href="#sync" data-sec="sync" data-page="8"><span class="dot" data-status="unread"></span><span class="n">07</span><span>Sync through your own Drive</span><span class="pg">8</span></a></li>
-    <li><a href="#terminal" data-sec="terminal" data-page="9"><span class="dot" data-status="unread"></span><span class="n">08</span><span>The terminal: an explorer and a CLI</span><span class="pg">9</span></a></li>
-    <li><a href="#support" data-sec="support" data-page="10"><span class="dot" data-status="unread"></span><span class="n">09</span><span>Support LabShelf, and cite it</span><span class="pg">10</span></a></li>
-  </ol>
-  <p class="reading-note">The dots keep your place the way the library keeps your papers: unread, reading, done.</p>
-  <div class="folio">1</div>
-</article>
+    <div class="term" aria-label="Example terminal session">
+      <div class="bar"><b>~/thesis</b><span class="r">zsh</span></div>
+      <pre id="hero-term"><span class="ln"><span class="prompt">&gt;</span> labshelf ls --cited-by thesis.tex</span><span class="ln h">STATUS    KEY               TITLE                              NOTE</span><span class="ln"><span class="st-done">done    </span>  vaswani2017       Attention is all you need          <span class="n">2 highlights on p. 4</span></span><span class="ln"><span class="st-read">reading </span>  dosovitskiy2020   An image is worth 16x16 words      <span class="n">preprint, now ICLR 2021</span></span><span class="ln"><span class="st-un">unread  </span>  dao2022           FlashAttention                     <span class="n">cited on p. 2, not read yet</span></span><span class="ln"><span class="st-miss">missing </span>  vaswani2018       ?                                  <span class="n">did you mean vaswani2017?</span></span><span class="ln"><span class="prompt">&gt;</span> <span class="cur"></span></span></pre>
+    </div>
+  </section>
 
-<article class="page" data-page="2">
-  <header class="page-head"><b>LabShelf Guide</b><span>About</span></header>
-  <h2 id="why" data-outline="1 Why LabShelf"><span class="num">01</span>Why LabShelf</h2>
-  <p class="lead"><mark class="pen">Papers live in one tool, writing in another and code in a third.</mark> Every switch costs attention, and the reference manager is the tool most people would rather not open.</p>
-  <p>LabShelf brings the library to where you already work: three apps of one product, with the same folder, the same look and the same keys in VS Code, in the browser and in the terminal. There is no account and no LabShelf server. Your papers stay on your disk, and the apps meet, when you want them to, in your own Google Drive. The idea has a name, local-first software <a class="cite" href="#ref-1" data-ref="1">[1]</a>, and a simple test: delete the app and keep everything.</p>
-  <figure class="tabbed" id="fig-1" data-caption="Figure 1">
-    <div class="fig-tabs" role="tablist" aria-label="App">
-      <button type="button" role="tab" aria-selected="true">VS Code</button>
-      <button type="button" role="tab" aria-selected="false">Browser</button>
-      <button type="button" role="tab" aria-selected="false">Terminal</button>
+  <section class="cmd" id="library">
+    <p class="cmdline"><span class="pth">~/thesis</span><span class="dol">$</span> ls <span class="arg">~/Research/library</span></p>
+    <div class="two">
+      <div class="copyc">
+        <h2>Your library is <em>a folder.</em></h2>
+        <p>One paper, one folder: the PDF, your notes in Markdown, a small YAML file with its metadata. No database to export, no account to lose.</p>
+        <p class="d">Open it in Finder, put it in git, sync it with whatever you already use. It will still open in ten years.</p>
+        <ul><li><b>Plain files.</b> PDFs, Markdown, YAML.</li><li><b>Private.</b> Lookups send only the DOI.</li><li><b>Fast.</b> Thousands of papers, instant search.</li></ul>
+      </div>
+      <figure>
+        <div class="fig ar">
+          <div class="chrome"><b>LabShelf: Library</b> · VS Code</div>
+          <div class="mlib" aria-hidden="true">
+            <div class="sb"><div>All papers</div><div>Unread</div><div class="on">Deep learning/</div><div>&nbsp;&nbsp;Transformers/</div><div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="r">REF</span>Attention Is All…</div><div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="r">REF</span>Language Models…</div><div>&nbsp;&nbsp;Vision/</div><div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="r">REF</span>An Image Is Worth…</div><div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="r">REF</span>Deep Residual…</div></div>
+            <div class="ls"><div class="sel"><span>Attention Is All You Need</span><span>2017</span></div><div><span>Language Models are Few-Shot…</span><span>2020</span></div><div><span>An Image Is Worth 16x16 Words</span><span>2021</span></div><div><span>Deep Residual Learning</span><span>2016</span></div><div><span>Masked Autoencoders</span><span>2022</span></div><div><span>Swin Transformer</span><span>2021</span></div></div>
+            <div class="dt">Attention Is All You Need<small>Vaswani et al. · NeurIPS 2017</small><div class="b" style="width:90%"></div><div class="b" style="width:96%"></div><div class="b" style="width:70%"></div><div class="b" style="width:88%"></div></div>
+          </div>
+          <span class="slot"><i></i>library.gif · 1600×1000 · 8 s loop</span>
+        </div>
+        <figcaption><b>Figure 1.</b> The library in VS Code: folders on the left, papers striped for reading, details on the right.</figcaption>
+      </figure>
     </div>
-    <div class="frame shots">
-      <img class="media" src="media/vscode/vscode-list.png" width="2400" height="1333" alt="The paper list and detail pane in VS Code" data-caption="VS Code: folders in the activity bar, the paper list and a detail pane with the abstract and citations." loading="lazy">
-      <img class="media" src="media/browser/browser-library.png" width="2560" height="1440" alt="The library page of the browser extension" data-caption="Browser: the same library on its own page, with no VS Code needed." loading="lazy" hidden>
-      <img class="media" src="media/terminal/terminal-explorer.png" width="2420" height="1120" alt="The terminal explorer" data-caption="Terminal: folders, papers and a preview, all on the keyboard." loading="lazy" hidden>
+    <div class="tree" aria-label="Library folder on disk">
+<div class="c"># ~/Research/library/Deep learning/Transformers</div>
+<div class="dr">vaswani2017/                 <span class="c"># one paper = one folder, named by cite key</span></div>
+<div>  <span class="pdf">paper.pdf</span></div>
+<div>  <span class="md">notes.md</span>                   <span class="c"># your notes, plain Markdown</span></div>
+<div>  <span class="y">metadata.yaml</span>              <span class="c"># title, authors, tags, status</span></div>
+<div>  highlights.json            <span class="c"># each with its page and meaning</span></div>
+<div>  supplementary.pdf</div>
     </div>
-    <figcaption><b>Figure 1.</b> <span class="shot-caption"></span></figcaption>
-  </figure>
-  <table class="table">
-    <caption>What LabShelf asks of you</caption>
-    <tbody>
-      <tr><th>Price</th><td>Free, with no plans and no limits.</td></tr>
-      <tr><th>Account</th><td>None. Sync uses your own Google account and your own OAuth client.</td></tr>
-      <tr><th>Server</th><td>None. Your disk, and optionally your own cloud.</td></tr>
-      <tr><th>Licence</th><td>AGPL-3.0. The source is on <a href="https://github.com/lucaanasser/labshelf">GitHub</a>.</td></tr>
-    </tbody>
-  </table>
-  <div class="folio">2</div>
-</article>
+  </section>
 
-<article class="page" data-page="3">
-  <header class="page-head"><b>LabShelf Guide</b><span>About</span></header>
-  <h2 id="folder" data-outline="2 A folder you own"><span class="num">02</span>Your library is a folder you own</h2>
-  <p class="lead">A library is an ordinary folder. <mark class="pen">Each paper is a folder named after its cite key,</mark> holding the PDF, a readable metadata file and a BibTeX entry generated from it.</p>
-  <p>Every app reads and writes exactly this layout, and nothing in it needs LabShelf to be opened, searched, backed up or moved. The folder is the source of truth; every index is a cache rebuilt from it.</p>
-  <div class="cols">
-<pre><span class="c"># a library on disk</span>
-<span class="d">LabShelf Library/</span>
-  <span class="d">papers/</span>
-    <span class="d">ml/transformers/</span>
-      <span class="d">vaswani2017attention/</span>
-        paper.pdf
-        metadata.yaml
-        bib.bib
-  <span class="d">.research/</span>
-    <span class="d">papers/vaswani2017attention/</span>
-      data.json    <span class="c"># highlights</span>
-    index.sqlite   <span class="c"># a cache</span></pre>
-<pre><span class="c"># metadata.yaml</span>
-<span class="d">title:</span> Attention Is All You Need
-<span class="d">authors:</span>
-  - Ashish Vaswani
-  - Noam Shazeer
-<span class="d">year:</span> 2017
-<span class="d">journal:</span> arXiv preprint
-<span class="d">doi:</span> 10.48550/arXiv.1706.03762
-<span class="d">status:</span> done
-<span class="d">tags:</span> [nlp, classic, to-cite]
-<span class="d">note:</span> Read 3.2 again before the talk.</pre>
-  </div>
-  <dl class="features">
-    <dt>metadata.yaml</dt><dd>The record: title, authors, venue, abstract, status, tags and your note. An app writes only the keys it owns in an action, so a metadata refresh never touches your status, tags or note.</dd>
-    <dt>bib.bib</dt><dd>A BibTeX entry regenerated whenever the record changes, ready for <code>\cite</code>. <code>labshelf bib</code> and the <b>Generate BibTeX</b> command collect a folder's entries into one file.</dd>
-    <dt>data.json</dt><dd>Reader state, apart from the paper: highlights, page theme and last position. Keyed by id, not by path, so moving a paper never loses its annotations.</dd>
-  </dl>
-  <p class="pull">Delete LabShelf tomorrow and you keep a folder of PDFs, YAML and BibTeX that any tool can read.</p>
-  <div class="folio">3</div>
-</article>
+  <section class="cmd" id="read">
+    <p class="cmdline"><span class="pth">~/thesis</span><span class="dol">$</span> ls <span class="arg">--read</span><span class="cm"># highlight with meaning</span></p>
+    <div class="two rev">
+      <div class="copyc">
+        <h2>Highlights that <em>mean</em> something.</h2>
+        <p>Each colour is a meaning you choose: <span class="mark">Key claim</span>, Method, Definition, Doubt. Select a passage and LabShelf can cite it with its page, in your cite command.</p>
+        <p class="d">Months later, when your thesis cites page 4, the highlight you made there is one hover away.</p>
+        <ul><li><b>Cite p.~4</b> copies \citep[p.~4]{vaswani2017}</li><li><b>Add to notes</b> quotes it into notes.md</li><li><b>Export</b> groups highlights by meaning</li></ul>
+      </div>
+      <figure>
+        <div class="fig ar">
+          <div class="chrome"><b>paper.pdf</b> · LabShelf Reader</div>
+          <div class="mread" aria-hidden="true"><div class="pg"><h4>3.2.1 Scaled Dot-Product Attention</h4><p>We take the dot product of the query with every key, divide each by √d<sub>k</sub>, and apply a softmax. <span class="sw">Without the scaling, large values of d_k make the dot products large and the gradients tiny.</span></p><p><span class="sw g">We use h = 8 parallel heads, each with d_k = d_v = 64.</span> The total cost stays close to single-head attention.</p><p>Each head attends to a different representation subspace, so the model can relate positions in several ways at once.</p></div>
+          <div class="bar2"><span style="--c:#f2cb4e"><i></i>Key claim</span><span style="--c:#86c79f"><i></i>Method</span><span style="--c:#86a9ec"><i></i>Definition</span><span>Cite p.~4</span></div></div>
+          <span class="slot"><i></i>reader.gif · select, highlight, cite</span>
+        </div>
+        <figcaption><b>Figure 2.</b> Selecting a passage in the reader: pick a meaning, or copy a citation with the page.</figcaption>
+      </figure>
+    </div>
+  </section>
 
-<article class="page" data-page="4">
-  <header class="page-head"><b>LabShelf Guide</b><span>Using LabShelf</span></header>
-  <h2 id="get-started" data-outline="3 Get started"><span class="num">03</span>Get started</h2>
-  <p class="lead">LabShelf is built from source for now. <mark class="pen">You need Node.js 22.13 or later and pnpm 9 or later;</mark> one checkout builds all three apps.</p>
-<pre><span class="pr">&gt; </span>git clone https://github.com/lucaanasser/labshelf
-<span class="pr">&gt; </span>cd labshelf
-<span class="pr">&gt; </span>pnpm install
-<span class="pr">&gt; </span>pnpm build</pre>
-  <div class="cols" style="--n: 3">
-    <div class="col">
-      <div class="col-title"><span data-icon="code"></span>VS Code</div>
-      <ol>
-        <li>Open the repository in VS Code and press <kbd>F5</kbd>: an Extension Development Host starts with LabShelf loaded.</li>
-        <li>Run <b>LabShelf: Configure Library</b> and pick a folder, new or existing.</li>
-        <li>The LabShelf view is in the activity bar. Open a paper to start the reader.</li>
-      </ol>
-    </div>
-    <div class="col">
-      <div class="col-title"><span data-icon="globe"></span>Browser</div>
-      <ol>
-        <li>Chrome 125+: <code>chrome://extensions</code>, Developer mode, Load unpacked, <code>dist/chrome</code>.</li>
-        <li>Firefox 128+: <code>about:debugging</code>, Load Temporary Add-on, <code>dist/firefox</code>.</li>
-        <li>Pin the LabShelf button. It saves the paper on the current tab.</li>
-      </ol>
-    </div>
-    <div class="col">
-      <div class="col-title"><span data-icon="terminal"></span>Terminal</div>
-      <ol>
-        <li>Link <code>dist/labshelf.mjs</code> onto your PATH as <code>labshelf</code>.</li>
-        <li><code>labshelf init &lt;path&gt;</code> creates or adopts a library. Use the folder VS Code uses.</li>
-        <li><code>labshelf doctor</code> checks the library, the config, Drive and the image protocol.</li>
-      </ol>
-    </div>
-  </div>
-  <h3 id="drive-setup" data-outline="Google Drive setup">Google Drive, optional</h3>
-  <p>Sync goes through your own Google Cloud project. Create a Desktop OAuth client for VS Code and the terminal and a Web client for the browser, copy their ids into <code>credentials/</code> and rebuild. The <a href="https://github.com/lucaanasser/labshelf/blob/main/documents/apps/README.md#google-oauth-clients">setup guide</a> walks through the console, the redirect URIs and the test-user warning.</p>
-  <p>The local apps find the same library through one shared config file, <code>~/.config/labshelf/config.json</code>. VS Code writes it when you configure a library and the terminal reads it. The browser keeps its own copy of the library and meets the others on Drive.</p>
-  <p class="pull">Add one paper and open it. If the reader looks like this page, everything is wired.</p>
-  <div class="folio">4</div>
-</article>
-
-<article class="page" data-page="5">
-  <header class="page-head"><b>LabShelf Guide</b><span>Using LabShelf</span></header>
-  <h2 id="save" data-outline="4 Save papers"><span class="num">04</span>Save papers from where you find them</h2>
-  <p class="lead">On arXiv, a journal page or Google Scholar, click the LabShelf button. <mark class="pen">The paper, its PDF and its BibTeX land in the folder you choose</mark> (<a class="ref" href="#fig-2" data-fig="fig-2">Figure 2</a>).</p>
-  <figure id="fig-2" data-caption="Figure 2">
-    <div class="frame"><video class="media" src="media/browser/browser-capture.mp4" width="2560" height="1440" poster="media/browser/browser-capture.png" muted loop playsinline aria-label="Saving an arXiv paper with the browser extension"></video></div>
-    <figcaption><b>Figure 2.</b> From an arXiv page to the library. The extension reads the page, finds the PDF, lets you pick a folder and add tags or a note, and saves.</figcaption>
-  </figure>
-  <div class="cols" style="--n: 3">
-    <div class="col">
-      <div class="col-title"><span data-icon="globe"></span>In the browser</div>
-      <p>The popup shows what it found on the tab and whether a PDF is reachable: pick a folder, add tags or a note, save. On Google Scholar, every result gets its own Save button.</p>
-    </div>
-    <div class="col">
-      <div class="col-title"><span data-icon="code"></span>In VS Code</div>
-      <p><b>LabShelf: Add Paper</b> takes a PDF, a folder of PDFs, a URL, a DOI or an arXiv id. Scanned PDFs get an OCR text layer, so old scans become searchable.</p>
-    </div>
-    <div class="col">
-      <div class="col-title"><span data-icon="terminal"></span>In the terminal</div>
-      <p><code>labshelf add 1706.03762 --to ml</code> imports from an arXiv id, a DOI, a URL, a PDF or a folder. In the explorer, <kbd>a</kbd> does the same in the current folder.</p>
-    </div>
-  </div>
-  <h3 id="metadata" data-outline="Metadata finds itself">Metadata finds itself</h3>
-  <p>LabShelf reads the DOI or arXiv id out of the PDF and completes the record from Crossref, arXiv, PubMed and Unpaywall; with no id, it looks the title up. <b>Resolve Missing Metadata</b> retries every incomplete paper. The cite key follows the familiar <code>vaswani2017attention</code> pattern and never changes once assigned, so citations in your drafts keep resolving.</p>
-  <div class="folio">5</div>
-</article>
-
-<article class="page" data-page="6">
-  <header class="page-head"><b>LabShelf Guide</b><span>Using LabShelf</span></header>
-  <h2 id="organize" data-outline="5 Organize and search"><span class="num">05</span>Organize and find</h2>
-  <p class="lead"><mark class="pen">Folders are for navigation and papers are the content.</mark> A list shows papers only; the folder you are in is a path header, never a row.</p>
-  <figure id="fig-3" data-caption="Figure 3">
-    <div class="frame"><div class="lib" id="library-demo" role="group" aria-label="Six papers, filtered by the query you type"></div></div>
-    <figcaption><b>Figure 3.</b> Six papers, filtered as you type by the parser every app runs: the list, the browser, the explorer's <kbd>f</kbd> filter and <code>labshelf search</code>. Matching is case- and accent-insensitive.</figcaption>
-  </figure>
-  <div class="cols" style="--n: 3">
-    <dl class="features small"><dt>Status</dt><dd>Every paper is <span class="status unread">Unread</span>, <span class="status reading">Reading</span> or <span class="status done">Done</span>. Change it in the list, the detail pane, the explorer or with <code>labshelf status</code>.</dd></dl>
-    <dl class="features small"><dt>Tags and notes</dt><dd>Tags are free labels shown as chips. The note is yours; it lives in <code>metadata.yaml</code> next to the record and is searched like everything else.</dd></dl>
-    <dl class="features small"><dt>Citations</dt><dd>The detail pane prints BibTeX, APA, MLA, Chicago and in-text citations, and copies the cite key with one click.</dd></dl>
-  </div>
-  <table class="table compact q">
-    <caption>One query language, every app</caption>
-    <tbody>
-      <tr><td><code>attention transformer</code></td><td>every word must match, in any field</td></tr>
-      <tr><td><code>"exact phrase"</code> <code><b>-</b>survey</code></td><td>a phrase; an excluded word</td></tr>
-      <tr><td><code><b>#</b>nlp</code> <code><b>tag:</b>nlp</code></td><td>has the tag</td></tr>
-      <tr><td><code><b>status:</b>reading</code> <code><b>is:</b>unread</code></td><td>reading status</td></tr>
-      <tr><td><code><b>year:</b>2017</code> <code><b>year:</b>2015..2020</code> <code><b>year:</b>&gt;2018</code></td><td>a year, a range, a bound</td></tr>
-      <tr><td><code><b>author:</b>vaswani</code> <code><b>venue:</b>neurips</code> <code><b>kw:</b>attention</code></td><td>one field: author, venue, kw, note, key, abstract</td></tr>
-      <tr><td><code><b>has:</b>pdf</code> <code><b>no:</b>pdf</code> <code><b>has:</b>note</code> <code><b>has:</b>doi</code></td><td>presence of a PDF, note, DOI, tags or abstract</td></tr>
-    </tbody>
-  </table>
-  <div class="folio">6</div>
-</article>
-
-<article class="page" data-page="7">
-  <header class="page-head"><b>LabShelf Guide</b><span>Using LabShelf</span></header>
-  <h2 id="read" data-outline="6 Read and annotate"><span class="num">06</span>Read with everything one hover away</h2>
-  <p class="lead">The reader is the same in VS Code and in the browser, <mark class="pen">and it is the one framing this page.</mark> The toolbar gets out of the way while you read, and the droplet switches light, dark, sepia, high contrast or custom page colours.</p>
-  <figure id="fig-4" data-caption="Figure 4">
-    <div class="frame">
-      <img class="media" src="media/vscode/vscode-reader-hover.png" width="2400" height="1333" alt="The LabShelf reader in VS Code, previewing a reference on hover" loading="lazy">
-      <span class="marker" style="left: 12%; top: 10.5%">1</span>
-      <span class="marker" style="left: 25.5%; top: 10.5%">2</span>
-      <span class="marker" style="left: 63.5%; top: 39%">3</span>
-      <span class="marker" style="left: 92%; top: 93%">4</span>
-    </div>
-    <figcaption><b>Figure 4.</b> Reading <a class="cite" href="#ref-2" data-ref="2">[2]</a> in VS Code.</figcaption>
-    <ul class="legend">
-      <li><span class="marker">1</span><span><b>Sidebar.</b> Thumbnails, the outline and annotations, with <kbd>F4</kbd>.</span></li>
-      <li><span class="marker">2</span><span><b>Toolbar.</b> Back and forward through links, find, page theme, shortcuts.</span></li>
-      <li><span class="marker">3</span><span><b>Hover preview.</b> A citation, figure, table or section, shown where you are.</span></li>
-      <li><span class="marker">4</span><span><b>Status pill.</b> Go to a page; zoom, fit width or fit page.</span></li>
-    </ul>
-  </figure>
-  <h3 id="previews" data-outline="Hover previews">Hover previews</h3>
-  <p>Rest the pointer on a citation, a figure reference or a section link: the destination appears in a popup with Copy and Jump, and your place is kept. Try it on <a class="cite" href="#ref-1" data-ref="1">[1]</a> or on <a class="ref" href="#fig-1" data-fig="fig-1">Figure 1</a>.</p>
-  <h3 id="highlights" data-outline="Highlights and citations">Highlights and citations</h3>
-  <p><mark class="hl" data-color="blue" data-seed>Select text and pick one of five colours.</mark> Highlights live in the paper's sidecar, follow it to every app and are listed in the Annotations tab, which exports them as Markdown. <kbd data-mod>Ctrl</kbd> <kbd>Shift</kbd> <kbd>C</kbd> copies the selection with its citation in Pandoc, LaTeX, author-year or cite-key style.</p>
-  <h3 id="shortcuts" data-outline="Keyboard">Keyboard</h3>
-  <p>Arrows and <kbd>Space</kbd> scroll, <kbd>Home</kbd> and <kbd>End</kbd> jump, <kbd data-mod>Ctrl</kbd> <kbd>F</kbd> finds, <kbd data-mod>Ctrl</kbd> <kbd>=</kbd> <kbd>−</kbd> <kbd>0</kbd> zoom and <kbd data-mod>Ctrl</kbd> <kbd data-alt>Alt</kbd> <kbd>G</kbd> goes to a page. With <code>labshelf.reader.vimKeys</code>, <kbd>j</kbd> <kbd>k</kbd>, <kbd>d</kbd> <kbd>u</kbd>, <kbd>gg</kbd> <kbd>G</kbd>, <kbd>/</kbd> <kbd>n</kbd> <kbd>N</kbd> and <kbd>H</kbd> <kbd>L</kbd> join them. Press <kbd>?</kbd> here for the full list.</p>
-  <div class="folio">7</div>
-</article>
-
-<article class="page" data-page="8">
-  <header class="page-head"><b>LabShelf Guide</b><span>Using LabShelf</span></header>
-  <h2 id="sync" data-outline="7 Sync through your Drive"><span class="num">07</span>Sync through your own Drive</h2>
-  <p class="lead">Sync is optional and goes through a Google Drive folder that belongs to you. <mark class="pen">LabShelf has no server:</mark> each app talks to Drive directly, with the files it created, and the apps meet there.</p>
-  <div class="flow" role="img" aria-label="VS Code and the terminal share the library folder on your disk; the folder syncs with your Google Drive; the browser extension syncs its own copy with the same Drive.">
-    <div class="node"><div class="apps"><span data-icon="code"></span><span data-icon="terminal"></span></div><b>Your disk</b><span>VS Code and the terminal share the library folder</span></div>
-    <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-    <div class="node hub"><span data-icon="cloud"></span><b>Your Google Drive</b><span>only the files LabShelf created, through your OAuth client</span></div>
-    <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-    <div class="node"><span data-icon="globe"></span><b>Your browser</b><span>the extension keeps its own copy of the library</span></div>
-  </div>
-  <div class="cols">
-    <div>
-      <h3 id="connecting" data-outline="Connecting">Connecting</h3>
-      <dl class="features">
-        <dt>VS Code</dt><dd><b>Sync: Connect to Google Drive</b> from the command palette, then <b>Sync: Sync Now</b> or the timer, every 15 minutes by default.</dd>
-        <dt>Browser</dt><dd>The cloud button in the popup signs in. Saved papers sync shortly after, in the background.</dd>
-        <dt>Terminal</dt><dd><code>labshelf auth login</code>, then <code>labshelf sync</code>, or <kbd>S</kbd> in the explorer.</dd>
-      </dl>
-    </div>
-    <div>
-      <h3 id="promises" data-outline="What sync promises">What sync promises</h3>
-      <ul class="small">
-        <li>It never deletes a file because of something it cannot explain. When unsure, it keeps both copies.</li>
-        <li>Papers, records, BibTeX and sidecars sync. The SQLite index, logs and sync state stay local and are rebuilt.</li>
-        <li>Local apps take turns. While the terminal syncs, VS Code reports it and waits, and the other way round.</li>
-        <li>Drive sees only files LabShelf created, through the <code>drive.file</code> and <code>drive.appdata</code> scopes.</li>
-      </ul>
-    </div>
-  </div>
-  <p class="pull">A paper added in the browser, marked Done in the terminal and highlighted in VS Code is one paper with one record.</p>
-  <div class="folio">8</div>
-</article>
-
-<article class="page" data-page="9">
-  <header class="page-head"><b>LabShelf Guide</b><span>Using LabShelf</span></header>
-  <h2 id="terminal" data-outline="8 The terminal"><span class="num">08</span>The terminal: an explorer and a CLI</h2>
-  <p class="lead"><code>labshelf</code> opens a keyboard explorer with three panes, folders, papers and preview, <mark class="pen">in the manner of yazi</mark> <a class="cite" href="#ref-3" data-ref="3">[3]</a>. Subcommands do the same work for scripts and pipelines.</p>
-  <figure id="fig-5" data-caption="Figure 5">
-    <div class="frame"><video class="media" src="media/terminal/terminal-explorer.mp4" width="2420" height="1120" poster="media/terminal/terminal-explorer.png" muted loop playsinline aria-label="The terminal explorer"></video></div>
-    <figcaption><b>Figure 5.</b> The explorer. <kbd>j</kbd> <kbd>k</kbd> move, <kbd>l</kbd> opens a folder and then the PDF, <kbd>Tab</kbd> cycles the preview through Info, Abstract, Notes and BibTeX. Thumbnails render in kitty, Ghostty, iTerm2 and WezTerm.</figcaption>
-  </figure>
-  <div class="cols cli">
-    <table class="table keys compact">
-      <thead><tr><th>Keys</th><th>Explorer</th></tr></thead>
-      <tbody>
-        <tr><td><kbd>h</kbd> <kbd>j</kbd> <kbd>k</kbd> <kbd>l</kbd></td><td>move around the panes</td></tr>
-        <tr><td><kbd>gg</kbd> <kbd>G</kbd> <kbd>H</kbd> <kbd>L</kbd></td><td>top, bottom, back, forward</td></tr>
-        <tr><td><kbd>f</kbd> <kbd>/</kbd> <kbd>s</kbd></td><td>filter, find, search the library</td></tr>
-        <tr><td><kbd>z</kbd> <kbd>Z</kbd></td><td>jump to a folder, to a paper</td></tr>
-        <tr><td><kbd>m</kbd><kbd>u</kbd> <kbd>m</kbd><kbd>r</kbd> <kbd>m</kbd><kbd>d</kbd></td><td>mark Unread, Reading, Done</td></tr>
-        <tr><td><kbd>t</kbd> <kbd>e</kbd> <kbd>a</kbd></td><td>tags, note in <code>$EDITOR</code>, add</td></tr>
-        <tr><td><kbd>x</kbd> <kbd>p</kbd> <kbd>M</kbd></td><td>cut, paste here, move to…</td></tr>
-        <tr><td><kbd>y</kbd><kbd>c</kbd> <kbd>y</kbd><kbd>b</kbd> <kbd>y</kbd><kbd>m</kbd></td><td>copy <code>\cite</code>, BibTeX, highlights</td></tr>
-        <tr><td><kbd>S</kbd> <kbd>:</kbd> <kbd>?</kbd></td><td>sync, command line, help</td></tr>
-      </tbody>
-    </table>
-<pre><span class="pr">&gt; </span>labshelf ls ml/transformers -r
-<span class="pr">&gt; </span>labshelf search year:2015..2020 #nlp
-<span class="pr">&gt; </span>labshelf show devlin2018bert
-<span class="pr">&gt; </span>labshelf add 1706.03762 --to ml
-<span class="pr">&gt; </span>labshelf bib -c ml -o refs.bib
-<span class="pr">&gt; </span>labshelf status devlin2018bert done
-<span class="pr">&gt; </span>labshelf tag devlin2018bert +classic
-<span class="pr">&gt; </span>labshelf mv devlin2018bert ml/nlp
-<span class="pr">&gt; </span>labshelf sync
-<span class="pr">&gt; </span>labshelf ls --json | jq '.[].title'</pre>
-  </div>
-  <p class="small dim">Every command takes <code>--json</code> for machine-readable output and <code>-L &lt;path&gt;</code> to point at another library. <code>labshelf where</code> prints the library, config and log paths.</p>
-  <div class="folio">9</div>
-</article>
-
-<article class="page plate" data-page="10">
-  <header class="page-head"><b>LabShelf Guide</b><span>Support</span></header>
-  <h2 id="support" data-outline="9 Support LabShelf"><span class="num">09</span>Support LabShelf</h2>
-  <p class="pull">Free, with no plans, no limits and no telemetry, built in the open by one person. If LabShelf saves you time, here is how to give some back.</p>
-  <div class="cols">
-    <div class="col">
-      <div class="col-title"><span data-icon="heart"></span>Sponsor the work</div>
-      <p>A monthly or one-time contribution pays for the time behind releases and for the store and verification fees.</p>
-      <a class="button primary" href="https://github.com/sponsors/lucaanasser"><span data-icon="heart"></span>Sponsor on GitHub</a>
-    </div>
-    <div class="col">
-      <div class="col-title"><span data-icon="star"></span>Star and share</div>
-      <p>A star on GitHub and a word to your lab or your advisor are the cheapest way to help a small project be found.</p>
-      <a class="button" href="https://github.com/lucaanasser/labshelf"><span data-icon="github"></span>Star the repository</a>
-    </div>
-    <div class="col">
-      <div class="col-title"><span data-icon="message-square"></span>Report and request</div>
-      <p>A paper that imports badly, a key that does nothing, a feature you miss: open an issue with the DOI or a screenshot.</p>
-      <a class="button" href="https://github.com/lucaanasser/labshelf/issues"><span data-icon="external"></span>Open an issue</a>
-    </div>
-    <div class="col">
-      <div class="col-title"><span data-icon="git-branch"></span>Contribute</div>
-      <p>TypeScript in four packages, with the rules for every change written down. Importers, terminal themes and translations of this guide are good first contributions.</p>
-      <a class="button" href="https://github.com/lucaanasser/labshelf/blob/main/AGENTS.md"><span data-icon="book-open"></span>Read the contributor rules</a>
-    </div>
-  </div>
-  <h3 id="next" data-outline="What's next">What's next</h3>
-  <p class="small">A LaTeX and Typst writing environment that knows your library is in development: citation completion from the whole library, builds with no setup through Tectonic <a class="cite" href="#ref-4" data-ref="4">[4]</a> or your own TeX Live, and a live Typst preview <a class="cite" href="#ref-5" data-ref="5">[5]</a> in this reader.</p>
-  <h3 id="cite" data-outline="Cite LabShelf">Cite LabShelf</h3>
-<pre id="bibtex">@software{nasser2026labshelf,
-  author = {Nasser, Luca Marinho},
-  title  = {LabShelf: a local-first paper manager},
-  year   = {2026},
-  url    = {https://github.com/lucaanasser/labshelf}
-}</pre>
-  <h3 id="references" data-outline="References">References</h3>
-  <ol class="refs">
-    <li id="ref-1"><span>[1]</span><span>M. Kleppmann, A. Wiggins, P. van Hardenberg and M. McGranaghan. Local-first software: you own your data, in spite of the cloud. Onward! 2019. <a href="https://www.inkandswitch.com/local-first/">inkandswitch.com/local-first</a></span></li>
-    <li id="ref-2"><span>[2]</span><span>A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N. Gomez, Ł. Kaiser and I. Polosukhin. Attention is all you need. NeurIPS 2017. <a href="https://arxiv.org/abs/1706.03762">arXiv:1706.03762</a></span></li>
-    <li id="ref-3"><span>[3]</span><span>yazi: a terminal file manager. <a href="https://yazi-rs.github.io">yazi-rs.github.io</a></span></li>
-    <li id="ref-4"><span>[4]</span><span>The Tectonic Project. Tectonic: a self-contained TeX engine. <a href="https://tectonic-typesetting.github.io">tectonic-typesetting.github.io</a></span></li>
-    <li id="ref-5"><span>[5]</span><span>Typst: a markup-based typesetting system. <a href="https://typst.app">typst.app</a></span></li>
-  </ol>
-  <div class="folio">10</div>
-</article>
-
+  <section class="cmd" id="write">
+    <p class="cmdline"><span class="pth">~/thesis</span><span class="dol">$</span> ls <span class="arg">--write thesis.tex</span><span class="cm"># your citations, checked</span></p>
+    <div class="two">
+      <div class="copyc">
+        <h2>It checks your citations <em>against what you read.</em></h2>
+        <p>The PDF preview reads every <code>\cite</code> against your library. A typo'd key gets a fix from your shelf. A preprint that was since published gets updated. <kbd>F8</kbd> walks every problem.</p>
+        <p class="d">Try it on the right. One citation is on your shelf; the other is a typo.</p>
+        <ul><li><b>Page and word limits</b> across every \include</li><li><b>intro.tex only</b> builds one chapter</li><li><b>arXiv bundle</b> with a .bib of only what you cite</li></ul>
+      </div>
+      <div class="demo" id="demo">
+        <div class="pane"><div class="chrome">chapters/intro.tex<span class="st" id="dst"><i></i><span>Compiled</span></span></div>
+          <pre class="src" aria-label="LaTeX source"><span class="l"><b>42</b>The Transformer removed recurrence altogether</span><span class="l"><b>43</b><span class="kw">\citep</span>{<span class="key">vaswani2017</span>}. Its cost grows with the</span><span class="l"><b>44</b>square of the sequence length <span class="kw">\citep</span>{<span class="key bad" id="k44">vaswani2018</span>}.</span></pre></div>
+        <div class="pane"><div class="chrome">thesis.pdf · preview</div><div class="sheetw"><div class="sheet"><p class="sec">1.1&nbsp;&nbsp;Making attention cheaper</p><p id="out">The Transformer removed recurrence altogether <span class="cit" tabindex="0" data-c="ok">(Vaswani et al., 2017)</span>. Its cost grows with the square of the sequence length <span class="cit undef" tabindex="0" data-c="undef">(?)</span>.</p></div></div></div>
+        <p class="try"><span class="prompt">&gt;</span>hover or tap the two citations</p>
       </div>
     </div>
-    <div id="status-pill"></div>
-  </main>
-</div>
-<div id="selection-toolbar" role="toolbar" aria-label="Selection" hidden></div>
-<div id="hover-popup" role="tooltip" hidden></div>
-<div id="popover" hidden></div>
-<div id="cheatsheet" hidden></div>
-<div id="toast" role="status" hidden></div>
+    <figure class="fig-gap">
+      <div class="fig wide">
+        <div class="chrome"><b>LabShelf Preview</b> · thesis.pdf</div>
+        <div class="mprev" aria-hidden="true"><div class="tb2"><i style="width:9%"></i><i style="width:5%"></i><i style="width:4%"></i><span></span><i style="width:6%"></i><i style="width:8%"></i></div>
+          <div class="desk2"><div class="s2"><b></b><i></i><i></i><i class="u"></i><i></i><i style="width:60%"></i></div><div class="s2"><b style="width:40%"></b><i></i><i></i><i></i><i style="width:75%"></i></div></div>
+          <div class="ft2"><i style="width:18%"></i><span></span><i style="width:10%"></i><i class="w" style="width:9%"></i><i style="width:14%"></i></div></div>
+        <span class="slot"><i></i>preview.gif · 2100×800 · recompile, F8, Replace</span>
+      </div>
+      <figcaption><b>Figure 3.</b> The preview pane next to the source. Slot for a recording of a full fix: F8 to the problem, Replace, recompile.</figcaption>
+    </figure>
+  </section>
+
+  <section class="cmd" id="cli">
+    <p class="cmdline"><span class="pth">~/thesis</span><span class="dol">$</span> ls <span class="arg">--cli</span><span class="cm"># we would have called it ls. it was taken.</span></p>
+    <div class="two rev">
+      <div class="copyc">
+        <h2>The same shelf, <em>from a terminal.</em></h2>
+        <p>Add papers, search, print citations, and check a manuscript before you submit. Every command speaks <code>--json</code>.</p>
+        <p class="d">Put <code>labshelf check</code> in CI and a pull request with an undefined citation fails before anyone reads it.</p>
+        <ul><li><b>labshelf add</b> DOI, arXiv ID, URL or PDF</li><li><b>labshelf ls</b> search with filters</li><li><b>labshelf check</b> exits non-zero on errors</li></ul>
+      </div>
+      <figure>
+        <div class="fig rec">
+          <div class="chrome"><b>~/thesis</b> · zsh</div>
+          <pre id="rec" aria-label="Recorded terminal session"></pre>
+          <span class="slot"><i></i>cli.cast · asciinema</span>
+        </div>
+        <figcaption><b>Figure 4.</b> A recorded session: add a paper by arXiv ID, list unread papers, check the thesis.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="cmd" id="web">
+    <p class="cmdline"><span class="pth">~/thesis</span><span class="dol">$</span> ls <span class="arg">--web</span><span class="cm"># save from the browser</span></p>
+    <div class="two">
+      <div class="copyc">
+        <h2>One click from <em>a paper page</em> to your shelf.</h2>
+        <p>The browser plugin reads the paper you are looking at, fetches the PDF and files it into your library. It talks to VS Code on a local port; nothing goes through a server.</p>
+        <ul><li><b>Works on</b> arXiv, publisher pages, DOIs</li><li><b>Firefox and Chrome</b></li></ul>
+      </div>
+      <figure>
+        <div class="fig ar">
+          <div class="chrome"><b>arxiv.org/abs/2205.14135</b> · Firefox</div>
+          <div class="mweb" aria-hidden="true"><div class="u">arXiv:2205.14135 [cs.LG]</div><h4>FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness</h4><div class="au">Tri Dao, Daniel Y. Fu, Stefano Ermon, Atri Rudra, Christopher Ré</div><div class="lnb" style="width:96%"></div><div class="lnb" style="width:100%"></div><div class="lnb" style="width:88%"></div><div class="lnb" style="width:92%"></div><div class="lnb" style="width:60%"></div>
+            <div class="pin"><b>&gt; labshelf</b><br>dao2022 · FlashAttention<br>→ Systems/<br><span class="ok">✓ PDF saved · metadata from arXiv</span></div></div>
+          <span class="slot"><i></i>browser.gif · save from arXiv</span>
+        </div>
+        <figcaption><b>Figure 5.</b> Saving from arXiv: the plugin files the paper under Systems with its PDF.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="cmd" id="man-cmd">
+    <p class="cmdline"><span class="pth">~/thesis</span><span class="dol">$</span> labshelf open <span class="arg">manual.pdf</span><span class="cm"># the docs, in the reader</span></p>
+  </section>
+
+  <section class="rdr" id="man" aria-label="Manual, open in the LabShelf reader">
+    <div class="rtb"><b>labshelf-manual.pdf</b><span>LabShelf Reader</span><span class="sp"></span>
+      <span class="sw" title="Highlight meanings"><i data-m="Key claim"></i>Key claim<i data-m="Method"></i>Method<i data-m="Definition"></i>Definition<i data-m="Doubt"></i>Doubt</span>
+      <span class="pg" id="pgind">§1</span></div>
+    <div class="rgrid">
+      <aside class="rside"><div class="in">
+        <div class="rtabs" role="tablist"><button role="tab" aria-selected="true" data-tab="toc">Outline</button><button role="tab" aria-selected="false" data-tab="hls">Highlights<span id="hlc"></span></button></div>
+        <nav id="toc" aria-label="Outline"></nav><div id="hls" hidden></div>
+      </div></aside>
+      <div class="rdesk">
+      <article class="man mdoc" id="doc">
+        <h1 class="atitle">LabShelf: a local-first reference manager for reading and writing</h1>
+        <p class="aauth">L. Nasser</p>
+        <p class="aaff">User manual · labshelf 0.x · October 2026</p>
+        <div class="aabs"><b>Abstract</b>This manual describes LabShelf, a reference manager that keeps <mark class="h" data-m="Key claim" title="Key claim">your library as a folder of plain files</mark> and works inside VS Code, a terminal and the browser. We show how to add papers, read with highlights that carry a meaning, and write LaTeX or Typst with citations checked against what you have read. Select any passage to highlight it, as you would in the reader.</div>
+
+<section id="s1"><h2><span class="n">1</span>Getting started</h2>
+  <p>LabShelf has three surfaces that share one library folder: the VS Code extension, the command line and a browser plugin. Figure 6 shows how they talk. <mark class="h" data-m="Definition" title="Definition">Nothing passes through a LabShelf server; the surfaces meet on your disk and on a local port.</mark></p>
+  <figure class="afig"><div class="box"><svg viewBox="0 0 720 250" role="img" aria-label="Diagram: VS Code, CLI and browser plugin all read and write one library folder">
+    <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#5c6370"/></marker></defs>
+    <g font-family="IBM Plex Mono, ui-monospace, monospace" font-size="13" fill="#1c2028">
+      <rect x="20" y="24" width="190" height="56" rx="6" fill="#fff" stroke="#9aa0ab"/><text x="115" y="48" text-anchor="middle" font-weight="600">VS Code extension</text><text x="115" y="67" text-anchor="middle" font-size="11" fill="#5c6370">library · reader · preview</text>
+      <rect x="20" y="170" width="190" height="56" rx="6" fill="#fff" stroke="#9aa0ab"/><text x="115" y="194" text-anchor="middle" font-weight="600">labshelf CLI</text><text x="115" y="213" text-anchor="middle" font-size="11" fill="#5c6370">add · ls · check · export</text>
+      <rect x="510" y="24" width="190" height="56" rx="6" fill="#fff" stroke="#9aa0ab"/><text x="605" y="48" text-anchor="middle" font-weight="600">Browser plugin</text><text x="605" y="67" text-anchor="middle" font-size="11" fill="#5c6370">save from arXiv, DOIs</text>
+      <rect x="270" y="92" width="190" height="72" rx="6" fill="#e8eefb" stroke="#2a55a8" stroke-width="1.5"/><text x="365" y="120" text-anchor="middle" font-weight="600" fill="#2a55a8">~/Research/library</text><text x="365" y="140" text-anchor="middle" font-size="11" fill="#3b4250">pdf · md · yaml</text>
+      <rect x="510" y="170" width="190" height="56" rx="6" fill="#fff" stroke="#9aa0ab" stroke-dasharray="4 3"/><text x="605" y="194" text-anchor="middle" font-weight="600">Crossref · arXiv</text><text x="605" y="213" text-anchor="middle" font-size="11" fill="#5c6370">only the identifier is sent</text>
+    </g>
+    <g stroke="#5c6370" stroke-width="1.4" fill="none">
+      <path d="M210 60 C 250 70, 250 100, 270 112" marker-end="url(#ar)" marker-start="url(#ar)"/>
+      <path d="M210 190 C 250 180, 250 160, 270 148" marker-end="url(#ar)" marker-start="url(#ar)"/>
+      <path d="M510 52 L 220 52" stroke-dasharray="5 4" marker-end="url(#ar)"/>
+      <path d="M510 198 C 470 198, 470 160, 455 152" stroke-dasharray="5 4" marker-start="url(#ar)"/>
+    </g>
+    <g font-family="IBM Plex Mono, ui-monospace, monospace" font-size="10.5" fill="#5c6370"><text x="365" y="44" text-anchor="middle">local port 7319</text><text x="472" y="190" text-anchor="end">metadata</text></g>
+  </svg></div><figcaption><b>Figure 6.</b> The three surfaces read and write one folder. The plugin hands papers to the extension over a local port; metadata lookups send only the DOI or arXiv ID.</figcaption></figure>
+  <h3 id="s1-1"><span class="n">1.1</span>Install</h3>
+  <p>In VS Code, search for LabShelf in the Extensions view, or run the first line of Listing 1. The CLI needs Node 18 or later.</p>
+  <div class="pre"><span class="lab">Listing 1. Installing the extension and the CLI.</span><pre>code --install-extension labshelf.labshelf
+npm install -g @labshelf/cli
+labshelf --version</pre><button class="cp">copy</button></div>
+  <p>The browser plugin is on the Firefox and Chrome stores. Pair it from <b>Settings › Import &amp; metadata › Browser plugin</b>.</p>
+  <h3 id="s1-2"><span class="n">1.2</span>Choose a library folder</h3>
+  <span class="mnote">Changed later with labshelf.library.path, see §7.</span>
+  <p>LabShelf asks for a folder on first run; the default is <code>~/Research/library</code>. An existing folder of PDFs works: each PDF becomes a paper folder (<a class="xref" href="#s2-1">§2.1</a>).</p>
+  <h3 id="s1-3"><span class="n">1.3</span>Add a paper</h3>
+  <p>Drop a PDF on the library, paste a DOI or arXiv link into <b>Add</b>, or use the CLI. <mark class="h" data-m="Method" title="Method">Metadata comes from Crossref, arXiv, Semantic Scholar and OpenAlex, asked in that order.</mark></p>
+  <figure class="afig"><div class="box gif"><span>add-paper.gif · paste a DOI, the paper lands in its folder</span></div><figcaption><b>Figure 7.</b> Adding a paper by DOI from the library's Add button.</figcaption></figure>
+  <div class="pre"><span class="lab">Listing 2. Three ways to add from the terminal.</span><pre><span class="pk">labshelf add</span> 1706.03762            <span class="c"># arXiv ID</span>
+<span class="pk">labshelf add</span> 10.48550/arXiv.2010.11929
+<span class="pk">labshelf add</span> ~/Downloads/paper.pdf  <span class="c"># reads the DOI from the PDF</span></pre><button class="cp">copy</button></div>
+  <h3 id="s1-4"><span class="n">1.4</span>Coming from another manager</h3>
+  <p>Export your library as BibTeX with file paths and run <code>labshelf import library.bib --pdfs ./attachments</code>. Keys are kept, so documents that cite them keep compiling.</p>
+</section>
+
+<div class="pbreak">page 2</div>
+
+<section id="s2"><h2><span class="n">2</span>The library</h2>
+  <h3 id="s2-1"><span class="n">2.1</span>A paper is a folder</h3>
+  <p><mark class="h" data-m="Key claim" title="Key claim">Each paper is a folder named by its cite key</mark>, inside the topic folder you choose. It holds the PDF, your notes and a <code>metadata.yaml</code> that LabShelf keeps for you (Listing 3).</p>
+  <div class="pre"><span class="lab">Listing 3. metadata.yaml for one paper.</span><pre><span class="pk">key:</span> vaswani2017
+<span class="pk">title:</span> <span class="s">Attention is all you need</span>
+<span class="pk">venue:</span> <span class="s">NeurIPS 2017</span>
+<span class="pk">status:</span> done
+<span class="pk">tags:</span> [architecture, nlp]</pre></div>
+  <p>Move or rename folders in Finder and LabShelf follows. In the side bar, the <code>REF</code> mark tells a paper from a topic folder.</p>
+  <h3 id="s2-2"><span class="n">2.2</span>Status and tags</h3>
+  <p>Every paper is Unread, Reading or Done; change it from the list or with <kbd>Alt</kbd> <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd>. Tags are written <code>#like-this</code>.</p>
+  <h3 id="s2-3"><span class="n">2.3</span>Filters</h3>
+  <p>The same filters work in the search box and in <code>labshelf ls</code> (Table 1).</p>
+  <div class="tbl"><p class="tcap"><b>Table 1.</b> Search filters.</p><table><thead><tr><th>Filter</th><th>Finds</th></tr></thead><tbody>
+    <tr><td>tag:vit</td><td>Papers tagged #vit</td></tr>
+    <tr><td>in:Vision</td><td>Papers in Vision and its subfolders</td></tr>
+    <tr><td>year:2020..2022</td><td>Published in that range</td></tr>
+    <tr><td>status:unread</td><td>Not opened yet</td></tr>
+    <tr><td>--cited-by thesis.tex</td><td>Cited by that document</td></tr>
+  </tbody></table></div>
+</section>
+
+<section id="s3"><h2><span class="n">3</span>Reading</h2>
+  <h3 id="s3-1"><span class="n">3.1</span>Highlights that mean something</h3>
+  <p>Each highlight colour has a meaning you choose. <mark class="h" data-m="Key claim" title="Key claim">Meanings travel with the highlight</mark>: they become headings when you export annotations, and they label your highlights in citation cards (<a class="xref" href="#s4-2">§4.2</a>). The defaults are in Table 2.</p>
+  <div class="tbl"><p class="tcap"><b>Table 2.</b> Default highlight meanings.</p><table><thead><tr><th>Colour</th><th>Meaning</th><th>Use it for</th></tr></thead><tbody>
+    <tr><td><i class="sw" data-m="Key claim"></i>yellow</td><td>Key claim</td><td>What the paper argues</td></tr>
+    <tr><td><i class="sw" data-m="Method"></i>green</td><td>Method</td><td>How they did it</td></tr>
+    <tr><td><i class="sw" data-m="Definition"></i>blue</td><td>Definition</td><td>Terms you will reuse</td></tr>
+    <tr><td><i class="sw" data-m="Doubt"></i>red</td><td>Doubt</td><td>What you would push back on</td></tr>
+  </tbody></table></div>
+  <h3 id="s3-2"><span class="n">3.2</span>Cite a passage with its page</h3>
+  <p>Select text in the reader and choose <b>Cite p.~4</b>. LabShelf copies the citation with the page, in your cite command: <code>\citep[p.~4]{vaswani2017}</code>. <mark class="h" data-m="Method" title="Method">When your PDF cites page 4 later, its citation card shows what you highlighted there.</mark></p>
+  <figure class="afig"><div class="box gif"><span>cite-passage.gif · select, Cite p.~4, paste in intro.tex</span></div><figcaption><b>Figure 8.</b> Citing a passage with its page from the reader.</figcaption></figure>
+  <h3 id="s3-3"><span class="n">3.3</span>Notes</h3>
+  <p>Notes are a <code>notes.md</code> beside the PDF. <b>Insert highlights</b> pastes your highlights with their pages, grouped by meaning.</p>
+</section>
+
+<div class="pbreak">page 3</div>
+
+<section id="s4"><h2><span class="n">4</span>Writing</h2>
+  <h3 id="s4-1"><span class="n">4.1</span>The preview</h3>
+  <p>LabShelf adds a PDF preview beside your <code>.tex</code> or <code>.typ</code>. <mark class="h" data-m="Definition" title="Definition">The header acts and the footer reads</mark>; Figure 9 labels each part.</p>
+  <figure class="afig"><div class="box wire" aria-hidden="true">
+    <div class="t"><i style="width:9%"></i><i style="width:7%"></i><i style="width:4%"></i><i style="width:4%"></i><span class="g"></span><i style="width:4%"></i><i style="width:4%"></i><i style="width:10%"></i></div>
+    <div class="d"><div class="pgw"><i style="width:40%;height:8px;background:#c6cad2"></i><i></i><i></i><i class="u"></i><i></i><i style="width:70%"></i><i></i><i style="width:55%"></i></div></div>
+    <div class="f"><i style="width:22%"></i><span class="g"></span><i style="width:11%"></i><i style="width:12%;background:#d9776f"></i><i style="width:16%"></i><i style="width:7%"></i></div>
+    <span class="call" style="left:2%;top:4px">1</span><span class="call" style="left:28%;top:4px">2</span><span class="call" style="right:14%;top:4px">3</span>
+    <span class="call" style="left:57%;top:46%">4</span><span class="call" style="left:2%;bottom:2px">5</span><span class="call" style="right:30%;bottom:2px">6</span><span class="call" style="right:12%;bottom:2px">7</span>
+    <span class="slot" style="right:10px;bottom:30px"><i></i>preview.png · annotated screenshot</span>
+  </div><figcaption><b>Figure 9.</b> The preview pane. (1) Recompile and its options; (2) logs and export; (3) versions, dark PDF, pages and zoom; (4) an undefined citation; (5) where you are; (6) build status and citations to fix; (7) page and word limit.</figcaption></figure>
+  <p>Recompile turns from muted to full colour when the source has changed. Double-click the PDF to open the source line. Engines: pdfLaTeX, XeLaTeX, LuaLaTeX and Typst.</p>
+  <h3 id="s4-2"><span class="n">4.2</span>Citation checks</h3>
+  <p>Every citation in the compiled PDF is checked against your <code>.bib</code> and your library. Table 3 lists what LabShelf finds and how each is fixed.</p>
+  <div class="tbl"><p class="tcap"><b>Table 3.</b> Citation problems and their fixes.</p><table><thead><tr><th>Problem</th><th>In the PDF</th><th>Fix in the card</th></tr></thead><tbody>
+    <tr><td>undefined key</td><td><b>(?)</b>, red wavy underline</td><td>Replace with the closest key on your shelf</td></tr>
+    <tr><td>published preprint</td><td>amber wavy underline</td><td>Update the entry to the published venue</td></tr>
+    <tr><td>not on your shelf</td><td>amber wavy underline</td><td>Add to library, with its PDF</td></tr>
+    <tr><td>broken \ref</td><td><b>??</b>, red wavy underline</td><td>Go to source</td></tr>
+  </tbody></table></div>
+  <span class="mnote">F8 / Shift F8 walk every problem in order.</span>
+  <p><mark class="h" data-m="Key claim" title="Key claim"><kbd>F8</kbd> jumps to the next problem in the PDF</mark>, <kbd>Shift</kbd> <kbd>F8</kbd> to the previous; overfull lines are included.</p>
+  <h3 id="s4-3"><span class="n">4.3</span>Page and word limits</h3>
+  <p>Set a page limit and a word limit from the footer, and choose whether counting stops at the References. Counts include every <code>\include</code> and <code>\input</code> and are saved per root file. <mark class="h" data-m="Doubt" title="Doubt">Word counts in LaTeX are approximate: macros and math are counted as the PDF shows them.</mark></p>
+  <h3 id="s4-4"><span class="n">4.4</span>Build one chapter</h3>
+  <p>In projects that use <code>\include</code>, <b>intro.tex only</b> builds the open file with <code>\includeonly</code>, keeping page numbers and references from the other chapters.</p>
+  <h3 id="s4-5"><span class="n">4.5</span>Export</h3>
+  <p>A project .zip, or an arXiv bundle whose <code>.bib</code> holds only what you cite: <code>labshelf export main.tex --arxiv</code>.</p>
+  <h3 id="s4-6"><span class="n">4.6</span>A .bib that stays in step</h3>
+  <p>Set <code>labshelf.latex.bibFile</code> in the workspace: new citations are added, removed ones dropped, existing keys never change.</p>
+</section>
+
+<section id="s5"><h2><span class="n">5</span>Projects</h2>
+  <p>A project is a folder with a main <code>.tex</code> or <code>.typ</code>. Opening one shows its files, outline and a checklist (Table 4, Figure 10).</p>
+  <div class="tbl"><p class="tcap"><b>Table 4.</b> Checklist groups.</p><table><thead><tr><th>Group</th><th>Lists</th></tr></thead><tbody>
+    <tr><td>References</td><td>Broken \ref and \cite, with file and line</td></tr>
+    <tr><td>TODOs</td><td>% TODO comments and \todo{} notes</td></tr>
+    <tr><td>Figures</td><td>Figures older than the script that makes them</td></tr>
+    <tr><td>Reading</td><td>Papers you cite but have not read</td></tr>
+    <tr><td>Pages</td><td>Progress against the limit from <a class="xref" href="#s4-3">§4.3</a></td></tr>
+    <tr><td>My items</td><td>Your own tasks</td></tr>
+  </tbody></table></div>
+  <figure class="afig"><div class="box gif"><span>checklist.gif · open a project, expand References, jump to the line</span></div><figcaption><b>Figure 10.</b> The project checklist in the side bar.</figcaption></figure>
+  <p><b>Mark Version</b> names the current state (“sent to advisor”); <b>Compare Versions</b> shows what changed since; <b>Check Before Submitting</b> runs every check.</p>
+</section>
+
+<div class="pbreak">page 4</div>
+
+<section id="s6"><h2><span class="n">6</span>Command line</h2>
+  <p>The CLI reads and writes the same library. Every command takes <code>--json</code>.</p>
+  <div class="tbl"><p class="tcap"><b>Table 5.</b> Commands.</p><table><thead><tr><th>Command</th><th>Does</th></tr></thead><tbody>
+    <tr><td>labshelf add &lt;id|pdf&gt;</td><td>Add from a DOI, arXiv ID, URL or PDF</td></tr>
+    <tr><td>labshelf ls [filters]</td><td>List papers, filters from <a class="xref" href="#s2-3">§2.3</a></td></tr>
+    <tr><td>labshelf cite &lt;key&gt;</td><td>Print a citation; --format bibtex|apa|key</td></tr>
+    <tr><td>labshelf status &lt;key&gt; done</td><td>Set Unread, Reading or Done</td></tr>
+    <tr><td>labshelf bib sync main.tex</td><td>Bring the .bib in step with the citations</td></tr>
+    <tr><td>labshelf check main.tex</td><td>Run the checks from <a class="xref" href="#s4-2">§4.2</a>; non-zero exit on errors</td></tr>
+    <tr><td>labshelf export main.tex --arxiv</td><td>Write the arXiv bundle</td></tr>
+  </tbody></table></div>
+  <div class="pre"><span class="lab">Listing 4. Failing a pull request on an undefined citation.</span><pre><span class="c"># .github/workflows/paper.yml</span>
+<span class="pk">- run:</span> npx @labshelf/cli check main.tex</pre><button class="cp">copy</button></div>
+</section>
+
+<section id="s7"><h2><span class="n">7</span>Settings</h2>
+  <p>Every option is a VS Code setting; User and Workspace scopes work as usual.</p>
+  <div class="tbl"><p class="tcap"><b>Table 6.</b> Settings people change most.</p><table><thead><tr><th>Setting</th><th>Default</th><th>Meaning</th></tr></thead><tbody>
+    <tr><td>labshelf.library.path</td><td class="m">~/Research/library</td><td>Where paper folders live</td></tr>
+    <tr><td>labshelf.cite.keyPattern</td><td class="m">{auth}{year}</td><td>How new keys are built</td></tr>
+    <tr><td>labshelf.latex.command</td><td class="m">\cite</td><td>Used by Cite and completion</td></tr>
+    <tr><td>labshelf.latex.bibFile</td><td class="m">none</td><td>Workspace .bib kept in step</td></tr>
+    <tr><td>labshelf.ai.provider</td><td class="m">Off</td><td>Off, local model, or Anthropic API</td></tr>
+    <tr><td>labshelf.backup.path</td><td class="m">none</td><td>Folder for a full copy</td></tr>
+  </tbody></table></div>
+</section>
+
+<section id="s8"><h2><span class="n">8</span>Privacy</h2>
+  <ul>
+    <li>No account and no LabShelf server. Your library stays on your disk unless you sync the folder yourself.</li>
+    <li>Metadata lookups send only the identifier.</li>
+    <li><mark class="h" data-m="Key claim" title="Key claim">The assistant is off by default; with a local model nothing leaves your computer.</mark></li>
+  </ul>
+</section>
+
+<section id="s9"><h2><span class="n">9</span>Citing LabShelf</h2>
+  <div class="pre"><span class="lab">Listing 5. BibTeX entry.</span><pre><span class="pk">@software</span>{labshelf,
+  title  = {LabShelf: a local-first reference manager},
+  author = {Nasser, L.},
+  year   = {2026}
+}</pre><button class="cp">copy</button></div>
+</section>
+        <div class="mfoot"><span>labshelf-manual.pdf</span><span>October 2026</span><span>4 pages</span></div>
+      </article>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <a class="logo" href="#home"><span class="prompt">&gt;</span> labshelf<span class="cur" aria-hidden="true"></span></a>
+    <span>free and open source</span>
+    <a href="#man">man labshelf</a>
+    <span class="sp">for people who read papers and write them</span>
+  </footer>
+</main>
+
+<div class="pop" id="pop" hidden></div>
+<div class="pal" id="pal" role="dialog" aria-label="Search the manual" hidden><div><label><span class="prompt">&gt;</span><span class="pal-cmd">man -k</span><input id="palIn" placeholder="cite, bib, limit…" aria-label="Search the manual" autocomplete="off"></label><ul id="palList" role="listbox"></ul></div></div>
+<div class="selbar" id="selbar" hidden><button data-m="Key claim"><i></i>Key claim</button><button data-m="Method"><i></i>Method</button><button data-m="Definition"><i></i>Definition</button><button data-m="Doubt"><i></i>Doubt</button></div>
+<div class="toast" id="toast" role="status"></div>
 </body>
 </html>

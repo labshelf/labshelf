@@ -30,6 +30,7 @@
   --ls-list-inactive-bg: #37373d;
   --ls-list-drop-bg: #383b3d;
   --ls-list-focus-outline: #0078d4;
+  --ls-tree-guide: #585858;
   --ls-menu-bg: #1f1f1f;
   --ls-menu-fg: #cccccc;
   --ls-menu-border: #454545;
@@ -152,6 +153,7 @@
   --ls-list-inactive-bg: #e4e6f1;
   --ls-list-drop-bg: #d6ebff;
   --ls-list-focus-outline: #005fb8;
+  --ls-tree-guide: #a9a9a9;
   --ls-menu-bg: #ffffff;
   --ls-menu-fg: #3b3b3b;
   --ls-menu-border: #cecece;

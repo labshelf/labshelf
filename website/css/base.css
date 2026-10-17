@@ -1,0 +1,27 @@
+/* Sets the page defaults: box model, body, links, inline code, the highlighter mark, the prompt cursor and the footer. */
+
+*{box-sizing:border-box}
+em{font-style:normal}
+[hidden]{display:none!important}
+html{scroll-padding-top:calc(70px + env(safe-area-inset-top,0px))}
+body{margin:0;background:var(--ink);color:var(--tx);font:17px/1.7 var(--serif);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 56px;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--ink)}
+a{color:var(--blue);text-decoration:none}
+a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--hi);outline-offset:3px;border-radius:2px}
+code,kbd,pre{font-family:var(--mono)}
+code{font-size:.78em;background:var(--ink3);padding:.12em .4em;border-radius:3px}
+kbd{font-size:.68em;padding:.15em .45em;border:1px solid var(--line);border-radius:4px;color:var(--dim)}
+.wrap{max-width:1200px;margin:0 auto;padding-inline:clamp(0px,3vw,40px)}
+
+/* The highlighter: a marker stroke behind words that matter. */
+.mark{background:linear-gradient(100deg,transparent 0 1%,color-mix(in srgb,var(--hi) 85%,transparent) 2% 97%,transparent 98%) no-repeat 0 62%/100% 58%;color:var(--ink);padding:0 .06em;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.cur{display:inline-block;width:.6em;height:1.05em;background:var(--hi);vertical-align:-.16em;margin-left:.08em;animation:blink 1.05s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.prompt{color:var(--hi)}
+
+footer{display:flex;flex-wrap:wrap;gap:12px 32px;align-items:baseline;margin-top:96px;font:12.5px var(--mono);color:var(--dim)}
+footer .logo{font-size:15px}
+footer .sp{margin-left:auto}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}

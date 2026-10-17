@@ -2,7 +2,7 @@
 import { icon } from "../../../ui/index.js";
 import { el } from "../../../ui/dom/index.js";
 import type { TemplateEntry } from "../templateEntry.js";
-import { templateByLine, templateMetaLine } from "../templateLabels.js";
+import { templateByLine, templateMetaLine, templateUsesLabel } from "../templateLabels.js";
 
 /** Fills a thumbnail box with the image, or with the placeholder icon when there is none. */
 export function fillThumb(box: HTMLElement, dataUri: string | undefined, alt: string): void {
@@ -27,7 +27,7 @@ export function renderTemplateCard(entry: TemplateEntry, thumbnail: string | und
     el("div", { class: "ls-tpl-card-body" },
       el("div", { class: "ls-tpl-card-name", text: entry.name, title: entry.name }),
       el("div", { class: "ls-tpl-card-by", text: by, title: by }),
-      el("div", { class: "ls-tpl-card-meta", text: templateMetaLine(entry) })));
+      el("div", { class: "ls-tpl-card-meta", text: [templateMetaLine(entry), templateUsesLabel(entry)].filter((part) => part !== undefined).join(" · ") })));
   const setThumbnail = (dataUri: string | undefined): void => fillThumb(thumb, dataUri, "");
   setThumbnail(thumbnail);
   return { item: el("li", {}, button), button, setThumbnail };

@@ -1,3 +1,3 @@
-// Exports the host side of the preview's Export menu.
-export { exportProject } from "./exportProject.js";
-export type { ExportProjectDeps } from "./exportProject.js";
+// Exports the project export actions, their commands and the zip contents they share.
+export { projectZipEntries } from "./exportBundle.js";
+export { registerExportCommands } from "./registerExportCommands.js";

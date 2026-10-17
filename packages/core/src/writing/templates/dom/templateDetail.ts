@@ -2,7 +2,7 @@
 import { icon } from "../../../ui/index.js";
 import { el } from "../../../ui/dom/index.js";
 import type { TemplateEntry } from "../templateEntry.js";
-import { CATEGORY_LABELS, distinctEngineLabel, FORMAT_LABELS, templateByLine } from "../templateLabels.js";
+import { CATEGORY_LABELS, distinctEngineLabel, FORMAT_LABELS, templateByLine, templateUsesCount } from "../templateLabels.js";
 import { fillThumb } from "./templateCard.js";
 
 export interface TemplateDetailOptions {
@@ -35,6 +35,8 @@ function metaRows(entry: TemplateEntry): Array<[string, string]> {
   rows.push(["Category", CATEGORY_LABELS[entry.category]], ["License", entry.license]);
   if (entry.version) rows.push(["Version", entry.version]);
   if (entry.compiler) rows.push(["Needs Typst", `${entry.compiler} or later`]);
+  const uses = templateUsesCount(entry);
+  if (uses !== undefined) rows.push(["Uses", uses]);
   return rows;
 }
 

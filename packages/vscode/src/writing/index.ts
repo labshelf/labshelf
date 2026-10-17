@@ -2,7 +2,7 @@
 export { registerMainCommands } from "./mainCommands.js";
 export { registerMainStatusBar } from "./mainStatusBar.js";
 export { registerProjectCommands } from "./projectCommands.js";
-export { registerProjectItemCommands } from "./projectItemCommands.js";
+export { duplicateProject, registerProjectItemCommands } from "./projectItemCommands.js";
 export { mainPathIn, owningProject } from "./mainDocument.js";
 export { WritingProjects } from "./session/index.js";
 export type { WritingHost, WritingSession } from "./session/index.js";

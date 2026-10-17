@@ -3,7 +3,7 @@ import { $ } from "../../../ui/dom/index.js";
 import type { PageArea, PreviewRoots, WebviewToHost } from "../../index.js";
 import type { OutlineRow } from "../../logic/index.js";
 import type { ReaderContext } from "../session/index.js";
-import { mountExportMenu, mountLogsButton, mountOnlyToggle, mountOptionsMenu, mountPreviewHeader, type RecompileState } from "./header/index.js";
+import { mountLogsButton, mountOnlyToggle, mountOptionsMenu, mountPreviewHeader, type RecompileState } from "./header/index.js";
 import type { LogsView } from "./logs/index.js";
 import { mountProblemMarks } from "./marks/index.js";
 import {
@@ -61,7 +61,6 @@ export function mountPreviewChrome({ post, logs, outline, countBodyPages, pdfVie
   const options = mountOptionsMenu(header.slots.options, { post });
   const only = mountOnlyToggle(header.slots.only, { post });
   const logsButton = mountLogsButton(header.slots.logs, { post, openLogs: (path) => logs.open(path) });
-  const exportMenu = mountExportMenu(header.slots.export, { post });
   const problems = mountProblems(footer.slots.cites, { marks, scrollTo, post });
   const limit = mountLimitMeter(footer.slots.limit, { post, countBodyPages });
   const checks = mountChecksButton(footer.slots.checks, { post });
@@ -70,7 +69,7 @@ export function mountPreviewChrome({ post, logs, outline, countBodyPages, pdfVie
     applyRoots(roots) {
       logs.setRoots(roots);
       footer.setRoots(roots);
-      for (const piece of [options, only, logsButton, exportMenu, problems, limit, checks]) { piece.setRoots(roots); }
+      for (const piece of [options, only, logsButton, problems, limit, checks]) { piece.setRoots(roots); }
       marks.setProblems(roots.roots.find((r) => r.path === roots.shown)?.pdfProblems ?? []);
     },
     applyBuild(build) {

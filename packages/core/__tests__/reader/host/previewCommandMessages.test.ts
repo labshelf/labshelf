@@ -8,7 +8,6 @@ const cases: Array<[string, Record<string, unknown>, unknown[]]> = [
   ["setIncludeOnly", { on: false }, [false]],
   ["setCheckLimits", { limits: { pages: 8, words: null, countUpTo: "end" } }, [{ pages: 8, words: null, countUpTo: "end" }]],
   ["fixCitation", { fix: { kind: "replace", key: "a", replacement: "b", file: "m.tex", line: 2 } }, [{ kind: "replace", key: "a", replacement: "b", file: "m.tex", line: 2 }]],
-  ["exportProject", { target: "arxivZip" }, ["arxivZip"]],
   ["openSourceLine", { file: "m.tex", line: 9 }, ["m.tex", 9]],
 ];
 

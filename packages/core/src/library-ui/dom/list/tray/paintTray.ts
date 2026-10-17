@@ -37,8 +37,8 @@ function rowKey(el: Element | null): string | null {
   return kind ? `${kind}:${r?.getAttribute("data-name")}` : null;
 }
 
-// Focus inside a replaced tray goes to the row with the same name, or to the paper row when that row is gone.
-function replaceRows(tray: HTMLElement, rows: HTMLElement[]): void {
+/** Replaces a tray's rows; focus inside it goes to the row of the same kind and name, or to the paper row when that row is gone. */
+export function replaceTrayRows(tray: HTMLElement, rows: HTMLElement[]): void {
   const hadFocus = tray.contains(document.activeElement);
   const key = rowKey(document.activeElement);
   tray.replaceChildren(...rows);
@@ -63,6 +63,6 @@ export function paintTray(ctx: UiContext, root: HTMLElement, records: ReadonlyMa
     const last = built.get(tray);
     if (last && inputs.every((v, i) => v === last[i])) return;
     built.set(tray, inputs);
-    replaceRows(tray, trayRows(ctx, id, record));
+    replaceTrayRows(tray, trayRows(ctx, id, record));
   });
 }

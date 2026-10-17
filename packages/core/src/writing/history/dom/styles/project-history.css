@@ -1,0 +1,70 @@
+/*
+ * Styles the project history page under .ls-history: the toolbar, the day-grouped timeline and the selected entry's files and diff.
+ * The timeline draws one vertical rail through the row dots; version and restore entries change the dot's shape and colour.
+ */
+.ls-history { display: flex; flex-direction: column; height: 100vh; background: var(--ls-bg); color: var(--ls-fg); font: var(--ls-font-size) var(--ls-font); }
+.ls-history-busy { cursor: progress; }
+.ls-history-busy .ls-history-body { opacity: .6; pointer-events: none; }
+
+/* ── Toolbar ────────────────────────────────────────────────────── */
+.ls-history-bar { display: flex; align-items: center; gap: var(--ls-space-3); padding: var(--ls-space-5) var(--ls-space-7); border-bottom: 1px solid var(--ls-border); }
+.ls-history-icon { display: inline-flex; width: 18px; height: 18px; color: var(--ls-desc); }
+.ls-history-icon svg { width: 100%; height: 100%; }
+.ls-history-heading { margin: 0; font-size: var(--ls-text-xl); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ls-history-spacer { flex: 1; }
+
+.ls-history-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(240px, 320px) 1fr; }
+
+/* ── Timeline ───────────────────────────────────────────────────── */
+.ls-history-timeline { margin: 0; padding: var(--ls-space-4) 0; list-style: none; overflow-y: auto; border-right: 1px solid var(--ls-border); outline: none; }
+.ls-history-day {
+  position: sticky; top: calc(-1 * var(--ls-space-4)); z-index: 1; padding: var(--ls-space-4) var(--ls-space-7) var(--ls-space-2);
+  background: var(--ls-bg); color: var(--ls-desc); font-size: var(--ls-text-sm); font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+}
+.ls-history-row {
+  position: relative; display: flex; align-items: center; gap: var(--ls-space-4); height: 28px; padding: 0 var(--ls-space-7);
+  cursor: pointer; transition: background-color .12s ease;
+}
+.ls-history-row::before { content: ""; position: absolute; left: calc(var(--ls-space-7) + 4px); top: 0; bottom: 0; width: 1px; background: var(--ls-border-soft); }
+.ls-history-row:hover { background: var(--ls-list-hover); }
+.ls-history-row[aria-selected="true"] { background: var(--ls-list-active-bg); color: var(--ls-list-active-fg); }
+.ls-history-timeline:focus-visible .ls-history-row[aria-selected="true"] { outline: 1px solid var(--ls-list-focus-outline); outline-offset: -1px; }
+.ls-history-dot { position: relative; z-index: 1; flex-shrink: 0; width: 9px; height: 9px; border-radius: var(--ls-radius-pill); border: 2px solid var(--ls-desc); background: var(--ls-bg); }
+.ls-history-version .ls-history-dot { border-color: var(--ls-focus); background: var(--ls-focus); border-radius: 2px; transform: rotate(45deg); }
+.ls-history-restore .ls-history-dot { border-color: var(--ls-warning); }
+.ls-history-current .ls-history-dot { border-color: var(--ls-green); background: var(--ls-green); }
+.ls-history-time { flex-shrink: 0; width: 44px; color: var(--ls-desc); font-size: var(--ls-text-md); font-variant-numeric: tabular-nums; }
+.ls-history-row[aria-selected="true"] .ls-history-time { color: inherit; }
+.ls-history-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ls-history-version .ls-history-title { font-weight: 600; }
+.ls-history-badge { flex-shrink: 0; padding: 0 var(--ls-space-3); border-radius: var(--ls-radius-pill); background: var(--ls-badge-bg); color: var(--ls-badge-fg); font-size: var(--ls-text-xs); line-height: 16px; }
+
+/* ── Selected entry ─────────────────────────────────────────────── */
+.ls-history-detail { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.ls-history-entry { display: flex; align-items: center; justify-content: space-between; gap: var(--ls-space-6); padding: var(--ls-space-6) var(--ls-space-7); }
+.ls-history-entry-title { margin: 0; font-size: var(--ls-text-lg); font-weight: 600; }
+.ls-history-entry-when { margin: var(--ls-space-1) 0 0; color: var(--ls-desc); font-size: var(--ls-text-md); }
+.ls-history-files { display: flex; flex-wrap: wrap; gap: var(--ls-space-2); padding: 0 var(--ls-space-7) var(--ls-space-5); border-bottom: 1px solid var(--ls-border); }
+.ls-history-files:empty { display: none; }
+.ls-history-file {
+  display: inline-flex; align-items: center; gap: var(--ls-space-3); max-width: 100%; height: var(--ls-row-h); padding: 0 var(--ls-space-4);
+  border: 1px solid var(--ls-border); border-radius: var(--ls-radius); background: transparent; color: var(--ls-fg); font: inherit; font-size: var(--ls-text-md); cursor: pointer;
+}
+.ls-history-file:hover { background: var(--ls-list-hover); }
+.ls-history-file[aria-pressed="true"] { border-color: var(--ls-focus); background: var(--ls-row-selected); }
+.ls-history-file:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
+.ls-history-file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ls-history-file-mark { font-family: var(--ls-mono); font-size: var(--ls-text-sm); font-weight: 600; }
+.ls-history-file-added .ls-history-file-mark { color: var(--ls-green); }
+.ls-history-file-modified .ls-history-file-mark { color: var(--ls-warning); }
+.ls-history-file-deleted .ls-history-file-mark { color: var(--ls-error); }
+
+/* ── Diff ───────────────────────────────────────────────────────── */
+.ls-history-diff-view { flex: 1; min-height: 0; overflow: auto; }
+.ls-history-diff { margin: 0; padding: var(--ls-space-4) 0; font: var(--ls-text-md)/1.6 var(--ls-mono); }
+.ls-history-line { padding: 0 var(--ls-space-7) 0 var(--ls-space-4); white-space: pre-wrap; word-break: break-word; }
+.ls-history-sign { display: inline-block; width: 2ch; color: var(--ls-desc); user-select: none; }
+.ls-history-line-added { background: color-mix(in srgb, var(--ls-hl-green) 16%, transparent); }
+.ls-history-line-removed { background: color-mix(in srgb, var(--ls-hl-red) 16%, transparent); }
+.ls-history-line-gap { margin: var(--ls-space-2) 0; padding: var(--ls-space-1) var(--ls-space-7); background: var(--ls-code-bg); color: var(--ls-desc); font-family: var(--ls-font); font-size: var(--ls-text-sm); }
+.ls-history-note { margin: 0; padding: var(--ls-space-7); color: var(--ls-desc); }

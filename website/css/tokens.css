@@ -1,110 +1,12 @@
-/* Design tokens of the site: the reader's chrome and page colours for each page theme, the type stack and the page geometry. */
+/* Declares the site palette, the two type families and the colour of each highlight meaning. */
+/* The page is a terminal session on an ink-dark desk; LabShelf blue is the only marker, yellow stays only as the Key claim highlight. */
 
-:root {
-  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", system-ui, "Ubuntu", "Droid Sans", sans-serif;
-  --font-doc: "Source Serif 4", "Iowan Old Style", Georgia, serif;
-  --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
-  --toolbar-h: 38px;
-  /* A4 proportions on a Letter-width sheet: 100 % zoom is the reader's actual size. */
-  --page-w: 816px;
-  --page-ratio: 210 / 297;
-  --zoom: 1;
-  --hl-yellow: #f5c518;
-  --hl-green: #4caf50;
-  --hl-blue: #2196f3;
-  --hl-red: #f44336;
-  --hl-pink: #e91e63;
-  --status-unread: #3794ff;
-  --status-reading: #e5c07b;
-  --status-done: #4ec994;
-  --error: #f14c4c;
+:root{
+  --ink:#0d1118; --ink2:#141a24; --ink3:#1c2431; --line:#273041; --tx:#d9dee7; --dim:#8c95a6; --faint:#5b6476;
+  --paper:#f3f4f6; --pink:#1c2028; --pdim:#5c6370; --pline:#d9dce2;
+  --hi:#7d9fe0; --blue:#86a9ec; --green:#86c79f; --red:#ee8a80; --amber:#e3b066;
+  --mono:"Martian Mono",ui-monospace,Menlo,Consolas,monospace; --serif:"Source Serif 4",Georgia,"Times New Roman",serif;
+  color-scheme:dark;
 }
 
-:root,
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --gutter: #1e1e1e;
-  --canvas: #1e1e1e;
-  --surface: #252526;
-  --border: #3c3c3c;
-  --text: #cccccc;
-  --text-dim: #9a9a9a;
-  --hover: rgba(255, 255, 255, 0.09);
-  --active: rgba(255, 255, 255, 0.15);
-  --accent: #3794ff;
-  --shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
-  --find-hit: rgba(255, 213, 0, 0.35);
-  --find-current: rgba(255, 140, 0, 0.6);
-  --scrollbar: rgba(121, 121, 121, 0.4);
-  --scrollbar-hover: rgba(100, 100, 100, 0.7);
-  --page-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
-  --ink: #e8e8e8;
-  --link: #4daafc;
-  --brand: #3794ff;
-  --hl-alpha: 0.42;
-}
-
-:root[data-theme="light"] {
-  color-scheme: light;
-  --gutter: #f0f0f0;
-  --canvas: #ffffff;
-  --surface: #f6f6f6;
-  --border: #d4d4d4;
-  --text: #2b2b2b;
-  --text-dim: #6b6b6b;
-  --hover: rgba(0, 0, 0, 0.07);
-  --active: rgba(0, 0, 0, 0.12);
-  --accent: #005fb8;
-  --shadow: 0 4px 18px rgba(0, 0, 0, 0.18);
-  --scrollbar: rgba(100, 100, 100, 0.4);
-  --scrollbar-hover: rgba(100, 100, 100, 0.7);
-  --page-shadow: 0 1px 6px rgba(0, 0, 0, 0.22);
-  --ink: #161616;
-  --link: #005fb8;
-  --brand: #0066b8;
-  --hl-alpha: 0.38;
-}
-
-:root[data-theme="sepia"] {
-  color-scheme: light;
-  --gutter: #e8dfc8;
-  --canvas: #faf6ee;
-  --surface: #ede6d3;
-  --border: #c8b89a;
-  --text: #4a3728;
-  --text-dim: #7d6a58;
-  --hover: rgba(74, 55, 40, 0.1);
-  --active: rgba(74, 55, 40, 0.17);
-  --accent: #2f5d8a;
-  --shadow: 0 4px 18px rgba(74, 55, 40, 0.25);
-  --scrollbar: rgba(125, 106, 88, 0.4);
-  --scrollbar-hover: rgba(125, 106, 88, 0.7);
-  --page-shadow: 0 1px 6px rgba(74, 55, 40, 0.28);
-  --ink: #3a2a1a;
-  --link: #2f5d8a;
-  --brand: #2f5d8a;
-  --hl-alpha: 0.4;
-}
-
-:root[data-theme="high-contrast"] {
-  color-scheme: dark;
-  --gutter: #000000;
-  --canvas: #000000;
-  --surface: #000000;
-  --border: #ffffff;
-  --text: #ffffff;
-  --text-dim: #ffffff;
-  --hover: rgba(255, 255, 255, 0.2);
-  --active: rgba(255, 255, 255, 0.3);
-  --accent: #3794ff;
-  --shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
-  --find-hit: rgba(0, 255, 255, 0.4);
-  --find-current: rgba(255, 0, 255, 0.6);
-  --scrollbar: rgba(255, 255, 255, 0.5);
-  --scrollbar-hover: rgba(255, 255, 255, 0.8);
-  --page-shadow: 0 0 0 1px #ffffff;
-  --ink: #ffffff;
-  --link: #7fd7ff;
-  --brand: #7fd7ff;
-  --hl-alpha: 0.55;
-}
+[data-m="Key claim"]{--c:#e7b52f} [data-m="Method"]{--c:#5fae7d} [data-m="Definition"]{--c:#6f95dd} [data-m="Doubt"]{--c:#d9776f}

@@ -8,6 +8,7 @@ describe("library-list.css column layouts", () => {
   it("defines one track list with a 120px title floor; narrow panes zero the optional tracks instead", () => {
     const layouts = [...CSS.matchAll(/--cols:\s*([^;]+);/g)].map((m) => m[1]!);
     expect(layouts).toHaveLength(1);
-    expect(layouts[0]).toContain("minmax(240px, 3fr)");
+    expect(layouts[0]).toContain("var(--w-title)");
+    expect(CSS).toMatch(/--w-title:\s*minmax\(240px, 3fr\);/);
   });
 });

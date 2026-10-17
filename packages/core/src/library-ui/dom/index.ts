@@ -1,5 +1,10 @@
-/** Exports the library UI's DOM half public API: one mount call, and the missing-PDF dialog host glue shares. */
+/** Exports the library UI's DOM half public API: one mount call, the missing-PDF dialog host glue shares, and the list pieces other item pages reuse. */
 export { mountLibraryUi } from "./mountLibraryUi.js";
 export type { LibraryUi, LibraryUiOptions } from "./mountLibraryUi.js";
 export { askNoPdf, type NoPdfChoice } from "./flows/index.js";
-export { mountLibrarySidebar, type LibrarySidebar, type LibrarySidebarOptions, type SidebarActions, type SidebarPaper, type SidebarProject, type SidebarProjectActions } from "./sidebar/index.js";
+export { mountLibrarySidebar, type LibrarySidebar, type LibrarySidebarOptions, type SidebarActions, type SidebarPaper, type SidebarProject, type SidebarProjectActions, formatLabel } from "./sidebar/index.js";
+export {
+  GroupedRows, RowReconciler, paintSortableHeads, sortableHeadHtml, wireSortableHeads, type GroupAccess, type RowGroup, type SortableHead,
+  buildFailedRow, buildLoadingRow, buildTrayRow, replaceTrayRows, type TrayEntry,
+  collapseOrLeave, expandOrEnter, focusRow, focusedChildRow, focusedRow, paperIdOf, paperRowOf, visibleRows,
+} from "./list/index.js";

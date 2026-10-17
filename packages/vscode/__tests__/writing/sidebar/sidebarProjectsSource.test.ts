@@ -49,17 +49,17 @@ describe("SidebarProjectsSource rows", () => {
   it("lists ready and broken projects in registry order", async () => {
     const broken: ProjectEntry = { kind: "broken", folder: "/code/gone", location: "external", reason: "no such folder" };
     const rows = await setup({ entries: [entry, broken] }).source.rows();
-    expect(rows.map((r) => [r.name, r.kind, r.group])).toEqual([["a", "ready", "In library"], ["gone", "broken", "External folders"]]);
+    expect(rows.map((r) => [r.name, r.kind, r.external])).toEqual([["a", "ready", false], ["gone", "broken", true]]);
   });
 
   it("starts counting on the first read and fires one change when the count arrives", async () => {
     const ctx = setup({ entries: [entry], open: 2 });
     const [before] = await ctx.source.rows();
-    expect(before!.mark.tone).toBe("accent");
+    expect(before).not.toHaveProperty("count");
     await flush();
     expect(ctx.changed).toHaveBeenCalledTimes(1);
     const [after] = await ctx.source.rows();
-    expect(after).toMatchObject({ mark: { tone: "warn", progress: "full" }, count: "2" });
+    expect(after).toMatchObject({ count: "2" });
   });
 
   it("counts a project once and reuses the cached count", async () => {
@@ -76,14 +76,14 @@ describe("SidebarProjectsSource rows", () => {
     await ctx.source.rows();
     await flush();
     expect(ctx.logger.error).toHaveBeenCalledWith("writing/projects", expect.any(Error), expect.objectContaining({ folder: "/lib/projects/a" }));
-    expect((await ctx.source.rows())[0]!.mark.tone).toBe("accent");
+    expect((await ctx.source.rows())[0]).not.toHaveProperty("count");
   });
 
-  it("shows an err mark once counted when the last build failed", async () => {
+  it("puts the last failed build in the tooltip once counted", async () => {
     const ctx = setup({ entries: [entry], last: { ok: false, at: new Date(2026, 0, 1, 9, 7) } });
     await ctx.source.rows();
     await flush();
-    expect((await ctx.source.rows())[0]!.mark.tone).toBe("err");
+    expect((await ctx.source.rows())[0]!.tooltip).toContain("Last build failed");
   });
 });
 
@@ -116,7 +116,7 @@ describe("SidebarProjectsSource changes", () => {
     jest.advanceTimersByTime(DEBOUNCE_MS);
     expect(ctx.changed).toHaveBeenCalledTimes(1);
 
-    expect((await ctx.source.rows())[0]!.mark.tone).toBe("accent");
+    await ctx.source.rows();
     await flush();
     expect(ctx.readSignals).toHaveBeenCalledTimes(2);
   });

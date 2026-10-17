@@ -1,0 +1,40 @@
+/* Styles the manual's code listings, booktabs tables and figure slots. */
+
+.pre{position:relative;margin:0 0 22px}
+.pre .lab{display:block;font:14px var(--serif);color:var(--pdim);margin:0 0 6px}
+.pre pre{margin:0;background:#f0f1f4;color:var(--pink);border-top:1.5px solid var(--pink);border-bottom:1.5px solid var(--pink);border-radius:0;padding:14px 16px;font:12.5px/1.8 var(--mono);overflow-x:auto}
+.pre pre .c{color:#8a909b} .pre pre .pk{color:#2a55a8;font-weight:500} .pre pre .s{color:#3f8a60}
+.pre .cp{position:absolute;top:30px;right:8px;opacity:0;background:#fff;color:var(--pdim);border-color:#cfd2d8}
+.pre:hover .cp,.pre .cp:focus-visible{opacity:1}
+/* Tables, set like a paper's (booktabs): rules above and below, no grid. */
+.tbl{overflow-x:auto;margin:6px 0 26px}
+.tcap{font:14px/1.45 var(--serif);color:var(--pink);margin:0 0 8px;text-align:center}
+.tcap b{font-weight:600}
+.tbl table{border-collapse:collapse;width:100%;font:15px/1.45 var(--serif)}
+.tbl thead tr{border-top:1.5px solid var(--pink);border-bottom:1px solid var(--pink)}
+.tbl tbody tr:last-child{border-bottom:1.5px solid var(--pink)}
+.tbl th{text-align:left;font:600 14px var(--serif);padding:8px 20px 8px 0}
+.tbl td{padding:7px 20px 7px 0;vertical-align:top}
+.tbl td:first-child{font:12.5px var(--mono);white-space:nowrap}
+.tbl td.m{font:12px var(--mono);color:var(--pdim);white-space:nowrap}
+.tbl .sw{display:inline-block;width:26px;height:11px;border-radius:2px;background:var(--c);vertical-align:-1px;margin-right:8px}
+/* Figures inside the paper: slots for real images and GIFs, drawn as light mock-ups until the recordings exist. */
+.afig{margin:28px 0 30px}
+.afig .box{position:relative;background:#e9ebef;border:1px solid #d6d9df;border-radius:3px;overflow:hidden}
+.afig .box .slot{background:rgba(255,255,255,.85);color:var(--pdim);border-color:#aeb3bc}
+.afig figcaption{margin-top:10px;font:14px/1.5 var(--serif);color:var(--pink);font-style:normal}
+.afig figcaption b{font-weight:600;color:var(--pink)}
+.afig svg{display:block;width:100%;height:auto}
+.wire{aspect-ratio:16/8;display:flex;flex-direction:column}
+.wire .t,.wire .f{display:flex;gap:8px;align-items:center;height:28px;padding:0 10px;background:#f7f8fa;border-bottom:1px solid #d6d9df}
+.wire .f{border-bottom:0;border-top:1px solid #d6d9df;height:24px}
+.wire i{height:7px;border-radius:2px;background:#cdd1d8;flex:none}
+.wire .g{flex:1}
+.wire .d{flex:1;display:flex;justify-content:center;padding:14px;background:#dfe2e7}
+.wire .pgw{width:42%;background:#fff;padding:14px 16px}
+.wire .pgw i{display:block;margin:0 0 7px;height:5px;background:#e1e4e9}
+.wire .pgw i.u{background:linear-gradient(90deg,#e1e4e9 0 62%,#d9776f 62% 76%,#e1e4e9 76%)}
+.call{position:absolute;width:20px;height:20px;border-radius:50%;background:#2a55a8;color:#fff;font:600 11px/20px var(--mono);text-align:center;box-shadow:0 0 0 3px rgba(255,255,255,.9)}
+.gif{aspect-ratio:16/7;display:grid;place-items:center;background:repeating-linear-gradient(135deg,#e9ebef 0 14px,#e3e6eb 14px 28px)}
+.gif span{font:12px var(--mono);color:var(--pdim);background:#fff;border:1px dashed #aeb3bc;border-radius:5px;padding:7px 12px}
+.mfoot{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:48px;padding-top:12px;border-top:1px solid var(--pline);font:11.5px var(--mono);color:var(--pdim)}

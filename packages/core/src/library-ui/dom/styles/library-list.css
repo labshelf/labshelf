@@ -49,7 +49,9 @@
   /* Text columns share the free width; short ones keep their size. Each --m-* is a column's floor, 0 while it is hidden. */
   --m-creator: 140px; --m-venue: 120px; --m-year: 52px; --m-read: 84px; --m-status: 86px;
   --w-creator: minmax(var(--m-creator), 1.4fr); --w-venue: minmax(var(--m-venue), 1fr); --w-year: 52px; --w-read: 84px; --w-status: 86px;
-  --cols: 28px minmax(240px, 3fr) var(--w-creator) var(--w-venue) var(--w-year) var(--w-read) var(--w-status) 28px;
+  /* The edge tracks hold the twistie and the menu button; other item lists build their --cols from the same tracks. */
+  --w-edge: 28px; --w-title: minmax(240px, 3fr);
+  --cols: var(--w-edge) var(--w-title) var(--w-creator) var(--w-venue) var(--w-year) var(--w-read) var(--w-status) var(--w-edge);
   flex: 1; overflow: auto; outline: none;
 }
 .ls-library .paper-list:not(:has(.col-head.col-creator)) { --m-creator: 0px; }

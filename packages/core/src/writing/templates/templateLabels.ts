@@ -45,3 +45,21 @@ export function templateMetaLine(entry: TemplateEntry): string {
     .filter((part) => part !== undefined)
     .join(" · ");
 }
+
+/** "1.2k": a count with at most one decimal, in thousands (k) or millions (M). */
+function compactCount(count: number): string {
+  if (count < 1000) return String(count);
+  const thousands = Math.round(count / 100) / 10;
+  return thousands < 1000 ? `${thousands}k` : `${Math.round(count / 100_000) / 10}M`;
+}
+
+/** "1.2k": the template's use count, or undefined when the source has none. */
+export function templateUsesCount(entry: TemplateEntry): string | undefined {
+  return entry.downloads === undefined ? undefined : compactCount(entry.downloads);
+}
+
+/** "1.2k uses" or "1 use": the use count with its unit, or undefined when the source has none. */
+export function templateUsesLabel(entry: TemplateEntry): string | undefined {
+  const count = templateUsesCount(entry);
+  return count === undefined ? undefined : `${count} ${entry.downloads === 1 ? "use" : "uses"}`;
+}

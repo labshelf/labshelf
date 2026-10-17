@@ -14,6 +14,8 @@
     "src/sidebarWebview",
     "src/writing/templates/webview",
     "src/writing/search/webview",
+    "src/writing/history/webview",
+    "src/writing/allProjects/webview",
     "src/webviewGlobals.d.ts",
     ".vscode-test"
   ]

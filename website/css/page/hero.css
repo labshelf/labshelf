@@ -1,0 +1,17 @@
+/* Lays out the hero: the headline, the pitch and the install commands. */
+
+.hero{padding:120px 0 40px}
+.hero h1{margin:0;font:400 clamp(54px,11.5vw,168px)/.92 var(--serif);letter-spacing:-.035em;font-variation-settings:"opsz" 60}
+.hero h1 .ls{font:500 .86em var(--mono);letter-spacing:-.06em;color:var(--ink);background:var(--hi);padding:0 .08em .02em;margin-right:.12em;border-radius:2px}
+.hero h1 em{font-style:normal;color:var(--hi)}
+.sub{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:72px;align-items:end;margin-top:64px}
+.sub p{margin:0;font-size:clamp(19px,2vw,23px);line-height:1.45;color:var(--tx);max-width:34ch}
+.sub p .d{color:var(--dim)}
+.install{display:flex;flex-direction:column;gap:14px;font:13px var(--mono)}
+.install .row{display:flex;align-items:center;gap:12px;background:var(--ink2);border:1px solid var(--line);border-radius:8px;padding:15px 14px 15px 18px;min-width:0}
+.install .row code{background:none;padding:0;font-size:13px;color:var(--tx);overflow-x:auto;white-space:nowrap;flex:1;min-width:0}
+.install .row .prompt{flex:none}
+.cp{all:unset;cursor:pointer;flex:none;font:11px var(--mono);color:var(--dim);padding:4px 8px;border:1px solid var(--line);border-radius:5px}
+.cp:hover{color:var(--tx);border-color:var(--faint)}
+.install .alt{color:var(--dim);font-size:12px;padding-left:2px}
+@media (max-width:860px){.sub{grid-template-columns:minmax(0,1fr);gap:24px}}

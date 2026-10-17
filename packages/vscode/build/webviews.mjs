@@ -17,6 +17,8 @@ const BUNDLES = {
   "library/sidebar": "src/sidebarWebview/main.ts",
   "templates/templates": "src/writing/templates/webview/main.ts",
   "search/search": "src/writing/search/webview/main.ts",
+  "history/history": "src/writing/history/webview/main.ts",
+  "projects/projects": "src/writing/allProjects/webview/main.ts",
 };
 
 const watch = process.argv.includes("--watch");

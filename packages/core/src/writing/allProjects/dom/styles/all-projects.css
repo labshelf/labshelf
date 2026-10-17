@@ -1,0 +1,40 @@
+/*
+ * Styles the All projects page on top of the Library list sheets (library-ui.css, library-list.css, library-sidebar.css for the
+ * format badge): its column tracks, place tabs, broken and outside rows, the row actions button and the files tray tree.
+ */
+/* ── Columns ────────────────────────────────────────────────────── */
+.ls-all-projects .paper-list { --cols: var(--w-edge) var(--w-title) var(--w-status) minmax(var(--w-read), 1fr) var(--w-edge); }
+.ls-all-projects :is(.col-heads, .paper-row-main) > .col-open { grid-column: 3; }
+.ls-all-projects :is(.col-heads, .paper-row-main) > .col-modified { grid-column: 4; }
+.ls-all-projects :is(.col-heads, .paper-row-main) > .col-actions { grid-column: 5; display: flex; justify-content: center; padding: 0; overflow: visible; }
+.ls-all-projects .col-heads > .col-open { justify-content: flex-end; }
+.ls-all-projects .paper-row-main > .col-open { text-align: right; font-family: var(--ls-mono); font-size: var(--ls-text-sm); font-variant-numeric: tabular-nums; }
+/* The title cell's gap spaces the format badge, so the sidebar's own margin goes. */
+.ls-all-projects .title-cell .tree-ref { margin-right: 0; }
+
+/* ── Rows ───────────────────────────────────────────────────────── */
+.ls-all-projects .paper-row-main.is-broken .title-cell { color: var(--ls-desc); }
+.ls-all-projects .ls-project-external { color: var(--ls-desc); }
+/* The actions button shows where the pointer or the selection is, like the Library's Columns button. */
+.ls-all-projects .col-actions button { opacity: 0; }
+.ls-all-projects .paper-row-main:hover .col-actions button, .ls-all-projects .paper-row.selected .col-actions button,
+.ls-all-projects .col-actions button:focus-visible { opacity: 1; }
+
+/* ── Files tray ─────────────────────────────────────────────────── */
+/* Nested files and folders step right by their depth in the project; an open folder's chevron points down. */
+.ls-all-projects .file-row > .file-type { margin-left: calc(var(--depth, 0) * var(--ls-space-7)); }
+.ls-all-projects .file-row[data-kind="folder"] .file-type svg { transition: transform var(--ls-fast); }
+.ls-all-projects .file-row.open .file-type svg { transform: rotate(90deg); }
+
+/* ── Place tabs ─────────────────────────────────────────────────── */
+.ls-all-projects .ls-place-tabs { display: flex; align-items: baseline; gap: var(--ls-space-6); flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; }
+.ls-all-projects .ls-place-tab {
+  display: inline-flex; align-items: baseline; gap: var(--ls-space-3); padding: 0; border: none; background: none; cursor: pointer;
+  color: var(--ls-desc); font: inherit; font-size: var(--ls-font-size);
+}
+.ls-all-projects .ls-place-tab:hover, .ls-all-projects .ls-place-tab[aria-selected="true"] { color: var(--ls-fg); }
+.ls-all-projects .ls-place-tab[aria-selected="true"] { font-weight: 600; }
+.ls-all-projects .ls-place-tab:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: var(--ls-space-1); border-radius: var(--ls-radius-sm); }
+.ls-all-projects .ls-place-count { font-family: var(--ls-mono); font-size: var(--ls-text-md); font-weight: 400; color: var(--ls-desc); }
+/* The page has no folder scope to open, so the Library's breadcrumb buttons stay plain text here. */
+.ls-all-projects .group-label button { pointer-events: none; }

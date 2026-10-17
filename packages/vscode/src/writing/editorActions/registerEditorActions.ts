@@ -1,4 +1,4 @@
-// Registers the commands that edit the active LaTeX or Typst editor in place: undo, redo and the bold and italic wraps.
+// Registers the commands that wrap the active LaTeX or Typst selection in bold or italic.
 import * as vscode from "vscode";
 
 import type { WritingHost } from "../session/index.js";
@@ -41,11 +41,6 @@ async function wrapActiveSelections(deps: EditorActionDeps, style: WrapStyle): P
 }
 
 export function registerEditorActions(deps: EditorActionDeps): void {
-  // The title bar needs commands with an icon; the built-in undo and redo have none.
-  deps.context.subscriptions.push(
-    vscode.commands.registerCommand("labshelf.writing.undo", () => vscode.commands.executeCommand("undo")),
-    vscode.commands.registerCommand("labshelf.writing.redo", () => vscode.commands.executeCommand("redo")),
-  );
   for (const style of Object.keys(COMMANDS) as WrapStyle[]) {
     deps.context.subscriptions.push(vscode.commands.registerCommand(COMMANDS[style], () => wrapActiveSelections(deps, style)));
   }

@@ -30,10 +30,9 @@ export function versionSide(version: ProjectVersion): CompareSide {
   return { slug: version.slug, name: version.name, pdfPath: version.pdfPath, sourcesDir: version.sourcesDir };
 }
 
-/** A preset base version skips the first pick.
- * @returns the base version and the version to compare it with (undefined for the current build), or undefined when the user cancels */
-export async function pickSides(versions: readonly ProjectVersion[], preset?: ProjectVersion): Promise<{ base: ProjectVersion; other: ProjectVersion | undefined } | undefined> {
-  const base = preset ?? (await vscode.window.showQuickPick(versions.map(versionItem), { title: TITLE, placeHolder: "Compare version…" }))?.version;
+/** @returns the base version and the version to compare it with (undefined for the current build), or undefined when the user cancels */
+export async function pickSides(versions: readonly ProjectVersion[]): Promise<{ base: ProjectVersion; other: ProjectVersion | undefined } | undefined> {
+  const base = (await vscode.window.showQuickPick(versions.map(versionItem), { title: TITLE, placeHolder: "Compare version…" }))?.version;
   if (!base) { return undefined; }
   const current: SideItem = { label: "Current build", description: "Builds the project first", version: undefined };
   const others = [current, ...versions.filter((version) => version.slug !== base.slug).map(versionItem)];

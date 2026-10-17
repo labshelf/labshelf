@@ -11,6 +11,7 @@ export interface CatalogEntry extends TemplateManifest {
   files: CatalogFile[];
   thumbnail: CatalogBlob;
   sample: CatalogBlob;
+  downloads?: number;
 }
 
 export interface SkippedEntry { id: string | undefined; reason: string }
@@ -43,6 +44,11 @@ function readFiles(value: unknown): CatalogFile[] | undefined {
   return files;
 }
 
+/** Whether a value is a valid `downloads` count: a safe non-negative integer. */
+export function isDownloadCount(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+}
+
 function readEntry(raw: Record<string, unknown>): Parsed<CatalogEntry> {
   const fields = readTemplateFields(raw);
   if (!fields.ok) { return { problem: fields.reason }; }
@@ -55,7 +61,9 @@ function readEntry(raw: Record<string, unknown>): Parsed<CatalogEntry> {
   if (thumbnail === undefined) { return { problem: "thumbnail: must be { size, sha256 }" }; }
   const sample = readBlob(raw["sample"]);
   if (sample === undefined) { return { problem: "sample: must be { size, sha256 }" }; }
-  return { value: { ...fields.manifest, files, thumbnail, sample } };
+  const downloads = raw["downloads"];
+  const usage = isDownloadCount(downloads) ? { downloads } : {};
+  return { value: { ...fields.manifest, files, thumbnail, sample, ...usage } };
 }
 
 function readEntries(templates: unknown[]): { entries: CatalogEntry[]; skipped: SkippedEntry[] } {

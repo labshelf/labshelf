@@ -1,11 +1,11 @@
-// Pins the standalone validate.mjs and build-index.mjs that scripts/template-catalog.mjs emits for the catalog repository.
+// Pins the standalone validate.mjs, build-index.mjs and count-downloads.mjs that scripts/template-catalog.mjs emits for the catalog repository.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const generator = join(dirname(fileURLToPath(import.meta.url)), '..', 'template-catalog.mjs');
 const COMMIT = '3f2c9a1b4d5e6f708192a3b4c5d6e7f801234567';
@@ -102,4 +102,43 @@ test('build-index.mjs exits non-zero on a bad catalog and writes no index', () =
   const result = run(emitScripts(), 'build-index.mjs', catalog, '--commit', COMMIT);
   assert.notEqual(result.status, 0);
   assert.throws(() => readFileSync(join(catalog, 'index.json')));
+});
+
+// Replaces global fetch in the child process: `ok` serves one version with one main-file hit row, otherwise HTTP 500.
+const fetchStub = (mode) => `
+globalThis.fetch = async (url) => {
+  if (${JSON.stringify(mode)} !== 'ok') return new Response('boom', { status: 500 });
+  const rows = url.includes('/versions?')
+    ? [{ type: 'version', version: 'abc', hits: { total: 3 } }]
+    : [{ name: '/templates/beta/files/main.tex', hits: { total: 3 } }, { name: '/templates/beta/preview/thumbnail.png', hits: { total: 9 } }];
+  return new Response(JSON.stringify(rows), { status: 200, headers: { 'x-total-pages': '1' } });
+};
+`;
+
+function countDownloads(mode) {
+  const outDir = emitScripts();
+  const catalog = goodCatalog('beta', 'alpha');
+  assert.equal(run(outDir, 'build-index.mjs', catalog, '--commit', COMMIT).status, 0);
+  const stub = join(outDir, 'fetchStub.mjs');
+  writeFileSync(stub, fetchStub(mode));
+  const result = spawnSync(process.execPath, [join(outDir, 'count-downloads.mjs')], {
+    cwd: catalog,
+    encoding: 'utf8',
+    env: { ...process.env, NODE_OPTIONS: `--import ${pathToFileURL(stub).href}` },
+  });
+  return { result, catalog };
+}
+
+test('count-downloads.mjs writes sorted downloads.json with a count for every template', () => {
+  const { result, catalog } = countDownloads('ok');
+  assert.equal(result.status, 0, result.stderr);
+  const text = readFileSync(join(catalog, 'downloads.json'), 'utf8');
+  assert.equal(text, '{\n  "alpha": 0,\n  "beta": 3\n}\n');
+});
+
+test('count-downloads.mjs exits non-zero on an HTTP error and writes no downloads.json', () => {
+  const { result, catalog } = countDownloads('fail');
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /500/);
+  assert.throws(() => readFileSync(join(catalog, 'downloads.json')));
 });

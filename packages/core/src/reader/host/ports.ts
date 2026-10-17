@@ -6,7 +6,7 @@ import type { ILogger } from "../../ports/index.js";
 import type { PaperDataStore } from "../sidecar/index.js";
 import type { LatexEngine } from "../../writing/project/index.js";
 import type { CitationEntry, CitationQuery, PagePoint } from "../previewProtocol.js";
-import type { CheckLimitsChange, CitationFix, ExportTarget, ProjectCommandId } from "../previewRequests.js";
+import type { CheckLimitsChange, CitationFix, ProjectCommandId } from "../previewRequests.js";
 import type { EffectiveTheme, HostToWebview, ReaderPrefs } from "../protocol.js";
 
 export type NoticeKind = "info" | "ok" | "error";
@@ -50,7 +50,6 @@ export interface PreviewPorts {
   /** Writes the project's check limits to labshelf.yaml. */
   setCheckLimits?(limits: CheckLimitsChange): Promise<void>;
   fixCitation?(fix: CitationFix): Promise<void>;
-  exportProject?(target: ExportTarget): Promise<void>;
   /** Opens a line of a file inside the project folder. */
   openSourceLine?(file: string, line: number): Promise<void>;
 }

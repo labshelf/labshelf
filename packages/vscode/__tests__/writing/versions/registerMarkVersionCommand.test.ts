@@ -26,7 +26,7 @@ function setup(entries = [readyEntry("/p/tex"), readyEntry("/p/other")]) {
   list.mockResolvedValue([]);
   mark.mockImplementation(async () => { order.push("mark"); return "/p/tex/.labshelf/versions/x"; });
   const host = fakeHost();
-  registerMarkVersionCommand({ context: { subscriptions: [] } as never, host, projects, builders });
+  registerMarkVersionCommand({ context: { subscriptions: [] } as never, host, projects, builders, onMarked: jest.fn() });
   return { builders, order, host, run: commandHandler(MARK_VERSION_COMMAND) };
 }
 

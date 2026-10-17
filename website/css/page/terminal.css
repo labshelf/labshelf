@@ -1,0 +1,18 @@
+/* Draws terminal output: the hero session, the CLI recording and the library tree. */
+
+.term{margin-top:88px;background:var(--ink2);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.term .bar{display:flex;align-items:center;gap:10px;height:36px;padding:0 14px;border-bottom:1px solid var(--line);font:11.5px var(--mono);color:var(--faint)}
+.term .bar b{font-weight:400;color:var(--dim)}
+.term .bar .r{margin-left:auto}
+.term pre{margin:0;padding:26px 28px 28px;font:13px/2 var(--mono);color:var(--tx);overflow-x:auto;min-height:12.5em}
+.term .h{color:var(--faint)}
+.st-done{color:var(--green)} .st-read{color:var(--blue)} .st-miss{color:var(--red)} .st-un{color:var(--dim)}
+.term .n{color:var(--amber)}
+.ln{display:block;white-space:pre}
+
+.rec pre{margin:0;padding:24px 26px;font:12.5px/1.95 var(--mono);min-height:19em;overflow-x:auto;color:var(--tx)}
+.rec .c{color:var(--faint)}
+
+.tree{margin-top:72px;font:13px/2.1 var(--mono);background:var(--ink2);border:1px solid var(--line);border-radius:10px;padding:26px 0;overflow-x:auto}
+.tree div{padding:0 28px;white-space:pre}
+.tree .c{color:var(--faint)} .tree .dr{color:var(--blue);font-weight:500} .tree .pdf{color:var(--red)} .tree .md{color:var(--green)} .tree .y{color:var(--amber)}

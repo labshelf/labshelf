@@ -1,4 +1,4 @@
-// Lists the commands a project row offers and which of them apply to a row; shared by the host and the webview, so it imports no vscode.
+// Lists the commands a project row and the open project's title menu offer, and which of them apply to a row; shared by the host and the webview, so it imports no vscode.
 import type { SidebarProjectItem } from "./sidebarMessages.js";
 
 export interface ProjectCommand {
@@ -21,11 +21,33 @@ export const PROJECT_COMMANDS: readonly ProjectCommand[] = [
   { command: "labshelf.writing.addToReadingList", label: "Add Paper to Reading List…", group: 3 },
 ];
 
+const ROW_ONLY: readonly string[] = ["labshelf.writing.openProject", "labshelf.templates.publish"];
+
+/** The open project's title menu: publishing, downloads and exports, a copy, the row's other commands, then Close Project. */
+export const OPEN_PROJECT_COMMANDS: readonly ProjectCommand[] = [
+  { command: "labshelf.templates.publish", label: "Publish as Template…", group: 1 },
+  { command: "labshelf.writing.downloadPdf", label: "Download PDF", group: 2 },
+  { command: "labshelf.writing.openPdfExternally", label: "Open PDF in System Viewer", group: 2 },
+  { command: "labshelf.writing.downloadSource", label: "Download Source (.zip)", group: 2 },
+  { command: "labshelf.writing.downloadArxiv", label: "Download for arXiv (.zip)", group: 2 },
+  { command: "labshelf.writing.exportWord", label: "Export as Word (.docx)", group: 3 },
+  { command: "labshelf.writing.exportMarkdown", label: "Export as Markdown (.md)", group: 3 },
+  { command: "labshelf.writing.exportHtml", label: "Export as HTML (.html)", group: 3 },
+  { command: "labshelf.writing.copyProject", label: "Make a Copy…", group: 4 },
+  ...PROJECT_COMMANDS.filter((c) => !ROW_ONLY.includes(c.command)).map((c) => ({ ...c, group: c.group + 4 })),
+  { command: "labshelf.writing.showHistory", label: "Show Project History", group: 5 },
+  { command: "labshelf.writing.closeProject", label: "Close Project", group: 8 },
+];
+
+/** Whether the sidebar may ask for a command: one of the row menu or the open project's menu. */
+export const isSidebarProjectCommand = (command: string): boolean =>
+  PROJECT_COMMANDS.some((c) => c.command === command) || OPEN_PROJECT_COMMANDS.some((c) => c.command === command);
+
 const BROKEN_COMMANDS: readonly string[] = ["labshelf.writing.reveal", "labshelf.writing.removeProject"];
 
 /** Whether a command is offered on a row: only folders outside the library can be removed, and a broken project can only be revealed or removed. */
 export function projectCommandApplies(command: string, row: Pick<SidebarProjectItem, "kind" | "external">): boolean {
-  if (!PROJECT_COMMANDS.some((c) => c.command === command)) { return false; }
+  if (!isSidebarProjectCommand(command)) { return false; }
   if (command === "labshelf.writing.removeProject" && !row.external) { return false; }
   return row.kind === "ready" || BROKEN_COMMANDS.includes(command);
 }

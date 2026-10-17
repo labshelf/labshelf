@@ -38,6 +38,8 @@ export function el<K extends keyof HTMLElementTagNameMap>(
     if (key === "html") node.innerHTML = String(value);
     else if (key === "text") node.textContent = String(value);
     else if (key === "class") node.className = String(value);
+    // PLATFORM: a webview CSP without 'unsafe-inline' drops a style attribute but allows CSSOM writes.
+    else if (key === "style") node.style.cssText = String(value);
     else if (value === true) node.setAttribute(key, "");
     else node.setAttribute(key, String(value));
   }

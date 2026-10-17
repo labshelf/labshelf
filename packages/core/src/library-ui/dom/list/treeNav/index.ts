@@ -2,4 +2,4 @@
 export { paintTabStop, wireTabStop } from "./rovingTabStop.js";
 export { treeCursor } from "./treeCursor.js";
 export { collapseOrLeave, expandOrEnter } from "./treeExpansion.js";
-export { focusedChildRow, paperRowOf } from "./treeRows.js";
+export { focusRow, focusedChildRow, focusedRow, paperIdOf, paperRowOf, visibleRows } from "./treeRows.js";

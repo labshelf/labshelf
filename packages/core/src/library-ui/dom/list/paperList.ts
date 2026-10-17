@@ -10,20 +10,21 @@ import { endPaperDrag, startPaperDrag } from "../dnd/index.js";
 import { openPaper, requestAddPaper, setPaperStatus } from "../flows/index.js";
 import { showPaperMenu } from "../menu/index.js";
 import { overlayOpen, type UiContext } from "../uiContext.js";
-import { columnHeadsHtml, paintColumnHeads, wireColumnHeads } from "./columnHeads.js";
+import { columnHeadsHtml, wireColumnHeads } from "./columnHeads.js";
 import { buildEmptyState, buildLoading } from "./emptyState.js";
-import { GroupedRows, groupPapers } from "./groups/index.js";
+import { GroupedRows, groupAriaLabel, groupPapers, type PaperGroup } from "./groups/index.js";
 import { attachListKeys } from "./listKeys.js";
 import { paintTray, wireFilesRequest } from "./tray/index.js";
 import { buildPaperRow, type RowHandlers, type RowView } from "./paperRow.js";
 import { RowReconciler } from "./rowReconciler.js";
+import { paintSortableHeads } from "./sortableHeads.js";
 import { paintTabStop, treeCursor, wireTabStop } from "./treeNav/index.js";
 
 interface List {
   ctx: UiContext;
   el: HTMLElement;
   heads: HTMLElement;
-  rows: GroupedRows;
+  rows: GroupedRows<ListPaper, PaperGroup>;
   order: string[];
   lastFolder: string | null;
   /** What the rows of the current render are built from. */
@@ -114,7 +115,7 @@ function paintColumns(list: List): void {
   if (columns === list.columns) return;
   list.columns = columns;
   list.heads.innerHTML = columnHeadsHtml(columns);
-  paintColumnHeads(list.heads, sortKey, sortDir);
+  paintSortableHeads(list.heads, sortKey, sortDir === 1);
   for (const key of COLUMN_KEYS) {
     const track = `--w-${key === "lastRead" ? "read" : key}`;
     if (columns.includes(key)) list.el.style.removeProperty(track);
@@ -128,7 +129,7 @@ function render(list: List): void {
   list.terms = view.terms;
   list.records = new Map(s.papers.map((p) => [p.id, p]));
   paintColumns(list);
-  paintColumnHeads(list.heads, s.sortKey, s.sortDir);
+  paintSortableHeads(list.heads, s.sortKey, s.sortDir === 1);
   const groups = groupPapers(view.rows, s.folder);
   list.order = groups.flatMap((g) => g.papers.map((p) => p.id));
   list.rows.update(groups, placeholder(list, view));
@@ -159,7 +160,8 @@ export function mountPaperList(ctx: UiContext, container: HTMLElement): () => vo
   const list: List = {
     ctx, el, heads: container.querySelector<HTMLElement>(".col-heads")!, order: [], lastFolder: null, terms: [], records: new Map(), columns: [],
     rows: new GroupedRows(el.querySelector<HTMLElement>(".paper-rows")!, (body) => new RowReconciler<ListPaper>(body, (p) => buildPaperRow(p, rowView(list, p), handlers),
-      (p) => [list.records.get(p.id), p.hasPdf, p.relFolder, list.terms.join("\u0000"), ctx.store.get().columns, ctx.store.get().stats[p.id], ctx.store.get().jobs[p.id]])),
+      (p) => [list.records.get(p.id), p.hasPdf, p.relFolder, list.terms.join("\u0000"), ctx.store.get().columns, ctx.store.get().stats[p.id], ctx.store.get().jobs[p.id]]),
+      { items: (g) => g.papers, ariaLabel: (g) => groupAriaLabel(g.segments, g.papers.length) }),
   };
   const handlers = rowHandlers(list);
   wireColumnHeads(ctx, list.heads);

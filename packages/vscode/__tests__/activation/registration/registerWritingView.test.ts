@@ -15,7 +15,7 @@ const manifest = JSON.parse(readFileSync(join(__dirname, "../../../package.json"
 };
 
 const builders = { latex: { request: jest.fn() }, typst: { request: jest.fn() } };
-const fakeRegisterNodeWriting: RegisterNodeWriting = () => ({ builders, buildRootOf: async (_folder, main) => main });
+const fakeRegisterNodeWriting: RegisterNodeWriting = () => ({ builders, buildRootOf: async (_folder, main) => main, history: { recordVersion: jest.fn() } });
 
 function setup(root: string | undefined, register: RegisterNodeWriting = fakeRegisterNodeWriting) {
   const data = fakeProjectData();
@@ -51,7 +51,7 @@ describe("registerWritingView", () => {
   it("creates the contributed Files, Outline, Checklist, Figures and Versions tree views", () => {
     setup("/lib");
     const created = (vscode.window.createTreeView as jest.Mock).mock.calls.map(([id]) => id as string);
-    expect(created).toEqual(["labshelf.writing.figures", "labshelf.writing.versions", "labshelf.writing.files", "labshelf.writing.outline", "labshelf.writing.checklist"]);
+    expect(created).toEqual(["labshelf.writing.figures", "labshelf.writing.files", "labshelf.writing.outline", "labshelf.writing.checklist"]);
     expect(manifest.contributes.views.labshelfContainer.map((v) => v.id)).toEqual(expect.arrayContaining(created));
   });
 
