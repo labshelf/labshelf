@@ -79,10 +79,12 @@ export const check = {
   setup: (page, { library }) => openPreview(page, library),
   async take(page, pointer) {
     await pause(900);
+    // TRAP: with the preview focused there is no active text editor, so the check finds no project.
+    await page.keyboard.press("Meta+1");
     await runCommand(page, "Research: Check Before Submitting");
     await page.locator(".markers-panel .monaco-list-row").first().waitFor({ timeout: 60_000 });
     await pause(1500);
-    const first = page.locator(".markers-panel .monaco-list-row", { hasText: "unresolved" }).first();
+    const first = page.locator(".markers-panel .monaco-list-row", { hasText: "not in any bibliography" }).first();
     await pointer.clickOn(first);
     await pause(3500);
   },
