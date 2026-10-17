@@ -6,7 +6,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 import { overlayPopup } from "./browser/composite.mjs";
-import { startScreencast } from "./browser/screencast.mjs";
+import { startScreencast } from "./screencast.mjs";
 import { seedLibrary } from "./browser/seed.mjs";
 import { encodeClip, framesToVideo } from "./encode.mjs";
 
