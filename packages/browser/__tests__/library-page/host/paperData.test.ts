@@ -109,14 +109,13 @@ describe("paper.details", () => {
 });
 
 describe("tag and note edits", () => {
-  it("writes tags to the paper folder, posts the snapshot and schedules a sync", async () => {
+  it("writes tags to the paper folder, and posts the snapshot", async () => {
     await seedLibrary(sidecar([]));
     const app = start();
     await app.send({ type: "ready" });
     await app.send({ type: "paper.setTags", ids: ["smith2020"], add: [" fresh "], remove: ["old"] });
     expect(app.last("snapshot")?.snapshot.papers[0]?.tags).toEqual(["fresh"]);
     expect(textAt("papers/smith2020/metadata.yaml")).toMatch(/fresh/);
-    expect(mockApi.runtime.sendMessage).toHaveBeenCalledWith({ type: "sync.scheduleSoon", reason: "paper.tags" });
   });
 
   it("keeps the reading stats in the snapshot a tag edit posts", async () => {
@@ -127,14 +126,13 @@ describe("tag and note edits", () => {
     expect(app.last("snapshot")?.snapshot.stats["smith2020"]?.annotations).toBe(1);
   });
 
-  it("saves the note to the paper folder and schedules a sync", async () => {
+  it("saves the note to the paper folder", async () => {
     await seedLibrary(sidecar([]));
     const app = start();
     await app.send({ type: "ready" });
     await app.send({ type: "paper.setNote", id: "smith2020", note: "Check the appendix" });
     expect(app.last("snapshot")?.snapshot.papers[0]?.note).toBe("Check the appendix");
     expect(textAt("papers/smith2020/metadata.yaml")).toMatch(/Check the appendix/);
-    expect(mockApi.runtime.sendMessage).toHaveBeenCalledWith({ type: "sync.scheduleSoon", reason: "paper.note" });
   });
 
   it("answers an error notice for a note on a paper that is not in the library", async () => {
@@ -196,7 +194,7 @@ describe("annotation changes made in the reader", () => {
     const app = start();
     await app.send({ type: "ready" });
     putFile("appdata/smith2020/data.json", sidecar([highlight("a", 1)]));
-    app.runtime()({ type: "library.changed", reason: "sync" });
+    app.runtime()({ type: "library.changed", reason: "capture" });
     await flush();
     expect(app.last("snapshot")?.snapshot.stats["smith2020"]?.annotations).toBe(1);
   });

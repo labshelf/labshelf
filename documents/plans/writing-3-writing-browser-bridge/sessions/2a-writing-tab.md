@@ -1,8 +1,8 @@
 # Session 2a — Writing tab
 
-- **Goal:** the library page shows a Writing tab listing the projects synced from Drive.
+- **Goal:** the library page shows a Writing tab listing the projects of the library folder and this device's registered external folders.
 - **Starts from:** sessions 1a and 1b committed (the browser project store exists).
-- **Ends with:** the tab is mounted on the library page and fed by the project store. Feeds A1: "A project synced from VS Code shows in the browser's Writing tab with its PDF." Session 3 checks A1 in a headless run on a seeded IndexedDB.
+- **Ends with:** the tab is mounted on the library page and fed by the project store. Feeds A1: "A project synced from VS Code shows in the browser's Writing tab with its PDF." Session 3 checks A1 in a headless run with a fake bridge host.
 - **Owns:** `packages/core/src/library-ui/dom/writing/`, `packages/browser/src/library-page/`
 
 | Id | Package | Level | Runner | Done when | OK |
@@ -26,6 +26,6 @@
 
 - **Goal:** the library page shows a Writing tab beside the library, fed by the browser project store.
 - **Read only:** `packages/browser/src/library-page/router.ts:1-30`; `packages/browser/src/library-page/main.ts:1-47`; `packages/browser/src/library-page/host/hostController.ts:1-86`; `packages/browser/src/storage/projects/index.ts` (session 1a: `listBrowserProjects(): Promise<ProjectEntry[]>`, `readProjectFile(id, path)`); `packages/browser/src/reader/index.ts:1-60` (opening the reader).
-- **Decided:** the PDF is the project's built PDF stored with the project; a project without one shows "No PDF yet".
+- **Decided:** the PDF is the project's built PDF in its folder; a project without one shows "No PDF yet".
 - **Done when:** `pnpm --filter @labshelf/browser typecheck`. No test (simple glue).
-- **Do not touch:** `packages/browser/src/storage/`, `packages/browser/src/background/`, sibling sessions' paths (`side-panel/`, `content/`, `core/src/sync/drive/`).
+- **Do not touch:** `packages/browser/src/storage/`, `packages/browser/src/background/`, sibling sessions' paths (`side-panel/`, `content/`).

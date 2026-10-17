@@ -43,7 +43,6 @@ export interface Harness {
   trashDir: string;
   trashed: string[];
   trash: jest.Mock<Promise<string>, [string]>;
-  onLocalChange: jest.Mock;
   logs: LogCall[];
   parse: jest.Mock<Promise<ParsedPdfImport>, [Uint8Array, string]>;
   parserFactory: jest.Mock<Promise<PdfImportParser>, []>;
@@ -84,7 +83,6 @@ export async function harness(papers: PaperFixture[] = [], collections: string[]
     const route = routes.get(String(url));
     return route ? route() : new Response("not found", { status: 404 });
   });
-  const onLocalChange = jest.fn();
   const service = new TerminalPaperService({
     paths: lib.paths,
     store,
@@ -95,10 +93,9 @@ export async function harness(papers: PaperFixture[] = [], collections: string[]
     fetch: fetchMock as unknown as typeof fetch,
     resolveIdentifier: resolve,
     searchByTitle,
-    onLocalChange,
   });
   return {
-    lib, store, service, trashDir, trashed, trash, onLocalChange, logs, parse, parserFactory, resolve, searchByTitle,
+    lib, store, service, trashDir, trashed, trash, logs, parse, parserFactory, resolve, searchByTitle,
     fetch: fetchMock, routes, inbox,
     async writePdf(name = "attention.pdf", bytes = fakePdfBytes("download")) {
       const file = path.join(inbox, name);

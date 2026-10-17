@@ -1,6 +1,6 @@
 /**
  * Implements the library file system over the "files" IndexedDB store: keys are POSIX paths, and directories are the
- * prefixes of keys. Serves both the sync engine and the library mutations.
+ * prefixes of keys.
  */
 import type { LibraryFileSystem, LocalStat } from "@labshelf/core";
 import { sha256Hex } from "@labshelf/core";
@@ -77,7 +77,7 @@ export class IndexedDbFileSystem implements LibraryFileSystem {
     return renameTree(from, to);
   }
 
-  /** The browser has no trash: the delete is permanent, and the next sync propagates it. */
+  /** The browser has no trash: the delete is permanent. */
   trash(target: string): Promise<void> {
     return deleteTree(target);
   }

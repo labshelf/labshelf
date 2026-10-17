@@ -9,7 +9,7 @@ type ActionId =
   | "toggleSelect" | "visual" | "selectAll" | "escape"
   | "status" | "tags" | "note" | "cut" | "paste" | "moveTo" | "trash" | "add" | "rename" | "exportBib"
   | "yank" | "sort"
-  | "sync" | "reload" | "command" | "help" | "quit" | "suspend";
+  | "reload" | "command" | "help" | "quit" | "suspend";
 
 export type BindingGroup = "Navigate" | "Find" | "Select" | "Papers" | "Copy" | "Sort" | "App";
 
@@ -108,9 +108,8 @@ export const BINDINGS: Binding[] = [
   b([",", "S"], "sort", "Sort by status, reversed", "Sort", { arg: "status!", alias: true }),
   b([",", "M"], "sort", "Sort by last modified, oldest first", "Sort", { arg: "modified!", alias: true }),
 
-  b("S", "sync", "Sync with Google Drive now", "App"),
   b("R", "reload", "Reload the library from disk", "App"),
-  b(":", "command", "Command line (:sync, :login, :logout, :export, :mkdir, :help…)", "App"),
+  b(":", "command", "Command line (:export, :mkdir, :help…)", "App"),
   b("?", "help", "Help", "App"),
   b("f1", "help", "Help", "App", { alias: true }),
   b("q", "quit", "Quit", "App"),

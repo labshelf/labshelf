@@ -47,7 +47,7 @@ type FileMutations = Pick<LibraryMutations, "listFiles" | "describeFile">;
 
 function fileMutations(ctx: MutationContext): FileMutations {
   return {
-    // The descriptions come from disk, not the cache, so a sync that rewrote metadata.yaml shows at once.
+    // The descriptions come from disk, not the cache, so an edit that rewrote metadata.yaml shows at once.
     async listFiles(paper) {
       // A metadata.yaml that cannot be read still lets the files show, without descriptions.
       const onDisk = await readPaperOnDisk(ctx, paper.path).catch(async (error: unknown) => {

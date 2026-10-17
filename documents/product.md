@@ -2,7 +2,7 @@
 
 Read when you design or change any UI, wording or user-facing behaviour.
 
-LabShelf is a local-first manager for research papers. The library is an ordinary folder of PDFs and text files that the user owns; every app reads and writes that same format, and Google Drive sync is optional.
+LabShelf is a local-first manager for research papers. The library is an ordinary folder of PDFs and text files that the user owns; every app reads and writes that same format, and the user's own sync tool carries the folder between devices.
 
 LabShelf ships as three apps of one product:
 
@@ -21,7 +21,7 @@ When a user moves from one app to another, it should feel like the same product:
 - **Same look.** Colours, type, spacing, icons and components come from the design system in core (see [architecture.md](architecture.md#design-system)). The VS Code extension and the browser extension share those components. The terminal maps the same colour tokens onto its palette.
 - **Same words.** A folder is a "folder" and a paper is a "paper" in every app. The reading statuses are Unread, Reading and Done.
 - **Same behaviour.** A feature that exists in two apps behaves the same in both, because its logic lives once in core. Examples are search and filters, citation formats, metadata lookup, and the reader with its keys.
-- **Same data.** A paper added, read or annotated in one app shows up in the others: locally through the shared folder, remotely through Drive ([contracts/sync.md](contracts/sync.md)).
+- **Same data.** A paper added, read or annotated in one app shows up in the others: through the shared folder, which the user's sync tool carries between devices ([contracts/sync.md](contracts/sync.md)).
 
 ## UX principles
 
@@ -29,5 +29,5 @@ When a user moves from one app to another, it should feel like the same product:
 2. **Fluid navigation over features.** Navigating never rebuilds a view. Selection, scroll position and search survive a folder change. State is pushed to an open view rather than the view being reloaded.
 3. **Abstract first.** The detail pane leads with what helps decide whether to read: title, authors, venue, abstract, then actions.
 4. **Keyboard everywhere.** Every action has a key. The reader offers optional vim keys, and the terminal follows yazi's columns and keys while keeping Zotero's pane model (folders | papers | preview).
-5. **Never lose the user's work.** Sync never deletes a file because of something it cannot explain. When unsure, it keeps both copies. Destructive actions ask for confirmation.
+5. **Never lose the user's work.** LabShelf never deletes a file because of something it cannot explain. Destructive actions ask for confirmation.
 6. **No emoji or Unicode glyphs as icons.** Icons are inline SVGs from the shared icon set. The terminal uses plain text or its own glyphs.

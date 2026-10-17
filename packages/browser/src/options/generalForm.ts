@@ -1,6 +1,6 @@
-/** Builds the Sync section (auto-sync interval, registry contact email) and the section for asking authors for a PDF (name, affiliation, email language). */
+/** Builds the registry contact section (email) and the section for asking authors for a PDF (name, affiliation, email language). */
 import { DEFAULT_CONTACT_EMAIL, REQUEST_LANGUAGES, REQUEST_LANGUAGE_NAME, isRequestLanguage } from "@labshelf/core";
-import { inlineCode, numberField, selectField, settingRow, settingsSection, textField } from "@labshelf/core/dom";
+import { selectField, settingRow, settingsSection, textField } from "@labshelf/core/dom";
 import type { LabShelfSettings } from "../platform";
 
 export interface GeneralForm {
@@ -12,7 +12,6 @@ export interface GeneralForm {
 }
 
 export function createGeneralForm(): GeneralForm {
-  const interval = numberField({ id: "sync-interval", min: 0, max: 240, step: 1, width: "sm" });
   const email = textField({ id: "contact-email", type: "email", placeholder: "you@example.com" });
 
   const name = textField({ id: "requester-name", type: "text", placeholder: "Ada Lovelace" });
@@ -23,13 +22,8 @@ export function createGeneralForm(): GeneralForm {
     options: REQUEST_LANGUAGES.map((value) => ({ value, label: REQUEST_LANGUAGE_NAME[value] })),
   });
 
-  const sync = settingsSection(
-    { title: "Sync" },
-    settingRow({
-      label: "Auto-sync interval",
-      labelFor: "sync-interval",
-      description: ["Minutes between background syncs. ", inlineCode("0"), " disables the timer; syncing on idle and after edits still runs."],
-    }, interval.element),
+  const registry = settingsSection(
+    { title: "Registry contact" },
     settingRow({
       label: "Contact email",
       labelFor: "contact-email",
@@ -43,17 +37,15 @@ export function createGeneralForm(): GeneralForm {
     settingRow({ label: "Email language", labelFor: "request-language" }, language.element),
   );
   return {
-    sections: [sync, requesting],
-    controls: [interval.control, email.control, name.control, affiliation.control, language.control],
+    sections: [registry, requesting],
+    controls: [email.control, name.control, affiliation.control, language.control],
     read: () => ({
-      autoSyncMinutes: Math.min(240, Math.max(0, Number(interval.control.value) || 0)),
       contactEmail: email.control.value.trim() || DEFAULT_CONTACT_EMAIL,
       requesterName: name.control.value.trim(),
       requesterAffiliation: affiliation.control.value.trim(),
       ...(isRequestLanguage(language.control.value) ? { requestLanguage: language.control.value } : {}),
     }),
     fill(settings) {
-      interval.control.value = String(settings.autoSyncMinutes);
       email.control.value = settings.contactEmail;
       name.control.value = settings.requesterName;
       affiliation.control.value = settings.requesterAffiliation;

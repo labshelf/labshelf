@@ -14,19 +14,18 @@ type PdfOfferMessage = Extract<RuntimeMessage, { type: "pdfOffer.get" | "pdfOffe
 export interface PdfOfferDeps {
   log: ILogger;
   mutations: LibraryMutations;
-  scheduleSync: (reason: string) => void;
 }
 
 export function isPdfOfferMessage(msg: RuntimeMessage): msg is PdfOfferMessage {
   return msg.type.startsWith("pdfOffer.");
 }
 
-export function handlePdfOfferMessage({ log, mutations, scheduleSync }: PdfOfferDeps, msg: PdfOfferMessage): Promise<unknown> {
+export function handlePdfOfferMessage({ log, mutations }: PdfOfferDeps, msg: PdfOfferMessage): Promise<unknown> {
   switch (msg.type) {
     case "pdfOffer.get":
       return handlePdfOfferGet(log, msg.tabId);
     case "pdfOffer.attach":
-      return handlePdfOfferAttach(log, mutations, msg.offerId, scheduleSync);
+      return handlePdfOfferAttach(log, mutations, msg.offerId);
     case "pdfOffer.dismiss":
       return handlePdfOfferDismiss(log, msg.offerId);
   }
@@ -58,7 +57,7 @@ async function handlePdfOfferGet(log: ILogger, tabId: number): Promise<PdfOfferV
 }
 
 async function handlePdfOfferAttach(
-  log: ILogger, mutations: LibraryMutations, offerId: string, scheduleSync: (reason: string) => void,
+  log: ILogger, mutations: LibraryMutations, offerId: string,
 ): Promise<AttachPdfData> {
   const offer = await offerById(offerId);
   if (!offer) throw new Error("This PDF is no longer on offer. Open or download it again.");
@@ -68,7 +67,6 @@ async function handlePdfOfferAttach(
   await retire(log, offer);
   void log.log("INFO", MODULE, "offered PDF attached", { paperId: offer.paperId, url: offer.url, source: offer.source, written });
   if (written) {
-    scheduleSync("pdf-offer");
     broadcastChanged("attach", offer.paperId, `PDF attached to "${record.title}"`);
   }
   return { id: offer.paperId, attached: written, ...(written ? {} : { alreadyHadPdf: true }) };

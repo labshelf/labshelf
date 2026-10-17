@@ -3,8 +3,8 @@
 import * as path from "node:path";
 
 import {
-  BUILT_IN_GOOGLE_CLIENT, BibTeXService, Logger, PdfImportParser, errorMessage, resolveOAuthClient,
-  type ILogger, type LibraryStore, type PdfjsLoader, type SyncCoordinator,
+  BibTeXService, Logger, PdfImportParser, errorMessage,
+  type ILogger, type LibraryStore, type PdfjsLoader,
 } from "@labshelf/core";
 import { FileLogSink, NodeLibraryFileSystem, NodePdfOpener, TesseractOcrEngine, cacheDir, createPdfjsLoader } from "@labshelf/core/node";
 
@@ -12,9 +12,8 @@ import type { TerminalConfig } from "./config.js";
 import {
   LibraryRoot, LibraryWatcher, SidecarReader, TerminalPaperService, createLibraryStore, ensureLibraryStructure,
 } from "../library/index.js";
-import { moveToTrash, openExternal } from "../platform/index.js";
+import { moveToTrash } from "../platform/index.js";
 import { defaultRenderer, ThumbnailService } from "../preview/index.js";
-import { createDriveAccount, createTerminalAuth, createTerminalSync, createTokenStore, type DriveAccount } from "../sync/index.js";
 import { detectImageProtocol, type ImageProtocol } from "../tui/index.js";
 
 export interface AppContext {
@@ -25,14 +24,12 @@ export interface AppContext {
   /** The terminal's query language over the store; it also holds the annotation text that searches see. */
   papers: TerminalPaperService;
   sidecars: SidecarReader;
-  sync: SyncCoordinator;
-  drive: DriveAccount;
   thumbnails: ThumbnailService;
   thumbnailRenderer: string;
   imageProtocol: ImageProtocol;
   /** Resolves once highlights and notes are in the search index (one-shot CLI searches wait for it). */
   annotationsReady: Promise<void>;
-  /** Stops watchers and timers; resolves after an in-flight sync finished. */
+  /** Stops watchers and releases the OCR engine. */
   dispose(): Promise<void>;
 }
 
@@ -45,15 +42,6 @@ export interface OpenOptions {
   thumbnailWorkerUrl: URL;
 }
 
-async function openSync(paths: LibraryRoot, store: LibraryStore, logger: ILogger, env: NodeJS.ProcessEnv) {
-  const auth = createTerminalAuth(resolveOAuthClient(env, BUILT_IN_GOOGLE_CLIENT), createTokenStore(env), logger, {
-    openBrowser: (url) => openExternal(url),
-  });
-  const sync = createTerminalSync({ paths, auth, store, logger });
-  await sync.init();
-  return { sync, drive: createDriveAccount(auth, sync, logger) };
-}
-
 /** Builds the OCR fallback for scans and broken-font PDFs; it shares the parser's pdf.js and caches language data. */
 function createOcrEngine(env: NodeJS.ProcessEnv, pdfjs: PdfjsLoader, logger: ILogger): TesseractOcrEngine {
   return new TesseractOcrEngine({
@@ -64,7 +52,7 @@ function createOcrEngine(env: NodeJS.ProcessEnv, pdfjs: PdfjsLoader, logger: ILo
 }
 
 function createPaperService(
-  paths: LibraryRoot, store: LibraryStore, logger: ILogger, sync: SyncCoordinator, env: NodeJS.ProcessEnv,
+  paths: LibraryRoot, store: LibraryStore, logger: ILogger, env: NodeJS.ProcessEnv,
 ): { papers: TerminalPaperService; ocr: TesseractOcrEngine } {
   const pdfjs = createPdfjsLoader();
   const ocr = createOcrEngine(env, pdfjs, logger);
@@ -81,7 +69,6 @@ function createPaperService(
       return parser;
     },
     trash: moveToTrash,
-    onLocalChange: () => sync.scheduleLocalChange(),
   });
   return { papers, ocr };
 }
@@ -92,13 +79,10 @@ function createThumbnails(env: NodeJS.ProcessEnv, workerUrl: URL, logger: ILogge
 }
 
 function startWatcher(
-  paths: LibraryRoot, store: LibraryStore, sync: SyncCoordinator, logger: ILogger, indexAnnotations: () => Promise<void>,
+  paths: LibraryRoot, store: LibraryStore, logger: ILogger, indexAnnotations: () => Promise<void>,
 ): LibraryWatcher {
   const watcher = new LibraryWatcher(paths, () => {
-    void store.reload().then(() => {
-      void indexAnnotations();
-      void sync.refreshLastRun();
-    });
+    void store.reload().then(() => void indexAnnotations());
   }, logger);
   watcher.start();
   return watcher;
@@ -117,8 +101,7 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
   const store = createLibraryStore(paths, logger);
   await store.reload();
 
-  const { sync, drive } = await openSync(paths, store, logger, env);
-  const { papers, ocr } = createPaperService(paths, store, logger, sync, env);
+  const { papers, ocr } = createPaperService(paths, store, logger, env);
 
   const sidecars = new SidecarReader(paths, logger);
   const { thumbnails, renderer } = createThumbnails(env, options.thumbnailWorkerUrl, logger);
@@ -132,10 +115,10 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
     );
   const annotationsReady = indexAnnotations();
 
-  const watcher = options.watch ? startWatcher(paths, store, sync, logger, indexAnnotations) : undefined;
+  const watcher = options.watch ? startWatcher(paths, store, logger, indexAnnotations) : undefined;
 
   await logger.log("INFO", "terminal/app", "Library opened", {
-    root: paths.root, papers: store.snapshot.papers.size, sync: sync.status().state, images: imageProtocol, renderer: renderer.name,
+    root: paths.root, papers: store.snapshot.papers.size, images: imageProtocol, renderer: renderer.name,
   });
 
   return {
@@ -145,15 +128,13 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
     store,
     papers,
     sidecars,
-    sync,
-    drive,
     thumbnails,
     thumbnailRenderer: renderer.name,
     imageProtocol,
     annotationsReady,
     async dispose() {
       watcher?.stop();
-      await Promise.all([ocr.dispose(), sync.stop()?.catch(() => undefined)]);
+      await ocr.dispose();
     },
   };
 }

@@ -1,7 +1,7 @@
 // Holds the bytes of PDFs offered for attaching until the user attaches or dismisses them.
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 
-// A database of its own, outside the library's file store, so staged bytes never sync.
+// A database of its own, outside the library's file store, so staged bytes never join the library.
 const DB_NAME = "labshelf-pdf-staging";
 const STORE = "pdfs";
 // A row no offer names any more is dropped once it is this old; younger ones may belong to a match still running.

@@ -5,7 +5,6 @@ import { ALL } from "../types.js";
 import type { App } from "../app.js";
 import { submitPrompt } from "../input/index.js";
 import { importInputs, targetFolder } from "./createAndRename.js";
-import { login, syncNow } from "./driveSync.js";
 import { setSort } from "./paperExportActions.js";
 
 export function runCommand(app: App, line: string): void {
@@ -14,11 +13,8 @@ export function runCommand(app: App, line: string): void {
   switch (name) {
     case "": return;
     case "q": case "quit": case "wq": void app.quit(); return;
-    case "sync": case "s": void syncNow(app); return;
     case "reload": case "r": void app.ctx.store.reload().then(() => app.taskStatus.notify("Library reloaded")); return;
     case "help": case "h": app.overlay = { kind: "help", scroll: 0 }; return;
-    case "login": void login(app); return;
-    case "logout": void logout(app); return;
     case "export":
       if (!rest) { app.taskStatus.notify("Usage: :export <file.bib>", "warn"); return; }
       submitPrompt(app, { kind: "prompt", purpose: "export", title: "", input: textInput(rest), completions: [], targets: [] });
@@ -39,13 +35,6 @@ export function runCommand(app: App, line: string): void {
     default:
       app.taskStatus.notify(`Unknown command "${name}" — ? lists the keys`, "warn");
   }
-}
-
-async function logout(app: App): Promise<void> {
-  await app.taskStatus.task("auth", "signing out", async () => {
-    await app.ctx.drive.logout();
-    app.taskStatus.notify("Signed out of Google Drive. The library stays on this computer.");
-  });
 }
 
 function runSort(app: App, args: string[]): void {

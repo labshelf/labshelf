@@ -17,18 +17,14 @@ Read when you look for the document that answers a question about LabShelf; the 
 | What does `metadata.yaml` hold? | [contracts/library-format.md](contracts/library-format.md#metadatayaml) |
 | What does the `data.json` sidecar hold? | [contracts/library-format.md](contracts/library-format.md#sidecar-datajson) |
 | Which configuration do apps share? | [contracts/library-format.md](contracts/library-format.md#shared-configuration) |
-| How do apps share a Drive folder? | [contracts/sync.md](contracts/sync.md#topology) |
-| What is the sync conflict rule? | [contracts/sync.md](contracts/sync.md#three-way-diff) |
-| How are folder names mapped on Drive? | [contracts/sync.md](contracts/sync.md#folder-names) |
-| How do local apps coordinate on one library? | [contracts/sync.md](contracts/sync.md#coordination-between-local-apps) |
-| How does an app authenticate with Drive? | [contracts/sync.md](contracts/sync.md#authentication) |
+| How does a library move between devices? | [contracts/sync.md](contracts/sync.md) |
 | How is a link to a paper page written? | [contracts/links.md](contracts/links.md#grammar) |
 | What is a project template and its catalog index? | [contracts/templates.md](contracts/templates.md#manifest) |
 | How does a host start the PDF reader? | [contracts/reader-host.md](contracts/reader-host.md#startup) |
 | Which rules bind the reader and its host? | [contracts/reader-host.md](contracts/reader-host.md#rules) |
 | Which messages does the library UI exchange with its host? | [contracts/library-ui-host.md](contracts/library-ui-host.md#messages) |
 | Which rules bind the library UI and its host? | [contracts/library-ui-host.md](contracts/library-ui-host.md#rules) |
-| How do I set up the toolchain or Google OAuth? | [apps/README.md](apps/README.md#prerequisites) |
+| How do I set up the toolchain? | [apps/README.md](apps/README.md#prerequisites) |
 | How do I verify an app for real? | [apps/README.md](apps/README.md#verifying-changes) |
 | How do I build and run the VS Code extension? | [apps/vscode.md](apps/vscode.md#build-and-run) |
 | How do I verify the VS Code extension? | [apps/vscode.md](apps/vscode.md#extension-host-run) |

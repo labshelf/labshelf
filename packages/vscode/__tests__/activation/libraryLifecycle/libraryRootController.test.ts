@@ -17,7 +17,6 @@ jest.mock('../../../src/storage/paths/index.js', () => ({
 import type { HostAdapters } from '../../../src/activation/serviceComposition/index.js';
 import { LibraryRootController } from '../../../src/activation/libraryLifecycle/libraryRootController.js';
 import { ExternalChangeHandling } from '../../../src/activation/libraryLifecycle/externalChangeHandling.js';
-import { SyncControllerLifecycle } from '../../../src/activation/libraryLifecycle/syncControllerLifecycle.js';
 
 function fakeServices(): ActiveServices {
   return { logger: { log: jest.fn(), error: jest.fn() } } as unknown as ActiveServices;
@@ -33,7 +32,7 @@ describe('LibraryRootController', () => {
     runLibrarySetupWizard.mockReset();
   });
 
-  // The watcher and the sync lifecycle are stubbed: this suite is about one rebuild path, not their wiring.
+  // The watcher is stubbed: this suite is about one rebuild path, not its wiring.
   const sharedLibraryConfig = { readRoot: jest.fn(), recordRoot: jest.fn(), path: jest.fn() };
   const adapters = { paths: {}, sharedLibraryConfig } as unknown as HostAdapters;
 
@@ -41,8 +40,7 @@ describe('LibraryRootController', () => {
     const context = fakeContext();
     const events = createLibraryEvents();
     const externalChangeHandling = { watch: jest.fn() } as unknown as ExternalChangeHandling;
-    const syncLifecycle = { ensure: jest.fn(async () => undefined) } as unknown as SyncControllerLifecycle;
-    return new LibraryRootController(context, events, externalChangeHandling, syncLifecycle, adapters);
+    return new LibraryRootController(context, events, externalChangeHandling, adapters);
   }
 
   it('require() builds services once and caches the result', async () => {

@@ -15,8 +15,8 @@ export interface NewPaper {
 }
 
 /**
- * No explicit mkdir: every adapter's writeFile creates the folder, and the browser store's mkdir would leave a `.keep`
- * marker that syncs to Drive.
+ * No explicit mkdir: every adapter's writeFile creates the folder, and the browser store's mkdir would leave a stray `.keep`
+ * marker.
  * @returns the stored record
  */
 export async function writeNewPaper(

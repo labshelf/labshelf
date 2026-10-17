@@ -1,9 +1,9 @@
 import * as path from "node:path";
 
 import {
-  AI_DATABASE_FILE, APPDATA_DIR, APP_LOG_FILE, BIB_FILE, BROWSER_SYNC_ROOTS, METADATA_FILE, PAPERS_DIR, PDF_FILE,
-  RESEARCH_DIR, SIDECAR_FILE, SYNC_PROVIDER_ID, TERMINAL_LOG_FILE,
-  joinWith, libraryLayout, paperFiles, syncRoots,
+  AI_DATABASE_FILE, APPDATA_DIR, APP_LOG_FILE, BIB_FILE, METADATA_FILE, PAPERS_DIR, PDF_FILE,
+  RESEARCH_DIR, SIDECAR_FILE, TERMINAL_LOG_FILE,
+  joinWith, libraryLayout, paperFiles,
 } from "@labshelf/core";
 
 describe("layout constants", () => {
@@ -11,7 +11,6 @@ describe("layout constants", () => {
     expect([PAPERS_DIR, RESEARCH_DIR, APPDATA_DIR]).toEqual(["papers", ".research", "appdata"]);
     expect([PDF_FILE, METADATA_FILE, BIB_FILE, SIDECAR_FILE]).toEqual(["paper.pdf", "metadata.yaml", "bib.bib", "data.json"]);
     expect([AI_DATABASE_FILE, APP_LOG_FILE, TERMINAL_LOG_FILE]).toEqual(["index.sqlite", "app.log", "terminal.log"]);
-    expect(SYNC_PROVIDER_ID).toBe("google-drive");
   });
 });
 
@@ -36,18 +35,7 @@ describe.each([
     expect(l.tmpDir()).toBe(at(".research", "tmp"));
   });
 
-  it("names the sync files after the provider, google-drive by default", () => {
-    const sync = at(".research", "sync");
-    expect(l.syncDir()).toBe(sync);
-    expect(l.manifestPath()).toBe(join(sync, "google-drive.state.json"));
-    expect(l.lockPath()).toBe(join(sync, "google-drive.lock"));
-    expect(l.lastRunPath()).toBe(join(sync, "google-drive.last.json"));
-    expect(l.manifestPath("dropbox")).toBe(join(sync, "dropbox.state.json"));
-    expect(l.lockPath("dropbox")).toBe(join(sync, "dropbox.lock"));
-    expect(l.lastRunPath("dropbox")).toBe(join(sync, "dropbox.last.json"));
-  });
-
-  it("keeps the temp folder outside both synced roots", () => {
+  it("keeps the temp folder outside the papers and paper-data roots", () => {
     const sep = join("a", "b")[1];
     expect(l.tmpDir().startsWith(l.papersRoot() + sep)).toBe(false);
     expect(l.tmpDir().startsWith(l.paperDataRoot() + sep)).toBe(false);
@@ -55,7 +43,7 @@ describe.each([
 
   it("lists the folders to create and the folders that mark a library", () => {
     expect(l.requiredDirs()).toEqual([
-      at(".research"), at(".research", "logs"), at(".research", "papers"), at(".research", "sync"), at("papers"),
+      at(".research"), at(".research", "logs"), at(".research", "papers"), at("papers"),
     ]);
     expect(l.markerDirs()).toEqual([at("papers"), at(".research")]);
   });
@@ -72,7 +60,6 @@ describe("joinWith", () => {
     const l = libraryLayout("", joinWith("/"));
     expect(l.papersRoot()).toBe("papers");
     expect(l.paperDataPath("p1")).toBe(".research/papers/p1/data.json");
-    expect(l.lockPath()).toBe(".research/sync/google-drive.lock");
   });
 });
 
@@ -82,21 +69,16 @@ describe("a generic join", () => {
     const join = (base: Uri, ...segments: string[]): Uri => ({ parts: [...base.parts, ...segments] });
     const l = libraryLayout<Uri>({ parts: ["lib"] }, join);
     expect(l.paperDataPath("p1").parts).toEqual(["lib", ".research", "papers", "p1", "data.json"]);
-    expect(l.requiredDirs().map((u) => u.parts.join("/"))).toContain("lib/.research/sync");
+    expect(l.requiredDirs().map((u) => u.parts.join("/"))).toContain("lib/.research/logs");
   });
 });
 
-describe("paperFiles / syncRoots", () => {
+describe("paperFiles", () => {
   it("names the files inside a paper folder", () => {
     expect(paperFiles("/lib/papers/p1", path.posix.join)).toEqual({
       pdf: "/lib/papers/p1/paper.pdf",
       metadata: "/lib/papers/p1/metadata.yaml",
       bib: "/lib/papers/p1/bib.bib",
     });
-  });
-
-  it("maps the synced roots", () => {
-    expect(syncRoots(libraryLayout("/lib", path.posix.join))).toEqual({ library: "/lib/papers", appdata: "/lib/.research/papers" });
-    expect(BROWSER_SYNC_ROOTS).toEqual({ library: "papers", appdata: "appdata" });
   });
 });

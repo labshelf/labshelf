@@ -1,10 +1,6 @@
-/**
- * Caches PaperRecord objects persistently, derived from the metadata.yaml files
- * stored in IndexedDB, so reads never re-parse YAML.
- */
-import { METADATA_FILE, PAPERS_DIR, paperRecordFromMetadata, parsePaperMetadata, pdfDirsFromFilePaths, type PaperRecord } from "@labshelf/core";
+// Caches PaperRecord objects persistently, derived from the metadata.yaml files, so reads never re-parse YAML.
+import type { PaperRecord } from "@labshelf/core";
 import { getDb } from "./idb";
-import { belowDir } from "./idbFileTree";
 
 /** Upserts a PaperRecord into the metadata cache. */
 export async function upsertRecord(record: PaperRecord, folderPath: string): Promise<void> {
@@ -29,32 +25,4 @@ export async function listAllRecords(): Promise<PaperRecord[]> {
   const db = await getDb();
   const rows = await db.getAll("metadata");
   return rows.map((r) => r.record);
-}
-
-/**
- * Rebuilds the entire metadata cache from the files store: every
- * metadata.yaml under papers/, at any depth (papers live inside collections).
- * Called after each sync cycle, which may have added, moved or removed papers.
- * The paper id is the folder name (== cite key) and the path is where the folder
- * sits in this library, not the `path:` key the last writer left in the file.
- */
-export async function rebuildFromFiles(): Promise<void> {
-  const db = await getDb();
-  const keys = (await db.getAllKeys("files", belowDir(PAPERS_DIR))) as string[];
-  const pdfs = pdfDirsFromFilePaths(keys);
-  const decoder = new TextDecoder();
-  const records: PaperRecord[] = [];
-  for (const key of keys) {
-    if (!key.endsWith(`/${METADATA_FILE}`)) continue;
-    const folderPath = key.slice(0, -`/${METADATA_FILE}`.length);
-    const id = folderPath.slice(folderPath.lastIndexOf("/") + 1);
-    const row = id ? await db.get("files", key) : undefined;
-    const meta = row ? parsePaperMetadata(decoder.decode(row.bytes)) : undefined;
-    if (meta) records.push(paperRecordFromMetadata(meta, { id, path: folderPath, hasPdf: pdfs.has(folderPath) }));
-  }
-  // One transaction so readers never observe the cache half-cleared.
-  const tx = db.transaction("metadata", "readwrite");
-  await tx.store.clear();
-  for (const record of records) await tx.store.put({ paperId: record.id, record, folderPath: record.path });
-  await tx.done;
 }

@@ -5,7 +5,7 @@
 import type { IDBPDatabase, IDBPTransaction } from "idb";
 import type { LabShelfSchema } from "./schema";
 
-export const DB_VERSION = 2;
+export const DB_VERSION = 3;
 
 type UpgradeTx = IDBPTransaction<LabShelfSchema, string[], "versionchange">;
 
@@ -14,7 +14,6 @@ export function upgradeDb(db: IDBPDatabase<LabShelfSchema>, oldVersion: number, 
   if (oldVersion < 1) {
     db.createObjectStore("files", { keyPath: "path" });
     db.createObjectStore("metadata", { keyPath: "paperId" });
-    db.createObjectStore("manifest", { keyPath: "providerId" });
     return;
   }
   if (oldVersion < 2) {
@@ -23,5 +22,9 @@ export function upgradeDb(db: IDBPDatabase<LabShelfSchema>, oldVersion: number, 
       const objectStore = tx.objectStore(store);
       if (objectStore.indexNames.contains(index as never)) objectStore.deleteIndex(index);
     }
+  }
+  if (oldVersion < 3) {
+    // Versions 1 and 2 had a "manifest" store that the schema types do not name, hence the casts.
+    if (db.objectStoreNames.contains("manifest" as never)) db.deleteObjectStore("manifest" as never);
   }
 }

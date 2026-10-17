@@ -2,11 +2,10 @@
 
 - **Goal:** every module from sessions 1a–2e is composed in the built extension and checked for real.
 - **Starts from:** sessions 1a to 2e committed.
-- **Ends with:** A1–A9 checked in the built extension, A2–A6 on the live sites with the user:
+- **Ends with:** A1–A9 (no A4) checked in the built extension, A2, A3, A5 and A6 on the live sites with the user:
   - A1 A project synced from VS Code shows in the browser's Writing tab with its PDF.
   - A2 In an Overleaf editor, picking a paper in the side panel inserts `\cite{key}` at the cursor; the same in typst.app inserts `@key`.
   - A3 With `insertText` blocked, the panel copies the citation and says so.
-  - A4 The panel shows the `labshelf.bib` URL; added to Overleaf, it compiles with the cited entries.
   - A5 The health list names a cited key missing from the library and imports it by DOI in one click.
   - A6 "Cite in project" on a reader highlight inserts `\cite[p.~4]{key}` into the open Overleaf tab.
   - A7 Opening an arXiv PDF of a library paper shows the "You have this paper" offer.
@@ -20,7 +19,7 @@ Runs alone: it changes manifests and a build script, and a host verify needs a g
 |---|---|---|---|---|---|
 | 3.1 | Router: dispatch and the page-message gate per host | contract | implementer (sonnet), tests first | gate tests pass | [ ] |
 | 3.2 | Manifests, build entries, side panel page shell | contract | implementer (sonnet), tests first | build of both targets; manifest test | [ ] |
-| 3.3 | Headless verify and live checks | — | `verify` skill + user | A1–A9 | [ ] |
+| 3.3 | Headless verify and live checks | — | `verify` skill + user | A1–A9 (no A4) | [ ] |
 | 3.4 | Check, commit | — | `check` on Owns, `git commit` of Owns | gate passes | [ ] |
 
 ## Modules to wire
@@ -28,7 +27,7 @@ Runs alone: it changes manifests and a build script, and a host verify needs a g
 Each lives in a folder `index.ts` and exports `handle<Name>(msg, deps): Promise<RuntimeResponse>` and, for page code, `mount<Name>Section(root, deps)`:
 
 - `background/editors/` handles `editor.insert` (answers `"inserted" | "copied" | "no-editor"`); `side-panel/search/` mounts the search section.
-- `background/bibliography/` handles `bib.link` and `bib.health`; `side-panel/health/` mounts the health section.
+- `background/bibliography/` handles `bib.health`; `side-panel/health/` mounts the health section.
 - `background/citeInProject/` handles `cite.inProject` and exports `registerCiteMenu(deps)`.
 - `background/pdfOffer/` and `content/sites/`: lookups (`sites.lookup`); `background/reviews/` handles `review.start`.
 - Core `mountWritingTab(root, host)` is already mounted by `library-page/`.
@@ -49,4 +48,4 @@ Each lives in a folder `index.ts` and exports `handle<Name>(msg, deps): Promise<
 
 ## 3.3 — Verify
 
-- Deliverable is the check itself. Headless run per `documents/apps/README.md#verifying-changes`: A1 (seeded IndexedDB), A7, A8 (fixture pages), A9. With the user, on live Overleaf and typst.app: A2, A3 (block `insertText` from DevTools), A4, A5, A6. Risk: the modules pass their tests but fail once composed, and the live editors may reject synthetic input; report each failure with its criterion id.
+- Deliverable is the check itself. Headless run per `documents/apps/README.md#verifying-changes`: A1 (fake bridge host), A7, A8 (fixture pages), A9. With the user, on live Overleaf and typst.app: A2, A3 (block `insertText` from DevTools), A5, A6. Risk: the modules pass their tests but fail once composed, and the live editors may reject synthetic input; report each failure with its criterion id.

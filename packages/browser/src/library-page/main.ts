@@ -11,7 +11,7 @@ import { attachLinkHandling } from "./openLink";
 import { createLocalStoragePrefs } from "./prefs";
 import { attachRouter } from "./router";
 import { mountSidebarTree } from "./sidebar";
-import { createSyncStatus, mountStatusBar } from "./statusBar";
+import { mountStatusBar } from "./statusBar";
 
 const log = createBrowserLogger();
 
@@ -34,8 +34,7 @@ function boot(): void {
     },
   });
   if (ui.sidebar) mountSidebarTree(ui, ui.sidebar, prefs, libraryHost.openCitationMap, host);
-  const sync = createSyncStatus();
-  mountStatusBar(root, sync, (listener) => ui.store.select((s) => s.papers.length, listener));
+  mountStatusBar(root, (listener) => ui.store.select((s) => s.papers.length, listener));
   attachLinkHandling(log);
   void log.log("INFO", "library", "library page mounted");
 }

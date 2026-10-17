@@ -9,8 +9,7 @@
   font-size: var(--ls-text-md); color: var(--ls-statusbar-fg); background: var(--ls-statusbar-bg);
   border-top: 1px solid var(--ls-sidebar-border);
 }
-.status-left, .status-right { display: flex; align-items: center; height: 100%; }
-.status-right { margin-left: auto; }
+.status-right { display: flex; align-items: center; height: 100%; margin-left: auto; }
 .status-item {
   display: inline-flex; align-items: center; gap: 5px; height: 100%; padding: 0 var(--ls-space-3); border: none; background: none;
   color: inherit; font-size: var(--ls-text-md); cursor: default; white-space: nowrap; border-radius: 0;
@@ -18,8 +17,6 @@
 .status-item svg { width: 14px; height: 14px; }
 .status-item.clickable { cursor: pointer; }
 .status-item.clickable:hover { background: var(--ls-statusbar-hover); }
-.status-item.error { color: var(--ls-error); }
-.status-item .spin { animation: ls-spin 1.2s linear infinite; }
 
 /* ── Sidebar head: the brand above the shared library sidebar ───── */
 .tree-head {

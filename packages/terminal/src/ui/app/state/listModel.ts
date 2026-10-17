@@ -83,7 +83,7 @@ export class ListModel {
   }
 
   /**
-   * Index of the hovered paper; follows the paper when the list changes underneath (sort, sync, VS Code).
+   * Index of the hovered paper; follows the paper when the list changes underneath (sort, VS Code).
    * @returns the index, -1 for an empty list
    */
   cursor(): number {

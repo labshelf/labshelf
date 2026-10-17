@@ -204,7 +204,7 @@ describe("App trash (d) asks for confirmation", () => {
     const text = screenText(app);
     expect(text).toContain("Move to trash");
     expect(text).toContain('Move "Attention Is All You Need" to the trash?');
-    expect(text).toContain("The next sync removes them from Drive and from VS Code too.");
+    expect(text).toContain("VS Code stops listing them too.");
     expect(text).toContain("y confirm");
     press(app, "n");
     expect(app.overlay).toBeUndefined();

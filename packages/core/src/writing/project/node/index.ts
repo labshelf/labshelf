@@ -2,7 +2,6 @@
 export { addExistingFolder, createProjectFromTemplate, listProjects } from "./projectCatalog.js";
 export { deleteProjectForever } from "./deleteProjectForever.js";
 export { lastModified } from "./lastModified.js";
-export { listSyncProjects } from "./projectSyncList.js";
 export { listProjectFiles } from "./projectFiles.js";
 export { projectBuildDir } from "./projectBuildDir.js";
 export { readProject, rootFileNames, updateProjectSettings } from "./projectFolder.js";

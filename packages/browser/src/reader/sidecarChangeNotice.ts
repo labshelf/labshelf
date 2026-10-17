@@ -1,13 +1,9 @@
-/**
- * Reacts to the reader changing a paper's sidecar: asks the background to sync soon, and tells the library page to refresh
- * that paper's marks. A theme change shows nowhere in the library, so only the sync hears of it.
- */
+// Tells the library page which paper's marks the reader changed.
 import type { SidecarChange } from "@labshelf/core";
-import { bx, type LibraryChangedBroadcast, type RuntimeMessage } from "../platform";
+import { bx, type LibraryChangedBroadcast } from "../platform";
 
 export function announceSidecarChange(paperId: string, change: SidecarChange): void {
-  const sync: RuntimeMessage = { type: "sync.scheduleSoon", reason: change.kind === "theme" ? "reader.theme" : "reader.annotation" };
-  void bx.runtime.sendMessage(sync).catch(() => undefined);
+  // A theme change shows nowhere in the library.
   if (change.kind === "theme") return;
   const changed: LibraryChangedBroadcast = { type: "library.changed", reason: "annotations", paperId };
   // Chrome rejects when no page is listening; that is not an error here.

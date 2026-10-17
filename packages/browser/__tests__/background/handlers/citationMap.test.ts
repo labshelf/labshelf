@@ -26,7 +26,6 @@ import { handleCitationMapBuild, handleCitationMapImportDoi } from "../../../src
 
 const log: ILogger = { log: async () => undefined, error: async () => undefined };
 const mutations = {} as never;
-const sync = jest.fn();
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -49,34 +48,32 @@ describe("handleCitationMapBuild", () => {
 });
 
 describe("handleCitationMapImportDoi", () => {
-  it("saves a missing paper through the capture flow without asking about the PDF, then schedules sync and tells open pages", async () => {
+  it("saves a missing paper through the capture flow without asking about the PDF, then tells open pages", async () => {
     const draft = { existing: undefined, metadata: { title: "Deep" } };
     mockDraftFromDoi.mockResolvedValue(draft);
     mockSaveOrAsk.mockResolvedValue({ kind: "saved", saved: { paper: { id: "p2", title: "Deep", path: "papers/p2" }, folder: "papers", pdfSource: null } });
 
-    const result = await handleCitationMapImportDoi(log, mutations, "10.1/b", sync);
+    const result = await handleCitationMapImportDoi(log, mutations, "10.1/b");
 
     expect(result).toEqual({ status: "saved", id: "p2", title: "Deep" });
     expect(mockDraftFromDoi).toHaveBeenCalledWith(log, "10.1/b");
     expect(mockSaveOrAsk).toHaveBeenCalledWith(log, mutations, draft, {}, "save");
-    expect(sync).toHaveBeenCalledWith("citationMap.import");
     expect(mockBroadcast).toHaveBeenCalledWith("capture", "p2");
   });
 
   it("reports a DOI the library already holds and writes nothing", async () => {
     mockDraftFromDoi.mockResolvedValue({ existing: { id: "p1", title: "Held" }, metadata: { title: "Held" } });
 
-    const result = await handleCitationMapImportDoi(log, mutations, "10.1/a", sync);
+    const result = await handleCitationMapImportDoi(log, mutations, "10.1/a");
 
     expect(result).toEqual({ status: "already-present", id: "p1", title: "Held" });
     expect(mockSaveOrAsk).not.toHaveBeenCalled();
-    expect(sync).not.toHaveBeenCalled();
   });
 
   it("refuses a DOI no registry resolves instead of saving an untitled paper", async () => {
     mockDraftFromDoi.mockResolvedValue({ existing: undefined, metadata: {} });
 
-    await expect(handleCitationMapImportDoi(log, mutations, "10.1/x", sync)).rejects.toThrow(/10\.1\/x/);
+    await expect(handleCitationMapImportDoi(log, mutations, "10.1/x")).rejects.toThrow(/10\.1\/x/);
     expect(mockSaveOrAsk).not.toHaveBeenCalled();
   });
 });

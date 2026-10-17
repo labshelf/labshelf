@@ -2,18 +2,17 @@
 
 Read when you build, change or verify the terminal app.
 
-A keyboard-driven explorer and a scriptable CLI over the local library. It works with or without VS Code, and it syncs with Drive on its own. Its layout uses yazi's columns and keys with Zotero's pane model: folders | papers | preview ([product.md](../product.md)). Press `?` in the app for every binding; the help is generated from the keymap.
+A keyboard-driven explorer and a scriptable CLI over the local library. It works with or without VS Code. Its layout uses yazi's columns and keys with Zotero's pane model: folders | papers | preview ([product.md](../product.md)). Press `?` in the app for every binding; the help is generated from the keymap.
 
 ## Build and run
 
 ```bash
 pnpm --filter @labshelf/terminal build      # → packages/terminal/dist/labshelf.mjs (+ thumbnailWorker.mjs)
 ln -s "$PWD/packages/terminal/dist/labshelf.mjs" /opt/homebrew/bin/labshelf
-labshelf doctor                             # checks library, config, Drive and the image protocol
+labshelf doctor                             # checks library, config and the image protocol
 ```
 
 - The app finds the library through `--library`, then `LABSHELF_LIBRARY`, then the shared config ([library-format.md](../contracts/library-format.md#shared-configuration)). `labshelf init <path>` writes the shared config.
-- Drive: `labshelf auth login`, or `:login` in the explorer.
 - Thumbnails need kitty, Ghostty, iTerm2 or WezTerm. In the VS Code terminal, set `terminal.integrated.enableImages` and `LABSHELF_IMAGES=iterm`. Inside tmux, images are off unless forced.
 - Thumbnails are faster with `brew install poppler` (pdftoppm). Without it, pdf.js renders them through `@napi-rs/canvas`.
 - Imports read scans and broken-font PDFs with Tesseract (English). The first such import downloads the language data into the cache folder, so it needs the network once.
@@ -49,4 +48,3 @@ There are two ways to check the app:
 To check the interplay with VS Code:
 
 1. Mark a status in the terminal and confirm that `metadata.yaml` changed only in `status`. With VS Code open on the same copy, its list updates within a second.
-2. Start a long sync with `S`, then run Sync Now in VS Code. VS Code must report that the terminal is syncing and do nothing else.

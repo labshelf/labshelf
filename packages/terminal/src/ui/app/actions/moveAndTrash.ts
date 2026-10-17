@@ -84,7 +84,7 @@ export function confirmTrash(app: App): void {
     title: "Move to trash",
     lines: [
       papers.length === 1 ? `Move "${truncate(papers[0]!.record.title, 60)}" to the trash?` : `Move ${papers.length} papers to the trash?`,
-      "The next sync removes them from Drive and from VS Code too.",
+      "VS Code stops listing them too.",
     ],
     onYes: () => {
       app.selection.clear();
@@ -105,7 +105,7 @@ function confirmTrashFolder(app: App, folder: string): void {
     title: "Move to trash",
     lines: [
       `Move folder "${folderTitle(folder)}" and its ${node?.total ?? 0} paper${node?.total === 1 ? "" : "s"} to the trash?`,
-      "The next sync removes them from Drive and from VS Code too.",
+      "VS Code stops listing them too.",
     ],
     onYes: () => void app.taskStatus.task("trash", "moving to trash", async () => {
       await app.ctx.papers.trashCollection(folder);

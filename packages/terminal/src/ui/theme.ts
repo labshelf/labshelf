@@ -89,12 +89,6 @@ export const theme = {
   annotation: Object.fromEntries(
     ANNOTATION_COLORS.map((name) => [name, c({ fg: ANNOTATION_ANSI[name] })]),
   ) as Record<string, Style>,
-  sync: {
-    ok: c({ fg: ANSI.green }),
-    busy: c({ fg: ANSI.yellow }),
-    off: c({ dim: true }),
-    error: c({ fg: ANSI.error }),
-  },
 };
 
 /** Status glyphs: shape and color both carry the state, so it reads without color too. */

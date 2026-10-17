@@ -17,7 +17,7 @@ export class ExternalChangeHandling {
 
   constructor(private readonly deps: ExternalChangeHandlingDeps) {}
 
-  // Changes made outside this window (the LabShelf terminal app, a sync it ran, another window) are picked up from
+  // Changes made outside this window (the LabShelf terminal app, a folder sync tool, another window) are picked up from
   // disk: the re-index adds, updates and drops papers, then the views refresh.
   watch(root: vscode.Uri): void {
     this.watcher?.dispose();
@@ -28,9 +28,8 @@ export class ExternalChangeHandling {
   }
 
   // Re-indexes from disk and refreshes the views. The list panel, Library sidebar and AI
-  // indexer update through the paper events the re-index emits. Shared by the
-  // external-change watcher and a sync that pulled files in from Drive.
-  async reindexAndRefresh(trigger: string): Promise<void> {
+  // indexer update through the paper events the re-index emits.
+  private async reindexAndRefresh(trigger: string): Promise<void> {
     const services = this.deps.getActiveServices();
     if (!services) { return; }
     try {

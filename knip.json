@@ -85,8 +85,7 @@
         "__tests__/**/*.ts"
       ],
       "ignoreBinaries": [
-        "pdftoppm",
-        "secret-tool"
+        "pdftoppm"
       ],
       "ignoreDependencies": [
         "@napi-rs/canvas",

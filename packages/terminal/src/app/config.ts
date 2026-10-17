@@ -24,8 +24,6 @@ interface TerminalPreferences {
   images?: string;
   sort?: SortKey;
   sortReverse?: boolean;
-  /** Minutes between automatic syncs while the TUI is open; 0 disables. */
-  autoSyncMinutes?: number;
 }
 
 /** The shared config file as the terminal sees it: its own "terminal" preferences are typed, other keys are not. */

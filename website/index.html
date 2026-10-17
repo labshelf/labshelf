@@ -66,7 +66,7 @@
       <div class="copyc">
         <h2>Your library is <em>a folder.</em></h2>
         <p>One paper, one folder named by its cite key: the PDF and a small YAML file with its metadata and your note. No database to export, no account to lose.</p>
-        <p class="d">Open it in Finder or put it in git. To use it on several machines, sync it through your own Google Drive.</p>
+        <p class="d">Open it in Finder or put it in git. To use it on several machines, sync the folder with your own sync tool.</p>
         <ul><li><b>Plain files.</b> PDF, YAML and a generated .bib</li><li><b>Unread, Reading, Done.</b> One click on the mark cycles it</li><li><b>Search.</b> status:reading, year:&gt;2018, author:, has:pdf</li></ul>
       </div>
       <figure>
@@ -140,7 +140,7 @@
     <div class="two rev">
       <div class="copyc">
         <h2>The same shelf, <em>from a terminal.</em></h2>
-        <p>Run <code>labshelf</code> with no arguments for folders, papers and a preview side by side, driven from the keyboard. Or run one command: add, search, status, tag, bib. <code>ls</code>, <code>search</code>, <code>show</code> and <code>sync</code> speak <code>--json</code>.</p>
+        <p>Run <code>labshelf</code> with no arguments for folders, papers and a preview side by side, driven from the keyboard. Or run one command: add, search, status, tag, bib. <code>ls</code>, <code>search</code> and <code>show</code> speak <code>--json</code>.</p>
         <p class="d">Edits made in the terminal show up live in VS Code.</p>
         <ul><li><b>labshelf add</b> DOI, arXiv ID, PMID, URL or PDF</li><li><b>labshelf search</b> the same syntax as VS Code</li><li><b>labshelf bib</b> writes a .bib of the papers you name</li></ul>
       </div>
@@ -157,7 +157,7 @@
     <div class="two">
       <div class="copyc">
         <h2>One click from <em>a paper page</em> to your shelf.</h2>
-        <p>The browser extension reads the paper you are looking at, finds its PDF and saves both to your library. It syncs through the same Google Drive folder as VS Code and the terminal.</p>
+        <p>The browser extension reads the paper you are looking at, finds its PDF and saves both to your library.</p>
         <ul><li><b>Works on</b> arXiv, publisher pages, DOIs, PubMed</li><li><b>Google Scholar</b> marks what is already in LabShelf</li><li><b>Chrome and Firefox</b></li></ul>
       </div>
       <figure>
@@ -188,29 +188,9 @@
         <div class="aabs"><b>Abstract</b>This manual describes LabShelf, a reference manager that keeps <mark class="h" data-m="yellow" title="yellow">your library as a folder of plain files</mark> and works inside VS Code, a terminal and the browser. Each section is a set of tasks: numbered steps, the result to expect after each one, and what to check if it goes wrong. Select any passage to highlight it, as you would in the reader.</div>
 
 <section id="s1"><h2><span class="n">1</span>Getting started</h2>
-  <p>LabShelf is three apps over one library: a VS Code extension, a terminal app and a browser extension. None of them is published yet, so you build them from the repository. <mark class="h" data-m="blue" title="blue">VS Code and the terminal read the same folder on your disk; the browser keeps its own copy and meets them on Google Drive</mark> (Figure 7).</p>
-  <figure class="afig"><div class="box"><svg viewBox="0 0 760 250" role="img" aria-label="Diagram: VS Code and the terminal read and write the library folder and sync it with Google Drive; the browser keeps its library in IndexedDB and syncs with the same Drive folder">
-    <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" style="fill:var(--pdim)"/></marker></defs>
-    <g font-family="IBM Plex Mono, ui-monospace, monospace" font-size="13" text-anchor="middle" style="fill:var(--pink)">
-      <rect x="20" y="92" width="170" height="66" rx="6" style="fill:color-mix(in srgb,var(--hi) 16%,var(--paper));stroke:var(--hi);stroke-width:1.5"/><text x="105" y="120" font-weight="600">library folder</text><text x="105" y="140" font-size="11" style="fill:var(--pdim)">papers · projects</text>
-      <rect x="240" y="24" width="170" height="56" rx="6" style="fill:#fff;stroke:var(--pdim)"/><text x="325" y="48" font-weight="600">VS Code</text><text x="325" y="67" font-size="11" style="fill:var(--pdim)">library · reader · preview</text>
-      <rect x="240" y="170" width="170" height="56" rx="6" style="fill:#fff;stroke:var(--pdim)"/><text x="325" y="194" font-weight="600">terminal</text><text x="325" y="213" font-size="11" style="fill:var(--pdim)">TUI · labshelf CLI</text>
-      <rect x="460" y="92" width="130" height="66" rx="6" style="fill:#fff;stroke:var(--pdim);stroke-dasharray:4 3"/><text x="525" y="120" font-weight="600">Google Drive</text><text x="525" y="140" font-size="11" style="fill:var(--pdim)">optional</text>
-      <rect x="630" y="92" width="115" height="66" rx="6" style="fill:#fff;stroke:var(--pdim)"/><text x="687" y="120" font-weight="600">browser</text><text x="687" y="140" font-size="11" style="fill:var(--pdim)">IndexedDB</text>
-    </g>
-    <g fill="none" stroke-width="1.4" style="stroke:var(--pdim)">
-      <path d="M190 112 C 215 100, 215 64, 240 56" marker-start="url(#ar)" marker-end="url(#ar)"/>
-      <path d="M190 138 C 215 150, 215 186, 240 194" marker-start="url(#ar)" marker-end="url(#ar)"/>
-      <path d="M410 56 C 435 64, 435 100, 460 112" stroke-dasharray="5 4" marker-start="url(#ar)" marker-end="url(#ar)"/>
-      <path d="M410 194 C 435 186, 435 150, 460 138" stroke-dasharray="5 4" marker-start="url(#ar)" marker-end="url(#ar)"/>
-      <path d="M590 125 L 630 125" stroke-dasharray="5 4" marker-start="url(#ar)" marker-end="url(#ar)"/>
-    </g>
-    <g font-family="IBM Plex Mono, ui-monospace, monospace" font-size="10.5" style="fill:var(--pdim)"><text x="200" y="76" text-anchor="end">files</text><text x="200" y="182" text-anchor="end">files</text><text x="448" y="76">sync</text><text x="448" y="182">sync</text></g>
-  </svg></div><figcaption><b>Figure 7.</b> VS Code and the terminal read and write one library folder, so an edit in one shows up in the other at once. With Drive connected, each app syncs on its own; the browser sees your papers only through Drive.</figcaption></figure>
-
-  <h3 id="s1-1"><span class="n">1.1</span>Build the apps</h3>
+  <p>LabShelf is three apps over one library: a VS Code extension, a terminal app and a browser extension. None of them is published yet, so you build them from the repository. <mark class="h" data-m="blue" title="blue">VS Code and the terminal read the same folder on your disk; the browser keeps its own copy in IndexedDB</mark>. To use the library on several computers, sync the folder with your own sync tool; LabShelf calls no cloud service.</p>
+    <h3 id="s1-1"><span class="n">1.1</span>Build the apps</h3>
   <p>Each app builds from a clone of <a href="https://github.com/lucaanasser/labshelf">github.com/lucaanasser/labshelf</a> with pnpm. Build only the apps you use; Table 1 lists the command and how to load each one.</p>
-  <span class="mnote">The browser build needs Google OAuth credentials in place first: documents/apps/README.md in the repository.</span>
   <ol class="steps">
     <li>Clone the repository and run <code>pnpm install</code> at its root.<span class="res">The install ends without errors. The terminal app needs Node 22.6 or later; the extension needs VS Code 1.98 or later.</span></li>
     <li>Run the build command for your app from Table 1.<span class="res">The build writes the app into its package: <code>out/</code> and <code>dist/</code> for VS Code, <code>dist/labshelf.mjs</code> for the terminal, <code>dist/chrome</code> and <code>dist/firefox</code> for the browser.</span></li>
@@ -224,7 +204,7 @@
   </tbody></table></div>
   <div class="pre"><span class="lab">Listing 1. Building and linking the terminal app.</span><pre><span class="pk">pnpm</span> --filter @labshelf/terminal build
 <span class="pk">ln</span> -s "$PWD/packages/terminal/dist/labshelf.mjs" /usr/local/bin/labshelf
-<span class="pk">labshelf doctor</span>   <span class="c"># checks the library, config, Drive and image support</span></pre><button class="cp">copy</button></div>
+<span class="pk">labshelf doctor</span>   <span class="c"># checks the library, config and image support</span></pre><button class="cp">copy</button></div>
   <div class="fix"><b>If it goes wrong</b><code>labshelf: command not found</code> means the link is not on your PATH: link it into a directory that <code>echo $PATH</code> lists. For anything else, <code>labshelf doctor</code> names the part that fails.</div>
 
   <h3 id="s1-2"><span class="n">1.2</span>Choose a library folder</h3>
@@ -239,21 +219,11 @@
 projects/&lt;project id&gt;/       <span class="c"># your LaTeX or Typst project, labshelf.yaml</span>
 .research/                   <span class="c"># highlights, search index, logs</span></pre></div>
   <div class="fix"><b>If it goes wrong</b>If VS Code and the terminal list different papers, they read different folders: compare <code>labshelf where</code> with the folder VS Code shows, and check that <code>LABSHELF_LIBRARY</code> is not set in your shell.</div>
-
-  <h3 id="s1-3"><span class="n">1.3</span>Connect Google Drive</h3>
-  <p>Drive is optional. It carries your library between computers, and it is the only way the browser extension sees papers saved in VS Code or the terminal. Each app connects on its own.</p>
-  <span class="mnote">VS Code syncs every 15 minutes; set labshelf.sync.autoSyncIntervalMinutes to change it.</span>
-  <ol class="steps">
-    <li>In VS Code, run <b>Sync: Connect to Google Drive</b> and sign in.<span class="res">After the first sync, your Drive holds a <b>LabShelf Library</b> folder. Once a writing project exists on the device, a <b>LabShelf Projects</b> folder appears beside it.</span></li>
-    <li>In the terminal, run <code>labshelf auth login</code>, or type <code>:login</code> in the TUI.<span class="res"><code>labshelf auth status</code> reports the sign-in, and <code>labshelf sync</code> syncs on demand.</span></li>
-    <li>In the browser, open the toolbar popup and click <b>Connect to Google Drive</b>.<span class="res">After the sync, the library page lists the papers from your other apps.</span></li>
-  </ol>
-  <div class="fix"><b>If it goes wrong</b>Sign-in needs the OAuth clients set up for your build (documents/apps/README.md). To start over, run <b>Sync: Disconnect from Google Drive</b> in VS Code or <code>labshelf auth logout</code> in the terminal, then connect again.</div>
 </section>
 
 <section id="s2"><h2><span class="n">2</span>Adding papers</h2>
   <p>A paper enters the library from an identifier, a PDF on your disk, a browser tab or the terminal. Its id is its cite key, such as <code>vaswani2017attention</code>. <mark class="h" data-m="green" title="green">Metadata comes from Crossref, arXiv and OpenAlex, and each field takes the value of the source trusted most for it.</mark></p>
-  <figure class="afig"><div class="box"><video class="clip" autoplay muted loop playsinline preload="metadata" width="1600" height="1000" poster="media/vscode/add-paper.jpg" aria-label="Recording of adding a paper in VS Code"><source src="media/vscode/add-paper.webm" type="video/webm"><source src="media/vscode/add-paper.mp4" type="video/mp4"></video></div><figcaption><b>Figure 8.</b> Adding a paper in VS Code.</figcaption></figure>
+  <figure class="afig"><div class="box"><video class="clip" autoplay muted loop playsinline preload="metadata" width="1600" height="1000" poster="media/vscode/add-paper.jpg" aria-label="Recording of adding a paper in VS Code"><source src="media/vscode/add-paper.webm" type="video/webm"><source src="media/vscode/add-paper.mp4" type="video/mp4"></video></div><figcaption><b>Figure 7.</b> Adding a paper in VS Code.</figcaption></figure>
 
   <h3 id="s2-1"><span class="n">2.1</span>Add a paper by DOI, arXiv id, PMID or link</h3>
   <p>Any identifier works: a DOI, an arXiv id, a PMID written as <code>PMID: 12345678</code>, a PMCID such as <code>PMC1234567</code>, or the link to an article page. LabShelf looks it up and files the paper under its cite key.</p>
@@ -273,10 +243,10 @@ projects/&lt;project id&gt;/       <span class="c"># your LaTeX or Typst project
   <div class="fix"><b>If it goes wrong</b>A paper whose text you cannot select or find is a scan: make it searchable as in <a class="xref" href="#s2-5">§2.5</a>.</div>
 
   <h3 id="s2-3"><span class="n">2.3</span>Save a paper from the browser</h3>
-  <p>The browser extension saves the paper in the current tab, or any result on Google Scholar, and Drive carries it to your other apps.</p>
+  <p>The browser extension saves the paper in the current tab, or any result on Google Scholar.</p>
   <ol class="steps">
     <li>On an article page, click the LabShelf toolbar button.<span class="res">The popup shows the paper with a folder, a Tags field, a note field and a <b>Save to LabShelf</b> button. For a paper you have, it reads <b>Already in your library</b>.</span></li>
-    <li>Click <b>Save to LabShelf</b>.<span class="res">The paper is in the browser library at once, and in VS Code and the terminal after their next sync.</span></li>
+    <li>Click <b>Save to LabShelf</b>.<span class="res">The paper is in the browser library.</span></li>
     <li>On Google Scholar, click <b>Save to LabShelf</b> under a result.<span class="res">The button turns into <b>In LabShelf</b>.</span></li>
   </ol>
   <div class="fix"><b>If it goes wrong</b>When the page offers no PDF, choose <b>Save without PDF</b>. When you download the PDF later, the popup offers to attach it to the paper.</div>
@@ -308,7 +278,7 @@ projects/&lt;project id&gt;/       <span class="c"># your LaTeX or Typst project
   <p>Folders give each paper one place, the status tracks what you have read, and tags and search cut across both. Every change is a plain file edit, so it shows up in every app.</p>
 
   <h3 id="s3-1"><span class="n">3.1</span>Sort papers into folders</h3>
-  <p>Folders are real folders under <code>papers/</code> in the library, so a paper keeps its place in every app and on Drive.</p>
+  <p>Folders are real folders under <code>papers/</code> in the library, so a paper keeps its place in every app.</p>
   <ol class="steps">
     <li>In the VS Code sidebar, use <b>New Folder</b> on a folder, or <b>New Folder at Library Root</b>.<span class="res">The folder appears in the Library section.</span></li>
     <li>In the TUI, press <code>x</code> on a paper, open the folder and press <code>p</code>; or press <code>M</code> to pick the folder.<span class="res">The paper moves; VS Code shows it in its folder at once.</span></li>
@@ -324,8 +294,7 @@ projects/&lt;project id&gt;/       <span class="c"># your LaTeX or Typst project
     <li>Select a paper, click the plus button (<b>Add tag</b>) in the detail pane, type a tag and press <kbd>Enter</kbd>.<span class="res">The tag is saved to the paper's <code>metadata.yaml</code>.</span></li>
     <li>From a shell, run <code>labshelf status vaswani2017attention done</code> and <code>labshelf tag vaswani2017attention +nlp -todo</code>.<span class="res">VS Code shows the new status and tags.</span></li>
   </ol>
-  <div class="fix"><b>If it goes wrong</b>If a status set in the terminal does not reach the browser, run a sync: <code>labshelf sync</code>, then the sync button in the browser popup.</div>
-
+  
   <h3 id="s3-3"><span class="n">3.3</span>Search the library</h3>
   <p>One query language works in VS Code, in the TUI (<code>s</code>) and in <code>labshelf search</code>. Every word must match, a quoted phrase matches as a whole, and the fields of Table 2 narrow the result.</p>
   <ol class="steps">
@@ -482,12 +451,12 @@ projects/&lt;project id&gt;/       <span class="c"># your LaTeX or Typst project
   <div class="fix"><b>If it goes wrong</b>No toggle in the header means the project has no <code>\include</code>d files; the toggle appears only when there is a chapter to build alone.</div>
 
   <h3 id="s5-8"><span class="n">5.8</span>Check before submitting</h3>
-  <p><b>Research: Check Before Submitting</b> reads the built PDF for what a venue rejects: the page limit, anything that reveals the authors, Type 3 fonts and low-resolution images (Figure 9).</p>
+  <p><b>Research: Check Before Submitting</b> reads the built PDF for what a venue rejects: the page limit, anything that reveals the authors, Type 3 fonts and low-resolution images (Figure 8).</p>
   <ol class="steps">
     <li>Run <b>Research: Check Before Submitting</b>.<span class="res">LabShelf saves your files, builds the project and checks the PDF and the sources. Each finding appears in the Problems panel: a finding in the PDF names its page when it has one, and a finding in a source sits on its line.</span></li>
     <li>Fix each finding and run the check again.<span class="res">The list empties.</span></li>
   </ol>
-  <figure class="afig"><div class="box"><video class="clip" autoplay muted loop playsinline preload="metadata" width="1600" height="1000" poster="media/vscode/check.jpg" aria-label="Recording of Check Before Submitting in VS Code"><source src="media/vscode/check.webm" type="video/webm"><source src="media/vscode/check.mp4" type="video/mp4"></video></div><figcaption><b>Figure 9.</b> Check Before Submitting lists an unresolved citation and a link that reveals the authors.</figcaption></figure>
+  <figure class="afig"><div class="box"><video class="clip" autoplay muted loop playsinline preload="metadata" width="1600" height="1000" poster="media/vscode/check.jpg" aria-label="Recording of Check Before Submitting in VS Code"><source src="media/vscode/check.webm" type="video/webm"><source src="media/vscode/check.mp4" type="video/mp4"></video></div><figcaption><b>Figure 8.</b> Check Before Submitting lists an unresolved citation and a link that reveals the authors.</figcaption></figure>
   <div class="fix"><b>If it goes wrong</b>The check needs a successful build. When the build fails, a message says so and the build problems are listed in Problems.</div>
 
   <h3 id="s5-9"><span class="n">5.9</span>Bundle for arXiv</h3>
@@ -501,48 +470,17 @@ projects/&lt;project id&gt;/       <span class="c"># your LaTeX or Typst project
 
 <div class="pbreak">page 4</div>
 
-<section id="s6"><h2><span class="n">6</span>Sync across apps</h2>
-  <p>VS Code, the terminal app and the browser extension share one library through your own Google Drive. Sync is optional; without it, each computer keeps its library on its disk.</p>
-
-  <h3 id="s6-1"><span class="n">6.1</span>Connect each app to Drive</h3>
-  <p>Each app connects to Drive once (Table 5). VS Code and the terminal app read the same library folder, so on one computer the library syncs whichever of the two connects.</p>
-  <div class="tbl"><p class="tcap"><b>Table 5.</b> Connecting to Google Drive.</p><table><thead><tr><th>App</th><th>Connect</th></tr></thead><tbody>
-    <tr><td>VS Code</td><td>Sync: Connect to Google Drive</td></tr>
-    <tr><td>Terminal</td><td><code>labshelf auth login</code>, or <code>:login</code> in the TUI</td></tr>
-    <tr><td>Browser</td><td>Connect to Google Drive, in the Options page (the popup's sync button opens it)</td></tr>
-  </tbody></table></div>
-  <ol class="steps">
-    <li>Run the connect action of your app from Table 5, sign in to Google and allow LabShelf to use Drive.<span class="res">The app is connected to Drive.</span></li>
-    <li>To sync at once, run <b>Sync: Sync Now</b> in VS Code, or <code>labshelf sync</code> or <kbd>S</kbd> in the terminal app.<span class="res">The library on disk and the one in Drive match.</span></li>
-  </ol>
-  <span class="mnote">VS Code syncs every 15 minutes; <code>labshelf.sync.autoSyncIntervalMinutes</code> sets the interval.</span>
-  <div class="fix"><b>If it goes wrong</b>A browser build without Google OAuth credentials cannot connect. Add the credentials before you build the extension (<a class="xref" href="#s1-1">§1.1</a>). To disconnect VS Code, run <b>Sync: Disconnect from Google Drive</b>; for the terminal app, run <code>labshelf auth logout</code>.</div>
-
-  <h3 id="s6-2"><span class="n">6.2</span>Move a change between apps</h3>
-  <p>Drive holds two folders: <b>LabShelf Library</b> for papers and <b>LabShelf Projects</b> for writing projects. Highlights sync through hidden app data, so they do not appear as files in Drive. The browser extension syncs papers and highlights, not projects.</p>
-  <ol class="steps">
-    <li>Change a paper in one app, for example its status, and sync that app.<span class="res">The change goes up to Drive.</span></li>
-    <li>Sync the other app.<span class="res">The paper shows the change there.</span></li>
-  </ol>
-  <div class="fix"><b>If it goes wrong</b>A project missing in the browser is expected: the browser does not sync projects. Open it in VS Code instead.</div>
-
-  <h3 id="s6-3"><span class="n">6.3</span>Resolve a conflict</h3>
-  <p>When the same file changes in two places between syncs, LabShelf keeps both copies. The remote copy is renamed <code>&lt;name&gt; (conflict YYYY-MM-DD).&lt;ext&gt;</code>, next to your local one.</p>
-  <ol class="steps">
-    <li>Find the file whose name ends in <code>(conflict YYYY-MM-DD)</code>.<span class="res">It sits next to the file with the original name.</span></li>
-    <li>Compare the two copies and keep the content you want in the original file.<span class="res">The original file holds the merged content.</span></li>
-    <li>Delete the conflict copy and sync.<span class="res">Every app gets the merged file.</span></li>
-  </ol>
-  <div class="fix"><b>If it goes wrong</b>Nothing is lost in a conflict: both versions stay until you delete one.</div>
+<section id="s6"><h2><span class="n">6</span>Sync across devices</h2>
+  <p>LabShelf has no sync of its own and calls no cloud service. The library is a folder, so a sync tool you already use (Dropbox, iCloud Drive, Syncthing, the Google Drive desktop app) carries it between computers. Point VS Code and the terminal app at the synced folder on each computer. If a sync tool reports a conflict, keep the content you want in the original file and delete the conflict copy.</p>
 </section>
 
 <section id="s7"><h2><span class="n">7</span>Terminal</h2>
   <p>The terminal app reads and writes the same library as VS Code; edits made in the terminal show up live in VS Code. <code>labshelf</code> with no arguments opens the TUI; with a command, it runs that command and exits.</p>
 
   <h3 id="s7-1"><span class="n">7.1</span>Browse in the TUI</h3>
-  <p>The TUI shows three panes: folders, papers and a preview with the tabs Info, Abstract, Notes and BibTeX (Figure 10). Press <kbd>?</kbd> for every key; Table 6 lists the common ones.</p>
-  <figure class="afig"><div class="box"><video class="clip" autoplay muted loop playsinline preload="metadata" width="1600" height="736" poster="media/terminal/tui.jpg" aria-label="Recording of the terminal app"><source src="media/terminal/tui.webm" type="video/webm"><source src="media/terminal/tui.mp4" type="video/mp4"></video></div><figcaption><b>Figure 10.</b> The TUI with folders, papers and the preview.</figcaption></figure>
-  <div class="tbl"><p class="tcap"><b>Table 6.</b> TUI keys.</p><table><thead><tr><th>Key</th><th>Does</th></tr></thead><tbody>
+  <p>The TUI shows three panes: folders, papers and a preview with the tabs Info, Abstract, Notes and BibTeX (Figure 9). Press <kbd>?</kbd> for every key; Table 5 lists the common ones.</p>
+  <figure class="afig"><div class="box"><video class="clip" autoplay muted loop playsinline preload="metadata" width="1600" height="736" poster="media/terminal/tui.jpg" aria-label="Recording of the terminal app"><source src="media/terminal/tui.webm" type="video/webm"><source src="media/terminal/tui.mp4" type="video/mp4"></video></div><figcaption><b>Figure 9.</b> The TUI with folders, papers and the preview.</figcaption></figure>
+  <div class="tbl"><p class="tcap"><b>Table 5.</b> TUI keys.</p><table><thead><tr><th>Key</th><th>Does</th></tr></thead><tbody>
     <tr><td>j k h l</td><td>Move down, up, and between panes</td></tr>
     <tr><td>gg G</td><td>Go to the first or last item</td></tr>
     <tr><td>tab</td><td>Switch the preview tab</td></tr>
@@ -554,18 +492,18 @@ projects/&lt;project id&gt;/       <span class="c"># your LaTeX or Typst project
     <tr><td>x p M</td><td>Cut a paper, paste it into this folder, move it to a folder</td></tr>
     <tr><td>yk yc yb ym</td><td>Copy the key, <code>\cite{}</code>, BibTeX, or the highlights as Markdown</td></tr>
     <tr><td>,t ,y ,a ,s ,m</td><td>Sort by title, year, author, status or last modified; a capital letter reverses</td></tr>
-    <tr><td>B S</td><td>Export a .bib, sync</td></tr>
-    <tr><td>:</td><td>Command line: <code>:sync</code>, <code>:login</code>, <code>:logout</code>, <code>:export</code>, <code>:mkdir</code>, <code>:help</code></td></tr>
+    <tr><td>B S</td><td>Export a .bib</td></tr>
+    <tr><td>:</td><td>Command line: <code>:export</code>, <code>:mkdir</code>, <code>:help</code></td></tr>
     <tr><td>?</td><td>Show every key</td></tr>
   </tbody></table></div>
   <div class="fix"><b>If it goes wrong</b>No thumbnails in the preview means the terminal cannot draw images; thumbnails need kitty, Ghostty, iTerm2 or WezTerm.</div>
 
   <h3 id="s7-2"><span class="n">7.2</span>Run a command</h3>
-  <p>Each command works on the library and exits, so it fits in scripts (Table 7). <code>--json</code> prints machine-readable output for <code>ls</code>, <code>search</code>, <code>show</code> and <code>sync</code>.</p>
-  <div class="tbl"><p class="tcap"><b>Table 7.</b> Commands.</p><table><thead><tr><th>Command</th><th>Does</th></tr></thead><tbody>
+  <p>Each command works on the library and exits, so it fits in scripts (Table 6). <code>--json</code> prints machine-readable output for <code>ls</code>, <code>search</code> and <code>show</code>.</p>
+  <div class="tbl"><p class="tcap"><b>Table 6.</b> Commands.</p><table><thead><tr><th>Command</th><th>Does</th></tr></thead><tbody>
     <tr><td>labshelf init [path]</td><td>Choose the library folder</td></tr>
     <tr><td>labshelf where</td><td>Print the library, config, log and manifest paths</td></tr>
-    <tr><td>labshelf doctor</td><td>Check Node, the library, Drive sign-in, thumbnails and the clipboard</td></tr>
+    <tr><td>labshelf doctor</td><td>Check Node, the library, thumbnails and the clipboard</td></tr>
     <tr><td>labshelf add &lt;input&gt;… [--to &lt;folder&gt;]</td><td>Add from a PDF, a folder, a link (including a PubMed link), a DOI, an arXiv id, <code>PMID: …</code> or a PMCID</td></tr>
     <tr><td>labshelf ls [folder] [-r] [--sort key[!]]</td><td>List a folder; <code>-r</code> lists the papers below it too, <code>!</code> reverses the sort (keys: title, year, author, status, modified)</td></tr>
     <tr><td>labshelf search &lt;query…&gt;</td><td>Search the library with the syntax of <a class="xref" href="#s3-3">§3.3</a></td></tr>
@@ -576,8 +514,6 @@ projects/&lt;project id&gt;/       <span class="c"># your LaTeX or Typst project
     <tr><td>labshelf mv &lt;id…&gt; &lt;folder&gt;</td><td>Move papers to another folder</td></tr>
     <tr><td>labshelf bib [id…] [-c folder] [-o file.bib]</td><td>Print BibTeX for papers or a folder; <code>-o</code> writes it to a file</td></tr>
     <tr><td>labshelf install [project-dir]</td><td>Add the papers a project lists</td></tr>
-    <tr><td>labshelf sync</td><td>Sync with Google Drive (<a class="xref" href="#s6">§6</a>)</td></tr>
-    <tr><td>labshelf auth login|logout|status</td><td>Connect to Drive, disconnect, or show the connection</td></tr>
   </tbody></table></div>
 
   <h3 id="s7-3"><span class="n">7.3</span>Read the output</h3>
@@ -592,8 +528,8 @@ exists vaswani2017attention  (1706.03762)</pre></div>
   <div class="fix"><b>If it goes wrong</b><code>(metadata unconfirmed)</code> means no source confirmed the title and authors. Check them in the detail pane or with <code>labshelf show</code>.</div>
 
   <h3 id="s7-4"><span class="n">7.4</span>Set environment variables</h3>
-  <p>Three environment variables change how the terminal app runs (Table 8).</p>
-  <div class="tbl"><p class="tcap"><b>Table 8.</b> Environment variables.</p><table><thead><tr><th>Variable</th><th>Does</th></tr></thead><tbody>
+  <p>Three environment variables change how the terminal app runs (Table 7).</p>
+  <div class="tbl"><p class="tcap"><b>Table 7.</b> Environment variables.</p><table><thead><tr><th>Variable</th><th>Does</th></tr></thead><tbody>
     <tr><td>LABSHELF_LIBRARY</td><td>Use this library folder (the <code>-L</code> flag wins over it)</td></tr>
     <tr><td>LABSHELF_PDF_VIEWER</td><td>Open PDFs with this program</td></tr>
     <tr><td>LABSHELF_IMAGES=iterm</td><td>Draw thumbnails with the iTerm2 image protocol</td></tr>
@@ -603,10 +539,9 @@ exists vaswani2017attention  (1706.03762)</pre></div>
 <div class="pbreak">page 5</div>
 
 <section id="s8"><h2><span class="n">8</span>Settings</h2>
-  <p>These are VS Code settings; User and Workspace scopes work as usual (Table 9). Writing limits are not settings: they live in each project's <code>labshelf.yaml</code> (<a class="xref" href="#s5-5">§5.5</a>).</p>
-  <div class="tbl"><p class="tcap"><b>Table 9.</b> Settings.</p><table><thead><tr><th>Setting</th><th>Default</th><th>Meaning</th></tr></thead><tbody>
-    <tr><td>labshelf.sync.autoSyncIntervalMinutes</td><td class="m">15</td><td>Minutes between syncs with Drive</td></tr>
-    <tr><td>labshelf.ai.enabled</td><td class="m">true</td><td>Index paper text so the Related tab can list similar papers</td></tr>
+  <p>These are VS Code settings; User and Workspace scopes work as usual (Table 8). Writing limits are not settings: they live in each project's <code>labshelf.yaml</code> (<a class="xref" href="#s5-5">§5.5</a>).</p>
+  <div class="tbl"><p class="tcap"><b>Table 8.</b> Settings.</p><table><thead><tr><th>Setting</th><th>Default</th><th>Meaning</th></tr></thead><tbody>
+        <tr><td>labshelf.ai.enabled</td><td class="m">true</td><td>Index paper text so the Related tab can list similar papers</td></tr>
     <tr><td>labshelf.ocr.enabled</td><td class="m">true</td><td>Read a PDF optically when its text layer is missing or unreadable</td></tr>
     <tr><td>labshelf.ocr.makeSearchable</td><td class="m">true</td><td>Make scanned PDFs searchable</td></tr>
     <tr><td>labshelf.ocr.maxPages</td><td class="m">150</td><td>Scans with more pages than this get no automatic text layer</td></tr>
@@ -624,8 +559,8 @@ exists vaswani2017attention  (1706.03762)</pre></div>
 </section>
 
 <section id="s9"><h2><span class="n">9</span>Privacy</h2>
-  <p>LabShelf has no account and no server of its own. Your library stays on your disk and, if you connect it, in your Google Drive. Table 10 lists every host the apps contact.</p>
-  <div class="tbl"><p class="tcap"><b>Table 10.</b> Network hosts.</p><table><thead><tr><th>Host</th><th>When</th></tr></thead><tbody>
+  <p>LabShelf has no account and no server of its own. Your library stays on your disk, and any sync tool you use on it is your own. Table 9 lists every host the apps contact.</p>
+  <div class="tbl"><p class="tcap"><b>Table 9.</b> Network hosts.</p><table><thead><tr><th>Host</th><th>When</th></tr></thead><tbody>
     <tr><td>api.crossref.org</td><td>Looking up a paper's metadata</td></tr>
     <tr><td>export.arxiv.org</td><td>Looking up an arXiv paper</td></tr>
     <tr><td>api.openalex.org</td><td>Looking up metadata and the citations behind the Citation Map</td></tr>
@@ -635,7 +570,6 @@ exists vaswani2017attention  (1706.03762)</pre></div>
     <tr><td>doi.org, api.unpaywall.org, arxiv.org and the publisher and repository sites they point to</td><td>Finding a PDF</td></tr>
     <tr><td>packages.typst.org, cdn.jsdelivr.net, raw.githubusercontent.com, github.com</td><td>Browsing templates and downloading the Typst and Tectonic tools</td></tr>
     <tr><td>api.github.com</td><td>Submitting a template, only when you publish one</td></tr>
-    <tr><td>Google (accounts.google.com, oauth2.googleapis.com, www.googleapis.com)</td><td>Syncing with Drive, only after you connect it</td></tr>
   </tbody></table></div>
   <p>A lookup by identifier sends only the identifier. Searching or matching by title sends the title. Finding a PDF for a paper without a DOI or arXiv id sends its title, and the first author's surname to export.arxiv.org. Registry lookups also send a contact address, <code>contact@labshelf.dev</code>.</p>
 </section>

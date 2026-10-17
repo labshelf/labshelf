@@ -2,42 +2,41 @@
 
 Read when you change a file the library stores on disk or the shared configuration.
 
-A LabShelf library is a folder that the user owns. Every app reads and writes this format, and the sync engine moves it between devices. Changing a file name, a key or a serialization rule here changes the contract for every app and for libraries already on disk.
+A LabShelf library is a folder that the user owns. Every app reads and writes this format, and the user's sync tool moves it between devices. Changing a file name, a key or a serialization rule here changes the contract for every app and for libraries already on disk.
 
 ## Layout
 
 ```
 <library root>/
-  papers/                          visible, user-organised, synced (namespace "library")
+  papers/                          visible, user-organised
     <folder>/<folder>/…            the user's folders, any depth
       <paper id>/                  one folder per paper; the folder name is the paper id
         paper.pdf                  optional
         metadata.yaml              required: a folder holding it is a paper
         bib.bib                    BibTeX entry generated from metadata.yaml
-        <any other file or folder> the user's attachments; kept, moved and synced with the paper
-  projects/                        writing projects created by LabShelf (synced, namespace "projects")
+        <any other file or folder> the user's attachments; kept and moved with the paper
+  projects/                        writing projects created by LabShelf
     <project id>/                  one folder per project; the folder name is the project id
       labshelf.yaml                required: a folder holding it is a project
-  templates/                       My templates, see templates.md (not synced)
+  templates/                       My templates, see templates.md
     <template id>/                 one folder per template; the folder name is the template id
       template.yaml                required: a folder holding it is a template
   .research/                       hidden, owned by the apps
-    papers/<paper id>/data.json    the sidecar (synced, namespace "appdata")
-    projects.json                  project folders registered outside the library (never synced; the folders themselves sync in namespace "projects")
-    openalex/                      OpenAlex citation data for the citation map (never synced)
-    staging/                       a project install (<project id>/) or a template save (template-*/) in progress, renamed into projects/ or templates/ when complete (never synced)
-    templates/                     Community and Typst Universe indexes and thumbnails, see templates.md (never synced)
-    index.sqlite                   VS Code's text index for the Related tab: chunk embeddings and the content hash of each indexed PDF (never synced)
+    papers/<paper id>/data.json    the sidecar
+    projects.json                  project folders registered outside the library
+    openalex/                      OpenAlex citation data for the citation map
+    staging/                       a project install (<project id>/) or a template save (template-*/) in progress, renamed into projects/ or templates/ when complete
+    templates/                     Community and Typst Universe indexes and thumbnails, see templates.md
+    index.sqlite                   VS Code's text index for the Related tab: chunk embeddings and the content hash of each indexed PDF
     logs/app.log                   VS Code log (JSON lines)
     logs/terminal.log              terminal log (JSON lines)
-    sync/google-drive.*            sync coordination (see sync.md, never synced)
 ```
 
 Each log file is append-only. Past 2 MiB it moves to `<name>.log.1` (one rotated file is kept, overwritten on the next rotation).
 
 A paper folder may hold any other files and subfolders. Apps never delete or rewrite them, and moving or removing the paper takes them along. The apps list a paper's direct entries in its file tray and hide `metadata.yaml`, `bib.bib` and names starting with "." there.
 
-The browser stores the same tree in IndexedDB under the same relative paths. `papers/…` maps to the `library` namespace, and `appdata/<paper id>/data.json` maps to `.research/papers/<paper id>/data.json`.
+The browser stores the same tree in IndexedDB under the same relative paths. `appdata/<paper id>/data.json` maps to `.research/papers/<paper id>/data.json`.
 
 IndexedDB holds only files, so an empty folder is a zero-byte `.keep` file inside it.
 
@@ -79,7 +78,7 @@ Rules:
 
 - Unknown keys are preserved on rewrite.
 - `hasPdf` is never written. Each app derives it from the presence of `paper.pdf`.
-- An app writes only the keys it owns in that action. A metadata refresh does not touch `status`, `tags` or `note` (see [sync.md](sync.md#coordination-between-local-apps)).
+- An app writes only the keys it owns in that action. A metadata refresh does not touch `status`, `tags` or `note`.
 - `pdfVersion` belongs to the action that writes `paper.pdf`: attaching or replacing the PDF sets it, or removes it when the new file's version is unknown. Any other rewrite keeps it.
 - `pdfRequestedAt` belongs to the action that opens the request email. Any other rewrite keeps it, and the address the request went to is never stored.
 - `files` belongs to the Describe action, which sets or removes one name and removes the key when no name is left. Any other rewrite keeps it, renaming or deleting a file does not touch it, and the next Describe on the paper drops names missing on disk.
@@ -115,7 +114,6 @@ papers:
     doi: 10.1000/xyz123
     cited: true
   - key: doe2019
-ignore: [data/raw/**, "*.log"]
 ```
 
 | Key | Type | Notes |
@@ -128,8 +126,8 @@ ignore: [data/raw/**, "*.log"]
 | `typst` | string | Typst compiler version of the last successful Typst build, written after each one; a YAML number reads as its text |
 | `folder` | string | the sidebar folder the project sits in, segments joined by `/`; absent at the top level |
 | `archived` | boolean | `true` hides the project from My projects and lists it in the All projects tab; `false` reads as absent |
-| `title` | string | the name shown for the project; the shown name is `title`, or `id` when `title` is absent or blank. Renaming writes `title` and never changes `id` or the folder, because `id` is the Drive identity of the project ([sync.md](sync.md#projects)) |
-| `trashed` | string | ISO 8601 time since which the project is in the trash; restoring removes the key. Trash and restore leave `archived` as it is, so a restored project returns to where it was. A trashed project still syncs: the key syncs like any other |
+| `title` | string | the name shown for the project; the shown name is `title`, or `id` when `title` is absent or blank. Renaming writes `title` and never changes `id` or the folder, because `id` is the identity of the project |
+| `trashed` | string | ISO 8601 time since which the project is in the trash; restoring removes the key. Trash and restore leave `archived` as it is, so a restored project returns to where it was. |
 | `figures` | mapping | figure path → `{run, inputs}`; `run` is the shell command that makes the figure, run in the project folder; `inputs` lists paths or globs (`*`, `**`, `?`). A figure is stale when it is missing or an input is newer than it |
 | `values` | string[] | JSON files whose leaves the sources read: `\lsvalue{<file>.<path>}` in LaTeX, `json("…")` in Typst. `<file>` is the file name without `.json`, and of two files with the same name only the first is read; array items are numbered from 0 |
 | `check` | mapping | what the pre-submission check holds the built PDF to: `pages` is the most pages allowed, counted as `countUpTo` says; `authors` lists names an anonymous submission must not show, besides the git user's and the PDF's Author field; the anonymity rules run unless `anonymous` is `false`, as for a camera-ready |
@@ -137,16 +135,15 @@ ignore: [data/raw/**, "*.log"]
 | `check.countUpTo` | `references` \| `end` | where `pages` and `words` stop counting: `references` (the default when absent) stops at the references heading, and every page counts when the PDF has none; `end` counts the whole document |
 | `target` | mapping | where the project is headed: `venue` is the venue it is written for (text) and `deadline` its submission deadline, a calendar date as `YYYY-MM-DD` without a time; All projects shows the days left. An impossible date such as `2027-02-30` is malformed, and a `target` with neither key reads as absent |
 | `papers` | `{key, doi?, cited?}`[] | the papers the project depends on; `key` is the cite key. LabShelf lists every key the sources cite that matches a library paper with `cited: true` and takes the DOI from the library paper with that cite key; an entry without `cited` is one the user added (Add to Reading List). A cited key with no library paper, such as a Typst label or a key from the user's own `.bib`, is not added, and an entry already listed for it stays while it is cited. Sync adds new cited entries in key order after the existing ones, fills a missing DOI from the library, never changes or removes a DOI already listed, and removes a `cited: true` entry once the sources stop citing the key; entries without `cited` are never removed, and Add to Reading List on a `cited: true` entry drops the flag. `labshelf install` imports the listed papers it cannot find in the library under their listed `key`. A rewrite of the list keeps only `key`, `doi` and `cited`; `cited: false` reads as absent |
-| `ignore` | string[] | paths that project sync leaves on the device, as patterns relative to the project folder with `*`, `**` and `?` like `figures` inputs; a pattern that matches a folder covers everything under it ([sync.md](sync.md#projects)) |
 
-LabShelf writes `check.pages`, `check.words` and `check.countUpTo` from the preview, removes a limit the user clears and drops `check` when that leaves it empty. It writes `target.venue` and `target.deadline` from the All projects detail pane, removes a key the user clears and drops `target` when that leaves it empty. It never writes `figures`, `values`, `ignore` or the other `check` keys. A malformed `folder`, `archived`, `title`, `trashed`, `figures`, `values`, `check`, `target`, `papers` or `ignore` makes the file fail to parse, with the key in the reason. A `run` command executes only after the user confirms it on that machine; the confirmation covers that project and that exact command.
+LabShelf writes `check.pages`, `check.words` and `check.countUpTo` from the preview, removes a limit the user clears and drops `check` when that leaves it empty. It writes `target.venue` and `target.deadline` from the All projects detail pane, removes a key the user clears and drops `target` when that leaves it empty. It never writes `figures`, `values` or the other `check` keys. A malformed `folder`, `archived`, `title`, `trashed`, `figures`, `values`, `check`, `target` or `papers` makes the file fail to parse, with the key in the reason. A `run` command executes only after the user confirms it on that machine; the confirmation covers that project and that exact command.
 
 Rules:
 
 - A new id is the title folded to lowercase ASCII, with every run of other characters turned into one hyphen; `project` when nothing is left. A registered folder takes its folder name as the title. Collisions take the paper suffixes (`a` to `z`, then `aa`, …).
 - Rewrites change only the keys being set and keep the user's comments, key order and unknown keys.
 - A `labshelf.yaml` that does not parse is never rewritten.
-- Deleting a project forever removes its folder from the device when it is under `projects/`, and only unregisters it when it is a registered folder, leaving its files. The Drive copy stays: a project missing locally never deletes anything on Drive ([sync.md](sync.md#projects)).
+- Deleting a project forever removes its folder from the device when it is under `projects/`, and only unregisters it when it is a registered folder, leaving its files.
 - Registering a folder writes `labshelf.yaml` when the folder has none and touches nothing else in it. A folder inside the library cannot be registered.
 
 ## labshelf.bib
@@ -171,7 +168,7 @@ LabShelf owns this file in a LaTeX project with `values:`. It is written next to
 
 ## .research/projects.json
 
-The device's list of project folders outside the library. Absolute paths differ per machine, so it is never synced.
+The device's list of project folders outside the library. Absolute paths differ per machine.
 
 ```json
 {
@@ -182,11 +179,11 @@ The device's list of project folders outside the library. Absolute paths differ 
 - Paths are absolute, kept in the order they were added, each at most once.
 - Unknown keys are preserved on rewrite. A file that is not a JSON object is never overwritten: projects outside the library stay hidden until the user fixes or deletes it.
 - Removing a project from LabShelf removes its entry and never deletes the folder.
-- A project may contain `.labshelf/state.json`, a per-device file that never syncs ([sync](sync.md#projects)); LabShelf does not read it.
+- A project may contain `.labshelf/state.json`, a per-device file; LabShelf does not read it.
 
 ## .research/openalex/
 
-The citation map's cache of OpenAlex works. It can be rebuilt from OpenAlex at any time, so it is never synced; the browser keeps it under the same relative path in IndexedDB.
+The citation map's cache of OpenAlex works. It can be rebuilt from OpenAlex at any time, so it is not part of the library's shared state; the browser keeps it under the same relative path in IndexedDB.
 
 - `papers/<paper id>.json` holds the work a library paper's DOI resolved to; `works/<work id>.json` holds a work that library papers cite.
 - Each file is `{ "fetchedAt": "<ISO timestamp>", "doi": "<DOI looked up>", "work": { "workId": "W…", "doi", "title", "authors": [], "year", "citedByCount", "references": ["W…"] } }`. `doi` at the top is present only under `papers/`, and `references` is empty under `works/`.
@@ -195,7 +192,7 @@ The citation map's cache of OpenAlex works. It can be rebuilt from OpenAlex at a
 
 ## .labshelf/checklist.json
 
-A project's Checklist keeps the items its users add by hand in `<project>/.labshelf/checklist.json`. Coauthors share them, so the file syncs with the project.
+A project's Checklist keeps the items its users add by hand in `<project>/.labshelf/checklist.json`. Coauthors share them, so the file lives in the project.
 
 ```json
 {
@@ -212,11 +209,11 @@ A project's Checklist keeps the items its users add by hand in `<project>/.labsh
 - A missing file reads as no items.
 - An item with a missing or invalid key is not shown and is kept unchanged on rewrite. Unknown keys, at the top level and in items, are preserved on rewrite.
 - A file that is not a JSON object with an `items` array is reported and never overwritten.
-- Two devices that edit the file offline produce a conflict copy, as for any project file ([sync.md](sync.md#three-way-diff)); no item is lost.
+- Two devices that edit the file offline produce a conflict copy; no item is lost.
 
 ## .labshelf/versions/
 
-A version is a named snapshot of a project: its sources and its built PDF at the moment the user marked it (for example "submitted", "rebuttal" or "camera-ready"). Versions live inside the project folder and are synced with it.
+A version is a named snapshot of a project: its sources and its built PDF at the moment the user marked it (for example "submitted", "rebuttal" or "camera-ready"). Versions live inside the project folder and travel with it.
 
 ```
 <project>/.labshelf/versions/<slug>/version.json
@@ -250,7 +247,7 @@ The sidecar holds per-paper state from the reader: annotations, the reader theme
 }
 ```
 
-- Every app writes the exact same bytes: this key order, two-space indent, and `reading` omitted until the paper is first opened. Two apps writing different bytes for the same state would cause sync conflicts.
+- Every app writes the exact same bytes: this key order, two-space indent, and `reading` omitted until the paper is first opened. Two apps writing different bytes for the same state would cause conflicts in the user's sync tool.
 - `theme` is one of `auto`, `light`, `dark`, `sepia`, `high-contrast`.
 - An annotation `color` is one of `yellow`, `green`, `blue`, `red`, `pink`.
 - `position` is normalised to the page: every value is in 0..1, width and height are positive, and the box stays inside the page.

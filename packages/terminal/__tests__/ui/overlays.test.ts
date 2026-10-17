@@ -276,11 +276,11 @@ describe("drawOverlay prompt", () => {
 
 describe("drawOverlay confirm", () => {
   it("shows the title, the lines and the key hints", () => {
-    const screen = draw(confirm({ lines: ['Move "Attention Is All You Need" to the trash?', "The next sync removes it from Drive."] }));
+    const screen = draw(confirm({ lines: ['Move "Attention Is All You Need" to the trash?', "VS Code stops listing it too."] }));
     const text = screen.toText();
     expect(text).toContain("Move to trash");
     expect(text).toContain('Move "Attention Is All You Need" to the trash?');
-    expect(text).toContain("The next sync removes it from Drive.");
+    expect(text).toContain("VS Code stops listing it too.");
     expect(text).toContain("y confirm   n / Esc cancel");
   });
 

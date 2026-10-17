@@ -28,7 +28,7 @@ export function promptRename(app: App): void {
   const folder = app.listModel.hoveredFolderRel();
   if (folder === undefined || folder === "") {
     app.taskStatus.notify(app.focus === "papers"
-      ? "Paper titles stay as resolved (Drive folders are named after them); r renames folders"
+      ? "Paper titles stay as resolved (folders are named after them); r renames folders"
       : "Hover a folder to rename it", "warn");
     return;
   }

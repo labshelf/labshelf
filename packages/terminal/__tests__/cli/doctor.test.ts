@@ -1,6 +1,4 @@
-// Tests for runDoctor's library/config/sync-lock checks.
-import { promises as fs } from "node:fs";
-
+// Tests for runDoctor's library and config checks.
 import { runDoctor, type Output } from "../../src/cli";
 import { createTempLibrary, makeTempDir, type PaperFixture } from "../fixtures/library";
 import { CliSessionHarness, PAPERS } from "../fixtures/cliSession";
@@ -28,9 +26,6 @@ describe("runDoctor", () => {
     expect(await runDoctor(lib.root, "flag", { version: 1, libraryRoot: lib.root }, io)).toBe(0);
     expect(text()).toMatch(/^ok {2}\s+node\s+v\d+/m);
     expect(text()).toMatch(new RegExp(`^ok {2}\\s+library\\s+${lib.root.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")} \\(from flag\\)$`, "m"));
-    expect(text()).toContain("configured (test-client-");
-    expect(text()).toMatch(/^warn\s+drive sign-in\s+signed out/m);
-    expect(text()).toMatch(/^warn\s+last sync\s+never/m);
   });
 
   it("fails when no library is configured", async () => {
@@ -45,28 +40,5 @@ describe("runDoctor", () => {
     const { io, text } = capture();
     expect(await runDoctor(empty, "env", { version: 1 }, io)).toBe(1);
     expect(text()).toMatch(/^FAIL\s+library/m);
-  });
-
-  it("reads a malformed last-run record as never synced instead of crashing", async () => {
-    const lib = await createTempLibrary();
-    await fs.writeFile(lib.paths.layout.lastRunPath(), "{ not json");
-    const { io, text } = capture();
-    expect(await runDoctor(lib.root, "config", { version: 1 }, io)).toBe(0);
-    expect(text()).toMatch(/^warn\s+last sync\s+never/m);
-
-    await fs.writeFile(lib.paths.layout.lastRunPath(), JSON.stringify({ app: "vscode", finishedAt: 42 }));
-    const second = capture();
-    await runDoctor(lib.root, "config", { version: 1 }, second.io);
-    expect(second.text()).toMatch(/^warn\s+last sync\s+never/m);
-  });
-
-  it("warns about a held sync lock and shows the last sync", async () => {
-    const lib = await createTempLibrary();
-    await fs.writeFile(lib.paths.layout.lockPath(), JSON.stringify({ app: "vscode", pid: 1 }));
-    await fs.writeFile(lib.paths.layout.lastRunPath(), JSON.stringify({ app: "vscode", finishedAt: new Date().toISOString() }));
-    const { io, text } = capture();
-    expect(await runDoctor(lib.root, "config", { version: 1 }, io)).toBe(0);
-    expect(text()).toMatch(/^warn\s+sync lock\s+held: .*"app":"vscode"/m);
-    expect(text()).toMatch(/^ok {2}\s+last sync\s+just now by vscode/m);
   });
 });

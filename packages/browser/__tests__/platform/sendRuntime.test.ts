@@ -8,13 +8,13 @@ describe("sendRuntime", () => {
   beforeEach(() => sendMessage.mockReset());
 
   it("sends the message and returns the data of an ok reply", async () => {
-    sendMessage.mockResolvedValue({ ok: true, data: { connected: true } });
-    expect(await sendRuntime({ type: "auth.status" })).toEqual({ connected: true });
-    expect(sendMessage).toHaveBeenCalledWith({ type: "auth.status" });
+    sendMessage.mockResolvedValue({ ok: true, data: { folders: [] } });
+    expect(await sendRuntime({ type: "library.folders" })).toEqual({ folders: [] });
+    expect(sendMessage).toHaveBeenCalledWith({ type: "library.folders" });
   });
 
   it("throws the error text of a refused reply", async () => {
     sendMessage.mockResolvedValue({ ok: false, error: "Not allowed from this page" });
-    await expect(sendRuntime({ type: "sync.now" })).rejects.toThrow("Not allowed from this page");
+    await expect(sendRuntime({ type: "library.folders" })).rejects.toThrow("Not allowed from this page");
   });
 });

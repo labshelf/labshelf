@@ -30,7 +30,7 @@ describe("reader page shell", () => {
 });
 
 describe("idbSidecarPort", () => {
-  it("keeps the sidecar at the appdata path VS Code syncs to .research/papers/<id>/data.json", async () => {
+  it("keeps the sidecar at the appdata path VS Code maps to .research/papers/<id>/data.json", async () => {
     expect(sidecarPath("abc")).toBe("appdata/abc/data.json");
     const files = new Map<string, Uint8Array>();
     const port = createIdbSidecarPort({

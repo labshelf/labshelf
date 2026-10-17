@@ -1,5 +1,5 @@
 /**
- * Declares the IndexedDB stores of the labshelf browser extension. Schema: files (raw bytes), metadata (PaperRecord cache), manifest (sync state).
+ * Declares the IndexedDB stores of the labshelf browser extension. Schema: files (raw bytes), metadata (PaperRecord cache).
  */
 import type { PaperRecord } from "@labshelf/core";
 
@@ -9,7 +9,7 @@ export interface FileRow {
   bytes: Uint8Array;
   /** Epoch milliseconds of the last write. */
   mtime: number;
-  /** SHA-256 hex digest — used by treeScan without re-reading bytes. */
+  /** SHA-256 hex digest — lets a scan compare files without re-reading bytes. */
   hash: string;
 }
 
@@ -22,12 +22,6 @@ interface MetadataRow {
   folderPath: string;
 }
 
-/** Serialised ManifestData for the Drive sync provider. */
-interface ManifestRow {
-  providerId: string;
-  json: string;
-}
-
 export interface LabShelfSchema {
   files: {
     key: string;
@@ -36,9 +30,5 @@ export interface LabShelfSchema {
   metadata: {
     key: string;
     value: MetadataRow;
-  };
-  manifest: {
-    key: string;
-    value: ManifestRow;
   };
 }

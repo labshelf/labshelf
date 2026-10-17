@@ -5,4 +5,3 @@ export { settingRow, setRowDisabled, type SettingRowOptions } from "./settingRow
 export { checkboxField, numberField, textField, selectField, type Field, type FieldWidth } from "./fields.js";
 export { statusLine, type StatusLine, type StatusTone } from "./statusLine.js";
 export { actionButton, type ActionButtonOptions } from "./actionButton.js";
-export { driveSection, type DriveActions, type DriveSection } from "./driveSection.js";

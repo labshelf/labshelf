@@ -12,7 +12,7 @@ const isBinary = (content: Buffer): boolean => content.subarray(0, 8192).include
 export class NodeHistoryStore implements ProjectHistoryStore {
   constructor(private readonly storageDir: string, private readonly logger: ILogger) {}
 
-  // History is per device: it lives outside the project folder, so sync never uploads or merges it.
+  // History is per device: it lives outside the project folder, so the user's sync tool never copies it between devices.
   target(project: ReadyProject): HistoryTarget {
     return { folder: project.folder, historyDir: path.join(this.storageDir, "history", encodeURIComponent(project.settings.id)) };
   }

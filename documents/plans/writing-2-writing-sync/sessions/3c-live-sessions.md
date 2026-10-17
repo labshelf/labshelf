@@ -1,11 +1,11 @@
 # Session 3c — coauthor notice and live sessions
 
 - **Goal:** a user editing a project is told when a coauthor edits it too, and can start or join a live session in one step.
-- **Starts from:** session 2 committed; `SyncResult.coauthors?` exists (session 3a fills it).
-- **Ends with:** A5 "With B editing, A sees the coauthor notice within one sync; "Start live session" opens an OCT room." The end-to-end run on two accounts needs 3a committed.
+- **Starts from:** session 2 and plan `folder-sync` committed; projects are plain folders synced by the user's own tool.
+- **Ends with:** A5 "With B editing in the shared folder, A sees the coauthor notice once the sync tool delivers B's change; "Start live session" opens an OCT room." The end-to-end run needs two machines sharing one project folder through a sync tool.
 - **Owns:** `packages/vscode/src/writing/collaboration/`, `packages/vscode/__tests__/writing/collaboration/`, `packages/vscode/src/extension.ts` (one registration call), the `labshelf.liveSession.*` entries in `packages/vscode/package.json`
 
-Runs alone: it changes `packages/vscode/package.json`. It reads `SyncResult.coauthors` only through the seam and never edits `packages/core/`.
+Runs alone: it changes `packages/vscode/package.json`. It never edits `packages/core/`.
 
 | Id | Package | Level | Runner | Done when | OK |
 |---|---|---|---|---|---|
@@ -15,15 +15,15 @@ Runs alone: it changes `packages/vscode/package.json`. It reads `SyncResult.coau
 
 ## 3c.1 — Coauthor notice
 
-- **Goal:** when a run reports a coauthor on an open project, show "<name> is editing this project. Start a live session?".
-- **Read only:** `packages/vscode/src/sync/adapter/syncController.ts` 55–65 and 155–165 (`onDidSync`); `packages/vscode/src/extension.ts` 50–115; `packages/vscode/src/writing/session/projectStore.ts`; `packages/core/src/sync/engine/syncTypes.ts` (the `CoauthorActivity` seam).
+- **Goal:** when a file of an open project changes on disk without a save in this VS Code, show "Someone else is editing this project. Start a live session?".
+- **Read only:** `packages/vscode/src/extension.ts` 50–115; `packages/vscode/src/writing/session/projectStore.ts`.
 - **Decided:**
-  - Input: `SyncResult.coauthors?: CoauthorActivity[]` with `CoauthorActivity = {projectId: string; name: string; email?: string; modifiedTime: string}`. Core already applies the 10-minute window and excludes the signed-in user.
-  - A `registerCoauthorNotice` in `packages/vscode/src/writing/collaboration/`, called once from `extension.ts` with the sync controller's `onDidSync` and the Writing projects.
-  - The notice adds only two rules: once per coauthor per project per hour, and only for open projects. Each shown notice writes a log line through `ILogger` with the project and coauthor.
-  - The ~30 s sync delay is accepted. The "Start live session" action runs `labshelf.liveSession.start` (3c.2).
-- **Done when:** tests first, with fake runs: shown for an open project, not for a closed one, once per coauthor per hour, logged when shown. Vscode typecheck and collaboration tests pass.
-- **Do not touch:** `packages/core`, `packages/vscode/src/sync/`, `registerWritingView.ts`.
+  - Input: a `vscode.workspace` file watcher on each open project's folder, minus changes that follow a save in this VS Code (`onDidSaveTextDocument`) and LabShelf's own writes (build output, `.labshelf/`). The sync tool names no author, so the notice names none.
+  - A `registerCoauthorNotice` in `packages/vscode/src/writing/collaboration/`, called once from `extension.ts` with the Writing projects.
+  - Rules: an outside change counts within 10 minutes of the last one; once per project per hour; only for open projects. Each shown notice writes a log line through `ILogger` with the project and the changed path.
+  - The sync tool's delay is accepted, and the author's own second device may also trigger the notice. The "Start live session" action runs `labshelf.liveSession.start` (3c.2).
+- **Done when:** tests first, with fake watcher and save events: shown for an outside change in an open project, not for an own save, not for a closed project, once per project per hour, logged when shown. Vscode typecheck and collaboration tests pass.
+- **Do not touch:** `packages/core`, `registerWritingView.ts`.
 
 ## 3c.2 — OCT bridge
 

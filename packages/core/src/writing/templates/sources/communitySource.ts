@@ -2,7 +2,7 @@
 // CONTRACT: documents/contracts/templates.md#index
 
 import type { ILogger } from "../../../ports/index.js";
-import { sha256Hex } from "../../../sync/util/index.js";
+import { sha256Hex } from "../../../hash/index.js";
 import { parseCatalogIndex, type CatalogEntry } from "../manifest/index.js";
 import type { TemplateEntry } from "../templateEntry.js";
 import { fetchCachedIndex } from "./fetchCachedIndex.js";

@@ -161,21 +161,6 @@
         "category": "LabShelf"
       },
       {
-        "command": "labshelf.sync.connect",
-        "title": "Sync: Connect to Google Drive",
-        "category": "LabShelf"
-      },
-      {
-        "command": "labshelf.sync.now",
-        "title": "Sync: Sync Now",
-        "category": "LabShelf"
-      },
-      {
-        "command": "labshelf.sync.disconnect",
-        "title": "Sync: Disconnect from Google Drive",
-        "category": "LabShelf"
-      },
-      {
         "command": "labshelf.configureLibrary",
         "title": "Configure Library",
         "category": "LabShelf"
@@ -812,12 +797,6 @@
     "configuration": {
       "title": "LabShelf",
       "properties": {
-        "labshelf.sync.autoSyncIntervalMinutes": {
-          "type": "number",
-          "default": 15,
-          "minimum": 1,
-          "description": "Interval between automatic Google Drive syncs, in minutes."
-        },
         "labshelf.ai.enabled": {
           "type": "boolean",
           "default": true,

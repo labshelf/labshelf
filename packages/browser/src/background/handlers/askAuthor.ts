@@ -12,7 +12,6 @@ const MAX_RECIPIENTS = 3;
 export interface AskAuthorDeps {
   log: ILogger;
   mutations: LibraryMutations;
-  scheduleSync: (reason: string) => void;
 }
 
 export interface AskAuthorSource {
@@ -50,7 +49,6 @@ export async function askAuthor(deps: AskAuthorDeps, paper: PaperRecord, source:
   // INVARIANT: the day is the user's local calendar day, as the detail pane shows it; "en-CA" formats it as YYYY-MM-DD.
   const day = new Date().toLocaleDateString("en-CA");
   await deps.mutations.setPdfRequestedAt(paper, day);
-  deps.scheduleSync(MODULE);
   broadcastChanged(MODULE, paper.id);
   void deps.log.log("INFO", MODULE, "request email opened", { paperId: paper.id, recipients: Math.min(contacts.length, MAX_RECIPIENTS), lang: settings.requestLanguage });
   return { id: paper.id, opened: "mail" };

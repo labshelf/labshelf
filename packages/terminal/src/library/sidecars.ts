@@ -7,7 +7,7 @@ import { createNodeSidecarPort } from "@labshelf/core/node";
 
 import { LibraryRoot } from "./libraryRoot.js";
 
-/** Cached sidecar reads, invalidated by mtime so edits from VS Code or a sync show up. */
+/** Cached sidecar reads, invalidated by mtime so edits from VS Code show up. */
 export class SidecarReader {
   private readonly store: PaperDataStore;
   private readonly cache = new Map<string, { mtimeMs: number; data: PaperData }>();

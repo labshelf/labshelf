@@ -15,7 +15,6 @@ body.modal-open { min-height: 250px; }
 .pp-head-actions { display: flex; gap: 2px; }
 .pp-head .ls-icon-btn { width: 26px; height: 26px; }
 .pp-head .ls-icon-btn[data-tone="error"] { color: var(--ls-error); opacity: 1; }
-.pp-head .ls-icon-btn.spinning svg { animation: ls-spin 1.2s linear infinite; }
 .spin { display: inline-flex; animation: ls-spin 1.2s linear infinite; }
 .spin svg { width: 14px; height: 14px; }
 @keyframes ls-spin { to { transform: rotate(360deg); } }

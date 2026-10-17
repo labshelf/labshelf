@@ -13,14 +13,12 @@ describe("importAny with local files", () => {
 
     expect(outcomes.map((o) => o.status)).toEqual(["added"]);
     expect(h.store.paper("vaswani2017attention")).toMatchObject({ collection: "ML" });
-    expect(h.onLocalChange).toHaveBeenCalledTimes(1);
   });
 
-  it("does not announce a change when nothing was added", async () => {
+  it("reports duplicates and failures without adding", async () => {
     const h = await harness([{ id: "have", meta: { doi: ATTENTION.doi } }]);
     const outcomes = await h.service.importAny([await h.writePdf(), path.join(h.inbox, "nope.txt")], "");
     expect(outcomes.map((o) => o.status)).toEqual(["duplicate", "failed"]);
-    expect(h.onLocalChange).not.toHaveBeenCalled();
   });
 
   it("imports every PDF in a folder, in path order, and reports progress per file", async () => {
@@ -88,6 +86,5 @@ describe("importAny with local files", () => {
     ]);
     expect(progress).toEqual([[1, 2, path.join(h.inbox, "attention.pdf")], [2, 2, "10.1038/nature12373"]]);
     expect(h.store.paper("kucsko2013nanometre")).toBeDefined();
-    expect(h.onLocalChange).toHaveBeenCalledTimes(1);
   });
 });

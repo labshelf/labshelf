@@ -7,7 +7,6 @@ import { sendRuntime, type AskAuthorData, type AttachPdfData } from "../../../pl
 import { openReader } from "../../../reader/access";
 import { IndexedDbFileSystem } from "../../../storage";
 import type { HostContext } from "../hostContext";
-import { scheduleSyncSoon } from "../runtimeRequests";
 
 /** Local PDFs above this size are refused, matching the fetch layer's cap. */
 const MAX_PDF_BYTES = 120 * 1024 * 1024;
@@ -35,11 +34,10 @@ async function ingestLocalPdf(ctx: HostContext, id: string, file: File): Promise
   const bytes = new Uint8Array(await file.arrayBuffer());
   if (!isPdfBytes(bytes)) { ctx.notice("error", "That file does not look like a PDF."); return; }
   // attachPdfToPaper re-reads the record's current path, so a move during the pick cannot orphan the file, and it
-  // refuses to overwrite a PDF that arrived by sync meanwhile.
+  // refuses to overwrite a PDF that arrived meanwhile.
   const { written } = await attachPdfToPaper(ctx.mutations, id, bytes);
   await ctx.snapshots.refresh();
   if (!written) { ctx.notice("info", "This paper already has a PDF."); return; }
-  scheduleSyncSoon(ctx.log, "paper.attach");
   ctx.notice("ok", "PDF attached");
 }
 

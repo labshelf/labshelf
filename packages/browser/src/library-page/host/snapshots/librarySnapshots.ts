@@ -1,6 +1,6 @@
 /**
  * Keeps the library UI's snapshot current from IndexedDB, reading again when the page becomes visible or the
- * background reports a change made elsewhere (popup or Scholar capture, attach, sync, reader annotation).
+ * background reports a change made elsewhere (popup or Scholar capture, attach, reader annotation).
  */
 import { PAPERS_DIR, errorMessage, type HostEndpoint, type ILogger, type LibraryUiSnapshot, type PaperRecord, type PaperStats } from "@labshelf/core";
 import { bx, type LibraryChangedBroadcast } from "../../../platform";

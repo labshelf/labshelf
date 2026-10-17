@@ -47,23 +47,3 @@ describe("labshelf.yaml user keys", () => {
     expect(cameraReady.ok && cameraReady.settings.check).toEqual({ pages: undefined, authors: undefined, anonymous: false });
   });
 });
-
-describe("ignore", () => {
-  it("reads the sync ignore patterns", () => {
-    const result = parseProjectFile(`${base}ignore: [data/raw/**, "*.log"]\n`);
-    expect(result.ok && result.settings.ignore).toEqual(["data/raw/**", "*.log"]);
-  });
-
-  it.each([
-    ["ignore: data\n"],
-    ["ignore: [1, 2]\n"],
-    ["ignore:\n  - ok\n  - \"\"\n"],
-  ])("rejects %j naming the key", (extra) => {
-    expect(parseProjectFile(`${base}${extra}`)).toEqual({ ok: false, reason: "ignore must be a list of path patterns" });
-  });
-
-  it("keeps the list through a settings rewrite", () => {
-    const text = `${base}ignore:\n  - data/raw/** # large\n`;
-    expect(updateProjectFile(text, { main: "main.tex" })).toBe(`${text}main: main.tex\n`);
-  });
-});

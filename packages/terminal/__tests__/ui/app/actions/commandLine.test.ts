@@ -38,7 +38,7 @@ describe("App command line (:)", () => {
     expect(app.overlay?.kind).toBe("prompt");
     const text = app.frame().screen.toText();
     expect(text).toContain("Command");
-    expect(text).toContain("sync · login · logout");
+    expect(text).toContain("reload · export");
     press(app, "esc");
     expect(app.overlay).toBeUndefined();
   });

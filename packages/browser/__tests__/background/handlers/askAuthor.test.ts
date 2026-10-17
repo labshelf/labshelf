@@ -17,8 +17,7 @@ import { askAuthor, handleAskAuthor } from "../../../src/background/handlers/ask
 
 const log: ILogger = { log: async () => undefined, error: async () => undefined };
 const setPdfRequestedAt = jest.fn(async () => undefined);
-const scheduleSync = jest.fn();
-const deps = { log, mutations: { setPdfRequestedAt } as never, scheduleSync };
+const deps = { log, mutations: { setPdfRequestedAt } as never };
 
 const record = (over: Partial<PaperRecord> = {}): PaperRecord =>
   ({ id: "p1", title: "Deep Learning", citeKey: "p1", path: "papers/p1", status: "unread", authors: ["Ann Lee"], year: 2020, ...over });
@@ -48,7 +47,6 @@ describe("askAuthor", () => {
     const [saved, day] = setPdfRequestedAt.mock.calls[0] as unknown as [PaperRecord, string];
     expect(saved.id).toBe("p1");
     expect(day).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(scheduleSync).toHaveBeenCalled();
     expect(mockBroadcast).toHaveBeenCalledWith("askAuthor", "p1");
   });
 
@@ -67,7 +65,6 @@ describe("askAuthor", () => {
     expect(result).toEqual({ id: "p1", opened: "article" });
     expect(mockCreate).toHaveBeenCalledWith({ url: "https://journal.example/a" });
     expect(setPdfRequestedAt).not.toHaveBeenCalled();
-    expect(scheduleSync).not.toHaveBeenCalled();
   });
 
   it("opens nothing when there is no address and no page to open", async () => {

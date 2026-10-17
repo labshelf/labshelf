@@ -28,8 +28,7 @@ import { offerById, saveOffer, type PdfOffer } from "../../../src/background/pdf
 const PDF = new TextEncoder().encode("%PDF-1.7 body");
 const log = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
 const mutations = {} as never;
-const scheduleSync = jest.fn();
-const send = (msg: Parameters<typeof handlePdfOfferMessage>[1]) => handlePdfOfferMessage({ log, mutations, scheduleSync }, msg);
+const send = (msg: Parameters<typeof handlePdfOfferMessage>[1]) => handlePdfOfferMessage({ log, mutations }, msg);
 const paper = { id: "p1", title: "Attention is all you need", path: "papers/ml/vaswani2017", hasPdf: false };
 const offer: PdfOffer = {
   id: "o1", source: "tab", tabId: 4, url: "https://arxiv.org/pdf/1706.03762", paperId: "p1", title: paper.title,
@@ -70,7 +69,6 @@ describe("pdfOffer.attach", () => {
     expect(staged.has("o1")).toBe(false);
     expect(await offerById("o1")).toBeUndefined();
     expect(setBadgeText).toHaveBeenCalledWith({ tabId: 4, text: null });
-    expect(scheduleSync).toHaveBeenCalled();
     expect(broadcastChanged).toHaveBeenCalledWith("attach", "p1", expect.any(String));
   });
 

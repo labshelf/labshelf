@@ -123,7 +123,7 @@ describe("updatePaperFields", () => {
     expect(await h.readBib(noPdf)).not.toContain("file =");
   });
 
-  it("never rewrites the title (Drive folders are named after it)", async () => {
+  it("never rewrites the title (it is stored verbatim)", async () => {
     const odd = "  Spaced   Title: with a colon # and a hash, é 日本 ";
     const h = makeHarness();
     await h.seedPaper(P1, { title: odd });

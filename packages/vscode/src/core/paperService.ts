@@ -161,7 +161,7 @@ export class PaperService {
     this.events.paperUpdated.fire(paper);
   }
 
-  // The file's copy of the user's fields wins, but an unchanged paper is not re-announced: sync and the AI index
+  // The file's copy of the user's fields wins, but an unchanged paper is not re-announced: the list and the AI index
   // react to every update. The indexed hasPdf stays, since the indexer and this disk read count symlinks differently.
   // Callers reindex once for their whole batch, not once per paper here.
   private resolveOwnedFields(current: PaperRecord, written: PaperRecord): { next: PaperRecord; changed: boolean } {

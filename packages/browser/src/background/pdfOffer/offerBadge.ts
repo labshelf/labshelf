@@ -1,4 +1,4 @@
-// Marks one tab's toolbar button when a PDF there can be attached to a paper, without touching the global sync badge.
+// Marks one tab's toolbar button when a PDF there can be attached to a paper.
 import { COLOR_TOKENS, errorMessage, type ILogger } from "@labshelf/core";
 import { bx } from "../../platform";
 
@@ -19,7 +19,7 @@ export async function showOfferBadge(log: ILogger, tabId: number, title: string)
 
 export async function clearOfferBadge(log: ILogger, tabId: number): Promise<void> {
   try {
-    // PLATFORM: null (not "") removes the tab's own value in Chrome and Firefox, so the global sync badge shows again.
+    // PLATFORM: null (not "") removes the tab's own value in Chrome and Firefox, so the toolbar button shows its default state again.
     await bx.action.setBadgeText({ tabId, text: null });
     await bx.action.setBadgeBackgroundColor({ tabId, color: null });
     await bx.action.setTitle({ tabId, title: null });

@@ -42,7 +42,7 @@ async function askForLibrary(): Promise<string | undefined> {
   try {
     io.err("No LabShelf library is configured yet.");
     io.err(`If you use the VS Code extension, give the same folder (it contains ${PAPERS_DIR}/ and ${RESEARCH_DIR}/),`);
-    io.err("so both apps — and Drive sync — work on one library.");
+    io.err("so both apps work on one library.");
     const answer = (await rl.question(`Library folder [${DEFAULT_LIBRARY}]: `)).trim();
     return answer || DEFAULT_LIBRARY;
   } catch {
@@ -75,7 +75,6 @@ function printWhere(root: string, source: string): void {
   io.out(`library  ${paths.root}  (from ${source})`);
   io.out(`config   ${sharedConfigPath()}`);
   io.out(`log      ${paths.layout.terminalLogPath()}`);
-  io.out(`manifest ${paths.layout.manifestPath()}`);
 }
 
 async function runTui(ctx: AppContext): Promise<number> {

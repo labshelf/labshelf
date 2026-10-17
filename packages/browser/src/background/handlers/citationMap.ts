@@ -8,7 +8,7 @@ import { broadcastChanged } from "../broadcast";
 
 const MODULE = "citationMap";
 
-// The cache sits outside the sync roots, so it stays on this device.
+// The cache sits outside the library papers, so it stays on this device.
 const CACHE_DIR = libraryLayout("", joinWith("/")).openAlexCacheDir();
 
 export async function handleCitationMapBuild(log: ILogger): Promise<CitationMap> {
@@ -24,7 +24,6 @@ export async function handleCitationMapImportDoi(
   log: ILogger,
   mutations: LibraryMutations,
   doi: string,
-  scheduleSync: (reason: string) => void,
 ): Promise<ImportedDoiData> {
   const draft = await draftFromDoi(log, doi);
   if (draft.existing) {
@@ -35,7 +34,6 @@ export async function handleCitationMapImportDoi(
   const decision = await saveOrAsk(log, mutations, draft, {}, "save");
   if (decision.kind !== "saved") throw new Error("The paper could not be saved.");
   const { paper } = decision.saved;
-  scheduleSync("citationMap.import");
   broadcastChanged("capture", paper.id);
   return { status: "saved", id: paper.id, title: paper.title };
 }

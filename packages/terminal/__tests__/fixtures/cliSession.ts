@@ -1,14 +1,12 @@
 // Shared harness for the CLI command tests: opens a temp library with isolated XDG dirs and runs
 // commands through fresh in-memory stdout/stderr buffers.
-import { promises as fs } from "node:fs";
-
 import { openLibrary, type AppContext } from "../../src/app/context";
 import type { TerminalConfig } from "../../src/app/config";
 import { parseArgs } from "../../src/cli/args";
 import { runLibraryCommand, type Output } from "../../src/cli";
 import { createTempLibrary, makeTempDir, cleanupTempDirs, type PaperFixture, type TempLibrary } from "./library";
 
-const ENV_KEYS = ["XDG_CONFIG_HOME", "XDG_CACHE_HOME", "LABSHELF_TOKEN_STORE", "LABSHELF_IMAGES", "LABSHELF_GOOGLE_CLIENT_ID", "LABSHELF_GOOGLE_CLIENT_SECRET", "LABSHELF_PDF_VIEWER"];
+const ENV_KEYS = ["XDG_CONFIG_HOME", "XDG_CACHE_HOME", "LABSHELF_IMAGES", "LABSHELF_PDF_VIEWER"];
 
 export const NOW = "2025-01-01T00:00:00.000Z";
 
@@ -70,13 +68,10 @@ export class CliSessionHarness {
     for (const key of ENV_KEYS) { this.saved[key] = process.env[key]; }
     this.xdgConfig = await makeTempDir("labshelf-xdgc-");
     this.xdgCache = await makeTempDir("labshelf-xdgx-");
-    // The file token store resolves its folder from process.env, so keep the real ~/.config out of every test.
     process.env["XDG_CONFIG_HOME"] = this.xdgConfig;
     process.env["XDG_CACHE_HOME"] = this.xdgCache;
-    process.env["LABSHELF_TOKEN_STORE"] = "file";
     process.env["LABSHELF_IMAGES"] = "off";
     delete process.env["LABSHELF_PDF_VIEWER"];
-    process.env["LABSHELF_GOOGLE_CLIENT_ID"] = "test-client-id-0123456789";
   }
 
   async teardown(): Promise<void> {
@@ -94,9 +89,7 @@ export class CliSessionHarness {
     const env: NodeJS.ProcessEnv = {
       XDG_CONFIG_HOME: this.xdgConfig,
       XDG_CACHE_HOME: this.xdgCache,
-      LABSHELF_TOKEN_STORE: "file",
       LABSHELF_IMAGES: "off",
-      LABSHELF_GOOGLE_CLIENT_ID: "test-client-id-0123456789",
       ...(process.env["PATH"] ? { PATH: process.env["PATH"] } : {}),
       ...(options.env ?? {}),
     };
@@ -111,11 +104,5 @@ export class CliSessionHarness {
       text: () => out.join("\n"),
       errText: () => err.join("\n"),
     };
-  }
-
-  async signIn(): Promise<void> {
-    const dir = `${this.xdgConfig}/labshelf`;
-    await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(`${dir}/credentials.json`, JSON.stringify({ access_token: "a", refresh_token: "r", expiry_ms: Date.now() + 3_600_000 }), { mode: 0o600 });
   }
 }

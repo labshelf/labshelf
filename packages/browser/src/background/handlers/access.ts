@@ -5,16 +5,13 @@ import { attachPdfToPaper, openAccessTab, summarizeAttempts, type AccessTabDeps,
 import { listAllRecords, type LibraryMutations } from "../../storage";
 import { broadcastChanged } from "../broadcast";
 
-type ScheduleSync = (reason: string) => void;
-
-/** What a watched tab needs to attach a PDF: the write, the follow-up sync and the notice to open library pages. */
-export function accessTabDeps(log: ILogger, mutations: LibraryMutations, scheduleSync: ScheduleSync): AccessTabDeps {
+/** What a watched tab needs to attach a PDF: the write and the notice to open library pages. */
+export function accessTabDeps(log: ILogger, mutations: LibraryMutations): AccessTabDeps {
   return {
     log,
     async attach(paperId, bytes) {
       const { record, written } = await attachPdfToPaper(mutations, paperId, bytes);
       if (written) {
-        scheduleSync("access-tab");
         broadcastChanged("attach", paperId, `PDF attached to "${record.title}"`);
       }
       return written;

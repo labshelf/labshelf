@@ -1,7 +1,7 @@
-/** Activates the extension: wires services, commands, Library sidebar, sync controller and list panel. */
+/** Activates the extension: wires services, commands, Library sidebar and list panel. */
 import * as vscode from "vscode";
 
-import { libraryChanged, libraryLayout, type AiService } from "@labshelf/core";
+import { libraryLayout, type AiService } from "@labshelf/core";
 import { resolveLibraryRoot } from "./storage/paths/index.js";
 import { migrateLibraryRootFromGlobalState } from "./storage/migrations/index.js";
 import { createNodeAdapters } from "./activation/node/index.js";
@@ -16,13 +16,11 @@ import { createLibraryEvents, type LibraryEvents } from "./events/index.js";
 import {
   startAiService,
   LibraryRootController,
-  SyncControllerLifecycle,
   ExternalChangeHandling,
   registerLibrarySidebar,
   registerLibraryCommands,
   registerSettingsMenu,
   registerPanelCommands,
-  registerSyncCommands,
   registerWritingView,
 } from "./activation/index.js";
 import { registerNodeWriting } from "./writing/node/index.js";
@@ -69,8 +67,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   registerLibraryCommands({ context, controller, folderHost, librarySidebar });
 
-  registerSyncCommands({ context, controller, requireServices });
-
   registerCommands(context, requireServices);
   registerAiCommands(context, () => aiService);
 
@@ -98,18 +94,7 @@ function createLibraryController(deps: LibraryControllerDeps): LibraryRootContro
     getActiveServices: () => controller.currentServices(),
     onRefresh: refreshViews,
   });
-  const syncLifecycle = new SyncControllerLifecycle({
-    context,
-    events,
-    adapters,
-    getActiveServices: () => controller.currentServices(),
-    // A sync that pulls files from Drive must surface in the list without a reload.
-    onSynced: async (result) => {
-      if (!libraryChanged(result)) { return; }
-      await externalChangeHandling.reindexAndRefresh("sync");
-    },
-  });
-  const controller = new LibraryRootController(context, events, externalChangeHandling, syncLifecycle, adapters);
+  const controller = new LibraryRootController(context, events, externalChangeHandling, adapters);
   return controller;
 }
 

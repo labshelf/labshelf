@@ -6,5 +6,4 @@ export type { ILogger } from "./logger.js";
 export type { LogSink } from "./logSink.js";
 export type { LocalStat, LocalFileSystem } from "./localFileSystem.js";
 export type { LibraryFileSystem } from "./libraryFileSystem.js";
-export type { LockStore } from "./lockStore.js";
 export type { SidecarPort } from "./sidecarPort.js";

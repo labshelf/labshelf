@@ -9,7 +9,6 @@ import { editNote, openPdf, promptTags, setStatus } from "../actions/index.js";
 import { exportName, setSort, targetsForExport, yank } from "../actions/index.js";
 import { confirmTrash, cutTargets, moveToPicker, paste } from "../actions/index.js";
 import { promptAdd, promptRename } from "../actions/index.js";
-import { syncNow } from "../actions/index.js";
 import { ALL, parentFolder } from "../types.js";
 import type { App } from "../app.js";
 import { findStep } from "./liveQuery.js";
@@ -119,16 +118,14 @@ function dispatchPapers(app: App, binding: Binding): boolean {
 function dispatchApp(app: App, binding: Binding): void {
   switch (binding.action) {
     case "escape": return escape(app);
-    case "sync": void syncNow(app); return;
     case "reload": void app.ctx.store.reload().then(() => app.taskStatus.notify("Library reloaded")); return;
     case "command":
       openPrompt(app, "command", "Command", "",
-        "sync · login · logout · reload · export <file> · mkdir <name> · add <input> · sort <key> [desc] · cd <folder> · where · q");
+        "reload · export <file> · mkdir <name> · add <input> · sort <key> [desc] · cd <folder> · where · q");
       return;
     case "help": app.overlay = { kind: "help", scroll: 0 }; return;
     case "quit": void app.quit(); return;
     case "suspend":
-      if (app.ctx.sync.status().state === "syncing") { app.taskStatus.notify("Wait for the sync to finish before suspending", "warn"); return; }
       app.term.stopJob();
       return;
   }

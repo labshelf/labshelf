@@ -3,7 +3,6 @@ import { build, context } from "esbuild";
 import { chmod } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { googleCredentialDefines } from "../../../scripts/googleCredentials.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "..");
@@ -25,7 +24,6 @@ const common = {
   // Loaded lazily from node_modules: pdfjs reads its data files next to itself, the canvas is a native module.
   external: ["pdfjs-dist", "pdfjs-dist/*", "@napi-rs/canvas", "pdf-lib", "tesseract.js"],
   banner: { js: banner },
-  define: googleCredentialDefines("desktop"),
 };
 
 const entries = [

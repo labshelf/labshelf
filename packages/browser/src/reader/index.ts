@@ -1,5 +1,5 @@
 // Starts the core reader UI on reader/index.html?paper=<id>[&page=<n>] with pdf.js, IndexedDB bytes and an in-page host.
-// The host keeps annotations, reader theme and reading position in the paper's synced sidecar.
+// The host keeps annotations, reader theme and reading position in the paper's sidecar.
 import {
   PROTOCOL_VERSION,
   PaperDataStore,
@@ -65,7 +65,7 @@ async function readPdfBytes(paper: PaperRecord): Promise<ArrayBuffer> {
 async function loadOpenablePaper(paperId: string): Promise<{ paper: PaperRecord; prefs: ReaderPrefs } | undefined> {
   const [paper, prefs] = await Promise.all([getRecord(paperId), loadReaderPrefs()]);
   if (!paper) {
-    showFatal("This paper is no longer in your LabShelf library. It may have been removed, or the library has not synced yet.");
+    showFatal("This paper is no longer in your LabShelf library. It may have been removed from this device.");
     void logger.log("WARN", "reader", "reader opened for an unknown paper", { paperId });
     return undefined;
   }
@@ -142,7 +142,7 @@ function exposeReaderApi(paper: PaperRecord, host: ReaderHostController): void {
 function forwardChangesToHost(host: ReaderHostController, setPrefs: (prefs: ReaderPrefs) => void): void {
   onThemeChange((theme) => host.onAutoThemeChange(theme));
   onReaderPrefsChange((next) => { setPrefs(next); host.onPrefsChange(); });
-  // A sync may have brought annotations made in VS Code while this tab was in the background.
+  // Annotations may have changed while this tab was in the background.
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") void host.refreshAnnotations().catch(() => undefined);
   });

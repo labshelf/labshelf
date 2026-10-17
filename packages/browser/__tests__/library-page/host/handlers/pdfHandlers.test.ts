@@ -4,7 +4,6 @@ jest.mock("../../../../src/platform", () => ({ sendRuntime: (...a: unknown[]) =>
 jest.mock("../../../../src/capture", () => ({ attachPdfToPaper: jest.fn() }));
 jest.mock("../../../../src/reader/access", () => ({ openReader: jest.fn() }));
 jest.mock("../../../../src/storage", () => ({ IndexedDbFileSystem: class {} }));
-jest.mock("../../../../src/library-page/host/runtimeRequests", () => ({ scheduleSyncSoon: jest.fn() }));
 
 import { createPdfHandlers } from "../../../../src/library-page/host/handlers/pdfHandlers";
 import type { HostContext } from "../../../../src/library-page/host/hostContext";

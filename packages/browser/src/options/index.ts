@@ -6,7 +6,6 @@ import { loadReaderPrefs, saveReaderPrefs } from "../reader/access";
 import { applyTheme } from "../ui";
 import { createAppearanceSection } from "./appearanceSection";
 import { createResolverSection } from "./customResolvers";
-import { createDriveConnection } from "./driveConnection";
 import type { EditableListSection } from "./editableList";
 import { createGeneralForm, type GeneralForm } from "./generalForm";
 import { createLogSection } from "./logSection";
@@ -70,11 +69,9 @@ async function init(): Promise<void> {
   let scheduleResolverSave = (): void => undefined;
   const resolvers = createResolverSection(() => scheduleResolverSave());
   const log = createLogSection(ring);
-  const drive = createDriveConnection(logger, () => log.refresh());
 
   $("root").replaceChildren(settingsPage(
     { title: "LabShelf Settings", aside: saved.element },
-    drive.section.element,
     ...general.sections,
     proxies.element,
     resolvers.element,
@@ -91,7 +88,6 @@ async function init(): Promise<void> {
   autosaveForms(general, reader, saved);
   scheduleProxySave = autosaveList(proxies, "proxies", "library proxies saved", saved);
   scheduleResolverSave = autosaveList(resolvers, "customResolvers", "custom resolvers saved", saved);
-  await drive.refresh();
   await log.refresh();
 }
 

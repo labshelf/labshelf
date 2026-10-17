@@ -134,7 +134,7 @@ export async function save(ifNoPdf: IfNoPdf = "ask", retryPdf = false): Promise<
     $("pdf").hidden = true;
     showStatus({
       glyph: "check", tone: "ok", title: `Saved to ${folderName(popupState.saved.folder)}`,
-      detail: popupState.saved.pdfSource ? `PDF via ${pdfSourceLabel(popupState.saved.pdfSource)} · syncs shortly` : "Saved without a PDF · syncs shortly",
+      detail: popupState.saved.pdfSource ? `PDF via ${pdfSourceLabel(popupState.saved.pdfSource)}` : "Saved without a PDF",
       open: "Open in library", undo: true,
     });
     $("open").dataset["folder"] = popupState.saved.folder;
@@ -163,7 +163,7 @@ export async function attachPdf(): Promise<void> {
     // The paper has its PDF, so a leftover offer only keeps the badge; the next pdfOffer.get drops it anyway.
     if (!offer && r.attached) await settleOffer().catch(() => undefined);
     if (r.attached) {
-      const detail = r.source ? `via ${pdfSourceLabel(r.source)} · syncs shortly` : "Syncs shortly";
+      const detail = r.source ? `via ${pdfSourceLabel(r.source)}` : "";
       showStatus({ glyph: "check", tone: "ok", title: "PDF attached", detail, open: "Open in library" });
     } else if (r.alreadyHadPdf) {
       showStatus({ glyph: "check", tone: "ok", title: "Already has its PDF", detail: "", open: "Open in library" });

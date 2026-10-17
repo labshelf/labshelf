@@ -1,15 +1,12 @@
-/** Draws the status bar: mode, position, selection/cut counts, pending keys or the latest message, and the sync segment. */
+/** Draws the status bar: mode, position, selection/cut counts, pending keys or the latest message. */
 import type { Screen, Style } from "../../../tui/index.js";
 import { stringWidth, truncate } from "../../../tui/index.js";
-import type { SyncStatus } from "@labshelf/core";
-import { relativeTime } from "@labshelf/core";
 
 import { keyLabel, resolveKeys } from "../../keymap.js";
 import { drawField, type InlineInput } from "../../overlays.js";
 import { drawSegments, type Rect } from "../../render.js";
 import { theme } from "../../theme.js";
 import type { App } from "../app.js";
-import { appName } from "../actions/index.js";
 
 export function drawStatus(app: App, screen: Screen, rect: Rect): void {
   const y = rect.y;
@@ -61,27 +58,6 @@ function statusRight(app: App): Array<{ text: string; style?: Style }> {
   const out: Array<{ text: string; style?: Style }> = [];
   for (const label of app.tasks.values()) { out.push({ text: ` ${label}… `, style: theme.warn }); }
   out.push({ text: ` ${app.sort.key}${app.sort.reverse ? "↓" : "↑"} `, style: theme.dim });
-  out.push(syncSegment(app.ctx.sync.status(), app.taskStatus.now()));
   out.push({ text: " ? help ", style: theme.dim });
   return out;
-}
-
-/**
- * The sync part of the status bar.
- * @returns the segment
- */
-export function syncSegment(status: SyncStatus, now: number): { text: string; style: Style } {
-  switch (status.state) {
-    case "unconfigured": return { text: " Drive: not set up ", style: theme.sync.off };
-    case "disconnected": return { text: " Drive: signed out ", style: theme.sync.off };
-    case "syncing": return { text: " syncing… ", style: theme.sync.busy };
-    case "waiting": return { text: ` ${appName(status.holder?.app)} syncing `, style: theme.sync.busy };
-    case "error": return { text: " sync failed ", style: theme.sync.error };
-    default: {
-      const last = status.lastRun;
-      if (!last) { return { text: " Drive: not synced yet ", style: theme.sync.off }; }
-      const by = last.app === "terminal" ? "" : ` (${last.app === "vscode" ? "VS Code" : last.app})`;
-      return { text: ` synced ${(relativeTime(last.finishedAt, now) || "never")}${by} `, style: theme.sync.ok };
-    }
-  }
 }

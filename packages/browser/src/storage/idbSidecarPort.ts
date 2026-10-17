@@ -1,5 +1,5 @@
 // Implements SidecarPort over the IndexedDB file store at appdata/<paperId>/data.json.
-// INVARIANT: that path is the sync "appdata" root, which VS Code maps to <library>/.research/papers.
+// INVARIANT: that path is the "appdata" root, which VS Code maps to <library>/.research/papers.
 import { APPDATA_DIR, SIDECAR_FILE, type SidecarPort } from "@labshelf/core";
 import type { IndexedDbFileSystem } from "./indexedDbFileSystem";
 

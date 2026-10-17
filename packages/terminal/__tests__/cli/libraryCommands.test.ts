@@ -465,7 +465,7 @@ describe("read-only commands do not modify the library", () => {
       return path.join(s.lib.paperDir(id, collection), "metadata.yaml");
     });
     const before = await Promise.all(files.map((f) => fs.readFile(f, "utf8")));
-    for (const argv of [["ls"], ["ls", "-r"], ["search", "nlp"], ["show", "vaswani2017attention"], ["bib"], ["auth", "status"]]) {
+    for (const argv of [["ls"], ["ls", "-r"], ["search", "nlp"], ["show", "vaswani2017attention"], ["bib"]]) {
       await s.run(...argv);
     }
     expect(await Promise.all(files.map((f) => fs.readFile(f, "utf8")))).toEqual(before);

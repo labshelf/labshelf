@@ -1,5 +1,5 @@
 // Defines the per-paper sidecar (data.json: annotations, theme, reading position) every app reads and writes.
-// INVARIANT: the sync "appdata" namespace maps each app's sidecar location onto the others, so the format must not drift.
+// INVARIANT: every app reads and writes the same data.json, so the format must not drift.
 import { isPdfTheme, type Annotation, type PdfTheme } from "../../model/index.js";
 import { normalizeReadingState, type ReadingState } from "./readingState.js";
 

@@ -34,7 +34,6 @@ import { handleFindBetterPdf } from "../../../src/background/handlers/library";
 
 const log: ILogger = { log: async () => undefined, error: async () => undefined };
 const mutations = {} as never;
-const sync = jest.fn();
 
 const record = (over: Partial<PaperRecord> = {}): PaperRecord =>
   ({ id: "p1", title: "Deep", citeKey: "p1", path: "papers/p1", status: "unread", pdfVersion: "preprint", ...over });
@@ -56,11 +55,10 @@ describe("handleFindBetterPdf", () => {
     mockDraftFromRecord.mockResolvedValue(d);
     mockFindPdf.mockResolvedValue({ bytes, version: "published", source: "unpaywall", url: "https://x/a.pdf" });
 
-    const result = await handleFindBetterPdf(log, mutations, "p1", sync);
+    const result = await handleFindBetterPdf(log, mutations, "p1");
 
     expect(result).toEqual({ id: "p1", attached: true, replaced: true, source: "unpaywall" });
     expect(mockAttach).toHaveBeenCalledWith(mutations, "p1", bytes, { version: "published", replace: true });
-    expect(sync).toHaveBeenCalledWith("paper.findBetterPdf");
     expect(mockBroadcast).toHaveBeenCalledWith("attach", "p1");
   });
 
@@ -71,7 +69,7 @@ describe("handleFindBetterPdf", () => {
     mockFindPdf.mockResolvedValue(undefined);
     mockRecords = [record({ pdfVersion: "accepted" })];
 
-    await handleFindBetterPdf(log, mutations, "p1", sync);
+    await handleFindBetterPdf(log, mutations, "p1");
 
     expect(mockPublishedDoiOf).toHaveBeenCalledWith(expect.objectContaining({ contactEmail: "me@uni.edu" }), { arxivId: "2101.00001", doi: undefined });
     expect(mockFindPdf).toHaveBeenCalledWith(log, expect.objectContaining({ ids: { arxivId: "2101.00001", doi: "10.9/journal" }, betterThan: "accepted" }));
@@ -81,21 +79,20 @@ describe("handleFindBetterPdf", () => {
     mockDraftFromRecord.mockResolvedValue(draft());
     mockFindPdf.mockResolvedValue(undefined);
 
-    const result = await handleFindBetterPdf(log, mutations, "p1", sync);
+    const result = await handleFindBetterPdf(log, mutations, "p1");
 
     expect(result).toEqual({ id: "p1", attached: false, miss: { reason: "miss-summary" } });
     expect(mockAttach).not.toHaveBeenCalled();
-    expect(sync).not.toHaveBeenCalled();
   });
 
   it("throws for a PDF that is already the published version", async () => {
     mockRecords = [record({ pdfVersion: "published" })];
-    await expect(handleFindBetterPdf(log, mutations, "p1", sync)).rejects.toThrow("not a preprint");
+    await expect(handleFindBetterPdf(log, mutations, "p1")).rejects.toThrow("not a preprint");
     expect(mockFindPdf).not.toHaveBeenCalled();
   });
 
   it("throws for a paper that left the library", async () => {
     mockRecords = [];
-    await expect(handleFindBetterPdf(log, mutations, "p1", sync)).rejects.toThrow("no longer in your library");
+    await expect(handleFindBetterPdf(log, mutations, "p1")).rejects.toThrow("no longer in your library");
   });
 });

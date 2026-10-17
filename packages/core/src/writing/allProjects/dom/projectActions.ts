@@ -44,13 +44,13 @@ export async function moveProject(row: ProjectRow, rows: readonly ProjectRow[], 
 export async function deleteProjectForever(row: ProjectRow, post: Post): Promise<void> {
   const ok = row.external
     ? await confirmDialog(`Remove ${row.title} from LabShelf?`, "Its files stay where they are.", "Remove", true)
-    : await confirmDialog(`Delete ${row.title} forever?`, "Its folder is deleted from this device. The copy on Google Drive stays.", "Delete forever", true);
+    : await confirmDialog(`Delete ${row.title} forever?`, "Its folder is deleted from this device. The folder stays on disk.", "Delete forever", true);
   if (ok) post({ type: "deleteForever", id: row.id });
 }
 
 export async function emptyTrash(count: number, post: Post): Promise<void> {
   const noun = count === 1 ? "project" : "projects";
   const ok = await confirmDialog(`Delete ${count} ${noun} forever?`,
-    "Library projects are deleted from this device; the copies on Google Drive stay. Projects outside the library only leave LabShelf.", "Empty trash", true);
+    "Library projects are deleted from this device; the folders stay on disk. Projects outside the library only leave LabShelf.", "Empty trash", true);
   if (ok) post({ type: "emptyTrash" });
 }

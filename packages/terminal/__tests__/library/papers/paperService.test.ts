@@ -18,13 +18,11 @@ describe("updateFields", () => {
     expect(next).toMatchObject({ status: "reading", tags: ["NLP"], note: "Read section 3 again" });
     expect(await readYaml(metaFile(h, "p1", "ML"))).toMatchObject({ status: "reading", tags: ["NLP"], doi: "10.5555/1" });
     expect(h.store.paper("p1")!.record.status).toBe("reading");
-    expect(h.onLocalChange).toHaveBeenCalledTimes(1);
   });
 
   it("returns undefined and writes nothing for an unknown paper", async () => {
     const h = await harness([base]);
     expect(await h.service.updateFields("ghost", { status: "done" })).toBeUndefined();
-    expect(h.onLocalChange).not.toHaveBeenCalled();
   });
 
   it("finds a paper another app moved to a different collection since the scan", async () => {
@@ -55,7 +53,6 @@ describe("setStatus / editTags", () => {
     expect(outcome).toEqual({ done: ["p1", "p2", "p3"], failed: [] });
     expect((await readYaml(metaFile(h, "p2", "ML")))["status"]).toBe("done");
     expect(listener).toHaveBeenCalledTimes(1);
-    expect(h.onLocalChange).toHaveBeenCalledTimes(1);
   });
 
   it("reports unknown ids as failures without stopping the batch", async () => {
@@ -88,7 +85,6 @@ describe("movePapers", () => {
     expect(await listFiles(h.lib.paperDir("p1", "Bio"))).toEqual(["metadata.yaml", "paper.pdf"]);
     expect(h.store.paper("p1")).toMatchObject({ collection: "Bio" });
     expect(await pathExists(h.lib.paths.layout.paperDataPath("p1"))).toBe(true);
-    expect(h.onLocalChange).toHaveBeenCalledTimes(1);
   });
 
   it("moves to the library root with an empty collection path", async () => {
@@ -123,7 +119,6 @@ describe("trashPapers", () => {
     expect(h.store.paper("p1")).toBeUndefined();
     expect(h.store.paper("p2")).toBeDefined();
     expect(await pathExists(h.lib.paths.layout.paperDataPath("p1"))).toBe(true);
-    expect(h.onLocalChange).toHaveBeenCalledTimes(1);
   });
 
   it("reports an unknown id and a trash failure, and continues with the rest", async () => {
@@ -149,14 +144,12 @@ describe("collections", () => {
     expect(await h.service.createCollection("", "ML")).toBe("ML");
     expect(await h.service.createCollection("ML", "Vision")).toBe("ML/Vision");
     expect(h.store.collection("ML/Vision")).toBeDefined();
-    expect(h.onLocalChange).toHaveBeenCalledTimes(2);
   });
 
   it("rejects an invalid name and a name that exists", async () => {
     const h = await harness([], ["ML"]);
     await expect(h.service.createCollection("", "a/b")).rejects.toThrow("Use a name without slashes.");
     await expect(h.service.createCollection("", "ML")).rejects.toThrow('"ML" already exists');
-    expect(h.onLocalChange).not.toHaveBeenCalled();
   });
 
   it("renames a nested collection in place; its papers follow", async () => {
@@ -181,7 +174,6 @@ describe("collections", () => {
 
   it("does nothing when the collection is already in that parent", async () => {
     const h = await harness([], ["ML/Vision"]);
-    h.onLocalChange.mockClear();
     expect(await h.service.moveCollection("ML/Vision", "ML")).toBe("ML/Vision");
   });
 
@@ -195,7 +187,6 @@ describe("collections", () => {
     h.trash.mockRejectedValueOnce(new Error("no trash here"));
     await expect(h.service.trashCollection("ML")).rejects.toThrow("no trash here");
     expect(h.store.paper("p1")).toBeDefined();
-    expect(h.onLocalChange).not.toHaveBeenCalled();
 
     await h.service.trashCollection("ML");
     expect(h.trashed).toEqual([h.lib.paths.collectionDir("ML")]);

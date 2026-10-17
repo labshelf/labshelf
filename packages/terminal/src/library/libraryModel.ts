@@ -10,7 +10,7 @@ import type { LibraryRoot } from "./libraryRoot.js";
 const scanFileSystem = new NodeLibraryFileSystem();
 
 /** @returns what is on disk under papers/ right now */
-export function scanLibraryOnDisk(paths: LibraryRoot, logger: ILogger): Promise<LibraryScan> {
+function scanLibraryOnDisk(paths: LibraryRoot, logger: ILogger): Promise<LibraryScan> {
   return scanLibrary(scanFileSystem, path, paths.layout.papersRoot(), logger);
 }
 

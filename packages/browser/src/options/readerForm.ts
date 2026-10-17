@@ -47,7 +47,7 @@ function buildSection(f: Fields, delayRow: HTMLElement): HTMLElement {
       title: "PDF reader",
       description: [
         "The same reader as the VS Code extension, with the same settings (", inlineCode("labshelf.reader.*"),
-        " there). Annotations, the theme chosen per paper and the reading position sync with VS Code.",
+        " there).",
       ],
     },
     settingRow({

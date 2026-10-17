@@ -1,6 +1,6 @@
 /**
  * Reads the "files" IndexedDB store's path keys and derives the collection tree and the PDF-presence set from them
- * with core. No separate store is maintained: the tree changes only after a sync cycle or a folder mutation.
+ * with core. No separate store is maintained: the tree changes only after a folder mutation.
  */
 import { PAPERS_DIR, collectionsFromFilePaths, pdfDirsFromFilePaths, type FolderTreeNode } from "@labshelf/core";
 import { getDb } from "./idb";

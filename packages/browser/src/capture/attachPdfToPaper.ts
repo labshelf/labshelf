@@ -8,7 +8,7 @@ import { IndexedDbFileSystem, listAllRecords, type LibraryMutations } from "../s
  * PDF…" surfaces). The record is re-read by id from the live cache so a paper
  * moved during a long search is written at its CURRENT path — writing to a
  * stale path would leave an orphan folder the tree treats as a bogus paper. A
- * PDF that arrived meanwhile (e.g. by sync) is never overwritten, unless `replace`
+ * PDF that arrived meanwhile (e.g. attached from another tab) is never overwritten, unless `replace`
  * says the user asked for a better version of it.
  * @returns The current record, and whether paper.pdf was written now.
  */

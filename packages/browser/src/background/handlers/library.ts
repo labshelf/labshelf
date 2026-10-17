@@ -15,8 +15,6 @@ import { hashForFolder } from "../../library-page";
 import { ref } from "./libraryRef";
 import { PAPERS_DIR, findInLibrary, isPrePublication, publishedDoiOf, type FolderTreeNode, type ILogger } from "@labshelf/core";
 
-type ScheduleSync = (reason: string) => void;
-
 // "Find PDF" for a paper already saved (no tab). One run per id is kept in
 // flight so repeated clicks share the search, and paper.pdf is written at the
 // record's CURRENT path (attachPdfToPaper re-reads it).
@@ -31,11 +29,11 @@ function shareInflight(key: string, start: () => Promise<AttachPdfData>): Promis
   return run;
 }
 
-export function handleFindPdfForPaper(log: ILogger, mutations: LibraryMutations, id: string, scheduleSync: ScheduleSync): Promise<AttachPdfData> {
+export function handleFindPdfForPaper(log: ILogger, mutations: LibraryMutations, id: string): Promise<AttachPdfData> {
   return shareInflight(id, async () => {
     const record = (await listAllRecords()).find((r) => r.id === id);
     if (!record) throw new Error("This paper is no longer in your library.");
-    return attachFoundPdf(log, mutations, await draftFromRecord(log, record), id, scheduleSync, "paper.findPdf");
+    return attachFoundPdf(log, mutations, await draftFromRecord(log, record), id);
   });
 }
 
@@ -43,7 +41,7 @@ export function handleFindPdfForPaper(log: ILogger, mutations: LibraryMutations,
  * "Find Published Version" on a paper whose PDF is a preprint or accepted manuscript: the search learns the journal
  * DOI when the preprint records one, keeps only copies that outrank the current file, and replaces it with the best.
  */
-export function handleFindBetterPdf(log: ILogger, mutations: LibraryMutations, id: string, scheduleSync: ScheduleSync): Promise<AttachPdfData> {
+export function handleFindBetterPdf(log: ILogger, mutations: LibraryMutations, id: string): Promise<AttachPdfData> {
   return shareInflight(`better:${id}`, async () => {
     const record = (await listAllRecords()).find((r) => r.id === id);
     if (!record) throw new Error("This paper is no longer in your library.");
@@ -59,7 +57,6 @@ export function handleFindBetterPdf(log: ILogger, mutations: LibraryMutations, i
     if (!pdf) return { id, attached: false, miss: summarizeAttempts(draft.pdfAttempts) };
     await attachPdfToPaper(mutations, id, pdf.bytes, { version: pdf.version, replace: true });
     void log.log("INFO", "library", "PDF replaced by a better version", { id, from: record.pdfVersion, to: pdf.version ?? null, url: pdf.url, publishedDoi: doi ?? null });
-    scheduleSync("paper.findBetterPdf");
     broadcastChanged("attach", id);
     return { id, attached: true, replaced: true, source: pdf.source };
   });
@@ -69,14 +66,12 @@ export async function handleRemovePaper(
   id: string,
   mutations: LibraryMutations,
   log: ILogger,
-  scheduleSync: ScheduleSync,
 ): Promise<{ removed: boolean }> {
   const record = (await listAllRecords()).find((r) => r.id === id);
   if (!record) return { removed: false };
   const { done, failed } = await mutations.trashPapers([{ id: record.id, path: record.path }]);
   if (!done.length) throw new Error(failed[0]?.error ?? "The paper could not be removed.");
   forgetPaper(record.id);
-  scheduleSync("paper.remove");
   broadcastChanged("remove", record.id);
   await log.log("INFO", "background", "paper removed from popup", { id: record.id });
   return { removed: true };

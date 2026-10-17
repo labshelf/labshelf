@@ -1,5 +1,5 @@
 /**
- * Opens a library paper in a reader panel, with its sidecar store and the events the list and sync listen to.
+ * Opens a library paper in a reader panel, with its sidecar store and the events the list listens to.
  */
 import * as vscode from "vscode";
 import { paperFiles, type ILogger, type PaperDataStore, type PaperRecord } from "@labshelf/core";

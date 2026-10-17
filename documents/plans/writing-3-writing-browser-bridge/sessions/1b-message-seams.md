@@ -14,7 +14,7 @@
 ## 1b.1 — Task
 
 - Split `packages/browser/src/platform/runtimeMessages.ts` by area (auth and sync, library, capture, writing) into `platform/messages/`, exported from `platform/index.ts`; `grep -rn "runtimeMessages" packages/browser/src` is empty after.
-- Add these union members with their response types: `editor.insert {text, fallback}` answering `InsertOutcome = "inserted" | "copied" | "no-editor"`, `bib.link`, `bib.health`, `cite.inProject`, `sites.lookup`, `review.start`. Types only: handlers come in sessions 2b–2e, routing in session 3. Fields added to existing types are optional.
+- Add these union members with their response types: `editor.insert {text, fallback}` answering `InsertOutcome = "inserted" | "copied" | "no-editor"`, `bib.health`, `cite.inProject`, `sites.lookup`, `review.start`. Types only: handlers come in sessions 2b–2e, routing in session 3. Fields added to existing types are optional.
 - No test (types and a move).
 
 ## 1b.2 — `citeInProject`
@@ -27,4 +27,4 @@
   - `protocol.ts` is at 200 lines: move the webview→host union and its guard into `reader/protocol/` if the addition passes 200.
   - Session 2d builds the reader button and the browser host on this message.
 - **Done when:** tests in `packages/core/__tests__/reader/`, written first, pin validation and both controller paths; `reader-host.md` lists the message. `pnpm --filter @labshelf/core typecheck && pnpm --filter @labshelf/core test`.
-- **Do not touch:** `packages/core/src/reader/dom/`; the VS Code host; session 1a's paths (`storage/`, `sync/`).
+- **Do not touch:** `packages/core/src/reader/dom/`; the VS Code host; session 1a's path (`storage/projects/`).

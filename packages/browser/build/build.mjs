@@ -3,7 +3,6 @@ import { build as esbuild } from "esbuild";
 import { mkdir, rm } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { googleCredentialDefines } from "../../../scripts/googleCredentials.mjs";
 import { copyAssets } from "./copyAssets.mjs";
 import { vendorReader } from "./vendorReader.mjs";
 
@@ -44,7 +43,6 @@ async function buildOne(target) {
   await rm(outDir, { recursive: true, force: true });
   await mkdir(outDir, { recursive: true });
 
-  const webDefines = googleCredentialDefines("web");
   await Promise.all(
     ENTRIES.filter((e) => !e.chromeOnly || target === "chrome").map((e) =>
       esbuild({
@@ -60,7 +58,6 @@ async function buildOne(target) {
         loader: { ".css": "text" },
         define: {
           "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV ?? "production"),
-          ...webDefines,
         },
         logLevel: "info",
       })

@@ -55,7 +55,7 @@ export function createVsCodeExportPorts(paper: PaperRecord, store: ExportAnnotat
 }
 
 /**
- * The list webview and the sync controller listen for annotation events; theme changes concern only the reader.
+ * The list webview listens for annotation events; theme changes concern only the reader.
  * @returns a sidecarChanged port that republishes annotation changes as an annotationChanged event.
  */
 export function emitSidecarChanges(events: LibraryEvents, paperId: string): (change: SidecarChange) => void {

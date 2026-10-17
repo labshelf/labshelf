@@ -25,10 +25,6 @@ Library:
   mv <id…> <collection>            move papers to a collection
   install [project-dir]            import the papers a writing project lists in labshelf.yaml and the library lacks
 
-Sync (Google Drive, shared with the VS Code extension):
-  sync                             sync now
-  auth login | logout | status     sign in to Google Drive
-
 Setup:
   init [path]                      create or adopt a library and remember it
   where                            print the library, config and log paths

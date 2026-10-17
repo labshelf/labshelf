@@ -2,7 +2,7 @@
 
 Read when you build, load, change or verify the browser extension.
 
-A Chrome and Firefox MV3 extension. It captures papers from any tab or from Google Scholar, keeps its own copy of the library in IndexedDB, reads PDFs with the same reader as VS Code, and meets the other apps on Drive ([contracts/sync.md](../contracts/sync.md)).
+A Chrome and Firefox MV3 extension. It captures papers from any tab or from Google Scholar, keeps its own copy of the library in IndexedDB and reads PDFs with the same reader as VS Code.
 
 ## Build
 
@@ -13,7 +13,6 @@ pnpm --filter @labshelf/browser build:firefox
 pnpm --filter @labshelf/browser lint:manifest    # web-ext lint on dist/firefox
 ```
 
-- Before the first build, set up the credentials per [README.md](README.md#google-oauth-clients).
 - One source tree builds both targets. Only the manifest differs: Chrome uses a `service_worker`, and Firefox uses `background.scripts` plus the gecko id `labshelf@lucanaasser.dev`.
 - pdf.js is vendored from the `pdfjs-dist` legacy build into `vendor/pdfjs/`. `pdf_viewer.mjs` is lowered to es2023 so that `web-ext lint` passes.
 
@@ -52,7 +51,7 @@ The options page also lists Custom resolvers, empty and off by default. Each ena
 The background watches finished downloads and PDF tabs. For each new PDF address it re-fetches the bytes from the final URL with the user's cookies (extensions cannot read the downloads folder), because the address alone cannot name a paper. Core's `matchPdfToPaper` then matches it against the papers that have no PDF: first by DOI or arXiv id in the URL, then by the title on page 1.
 
 - Page 1 is read as text by pdf.js. Chrome's service worker cannot start a worker, so it asks an offscreen document (`pdfText/offscreen.html`, Chrome only and not built for Firefox); Firefox reads in place.
-- The bytes wait in their own IndexedDB database, `labshelf-pdf-staging`, outside the library file store so they never sync. They leave it when the user attaches or dismisses the offer.
+- The bytes wait in their own IndexedDB database, `labshelf-pdf-staging`, outside the library file store. They leave it when the user attaches or dismisses the offer.
 - A match marks only that tab's toolbar button with a `PDF` badge. The popup then offers "Attach to <paper>". No system notification is used, which would need the `notifications` permission.
 - Open offers and the addresses already looked at live in `storage.session`, so they survive the service worker sleeping.
 

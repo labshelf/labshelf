@@ -1,5 +1,5 @@
-// Applies every library change the terminal makes, then reloads the store and tells the sync.
-// TRAP: titles are never rewritten; renaming a Drive folder outside a sync makes the next sync read a different paper.
+// Applies every library change the terminal makes, then reloads the store.
+// TRAP: titles are never rewritten, because paper folders are named after them.
 import * as path from "node:path";
 
 import {
@@ -50,8 +50,6 @@ export interface PaperServiceDeps {
   pdfParser: () => Promise<PdfImportParser>;
   trash: (target: string) => Promise<unknown>;
   fetch?: typeof fetch;
-  /** Called after every change, so the sync service can schedule a debounced sync. */
-  onLocalChange?: () => void;
   /** Network metadata lookups; injectable for tests. */
   resolveIdentifier?: (identifier: DetectedIdentifier) => Promise<ResolvedMetadata | undefined>;
   searchByTitle?: (title: string) => Promise<ResolvedMetadata | undefined>;
@@ -84,7 +82,6 @@ export class TerminalPaperService {
 
   private async changed(): Promise<void> {
     await this.deps.store.reload();
-    this.deps.onLocalChange?.();
   }
 
   private records(): PaperRecord[] {
@@ -100,7 +97,7 @@ export class TerminalPaperService {
     };
   }
 
-  // VS Code or a sync may have moved the paper since the last scan: rescan once and look again.
+  // VS Code may have moved the paper since the last scan: rescan once and look again.
   private async folderOf(id: string): Promise<string | undefined> {
     const known = this.deps.store.paper(id)?.record.path;
     if (known && (await this.ctx.fs.exists(path.join(known, METADATA_FILE)))) { return known; }
@@ -201,7 +198,6 @@ export class TerminalPaperService {
       outcomes.push(await importNetworkInput(this.network, input, targetDir));
       await this.deps.store.reload();
     }
-    if (outcomes.some((outcome) => outcome.status === "added")) { this.deps.onLocalChange?.(); }
     return outcomes;
   }
 
@@ -212,7 +208,6 @@ export class TerminalPaperService {
   async importDoi(doi: string, citeKey: string, targetRel = ""): Promise<ImportOutcome> {
     const outcome = await importNetworkInput(this.network, doi, this.paths.collectionDir(targetRel), { citeKey });
     await this.deps.store.reload();
-    if (outcome.status === "added") { this.deps.onLocalChange?.(); }
     return outcome;
   }
 

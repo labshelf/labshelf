@@ -1,6 +1,6 @@
 /** Verifies the Community catalog source: listing from index.json and checked file downloads at the pinned commit. */
 import { COMMUNITY_INDEX_URL, createCommunitySource } from "../../../../src/writing/templates/sources/index.js";
-import { sha256Hex } from "../../../../src/sync/util/index";
+import { sha256Hex } from "../../../../src/hash/index";
 import { contextLogger, memoryCache, scriptedFetch, type Reply } from "./fakes";
 
 const COMMIT = "3f2c".repeat(10);

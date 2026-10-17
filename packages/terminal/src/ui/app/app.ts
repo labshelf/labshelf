@@ -1,5 +1,5 @@
 // Runs the TUI: folders, papers and preview panes driven by the keymap over the library the VS Code extension uses.
-// Holds UI state only; library changes go through TerminalPaperService, syncs through the core SyncCoordinator.
+// Holds UI state only; library changes go through TerminalPaperService, .
 import type { PaperData, PaperEntry } from "@labshelf/core";
 
 import type { SortKey } from "../../app/index.js";
@@ -10,7 +10,6 @@ import type { Screen } from "../../tui/index.js";
 import type { TerminalSize } from "../../tui/index.js";
 import type { InlineInput, Overlay } from "../overlays.js";
 import { computeLayout, type Layout } from "../render.js";
-import { reportSync } from "./actions/index.js";
 import { frame } from "./drawing/index.js";
 import { handleInline, handleKey, handleMouse, handleOverlay } from "./input/index.js";
 import { HistoryNav, ListModel, SelectionState, TaskStatus } from "./state/index.js";
@@ -67,7 +66,6 @@ export class App {
       this.listModel.dropStale();
       this.scheduleRender();
     });
-    ctx.sync.onStatus(() => this.scheduleRender());
   }
 
   get layout(): Layout {
@@ -84,19 +82,10 @@ export class App {
     this.term.listen((event) => this.handle(event), (size) => this.resize(size));
     this.term.enter();
     this.render();
-    const minutes = this.ctx.config.terminal?.autoSyncMinutes ?? 15;
-    this.ctx.sync.startPeriodic(minutes);
-    if (minutes > 0) {
-      void this.ctx.sync.periodicTick().then((outcome) => outcome && reportSync(this, outcome, true));
-    }
     return new Promise((resolve) => { this.resolveQuit = resolve; });
   }
 
   async quit(): Promise<void> {
-    if (this.ctx.sync.status().state === "syncing") {
-      this.taskStatus.notify("Finishing the sync before quitting…");
-      this.render();
-    }
     if (this.image) { this.term.writeRaw(clearImages(this.ctx.imageProtocol)); }
     await this.ctx.dispose();
     this.term.leave();

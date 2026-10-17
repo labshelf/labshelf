@@ -7,8 +7,7 @@ export {
   PAPERS_DIR, RESEARCH_DIR, APPDATA_DIR, PROJECTS_DIR,
   PDF_FILE, METADATA_FILE, BIB_FILE, SIDECAR_FILE,
   AI_DATABASE_FILE, APP_LOG_FILE, TERMINAL_LOG_FILE, PROJECT_REGISTRY_FILE,
-  SYNC_PROVIDER_ID, BROWSER_SYNC_ROOTS,
-  joinWith, libraryLayout, paperFiles, syncRoots,
+  joinWith, libraryLayout, paperFiles,
 } from "./layout.js";
 export type { Join, LibraryLayout, PaperFiles } from "./layout.js";
 export {

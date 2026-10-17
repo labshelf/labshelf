@@ -2,7 +2,7 @@
   "name": "@labshelf/terminal",
   "version": "0.1.0",
   "private": true,
-  "description": "LabShelf in the terminal: a yazi-style paper explorer and CLI over the same local library the VS Code extension uses, with its own Google Drive sync.",
+  "description": "LabShelf in the terminal: a yazi-style paper explorer and CLI over the same local library the VS Code extension uses.",
   "type": "module",
   "bin": {
     "labshelf": "./dist/labshelf.mjs"

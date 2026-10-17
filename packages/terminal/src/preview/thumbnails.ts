@@ -1,5 +1,5 @@
 // Renders first-page PDF thumbnails for the preview pane and caches them per PDF version (path, size, mtime).
-// The cache lives in the user cache directory, never inside the synced library.
+// The cache lives in the user cache directory, never inside the library.
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { promises as fs } from "node:fs";

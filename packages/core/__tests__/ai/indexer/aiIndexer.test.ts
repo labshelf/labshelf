@@ -1,7 +1,7 @@
 // The indexer reads each PDF once, skips unchanged content, survives failing jobs and clears deleted papers.
 import { AiIndexer } from "../../../src/ai/indexer/aiIndexer";
 import type { AiIndexerDependencies } from "../../../src/ai/indexer/aiIndexer";
-import { sha256Hex } from "../../../src/sync/util/index";
+import { sha256Hex } from "../../../src/hash/index";
 
 jest.mock("../../../src/ai/pipeline/index", () => ({
   ...jest.requireActual("../../../src/ai/pipeline/index"),

@@ -7,7 +7,6 @@ import { buildServices, createFileSystem, type HostAdapters } from "../serviceCo
 import type { ActiveServices } from "../../commands/index.js";
 import type { LibraryEvents } from "../../events/index.js";
 import { ExternalChangeHandling } from "./externalChangeHandling.js";
-import { SyncControllerLifecycle } from "./syncControllerLifecycle.js";
 
 export interface LibraryRootChange {
   root: vscode.Uri;
@@ -24,7 +23,6 @@ export class LibraryRootController {
     private readonly context: vscode.ExtensionContext,
     private readonly events: LibraryEvents,
     private readonly externalChangeHandling: ExternalChangeHandling,
-    private readonly syncLifecycle: SyncControllerLifecycle,
     private readonly adapters: HostAdapters,
   ) {
     context.subscriptions.push(this.changeEmitter);
@@ -36,10 +34,6 @@ export class LibraryRootController {
 
   currentServices(): ActiveServices | null {
     return this.activeServices;
-  }
-
-  syncController() {
-    return this.syncLifecycle.current();
   }
 
   // Returns the current services or triggers the setup wizard and builds services from the chosen root.
@@ -59,14 +53,13 @@ export class LibraryRootController {
   }
 
   // The single place that builds services for a root and wires everything that follows it:
-  // the Library sidebar (via onDidChangeRoot), the external-change watcher and the sync controller.
+  // the Library sidebar (via onDidChangeRoot), the external-change watcher.
   private async applyRoot(root: vscode.Uri): Promise<ActiveServices> {
     const services = await buildServices(this.context, root, this.events, this.adapters);
     this.root = root;
     this.activeServices = services;
     this.changeEmitter.fire({ root, services });
     this.externalChangeHandling.watch(root);
-    await this.syncLifecycle.ensure(root, services);
     return services;
   }
 }

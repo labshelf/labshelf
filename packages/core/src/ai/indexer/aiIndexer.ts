@@ -2,7 +2,7 @@
 // Skips papers whose PDF content hash matches the last indexed run.
 import type { PaperRecord } from "../../model/index.js";
 import type { ILogger, LocalFileSystem } from "../../ports/index.js";
-import { sha256Hex } from "../../sync/util/index.js";
+import { sha256Hex } from "../../hash/index.js";
 import { runIngestion } from "../pipeline/index.js";
 import type { PdfTextExtractor } from "../pipeline/index.js";
 import type { IEmbeddingProvider, IIndexedHashes, IVectorStore } from "../types/index.js";

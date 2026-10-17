@@ -7,7 +7,6 @@ import { applyTheme } from "../ui";
 import { errorMessage, icon } from "@labshelf/core";
 import { renderFolders, showStatus, autoGrow } from "./render";
 import { attachPdf, inspect, save, undo } from "./saveFlow";
-import { renderSync } from "./syncButton";
 import { dismissOffer, fetchOffer, showOffer } from "./offerCard";
 import { popupState, setState } from "./state";
 
@@ -30,14 +29,6 @@ function wire(): void {
     void sendRuntime({ type: "library.open" }).then(() => window.close());
   });
   $("settings").addEventListener("click", () => { void bx.runtime.openOptionsPage(); window.close(); });
-  $("sync").addEventListener("click", () => {
-    if ($("sync").dataset["action"] === "sync") {
-      void sendRuntime({ type: "sync.now" }).then(renderSync).then(() => setTimeout(() => { void renderSync(); }, 4000));
-    } else {
-      void bx.runtime.openOptionsPage();
-      window.close();
-    }
-  });
 }
 
 async function init(): Promise<void> {
@@ -53,7 +44,6 @@ async function init(): Promise<void> {
   $("title").classList.add("muted");
   setState("loading");
   wire();
-  void renderSync();
 
   const [tab] = await bx.tabs.query({ active: true, currentWindow: true });
   // A PDF downloaded from any page, or opened from disk, can still match a paper; the offer then fills the popup.

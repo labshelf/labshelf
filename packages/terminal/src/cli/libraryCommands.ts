@@ -15,7 +15,6 @@ import { stringFlag, type ParsedArgs } from "./args.js";
 import { runOpen } from "./openCommand.js";
 import { requirePaper } from "./paperLookup.js";
 import { runInstall } from "./project/index.js";
-import { runAuth, runSync } from "./syncCommands.js";
 import { Output, UsageError } from "./usage.js";
 
 const STATUS_WORDS: Record<string, PaperStatus> = { unread: "unread", u: "unread", reading: "reading", r: "reading", done: "done", d: "done" };
@@ -66,8 +65,6 @@ export async function runLibraryCommand(ctx: AppContext, args: ParsedArgs, io: O
     case "tag": case "tags": return runTag(ctx, positionals, io);
     case "mv": case "move": return runMv(ctx, positionals, io);
     case "copy": return runCopy(ctx, positionals, io);
-    case "sync": return runSync(ctx, io, json);
-    case "auth": return runAuth(ctx, positionals[0], io);
     case "install": return runInstall(ctx, positionals, io);
     default:
       throw new UsageError(`Unknown command "${command}". Run labshelf --help.`);

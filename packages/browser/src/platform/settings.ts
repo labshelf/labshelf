@@ -11,8 +11,6 @@ import { migrateMirrorSettings } from "./migrations";
 export interface LabShelfSettings {
   /** Contact email passed to the Unpaywall API and CrossRef User-Agent. */
   contactEmail: string;
-  /** Auto-sync interval in minutes; 0 disables interval sync. */
-  autoSyncMinutes: number;
   /** Collection the last capture went to; the popup and Scholar buttons default to it. */
   lastFolder: string;
   /** Library proxies in the order the PDF search tries them. */
@@ -31,7 +29,6 @@ export const SETTINGS_STORAGE_KEY = "labshelf.settings";
 
 const DEFAULTS: LabShelfSettings = {
   contactEmail: DEFAULT_CONTACT_EMAIL,
-  autoSyncMinutes: 15,
   lastFolder: PAPERS_DIR,
   proxies: [],
   customResolvers: [],

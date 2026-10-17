@@ -3,5 +3,4 @@ export { registerLibrarySidebar } from "./registerLibrarySidebar.js";
 export { registerLibraryCommands } from "./registerLibraryCommands.js";
 export { registerSettingsMenu } from "./registerSettingsMenu.js";
 export { registerPanelCommands } from "./registerPanelCommands.js";
-export { registerSyncCommands } from "./registerSyncCommands.js";
 export { registerWritingView } from "./registerWritingView.js";

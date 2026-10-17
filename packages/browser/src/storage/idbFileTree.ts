@@ -9,8 +9,7 @@ export function belowDir(dir: string): IDBKeyRange {
 }
 
 /**
- * Re-keys the row `from`, or every row below it, to `to` in one transaction, keeping bytes, mtime and hash so a sync
- * sees a plain rename.
+ * Re-keys the row `from`, or every row below it, to `to` in one transaction, keeping bytes, mtime and hash.
  */
 export async function renameTree(from: string, to: string): Promise<void> {
   const db = await getDb();

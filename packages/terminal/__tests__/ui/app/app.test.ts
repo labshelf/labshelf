@@ -55,15 +55,7 @@ afterEach(async () => {
 });
 
 describe("suspending with Ctrl-Z", () => {
-  it("is refused while a sync runs (the lock would be held by a stopped process)", () => {
-    const stopJob = jest.spyOn(term, "stopJob");
-    jest.spyOn(ctx.sync, "status").mockReturnValue({ state: "syncing" });
-    press(app, "C-z");
-    expect(stopJob).not.toHaveBeenCalled();
-    expect(app.message?.text).toContain("Wait for the sync");
-  });
-
-  it("suspends otherwise", () => {
+  it("suspends the process", () => {
     const stopJob = jest.spyOn(term, "stopJob");
     press(app, "C-z");
     expect(stopJob).toHaveBeenCalledTimes(1);
@@ -117,8 +109,7 @@ describe("App initial frame", () => {
     ]);
   });
 
-  it("shows the sync state and the help hint in the status bar", () => {
-    expect(pane(app, "status")).toContain("Drive:");
+  it("shows the help hint in the status bar", () => {
     expect(pane(app, "status")).toContain("? help");
   });
 

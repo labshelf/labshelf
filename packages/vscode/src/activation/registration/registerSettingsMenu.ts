@@ -8,16 +8,8 @@ interface SettingsChoice extends vscode.QuickPickItem {
 }
 
 function settingsChoices(controller: LibraryRootController): SettingsChoice[] {
-  const connected = controller.syncController()?.isConnected() ?? false;
-  const drive: SettingsChoice[] = connected
-    ? [
-        { label: "$(sync) Sync now", command: "labshelf.sync.now" },
-        { label: "$(cloud) Disconnect from Google Drive", command: "labshelf.sync.disconnect" },
-      ]
-    : [{ label: "$(cloud-upload) Connect to Google Drive", command: "labshelf.sync.connect" }];
   return [
     { label: "$(folder-opened) Change library folder…", description: controller.currentRoot()?.fsPath ?? "", command: "labshelf.configureLibrary" },
-    ...drive,
     { label: "$(settings-gear) Open settings", command: "labshelf.openSettings" },
     { label: "$(sparkle) AI settings", command: "labshelf.ai.openSettings" },
   ];

@@ -38,11 +38,11 @@ describe("collectionDir / relativeCollection", () => {
 });
 
 describe("ensureLibraryStructure", () => {
-  it("creates papers/, .research/papers, .research/sync and .research/logs", async () => {
+  it("creates papers/, .research/papers and .research/logs", async () => {
     const root = await makeTempDir();
     const paths = new LibraryRoot(path.join(root, "fresh", "lib"));
     await ensureLibraryStructure(paths);
-    for (const dir of [paths.layout.papersRoot(), paths.layout.paperDataRoot(), paths.layout.syncDir(), paths.layout.logsDir()]) {
+    for (const dir of [paths.layout.papersRoot(), paths.layout.paperDataRoot(), paths.layout.logsDir()]) {
       expect((await fs.stat(dir)).isDirectory()).toBe(true);
     }
   });

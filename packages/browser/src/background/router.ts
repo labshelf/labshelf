@@ -5,7 +5,6 @@ import { bx } from "../platform";
 import type { LibraryChangedBroadcast, RuntimeMessage, RuntimeResponse } from "../platform";
 import { isScholarUrl } from "../content";
 import type { LibraryMutations } from "../storage";
-import type { createSyncMessages } from "./syncMessages";
 import {
   handleCaptureAttachPdf, handleCaptureFindPdf, handleCaptureInspect, handleCaptureSave, handleCaptureTab,
   handleFindBetterPdf, handleFindPdfForPaper, handleLibraryFolders, handleLibraryLookup, handleLibraryOpen, handleListTabs,
@@ -25,8 +24,6 @@ function allowedFrom(msg: RuntimeMessage, sender: { url?: string }): boolean {
 export interface MessageRouterDeps {
   log: ILogger;
   mutations: LibraryMutations;
-  syncMessages: ReturnType<typeof createSyncMessages>;
-  scheduleSync: (reason: string) => void;
 }
 
 export function registerMessageRouter(deps: MessageRouterDeps): void {
@@ -50,57 +47,32 @@ export function registerMessageRouter(deps: MessageRouterDeps): void {
   });
 }
 
-type SyncMessage = Extract<RuntimeMessage, { type: `auth.${string}` | `sync.${string}` }>;
-
-function isSyncMessage(msg: RuntimeMessage): msg is SyncMessage {
-  return msg.type.startsWith("auth.") || msg.type.startsWith("sync.");
-}
-
-function handleSyncMessage(msg: SyncMessage, { syncMessages, scheduleSync }: MessageRouterDeps): unknown {
-  switch (msg.type) {
-    case "auth.status":
-      return syncMessages.authStatus();
-    case "auth.connect":
-      return syncMessages.connect();
-    case "auth.disconnect":
-      return syncMessages.disconnect();
-    case "sync.status":
-      return syncMessages.status();
-    case "sync.now":
-      return syncMessages.syncNow();
-    case "sync.scheduleSoon":
-      scheduleSync(msg.reason);
-      return { scheduled: true };
-  }
-}
-
 async function handle(msg: RuntimeMessage, deps: MessageRouterDeps, senderTabId: number | undefined): Promise<unknown> {
-  const { log, mutations, scheduleSync } = deps;
-  if (isPdfOfferMessage(msg)) return handlePdfOfferMessage({ log, mutations, scheduleSync }, msg);
-  if (isSyncMessage(msg)) return handleSyncMessage(msg, deps);
+  const { log, mutations } = deps;
+  if (isPdfOfferMessage(msg)) return handlePdfOfferMessage({ log, mutations }, msg);
   switch (msg.type) {
     case "capture.inspect":
       return handleCaptureInspect(log, msg);
     case "capture.findPdf":
       return handleCaptureFindPdf(log, msg);
     case "capture.save":
-      return handleCaptureSave(log, mutations, msg, scheduleSync);
+      return handleCaptureSave(log, mutations, msg);
     case "capture.tab":
-      return handleCaptureTab(log, mutations, msg, scheduleSync);
+      return handleCaptureTab(log, mutations, msg);
     case "scholar.save":
-      return handleScholarSave(log, mutations, msg, scheduleSync, senderTabId);
+      return handleScholarSave(log, mutations, msg, senderTabId);
     case "capture.attachPdf":
-      return handleCaptureAttachPdf(log, mutations, msg, scheduleSync);
+      return handleCaptureAttachPdf(log, mutations, msg);
     case "paper.findPdf":
       return msg.replace
-        ? handleFindBetterPdf(log, mutations, msg.id, scheduleSync)
-        : handleFindPdfForPaper(log, mutations, msg.id, scheduleSync);
+        ? handleFindBetterPdf(log, mutations, msg.id)
+        : handleFindPdfForPaper(log, mutations, msg.id);
     case "paper.openForPdf":
-      return handleOpenForPdf(accessTabDeps(log, mutations, scheduleSync), msg);
+      return handleOpenForPdf(accessTabDeps(log, mutations), msg);
     case "paper.askAuthor":
-      return handleAskAuthor({ log, mutations, scheduleSync }, msg.id, senderTabId);
+      return handleAskAuthor({ log, mutations }, msg.id, senderTabId);
     case "paper.remove":
-      return handleRemovePaper(msg.id, mutations, log, scheduleSync);
+      return handleRemovePaper(msg.id, mutations, log);
     case "library.folders":
       return handleLibraryFolders();
     case "library.lookup":
@@ -112,7 +84,7 @@ async function handle(msg: RuntimeMessage, deps: MessageRouterDeps, senderTabId:
     case "citationMap.build":
       return handleCitationMapBuild(log);
     case "citationMap.importDoi":
-      return handleCitationMapImportDoi(log, mutations, msg.doi, scheduleSync);
+      return handleCitationMapImportDoi(log, mutations, msg.doi);
     default: {
       const exhaustive: never = msg;
       throw new Error(`Unhandled message type: ${JSON.stringify(exhaustive)}`);

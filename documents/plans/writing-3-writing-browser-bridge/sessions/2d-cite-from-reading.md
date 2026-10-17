@@ -13,7 +13,7 @@
 
 ## Plan-wide decision this session uses
 
-D6: in the reader, "Cite in project" on a highlight inserts the citation (with the page) into the active Overleaf or typst.app tab through the standard `insertText` path, or into a project file synced through Drive. A selection on any web page can be sent to a project the same way, as a quote with its reference.
+D6: in the reader, "Cite in project" on a highlight inserts the citation (with the page) into the active Overleaf or typst.app tab through the standard `insertText` path, or into a project file through the native bridge of plan `folder-sync`. A selection on any web page can be sent to a project the same way, as a quote with its reference.
 
 Seams from session 1b: reader message `{ command: "citeInProject"; paperId; page?; quote? }` with an optional host port `citeInProject(request)`; runtime message `cite.inProject`; `editor.insert {text, fallback}` answering `InsertOutcome = "inserted" | "copied" | "no-editor"`. Session 2b implements `editor.insert`; tests here use a fake.
 

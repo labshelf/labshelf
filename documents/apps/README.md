@@ -1,6 +1,6 @@
 # Apps: setup and verification
 
-Read when you set up the toolchain, configure Google OAuth or verify any app for real.
+Read when you set up the toolchain or verify any app for real.
 
 This folder explains how to build, run and verify each app. App-specific details are in [vscode.md](vscode.md), [browser.md](browser.md) and [terminal.md](terminal.md).
 
@@ -8,26 +8,6 @@ This folder explains how to build, run and verify each app. App-specific details
 
 - Node.js 22.13 or later (needed by `node:sqlite` and pdf.js), and pnpm 9 or later.
 - `pnpm install` at the repository root.
-
-## Google OAuth clients
-
-Drive sync needs OAuth clients from one Google Cloud project, because an app only sees, through the Drive scopes, the files created by its own project ([contracts/sync.md](../contracts/sync.md#namespaces-on-drive)).
-
-| Client type | Used by | Setup |
-|---|---|---|
-| Desktop | VS Code and the terminal | Copy `credentials/google-desktop.example.json` → `credentials/google-desktop.json`, fill in the client ID and secret, rebuild. |
-| Web application | browser | Copy `credentials/google-web.example.json` → `credentials/google-web.json`, fill in the client ID, rebuild. |
-
-Credentials are read at build time and bundled into the apps. Environment variables `LABSHELF_GOOGLE_CLIENT_ID` and `LABSHELF_GOOGLE_CLIENT_SECRET` override the files at build time; the terminal also accepts them at runtime.
-
-To set them up in Google Cloud Console:
-
-1. Enable the Drive API.
-2. Add the scopes `drive.file` and `drive.appdata` to the consent screen.
-3. Create the Desktop client. Its redirect URI is the loopback `http://127.0.0.1`; the port is chosen at run time.
-4. Create the Web client. Its redirect URIs are `https://<chrome-extension-id>.chromiumapp.org/` and `https://<firefox-hash>.extensions.allizom.org/`. To find them, run `browser.identity.getRedirectURL()` in the extension's console.
-
-While the consent screen is in Testing mode, Google shows an "unverified app" warning. Add your accounts as test users, or click Advanced → Go to LabShelf.
 
 ## Website
 

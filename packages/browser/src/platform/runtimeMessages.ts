@@ -4,12 +4,6 @@
 import type { IfNoPdf, PdfAccess, PdfMiss } from "@labshelf/core";
 
 export type RuntimeMessage =
-  | { type: "auth.status" }
-  | { type: "auth.connect" }
-  | { type: "auth.disconnect" }
-  | { type: "sync.now" }
-  | { type: "sync.status" }
-  | { type: "sync.scheduleSoon"; reason: string }
   /** Reads the paper shown in a tab (the popup's first call). */
   | { type: "capture.inspect"; tabId: number }
   /** Waits for the PDF search the inspect started; the popup shows the result. */
@@ -114,7 +108,7 @@ export interface AttachPdfData {
   /** The PDF written replaced a preprint or accepted manuscript. */
   replaced?: boolean;
   source?: string;
-  /** Nothing written because a PDF was already there (e.g. it arrived by sync meanwhile). */
+  /** Nothing written because a PDF was already there (e.g. it was attached from another tab meanwhile). */
   alreadyHadPdf?: boolean;
   /** Present when nothing was found. */
   miss?: PdfMiss;
@@ -150,7 +144,7 @@ export interface PdfOfferView {
  */
 export interface LibraryChangedBroadcast {
   type: "library.changed";
-  reason: "capture" | "attach" | "remove" | "sync" | "annotations" | "askAuthor";
+  reason: "capture" | "attach" | "remove" | "annotations" | "askAuthor";
   paperId?: string;
   /** A sentence for open library pages to show, for a change the user did not start there (a watched tab's PDF). */
   notice?: string;
