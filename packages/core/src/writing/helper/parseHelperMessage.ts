@@ -1,0 +1,41 @@
+/** Turns an untrusted frame into a typed helper protocol message or a typed rejection, without throwing. */
+// CONTRACT: documents/contracts/helper.md#envelope
+
+import {
+  PROTOCOL_VERSION,
+  type HelperDirection, type HelperParseResult, type HelperRejection, type HelperRejectionCode,
+  type ToHelperMessage, type ToPageMessage,
+} from "./helperMessages.js";
+import { FieldError, isBody } from "./messageFields.js";
+import { readToHelper } from "./readToHelper.js";
+import { readToPage } from "./readToPage.js";
+
+const MAX_ID_LENGTH = 64;
+
+function reject(code: HelperRejectionCode, reason: string, id?: string): HelperRejection {
+  return id === undefined ? { ok: false, code, reason } : { ok: false, code, reason, id };
+}
+
+export type MessageFor<D extends HelperDirection> = D extends "toHelper" ? ToHelperMessage : ToPageMessage;
+
+export function parseHelperMessage<D extends HelperDirection>(raw: unknown, direction: D): HelperParseResult<MessageFor<D>> {
+  if (!isBody(raw)) { return reject("malformed", "frame is not a JSON object"); }
+  const { id, v, type } = raw;
+  if (typeof id !== "string" || id === "" || id.length > MAX_ID_LENGTH) {
+    return reject("malformed", `id is not a string of 1 to ${MAX_ID_LENGTH} characters`);
+  }
+  if (v !== PROTOCOL_VERSION) {
+    const rejection = reject("version", `v is ${String(v)}, expected ${PROTOCOL_VERSION}`, id);
+    return typeof v === "number" ? { ...rejection, received: v } : rejection;
+  }
+  if (typeof type !== "string") { return reject("malformed", "type is not a string", id); }
+  try {
+    const envelope = { v, id };
+    const message = direction === "toHelper" ? readToHelper(type, raw, envelope) : readToPage(type, raw, envelope);
+    return message ? { ok: true, message: message as MessageFor<D> } : reject("unknown-type", `${type} is not a message sent ${direction === "toHelper" ? "to the helper" : "to the page"}`, id);
+  } catch (error) {
+    if (error instanceof FieldError) { return reject(error.code, `${type}: ${error.message}`, id); }
+    // TRAP: only a parser bug lands here; it still becomes a rejection because callers rely on this never throwing.
+    return reject("malformed", `${type}: ${error instanceof Error ? error.message : String(error)}`, id);
+  }
+}
