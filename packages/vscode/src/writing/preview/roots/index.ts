@@ -5,3 +5,4 @@ export { projectSources } from "./projectSources.js";
 export { createWritingActions } from "./writingActions.js";
 export type { WritingActions } from "./writingActions.js";
 export { activeProjectEditor, focusedRoot } from "./activeProjectEditor.js";
+export { rawLogFile } from "./rawLogFile.js";

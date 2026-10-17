@@ -34,6 +34,7 @@ import type { CitationFixDeps } from "../../writing/preview/citationFixes/index.
 import type { RegisterNodeWriting } from "../../writing/nodePort/index.js";
 import { registerWritingValues } from "../../writing/values/index.js";
 import { registerBibliographyLint } from "../../writing/bibliography/index.js";
+import { hostPdfjs } from "../../pdf/node/index.js";
 import { arcIcons } from "../../ui/index.js";
 import type { LibraryRootController } from "../libraryLifecycle/index.js";
 import type { HostAdapters } from "../serviceComposition/index.js";
@@ -140,16 +141,17 @@ function citationFixDeps(
 
 function registerBuildAndPreviewCommands(
   parts: WritingParts, reader: HostAdapters["reader"], registerNodeWriting: RegisterNodeWriting, outcomes: BuildOutcomes,
-): { session: ProjectSession; previews: BuildPreviews } {
+): { session: ProjectSession; previews: BuildPreviews; recompile: (folder: string, root: string) => Promise<unknown> } {
   const { context, controller, host, projects, figures, listPapers, includeOnly, includeOnlyTarget, publishedLookup } = parts;
   // The node registrations need `previews`, and `previews` needs their builders, so it reaches them through this variable once assigned.
   let node: ReturnType<RegisterNodeWriting> | undefined;
   const counts = new CheckCounts();
+  const recompile = (folder: string, root: string): Promise<unknown> => recompileRoot(projects, () => node?.builders, includeOnlyTarget, folder, root);
   const previews = new BuildPreviews({
     host, listPapers, paths: projects.paths,
     highlightsOf: async (paperId) => await controller.currentServices()?.paperDataStore.getAnnotations(paperId) ?? [], data: projects.data, extensionUri: context.extensionUri, ...reader,
     buildRootOf: async (...args) => (node ? await node.buildRootOf(...args) : args[1]),
-    recompile: (folder, root) => recompileRoot(projects, () => node?.builders, includeOnlyTarget, folder, root),
+    recompile,
     projects, checkCounts: counts, includeOnly,
     setEngine: async (project, engine) => { await setEngine({ host, projects }, project, engine); },
     fixes: (projectFolder) => citationFixDeps(controller, listPapers, publishedLookup, projectFolder),
@@ -176,7 +178,7 @@ function registerBuildAndPreviewCommands(
   registerPickCompiler({ context, host, projects });
   registerCompilerStatusBar(context, projects);
   registerLatexWorkshopNotice({ context, host, projects });
-  return { session, previews };
+  return { session, previews, recompile };
 }
 
 function registerEditingSupport(parts: WritingParts): void {
@@ -197,6 +199,21 @@ function registerEditingSupport(parts: WritingParts): void {
   registerLatexEditing(context, { projects, logger });
   registerWritingValues(context, { projects, logger });
   registerBibliographyLint(context, { logger });
+}
+
+function createIncludeOnly(
+  controller: LibraryRootController, projects: WritingProjects,
+): { includeOnly: IncludeOnlyState; includeOnlyTarget: IncludeOnlyTarget } {
+  const includeOnly = new IncludeOnlyState({
+    readerFor: (folder) => createProjectSourceReader(vscode.Uri.file(folder), () => controller.currentServices()?.logger),
+  });
+  const includeOnlyTarget: IncludeOnlyTarget = async (project, root) => {
+    const editor = activeProjectEditor(projects.paths, project.folder);
+    if (!editor) { return undefined; }
+    const focused = path.relative(project.folder, editor.document.uri.fsPath).split(path.sep).join("/");
+    return includeOnly.target(project, root, focused);
+  };
+  return { includeOnly, includeOnlyTarget };
 }
 
 export function registerWritingView(
@@ -223,15 +240,7 @@ export function registerWritingView(
     readSources: readCiteSources, onDidSaveTextDocument: vscode.workspace.onDidSaveTextDocument, paths: projects.paths,
   });
   context.subscriptions.push(citeSections);
-  const includeOnly = new IncludeOnlyState({
-    readerFor: (folder) => createProjectSourceReader(vscode.Uri.file(folder), () => controller.currentServices()?.logger),
-  });
-  const includeOnlyTarget: IncludeOnlyTarget = async (project, root) => {
-    const editor = activeProjectEditor(projects.paths, project.folder);
-    if (!editor) { return undefined; }
-    const focused = path.relative(project.folder, editor.document.uri.fsPath).split(path.sep).join("/");
-    return includeOnly.target(project, root, focused);
-  };
+  const { includeOnly, includeOnlyTarget } = createIncludeOnly(controller, projects);
   // The library root, and with it the logger, can change after activation.
   const publishedLookup = publishedVersionLookup({ fetch: globalThis.fetch, get logger() { return logger; } });
   const parts: WritingParts = {
@@ -240,7 +249,7 @@ export function registerWritingView(
   registerProjectAndFigureCommands(parts);
   const outcomes = new BuildOutcomes();
   context.subscriptions.push(outcomes);
-  const { session, previews } = registerBuildAndPreviewCommands(parts, reader, registerNodeWriting, outcomes);
+  const { session, previews, recompile } = registerBuildAndPreviewCommands(parts, reader, registerNodeWriting, outcomes);
   const arcIcon = arcIcons(context.extensionUri);
   // With no library open every id failed, so the Checklist reports the write as failed.
   const setStatus = async (ids: string[], status: PaperStatus): Promise<string[]> =>
@@ -248,7 +257,10 @@ export function registerWritingView(
   const { projectsSource, projectTrees } = registerProjectViews({
     context, projects, figures, session, logger, arcIcon, readingLists, outcomes, previews, onDidChangeBacklinks: backlinks.onDidChange, setStatus,
   });
-  registerAllProjects({ context, host, projects, session, source: projectsSource, logger });
+  registerAllProjects({
+    context, host, projects, session, source: projectsSource, logger, outcomes, builds: previews.builds,
+    onDidChangeRootBuild: previews.onDidChangeRootBuild, listPapers, pdfjs: hostPdfjs, recompile,
+  });
   registerEditingSupport(parts);
   void projects.reload();
   return { projects, backlinks, projectsSource, projectTrees };

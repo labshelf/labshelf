@@ -1,18 +1,22 @@
 // Maps a writing project entry to the row the All projects page lists.
 import * as path from "node:path";
-import type { ProjectEntry, ProjectPlace, ProjectRow } from "@labshelf/core";
+import type { BuildMark, ProjectEntry, ProjectPlace, ProjectRow } from "@labshelf/core";
 
 const placeOf = (entry: Extract<ProjectEntry, { kind: "ready" }>): ProjectPlace =>
   entry.settings.trashed ? "trash" : entry.settings.archived ? "archived" : "projects";
 
-/** @param count The sidebar's open-items text: a number, or "counting" and "missing" while it is not known. */
-export function toProjectRow(entry: ProjectEntry, count: string | undefined, modified: number | undefined): ProjectRow {
+export interface ProjectRowExtras {
+  cites?: { cites: number; unresolved: number } | undefined;
+  build?: BuildMark;
+}
+
+export function toProjectRow(entry: ProjectEntry, modified: number | undefined, extras: ProjectRowExtras = {}): ProjectRow {
   const external = entry.location === "external";
   if (entry.kind === "broken") {
     return { id: entry.folder, title: path.basename(entry.folder), place: "projects", external, broken: entry.reason };
   }
   const { settings } = entry;
-  const openItems = count !== undefined && /^\d+$/.test(count) ? Number(count) : undefined;
+  const { cites, build } = extras;
   return {
     id: entry.folder,
     title: settings.title ?? settings.id,
@@ -22,7 +26,9 @@ export function toProjectRow(entry: ProjectEntry, count: string | undefined, mod
     place: placeOf(entry),
     ...(modified !== undefined ? { modified } : {}),
     ...(settings.trashed ? { trashedAt: settings.trashed } : {}),
-    ...(openItems !== undefined ? { openItems } : {}),
+    ...(cites ? { cites: cites.cites, unresolvedCites: cites.unresolved } : {}),
+    ...(build ? { build } : {}),
+    ...(settings.target ? { target: settings.target } : {}),
     external,
   };
 }

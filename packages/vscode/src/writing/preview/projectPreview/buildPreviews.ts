@@ -17,13 +17,17 @@ export class BuildPreviews implements BuildListener {
   private readonly panels = new Map<string, ReaderPanel>();
   // The root (relative to the project folder) whose PDF each project's open preview shows; its banner and reloads follow only that root.
   private readonly shown = new Map<string, string>();
-  private readonly builds: RootBuilds;
+  /** The last build of every root a project has built, for views that summarise builds. */
+  readonly builds: RootBuilds;
   private readonly synctex: ProjectSynctex;
   private readonly stale: StaleSources;
   private readonly roots: RootsPublisher;
   private readonly bodyPagesCounted = new vscode.EventEmitter<BodyPagesCount>();
   /** Fires when a preview's reader reports the body pages of the root it shows. */
   readonly onDidCountBodyPages = this.bodyPagesCounted.event;
+  private readonly rootBuildChanged = new vscode.EventEmitter<void>();
+  /** Fires when a root's build starts or finishes. */
+  readonly onDidChangeRootBuild = this.rootBuildChanged.event;
 
   constructor(private readonly deps: BuildPreviewsDeps) {
     this.builds = new RootBuilds(deps.paths);
@@ -36,6 +40,7 @@ export class BuildPreviews implements BuildListener {
     this.roots.dispose();
     this.stale.dispose();
     this.bodyPagesCounted.dispose();
+    this.rootBuildChanged.dispose();
   }
 
   /** Sends the roots of every open preview again. */
@@ -53,6 +58,7 @@ export class BuildPreviews implements BuildListener {
   /** Tells an open preview that a build of the root it shows started. */
   building(projectFolder: string, root: string): void {
     this.builds.started(projectFolder, root);
+    this.rootBuildChanged.fire();
     this.stale.building(projectFolder, root);
     if (this.shownRoot(projectFolder) === root) { this.panels.get(projectFolder)?.controller.setBuildStatus("building", 0, this.stale.statusOf(projectFolder, root)); }
   }
@@ -68,6 +74,7 @@ export class BuildPreviews implements BuildListener {
 
   private applyFinished(project: ReadyProject, root: string, result: FinishedBuild, trigger: BuildTrigger): void {
     const errors = this.builds.finished(project.folder, root, result);
+    this.rootBuildChanged.fire();
     if (result.status === "failed") { this.stale.failed(project.folder, root); } else { this.stale.succeeded(project.folder, root); }
     const status = this.stale.statusOf(project.folder, root);
     const shown = this.shownRoot(project.folder);
