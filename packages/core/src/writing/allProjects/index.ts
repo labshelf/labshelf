@@ -5,3 +5,4 @@ export type { ProjectLibraryPort } from "./projectLibraryPort.js";
 export * from "./protocol/index.js";
 export * from "./derive/index.js";
 export { serveAllProjects } from "./serveAllProjects.js";
+export { deadlineText, type DeadlineText } from "./deadlineText.js";

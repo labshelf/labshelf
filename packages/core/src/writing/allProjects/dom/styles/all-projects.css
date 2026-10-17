@@ -3,14 +3,39 @@
  * format badge): its column tracks, place tabs, broken and outside rows, the row actions button and the files tray tree.
  */
 /* ── Columns ────────────────────────────────────────────────────── */
-.ls-all-projects .paper-list { --cols: var(--w-edge) var(--w-title) var(--w-status) minmax(var(--w-read), 1fr) var(--w-edge); }
-.ls-all-projects :is(.col-heads, .paper-row-main) > .col-open { grid-column: 3; }
-.ls-all-projects :is(.col-heads, .paper-row-main) > .col-modified { grid-column: 4; }
-.ls-all-projects :is(.col-heads, .paper-row-main) > .col-actions { grid-column: 5; display: flex; justify-content: center; padding: 0; overflow: visible; }
-.ls-all-projects .col-heads > .col-open { justify-content: flex-end; }
-.ls-all-projects .paper-row-main > .col-open { text-align: right; font-family: var(--ls-mono); font-size: var(--ls-text-sm); font-variant-numeric: tabular-nums; }
-/* The title cell's gap spaces the format badge, so the sidebar's own margin goes. */
-.ls-all-projects .title-cell .tree-ref { margin-right: 0; }
+.ls-all-projects .paper-list {
+  --w-engine: 64px; --w-cites: 72px; --w-build: 56px;
+  --cols: var(--w-edge) var(--w-title) var(--w-engine) var(--w-cites) var(--w-build) minmax(var(--w-read), 1fr) var(--w-edge);
+}
+.ls-all-projects :is(.col-heads, .paper-row-main) > .col-engine { grid-column: 3; }
+.ls-all-projects :is(.col-heads, .paper-row-main) > .col-cites { grid-column: 4; }
+.ls-all-projects :is(.col-heads, .paper-row-main) > .col-build { grid-column: 5; }
+.ls-all-projects :is(.col-heads, .paper-row-main) > .col-modified { grid-column: 6; }
+.ls-all-projects :is(.col-heads, .paper-row-main) > .col-actions { grid-column: 7; display: flex; justify-content: center; padding: 0; overflow: visible; }
+.ls-all-projects .paper-row-main > :is(.col-engine, .col-cites, .col-build) { text-align: center; }
+.ls-all-projects .paper-row-main > .col-cites { font-family: var(--ls-mono); font-size: var(--ls-text-sm); font-variant-numeric: tabular-nums; }
+/* A centred head hangs its sort indicator past its label, as the Library's centred heads do. */
+.ls-all-projects .col-heads > :is(.col-engine, .col-cites, .col-build) { justify-self: center; position: relative; overflow: visible; padding: 0; }
+.ls-all-projects .col-heads > :is(.col-engine, .col-cites, .col-build) .sort-ind { position: absolute; left: 100%; }
+/* The title cell's gap spaces its chip and icon; the engine badge sits in its own cell, so the sidebar's margin goes. */
+.ls-all-projects .col-engine .tree-ref { margin-right: 0; }
+
+/* ── Title cell chips, cites and build ──────────────────────────── */
+.ls-all-projects .venue-chip {
+  flex-shrink: 0; padding: 0 var(--ls-space-3); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-pill);
+  font-family: var(--ls-mono); font-size: var(--ls-text-sm); color: var(--ls-desc); white-space: nowrap;
+}
+.ls-all-projects .venue-chip.is-near { color: var(--ls-warning); border-color: var(--ls-warning-border); }
+.ls-all-projects .venue-chip.is-passed { color: var(--ls-desc); opacity: .7; }
+.ls-all-projects .cites-missing { color: var(--ls-error); }
+.ls-all-projects .ls-build-dot { display: inline-block; width: var(--ls-space-4); height: var(--ls-space-4); border-radius: var(--ls-radius-pill); background: var(--ls-desc); }
+.ls-all-projects .ls-build-dot.b-ok { background: var(--ls-green); }
+.ls-all-projects .ls-build-dot.b-warnings { background: var(--ls-warning); }
+.ls-all-projects .ls-build-dot.b-failed { background: var(--ls-error); }
+.ls-all-projects .ls-build-dot.b-building { animation: ls-build-pulse 1.2s ease-in-out infinite; }
+.ls-all-projects .ls-build-dot.b-never { background: none; box-shadow: inset 0 0 0 1px var(--ls-desc); }
+@keyframes ls-build-pulse { 50% { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) { .ls-all-projects .ls-build-dot.b-building { animation: none; } }
 
 /* ── Rows ───────────────────────────────────────────────────────── */
 .ls-all-projects .paper-row-main.is-broken .title-cell { color: var(--ls-desc); }
@@ -38,3 +63,4 @@
 .ls-all-projects .ls-place-count { font-family: var(--ls-mono); font-size: var(--ls-text-md); font-weight: 400; color: var(--ls-desc); }
 /* The page has no folder scope to open, so the Library's breadcrumb buttons stay plain text here. */
 .ls-all-projects .group-label button { pointer-events: none; }
+.ls-all-projects .file-row[data-name=":add"] { color: var(--ls-desc); }

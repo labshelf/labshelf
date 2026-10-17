@@ -4,13 +4,14 @@
  */
 import { el, showMenu, toast, type MenuAnchor } from "../../../ui/dom/index.js";
 import { DEFAULT_PROJECT_VIEW, deriveProjectView, firstProjectSortDir, placeCounts, type ProjectSortKey, type ProjectViewState } from "../derive/index.js";
-import type { AllProjectsTransport } from "../protocol/index.js";
+import type { AllProjectsTransport, HostToAllProjects } from "../protocol/index.js";
 import type { ProjectMenuCommand, ProjectPlace, ProjectRow } from "../projectRow.js";
 import { mountAllProjectsHeader } from "./allProjectsHeader.js";
 import { emptyTrash } from "./projectActions.js";
 import { buildProjectEmptyState } from "./projectEmptyState.js";
 import { mountProjectList } from "./projectList.js";
 import { projectMenuEntries } from "./projectMenu.js";
+import { createDetailRequests } from "./detail/index.js";
 import { createProjectExpansion } from "./tray/index.js";
 
 interface PageState {
@@ -35,6 +36,24 @@ function showNewMenu(anchor: HTMLElement, post: AllProjectsTransport["post"]): v
   ]);
 }
 
+type HostMessage<T extends HostToAllProjects["type"]> = Extract<HostToAllProjects, { type: T }>;
+
+function routeMessages(transport: AllProjectsTransport, on: {
+  files: (m: HostMessage<"files">) => void;
+  detail: (m: HostMessage<"detail">) => void;
+  projects: (m: HostMessage<"projects">) => void;
+}): void {
+  transport.subscribe((message) => {
+    if (message.type === "error") toast(message.message, "error");
+    else if (message.type === "files") on.files(message);
+    else if (message.type === "detail") on.detail(message);
+    else on.projects(message);
+  });
+}
+
+const toggledSort = (sort: ProjectViewState["sort"], key: ProjectSortKey): ProjectViewState["sort"] =>
+  sort.key === key ? { key, dir: sort.dir === "asc" ? "desc" : "asc" } : { key, dir: firstProjectSortDir(key) };
+
 export function mountAllProjects(root: HTMLElement, transport: AllProjectsTransport): void {
   const s: PageState = { view: DEFAULT_PROJECT_VIEW, rows: [], commands: [], selected: null };
   const post = transport.post.bind(transport);
@@ -42,8 +61,10 @@ export function mountAllProjects(root: HTMLElement, transport: AllProjectsTransp
   const set = (view: Partial<ProjectViewState>): void => { s.view = { ...s.view, ...view }; render(); };
   const rowById = (id: string): ProjectRow | undefined => s.rows.find((r) => r.id === id);
   const onNew = (anchor: HTMLElement): void => showNewMenu(anchor, post);
-  const select = (id: string): void => { s.selected = id; render(); };
-  const expansion = createProjectExpansion({ post, rowById, select, render });
+  const details = createDetailRequests(post);
+  const select = (id: string): void => { if (id !== s.selected) details.request(id); s.selected = id; render(); };
+  const expansion = createProjectExpansion({ post, rowById, select, detailOf: details.get, render });
+  details.onChange((id) => { if (id === expansion.frame().expanded) render(); });
   const header = mountAllProjectsHeader(layout.header, {
     onPlace: (place: ProjectPlace) => { if (place !== s.view.place) { s.selected = null; set({ place }); } },
     onQuery: (query) => set({ query }),
@@ -59,9 +80,7 @@ export function mountAllProjects(root: HTMLElement, transport: AllProjectsTransp
       const row = rowById(id);
       if (row) showMenu(anchor, projectMenuEntries(row, { rows: s.rows, commands: s.commands, post }));
     },
-    onSort: (key: ProjectSortKey) => set({ sort: s.view.sort.key === key
-      ? { key, dir: s.view.sort.dir === "asc" ? "desc" : "asc" }
-      : { key, dir: firstProjectSortDir(key) } }),
+    onSort: (key: ProjectSortKey) => set({ sort: toggledSort(s.view.sort, key) }),
   });
 
   function render(): void {
@@ -74,13 +93,10 @@ export function mountAllProjects(root: HTMLElement, transport: AllProjectsTransp
     list.render({ view: s.view, groups, selected: s.selected, tray: expansion.frame(), empty });
   }
 
-  transport.subscribe((message) => {
-    if (message.type === "error") { toast(message.message, "error"); return; }
-    if (message.type === "files") { expansion.receive(message); return; }
-    if (message.type === "detail") { return; }
-    s.rows = message.rows;
-    s.commands = message.commands;
-    render();
+  routeMessages(transport, {
+    files: expansion.receive,
+    detail: details.receive,
+    projects: (message) => { s.rows = message.rows; s.commands = message.commands; render(); if (s.selected) details.request(s.selected); },
   });
   render();
   post({ type: "ready" });

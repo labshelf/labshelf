@@ -1,4 +1,6 @@
-// Keeps the All projects page's expanded project, its file listings and open folders, asking the host for a fresh listing on every expand.
+// Keeps the All projects page's expanded project, its file listings and open folders, and posts the log and Add file requests, asking the host for a fresh listing on every expand.
+import { inputBox } from "../../../../ui/dom/index.js";
+import type { ProjectDetail } from "../../projectDetail.js";
 import type { AllProjectsToHost, HostToAllProjects } from "../../protocol/index.js";
 import type { ProjectRow } from "../../projectRow.js";
 import { openFolderKey, type ProjectFiles, type ProjectTrayFrame, type ProjectTrayHandlers } from "./projectTray.js";
@@ -7,6 +9,7 @@ export interface ProjectExpansionDeps {
   post: (message: AllProjectsToHost) => void;
   rowById: (id: string) => ProjectRow | undefined;
   select: (id: string) => void;
+  detailOf: (id: string) => ProjectDetail | undefined;
   render: () => void;
 }
 
@@ -23,7 +26,7 @@ export function createProjectExpansion(deps: ProjectExpansionDeps): ProjectExpan
   const files: Record<string, ProjectFiles> = {};
   const openFolders = new Set<string>();
   return {
-    frame: () => ({ expanded, files: { ...files }, openFolders }),
+    frame: () => ({ expanded, files: { ...files }, detail: expanded ? deps.detailOf(expanded) : undefined, openFolders }),
     handlers: {
       onToggle(id) {
         expanded = expanded === id ? null : id;
@@ -39,6 +42,14 @@ export function createProjectExpansion(deps: ProjectExpansionDeps): ProjectExpan
         const key = openFolderKey(id, path);
         if (!openFolders.delete(key)) openFolders.add(key);
         deps.select(id);
+      },
+      onOpenLog(id) {
+        deps.post({ type: "openLog", id });
+      },
+      onAddFile(id) {
+        void inputBox({ title: "Add file", prompt: "File path in the project, e.g. sections/related.tex" }).then((path) => {
+          if (path) deps.post({ type: "createFile", id, path });
+        });
       },
     },
     receive(message) {

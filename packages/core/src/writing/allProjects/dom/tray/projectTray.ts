@@ -1,13 +1,18 @@
-// Fills the expanded project's tray with its file tree and empties every other tray, rebuilding a tray only when its inputs change.
-import { buildFailedRow, buildLoadingRow, buildTrayRow, replaceTrayRows, type TrayEntry } from "../../../../library-ui/dom/index.js";
+// Fills the expanded project's tray with its file tree, log and Add file rows and empties every other tray, rebuilding a tray only when its inputs change.
+import { buildFailedRow, buildLoadingRow, buildTrayRow, replaceTrayRows } from "../../../../library-ui/dom/index.js";
+import { icon } from "../../../../ui/index.js";
+import type { ProjectDetail } from "../../projectDetail.js";
 import type { ProjectRow } from "../../projectRow.js";
-import { projectFileTree, type FileTreeEntry } from "./projectFileTree.js";
+import { projectFileTree } from "./projectFileTree.js";
+import { ADD_FILE_ENTRY, projectFileEntry, projectLogEntry } from "./projectTrayFacts.js";
 
 export type ProjectFiles = { status: "loading" } | { status: "ready"; files: string[] } | { status: "failed"; message: string };
 
 export interface ProjectTrayFrame {
   expanded: string | null;
   files: Readonly<Record<string, ProjectFiles>>;
+  /** The expanded project's last detail; the tray shows names and the Main role without it. */
+  detail: ProjectDetail | undefined;
   /** Keys come from `openFolderKey`. */
   openFolders: ReadonlySet<string>;
 }
@@ -15,6 +20,8 @@ export interface ProjectTrayFrame {
 export interface ProjectTrayHandlers {
   onOpenFile: (id: string, path: string) => void;
   onToggleFolder: (id: string, path: string) => void;
+  onOpenLog: (id: string) => void;
+  onAddFile: (id: string) => void;
 }
 
 export const openFolderKey = (id: string, path: string): string => `${id}\n${path}`;
@@ -22,18 +29,9 @@ export const openFolderKey = (id: string, path: string): string => `${id}\n${pat
 // What each tray was last built from, so a selection change keeps its rows and focus.
 const built = new WeakMap<HTMLElement, unknown[]>();
 
-const toneOf = (ext: string): TrayEntry["tone"] => ext === "pdf" ? "pdf" : ext === "md" ? "md" : "other";
-
-function trayEntry(f: FileTreeEntry, main: string | undefined): TrayEntry {
-  if (f.folder) return { kind: "folder", name: f.name, type: "", tone: "dir", fact: null, title: f.path };
-  const ext = /\.([^.]+)$/.exec(f.name)?.[1]?.toLowerCase() ?? "";
-  const fact = f.path === main ? { label: "", text: "main document" } : null;
-  return { kind: "file", name: f.name, type: ext.slice(0, 4).toUpperCase(), tone: toneOf(ext), fact, title: f.path };
-}
-
-function fileRows(row: ProjectRow, files: string[], open: ReadonlySet<string>, h: ProjectTrayHandlers): HTMLElement[] {
+function fileRows(row: ProjectRow, files: string[], detail: ProjectDetail | undefined, open: ReadonlySet<string>, h: ProjectTrayHandlers): HTMLElement[] {
   return projectFileTree(files, open).map((f) => {
-    const r = buildTrayRow(trayEntry(f, row.main), () => (f.folder ? h.onToggleFolder : h.onOpenFile)(row.id, f.path));
+    const r = buildTrayRow(projectFileEntry(f, row, detail), () => (f.folder ? h.onToggleFolder : h.onOpenFile)(row.id, f.path));
     // Focus keeping matches rows by kind and name, and names repeat across folders.
     r.dataset["name"] = f.path;
     r.setAttribute("aria-level", String(2 + f.depth));
@@ -43,10 +41,28 @@ function fileRows(row: ProjectRow, files: string[], open: ReadonlySet<string>, h
   });
 }
 
-function trayRows(row: ProjectRow, state: ProjectFiles | undefined, open: ReadonlySet<string>, h: ProjectTrayHandlers): HTMLElement[] {
+// A trashed project only lists its files, so it offers neither the log nor a new file.
+function actionRows(row: ProjectRow, detail: ProjectDetail | undefined, h: ProjectTrayHandlers): HTMLElement[] {
+  if (row.place === "trash") return [];
+  const out: HTMLElement[] = [];
+  const log = projectLogEntry(detail);
+  if (log) {
+    const r = buildTrayRow(log, () => h.onOpenLog(row.id));
+    r.dataset["name"] = ":log";
+    out.push(r);
+  }
+  const add = buildTrayRow(ADD_FILE_ENTRY, () => h.onAddFile(row.id));
+  add.dataset["name"] = ":add";
+  add.querySelector(".file-type")!.innerHTML = icon("plus");
+  return [...out, add];
+}
+
+function trayRows(row: ProjectRow, state: ProjectFiles | undefined, detail: ProjectDetail | undefined, open: ReadonlySet<string>, h: ProjectTrayHandlers): HTMLElement[] {
   if (!state || state.status === "loading") return [buildLoadingRow()];
   if (state.status === "failed") return [buildFailedRow(state.message)];
-  return fileRows(row, state.files, open, h);
+  // The log has its own row, so the tree leaves it out.
+  const files = row.place === "trash" || !detail?.log ? state.files : state.files.filter((p) => p !== detail.log);
+  return [...fileRows(row, files, detail, open, h), ...actionRows(row, detail, h)];
 }
 
 function openFoldersOf(id: string, frame: ProjectTrayFrame): Set<string> {
@@ -65,10 +81,10 @@ export function paintProjectTray(root: HTMLElement, rows: ReadonlyMap<string, Pr
       return;
     }
     const open = openFoldersOf(row.id, frame);
-    const inputs = [row, frame.files[row.id], [...open].sort().join("\n")];
+    const inputs = [row, frame.files[row.id], frame.detail, [...open].sort().join("\n")];
     const last = built.get(tray);
     if (last && inputs.every((v, i) => v === last[i])) return;
     built.set(tray, inputs);
-    replaceTrayRows(tray, trayRows(row, frame.files[row.id], open, h));
+    replaceTrayRows(tray, trayRows(row, frame.files[row.id], frame.detail, open, h));
   });
 }

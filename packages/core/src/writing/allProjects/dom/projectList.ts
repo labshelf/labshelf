@@ -36,7 +36,10 @@ function headsHtml(place: ProjectPlace): string {
   const trash = place === "trash";
   return `<div aria-hidden="true"></div>` +
     sortableHeadHtml({ key: "title", label: "Title", cls: "", sortable: true }) +
-    sortableHeadHtml({ key: "modified", label: trash ? "Trashed" : "Last modified", cls: "col-modified", sortable: true,
+    sortableHeadHtml({ key: "engine", label: "Engine", cls: "col-engine", sortable: false }) +
+    sortableHeadHtml({ key: "cites", label: "Cites", cls: "col-cites", sortable: true, title: "Cited keys, then those not found" }) +
+    sortableHeadHtml({ key: "build", label: "Build", cls: "col-build", sortable: false }) +
+    sortableHeadHtml({ key: "modified", label: trash ? "Trashed" : "Modified", cls: "col-modified", sortable: true,
       ...(trash ? { title: "When the project went to the trash" } : {}) }) +
     `<div class="col-actions" aria-hidden="true"></div>`;
 }
