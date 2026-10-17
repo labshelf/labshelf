@@ -51,13 +51,13 @@ export function mountLibraryUi(host: HTMLElement, options: LibraryUiOptions): Li
   const saved = options.prefs.load();
   const store = new LibraryViewStore({ sortKey: saved.sortKey, sortDir: saved.sortDir, columns: saved.columns });
   const { transport, prefs, capabilities: caps, labels } = options;
-  const frame = buildFrame(host, prefs, options.withSidebar ?? false);
+  const frame = buildFrame(host, prefs, { withSidebar: options.withSidebar ?? false, withCitationMap: true, detailLabel: "Paper details" });
   const ctx = createUiContext(frame.root, { store, transport, prefs, caps, labels });
   const offs = [
     attachHostMessages(ctx),
     mountListHeader(ctx, frame.header),
     mountPaperList(ctx, frame.list),
-    mountCitationMap(ctx, frame.citationMap),
+    mountCitationMap(ctx, frame.citationMap!),
     mountDetailPane(ctx, frame.detail),
     reportFolder(ctx),
     reportSelection(ctx),

@@ -1,2 +1,3 @@
-// Exports the All projects page's per-project detail cache.
+// Exports the All projects detail pane: its per-project detail cache and its mount.
 export { createDetailRequests, type DetailRequests } from "./detailRequests.js";
+export { mountProjectDetail, type ProjectDetailPane, type ProjectDetailView } from "./mountProjectDetail.js";

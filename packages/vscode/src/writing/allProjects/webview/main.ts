@@ -5,6 +5,8 @@ import "@labshelf/core/styles/base.css";
 import "@labshelf/core/styles/toast.css";
 import "@labshelf/core/styles/library-ui.css";
 import "@labshelf/core/styles/library-list.css";
+import "@labshelf/core/styles/library-detail.css";
+import "@labshelf/core/styles/library-tabs.css";
 import "@labshelf/core/styles/library-sidebar.css";
 import "@labshelf/core/styles/all-projects.css";
 import { $, mountAllProjects } from "@labshelf/core/dom";

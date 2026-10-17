@@ -1,25 +1,17 @@
-/**
- * Renders the detail tabs: Details, Annotations with their count (when the host sends annotations), Notes with a dot when
- * the paper has a note, and Related with its count. The bar stays in reach while a long tab scrolls.
- */
-import { relatedGroups } from "../../../derive/index.js";
-import type { DetailTab } from "../../../state/index.js";
-import type { PaneState, PaperView } from "../paneState.js";
+/** Renders a tab bar from a list of tabs; the host decides the tabs, their badges and which one is active. */
 
-const TAB_LABEL: Record<DetailTab, string> = { details: "Details", annotations: "Annotations", notes: "Notes", related: "Related" };
+export interface TabSpec {
+  id: string;
+  label: string;
+  /** A count shown after the label. */
+  badge?: string;
+  /** A dot shown after the label, for "has content". */
+  dot?: boolean;
+}
 
-export function tabBarHtml(pane: PaneState, v: PaperView): string {
-  const annotations = v.details?.annotations.length ?? v.stats?.annotations ?? 0;
-  const related = relatedGroups(v.p, v.library, v.similar ?? []).total;
-  const badge: Record<DetailTab, string> = {
-    details: "",
-    annotations: annotations ? `<span class="tab-badge">${annotations}</span>` : "",
-    notes: pane.notes.text(v.p).trim() ? `<span class="tab-dot" aria-label="has a note"></span>` : "",
-    related: related ? `<span class="tab-badge">${related}</span>` : "",
-  };
-  const tabs = Object.keys(TAB_LABEL) as DetailTab[];
-  const active = pane.tab;
-  return `<div class="detail-tabs" role="tablist">${tabs.map((t) =>
-    `<button class="detail-tab${active === t ? " active" : ""}" type="button" role="tab" aria-selected="${active === t}" data-action="tab" data-tab="${t}">${TAB_LABEL[t]}${badge[t]}</button>`,
-  ).join("")}</div>`;
+export function tabBarHtml(tabs: readonly TabSpec[], active: string): string {
+  return `<div class="detail-tabs" role="tablist">${tabs.map((t) => {
+    const mark = t.badge ? `<span class="tab-badge">${t.badge}</span>` : t.dot ? `<span class="tab-dot" aria-label="has a note"></span>` : "";
+    return `<button class="detail-tab${active === t.id ? " active" : ""}" type="button" role="tab" aria-selected="${active === t.id}" data-action="tab" data-tab="${t.id}">${t.label}${mark}</button>`;
+  }).join("")}</div>`;
 }

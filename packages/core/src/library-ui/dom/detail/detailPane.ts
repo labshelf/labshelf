@@ -10,7 +10,7 @@ import { onTagInput, onTagKey, paperHeadHtml } from "./head/index.js";
 import { commonTags, multiDetailHtml, selectedPapers } from "./multiDetail.js";
 import { createNoteEditor } from "./noteEditor.js";
 import { paperView, type PaneState } from "./paneState.js";
-import { annotationListHtml, annotationsTabHtml, detailsTabHtml, notesTabHtml, relatedTabHtml, tabBarHtml } from "./tabs/index.js";
+import { annotationListHtml, annotationsTabHtml, detailsTabHtml, notesTabHtml, paperTabBarHtml, relatedTabHtml } from "./tabs/index.js";
 
 const PLACEHOLDER = `<div class="detail-placeholder"><div class="ls-empty-icon">${icon("book")}</div>` +
   `<div>Select a paper to see its details, annotations, notes and related papers.</div><div class="kbd-help">` +
@@ -27,7 +27,7 @@ function singleHtml(pane: PaneState, id: string): string {
     : tab === "notes" ? notesTabHtml(pane, v)
     : tab === "related" ? relatedTabHtml(pane, v)
     : detailsTabHtml(pane, v);
-  return paperHeadHtml(pane, v) + tabBarHtml(pane, v) + `<div class="tab-body">${body}</div>`;
+  return paperHeadHtml(pane, v) + paperTabBarHtml(pane, v) + `<div class="tab-body">${body}</div>`;
 }
 
 interface Pane extends PaneState {

@@ -1,2 +1,2 @@
 /** Exports the library UI frame's public API. */
-export { buildFrame, showPane, togglePane } from "./frame.js";
+export { buildFrame, showPane, togglePane, type FrameOptions, type FrameSlots } from "./frame.js";

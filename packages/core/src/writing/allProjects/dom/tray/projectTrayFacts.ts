@@ -25,10 +25,11 @@ function mainFact(d: ProjectDetail): string {
   return [d.pages !== undefined && plural(d.pages, "page"), ...problems, first && first.message + where].filter(Boolean).join(" · ");
 }
 
-function bibliographyFact(bib: NonNullable<ProjectDetail["bibliography"]>): string {
+/** The bibliography sentence the tray and the Overview tab share. */
+export function bibliographyFact(bib: NonNullable<ProjectDetail["bibliography"]>, now = Date.now()): string {
   const entries = `${bib.entries} ${bib.entries === 1 ? "entry" : "entries"}`;
   if (!bib.generated) return entries;
-  return `${entries} written from the library${bib.written !== undefined ? ` · synced ${compactTime(bib.written)} ago` : ""}`;
+  return `${entries} written from the library${bib.written !== undefined ? ` · synced ${compactTime(bib.written, now)} ago` : ""}`;
 }
 
 function contentsFact(folder: string, sources: readonly string[]): string | null {

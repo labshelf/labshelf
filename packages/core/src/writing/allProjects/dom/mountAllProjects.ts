@@ -1,31 +1,32 @@
 /**
- * Mounts the All projects page: place tabs, search and the project list, talking to its host only through the transport.
- * Host stylesheets: tokens.css, vscodeHost.css (VS Code), base.css, toast.css, library-ui.css, library-list.css, library-sidebar.css, all-projects.css.
+ * Mounts the All projects page: place tabs, search, the project list and the detail pane, talking to its host only through the transport.
+ * Host stylesheets: tokens.css, vscodeHost.css (VS Code), base.css, toast.css, library-ui.css, library-list.css, library-sidebar.css, library-detail.css, library-tabs.css, all-projects.css.
  */
-import { el, showMenu, toast, type MenuAnchor } from "../../../ui/dom/index.js";
+import { buildFrame, togglePane } from "../../../library-ui/dom/index.js";
+import type { PanePrefsPort } from "../../../library-ui/state/index.js";
+import { showMenu, toast, type MenuAnchor } from "../../../ui/dom/index.js";
 import { DEFAULT_PROJECT_VIEW, deriveProjectView, firstProjectSortDir, placeCounts, type ProjectSortKey, type ProjectViewState } from "../derive/index.js";
 import type { AllProjectsTransport, HostToAllProjects } from "../protocol/index.js";
 import type { ProjectMenuCommand, ProjectPlace, ProjectRow } from "../projectRow.js";
 import { mountAllProjectsHeader } from "./allProjectsHeader.js";
 import { emptyTrash } from "./projectActions.js";
 import { buildProjectEmptyState } from "./projectEmptyState.js";
-import { mountProjectList } from "./projectList.js";
+import { mountProjectList, type ProjectListHandlers } from "./projectList.js";
 import { projectMenuEntries } from "./projectMenu.js";
-import { createDetailRequests } from "./detail/index.js";
-import { createProjectExpansion } from "./tray/index.js";
+import { createDetailRequests, mountProjectDetail, type DetailRequests, type ProjectDetailView } from "./detail/index.js";
+import { createProjectExpansion, type ProjectExpansion } from "./tray/index.js";
 
 interface PageState {
   view: ProjectViewState;
   rows: ProjectRow[];
   commands: ProjectMenuCommand[];
   selected: string | null;
+  openLabel: string;
 }
 
-function buildLayout(root: HTMLElement): { header: HTMLElement; body: HTMLElement } {
-  const header = el("div", { class: "list-header" });
-  const body = el("div", { class: "list-body" });
-  root.replaceChildren(el("div", { class: "ls-library ls-all-projects" }, el("div", { class: "list-pane" }, header, body)));
-  return { header, body };
+export interface AllProjectsChannel {
+  transport: AllProjectsTransport;
+  prefs: PanePrefsPort;
 }
 
 function showNewMenu(anchor: HTMLElement, post: AllProjectsTransport["post"]): void {
@@ -54,34 +55,60 @@ function routeMessages(transport: AllProjectsTransport, on: {
 const toggledSort = (sort: ProjectViewState["sort"], key: ProjectSortKey): ProjectViewState["sort"] =>
   sort.key === key ? { key, dir: sort.dir === "asc" ? "desc" : "asc" } : { key, dir: firstProjectSortDir(key) };
 
-export function mountAllProjects(root: HTMLElement, transport: AllProjectsTransport): void {
-  const s: PageState = { view: DEFAULT_PROJECT_VIEW, rows: [], commands: [], selected: null };
+interface RowHandlerDeps {
+  s: PageState;
+  post: AllProjectsTransport["post"];
+  rowById: (id: string) => ProjectRow | undefined;
+  select: (id: string) => void;
+  set: (view: Partial<ProjectViewState>) => void;
+}
+
+function rowHandlers(d: RowHandlerDeps, tray: ProjectExpansion["handlers"]): ProjectListHandlers {
+  const { s, post, rowById } = d;
+  return {
+    ...tray,
+    onSelect: d.select,
+    onOpen: (id) => { const row = rowById(id); if (row && row.place !== "trash" && !row.broken) post({ type: "open", id }); },
+    onMenu: (id, anchor: MenuAnchor | HTMLElement) => {
+      const row = rowById(id);
+      if (row) showMenu(anchor, projectMenuEntries(row, { rows: s.rows, commands: s.commands, post }));
+    },
+    onSort: (key: ProjectSortKey) => d.set({ sort: toggledSort(s.view.sort, key) }),
+  };
+}
+
+function paneView(s: PageState, details: DetailRequests): ProjectDetailView {
+  const id = s.selected;
+  return {
+    row: id ? s.rows.find((r) => r.id === id) : undefined,
+    detail: id ? details.get(id) : undefined,
+    error: id ? details.error(id) : undefined,
+    openLabel: s.openLabel,
+  };
+}
+
+export function mountAllProjects(root: HTMLElement, { transport, prefs }: AllProjectsChannel): void {
+  const s: PageState = { view: DEFAULT_PROJECT_VIEW, rows: [], commands: [], selected: null, openLabel: "Open" };
   const post = transport.post.bind(transport);
-  const layout = buildLayout(root);
+  const frame = buildFrame(root, prefs, { withSidebar: false, withCitationMap: false, detailLabel: "Project details" });
+  frame.root.classList.add("ls-all-projects");
   const set = (view: Partial<ProjectViewState>): void => { s.view = { ...s.view, ...view }; render(); };
   const rowById = (id: string): ProjectRow | undefined => s.rows.find((r) => r.id === id);
   const onNew = (anchor: HTMLElement): void => showNewMenu(anchor, post);
   const details = createDetailRequests(post);
   const select = (id: string): void => { if (id !== s.selected) details.request(id); s.selected = id; render(); };
   const expansion = createProjectExpansion({ post, rowById, select, detailOf: details.get, render });
-  details.onChange((id) => { if (id === expansion.frame().expanded) render(); });
-  const header = mountAllProjectsHeader(layout.header, {
+  const pane = mountProjectDetail(frame.detail, { post, menu: () => ({ rows: s.rows, commands: s.commands, post }) });
+  details.onChange((id) => { if (id === s.selected || id === expansion.frame().expanded) render(); });
+  const header = mountAllProjectsHeader(frame.header, {
     onPlace: (place: ProjectPlace) => { if (place !== s.view.place) { s.selected = null; set({ place }); } },
     onQuery: (query) => set({ query }),
     onNew,
     onEmptyTrash: () => void emptyTrash(placeCounts(s.rows).trash, post),
+    onToggleDetail: () => { togglePane(frame.root, prefs, "detail"); },
     onLeaveSearch: () => list.focus(),
   });
-  const list = mountProjectList(layout.body, {
-    ...expansion.handlers,
-    onSelect: select,
-    onOpen: (id) => { const row = rowById(id); if (row && row.place !== "trash" && !row.broken) post({ type: "open", id }); },
-    onMenu: (id, anchor: MenuAnchor | HTMLElement) => {
-      const row = rowById(id);
-      if (row) showMenu(anchor, projectMenuEntries(row, { rows: s.rows, commands: s.commands, post }));
-    },
-    onSort: (key: ProjectSortKey) => set({ sort: toggledSort(s.view.sort, key) }),
-  });
+  const list = mountProjectList(frame.list, rowHandlers({ s, post, rowById, select, set }, expansion.handlers));
 
   function render(): void {
     const groups = deriveProjectView(s.rows, s.view);
@@ -91,12 +118,17 @@ export function mountAllProjects(root: HTMLElement, transport: AllProjectsTransp
     header.paint(s.view.place, placeCounts(s.rows), s.view.query);
     const empty = shown.size > 0 ? null : buildProjectEmptyState({ place: s.view.place, query: s.view.query, onClearQuery: () => set({ query: "" }), onNew });
     list.render({ view: s.view, groups, selected: s.selected, tray: expansion.frame(), empty });
+    pane.update(paneView(s, details));
   }
 
   routeMessages(transport, {
     files: expansion.receive,
     detail: details.receive,
-    projects: (message) => { s.rows = message.rows; s.commands = message.commands; render(); if (s.selected) details.request(s.selected); },
+    projects: (message) => {
+      s.rows = message.rows; s.commands = message.commands; s.openLabel = message.openLabel;
+      render();
+      if (s.selected) details.request(s.selected);
+    },
   });
   render();
   post({ type: "ready" });

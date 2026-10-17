@@ -30,6 +30,14 @@ export interface PrefsPort {
   save(patch: Partial<LibraryUiPrefs>): void;
 }
 
+/** The four keys the pane frame persists; a host that shows panes without the rest of the library prefs stores only these. */
+export type PanePrefs = Pick<LibraryUiPrefs, "detailWidth" | "detailCollapsed" | "sidebarWidth" | "sidebarCollapsed">;
+
+export interface PanePrefsPort {
+  load(): PanePrefs;
+  save(patch: Partial<PanePrefs>): void;
+}
+
 /** Drag limits of the two side panes; dragging below `collapseAt` hides the pane. */
 export const PANE_LIMITS = {
   sidebar: { min: 160, max: 420, collapseAt: 110 },
