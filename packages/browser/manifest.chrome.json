@@ -2,6 +2,7 @@
   "manifest_version": 3,
   "name": "LabShelf",
   "version": "0.1.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvTqaBcNEDobHTRTyp0huXc+8jPxdK53hTzwnhwTpfK2+tRyi5MrCD2scPtMar84nd9R/6gA6VUOYaR5OOB0GUzS1vy2MVVy+Yy7wwomhtGhzz1JWlg6OpwgFjGsusJir8ov8F60i0nWdwYjxhnkB/EYOGCIuvx3HgGupqHTOO/Dn0xlMRsqclO76nlpIeFfBXN4/bd8u/4eBnUDM/uvp1M4vQcnrb8MxckubMvhNOrkilD0pS2n2/teMRIXFYA4SfzOmkZmTMQFDXCcDfOuTbjIofhVYVMidQHLqAulsrT52teYWzRWDdfNJKQ9XchLH2DKlp8UOZtiSRM8WNiPgrQIDAQAB",
   "description": "Local-first research paper manager.",
   "minimum_chrome_version": "125",
   "icons": {

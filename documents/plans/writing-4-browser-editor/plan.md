@@ -1,25 +1,27 @@
 # Plan: full editor in the browser extension
 
 Status: draft
-Size: 4 sessions — a go/no-go spike, then a web build of the VS Code extension, an editor page with a Drive-backed file system, and collaboration.
+Size: 4 sessions — a go/no-go spike, then a web build of the VS Code extension, an editor page with a file system over the native bridge, and collaboration.
 
 ## 1. Goal
 
-Anyone can write a Typst (or LaTeX) project from the browser extension, with no install and no account other than their Google Drive: the same editor features as in VS Code, live Typst preview, comments and live sessions with coauthors. This gives Typst users for free what typst.app charges for (review comments, more storage), and keeps their files in their own Drive.
+Anyone can write a Typst (or LaTeX) project from the browser extension, with no account of ours and, for Typst, no install; LaTeX needs LabShelf Helper, which the editor offers on the first compile: the same editor features as in VS Code, live Typst preview, comments and live sessions with coauthors. This gives Typst users for free what typst.app charges for (review comments, more storage), and keeps their files in their own folder, synced by their own tool.
 
-Builds on the archived writing-core plan, writing-2-writing-sync and writing-3-writing-browser-bridge; none of them blocks the spike.
+Builds on the archived writing-core plan, plan `folder-sync` (the browser reaches project folders through its native bridge, sessions 4–5), writing-2-writing-sync and writing-3-writing-browser-bridge; none of them blocks the spike.
 
 ## 2. Decisions
 
 - [ ] **D1** The editor is not written by us: an extension page hosts `monaco-vscode-api`, which runs VS Code web extensions unmodified. It loads the LabShelf extension's web build and Tinymist's web build (Tinymist declares a `browser` entry). — Every writing feature is written once, as the VS Code extension; the editor itself is maintained upstream.
 - [ ] **D2** The workbench shows only the editor, the LabShelf views and the panels a writer needs; no activity bar of a code IDE. — A writing tool, not a programming tool.
 - [ ] **D3** Everything is bundled and pinned in the extension package. Upgrades happen when we choose, about once or twice a year. — Nothing breaks underneath us between releases, and an upgrade costs one session on our schedule.
-- [ ] **D4** The page reuses the extension's Drive sign-in and the projects already in IndexedDB through a `FileSystemProvider` for the `labshelf-project:` scheme. Nothing is configured twice. — The reason vscode.dev was rejected.
-- [ ] **D5** LaTeX compiles only on desktop. In the browser a LaTeX project edits and shows the last synced PDF with "Compile on desktop"; Typst compiles live through `typst.ts`. — No LaTeX engine runs as a web extension.
+- [ ] **D4** The page reuses the extension's project store over the native bridge through a `FileSystemProvider` for the `labshelf-project:` scheme. Nothing is configured twice. — The reason vscode.dev was rejected.
+- [ ] **D5** LaTeX compiles through LabShelf Helper (`documents/contracts/helper.md`) with `ILatexHelper`; without the helper, the editor mounts the helper setup card from `packages/browser/src/helper/` and shows the last synced PDF. Typst compiles live through `typst.ts`. — No LaTeX engine runs as a web extension, and the helper is the one local install a LaTeX user accepts.
 - [ ] **D6** Live sessions use Open Collaboration Tools, which ships a Monaco integration (`open-collaboration-monaco`), so a browser user and a VS Code user can share one session. — The same collaboration path as VS Code.
-- [ ] **D7** Placement: the web build of the extension lives in `packages/vscode/` (a `browser` entry and an esbuild target) and contains only code outside `node/` folders; the LaTeX build is absent. The editor page, the file system provider and OCT wiring live in `packages/browser/src/editor/`. No code is copied between the two apps, and `core` contracts do not change. — AGENTS.md section 1.
-- [ ] **D8** Out of scope: LaTeX compilation in the browser; vscode.dev as a target (it may work as a side effect and is not supported). Contract documents do not change beyond those of the plans this one builds on. — Keeps the plan to the editor page.
+- [ ] **D7** Placement: the web build of the extension lives in `packages/vscode/` (a `browser` entry and an esbuild target) and contains only code outside `node/` folders, so the Node LaTeX build is absent; the browser editor page calls `ILatexHelper`. The editor page, the file system provider and OCT wiring live in `packages/browser/src/editor/`. No code is copied between the two apps, and `core` contracts do not change. — AGENTS.md section 1.
+- [ ] **D8** Out of scope: vscode.dev as a target (it may work as a side effect and is not supported). Contract documents do not change beyond those of the plans this one builds on. — Keeps the plan to the editor page.
 - [ ] **D9** Risks and their answers: `monaco-vscode-api` too heavy for an extension page → Q1 and the lighter fallback; Tinymist web lacking features outside vscode.dev → the spike checks diagnostics and completion first; an upgrade of `monaco-vscode-api` → pinned (D3).
+
+Depends on `documents/plans/browser-latex-helper` session 4 for `ILatexHelper` and the setup card.
 
 Open (blocks sessions 2 to 4):
 
@@ -29,10 +31,10 @@ Open (blocks sessions 2 to 4):
 
 - [ ] **A1** "Edit" on a project in the browser's Writing tab opens the editor page with its files, without a second sign-in.
 - [ ] **A2** In a Typst project, citation completion from the library, Tinymist diagnostics and the live preview work as in VS Code.
-- [ ] **A3** Saving writes to IndexedDB and syncs to Drive with the three-way merge; the change reaches VS Code on the next sync.
+- [ ] **A3** Saving writes the file into the project folder through the native bridge; the user's sync tool carries it, and VS Code on the same device sees it at once.
 - [ ] **A4** Comments added in the browser show in VS Code and the other way round.
 - [ ] **A5** A browser user joins a live session started from VS Code and sees the host's cursor.
-- [ ] **A6** A LaTeX project opens for editing and shows its last PDF with "Compile on desktop".
+- [ ] **A6** A LaTeX project compiles through the helper; with no helper, the setup card shows and the last PDF stays visible.
 - [ ] **A7** Cold start of the editor page stays under 3 s on a mid-range laptop.
 
 ## 4. Sessions
