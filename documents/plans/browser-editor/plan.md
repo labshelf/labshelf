@@ -26,6 +26,12 @@ Depends on `documents/plans/browser-latex-helper` session 4 for `ILatexHelper` a
 Open (blocks sessions 2 to 4):
 
 - **Q1** Go or no-go after the spike — go with `monaco-vscode-api` / fall back to a lighter single-file editor (CodeMirror + `typst.ts`, citations, merge on save); recommendation: decide on the spike's numbers (bundle size, cold start under 3 s, Tinymist web working). On no-go, sessions 2 to 4 are replaced by a plan for the fallback.
+  - **Spike answer (2026-10-17; Chrome for Testing 1243 headless on an Apple M4 Max; `monaco-vscode-api` 37.6.1, Tinymist 0.15.10): go, with four pinned patches.**
+    - Tinymist web works in an MV3 page: syntax and compile diagnostics (`unknown variable`), 233 completions, highlighting, code lens. Page open to first diagnostic: 0.21–0.49 s over 3 runs; 0.51–1.17 s with the page thread throttled 4× (CDP cannot throttle workers). The Tinymist wasm instantiates in about 25 ms.
+    - Bundle: 49.4 MB raw / 16.5 MB gzip in total. Tinymist is 36.8 / 12.9 of it (wasm 32.5 / 12.2); the `monaco-vscode-api` stack is 12.6 / 3.6. Any Typst-in-wasm fallback carries a compiler wasm of the same order, so the editor stack is the real difference.
+    - CSP: the manifest keeps `script-src 'self' 'wasm-unsafe-eval'`, but stock `monaco-vscode-api` does not run under it: its worker extension host loads each extension with `new Function` and boots workers from `blob:` trampolines and an inline-script iframe. Four build-time patches make it run: the loader imports a pre-wrapped `<entry>.esm.js` (the build wraps each extension's CommonJS entry), nested extension workers start from their real URL, the iframe script moves to a file and boots a static worker, and the editor-worker trampoline becomes a static bootstrap. Extensions themselves run unmodified.
+    - Tinymist's web VSIX (Open VSX `web` target, 0.15.10 and earlier) ships the wasm but not `out/web-server.js`. The build makes that worker from upstream `editors/vscode/src/web/server.ts` and the `tinymist-web.tar.gz` release glue, adding the `resolveFn` init option the 0.15.10 wasm requires. `resolveFn` resolves Typst Universe packages (`@preview/…`) synchronously; the spike resolves none, so package imports need a registry of LabShelf's own.
+    - Not checked: Firefox 128, a real mid-range laptop, workers under throttling, Tinymist preview and export (disabled in its web build).
 
 ## 3. Acceptance
 
