@@ -7,6 +7,7 @@ import { registerCheckCommand } from "../check/node/index.js";
 import { registerRegenerateFigure } from "../figures/node/index.js";
 import type { RegisterPlatformWriting } from "../platformPort/index.js";
 import { registerTemplates } from "../templates/node/index.js";
+import { registerTypstLanguageServer } from "../typst/languageServer/index.js";
 import { registerTypstBuild } from "../typst/node/index.js";
 import { registerCompareVersionsCommand } from "../versions/node/index.js";
 import { registerProjectHistory } from "../history/node/index.js";
@@ -25,6 +26,7 @@ export const registerNodeWriting: RegisterPlatformWriting = ({ context, host, pr
   registerCheckCommand({ context, host, projects, builders, pdfjs: hostPdfjs, ...(onFindings && { onFindings }) });
   registerCompareVersionsCommand({ context, host, tex, projects, builders, pdfjs: hostPdfjs, reader });
   registerTemplates({ context, host, tex, projects, builders });
+  registerTypstLanguageServer({ context, host, projects });
   const history = registerProjectHistory({ context, host, projects });
   return { builders, history };
 };

@@ -30,6 +30,7 @@ const toPage: ToPageMessage[] = [
   { ...env("8"), type: "pages", pdfSha256: sha, pageCount: 2, changed: [{ index: 0, offset: 0, length: 10 }] },
   { v: 2, type: "lsp", projectId: "thesis", payload: { jsonrpc: "2.0", id: 1 } } as ToPageMessage,
   { ...env("8"), type: "error", code: "stale", message: "version 3 does not follow 1" },
+  { ...env("9"), type: "progress", phase: "installing-tinymist", message: "Installing the Typst language server" },
 ];
 
 const roundTrip = (message: object): unknown => JSON.parse(JSON.stringify(message));

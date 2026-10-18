@@ -7,7 +7,7 @@ import type { TypstHostOutcome, TypstHostRequest } from "@labshelf/core/helper";
 import type { BuildListener, BuildTrigger, FinishedBuild } from "../build/index.js";
 import type { ReadyProject } from "../mainDocument.js";
 import type { WritingHost, WritingProjects } from "../session/index.js";
-import { recordTypstVersion, tinymistInstalled, type TypstTrigger } from "../typst/index.js";
+import { recordTypstVersion, type TypstTrigger } from "../typst/index.js";
 
 const MODULE = "writing/typst";
 
@@ -93,8 +93,7 @@ export class HostPageTypstBuilds {
 
   private finishSaved(project: ReadyProject, root: string, trigger: BuildTrigger, result: FinishedBuild): void {
     const { paths } = this.deps.projects;
-    // Tinymist already lists Typst errors while typing; a second copy would double every entry in Problems.
-    this.deps.diagnostics.publish(paths.join(project.folder, root), tinymistInstalled() ? [] : result.problems);
+    this.deps.diagnostics.publish(paths.join(project.folder, root), result.problems);
     this.deps.previews.finished(project, root, result, trigger);
     const errors = result.problems.filter((problem) => problem.severity === "error").length;
     const name = paths.basename(root, paths.extname(root));

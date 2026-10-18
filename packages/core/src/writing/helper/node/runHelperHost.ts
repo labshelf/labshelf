@@ -1,11 +1,14 @@
 // Runs one helper session: the native hello on stdio, then project, build and TeX messages on the loopback socket.
 // CONTRACT: documents/contracts/helper.md#transport
+import { spawn } from "node:child_process";
 import * as os from "node:os";
 
 import type { ILogger } from "../../../ports/index.js";
 import type { HelperHost } from "../index.js";
+import { createManagedTinymist } from "../../typst/toolchain/node/index.js";
 import { createSharedTexProvider } from "../../latex/toolchain/node/managed/index.js";
 import { createBuildHandlers } from "./build/index.js";
+import { createLspHandler, createLspServers } from "./lsp/index.js";
 import { answerHello, createDispatcher, runHelperLoop, type HelloAnswer } from "./dispatch/index.js";
 import { createLibraryProjects, createProjectHandlers } from "./projectHandlers/index.js";
 import type { HelperSocket } from "./socket/index.js";
@@ -34,11 +37,13 @@ export async function runHelperHost(options: HelperHostOptions): Promise<void> {
   const send = createFrameWriter(options.output ?? process.stdout, logger);
   const tex = createSharedTexProvider({ env: process.env, platform: process.platform, homeDir: os.homedir(), logger, fetchImpl: fetch });
   const projects = createLibraryProjects({ logger });
-  const builds = createBuildHandlers({ dataDir, logger, projects, tex });
+  const tinymist = createManagedTinymist({ logger });
+  const servers = createLspServers({ dataDir, logger, tinymist, projects, spawn });
+  const builds = createBuildHandlers({ dataDir, logger, projects, tex, tinymist, servers });
   const dispatcher = createDispatcher(
     {
-      ...createProjectHandlers({ dataDir, projects, forgetBuilds: builds.forget }),
-      compile: builds.compile, cancel: builds.cancel,
+      ...createProjectHandlers({ dataDir, projects, forgetBuilds: builds.forget, edited: servers.edited, stopServer: servers.stop }),
+      compile: builds.compile, cancel: builds.cancel, lsp: createLspHandler(servers),
       ...createTexInstallHandlers({ tex, helperVersion, host, logger }),
     },
     logger,
@@ -58,6 +63,7 @@ export async function runHelperHost(options: HelperHostOptions): Promise<void> {
     builds.cancelAll();
     await socket?.close();
     await dispatcher.drain();
+    await servers.stopAll();
     await projects.closeAll();
     await logger.log("INFO", "helper", "Input closed; helper exits");
   }

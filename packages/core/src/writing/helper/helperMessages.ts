@@ -22,7 +22,7 @@ export type TexSource = (typeof TEX_SOURCES)[number];
 /** The program that answers: the standalone LabShelf Helper, or a desktop app running the helper script. */
 export const HELPER_HOSTS = ["helper", "vscode", "terminal"] as const;
 export type HelperHost = (typeof HELPER_HOSTS)[number];
-export const PROGRESS_PHASES = ["installing-tex", "installing-package", "building", "updating"] as const;
+export const PROGRESS_PHASES = ["installing-tex", "installing-package", "installing-tinymist", "building", "updating"] as const;
 export type ProgressPhase = (typeof PROGRESS_PHASES)[number];
 export const HELPER_BUILD_STATUSES = ["succeeded", "failed", "cancelled", "toolchain-missing", "needs-shell-escape"] as const;
 export type HelperBuildStatus = (typeof HELPER_BUILD_STATUSES)[number];

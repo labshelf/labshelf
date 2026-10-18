@@ -33,7 +33,8 @@ describe("bridge file operations", () => {
     const messages = await bridge.call({ id: 7, op: "readFile", path: "papers/a/paper.pdf" });
     expect(messages.at(-1)).toEqual({ id: 7, ok: true, result: { done: true, size: THREE_MB.length } });
     expect(chunksOf(messages)).toHaveLength(Math.ceil(THREE_MB.length / BRIDGE_CHUNK_BYTES));
-    expect(new Uint8Array(Buffer.concat(chunksOf(messages).map((c) => Buffer.from(c, "base64"))))).toEqual(THREE_MB);
+    // toEqual walks a 3 MB array element by element (~10 s); compare the bytes natively.
+    expect(Buffer.concat(chunksOf(messages).map((c) => Buffer.from(c, "base64"))).equals(THREE_MB)).toBe(true);
     await bridge.close();
   });
 
@@ -47,7 +48,7 @@ describe("bridge file operations", () => {
     expect((await bridge.call({ id: 10, op: "stat", path: "papers/b/paper.pdf" }))[0]).toEqual({ id: 10, ok: true, result: { stat: null } });
     expect(await pathExists(target)).toBe(false);
     expect(await bridge.call({ id: 9, op: "commit", size: THREE_MB.length })).toEqual([{ id: 9, ok: true, result: { size: THREE_MB.length } }]);
-    expect(new Uint8Array(await fs.readFile(target))).toEqual(THREE_MB);
+    expect((await fs.readFile(target)).equals(THREE_MB)).toBe(true);
     expect(await listFiles(root)).toEqual(["papers/b/paper.pdf"]);
     await bridge.close();
   });

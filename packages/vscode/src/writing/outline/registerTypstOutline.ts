@@ -1,13 +1,13 @@
-// Provides the outline of .typ files when Tinymist is not installed to provide it.
+// Provides the outline of .typ files until the Typst language server runs and provides it.
 import * as vscode from "vscode";
 
-import { tinymistInstalled } from "../typst/tinymist/index.js";
+import { languageServerRunning } from "../typst/index.js";
 import { typstSymbols } from "./typstSymbols.js";
 
 export function registerTypstOutline(): vscode.Disposable {
-  if (tinymistInstalled()) { return new vscode.Disposable(() => {}); }
   const provider: vscode.DocumentSymbolProvider = {
     provideDocumentSymbols(document) {
+      if (languageServerRunning()) { return []; }
       const text = document.getText();
       return typstSymbols(text, document.positionAt(text.length));
     },

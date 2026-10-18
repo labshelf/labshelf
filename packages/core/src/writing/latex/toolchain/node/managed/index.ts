@@ -1,7 +1,7 @@
-// Exports the managed TeX: its shared folder, layout, lock, profile, tool runs, tlmgr, providers and installers.
-export { sharedTexRoot } from "./sharedTexRoot.js";
-export { withTexLock } from "./texLock.js";
-export type { TexLockOptions } from "./texLock.js";
+// Exports the shared managed-tools folder and lock, and the managed TeX: its layout, profile, tool runs, tlmgr, providers and installers.
+export { sharedToolsRoot } from "./sharedToolsRoot.js";
+export { withToolLock } from "./toolLock.js";
+export type { ToolLockOptions } from "./toolLock.js";
 export { findManagedTex, managedTexRoot, readTexLiveYear } from "./texLayout.js";
 export type { ManagedTex, ManagedTexKind } from "./texLayout.js";
 export { progressFraction, runTexTool, TEX_MODULE } from "./runTexTool.js";

@@ -44,12 +44,30 @@ if (mode === "ok") {
 }
 `;
 
+// Stands for `tinymist compile --root . <main> <out>`: the `//FAKE:<mode>` line of the main file picks ok, warn or fail.
+const FAKE_TINYMIST = `#!${process.execPath}
+const fs = require("fs");
+const { PDFDocument } = require(${JSON.stringify(require.resolve("pdf-lib"))});
+const [, , , main, out] = process.argv.slice(2);
+const mode = (/\\/\\/FAKE:(\\w+)/.exec(fs.readFileSync(main, "utf8")) || [])[1] || "ok";
+fs.appendFileSync(out + ".runs", JSON.stringify(process.argv.slice(2)) + "\\n");
+if (mode === "fail") {
+  process.stderr.write("error: unknown variable: x\\n  ┌─ " + main + ":3:2\\n  │\\n3 │ #x\\n  │  ^\\n");
+  process.exitCode = 1;
+} else {
+  if (mode === "warn") process.stderr.write("warning: unused import\\n  ┌─ " + main + ":1:9\\n");
+  PDFDocument.create().then(async (pdf) => { pdf.addPage().drawText("typst", { x: 20, y: 700, size: 12 }); fs.writeFileSync(out, await pdf.save()); });
+}
+`;
+
 export interface BuildHarness {
   root: string;
   texDir: string;
   buildDir: string;
   tex: { resolve: jest.Mock; installMissing: jest.Mock };
   logger: { log: jest.Mock; error: jest.Mock };
+  tinymist: { resolve: jest.Mock; ensure: jest.Mock };
+  servers: { start: jest.Mock };
   handlers: ReturnType<typeof createBuildHandlers>;
   projects: HelperProjects;
   sent: ToPageMessage[];
@@ -57,6 +75,8 @@ export interface BuildHarness {
   payloadOf(message: ToPageMessage): Uint8Array | undefined;
   /** Sets the unsaved text of main.tex: the fake latexmk's mode line, then the chunks, one PDF page each. */
   project(mode: "ok" | "missing" | "minted" | "hang", ...pages: string[]): Promise<void>;
+  /** Sets the unsaved text of main.typ; its `//FAKE:` line makes the fake Tinymist succeed, warn or fail. */
+  typst(mode: "ok" | "warn" | "fail"): Promise<void>;
   compile(id: string, extra?: Record<string, unknown>): Promise<void>;
   cancel(id: string): Promise<void>;
   /** Resolves once the request `id` has ended: `built` without a success, `pages`, or an `error`. */
@@ -86,10 +106,15 @@ export async function createBuildHarness(): Promise<BuildHarness> {
     installMissing: jest.fn(async () => true),
     install: jest.fn(), status: jest.fn(), installAllPackages: jest.fn(),
   };
+  const tinymistPath = join(root, "tinymist");
+  await writeFile(tinymistPath, FAKE_TINYMIST);
+  await chmod(tinymistPath, 0o755);
+  const tinymist = { resolve: jest.fn(async () => tinymistPath), ensure: jest.fn(async () => tinymistPath) };
+  const servers = { start: jest.fn(async () => undefined) };
   const logger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
   const projects = createHelperProjects({ libraryRoot: library, logger: logger as unknown as ILogger });
   await projects.open(PROJECT, `writing/${PROJECT}`);
-  const handlers = createBuildHandlers({ dataDir, projects, tex: tex as unknown as ManagedTexProvider, logger: logger as unknown as ILogger });
+  const handlers = createBuildHandlers({ dataDir, projects, tex: tex as unknown as ManagedTexProvider, tinymist, servers, logger: logger as unknown as ILogger });
   const sent: ToPageMessage[] = [];
   const payloads = new Map<ToPageMessage, Uint8Array>();
   const waiters: Array<() => void> = [];
@@ -100,12 +125,16 @@ export async function createBuildHarness(): Promise<BuildHarness> {
   };
   let version = 0;
   return {
-    root, texDir, buildDir: join(dataDir, "projects", PROJECT, "build"), tex, logger, handlers, projects, sent,
+    root, texDir, buildDir: join(dataDir, "projects", PROJECT, "build"), tex, tinymist, servers, logger, handlers, projects, sent,
     payloadOf: (message) => payloads.get(message),
     async project(mode, ...pages) {
       const text = `%FAKE:${mode}\n${(pages.length > 0 ? pages : ["page"]).join("\n\\newpage\n")}\n`;
       version += 1;
       await projects.edit(PROJECT, "main.tex", version, { text });
+    },
+    async typst(mode) {
+      version += 1;
+      await projects.edit(PROJECT, "main.typ", version, { text: `//FAKE:${mode}\n= Title\n` });
     },
     compile: (id, extra = {}) => handlers.compile({ v: 2, id, type: "compile", projectId: PROJECT, main: "main.tex", mode: "full", engine: "pdflatex", ...extra }, push),
     cancel: (id) => handlers.cancel({ v: 2, id, type: "cancel", projectId: PROJECT }, push),

@@ -29,7 +29,7 @@ async function projectSetup(libraryRoot?: string) {
   const dataDir = path.join(dir, "data");
   const projects: LibraryProjects = createLibraryProjects({ sharedConfigFile, logger });
   const forgotten: string[] = [];
-  return { dataDir, projects, forgotten, ...setup(createProjectHandlers({ dataDir, projects, forgetBuilds: (id) => { forgotten.push(id); } })) };
+  return { dataDir, projects, forgotten, ...setup(createProjectHandlers({ dataDir, projects, forgetBuilds: (id) => { forgotten.push(id); }, edited: async () => undefined, stopServer: async () => undefined })) };
 }
 
 describe("createDispatcher", () => {

@@ -8,7 +8,7 @@ export interface TexInstallDeps {
 }
 
 export interface TexInstallRun {
-  /** The shared TeX folder; see sharedTexRoot. */
+  /** The shared TeX folder; `tex/` under sharedToolsRoot. */
   texRoot: string;
   /** A fraction in 0..1, or null while the step has no measurable progress. */
   onProgress: (fraction: number | null) => void;

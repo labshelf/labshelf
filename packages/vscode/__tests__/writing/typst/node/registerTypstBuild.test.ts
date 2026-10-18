@@ -11,7 +11,6 @@ jest.mock("@labshelf/core/typst/node", () => ({ ...jest.requireActual("@labshelf
 jest.mock("../../../../src/writing/typst/node/typstCompilerHost", () => ({
   TypstCompilerHost: jest.fn(() => ({ get: async () => ({ session: {}, packages: {} }) })),
 }));
-jest.mock("../../../../src/writing/typst/tinymist", () => ({ tinymistInstalled: () => false }));
 jest.mock("../../../../src/writing/typst/typstVersionPin", () => ({ recordTypstVersion: jest.fn(async () => {}) }));
 
 const run = runTypstBuild as jest.Mock;

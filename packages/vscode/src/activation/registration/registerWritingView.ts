@@ -18,7 +18,6 @@ import { registerEditorActions, registerInsertActions } from "../../writing/edit
 import { registerAllProjects } from "../../writing/allProjects/index.js";
 import { registerProjectSearch } from "../../writing/search/index.js";
 import { registerMarkVersionCommand } from "../../writing/versions/index.js";
-import { registerTinymistBridge } from "../../writing/typst/index.js";
 import { BuildPreviews, CheckCounts, FocusFollower, registerShowInPreview, registerShowPreview } from "../../writing/preview/index.js";
 import { CiteSectionsCache, registerCitationProviders, type CitationWorkspace } from "../../writing/citations/index.js";
 import { signalsReader } from "../../writing/checklist/index.js";
@@ -187,7 +186,6 @@ function registerBuildAndPreviewCommands(
   registerBuildCommand({ context, projects, builders, buildRootOf: rootOf });
   context.subscriptions.push(new FocusFollower({ session, projects, buildRootOf: rootOf, builders, previews, host }));
   registerMarkVersionCommand({ context, host, projects, builders, onMarked: (project, name) => history?.recordVersion(project, name) });
-  registerTinymistBridge(context, { host, projects });
   registerShowPreview({ context, projects, previews });
   registerShowInPreview({ context, projects, previews });
   registerEditorActions({ context, host });

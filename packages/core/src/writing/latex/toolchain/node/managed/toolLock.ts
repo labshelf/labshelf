@@ -1,13 +1,13 @@
-// Serialises changes to the shared managed TeX across every LabShelf process with a lock file in its folder.
-// CONTRACT: documents/contracts/managed-tex.md#lock
+// Serialises changes to one managed tool folder across every LabShelf process with a lock file in it.
+// CONTRACT: documents/contracts/managed-tools.md#lock
 import { link, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import type { ILogger } from "../../../../../ports/index.js";
 
-import { TEX_MODULE } from "./runTexTool.js";
+const LOCK_MODULE = "ToolLock";
 
-export interface TexLockOptions {
+export interface ToolLockOptions {
   pollMs?: number;
   timeoutMs?: number;
   isAlive?: (pid: number) => boolean;
@@ -77,7 +77,7 @@ async function removeStale(file: string, text: string, logger: ILogger): Promise
     throw error;
   }
   if ((await readLock(aside)) !== text) {
-    await link(aside, file).catch((error: unknown) => logger.error(TEX_MODULE, error, { step: "restore a TeX lock taken over by mistake", file }));
+    await link(aside, file).catch((error: unknown) => logger.error(LOCK_MODULE, error, { step: "restore a tool lock taken over by mistake", file }));
   }
   await rm(aside, { force: true });
 }
@@ -86,32 +86,32 @@ async function releaseOwn(file: string, own: string, logger: ILogger): Promise<v
   try {
     if ((await readLock(file)) === own) { await rm(file, { force: true }); }
   } catch (error) {
-    await logger.error(TEX_MODULE, error, { step: "release TeX lock", file });
+    await logger.error(LOCK_MODULE, error, { step: "release tool lock", file });
   }
 }
 
-/** Runs `run` while holding `<texRoot>/.lock`; waits for another holder and takes over a stale lock. */
-export async function withTexLock<T>(texRoot: string, operation: string, logger: ILogger, run: () => Promise<T>, options: TexLockOptions = {}): Promise<T> {
+/** Runs `run` while holding `<folder>/.lock`; waits for another holder and takes over a stale lock. */
+export async function withToolLock<T>(folder: string, operation: string, logger: ILogger, run: () => Promise<T>, options: ToolLockOptions = {}): Promise<T> {
   const { pollMs = 500, timeoutMs = 15 * 60_000, isAlive = processAlive } = options;
-  const file = join(texRoot, ".lock");
+  const file = join(folder, ".lock");
   const own = JSON.stringify({ pid: process.pid, operation, startedAt: new Date().toISOString() } satisfies Holder);
-  await mkdir(texRoot, { recursive: true });
+  await mkdir(folder, { recursive: true });
   const deadline = Date.now() + timeoutMs;
   let waiting = false;
   while (!(await tryCreate(file, own))) {
     const text = await readLock(file);
     if (text === null) { continue; }
     if (await isStale(file, text, timeoutMs, isAlive)) {
-      await logger.log("WARN", TEX_MODULE, "Taking over a stale TeX lock", { file, holder: text, operation });
+      await logger.log("WARN", LOCK_MODULE, "Taking over a stale tool lock", { file, holder: text, operation });
       await removeStale(file, text, logger);
       continue;
     }
     if (Date.now() >= deadline) {
-      throw new Error(`Timed out after ${Math.round(timeoutMs / 1000)} s waiting to ${operation}: the TeX folder is locked by ${text}`);
+      throw new Error(`Timed out after ${Math.round(timeoutMs / 1000)} s waiting to ${operation}: ${folder} is locked by ${text}`);
     }
     if (!waiting) {
       waiting = true;
-      await logger.log("INFO", TEX_MODULE, "Waiting for another LabShelf process to finish with the TeX folder", { file, holder: text, operation });
+      await logger.log("INFO", LOCK_MODULE, "Waiting for another LabShelf process to finish with a managed tool folder", { file, holder: text, operation });
     }
     await new Promise((resolve) => setTimeout(resolve, pollMs));
   }

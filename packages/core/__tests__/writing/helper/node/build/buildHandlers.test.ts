@@ -108,16 +108,6 @@ test("a project that is not open ends with a project-id error and no build", asy
   expect(frames.some((f) => f.type === "built" || f.type === "pages")).toBe(false);
 });
 
-test("a Typst main ends toolchain-missing until the language server is installed", async () => {
-  await h.compile("b1", { main: "main.typ" });
-  const result = built(await h.finished("b1"));
-
-  expect(result).toMatchObject({
-    status: "toolchain-missing",
-    problems: [{ severity: "error", file: "main.typ", message: "The Typst language server is not installed yet." }],
-  });
-});
-
 test("the missing-file loop installs and rebuilds at most 10 rounds, then fails", async () => {
   await h.project("missing");
   await h.compile("b1");

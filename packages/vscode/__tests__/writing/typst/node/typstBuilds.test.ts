@@ -3,13 +3,13 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 
 import { buildProject } from "@labshelf/core/node";
-import { tinymistInstalled } from "../../../../src/writing/typst/tinymist";
+import { languageServerRunning } from "../../../../src/writing/typst/languageServerState";
 import { TypstBuilds } from "../../../../src/writing/typst/node/typstBuilds";
 import { recordTypstVersion } from "../../../../src/writing/typst/typstVersionPin";
 import { fakeHost, fakeLogger, fakeProjects, readyEntry } from "../../../support/writingFixtures";
 
 jest.mock("@labshelf/core/node", () => ({ ...jest.requireActual("@labshelf/core/node"), buildProject: jest.fn() }));
-jest.mock("../../../../src/writing/typst/tinymist", () => ({ tinymistInstalled: jest.fn() }));
+jest.mock("../../../../src/writing/typst/languageServerState", () => ({ languageServerRunning: jest.fn() }));
 jest.mock("../../../../src/writing/typst/typstVersionPin", () => ({ recordTypstVersion: jest.fn(async () => {}) }));
 
 const run = buildProject as jest.Mock;
@@ -41,7 +41,7 @@ function setup(over: Parameters<typeof readyEntry>[1] = {}) {
 beforeEach(() => {
   jest.clearAllMocks();
   workspace.textDocuments = [];
-  (tinymistInstalled as jest.Mock).mockReturnValue(false);
+  (languageServerRunning as jest.Mock).mockReturnValue(false);
   run.mockReset();
   run.mockResolvedValue(succeeded);
 });
@@ -119,8 +119,8 @@ describe("TypstBuilds results", () => {
     expect(await builds.request("/p/paper", "main.typ", "save")).toBeUndefined();
   });
 
-  it("does not publish what Tinymist already lists, but the preview still gets the problems", async () => {
-    (tinymistInstalled as jest.Mock).mockReturnValue(true);
+  it("does not publish what the language server already lists, but the preview still gets the problems", async () => {
+    (languageServerRunning as jest.Mock).mockReturnValue(true);
     const { builds, deps, answer } = setup();
     answer(failed);
     await builds.request("/p/paper", "main.typ", "save");

@@ -1,5 +1,5 @@
 // Resolves TeX as managed, then system, then missing, and installs TeX and its packages into the shared managed install.
-// CONTRACT: documents/contracts/managed-tex.md#resolution
+// CONTRACT: documents/contracts/managed-tools.md#resolution
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -10,7 +10,7 @@ import type { LatexEngine } from "../../../../project/index.js";
 import type { TexInstallKind, TexProvider } from "../../index.js";
 import type { TexInstallRun } from "./install/index.js";
 import { TEX_MODULE } from "./runTexTool.js";
-import { withTexLock } from "./texLock.js";
+import { withToolLock } from "./toolLock.js";
 import { findManagedTex, type ManagedTex } from "./texLayout.js";
 import { createTlmgr, isRollover, TlmgrFailed, type Tlmgr } from "./tlmgr.js";
 
@@ -26,7 +26,7 @@ export class TexInstallError extends Error {
 }
 
 export interface ManagedTexProviderOptions {
-  /** The shared TeX folder; see sharedTexRoot. */
+  /** The shared TeX folder; `tex/` under sharedToolsRoot. */
   texRoot: string;
   logger: ILogger;
   /** Used when no managed install exists; never changed. */
@@ -94,7 +94,7 @@ async function withRollover<T>(ctx: ManagedTexProviderOptions, tex: ManagedTex, 
 
 // INVARIANT: every caller of withRollover holds the TeX lock, so the rollover reinstall runs under it too.
 const locked = <T>(ctx: ManagedTexProviderOptions, operation: string, run: () => Promise<T>): Promise<T> =>
-  withTexLock(ctx.texRoot, operation, ctx.logger, run);
+  withToolLock(ctx.texRoot, operation, ctx.logger, run);
 
 async function installMissingFile(ctx: ManagedTexProviderOptions, fileName: string): Promise<boolean> {
   if (!(await findManagedTex(ctx.texRoot))) {

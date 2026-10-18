@@ -65,6 +65,8 @@ Keys a message does not define are dropped when it is read.
 
 `edit` changes only the helper's copy of the text. The helper never writes into the library folder. A `.tex` `compile` builds the project's files from disk with the unsaved text of each edited path in their place. `mode: "preview"` runs one engine pass; `"full"` runs latexmk with the bibliography and every pass it needs. The page asks for `"full"` on save and after 2 s without typing.
 
+A Typst project runs on the managed Tinymist ([managed-tools.md#tinymist](managed-tools.md#tinymist)), installed on first use with `progress` phase `"installing-tinymist"`. The helper starts one Tinymist per open Typst project, on its first `lsp` or `compile`, with the project's working copy as root, and stops it on `closeProject` or when the socket closes. Every `edit` of the project reaches the server as `textDocument/didChange`, so completion and diagnostics see unsaved text. Document URIs in `lsp` payloads are `labshelf:/<path>` with a project path, each segment percent-encoded; the helper maps them to and from the files of the working copy, so the page never sees a path on the computer. The helper refuses a page `lsp` message whose method is `workspace/executeCommand` or whose URI leaves the project: a request gets a JSON-RPC error reply (`-32600`), a notification is dropped. A `.typ` `compile` exports the PDF through Tinymist; `mode` makes no difference.
+
 ### Helper to page
 
 | `type` | Transport | Body |
@@ -74,7 +76,7 @@ Keys a message does not define are dropped when it is read.
 | `authed` | socket | none |
 | `opened` | socket | `projectId`; `files`: string[] |
 | `closed` | socket | `projectId` |
-| `progress` | socket | `phase`: `"installing-tex"`, `"installing-package"`, `"building"` or `"updating"`; `message`: one line for the user; `fraction?`: 0 to 1 |
+| `progress` | socket | `phase`: `"installing-tex"`, `"installing-package"`, `"installing-tinymist"`, `"building"` or `"updating"`; `message`: one line for the user; `fraction?`: 0 to 1 |
 | `built` | socket | `status`: `"succeeded"`, `"failed"`, `"cancelled"`, `"toolchain-missing"` or `"needs-shell-escape"`; `problems`; `pdfSha256?` |
 | `pages` | socket | `pdfSha256`; `pageCount`; `changed`: `{ index, offset, length }[]`; the payload |
 | `lsp` | socket | `projectId`; `payload` |
@@ -134,7 +136,7 @@ bin/
 logs/
 ```
 
-The managed TeX lives in the folder all LabShelf apps share: see [managed-tex.md](managed-tex.md). The helper writes nowhere else.
+The managed TeX lives in the folder all LabShelf apps share: see [managed-tools.md](managed-tools.md). The helper writes nowhere else.
 
 ## Registration
 

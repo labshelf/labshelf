@@ -8,16 +8,22 @@ import type { ManagedTexProvider } from "../../../latex/toolchain/node/managed/i
 import { PROTOCOL_VERSION, type ToHelperMessage } from "../../index.js";
 
 import type { HelperHandler, HelperSend } from "../dispatch/index.js";
+import type { LspServers, ManagedTinymist } from "../lsp/index.js";
 import { HelperProjectError, type HelperProjects } from "../projects/index.js";
 import { BUILD_MODULE, runBuildJob, type BuildToken } from "./runBuildJob.js";
 import { helperToolchainPrompt } from "./helperToolchainPrompt.js";
 import type { SentPages } from "./sendPages.js";
+import { runTypstBuild } from "./typstBuild.js";
 
 export interface BuildHandlerOptions {
   /** The helper's data folder; each project builds in `projects/<id>/src` and `projects/<id>/build`. */
   dataDir: string;
   projects: Pick<HelperProjects, "syncWorkingCopy">;
   tex: ManagedTexProvider;
+  /** Builds Typst projects: the managed Tinymist exports the PDF. */
+  tinymist: ManagedTinymist;
+  /** A Typst build starts the project's language server, so the editor's first request finds it running. */
+  servers: Pick<LspServers, "start">;
   logger: ILogger;
 }
 
@@ -29,11 +35,9 @@ export interface BuildHandlers {
   forget(projectId: string): void;
 }
 
-interface ProjectBuilds { deps: ProjectBuildDeps; queue: ProjectBuildQueue; sent: SentPages; token?: BuildToken }
+interface ProjectBuilds { deps: ProjectBuildDeps; queue: ProjectBuildQueue; sent: SentPages; token?: BuildToken; typstTail: Promise<void> }
 
 type CompileMessage = Extract<ToHelperMessage, { type: "compile" }>;
-
-const TYPST_MISSING = "The Typst language server is not installed yet.";
 
 const rejectTypst = (): Promise<never> => Promise.reject(new Error("LabShelf Helper builds Typst projects through the language server."));
 
@@ -43,7 +47,22 @@ function createProjectBuilds(options: BuildHandlerOptions, prompt: TexSetupPromp
     projects: { projectBuildDir: (id) => path.join(options.dataDir, "projects", id, "build") },
     typst: { get: rejectTypst },
   };
-  return { deps, queue: new ProjectBuildQueue(deps), sent: { hashes: [] } };
+  return { deps, queue: new ProjectBuildQueue(deps), sent: { hashes: [] }, typstTail: Promise.resolve() };
+}
+
+async function reportFailure(options: BuildHandlerOptions, message: CompileMessage, send: HelperSend, error: unknown): Promise<void> {
+  await options.logger.error(BUILD_MODULE, error, { projectId: message.projectId, main: message.main });
+  const code = error instanceof HelperProjectError ? error.code : "internal";
+  send({ v: PROTOCOL_VERSION, id: message.id, type: "error", code, message: error instanceof Error ? error.message : String(error) });
+}
+
+// INVARIANT: one Typst export runs per project at a time; a newer build waits for the cancelled one to exit.
+function runTypstInBackground(options: BuildHandlerOptions, message: CompileMessage, send: HelperSend, builds: ProjectBuilds, token: BuildToken): void {
+  const { dataDir, tinymist, servers, projects, logger } = options;
+  builds.typstTail = builds.typstTail
+    .then(() => runTypstBuild({ message, send, token, dataDir, tinymist, servers, projects, logger, sent: builds.sent }))
+    .catch((error: unknown) => reportFailure(options, message, send, error))
+    .finally(() => { if (builds.token === token) { delete builds.token; } });
 }
 
 async function runInBackground(options: BuildHandlerOptions, message: CompileMessage, send: HelperSend, builds: ProjectBuilds, token: BuildToken): Promise<void> {
@@ -56,9 +75,7 @@ async function runInBackground(options: BuildHandlerOptions, message: CompileMes
     const sync = (): Promise<void> => options.projects.syncWorkingCopy(message.projectId, folder);
     await runBuildJob({ message, send, token, queue: builds.queue, project, logger, sync, sent: builds.sent });
   } catch (error) {
-    await logger.error(BUILD_MODULE, error, { projectId: message.projectId, main: message.main });
-    const code = error instanceof HelperProjectError ? error.code : "internal";
-    send({ v: PROTOCOL_VERSION, id: message.id, type: "error", code, message: error instanceof Error ? error.message : String(error) });
+    await reportFailure(options, message, send, error);
   } finally {
     if (builds.token === token) { delete builds.token; }
   }
@@ -88,15 +105,11 @@ export function createBuildHandlers(options: BuildHandlerOptions): BuildHandlers
   // INVARIANT: the token is registered before any await, because the dispatcher runs a `cancel` without waiting for this build.
   const compile: HelperHandler = (message, send) => {
     if (message.type !== "compile") { throw new Error(`compile handler received ${message.type}`); }
-    if (message.main.endsWith(".typ")) {
-      send({ v: PROTOCOL_VERSION, id: message.id, type: "built", status: "toolchain-missing", problems: [{ severity: "error", file: message.main, message: TYPST_MISSING }] });
-      return Promise.resolve();
-    }
     const builds = buildsOf(message.projectId, helperToolchainPrompt(message.id, send));
     stop(builds);
     const token: BuildToken = { cancelled: false };
     builds.token = token;
-    void runInBackground(options, message, send, builds, token);
+    if (message.main.endsWith(".typ")) { runTypstInBackground(options, message, send, builds, token); } else { void runInBackground(options, message, send, builds, token); }
     return Promise.resolve();
   };
 
