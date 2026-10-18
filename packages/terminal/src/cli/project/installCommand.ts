@@ -4,9 +4,10 @@ import * as path from "node:path";
 
 import {
   describeInstall, keyResolves, parseProjectFile, planInstall, PROJECT_FILE, summarizeInstall,
-  type ILogger, type ImportOutcome, type InstallResult, type LibraryStore, type ListedPaper,
+  type ILogger, type ImportOutcome, type InstallLine, type InstallResult, type LibraryStore, type ListedPaper,
 } from "@labshelf/core";
 
+import type { ParsedArgs } from "../args.js";
 import { UsageError, type Output } from "../usage.js";
 
 /** What the command needs of the opened library. */
@@ -31,10 +32,12 @@ async function listedPapers(projectDir: string): Promise<ListedPaper[]> {
 
 /**
  * Imports, one at a time, each listed paper whose cite key the library lacks; one at a time so a DOI listed twice
- * is found by the second import's duplicate check.
+ * is found by the second import's duplicate check. Never prompts, so it runs without a TTY; `--json` replaces the
+ * per-paper lines with one JSON document.
  * @returns the exit code: 1 when a listed key still does not resolve
  */
-export async function runInstall(ctx: InstallContext, positionals: string[], io: Output): Promise<number> {
+export async function runInstall(ctx: InstallContext, positionals: string[], io: Output, flags: ParsedArgs["flags"] = {}): Promise<number> {
+  const json = flags["json"] === true;
   const projectDir = path.resolve(positionals[0] ?? process.cwd());
   const records = [...ctx.store.snapshot.papers.values()].map((entry) => entry.record);
   const plan = planInstall(await listedPapers(projectDir), records);
@@ -42,10 +45,20 @@ export async function runInstall(ctx: InstallContext, positionals: string[], io:
   for (const entry of plan) {
     const outcome = entry.kind === "import" ? await ctx.papers.importDoi(entry.doi, entry.key) : undefined;
     results.push({ entry, outcome });
-    io.out(describeInstall({ entry, outcome }).text);
+    if (!json) { io.out(describeInstall({ entry, outcome }).text); }
   }
   const summary = summarizeInstall(results);
-  io.out(summary.text);
+  io.out(json ? installJson(results, summary) : summary.text);
   await ctx.logger.log("INFO", "terminal.install", "Project papers installed", { projectDir, summary: summary.text });
   return results.some((result) => !keyResolves(result)) ? 1 : 0;
+}
+
+function installJson(results: readonly InstallResult[], summary: InstallLine): string {
+  const papers = results.map((result) => ({
+    key: result.entry.key,
+    kind: result.entry.kind,
+    ...describeInstall(result),
+    resolved: keyResolves(result),
+  }));
+  return JSON.stringify({ papers, summary }, null, 2);
 }
