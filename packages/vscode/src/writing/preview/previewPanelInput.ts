@@ -1,6 +1,7 @@
 // Describes what a build preview needs from its host and names the paper a preview reader opens.
 import type { Annotation, LatexEngine, PaperRecord, PathOps, ProjectDataPort } from "@labshelf/core";
 import type { ReaderPanelDeps } from "../../pdf-viewer/index.js";
+import type { UriOfPath } from "../../storage/index.js";
 import type { ReadyProject } from "../mainDocument.js";
 import type { IncludeOnlyState } from "../build/index.js";
 import type { CitationFixDeps } from "./citationFixes/index.js";
@@ -13,6 +14,8 @@ export interface BuildPreviewsDeps extends Pick<ReaderPanelDeps, "extensionUri" 
   listPapers: () => Promise<PaperRecord[]>;
   highlightsOf: (paperId: string) => Promise<Annotation[]>;
   paths: PathOps;
+  /** The URI VS Code reads a path by; the web build keeps build folders in extension storage rather than under file:. */
+  uriOf: UriOfPath;
   data: ProjectDataPort;
   /** The root the editor file builds into. */
   buildRootOf: BuildRootOf;

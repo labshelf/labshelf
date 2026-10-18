@@ -21,7 +21,7 @@ interface SessionPreviews {
 export interface ProjectSessionDeps {
   /** Remembers the open project across window reloads. */
   workspaceState: vscode.Memento;
-  projects: Pick<WritingProjects, "list" | "paths" | "data" | "onDidChange">;
+  projects: Pick<WritingProjects, "list" | "paths" | "data" | "onDidChange" | "fs">;
   previews: SessionPreviews;
   host: Pick<WritingHost, "current">;
 }

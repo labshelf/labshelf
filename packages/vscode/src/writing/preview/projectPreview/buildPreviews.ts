@@ -150,7 +150,7 @@ export class BuildPreviews implements BuildListener {
   }
 
   private switchRoot(panel: ReaderPanel, project: ReadyProject, root: string, pdf: string, options: { beside: boolean }): void {
-    panel.showDocument(vscode.Uri.file(pdf), this.deps.paths.basename(pdf));
+    panel.showDocument(this.deps.uriOf(pdf), this.deps.paths.basename(pdf));
     panel.reveal(options.beside);
     this.shown.set(project.folder, root);
     this.synctex.invalidate(project.folder);

@@ -1,6 +1,6 @@
 // Holds a project's files in memory for the Typst compiler, which reads files synchronously in the middle of a compile.
 import type { TypstFileAccess } from "@labshelf/core/typst";
-import type { BrowserProjects } from "../../storage/projects";
+import { ProjectFileNotFoundError, type BrowserProjects } from "../../storage/projects";
 
 /** The compiler path of the project folder; files sit under it at their project-relative paths. */
 export const COMPILER_ROOT = "/project";
@@ -9,7 +9,7 @@ export const compilerPath = (relative: string): string => `${COMPILER_ROOT}/${re
 
 export interface ProjectSnapshot {
   access: TypstFileAccess;
-  /** Reads one file again after it changed on disk. */
+  /** Reads one file again after it changed on disk, or forgets it when it is gone. */
   refresh(relative: string): Promise<void>;
 }
 
@@ -35,8 +35,15 @@ export async function loadProjectSnapshot(projects: BrowserProjects, projectId: 
       readAll: (path) => files.get(path),
     },
     async refresh(relative) {
-      files.set(compilerPath(relative), await projects.readProjectFile(projectId, relative));
-      versions.set(compilerPath(relative), new Date());
+      const path = compilerPath(relative);
+      versions.set(path, new Date());
+      try {
+        files.set(path, await projects.readProjectFile(projectId, relative));
+      } catch (error) {
+        // A staged write renames its temporary file away, and a deleted file is gone: either way the compiler must not see it.
+        if (!(error instanceof ProjectFileNotFoundError)) throw error;
+        files.delete(path);
+      }
     },
   };
 }

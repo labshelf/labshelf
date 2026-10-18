@@ -10,7 +10,7 @@ import { PREVIEW_LOG_MODULE } from "./previewStrings.js";
 
 export interface FocusFollowerDeps {
   session: { readonly project: ReadyProject | undefined };
-  projects: Pick<WritingProjects, "list" | "paths" | "data">;
+  projects: Pick<WritingProjects, "list" | "paths" | "data" | "fs">;
   buildRootOf: BuildRootOf;
   builders: Record<ProjectFormat, { request(projectFolder: string, root: string, trigger: "focus"): Promise<unknown> }>;
   previews: { show(project: ReadyProject, root: string, pdf: string, options: { beside: boolean }): void };

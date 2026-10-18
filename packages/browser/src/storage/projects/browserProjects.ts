@@ -5,6 +5,7 @@ import {
 } from "@labshelf/core";
 
 import { listFolderEntries, type FolderEntry } from "./folderEntries";
+import { moveOrReplace } from "./moveOrReplace";
 
 const MODULE = "browser.storage.projects";
 
@@ -39,8 +40,6 @@ interface BrowserProjectsDeps {
 
 type Action = "read" | "write" | "list" | "stat" | "rename" | "delete" | "mkdir";
 
-const isCaseOnly = (from: string, to: string): boolean => from !== to && from.toLowerCase() === to.toLowerCase();
-
 export function createBrowserProjects({ fileSystem, logger }: BrowserProjectsDeps): BrowserProjects {
   // The bridge root is the library folder itself, so the library root path is empty.
   const reads = { fs: fileSystem, paths: posixPathOps, logger };
@@ -66,13 +65,6 @@ export function createBrowserProjects({ fileSystem, logger }: BrowserProjectsDep
     if (problem !== undefined) throw new Error(`Refused project file path ${JSON.stringify(path)}: it ${problem}`);
   };
   /** The port refuses an existing target, so a file is replaced by writing it whole, which the host does atomically. */
-  const moveOrReplace = async (source: string, target: string): Promise<void> => {
-    // TRAP: on a case-insensitive disk the case-only target stats as the source itself; copying onto it would lose the file.
-    const existing = isCaseOnly(source, target) ? undefined : await fileSystem.stat(target);
-    if (!existing?.isFile) return fileSystem.rename(source, target);
-    await fileSystem.writeFile(target, await fileSystem.readFile(source));
-    await fileSystem.deleteFile(source);
-  };
   const noFileAt = (target: string): Promise<boolean> => fileSystem.stat(target).then((found) => found === undefined || found.isDirectory, () => false);
 
   return {
@@ -83,7 +75,7 @@ export function createBrowserProjects({ fileSystem, logger }: BrowserProjectsDep
     statProjectPath: (id, path) => onPath(id, path, "stat", (target) => fileSystem.stat(target)),
     renameProjectPath: async (id, from, to) => {
       refuseEscape(to);
-      return onPath(id, from, "rename", (source, folder) => moveOrReplace(source, `${folder}/${to}`));
+      return onPath(id, from, "rename", (source, folder) => moveOrReplace(fileSystem, source, `${folder}/${to}`));
     },
     deleteProjectPath: (id, path) => onPath(id, path, "delete", (target) => fileSystem.removeTree(target)),
     createProjectDirectory: (id, path) => onPath(id, path, "mkdir", (target) => fileSystem.mkdir(target)),

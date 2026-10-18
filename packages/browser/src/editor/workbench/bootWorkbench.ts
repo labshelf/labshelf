@@ -18,6 +18,7 @@ import "@codingame/monaco-vscode-latex-default-extension";
 import "@codingame/monaco-vscode-theme-defaults-default-extension";
 import getWorkbenchOverride from "@codingame/monaco-vscode-workbench-service-override";
 import { TRIMMED_LAYOUT } from "./trimmedLayout";
+import { installWebviewHost } from "./webviewHost";
 import { installWorkerEnvironment } from "./workerEnvironment";
 
 export interface WorkbenchOptions {
@@ -26,6 +27,7 @@ export interface WorkbenchOptions {
 
 export async function bootWorkbench(container: HTMLElement, { folder }: WorkbenchOptions): Promise<void> {
   installWorkerEnvironment();
+  installWebviewHost();
   await initialize({
     ...getLogOverride(), ...getFilesOverride(), ...getStorageOverride(), ...getConfigurationOverride(), ...getKeybindingsOverride(),
     ...getModelOverride(), ...getLanguagesOverride(), ...getTextmateOverride(), ...getThemeOverride(), ...getMarkersOverride(),

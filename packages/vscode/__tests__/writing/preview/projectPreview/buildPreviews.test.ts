@@ -28,7 +28,7 @@ function setup() {
   const panel = { controller, showDocument: jest.fn(), reveal: jest.fn(), dispose: jest.fn(() => closed?.()) };
   create.mockImplementation((_deps, source) => { closed = source.onClosed; return panel; });
   const counts = new CheckCounts();
-  const previews = new BuildPreviews({ projects: fakeProjects([project]), checkCounts: counts, host, paths: path, data: fakeProjectData(), listPapers: async () => [], highlightsOf: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false, buildRootOf: async (_folder: string, main: string) => main, recompile: async () => {}, setEngine: async () => {}, fixes: () => undefined });
+  const previews = new BuildPreviews({ projects: fakeProjects([project]), checkCounts: counts, host, paths: path, uriOf: (target: string) => vscode.Uri.file(target), data: fakeProjectData(), listPapers: async () => [], highlightsOf: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false, buildRootOf: async (_folder: string, main: string) => main, recompile: async () => {}, setEngine: async () => {}, fixes: () => undefined });
   return { previews, controller, host, panel, counts, close: () => closed?.() };
 }
 

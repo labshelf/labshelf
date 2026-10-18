@@ -31,7 +31,7 @@ function setup(project: Project, buildRootOf = async (_folder: string, main: str
   const data = fakeProjectData();
   data.projectBuildDir.mockImplementation((id: string) => path.join(cache, id));
   const previews = new BuildPreviews({
-    host, paths: path, data, listPapers: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false,
+    host, paths: path, uriOf: (target: string) => vscode.Uri.file(target), data, listPapers: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false,
     buildRootOf, recompile: jest.fn(async () => {}),
   projects: fakeProjects(), checkCounts: new CheckCounts(),
   } as never);

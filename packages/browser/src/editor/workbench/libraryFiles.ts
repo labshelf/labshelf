@@ -3,7 +3,7 @@ import type { ILogger, LibraryFileSystem } from "@labshelf/core";
 import {
   createFileSystemProviderError, FileSystemProviderErrorCode, FileType, type IStat,
 } from "@codingame/monaco-vscode-api/vscode/vs/platform/files/common/files";
-import { listFolderEntries } from "../../storage/projects";
+import { listFolderEntries, moveOrReplace } from "../../storage/projects";
 
 const MODULE = "browser.editor.libraryFiles";
 
@@ -42,6 +42,9 @@ export function createLibraryFiles(fileSystem: LibraryFileSystem, logger: ILogge
     },
     mkdir: (path: string) => call(path, "create", () => fileSystem.mkdir(path)),
     delete: (path: string) => call(path, "delete", () => fileSystem.removeTree(path)),
-    rename: (from: string, to: string) => call(from, "rename", () => fileSystem.rename(from, to)),
+    async rename(from: string, to: string, opts: { overwrite: boolean }): Promise<void> {
+      if (!opts.overwrite && await fileSystem.exists(to)) throw createFileSystemProviderError(`${to} already exists`, FileSystemProviderErrorCode.FileExists);
+      await call(from, "rename", () => moveOrReplace(fileSystem, from, to));
+    },
   };
 }

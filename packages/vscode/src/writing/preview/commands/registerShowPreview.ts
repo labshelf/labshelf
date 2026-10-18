@@ -11,7 +11,7 @@ const SHOW_PREVIEW_COMMAND = "labshelf.writing.showPreview";
 
 interface ShowPreviewDeps {
   context: vscode.ExtensionContext;
-  projects: Pick<WritingProjects, "data" | "list" | "paths">;
+  projects: Pick<WritingProjects, "data" | "list" | "paths" | "fs">;
   previews: Pick<BuildPreviews, "show">;
 }
 

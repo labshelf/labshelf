@@ -70,7 +70,7 @@ export function toWorkbenchProvider({ projects, library, logger }: WorkbenchFile
     rename: async (from, to, opts) => {
       const source = target(from, "write");
       const destination = target(to, "write");
-      if (source.kind === "library" && destination.kind === "library") return files.rename(source.path, destination.path);
+      if (source.kind === "library" && destination.kind === "library") return files.rename(source.path, destination.path, { overwrite: opts.overwrite });
       if (source.kind === "project" && destination.kind === "project") return projects.rename(source.uri, destination.uri, { overwrite: opts.overwrite });
       throw createFileSystemProviderError("Cannot move files into or out of projects", FileSystemProviderErrorCode.NoPermissions);
     },

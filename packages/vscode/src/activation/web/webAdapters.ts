@@ -5,6 +5,7 @@ import { createProjectData, posixPathOps, type ILogger, type SidecarPort } from 
 import { VscodeFileSystem, type UriOfPath } from "../../storage/index.js";
 import { globalStateLibraryConfig } from "../../storage/paths/index.js";
 import type { HostAdapters, HostDeviceLayout } from "../serviceComposition/index.js";
+import { bundledPdfjs } from "./bundledPdfjs.js";
 
 const unavailable = (what: string) => (): Promise<never> => Promise.reject(new Error(`${what} is not available in the web build.`));
 
@@ -51,6 +52,6 @@ export function createWebAdapters(context: vscode.ExtensionContext, logger: ILog
     scanLibraryConflicts: async () => [],
     resolveConflictCopy: unavailable("Resolving conflict copies"),
     sharedLibraryConfig: globalStateLibraryConfig(context.globalState),
-    reader: { locatePdfjs: () => null, isMac: /Mac/i.test(globalThis.navigator?.userAgent ?? "") },
+    reader: { locatePdfjs: bundledPdfjs(context.extensionUri), isMac: /Mac/i.test(globalThis.navigator?.userAgent ?? "") },
   };
 }

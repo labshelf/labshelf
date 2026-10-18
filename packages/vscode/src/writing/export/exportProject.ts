@@ -18,7 +18,7 @@ export type ConvertDocument = (request: { format: ProjectFormat; folder: string;
 
 export interface ExportProjectDeps {
   logger: ILogger;
-  projects: Pick<WritingProjects, "data" | "paths">;
+  projects: Pick<WritingProjects, "data" | "paths" | "fs">;
   /** Absent where documents cannot be converted, which leaves the document targets unregistered. */
   convertDocument?: ConvertDocument;
 }

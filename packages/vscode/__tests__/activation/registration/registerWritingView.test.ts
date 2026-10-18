@@ -41,7 +41,7 @@ function setup(root: string | undefined, register: RegisterPlatformWriting = fak
     workspaceState: { get: () => undefined, update: jest.fn(async () => {}) },
   };
   const adapters = {
-    paths: path, fs: new NodeLibraryFileSystem(), createProjectData: () => data, deviceLayout: () => { throw new Error("The fake project data reads no device dirs"); },
+    paths: path, uriOf: (target: string) => vscode.Uri.file(target), fs: new NodeLibraryFileSystem(), createProjectData: () => data, deviceLayout: () => { throw new Error("The fake project data reads no device dirs"); },
     reader: { locatePdfjs: () => null, isMac: false }, pdfjs, ...(convertDocument ? { convertDocument } : {}),
   };
   registerWritingView(context as unknown as vscode.ExtensionContext, controller, adapters, register);

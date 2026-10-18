@@ -7,7 +7,7 @@ import type { WritingProjects } from "../session/index.js";
 import { summariseBuild, type BuildSources } from "./projectBuildState.js";
 
 export interface ProjectDetailDeps extends Pick<BuildSources, "outcomes" | "builds"> {
-  projects: Pick<WritingProjects, "data" | "paths" | "reads">;
+  projects: Pick<WritingProjects, "data" | "paths" | "reads" | "fs">;
   listPapers: () => Promise<PaperRecord[]>;
   logger: ILogger;
   pdfjs: PdfjsLoader;
