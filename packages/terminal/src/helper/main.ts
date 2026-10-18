@@ -29,7 +29,7 @@ async function main(): Promise<number | undefined> {
   });
   await updater.cleanupAfterRestart();
   // The update runs after ready and is throttled to once a day; a replaced binary takes effect on the next launch.
-  await runHelperHost({ dataDir, logger, helperVersion: HELPER_VERSION, host: "helper", afterHello: () => updater.checkInBackground() });
+  await runHelperHost({ dataDir, logger, helperVersion: HELPER_VERSION, host: "helper", args: process.argv.slice(2), afterHello: () => updater.checkInBackground() });
   return undefined;
 }
 

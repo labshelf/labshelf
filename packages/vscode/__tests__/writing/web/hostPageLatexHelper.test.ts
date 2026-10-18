@@ -1,4 +1,4 @@
-// Tests that the web build's ILatexHelper forwards each call to the editor page's helper command.
+// Tests that the web build's EditorHostLatexHelper forwards each call to the editor page's helper command.
 import * as vscode from "vscode";
 
 import { createHostPageLatexHelper, LATEX_HELPER_COMMAND } from "../../../src/writing/web/hostPageLatexHelper";

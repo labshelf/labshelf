@@ -1,14 +1,14 @@
-// Runs the helper's message loop: wires the mirror, the build handlers and the TeX provider to the frames on stdio.
+// Runs one helper session: the native hello on stdio, then project, build and TeX messages on the loopback socket.
 // CONTRACT: documents/contracts/helper.md#transport
 import * as os from "node:os";
-import * as path from "node:path";
 
 import type { ILogger } from "../../../ports/index.js";
 import type { HelperHost } from "../index.js";
 import { createSharedTexProvider } from "../../latex/toolchain/node/managed/index.js";
 import { createBuildHandlers } from "./build/index.js";
-import { createDispatcher, createHelloHandler, runHelperLoop } from "./dispatch/index.js";
-import { createProjectMirror } from "./mirror/index.js";
+import { answerHello, createDispatcher, runHelperLoop, type HelloAnswer } from "./dispatch/index.js";
+import { createLibraryProjects, createProjectHandlers } from "./projectHandlers/index.js";
+import type { HelperSocket } from "./socket/index.js";
 import { createFrameWriter } from "./stdio/index.js";
 import { createTexInstallHandlers } from "./tex/index.js";
 
@@ -18,34 +18,47 @@ export interface HelperHostOptions {
   helperVersion: string;
   /** The program running the loop, which `ready` names. */
   host: HelperHost;
-  /** Runs after each `hello` is answered. */
+  /** The process's command-line arguments; Chrome passes the caller's origin among them, Firefox the manifest path. */
+  args: readonly string[];
+  /** Runs after the hello opened the session. */
   afterHello?: () => void;
   input?: AsyncIterable<Uint8Array>;
   output?: NodeJS.WritableStream;
 }
 
+const callerOriginIn = (args: readonly string[]) => args.find((arg) => arg.startsWith("chrome-extension://"));
+
 export async function runHelperHost(options: HelperHostOptions): Promise<void> {
   const { dataDir, logger, helperVersion, host } = options;
-  const send = createFrameWriter(options.output ?? process.stdout, logger);
   // INVARIANT: stdout carries frames only, so nothing in the helper may call console.log.
-  const projectsRoot = path.join(dataDir, "projects");
+  const send = createFrameWriter(options.output ?? process.stdout, logger);
   const tex = createSharedTexProvider({ env: process.env, platform: process.platform, homeDir: os.homedir(), logger, fetchImpl: fetch });
-  const mirror = createProjectMirror({ projectsRoot, logger });
-  const builds = createBuildHandlers({ projectsRoot, sourceDir: (projectId) => mirror.sourceDir(projectId), tex, logger });
+  const projects = createLibraryProjects({ logger });
+  const builds = createBuildHandlers({ dataDir, logger, projects, tex });
   const dispatcher = createDispatcher(
     {
-      // An install changes ready.tex, so hello reads the status on every request.
-      hello: async (message, reply) => {
-        await createHelloHandler({ helperVersion, host, tex: await tex.status() })(message, reply);
-        options.afterHello?.();
-      },
-      sync: mirror.sync, file: mirror.file, delete: mirror.delete, build: builds.build, cancel: builds.cancel,
+      ...createProjectHandlers({ dataDir, projects, forgetBuilds: builds.forget }),
+      compile: builds.compile, cancel: builds.cancel,
       ...createTexInstallHandlers({ tex, helperVersion, host, logger }),
     },
-    send,
     logger,
   );
+  let socket: HelperSocket | undefined;
+  const hello: HelloAnswer = async (message, reply) => {
+    socket = await answerHello(message, reply, {
+      helperVersion, host, texStatus: () => tex.status(), callerOrigin: callerOriginIn(options.args), logger, handle: dispatcher.handle,
+    });
+    if (socket) { options.afterHello?.(); }
+    return socket !== undefined;
+  };
   await logger.log("INFO", "helper", "Helper started", { version: helperVersion, host, dataDir });
-  await runHelperLoop(options.input ?? process.stdin, dispatcher, logger);
-  await logger.log("INFO", "helper", "Input closed; helper exits");
+  try {
+    await runHelperLoop(options.input ?? process.stdin, hello, send, logger);
+  } finally {
+    builds.cancelAll();
+    await socket?.close();
+    await dispatcher.drain();
+    await projects.closeAll();
+    await logger.log("INFO", "helper", "Input closed; helper exits");
+  }
 }

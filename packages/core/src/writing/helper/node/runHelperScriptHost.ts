@@ -1,4 +1,4 @@
-// Runs the helper protocol on stdio inside a desktop app's process, answering as that app.
+// Runs a helper session inside a desktop app's process, answering as that app.
 import * as os from "node:os";
 
 import { HELPER_VERSION, type HelperHost } from "../index.js";
@@ -10,7 +10,7 @@ import { runHelperHost } from "./runHelperHost.js";
 export function runHelperScriptHost(host: Exclude<HelperHost, "helper">): void {
   const dataDir = helperDataDir(process.env, process.platform, os.homedir());
   // PLATFORM: stdout carries the Native Messaging frames, so failures go to stderr only.
-  runHelperHost({ dataDir, logger: createHelperLogger(dataDir), helperVersion: HELPER_VERSION, host }).then(
+  runHelperHost({ dataDir, logger: createHelperLogger(dataDir), helperVersion: HELPER_VERSION, host, args: process.argv.slice(2) }).then(
     () => { process.exitCode = 0; },
     (error: unknown) => {
       process.stderr.write(`labshelf helper failed: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`);

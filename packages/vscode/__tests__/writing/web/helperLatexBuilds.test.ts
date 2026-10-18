@@ -1,8 +1,8 @@
-// Tests the web build's LaTeX builds: they compile through ILatexHelper and show the helper setup when the helper or TeX is missing.
+// Tests the web build's LaTeX builds: they compile through EditorHostLatexHelper and show the helper setup when the helper or TeX is missing.
 import * as vscode from "vscode";
 
 import { posixPathOps, type ProjectEntry } from "@labshelf/core";
-import type { HelperCompileResult, HelperStatus, ILatexHelper } from "@labshelf/core/helper";
+import type { EditorHostCompileResult, EditorHostLatexHelper, HelperStatus } from "@labshelf/core/helper";
 import { HelperLatexBuilds } from "../../../src/writing/web/helperLatexBuilds";
 import { MemoryLibraryFs } from "../../support/memoryLibraryFs";
 import { fakeHost, readyEntry } from "../../support/writingFixtures";
@@ -11,7 +11,7 @@ const READY: HelperStatus = { state: "ready", helperVersion: "1.0.0", tex: { ins
 const PDF = new Uint8Array([37, 80, 68, 70]);
 const window = vscode.window as unknown as Record<string, jest.Mock>;
 
-function fakeHelper(status: HelperStatus | Error, result: HelperCompileResult = { status: "succeeded", problems: [], pdf: PDF }): { [K in keyof ILatexHelper]: jest.Mock } {
+function fakeHelper(status: HelperStatus | Error, result: EditorHostCompileResult = { status: "succeeded", problems: [], pdf: PDF }): { [K in keyof EditorHostLatexHelper]: jest.Mock } {
   return {
     connect: jest.fn(async () => { if (status instanceof Error) { throw status; } return status; }),
     status: jest.fn(),
@@ -95,7 +95,7 @@ describe("HelperLatexBuilds", () => {
 
   it("publishes a failed build's problems and reports it as failed", async () => {
     const problems = [{ file: "main.tex", line: 1, message: "Undefined control sequence", severity: "error" }];
-    const helper = fakeHelper(READY, { status: "failed", problems } as unknown as HelperCompileResult);
+    const helper = fakeHelper(READY, { status: "failed", problems } as unknown as EditorHostCompileResult);
     const { deps, builds } = await setup(helper);
     expect(await builds.request("/lib/paper", "main.tex", "save")).toEqual({ status: "failed", problems });
     expect(deps.diagnostics.publish).toHaveBeenCalledWith("/lib/paper/main.tex", problems);

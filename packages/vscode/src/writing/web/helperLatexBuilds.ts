@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import { builtPdfPath, errorMessage, listProjectFiles, type ILogger } from "@labshelf/core";
-import { type HelperCompileResult, type HelperProjectFile, type ILatexHelper } from "@labshelf/core/helper";
+import { type EditorHostCompileResult, type EditorHostLatexHelper, type EditorHostProjectFile } from "@labshelf/core/helper";
 import type { BuildDiagnostics, BuildListener, BuildTrigger, FinishedBuild } from "../build/index.js";
 import type { ReadyProject } from "../mainDocument.js";
 import type { WritingHost, WritingProjects } from "../session/index.js";
@@ -10,7 +10,7 @@ import type { WritingHost, WritingProjects } from "../session/index.js";
 const MODULE = "writing/helperBuild";
 
 export interface HelperLatexBuildsDeps {
-  helper: ILatexHelper;
+  helper: EditorHostLatexHelper;
   host: Pick<WritingHost, "current">;
   projects: Pick<WritingProjects, "list" | "fs" | "paths">;
   diagnostics: Pick<BuildDiagnostics, "publish">;
@@ -103,14 +103,14 @@ export class HelperLatexBuilds {
     }
   }
 
-  private async files(project: ReadyProject): Promise<HelperProjectFile[]> {
+  private async files(project: ReadyProject): Promise<EditorHostProjectFile[]> {
     const { fs, paths } = this.deps.projects;
     const relatives = await listProjectFiles(this.deps.projects, project.folder);
     return await Promise.all(relatives.map(async (path) => ({ path, bytes: await fs.readFile(paths.join(project.folder, path)) })));
   }
 
   private async finish(
-    project: ReadyProject, root: string, trigger: BuildTrigger, result: HelperCompileResult, logger: ILogger,
+    project: ReadyProject, root: string, trigger: BuildTrigger, result: EditorHostCompileResult, logger: ILogger,
   ): Promise<FinishedBuild | undefined> {
     if (result.status === "toolchain-missing") { await this.showSetup(logger); return undefined; }
     if (result.status === "needs-shell-escape") {

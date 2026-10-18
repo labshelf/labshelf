@@ -1,21 +1,25 @@
-/** Exports the LabShelf Helper protocol: its messages, validation, chunking, the client port the browser implements and the wire form of the editor page calls (LaTeX helper and Typst compiles). */
+/** Exports the LabShelf Helper protocol: its messages, validation, the client port the browser implements and the wire form of the editor page calls (LaTeX helper and Typst compiles). */
 export {
-  CHUNK_MAX_BYTES, HELPER_BUILD_STATUSES, HELPER_HOST_NAME, HELPER_HOSTS, MAX_CHUNK_COUNT, MAX_PATH_LENGTH,
-  MAX_SYNC_FILES, MAX_SYNC_TOTAL_BYTES, PROGRESS_PHASES, PROTOCOL_VERSION, HELPER_VERSION, TEX_SOURCES,
+  COMPILE_MODES, HELPER_BUILD_STATUSES, HELPER_HOST_NAME, HELPER_HOSTS, HELPER_VERSION, MAX_EDIT_CHANGES,
+  MAX_OPEN_PROJECTS, MAX_PATH_LENGTH, MAX_PROJECT_BYTES, MAX_PROJECT_FILES, MAX_SOCKET_MESSAGE_BYTES,
+  PROGRESS_PHASES, PROTOCOL_VERSION, TEX_SOURCES,
 } from "./helperMessages.js";
 export type {
-  HelperBuildStatus, HelperChunk, HelperDirection, HelperHost, HelperParseResult, HelperProgress, HelperRejection,
-  HelperRejectionCode, ProgressPhase, SyncedFile, TexSource, TexStatus, ToHelperMessage, ToPageMessage,
+  ChangedPage, CompileMode, HelperBuildStatus, HelperDirection, HelperHost, HelperParseResult, HelperProgress,
+  HelperRejection, HelperRejectionCode, ProgressPhase, TexSource, TexStatus, TextChange, ToHelperMessage, ToPageMessage,
 } from "./helperMessages.js";
 export { checkHelperPath, isHelperProjectId } from "./helperPaths.js";
-export { ChunkAssembler, chunkBytes } from "./helperChunks.js";
-export type { ChunkAddResult, ChunkRejectionReason } from "./helperChunks.js";
 export { parseHelperMessage } from "./parseHelperMessage.js";
 export type { MessageFor } from "./parseHelperMessage.js";
 export type {
-  HelperCompileResult, HelperProgressListener, HelperProject, HelperProjectFile, HelperStatus, ILatexHelper,
+  HelperCompileRequest, HelperCompileResult, HelperEdit, HelperLspListener, HelperPageBytes, HelperProgressListener,
+  HelperStatus, ILatexHelper,
 } from "./latexHelper.js";
-export { compileResultFromWire, compileResultToWire, projectFromWire, projectToWire } from "./editorHost/index.js";
-export type { WireCompileResult, WireProject } from "./editorHost/index.js";
+export { compileResultFromWire, projectToWire } from "./editorHost/index.js";
+export type {
+  EditorHostCompileResult, EditorHostLatexHelper, EditorHostProject, EditorHostProjectFile, WireProject,
+} from "./editorHost/index.js";
 export { typstOutcomeFromWire, typstOutcomeToWire, typstRequestFromWire } from "./editorHost/index.js";
 export type { TypstHostOutcome, TypstHostRequest } from "./editorHost/index.js";
+export { decodeSocketMessage, encodeSocketMessage } from "./socketFrame.js";
+export type { SocketMessage } from "./socketFrame.js";

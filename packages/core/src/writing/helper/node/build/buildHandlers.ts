@@ -1,4 +1,4 @@
-// Creates the `build` and `cancel` handlers: one build queue per project, and a token per build that a cancel or a newer build trips.
+// Creates the `compile` and `cancel` handlers: one build queue per project, and a token per build that a cancel or a newer build trips.
 import * as path from "node:path";
 
 import type { ILogger } from "../../../../ports/index.js";
@@ -8,49 +8,63 @@ import type { ManagedTexProvider } from "../../../latex/toolchain/node/managed/i
 import { PROTOCOL_VERSION, type ToHelperMessage } from "../../index.js";
 
 import type { HelperHandler, HelperSend } from "../dispatch/index.js";
+import { HelperProjectError, type HelperProjects } from "../projects/index.js";
 import { BUILD_MODULE, runBuildJob, type BuildToken } from "./runBuildJob.js";
 import { helperToolchainPrompt } from "./helperToolchainPrompt.js";
+import type { SentPages } from "./sendPages.js";
 
 export interface BuildHandlerOptions {
-  projectsRoot: string;
-  /** The mirrored source folder of a project. */
-  sourceDir(projectId: string): string;
+  /** The helper's data folder; each project builds in `projects/<id>/src` and `projects/<id>/build`. */
+  dataDir: string;
+  projects: Pick<HelperProjects, "syncWorkingCopy">;
   tex: ManagedTexProvider;
   logger: ILogger;
 }
 
-interface ProjectBuilds { deps: ProjectBuildDeps; queue: ProjectBuildQueue; token?: BuildToken }
+export interface BuildHandlers {
+  compile: HelperHandler;
+  cancel: HelperHandler;
+  cancelAll(): void;
+  /** Stops the project's build and drops the pages sent for it, so its next `pages` carries every page. */
+  forget(projectId: string): void;
+}
 
-type BuildMessage = Extract<ToHelperMessage, { type: "build" }>;
+interface ProjectBuilds { deps: ProjectBuildDeps; queue: ProjectBuildQueue; sent: SentPages; token?: BuildToken }
 
-const rejectTypst = (): Promise<never> => Promise.reject(new Error("LabShelf Helper builds only LaTeX projects."));
+type CompileMessage = Extract<ToHelperMessage, { type: "compile" }>;
+
+const TYPST_MISSING = "The Typst language server is not installed yet.";
+
+const rejectTypst = (): Promise<never> => Promise.reject(new Error("LabShelf Helper builds Typst projects through the language server."));
 
 function createProjectBuilds(options: BuildHandlerOptions, prompt: TexSetupPrompt): ProjectBuilds {
   const deps: ProjectBuildDeps = {
     logger: options.logger, tex: options.tex, prompt,
-    projects: { projectBuildDir: (id) => path.join(options.projectsRoot, id, "build") },
+    projects: { projectBuildDir: (id) => path.join(options.dataDir, "projects", id, "build") },
     typst: { get: rejectTypst },
   };
-  return { deps, queue: new ProjectBuildQueue(deps) };
+  return { deps, queue: new ProjectBuildQueue(deps), sent: { hashes: [] } };
 }
 
-async function runInBackground(options: BuildHandlerOptions, message: BuildMessage, send: HelperSend, builds: ProjectBuilds, token: BuildToken): Promise<void> {
+async function runInBackground(options: BuildHandlerOptions, message: CompileMessage, send: HelperSend, builds: ProjectBuilds, token: BuildToken): Promise<void> {
   const { logger } = options;
   try {
-    const folder = options.sourceDir(message.projectId);
+    const folder = path.join(options.dataDir, "projects", message.projectId, "src");
     // The page owns the project settings; the engine comes with each build.
     const settings = { id: message.projectId, format: "latex" as const, engine: message.engine };
     const project = { kind: "ready" as const, folder, location: "external" as const, settings, main: message.main };
-    await runBuildJob({ message, send, token, queue: builds.queue, project, logger });
+    const sync = (): Promise<void> => options.projects.syncWorkingCopy(message.projectId, folder);
+    await runBuildJob({ message, send, token, queue: builds.queue, project, logger, sync, sent: builds.sent });
   } catch (error) {
     await logger.error(BUILD_MODULE, error, { projectId: message.projectId, main: message.main });
-    send({ v: PROTOCOL_VERSION, id: message.id, type: "error", code: "internal", message: error instanceof Error ? error.message : String(error) });
+    const code = error instanceof HelperProjectError ? error.code : "internal";
+    send({ v: PROTOCOL_VERSION, id: message.id, type: "error", code, message: error instanceof Error ? error.message : String(error) });
   } finally {
     if (builds.token === token) { delete builds.token; }
   }
 }
 
-export function createBuildHandlers(options: BuildHandlerOptions): { build: HelperHandler; cancel: HelperHandler } {
+export function createBuildHandlers(options: BuildHandlerOptions): BuildHandlers {
   const { logger } = options;
   const projects = new Map<string, ProjectBuilds>();
 
@@ -72,8 +86,12 @@ export function createBuildHandlers(options: BuildHandlerOptions): { build: Help
   }
 
   // INVARIANT: the token is registered before any await, because the dispatcher runs a `cancel` without waiting for this build.
-  const build: HelperHandler = (message, send) => {
-    if (message.type !== "build") { throw new Error(`build handler received ${message.type}`); }
+  const compile: HelperHandler = (message, send) => {
+    if (message.type !== "compile") { throw new Error(`compile handler received ${message.type}`); }
+    if (message.main.endsWith(".typ")) {
+      send({ v: PROTOCOL_VERSION, id: message.id, type: "built", status: "toolchain-missing", problems: [{ severity: "error", file: message.main, message: TYPST_MISSING }] });
+      return Promise.resolve();
+    }
     const builds = buildsOf(message.projectId, helperToolchainPrompt(message.id, send));
     stop(builds);
     const token: BuildToken = { cancelled: false };
@@ -89,5 +107,10 @@ export function createBuildHandlers(options: BuildHandlerOptions): { build: Help
     stop(builds);
   };
 
-  return { build, cancel };
+  return {
+    compile,
+    cancel,
+    cancelAll: () => { for (const builds of projects.values()) { stop(builds); } },
+    forget: (projectId) => { stop(projects.get(projectId)); projects.delete(projectId); },
+  };
 }

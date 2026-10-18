@@ -17,12 +17,11 @@ The web build checks whether a command exists before relying on it. In plain VS 
 | `method` | Arguments | Result |
 |---|---|---|
 | `connect` | none | `HelperStatus` |
-| `compile` | a project: `{projectId, main, engine, files: [{path, base64}]}` | `{status, problems}`, plus `pdfBase64` when `status` is `succeeded` |
 | `cancel` | the project id | none |
 | `installTex` | `tinytex` or `texlive` | none |
 | `installAllPackages` | none | none |
 
-A progress callback cannot cross, so the extension shows its own build status and the setup card follows its installs itself. The page rejects an unknown method or a malformed argument, and the web build reports a rejected call as a helper that is not ready. When the command is missing, every call rejects the same way.
+The page does not offer `compile`: it answers "Unknown LaTeX helper method". A progress callback cannot cross, so the extension shows its own build status and the setup card follows its installs itself. The page rejects an unknown method or a malformed argument, and the web build reports a rejected call as a helper that is not ready. When the command is missing, every call rejects the same way.
 
 ## Helper setup
 

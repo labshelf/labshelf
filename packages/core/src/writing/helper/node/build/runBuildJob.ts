@@ -1,4 +1,4 @@
-// Runs one `build` request to its `built` reply: builds (core installs missing packages), classifies the failure and streams the PDF.
+// Runs one `compile` request to its `built` reply: syncs the working copy, builds (core installs missing packages), classifies the failure and sends the changed pages.
 import * as path from "node:path";
 
 import { builtPdfPath } from "../../../build/index.js";
@@ -10,7 +10,7 @@ import { PROTOCOL_VERSION, type HelperBuildStatus, type ToHelperMessage } from "
 
 import type { HelperSend } from "../dispatch/index.js";
 import { pageProblems } from "./pageProblems.js";
-import { sendBuiltPdf } from "./sendBuiltPdf.js";
+import { sendPages, type SentPages } from "./sendPages.js";
 
 export const BUILD_MODULE = "helper/build";
 
@@ -18,12 +18,15 @@ export const BUILD_MODULE = "helper/build";
 export interface BuildToken { cancelled: boolean }
 
 export interface BuildJob {
-  message: Extract<ToHelperMessage, { type: "build" }>;
+  message: Extract<ToHelperMessage, { type: "compile" }>;
   send: HelperSend;
   token: BuildToken;
   queue: Pick<ProjectBuildQueue, "request">;
   project: Extract<ProjectEntry, { kind: "ready" }>;
   logger: ILogger;
+  /** Brings the project's working copy up to date with its files and unsaved text. */
+  sync(): Promise<void>;
+  sent: SentPages;
 }
 
 function replier(job: BuildJob): (status: Exclude<HelperBuildStatus, "succeeded">, problems?: LocatedProblem[]) => void {
@@ -34,12 +37,15 @@ export async function runBuildJob(job: BuildJob): Promise<void> {
   const { message, token, send } = job;
   const reply = replier(job);
   send({ v: PROTOCOL_VERSION, id: message.id, type: "progress", phase: "building", message: `Building ${message.main}` });
-  const result = await job.queue.request(job.project);
+  await job.sync();
+  if (token.cancelled) { return reply("cancelled"); }
+  const options = { mode: message.mode, ...(message.editedFile !== undefined && { editedFile: message.editedFile }) };
+  const result = await job.queue.request(job.project, options);
   if (token.cancelled || result.status === "cancelled") { return reply("cancelled"); }
   if (result.status === "toolchain-missing") { return reply("toolchain-missing"); }
   const problems = pageProblems("problems" in result ? result.problems : [], job.project.folder);
   if (result.status === "succeeded") {
-    return sendBuiltPdf(message.id, builtPdfPath(path, job.project)!, problems, send);
+    return sendPages(message.id, builtPdfPath(path, job.project)!, problems, job.sent, send);
   }
   const { shellEscape } = classifyTexProblems(problems);
   if (shellEscape) { return reply("needs-shell-escape", [{ severity: "error", message: shellEscape, file: message.main }, ...problems]); }

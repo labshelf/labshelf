@@ -1,8 +1,7 @@
 /** Reads typed fields from an untrusted message body, throwing a FieldError that names the refused field. */
 
 import { checkHelperPath, isHelperProjectId } from "./helperPaths.js";
-import { chunkDataProblem, isChunkShape } from "./helperChunks.js";
-import { MAX_SYNC_FILES, type HelperChunk, type HelperRejectionCode } from "./helperMessages.js";
+import { MAX_PROJECT_FILES, type HelperRejectionCode } from "./helperMessages.js";
 
 export type Body = Record<string, unknown>;
 
@@ -58,10 +57,10 @@ export function optional<T>(body: Body, key: string, read: (body: Body, key: str
   return body[key] === undefined ? {} : { [key]: read(body, key) };
 }
 
-export function readArray(body: Body, key: string): unknown[] {
+export function readArray(body: Body, key: string, max = MAX_PROJECT_FILES): unknown[] {
   const value = body[key];
   if (!Array.isArray(value)) { throw new FieldError("invalid-field", `${key} is not an array`); }
-  if (value.length > MAX_SYNC_FILES) { throw new FieldError("limit", `${key} has more than ${MAX_SYNC_FILES} entries`); }
+  if (value.length > max) { throw new FieldError("limit", `${key} has more than ${max} entries`); }
   return value;
 }
 
@@ -93,16 +92,4 @@ export function readSha256(body: Body, key: string): string {
   const value = readString(body, key);
   if (!isSha256(value)) { throw new FieldError("invalid-field", `${key} is not a lowercase hex SHA-256`); }
   return value;
-}
-
-export function readChunk(body: Body): HelperChunk {
-  const chunk = readBody(body, "chunk");
-  const index = readNumber(chunk, "index", Number.isInteger);
-  const count = readNumber(chunk, "count", Number.isInteger);
-  if (!isChunkShape(index, count)) { throw new FieldError("invalid-field", "chunk index or count is out of range"); }
-  const data = readString(chunk, "data");
-  const problem = chunkDataProblem(data);
-  if (problem === "limit") { throw new FieldError("limit", "chunk data decodes to more than 512 KiB"); }
-  if (problem === "invalid") { throw new FieldError("invalid-field", "chunk data is not base64"); }
-  return { index, count, data };
 }

@@ -1,6 +1,12 @@
-// Exports what an app needs to run the helper protocol in a Node process: the host loop, the script entry, its data folder and its logger.
+// Exports what an app needs to run LabShelf Helper in a Node process: the host loop, its building blocks, its data folder and its logger.
 export { helperDataDir } from "./helperDataDir.js";
 export { createHelperLogger } from "./log/index.js";
 export { runHelperHost } from "./runHelperHost.js";
 export type { HelperHostOptions } from "./runHelperHost.js";
 export { runHelperScriptHost } from "./runHelperScriptHost.js";
+export { startHelperSocket } from "./socket/index.js";
+export type { HelperSocket, HelperSocketOptions } from "./socket/index.js";
+export { diffPages } from "./pages/index.js";
+export type { PageDiff } from "./pages/index.js";
+export { createHelperProjects, HelperProjectError } from "./projects/index.js";
+export type { EditBody, HelperProjectErrorCode, HelperProjects, HelperProjectsOptions } from "./projects/index.js";

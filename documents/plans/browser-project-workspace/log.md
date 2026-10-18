@@ -5,3 +5,4 @@
 - 2026-10-18 — session 2 done: tree/checklist/outline, All projects library and gallery host in core; 2.2 split in two after a budget stop
 - 2026-10-18 — session 4 done: helper --register serves both hosts, labshelf-bridge alias, argv0/--host=bridge dispatch; SEA run answered bridge hello
 - 2026-10-18 — session 3 done: one-pass preview, \includeonly of the edited chapter, pdflatex preamble .fmt (preview 240 ms vs full 991 ms)
+- 2026-10-18 — session 5 done: helper protocol v2 (native hello → loopback socket, edits, changed pages), browser client, review fixes; real browser build run deferred to session 9

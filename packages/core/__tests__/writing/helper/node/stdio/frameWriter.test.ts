@@ -14,13 +14,13 @@ function setup() {
 describe("createFrameWriter", () => {
   it("writes a length-prefixed JSON frame", () => {
     const { send, output } = setup();
-    send({ v: 1, id: "1", type: "need", paths: ["a.tex"] });
-    expect(output()).toEqual([{ v: 1, id: "1", type: "need", paths: ["a.tex"] }]);
+    send({ v: 2, id: "1", type: "session", port: 4242, token: "t" });
+    expect(output()).toEqual([{ v: 2, id: "1", type: "session", port: 4242, token: "t" }]);
   });
 
   it("refuses a frame over 1 MB, logs it and answers a limit error with the same id", () => {
     const { send, logs, output } = setup();
-    send({ v: 1, id: "9", type: "pdf", chunk: { index: 0, count: 1, data: "A".repeat(MAX_OUTGOING_FRAME_BYTES) } });
+    send({ v: 2, id: "9", type: "error", code: "io", message: "A".repeat(MAX_OUTGOING_FRAME_BYTES) });
     const frames = output() as Array<{ type: string; id: string; code: string }>;
     expect(frames).toHaveLength(1);
     expect(frames[0]).toMatchObject({ type: "error", id: "9", code: "limit" });

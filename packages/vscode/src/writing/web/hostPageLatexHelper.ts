@@ -1,8 +1,8 @@
-// Implements ILatexHelper by forwarding each call to the command the web editor page registers for LabShelf Helper.
+// Implements EditorHostLatexHelper by forwarding each call to the command the web editor page registers for LabShelf Helper.
 // CONTRACT: documents/contracts/editor-host.md#latex-helper
 import * as vscode from "vscode";
 
-import { compileResultFromWire, projectToWire, type HelperStatus, type ILatexHelper } from "@labshelf/core/helper";
+import { compileResultFromWire, projectToWire, type EditorHostLatexHelper, type HelperStatus } from "@labshelf/core/helper";
 
 /** The page command that runs one helper method: `(method, ...args)`. */
 export const LATEX_HELPER_COMMAND = "labshelf.editorHost.latexHelper";
@@ -17,7 +17,7 @@ async function call<T>(method: HelperMethod, ...args: unknown[]): Promise<T> {
 }
 
 /** A missing page command rejects every call, which callers treat as a helper that is not ready. */
-export function createHostPageLatexHelper(): ILatexHelper {
+export function createHostPageLatexHelper(): EditorHostLatexHelper {
   let last: HelperStatus | undefined;
   // TRAP: command arguments and results are serialized between the extension host and the page, so progress callbacks
   // cannot cross (the page shows build and install progress itself) and bytes cross as base64.

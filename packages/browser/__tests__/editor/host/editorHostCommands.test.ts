@@ -1,5 +1,5 @@
 // Pins the editor page's host commands: LaTeX goes through ILatexHelper, a missing helper mounts the setup card, Typst compiles, the library folder.
-import type { HelperCompileResult, ILatexHelper, TypstHostOutcome, TypstHostRequest } from "@labshelf/core/helper";
+import type { ILatexHelper, TypstHostOutcome, TypstHostRequest } from "@labshelf/core/helper";
 // The host index also registers the commands with monaco-vscode-api, which jest cannot load, so the tests import the modules.
 import { createEditorHostCommands, EDITOR_HOST_COMMANDS } from "../../../src/editor/host/editorHostCommands";
 import { createHelperSetupShower } from "../../../src/editor/host/helperSetupShower";
@@ -7,12 +7,10 @@ import { createHelperSetupShower } from "../../../src/editor/host/helperSetupSho
 function makeHelper() {
   return {
     connect: jest.fn(async () => ({ state: "not-installed" as const })),
-    status: jest.fn(() => undefined),
-    compile: jest.fn(async (..._args: Parameters<ILatexHelper["compile"]>): Promise<HelperCompileResult> => ({ status: "succeeded", problems: [], pdf: new Uint8Array([37, 80, 68, 70]) })),
     cancel: jest.fn(async (_projectId: string) => undefined),
     installTex: jest.fn(async (..._args: Parameters<ILatexHelper["installTex"]>) => undefined),
     installAllPackages: jest.fn(async (..._args: Parameters<ILatexHelper["installAllPackages"]>) => undefined),
-  } satisfies ILatexHelper;
+  } satisfies Pick<ILatexHelper, "connect" | "cancel" | "installTex" | "installAllPackages">;
 }
 
 function setup() {
@@ -31,15 +29,6 @@ describe("editor host commands", () => {
     expect(await commands[EDITOR_HOST_COMMANDS.libraryFolder]!()).toBe("/library");
   });
 
-  it("compiles a LaTeX project through ILatexHelper, decoding the files and encoding the PDF", async () => {
-    const { commands, helper } = setup();
-    const wire = { projectId: "thesis", main: "main.tex", engine: "pdflatex", files: [{ path: "main.tex", base64: "aGk=" }] };
-    const result = await commands[EDITOR_HOST_COMMANDS.latexHelper]!("compile", wire);
-    expect(helper.compile).toHaveBeenCalledWith(
-      { projectId: "thesis", main: "main.tex", engine: "pdflatex", files: [{ path: "main.tex", bytes: new Uint8Array([104, 105]) }] }, expect.any(Function));
-    expect(result).toEqual({ status: "succeeded", problems: [], pdfBase64: "JVBERg==" });
-  });
-
   it("forwards connect, cancel and the installs to ILatexHelper", async () => {
     const { commands, helper } = setup();
     const call = commands[EDITOR_HOST_COMMANDS.latexHelper]!;
@@ -52,12 +41,11 @@ describe("editor host commands", () => {
     expect(helper.installAllPackages).toHaveBeenCalledWith(expect.any(Function));
   });
 
-  it("logs and rejects an unknown method or a malformed project", async () => {
-    const { commands, logger, helper } = setup();
+  it("logs and rejects an unknown method, compile included", async () => {
+    const { commands, logger } = setup();
     const call = commands[EDITOR_HOST_COMMANDS.latexHelper]!;
     await expect(call("format")).rejects.toThrow(/Unknown LaTeX helper method/);
-    await expect(call("compile", { projectId: "p" })).rejects.toThrow(/project/);
-    expect(helper.compile).not.toHaveBeenCalled();
+    await expect(call("compile", { projectId: "p" })).rejects.toThrow(/Unknown LaTeX helper method/);
     expect(logger.error).toHaveBeenCalledTimes(2);
   });
 
@@ -84,7 +72,7 @@ describe("editor host commands", () => {
 
 describe("createHelperSetupShower", () => {
   it("mounts the setup card with the helper once and reveals it on every request", () => {
-    const helper = makeHelper();
+    const helper = makeHelper() as unknown as ILatexHelper;
     const slot = { element: {} as HTMLElement, reveal: jest.fn() };
     const mount = jest.fn(() => ({ dispose: () => undefined }));
     const show = createHelperSetupShower(slot, helper, mount);

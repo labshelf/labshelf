@@ -1,7 +1,8 @@
-// Pins how the build handlers answer build and cancel: the PDF stream, the missing-file loop, shell escape, a missing TeX and cancelling.
-import { createHash } from "node:crypto";
+// Pins how the build handlers answer build and cancel: the changed pages, the missing-file loop, shell escape, a missing TeX and cancelling.
 import { access, readFile } from "node:fs/promises";
 import { join } from "node:path";
+
+import { PDFDocument } from "pdf-lib";
 
 import type { ToPageMessage } from "../../../../../src/writing/helper/index.js";
 
@@ -33,26 +34,93 @@ async function waitForFile(file: string): Promise<void> {
   throw new Error(`${file} never appeared`);
 }
 
-test("a successful build sends progress, built with the PDF hash, then chunks that reassemble to it", async () => {
-  await h.project("ok");
-  await h.send("build", "b1");
+type PagesMessage = Extract<ToPageMessage, { type: "pages" }>;
+
+function pagesOf(frames: ToPageMessage[]): PagesMessage {
+  const frame = frames.find((f) => f.type === "pages");
+  if (frame?.type !== "pages") { throw new Error("no pages frame"); }
+  return frame;
+}
+
+async function onePagePdfs(pages: PagesMessage): Promise<number[]> {
+  const payload = h.payloadOf(pages)!;
+  return Promise.all(pages.changed.map(async ({ offset, length }) => {
+    const pdf = await PDFDocument.load(payload.subarray(offset, offset + length));
+    return pdf.getPageCount();
+  }));
+}
+
+test("the first compile sends progress, built with the PDF hash, then pages with every page", async () => {
+  await h.project("ok", "one", "two", "three");
+  await h.compile("b1");
   const frames = await h.finished("b1");
 
+  expect(frames.map((f) => f.type)).toEqual(["progress", "built", "pages"]);
   expect(frames[0]).toMatchObject({ type: "progress", phase: "building" });
   const result = built(frames);
   expect(result.status).toBe("succeeded");
-  const chunks = frames.flatMap((f) => (f.type === "pdf" ? [f.chunk] : []));
-  expect(chunks.length).toBeGreaterThan(1);
-  expect(chunks.map((c) => c.index)).toEqual(chunks.map((_, i) => i));
-  const bytes = Buffer.concat(chunks.map((c) => Buffer.from(c.data, "base64")));
-  expect(bytes.length).toBe(1300 * 1024);
-  expect(createHash("sha256").update(bytes).digest("hex")).toBe(result.pdfSha256);
-  expect(frames.indexOf(result)).toBeLessThan(frames.findIndex((f) => f.type === "pdf"));
+  const pages = pagesOf(frames);
+  expect(pages).toMatchObject({ pdfSha256: result.pdfSha256, pageCount: 3 });
+  expect(pages.changed.map((c) => c.index)).toEqual([0, 1, 2]);
+  const payload = h.payloadOf(pages)!;
+  expect(pages.changed[0]!.offset).toBe(0);
+  expect(pages.changed[1]!.offset).toBe(pages.changed[0]!.length);
+  expect(pages.changed.reduce((sum, c) => sum + c.length, 0)).toBe(payload.length);
+  expect(await onePagePdfs(pages)).toEqual([1, 1, 1]);
+});
+
+test("a compile after editing one page sends only that page, and an unchanged one sends none", async () => {
+  await h.project("ok", "one", "two", "three");
+  await h.compile("b1");
+  await h.finished("b1");
+
+  await h.project("ok", "one", "TWO changed", "three");
+  await h.compile("b2");
+  const second = pagesOf(await h.finished("b2"));
+  expect(second.pageCount).toBe(3);
+  expect(second.changed.map((c) => c.index)).toEqual([1]);
+
+  await h.compile("b3");
+  const third = pagesOf(await h.finished("b3"));
+  expect(third.changed).toEqual([]);
+  expect(h.payloadOf(third)?.length ?? 0).toBe(0);
+
+  await h.project("ok", "one", "TWO changed");
+  await h.compile("b4");
+  expect(pagesOf(await h.finished("b4"))).toMatchObject({ pageCount: 2, changed: [] });
+});
+
+test("forget makes the next compile send every page again", async () => {
+  await h.project("ok", "one", "two");
+  await h.compile("b1");
+  await h.finished("b1");
+  h.handlers.forget("thesis");
+  await h.compile("b2");
+
+  expect(pagesOf(await h.finished("b2")).changed.map((c) => c.index)).toEqual([0, 1]);
+});
+
+test("a project that is not open ends with a project-id error and no build", async () => {
+  await h.compile("b1", { projectId: "other" });
+  const frames = await h.finished("b1");
+
+  expect(frames.at(-1)).toMatchObject({ type: "error", code: "project-id" });
+  expect(frames.some((f) => f.type === "built" || f.type === "pages")).toBe(false);
+});
+
+test("a Typst main ends toolchain-missing until the language server is installed", async () => {
+  await h.compile("b1", { main: "main.typ" });
+  const result = built(await h.finished("b1"));
+
+  expect(result).toMatchObject({
+    status: "toolchain-missing",
+    problems: [{ severity: "error", file: "main.typ", message: "The Typst language server is not installed yet." }],
+  });
 });
 
 test("the missing-file loop installs and rebuilds at most 10 rounds, then fails", async () => {
   await h.project("missing");
-  await h.send("build", "b1");
+  await h.compile("b1");
   const frames = await h.finished("b1");
 
   const installs = frames.filter((f) => f.type === "progress" && f.phase === "installing-package");
@@ -71,7 +139,7 @@ test("the missing-file loop installs and rebuilds at most 10 rounds, then fails"
 test("a missing file the provider cannot install fails after one build", async () => {
   h.tex.installMissing.mockResolvedValue(false);
   await h.project("missing");
-  await h.send("build", "b1");
+  await h.compile("b1");
   const frames = await h.finished("b1");
 
   expect(built(frames).status).toBe("failed");
@@ -81,7 +149,7 @@ test("a missing file the provider cannot install fails after one build", async (
 
 test("a document that needs shell escape ends needs-shell-escape and latexmk never gets the flag", async () => {
   await h.project("minted");
-  await h.send("build", "b1");
+  await h.compile("b1");
   const result = built(await h.finished("b1"));
 
   expect(result.status).toBe("needs-shell-escape");
@@ -94,7 +162,7 @@ test("a document that needs shell escape ends needs-shell-escape and latexmk nev
 test("no TeX installation ends toolchain-missing without running latexmk", async () => {
   h.tex.resolve.mockResolvedValue("missing");
   await h.project("ok");
-  await h.send("build", "b1");
+  await h.compile("b1");
   const result = built(await h.finished("b1"));
 
   expect(result).toMatchObject({ status: "toolchain-missing", problems: [] });
@@ -103,19 +171,19 @@ test("no TeX installation ends toolchain-missing without running latexmk", async
 
 test("cancel stops a running build, which ends cancelled", async () => {
   await h.project("hang");
-  await h.send("build", "b1");
+  await h.compile("b1");
   await waitForFile(join(h.buildDir, "main.tex", "started"));
-  await h.send("cancel", "c1");
+  await h.cancel("c1");
 
   expect(built(await h.finished("b1"))).toMatchObject({ status: "cancelled", problems: [] });
 });
 
 test("a newer build of the same project cancels the running one", async () => {
   await h.project("hang");
-  await h.send("build", "b1");
+  await h.compile("b1");
   await waitForFile(join(h.buildDir, "main.tex", "started"));
   await h.project("ok");
-  await h.send("build", "b2");
+  await h.compile("b2");
 
   expect(built(await h.finished("b1")).status).toBe("cancelled");
   expect(built(await h.finished("b2")).status).toBe("succeeded");

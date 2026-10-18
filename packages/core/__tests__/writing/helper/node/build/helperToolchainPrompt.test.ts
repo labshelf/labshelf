@@ -13,8 +13,8 @@ describe("helperToolchainPrompt", () => {
       .progress("Installing the LaTeX package for foo.sty", async (report) => { report("50%"); return true; });
     expect(result).toBe(true);
     expect(sent).toEqual([
-      { v: 1, id: "b1", type: "progress", phase: "installing-package", message: "Installing the LaTeX package for foo.sty" },
-      { v: 1, id: "b1", type: "progress", phase: "installing-package", message: "Installing the LaTeX package for foo.sty: 50%" },
+      { v: 2, id: "b1", type: "progress", phase: "installing-package", message: "Installing the LaTeX package for foo.sty" },
+      { v: 2, id: "b1", type: "progress", phase: "installing-package", message: "Installing the LaTeX package for foo.sty: 50%" },
     ]);
   });
 });

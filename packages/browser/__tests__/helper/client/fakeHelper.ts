@@ -1,70 +1,92 @@
-// Scripts a LabShelf Helper behind a fake native port so client tests run without a browser.
-import { chunkBytes, PROTOCOL_VERSION, type HelperBuildStatus, type TexStatus } from "@labshelf/core/helper";
+// Scripts a LabShelf Helper behind a fake native port and a fake WebSocket class so client tests run without a browser.
+import { decodeSocketMessage, encodeSocketMessage, PROTOCOL_VERSION, type HelperBuildStatus, type TexStatus } from "@labshelf/core/helper";
 import type { ILogger } from "@labshelf/core";
+import type { HelperWebSocketConstructor } from "../../../src/helper/client/connection";
 import type { NativePort } from "../../../src/platform";
 
-export interface BuiltScript { status: HelperBuildStatus; pdf?: Uint8Array; pdfSha256?: string }
+/** `announce` replaces the offsets the helper declares, to script a lying helper. */
+export interface PagesScript { pageCount: number; pages: Array<{ index: number; bytes: Uint8Array }>; announce?: Array<{ index: number; offset: number; length: number }> }
+const SHA = "a".repeat(64);
+type Envelope = Record<string, any>;
 
-/** Plays the helper side of the protocol: keeps a mirror of file hashes and answers each frame in order. */
+export class FakeSocket {
+  binaryType = "blob";
+  onopen: (() => void) | null = null;
+  onmessage: ((event: { data: unknown }) => void) | null = null;
+  onclose: ((event: { code: number; reason: string }) => void) | null = null;
+  onerror: (() => void) | null = null;
+  closed = false;
+  constructor(readonly url: string, private readonly helper: FakeHelper) { queueMicrotask(() => this.onopen?.()); }
+  send(bytes: Uint8Array): void { this.helper.answer(this, decodeSocketMessage(bytes).envelope); }
+  close(): void { this.closed = true; }
+  deliver(body: Envelope, payload?: Uint8Array): void {
+    const bytes = encodeSocketMessage({ v: PROTOCOL_VERSION, ...body }, payload);
+    this.onmessage?.({ data: bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) });
+  }
+  serverClose(reason: string): void { this.onclose?.({ code: 1006, reason }); }
+}
+
+/** Plays the helper: answers hello on the native port and every other message on the socket. */
 export class FakeHelper implements NativePort {
-  readonly posted: Array<Record<string, unknown>> = [];
   protocol = PROTOCOL_VERSION;
-  tex: TexStatus;
-  built: BuiltScript = { status: "failed" };
-  /** Message types the helper ignores, so a test can close the port while such a request is pending. */
-  mute = new Set<string>();
-  private readonly mirror = new Set<string>();
+  tex: TexStatus = { source: "tinytex", year: 2025, complete: true };
+  built: { status: HelperBuildStatus; pages?: PagesScript } = { status: "failed" };
+  /** Answers `edit` messages that carry `changes` with a `stale` error. */
+  staleChanges = false;
+  /** Leaves `hello` unanswered, so a test can close the port while it is pending. */
+  muteHello = false;
+  readonly nativePosted: Envelope[] = [];
+  readonly received: Envelope[] = [];
+  readonly sockets: FakeSocket[] = [];
   private messageListener: (frame: unknown) => void = () => undefined;
   private disconnectListener: (reason: string | undefined) => void = () => undefined;
-  private awaiting = new Map<string, string>();
-
-  constructor(tex: TexStatus = { source: "tinytex", year: 2025, complete: true }) { this.tex = tex; }
+  readonly socketClass = this.makeSocketClass();
 
   onMessage(listener: (frame: unknown) => void): void { this.messageListener = listener; }
   onDisconnect(listener: (reason: string | undefined) => void): void { this.disconnectListener = listener; }
-  disconnect(): void { /* the test closes through close() */ }
-  close(reason?: string): void { this.disconnectListener(reason); }
+  disconnect(): void { /* the test closes through closeNative() */ }
+  closeNative(reason?: string): void { this.disconnectListener(reason); }
+  receivedOfType(type: string): Envelope[] { return this.received.filter((m) => m.type === type); }
 
   post(frame: unknown): void {
-    const message = frame as Record<string, any>;
-    this.posted.push(message);
-    if (!this.mute.has(String(message.type))) { queueMicrotask(() => this.answer(message)); }
+    const message = frame as Envelope;
+    this.nativePosted.push(message);
+    if (this.muteHello) { return; }
+    const reply = (body: Envelope) => this.messageListener({ v: PROTOCOL_VERSION, id: message.id, ...body });
+    queueMicrotask(() => {
+      reply({ type: "ready", host: "helper", protocol: this.protocol, helperVersion: "1.0.0", tex: this.tex });
+      if (this.protocol === PROTOCOL_VERSION) { reply({ type: "session", port: 4321, token: "secret" }); }
+    });
   }
 
-  postedOfType(type: string): Array<Record<string, any>> { return this.posted.filter((m) => m.type === type); }
-
-  private reply(id: unknown, body: Record<string, unknown>): void { this.messageListener({ v: PROTOCOL_VERSION, id, ...body }); }
-
-  private answer(m: Record<string, any>): void {
-    if (m.type === "hello") {
-      this.reply(m.id, { type: "ready", host: "helper", protocol: this.protocol, helperVersion: "1.0.0", tex: this.tex });
-    } else if (m.type === "sync") {
-      const need = (m.files as Array<{ path: string; sha256: string }>).filter((f) => !this.mirror.has(`${f.path}:${f.sha256}`)).map((f) => f.path);
-      this.awaiting = new Map((m.files as Array<{ path: string; sha256: string }>).map((f) => [f.path, f.sha256]));
-      this.reply(m.id, { type: "need", paths: need });
-    } else if (m.type === "file") {
-      this.answerFile(m);
-    } else if (m.type === "installTex" || m.type === "installAllPackages") {
-      this.tex = m.type === "installTex" ? { source: m.kind, year: 2025, complete: false } : { ...this.tex, complete: true };
-      this.reply(m.id, { type: "progress", phase: "installing-tex", message: "Installing" });
-      this.reply(m.id, { type: "ready", host: "helper", protocol: this.protocol, helperVersion: "1.0.0", tex: this.tex });
-    } else if (m.type === "build") {
-      this.answerBuild(m.id);
-    }
+  answer(socket: FakeSocket, m: Envelope): void {
+    this.received.push(m);
+    const reply = (body: Envelope, payload?: Uint8Array) => socket.deliver({ id: m.id, ...body }, payload);
+    queueMicrotask(() => {
+      if (m.type === "auth") { reply({ type: "authed" }); }
+      else if (m.type === "openProject") { reply({ type: "opened", projectId: m.projectId, files: ["main.tex"] }); }
+      else if (m.type === "edit" && this.staleChanges && m.changes) { reply({ type: "error", code: "stale", message: "version gap" }); }
+      else if (m.type === "compile") { this.answerCompile(reply); }
+    });
   }
 
-  private answerFile(m: Record<string, any>): void {
-    if (m.chunk.index !== m.chunk.count - 1) { return; }
-    this.mirror.add(`${m.path}:${this.awaiting.get(m.path)}`);
-    this.reply(m.id, { type: "need", paths: [] });
+  private answerCompile(reply: (body: Envelope, payload?: Uint8Array) => void): void {
+    reply({ type: "progress", phase: "building", message: "Running pdflatex", fraction: 0.5 });
+    const pages = this.built.pages;
+    reply({ type: "built", status: this.built.status, problems: [], ...(pages ? { pdfSha256: SHA } : {}) });
+    if (!pages) { return; }
+    let offset = 0;
+    const changed = pages.pages.map((p) => { const entry = { index: p.index, offset, length: p.bytes.length }; offset += p.bytes.length; return entry; });
+    const payload = new Uint8Array(offset);
+    changed.forEach((entry, i) => payload.set(pages.pages[i]!.bytes, entry.offset));
+    reply({ type: "pages", pdfSha256: SHA, pageCount: pages.pageCount, changed: pages.announce ?? changed }, payload);
   }
 
-  private answerBuild(id: unknown): void {
-    this.reply(id, { type: "progress", phase: "building", message: "Running pdflatex", fraction: 0.5 });
-    this.reply(id, { type: "built", status: this.built.status, problems: [], ...(this.built.pdfSha256 ? { pdfSha256: this.built.pdfSha256 } : {}) });
-    if (this.built.pdf) {
-      for (const chunk of chunkBytes(this.built.pdf)) { this.reply(id, { type: "pdf", chunk }); }
-    }
+  private makeSocketClass(): HelperWebSocketConstructor {
+    const helper = this;
+    return class extends FakeSocket {
+      constructor(url: string) { super(url, helper); helper.sockets.push(this); }
+    } as unknown as HelperWebSocketConstructor;
   }
 }
 

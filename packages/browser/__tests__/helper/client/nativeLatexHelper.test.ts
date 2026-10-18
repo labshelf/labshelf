@@ -1,170 +1,148 @@
-// Pins the native helper client: status mapping, delta sync, PDF reassembly and failure handling over a fake port.
+// Pins the helper client: handshake, socket auth, compile page slicing, edit tracking and close handling over fakes.
 // The index also exports the browser-wired factory, which loads the polyfill.
 jest.mock("webextension-polyfill", () => ({ runtime: {} }));
 
-import { webcrypto } from "node:crypto";
-import { createNativeLatexHelper, type HelperPortFactory } from "../../../src/helper/client";
+import { createNativeLatexHelper } from "../../../src/helper/client";
+import type { HelperPortFactory } from "../../../src/helper/client/connection";
 import { statusFromReady } from "../../../src/helper/client/connection";
 import { fakeLogger, FakeHelper } from "./fakeHelper";
 
-const encoder = new TextEncoder();
-
-async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const digest = await webcrypto.subtle.digest("SHA-256", bytes);
-  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
-}
-
 function setup(fake = new FakeHelper(), connectNative?: HelperPortFactory) {
   const logger = fakeLogger();
-  const helper = createNativeLatexHelper({ logger, extensionVersion: "0.1.0", connectNative: connectNative ?? (() => fake) });
+  const helper = createNativeLatexHelper({
+    logger, extensionVersion: "0.1.0", origin: "chrome-extension://abc", connectNative: connectNative ?? (() => fake), webSocket: fake.socketClass,
+  });
   return { fake, logger, helper };
 }
 
-function project(files: Record<string, string>) {
-  return {
-    projectId: "thesis",
-    main: "main.tex",
-    engine: "pdflatex" as const,
-    files: Object.entries(files).map(([path, text]) => ({ path, bytes: encoder.encode(text) })),
-  };
-}
-
-function bigPdf(size: number): Uint8Array {
-  const bytes = new Uint8Array(size);
-  for (let i = 0; i < size; i += 1) { bytes[i] = (i * 31 + 7) % 256; }
-  return bytes;
-}
+const flush = () => new Promise((resolve) => setImmediate(resolve));
 
 describe("connect", () => {
+  it("sends the origin, opens the socket on the session port and authenticates", async () => {
+    const { fake, helper } = setup();
+    expect(await helper.connect()).toEqual({ state: "ready", helperVersion: "1.0.0", tex: { source: "tinytex", year: 2025, complete: true }, host: "helper" });
+    expect(fake.nativePosted[0]).toMatchObject({ type: "hello", extensionVersion: "0.1.0", origin: "chrome-extension://abc" });
+    expect(fake.sockets.map((s) => s.url)).toEqual(["ws://127.0.0.1:4321/"]);
+    expect(fake.sockets[0]?.binaryType).toBe("arraybuffer");
+    expect(fake.receivedOfType("auth")[0]?.token).toBe("secret");
+  });
+
   it.each([
     ["Chrome", "Specified native messaging host not found."],
     ["Firefox", "No such native application dev.labshelf.helper"],
   ])("maps the %s host-not-found message to not-installed", async (_browser, reason) => {
     const { fake, helper } = setup();
-    fake.mute.add("hello");
+    fake.muteHello = true;
     const status = helper.connect();
-    queueMicrotask(() => fake.close(reason));
+    queueMicrotask(() => fake.closeNative(reason));
     expect(await status).toEqual({ state: "not-installed" });
-    expect(helper.status()).toEqual({ state: "not-installed" });
   });
 
   it("rejects and logs any other disconnect before ready", async () => {
     const { fake, helper, logger } = setup();
-    fake.mute.add("hello");
+    fake.muteHello = true;
     const status = helper.connect();
-    queueMicrotask(() => fake.close("Native host has exited."));
+    queueMicrotask(() => fake.closeNative("Native host has exited."));
     await expect(status).rejects.toThrow("Native host has exited.");
-    expect(logger.error).toHaveBeenCalledWith(expect.any(String), expect.any(Error), expect.objectContaining({ step: "hello" }));
+    expect(logger.error).toHaveBeenCalledWith(expect.any(String), expect.any(Error), expect.objectContaining({ step: "handshake" }));
   });
 
-  it("maps a connect that throws with a not-found message to not-installed", async () => {
-    const { helper } = setup(undefined, () => { throw new Error("No such native application dev.labshelf.helper"); });
-    expect(await helper.connect()).toEqual({ state: "not-installed" });
-  });
-
-  it("reports ready with the helper version and TeX status", async () => {
-    const { helper } = setup();
-    expect(await helper.connect()).toEqual({ state: "ready", helperVersion: "1.0.0", tex: { source: "tinytex", year: 2025, complete: true }, host: "helper" });
-  });
-
-  it("reports update-extension when the helper's protocol is higher", async () => {
+  it("reports the protocol mismatch without opening a socket", async () => {
     const fake = new FakeHelper();
-    fake.protocol = 2;
-    expect(await setup(fake).helper.connect()).toEqual({ state: "update-extension", protocol: 2 });
+    fake.protocol = 3;
+    const { helper } = setup(fake);
+    expect(await helper.connect()).toEqual({ state: "update-extension", protocol: 3 });
+    expect(fake.sockets).toHaveLength(0);
   });
 });
 
 describe("statusFromReady", () => {
-  const ready = { v: 1, id: "1", type: "ready" as const, host: "vscode" as const, helperVersion: "1.0.0", tex: { source: "none" as const, complete: false } };
+  const ready = { v: 2, id: "1", type: "ready" as const, host: "vscode" as const, helperVersion: "1.0.0", tex: { source: "none" as const, complete: false } };
 
   it("reports update-helper when the helper's protocol is lower than the page's", () => {
     expect(statusFromReady({ ...ready, protocol: 1 }, 2)).toEqual({ state: "update-helper", protocol: 1, host: "vscode" });
   });
-
-  it("reports update-extension when it is higher, and ready when equal", () => {
-    expect(statusFromReady({ ...ready, protocol: 3 }, 2)).toEqual({ state: "update-extension", protocol: 3 });
-    expect(statusFromReady({ ...ready, protocol: 2 }, 2)).toMatchObject({ state: "ready", host: "vscode" });
-  });
 });
 
 describe("compile", () => {
-  it("sends only the files the helper lacks", async () => {
+  const request = { projectId: "thesis", main: "main.tex", mode: "preview" as const };
+
+  it("returns only the changed pages, cut from the payload, and forwards progress", async () => {
     const { fake, helper } = setup();
-    await helper.connect();
-    await helper.compile(project({ "main.tex": "one", "refs.bib": "two" }), () => undefined);
-    expect(fake.postedOfType("file").map((m) => m.path).sort()).toEqual(["main.tex", "refs.bib"]);
-    fake.posted.length = 0;
-    await helper.compile(project({ "main.tex": "changed", "refs.bib": "two" }), () => undefined);
-    expect(fake.postedOfType("file").map((m) => m.path)).toEqual(["main.tex"]);
-    expect(fake.postedOfType("sync")[0]?.files).toEqual([
-      { path: "main.tex", sha256: await sha256Hex(encoder.encode("changed")), size: 7 },
-      { path: "refs.bib", sha256: await sha256Hex(encoder.encode("two")), size: 3 },
-    ]);
-  });
-
-  it("reassembles a 3 MB PDF whose SHA-256 matches", async () => {
-    const pdf = bigPdf(3 * 1024 * 1024);
-    const fake = new FakeHelper();
-    fake.built = { status: "succeeded", pdf, pdfSha256: await sha256Hex(pdf) };
-    const { helper } = setup(fake);
-    await helper.connect();
-    const result = await helper.compile(project({ "main.tex": "x" }), () => undefined);
-    expect(result.status).toBe("succeeded");
-    expect(result.status === "succeeded" && Buffer.from(result.pdf).equals(Buffer.from(pdf))).toBe(true);
-  });
-
-  it("rejects a PDF whose SHA-256 differs from the one announced", async () => {
-    const fake = new FakeHelper();
-    fake.built = { status: "succeeded", pdf: bigPdf(1000), pdfSha256: "0".repeat(64) };
-    const { helper, logger } = setup(fake);
-    await helper.connect();
-    await expect(helper.compile(project({ "main.tex": "x" }), () => undefined)).rejects.toThrow(/SHA-256/);
-    expect(logger.error).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ message: expect.stringContaining("SHA-256") }), expect.objectContaining({ operation: "compile" }));
-  });
-
-  it("returns a failed build without a PDF and forwards progress", async () => {
-    const { helper } = setup();
+    fake.built = { status: "succeeded", pages: { pageCount: 3, pages: [{ index: 0, bytes: Uint8Array.of(1, 2) }, { index: 2, bytes: Uint8Array.of(9, 8, 7) }] } };
     await helper.connect();
     const progress: unknown[] = [];
-    const result = await helper.compile(project({ "main.tex": "x" }), (p) => progress.push(p));
-    expect(result).toEqual({ status: "failed", problems: [] });
+    const result = await helper.compile(request, (p) => progress.push(p));
     expect(progress).toEqual([{ phase: "building", message: "Running pdflatex", fraction: 0.5 }]);
+    expect(result).toMatchObject({ status: "succeeded", pdfSha256: "a".repeat(64), pageCount: 3 });
+    expect(result.changed).toEqual([{ index: 0, bytes: Uint8Array.of(1, 2) }, { index: 2, bytes: Uint8Array.of(9, 8, 7) }]);
+    expect(fake.receivedOfType("compile")[0]).toMatchObject({ projectId: "thesis", main: "main.tex", mode: "preview" });
   });
 
-  it("rejects pending requests when the port closes mid-build", async () => {
-    const fake = new FakeHelper();
-    const { helper } = setup(fake);
+  it("returns a failed build without pages", async () => {
+    const { helper } = setup();
     await helper.connect();
-    fake.mute.add("build");
-    const compiling = helper.compile(project({ "main.tex": "x" }), () => undefined);
-    await new Promise((resolve) => setTimeout(resolve, 5));
-    fake.close("Native host has exited.");
-    await expect(compiling).rejects.toThrow(/closed the connection.*build.*Native host has exited/s);
+    expect(await helper.compile(request, () => undefined)).toEqual({ status: "failed", problems: [], changed: [] });
   });
 
-  it("sends cancel without waiting for a reply", async () => {
+  it("rejects when a page lies outside the payload", async () => {
+    const { fake, helper } = setup();
+    fake.built = { status: "succeeded", pages: { pageCount: 1, pages: [{ index: 0, bytes: Uint8Array.of(1, 2) }], announce: [{ index: 0, offset: 1, length: 5 }] } };
+    await helper.connect();
+    await expect(helper.compile(request, () => undefined)).rejects.toThrow("announced page 0");
+  });
+
+  it("rejects pending requests and resets the status when the socket closes", async () => {
     const { fake, helper } = setup();
     await helper.connect();
-    await helper.cancel("thesis");
-    expect(fake.postedOfType("cancel")).toHaveLength(1);
-    expect(fake.postedOfType("cancel")[0]?.projectId).toBe("thesis");
+    fake.built = { status: "failed" };
+    fake.answer = () => undefined;
+    const pending = helper.compile(request, () => undefined);
+    await flush();
+    fake.sockets[0]?.serverClose("going away");
+    await expect(pending).rejects.toThrow("going away");
+    expect(helper.status()).toBeUndefined();
   });
 });
 
-describe("install", () => {
-  it("installs TeX and refreshes the status from the ready reply", async () => {
-    const { helper } = setup(new FakeHelper({ source: "none", complete: false }));
+describe("edit", () => {
+  it("sends the whole text first and changes after, and refuses changes without state", async () => {
+    const { fake, helper } = setup();
     await helper.connect();
-    const progress: unknown[] = [];
-    await helper.installTex("tinytex", (p) => progress.push(p));
-    expect(progress).toEqual([{ phase: "installing-tex", message: "Installing" }]);
-    expect(helper.status()).toEqual({ state: "ready", helperVersion: "1.0.0", tex: { source: "tinytex", year: 2025, complete: false }, host: "helper" });
+    await expect(helper.edit("thesis", "a.tex", 1, { changes: [] })).rejects.toThrow("whole text");
+    await helper.edit("thesis", "a.tex", 1, { text: "hello" });
+    await helper.edit("thesis", "a.tex", 2, { changes: [{ from: 0, to: 0, insert: "oh " }] });
+    expect(fake.receivedOfType("edit")).toEqual([
+      expect.objectContaining({ version: 1, text: "hello" }),
+      expect.objectContaining({ version: 2, changes: [{ from: 0, to: 0, insert: "oh " }] }),
+    ]);
   });
 
-  it("installs every package and marks the TeX complete", async () => {
+  it("answers a stale reply with the whole text at the same version", async () => {
+    const { fake, helper } = setup();
+    fake.staleChanges = true;
+    await helper.connect();
+    await helper.edit("thesis", "a.tex", 1, { text: "hello" });
+    await helper.edit("thesis", "a.tex", 2, { changes: [{ from: 5, to: 5, insert: "!" }] });
+    await flush();
+    const edits = fake.receivedOfType("edit");
+    expect(edits).toHaveLength(3);
+    expect(edits[2]).toMatchObject({ version: 2, text: "hello!" });
+  });
+
+  it("forgets the text of a saved path", async () => {
     const { helper } = setup();
     await helper.connect();
-    await helper.installAllPackages(() => undefined);
-    expect(helper.status()).toMatchObject({ state: "ready", tex: { complete: true } });
+    await helper.edit("thesis", "a.tex", 1, { text: "x" });
+    await helper.save("thesis", "a.tex");
+    await expect(helper.edit("thesis", "a.tex", 1, { changes: [] })).rejects.toThrow("whole text");
+  });
+});
+
+describe("openProject", () => {
+  it("opens a project and returns its files", async () => {
+    const { helper } = setup();
+    await helper.connect();
+    expect(await helper.openProject("thesis", "Writing/thesis")).toEqual({ files: ["main.tex"] });
   });
 });

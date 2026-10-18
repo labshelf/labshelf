@@ -4,14 +4,17 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import type { ILogger } from "../../../../../src/ports/index.js";
-import type { ToHelperMessage, ToPageMessage } from "../../../../../src/writing/helper/index.js";
+import type { ToPageMessage } from "../../../../../src/writing/helper/index.js";
 
 import { createBuildHandlers } from "../../../../../src/writing/helper/node/build/index";
+import { createHelperProjects, type HelperProjects } from "../../../../../src/writing/helper/node/projects/index";
 import type { ManagedTexProvider } from "../../../../../src/writing/latex/toolchain/node/managed/index";
 
 // Writes main.log and main.pdf into -outdir= by the `%FAKE:<mode>` line of the main file, and records its arguments.
+// An ok build writes one real PDF page per `\newpage`-separated chunk of the main file, so a page's content follows its text.
 const FAKE_LATEXMK = `#!${process.execPath}
 const fs = require("fs"), path = require("path");
+const { PDFDocument } = require(${JSON.stringify(require.resolve("pdf-lib"))});
 const args = process.argv.slice(2);
 const out = args.find((a) => a.startsWith("-outdir=")).slice("-outdir=".length);
 const main = args[args.length - 1];
@@ -20,11 +23,15 @@ const mode = (/%FAKE:(\\w+)/.exec(fs.readFileSync(main, "utf8")) || [])[1] || "o
 fs.mkdirSync(out, { recursive: true });
 fs.appendFileSync(path.join(out, "runs.jsonl"), JSON.stringify(args) + "\\n");
 const log = (text) => fs.writeFileSync(path.join(out, base + ".log"), "This is pdfTeX\\n" + text);
-if (mode === "ok") {
-  const pdf = Buffer.alloc(1300 * 1024);
-  for (let i = 0; i < pdf.length; i++) pdf[i] = (i * 31 + 7) % 251;
-  fs.writeFileSync(path.join(out, base + ".pdf"), pdf);
+async function writePdf() {
+  const chunks = fs.readFileSync(main, "utf8").replace(/^%FAKE.*$/m, "").split("\\\\newpage");
+  const pdf = await PDFDocument.create();
+  for (const chunk of chunks) pdf.addPage().drawText(chunk.replace(/\\s+/g, " ").trim() || "empty", { x: 20, y: 700, size: 12 });
+  fs.writeFileSync(path.join(out, base + ".pdf"), await pdf.save());
   log("Output written on " + base + ".pdf\\n");
+}
+if (mode === "ok") {
+  writePdf();
 } else if (mode === "missing") {
   log("! LaTeX Error: File \`foo.sty' not found.\\n\\nType X to quit or <RETURN> to proceed,\\nor enter new name. (Default extension: sty)\\n\\nl.3 \\\\usepackage{foo}\\n");
   process.exitCode = 12;
@@ -40,16 +47,19 @@ if (mode === "ok") {
 export interface BuildHarness {
   root: string;
   texDir: string;
-  srcDir: string;
   buildDir: string;
   tex: { resolve: jest.Mock; installMissing: jest.Mock };
   logger: { log: jest.Mock; error: jest.Mock };
   handlers: ReturnType<typeof createBuildHandlers>;
+  projects: HelperProjects;
   sent: ToPageMessage[];
-  /** Writes the project's main file with the fake latexmk's mode. */
-  project(mode: "ok" | "missing" | "minted" | "hang"): Promise<void>;
-  send(type: "build" | "cancel", id: string, extra?: Record<string, unknown>): Promise<void>;
-  /** Resolves once the build `id` has sent `built` and, when it succeeded, its last `pdf` chunk. */
+  /** The payload a `pages` message carried. */
+  payloadOf(message: ToPageMessage): Uint8Array | undefined;
+  /** Sets the unsaved text of main.tex: the fake latexmk's mode line, then the chunks, one PDF page each. */
+  project(mode: "ok" | "missing" | "minted" | "hang", ...pages: string[]): Promise<void>;
+  compile(id: string, extra?: Record<string, unknown>): Promise<void>;
+  cancel(id: string): Promise<void>;
+  /** Resolves once the request `id` has ended: `built` without a success, `pages`, or an `error`. */
   finished(id: string): Promise<ToPageMessage[]>;
   cleanup(): Promise<void>;
 }
@@ -57,20 +67,18 @@ export interface BuildHarness {
 const PROJECT = "thesis";
 
 function isDone(frames: ToPageMessage[]): boolean {
+  if (frames.some((f) => f.type === "error" || f.type === "pages")) { return true; }
   const built = frames.find((f) => f.type === "built");
-  if (built?.type !== "built") { return false; }
-  if (built.status !== "succeeded") { return true; }
-  const last = frames.at(-1);
-  return last?.type === "pdf" && last.chunk.index === last.chunk.count - 1;
+  return built?.type === "built" && built.status !== "succeeded";
 }
 
 export async function createBuildHarness(): Promise<BuildHarness> {
   const root = await realpath(await mkdtemp(join(tmpdir(), "labshelf-build-")));
-  const projectsRoot = join(root, "projects");
+  const dataDir = join(root, "data");
+  const library = join(root, "library");
   const texDir = join(root, "tex", "bin");
-  const srcDir = join(projectsRoot, PROJECT, "src");
   await mkdir(texDir, { recursive: true });
-  await mkdir(srcDir, { recursive: true });
+  await mkdir(join(library, "writing", PROJECT), { recursive: true });
   await writeFile(join(texDir, "latexmk"), FAKE_LATEXMK);
   await chmod(join(texDir, "latexmk"), 0o755);
   const tex = {
@@ -79,19 +87,28 @@ export async function createBuildHarness(): Promise<BuildHarness> {
     install: jest.fn(), status: jest.fn(), installAllPackages: jest.fn(),
   };
   const logger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
-  const handlers = createBuildHandlers({
-    projectsRoot, sourceDir: () => srcDir, tex: tex as unknown as ManagedTexProvider, logger: logger as unknown as ILogger,
-  });
+  const projects = createHelperProjects({ libraryRoot: library, logger: logger as unknown as ILogger });
+  await projects.open(PROJECT, `writing/${PROJECT}`);
+  const handlers = createBuildHandlers({ dataDir, projects, tex: tex as unknown as ManagedTexProvider, logger: logger as unknown as ILogger });
   const sent: ToPageMessage[] = [];
+  const payloads = new Map<ToPageMessage, Uint8Array>();
   const waiters: Array<() => void> = [];
-  const push = (frame: ToPageMessage): void => { sent.push(frame); waiters.splice(0).forEach((wake) => wake()); };
+  const push = (frame: ToPageMessage, payload?: Uint8Array): void => {
+    sent.push(frame);
+    if (payload) { payloads.set(frame, payload); }
+    waiters.splice(0).forEach((wake) => wake());
+  };
+  let version = 0;
   return {
-    root, texDir, srcDir, buildDir: join(projectsRoot, PROJECT, "build"), tex, logger, handlers, sent,
-    project: (mode) => writeFile(join(srcDir, "main.tex"), `%FAKE:${mode}\n\\documentclass{article}\n`),
-    send: (type, id, extra = {}) => handlers[type](
-      { v: 1, id, type, projectId: PROJECT, ...(type === "build" && { main: "main.tex", engine: "pdflatex" }), ...extra } as ToHelperMessage,
-      push,
-    ),
+    root, texDir, buildDir: join(dataDir, "projects", PROJECT, "build"), tex, logger, handlers, projects, sent,
+    payloadOf: (message) => payloads.get(message),
+    async project(mode, ...pages) {
+      const text = `%FAKE:${mode}\n${(pages.length > 0 ? pages : ["page"]).join("\n\\newpage\n")}\n`;
+      version += 1;
+      await projects.edit(PROJECT, "main.tex", version, { text });
+    },
+    compile: (id, extra = {}) => handlers.compile({ v: 2, id, type: "compile", projectId: PROJECT, main: "main.tex", mode: "full", engine: "pdflatex", ...extra }, push),
+    cancel: (id) => handlers.cancel({ v: 2, id, type: "cancel", projectId: PROJECT }, push),
     finished: (id) => new Promise((resolve) => {
       const check = (): void => {
         const frames = sent.filter((f) => f.id === id);

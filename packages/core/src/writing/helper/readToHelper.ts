@@ -1,44 +1,56 @@
 /** Validates the body of a message an extension page sends to LabShelf Helper. */
 // CONTRACT: documents/contracts/helper.md#page-to-helper
 
-import {
-  MAX_SYNC_TOTAL_BYTES, type SyncedFile, type ToHelperMessage,
-} from "./helperMessages.js";
+import { COMPILE_MODES, MAX_EDIT_CHANGES, type TextChange, type ToHelperMessage } from "./helperMessages.js";
 import { TEX_INSTALL_KINDS } from "../latex/index.js";
 import { LATEX_ENGINES } from "../project/index.js";
 import {
-  FieldError, isBody, isNonNegativeInteger, readArray, readChoice, readChunk, readNumber, readPath, readPaths,
-  readProjectId, readSha256, readText, type Body,
+  FieldError, isBody, isNonNegativeInteger, optional, readArray, readBody, readChoice, readNumber, readPath,
+  readProjectId, readString, readText, type Body,
 } from "./messageFields.js";
 
 type Envelope = { v: number; id: string };
 type Readers = { [T in ToHelperMessage["type"]]: (body: Body, envelope: Envelope) => Extract<ToHelperMessage, { type: T }> };
 
-function readSyncedFiles(body: Body): SyncedFile[] {
-  const files = readArray(body, "files").map((entry, index): SyncedFile => {
-    if (!isBody(entry)) { throw new FieldError("invalid-field", `files[${index}] is not an object`); }
-    return { path: readPath(entry, "path"), sha256: readSha256(entry, "sha256"), size: readNumber(entry, "size", isNonNegativeInteger) };
+function readChanges(body: Body): TextChange[] {
+  return readArray(body, "changes", MAX_EDIT_CHANGES).map((entry, index): TextChange => {
+    if (!isBody(entry)) { throw new FieldError("invalid-field", `changes[${index}] is not an object`); }
+    const from = readNumber(entry, "from", isNonNegativeInteger);
+    const to = readNumber(entry, "to", isNonNegativeInteger);
+    if (to < from) { throw new FieldError("invalid-field", `changes[${index}] ends before it starts`); }
+    return { from, to, insert: readString(entry, "insert") };
   });
-  if (new Set(files.map((file) => file.path)).size !== files.length) {
-    throw new FieldError("invalid-field", "files lists a path twice");
+}
+
+function readEdit(body: Body, envelope: Envelope): Extract<ToHelperMessage, { type: "edit" }> {
+  const base = {
+    ...envelope, type: "edit" as const, projectId: readProjectId(body), path: readPath(body, "path"),
+    version: readNumber(body, "version", (n) => Number.isInteger(n) && n >= 1),
+  };
+  if ((body.text === undefined) === (body.changes === undefined)) {
+    throw new FieldError("invalid-field", "edit needs exactly one of text and changes");
   }
-  if (files.reduce((total, file) => total + file.size, 0) > MAX_SYNC_TOTAL_BYTES) {
-    throw new FieldError("limit", "files declare more than 500 MiB in total");
-  }
-  return files;
+  return body.text !== undefined ? { ...base, text: readString(body, "text") } : { ...base, changes: readChanges(body) };
 }
 
 const READERS: Readers = {
-  hello: (body, envelope) => ({ ...envelope, type: "hello", extensionVersion: readText(body, "extensionVersion") }),
-  sync: (body, envelope) => ({ ...envelope, type: "sync", projectId: readProjectId(body), files: readSyncedFiles(body) }),
-  file: (body, envelope) => ({
-    ...envelope, type: "file", projectId: readProjectId(body), path: readPath(body, "path"), chunk: readChunk(body),
+  hello: (body, envelope) => ({
+    ...envelope, type: "hello", extensionVersion: readText(body, "extensionVersion"), origin: readText(body, "origin"),
   }),
-  delete: (body, envelope) => ({ ...envelope, type: "delete", projectId: readProjectId(body), paths: readPaths(body, "paths") }),
-  build: (body, envelope) => ({
-    ...envelope, type: "build", projectId: readProjectId(body), main: readPath(body, "main"),
-    engine: readChoice(body, "engine", LATEX_ENGINES),
+  auth: (body, envelope) => ({ ...envelope, type: "auth", token: readText(body, "token") }),
+  openProject: (body, envelope) => ({
+    ...envelope, type: "openProject", projectId: readProjectId(body), root: readPath(body, "root"),
   }),
+  closeProject: (body, envelope) => ({ ...envelope, type: "closeProject", projectId: readProjectId(body) }),
+  edit: readEdit,
+  save: (body, envelope) => ({ ...envelope, type: "save", projectId: readProjectId(body), path: readPath(body, "path") }),
+  compile: (body, envelope) => ({
+    ...envelope, type: "compile", projectId: readProjectId(body), main: readPath(body, "main"),
+    mode: readChoice(body, "mode", COMPILE_MODES),
+    ...optional(body, "engine", (b, k) => readChoice(b, k, LATEX_ENGINES)),
+    ...optional(body, "editedFile", readPath),
+  }),
+  lsp: (body, envelope) => ({ ...envelope, type: "lsp", projectId: readProjectId(body), payload: readBody(body, "payload") }),
   cancel: (body, envelope) => ({ ...envelope, type: "cancel", projectId: readProjectId(body) }),
   installTex: (body, envelope) => ({ ...envelope, type: "installTex", kind: readChoice(body, "kind", TEX_INSTALL_KINDS) }),
   installAllPackages: (_body, envelope) => ({ ...envelope, type: "installAllPackages" }),

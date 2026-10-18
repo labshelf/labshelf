@@ -4,11 +4,11 @@
 import type { BuildProblemKind, LocatedProblem } from "../latex/index.js";
 import {
   HELPER_BUILD_STATUSES, HELPER_HOSTS, PROGRESS_PHASES, TEX_SOURCES,
-  type TexStatus, type ToPageMessage,
+  type ChangedPage, type TexStatus, type ToPageMessage,
 } from "./helperMessages.js";
 import {
-  FieldError, isBody, readArray, readBody, readBoolean, readChoice, readChunk, readNumber, readPaths,
-  readSha256, readString, readText, optional, type Body,
+  FieldError, isBody, isNonNegativeInteger, readArray, readBody, readBoolean, readChoice, readNumber, readPaths,
+  readProjectId, readSha256, readString, readText, optional, type Body,
 } from "./messageFields.js";
 
 type Envelope = { v: number; id: string };
@@ -42,12 +42,29 @@ function readProblems(body: Body): LocatedProblem[] {
   });
 }
 
+function readChangedPages(body: Body): ChangedPage[] {
+  return readArray(body, "changed").map((entry, index): ChangedPage => {
+    if (!isBody(entry)) { throw new FieldError("invalid-field", `changed[${index}] is not an object`); }
+    return {
+      index: readNumber(entry, "index", isNonNegativeInteger),
+      offset: readNumber(entry, "offset", isNonNegativeInteger),
+      length: readNumber(entry, "length", isNonNegativeInteger),
+    };
+  });
+}
+
 const READERS: Readers = {
   ready: (body, envelope) => ({
     ...envelope, type: "ready", protocol: readNumber(body, "protocol", isPositiveInteger),
     helperVersion: readText(body, "helperVersion"), host: readChoice(body, "host", HELPER_HOSTS), tex: readTex(body),
   }),
-  need: (body, envelope) => ({ ...envelope, type: "need", paths: readPaths(body, "paths") }),
+  session: (body, envelope) => ({
+    ...envelope, type: "session", port: readNumber(body, "port", (n) => Number.isInteger(n) && n >= 1 && n <= 65535),
+    token: readText(body, "token"),
+  }),
+  authed: (_body, envelope) => ({ ...envelope, type: "authed" }),
+  opened: (body, envelope) => ({ ...envelope, type: "opened", projectId: readProjectId(body), files: readPaths(body, "files") }),
+  closed: (body, envelope) => ({ ...envelope, type: "closed", projectId: readProjectId(body) }),
   progress: (body, envelope) => ({
     ...envelope, type: "progress", phase: readChoice(body, "phase", PROGRESS_PHASES), message: readString(body, "message"),
     ...optional(body, "fraction", (b, k) => readNumber(b, k, (n) => n >= 0 && n <= 1)),
@@ -56,11 +73,18 @@ const READERS: Readers = {
     ...envelope, type: "built", status: readChoice(body, "status", HELPER_BUILD_STATUSES), problems: readProblems(body),
     ...optional(body, "pdfSha256", readSha256),
   }),
-  pdf: (body, envelope) => ({ ...envelope, type: "pdf", chunk: readChunk(body) }),
+  pages: (body, envelope) => ({
+    ...envelope, type: "pages", pdfSha256: readSha256(body, "pdfSha256"),
+    pageCount: readNumber(body, "pageCount", isNonNegativeInteger), changed: readChangedPages(body),
+  }),
+  lsp: (body, envelope) => ({
+    v: envelope.v, type: "lsp", projectId: readProjectId(body), payload: readBody(body, "payload"),
+  }),
   error: (body, envelope) => ({ ...envelope, type: "error", code: readText(body, "code"), message: readString(body, "message") }),
 };
 
 /** The validated message, or undefined when `type` is not one the helper sends. */
-export function readToPage(type: string, body: Body, envelope: Envelope): ToPageMessage | undefined {
-  return Object.hasOwn(READERS, type) ? READERS[type as ToPageMessage["type"]](body, envelope) : undefined;
+export function readToPage(type: string, body: Body, envelope: { v: number; id?: string }): ToPageMessage | undefined {
+  // INVARIANT: the caller leaves `id` out only for `lsp` and `error`, whose readers do not require it.
+  return Object.hasOwn(READERS, type) ? READERS[type as ToPageMessage["type"]](body, envelope as Envelope) : undefined;
 }

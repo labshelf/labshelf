@@ -1,4 +1,4 @@
-// Resolves the folder where the helper keeps its mirrored projects and logs; the managed TeX lives in the shared TeX folder.
+// Resolves the folder where the helper keeps its build working copies and logs; the managed TeX lives in the shared TeX folder.
 import * as path from "node:path";
 
 // CONTRACT: documents/contracts/helper.md#data-folder

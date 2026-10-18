@@ -1,7 +1,7 @@
 // Answers the host commands LabShelf's web build calls on the editor page: the library folder, LaTeX through the helper, its setup card, Typst.
 import { TEX_INSTALL_KINDS, type ILogger } from "@labshelf/core";
 import {
-  compileResultToWire, projectFromWire, typstOutcomeToWire, typstRequestFromWire,
+  typstOutcomeToWire, typstRequestFromWire,
   type HelperProgressListener, type ILatexHelper, type TypstHostOutcome, type TypstHostRequest,
 } from "@labshelf/core/helper";
 
@@ -19,7 +19,7 @@ export const EDITOR_HOST_COMMANDS = {
 const MODULE = "browser.editor.host";
 
 export interface EditorHostDeps {
-  helper: ILatexHelper;
+  helper: Pick<ILatexHelper, "connect" | "cancel" | "installTex" | "installAllPackages">;
   logger: ILogger;
   /** The library folder as the workbench names it (a file: path). */
   libraryFolder: string;
@@ -36,7 +36,6 @@ function helperCall(deps: EditorHostDeps, method: unknown, args: unknown[]): Pro
   const { helper } = deps;
   switch (method) {
     case "connect": return helper.connect();
-    case "compile": return helper.compile(projectFromWire(args[0]), ignoreProgress).then(compileResultToWire);
     case "cancel":
       if (typeof args[0] !== "string") throw new Error("cancel needs a project id");
       return helper.cancel(args[0]);

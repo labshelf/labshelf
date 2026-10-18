@@ -25,15 +25,15 @@ async function handle(tex: ManagedTexProvider, message: ToHelperMessage): Promis
   return sent;
 }
 
-const installTex: ToHelperMessage = { v: 1, id: "3", type: "installTex", kind: "tinytex" };
-const installAll: ToHelperMessage = { v: 1, id: "4", type: "installAllPackages" };
+const installTex: ToHelperMessage = { v: 2, id: "3", type: "installTex", kind: "tinytex" };
+const installAll: ToHelperMessage = { v: 2, id: "4", type: "installAllPackages" };
 
 it("streams installing-tex progress, then ready with the status", async () => {
   const sent = await handle(fakeTex({}), installTex);
   expect(sent.map((frame) => frame.type)).toEqual(["progress", "progress", "ready"]);
   expect(sent[0]).toMatchObject({ id: "3", phase: "installing-tex", fraction: 0.5 });
   expect(sent[1]).not.toHaveProperty("fraction");
-  expect(sent[2]).toEqual({ v: 1, id: "3", type: "ready", protocol: 1, helperVersion: "0.1.0", host: "helper", tex: status });
+  expect(sent[2]).toEqual({ v: 2, id: "3", type: "ready", protocol: 2, helperVersion: "0.1.0", host: "helper", tex: status });
 });
 
 it("streams installing-package progress, then ready", async () => {
@@ -44,7 +44,7 @@ it("streams installing-package progress, then ready", async () => {
 
 it.each(["texlive-rollover", "no-managed-tex"] as const)("replies error %s", async (code) => {
   const sent = await handle(fakeTex({ installAllPackages: jest.fn(async () => { throw new TexInstallError(code, "stop"); }) }), installAll);
-  expect(sent.at(-1)).toEqual({ v: 1, id: "4", type: "error", code, message: "stop" });
+  expect(sent.at(-1)).toEqual({ v: 2, id: "4", type: "error", code, message: "stop" });
 });
 
 it("replies tex-install-failed with the cause for any other failure", async () => {

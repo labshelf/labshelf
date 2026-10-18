@@ -8,6 +8,7 @@ export function createBrowserLatexHelper(logger: ILogger): ILatexHelper {
   return createNativeLatexHelper({
     logger,
     extensionVersion: bx.runtime.getManifest().version,
+    origin: location.origin,
     connectNative: () => connectBrowserNative(HELPER_HOST_NAME),
   });
 }
