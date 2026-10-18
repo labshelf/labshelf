@@ -4,10 +4,10 @@ import * as path from "node:path";
 
 import { readOptionalFile, writeFileAtomic } from "../../../library/node/index.js";
 import type { ILogger } from "../../../ports/index.js";
-import { detectMainFile } from "../roots/index.js";
+import { readProjectEntry, type ProjectFolderReader } from "../readProjectEntry.js";
 import type { ProjectEntry, ProjectLocation } from "../projectEntry.js";
 import {
-  PROJECT_FILE, parseProjectFile, updateProjectFile, type ProjectSettings, type ProjectSettingsPatch,
+  PROJECT_FILE, parseProjectFile, updateProjectFile, type ProjectSettingsPatch,
 } from "../projectFile.js";
 
 /** Names of the files at the folder's root; sources in subfolders are not main candidates. */
@@ -16,27 +16,14 @@ export async function rootFileNames(folder: string): Promise<string[]> {
   return entries.filter((entry) => entry.isFile()).map((entry) => entry.name);
 }
 
-/** A project that cannot be read is returned as broken with a reason the UI can show, and logged. */
-export async function readProject(folder: string, location: ProjectLocation, logger: ILogger): Promise<ProjectEntry> {
-  const broken = async (reason: string): Promise<ProjectEntry> => {
-    await logger.log("WARN", "project", "project cannot be read", { folder, reason });
-    return { kind: "broken", folder, location, reason };
+/** Reads the folder from disk; see readProjectEntry for how a project that cannot be read is returned. */
+export function readProject(folder: string, location: ProjectLocation, logger: ILogger): Promise<ProjectEntry> {
+  const reader: ProjectFolderReader = {
+    readOptionalText: (name) => readOptionalFile(path.join(folder, name)),
+    rootFileNames: () => rootFileNames(folder),
+    exists: () => fs.stat(folder).then(() => true, () => false),
   };
-  try {
-    const text = await readOptionalFile(path.join(folder, PROJECT_FILE));
-    if (text === undefined) {
-      const exists = await fs.stat(folder).then(() => true, () => false);
-      return broken(exists ? `${PROJECT_FILE} is missing` : "folder not found");
-    }
-    const parsed = parseProjectFile(text);
-    if (!parsed.ok) { return broken(`${PROJECT_FILE}: ${parsed.reason}`); }
-    const main = parsed.settings.main
-      ?? await detectMainFile(parsed.settings.format, await rootFileNames(folder), (name) => readOptionalFile(path.join(folder, name)));
-    return { kind: "ready", folder, location, settings: parsed.settings, main };
-  } catch (error) {
-    await logger.error("project", error, { folder, action: "read" });
-    return { kind: "broken", folder, location, reason: error instanceof Error ? error.message : String(error) };
-  }
+  return readProjectEntry({ folder, location, reader, logger });
 }
 
 /** Rewrites the given settings in place; a labshelf.yaml that does not parse is left untouched and the call fails. */

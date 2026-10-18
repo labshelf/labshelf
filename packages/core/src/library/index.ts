@@ -9,6 +9,7 @@ export {
   joinWith, libraryLayout, paperFiles,
 } from "./layout.js";
 export type { Join, LibraryLayout, PaperFiles } from "./layout.js";
+export { relativePathProblem } from "./relativePath.js";
 export {
   FOLDER_NAME_MAX_LENGTH,
   citeKeySlug, claimCiteKey, editedTags, makeCiteKey, normalizeTags, titleKey, uniqueCiteKey, validateFolderName,
