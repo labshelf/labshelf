@@ -1,4 +1,4 @@
-/** Exports the library UI's DOM half public API: one mount call, the missing-PDF dialog host glue shares, and the list pieces other item pages reuse. */
+/** Exports the library UI's DOM half public API: one mount call, the missing-PDF dialog host glue shares, the list pieces other item pages reuse, and the Writing tab. */
 export { mountLibraryUi } from "./mountLibraryUi.js";
 export type { LibraryUi, LibraryUiOptions } from "./mountLibraryUi.js";
 export { askNoPdf, type NoPdfChoice } from "./flows/index.js";
@@ -10,3 +10,4 @@ export {
 } from "./list/index.js";
 export { buildFrame, togglePane, type FrameOptions, type FrameSlots } from "./shell/index.js";
 export { iconBtn, kv, loading, muted, section, tabBarHtml, type TabSpec } from "./detail/index.js";
+export { mountWritingTab, type WritingTab, type WritingTabHost, type WritingTabProject } from "./writing/index.js";

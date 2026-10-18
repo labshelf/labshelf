@@ -3,16 +3,19 @@
  * synchronous loopback channel, and adds the page's own glue (folder tree, URL hash, status bar).
  */
 import { createLoopbackTransport } from "@labshelf/core";
-import { el, mountLibraryUi } from "@labshelf/core/dom";
+import { el, mountLibraryUi, mountWritingTab, type LibraryUi } from "@labshelf/core/dom";
 import { createBrowserLogger } from "../platform";
 import { mountMoveOffer, mountSourceBanner } from "../library-source";
+import { createLibraryFileSystem } from "../storage";
+import { createBrowserProjects } from "../storage/projects";
 import { applyTheme } from "../ui";
 import { attachLibraryHost } from "./host";
 import { attachLinkHandling } from "./openLink";
 import { createLocalStoragePrefs } from "./prefs";
-import { attachRouter } from "./router";
+import { attachRouter, hashForFolder } from "./router";
 import { mountSidebarTree } from "./sidebar";
 import { mountStatusBar } from "./statusBar";
+import { createWritingHost, mountPageTabs, showPdfInTab } from "./writing";
 
 const log = createBrowserLogger();
 
@@ -24,6 +27,16 @@ function mountSourceSurfaces(root: HTMLElement, reloadSnapshots: () => Promise<v
   const offer = mountMoveOffer(offerHost, { logger: log, onMoved: reloadSnapshots });
   mountSourceBanner(bannerHost, { logger: log, onFolder: () => { void reloadSnapshots().then(() => offer.refresh()); } });
   void offer.refresh();
+}
+
+/** Adds the Writing tab beside the library; it lists the projects again each time it is shown. */
+function mountWriting(root: HTMLElement, ui: LibraryUi): void {
+  const frame = root.querySelector<HTMLElement>(".ls-library");
+  if (!frame) throw new Error("Missing library frame");
+  const fileSystem = createLibraryFileSystem();
+  const host = createWritingHost({ projects: createBrowserProjects({ fileSystem, logger: log }), fileSystem, logger: log, showPdf: showPdfInTab });
+  const pane = mountPageTabs(frame, () => hashForFolder(ui.store.get().folder), () => { void tab.refresh(); });
+  const tab = mountWritingTab(pane, host);
 }
 
 function boot(): void {
@@ -45,6 +58,7 @@ function boot(): void {
     },
   });
   if (ui.sidebar) mountSidebarTree(ui, ui.sidebar, prefs, libraryHost.openCitationMap, host);
+  mountWriting(root, ui);
   mountSourceSurfaces(root, libraryHost.reloadSnapshots);
   mountStatusBar(root, (listener) => ui.store.select((s) => s.papers.length, listener));
   attachLinkHandling(log);
