@@ -31,7 +31,14 @@ export function parseShareLink(text: string): ShareLinkResult {
   } catch {
     return { ok: false, error: "notShareLink" };
   }
-  const parts = url.hash.slice(1).split("/");
+  // PLATFORM: VS Code's Uri encodes a fragment's slashes as %2F when it hands a link to the browser; no valid part holds a %.
+  let fragment: string;
+  try {
+    fragment = decodeURIComponent(url.hash.slice(1));
+  } catch {
+    return { ok: false, error: "notShareLink" };
+  }
+  const parts = fragment.split("/");
   if (!url.pathname.endsWith("/share/") || parts.length !== 3) { return { ok: false, error: "notShareLink" }; }
   const [host, shareId, keyText] = parts as [string, string, string];
   if (!HOST.test(host)) { return { ok: false, error: "badHost" }; }

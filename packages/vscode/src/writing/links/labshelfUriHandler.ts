@@ -1,7 +1,8 @@
-// Opens the reader at a page for a vscode://<extension id>/open?link=<labshelf link> URI.
+// Opens the reader at a page for a vscode://<extension id>/open?link=<labshelf link> URI, and hands share imports on.
 import * as vscode from "vscode";
 
-import { papersByCiteKey, parseLabshelfLink } from "@labshelf/core";
+import { papersByCiteKey, parseLabshelfLink, SHARE_IMPORT_PATH } from "@labshelf/core";
+import { IMPORT_SHARE_COMMAND } from "../../share/index.js";
 import type { LinkLibrary } from "./findPaperLinks.js";
 
 const LOG_MODULE = "LabshelfLinks";
@@ -10,6 +11,11 @@ export class LabshelfUriHandler implements vscode.UriHandler {
   constructor(private readonly library: LinkLibrary) {}
 
   async handleUri(uri: vscode.Uri): Promise<void> {
+    // CONTRACT: documents/contracts/share-link.md#open-in-labshelf
+    if (uri.path === SHARE_IMPORT_PATH) {
+      await vscode.commands.executeCommand(IMPORT_SHARE_COMMAND, new URLSearchParams(uri.query).get("link") ?? undefined);
+      return;
+    }
     const session = this.library.session();
     if (!session) {
       await vscode.window.showWarningMessage("Open a LabShelf library before following a labshelf: link.");

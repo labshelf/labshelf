@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 
 import { registerCollaboration } from "../../collab/node/index.js";
 import { chooseLibraryRoot, offerLibraryMove, runMoveLibraryCommand } from "../../library/node/index.js";
+import { registerShareLinks } from "../../share/node/index.js";
 import { registerNodeWriting } from "../../writing/node/index.js";
 import type { ExtensionPlatform } from "../extensionPlatform.js";
 import { createNodeAdapters } from "./nodeAdapters.js";
@@ -19,6 +20,7 @@ export function createDesktopPlatform(context: vscode.ExtensionContext): Extensi
       extensionContext.subscriptions.push(vscode.commands.registerCommand("labshelf.moveLibrary", () => runMoveLibraryCommand(controller)));
       registerBridgeCommand(extensionContext, adapters);
       registerCollaboration(extensionContext, controller, projects);
+      registerShareLinks(extensionContext, controller);
     },
   };
 }

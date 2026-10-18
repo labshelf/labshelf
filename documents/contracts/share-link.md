@@ -14,7 +14,7 @@ A *share link* gives anyone who has it a read-only copy of a folder of papers: t
 - The worker host is the host of the owner's Worker URL (`<worker>.<subdomain>.workers.dev`), without scheme, port or path; the Worker is reached at `https://<worker host>`.
 - The share id is 16 random bytes as 32 lowercase hex characters. It is not derived from the link key, so the Worker's paths and KV keys reveal nothing about the key.
 - The link key is 16 random bytes, base64url without padding (22 characters).
-- Everything after `#` is the fragment, which a browser never sends to a server. An app accepts a link of any origin whose path ends in `/share/`, and rejects it, naming the reason, when the fragment does not have exactly these three parts or a part is malformed.
+- Everything after `#` is the fragment, which a browser never sends to a server. An app accepts a link of any origin whose path ends in `/share/`, percent-decodes the fragment first (an opener such as VS Code may encode its slashes), and rejects it, naming the reason, when the fragment does not have exactly these three parts or a part is malformed.
 
 ## Encryption
 
@@ -83,6 +83,7 @@ The share page's Open in LabShelf button opens
 vscode://labshelf.labshelf/importShare?link=<percent-encoded share link>
 ```
 
+- `labshelf.labshelf` is the extension id, `<publisher>.<name>` of the VS Code extension's manifest, one constant in core beside the page origin.
 - The link is the one [link](#link) form, written with the page origin constant whatever origin the page was served from.
 - The extension's URI handler parses it with the same parser as any share link and copies the share's papers into the user's library; a link it cannot parse is refused with the parse error named.
 

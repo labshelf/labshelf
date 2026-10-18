@@ -202,6 +202,24 @@
         "enablement": "!isWeb"
       },
       {
+        "command": "labshelf.share.folder",
+        "title": "Share Folder as Link…",
+        "category": "LabShelf",
+        "enablement": "!isWeb"
+      },
+      {
+        "command": "labshelf.share.manage",
+        "title": "Manage Shared Links…",
+        "category": "LabShelf",
+        "enablement": "!isWeb"
+      },
+      {
+        "command": "labshelf.share.import",
+        "title": "Import Papers from Share Link…",
+        "category": "LabShelf",
+        "enablement": "!isWeb"
+      },
+      {
         "command": "labshelf.relay.connect",
         "title": "Connect Cloudflare…",
         "category": "LabShelf",
@@ -853,6 +871,18 @@
         },
         {
           "command": "labshelf.collab.leave",
+          "when": "!isWeb"
+        },
+        {
+          "command": "labshelf.share.folder",
+          "when": "!isWeb"
+        },
+        {
+          "command": "labshelf.share.manage",
+          "when": "!isWeb"
+        },
+        {
+          "command": "labshelf.share.import",
           "when": "!isWeb"
         },
         {

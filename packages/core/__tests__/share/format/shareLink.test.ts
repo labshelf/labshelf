@@ -13,6 +13,13 @@ describe("share link", () => {
     expect(parsed).toEqual({ ok: true, link: { relayUrl, shareId, key } });
   });
 
+  it("reads a fragment whose slashes an opener percent-encoded", () => {
+    const link = formatShareLink({ relayUrl, shareId, key });
+    const [page, fragment] = link.split("#") as [string, string];
+    expect(parseShareLink(`${page}#${fragment.replaceAll("/", "%2F")}`)).toEqual({ ok: true, link: { relayUrl, shareId, key } });
+    expect(parseShareLink(`${page}#%E0%A4%A`).ok).toBe(false);
+  });
+
   it("accepts the page on any origin whose path ends in /share/", () => {
     const link = formatShareLink({ relayUrl, shareId, key }).replace(SHARE_PAGE_ORIGIN, "http://localhost:8080/site");
     expect(parseShareLink(link).ok).toBe(true);

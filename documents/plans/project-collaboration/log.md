@@ -13,3 +13,4 @@
 - 2026-10-18 · session 8 · 8.1 done: share-link format, convergent blob encryption, upload/revoke over a share backend port
 - 2026-10-18 · sessions 7.2, 8.2 · done: VS Code shares follow the relay list (offer/withdraw, auto-offer on Connect), Worker share endpoints on KV (protocol 1.1)
 - 2026-10-18 · session 8 · 8.3 decided in-session (read-only core library UI + reader, top bar with Install / Open in LabShelf / Download); 8.4 done: website /share/ page, headless check of list, reader, zip, removed and damaged states
+- 2026-10-18 · session 8 · 8.5 done: Share Folder as Link, Manage Shared Links, Import Shared Link and the vscode://…/importShare handler; shared annotations are not imported (sidecar store has no import path)

@@ -10,5 +10,7 @@ export { loadShareRegistry, saveShareRegistry, shareRecordLink } from "./shareRe
 export type { ShareRecord, ShareRegistry, ShareRegistryStore } from "./shareRegistry.js";
 export { uploadShare } from "./uploadShare.js";
 export type { UploadShareOptions } from "./uploadShare.js";
+export { importSharedPapers } from "./importSharedPapers.js";
+export type { ImportSharedPapersOptions, SharedImportSummary } from "./importSharedPapers.js";
 export { revokeShare } from "./revokeShare.js";
 export type { RevokeShareOptions } from "./revokeShare.js";

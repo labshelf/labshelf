@@ -1,11 +1,6 @@
 // Renders the share page's top bar: the folder name, Install LabShelf, Open in LabShelf, Download, and the rights notice.
-import { formatShareLink, type ShareLinkParts } from "@labshelf/core";
+import { formatShareImportUri, type ShareLinkParts } from "@labshelf/core";
 import { el, icon, showMenu, type MenuEntry } from "@labshelf/core/dom";
-
-// CONTRACT: documents/contracts/share-link.md#open-in-labshelf
-function importUri(link: ShareLinkParts): string {
-  return `vscode://labshelf.labshelf/importShare?link=${encodeURIComponent(formatShareLink(link))}`;
-}
 
 const INSTALL_URL = "../#s1-1";
 const RIGHTS_NOTICE = "The person who shared this folder is responsible for the right to share these papers.";
@@ -31,7 +26,7 @@ export function renderTopBar(bar: HTMLElement, { folder, link, back, downloads }
   download?.addEventListener("click", () => showMenu(download, downloads!()));
   const actions = el("div", { class: "share-bar-actions" },
     el("a", { class: "ls-btn ls-btn-ghost", href: INSTALL_URL, html: labelled("external", "Install LabShelf") }),
-    link ? el("a", { class: "ls-btn ls-btn-primary", href: importUri(link), title: "Copy these papers into your LabShelf library in VS Code", html: labelled("book-open", "Open in LabShelf") }) : null,
+    link ? el("a", { class: "ls-btn ls-btn-primary", href: formatShareImportUri(link), title: "Copy these papers into your LabShelf library in VS Code", html: labelled("book-open", "Open in LabShelf") }) : null,
     download);
   const title = folder
     ? el("div", { class: "share-bar-folder" }, el("span", { html: icon("folder") }), el("strong", { text: folder }))

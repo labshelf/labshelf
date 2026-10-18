@@ -39,6 +39,7 @@ The library folder may be synced between devices by any file sync tool, so every
   projects.json                    project folders registered outside the library
   merge-bases/<project id>/<path>  per writing-project text file, the content this device last knew to be common with other devices: the base of a three-way merge of a conflict copy
   collab/<share id>/               per shared project, its Yjs state, blob cache and last agreed file hashes, see collaboration.md#device-local-state
+  shares.json                      the paper-folder share links this device made, see share-link.md#share-list
   logs/app.log                     VS Code log (JSON lines)
   logs/terminal.log                terminal log (JSON lines)
 ```
