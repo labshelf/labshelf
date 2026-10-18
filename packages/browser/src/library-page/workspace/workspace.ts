@@ -1,8 +1,8 @@
 // Runs the library page's tabs over the core editor area: opens them lazily, keeps the URL hash in step and restores them on load.
 import type { ILogger } from "@labshelf/core";
-import { el, mountEditorArea, type EditorArea, type EditorAreaPrefsPort, type EditorGroupIndex, type EditorTabBody, type EditorTabInfo } from "@labshelf/core/dom";
+import { el, mountEditorArea, type EditorArea, type EditorAreaPrefsPort, type EditorGroupIndex, type EditorTab, type EditorTabBody, type EditorTabInfo } from "@labshelf/core/dom";
 import type { PagePlan } from "../sections";
-import { TAB_KINDS, parseTabId, type TabContext, type TabKindName, type TabParams } from "../tabs";
+import { TAB_KINDS, parseTabId, type TabContext, type TabHooks, type TabKindName, type TabParams } from "../tabs";
 import { planRestore } from "./restorePlan";
 import { formatWorkspaceHash, isFolderHash } from "./workspaceHash";
 
@@ -23,7 +23,7 @@ export interface Workspace {
 export interface WorkspaceOptions {
   prefs: EditorAreaPrefsPort;
   /** What every tab body receives besides the workspace; read when a body mounts, so it may name objects created after the workspace. */
-  services: () => Omit<TabContext, "workspace">;
+  services: () => Omit<TabContext, "workspace" | "tab">;
   logger: ILogger;
   /** The sections the page shows: tabs of a hidden section are never opened, and the default tab comes from it. */
   plan: PagePlan;
@@ -51,29 +51,75 @@ export function createWorkspace(slot: HTMLElement, { prefs, services, logger, pl
     else history.replaceState(null, "", next);
   };
 
-  const mountBody = (kind: TabKindName, params: TabParams, host: HTMLElement): EditorTabBody => {
+  // One handler per tab id: a body replaces its own, and the area asks it before the tab closes.
+  const beforeClose = new Map<string, () => Promise<boolean> | boolean>();
+
+  const tabHooks = (id: string, kind: TabKindName, params: TabParams): TabHooks => ({
+    setDirty: (dirty) => setDirty(id, kind, params, dirty),
+    onBeforeClose: (handler) => { beforeClose.set(id, handler); },
+  });
+
+  const mountBody = (id: string, kind: TabKindName, params: TabParams, host: HTMLElement): EditorTabBody => {
     let disposed = false;
     let body: EditorTabBody | null = null;
     TAB_KINDS[kind].load()
-      .then((module) => { if (!disposed) body = module.mountTab(host, params, { ...services(), workspace }); })
+      .then((module) => { if (!disposed) body = module.mountTab(host, params, { ...services(), workspace, tab: tabHooks(id, kind, params) }); })
       .catch((error: unknown) => {
         void logger.error(MODULE, error, { action: "mountTab", kind });
         host.append(el("p", { class: "ls-workspace-placeholder", role: "alert" }, `Could not load the ${TAB_KINDS[kind].title(params)} tab.`));
       });
-    return { dispose: () => { disposed = true; body?.dispose(); } };
+    return { dispose: () => { disposed = true; beforeClose.delete(id); body?.dispose(); } };
+  };
+
+  // A tab opened again keeps the dirty mark its body set.
+  const describe = (kind: TabKindName, params: TabParams, group: EditorGroupIndex, dirty?: boolean): EditorTab => {
+    const def = TAB_KINDS[kind];
+    const id = def.id(params);
+    return { id, title: def.title(params), icon: def.icon, group, dirty: dirty ?? area.tabs().find((t) => t.id === id)?.dirty === true, mount: (host) => mountBody(id, kind, params, host) };
   };
 
   function open(kind: TabKindName, params: TabParams = {}, group?: EditorGroupIndex, background = false): void {
-    const def = TAB_KINDS[kind];
-    area.open({ id: def.id(params), title: def.title(params), icon: def.icon, group: group ?? 0, mount: (host) => mountBody(kind, params, host) }, group, { background });
+    area.open(describe(kind, params, group ?? 0), group, { background });
   }
+
+  // The area focuses a tab it updates, so the tabs showing and the focused one are put back afterwards.
+  function setDirty(id: string, kind: TabKindName, params: TabParams, dirty: boolean): void {
+    const before = area.tabs();
+    const tab = before.find((t) => t.id === id);
+    if (!tab || tab.dirty === dirty) return;
+    const wasQuiet = quiet;
+    quiet = true;
+    area.open(describe(kind, params, tab.group, dirty), tab.group);
+    for (const shown of before.filter((t) => t.active && !t.focused)) area.activate(shown.id);
+    const focused = before.find((t) => t.focused);
+    if (focused) area.activate(focused.id);
+    quiet = wasQuiet;
+  }
+
+  // A dirty tab is still being saved, so leaving the page asks first (the editor also writes on pagehide).
+  const onBeforeUnload = (event: BeforeUnloadEvent): void => {
+    if (area.tabs().some((t) => t.dirty)) { event.preventDefault(); event.returnValue = ""; }
+  };
+  window.addEventListener("beforeunload", onBeforeUnload);
 
   area = mountEditorArea(slot, {
     onActivate: writeHash,
     onMove: writeHash,
     prefs,
-    // The area removes the tab after this returns, so the hash is written once the tab list has settled.
-    onClose: () => { setTimeout(writeHash, 0); },
+    onClose: async (id) => {
+      const handler = beforeClose.get(id);
+      if (handler) {
+        // A handler that throws keeps the tab open: closing could drop unsaved work.
+        const closable = await (async () => handler())().catch((error: unknown) => {
+          void logger.error(MODULE, error, { action: "beforeClose", id });
+          return false;
+        });
+        if (!closable) return false;
+      }
+      // The area removes the tab after this returns, so the hash is written once the tab list has settled.
+      setTimeout(writeHash, 0);
+      return true;
+    },
   });
 
   // A folder deep link focuses the Library without rewriting the hash, so back and forward keep walking the history.
@@ -106,7 +152,11 @@ export function createWorkspace(slot: HTMLElement, { prefs, services, logger, pl
       quiet = false;
       if (!restored.folderLink) writeHash();
     },
-    dispose: () => { window.removeEventListener("hashchange", onHashChange); area.dispose(); },
+    dispose: () => {
+      window.removeEventListener("hashchange", onHashChange);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      area.dispose();
+    },
   };
   return workspace;
 }

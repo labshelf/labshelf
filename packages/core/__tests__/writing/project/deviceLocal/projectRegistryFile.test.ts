@@ -83,4 +83,22 @@ describe("project registry file", () => {
     await registry.unregister("/two", "/b");
     expect(JSON.parse(await fs.readText("/state/two/projects.json"))).toEqual({ folders: [] });
   });
+
+  it("reads a missing file as empty whatever error the adapter raises for it", async () => {
+    // The bridge raises a coded error and the browser store a plain one; neither carries ENOENT.
+    const { fs, ctx, logger } = setup();
+    fs.readText = async (file) => { throw Object.assign(new Error(`File not found: ${file}`), { code: "notFound" }); };
+    expect(await loadProjectRegistry(ctx)).toEqual({ folders: [] });
+    expect(logger.logs).toEqual([]);
+    await registerProjectFolder(ctx, "/a");
+    expect([...fs.files.keys()]).toEqual([registryPath]);
+  });
+
+  it("reports a read that fails on an existing file", async () => {
+    const { fs, ctx, logger } = setup();
+    await fs.writeText(registryPath, '{"folders":[]}');
+    fs.readText = async () => { throw new Error("EIO"); };
+    expect(await loadProjectRegistry(ctx)).toEqual({ folders: [] });
+    expect(logger.errors).toHaveLength(1);
+  });
 });

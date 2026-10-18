@@ -5,3 +5,4 @@ export {
   clampPage, MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, normalizeReadingState,
   type ReadingState, type SidebarState, type SidebarTab,
 } from "./readingState.js";
+export { createPreviewStore, PREVIEW_ANNOTATION_REFUSAL } from "./previewStore.js";

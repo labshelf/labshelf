@@ -2,7 +2,7 @@
 import { randomBytes } from "node:crypto";
 import * as net from "node:net";
 
-export interface RawUpgrade { status: number; client: RawWebSocketClient }
+export interface RawUpgrade { status: number; headers: string; client: RawWebSocketClient }
 
 export class RawWebSocketClient {
   /** Resolves when the TCP connection ends, whoever closed it. */
@@ -11,7 +11,7 @@ export class RawWebSocketClient {
   private readonly messages: Buffer[] = [];
   private waiting: Array<(message: Buffer) => void> = [];
   private upgraded = false;
-  private onUpgrade!: (status: number) => void;
+  private onUpgrade!: (status: number, headers: string) => void;
 
   private constructor(private readonly socket: net.Socket) {
     this.closed = new Promise((resolve) => socket.once("close", () => resolve()));
@@ -24,9 +24,9 @@ export class RawWebSocketClient {
     return new Promise((resolve, reject) => {
       const socket = net.connect(port, "127.0.0.1");
       const client = new RawWebSocketClient(socket);
-      client.onUpgrade = (status) => resolve({ status, client });
+      client.onUpgrade = (status, headers) => resolve({ status, headers, client });
       socket.once("error", reject);
-      socket.once("close", () => resolve({ status: 0, client }));
+      socket.once("close", () => resolve({ status: 0, headers: "", client }));
       const key = randomBytes(16).toString("base64");
       const lines = [
         "GET / HTTP/1.1", `Host: 127.0.0.1:${port}`, "Upgrade: websocket", "Connection: Upgrade",
@@ -37,7 +37,8 @@ export class RawWebSocketClient {
     });
   }
 
-  sendBinary(bytes: Uint8Array): void { this.send(0x2, bytes); }
+  /** `rsv` sets reserved bits in the first byte, e.g. 0x40 for RSV1. */
+  sendBinary(bytes: Uint8Array, rsv = 0): void { this.send(0x2 | rsv, bytes); }
   sendText(text: string): void { this.send(0x1, Buffer.from(text)); }
 
   /** The next binary message the server sends. */
@@ -64,10 +65,11 @@ export class RawWebSocketClient {
     if (!this.upgraded) {
       const end = this.buffer.indexOf("\r\n\r\n");
       if (end < 0) { return; }
-      const status = Number(/^HTTP\/1\.1 (\d{3})/.exec(this.buffer.toString("latin1", 0, end))?.[1] ?? 0);
+      const headers = this.buffer.toString("latin1", 0, end);
+      const status = Number(/^HTTP\/1\.1 (\d{3})/.exec(headers)?.[1] ?? 0);
       this.buffer = this.buffer.subarray(end + 4);
       this.upgraded = true;
-      this.onUpgrade(status);
+      this.onUpgrade(status, headers);
     }
     for (;;) {
       if (this.buffer.length < 2) { return; }

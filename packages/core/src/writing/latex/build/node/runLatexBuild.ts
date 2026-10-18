@@ -11,6 +11,7 @@ import { latexBuildCommand, type BuildCommand, type PartialBuild } from "../late
 import { locateProblems, type ProblemPlaces } from "./locateProblems.js";
 import { planLatexPreview } from "./planLatexPreview.js";
 import { withIncludeOnlyFile } from "./preambleFormat/index.js";
+import { writeSectionStatePackage } from "../section/node/index.js";
 import { withToolchainOnPath } from "../../toolchain/node/system/index.js";
 import { BuildCancelled, runCancellable } from "./runCancellable.js";
 
@@ -23,6 +24,8 @@ export interface LatexBuildRequest extends PartialBuild {
   mode?: "preview" | "full";
   /** The file being edited, relative to the project folder; a preview typesets only it when main `\include`s it. */
   editedFile?: string;
+  /** 1-based line of the edit in `editedFile`. */
+  editedLine?: number;
   /** Receives every file the build writes except the final PDF. */
   outDir: string;
   signal: AbortSignal;
@@ -67,7 +70,8 @@ export async function runLatexBuild(request: LatexBuildRequest): Promise<LatexBu
   const started = Date.now();
   await fs.mkdir(request.outDir, { recursive: true });
   const preview = request.mode === "preview" ? await planLatexPreview(request) : undefined;
-  const command = preview?.command ?? latexBuildCommand(request.toolchain, path.basename(request.main), request.outDir, request);
+  if (!preview) { await writeSectionStatePackage(request.outDir); }
+  const command = preview?.command ?? latexBuildCommand(request.toolchain, path.basename(request.main), request.outDir, { ...request, capturesSectionState: true });
   const run = (): Promise<LatexBuildResult> => compile(request, places, base, command);
   const result = await (preview ? withIncludeOnlyFile(request.outDir, preview.includeOnlyFile, run) : run()).finally(async () => {
     // INVARIANT: a preview changes the build files behind latexmk's back, so its database goes and the next full build reruns.

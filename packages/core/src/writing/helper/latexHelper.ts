@@ -21,6 +21,8 @@ export interface HelperCompileRequest {
   /** For a `.tex` main. */
   engine?: LatexEngine;
   editedFile?: string;
+  /** 1-based line of the edit in `editedFile`. */
+  editedLine?: number;
 }
 
 /** One page of the PDF as a standalone one-page PDF. */

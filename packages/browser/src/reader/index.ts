@@ -1,14 +1,16 @@
-// Starts the core reader UI on reader/index.html?paper=<id>[&page=<n>] with pdf.js, IndexedDB bytes and an in-page host.
+// Starts the core reader UI on reader/index.html?paper=<id>[&page=<n>] with pdf.js, IndexedDB bytes and an in-page host, or as a build preview.
 // The host keeps annotations, reader theme and reading position in the paper's sidecar.
 import {
   PROTOCOL_VERSION,
   PaperDataStore,
+  createPreviewStore,
   ReaderHostController,
   type EffectiveTheme,
   type HostToWebview,
   type ReaderBootParams,
   type PaperRecord,
   type ReaderPrefs,
+  type ReaderSidecarStore,
 } from "@labshelf/core";
 import { PDF_FILE, errorMessage } from "@labshelf/core";
 import { createInPageChannel, startReader, PerfMarks, resolveTheme, toast } from "@labshelf/core/dom";
@@ -19,6 +21,7 @@ import { loadReaderPrefs, onReaderPrefsChange } from "./access";
 import { installPageGuards, isMacPlatform } from "./pageGuards";
 import { parseReaderQuery } from "./access";
 import { announceSidecarChange } from "./sidecarChangeNotice";
+import { bindPreviewPage, previewPaper } from "./previewBoot";
 
 // First statement, so scriptStart measures the whole open like in VS Code.
 const perf = new PerfMarks();
@@ -29,6 +32,9 @@ const PDFJS = "vendor/pdfjs/";
 function asset(path: string): string {
   return bx.runtime.getURL(`${PDFJS}${path}`);
 }
+
+// PLATFORM: MV3 pages may not start blob: workers (Firefox refuses them); the extension's own module URL works everywhere.
+const createWorker = (url: string): Worker => new Worker(url, { type: "module" });
 
 function showFatal(message: string): void {
   const loading = document.getElementById("loading-msg");
@@ -81,8 +87,8 @@ function createHostWithChannel(
   paper: PaperRecord,
   page: number | undefined,
   getPrefs: () => ReaderPrefs,
+  store: ReaderSidecarStore,
 ): { host: ReaderHostController; channel: ReturnType<typeof createInPageChannel> } {
-  const store = new PaperDataStore(createSidecarPort(fs));
   // The host answers through the channel, which needs the host to exist first.
   let send: (msg: HostToWebview) => void = () => undefined;
   const host = new ReaderHostController({
@@ -103,14 +109,14 @@ function createHostWithChannel(
   return { host, channel };
 }
 
-function bootParams(paper: PaperRecord, prefs: ReaderPrefs): ReaderBootParams {
+function bootParams(paper: PaperRecord, prefs: ReaderPrefs, preview: boolean): ReaderBootParams {
   return {
     protocolVersion: PROTOCOL_VERSION,
     assets: {
       pdfjsUrl: asset("build/pdf.min.mjs"),
       viewerUrl: asset("web/pdf_viewer.mjs"),
       workerUrl: asset("build/pdf.worker.min.mjs"),
-      // Unused: the bytes come from IndexedDB through the readBytes hook.
+      // Unused: the bytes come from IndexedDB or the preview's parent page through the readBytes hook.
       pdfUrl: "",
       cMapUrl: asset("cmaps/"),
       stdFontUrl: asset("standard_fonts/"),
@@ -119,7 +125,7 @@ function bootParams(paper: PaperRecord, prefs: ReaderPrefs): ReaderBootParams {
     },
     paperId: paper.id,
     paperTitle: paper.title,
-    preview: false,
+    preview,
     themePreference: "auto",
     effectiveTheme: autoTheme(),
     prefs,
@@ -148,8 +154,26 @@ function forwardChangesToHost(host: ReaderHostController, setPrefs: (prefs: Read
   });
 }
 
+async function openPreview(paper: PaperRecord): Promise<void> {
+  // INVARIANT: the parent page posts once this page loads, so the listener is bound before the first await; the host asks for prefs only after they load.
+  let currentPrefs: ReaderPrefs | undefined;
+  const { host, channel } = createHostWithChannel(paper, undefined, () => currentPrefs!, createPreviewStore());
+  const readBytes = bindPreviewPage(host);
+  currentPrefs = await loadReaderPrefs();
+  forwardChangesToHost(host, (next) => { currentPrefs = next; });
+  void logger.log("INFO", "reader", "preview reader opened", { paperId: paper.id });
+  await startReader({
+    boot: bootParams(paper, currentPrefs, true),
+    transport: channel.transport,
+    perf,
+    pdf: { readBytes, createWorker },
+  });
+}
+
 async function main(): Promise<void> {
   installPageGuards();
+  const preview = previewPaper(location.search);
+  if (preview) { await openPreview(preview); return; }
   const { paperId, page } = parseReaderQuery(location.search);
   if (!paperId) { showFatal("No paper was given to open. Open a paper from the LabShelf library."); return; }
 
@@ -158,8 +182,8 @@ async function main(): Promise<void> {
   const { paper, prefs } = opened;
 
   let currentPrefs = prefs;
-  const { host, channel } = createHostWithChannel(paper, page, () => currentPrefs);
-  const boot = bootParams(paper, prefs);
+  const { host, channel } = createHostWithChannel(paper, page, () => currentPrefs, new PaperDataStore(createSidecarPort(fs)));
+  const boot = bootParams(paper, prefs, false);
 
   exposeReaderApi(paper, host);
   forwardChangesToHost(host, (next) => { currentPrefs = next; });
@@ -169,11 +193,7 @@ async function main(): Promise<void> {
     boot,
     transport: channel.transport,
     perf,
-    pdf: {
-      readBytes: () => readPdfBytes(paper),
-      // MV3 pages may not start blob: workers (Firefox refuses them); the extension's own module URL works everywhere.
-      createWorker: (url) => new Worker(url, { type: "module" }),
-    },
+    pdf: { readBytes: () => readPdfBytes(paper), createWorker },
   });
 }
 

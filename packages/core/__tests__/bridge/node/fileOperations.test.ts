@@ -228,3 +228,24 @@ describe("LibraryFileOperations confinement and atomicity", () => {
     expect(await fs.readFile(path.join(outside, "secret.txt"), "utf8")).toBe("s");
   });
 });
+
+describe("paperCount", () => {
+  it("counts papers at any folder depth, does not descend into a paper and ignores symlinks", async () => {
+    const root = await library();
+    const outside = path.join(path.dirname(root), "outside");
+    await fs.mkdir(outside);
+    const ops = new LibraryFileOperations(root);
+    const paper = async (...parts: string[]): Promise<void> => {
+      await fs.mkdir(path.join(root, "papers", ...parts), { recursive: true });
+      await fs.writeFile(path.join(root, "papers", ...parts, "metadata.yaml"), "title: x\n");
+    };
+    await paper("top");
+    await paper("folder", "sub", "deep");
+    await paper("folder", "sibling");
+    await paper("top", "inside-a-paper");
+    await fs.mkdir(path.join(outside, "linked"));
+    await fs.writeFile(path.join(outside, "linked", "metadata.yaml"), "title: y\n");
+    await fs.symlink(path.join(outside, "linked"), path.join(root, "papers", "link"));
+    expect(await ops.paperCount()).toBe(3);
+  });
+});

@@ -1,2 +1,3 @@
-// Exports the Node side of the project history: recording, reading and restoring snapshots.
-export { readHistory, readHistoryObject, recordSnapshot, restoreSnapshot, type HistoryTarget } from "./projectHistory.js";
+// Exports the Node side of the project history: disk storage and the target of a project folder.
+export { nodeHistoryStorage } from "./nodeHistoryStorage.js";
+export { nodeHistoryTarget } from "./nodeHistoryTarget.js";

@@ -1,2 +1,2 @@
 // Rebuilds the paper record cache from the library files.
-export { rebuildFromFiles, rebuildRecords } from "./rebuildFromFiles";
+export { rebuildRecords } from "./rebuildRecords";

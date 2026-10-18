@@ -1,0 +1,112 @@
+// Pins when the preview asks the helper for builds: debounced previews, full builds on save and idle, and cancels.
+import type { ILogger } from "@labshelf/core";
+import type { HelperCompileRequest, HelperCompileResult } from "@labshelf/core/helper";
+import { createBuildScheduler, type BuildTimers } from "../../../src/library-page/preview";
+
+interface FakeTimer { at: number; fn: () => void; id: number }
+
+function fakeTimers(): BuildTimers & { advance(ms: number): void } {
+  let now = 0;
+  let nextId = 1;
+  let pending: FakeTimer[] = [];
+  return {
+    setTimeout(fn, ms) { const id = nextId++; pending.push({ at: now + ms, fn, id }); return id; },
+    clearTimeout(id) { pending = pending.filter((t) => t.id !== id); },
+    advance(ms) {
+      const end = now + ms;
+      for (;;) {
+        const due = pending.filter((t) => t.at <= end).sort((a, b) => a.at - b.at)[0];
+        if (!due) break;
+        pending = pending.filter((t) => t !== due);
+        now = due.at;
+        due.fn();
+      }
+      now = end;
+    },
+  };
+}
+
+const RESULT: HelperCompileResult = { status: "succeeded", problems: [], pageCount: 1, changed: [] };
+const logger: ILogger = { log: async () => undefined, error: async () => undefined } as unknown as ILogger;
+
+function setup() {
+  const timers = fakeTimers();
+  const requests: HelperCompileRequest[] = [];
+  const resolvers: ((r: HelperCompileResult) => void)[] = [];
+  const cancels: string[] = [];
+  const results: { mode: string; result: HelperCompileResult }[] = [];
+  const helper = {
+    compile: (req: HelperCompileRequest) => {
+      requests.push(req);
+      return new Promise<HelperCompileResult>((resolve) => resolvers.push(resolve));
+    },
+    cancel: async (projectId: string) => { cancels.push(projectId); },
+  };
+  const scheduler = createBuildScheduler({
+    helper, target: { projectId: "p1", main: "main.tex", engine: "pdflatex" }, timers, logger,
+    onResult: (result, mode) => results.push({ mode, result }),
+  });
+  return { timers, requests, resolvers, cancels, results, scheduler };
+}
+
+const flush = () => new Promise((r) => setTimeout(r, 0));
+
+describe("createBuildScheduler", () => {
+  it("builds a preview of the edited file after 500 ms without edits", () => {
+    const { timers, requests, scheduler } = setup();
+    scheduler.edit("a.tex");
+    timers.advance(400);
+    scheduler.edit("b.tex", 7);
+    timers.advance(499);
+    expect(requests).toEqual([]);
+    timers.advance(1);
+    expect(requests).toEqual([{ projectId: "p1", main: "main.tex", engine: "pdflatex", mode: "preview", editedFile: "b.tex", editedLine: 7 }]);
+  });
+
+  it("builds in full right away on save, dropping the pending preview", () => {
+    const { timers, requests, scheduler } = setup();
+    scheduler.edit("a.tex");
+    scheduler.save();
+    expect(requests.map((r) => r.mode)).toEqual(["full"]);
+    timers.advance(5000);
+    expect(requests.map((r) => r.mode)).toEqual(["full"]);
+  });
+
+  it("builds in full after 2 s without edits", async () => {
+    const { timers, requests, resolvers, scheduler } = setup();
+    scheduler.edit("a.tex");
+    timers.advance(500);
+    resolvers[0]!(RESULT);
+    await flush();
+    timers.advance(1499);
+    expect(requests.map((r) => r.mode)).toEqual(["preview"]);
+    timers.advance(1);
+    expect(requests.map((r) => r.mode)).toEqual(["preview", "full"]);
+    expect(requests[1]!.editedFile).toBeUndefined();
+    expect(requests[1]!.editedLine).toBeUndefined();
+  });
+
+  it("cancels the running build on a new edit and drops its result", async () => {
+    const { timers, requests, resolvers, cancels, results, scheduler } = setup();
+    scheduler.edit("a.tex");
+    timers.advance(500);
+    scheduler.edit("a.tex");
+    expect(cancels).toEqual(["p1"]);
+    resolvers[0]!({ ...RESULT, status: "cancelled" });
+    await flush();
+    expect(results).toEqual([]);
+    timers.advance(500);
+    expect(requests.map((r) => r.mode)).toEqual(["preview", "preview"]);
+    resolvers[1]!(RESULT);
+    await flush();
+    expect(results).toEqual([{ mode: "preview", result: RESULT }]);
+  });
+
+  it("stops scheduling after dispose", () => {
+    const { timers, requests, scheduler } = setup();
+    scheduler.edit("a.tex");
+    scheduler.dispose();
+    timers.advance(5000);
+    expect(requests).toEqual([]);
+  });
+});

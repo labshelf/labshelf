@@ -13,7 +13,7 @@ const toHelper: ToHelperMessage[] = [
   { ...env("6"), type: "edit", projectId: "thesis", path: "main.tex", version: 2, changes: [{ from: 0, to: 1, insert: "H" }] },
   { ...env("7"), type: "save", projectId: "thesis", path: "main.tex" },
   { ...env("8"), type: "compile", projectId: "thesis", main: "main.tex", mode: "preview" },
-  { ...env("9"), type: "compile", projectId: "thesis", main: "main.tex", mode: "full", engine: "xelatex", editedFile: "chapters/a.tex" },
+  { ...env("9"), type: "compile", projectId: "thesis", main: "main.tex", mode: "full", engine: "xelatex", editedFile: "chapters/a.tex", editedLine: 12 },
   { ...env("10"), type: "lsp", projectId: "thesis", payload: { jsonrpc: "2.0", method: "initialize" } },
   { ...env("11"), type: "cancel", projectId: "thesis" },
   { ...env("12"), type: "installTex", kind: "tinytex" },
@@ -107,6 +107,7 @@ describe("parseHelperMessage rejections", () => {
     expect(reject({ ...toHelper[7]!, mode: "draft" })).toBe("invalid-field");
     expect(reject({ ...toHelper[8]!, engine: "context" })).toBe("invalid-field");
     expect(reject({ ...toHelper[11]!, kind: "miktex" })).toBe("invalid-field");
+    for (const editedLine of [0, -1, 1.5, "3"]) { expect(reject({ ...toHelper[8]!, editedLine })).toBe("invalid-field"); }
   });
 
   it("rejects bad page-bound fields", () => {

@@ -36,6 +36,8 @@ export interface ProjectBuildOptions {
   mode?: "preview" | "full";
   /** The file being edited, relative to the project folder; a LaTeX preview typesets only it when it is an `\include`d chapter. */
   editedFile?: string;
+  /** 1-based line of the edit in `editedFile`. */
+  editedLine?: number;
   /** Unsaved text by absolute path; a Typst compile with it writes only the preview PDF. */
   unsaved?: ReadonlyMap<string, string>;
   signal?: AbortSignal;
@@ -67,6 +69,7 @@ async function buildLatex(project: ReadyProject, root: string, deps: ProjectBuil
       signal: options.signal ?? new AbortController().signal, logger: deps.logger,
       ...(options.includeOnly !== undefined && { includeOnly: options.includeOnly }), ...((force || options.force) && { force: true }),
       ...(options.mode !== undefined && { mode: options.mode }), ...(options.editedFile !== undefined && { editedFile: options.editedFile }),
+      ...(options.editedLine !== undefined && { editedLine: options.editedLine }),
     }),
     missingFile: (result) => ("problems" in result ? classifyTexProblems(result.problems).missingFile : undefined),
     tex: { installMissing: (fileName) => deps.prompt.progress(`Installing the LaTeX package for ${fileName}`, () => deps.tex.installMissing(fileName)) },

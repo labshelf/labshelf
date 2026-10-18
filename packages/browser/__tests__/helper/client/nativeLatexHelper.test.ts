@@ -79,6 +79,13 @@ describe("compile", () => {
     expect(fake.receivedOfType("compile")[0]).toMatchObject({ projectId: "thesis", main: "main.tex", mode: "preview" });
   });
 
+  it("sends the edited file and its line", async () => {
+    const { fake, helper } = setup();
+    await helper.connect();
+    await helper.compile({ ...request, editedFile: "ch/a.tex", editedLine: 12 }, () => undefined);
+    expect(fake.receivedOfType("compile")[0]).toMatchObject({ editedFile: "ch/a.tex", editedLine: 12 });
+  });
+
   it("returns a failed build without pages", async () => {
     const { helper } = setup();
     await helper.connect();

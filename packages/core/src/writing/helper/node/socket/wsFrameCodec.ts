@@ -10,7 +10,7 @@ export type FrameEvent =
   | { kind: "pong" }
   | { kind: "violation"; reason: string; status: number };
 
-interface FrameHeader { fin: boolean; opcode: number; length: number; headerBytes: number; mask: Buffer }
+interface FrameHeader { fin: boolean; reserved: number; opcode: number; length: number; headerBytes: number; mask: Buffer }
 
 export function encodeServerFrame(opcode: number, data: Uint8Array = new Uint8Array(0)): Buffer {
   const length = data.length;
@@ -48,7 +48,7 @@ function readHeader(buffer: Buffer): FrameHeader | undefined {
   const maskBytes = masked ? 4 : 0;
   if (buffer.length < offset + maskBytes) { return undefined; }
   return {
-    fin: (buffer[0]! & 0x80) !== 0, opcode: buffer[0]! & 0x0f, length,
+    fin: (buffer[0]! & 0x80) !== 0, reserved: buffer[0]! & 0x70, opcode: buffer[0]! & 0x0f, length,
     headerBytes: offset + maskBytes, mask: masked ? buffer.subarray(offset, offset + 4) : Buffer.alloc(0),
   };
 }
@@ -88,6 +88,7 @@ export class FrameReader {
   // INVARIANT: runs on the header alone, so an oversized frame is refused before its body is buffered.
   private check(header: FrameHeader): FrameEvent | undefined {
     const violation = (reason: string, status = 1002): FrameEvent => ({ kind: "violation", reason, status });
+    if (header.reserved !== 0) { return violation("frame sets reserved bits, but no extension is negotiated"); }
     if (header.mask.length === 0) { return violation("client frame is not masked"); }
     if (header.opcode === OPCODE.text) { return violation("text frames are refused", 1003); }
     if (header.opcode >= 0x8) {

@@ -80,7 +80,7 @@ export class ProjectTreeMirror implements vscode.Disposable {
     const trees: SidebarProjectTree[] = [];
     for (const spec of this.deps.specs) { trees.push(await this.tree(spec, budget)); }
     if (budget.left <= 0) { void this.deps.logger.log("WARN", MODULE, "Project trees cut at the node cap", { project: project.folder, cap: NODE_CAP }); }
-    return { id: project.folder, name: project.settings.id, format: project.settings.format, trees };
+    return { id: project.folder, name: project.settings.title ?? project.settings.id, format: project.settings.format, trees };
   }
 
   private async tree(spec: ProjectTreeSpec<unknown>, budget: { left: number }): Promise<SidebarProjectTree> {

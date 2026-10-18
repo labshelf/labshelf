@@ -1,7 +1,7 @@
 // Fetches the release manifest and returns this platform's asset only when the manifest's Ed25519 signature verifies.
 import { createPublicKey, verify } from "node:crypto";
 
-import type { FetchLike } from "@labshelf/core/node";
+import type { FetchLike } from "@labshelf/core/helper/node";
 
 export const LATEST_MANIFEST_URL = "https://github.com/labshelf/labshelf/releases/latest/download/latest.json";
 

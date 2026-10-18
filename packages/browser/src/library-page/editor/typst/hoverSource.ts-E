@@ -1,0 +1,35 @@
+// Shows the language server's hover text for the word under the pointer as a tooltip.
+import { hoverTooltip } from "@codemirror/view";
+import { toLspPosition, toOffset, type LspRange } from "./lsp/lspPositions";
+import type { TypstDocument } from "./lsp/lspSession";
+
+type MarkedString = string | { value: string };
+interface Hover { contents: MarkedString | MarkedString[]; range?: LspRange }
+
+const FENCE = /^```.*$/gm;
+
+function hoverText(contents: Hover["contents"]): string {
+  const parts = Array.isArray(contents) ? contents : [contents];
+  return parts.map((part) => (typeof part === "string" ? part : part.value)).join("\n\n").replace(FENCE, "").trim();
+}
+
+/** For `hoverTooltip`: the tooltip is plain text, since Tinymist answers in markdown. */
+export function hoverSource(doc: TypstDocument): Parameters<typeof hoverTooltip>[0] {
+  return async (view, pos) => {
+    const hover = await doc.ask<Hover>("textDocument/hover", toLspPosition(view.state.doc, pos));
+    const text = hover ? hoverText(hover.contents) : "";
+    if (!hover || text === "") return null;
+    const range = hover.range;
+    return {
+      pos: range ? toOffset(view.state.doc, range.start) : pos,
+      end: range ? toOffset(view.state.doc, range.end) : undefined,
+      above: true,
+      create: () => {
+        const dom = document.createElement("div");
+        dom.className = "cm-typst-hover";
+        dom.textContent = text;
+        return { dom };
+      },
+    };
+  };
+}

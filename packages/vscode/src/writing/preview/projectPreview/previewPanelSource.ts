@@ -1,14 +1,13 @@
 // Assembles the reader source of a project's preview panel: its PDF, its paper and the ports that answer the reader.
 import * as vscode from "vscode";
 
-import type { ILogger } from "@labshelf/core";
+import { createPreviewStore, type ILogger } from "@labshelf/core";
 import type { ReaderPanel } from "../../../pdf-viewer/index.js";
 import type { CitationFixDeps } from "../citationFixes/index.js";
 import type { ReadyProject } from "../../mainDocument.js";
 import { previewPaper, type BuildPreviewsDeps } from "../previewPanelInput.js";
 import { createPreviewPorts } from "../previewPorts.js";
 import { PREVIEW_LOG_MODULE } from "../previewStrings.js";
-import { createPreviewStore } from "../previewStore.js";
 import { projectActions } from "../projectActions/index.js";
 import { createWritingActions } from "../roots/index.js";
 import type { ProjectSynctex } from "../sourceLinks/index.js";

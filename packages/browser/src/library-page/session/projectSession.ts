@@ -18,6 +18,8 @@ export interface ProjectSessionOptions {
   logger: ILogger;
   /** Called for an outline click with the file and the zero-based line of the heading. */
   onReveal?: (path: string, line: number) => void;
+  /** Called after a project opens (with its entry) and after it closes (undefined). */
+  onProjectChange?: (entry: ProjectEntry | undefined) => void | Promise<void>;
 }
 
 export interface ProjectSession {
@@ -38,16 +40,24 @@ const mainOf = (entry: ProjectEntry): string | undefined => (entry.kind === "rea
 function belongsTo(projectId: string): (tabId: string) => boolean {
   return (tabId) => {
     const tab = parseTabId(tabId);
-    return tab !== null && (tab.kind === "source" || tab.kind === "preview") && tab.params["projectId"] === projectId;
+    return tab !== null && (tab.kind === "source" || tab.kind === "preview" || tab.kind === "comments") && tab.params["projectId"] === projectId;
   };
 }
 
-export function createProjectSession({ workspace, snapshot, logger, onReveal }: ProjectSessionOptions): ProjectSession {
+export function createProjectSession({ workspace, snapshot, logger, onReveal, onProjectChange }: ProjectSessionOptions): ProjectSession {
   let sidebar: SessionSidebar | undefined;
   let open: ProjectEntry | undefined;
   let grouping: ChecklistGrouping = "kind";
   // Bumped by every open and close, so a snapshot that finishes after the project changed is dropped.
   let generation = 0;
+
+  const notifyChange = async (entry: ProjectEntry | undefined): Promise<void> => {
+    try {
+      await onProjectChange?.(entry);
+    } catch (error) {
+      await logger.error(MODULE, error, { action: "notify project change", folder: entry?.folder });
+    }
+  };
 
   async function publish(entry: ProjectEntry, mine: number): Promise<void> {
     try {
@@ -73,6 +83,7 @@ export function createProjectSession({ workspace, snapshot, logger, onReveal }: 
       workspace.openTab("preview", { projectId: id }, 1);
       sidebar?.collapseLibrary();
       await publish(entry, mine);
+      await notifyChange(entry);
       return true;
     },
     async closeProject() {
@@ -82,6 +93,7 @@ export function createProjectSession({ workspace, snapshot, logger, onReveal }: 
       open = undefined;
       generation += 1;
       sidebar?.setOpenProject(undefined);
+      await notifyChange(undefined);
       return true;
     },
     current: () => open,
@@ -96,7 +108,10 @@ export function createProjectSession({ workspace, snapshot, logger, onReveal }: 
       if (colon > 0 && Number.isInteger(line)) { onReveal?.(key.slice(0, colon), line); }
     },
     async treeAction(action) {
-      if (open === undefined || (action !== "byKind" && action !== "bySection")) { return; }
+      const id = open === undefined ? undefined : projectIdOf(open);
+      if (open === undefined || id === undefined) { return; }
+      if (action === "comments") { workspace.openTab("comments", { projectId: id }, 1); return; }
+      if (action !== "byKind" && action !== "bySection") { return; }
       grouping = action === "byKind" ? "kind" : "section";
       await publish(open, ++generation);
     },

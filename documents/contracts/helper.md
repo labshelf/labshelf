@@ -16,9 +16,9 @@ The helper refuses a socket and logs the reason when:
 - the upgrade's `Origin` differs from the origin the page sent in `hello`;
 - that origin is not `chrome-extension://<id>` or `moz-extension://<uuid>`, or, when Chrome started the helper with the caller's origin as its first argument, differs from it;
 - the first frame is not `auth` with the session's token, it does not arrive within 10 s, or a second socket tries to authenticate, also after the first one closed (the token serves one socket; the page reconnects through a new native port);
-- the upgrade asks for an extension or a text subprotocol.
+- the upgrade asks for a text subprotocol, or a frame sets a reserved bit.
 
-Socket frames are binary WebSocket messages (RFC 6455, no extensions, text frames refused). Each message is a 4-byte little-endian length of a UTF-8 JSON envelope, the envelope, then the raw payload bytes the envelope describes (no base64). The helper writes only native frames to stdout; its logs go to `logs/` in its data folder.
+Socket frames are binary WebSocket messages (RFC 6455, text frames refused). The helper accepts no extensions: it ignores the ones the upgrade offers, such as Chrome's `permessage-deflate`, and its 101 response names none. Each message is a 4-byte little-endian length of a UTF-8 JSON envelope, the envelope, then the raw payload bytes the envelope describes (no base64). The helper writes only native frames to stdout; its logs go to `logs/` in its data folder.
 
 Firefox upgrades `ws://` to `wss://` under the CSP directive `upgrade-insecure-requests`, so the Firefox manifest's `extension_pages` CSP does not carry it.
 
@@ -55,7 +55,7 @@ Keys a message does not define are dropped when it is read.
 | `closeProject` | `projectId` | `closed`; the helper drops the project's unsaved text and stops its language server |
 | `edit` | `projectId`, `path`, `version`: integer from 1; either `text`, the whole file, or `changes`: `{ from, to, insert }[]`, non-overlapping ranges of UTF-16 offsets in the text of `version - 1` | none; `error` `stale` when `changes` do not apply to the helper's version, and the page then sends `text` |
 | `save` | `projectId`, `path` | none; the page wrote the file through its own storage, and the helper drops its unsaved text for it and reads the file from disk again |
-| `compile` | `projectId`; `main`; `mode`: `"preview"` or `"full"`; `engine?`: `"pdflatex"`, `"xelatex"` or `"lualatex"` for a `.tex` main; `editedFile?` | `progress`, then `built`, then `pages` when it succeeded |
+| `compile` | `projectId`; `main`; `mode`: `"preview"` or `"full"`; `engine?`: `"pdflatex"`, `"xelatex"` or `"lualatex"` for a `.tex` main; `editedFile?`; `editedLine?`: the 1-based line of the edit in `editedFile` | `progress`, then `built`, then `pages` when it succeeded |
 | `cancel` | `projectId` | the running build ends with `built` `status: "cancelled"` |
 | `lsp` | `projectId`; `payload`: one JSON-RPC message for the project's Typst language server | none; the server's messages come back as `lsp` |
 | `installTex` | `kind`: `"tinytex"` or `"texlive"` | `progress`, then `ready` |

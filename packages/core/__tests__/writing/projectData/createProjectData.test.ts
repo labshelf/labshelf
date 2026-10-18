@@ -7,7 +7,7 @@ import { fakeLogger } from "../../support/fakeLogger";
 import { MemoryLibraryFs } from "../../support/memoryLibraryFs";
 
 const blank = (title: string) => ({ title, ...blankTemplate("latex", title) });
-const dirs: ProjectDeviceDirs = {
+const dirs = {
   projectRegistryPath: "/device/state/projects.json", buildCacheDir: "/device/cache/builds", mergeBasesDir: "/device/state/merge-bases",
 };
 
@@ -65,5 +65,15 @@ describe("createProjectData", () => {
     const { data } = await setup({ ...dirs, get buildCacheDir() { return cache; } });
     cache = "/two/builds";
     expect(data.projectBuildDir("p")).toBe("/two/builds/p");
+  });
+
+  it("keeps no project folder registry when the device has no registry path", async () => {
+    const { buildCacheDir, mergeBasesDir } = dirs;
+    const { fs, data } = await setup({ buildCacheDir, mergeBasesDir });
+    const created = await data.createProjectFromTemplate("/lib", blank("Notes"));
+    expect(await data.listProjects("/lib")).toEqual([created]);
+    await fs.mkdir("/code/paper");
+    await expect(data.addExistingFolder("/lib", { folder: "/code/paper", format: "latex" })).rejects.toThrow(/registry/);
+    expect([...fs.files.keys()].some((file) => file.endsWith("projects.json"))).toBe(false);
   });
 });

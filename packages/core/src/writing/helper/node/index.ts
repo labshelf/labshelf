@@ -12,3 +12,5 @@ export { diffPages } from "./pages/index.js";
 export type { PageDiff } from "./pages/index.js";
 export { createHelperProjects, HelperProjectError } from "./projects/index.js";
 export type { EditBody, HelperProjectErrorCode, HelperProjects, HelperProjectsOptions } from "./projects/index.js";
+export { downloadVerified } from "../../latex/toolchain/node/downloadVerified.js";
+export type { FetchLike } from "../../latex/toolchain/node/downloadVerified.js";

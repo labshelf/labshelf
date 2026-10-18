@@ -1,5 +1,6 @@
-/** Exports the Node side of a LaTeX build: running the toolchain and any cancellable process, and locating its problems in the project. */
+/** Exports the Node side of a LaTeX build: running the toolchain and any cancellable process, locating its problems and reading its section state. */
 export { BuildCancelled, runCancellable } from "./runCancellable.js";
 export type { CancellableOptions } from "./runCancellable.js";
 export { runLatexBuild } from "./runLatexBuild.js";
 export type { LatexBuildRequest } from "./runLatexBuild.js";
+export { readSectionStates, writeSectionStatePackage } from "../section/node/index.js";

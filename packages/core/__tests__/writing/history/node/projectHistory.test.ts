@@ -1,8 +1,9 @@
-// Tests recording, reading and restoring a project's history on the real disk.
+// Tests recording, reading and restoring a project's history on the real disk through the Node storage.
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { readHistory, recordSnapshot, restoreSnapshot } from "../../../../src/writing/history/node/index";
+import { readHistory, recordSnapshot, restoreSnapshot } from "../../../../src/writing/history/index";
+import { nodeHistoryTarget } from "../../../../src/writing/history/node/index";
 import { fakeLogger } from "../../../support/fakeLogger";
 import { cleanupTempDirs, makeTempDir } from "../../../support/tempDirs";
 
@@ -15,7 +16,7 @@ async function write(file: string, text: string): Promise<void> {
 
 async function setup() {
   const folder = await makeTempDir();
-  const target = { folder, historyDir: await makeTempDir() };
+  const target = nodeHistoryTarget(folder, await makeTempDir());
   await write(path.join(folder, "main.tex"), "one");
   await write(path.join(folder, "main.pdf"), "%PDF built");
   await write(path.join(folder, ".labshelf", "state.json"), "{}");
@@ -29,14 +30,14 @@ describe("recordSnapshot", () => {
     expect(Object.keys(first!.files)).toEqual(["main.tex"]);
     expect(await recordSnapshot(target, "edit", logger)).toBeUndefined();
     expect(await recordSnapshot(target, "version", logger, "submitted")).toMatchObject({ kind: "version", label: "submitted" });
-    expect((await readHistory(target.historyDir, logger)).map((entry) => entry.kind)).toEqual(["edit", "version"]);
+    expect((await readHistory(target.storage, logger)).map((entry) => entry.kind)).toEqual(["edit", "version"]);
   });
 
   it("serializes concurrent saves so each change is recorded once", async () => {
     const { folder, target, logger } = await setup();
     await write(path.join(folder, "main.tex"), "two");
     await Promise.all([recordSnapshot(target, "edit", logger), recordSnapshot(target, "edit", logger)]);
-    expect(await readHistory(target.historyDir, logger)).toHaveLength(1);
+    expect(await readHistory(target.storage, logger)).toHaveLength(1);
   });
 });
 
@@ -50,7 +51,7 @@ describe("restoreSnapshot", () => {
     expect(await fs.readFile(path.join(folder, "main.tex"), "utf8")).toBe("one");
     await expect(fs.access(path.join(folder, "sections", "new.tex"))).rejects.toThrow();
     expect(await fs.readFile(path.join(folder, "main.pdf"), "utf8")).toBe("%PDF built");
-    const entries = await readHistory(target.historyDir, logger);
+    const entries = await readHistory(target.storage, logger);
     expect(entries.map((entry) => entry.kind)).toEqual(["edit", "edit", "restore"]);
     expect(restored.label).toBe(start.at);
     // The replaced state can itself be restored, so nothing is lost.

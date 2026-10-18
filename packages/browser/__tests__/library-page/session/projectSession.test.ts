@@ -119,4 +119,14 @@ describe("createProjectSession", () => {
     await session.treeAction("byKind");
     expect(snapshot).toHaveBeenLastCalledWith(project("a"), "kind");
   });
+
+  it("opens the comments tab of the open project on the comments action and closes it with the project", async () => {
+    const { session, events } = setup();
+    await session.treeAction("comments");
+    expect(events).toEqual([]);
+    await session.openProject(project("a"));
+    events.length = 0;
+    await session.treeAction("comments");
+    expect(events).toEqual(['open comments {"projectId":"a"} g1']);
+  });
 });

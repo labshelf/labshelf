@@ -22,10 +22,22 @@ export interface ProjectDataDeps {
   deviceDirs: ProjectDeviceDirs;
 }
 
+// A device without a registry path lists only the library's own projects and refuses to remember outside folders.
+function registryOf(reads: Omit<ProjectCatalogContext, "registry">, deviceDirs: ProjectDeviceDirs): ProjectCatalogContext["registry"] {
+  const filed = projectFolderRegistry(reads, () => deviceDirs.projectRegistryPath ?? "");
+  const refuse = (): never => { throw new Error("This device keeps no project folder registry, so only projects inside the library can be used"); };
+  const keeps = (): boolean => deviceDirs.projectRegistryPath !== undefined;
+  return {
+    folders: (root) => (keeps() ? filed.folders(root) : Promise.resolve([])),
+    register: (root, folder) => (keeps() ? filed.register(root, folder) : refuse()),
+    unregister: (root, folder) => (keeps() ? filed.unregister(root, folder) : Promise.resolve()),
+  };
+}
+
 export function createProjectData({ fs, path, logger, deviceDirs }: ProjectDataDeps): ProjectDataPort {
   const reads = { fs, paths: path, logger };
   // deviceDirs already names the current library's registry, so the root argument is not needed to locate it.
-  const registry = projectFolderRegistry(reads, () => deviceDirs.projectRegistryPath);
+  const registry = registryOf(reads, deviceDirs);
   const catalog: ProjectCatalogContext = { ...reads, registry };
   return {
     listProjects: async (libraryRoot) => listProjects(reads, libraryRoot, await registry.folders(libraryRoot)),

@@ -1,9 +1,8 @@
 // Opens the reader panels of a version comparison: one per side, or one for a marked-up PDF.
 import * as vscode from "vscode";
 
-import type { ILogger, PageArea, PaperRecord, PathOps } from "@labshelf/core";
+import { createPreviewStore, type ILogger, type PageArea, type PaperRecord, type PathOps } from "@labshelf/core";
 import { ReaderPanel, type ReaderPanelDeps } from "../../pdf-viewer/index.js";
-import { createPreviewStore } from "../preview/index.js";
 import type { ReadyProject } from "../mainDocument.js";
 import type { CompareSide } from "./compareSides.js";
 

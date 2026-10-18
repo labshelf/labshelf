@@ -1,7 +1,7 @@
 // Replaces the helper binary with a newer signed release, at most once a day, never failing the caller.
 import { rm } from "node:fs/promises";
 
-import { downloadVerified } from "@labshelf/core/node";
+import { downloadVerified } from "@labshelf/core/helper/node";
 
 import { fetchSignedRelease } from "./latestManifest.js";
 import { oldBinaryPath, replaceBinary } from "./replaceBinary.js";

@@ -14,6 +14,11 @@ describe("tab kinds", () => {
     expect(TAB_KINDS.source.title(params)).toBe("intro, part 1.tex");
   });
 
+  it("round-trips a comments tab id by project", () => {
+    const params = { projectId: "thesis" };
+    expect(parseTabId(TAB_KINDS.comments.id(params))).toEqual({ kind: "comments", params });
+  });
+
   it("returns null for an unknown kind or a wrong number of params", () => {
     expect(parseTabId("editor")).toBeNull();
     expect(parseTabId("preview")).toBeNull();

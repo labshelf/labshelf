@@ -124,12 +124,19 @@ export class LibraryFileOperations {
     await fs.rename(entryPath(source), entryPath(target));
   }
 
-  /** Paper folders under papers/ that hold a metadata file. */
+  /** Paper folders at any depth under papers/: a folder holding a metadata file is a paper and is not descended into. */
   async paperCount(): Promise<number> {
-    const { names } = await this.listDir("papers");
-    const counted = await Promise.all(
-      names.map((name) => fs.stat(path.join(this.root, "papers", name, METADATA_FILE)).then((s) => s.isFile(), () => false)),
-    );
-    return counted.filter(Boolean).length;
+    return countPapers(path.join(this.root, "papers"));
   }
+}
+
+// Dirent reports a symlink as neither file nor folder, so links are never followed or counted.
+async function countPapers(dir: string): Promise<number> {
+  const entries = await fs.readdir(dir, { withFileTypes: true }).catch((error: unknown) => {
+    if (missing(error)) return [];
+    throw error;
+  });
+  if (entries.some((e) => e.isFile() && e.name === METADATA_FILE)) return 1;
+  const counts = await Promise.all(entries.filter((e) => e.isDirectory()).map((e) => countPapers(path.join(dir, e.name))));
+  return counts.reduce((sum, n) => sum + n, 0);
 }

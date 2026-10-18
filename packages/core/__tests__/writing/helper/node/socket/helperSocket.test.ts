@@ -93,6 +93,19 @@ describe("startHelperSocket", () => {
     expect(logged(/protocol|extension/i)).toBe(true);
   });
 
+  it("ignores a requested extension: the upgrade succeeds, names no extension, and an RSV1 frame closes the socket", async () => {
+    await start();
+    const { status, client, headers } = await RawWebSocketClient.connect(server.port, ORIGIN, ["Sec-WebSocket-Extensions: permessage-deflate; client_max_window_bits"]);
+    expect(status).toBe(101);
+    expect(headers.toLowerCase()).not.toContain("sec-websocket-extensions");
+    client.sendBinary(auth());
+    await client.nextMessage();
+    client.sendBinary(new Uint8Array([1, 2, 3]), 0x40);
+    await client.closed;
+    expect(logged(/rsv|extension/i)).toBe(true);
+    expect(received).toHaveLength(0);
+  });
+
   it("closes the socket when the first frame carries the wrong token", async () => {
     await start();
     const { client } = await RawWebSocketClient.connect(server.port, ORIGIN);

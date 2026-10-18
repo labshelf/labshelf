@@ -1,6 +1,6 @@
 // Describes what the self-updater needs from the host.
 import type { ILogger } from "@labshelf/core";
-import type { FetchLike } from "@labshelf/core/node";
+import type { FetchLike } from "@labshelf/core/helper/node";
 
 export interface SelfUpdateDeps {
   currentVersion: string;

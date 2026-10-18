@@ -7,7 +7,7 @@ import {
   type ChangedPage, type TexStatus, type ToPageMessage,
 } from "./helperMessages.js";
 import {
-  FieldError, isBody, isNonNegativeInteger, readArray, readBody, readBoolean, readChoice, readNumber, readPaths,
+  FieldError, isBody, isNonNegativeInteger, isPositiveInteger, readArray, readBody, readBoolean, readChoice, readNumber, readPaths,
   readProjectId, readSha256, readString, readText, optional, type Body,
 } from "./messageFields.js";
 
@@ -16,7 +16,6 @@ type Readers = { [T in ToPageMessage["type"]]: (body: Body, envelope: Envelope) 
 
 const SEVERITIES = ["error", "warning", "info"] as const;
 const PROBLEM_KINDS: readonly BuildProblemKind[] = ["undefinedCitation", "undefinedReference", "overfull"];
-const isPositiveInteger = (n: number): boolean => Number.isInteger(n) && n > 0;
 
 function readTex(body: Body): TexStatus {
   const tex = readBody(body, "tex");

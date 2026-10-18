@@ -2,14 +2,15 @@
 import * as vscode from "vscode";
 
 import {
-  addThread, anchorFor, COMMENTS_PATH, commentThreads, locateThread, parseCommentsFile, replyToThread, serializeCommentsFile, setThreadResolved,
-  type CommentsDocument, type CommentThread, type ILogger,
+  addThread, anchorFor, COMMENTS_PATH, commentThreads, editCommentsDocument, loadCommentsDocument, locateThread, replyToThread, setThreadResolved,
+  type CommentsDocument, type CommentsFileAccess, type CommentThread, type ILogger,
 } from "@labshelf/core";
 import { COMMENTS_LOG_MODULE, projectFileUri, readTextFile, type ProjectComments } from "./projectComments.js";
 
 /** An unshared project's threads, read from and written to its comments.json. */
 export class FileComments implements ProjectComments {
   private readonly uri: vscode.Uri;
+  private readonly access: CommentsFileAccess;
   private readonly changeEmitter = new vscode.EventEmitter<void>();
   readonly onDidChange = this.changeEmitter.event;
   private readonly watcher: vscode.FileSystemWatcher;
@@ -19,6 +20,13 @@ export class FileComments implements ProjectComments {
 
   constructor(readonly folder: string, private readonly logger: ILogger) {
     this.uri = projectFileUri(folder, COMMENTS_PATH);
+    this.access = {
+      read: () => readTextFile(this.uri),
+      write: async (text) => {
+        await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(this.uri, ".."));
+        await vscode.workspace.fs.writeFile(this.uri, new TextEncoder().encode(text));
+      },
+    };
     this.watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(vscode.Uri.file(folder), COMMENTS_PATH));
     const reload = () => void this.load();
     this.watcher.onDidChange(reload);
@@ -65,7 +73,7 @@ export class FileComments implements ProjectComments {
   private async load(): Promise<void> {
     try {
       const text = await readTextFile(this.uri);
-      const doc = text === undefined ? { threads: [] } : parseCommentsFile(text);
+      const doc = await loadCommentsDocument({ ...this.access, read: async () => text });
       if (doc) { this.reported = undefined; } else { this.reportInvalid(text!); }
       this.cached = doc ? commentThreads(doc) : [];
       this.changeEmitter.fire();
@@ -81,13 +89,8 @@ export class FileComments implements ProjectComments {
     void vscode.window.showWarningMessage(`LabShelf cannot read ${COMMENTS_PATH} in ${this.folder}. Fix the file to see and add comments.`);
   }
 
-  // The file is read again before each edit, so a change made outside since the last load is kept.
   private async edit(change: (doc: CommentsDocument) => CommentsDocument): Promise<void> {
-    const text = await readTextFile(this.uri);
-    const doc = text === undefined ? { threads: [] } : parseCommentsFile(text);
-    if (!doc) { throw new Error(`${COMMENTS_PATH} is not valid JSON with a threads list, so it is left as it is`); }
-    await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(this.uri, ".."));
-    await vscode.workspace.fs.writeFile(this.uri, new TextEncoder().encode(serializeCommentsFile(change(doc))));
+    await editCommentsDocument(this.access, change);
     await this.load();
   }
 }

@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { ReaderPanel } from '../../src/pdf-viewer/ReaderPanel';
-import { createPreviewStore } from '../../src/writing/preview/previewStore';
+import { createPreviewStore } from '@labshelf/core';
 import { statFromDisk } from '../support/diskStat';
 
 const vscode = require('vscode');

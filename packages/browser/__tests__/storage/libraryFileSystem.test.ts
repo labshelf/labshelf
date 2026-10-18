@@ -6,6 +6,8 @@ import { FakeBridgeHost, silentLogger } from "./bridge/fakeBridgeHost";
 function setup(configure: (host: FakeBridgeHost, index: number) => void = () => undefined) {
   const hosts: FakeBridgeHost[] = [];
   const browserFs = { readText: jest.fn(async () => "from browser") } as unknown as LibraryFileSystem;
+  const rebuild = jest.fn(async (_fs: LibraryFileSystem) => undefined);
+  const logger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
   const sources = createLibrarySources({
     connect: () => {
       const host = new FakeBridgeHost();
@@ -14,10 +16,11 @@ function setup(configure: (host: FakeBridgeHost, index: number) => void = () => 
       hosts.push(host);
       return host;
     },
-    logger: silentLogger,
+    logger: { ...silentLogger, ...logger },
     browserFs,
+    rebuild,
   });
-  return { hosts, browserFs, ...sources };
+  return { hosts, browserFs, rebuild, logger, ...sources };
 }
 
 describe("library source choice", () => {
@@ -111,5 +114,40 @@ describe("library source choice", () => {
     await getLibrarySource();
     hosts[0]!.emitChanged(["papers/a/metadata.yaml"]);
     expect(seen).toEqual([["papers/a/metadata.yaml"]]);
+  });
+
+  describe("paper cache rebuild", () => {
+    const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
+    const absent = (host: FakeBridgeHost, index: number): void => {
+      if (index === 0) host.missingReason = "Specified native messaging host not found.";
+    };
+
+    it("rebuilds once from the folder when the probe first selects it", async () => {
+      const { fileSystem, getLibrarySource, recheckLibrarySource, rebuild } = setup();
+      await getLibrarySource();
+      await fileSystem.readText("a.txt");
+      await recheckLibrarySource();
+      await settle();
+      expect(rebuild).toHaveBeenCalledTimes(1);
+      await expect(rebuild.mock.calls[0]![0].readText("a.txt")).resolves.toBe("from folder");
+    });
+
+    it("rebuilds when a recheck switches browser storage to the folder, and not while on browser storage", async () => {
+      const { getLibrarySource, recheckLibrarySource, rebuild } = setup(absent);
+      await getLibrarySource();
+      await settle();
+      expect(rebuild).not.toHaveBeenCalled();
+      await recheckLibrarySource();
+      await settle();
+      expect(rebuild).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps the folder and logs when the rebuild fails", async () => {
+      const { getLibrarySource, rebuild, logger } = setup();
+      rebuild.mockRejectedValueOnce(new Error("scan failed"));
+      await expect(getLibrarySource()).resolves.toEqual({ kind: "folder", root: "/home/me/Library" });
+      await settle();
+      expect(logger.error).toHaveBeenCalledTimes(1);
+    });
   });
 });

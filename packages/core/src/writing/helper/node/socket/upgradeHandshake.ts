@@ -33,13 +33,13 @@ function originRefusal(header: string | undefined, rules: UpgradeRules): string 
   return undefined;
 }
 
+// PLATFORM: Chrome always offers permessage-deflate; the answer omits Sec-WebSocket-Extensions, which declines every extension (RFC 6455 section 9.1).
 export function checkUpgrade(request: IncomingMessage, rules: UpgradeRules): UpgradeVerdict {
   const { headers } = request;
   if (headers.upgrade?.toLowerCase() !== "websocket") { return refuse("request is not a WebSocket upgrade", "426 Upgrade Required"); }
   const originProblem = originRefusal(headers.origin, rules);
   if (originProblem) { return refuse(originProblem); }
   if (headers["sec-websocket-protocol"] !== undefined) { return refuse(`upgrade asks for subprotocol ${headers["sec-websocket-protocol"]}`, "400 Bad Request"); }
-  if (headers["sec-websocket-extensions"] !== undefined) { return refuse(`upgrade asks for extension ${headers["sec-websocket-extensions"]}`, "400 Bad Request"); }
   if (headers["sec-websocket-version"] !== "13") { return refuse(`upgrade asks for WebSocket version ${headers["sec-websocket-version"]}`, "426 Upgrade Required"); }
   const key = headers["sec-websocket-key"];
   if (typeof key !== "string" || Buffer.from(key, "base64").length !== 16) { return refuse("upgrade has no valid Sec-WebSocket-Key", "400 Bad Request"); }

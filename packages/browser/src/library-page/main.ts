@@ -4,15 +4,19 @@
  */
 import { createLoopbackTransport } from "@labshelf/core";
 import { el, mountLibraryUi } from "@labshelf/core/dom";
+import { createBrowserLatexHelper } from "../helper/client";
 import { createBrowserLogger, getSettings } from "../platform";
 import { mountMoveOffer, mountSourceBanner } from "../library-source";
 import { createLibraryFileSystem } from "../storage";
 import { applyTheme } from "../ui";
+import { revealInOpenEditor } from "./editor/openEditors";
 import { attachLibraryHost } from "./host";
+import { createHelperProject } from "./helperProject";
 import { attachLinkHandling } from "./openLink";
 import { createLocalStoragePrefs } from "./prefs";
 import { attachRouter } from "./router";
 import type { TabKindName } from "./tabs";
+import { createCommentThreads } from "./review";
 import { createOpenProjectSnapshot, createProjectSession } from "./session";
 import { loadSidebarProjects, mountSidebarTree } from "./sidebar";
 import { planPage } from "./sections";
@@ -64,11 +68,22 @@ async function boot(): Promise<void> {
     },
   });
   const fs = createLibraryFileSystem();
+  const helperProject = createHelperProject({ helper: createBrowserLatexHelper(log), logger: log });
   const workspace = createWorkspace(shell.centre, {
     prefs: { load: prefs.editorWidth, save: prefs.saveEditorWidth }, logger: log, plan,
-    services: () => ({ libraryView, logger: log, fs, prefs, session }),
+    services: () => ({ libraryView, logger: log, fs, prefs, session, helperProject, comments }),
   });
-  const session = createProjectSession({ workspace, snapshot: createOpenProjectSnapshot({ fs, logger: log }), logger: log });
+  const session = createProjectSession({
+    workspace, snapshot: createOpenProjectSnapshot({ fs, logger: log }), logger: log,
+    onProjectChange: helperProject.projectChanged,
+    onReveal: (path, line) => {
+      const open = session.current();
+      if (open?.kind !== "ready") return;
+      workspace.openTab("source", { projectId: open.settings.id, path }, 0);
+      revealInOpenEditor(open.settings.id, path, line);
+    },
+  });
+  const comments = createCommentThreads({ fs, session, logger: log });
   const openTab = (kind: TabKindName): void => workspace.openTab(kind);
   const projects = plan.projects ? await loadSidebarProjects(log, fs, session, openTab) : null;
   mountSidebarTree(ui, shell.sidebar, prefs, host, projects, openTab, plan.library);

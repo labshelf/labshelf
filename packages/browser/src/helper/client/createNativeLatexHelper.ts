@@ -102,8 +102,8 @@ export function createNativeLatexHelper(deps: NativeLatexHelperDeps): ILatexHelp
   }
 
   async function compile(request: HelperCompileRequest, onProgress: HelperProgressListener) {
-    const { projectId, main, mode, engine, editedFile } = request;
-    const body: RequestBody = { type: "compile", projectId, main, mode, ...(engine ? { engine } : {}), ...(editedFile ? { editedFile } : {}) };
+    const { projectId, main, mode, engine, editedFile, editedLine } = request;
+    const body: RequestBody = { type: "compile", projectId, main, mode, ...(engine ? { engine } : {}), ...(editedFile ? { editedFile } : {}), ...(editedLine ? { editedLine } : {}) };
     return (await readySocket()).request(body, compileStep(onProgress));
   }
 

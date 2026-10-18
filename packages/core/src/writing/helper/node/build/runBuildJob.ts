@@ -39,7 +39,7 @@ export async function runBuildJob(job: BuildJob): Promise<void> {
   send({ v: PROTOCOL_VERSION, id: message.id, type: "progress", phase: "building", message: `Building ${message.main}` });
   await job.sync();
   if (token.cancelled) { return reply("cancelled"); }
-  const options = { mode: message.mode, ...(message.editedFile !== undefined && { editedFile: message.editedFile }) };
+  const options = { mode: message.mode, ...(message.editedFile !== undefined && { editedFile: message.editedFile }), ...(message.editedLine !== undefined && { editedLine: message.editedLine }) };
   const result = await job.queue.request(job.project, options);
   if (token.cancelled || result.status === "cancelled") { return reply("cancelled"); }
   if (result.status === "toolchain-missing") { return reply("toolchain-missing"); }

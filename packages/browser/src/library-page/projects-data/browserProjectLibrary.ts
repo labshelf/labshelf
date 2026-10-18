@@ -9,9 +9,9 @@ import type { Workspace } from "../workspace";
 // The bridge root is the library folder itself, so the library root path is empty.
 const ROOT = "";
 
-// The browser keeps no registry of project folders outside the library and runs no build, so these stay unwritten.
+// The browser has no device-local folder outside the library, so it keeps no registry of project folders and writes none into the
+// library; it runs no build, so the other two stay unwritten.
 const DEVICE_DIRS = {
-  projectRegistryPath: ".research/browser/project-folders.json",
   buildCacheDir: ".research/browser/builds",
   mergeBasesDir: ".research/browser/merge-bases",
 };

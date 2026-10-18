@@ -15,13 +15,10 @@ export interface ProjectRegistryFileContext {
   registryPath: string;
 }
 
+// PLATFORM: adapters report a missing file differently (ENOENT, a bridge `notFound`, a plain Error), so absence is asked of `exists`.
 async function readRegistryText(fs: LibraryFileSystem, file: string): Promise<string | undefined> {
-  try {
-    return await fs.readText(file);
-  } catch (error) {
-    if ((error as { code?: unknown }).code === "ENOENT") { return undefined; }
-    throw error;
-  }
+  if (!(await fs.exists(file))) { return undefined; }
+  return fs.readText(file);
 }
 
 /** @returns the registered folders; an unreadable or corrupt registry reads as empty and is logged */

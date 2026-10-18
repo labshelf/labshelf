@@ -1,4 +1,4 @@
-// Builds dist/sea/labshelf-helper-<os>-<arch>, a Node single executable of LabShelf Helper for the host, and checks that it answers `hello`.
+// Builds dist/sea/labshelf-helper-<os>-<arch>, a Node single executable of LabShelf Helper for the host, and checks that it answers `hello` with `ready` and `session`.
 import { build } from "esbuild";
 import { execFileSync, spawn } from "node:child_process";
 import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -11,6 +11,8 @@ const seaDir = resolve(root, "dist/sea");
 const OS_NAMES = { darwin: "macos", win32: "windows", linux: "linux" };
 const SENTINEL_FUSE = "NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2";
 const SMOKE_TIMEOUT_MS = 20_000;
+const PROTOCOL_VERSION = 2;
+const SMOKE_ORIGIN = "chrome-extension://abcdefghijklmnopabcdefghijklmnop";
 
 function targetName() {
   const osName = OS_NAMES[process.platform];
@@ -67,10 +69,16 @@ function encodeFrame(message) {
   return Buffer.concat([header, body]);
 }
 
-/** Returns the first complete frame in `buffer`, or undefined while it is partial. */
-function firstFrame(buffer) {
-  if (buffer.length < 4 || buffer.length < 4 + buffer.readUInt32LE(0)) { return undefined; }
-  return JSON.parse(buffer.subarray(4, 4 + buffer.readUInt32LE(0)).toString("utf8"));
+/** Returns every complete frame in `buffer`; a partial trailing frame is left out. */
+function framesIn(buffer) {
+  const frames = [];
+  let offset = 0;
+  while (buffer.length >= offset + 4 && buffer.length >= offset + 4 + buffer.readUInt32LE(offset)) {
+    const length = buffer.readUInt32LE(offset);
+    frames.push(JSON.parse(buffer.subarray(offset + 4, offset + 4 + length).toString("utf8")));
+    offset += 4 + length;
+  }
+  return frames;
 }
 
 // The helper writes logs and checks for updates; a scratch home keeps both away from the user's real data folder.
@@ -78,22 +86,24 @@ async function smokeCheck(binary, scratchHome) {
   const env = { ...process.env, HOME: scratchHome, USERPROFILE: scratchHome, LOCALAPPDATA: scratchHome, XDG_DATA_HOME: scratchHome };
   const child = spawn(binary, [], { env, stdio: ["pipe", "pipe", "pipe"] });
   try {
-    const reply = await new Promise((resolveReply, reject) => {
+    const replies = await new Promise((resolveReply, reject) => {
       let received = Buffer.alloc(0);
       let stderr = "";
-      const timer = setTimeout(() => reject(new Error(`no reply to hello within ${SMOKE_TIMEOUT_MS} ms; stderr: ${stderr.trim() || "(empty)"}`)), SMOKE_TIMEOUT_MS);
+      const timer = setTimeout(() => reject(new Error(`no ready and session within ${SMOKE_TIMEOUT_MS} ms; stderr: ${stderr.trim() || "(empty)"}`)), SMOKE_TIMEOUT_MS);
       child.stderr.on("data", (chunk) => { stderr += chunk; });
       child.on("error", reject);
       child.on("exit", (code) => reject(new Error(`helper exited with code ${code} before replying; stderr: ${stderr.trim() || "(empty)"}`)));
       child.stdout.on("data", (chunk) => {
         received = Buffer.concat([received, chunk]);
-        const frame = firstFrame(received);
-        if (frame) { clearTimeout(timer); resolveReply(frame); }
+        const frames = framesIn(received);
+        if (frames.length >= 2) { clearTimeout(timer); resolveReply(frames); }
       });
-      child.stdin.write(encodeFrame({ v: 1, id: "smoke", type: "hello", extensionVersion: "0.0.0" }));
+      child.stdin.write(encodeFrame({ v: PROTOCOL_VERSION, id: "smoke", type: "hello", extensionVersion: "0.0.0", origin: SMOKE_ORIGIN }));
     });
-    if (reply.type !== "ready" || reply.id !== "smoke") { throw new Error(`expected ready for hello, got ${JSON.stringify(reply)}`); }
-    return reply;
+    const [ready, session] = replies;
+    if (ready.type !== "ready" || ready.id !== "smoke") { throw new Error(`expected ready for hello, got ${JSON.stringify(ready)}`); }
+    if (session.type !== "session" || !Number.isInteger(session.port) || typeof session.token !== "string") { throw new Error(`expected session with a port and a token, got ${JSON.stringify(session)}`); }
+    return { ready: ready.type, session: { type: session.type, port: session.port } };
   } finally {
     child.removeAllListeners("exit");
     child.kill();

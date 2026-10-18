@@ -1,6 +1,6 @@
 import type { ILogger } from "@labshelf/core";
 import { IndexedDbFileSystem } from "../../../src/storage/indexedDbFileSystem";
-import { rebuildRecords } from "../../../src/storage/rebuild/rebuildFromFiles";
+import { rebuildRecords } from "../../../src/storage/rebuild";
 import { clearFakeDb, fakeRows, putFile } from "../../support/fakeIdb";
 
 jest.mock("webextension-polyfill", () => ({}));

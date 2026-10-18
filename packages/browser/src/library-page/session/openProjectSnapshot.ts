@@ -16,8 +16,6 @@ export interface OpenProjectSnapshotOptions {
   logger: ILogger;
 }
 
-const baseName = (folder: string): string => folder.replace(/\/+$/, "").split("/").pop() ?? folder;
-
 async function filesNodes(context: ProjectReadContext, project: ReadyProject, dir: string, prefix: string): Promise<SidebarTreeNode[]> {
   const { fs, paths } = context;
   const names = await fs.listDir(dir);
@@ -74,9 +72,9 @@ export function createOpenProjectSnapshot({ fs, logger }: OpenProjectSnapshotOpt
       guard("checklist", entry, () => checklistNodes(context, entry, grouping)),
     ]);
     return {
-      id: entry.settings.id, name: baseName(entry.folder), format: entry.settings.format,
+      id: entry.settings.id, name: entry.settings.title ?? entry.settings.id, format: entry.settings.format,
       trees: [
-        { view: "files", title: "Files", actions: [], nodes: files, empty: "No files." },
+        { view: "files", title: "Files", actions: [{ action: "comments", label: "Comments", icon: "message" }], nodes: files, empty: "No files." },
         { view: "outline", title: "Outline", actions: [], nodes: outline, empty: "Open a source file to see its outline." },
         {
           view: "checklist", title: "Checklist", actions: [], nodes: checklist, empty: "Nothing to do.",

@@ -4,6 +4,7 @@ export {
   addThread, COMMENTS_PATH, commentThreads, parseCommentsFile, replyToThread, serializeCommentsFile, setThreadResolved,
   type CommentsDocument,
 } from "./commentsFile.js";
+export { editCommentsDocument, loadCommentsDocument, type CommentsFileAccess } from "./commentsFileStore.js";
 export { anchorFor, liveAnchorFor, type TextRange } from "./commentAnchor.js";
 export { locateThread } from "./locateThread.js";
 export { addLiveThread, liveThreads, replyToLiveThread, setLiveThreadResolved } from "./liveComments.js";

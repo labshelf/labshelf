@@ -3,6 +3,7 @@ import { BRIDGE_HOST_NAME, type ILogger, type LibraryFileSystem } from "@labshel
 import { connectBrowserNative, createBrowserLogger, type NativePort } from "../platform";
 import { BridgeFileSystem, BridgeLink, classifyBridgeFailure, setBridgeLibrary, type BridgeFailureReason, type OpenBridge } from "./bridge";
 import { IndexedDbFileSystem } from "./indexedDbFileSystem";
+import { rebuildRecords } from "./rebuild";
 
 export type LibrarySource =
   | { kind: "folder"; root: string }
@@ -26,13 +27,15 @@ interface SourceDeps {
   connect: () => NativePort;
   logger: ILogger;
   browserFs: LibraryFileSystem;
+  /** Refills the paper cache from the folder; runs once each time the probe chooses the folder. */
+  rebuild: (folderFs: LibraryFileSystem) => Promise<void>;
 }
 
 const MODULE = "browser.storage.source";
 // Contexts that chose browser storage find a bridge connected later without a restart; a missing host fails fast.
 const BROWSER_CHOICE_MS = 60_000;
 
-export function createLibrarySources({ connect, logger, browserFs }: SourceDeps): LibrarySources {
+export function createLibrarySources({ connect, logger, browserFs, rebuild }: SourceDeps): LibrarySources {
   const link = new BridgeLink(connect, logger);
   // INVARIANT: once set, this context uses only the folder; a dead link fails calls and never falls back to browser storage.
   let folder: FolderSource | undefined;
@@ -59,6 +62,9 @@ export function createLibrarySources({ connect, logger, browserFs }: SourceDeps)
     ({ hello }): LibrarySource => {
       void logger.log("INFO", MODULE, "Library files come from the folder", { root: hello.libraryRoot });
       folder = { kind: "folder", root: hello.libraryRoot };
+      // The cache holds whatever an earlier choice left, so the folder's papers are not listed until it is rebuilt.
+      // INVARIANT: not awaited, because the scan reads through `bridgeFs`, which does not wait for this probe.
+      rebuild(bridgeFs).catch((error: unknown) => logger.error(MODULE, error, { op: "rebuildOnFolderChoice", root: hello.libraryRoot }));
       return folder;
     },
     (error: unknown): LibrarySource => {
@@ -108,12 +114,19 @@ function routedFileSystem(pick: () => Promise<LibraryFileSystem>): LibraryFileSy
 let shared: LibrarySources | undefined;
 
 function sharedSources(): LibrarySources {
-  shared ??= createLibrarySources({
+  if (shared) return shared;
+  const logger = createBrowserLogger();
+  shared = createLibrarySources({
     connect: () => connectBrowserNative(BRIDGE_HOST_NAME),
-    logger: createBrowserLogger(),
+    logger,
     browserFs: new IndexedDbFileSystem(),
+    rebuild: (folderFs) => rebuildRecords(folderFs, logger),
   });
   return shared;
+}
+
+export function rebuildFromFiles(logger: ILogger): Promise<void> {
+  return rebuildRecords(sharedSources().fileSystem, logger);
 }
 
 export function createLibraryFileSystem(): LibraryFileSystem {

@@ -48,7 +48,7 @@ A request is `{id, op, …}` with an integer `id` chosen by the browser. The hos
 | `ensureDir` | `path` | `{}`; creates parents |
 | `rename` | `from`, `to` | `{}`; creates the parents of `to` |
 
-`paperCount` counts the folders in `papers/` that hold a `metadata.yaml`.
+`paperCount` counts the folders at any depth in `papers/` that hold a `metadata.yaml`.
 
 `setLibrary` lets a user who has only the standalone LabShelf Helper choose the library folder from the extension's options page; it may follow a `hello` answered with `noLibrary`. The host writes `libraryRoot` to the shared configuration ([library-format.md#shared-configuration](library-format.md#shared-configuration)), keeping the keys it does not own, and serves that folder from then on. Once a library is set, only a desktop app changes it.
 

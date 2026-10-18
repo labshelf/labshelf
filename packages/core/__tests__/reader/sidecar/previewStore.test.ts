@@ -1,5 +1,5 @@
 // Tests the preview store: reading position and theme persist for the panel's life, annotation writes are refused with a notice.
-import { createPreviewStore, PREVIEW_ANNOTATION_REFUSAL } from "../../../src/writing/preview/previewStore";
+import { createPreviewStore, PREVIEW_ANNOTATION_REFUSAL } from "../../../src/reader/sidecar/previewStore";
 
 describe("createPreviewStore", () => {
   it("keeps the reading position and theme", async () => {

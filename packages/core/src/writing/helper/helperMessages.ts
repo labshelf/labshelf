@@ -48,7 +48,7 @@ export type ToHelperMessage =
     | { text: string; changes?: undefined }
     | { changes: TextChange[]; text?: undefined })
   | Envelope<"save"> & { projectId: string; path: string }
-  | Envelope<"compile"> & { projectId: string; main: string; mode: CompileMode; engine?: LatexEngine; editedFile?: string }
+  | Envelope<"compile"> & { projectId: string; main: string; mode: CompileMode; engine?: LatexEngine; editedFile?: string; editedLine?: number }
   | Envelope<"lsp"> & { projectId: string; payload: Record<string, unknown> }
   | Envelope<"cancel"> & { projectId: string }
   | Envelope<"installTex"> & { kind: TexInstallKind }
