@@ -14,3 +14,4 @@
 - 2026-10-18 — session 10 done: Typst LSP client over the helper (hand-written, no page didChange), comments store in core + browser panel and editor marks, history runtime-neutral in core + IndexedDB storage + History tab; Compare Versions desktop-only
 - 2026-10-18 — session 11 done: section preview (state capture at shipout, assembly, own-aux labels, page swap); 108-page run keeps numbering; section preview ~280–480 ms vs full ~1.3 s
 - 2026-10-18 — session 13 (deletions) done: monaco-vscode page, VS Code web build, editor-host contract and browser-editor plan removed; isWeb/desktop-only gates removed; typst.ts kept (VS Code desktop builds use it)
+- 2026-10-18 — session 13 (perf) done: perfCheck.mjs on Apple M4 Max, 14 cores, 4x throttle, 2,000 papers + 50 projects: page open 1.23–1.25 s, editor ready 0.83–0.87 s, no long task typing 200 chars or scrolling 2,000 rows (warm cache; first-open refresh bug being fixed)
