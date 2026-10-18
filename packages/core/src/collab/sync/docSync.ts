@@ -19,7 +19,8 @@ export interface DocSyncOptions {
 export class DocSync {
   readonly docs = new Map<string, Y.Doc>();
   /** Marks updates this sync applies, so they are not broadcast back. */
-  private readonly origin = Symbol("remote");
+  readonly origin = Symbol("remote");
+  private readonly holdListeners = new Set<(docKey: string, doc: Y.Doc) => void>();
   private readonly step1Sent = new Map<PeerId, Set<string>>();
   private readonly detach: (() => void)[] = [];
   private readonly step1: Channel;
@@ -51,6 +52,11 @@ export class DocSync {
     return doc;
   }
 
+  onHold(listener: (docKey: string, doc: Y.Doc) => void): () => void {
+    this.holdListeners.add(listener);
+    return () => { this.holdListeners.delete(listener); };
+  }
+
   close(): void {
     this.detach.forEach((stop) => stop());
   }
@@ -62,6 +68,7 @@ export class DocSync {
     };
     doc.on("update", onUpdate);
     this.detach.push(() => doc.off("update", onUpdate));
+    this.holdListeners.forEach((listener) => listener(docKey, doc));
   }
 
   private sendStep1(peer: PeerId, docKey: string): void {

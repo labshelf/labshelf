@@ -15,3 +15,6 @@ export {
 export {
   attachBlobs, BLOB_CHUNK_BYTES, BlobFetchError, MAX_BLOB_BYTES, type BlobExchange, type BlobFetchErrorCode, type BlobsOptions,
 } from "./blobs/index.js";
+export {
+  attachRelaySync, memoryCursorStore, PUT_INTERVAL_MS, SNAPSHOT_AFTER_PUTS, type RelayCursorStore, type RelaySync, type RelaySyncOptions,
+} from "./relay/index.js";

@@ -1,0 +1,34 @@
+// Writes the relay's HTTP answers: JSON bodies and refusals with CORS headers for any origin.
+
+import { encodeRelayBody, RELAY_REFUSAL, type IceServer } from "../http/index.js";
+
+// CONTRACT: documents/contracts/relay.md#endpoints — any origin, since no cookie is involved.
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Authorization, Content-Type",
+  "Access-Control-Max-Age": "86400",
+};
+
+export type RefusalCode = keyof typeof RELAY_REFUSAL;
+
+const REFUSAL_STATUS: Record<RefusalCode, number> = {
+  malformed: 400, incompatibleVersion: 400, unauthorized: 401, forbidden: 403, claimed: 409, turnUnavailable: 503,
+};
+
+type AnswerFields =
+  | { worker: string } | Record<string, never> | { ticket: string; expires: number } | { iceServers: IceServer[]; expires: number };
+
+export function answer(fields: AnswerFields): Response {
+  return new Response(encodeRelayBody(fields), { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+}
+
+export function refuse(error: RefusalCode): Response {
+  return new Response(encodeRelayBody({ error }), {
+    status: REFUSAL_STATUS[error], headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+  });
+}
+
+export const preflight = (): Response => new Response(null, { status: 204, headers: CORS_HEADERS });
+
+export const notFound = (): Response => new Response(null, { status: 404, headers: CORS_HEADERS });

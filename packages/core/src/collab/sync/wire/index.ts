@@ -5,3 +5,4 @@ export {
 } from "./envelope.js";
 export { deriveDocId } from "./docId.js";
 export { decodeDocPayload, encodeDocPayload } from "./docPayload.js";
+export { docIdCache, openDocFrame, sealDocFrame, type DocFrameContext, type OpenedDocFrame } from "./docMessage.js";

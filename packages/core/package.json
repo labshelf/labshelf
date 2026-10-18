@@ -7,6 +7,7 @@
     "lint": "node ../../scripts/run-eslint.mjs && pnpm run lint:runtime && pnpm run lint:codicons",
     "lint:codicons": "node tools/codicons/generateCodicons.mjs --check",
     "codicons": "node tools/codicons/generateCodicons.mjs",
+    "build:relay-worker": "node tools/relayWorker/bundleRelayWorker.mjs",
     "lint:runtime": "node ../../scripts/check-runtime-tsconfigs.mjs",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "tokens": "WRITE_TOKENS=1 node --experimental-vm-modules node_modules/jest/bin/jest.js __tests__/ui"

@@ -1,6 +1,6 @@
 // Declares the options and relay defaults of the trystero peer transport.
 import type { BaseRoomConfig, TurnServerConfig } from "@trystero-p2p/nostr";
-import type { ILogger } from "../../../ports/logger.js";
+import type { ILogger } from "../../../ports/index.js";
 import type { RoomCredentials } from "../../crypto/index.js";
 
 /** Namespaces the Nostr topics every LabShelf room is announced under. */

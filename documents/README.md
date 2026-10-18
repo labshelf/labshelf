@@ -20,6 +20,7 @@ Read when you look for the document that answers a question about LabShelf; the 
 | How does a library move between devices? | [contracts/sync.md](contracts/sync.md) |
 | How does the browser extension reach the library folder? | [contracts/bridge.md](contracts/bridge.md) |
 | How is a project shared, invited and encrypted? | [contracts/collaboration.md](contracts/collaboration.md) |
+| What does the owner's relay Worker accept and answer? | [contracts/relay.md](contracts/relay.md) |
 | How is a link to a paper page written? | [contracts/links.md](contracts/links.md#grammar) |
 | What is a project template and its catalog index? | [contracts/templates.md](contracts/templates.md#manifest) |
 | How does a host start the PDF reader? | [contracts/reader-host.md](contracts/reader-host.md#startup) |

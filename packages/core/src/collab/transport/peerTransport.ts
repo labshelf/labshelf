@@ -12,4 +12,9 @@ export interface PeerTransport {
   onPeerJoin(listener: (peer: PeerId) => void): () => void;
   onPeerLeave(listener: (peer: PeerId) => void): () => void;
   close(): Promise<void>;
+  /**
+   * True for a peer that gets this device's doc updates from a store, a relay's batched puts, so the mesh sends it no
+   * `update` messages and admits it beyond the mesh limit. Absent on a transport whose peers are all direct.
+   */
+  receivesUpdatesFromStore?(peer: PeerId): boolean;
 }
