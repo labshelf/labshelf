@@ -15,7 +15,6 @@ export const ENGINE_LABELS: Record<TemplateEngine, string> = {
   pdflatex: "pdfLaTeX",
   lualatex: "LuaLaTeX",
   xelatex: "XeLaTeX",
-  tectonic: "Tectonic",
   typst: "Typst",
 };
 

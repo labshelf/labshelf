@@ -5,18 +5,17 @@ import * as os from "node:os";
 import { fileURLToPath } from "node:url";
 
 import { Logger, PAPERS_DIR, RESEARCH_DIR, errorMessage, syncGuide } from "@labshelf/core";
-import { FileLogSink, bridgeLogPath, deviceLocalLayout, sharedConfigPath, systemBridgeEnv, updateSharedConfig } from "@labshelf/core/node";
+import { FileLogSink, deviceLocalLayout, sharedConfigPath, updateSharedConfig } from "@labshelf/core/node";
 
-import { loadTerminalConfig, resolveLibraryRoot, type TerminalConfig } from "./app/index.js";
-import { openLibrary, type AppContext } from "./app/index.js";
-import { parseArgs, stringFlag, type ParsedArgs } from "./cli/index.js";
-import { runBridgeCommand, runDoctor, runLibraryCommand, USAGE, UsageError, type Output } from "./cli/index.js";
-import { dumpFrame, promptForLibrary, runConflicts, runMove, syncGuideText, withPrompt } from "./cli/index.js";
+import { loadTerminalConfig, openLibrary, resolveLibraryRoot, type AppContext, type TerminalConfig } from "./app/index.js";
+import {
+  dumpFrame, isNativeHostCommand, parseArgs, promptForLibrary, refreshSystemLaunchers, runConflicts, runDoctor, runLibraryCommand, runMove,
+  runSystemNativeHostCommand, stringFlag, syncGuideText, USAGE, UsageError, withPrompt, type Output, type ParsedArgs,
+} from "./cli/index.js";
 import { ensureLibraryStructure, LibraryRoot, looksLikeLibrary } from "./library/index.js";
 import { expandHome } from "./platform/index.js";
 import { App } from "./ui/app/index.js";
-import { sanitizeForTerminal } from "./tui/index.js";
-import { Terminal } from "./tui/index.js";
+import { sanitizeForTerminal, Terminal } from "./tui/index.js";
 
 const VERSION = "0.1.0";
 const DEFAULT_LIBRARY = "~/LabShelf";
@@ -42,6 +41,8 @@ function askForLibrary(): Promise<string | undefined> {
   const site = { home: os.homedir(), env: process.env, platform: process.platform };
   return withPrompt((ask) => promptForLibrary(site, io, ask));
 }
+
+const DIST_DIR = fileURLToPath(new URL(".", import.meta.url));
 
 // The move and conflict commands run outside the TUI, so their log goes to the library's terminal log file.
 function fileLogger(root: string): Logger {
@@ -120,9 +121,7 @@ async function runCommand(run: () => Promise<number>): Promise<number> {
 }
 
 // Runs the commands that work on the library's location rather than an opened library; undefined for any other.
-async function runLibraryFreeCommand(
-  args: ReturnType<typeof parseArgs>, config: Awaited<ReturnType<typeof loadTerminalConfig>>, libraryFlag: string | undefined,
-): Promise<number | undefined> {
+async function runLibraryFreeCommand(args: ParsedArgs, config: TerminalConfig, libraryFlag: string | undefined): Promise<number | undefined> {
   if (args.command === "init") {
     await adoptLibrary(args.positionals[0] ?? libraryFlag ?? config.libraryRoot ?? DEFAULT_LIBRARY);
     return 0;
@@ -136,10 +135,10 @@ async function runLibraryFreeCommand(
     const progress = process.stderr.isTTY ? (text: string) => process.stderr.write(text) : () => undefined;
     return runCommand(() => runMove(args.positionals, root, io, { logger: fileLogger, env: process.env, progress }));
   }
-  if (args.command === "bridge") {
-    const env = systemBridgeEnv(new Logger([new FileLogSink(bridgeLogPath())], { onSinkError: () => undefined }));
-    const launch = { nodePath: process.execPath, hostScript: fileURLToPath(new URL("./bridgeHost.js", import.meta.url)), electronRunAsNode: false };
-    return runCommand(() => runBridgeCommand(args.positionals[0], io, env, launch));
+  if (isNativeHostCommand(args.command)) {
+    const command = args.command;
+    const flags = { replace: args.flags["replace"] === true };
+    return runCommand(() => runSystemNativeHostCommand(command, args.positionals[0], flags, io, DIST_DIR));
   }
   if (args.command === "doctor") {
     const resolution = resolveLibraryRoot(libraryFlag, process.env, config);
@@ -158,6 +157,8 @@ async function main(argv: string[]): Promise<number> {
     io.out(USAGE);
     return 0;
   }
+  // Fire and forget: a launcher that cannot be refreshed must not change this run's output or exit code.
+  if (!isNativeHostCommand(args.command)) void refreshSystemLaunchers(DIST_DIR);
   const config = await loadTerminalConfig();
   const libraryFlag = stringFlag(args.flags, "library");
 

@@ -9,6 +9,22 @@ import { runBuild, terminalBuildEnvironment, type BuildEnvironment } from "../..
 import { LibraryRoot } from "../../../src/library";
 import { cleanupTempDirs, makeTempDir } from "../../fixtures/library";
 
+// The machine running the tests may have a TeX; the real provider would find it and build.
+jest.mock("@labshelf/core/node", () => {
+  const actual = jest.requireActual("@labshelf/core/node");
+  const { join } = jest.requireActual("node:path");
+  const { tmpdir } = jest.requireActual("node:os");
+  return {
+    ...actual,
+    createSharedTexProvider: ({ logger }: { logger: unknown }) => actual.createManagedTexProvider({
+      texRoot: join(tmpdir(), `labshelf-no-tex-${process.pid}`),
+      logger,
+      system: { resolve: async () => "missing", installMissing: async () => false },
+      installers: { tinytex: async () => undefined, texlive: async () => undefined },
+    }),
+  };
+});
+
 afterEach(cleanupTempDirs);
 
 const logger = { log: async () => undefined, error: async () => undefined };
@@ -66,18 +82,25 @@ describe("runBuild output and exit codes", () => {
     expect(out.join("\n")).toContain("main.pdf");
   });
 
-  it("exits 2 with the Tectonic install hint when the toolchain is missing", async () => {
+  it("exits 2 with the LaTeX install hint when the toolchain is missing", async () => {
     const { ctx, projectDir, io, err } = await setup();
     const { env } = fakeEnvironment([{ status: "toolchain-missing", reason: "declined" }]);
     expect(await runBuild(ctx, [projectDir], {}, io, env)).toBe(2);
-    expect(err.join("\n")).toContain("Tectonic");
+    expect(err.join("\n")).toContain("No LaTeX found");
+  });
+
+  it("exits 2 naming the failure when the LaTeX install fails", async () => {
+    const { ctx, projectDir, io, err } = await setup();
+    const { env } = fakeEnvironment([{ status: "toolchain-missing", reason: "install-failed", message: "disk full" }]);
+    expect(await runBuild(ctx, [projectDir], {}, io, env)).toBe(2);
+    expect(err.join("\n")).toContain("Installing LaTeX failed: disk full");
   });
 
   it("declines the first-run toolchain question without a TTY: exit 2 and the install hint, no build", async () => {
     const { ctx, projectDir, io, err } = await setup();
     const env = terminalBuildEnvironment(ctx, { ask: undefined });
     expect(await runBuild(ctx, [projectDir], {}, io, env)).toBe(2);
-    expect(err.join("\n")).toMatch(/Tectonic/);
+    expect(err.join("\n")).toContain("No LaTeX found");
   });
 
   it("rejects a folder that is not a writing project", async () => {

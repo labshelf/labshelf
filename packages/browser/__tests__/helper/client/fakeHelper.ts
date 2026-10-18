@@ -37,7 +37,7 @@ export class FakeHelper implements NativePort {
 
   private answer(m: Record<string, any>): void {
     if (m.type === "hello") {
-      this.reply(m.id, { type: "ready", protocol: this.protocol, helperVersion: "1.0.0", tex: this.tex });
+      this.reply(m.id, { type: "ready", host: "helper", protocol: this.protocol, helperVersion: "1.0.0", tex: this.tex });
     } else if (m.type === "sync") {
       const need = (m.files as Array<{ path: string; sha256: string }>).filter((f) => !this.mirror.has(`${f.path}:${f.sha256}`)).map((f) => f.path);
       this.awaiting = new Map((m.files as Array<{ path: string; sha256: string }>).map((f) => [f.path, f.sha256]));
@@ -47,7 +47,7 @@ export class FakeHelper implements NativePort {
     } else if (m.type === "installTex" || m.type === "installAllPackages") {
       this.tex = m.type === "installTex" ? { source: m.kind, year: 2025, complete: false } : { ...this.tex, complete: true };
       this.reply(m.id, { type: "progress", phase: "installing-tex", message: "Installing" });
-      this.reply(m.id, { type: "ready", protocol: this.protocol, helperVersion: "1.0.0", tex: this.tex });
+      this.reply(m.id, { type: "ready", host: "helper", protocol: this.protocol, helperVersion: "1.0.0", tex: this.tex });
     } else if (m.type === "build") {
       this.answerBuild(m.id);
     }

@@ -54,6 +54,7 @@ The minimum versions are the floor for pdf.js 6.3.
 - Firefox refuses `blob:` workers, so the pdf.js worker starts from its extension URL.
 - The search page content script (Scholar and Google results) renders inside a shadow root and loads the tokens as text, with `:root` rewritten to `:host`.
 - Native messaging to LabShelf Helper is opened by extension pages, not by the service worker, so the helper lives only while such a page is open ([contract](../contracts/helper.md#transport)).
+- The LaTeX setup card offers LabShelf Helper first. As the alternative to installing an unsigned program, it points to VS Code or the terminal app, either of which serves the same helper host ([registration](../contracts/helper.md#registration)).
 - Cloudflare-protected publishers (ACM, SIAM, ScienceDirect) block headless browsers and plain `fetch`. Real downloads from them can only be tested by hand.
 
 ## Citation map

@@ -20,7 +20,7 @@ function report(result: ProjectBuildResult, project: ReadyProject, io: Output): 
       io.out("Build failed.");
       return 1;
     case "toolchain-missing":
-      io.err(toolchainMissingText(result, process.platform));
+      io.err(toolchainMissingText(result));
       return 2;
     case "no-main":
       io.err(`${project.folder} has no main file. Set main: in labshelf.yaml.`);

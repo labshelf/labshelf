@@ -1,52 +1,44 @@
-/** Verifies a project build: format dispatch, the first-run engine pick, a declined Tectonic download and where the built PDF lives. */
+/** Verifies a project build: format dispatch, managed TeX, installing missing packages, a declined install and where the built PDF lives. */
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { tectonicAsset } from "../../../../src/writing/index";
 import { typstPreviewPdf } from "../../../../src/writing/build/index";
 import { buildProject } from "../../../../src/writing/build/node/index";
 import { cleanupTempDirs, pathExists } from "../../../support/tempDirs";
 import { buildFixture, runCount } from "./projectBuildFixtures";
 
 const posixOnly = process.platform === "win32" ? describe.skip : describe;
-const savedPath = process.env.PATH;
-
-afterEach(async () => {
-  process.env.PATH = savedPath;
-  await cleanupTempDirs();
-});
+afterEach(cleanupTempDirs);
 
 posixOnly("buildProject", () => {
-  it("builds a LaTeX project with the installed Tectonic without asking", async () => {
-    const fixture = await buildFixture({ tectonicInstalled: true });
-    const result = await buildProject(fixture.project({ engine: "tectonic" }), fixture.deps);
+  it("builds a LaTeX project with the managed TeX without asking", async () => {
+    const fixture = await buildFixture();
+    const result = await buildProject(fixture.project({ engine: "xelatex" }), fixture.deps);
     expect(result).toEqual({ status: "succeeded", pdf: path.join(fixture.folder, "main.pdf"), problems: [] });
     expect(fixture.prompt.calls).toEqual([]);
     expect(await runCount(fixture.runs)).toBe(1);
   });
 
-  it("asks for the engine on the first build, stores the pick and builds with TeX Live", async () => {
-    const fixture = await buildFixture({ engine: "pdflatex" });
-    process.env.PATH = fixture.texLiveBin;
-    const result = await buildProject(fixture.project(), fixture.deps);
+  it("installs a missing package with progress and rebuilds", async () => {
+    const fixture = await buildFixture();
+    await fs.writeFile(fixture.missing, "");
+    const result = await buildProject(fixture.project({ engine: "xelatex" }), fixture.deps);
     expect(result.status).toBe("succeeded");
-    expect(fixture.prompt.calls).toEqual(["pick:true"]);
-    expect(fixture.saved).toEqual([{ folder: fixture.folder, patch: { engine: "pdflatex" } }]);
-    expect(await runCount(fixture.runs)).toBe(1);
+    expect(fixture.prompt.calls).toEqual(["progress:Installing the LaTeX package for foo.sty"]);
+    expect(fixture.tex.calls).toEqual(["resolve:xelatex", "installMissing:foo.sty"]);
+    expect(await runCount(fixture.runs)).toBe(2);
   });
 
-  it("reports the toolchain missing and runs nothing when the Tectonic download is declined", async () => {
-    const fixture = await buildFixture({ confirm: false });
-    process.env.PATH = path.dirname(fixture.runs);
-    const result = await buildProject(fixture.project({ engine: "tectonic" }), fixture.deps);
-    const supported = tectonicAsset(process.platform, process.arch) !== undefined;
-    expect(result).toEqual({ status: "toolchain-missing", reason: supported ? "declined" : "tectonic-unsupported" });
+  it("reports declined and runs nothing when TeX is missing and the user declines", async () => {
+    const fixture = await buildFixture({ installed: false });
+    const result = await buildProject(fixture.project({ engine: "xelatex" }), fixture.deps);
+    expect(result).toEqual({ status: "toolchain-missing", reason: "declined" });
     expect(await runCount(fixture.runs)).toBe(0);
   });
 
   it("returns no-main for a project without a main file", async () => {
-    const fixture = await buildFixture({ tectonicInstalled: true });
-    expect(await buildProject(fixture.project({ engine: "tectonic" }, null), fixture.deps)).toEqual({ status: "no-main" });
+    const fixture = await buildFixture();
+    expect(await buildProject(fixture.project({ engine: "xelatex" }, null), fixture.deps)).toEqual({ status: "no-main" });
   });
 
   it("compiles a Typst project into the preview PDF and <root>.pdf", async () => {

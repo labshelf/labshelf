@@ -1,7 +1,7 @@
-/** Bundles @labshelf/terminal into dist/labshelf.mjs (the `labshelf` command), dist/thumbnailWorker.mjs, dist/labshelf-helper.mjs (LabShelf Helper, which must stay free of the PDF stack) and dist/bridgeHost.js (the browser bridge host, an ES module that the launcher starts with Node). @labshelf/core is bundled from source; pdfjs-dist, Tesseract and the native canvas stay external and are loaded from node_modules at run time, only when a PDF is parsed, read by OCR or rendered. */
+/** Bundles @labshelf/terminal into dist/labshelf.mjs (the `labshelf` command), dist/thumbnailWorker.mjs, dist/labshelf-helper.mjs (LabShelf Helper) and dist/helperHost.mjs (the terminal app as the browser's LaTeX helper), which must stay free of the PDF stack, and dist/bridgeHost.js (the browser bridge host, an ES module that the launcher starts with Node). @labshelf/core is bundled from source; pdfjs-dist, Tesseract and the native canvas stay external and are loaded from node_modules at run time, only when a PDF is parsed, read by OCR or rendered. */
 import { build, context } from "esbuild";
 import { chmod } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -30,17 +30,18 @@ const entries = [
   { ...common, entryPoints: [resolve(root, "src/main.ts")], outfile: resolve(root, "dist/labshelf.mjs") },
   { ...common, entryPoints: [resolve(root, "src/preview/thumbnailWorker.ts")], outfile: resolve(root, "dist/thumbnailWorker.mjs"), banner: { js: banner.split("\n").slice(1).join("\n") } },
   { ...common, entryPoints: [resolve(root, "src/helper/main.ts")], outfile: resolve(root, "dist/labshelf-helper.mjs"), metafile: true, banner: { js: banner.split("\n").slice(1).join("\n") } },
+  { ...common, entryPoints: [resolve(root, "src/helperHost.ts")], outfile: resolve(root, "dist/helperHost.mjs"), metafile: true, banner: { js: banner.split("\n").slice(1).join("\n") } },
   { ...common, entryPoints: [resolve(root, "../core/src/bridge/node/hostEntry.ts")], outfile: resolve(root, "dist/bridgeHost.js"), banner: { js: banner.split("\n").slice(1).join("\n") } },
 ];
 
 // The helper starts on every browser launch of a native-messaging host; it never needs the PDF stack.
 const HELPER_FORBIDDEN = /(^|[/\\])(pdfjs-dist|@napi-rs[/\\]canvas|pdf-lib|tesseract\.js)([/\\]|$)/;
 
-function assertHelperBundle(result) {
+function assertHelperBundle(result, name) {
   const output = Object.values(result.metafile.outputs)[0];
   const offenders = [...Object.keys(result.metafile.inputs), ...output.imports.map((entry) => entry.path)].filter((entry) => HELPER_FORBIDDEN.test(entry));
   if (offenders.length > 0) {
-    throw new Error(`labshelf-helper must not import the PDF stack, but the bundle reaches: ${[...new Set(offenders)].join(", ")}`);
+    throw new Error(`${name} must not import the PDF stack, but the bundle reaches: ${[...new Set(offenders)].join(", ")}`);
   }
 }
 
@@ -52,7 +53,9 @@ if (watch) {
   console.log("[labshelf-terminal] watching…");
 } else {
   const results = await Promise.all(entries.map((options) => build(options)));
-  assertHelperBundle(results[entries.findIndex((options) => options.metafile)]);
+  entries.forEach((options, index) => {
+    if (options.metafile) assertHelperBundle(results[index], basename(options.outfile));
+  });
   await chmod(resolve(root, "dist/labshelf.mjs"), 0o755);
   console.log("[labshelf-terminal] built dist/labshelf.mjs");
 }

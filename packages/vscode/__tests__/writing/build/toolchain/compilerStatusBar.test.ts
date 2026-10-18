@@ -14,7 +14,7 @@ function setup(entries: ProjectEntry[]) {
   return { item, setProjects: (next: ProjectEntry[]) => { current = next; changes.fire(); } };
 }
 
-const latex = (engine?: "tectonic" | "pdflatex") => readyEntry("/code/repo", {
+const latex = (engine?: "xelatex" | "pdflatex") => readyEntry("/code/repo", {
   settings: { id: "repo", format: "latex", ...(engine ? { engine } : {}) },
 });
 
@@ -25,7 +25,7 @@ beforeEach(() => {
 
 describe("registerCompilerStatusBar", () => {
   it("sits right after the main item and opens the compiler pick on click", () => {
-    const { item } = setup([latex("tectonic")]);
+    const { item } = setup([latex("xelatex")]);
     expect(vscode.window.createStatusBarItem).toHaveBeenCalledWith(vscode.StatusBarAlignment.Left, 49);
     expect(item.command).toBe("labshelf.writing.pickCompiler");
     expect(item.hide).toHaveBeenCalled();
@@ -59,8 +59,8 @@ describe("registerCompilerStatusBar", () => {
   it("follows the project list when it reloads", () => {
     const { item, setProjects } = setup([latex()]);
     openInEditor("/code/repo/a.tex");
-    setProjects([latex("tectonic")]);
-    expect(item.text).toBe("$(gear) XeLaTeX (Tectonic) $(chevron-down)");
+    setProjects([latex("xelatex")]);
+    expect(item.text).toBe("$(gear) XeLaTeX $(chevron-down)");
     setProjects([]);
     expect(item.hide).toHaveBeenCalled();
   });

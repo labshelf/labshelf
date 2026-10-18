@@ -1,5 +1,5 @@
 // Registers the LaTeX builds of the desktop: the core build queue behind the Build command and the build after each save.
-import { ProjectBuildQueue } from "@labshelf/core/node";
+import { ProjectBuildQueue, type ProjectBuildDeps } from "@labshelf/core/node";
 import type * as vscode from "vscode";
 
 import type { WritingHost, WritingProjects } from "../../session/index.js";
@@ -13,6 +13,7 @@ import { projectBuildDeps } from "./projectBuildDeps.js";
 interface LatexBuildDeps {
   context: vscode.ExtensionContext;
   host: WritingHost;
+  tex: ProjectBuildDeps["tex"];
   projects: Pick<WritingProjects, "data" | "list" | "paths" | "fs" | "reload">;
   previews: Pick<BuildPreviews, "building" | "finished">;
   diagnostics: Pick<BuildDiagnostics, "publish">;
@@ -23,7 +24,7 @@ interface LatexBuildDeps {
 /** Registers the save builds and returns the builds, which the Build Project command also uses. */
 export function registerLatexBuild(deps: LatexBuildDeps): LatexBuilds {
   const queue = new ProjectBuildQueue(projectBuildDeps({
-    host: deps.host, projects: deps.projects, storageDir: deps.context.globalStorageUri.fsPath,
+    host: deps.host, projects: deps.projects, tex: deps.tex,
     // INVARIANT: this queue only builds LaTeX projects (the save builds pick LaTeX projects), so the Typst compiler is never requested.
     typst: { get: () => Promise.reject(new Error("The LaTeX build queue does not compile Typst projects.")) },
   }));

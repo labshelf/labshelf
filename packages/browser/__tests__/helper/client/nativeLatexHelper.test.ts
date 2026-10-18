@@ -64,7 +64,7 @@ describe("connect", () => {
 
   it("reports ready with the helper version and TeX status", async () => {
     const { helper } = setup();
-    expect(await helper.connect()).toEqual({ state: "ready", helperVersion: "1.0.0", tex: { source: "tinytex", year: 2025, complete: true } });
+    expect(await helper.connect()).toEqual({ state: "ready", helperVersion: "1.0.0", tex: { source: "tinytex", year: 2025, complete: true }, host: "helper" });
   });
 
   it("reports update-extension when the helper's protocol is higher", async () => {
@@ -75,15 +75,15 @@ describe("connect", () => {
 });
 
 describe("statusFromReady", () => {
-  const ready = { v: 1, id: "1", type: "ready" as const, helperVersion: "1.0.0", tex: { source: "none" as const, complete: false } };
+  const ready = { v: 1, id: "1", type: "ready" as const, host: "vscode" as const, helperVersion: "1.0.0", tex: { source: "none" as const, complete: false } };
 
   it("reports update-helper when the helper's protocol is lower than the page's", () => {
-    expect(statusFromReady({ ...ready, protocol: 1 }, 2)).toEqual({ state: "update-helper", protocol: 1 });
+    expect(statusFromReady({ ...ready, protocol: 1 }, 2)).toEqual({ state: "update-helper", protocol: 1, host: "vscode" });
   });
 
   it("reports update-extension when it is higher, and ready when equal", () => {
     expect(statusFromReady({ ...ready, protocol: 3 }, 2)).toEqual({ state: "update-extension", protocol: 3 });
-    expect(statusFromReady({ ...ready, protocol: 2 }, 2)).toMatchObject({ state: "ready" });
+    expect(statusFromReady({ ...ready, protocol: 2 }, 2)).toMatchObject({ state: "ready", host: "vscode" });
   });
 });
 
@@ -158,7 +158,7 @@ describe("install", () => {
     const progress: unknown[] = [];
     await helper.installTex("tinytex", (p) => progress.push(p));
     expect(progress).toEqual([{ phase: "installing-tex", message: "Installing" }]);
-    expect(helper.status()).toEqual({ state: "ready", helperVersion: "1.0.0", tex: { source: "tinytex", year: 2025, complete: false } });
+    expect(helper.status()).toEqual({ state: "ready", helperVersion: "1.0.0", tex: { source: "tinytex", year: 2025, complete: false }, host: "helper" });
   });
 
   it("installs every package and marks the TeX complete", async () => {

@@ -3,7 +3,7 @@
 
 import type { BuildProblemKind, LocatedProblem } from "../latex/index.js";
 import {
-  HELPER_BUILD_STATUSES, PROGRESS_PHASES, TEX_SOURCES,
+  HELPER_BUILD_STATUSES, HELPER_HOSTS, PROGRESS_PHASES, TEX_SOURCES,
   type TexStatus, type ToPageMessage,
 } from "./helperMessages.js";
 import {
@@ -45,7 +45,7 @@ function readProblems(body: Body): LocatedProblem[] {
 const READERS: Readers = {
   ready: (body, envelope) => ({
     ...envelope, type: "ready", protocol: readNumber(body, "protocol", isPositiveInteger),
-    helperVersion: readText(body, "helperVersion"), tex: readTex(body),
+    helperVersion: readText(body, "helperVersion"), host: readChoice(body, "host", HELPER_HOSTS), tex: readTex(body),
   }),
   need: (body, envelope) => ({ ...envelope, type: "need", paths: readPaths(body, "paths") }),
   progress: (body, envelope) => ({

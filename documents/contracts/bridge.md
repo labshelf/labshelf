@@ -7,9 +7,7 @@ The browser extension reaches the library folder through a desktop host program 
 - The host name is `app.labshelf.bridge`.
 - The browser starts one host per connection. The host reads the library root once at start and exits when its stdin closes.
 - The host logs to `bridge.log` in the library's device-local logs folder ([library-format.md#device-local-files](library-format.md#device-local-files)). With no library configured, it logs to `logs/bridge.log` in the device state folder (`$XDG_STATE_HOME/labshelf`, else `~/Library/Application Support/labshelf` on macOS and `~/.local/state/labshelf` elsewhere). It never writes anything but frames to stdout.
-- The apps install the host on the user's request (VS Code **Connect the Browser**, `labshelf bridge install`). The browser starts a launcher, which runs the bundled `bridgeHost.js` with the Node that installed it. The launcher is `~/.config/labshelf/bridge/labshelf-bridge` on macOS and Linux and `%LOCALAPPDATA%\LabShelf\bridge\` on Windows, falling back to `%USERPROFILE%\AppData\Local` when `LOCALAPPDATA` is unset.
-- The manifest goes in each installed browser's per-user `NativeMessagingHosts` folder, `native-messaging-hosts` for Firefox on Linux: Chrome (`~/Library/Application Support/Google/Chrome`, `~/.config/google-chrome`), Chromium (`…/Chromium`, `~/.config/chromium`), Brave (`…/BraveSoftware/Brave-Browser`) and Firefox (`…/Mozilla`, `~/.mozilla`). On Windows each manifest is a `<browser>.json` next to the launcher, and the HKCU key `Software\<vendor>\NativeMessagingHosts\app.labshelf.bridge` points at it (vendor `Google\Chrome`, `Chromium`, `BraveSoftware\Brave-Browser`, `Mozilla`).
-- A Flatpak or Snap browser on Linux cannot start a program outside its sandbox, so it gets a warning instead of a manifest.
+- The apps install the host on the user's request (VS Code **Connect the Browser**, `labshelf bridge install`). The launcher, manifests and registration follow [native-host.md](native-host.md).
 
 ## Framing
 

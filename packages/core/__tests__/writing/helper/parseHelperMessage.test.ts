@@ -20,8 +20,8 @@ const toHelper: ToHelperMessage[] = [
 ];
 
 const toPage: ToPageMessage[] = [
-  { ...env("1"), type: "ready", protocol: 1, helperVersion: "1.0.0", tex: { source: "texlive", year: 2026, complete: true } },
-  { ...env("1"), type: "ready", protocol: 1, helperVersion: "1.0.0", tex: { source: "none", complete: false } },
+  { ...env("1"), type: "ready", protocol: 1, helperVersion: "1.0.0", host: "helper", tex: { source: "texlive", year: 2026, complete: true } },
+  { ...env("1"), type: "ready", protocol: 1, helperVersion: "1.0.0", host: "terminal", tex: { source: "none", complete: false } },
   { ...env("2"), type: "need", paths: ["main.tex"] },
   { ...env("5"), type: "progress", phase: "building", message: "Running pdflatex", fraction: 0.5 },
   { ...env("5"), type: "progress", phase: "installing-package", message: "Installing tikz" },
@@ -84,8 +84,8 @@ describe("parseHelperMessage rejections", () => {
     expect(reject({ ...toHelper[5]!, projectId: "../thesis" })).toBe("project-id");
   });
 
-  it("rejects Tectonic and unknown engines", () => {
-    expect(reject({ ...toHelper[4]!, engine: "tectonic" })).toBe("invalid-field");
+  it("rejects unknown engines", () => {
+    expect(reject({ ...toHelper[4]!, engine: "latex" })).toBe("invalid-field");
     expect(reject({ ...toHelper[4]!, engine: "context" })).toBe("invalid-field");
   });
 
@@ -97,6 +97,12 @@ describe("parseHelperMessage rejections", () => {
     expect(reject({ ...toPage[3]!, fraction: 2 }, "toPage")).toBe("invalid-field");
     expect(reject({ ...toPage[5]!, problems: [{ severity: "fatal", message: "x", file: "a.tex" }] }, "toPage")).toBe("invalid-field");
     expect(reject({ ...toPage[6]!, status: "maybe" }, "toPage")).toBe("invalid-field");
+  });
+
+  it("rejects a ready without a known host", () => {
+    const { host: _host, ...hostless } = toPage[0] as Extract<ToPageMessage, { type: "ready" }>;
+    expect(reject(hostless, "toPage")).toBe("invalid-field");
+    expect(reject({ ...toPage[0]!, host: "zed" }, "toPage")).toBe("invalid-field");
   });
 
   it("rejects duplicate paths in a sync", () => {

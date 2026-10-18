@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import { hostPdfjs } from "../../pdf/node/index.js";
-import { registerLatexBuild } from "../build/node/index.js";
+import { createVscodeTex, registerLatexBuild } from "../build/node/index.js";
 import { registerCheckCommand } from "../check/node/index.js";
 import { registerRegenerateFigure } from "../figures/node/index.js";
 import type { RegisterPlatformWriting } from "../platformPort/index.js";
@@ -17,13 +17,14 @@ export const registerNodeWriting: RegisterPlatformWriting = ({ context, host, pr
   context.subscriptions.push(output);
   registerRegenerateFigure({ context, host, figures, output });
   registerAddExistingFolder({ context, host, projects });
+  const tex = createVscodeTex(host);
   const builders = {
-    latex: registerLatexBuild({ context, host, projects, previews, diagnostics, ...(includeOnlyTarget && { includeOnlyTarget }) }),
-    typst: registerTypstBuild({ context, host, projects, previews, diagnostics, hasPreview: (folder) => previews.hasPreview(folder) }),
+    latex: registerLatexBuild({ context, host, tex, projects, previews, diagnostics, ...(includeOnlyTarget && { includeOnlyTarget }) }),
+    typst: registerTypstBuild({ context, host, tex, projects, previews, diagnostics, hasPreview: (folder) => previews.hasPreview(folder) }),
   };
   registerCheckCommand({ context, host, projects, builders, pdfjs: hostPdfjs, ...(onFindings && { onFindings }) });
-  registerCompareVersionsCommand({ context, host, projects, builders, pdfjs: hostPdfjs, reader });
-  registerTemplates({ context, host, projects, builders });
+  registerCompareVersionsCommand({ context, host, tex, projects, builders, pdfjs: hostPdfjs, reader });
+  registerTemplates({ context, host, tex, projects, builders });
   const history = registerProjectHistory({ context, host, projects });
   return { builders, history };
 };

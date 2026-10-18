@@ -1,14 +1,7 @@
-/** Verifies the command lines of both toolchains keep every output file in the build folder. */
+/** Verifies the command line of each engine keeps every output file in the build folder. */
 import { latexBuildCommand } from "../../../../src/writing/latex/index";
 
 describe("latexBuildCommand", () => {
-  it("runs Tectonic with SyncTeX and logs kept in the build folder", () => {
-    expect(latexBuildCommand({ engine: "tectonic", executable: "/t/tectonic" }, "main.tex", "/cache/p")).toEqual({
-      executable: "/t/tectonic",
-      args: ["-X", "compile", "main.tex", "--outdir", "/cache/p", "--synctex", "--keep-logs", "--keep-intermediates"],
-    });
-  });
-
   it("runs latexmk with the chosen engine, file:line errors and both output folders", () => {
     const { args } = latexBuildCommand({ engine: "lualatex", executable: "latexmk" }, "paper.tex", "/cache/p");
     expect(args).toEqual(["-lualatex", "-interaction=nonstopmode", "-file-line-error", "-synctex=1", "-auxdir=/cache/p", "-outdir=/cache/p", "paper.tex"]);
@@ -25,10 +18,5 @@ describe("latexBuildCommand", () => {
     const { args } = latexBuildCommand({ engine: "pdflatex", executable: "latexmk" }, "main.tex", "/o", { force: true });
     expect(args).toContain("-g");
     expect(args.some((arg) => arg.startsWith("-usepretex"))).toBe(false);
-  });
-
-  it("leaves the Tectonic command unchanged, which has no pretex", () => {
-    const tectonic = { engine: "tectonic", executable: "/t" } as const;
-    expect(latexBuildCommand(tectonic, "m.tex", "/o", { includeOnly: "ch/two" })).toEqual(latexBuildCommand(tectonic, "m.tex", "/o"));
   });
 });

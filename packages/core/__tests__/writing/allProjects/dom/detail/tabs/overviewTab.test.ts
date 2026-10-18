@@ -33,7 +33,7 @@ describe("overviewTabHtml", () => {
 
   it("offers Build now and Open log, the latter only with a log", () => {
     const build = view.querySelector("[data-sec-body=build]")!;
-    expect(build.textContent).toContain("tectonic");
+    expect(build.textContent).toContain("xelatex");
     expect(build.textContent).toContain("Overfull hbox");
     expect(build.querySelector("[data-action=build]")?.textContent).toBe("Build now");
     expect(build.querySelector("[data-action=openLog]")?.textContent).toBe("Open log");

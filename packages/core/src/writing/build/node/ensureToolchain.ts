@@ -1,45 +1,56 @@
-// Chooses and prepares the LaTeX toolchain of a project: the first-run pick, TeX Live detection and the Tectonic fallback.
+// Finds the project's LaTeX toolchain in the managed TeX, offering to install TeX when none is found.
 import type { ILogger } from "../../../ports/index.js";
-import { tectonicAsset, type LatexToolchain } from "../../latex/toolchain/index.js";
-import { findExecutable } from "../../latex/toolchain/node/index.js";
-import type { LatexEngine, ProjectEntry } from "../../project/index.js";
-import type { ProjectDataPort } from "../../projectData/index.js";
+import type { LatexToolchain, TexInstallKind } from "../../latex/toolchain/index.js";
+import type { ManagedTexProvider } from "../../latex/toolchain/node/managed/index.js";
+import type { ProjectEntry } from "../../project/index.js";
 import type { ToolchainMissing } from "../projectBuildResult.js";
-import type { ToolchainPrompt } from "../toolchainPrompt.js";
-import { tectonicToolchain } from "./tectonicToolchain.js";
+import type { TexSetupPrompt } from "../texSetupPrompt.js";
 
 const MODULE = "writing/build";
 
 export interface ToolchainDeps {
   logger: ILogger;
-  toolchain: ToolchainPrompt;
-  /** Tectonic is installed under this folder. */
-  storageDir: string;
-  projects: Pick<ProjectDataPort, "updateProjectSettings">;
+  prompt: TexSetupPrompt;
+  tex: ManagedTexProvider;
 }
 
-async function storeEngine(deps: ToolchainDeps, folder: string, engine: LatexEngine): Promise<void> {
-  await deps.projects.updateProjectSettings(folder, { engine });
-  await deps.logger.log("INFO", MODULE, "Stored the project's LaTeX engine", { folder, engine });
+const INSTALL_TITLES: Readonly<Record<TexInstallKind, string>> = {
+  tinytex: "Installing TinyTeX",
+  texlive: "Installing TeX Live",
+};
+
+async function install(deps: ToolchainDeps, kind: TexInstallKind, context: Record<string, unknown>): Promise<ToolchainMissing | undefined> {
+  await deps.logger.log("INFO", MODULE, "Installing TeX", { ...context, kind });
+  try {
+    await deps.prompt.progress(INSTALL_TITLES[kind], (report) =>
+      deps.tex.install(kind, (fraction) => report(fraction === null ? "" : `${Math.round(fraction * 100)}%`)));
+  } catch (error) {
+    await deps.logger.error(MODULE, error, { ...context, kind, action: "install-tex" });
+    return { status: "toolchain-missing", reason: "install-failed", message: error instanceof Error ? error.message : String(error) };
+  }
+  await deps.logger.log("INFO", MODULE, "Installed TeX", { ...context, kind });
+  return undefined;
 }
 
-/** The program that builds the project, asking the user on the first build. */
+/** The program that builds the project; when no TeX is found, asks which one to install and installs it. */
 export async function ensureToolchain(
   project: Extract<ProjectEntry, { kind: "ready" }>,
   deps: ToolchainDeps,
 ): Promise<LatexToolchain | ToolchainMissing> {
-  let engine = project.settings.engine;
-  if (!engine) {
-    const texLiveInstalled = (await findExecutable("latexmk")) !== undefined;
-    engine = await deps.toolchain.pickEngine({ texLiveInstalled, tectonic: tectonicAsset(process.platform, process.arch) });
-    if (!engine) { return { status: "toolchain-missing", reason: "declined" }; }
-    await storeEngine(deps, project.folder, engine);
+  const engine = project.settings.engine ?? "pdflatex";
+  const context = { folder: project.folder, engine };
+  const found = await deps.tex.resolve(engine);
+  if (found !== "missing") { return found; }
+  await deps.logger.log("WARN", MODULE, "No TeX installation found; asking which to install", context);
+  const kind = await deps.prompt.chooseInstall();
+  if (!kind) {
+    await deps.logger.log("INFO", MODULE, "The user declined the TeX install", context);
+    return { status: "toolchain-missing", reason: "declined" };
   }
-  if (engine === "tectonic") { return tectonicToolchain(deps.storageDir, deps.toolchain, deps.logger); }
-  const latexmk = await findExecutable("latexmk");
-  if (latexmk) { return { engine, executable: latexmk }; }
-  await deps.logger.log("WARN", MODULE, "latexmk is not on PATH", { folder: project.folder, engine });
-  if (!(await deps.toolchain.offerTectonic(engine))) { return { status: "toolchain-missing", reason: "tex-live-missing" }; }
-  await storeEngine(deps, project.folder, "tectonic");
-  return tectonicToolchain(deps.storageDir, deps.toolchain, deps.logger);
+  const failed = await install(deps, kind, context);
+  if (failed) { return failed; }
+  const installed = await deps.tex.resolve(engine);
+  if (installed !== "missing") { return installed; }
+  await deps.logger.log("WARN", MODULE, "TeX is still missing after the install", { ...context, kind });
+  return { status: "toolchain-missing", reason: "install-failed", message: `The ${kind} install finished but no TeX was found` };
 }

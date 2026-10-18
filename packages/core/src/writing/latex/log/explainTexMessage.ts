@@ -31,20 +31,16 @@ function lastCommand(context: string | undefined): string | undefined {
 
 function unknownCommandHint(command: string | undefined, engine: LatexEngine): string {
   if (!command || !LUA_ONLY.test(command) || engine === "lualatex") { return SPELLING_HINT; }
-  return engine === "tectonic"
-    ? `${command} needs LuaLaTeX. Tectonic runs only XeLaTeX; choose LuaLaTeX, which uses TeX Live.`
-    : `${command} needs LuaLaTeX. Switch the compiler to LuaLaTeX.`;
+  return `${command} needs LuaLaTeX. Switch the compiler to LuaLaTeX.`;
 }
 
-function missingFile(name: string, engine: LatexEngine): Explanation {
+function missingFile(name: string): Explanation {
   const kind = /\.sty$/.test(name) ? "Package" : /\.cls$/.test(name) ? "Document class" : undefined;
   if (!kind) { return { message: `File "${name}" not found.`, hint: "Paths are relative to the folder of the main file." }; }
   const pkg = name.replace(/\.(?:sty|cls)$/, "");
   return {
     message: `${kind} "${pkg}" is not installed.`,
-    hint: engine === "tectonic"
-      ? `Tectonic's package bundle has no ${name}. Check the name, or switch the compiler to TeX Live and run \`tlmgr install ${pkg}\`.`
-      : `Install it with \`tlmgr install ${pkg}\`. The TeX Live package name is usually the file name.`,
+    hint: `Install it with \`tlmgr install ${pkg}\`. The TeX Live package name is usually the file name.`,
   };
 }
 
@@ -53,8 +49,8 @@ const ERROR_RULES: Rule[] = [
     const command = lastCommand(m.context);
     return { message: command ? `Unknown command ${command}.` : "Unknown command.", hint: unknownCommandHint(command, engine) };
   }],
-  [/^File [`'](.+?)' not found/, (match, _, engine) => missingFile(match[1]!, engine)],
-  [/^I can't find file [`'](.+?)'/, (match, _, engine) => missingFile(match[1]!, engine)],
+  [/^File [`'](.+?)' not found/, (match) => missingFile(match[1]!)],
+  [/^I can't find file [`'](.+?)'/, (match) => missingFile(match[1]!)],
   [/^Environment (\S+) undefined/, (match) => ({ message: `Unknown environment "${match[1]}".`, hint: SPELLING_HINT })],
   [/^Missing \$ inserted/, () => ({
     message: "A math symbol is outside math mode.",

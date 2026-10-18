@@ -1,7 +1,7 @@
 // Mounts the LaTeX setup card: shows the helper's state, the one next action, and keeps looking while the helper is missing.
-import type { ILogger } from "@labshelf/core";
+import type { ILogger, TexInstallKind } from "@labshelf/core";
 import { confirmDialog, el, statusLine } from "@labshelf/core/dom";
-import type { HelperProgressListener, ILatexHelper, TexInstallKind } from "@labshelf/core/helper";
+import type { HelperProgressListener, ILatexHelper } from "@labshelf/core/helper";
 import { MACOS_GUIDE_URL, helperDownloadUrl } from "./helperLinks";
 import { createSetupProgress } from "./setupProgress";
 import { startPolling, type Polling } from "./setupPolling";

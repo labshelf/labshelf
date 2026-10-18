@@ -6,7 +6,7 @@ import * as vscode from "vscode";
 import { owningProject, type ReadyProject } from "../../mainDocument.js";
 import type { WritingHost, WritingProjects } from "../../session/index.js";
 import { autoCompileGate } from "../../build/options/index.js";
-import { projectBuildDeps } from "../../build/node/index.js";
+import { projectBuildDeps, type ProjectBuildDepsSource } from "../../build/node/index.js";
 import { TypstBuilds, type TypstBuildsDeps } from "./typstBuilds.js";
 import { TypstCompilerHost } from "./typstCompilerHost.js";
 
@@ -17,6 +17,7 @@ const SAVE_DEBOUNCE_MS = 300;
 interface TypstBuildRegistration extends Omit<TypstBuildsDeps, "queue" | "buildDeps"> {
   context: vscode.ExtensionContext;
   host: WritingHost;
+  tex: ProjectBuildDepsSource["tex"];
   projects: WritingProjects;
   hasPreview: (projectFolder: string) => boolean;
 }
@@ -30,7 +31,7 @@ function typstProjectOf(projects: WritingProjects, file: vscode.Uri): ReadyProje
 /** Registers the listeners and returns the builds, which the Build Project command also uses. */
 export function registerTypstBuild(deps: TypstBuildRegistration): TypstBuilds {
   const storageDir = deps.context.globalStorageUri.fsPath;
-  const buildDeps = projectBuildDeps({ host: deps.host, projects: deps.projects, storageDir, typst: new TypstCompilerHost(storageDir) });
+  const buildDeps = projectBuildDeps({ host: deps.host, projects: deps.projects, tex: deps.tex, typst: new TypstCompilerHost(storageDir) });
   const builds = new TypstBuilds({ ...deps, buildDeps, queue: new ProjectBuildQueue(buildDeps) });
   const timers = new Map<string, NodeJS.Timeout>();
   let disposed = false;

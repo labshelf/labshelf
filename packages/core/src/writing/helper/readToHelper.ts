@@ -2,9 +2,10 @@
 // CONTRACT: documents/contracts/helper.md#page-to-helper
 
 import {
-  HELPER_ENGINES, MAX_SYNC_TOTAL_BYTES, TEX_INSTALL_KINDS,
-  type SyncedFile, type ToHelperMessage,
+  MAX_SYNC_TOTAL_BYTES, type SyncedFile, type ToHelperMessage,
 } from "./helperMessages.js";
+import { TEX_INSTALL_KINDS } from "../latex/index.js";
+import { LATEX_ENGINES } from "../project/index.js";
 import {
   FieldError, isBody, isNonNegativeInteger, readArray, readChoice, readChunk, readNumber, readPath, readPaths,
   readProjectId, readSha256, readText, type Body,
@@ -36,7 +37,7 @@ const READERS: Readers = {
   delete: (body, envelope) => ({ ...envelope, type: "delete", projectId: readProjectId(body), paths: readPaths(body, "paths") }),
   build: (body, envelope) => ({
     ...envelope, type: "build", projectId: readProjectId(body), main: readPath(body, "main"),
-    engine: readChoice(body, "engine", HELPER_ENGINES),
+    engine: readChoice(body, "engine", LATEX_ENGINES),
   }),
   cancel: (body, envelope) => ({ ...envelope, type: "cancel", projectId: readProjectId(body) }),
   installTex: (body, envelope) => ({ ...envelope, type: "installTex", kind: readChoice(body, "kind", TEX_INSTALL_KINDS) }),

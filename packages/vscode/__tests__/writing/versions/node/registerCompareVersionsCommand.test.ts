@@ -52,7 +52,7 @@ function setup(entries = [readyEntry("/p/tex")]) {
   const host = fakeHost();
   registerCompareVersionsCommand({
     context: { subscriptions: [], extensionUri: vscode.Uri.file("/ext"), globalStorageUri: vscode.Uri.file("/storage") } as never,
-    host, projects: fakeProjects(entries), builders, pdfjs: {} as never, reader: { locatePdfjs: jest.fn(), isMac: false },
+    host, tex: {} as never, projects: fakeProjects(entries), builders, pdfjs: {} as never, reader: { locatePdfjs: jest.fn(), isMac: false },
   });
   return {
     builders, order, host, run: commandHandler(COMPARE_VERSIONS_COMMAND),

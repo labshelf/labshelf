@@ -1,8 +1,8 @@
-// Builds one root of a writing project with its format's compiler, preparing the LaTeX toolchain first.
+// Builds one root of a writing project with its format's compiler, preparing TeX first and installing the LaTeX packages it misses.
 import * as path from "node:path";
 
 import type { ILogger } from "../../../ports/index.js";
-import type { LatexBuildResult } from "../../latex/build/index.js";
+import { classifyTexProblems, type LatexBuildResult } from "../../latex/build/index.js";
 import { runLatexBuild } from "../../latex/build/node/index.js";
 import type { ProjectEntry } from "../../project/index.js";
 import { rootBuildFolder } from "../../project/roots/index.js";
@@ -13,6 +13,7 @@ import { runTypstBuild, type TypstPackageStore } from "../../typst/node/index.js
 import { updateProjectValues } from "../../values/node/index.js";
 import type { ProjectBuildResult } from "../projectBuildResult.js";
 import { typstPreviewPdf } from "../typstPreviewPdf.js";
+import { compileInstallingPackages } from "./compileInstallingPackages.js";
 import { ensureToolchain, type ToolchainDeps } from "./ensureToolchain.js";
 
 const MODULE = "writing/build";
@@ -20,7 +21,7 @@ const MODULE = "writing/build";
 type ReadyProject = Extract<ProjectEntry, { kind: "ready" }>;
 
 export interface ProjectBuildDeps extends ToolchainDeps {
-  projects: Pick<ProjectDataPort, "updateProjectSettings" | "projectBuildDir">;
+  projects: Pick<ProjectDataPort, "projectBuildDir">;
   typst: { get(logger: ILogger): Promise<{ session: TypstSession; packages: TypstPackageStore }> };
 }
 
@@ -55,12 +56,17 @@ async function buildLatex(project: ReadyProject, root: string, deps: ProjectBuil
   await generateValues(project, deps.logger);
   const buildDir = deps.projects.projectBuildDir(project.settings.id);
   await clearFlatBuildFiles(buildDir, root, deps.logger);
-  const result: LatexBuildResult = await runLatexBuild({
-    toolchain, projectFolder: project.folder, main: root, outDir: path.join(buildDir, rootBuildFolder(root)),
-    signal: options.signal ?? new AbortController().signal, logger: deps.logger,
-    ...(options.includeOnly !== undefined && { includeOnly: options.includeOnly }), ...(options.force && { force: true }),
+  const outDir = path.join(buildDir, rootBuildFolder(root));
+  return compileInstallingPackages<LatexBuildResult>({
+    compile: ({ force }) => runLatexBuild({
+      toolchain, projectFolder: project.folder, main: root, outDir,
+      signal: options.signal ?? new AbortController().signal, logger: deps.logger,
+      ...(options.includeOnly !== undefined && { includeOnly: options.includeOnly }), ...((force || options.force) && { force: true }),
+    }),
+    missingFile: (result) => ("problems" in result ? classifyTexProblems(result.problems).missingFile : undefined),
+    tex: { installMissing: (fileName) => deps.prompt.progress(`Installing the LaTeX package for ${fileName}`, () => deps.tex.installMissing(fileName)) },
+    logger: deps.logger,
   });
-  return result;
 }
 
 async function buildTypst(project: ReadyProject, root: string, deps: ProjectBuildDeps, options: ProjectBuildOptions): Promise<TypstBuildResult> {

@@ -6,7 +6,7 @@ import { chooseLibraryRoot, offerLibraryMove, runMoveLibraryCommand } from "../.
 import { registerNodeWriting } from "../../writing/node/index.js";
 import type { ExtensionPlatform } from "../extensionPlatform.js";
 import { createNodeAdapters } from "./nodeAdapters.js";
-import { registerBridgeCommand } from "./registerBridgeCommand.js";
+import { registerNativeHostCommands } from "./nativeHost/index.js";
 
 export function createDesktopPlatform(context: vscode.ExtensionContext): ExtensionPlatform {
   const adapters = createNodeAdapters(context);
@@ -17,7 +17,7 @@ export function createDesktopPlatform(context: vscode.ExtensionContext): Extensi
     afterSavedLibraryOpened: offerLibraryMove,
     registerPlatformCommands: (extensionContext, controller, projects) => {
       extensionContext.subscriptions.push(vscode.commands.registerCommand("labshelf.moveLibrary", () => runMoveLibraryCommand(controller)));
-      registerBridgeCommand(extensionContext, adapters);
+      registerNativeHostCommands(extensionContext, adapters);
       registerCollaboration(extensionContext, controller, projects);
     },
   };

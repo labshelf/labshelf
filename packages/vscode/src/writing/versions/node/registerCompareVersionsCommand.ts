@@ -8,6 +8,7 @@ import { executeSafely } from "../../../commands/index.js";
 import type { ReaderPanelDeps } from "../../../pdf-viewer/index.js";
 import { activeProject } from "../../build/index.js";
 import { ensureToolchain } from "../../build/node/index.js";
+import type { ToolchainDeps } from "../../build/toolchain/index.js";
 import type { ReadyProject } from "../../mainDocument.js";
 import type { WritingHost, WritingProjects } from "../../session/index.js";
 import type { ProjectBuilders } from "../../build/index.js";
@@ -20,6 +21,7 @@ export const COMPARE_VERSIONS_COMMAND = "labshelf.writing.compareVersions";
 interface CompareVersionsDeps {
   context: vscode.ExtensionContext;
   host: WritingHost;
+  tex: ToolchainDeps["tex"];
   projects: Pick<WritingProjects, "data" | "list" | "paths" | "reload">;
   builders: ProjectBuilders;
   pdfjs: PdfjsLoader;
@@ -51,7 +53,7 @@ async function highlight(deps: CompareVersionsDeps, panels: ComparePanels, proje
 }
 
 async function markedUp(deps: CompareVersionsDeps, panels: ComparePanels, project: ReadyProject, sides: Sides, logger: ILogger): Promise<void> {
-  const toolchain = await ensureToolchain({ storageDir: deps.context.globalStorageUri.fsPath, host: deps.host, projects: deps.projects }, project);
+  const toolchain = await ensureToolchain({ tex: deps.tex, host: deps.host }, project);
   if (!toolchain) { return; }
   const main = project.main;
   if (!main) {

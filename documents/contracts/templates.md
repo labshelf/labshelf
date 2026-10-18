@@ -40,7 +40,7 @@ authors: [Jane Doe]
 | `description` | string | required; at most 500 characters |
 | `category` | `article` \| `thesis` \| `poster` \| `slides` \| `cv` \| `other` | required |
 | `format` | `latex` \| `typst` | required |
-| `engine` | `tectonic` \| `pdflatex` \| `lualatex` \| `xelatex` \| `typst` | required; `typst` exactly when `format` is `typst` |
+| `engine` | `pdflatex` \| `lualatex` \| `xelatex` \| `typst` | required; `typst` exactly when `format` is `typst`; a LaTeX project without an engine builds with `pdflatex` ([library format](library-format.md#labshelfyaml)) |
 | `main` | string | required; a path under `files/` that follows [Paths](#paths), ending in `.tex` for LaTeX and `.typ` for Typst |
 | `compiler` | string | Typst only, optional; the lowest Typst version that builds the template, as `<major>.<minor>.<patch>` |
 | `license` | string | required; an SPDX license identifier or expression (`MIT`, `CC-BY-4.0`, `MIT OR Apache-2.0`); `NOASSERTION` and `NONE` are refused |

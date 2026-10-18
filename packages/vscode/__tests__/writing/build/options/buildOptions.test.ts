@@ -51,8 +51,8 @@ describe("setEngine", () => {
     save.mockResolvedValue(true);
     const deps = { host: fakeHost(), projects: fakeProjects() as never };
     const project = latex();
-    await expect(setEngine(deps, project, "tectonic")).resolves.toBe(true);
-    expect(save).toHaveBeenCalledWith(deps, project, "tectonic");
+    await expect(setEngine(deps, project, "xelatex")).resolves.toBe(true);
+    expect(save).toHaveBeenCalledWith(deps, project, "xelatex");
   });
 
   it("logs the project and engine when the engine could not be saved", async () => {

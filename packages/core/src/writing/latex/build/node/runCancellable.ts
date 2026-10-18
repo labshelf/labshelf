@@ -14,6 +14,8 @@ export interface CancellableOptions {
   shell?: boolean;
   /** Receives each chunk of stdout and stderr as it arrives. */
   onOutput?: (chunk: string) => void;
+  /** The child's environment; the parent's when absent. */
+  env?: NodeJS.ProcessEnv;
 }
 
 export class BuildCancelled extends Error {
@@ -43,7 +45,7 @@ export function runCancellable(
   if (signal.aborted) { return Promise.reject(new BuildCancelled()); }
   return new Promise((resolve, reject) => {
     const child = spawn(executable, args, {
-      cwd, shell: options.shell ?? false, detached: process.platform !== "win32", windowsHide: true, stdio: ["ignore", "pipe", "pipe"],
+      cwd, env: options.env ?? process.env, shell: options.shell ?? false, detached: process.platform !== "win32", windowsHide: true, stdio: ["ignore", "pipe", "pipe"],
     });
     let output = "";
     const collect = (chunk: Buffer): void => {

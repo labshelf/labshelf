@@ -33,7 +33,7 @@ export class IncludeOnlyState {
     if (on) { this.on.add(projectFolder); } else { this.on.delete(projectFolder); }
   }
 
-  /** The preview's toggle: present only when the root's sources `\include` the focused file; Tectonic cannot build it. */
+  /** The preview's toggle: present only when the root's sources `\include` the focused file. */
   async option(project: ReadyProject, root: string, focusedFile: string): Promise<BuildOptions["includeOnly"]> {
     const written = await this.includedAs(project, root, focusedFile);
     return written === undefined ? undefined : { file: withExtension(written).replace(/^\.\//, ""), on: this.isOn(project.folder) };
@@ -46,7 +46,7 @@ export class IncludeOnlyState {
 
   // The path exactly as written in the `\include`, because `\includeonly` matches it literally.
   private async includedAs(project: ReadyProject, root: string, focusedFile: string): Promise<string | undefined> {
-    if (project.settings.format !== "latex" || project.settings.engine === "tectonic") { return undefined; }
+    if (project.settings.format !== "latex") { return undefined; }
     const tree = await collectProjectSources(root, this.deps.readerFor(project.folder));
     for (const { facts } of tree.files) {
       for (const include of facts.includes) {

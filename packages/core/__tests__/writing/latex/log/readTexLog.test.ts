@@ -13,12 +13,12 @@ describe("TeX log reading", () => {
 
   it("ignores parentheses that are not files and returns to the outer file after a nested one closes", () => {
     const log = ["(./main.tex (HO) (./chapters/a.tex", ")", "! Undefined control sequence.", "l.9 \\oops", ""].join("\n");
-    expect(parseTexLog(log, "tectonic")[0]).toMatchObject({ file: "main.tex", line: 9, message: "Unknown command \\oops." });
+    expect(parseTexLog(log, "xelatex")[0]).toMatchObject({ file: "main.tex", line: 9, message: "Unknown command \\oops." });
   });
 
   it("does not let parentheses inside an overfull box's text move the file stack", () => {
     const log = ["(./main.tex", "Overfull \\hbox (1.0pt too wide) in paragraph at lines 3--4", "[]\\OT1/cmr/m/n/10 text (open", "", "! Undefined control sequence.", "l.6 \\x", ""].join("\n");
-    expect(parseTexLog(log, "tectonic").map((p) => p.file)).toEqual(["main.tex", "main.tex"]);
+    expect(parseTexLog(log, "xelatex").map((p) => p.file)).toEqual(["main.tex", "main.tex"]);
   });
 
   it("keeps TeX's words for an error it has no explanation for", () => {
@@ -28,9 +28,9 @@ describe("TeX log reading", () => {
     }]);
   });
 
-  it("points Tectonic users to LuaLaTeX on TeX Live for \\directlua", () => {
+  it("tells a pdfLaTeX user that \\directlua needs LuaLaTeX", () => {
     const log = ["(main.tex", "! Undefined control sequence.", "l.5 \\directlua", "              {tex.print(1)}", ""].join("\n");
-    expect(parseTexLog(log, "tectonic")[0]!.hint).toContain("Tectonic runs only XeLaTeX");
+    expect(parseTexLog(log, "pdflatex")[0]!.hint).toBe("\\directlua needs LuaLaTeX. Switch the compiler to LuaLaTeX.");
   });
 
   it("keeps the emergency stop when it is the only error", () => {

@@ -1,18 +1,23 @@
-// Declares what the toolchain setup needs from the extension and writes the chosen engine to labshelf.yaml.
+// Declares what the toolchain setup and the engine save need from the extension, and writes the chosen engine to labshelf.yaml.
 import type { LatexEngine } from "@labshelf/core";
+import type { ToolchainDeps as CoreToolchainDeps } from "@labshelf/core/node";
 import { executeSafely } from "../../../commands/index.js";
 import type { ReadyProject } from "../../mainDocument.js";
 import type { WritingHost, WritingProjects } from "../../session/index.js";
 
 export interface ToolchainDeps {
-  /** The extension's global storage folder; Tectonic is installed under it. */
-  storageDir: string;
-  host: WritingHost;
+  /** The per-user TeX every LabShelf app shares. */
+  tex: CoreToolchainDeps["tex"];
+  host: Pick<WritingHost, "current">;
+}
+
+export interface SaveEngineDeps {
+  host: Pick<WritingHost, "current">;
   projects: Pick<WritingProjects, "data" | "reload">;
 }
 
 /** Stores the engine in the project's labshelf.yaml and reloads the project list; false when it could not be saved. */
-export async function saveEngine(deps: Pick<ToolchainDeps, "host" | "projects">, project: ReadyProject, engine: LatexEngine): Promise<boolean> {
+export async function saveEngine(deps: SaveEngineDeps, project: ReadyProject, engine: LatexEngine): Promise<boolean> {
   const session = deps.host.current();
   if (!session) { return false; }
   let saved = false;

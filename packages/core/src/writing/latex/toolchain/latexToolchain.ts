@@ -3,12 +3,13 @@ import type { LatexEngine } from "../../project/index.js";
 
 export interface LatexToolchain {
   engine: LatexEngine;
-  /** The Tectonic binary, or latexmk for the TeX Live engines. */
+  /** The latexmk program. */
   executable: string;
+  /** The folder of the TeX programs, put first on the build's PATH because latexmk finds the engine by name. */
+  binDir?: string;
 }
 
 const ENGINE_LABELS: Readonly<Record<LatexEngine, string>> = {
-  tectonic: "XeLaTeX (Tectonic)",
   xelatex: "XeLaTeX",
   pdflatex: "pdfLaTeX",
   lualatex: "LuaLaTeX",

@@ -51,7 +51,7 @@ async function latexProject(extra: Partial<ProjectSettings> = {}): Promise<{ fs:
   await write(fs, folder, ".labshelf/versions/v2/version.json", JSON.stringify({ name: "Revised", created: "2026-05-01T10:00:00Z" }));
   await write(fs, folder, "main.log", "This is pdfTeX\n");
   await fs.writeFile(PDF, readFileSync(PDF_ON_DISK));
-  const settings: ProjectSettings = { id: "paper", format: "latex", main: "main.tex", engine: "tectonic", bibliography: "labshelf.bib", ...extra };
+  const settings: ProjectSettings = { id: "paper", format: "latex", main: "main.tex", engine: "xelatex", bibliography: "labshelf.bib", ...extra };
   return { fs, folder, settings };
 }
 
@@ -68,7 +68,7 @@ describe("readProjectDetail", () => {
     expect(detail).toEqual({
       id: "paper",
       location: folder,
-      engine: "tectonic",
+      engine: "xelatex",
       pages: 10,
       limits: { countUpTo: "references", pages: { counted: 10, limit: 8 }, words: { counted: expect.any(Number), limit: 12 } },
       build,

@@ -1,4 +1,4 @@
-// Tests the compiler pick: it lists the four engines, writes a different choice and ignores the current one and Escape.
+// Tests the compiler pick: it lists the three engines, writes a different choice and ignores the current one and Escape.
 import * as vscode from "vscode";
 
 import { registerPickCompiler } from "../../../../src/writing/build/toolchain";
@@ -6,7 +6,7 @@ import { commandHandler, fakeHost, fakeProjects, openInEditor, readyEntry } from
 
 const quickPick = vscode.window.showQuickPick as jest.Mock;
 
-function setup(settings: { format: "latex" | "typst"; engine?: "tectonic" | "lualatex" }) {
+function setup(settings: { format: "latex" | "typst"; engine?: "pdflatex" | "lualatex" }) {
   const projects = fakeProjects([readyEntry("/code/repo", { settings: { id: "repo", ...settings } })]);
   const host = fakeHost();
   registerPickCompiler({ context: { subscriptions: [] } as never, host, projects });
@@ -19,18 +19,18 @@ beforeEach(() => {
 });
 
 describe("labshelf.writing.pickCompiler", () => {
-  it("lists the four engines and marks the current one", async () => {
+  it("lists the three engines and marks the current one", async () => {
     quickPick.mockResolvedValueOnce(undefined);
-    await setup({ format: "latex", engine: "tectonic" }).run();
+    await setup({ format: "latex", engine: "pdflatex" }).run();
     const items = quickPick.mock.calls[0][0];
-    expect(items.map((item: { label: string }) => item.label)).toEqual(["XeLaTeX (Tectonic)", "XeLaTeX", "pdfLaTeX", "LuaLaTeX"]);
-    expect(items[0]).toMatchObject({ description: "current", detail: "Runs XeLaTeX and downloads on first use." });
-    expect(items[1]).toMatchObject({ description: "", detail: "Needs TeX Live (latexmk)." });
+    expect(items.map((item: { label: string }) => item.label)).toEqual(["pdfLaTeX", "XeLaTeX", "LuaLaTeX"]);
+    expect(items[0]).toMatchObject({ description: "current" });
+    expect(items[1]).toMatchObject({ description: "" });
   });
 
   it("writes the picked engine to labshelf.yaml and reloads the projects", async () => {
     quickPick.mockImplementationOnce(async (items) => items.find((item: { engine: string }) => item.engine === "lualatex"));
-    const { projects, update, run } = setup({ format: "latex", engine: "tectonic" });
+    const { projects, update, run } = setup({ format: "latex", engine: "pdflatex" });
     await run();
     expect(update).toHaveBeenCalledWith("/code/repo", { engine: "lualatex" });
     expect(projects.reload).toHaveBeenCalled();
@@ -40,11 +40,11 @@ describe("labshelf.writing.pickCompiler", () => {
     quickPick.mockImplementationOnce(async (items) => items[0]);
     const { update, run } = setup({ format: "latex" });
     await run();
-    expect(update).toHaveBeenCalledWith("/code/repo", { engine: "tectonic" });
+    expect(update).toHaveBeenCalledWith("/code/repo", { engine: "pdflatex" });
   });
 
   it("does nothing when the current engine is picked or the pick is dismissed", async () => {
-    const { update, run } = setup({ format: "latex", engine: "tectonic" });
+    const { update, run } = setup({ format: "latex", engine: "pdflatex" });
     quickPick.mockImplementationOnce(async (items) => items[0]);
     await run();
     quickPick.mockResolvedValueOnce(undefined);

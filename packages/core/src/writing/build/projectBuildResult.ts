@@ -6,7 +6,7 @@ export type ProjectBuildResult =
   | LatexBuildResult
   | TypstBuildResult
   | { status: "no-main" }
-  | { status: "toolchain-missing"; reason: "declined" | "tectonic-unsupported" | "tex-live-missing" }
-  | { status: "toolchain-missing"; reason: "download-failed"; message: string };
+  | { status: "toolchain-missing"; reason: "declined" }
+  | { status: "toolchain-missing"; reason: "install-failed"; message: string };
 
 export type ToolchainMissing = Extract<ProjectBuildResult, { status: "toolchain-missing" }>;

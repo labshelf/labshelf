@@ -50,11 +50,11 @@ describe("HelperLatexBuilds", () => {
     expect(deps.showHelperSetup).not.toHaveBeenCalled();
   });
 
-  it("builds Tectonic projects with XeLaTeX, the engine Tectonic runs", async () => {
+  it("builds with the project's engine", async () => {
     const helper = fakeHelper(READY);
-    const { builds } = await setup(helper, readyEntry("/lib/paper", { settings: { id: "paper", format: "latex", engine: "tectonic" } }));
+    const { builds } = await setup(helper, readyEntry("/lib/paper", { settings: { id: "paper", format: "latex", engine: "lualatex" } }));
     await builds.request("/lib/paper", "main.tex", "command");
-    expect(helper.compile.mock.calls[0]![0].engine).toBe("xelatex");
+    expect(helper.compile.mock.calls[0]![0].engine).toBe("lualatex");
   });
 
   it("builds projects without an engine with pdfLaTeX", async () => {

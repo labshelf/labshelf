@@ -26,7 +26,7 @@ describe('preview webview messages', () => {
   });
 
   it('setEngine accepts the known engines only', () => {
-    for (const engine of ['tectonic', 'xelatex', 'pdflatex', 'lualatex']) { ok({ command: 'setEngine', engine }); }
+    for (const engine of ['xelatex', 'pdflatex', 'lualatex']) { ok({ command: 'setEngine', engine }); }
     bad({ command: 'setEngine', engine: 'word' });
     bad({ command: 'setEngine' });
   });

@@ -10,7 +10,7 @@ export const row: ProjectRow = {
 };
 
 export const detail: ProjectDetail = {
-  id: row.id, location: "/lib/projects/attn", engine: "tectonic", pages: 8,
+  id: row.id, location: "/lib/projects/attn", engine: "xelatex", pages: 8,
   limits: { countUpTo: "references", pages: { counted: 8, limit: 9 }, words: { counted: 5120 } },
   build: { state: "warnings", at: NOW - HOUR, warnings: 2, errors: 0, first: { message: "Overfull hbox", file: "main.tex", line: 12 } },
   log: "main.log",

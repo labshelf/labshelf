@@ -17,10 +17,10 @@ async function waitForRuns(runs: string, count: number): Promise<void> {
 
 posixOnly("ProjectBuildQueue", () => {
   it("cancels the running build and runs the latest waiting request once", async () => {
-    const fixture = await buildFixture({ tectonicInstalled: true });
+    const fixture = await buildFixture();
     await fs.writeFile(fixture.marker, "");
     const queue = new ProjectBuildQueue(fixture.deps);
-    const project = fixture.project({ engine: "tectonic" });
+    const project = fixture.project({ engine: "xelatex" });
     const first = queue.request(project);
     await waitForRuns(fixture.runs, 1);
     const second = queue.request(project);
@@ -32,7 +32,7 @@ posixOnly("ProjectBuildQueue", () => {
   });
 
   it("keeps serving requests after a build throws", async () => {
-    const fixture = await buildFixture({ tectonicInstalled: true });
+    const fixture = await buildFixture();
     let calls = 0;
     const projects = {
       ...fixture.deps.projects,
@@ -43,7 +43,7 @@ posixOnly("ProjectBuildQueue", () => {
       },
     };
     const queue = new ProjectBuildQueue({ ...fixture.deps, projects });
-    const project = fixture.project({ engine: "tectonic" });
+    const project = fixture.project({ engine: "xelatex" });
     await expect(queue.request(project)).rejects.toThrow("no build dir");
     expect((await queue.request(project)).status).toBe("succeeded");
   });

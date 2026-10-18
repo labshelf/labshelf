@@ -184,6 +184,12 @@
         "enablement": "!isWeb"
       },
       {
+        "command": "labshelf.buildLatexForBrowser",
+        "title": "Build LaTeX for the Browser",
+        "category": "LabShelf",
+        "enablement": "!isWeb"
+      },
+      {
         "command": "labshelf.collab.share",
         "title": "Share Project…",
         "category": "LabShelf",
@@ -817,6 +823,10 @@
         },
         {
           "command": "labshelf.connectBrowser",
+          "when": "!isWeb"
+        },
+        {
+          "command": "labshelf.buildLatexForBrowser",
           "when": "!isWeb"
         },
         {

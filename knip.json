@@ -35,6 +35,7 @@
     "packages/vscode": {
       "entry": [
         "src/extension.ts",
+        "src/helperHost.ts",
         "src/reader/main.ts",
         "src/libraryWebview/main.ts",
         "src/writing/templates/webview/main.ts",
@@ -93,6 +94,7 @@
       "entry": [
         "src/main.ts",
         "src/helper/main.ts",
+        "src/helperHost.ts",
         "src/preview/thumbnailWorker.ts",
         "__tests__/**/*.ts"
       ],

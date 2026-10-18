@@ -8,6 +8,7 @@ import { saveProjectAsTemplate, type SaveTemplateDetails } from "@labshelf/core/
 import { executeSafely } from "../../../commands/index.js";
 import { activeProject } from "../../build/index.js";
 import { ensureToolchain } from "../../build/node/index.js";
+import type { ToolchainDeps } from "../../build/toolchain/index.js";
 import type { ReadyProject } from "../../mainDocument.js";
 import type { WritingHost, WritingProjects } from "../../session/index.js";
 
@@ -16,6 +17,7 @@ const SAVE_TEMPLATE_COMMAND = "labshelf.templates.saveProject";
 interface SaveProjectDeps {
   context: vscode.ExtensionContext;
   host: WritingHost;
+  tex: ToolchainDeps["tex"];
   projects: Pick<WritingProjects, "data" | "list" | "paths" | "reload">;
   /** Called after a template was saved, so the gallery lists it. */
   onSaved: () => void;
@@ -63,7 +65,7 @@ async function saveProject(deps: SaveProjectDeps, entry: ProjectEntry | undefine
     if (!details) { return; }
     const needsEngine = project.settings.format === "latex" && !project.settings.engine;
     const toolchain = needsEngine
-      ? await ensureToolchain({ storageDir: deps.context.globalStorageUri.fsPath, host: deps.host, projects: deps.projects }, project)
+      ? await ensureToolchain({ tex: deps.tex, host: deps.host }, project)
       : undefined;
     if (needsEngine && !toolchain) { return; }
     const manifest = await saveProjectAsTemplate(

@@ -1,7 +1,9 @@
 // Registers the template gallery commands and wires the gallery to the library, the engine probe and project creation.
 import * as vscode from "vscode";
 
-import type { FetchLike, ILogger, TemplateFile, TemplateManifest } from "@labshelf/core";
+import type { FetchLike, TemplateFile, TemplateManifest } from "@labshelf/core";
+import { sessionLogger } from "../../build/node/index.js";
+import type { ToolchainDeps } from "../../build/toolchain/index.js";
 import { executeSafely } from "../../../commands/index.js";
 import type { WritingHost, WritingProjects } from "../../session/index.js";
 import { OPEN_PROJECT_COMMAND } from "../../session/index.js";
@@ -16,6 +18,7 @@ const OPEN_GALLERY_COMMAND = "labshelf.templates.open";
 interface TemplatesDeps {
   context: vscode.ExtensionContext;
   host: WritingHost;
+  tex: ToolchainDeps["tex"];
   projects: Pick<WritingProjects, "data" | "list" | "paths" | "reload">;
   builders: PublishBuilders;
 }
@@ -31,14 +34,6 @@ export function createProjectInstaller({ host, projects }: Pick<TemplatesDeps, "
   };
 }
 
-// The library can change while the gallery lives, so each entry goes to the logger of the library open at that moment.
-function libraryLogger(host: Pick<WritingHost, "current">): ILogger {
-  return {
-    log: async (...args) => { await host.current()?.logger.log(...args); },
-    error: async (...args) => { await host.current()?.logger.error(...args); },
-  };
-}
-
 export function registerTemplates(deps: TemplatesDeps): void {
   const { context, host } = deps;
   const version = context.extension.packageJSON.version as string;
@@ -50,11 +45,11 @@ export function registerTemplates(deps: TemplatesDeps): void {
   };
   const gallery = createTemplateGallery({
     context,
-    logger: libraryLogger(host),
+    logger: sessionLogger(host),
     sources: createTemplateSources(host, fetch),
-    engines: detectEngines,
+    engines: () => detectEngines(deps.tex),
     createProject: createProjectInstaller(deps),
-    publish: createPublishPorts({ storageDir: context.globalStorageUri.fsPath, host, projects: deps.projects, builders: deps.builders, fetch: publishFetch }),
+    publish: createPublishPorts({ tex: deps.tex, host, projects: deps.projects, builders: deps.builders, fetch: publishFetch }),
   });
   context.subscriptions.push(
     gallery,

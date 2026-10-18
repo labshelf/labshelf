@@ -63,7 +63,7 @@ describe("serializeProjectFile", () => {
   });
 
   it("round-trips a full settings object", () => {
-    const settings = { id: "a", format: "latex", main: "m.tex", engine: "tectonic", bibliography: "b.bib", typst: "0.13" } as const;
+    const settings = { id: "a", format: "latex", main: "m.tex", engine: "xelatex", bibliography: "b.bib", typst: "0.13" } as const;
     const parsed = parseProjectFile(serializeProjectFile(settings));
     expect(parsed.ok && parsed.settings).toEqual(settings);
   });

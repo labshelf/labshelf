@@ -1,22 +1,23 @@
 /** Declares the port an app implements to build LaTeX projects through LabShelf Helper. */
 // CONTRACT: documents/contracts/helper.md#version
 
-import type { LocatedProblem } from "../latex/index.js";
-import type { HelperBuildStatus, HelperEngine, HelperProgress, TexInstallKind, TexStatus } from "./helperMessages.js";
+import type { LocatedProblem, TexInstallKind } from "../latex/index.js";
+import type { LatexEngine } from "../project/index.js";
+import type { HelperBuildStatus, HelperHost, HelperProgress, TexStatus } from "./helperMessages.js";
 
 /** "update-helper" when the helper's protocol is lower than the page's, "update-extension" when it is higher. */
 export type HelperStatus =
   | { state: "not-installed" }
-  | { state: "update-helper"; protocol: number }
+  | { state: "update-helper"; protocol: number; host: HelperHost }
   | { state: "update-extension"; protocol: number }
-  | { state: "ready"; helperVersion: string; tex: TexStatus };
+  | { state: "ready"; helperVersion: string; tex: TexStatus; host: HelperHost };
 
 export interface HelperProjectFile { path: string; bytes: Uint8Array }
 
 export interface HelperProject {
   projectId: string;
   main: string;
-  engine: HelperEngine;
+  engine: LatexEngine;
   files: readonly HelperProjectFile[];
 }
 

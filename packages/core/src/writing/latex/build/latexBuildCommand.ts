@@ -18,15 +18,9 @@ export interface PartialBuild {
 
 /**
  * `mainFile` is the main file's name; the build runs in its folder, so \input paths resolve as the user wrote them.
- * `\includeonly` goes in through latexmk's pretex, so the other chapters keep the numbering of their `.aux` files; Tectonic has no pretex and ignores it.
+ * `\includeonly` goes in through latexmk's pretex, so the other chapters keep the numbering of their `.aux` files.
  */
 export function latexBuildCommand(toolchain: LatexToolchain, mainFile: string, outDir: string, partial: PartialBuild = {}): BuildCommand {
-  if (toolchain.engine === "tectonic") {
-    return {
-      executable: toolchain.executable,
-      args: ["-X", "compile", mainFile, "--outdir", outDir, "--synctex", "--keep-logs", "--keep-intermediates"],
-    };
-  }
   // TRAP: latexmk does not track the pretex, so a changed `\includeonly` rebuilds only when forced.
   const { includeOnly } = partial;
   const partialArgs = [

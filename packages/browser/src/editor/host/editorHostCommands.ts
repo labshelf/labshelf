@@ -1,7 +1,7 @@
 // Answers the host commands LabShelf's web build calls on the editor page: the library folder, LaTeX through the helper, its setup card.
-import type { ILogger } from "@labshelf/core";
+import { TEX_INSTALL_KINDS, type ILogger } from "@labshelf/core";
 import {
-  compileResultToWire, projectFromWire, TEX_INSTALL_KINDS, type HelperCompileResult, type HelperProgressListener, type ILatexHelper,
+  compileResultToWire, projectFromWire, type HelperCompileResult, type HelperProgressListener, type ILatexHelper,
 } from "@labshelf/core/helper";
 
 export const EDITOR_HOST_COMMANDS = {

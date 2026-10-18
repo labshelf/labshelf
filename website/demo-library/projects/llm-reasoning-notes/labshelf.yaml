@@ -1,7 +1,7 @@
 id: llm-reasoning-notes
 format: latex
 main: main.tex
-engine: tectonic
+engine: xelatex
 bibliography: labshelf.bib
 check:
   pages: 8

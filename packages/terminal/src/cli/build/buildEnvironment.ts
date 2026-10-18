@@ -1,12 +1,13 @@
 // Assembles what a build run needs from the terminal: the build queue with its dependencies, the source watcher and Ctrl-C.
+import * as os from "node:os";
 import * as path from "node:path";
 
 import { createProjectData } from "@labshelf/core";
-import { cacheDir, deviceLocalLayout, NodeLibraryFileSystem, ProjectBuildQueue } from "@labshelf/core/node";
+import { createSharedTexProvider, deviceLocalLayout, NodeLibraryFileSystem, ProjectBuildQueue } from "@labshelf/core/node";
 
 import type { AppContext } from "../../app/context.js";
 import type { ReadyProject } from "./findProject.js";
-import { terminalToolchainPrompt, type Ask } from "./toolchainPrompt.js";
+import { terminalTexSetupPrompt, type Ask } from "./toolchainPrompt.js";
 import { watchSources } from "./watchSources.js";
 import { withPrompt } from "../setup/index.js";
 
@@ -34,8 +35,8 @@ export function terminalBuildEnvironment(ctx: BuildContext, tty: { ask: Ask | un
   return {
     queue: new ProjectBuildQueue({
       logger: ctx.logger,
-      toolchain: terminalToolchainPrompt(tty.ask),
-      storageDir: path.join(cacheDir(), "toolchain"),
+      prompt: terminalTexSetupPrompt(tty.ask),
+      tex: createSharedTexProvider({ env: process.env, platform: process.platform, homeDir: os.homedir(), logger: ctx.logger, fetchImpl: fetch }),
       projects: data,
       typst: { get: rejectTypst },
     }),

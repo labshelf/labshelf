@@ -3,10 +3,11 @@
  * @jest-environment-options {"customExportConditions": ["node", "node-addons"]}
  */
 // The LaTeX setup card shows the helper's state with its one next action, polls while the helper is missing, and recovers from errors.
-import type { HelperProgress, HelperProgressListener, HelperStatus, ILatexHelper, TexInstallKind, TexStatus } from "@labshelf/core/helper";
+import type { TexInstallKind } from "@labshelf/core";
+import type { HelperHost, HelperProgress, HelperProgressListener, HelperStatus, ILatexHelper, TexStatus } from "@labshelf/core/helper";
 import { mountHelperSetupCard, type HelperSetupDeps } from "../../../src/helper/setup";
 
-const ready = (tex: TexStatus): HelperStatus => ({ state: "ready", helperVersion: "1.2.0", tex });
+const ready = (tex: TexStatus, host: HelperHost = "helper"): HelperStatus => ({ state: "ready", helperVersion: "1.2.0", tex, host });
 const ASSETS = "https://github.com/labshelf/labshelf/releases/latest/download/";
 
 interface FakeHelper extends ILatexHelper {
@@ -101,13 +102,47 @@ describe("setup card states", () => {
   });
 
   it("update-helper: names the installed version and offers the update download", async () => {
-    const { root, deps, card } = setup(fakeHelper({ state: "update-helper", protocol: 0 }), "mac");
+    const { root, deps, card } = setup(fakeHelper({ state: "update-helper", protocol: 0, host: "helper" }), "mac");
     await settle();
     expect(root.textContent).toContain("is older than this extension");
     button(root, "Download the update").click();
     expect(deps.openUrl).toHaveBeenCalledWith(`${ASSETS}labshelf-helper-macos.pkg`);
     card.dispose();
   });
+
+  it.each([
+    ["vscode", "LabShelf in VS Code is older than this extension. Update the LabShelf extension in VS Code and reload it."],
+    ["terminal", "The LabShelf terminal app is older than this extension. Run npm install -g @labshelf/terminal to update it."],
+  ] as const)("update-helper through %s: names that program and offers no download", async (host, text) => {
+    const { root, card } = setup(fakeHelper({ state: "update-helper", protocol: 0, host }), "mac");
+    await settle();
+    expect(root.textContent).toContain(text);
+    expect(buttons(root)).toEqual([]);
+    card.dispose();
+  });
+
+  it("not installed: offers VS Code and the terminal app before any download, with the OS-specific sentence", async () => {
+    const mac = setup(fakeHelper({ state: "not-installed" }), "mac");
+    await settle();
+    expect(mac.root.textContent).toContain("without installing an unsigned program.");
+    expect(mac.root.textContent).toContain("In VS Code, run LabShelf: Build LaTeX for the Browser from the Command Palette.");
+    expect([...mac.root.querySelectorAll("code")].map((c) => c.textContent)).toEqual(["labshelf helper install", "npm install -g @labshelf/terminal"]);
+    expect(mac.root.textContent).toContain("Come back here.");
+    mac.card.dispose();
+    const win = setup(fakeHelper({ state: "not-installed" }), "win");
+    await settle();
+    expect(win.root.textContent).toContain("without installing another program.");
+    expect(win.root.textContent).not.toContain("unsigned");
+    win.card.dispose();
+  });
+
+  it.each([["helper", ""], ["vscode", " · through VS Code"], ["terminal", " · through the terminal app"]] as const)(
+    "ready through %s: names the program only when it is not the helper", async (host, suffix) => {
+      const { root, card } = setup(fakeHelper(ready({ source: "texlive", year: 2026, complete: true }, host)));
+      await settle();
+      expect(root.querySelector(".ls-status-line, [aria-live=polite]")?.textContent).toBe(`Ready: TeX Live 2026${suffix}`);
+      card.dispose();
+    });
 
   it("update-extension: asks for a newer extension and offers Check again", async () => {
     const helper = fakeHelper({ state: "update-extension", protocol: 9 });
@@ -284,7 +319,7 @@ describe("setup card polling", () => {
   });
 
   it("does not poll in other states", async () => {
-    const helper = fakeHelper({ state: "update-helper", protocol: 0 });
+    const helper = fakeHelper({ state: "update-helper", protocol: 0, host: "helper" });
     const { card } = setup(helper);
     await settle();
     await jest.advanceTimersByTimeAsync(9000);

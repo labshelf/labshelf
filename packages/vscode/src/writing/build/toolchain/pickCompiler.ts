@@ -20,7 +20,6 @@ function enginePick(engine: LatexEngine, current: LatexEngine | undefined): Engi
   return {
     label: engineLabel(engine),
     description: engine === current ? "current" : "",
-    detail: engine === "tectonic" ? "Runs XeLaTeX and downloads on first use." : "Needs TeX Live (latexmk).",
     engine,
   };
 }

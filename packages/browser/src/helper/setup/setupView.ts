@@ -1,6 +1,8 @@
 // Describes each helper setup state as a status line and its controls; the card applies it and runs the actions.
 import { actionButton, el, settingRow, type StatusTone } from "@labshelf/core/dom";
-import type { HelperStatus, TexInstallKind, TexStatus } from "@labshelf/core/helper";
+import type { TexInstallKind } from "@labshelf/core";
+import type { HelperHost, HelperStatus, TexStatus } from "@labshelf/core/helper";
+import { desktopAlternatives, installSteps, LOOK_BACK_NOTE } from "./setupNotInstalled";
 
 export type SetupState =
   | { kind: "checking" }
@@ -40,18 +42,11 @@ const WHAT_IT_IS = "LabShelf Helper is a small program that runs on your compute
   + "LaTeX project to the helper, which compiles it with a TeX distribution on this computer and sends back the PDF. Your files "
   + "never leave this computer. Typst projects compile in the page and do not need it.";
 
-function installSteps(isMac: boolean): HTMLElement {
-  const steps = [
-    "Download LabShelf Helper and run the installer.",
-    isMac ? "Open it once. macOS asks you to confirm an app from the internet; the guide below shows how." : undefined,
-    "Come back here. This section notices the helper on its own and offers to install TeX if this computer has none.",
-  ];
-  return el("ol", { class: "setting-desc" }, ...steps.map((step) => step && el("li", { text: step })));
-}
-
-function notInstalled(isMac: boolean, actions: SetupActions): SetupView {
+function notInstalled(os: string, actions: SetupActions): SetupView {
+  const isMac = os === "mac";
   const controls: Node[] = [el("p", { class: "setting-desc", text: WHAT_IT_IS }), installSteps(isMac), download("Download LabShelf Helper", actions)];
   if (isMac) { controls.push(actionButton({ label: "How to open it on macOS", icon: "external", onClick: actions.openMacosGuide })); }
+  controls.push(...desktopAlternatives(os), el("p", { class: "setting-desc", text: LOOK_BACK_NOTE }));
   return { text: "LabShelf Helper is not installed on this computer.", tone: "idle", controls };
 }
 
@@ -63,22 +58,35 @@ function chooseTex(actions: SetupActions): SetupView {
   return { text: "Choose a TeX distribution to compile LaTeX.", tone: "idle", controls: rows };
 }
 
-function readyView(tex: TexStatus, actions: SetupActions): SetupView {
+const HOST_SUFFIX: Record<HelperHost, string> = { helper: "", vscode: " · through VS Code", terminal: " · through the terminal app" };
+
+function readyView(tex: TexStatus, host: HelperHost, actions: SetupActions): SetupView {
   const name = [TEX_NAME[tex.source], tex.year].filter((part) => part !== undefined && part !== "").join(" ");
   const controls = tex.source === "tinytex" && !tex.complete
     ? [actionButton({ label: INSTALL_ALL_LABEL, icon: "download", onClick: actions.installAllPackages })]
     : [];
-  return { text: `Ready: ${name}`, tone: "ok", controls };
+  return { text: `Ready: ${name}${HOST_SUFFIX[host]}`, tone: "ok", controls };
 }
 
-function statusView(status: HelperStatus, isMac: boolean, actions: SetupActions): SetupView {
+const OLDER_BY_HOST: Record<Exclude<HelperHost, "helper">, string> = {
+  vscode: "LabShelf in VS Code is older than this extension. Update the LabShelf extension in VS Code and reload it.",
+  terminal: "The LabShelf terminal app is older than this extension. Run npm install -g @labshelf/terminal to update it.",
+};
+
+function updateHelper(host: HelperHost, actions: SetupActions): SetupView {
+  if (host === "helper") {
+    return { text: "LabShelf Helper is older than this extension.", tone: "idle", controls: [download("Download the update", actions)] };
+  }
+  return { text: OLDER_BY_HOST[host], tone: "idle", controls: [] };
+}
+
+function statusView(status: HelperStatus, os: string, actions: SetupActions): SetupView {
   switch (status.state) {
-    case "not-installed": return notInstalled(isMac, actions);
-    case "update-helper":
-      return { text: "LabShelf Helper is older than this extension.", tone: "idle", controls: [download("Download the update", actions)] };
+    case "not-installed": return notInstalled(os, actions);
+    case "update-helper": return updateHelper(status.host, actions);
     case "update-extension":
       return { text: "LabShelf Helper needs a newer version of the LabShelf extension.", tone: "idle", controls: [retry("Check again", actions)] };
-    case "ready": return status.tex.source === "none" ? chooseTex(actions) : readyView(status.tex, actions);
+    case "ready": return status.tex.source === "none" ? chooseTex(actions) : readyView(status.tex, status.host, actions);
   }
 }
 
@@ -87,6 +95,6 @@ export function describeState(state: SetupState, os: string, actions: SetupActio
     case "checking": return { text: "Looking for LabShelf Helper…", tone: "idle", controls: [] };
     case "installing": return { text: state.label, tone: "idle", controls: [] };
     case "error": return { text: state.message, tone: "error", controls: [retry("Try again", actions)] };
-    case "status": return statusView(state.status, os === "mac", actions);
+    case "status": return statusView(state.status, os, actions);
   }
 }

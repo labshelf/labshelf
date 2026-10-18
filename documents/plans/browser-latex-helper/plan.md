@@ -10,8 +10,8 @@ A person who uses only the browser extension can compile a LaTeX project. The fi
 ## 2. Decisions
 
 - [ ] **D1** Placement, following AGENTS.md section 1:
-  - **Core:** the runtime-neutral protocol (message types, validation, chunking, `PROTOCOL_VERSION`) and the client port `ILatexHelper`, in `packages/core/src/writing/helper/`.
-  - **Helper:** a second entry of the terminal package, in `packages/terminal/src/helper/`, built to `dist/labshelf-helper.mjs` and packaged as a single binary `labshelf-helper`. It lives in the terminal package because that is the Node desktop app and already bundles core's Node build code.
+  - **Core:** the runtime-neutral protocol (message types, validation, chunking, `PROTOCOL_VERSION`) and the client port `ILatexHelper`, in `packages/core/src/writing/helper/`, and the helper runtime (framing, mirror, dispatch, build) in `packages/core/src/writing/helper/node/`, so VS Code and the terminal app can host it too.
+  - **Helper:** the standalone shell (registration, self-update, binary packaging) is a second entry of the terminal package, in `packages/terminal/src/helper/`, built to `dist/labshelf-helper.mjs` and packaged as a single binary `labshelf-helper`.
   - **Browser:** the `connectNative` adapter and the setup card, in `packages/browser/src/helper/`.
 
   Why: browser and helper share the protocol, so it goes in core. The separate entry keeps pdf.js, canvas and tesseract (terminal externals) out of the binary.
@@ -20,7 +20,7 @@ A person who uses only the browser extension can compile a LaTeX project. The fi
   - **Message types:** `hello`/`ready` (protocol and helper version, TeX state), `sync`/`need`/`file`/`delete` (only changed files, by SHA-256), `build`/`progress`/`built`/`pdf`, `cancel`, `installTex`, `installAllPackages`, `error`.
   - **Chunks:** binary payloads travel in base64 chunks of at most 512 KiB raw, under the 1 MB host-to-browser limit, with the same size in both directions.
   - **Limits:** paths are relative POSIX, with no `..`, no leading `/`, no `\` and no NUL. The contract also caps file count and project size.
-  - **Engines:** `pdflatex`, `xelatex` and `lualatex`. Never Tectonic and never shell-escape.
+  - **Engines:** `pdflatex`, `xelatex` and `lualatex`. Never shell-escape.
 
   Why: one place both apps and the tests pin.
 - [ ] **D3** An extension page owns the port: `connectNative` is called from the page that compiles (the editor or the options page), not from the service worker. Why: the PDF bytes go straight to the page, the 199-line runtime router stays as it is, and the page lifetime bounds the port.
@@ -29,7 +29,7 @@ A person who uses only the browser extension can compile a LaTeX project. The fi
   - Windows: `%LOCALAPPDATA%\LabShelf Helper\`;
   - Linux: `$XDG_DATA_HOME/labshelf-helper/`.
 
-  It holds `projects/<projectId>/` (a source mirror plus build dir, so latexmk reruns only what changed), `tex/` (managed TeX), `bin/` and `logs/`. The helper writes nowhere else, and its stdout carries only protocol frames; logs go to `logs/`.
+  It holds `projects/<projectId>/` (a source mirror plus build dir, so latexmk reruns only what changed), `bin/` and `logs/`. The managed TeX lives in the folder every LabShelf app shares ([managed-tex.md](../../contracts/managed-tex.md)). The helper writes nowhere else, and its stdout carries only protocol frames; logs go to `logs/`.
 - [ ] **D5** TeX choice. The card in the extension asks right after the helper first connects:
   - **Light (TinyTeX, ~100 MB):** packages install on demand.
   - **Full (TeX Live, ~5 GB download):** everything included, works offline.
@@ -50,7 +50,7 @@ A person who uses only the browser extension can compile a LaTeX project. The fi
   - **macOS installer:** per-user `.pkg` (home-domain install).
   - **Windows installer:** per-user Inno Setup (`PrivilegesRequired=lowest`).
   - **Linux:** `.deb`, which asks for the password because Linux has no per-user native-messaging location for packages, plus a `.tar.gz`.
-  - **Registration:** every installer ends by running `labshelf-helper --register`, and uninstall runs `--unregister`. Registration lives in one place, the helper. It writes host manifests for every installed browser it finds: Chrome, Chromium, Edge, Brave, Vivaldi (`allowed_origins`) and Firefox (`allowed_extensions: ["labshelf@lucanaasser.dev"]`).
+  - **Registration:** every installer ends by running `labshelf-helper --register`, and uninstall runs `--unregister`. Registration of the standalone helper lives in the helper; the host-manifest installer is core's `nativeHost` ([native-host.md](../../contracts/native-host.md)), which the apps use too. It writes host manifests for every installed browser it finds: Chrome, Chromium, Edge, Brave, Vivaldi (`allowed_origins`) and Firefox (`allowed_extensions: ["labshelf@lucanaasser.dev"]`).
 - [ ] **D9** Trust:
   - **Signing:** Windows binaries and installers are signed through the SignPath Foundation. macOS stays unsigned (no US$ 99/yr), and Linux stays unsigned.
   - **Verification:** every artifact gets `SHA256SUMS` and a GitHub artifact attestation (`actions/attest-build-provenance`).
@@ -62,8 +62,14 @@ A person who uses only the browser extension can compile a LaTeX project. The fi
   - add a `key` to `manifest.chrome.json` so the unpacked id is stable;
   - the helper's `allowed_origins` lists that id, plus the Chrome Web Store id once it exists.
 - [ ] **D11** This plan reverses D5 and D8 of `documents/plans/browser-editor/plan.md` and changes its goal line, D7, A6 and sessions 02 and 03. LaTeX compiles through the helper, and the card appears when it is missing. writing-4's editor mounts this plan's setup card and calls `ILatexHelper`; this plan does not build the editor.
-- [ ] **D12** Prerequisite: session 1 of `documents/plans/writing-3-writing-terminal` must land first (core `buildProject`, `ProjectBuildQueue`, `ToolchainPrompt`). The helper supplies a non-interactive `ToolchainPrompt` that never offers Tectonic.
+- [ ] **D12** Prerequisite: session 1 of `documents/plans/writing-3-writing-terminal` must land first (core `buildProject`, `ProjectBuildQueue`, `ToolchainPrompt`). The helper supplies a non-interactive `ToolchainPrompt`.
 - [ ] **D13** Out of scope: shell-escape and `minted` (a build that needs them fails with a clear message), Typst (browser-editor compiles it with `typst.ts`), Safari, and a macOS Developer ID.
+- [ ] **D14** Desktop apps serve as the helper host. VS Code (**LabShelf: Build LaTeX for the Browser**) and the terminal app (`labshelf helper install`) register `dev.labshelf.helper` with a launcher that runs the core helper runtime, so a user without the unsigned standalone program can still build in the browser.
+  - **Self-update:** only the standalone binary updates itself; an app-hosted helper updates with its app.
+  - **Precedence:** the standalone `--register` always wins. An app's install leaves a registered standalone helper alone unless the user picks "use this app instead". Between VS Code and the terminal the last install wins.
+  - **Refresh:** VS Code on activation and the CLI on every run rewrite their own launcher when the app's paths changed; they never install.
+- [ ] **D15** TinyTeX replaces Tectonic in every app. All apps share one managed TeX folder guarded by a lock, use one missing-package loop in the core build, and default to `pdflatex` ([managed-tex.md](../../contracts/managed-tex.md)).
+- [ ] **D16** The terminal app is distributed on npm as `@labshelf/terminal`, which is how users get `labshelf helper install`.
 
 User tasks (outside the code, before session 5 can fully pass):
 
@@ -92,9 +98,9 @@ User tasks (outside the code, before session 5 can fully pass):
 |---|---|---|---|---|
 | 1a | [sessions/1a-contract.md](sessions/1a-contract.md) | protocol contract and core protocol | `documents/contracts/helper.md`, `packages/core/src/writing/helper/`, its tests | 1b |
 | 1b | [sessions/1b-research.md](sessions/1b-research.md) | research, browser-editor amended, extension key | `research/`, `documents/plans/browser-editor/`, `key` in `manifest.chrome.json` | 1a |
-| 2 | [sessions/2-host.md](sessions/2-host.md) | helper process: framing, mirror, build | `packages/terminal/src/helper/` (not `tex/`, `register/`, `update/`), its tests, `packages/terminal/build/build.mjs` | 4 |
-| 3a | [sessions/3a-tex.md](sessions/3a-tex.md) | managed TinyTeX / TeX Live, packages, rollover | `packages/terminal/src/helper/tex/`, `helper/main.ts`, its tests | 4 |
-| 3b | [sessions/3b-register-update.md](sessions/3b-register-update.md) | browser registration, verified self-update | `helper/register/`, `helper/update/`, `helper/main.ts`, `scripts/helperReleaseKey.mjs` | 4 |
+| 2 | [sessions/2-host.md](sessions/2-host.md) | helper process: framing, mirror, build | `packages/core/src/writing/helper/node/`, its tests, `packages/terminal/build/build.mjs` | 4 |
+| 3a | [sessions/3a-tex.md](sessions/3a-tex.md) | managed TinyTeX / TeX Live, packages, rollover | `packages/core/src/writing/latex/toolchain/node/managed/`, its tests | 4 |
+| 3b | [sessions/3b-register-update.md](sessions/3b-register-update.md) | browser registration, verified self-update | `packages/terminal/src/helper/register/`, `helper/update/`, `helper/main.ts`, `scripts/helperReleaseKey.mjs` | 4 |
 | 4 | [sessions/4-browser.md](sessions/4-browser.md) | `ILatexHelper` adapter, manifests, setup card | `packages/browser/src/helper/`, its tests, manifest permissions, `options/index.ts` | 2, 3a or 3b |
 | 5 | [sessions/5-release.md](sessions/5-release.md) | SEA binary, installers, release workflow | `.github/`, `packages/terminal/build/sea.mjs`, `packages/terminal/installers/` | alone |
 | 6 | [sessions/6-docs-run.md](sessions/6-docs-run.md) | macOS tutorial, signing policy, docs, real run, finish | `website/`, `documents/apps/`, `documents/architecture.md` | alone |

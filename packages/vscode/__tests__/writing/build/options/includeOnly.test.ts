@@ -37,9 +37,7 @@ describe("IncludeOnlyState", () => {
     expect(await state.option(project, "main.tex", "other.tex")).toBeUndefined();
   });
 
-  it("offers nothing for Typst and Tectonic projects", async () => {
+  it("offers nothing for Typst projects", async () => {
     expect(await setup({ format: "typst" }).state.option(setup({ format: "typst" }).project, "main.tex", "ch/one.tex")).toBeUndefined();
-    const tectonic = setup({ engine: "tectonic" });
-    expect(await tectonic.state.option(tectonic.project, "main.tex", "ch/one.tex")).toBeUndefined();
   });
 });

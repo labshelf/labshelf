@@ -9,6 +9,7 @@ import { engineLabel, type LatexToolchain } from "../../toolchain/index.js";
 import type { LatexBuildResult, LocatedProblem } from "../buildResult.js";
 import { latexBuildCommand, type PartialBuild } from "../latexBuildCommand.js";
 import { locateProblems, type ProblemPlaces } from "./locateProblems.js";
+import { withToolchainOnPath } from "../../toolchain/node/system/index.js";
 import { BuildCancelled, runCancellable } from "./runCancellable.js";
 
 export interface LatexBuildRequest extends PartialBuild {
@@ -23,14 +24,10 @@ export interface LatexBuildRequest extends PartialBuild {
 }
 
 const MODULE = "writing/build";
-// Tectonic's own summary lines say only that TeX failed; the cause is in the log or in another "error:" line.
-const TECTONIC_SUMMARY = /something bad happened inside|unrecoverable error|^error: halted on/;
 
-/** The reason a run failed when its log names no error: a network failure, a crash, a missing engine. */
+/** The reason a run failed when its log names no error: a crash or a missing engine. */
 function failureReason(output: string, request: LatexBuildRequest, code: number | null): string {
   const lines = output.split(/\r?\n/).map((line) => line.trim()).filter((line) => line !== "");
-  const errorLine = lines.find((line) => line.startsWith("error:") && !TECTONIC_SUMMARY.test(line));
-  if (errorLine) { return errorLine.replace(/^error:\s*/, ""); }
   return `${engineLabel(request.toolchain.engine)} stopped with exit code ${code ?? "none"}: ${lines.at(-1) ?? "no output"}`;
 }
 
@@ -38,7 +35,7 @@ async function compile(request: LatexBuildRequest, places: ProblemPlaces, base: 
   const command = latexBuildCommand(request.toolchain, path.basename(request.main), request.outDir, request);
   let outcome;
   try {
-    outcome = await runCancellable(command.executable, command.args, places.workDir, request.signal);
+    outcome = await runCancellable(command.executable, command.args, places.workDir, request.signal, { env: withToolchainOnPath(request.toolchain, process.env) });
   } catch (error) {
     if (error instanceof BuildCancelled) { return { status: "cancelled" }; }
     await request.logger.error(MODULE, error, { executable: command.executable, main: request.main });

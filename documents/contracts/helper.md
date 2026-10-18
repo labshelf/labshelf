@@ -41,13 +41,13 @@ Keys a message does not define are dropped when the frame is read.
 | `installTex` | `kind`: `"tinytex"` or `"texlive"` | `progress` frames, then `ready` |
 | `installAllPackages` | none | `progress` frames, then `ready` |
 
-`sha256` is the lowercase hex SHA-256 of the file; `size` is its length in bytes. A `sync` lists each path once. Tectonic is not an engine of the helper; a project set to Tectonic builds elsewhere.
+`sha256` is the lowercase hex SHA-256 of the file; `size` is its length in bytes. A `sync` lists each path once.
 
 ### Helper to page
 
 | `type` | Body |
 |---|---|
-| `ready` | `protocol`: the helper's protocol version; `helperVersion`: non-empty string; `tex`: `{ source, year?, complete }` |
+| `ready` | `protocol`: the helper's protocol version; `helperVersion`: non-empty string; `host`: `"helper"`, `"vscode"` or `"terminal"`, the program that answers (the standalone LabShelf Helper or a desktop app running the helper script); `tex`: `{ source, year?, complete }` |
 | `need` | `paths`: string[] |
 | `progress` | `phase`: `"syncing"`, `"installing-tex"`, `"installing-package"`, `"building"` or `"updating"`; `message`: one line for the user; `fraction?`: 0 to 1 |
 | `built` | `status`: `"succeeded"`, `"failed"`, `"cancelled"`, `"toolchain-missing"` or `"needs-shell-escape"`; `problems`; `pdfSha256?` |
@@ -89,7 +89,7 @@ A frame past a limit is rejected with `limit`.
 
 ## Version
 
-`PROTOCOL_VERSION` rises with every change to a message, a limit or the chunk rule. The page sends `hello` first; the helper answers `ready` with its `protocol`. When `protocol` is lower than the page's, the page shows "Update LabShelf Helper"; when it is higher, it shows "Update LabShelf". A frame rejected for `version` reports the `v` it carried, so either side can tell which one is older.
+`PROTOCOL_VERSION` rises with every change to a message, a limit or the chunk rule. The page sends `hello` first; the helper answers `ready` with its `protocol`. When `protocol` is lower than the page's, the page asks to update the program `host` names (LabShelf Helper, or the VS Code extension or terminal app that runs the helper script); when it is higher, it shows "Update LabShelf". A frame rejected for `version` reports the `v` it carried, so either side can tell which one is older.
 
 ## Data folder
 
@@ -107,20 +107,23 @@ projects/<projectId>/
   incoming/             files being received, moved into src/ once complete
   mirror-index.json     path, size and hash of each mirror file, so a `sync` hashes only what changed
   build/                latexmk's output folder, kept so latexmk reruns only what changed
-tex/                    the managed TeX
 bin/
 logs/
 ```
 
-The helper writes nowhere else.
+The managed TeX lives in the folder all LabShelf apps share: see [managed-tex.md](managed-tex.md). The helper writes nowhere else.
 
 ## Registration
 
-`labshelf-helper --register` writes the native-messaging host manifest for every supported browser found for the user (Chrome, Chromium, Edge, Brave, Vivaldi, Firefox); `--unregister` removes it. The manifest names the helper's absolute path and lists the extension ids allowed to connect. On Windows each browser also gets a registry key below `HKCU`. The helper writes nothing outside the user's home. The installers run both flags.
+The standalone program registers itself: `labshelf-helper --register` writes the manifest for every supported browser found for the user, and `--unregister` removes it. The installers run both flags. The helper writes nothing outside the user's home.
+
+The desktop apps register the same host name with their own launcher: VS Code with **LabShelf: Build LaTeX for the Browser** and the terminal app with `labshelf helper install`. Folders, manifests, allowed extension ids and which program wins are in [native-host.md](native-host.md).
 
 ## Self-update
 
-After it answers `hello`, the helper checks `latest.json` of the latest GitHub release at most once a day. The manifest is signed with Ed25519 and the helper rejects it unless the signature verifies against the public key built into it; the download must also match the asset's `sha256`. A newer version replaces the helper's binary and runs from the next launch. A failed check is logged and never affects the session. A system TeX or a user's projects are not touched.
+Only the standalone binary updates itself. After it answers `hello`, it checks `latest.json` of the latest GitHub release at most once a day. The manifest is signed with Ed25519 and the helper rejects it unless the signature verifies against the public key built into it; the download must also match the asset's `sha256`. A newer version replaces the binary and runs from the next launch. A failed check is logged and never affects the session. A system TeX or a user's projects are not touched.
+
+A helper run by VS Code or the terminal app never updates itself; it updates with that app.
 
 ## No shell-escape
 

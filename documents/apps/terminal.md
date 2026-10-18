@@ -2,7 +2,7 @@
 
 Read when you build, change or verify the terminal app.
 
-A keyboard-driven explorer and a scriptable CLI over the local library. It works with or without VS Code. Its layout uses yazi's columns and keys with Zotero's pane model: folders | papers | preview ([product.md](../product.md)). Press `?` in the app for every binding; the help is generated from the keymap.
+A keyboard-driven explorer and a scriptable CLI over the local library. It works with or without VS Code. Its layout uses yazi's columns and keys with Zotero's pane model: folders | papers | preview ([product.md](../product.md)). Press `?` in the app for every binding; the help is generated from the keymap. The terminal app is distributed on npm as @labshelf/terminal (`npm install -g @labshelf/terminal`).
 
 ## Build and run
 
@@ -16,6 +16,7 @@ labshelf doctor                             # checks library, config and the ima
 - With no library configured, the first run shows a numbered prompt with the same choices as VS Code: `<sync folder>/LabShelf` for each detected sync folder, `~/LabShelf` (only on this computer) and another folder ([sync.md](../contracts/sync.md)).
 - `labshelf move <path>` moves the library (a non-empty folder that is not a library gets `<path>/LabShelf`); there is no `mv` alias. `labshelf sync-help` prints the guide for syncing between computers. `labshelf conflicts` lists conflicting copies; on a TTY it asks `[m]ine / [o]ther / [b]oth / [s]kip` for each. The explorer's status line shows an "N conflicts" segment, and `:conflicts` opens the same list as an overlay.
 - `labshelf bridge install|status|uninstall` connects the browser extension to the library by installing the Native Messaging host for every installed browser; it prints each manifest path and any browser it could not set up, and exits non-zero when none was set up ([contract](../contracts/bridge.md#host)).
+- `labshelf helper install|status|uninstall` lets the browser extension build LaTeX with this app, through the same installer and the same exit codes as `bridge` ([contract](../contracts/native-host.md)). When LabShelf Helper is already registered, install leaves it in place and says so; `--replace` takes over. Every other `labshelf` run refreshes the launchers this app installed, so they keep working after a Node or package update.
 - Thumbnails need kitty, Ghostty, iTerm2 or WezTerm. In the VS Code terminal, set `terminal.integrated.enableImages` and `LABSHELF_IMAGES=iterm`. Inside tmux, images are off unless forced.
 - Thumbnails are faster with `brew install poppler` (pdftoppm). Without it, pdf.js renders them through `@napi-rs/canvas`.
 - Imports read scans and broken-font PDFs with Tesseract (English). The first such import downloads the language data into the cache folder, so it needs the network once.
@@ -27,12 +28,12 @@ labshelf doctor                             # checks library, config and the ima
 The project commands act on the writing project in the current folder or the folder given as the first argument. They exit 0 on success, 1 on findings or errors, and 2 when a toolchain is missing or a question cannot be asked.
 
 - `labshelf install [project-dir]` (default: the current folder) reads the project's `labshelf.yaml` and imports, one at a time by DOI, each listed paper whose cite key the library lacks, under the listed key. It prints a line per paper (added, already in the library, in the library under another key, no DOI, failed, added without a PDF) and a summary, and exits 1 when a listed key still resolves to no paper. A missing or unreadable `labshelf.yaml` is a usage error (exit 2).
-- `labshelf build [--watch]` builds the project and prints each error as `file:line: message`. On the first build it asks for the LaTeX engine; without TeX Live it offers Tectonic and downloads it once. Without a terminal it declines every question, so a CI run sets `engine:` in `labshelf.yaml` and installs TeX Live. `--watch` rebuilds on every source change until Ctrl-C.
+- `labshelf build [--watch]` builds the project and prints each error as `file:line: message`. When no LaTeX is installed, the first build asks whether to install Light (TinyTeX, adds packages on demand) or Full (TeX Live, offline) into the managed TeX folder shared with the other apps, and shows the install progress on stderr. Without a terminal it declines the question, so a CI run installs TeX Live and sets `engine:` in `labshelf.yaml`. `--watch` rebuilds on every source change until Ctrl-C.
 - `labshelf cite [--format latex|typst|key]` opens a fuzzy paper picker on `/dev/tty`, prints the citation of the picked paper to stdout and adds its entry to `labshelf.bib`.
 - `labshelf projects [--json]` lists the library's writing projects; `g w` opens the same list as the explorer's Writing pane.
 - `labshelf check [--json]` runs the pre-submission checks on the built PDF and exits 1 when one fails, for example a de-anonymised submission.
 
-A GitHub Actions workflow that builds and checks a LaTeX project on every push. LabShelf is not published, so the job builds it from source. The project commits `labshelf.bib` and sets `engine: pdflatex` in `labshelf.yaml`, because the job library starts empty and the job cannot answer questions:
+A GitHub Actions workflow that builds and checks a LaTeX project on every push. The job builds the terminal app from source. The project commits `labshelf.bib` and sets `engine: pdflatex` in `labshelf.yaml`, because the job library starts empty and the job cannot answer questions:
 
 ```yaml
 name: paper
@@ -72,7 +73,7 @@ pnpm --filter @labshelf/terminal build              # → dist/labshelf-helper.m
 pnpm --filter @labshelf/terminal build:helper-sea   # → dist/sea/labshelf-helper-<os>-<arch>, a single executable that answers `hello`
 ```
 
-- `labshelf-helper --register` writes the host manifest for every installed browser and `--unregister` removes it. The installers run both.
+- `labshelf-helper --register` registers the binary through the core native-host installer for every installed browser, and `--unregister` removes only the registrations that point at it ([contract](../contracts/native-host.md)). The installers run both. `dist/helperHost.mjs` is the host script that `labshelf helper install` registers; it answers as the terminal app.
 - Its data and logs live in the per-user data folder ([contract](../contracts/helper.md#data-folder)). On macOS and Linux the folder follows `HOME` (and `XDG_DATA_HOME` on Linux), so a run with a scratch `HOME` stays isolated.
 
 To verify against the unpacked extension, in Playwright's Chrome for Testing and never the user's browser:
@@ -83,7 +84,7 @@ To verify against the unpacked extension, in Playwright's Chrome for Testing and
    #!/bin/sh
    HOME=<scratch>/home exec node <repo>/packages/terminal/dist/labshelf-helper.mjs "$@"
    ```
-3. Put the manifest at `<user-data-dir>/NativeMessagingHosts/dev.labshelf.helper.json` with `name` `dev.labshelf.helper`, `type` `stdio`, `path` the wrapper, and `allowed_origins` from `src/helper/register/allowedOrigins.ts`. The manifest's `key` gives the unpacked extension that id.
+3. Put a manifest for `dev.labshelf.helper` at `<user-data-dir>/NativeMessagingHosts/dev.labshelf.helper.json` with `path` the wrapper ([manifest format](../contracts/native-host.md#manifests)). The manifest's `key` gives the unpacked extension the allowed id.
 4. Launch Chrome for Testing as in [browser.md → headless run](browser.md#headless-run), with `--user-data-dir=<user-data-dir>`, and open `options/index.html`. The helper's frames are in `<scratch>/home/Library/Application Support/LabShelf Helper/logs/`.
 
 ## Adding papers over the network

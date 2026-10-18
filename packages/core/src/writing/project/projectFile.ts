@@ -11,7 +11,7 @@ export const DEFAULT_BIBLIOGRAPHY = "labshelf.bib";
 export const PROJECT_FORMATS = ["latex", "typst"] as const;
 export type ProjectFormat = (typeof PROJECT_FORMATS)[number];
 
-export const LATEX_ENGINES = ["tectonic", "xelatex", "pdflatex", "lualatex"] as const;
+export const LATEX_ENGINES = ["pdflatex", "xelatex", "lualatex"] as const;
 export type LatexEngine = (typeof LATEX_ENGINES)[number];
 
 export interface ProjectSettings extends UserKeys {

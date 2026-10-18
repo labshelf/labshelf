@@ -3,13 +3,13 @@ import * as vscode from "vscode";
 
 import { engineLabel } from "@labshelf/core";
 import { ensureToolchain } from "../../../build/node/index.js";
+import type { ToolchainDeps } from "../../../build/toolchain/index.js";
 import type { ReadyProject } from "../../../mainDocument.js";
 import type { WritingHost, WritingProjects } from "../../../session/index.js";
 import type { PublishableProject } from "../../publish/index.js";
 
 export interface PublishProjectDeps {
-  /** The extension's global storage folder; Tectonic is installed under it. */
-  storageDir: string;
+  tex: ToolchainDeps["tex"];
   host: WritingHost;
   projects: Pick<WritingProjects, "data" | "list" | "paths" | "reload">;
 }
@@ -21,7 +21,7 @@ const readyProjects = (deps: PublishProjectDeps): ReadyProject[] =>
 async function toPublishable(deps: PublishProjectDeps, project: ReadyProject): Promise<PublishableProject | undefined> {
   const { id, format } = project.settings;
   if (project.main === undefined) { throw new Error(`project "${id}" has no main file`); }
-  const engine = format === "typst" ? "typst" : project.settings.engine ?? (await ensureToolchain(deps, project))?.engine;
+  const engine = format === "typst" ? "typst" : project.settings.engine ?? (await ensureToolchain({ tex: deps.tex, host: deps.host }, project))?.engine;
   if (engine === undefined) { return undefined; }
   const label = engine === "typst" ? "Typst" : engineLabel(engine);
   return { id, title: id, folder: project.folder, engineLabel: label, format, engine, main: project.main };

@@ -106,7 +106,7 @@ A writing project is a folder with `labshelf.yaml` at its root. It lives either 
 id: deep-nets-survey
 format: latex
 main: main.tex
-engine: tectonic
+engine: xelatex
 bibliography: labshelf.bib
 typst: 0.14.2
 figures:
@@ -134,7 +134,7 @@ papers:
 | `id` | string | required; unique, case-insensitively, among the library's projects and the registered ones |
 | `format` | `latex` \| `typst` | required |
 | `main` | string | main file, relative to the project folder; when absent, the first root `.tex` file declaring `\documentclass` (`main.tex` first, then alphabetical), or `main.typ` |
-| `engine` | `tectonic` \| `xelatex` \| `pdflatex` \| `lualatex` | LaTeX only |
+| `engine` | `pdflatex` \| `xelatex` \| `lualatex` | LaTeX only; a project without `engine` builds with `pdflatex` |
 | `bibliography` | string | the bibliography file the main file loads, `labshelf.bib` by default; written once the main file loads it |
 | `typst` | string | Typst compiler version of the last successful Typst build, written after each one; a YAML number reads as its text |
 | `folder` | string | the sidebar folder the project sits in, segments joined by `/`; absent at the top level |

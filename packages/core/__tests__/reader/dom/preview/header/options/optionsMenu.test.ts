@@ -52,24 +52,24 @@ describe("mountOptionsMenu", () => {
     expect(t.button().getAttribute("aria-expanded")).toBe("true");
   });
 
-  it("lists the four engines for a LaTeX root with the current one checked", () => {
+  it("lists the three engines for a LaTeX root with the current one checked", () => {
     const t = setup();
     t.menu.setRoots(roots({ autoCompile: true, engine: "xelatex" }));
     t.button().click();
     expect(document.querySelectorAll(".ls-menu-sep")).toHaveLength(1);
     const engines = t.items().slice(1);
-    expect(engines.map((b) => b.textContent)).toEqual(["XeLaTeX (Tectonic)", "XeLaTeX", "pdfLaTeX", "LuaLaTeX"]);
-    expect(engines.map((b) => b.getAttribute("role"))).toEqual(Array(4).fill("menuitemradio"));
-    expect(engines.map((b) => b.getAttribute("aria-checked"))).toEqual(["false", "true", "false", "false"]);
+    expect(engines.map((b) => b.textContent)).toEqual(["pdfLaTeX", "XeLaTeX", "LuaLaTeX"]);
+    expect(engines.map((b) => b.getAttribute("role"))).toEqual(Array(3).fill("menuitemradio"));
+    expect(engines.map((b) => b.getAttribute("aria-checked"))).toEqual(["false", "true", "false"]);
   });
 
-  it("lists the four engines with none checked for a LaTeX root that has not chosen one", () => {
+  it("lists the three engines with none checked for a LaTeX root that has not chosen one", () => {
     const t = setup();
     t.menu.setRoots(roots({ autoCompile: true, engine: null }));
     t.button().click();
     const engines = t.items().slice(1);
-    expect(engines.map((b) => b.getAttribute("role"))).toEqual(Array(4).fill("menuitemradio"));
-    expect(engines.map((b) => b.getAttribute("aria-checked"))).toEqual(Array(4).fill("false"));
+    expect(engines.map((b) => b.getAttribute("role"))).toEqual(Array(3).fill("menuitemradio"));
+    expect(engines.map((b) => b.getAttribute("aria-checked"))).toEqual(Array(3).fill("false"));
   });
 
   it("posts setAutoCompile with the inverse of the current value", () => {
@@ -83,7 +83,7 @@ describe("mountOptionsMenu", () => {
 
   it("posts setEngine with the picked engine", () => {
     const t = setup();
-    t.menu.setRoots(roots({ autoCompile: true, engine: "tectonic" }));
+    t.menu.setRoots(roots({ autoCompile: true, engine: "xelatex" }));
     t.button().click();
     t.item("LuaLaTeX").click();
     expect(t.post).toHaveBeenCalledWith({ command: "setEngine", engine: "lualatex" });

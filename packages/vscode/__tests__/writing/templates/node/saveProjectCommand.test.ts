@@ -18,7 +18,7 @@ function setup() {
   const onSaved = jest.fn();
   registerSaveProjectCommand({
     context: { subscriptions: [], globalStorageUri: vscode.Uri.file("/storage") } as never,
-    host, projects: fakeProjects() as never, onSaved,
+    host, tex: {} as never, projects: fakeProjects() as never, onSaved,
   });
   return { host, onSaved };
 }

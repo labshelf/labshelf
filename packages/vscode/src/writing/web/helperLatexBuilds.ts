@@ -1,8 +1,8 @@
 // Builds LaTeX projects through LabShelf Helper, one build per project at a time, and asks the page for the helper setup when the helper or TeX is missing.
 import * as vscode from "vscode";
 
-import { builtPdfPath, errorMessage, listProjectFiles, type ILogger, type LatexEngine } from "@labshelf/core";
-import { HELPER_ENGINES, type HelperCompileResult, type HelperEngine, type HelperProjectFile, type ILatexHelper } from "@labshelf/core/helper";
+import { builtPdfPath, errorMessage, listProjectFiles, type ILogger } from "@labshelf/core";
+import { type HelperCompileResult, type HelperProjectFile, type ILatexHelper } from "@labshelf/core/helper";
 import type { BuildDiagnostics, BuildListener, BuildTrigger, FinishedBuild } from "../build/index.js";
 import type { ReadyProject } from "../mainDocument.js";
 import type { WritingHost, WritingProjects } from "../session/index.js";
@@ -16,12 +16,6 @@ export interface HelperLatexBuildsDeps {
   diagnostics: Pick<BuildDiagnostics, "publish">;
   previews: BuildListener;
   showHelperSetup(): Thenable<unknown>;
-}
-
-// The helper runs a TeX distribution, which has no Tectonic; Tectonic runs XeTeX, so XeLaTeX builds what it would.
-function helperEngine(engine: LatexEngine | undefined): HelperEngine {
-  if (engine === "tectonic") { return "xelatex"; }
-  return HELPER_ENGINES.find((candidate) => candidate === engine) ?? "pdflatex";
 }
 
 interface ProjectLane {
@@ -68,7 +62,7 @@ export class HelperLatexBuilds {
     this.deps.previews.building(projectFolder, root);
     try {
       const result = await this.deps.helper.compile(
-        { projectId: project.settings.id, main: root, engine: helperEngine(project.settings.engine), files: await this.files(project) },
+        { projectId: project.settings.id, main: root, engine: project.settings.engine ?? "pdflatex", files: await this.files(project) },
         () => undefined,
       );
       return await this.finish(project, root, trigger, result, logger);

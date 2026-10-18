@@ -1,4 +1,4 @@
-/** Bundles the desktop extension host into out/extension.js, the web extension host into out/web/extension.js and the browser bridge host into out/bridgeHost.js. @labshelf/* packages are bundled from source; every other dependency stays external and loads from node_modules, because pdf.js, Tesseract and the native canvas locate their own data files, workers and binaries next to themselves. */
+/** Bundles the desktop extension host into out/extension.js, the web extension host into out/web/extension.js the browser bridge host into out/bridgeHost.js and the LaTeX helper host into out/helperHost.js. @labshelf/* packages are bundled from source; every other dependency stays external and loads from node_modules, because pdf.js, Tesseract and the native canvas locate their own data files, workers and binaries next to themselves. */
 import { build, context } from "esbuild";
 import { readFile, rm } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -41,6 +41,14 @@ const bridgeHostOptions = {
   external: [],
 };
 
+// The LaTeX helper host: started by the browser like the bridge, bundles core's helper only.
+const helperHostOptions = {
+  ...options,
+  entryPoints: [resolve(pkgRoot, "src/helperHost.ts")],
+  outfile: resolve(outDir, "helperHost.js"),
+  external: [],
+};
+
 // The web extension host runs in a browser worker with no node_modules, so everything is bundled and Node is refused.
 const webOptions = {
   ...options,
@@ -54,13 +62,13 @@ const webOptions = {
 
 if (watch) {
   await writeArcMarks(outDir);
-  for (const entry of [options, webOptions, bridgeHostOptions]) {
+  for (const entry of [options, webOptions, bridgeHostOptions, helperHostOptions]) {
     const ctx = await context(entry);
     await ctx.watch();
   }
   console.log(`[labshelf-host] watching → ${options.outfile}`);
 } else {
   await rm(outDir, { recursive: true, force: true });
-  await Promise.all([build(options), build(webOptions), build(bridgeHostOptions)]);
+  await Promise.all([build(options), build(webOptions), build(bridgeHostOptions), build(helperHostOptions)]);
   await writeArcMarks(outDir);
 }

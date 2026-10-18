@@ -1,10 +1,13 @@
 /** Declares every message an extension page and LabShelf Helper exchange, with the protocol's version and limits. */
 // CONTRACT: documents/contracts/helper.md#messages
 
-import type { LocatedProblem } from "../latex/index.js";
+import type { LocatedProblem, TexInstallKind } from "../latex/index.js";
+import type { LatexEngine } from "../project/index.js";
 
 export const HELPER_HOST_NAME = "dev.labshelf.helper";
 export const PROTOCOL_VERSION = 1;
+// The helper program's version, kept beside the program so every app that bundles it reports the same one.
+export const HELPER_VERSION = "0.1.1";
 
 // CONTRACT: documents/contracts/helper.md#limits
 export const CHUNK_MAX_BYTES = 512 * 1024;
@@ -13,12 +16,11 @@ export const MAX_SYNC_TOTAL_BYTES = 500 * 1024 * 1024;
 export const MAX_CHUNK_COUNT = MAX_SYNC_TOTAL_BYTES / CHUNK_MAX_BYTES;
 export const MAX_PATH_LENGTH = 260;
 
-export const HELPER_ENGINES = ["pdflatex", "xelatex", "lualatex"] as const;
-export type HelperEngine = (typeof HELPER_ENGINES)[number];
-export const TEX_INSTALL_KINDS = ["tinytex", "texlive"] as const;
-export type TexInstallKind = (typeof TEX_INSTALL_KINDS)[number];
 export const TEX_SOURCES = ["none", "tinytex", "texlive", "system"] as const;
 export type TexSource = (typeof TEX_SOURCES)[number];
+/** The program that answers: the standalone LabShelf Helper, or a desktop app running the helper script. */
+export const HELPER_HOSTS = ["helper", "vscode", "terminal"] as const;
+export type HelperHost = (typeof HELPER_HOSTS)[number];
 export const PROGRESS_PHASES = ["syncing", "installing-tex", "installing-package", "building", "updating"] as const;
 export type ProgressPhase = (typeof PROGRESS_PHASES)[number];
 export const HELPER_BUILD_STATUSES = ["succeeded", "failed", "cancelled", "toolchain-missing", "needs-shell-escape"] as const;
@@ -37,13 +39,13 @@ export type ToHelperMessage =
   | Envelope<"sync"> & { projectId: string; files: SyncedFile[] }
   | Envelope<"file"> & { projectId: string; path: string; chunk: HelperChunk }
   | Envelope<"delete"> & { projectId: string; paths: string[] }
-  | Envelope<"build"> & { projectId: string; main: string; engine: HelperEngine }
+  | Envelope<"build"> & { projectId: string; main: string; engine: LatexEngine }
   | Envelope<"cancel"> & { projectId: string }
   | Envelope<"installTex"> & { kind: TexInstallKind }
   | Envelope<"installAllPackages">;
 
 export type ToPageMessage =
-  | Envelope<"ready"> & { protocol: number; helperVersion: string; tex: TexStatus }
+  | Envelope<"ready"> & { protocol: number; helperVersion: string; host: HelperHost; tex: TexStatus }
   | Envelope<"need"> & { paths: string[] }
   | Envelope<"progress"> & HelperProgress
   | Envelope<"built"> & { status: HelperBuildStatus; problems: LocatedProblem[]; pdfSha256?: string }

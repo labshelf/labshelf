@@ -18,7 +18,10 @@ Read when you look for the document that answers a question about LabShelf; the 
 | What does the `data.json` sidecar hold? | [contracts/library-format.md](contracts/library-format.md#sidecar-datajson) |
 | Which configuration do apps share? | [contracts/library-format.md](contracts/library-format.md#shared-configuration) |
 | How does a library move between devices? | [contracts/sync.md](contracts/sync.md) |
+| Where does the managed TeX live, and how do apps share it? | [contracts/managed-tex.md](contracts/managed-tex.md) |
 | How does the browser extension reach the library folder? | [contracts/bridge.md](contracts/bridge.md) |
+| How are the bridge and helper hosts registered with the browsers? | [contracts/native-host.md](contracts/native-host.md) |
+| What does the browser extension send LabShelf Helper? | [contracts/helper.md](contracts/helper.md) |
 | How is a project shared, invited and encrypted? | [contracts/collaboration.md](contracts/collaboration.md) |
 | How is a link to a paper page written? | [contracts/links.md](contracts/links.md#grammar) |
 | What is a project template and its catalog index? | [contracts/templates.md](contracts/templates.md#manifest) |

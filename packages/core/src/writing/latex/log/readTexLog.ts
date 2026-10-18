@@ -8,14 +8,14 @@ export interface TexLogMessage {
   text: string;
   /** Who raised it: "LaTeX", "LaTeX Font", "Package hyperref", "Class article"; absent for TeX primitives. */
   source?: string;
-  /** Path as the log names it, without a leading "./"; may lack the extension ("chapters/intro"). */
+  /** Path as the log names it, without a leading "./". */
   file?: string;
   line?: number;
   /** For errors: the source text up to the point where TeX stopped (the `l.<n>` line). */
   context?: string;
 }
 
-// PLATFORM: TeX Live and Tectonic both break transcript lines at max_print_line, 79 characters by default.
+// PLATFORM: TeX Live breaks transcript lines at max_print_line, 79 characters by default.
 const WRAP_WIDTH = 79;
 const ERROR_CONTEXT_SEARCH = 20;
 

@@ -39,6 +39,7 @@ Setup:
   where                            print the library, config and log paths
   doctor                           check the setup
   bridge install|status|uninstall  connect the browser extension to the library (installs the native messaging host)
+  helper install|status|uninstall  let the browser extension build LaTeX with this app (--replace takes over from LabShelf Helper)
 
 Options:
   -L, --library <path>             use this library (else LABSHELF_LIBRARY, else ~/.config/labshelf/config.json)

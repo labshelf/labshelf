@@ -2,7 +2,7 @@
 import type { HelperStatus, ToPageMessage } from "@labshelf/core/helper";
 
 export function statusFromReady(ready: Extract<ToPageMessage, { type: "ready" }>, pageProtocol: number): HelperStatus {
-  if (ready.protocol < pageProtocol) { return { state: "update-helper", protocol: ready.protocol }; }
+  if (ready.protocol < pageProtocol) { return { state: "update-helper", protocol: ready.protocol, host: ready.host }; }
   if (ready.protocol > pageProtocol) { return { state: "update-extension", protocol: ready.protocol }; }
-  return { state: "ready", helperVersion: ready.helperVersion, tex: ready.tex };
+  return { state: "ready", helperVersion: ready.helperVersion, tex: ready.tex, host: ready.host };
 }

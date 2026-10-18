@@ -1,29 +1,21 @@
-// Tests the engine probe: Typst always, Tectonic by platform, TeX Live engines only with latexmk.
-import { findExecutable } from "@labshelf/core/node";
+// Tests the engine probe: Typst always, each LaTeX engine only when the shared TeX resolves it.
 import { detectEngines } from "../../../../src/writing/templates/node/engineAvailability";
 
-jest.mock("@labshelf/core/node", () => ({ ...jest.requireActual("@labshelf/core/node"), findExecutable: jest.fn() }));
-
-const find = findExecutable as jest.Mock;
-
-function installed(...names: string[]): void {
-  find.mockImplementation(async (name: string) => (names.includes(name) ? `/usr/bin/${name}` : undefined));
+function texWith(...found: string[]) {
+  return { resolve: async (engine: string) => (found.includes(engine) ? { engine, executable: "/tex/latexmk" } : "missing") } as never;
 }
 
 describe("detectEngines", () => {
-  it("reports the TeX Live engines found next to latexmk", async () => {
-    installed("latexmk", "pdflatex", "xelatex");
-    const { engines } = await detectEngines();
+  it("reports the LaTeX engines the TeX resolves", async () => {
+    const { engines } = await detectEngines(texWith("pdflatex", "xelatex"));
     expect(engines.has("pdflatex")).toBe(true);
     expect(engines.has("xelatex")).toBe(true);
     expect(engines.has("lualatex")).toBe(false);
     expect(engines.has("typst")).toBe(true);
   });
 
-  it("reports no TeX Live engine without latexmk", async () => {
-    installed("pdflatex", "lualatex", "xelatex");
-    const { engines } = await detectEngines();
-    expect([...engines].filter((engine) => engine.endsWith("latex"))).toEqual([]);
-    expect(engines.has("typst")).toBe(true);
+  it("reports only Typst when no TeX is found", async () => {
+    const { engines } = await detectEngines(texWith());
+    expect([...engines]).toEqual(["typst"]);
   });
 });

@@ -6,21 +6,14 @@ import { ensureToolchain as ensureCoreToolchain } from "@labshelf/core/node";
 import { executeSafely } from "../../../commands/index.js";
 import type { ReadyProject } from "../../mainDocument.js";
 import { vscodeToolchainPrompt, type ToolchainDeps } from "../toolchain/index.js";
-import { reloadingProjects } from "./projectBuildDeps.js";
 
-const OPEN_GUIDE = "Open TeX Live guide";
+const OPEN_GUIDE = "Open install guide";
 
-/** Explains a toolchain that could not be prepared; a declined prompt needs no message. */
+/** Explains a toolchain that could not be prepared; a declined prompt needs no message because the user chose it. */
 export async function reportToolchainMissing(missing: ToolchainMissing): Promise<void> {
-  if (missing.reason === "tectonic-unsupported") {
-    const choice = await vscode.window.showErrorMessage(
-      `Tectonic is not available for ${process.platform} ${process.arch}. Install TeX Live instead.`,
-      OPEN_GUIDE,
-    );
-    if (choice === OPEN_GUIDE) { await vscode.env.openExternal(vscode.Uri.parse(texLiveGuideUrl(process.platform))); }
-  } else if (missing.reason === "download-failed") {
-    await vscode.window.showErrorMessage(`Tectonic could not be installed: ${missing.message}`);
-  }
+  if (missing.reason !== "install-failed") { return; }
+  const choice = await vscode.window.showErrorMessage(`LaTeX could not be installed: ${missing.message}`, OPEN_GUIDE);
+  if (choice === OPEN_GUIDE) { await vscode.env.openExternal(vscode.Uri.parse(texLiveGuideUrl(process.platform))); }
 }
 
 /** The program that builds the project, asking the user on the first build; undefined when nothing is ready to run. */
@@ -31,9 +24,8 @@ export async function ensureToolchain(deps: ToolchainDeps, project: ReadyProject
   await executeSafely(session.logger, "labshelf.writing.ensureToolchain", async () => {
     const result = await ensureCoreToolchain(project, {
       logger: session.logger,
-      toolchain: vscodeToolchainPrompt,
-      storageDir: deps.storageDir,
-      projects: reloadingProjects(deps.projects),
+      prompt: vscodeToolchainPrompt(),
+      tex: deps.tex,
     });
     if ("executable" in result) { toolchain = result; } else { await reportToolchainMissing(result); }
   });

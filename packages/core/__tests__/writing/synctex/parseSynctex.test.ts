@@ -16,7 +16,7 @@ describe("parseSynctex", () => {
     expect(index.files.get(7)).toBe("/work/project/chapters/extra.tex");
   });
 
-  it("resolves inputs written relative to the build folder, as Tectonic records them", () => {
+  it("resolves inputs written relative to the build folder", () => {
     const relative = text.replace(/\/work\/project\/\.\/(main\.tex)/, "$1").replaceAll("/work/project/./", "./");
     const index = parseSynctex(relative, CWD);
     expect(index.files.get(1)).toBe("/work/project/main.tex");

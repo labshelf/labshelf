@@ -33,7 +33,7 @@ function setup(hasPreview: boolean, host = fakeHost()) {
   ]);
   context = { subscriptions: [], globalStorageUri: vscode.Uri.file("/storage") };
   registerTypstBuild({
-    context: context as never, host, projects: projects as never,
+    context: context as never, host, tex: {} as never, projects: projects as never,
     diagnostics: { publish: jest.fn() }, previews: { building: jest.fn(), finished: jest.fn() }, hasPreview: () => hasPreview,
   });
 }

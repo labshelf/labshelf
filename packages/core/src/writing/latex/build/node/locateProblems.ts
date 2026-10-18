@@ -21,13 +21,9 @@ async function isFile(file: string): Promise<boolean> {
   return fs.stat(file).then((stat) => stat.isFile(), () => false);
 }
 
-// TRAP: Tectonic names \input files without their extension ("chapters/intro").
 async function projectFile(logPath: string, places: ProblemPlaces): Promise<string | undefined> {
   const absolute = path.resolve(places.workDir, logPath);
-  for (const candidate of [absolute, `${absolute}.tex`]) {
-    if (isInside(places.projectFolder, candidate) && await isFile(candidate)) { return candidate; }
-  }
-  return undefined;
+  return isInside(places.projectFolder, absolute) && await isFile(absolute) ? absolute : undefined;
 }
 
 /** A problem in a file outside the project (a package, a class) goes on the main file, named after that file. */
