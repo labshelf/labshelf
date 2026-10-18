@@ -10,6 +10,8 @@ export interface ProjectLibraryPort {
   onDidChange(listener: () => void): () => void;
   commands(): ProjectMenuCommand[];
   open(id: string): Promise<void>;
+  /** The kinds `create` can make on this host; the page offers only these. */
+  newKinds(): NewProjectKind[];
   create(kind: NewProjectKind): Promise<void>;
   rename(id: string, title: string): Promise<void>;
   duplicate(id: string, title: string): Promise<void>;

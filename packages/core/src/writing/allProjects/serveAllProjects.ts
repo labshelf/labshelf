@@ -94,7 +94,7 @@ export function serveAllProjects(endpoint: AllProjectsEndpoint, port: ProjectLib
   const post = async (): Promise<void> => {
     if (!ready) { return; }
     try {
-      endpoint.post({ type: "projects", rows: await port.list(), commands: port.commands(), openLabel: port.openLabel() });
+      endpoint.post({ type: "projects", rows: await port.list(), commands: port.commands(), newKinds: port.newKinds(), openLabel: port.openLabel() });
     } catch (error) {
       fail(ACTION_LABELS.ready, error, { type: "projects" });
     }

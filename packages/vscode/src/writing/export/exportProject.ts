@@ -2,8 +2,7 @@
 import { zipSync } from "fflate";
 import * as vscode from "vscode";
 
-import { DOCUMENT_EXPORT_EXTENSIONS, type DocumentExport, type ILogger } from "@labshelf/core";
-import { convertWithPandoc } from "@labshelf/core/node";
+import { DOCUMENT_EXPORT_EXTENSIONS, type DocumentExport, type ILogger, type ProjectFormat } from "@labshelf/core";
 
 import type { ReadyProject } from "../mainDocument.js";
 import { builtPdf } from "../preview/builtPdf.js";
@@ -14,9 +13,14 @@ const MODULE = "writing.export";
 
 export type ExportTarget = "pdf" | "systemViewer" | "projectZip" | "arxivZip" | DocumentExport;
 
+/** Converts a project root to a document; pandoc on the desktop. */
+export type ConvertDocument = (request: { format: ProjectFormat; folder: string; main: string; target: DocumentExport; output: string }) => Promise<void>;
+
 export interface ExportProjectDeps {
   logger: ILogger;
   projects: Pick<WritingProjects, "data" | "paths">;
+  /** Absent where documents cannot be converted, which leaves the document targets unregistered. */
+  convertDocument?: ConvertDocument;
 }
 
 const DOCUMENT_FILTERS: Record<DocumentExport, string> = { docx: "Word", markdown: "Markdown", html: "HTML" };
@@ -47,10 +51,11 @@ async function saveZip(deps: ExportProjectDeps, project: ReadyProject, root: str
   await vscode.workspace.fs.writeFile(destination, zipSync(entries));
 }
 
-async function saveDocument(project: ReadyProject, root: string, target: DocumentExport): Promise<void> {
+async function saveDocument(deps: ExportProjectDeps, project: ReadyProject, root: string, target: DocumentExport): Promise<void> {
+  if (!deps.convertDocument) { throw new Error(`Exporting to ${DOCUMENT_FILTERS[target]} is not available here.`); }
   const destination = await askDestination(project, "", DOCUMENT_EXPORT_EXTENSIONS[target], DOCUMENT_FILTERS[target]);
   if (!destination) { return; }
-  await convertWithPandoc({ format: project.settings.format, folder: project.folder, main: root, target, output: destination.fsPath });
+  await deps.convertDocument({ format: project.settings.format, folder: project.folder, main: root, target, output: destination.fsPath });
 }
 
 async function run(deps: ExportProjectDeps, project: ReadyProject, root: string, target: ExportTarget): Promise<void> {
@@ -61,7 +66,7 @@ async function run(deps: ExportProjectDeps, project: ReadyProject, root: string,
     });
     case "systemViewer": return await withBuiltPdf(deps, project, root, (pdf) => vscode.env.openExternal(vscode.Uri.file(pdf)));
     case "projectZip": case "arxivZip": return await saveZip(deps, project, root, target);
-    default: return await saveDocument(project, root, target);
+    default: return await saveDocument(deps, project, root, target);
   }
 }
 

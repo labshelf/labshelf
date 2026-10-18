@@ -13,7 +13,7 @@ function makeUri(fsPath: string): vscode.Uri {
   return vscode.Uri.file(fsPath);
 }
 
-const fsService = new VscodeFileSystem('/tmp/mylib', path);
+const fsService = new VscodeFileSystem('/tmp/mylib', path, vscode.Uri.file);
 
 beforeEach(() => {
   jest.clearAllMocks();

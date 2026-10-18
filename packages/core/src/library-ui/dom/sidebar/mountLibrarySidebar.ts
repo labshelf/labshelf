@@ -7,7 +7,7 @@ import { onSidebarKey } from "./sidebarKeys.js";
 import { isTreeInput } from "./sidebarTreeInput.js";
 import { activateTreeRow, onOpenProjectClick, onOpenProjectMenu } from "./sidebarOpenProject.js";
 import type { SidebarOpenProject } from "../../sidebarTrees.js";
-import { projectFolderKey, type SidebarProject, type SidebarProjectActions } from "./sidebarProjects.js";
+import { ALL_PROJECT_OFFERS, projectFolderKey, type ProjectOffers, type SidebarProject, type SidebarProjectActions } from "./sidebarProjects.js";
 import { rowKey } from "./sidebarRows.js";
 import type { GroupId, SectionId } from "./sidebarSections.js";
 import { NAV_ROWS, expandTo, paintFocus, render, setExpanded, toggleSection, type SidebarActions, type SidebarState } from "./sidebarView.js";
@@ -36,6 +36,8 @@ export interface LibrarySidebar {
   /** Marks the tag row whose search is `query`; any other text clears the mark. */
   setQuery(query: string): void;
   setProjects(projects: readonly SidebarProject[]): void;
+  /** Leaves out the Projects buttons and menu items whose action the host cannot run; every action is offered until this is called. */
+  setProjectOffers(offers: ProjectOffers): void;
   /** Shows only the open project's trees under Projects; null restores My projects and the gallery row. */
   setOpenProject(project: SidebarOpenProject | null): void;
 }
@@ -89,7 +91,7 @@ function onClick(e: MouseEvent, t: SidebarState): void {
 }
 
 /** The menus of a project folder and of the My projects heading; false when the row is neither. */
-function projectContextMenu(e: MouseEvent, r: HTMLElement | null, p: SidebarProjectActions): boolean {
+function projectContextMenu(e: MouseEvent, r: HTMLElement | null, p: SidebarProjectActions, offers: ProjectOffers): boolean {
   const folder = r?.dataset["projectFolder"];
   const at = { x: e.clientX, y: e.clientY };
   if (folder !== undefined) {
@@ -103,9 +105,8 @@ function projectContextMenu(e: MouseEvent, r: HTMLElement | null, p: SidebarProj
     showMenu(at, [
       { label: "New Blank Project…", icon: "new-file", onSelect: () => p.newBlank() },
       { label: "New Folder…", icon: "new-folder", onSelect: () => p.newFolder("") },
-      { label: "Add Existing Folder…", icon: "folder-open", onSelect: () => p.addExisting() },
-      "separator",
-      { label: "Explore Templates", icon: "layers", onSelect: () => p.browseTemplates() },
+      ...(offers.addExisting ? [{ label: "Add Existing Folder…", icon: "folder-open" as const, onSelect: () => p.addExisting() }] : []),
+      ...(offers.templates ? ["separator" as const, { label: "Explore Templates", icon: "layers" as const, onSelect: () => p.browseTemplates() }] : []),
     ]);
   } else return false;
   e.preventDefault();
@@ -116,7 +117,7 @@ function onContextMenu(e: MouseEvent, t: SidebarState): void {
   const r = rowAt(e);
   const project = r?.dataset["project"];
   if (project) { e.preventDefault(); t.projects?.menu(project, { x: e.clientX, y: e.clientY }); return; }
-  if (t.projects && projectContextMenu(e, r, t.projects)) return;
+  if (t.projects && projectContextMenu(e, r, t.projects, t.offers)) return;
   if (r && onOpenProjectMenu(e, t, r)) return;
   const path = r?.dataset["path"];
   if (!r || !path) return;
@@ -135,7 +136,7 @@ function onContextMenu(e: MouseEvent, t: SidebarState): void {
 export function mountLibrarySidebar(slot: HTMLElement, o: LibrarySidebarOptions): LibrarySidebar {
   const t: SidebarState = {
     el: slot, actions: o.actions, expanded: new Set(o.expanded), saveExpanded: o.saveExpanded, dropTarget: o.dropTarget,
-    collapsed: new Set(o.collapsed), saveCollapsed: o.saveCollapsed, projects: o.projects, projectList: [], openProject: null, treeOpen: new Map(), treeInput: null,
+    collapsed: new Set(o.collapsed), saveCollapsed: o.saveCollapsed, projects: o.projects, projectList: [], offers: ALL_PROJECT_OFFERS, openProject: null, treeOpen: new Map(), treeInput: null,
     focused: null, selectedId: null, current: PAPERS_DIR, target: PAPERS_DIR, tree: null, tags: [], query: "",
   };
   slot.classList.add("tree");
@@ -152,6 +153,7 @@ export function mountLibrarySidebar(slot: HTMLElement, o: LibrarySidebarOptions)
     setLibrary: (folders, papers) => { t.tree = libraryTree({ folders, papers }); t.tags = libraryTags(papers.map((p) => p.record)); render(t); },
     setQuery: (query) => { t.query = query; render(t); },
     setProjects: (projects) => { t.projectList = projects; render(t); },
+    setProjectOffers: (offers) => { t.offers = offers; render(t); },
     setOpenProject: (project) => {
       if (project?.id !== t.openProject?.id) {
         t.treeOpen.clear();

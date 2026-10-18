@@ -2,6 +2,8 @@ packages:
   - "packages/*"
   - "website"
 allowBuilds:
+  # @vscode/test-web's chromium download; the web smoke check uses the Playwright browsers already installed.
+  '@playwright/browser-chromium': false
   # esbuild needs its postinstall to fetch the platform binary used by @labshelf/browser.
   esbuild: true
   # spawn-sync is a legacy jest transitive; its postinstall is only needed on Node < 0.12.

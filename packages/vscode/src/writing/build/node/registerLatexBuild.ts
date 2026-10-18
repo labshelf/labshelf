@@ -1,5 +1,6 @@
 // Registers the build that follows every save of a LaTeX project's sources.
-import { buildRootOf, ProjectBuildQueue } from "@labshelf/core/node";
+import { buildRootOf } from "@labshelf/core";
+import { ProjectBuildQueue } from "@labshelf/core/node";
 import * as vscode from "vscode";
 
 import { owningProject, type ReadyProject } from "../../mainDocument.js";
@@ -9,7 +10,7 @@ import type { BuildDiagnostics } from "../buildDiagnostics.js";
 import { autoCompileGate } from "../options/index.js";
 import { LatexBuilds } from "./latexBuilds.js";
 import { projectBuildDeps } from "./projectBuildDeps.js";
-import type { IncludeOnlyTarget } from "./includeOnly.js";
+import type { IncludeOnlyTarget } from "../options/index.js";
 
 const SOURCE_EXTENSIONS = new Set([".tex", ".bib", ".sty", ".cls"]);
 // Editors with auto save write several times a second while typing; one build covers a burst.
@@ -18,7 +19,7 @@ const SAVE_DEBOUNCE_MS = 300;
 interface LatexBuildDeps {
   context: vscode.ExtensionContext;
   host: WritingHost;
-  projects: Pick<WritingProjects, "data" | "list" | "paths" | "reload">;
+  projects: Pick<WritingProjects, "data" | "list" | "paths" | "fs" | "reload">;
   previews: Pick<BuildPreviews, "building" | "finished">;
   diagnostics: Pick<BuildDiagnostics, "publish">;
   /** The `\include` path a save builds alone while the preview's include-only toggle is on. */
@@ -57,7 +58,7 @@ export function registerLatexBuild(deps: LatexBuildDeps): LatexBuilds {
     const project = latexProjectOf(deps.projects, document.uri);
     if (!project || !autoCompile.allows()) { return; }
     const folder = project.folder;
-    const root = await buildRootOf(folder, project.main ?? "", document.uri.fsPath);
+    const root = await buildRootOf(deps.projects, folder, project.main ?? "", document.uri.fsPath);
     if (disposed) { return; } // the root resolves asynchronously, possibly after dispose
     const key = `${folder}\0${root}`;
     clearTimeout(timers.get(key));

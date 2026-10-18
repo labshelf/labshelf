@@ -6,6 +6,7 @@ import { duplicateProject } from "../index.js";
 import type { RootBuilds } from "../preview/index.js";
 import { OPEN_PROJECT_COMMAND, type ProjectSession, type WritingHost, type WritingProjects } from "../session/index.js";
 import type { SidebarProjectsSource } from "../sidebar/index.js";
+import { desktopCommandsAvailable } from "../../ui/library/index.js";
 import { projectMenuCommands, runProjectCommand } from "./projectCommands.js";
 import { createProjectDetailSource } from "./projectDetailSource.js";
 import { createProjectHostActions } from "./projectHostActions.js";
@@ -55,6 +56,7 @@ export function createProjectLibrary(deps: ProjectLibraryDeps): ProjectLibraryPo
     ...createProjectHostActions({ projects, findReady, recompile: deps.recompile, open, openFile, edit }),
     openLabel: () => "Open in VS Code",
     commands: projectMenuCommands,
+    newKinds: () => (desktopCommandsAvailable() ? ["blank", "template", "folder"] : ["blank"]),
     open,
     create: async (kind) => { await vscode.commands.executeCommand(CREATE_COMMANDS[kind]); },
     rename: (id, title) => edit(id, { title: title === findReady(id).settings.id ? undefined : title }),

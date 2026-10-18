@@ -1,10 +1,12 @@
 // Declares everything the extension needs from its host runtime, so activation code never touches Node directly.
 import type {
-  ConflictCopy, ILogger, LibraryFileSystem, LibraryLayout, OpenAiStorage, PathOps, PdfDocumentOpener, PdfTextLayerBuilder, PdfOcrEngine, ProjectDataPort,
-  ProjectDeviceDirs, SidecarPort,
+  ConflictCopy, ConflictResolution, ILogger, LibraryFileSystem, LibraryLayout, OpenAiStorage, PathOps, PdfDocumentOpener, PdfjsLoader,
+  PdfTextLayerBuilder, PdfOcrEngine, ProjectDataPort, ProjectDeviceDirs, SidecarPort,
 } from "@labshelf/core";
 import type { PdfjsLocator } from "../../pdf-viewer/index.js";
+import type { UriOfPath } from "../../storage/index.js";
 import type { SharedLibraryConfig } from "../../storage/paths/index.js";
+import type { ConvertDocument } from "../../writing/export/index.js";
 
 /** OCR (absent when the user turned it off) and the step that gives scans a text layer. */
 interface PdfTextServices {
@@ -23,9 +25,13 @@ export interface HostAdapters {
   paths: PathOps;
   /** The disk the library and the writing projects live on. */
   fs: LibraryFileSystem;
+  /** The URI the VS Code file system opens for a path. */
+  uriOf: UriOfPath;
   /** A logger that writes the library's rotating app.log. */
   createLogger(appLogPath: string): ILogger;
   pdfOpener: PdfDocumentOpener;
+  /** The extension host's one pdf.js. */
+  pdfjs: PdfjsLoader;
   createPdfTextServices(logger: ILogger): PdfTextServices;
   createSidecarPort(layout: Pick<LibraryLayout<string>, "paperDataPath" | "tmpDir">, logger: ILogger): SidecarPort;
   openAiStorage: OpenAiStorage;
@@ -34,6 +40,9 @@ export interface HostAdapters {
   createProjectData(logger: ILogger, deviceDirs: ProjectDeviceDirs): ProjectDataPort;
   /** Lists the unresolved conflict copies a sync tool left in the library, merging against this device's bases. */
   scanLibraryConflicts(root: string, logger: ILogger): Promise<ConflictCopy[]>;
+  resolveConflictCopy(copy: ConflictCopy, resolution: ConflictResolution, logger: ILogger): Promise<void>;
+  /** Absent where documents cannot be converted (no pandoc on the web). */
+  convertDocument?: ConvertDocument;
   sharedLibraryConfig: SharedLibraryConfig;
   reader: {
     locatePdfjs: PdfjsLocator;

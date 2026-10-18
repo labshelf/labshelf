@@ -7,7 +7,7 @@ import type { PanePrefsPort } from "../../../library-ui/state/index.js";
 import { showMenu, toast, type MenuAnchor } from "../../../ui/dom/index.js";
 import { DEFAULT_PROJECT_VIEW, deriveProjectView, firstProjectSortDir, placeCounts, type ProjectSortKey, type ProjectViewState } from "../derive/index.js";
 import type { AllProjectsTransport, HostToAllProjects } from "../protocol/index.js";
-import type { ProjectMenuCommand, ProjectPlace, ProjectRow } from "../projectRow.js";
+import type { NewProjectKind, ProjectMenuCommand, ProjectPlace, ProjectRow } from "../projectRow.js";
 import { mountAllProjectsHeader } from "./allProjectsHeader.js";
 import { emptyTrash } from "./projectActions.js";
 import { buildProjectEmptyState } from "./projectEmptyState.js";
@@ -20,6 +20,7 @@ interface PageState {
   view: ProjectViewState;
   rows: ProjectRow[];
   commands: ProjectMenuCommand[];
+  newKinds: NewProjectKind[];
   selected: string | null;
   openLabel: string;
 }
@@ -29,12 +30,16 @@ export interface AllProjectsChannel {
   prefs: PanePrefsPort;
 }
 
-function showNewMenu(anchor: HTMLElement, post: AllProjectsTransport["post"]): void {
-  showMenu(anchor, [
-    { label: "Blank project", icon: "file", onSelect: () => post({ type: "create", kind: "blank" }) },
-    { label: "From template…", icon: "layers", onSelect: () => post({ type: "create", kind: "template" }) },
-    { label: "Add existing folder…", icon: "folder-open", onSelect: () => post({ type: "create", kind: "folder" }) },
-  ]);
+const NEW_ENTRIES: ReadonlyArray<{ kind: NewProjectKind; label: string; icon: "file" | "layers" | "folder-open" }> = [
+  { kind: "blank", label: "Blank project", icon: "file" },
+  { kind: "template", label: "From template…", icon: "layers" },
+  { kind: "folder", label: "Add existing folder…", icon: "folder-open" },
+];
+
+function showNewMenu(anchor: HTMLElement, post: AllProjectsTransport["post"], kinds: readonly NewProjectKind[]): void {
+  showMenu(anchor, NEW_ENTRIES.filter((e) => kinds.includes(e.kind)).map((e) => ({
+    label: e.label, icon: e.icon, onSelect: () => post({ type: "create", kind: e.kind }),
+  })));
 }
 
 type HostMessage<T extends HostToAllProjects["type"]> = Extract<HostToAllProjects, { type: T }>;
@@ -88,13 +93,13 @@ function paneView(s: PageState, details: DetailRequests): ProjectDetailView {
 }
 
 export function mountAllProjects(root: HTMLElement, { transport, prefs }: AllProjectsChannel): void {
-  const s: PageState = { view: DEFAULT_PROJECT_VIEW, rows: [], commands: [], selected: null, openLabel: "Open" };
+  const s: PageState = { view: DEFAULT_PROJECT_VIEW, rows: [], commands: [], newKinds: ["blank", "template", "folder"], selected: null, openLabel: "Open" };
   const post = transport.post.bind(transport);
   const frame = buildFrame(root, prefs, { withSidebar: false, withCitationMap: false, detailLabel: "Project details" });
   frame.root.classList.add("ls-all-projects");
   const set = (view: Partial<ProjectViewState>): void => { s.view = { ...s.view, ...view }; render(); };
   const rowById = (id: string): ProjectRow | undefined => s.rows.find((r) => r.id === id);
-  const onNew = (anchor: HTMLElement): void => showNewMenu(anchor, post);
+  const onNew = (anchor: HTMLElement): void => showNewMenu(anchor, post, s.newKinds);
   const details = createDetailRequests(post);
   const select = (id: string): void => { if (id !== s.selected) details.request(id); s.selected = id; render(); };
   const expansion = createProjectExpansion({ post, rowById, select, detailOf: details.get, render });
@@ -125,7 +130,7 @@ export function mountAllProjects(root: HTMLElement, { transport, prefs }: AllPro
     files: expansion.receive,
     detail: details.receive,
     projects: (message) => {
-      s.rows = message.rows; s.commands = message.commands; s.openLabel = message.openLabel;
+      s.rows = message.rows; s.commands = message.commands; s.newKinds = message.newKinds; s.openLabel = message.openLabel;
       render();
       if (s.selected) details.request(s.selected);
     },

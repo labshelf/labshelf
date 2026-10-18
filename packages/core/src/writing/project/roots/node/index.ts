@@ -1,3 +1,2 @@
-/** Exports the Node side of project roots: flat-build-file cleanup and the root a save builds. */
-export { buildRootOf } from "./buildRootOf.js";
+/** Exports the Node side of project roots: flat-build-file cleanup. */
 export { clearFlatBuildFiles } from "./clearFlatBuildFiles.js";

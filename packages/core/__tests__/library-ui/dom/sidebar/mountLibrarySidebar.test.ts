@@ -319,6 +319,16 @@ describe("mountLibrarySidebar", () => {
       expect(projects.allProjects).toHaveBeenCalledTimes(1);
     });
 
+    it("leaves out the templates row and the buttons of actions the host cannot run", () => {
+      const { slot, sidebar } = mount([], [], true);
+      sidebar.setProjects([]);
+      sidebar.setProjectOffers({ templates: false, addExisting: false });
+      expect(slot.querySelector("[data-templates]")).toBeNull();
+      expect(slot.querySelector('.tree-empty-actions [data-tree="browse"]')).toBeNull();
+      expect(slot.querySelector('.tree-empty-actions [data-tree="add"]')).toBeNull();
+      expect(slot.querySelector('.tree-empty-actions [data-tree="blank"]')).not.toBeNull();
+    });
+
     it("shows an empty state whose buttons call the host actions", () => {
       const { slot, sidebar, projects } = mount([], [], true);
       expect(slot.querySelector(".tree-empty-actions")).not.toBeNull();

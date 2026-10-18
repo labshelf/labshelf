@@ -1,12 +1,12 @@
 // Tests when saved LaTeX files trigger a build: the root of the saved file is built, debounced per root.
 import * as vscode from "vscode";
 
-import { buildRootOf } from "@labshelf/core/node";
+import { buildRootOf } from "@labshelf/core";
 import { registerLatexBuild } from "../../../../src/writing/build/node/registerLatexBuild";
 import { fakeHost, fakeProjects, readyEntry } from "../../../support/writingFixtures";
 
 const request = jest.fn();
-jest.mock("@labshelf/core/node", () => ({ ...jest.requireActual("@labshelf/core/node"), buildRootOf: jest.fn() }));
+jest.mock("@labshelf/core", () => ({ ...jest.requireActual("@labshelf/core"), buildRootOf: jest.fn() }));
 jest.mock("../../../../src/writing/build/node/latexBuilds", () => ({
   LatexBuilds: jest.fn(() => ({ request: (...args: unknown[]) => request(...args), cancelAll: jest.fn() })),
 }));
@@ -36,7 +36,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   delete workspace._config["labshelf.writing"];
   jest.useFakeTimers();
-  rootOf.mockImplementation(async (_folder: string, main: string) => main);
+  rootOf.mockImplementation(async (_reads: unknown, _folder: string, main: string) => main);
 });
 
 afterEach(() => {
@@ -51,7 +51,7 @@ describe("registerLatexBuild saves", () => {
     await jest.advanceTimersByTimeAsync(299);
     expect(request).not.toHaveBeenCalled();
     await jest.advanceTimersByTimeAsync(1);
-    expect(rootOf).toHaveBeenCalledWith("/p/tex", "main.tex", "/p/tex/chapters/one.tex");
+    expect(rootOf).toHaveBeenCalledWith(expect.anything(), "/p/tex", "main.tex", "/p/tex/chapters/one.tex");
     expect(request).toHaveBeenCalledWith("/p/tex", "main.tex", "save", undefined);
   });
 
@@ -65,7 +65,7 @@ describe("registerLatexBuild saves", () => {
   });
 
   it("builds a second root itself, one build per root for a burst", async () => {
-    rootOf.mockImplementation(async (_folder: string, main: string, file: string) => (file.endsWith("slides.tex") ? "slides.tex" : main));
+    rootOf.mockImplementation(async (_reads: unknown, _folder: string, main: string, file: string) => (file.endsWith("slides.tex") ? "slides.tex" : main));
     setup();
     save("/p/tex/slides.tex");
     save("/p/tex/slides.tex");

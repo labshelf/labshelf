@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import type { ILogger, LatexEngine, PreviewPorts } from "@labshelf/core";
-import type { IncludeOnlyState } from "../../build/node/includeOnly.js";
+import type { IncludeOnlyState } from "../../build/index.js";
 import { setAutoCompile } from "../../build/options/index.js";
 import type { ReadyProject } from "../../mainDocument.js";
 import type { WritingProjects } from "../../session/index.js";

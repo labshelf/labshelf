@@ -24,6 +24,7 @@ function setup() {
     list: jest.fn(async () => rows),
     onDidChange: jest.fn((listener: () => void) => { changed = listener; return stops.changes; }),
     commands: jest.fn(() => []),
+    newKinds: jest.fn(() => (["blank"])),
     rename: jest.fn(async () => undefined),
     deleteForever: jest.fn(async () => undefined),
     files: jest.fn(async () => ["main.tex", "sec/intro.tex"]),
@@ -57,7 +58,7 @@ describe("serveAllProjects", () => {
     await flush();
     change();
     await flush();
-    expect(posted).toEqual([{ type: "projects", rows, commands: [], openLabel: "Open in VS Code" }, { type: "projects", rows, commands: [], openLabel: "Open in VS Code" }]);
+    expect(posted).toEqual([{ type: "projects", rows, commands: [], newKinds: ["blank"], openLabel: "Open in VS Code" }, { type: "projects", rows, commands: [], newKinds: ["blank"], openLabel: "Open in VS Code" }]);
   });
 
   it("dispatches an action to the port", async () => {

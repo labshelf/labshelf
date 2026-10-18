@@ -39,7 +39,7 @@ it("builds the frame with the Library and All projects classes, the list and the
 
 it("shows the selected project's title in the pane and fills it when the detail arrives", () => {
   const t = mountPage();
-  t.deliver({ type: "projects", rows: [row], commands: [], openLabel: "Open in VS Code" });
+  t.deliver({ type: "projects", rows: [row], commands: [], newKinds: ["blank", "template", "folder"], openLabel: "Open in VS Code" });
   t.frame.querySelector<HTMLElement>(`.paper-row[data-id="${row.id}"] .paper-row-main`)!.click();
   expect(t.sent).toContainEqual({ type: "detail", id: row.id });
   const pane = t.frame.querySelector(".detail-pane")!;
@@ -60,4 +60,11 @@ it("folds the detail pane from the header toggle and saves that", () => {
   toggle.click();
   expect(t.frame.classList.contains("detail-collapsed")).toBe(false);
   expect(t.saved).toEqual([{ detailCollapsed: true }, { detailCollapsed: false }]);
+});
+
+it("offers only the new-project kinds the host can create", () => {
+  const t = mountPage();
+  t.deliver({ type: "projects", rows: [row], commands: [], newKinds: ["blank"], openLabel: "Open" });
+  t.frame.querySelector<HTMLElement>('.list-header [data-act="new"]')!.click();
+  expect([...document.querySelectorAll(".ls-menu-label")].map((l) => l.textContent)).toEqual(["Blank project"]);
 });

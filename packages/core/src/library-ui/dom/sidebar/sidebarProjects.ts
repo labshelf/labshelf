@@ -46,6 +46,14 @@ export interface SidebarProjectActions {
   treeAdd(view: string, key: string, text: string): void;
 }
 
+/** Which project actions the host can run; the sidebar leaves out the buttons of the others. */
+export interface ProjectOffers {
+  templates: boolean;
+  addExisting: boolean;
+}
+
+export const ALL_PROJECT_OFFERS: ProjectOffers = { templates: true, addExisting: true };
+
 /** Expansion keys of project folders share the sidebar's expanded set with library folder paths. */
 export const projectFolderKey = (path: string): string => `project-folder:${path}`;
 
@@ -59,17 +67,18 @@ export const PROJECT_LIST_ACTIONS =
 const emptyButton = (action: string, label: string, glyph: "plus" | "folder-plus" | "folder-open"): string =>
   `<button class="ls-btn" data-tree="${action}" tabindex="-1">${icon(glyph)}${label}</button>`;
 
-function emptyState(): HTMLElement {
-  return el("div", { class: "tree-empty", html: "No projects yet." +
-    `<div class="tree-empty-actions">${emptyButton("browse", "Browse templates", "plus")}${emptyButton("blank", "New blank project", "folder-plus")}${emptyButton("add", "Add existing folder", "folder-open")}</div>` });
+function emptyState(offers: ProjectOffers): HTMLElement {
+  const buttons = (offers.templates ? emptyButton("browse", "Browse templates", "plus") : "") + emptyButton("blank", "New blank project", "folder-plus") +
+    (offers.addExisting ? emptyButton("add", "Add existing folder", "folder-open") : "");
+  return el("div", { class: "tree-empty", html: `No projects yet.<div class="tree-empty-actions">${buttons}</div>` });
 }
 
 const byName = (a: SidebarProject, b: SidebarProject): number => a.name.localeCompare(b.name);
 
 /** My projects: folders first, then projects, each level sorted by name; a folder's count is every project under it. */
-export function projectTreeNodes(projects: readonly SidebarProject[], expanded: ReadonlySet<string>): HTMLElement[] {
+export function projectTreeNodes(projects: readonly SidebarProject[], expanded: ReadonlySet<string>, offers: ProjectOffers): HTMLElement[] {
   const active = projects.filter((p) => !p.hidden);
-  if (active.length === 0) return [emptyState()];
+  if (active.length === 0) return [emptyState(offers)];
   const rows: HTMLElement[] = [];
   const walk = (prefix: string, depth: number): void => {
     const under = active.filter((p) => p.folder !== undefined && (prefix === "" || p.folder.startsWith(`${prefix}/`)));

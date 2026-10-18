@@ -3,11 +3,9 @@ import * as path from "node:path";
 import { unzipSync, strFromU8 } from "fflate";
 import * as vscode from "vscode";
 
-import { convertWithPandoc } from "@labshelf/core/node";
 import { exportProject } from "../../../src/writing/export/exportProject";
 
-jest.mock("@labshelf/core/node", () => ({ ...jest.requireActual("@labshelf/core/node"), convertWithPandoc: jest.fn(async () => {}) }));
-const pandoc = convertWithPandoc as jest.Mock;
+const pandoc = jest.fn(async (_request: unknown) => {});
 import { fakeLogger, fakeProjects, readyEntry } from "../../support/writingFixtures";
 
 type Project = Parameters<typeof exportProject>[1];
@@ -21,7 +19,7 @@ const env = vscode.env as unknown as { openExternal: jest.Mock };
 
 const logger = fakeLogger();
 const projects = fakeProjects();
-const deps = { logger, projects };
+const deps = { logger, projects, convertDocument: pandoc };
 let files: Record<string, string>;
 
 const project = (bibliography?: string) => readyEntry(dir, {
@@ -137,5 +135,11 @@ describe("exportProject", () => {
     pandoc.mockRejectedValueOnce(new Error("Exporting to Word, Markdown or HTML needs pandoc."));
     await exportProject(deps, project(), "main.tex", "markdown");
     expect(window["showErrorMessage"]!.mock.calls[0]![0]).toContain("needs pandoc");
+  });
+
+  it("reports a document export as unavailable where no converter exists", async () => {
+    await exportProject({ logger, projects }, project(), "main.tex", "html");
+    expect(window["showSaveDialog"]).not.toHaveBeenCalled();
+    expect(window["showErrorMessage"]!.mock.calls[0]![0]).toContain("not available");
   });
 });

@@ -2,7 +2,7 @@
 import * as path from 'node:path';
 import type * as vscode from 'vscode';
 import { deviceLocalLayout } from '@labshelf/core/node';
-import { createNodeAdapters } from '../../../src/activation/node/index';
+import { createNodeAdapters } from '../../../src/activation/node/nodeAdapters';
 
 describe('createNodeAdapters', () => {
   const adapters = createNodeAdapters({ subscriptions: [] } as unknown as vscode.ExtensionContext);

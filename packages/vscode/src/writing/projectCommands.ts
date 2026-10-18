@@ -56,7 +56,11 @@ async function addFolder({ host, projects }: ProjectCommandsDeps): Promise<void>
 export function registerProjectCommands(deps: ProjectCommandsDeps): void {
   deps.context.subscriptions.push(
     vscode.commands.registerCommand("labshelf.writing.newBlankProject", () => newBlankProject(deps)),
-    vscode.commands.registerCommand("labshelf.writing.addExistingFolder", () => addFolder(deps)),
     vscode.commands.registerCommand("labshelf.writing.refresh", () => deps.projects.reload()),
   );
+}
+
+/** Registered by the desktop only: a folder outside the library is reachable by path there, not in a web page. */
+export function registerAddExistingFolder(deps: ProjectCommandsDeps): void {
+  deps.context.subscriptions.push(vscode.commands.registerCommand("labshelf.writing.addExistingFolder", () => addFolder(deps)));
 }

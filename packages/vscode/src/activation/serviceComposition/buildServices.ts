@@ -9,11 +9,12 @@ import { queueTextLayers } from "../../commands/index.js";
 import { reindexLibrary, type ReindexSummary } from "../../storage/data/index.js";
 import type { ActiveServices } from "../../commands/index.js";
 import type { LibraryEvents } from "../../events/index.js";
-import type { ILogger, PathOps } from "@labshelf/core";
+import type { ILogger } from "@labshelf/core";
 import type { HostAdapters } from "./hostAdapters.js";
 
 // The adapter belongs to one library root: its temp folder for atomic writes sits inside that root.
-const createFileSystem = (root: vscode.Uri, paths: PathOps): VscodeFileSystem => new VscodeFileSystem(root.fsPath, paths);
+const createFileSystem = (root: vscode.Uri, adapters: Pick<HostAdapters, "paths" | "uriOf">): VscodeFileSystem =>
+  new VscodeFileSystem(root.fsPath, adapters.paths, adapters.uriOf);
 
 // textLayers is read lazily (through getTextLayers) because PaperService, which PaperTextLayers wraps, needs this
 // same reindexer before it exists yet.
@@ -38,7 +39,7 @@ export async function buildServices(
   adapters: HostAdapters,
 ): Promise<ActiveServices> {
   const paths = libraryLayout(root, vscode.Uri.joinPath);
-  const fileSystem = createFileSystem(root, adapters.paths);
+  const fileSystem = createFileSystem(root, adapters);
   await ensureLibraryStructure(root, fileSystem);
   const device = adapters.deviceLayout(root.fsPath);
   const logger = adapters.createLogger(device.appLogPath);

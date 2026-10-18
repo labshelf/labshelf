@@ -8,6 +8,7 @@ import { owningProject, type ReadyProject } from "../../mainDocument.js";
 import type { WritingHost, WritingProjects } from "../../session/index.js";
 import { HistoryPanel } from "../historyPanel.js";
 import { NodeHistoryStore } from "./nodeHistoryStore.js";
+import type { ProjectHistoryRecorder } from "../../platformPort/index.js";
 
 const SHOW_HISTORY_COMMAND = "labshelf.writing.showHistory";
 /** Save All writes several files at once; one snapshot covers them. */
@@ -17,11 +18,6 @@ interface ProjectHistoryDeps {
   context: vscode.ExtensionContext;
   host: WritingHost;
   projects: Pick<WritingProjects, "list" | "paths">;
-}
-
-/** What the rest of the Writing view records into a project's history. */
-export interface ProjectHistoryRecorder {
-  recordVersion(project: ReadyProject, name: string): void;
 }
 
 export function registerProjectHistory({ context, host, projects }: ProjectHistoryDeps): ProjectHistoryRecorder {

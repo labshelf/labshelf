@@ -6,7 +6,7 @@ const TMP = '/lib/.research/tmp';
 const wfs = vscode.workspace.fs as unknown as Record<string, jest.Mock>;
 
 function makeFs(): VscodeFileSystem {
-  return new VscodeFileSystem('/lib', path);
+  return new VscodeFileSystem('/lib', path, vscode.Uri.file);
 }
 
 function notFound(): Error {

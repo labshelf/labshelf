@@ -1,8 +1,6 @@
 // Shows the conflict notification after a scan and walks the user through resolving the copies.
-import * as path from "node:path";
 import * as vscode from "vscode";
-import { errorMessage, type ConflictCopy, type ConflictResolution, type ILogger } from "@labshelf/core";
-import { resolveConflictCopy } from "@labshelf/core/node";
+import { errorMessage, type ConflictCopy, type ConflictResolution, type ILogger, type PathOps } from "@labshelf/core";
 import type { ActiveServices } from "../../commands/index.js";
 import { conflictChoices, toolName } from "./conflictChoices.js";
 import { ConflictNotifier, conflictMessage } from "./conflictNotifier.js";
@@ -14,6 +12,8 @@ export interface ConflictHandlingDeps {
   getServices: () => ActiveServices | null;
   getRoot: () => string | null;
   scanConflicts: (root: string, logger: ILogger) => Promise<ConflictCopy[]>;
+  resolveCopy: (copy: ConflictCopy, resolution: ConflictResolution, logger: ILogger) => Promise<void>;
+  paths: Pick<PathOps, "basename">;
 }
 
 export class ConflictHandling {
@@ -42,10 +42,10 @@ export class ConflictHandling {
       if (copies.length === 0) { void vscode.window.showInformationMessage("No conflicting copies"); return; }
       remaining = await walkConflicts(copies, {
         ask: (copy, index, total) => this.ask(copy, index, total, services),
-        apply: (copy, resolution) => resolveConflictCopy(copy, resolution, services.logger),
+        apply: (copy, resolution) => this.deps.resolveCopy(copy, resolution, services.logger),
         onFailure: (copy, error) => {
           void services.logger.error(MODULE, error, { copy: copy.copy });
-          void vscode.window.showErrorMessage(`Could not resolve ${path.basename(copy.copy)}: ${errorMessage(error)}`);
+          void vscode.window.showErrorMessage(`Could not resolve ${this.deps.paths.basename(copy.copy)}: ${errorMessage(error)}`);
         },
       });
       await services.reindexLibrary();
@@ -64,7 +64,7 @@ export class ConflictHandling {
       conflictChoices(copy).map((choice) => ({ label: choice.label, resolution: choice.resolution })),
       {
         title: `${title} (${index + 1} of ${total})`,
-        placeHolder: `${path.basename(copy.original)}: a conflicting copy from ${toolName(copy.tool)}`,
+        placeHolder: `${this.deps.paths.basename(copy.original)}: a conflicting copy from ${toolName(copy.tool)}`,
       },
     );
     return picked?.resolution;

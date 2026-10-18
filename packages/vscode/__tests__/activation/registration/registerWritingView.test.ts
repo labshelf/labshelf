@@ -7,18 +7,25 @@ import * as vscode from "vscode";
 import { NodeLibraryFileSystem } from "@labshelf/core/node";
 import { registerWritingView } from "../../../src/activation/registration/registerWritingView";
 import type { LibraryRootController } from "../../../src/activation/libraryLifecycle";
-import type { RegisterNodeWriting } from "../../../src/writing/nodePort";
+import type { RegisterPlatformWriting } from "../../../src/writing/platformPort";
 import { registerNodeWriting } from "../../../src/writing/node";
+import { registerWebWriting } from "../../../src/writing/web";
 import { fakeLogger, fakeProjectData } from "../../support/writingFixtures";
 
 const manifest = JSON.parse(readFileSync(join(__dirname, "../../../package.json"), "utf8")) as {
-  contributes: { commands: { command: string }[]; menus: { commandPalette: { command: string; when: string }[] }; views: { labshelfContainer: { id: string }[] } };
+  contributes: { commands: { command: string; enablement?: string }[]; menus: Record<string, { command: string; when?: string }[]> & { commandPalette: { command: string; when?: string }[] }; views: { labshelfContainer: { id: string }[] } };
 };
 
-const builders = { latex: { request: jest.fn() }, typst: { request: jest.fn() } };
-const fakeRegisterNodeWriting: RegisterNodeWriting = () => ({ builders, buildRootOf: async (_folder, main) => main, history: { recordVersion: jest.fn() } });
+/** Commands enabled only off the web: the ones only the desktop registers. */
+function desktopOnlyCommands(): Set<string> {
+  return new Set(manifest.contributes.commands.filter((entry) => entry.enablement?.includes("!isWeb")).map((entry) => entry.command));
+}
 
-function setup(root: string | undefined, register: RegisterNodeWriting = fakeRegisterNodeWriting) {
+const builders = { latex: { request: jest.fn() }, typst: { request: jest.fn() } };
+const fakeRegisterWriting: RegisterPlatformWriting = () => ({ builders, history: { recordVersion: jest.fn() } });
+const pdfjs = { load: jest.fn(), getDocument: jest.fn() };
+
+function setup(root: string | undefined, register: RegisterPlatformWriting = fakeRegisterWriting, convertDocument: (() => Promise<void>) | null = jest.fn()) {
   const data = fakeProjectData();
   const emitter = new vscode.EventEmitter<{ root: vscode.Uri }>();
   const controller = {
@@ -33,8 +40,11 @@ function setup(root: string | undefined, register: RegisterNodeWriting = fakeReg
     extension: { packageJSON: { version: "0.0.0" } },
     workspaceState: { get: () => undefined, update: jest.fn(async () => {}) },
   };
-  const adapters = { paths: path, fs: new NodeLibraryFileSystem(), createProjectData: () => data, deviceLayout: () => { throw new Error("The fake project data reads no device dirs"); } };
-  registerWritingView(context as unknown as vscode.ExtensionContext, controller, { locatePdfjs: () => null, isMac: false }, adapters, register);
+  const adapters = {
+    paths: path, fs: new NodeLibraryFileSystem(), createProjectData: () => data, deviceLayout: () => { throw new Error("The fake project data reads no device dirs"); },
+    reader: { locatePdfjs: () => null, isMac: false }, pdfjs, ...(convertDocument ? { convertDocument } : {}),
+  };
+  registerWritingView(context as unknown as vscode.ExtensionContext, controller, adapters, register);
   return { emitter, listProjects: data.listProjects };
 }
 
@@ -48,6 +58,25 @@ describe("registerWritingView", () => {
     const registered = (vscode.commands.registerCommand as jest.Mock).mock.calls.map(([id]) => id as string).filter((id) => id.startsWith("labshelf.writing.")).sort();
     const contributed = manifest.contributes.commands.map((c) => c.command).filter((id) => id.startsWith("labshelf.writing.")).sort();
     expect(registered).toEqual(contributed);
+  });
+
+  it("on the web, registers every labshelf.writing command except the ones the manifest enables only off the web", () => {
+    setup("/lib", registerWebWriting, null);
+    const registered = (vscode.commands.registerCommand as jest.Mock).mock.calls.map(([id]) => id as string).filter((id) => id.startsWith("labshelf.writing.")).sort();
+    const desktopOnly = desktopOnlyCommands();
+    const contributed = manifest.contributes.commands.map((c) => c.command).filter((id) => id.startsWith("labshelf.writing.") && !desktopOnly.has(id)).sort();
+    expect(registered).toEqual(contributed);
+    expect([...desktopOnly]).toEqual(expect.arrayContaining(["labshelf.writing.exportWord", "labshelf.writing.compareVersions"]));
+  });
+
+  it("hides each desktop-only command on the web in the palette and every menu that shows it", () => {
+    const desktopOnly = desktopOnlyCommands();
+    const entries = Object.values(manifest.contributes.menus).flat().filter((entry) => desktopOnly.has(entry.command));
+    for (const entry of entries.filter((candidate) => candidate.when !== "false")) {
+      expect({ command: entry.command, when: entry.when }).toEqual({ command: entry.command, when: expect.stringContaining("!isWeb") });
+    }
+    const inPalette = new Set(manifest.contributes.menus.commandPalette.map((entry) => entry.command));
+    expect([...desktopOnly].filter((command) => !inPalette.has(command))).toEqual([]);
   });
 
   it("creates the contributed Figures tree view", () => {

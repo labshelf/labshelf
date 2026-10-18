@@ -1,7 +1,7 @@
 // Registers Build Project: saves every editor and builds the active file's project with the builder for its format.
 import * as vscode from "vscode";
 
-import type { BuildRootOf } from "../nodePort/index.js";
+import type { BuildRootOf } from "../platformPort/index.js";
 import type { WritingProjects } from "../session/index.js";
 import { activeProject } from "./activeProject.js";
 import type { ProjectBuilders } from "./projectBuilders.js";

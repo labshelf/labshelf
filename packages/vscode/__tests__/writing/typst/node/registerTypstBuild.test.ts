@@ -1,12 +1,12 @@
 // Tests when Typst files trigger a build: debounced live compiles into an open preview, and debounced builds after a save.
 import * as vscode from "vscode";
 
-import { buildRootOf } from "@labshelf/core/node";
+import { buildRootOf } from "@labshelf/core";
 import { runTypstBuild } from "@labshelf/core/typst/node";
 import { registerTypstBuild } from "../../../../src/writing/typst/node";
 import { fakeHost, fakeProjects, readyEntry } from "../../../support/writingFixtures";
 
-jest.mock("@labshelf/core/node", () => ({ ...jest.requireActual("@labshelf/core/node"), buildRootOf: jest.fn() }));
+jest.mock("@labshelf/core", () => ({ ...jest.requireActual("@labshelf/core"), buildRootOf: jest.fn() }));
 jest.mock("@labshelf/core/typst/node", () => ({ ...jest.requireActual("@labshelf/core/typst/node"), runTypstBuild: jest.fn() }));
 jest.mock("../../../../src/writing/typst/node/typstCompilerHost", () => ({
   TypstCompilerHost: jest.fn(() => ({ get: async () => ({ session: {}, packages: {} }) })),
@@ -47,7 +47,7 @@ beforeEach(() => {
   delete workspace._config["labshelf.writing"];
   jest.useFakeTimers();
   run.mockResolvedValue({ status: "succeeded", pdf: "/x.pdf", problems: [] });
-  rootOf.mockImplementation(async (_folder: string, main: string) => main);
+  rootOf.mockImplementation(async (_reads: unknown, _folder: string, main: string) => main);
 });
 
 afterEach(() => {
@@ -102,13 +102,13 @@ describe("registerTypstBuild saves", () => {
     setup(false);
     save("/p/typ/chapters/one.typ");
     await jest.advanceTimersByTimeAsync(300);
-    expect(rootOf).toHaveBeenCalledWith("/p/typ", "main.typ", "/p/typ/chapters/one.typ");
+    expect(rootOf).toHaveBeenCalledWith(expect.anything(), "/p/typ", "main.typ", "/p/typ/chapters/one.typ");
     expect(run).toHaveBeenCalledTimes(1);
     expect(run.mock.calls[0][0].main).toBe("book.typ");
   });
 
   it("debounces saves per root: two roots each get a build", async () => {
-    rootOf.mockImplementation(async (_folder: string, _main: string, file: string) => (file.includes("/a/") ? "a/main.typ" : "b/main.typ"));
+    rootOf.mockImplementation(async (_reads: unknown, _folder: string, _main: string, file: string) => (file.includes("/a/") ? "a/main.typ" : "b/main.typ"));
     setup(false);
     save("/p/typ/a/x.typ");
     save("/p/typ/b/y.typ");

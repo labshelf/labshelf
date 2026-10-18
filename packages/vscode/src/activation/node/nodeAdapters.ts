@@ -1,10 +1,11 @@
 // Builds the Node implementations of every host port: the one place that instantiates Node adapters.
 import * as path from "node:path";
-import type * as vscode from "vscode";
+import * as vscode from "vscode";
 
 import { FileMergeBaseStore, createProjectData } from "@labshelf/core";
 import {
-  NodeLibraryFileSystem, NodePdfOpener, createNodeSidecarPort, deviceLocalLayout, openAiStorage, scanLibraryConflicts,
+  NodeLibraryFileSystem, NodePdfOpener, convertWithPandoc, createNodeSidecarPort, deviceLocalLayout, openAiStorage, resolveConflictCopy,
+  scanLibraryConflicts,
 } from "@labshelf/core/node";
 import { createExtensionLogger } from "../../core/node/index.js";
 import { createOcrEngine, createTextLayerBuilder, hostPdfjs } from "../../pdf/node/index.js";
@@ -17,8 +18,10 @@ export function createNodeAdapters(context: vscode.ExtensionContext): HostAdapte
   return {
     paths: path,
     fs,
+    uriOf: (target) => vscode.Uri.file(target),
     createLogger: createExtensionLogger,
     pdfOpener: new NodePdfOpener(hostPdfjs),
+    pdfjs: hostPdfjs,
     createPdfTextServices: (logger) => {
       const ocr = createOcrEngine(context, logger);
       return { ocr, textLayerBuilder: createTextLayerBuilder(ocr) };
@@ -29,6 +32,8 @@ export function createNodeAdapters(context: vscode.ExtensionContext): HostAdapte
     createProjectData: (logger, deviceDirs) => createProjectData({ fs, path, logger, deviceDirs }),
     scanLibraryConflicts: (root, logger) =>
       scanLibraryConflicts(root, new FileMergeBaseStore(fs, path, deviceLocalLayout(root).mergeBasesDir), logger),
+    resolveConflictCopy,
+    convertDocument: convertWithPandoc,
     sharedLibraryConfig: nodeSharedLibraryConfig,
     reader: { locatePdfjs, isMac: process.platform === "darwin" },
   };

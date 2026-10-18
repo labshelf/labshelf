@@ -1,5 +1,6 @@
 // Registers the Typst compiles: live into an open preview while the user types, and a build after every save of a Typst project's files.
-import { buildRootOf, ProjectBuildQueue } from "@labshelf/core/node";
+import { buildRootOf } from "@labshelf/core";
+import { ProjectBuildQueue } from "@labshelf/core/node";
 import * as vscode from "vscode";
 
 import { owningProject, type ReadyProject } from "../../mainDocument.js";
@@ -37,7 +38,7 @@ export function registerTypstBuild(deps: TypstBuildRegistration): TypstBuilds {
   const schedule = async (project: ReadyProject, file: vscode.Uri, trigger: "live" | "save", delay: number): Promise<void> => {
     if (!autoCompile.allows()) { return; }
     const folder = project.folder;
-    const root = await buildRootOf(folder, project.main ?? "", file.fsPath);
+    const root = await buildRootOf(deps.projects, folder, project.main ?? "", file.fsPath);
     if (disposed) { return; } // the root resolves asynchronously, possibly after dispose
     const key = `${folder}\0${root}`;
     clearTimeout(timers.get(key));

@@ -5,4 +5,5 @@ export { rootNode } from './libraryNode.js';
 export type { LibraryNode } from './libraryNode.js';
 export { validateFolderNameInput } from './folderNameInput.js';
 export type { ProjectTreeMessage, SidebarProjectItem } from './sidebarMessages.js';
-export { PROJECT_COMMANDS, isSidebarProjectCommand } from './projectCommands.js';
+export { PROJECT_COMMANDS, hostCommands, isSidebarProjectCommand } from './projectCommands.js';
+export { desktopCommandsAvailable } from './desktopCommands.js';

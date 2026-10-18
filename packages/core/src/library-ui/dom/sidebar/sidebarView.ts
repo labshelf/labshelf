@@ -4,7 +4,7 @@ import { el } from "../../../ui/dom/index.js";
 import { icon } from "../../../ui/index.js";
 import type { LibraryTree, TagCount } from "../../derive/index.js";
 import { tagQuery } from "../../searchQueries.js";
-import { PROJECT_LIST_ACTIONS, projectTreeNodes, type SidebarProject, type SidebarProjectActions } from "./sidebarProjects.js";
+import { PROJECT_LIST_ACTIONS, projectTreeNodes, type ProjectOffers, type SidebarProject, type SidebarProjectActions } from "./sidebarProjects.js";
 import { GROUP_ROW_DEPTH, allProjectsRow, exploreTemplatesRow, folderRow, paperRow, rowKey, allPapersRow, tagRow } from "./sidebarRows.js";
 import { groupRow, sectionRow, type GroupId, type SectionId } from "./sidebarSections.js";
 import { appendOpenProject } from "./sidebarOpenProject.js";
@@ -38,6 +38,7 @@ export interface SidebarState {
   /** Absent when the host has no Projects section. */
   projects: SidebarProjectActions | undefined;
   projectList: readonly SidebarProject[];
+  offers: ProjectOffers;
   /** The project open in the window; its trees lead the Projects section. */
   openProject: SidebarOpenProject | null;
   /** Fold state of the open project's tree nodes the user toggled, keyed `<view>:<key>`. */
@@ -129,10 +130,11 @@ function appendProjects(t: SidebarState, frag: DocumentFragment): void {
   body.classList.add("tree-pane-stack");
   // An open project owns the section; the project list and the gallery return when it closes.
   if (t.openProject) { appendOpenProject(t, body, appendPane, () => render(t)); return; }
-  body.append(exploreTemplatesRow(), allProjectsRow());
+  if (t.offers.templates) body.append(exploreTemplatesRow());
+  body.append(allProjectsRow());
   const listOpen = !t.collapsed.has("projects.list");
   const list = appendPane(body, "projects.list", groupRow("projects.list", "My projects", listOpen, PROJECT_LIST_ACTIONS), listOpen);
-  if (listOpen) list.append(...projectTreeNodes(t.projectList, t.expanded));
+  if (listOpen) list.append(...projectTreeNodes(t.projectList, t.expanded, t.offers));
 }
 
 export function render(t: SidebarState): void {

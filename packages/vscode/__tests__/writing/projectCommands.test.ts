@@ -1,7 +1,7 @@
 // Tests New blank project and Add existing folder: happy paths, cancellation and errors shown to the user.
 import * as vscode from "vscode";
 
-import { registerProjectCommands } from "../../src/writing";
+import { registerAddExistingFolder, registerProjectCommands } from "../../src/writing";
 import { commandHandler, fakeHost, fakeProjects, readyEntry } from "../support/writingFixtures";
 
 const window = vscode.window as unknown as Record<string, jest.Mock>;
@@ -13,6 +13,7 @@ function setup() {
   const projects = fakeProjects();
   data = projects.data;
   registerProjectCommands({ context: { subscriptions: [] } as never, host, projects: projects as never });
+  registerAddExistingFolder({ context: { subscriptions: [] } as never, host, projects: projects as never });
   return { host, projects };
 }
 

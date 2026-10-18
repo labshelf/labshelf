@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import type { PathOps } from "@labshelf/core";
 import { isInside, type ReadyProject } from "../../mainDocument.js";
-import type { BuildRootOf } from "../../nodePort/index.js";
+import type { BuildRootOf } from "../../platformPort/index.js";
 
 /** The active editor, or `undefined` when there is none or its file is not inside the project folder. */
 export function activeProjectEditor(paths: PathOps, folder: string): vscode.TextEditor | undefined {

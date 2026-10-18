@@ -32,7 +32,7 @@ export type AllProjectsToHost =
   | { type: "setTarget"; id: string; venue?: string; deadline?: string };
 
 export type HostToAllProjects =
-  | { type: "projects"; rows: ProjectRow[]; commands: ProjectMenuCommand[]; openLabel: string }
+  | { type: "projects"; rows: ProjectRow[]; commands: ProjectMenuCommand[]; newKinds: NewProjectKind[]; openLabel: string }
   | { type: "error"; message: string }
   | { type: "files"; id: string; files: string[] }
   | { type: "files"; id: string; error: string }

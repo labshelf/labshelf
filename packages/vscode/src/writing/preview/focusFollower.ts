@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import type { ProjectFormat } from "@labshelf/core";
 import { owningProject, type ReadyProject } from "../mainDocument.js";
-import type { BuildRootOf } from "../nodePort/index.js";
+import type { BuildRootOf } from "../platformPort/index.js";
 import type { WritingHost, WritingProjects } from "../session/index.js";
 import { builtPdf } from "./builtPdf.js";
 import { PREVIEW_LOG_MODULE } from "./previewStrings.js";

@@ -11,6 +11,7 @@
     "Other"
   ],
   "main": "./out/extension.js",
+  "browser": "./out/web/extension.js",
   "activationEvents": [
     "workspaceContains:**/labshelf.yaml",
     "onLanguage:latex",
@@ -168,7 +169,8 @@
       {
         "command": "labshelf.moveLibrary",
         "title": "Move Library…",
-        "category": "LabShelf"
+        "category": "LabShelf",
+        "enablement": "!isWeb"
       },
       {
         "command": "labshelf.syncGuide",
@@ -178,7 +180,8 @@
       {
         "command": "labshelf.connectBrowser",
         "title": "Connect the Browser",
-        "category": "LabShelf"
+        "category": "LabShelf",
+        "enablement": "!isWeb"
       },
       {
         "command": "labshelf.resolveConflicts",
@@ -264,7 +267,8 @@
         "command": "labshelf.templates.open",
         "title": "Research: Browse Templates…",
         "category": "LabShelf",
-        "icon": "$(add)"
+        "icon": "$(add)",
+        "enablement": "!isWeb"
       },
       {
         "command": "labshelf.projects.all",
@@ -280,18 +284,21 @@
       {
         "command": "labshelf.templates.saveProject",
         "title": "Research: Save Project as Template…",
-        "category": "LabShelf"
+        "category": "LabShelf",
+        "enablement": "!isWeb"
       },
       {
         "command": "labshelf.templates.publish",
         "title": "Research: Publish Project as Template…",
-        "category": "LabShelf"
+        "category": "LabShelf",
+        "enablement": "!isWeb"
       },
       {
         "command": "labshelf.writing.addExistingFolder",
         "title": "Research: Add Existing Folder as Project…",
         "category": "LabShelf",
-        "icon": "$(folder-opened)"
+        "icon": "$(folder-opened)",
+        "enablement": "!isWeb"
       },
       {
         "command": "labshelf.writing.refresh",
@@ -360,17 +367,20 @@
       {
         "command": "labshelf.writing.exportWord",
         "title": "Research: Export as Word (.docx)",
-        "category": "LabShelf"
+        "category": "LabShelf",
+        "enablement": "!isWeb"
       },
       {
         "command": "labshelf.writing.exportMarkdown",
         "title": "Research: Export as Markdown (.md)",
-        "category": "LabShelf"
+        "category": "LabShelf",
+        "enablement": "!isWeb"
       },
       {
         "command": "labshelf.writing.exportHtml",
         "title": "Research: Export as HTML (.html)",
-        "category": "LabShelf"
+        "category": "LabShelf",
+        "enablement": "!isWeb"
       },
       {
         "command": "labshelf.writing.copyProject",
@@ -411,7 +421,8 @@
       {
         "command": "labshelf.writing.checkBeforeSubmitting",
         "title": "Research: Check Before Submitting",
-        "category": "LabShelf"
+        "category": "LabShelf",
+        "enablement": "!isWeb"
       },
       {
         "command": "labshelf.writing.markVersion",
@@ -421,13 +432,15 @@
       {
         "command": "labshelf.writing.compareVersions",
         "title": "Research: Compare Versions",
-        "category": "LabShelf"
+        "category": "LabShelf",
+        "enablement": "!isWeb"
       },
       {
         "command": "labshelf.writing.showHistory",
         "title": "Research: Show Project History",
         "category": "LabShelf",
-        "icon": "$(history)"
+        "icon": "$(history)",
+        "enablement": "!isWeb"
       },
       {
         "command": "labshelf.installProjectPapers",
@@ -502,7 +515,8 @@
         "command": "labshelf.writing.regenerateFigure",
         "title": "Research: Regenerate Figure",
         "category": "LabShelf",
-        "icon": "$(sync)"
+        "icon": "$(sync)",
+        "enablement": "!isWeb"
       },
       {
         "command": "labshelf.writing.addToReadingList",
@@ -586,12 +600,12 @@
       "view/item/context": [
         {
           "command": "labshelf.writing.regenerateFigure",
-          "when": "view == labshelf.writing.figures && viewItem == labshelfFigureStale",
+          "when": "view == labshelf.writing.figures && viewItem == labshelfFigureStale && !isWeb",
           "group": "inline@1"
         },
         {
           "command": "labshelf.writing.regenerateFigure",
-          "when": "view == labshelf.writing.figures && viewItem =~ /^labshelfFigure/",
+          "when": "view == labshelf.writing.figures && viewItem =~ /^labshelfFigure/ && !isWeb",
           "group": "1_figure@1"
         }
       ],
@@ -754,13 +768,45 @@
         },
         {
           "command": "labshelf.writing.showHistory",
-          "when": "labshelf.writing.projectOpen || labshelf.writing.inProject"
+          "when": "labshelf.writing.projectOpen || labshelf.writing.inProject && !isWeb"
+        },
+        {
+          "command": "labshelf.connectBrowser",
+          "when": "!isWeb"
+        },
+        {
+          "command": "labshelf.moveLibrary",
+          "when": "!isWeb"
+        },
+        {
+          "command": "labshelf.templates.open",
+          "when": "!isWeb"
+        },
+        {
+          "command": "labshelf.templates.publish",
+          "when": "!isWeb"
+        },
+        {
+          "command": "labshelf.templates.saveProject",
+          "when": "!isWeb"
+        },
+        {
+          "command": "labshelf.writing.compareVersions",
+          "when": "!isWeb"
+        },
+        {
+          "command": "labshelf.writing.checkBeforeSubmitting",
+          "when": "!isWeb"
+        },
+        {
+          "command": "labshelf.writing.addExistingFolder",
+          "when": "!isWeb"
         }
       ],
       "editor/title": [
         {
           "command": "labshelf.writing.showHistory",
-          "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject",
+          "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject && !isWeb",
           "group": "navigation@1"
         },
         {
@@ -1012,6 +1058,7 @@
     "build": "pnpm run build:host && pnpm run build:webview",
     "build:host": "node build/host.mjs",
     "build:webview": "node build/webviews.mjs",
+    "smoke:web": "node scripts/webSmoke.mjs",
     "watch": "node build/host.mjs --watch",
     "watch:webview": "node build/webviews.mjs --watch",
     "dev": "node build/host.mjs --watch & node build/webviews.mjs --watch & wait",
@@ -1040,6 +1087,7 @@
     "@types/jest": "^29.5.14",
     "@types/node": "^22.13.10",
     "@types/vscode": "^1.98.0",
+    "@vscode/test-web": "^0.0.81",
     "esbuild": "^0.24.0",
     "fflate": "^0.8.2",
     "jest": "^29.7.0",
