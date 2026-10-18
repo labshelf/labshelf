@@ -34,7 +34,7 @@ function setup(type: "latex" | "typst" = "latex") {
   const recompile = jest.fn(async () => {});
   const project = (type === "latex" ? readyEntry(dir) : readyEntry(dir, { main: "main.typ", settings: { id: path.basename(dir), format: "typst" } })) as Project;
   const previews = new BuildPreviews({
-    host, paths: path, data: createProjectData({ fs: new NodeLibraryFileSystem(), path, logger: host.session.logger, deviceDirs: deviceLocalLayout(dir) }), listPapers: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false,
+    host, paths: path, uriOf: (target: string) => vscode.Uri.file(target), data: createProjectData({ fs: new NodeLibraryFileSystem(), path, logger: host.session.logger, deviceDirs: deviceLocalLayout(dir) }), listPapers: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false,
     buildRootOf: async (_folder: string, main: string) => main, recompile,
     projects: fakeProjects(), checkCounts: new CheckCounts(),
   } as never);

@@ -7,4 +7,3 @@ export {
 } from "./library";
 export { accessTabDeps, handleOpenForPdf } from "./access";
 export { handleAskAuthor } from "./askAuthor";
-export { handleCitationMapBuild, handleCitationMapImportDoi } from "./citationMap";

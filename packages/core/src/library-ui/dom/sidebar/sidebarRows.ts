@@ -2,7 +2,7 @@
 import { PAPERS_DIR, ROOT_LABEL } from "../../../library/index.js";
 import { el } from "../../../ui/dom/index.js";
 import { escapeHtml, icon } from "../../../ui/index.js";
-import type { SidebarProject } from "./sidebarProjects.js";
+import type { SidebarProject } from "../../projectRows/index.js";
 
 /** Row identity shared by focus, keyboard and click handling: `section:<id>`, `group:<id>`, `all-papers`, `folder:<path>`, `paper:<id>`, `tag:<tag>` or `project:<id>`. */
 export const rowKey = (r: HTMLElement): string => r.dataset["key"] ?? "";

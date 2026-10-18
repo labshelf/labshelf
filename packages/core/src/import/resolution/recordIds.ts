@@ -4,7 +4,7 @@ import { arxivIdFromDoi, arxivIdFromUrl, extractDoi, pmidFromUrl } from "../iden
 import type { DetectedIds } from "../identifiers/index.js";
 
 /** @returns the record's DOI, the arXiv id named by an arXiv DOI or an arxiv.org URL, and a PMID in a PubMed URL */
-export function idsFromRecord(r: PaperRecord): DetectedIds {
+export function idsFromRecord(r: Pick<PaperRecord, "doi" | "url">): DetectedIds {
   const doi = extractDoi(r.doi);
   const arxivId = arxivIdFromDoi(r.doi) ?? (r.url ? arxivIdFromUrl(r.url) : undefined);
   const pmid = r.url ? pmidFromUrl(r.url) : undefined;

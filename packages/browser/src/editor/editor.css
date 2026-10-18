@@ -1,51 +1,39 @@
-/* Lays the workbench and the side pane side by side; the workbench's colours and fonts come from its theme, the pane's from the tokens. */
+/* Lays the workbench over the whole page, with the helper setup panel floating over its bottom right corner. */
 html, body {
   margin: 0;
   width: 100%;
   height: 100%;
   overflow: hidden;
 }
-body {
-  display: flex;
-}
 #workbench {
-  flex: 1 1 auto;
-  min-width: 0;
+  width: 100%;
   height: 100%;
 }
-.editor-pane {
-  flex: 0 0 40%;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  border-left: 1px solid var(--ls-border);
-  background: var(--ls-bg);
-  color: var(--ls-fg);
-  font-size: var(--ls-font-size);
-}
-.editor-pane[hidden] {
-  display: none;
-}
-.editor-pane-setup {
-  padding: var(--ls-space-6);
-  border-bottom: 1px solid var(--ls-border);
-}
-.editor-pane-status:empty {
-  display: none;
-}
-.editor-pane-status {
-  margin: 0;
-  padding: var(--ls-space-4) var(--ls-space-6);
-  color: var(--ls-desc);
-}
-.editor-pane-pages {
-  flex: 1 1 auto;
+.editor-helper-setup {
+  left: auto;
+  top: auto;
+  right: var(--ls-space-7);
+  bottom: var(--ls-space-7);
+  transform: none;
+  animation: none;
+  max-height: calc(100% - 2 * var(--ls-space-7));
   overflow: auto;
-  padding: var(--ls-space-4);
 }
-.editor-pane-pages canvas {
-  display: block;
-  margin: 0 auto var(--ls-space-4);
-  background: var(--ls-sheet-light);
-  box-shadow: var(--ls-page-shadow);
+.editor-helper-setup[hidden] {
+  display: none;
+}
+.editor-helper-setup .ls-dialog-head {
+  align-items: center;
+}
+.editor-helper-setup .ls-dialog-title {
+  flex: 1 1 auto;
+}
+.editor-helper-setup-body {
+  margin-top: var(--ls-space-4);
+}
+/* The dialog head colours its icon as a warning; the close button keeps the button colour. */
+.editor-helper-setup .ls-dialog-head .ls-icon-btn svg {
+  width: 16px;
+  height: 16px;
+  color: inherit;
 }

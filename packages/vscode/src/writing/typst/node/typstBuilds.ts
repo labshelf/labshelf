@@ -10,9 +10,8 @@ import type { BuildListener, BuildTrigger, FinishedBuild } from "../../build/ind
 import type { WritingHost, WritingProjects } from "../../session/index.js";
 import { tinymistInstalled } from "../tinymist/index.js";
 import { recordTypstVersion } from "../typstVersionPin.js";
+import type { TypstTrigger } from "../typstTriggers.js";
 
-/** "live" compiles unsaved text for the preview only; the others write `<root>.pdf` from the files on disk. */
-export type TypstTrigger = BuildTrigger | "live";
 
 export interface TypstBuildsDeps {
   /** Runs the saved and command builds, one at a time per project. */

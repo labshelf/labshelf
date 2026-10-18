@@ -7,7 +7,7 @@ The library UI (folder header, paper list, paper menu, detail pane, citation map
 Two hosts mount it:
 
 - **VS Code** runs it in the list webview and answers over `postMessage`. The webview is untrusted: the extension host passes every message through `parseUiMessage` and drops what fails it. Prefs live in the webview state.
-- **The browser library page** runs it in the page and answers over an in-page loopback channel. Its own glue sits around the mounted UI: the shared folder tree (`mountLibrarySidebar`) in the sidebar slot, the URL hash and the sync status bar. Prefs live in localStorage under `labshelf.library.prefs`, together with the tree's expanded folders.
+- **The browser library page** runs it in the page and answers over an in-page loopback channel. Its own glue sits around the mounted UI: the shared library sidebar (`mountLibrarySidebar`, with Projects) in the sidebar slot, the URL hash and the sync status bar. Prefs live in localStorage under `labshelf.library.prefs`, together with the tree's expanded folders.
 
 ## Paths
 
@@ -98,7 +98,7 @@ Host to UI:
 
 ## Citation map
 
-The citation map lists the works that at least three of the library's papers cite and the library lacks, most cited first, with a graph of the papers and those works. A host that offers it builds the map with `buildCitationMap` and opens the view by sending `citationMap.show`: VS Code from a command, the browser from a sidebar entry. A host that never sends it never shows the view, so no capability declares it.
+The citation map lists the works that at least three of the library's papers cite and the library lacks, most cited first, with a graph of the papers and those works. A host that offers it builds the map with `buildCitationMap` and opens the view by sending `citationMap.show`: VS Code from a command. A host that never sends it never shows the view, so no capability declares it.
 
 - **The map names its papers.** `map.papers` holds the id and title of every library paper that a link or a missing work's `citedBy` mentions; `links` join library papers, and each missing work keeps the OpenAlex fields `buildCitationMap` returns.
 - **The list carries every action.** Each row offers Import (disabled for a work without a DOI) and its citing papers, which send `paper.open`. The graph repeats these as mouse shortcuts: a paper's node sends `paper.open`, a missing work's node brings its row into view.

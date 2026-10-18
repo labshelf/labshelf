@@ -7,6 +7,7 @@
     "lint": "node ../../scripts/run-eslint.mjs && pnpm run lint:runtime && pnpm run lint:codicons",
     "lint:codicons": "node tools/codicons/generateCodicons.mjs --check",
     "codicons": "node tools/codicons/generateCodicons.mjs",
+    "build:relay-worker": "node tools/relayWorker/bundleRelayWorker.mjs",
     "lint:runtime": "node ../../scripts/check-runtime-tsconfigs.mjs",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "tokens": "WRITE_TOKENS=1 node --experimental-vm-modules node_modules/jest/bin/jest.js __tests__/ui"
@@ -60,7 +61,6 @@
     "./styles/library-tabs.css": "./src/library-ui/dom/styles/library-tabs.css",
     "./styles/library-citation-map.css": "./src/library-ui/dom/styles/library-citation-map.css",
     "./styles/library-sidebar.css": "./src/library-ui/dom/styles/library-sidebar.css",
-    "./styles/library-writing-tab.css": "./src/library-ui/dom/styles/library-writing-tab.css",
     "./styles/template-gallery.css": "./src/writing/templates/dom/styles/template-gallery.css",
     "./styles/template-publish.css": "./src/writing/templates/dom/styles/template-publish.css",
     "./styles/project-search.css": "./src/writing/search/dom/styles/project-search.css",

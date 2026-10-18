@@ -11,8 +11,8 @@ Context: CRDT state lives in clients, so relays are interchangeable; pooling rel
 
 | Id | Package | Level | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| 7.1 | Relay list and selection | contract | implementer (opus), tests first → `architecture-reviewer` | selection tests | [ ] |
-| 7.2 | "Offer my relay" in VS Code | behaviour | implementer (sonnet) | typecheck | [ ] |
+| 7.1 | Relay list and selection | contract | implementer (opus), tests first → `architecture-reviewer` | selection tests | [x] |
+| 7.2 | "Offer my relay" in VS Code | behaviour | implementer (sonnet) | typecheck | [x] |
 | 7.3 | Two-relay run | task | main thread with the user's scratch accounts | A10 | [ ] |
 | 7.4 | Check, commit | — | `check` on Owns, `git commit` of Owns | gate passes | [ ] |
 

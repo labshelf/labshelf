@@ -7,3 +7,4 @@ export * from "./model/index.js";
 export * from "./transport/index.js";
 export * from "./sync/index.js";
 export * from "./share/index.js";
+export * from "./relays/index.js";

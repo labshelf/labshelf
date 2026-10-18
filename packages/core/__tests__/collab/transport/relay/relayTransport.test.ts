@@ -1,0 +1,104 @@
+/** Pins the relay path: an hour of typing within the free plan, catch-up with nobody online, and reconnects after a drop. */
+import { MESSAGE_KIND, PUT_INTERVAL_MS, SNAPSHOT_AFTER_PUTS } from "../../../../src/collab/sync/index";
+import { FakeClock, seededRandom } from "../../sync/fakeNetwork";
+import { FakeRelay, runFor } from "./fakeRelay";
+import { openRelayClient, type RelayClient } from "./relayClient";
+
+const HOUR_MS = 60 * 60 * 1000;
+const KEY_INTERVAL_MS = 300;
+
+/** Each typist types bursts of 20 to 80 characters, one per 300 ms, then pauses 5 to 60 s. */
+function scriptTypist(clock: FakeClock, client: RelayClient, letter: string, seed: number, untilMs: number): void {
+  const random = seededRandom(seed);
+  // One timer at a time: the fake clock scans every pending timer whenever one fires.
+  const type = (left: number) => {
+    if (clock.now() >= untilMs) { return; }
+    const text = client.text();
+    const index = Math.floor(random() * (text.length + 1));
+    text.insert(index, letter);
+    client.presence.setLocal({ name: letter, colour: "#000000", file: "main.tex", anchor: String(index), head: String(index) });
+    if (left > 1) { clock.after(KEY_INTERVAL_MS, () => type(left - 1)); return; }
+    clock.after(5000 + Math.floor(random() * 55_000), () => type(20 + Math.floor(random() * 60)));
+  };
+  clock.after(Math.floor(random() * 5000), () => type(20 + Math.floor(random() * 60)));
+}
+
+describe("relay transport and relay sync", () => {
+  it("keeps three typists of an hour under 2,000 billed relay requests, with at most one put per doc every 2 s", async () => {
+    const clock = new FakeClock();
+    const relay = new FakeRelay(clock);
+    const clients = await Promise.all([1, 2, 3].map(() => openRelayClient(relay, clock)));
+    await runFor(clock, 2000);
+    const start = clock.now();
+    clients.forEach((client, i) => scriptTypist(clock, client, "abc"[i]!, i + 7, start + HOUR_MS));
+    await runFor(clock, HOUR_MS + 10_000, 100);
+
+    const texts = clients.map((client) => client.text().toString());
+    expect(texts[0]!.length).toBeGreaterThan(5000);
+    expect(new Set(texts).size).toBe(1);
+    const gaps = [...relay.putTimes.values()].flatMap((times) => times.slice(1).map((at, i) => at - times[i]!));
+    expect(Math.min(...gaps)).toBeGreaterThanOrEqual(PUT_INTERVAL_MS);
+    expect(relay.counts.snapshot).toBeGreaterThan(0);
+    expect(relay.forwardKinds.get(MESSAGE_KIND.update)).toBeUndefined();
+    process.stdout.write(`relay hour: ${JSON.stringify({ ...relay.counts, billed: relay.billed, chars: texts[0]!.length })}\n`);
+    expect(relay.billed).toBeLessThan(2000);
+    await Promise.all(clients.map((client) => client.close()));
+  }, 300_000);
+
+  it("catches a client up from the relay alone when nobody else is online", async () => {
+    const clock = new FakeClock();
+    const relay = new FakeRelay(clock);
+    const writer = await openRelayClient(relay, clock);
+    await runFor(clock, 1000);
+    for (let i = 0; i < SNAPSHOT_AFTER_PUTS + 40; i += 1) {
+      writer.text().insert(writer.text().length, "x");
+      await runFor(clock, PUT_INTERVAL_MS + 100, 500);
+    }
+    await writer.close();
+    await runFor(clock, 1000);
+    expect(relay.snapshots.size).toBe(1);
+
+    const late = await openRelayClient(relay, clock);
+    await runFor(clock, 3000);
+    expect(late.session.peers).toEqual([]);
+    expect(late.text().toString()).toBe("x".repeat(SNAPSHOT_AFTER_PUTS + 40));
+    await late.close();
+  }, 120_000);
+
+  it("seeds a fresh relay with what a client already holds", async () => {
+    const clock = new FakeClock();
+    const relay = new FakeRelay(clock);
+    const { Doc } = await import("yjs");
+    const held = new Doc();
+    held.getText("body").insert(0, "written before the relay existed");
+    const owner = await openRelayClient(relay, clock, [held]);
+    await runFor(clock, 3000);
+    await owner.close();
+    const late = await openRelayClient(relay, clock);
+    await runFor(clock, 3000);
+    expect(late.text().toString()).toBe("written before the relay existed");
+    await late.close();
+  });
+
+  it("reconnects after the relay drops its sockets and delivers the edits made meanwhile", async () => {
+    const clock = new FakeClock();
+    const relay = new FakeRelay(clock);
+    const [a, b] = await Promise.all([openRelayClient(relay, clock), openRelayClient(relay, clock)]);
+    await runFor(clock, 1000);
+    a!.text().insert(0, "before ");
+    await runFor(clock, 3000);
+    expect(b!.text().toString()).toBe("before ");
+
+    relay.up = false;
+    relay.dropAll();
+    await runFor(clock, 50);
+    a!.text().insert(a!.text().length, "during");
+    await runFor(clock, 5000);
+    relay.up = true;
+    await runFor(clock, 70_000);
+    expect(b!.text().toString()).toBe("before during");
+    expect(a!.relay.connected && b!.relay.connected).toBe(true);
+    expect(a!.logger.log).toHaveBeenCalledWith("WARN", "collab.relay", "Relay socket is down; reconnecting", expect.objectContaining({ attempt: 1 }));
+    await Promise.all([a!.close(), b!.close()]);
+  });
+});

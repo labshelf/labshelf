@@ -1,4 +1,4 @@
-/** Exports the LabShelf Helper protocol: its messages, validation, chunking, the client port the browser implements and its wire form to the editor page. */
+/** Exports the LabShelf Helper protocol: its messages, validation, chunking, the client port the browser implements and the wire form of the editor page calls (LaTeX helper and Typst compiles). */
 export {
   CHUNK_MAX_BYTES, HELPER_BUILD_STATUSES, HELPER_HOST_NAME, HELPER_HOSTS, MAX_CHUNK_COUNT, MAX_PATH_LENGTH,
   MAX_SYNC_FILES, MAX_SYNC_TOTAL_BYTES, PROGRESS_PHASES, PROTOCOL_VERSION, HELPER_VERSION, TEX_SOURCES,
@@ -17,3 +17,5 @@ export type {
 } from "./latexHelper.js";
 export { compileResultFromWire, compileResultToWire, projectFromWire, projectToWire } from "./editorHost/index.js";
 export type { WireCompileResult, WireProject } from "./editorHost/index.js";
+export { typstOutcomeFromWire, typstOutcomeToWire, typstRequestFromWire } from "./editorHost/index.js";
+export type { TypstHostOutcome, TypstHostRequest } from "./editorHost/index.js";

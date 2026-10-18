@@ -9,18 +9,7 @@ export type LibraryMessage =
   /** Opens the library page on a collection, optionally selecting a paper. */
   | { type: "library.open"; folder?: string; paperId?: string }
   /** Lists the current window's http(s) tabs, excluding extension pages. */
-  | { type: "tabs.list" }
-  /** Library page: builds the citation map from OpenAlex for the library's papers. */
-  | { type: "citationMap.build" }
-  /** Library page: saves the paper with this DOI through the capture flow, or reports it already there. */
-  | { type: "citationMap.importDoi"; doi: string };
-
-/** Reply to citationMap.importDoi. */
-export interface ImportedDoiData {
-  status: "saved" | "already-present";
-  id: string;
-  title: string;
-}
+  | { type: "tabs.list" };
 
 /** The library's copy of a paper. */
 export interface LibraryRef {

@@ -22,8 +22,22 @@ The web build checks whether a command exists before relying on it. In plain VS 
 | `installTex` | `tinytex` or `texlive` | none |
 | `installAllPackages` | none | none |
 
-The page shows build and install progress itself, because a progress callback cannot cross. It rejects an unknown method or a malformed argument, and the web build reports a rejected call as a helper that is not ready. When the command is missing, every call rejects the same way.
+A progress callback cannot cross, so the extension shows its own build status and the setup card follows its installs itself. The page rejects an unknown method or a malformed argument, and the web build reports a rejected call as a helper that is not ready. When the command is missing, every call rejects the same way.
 
 ## Helper setup
 
-`labshelf.editorHost.showHelperSetup()` shows the LabShelf Helper setup card in the page's side pane, beside the last PDF rather than in its place. The web build calls it when the helper is not ready or a build reports a missing TeX toolchain. When the command is missing, the web build shows an error message saying this page cannot set up the helper.
+`labshelf.editorHost.showHelperSetup()` shows the LabShelf Helper setup card in a panel floating over the page's bottom right corner, which the user can close; the card keeps checking for the helper, and the next request shows the panel again. The page also shows it on opening a LaTeX project when the helper or TeX is missing. The web build calls it when the helper is not ready or a build reports a missing TeX toolchain. When the command is missing, the web build shows an error message saying this page cannot set up the helper.
+
+## Typst compiler
+
+`labshelf.editorHost.typstCompile(request)` compiles a Typst root with the page's compiler (typst.ts, the version `@labshelf/core` pins). The request is `{projectId, main, sources: [{path, text}]}`: `main` and every `path` are relative to the project folder, and `sources` holds the text of the editors open in the project, which shadows the files the page reads from the library. The result is `{status: "succeeded", pdfBase64, problems, cites}` or `{status: "failed", problems}`, with each problem's `file` relative to the project folder and `cites` where the PDF places each citation. The page compiles only the project it opened and rejects any other id or a malformed request.
+
+The web build writes the PDF and drives its own preview as the desktop build does: live compiles while typing write only the preview PDF in the root's build folder, and saved and command builds also write `<root>.pdf`. When the command is missing, every Typst build fails and is logged; a build the user asked for also shows an error.
+
+## pdf.js
+
+The web build's reader loads pdf.js from the extension's `pdfjs/` folder, laid out as the pdfjs-dist package (`build/pdf.min.mjs`, `build/pdf.worker.min.mjs`, `web/pdf_viewer.mjs`, `web/pdf_viewer.css`, and `cmaps/`, `standard_fonts/`, `wasm/`, `iccs/`). The editor page's build copies its vendored pdf.js there. A web host without that folder shows the reader's load error.
+
+## Webviews
+
+The page replaces VS Code's webview host with a copy rewritten for the extension CSP: no inline script and no service worker. Webview resources of a bundled extension load from the extension's copy next to the page; any other resource (a project's PDF, the build folder) comes from the workbench through the host's `load-resource` message, which the content's `fetch` asks for. A Blob worker breaks the extension CSP, so a webview whose worker URL is on its own origin starts the worker directly.

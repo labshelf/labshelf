@@ -95,4 +95,22 @@ describe("collab store", () => {
     expect(doc).toBeInstanceOf(Y.Doc);
     await second.close();
   });
+
+  it("keeps the relay cursors of each relay across a restart, after the doc updates they cover are on disk", async () => {
+    const logger = fakeLogger();
+    const first = await openCollabStore({ dir, shareId: SHARE_ID, logger });
+    fileText(first.createDoc("main.typ")).insert(0, "from the relay");
+    first.relayCursors("https://a.example").set("main.typ", 41);
+    first.relayCursors("https://a.example").set(INDEX_DOC_KEY, 7);
+    first.relayCursors("https://b.example").set("main.typ", 3);
+    await first.close();
+    const second = await openCollabStore({ dir, shareId: SHARE_ID, logger });
+    expect(second.relayCursors("https://a.example").get("main.typ")).toBe(41);
+    expect(second.relayCursors("https://a.example").get(INDEX_DOC_KEY)).toBe(7);
+    expect(second.relayCursors("https://a.example").get("other.typ")).toBeUndefined();
+    expect(second.relayCursors("https://b.example").get("main.typ")).toBe(3);
+    expect(second.relayCursors("https://c.example").get("main.typ")).toBeUndefined();
+    expect(fileText(second.createDoc("main.typ")).toString()).toBe("from the relay");
+    await second.close();
+  });
 });

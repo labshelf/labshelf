@@ -329,6 +329,25 @@ describe("mountLibrarySidebar", () => {
       expect(slot.querySelector('.tree-empty-actions [data-tree="blank"]')).not.toBeNull();
     });
 
+    it("leaves out creating projects, project folders and the All projects row for a host that has none of them", () => {
+      const { slot, sidebar } = mount([], [], true);
+      sidebar.setProjects([project("/a", "Thesis")]);
+      sidebar.setProjectOffers({ templates: false, addExisting: false, newBlank: false, projectFolders: false, allProjects: false });
+      expect(slot.querySelector("[data-all-projects]")).toBeNull();
+      expect(slot.querySelector('[data-tree="blank"]')).toBeNull();
+      expect(slot.querySelector('[data-tree="project-folder"]')).toBeNull();
+      expect(slot.querySelector('[data-tree="project-refresh"]')).not.toBeNull();
+      expect(slot.querySelector('[data-project-folder="Thesis"]')).not.toBeNull();
+      for (const target of [slot.querySelector('[data-project-folder="Thesis"]')!, slot.querySelector('[data-group="projects.list"]')!]) {
+        const e = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
+        target.dispatchEvent(e);
+        expect(e.defaultPrevented).toBe(false);
+      }
+      sidebar.setProjects([]);
+      expect(slot.querySelector(".tree-empty")?.textContent).toBe("No projects yet.");
+      expect(slot.querySelector(".tree-empty-actions")).toBeNull();
+    });
+
     it("shows an empty state whose buttons call the host actions", () => {
       const { slot, sidebar, projects } = mount([], [], true);
       expect(slot.querySelector(".tree-empty-actions")).not.toBeNull();

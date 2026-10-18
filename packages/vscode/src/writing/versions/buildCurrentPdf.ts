@@ -14,7 +14,7 @@ export interface BuildPurpose {
 
 /** @returns the built PDF's path, or undefined after telling the user why there is none */
 export async function buildCurrentPdf(
-  builders: ProjectBuilders, projects: Pick<WritingProjects, "data" | "paths">, project: ReadyProject, purpose: BuildPurpose,
+  builders: ProjectBuilders, projects: Pick<WritingProjects, "data" | "paths" | "fs">, project: ReadyProject, purpose: BuildPurpose,
 ): Promise<string | undefined> {
   await vscode.workspace.saveAll(false);
   const build = await builders[project.settings.format].request(project.folder, project.main ?? "", "command");

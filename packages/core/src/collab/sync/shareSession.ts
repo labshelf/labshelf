@@ -28,6 +28,10 @@ export interface ShareSession {
   /** The doc of a relative POSIX path, created and synced on first open. */
   openDoc(path: string): Y.Doc;
   docs(): ReadonlyMap<string, Y.Doc>;
+  /** Called with each doc the session opens after the listener is added. */
+  onDoc(listener: (docKey: string, doc: Y.Doc) => void): () => void;
+  /** The transaction origin of updates that came from peers; a layer applying peer updates uses it so they are not sent back. */
+  readonly remoteOrigin: unknown;
   readonly status: SessionStatus;
   onStatus(listener: (status: SessionStatus) => void): () => void;
   /** The peers admitted into the mesh. */
@@ -54,6 +58,8 @@ export function createShareSession(options: ShareSessionOptions): ShareSession {
     index,
     openDoc: (path) => sync.open(path),
     docs: () => sync.docs,
+    onDoc: (listener) => sync.onHold(listener),
+    remoteOrigin: sync.origin,
     get status() { return mesh.status; },
     onStatus: (listener) => mesh.onStatus(listener),
     get peers() { return mesh.peers; },

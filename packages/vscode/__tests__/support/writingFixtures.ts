@@ -43,6 +43,8 @@ export function fakeProjects(entries: ProjectEntry[] = []): {
   fs: LibraryFileSystem; reads: (logger: ILogger) => ProjectReadContext;
 } {
   const fs = new NodeLibraryFileSystem();
+  // Tests stage which files exist through the workspace fs stat mock, the way the extension's VscodeFileSystem asks VS Code.
+  fs.exists = async (target) => await vscode.workspace.fs.stat(vscode.Uri.file(target)).then(() => true, () => false);
   return {
     reload: jest.fn(async () => {}), list: jest.fn(() => entries), onDidChange: jest.fn(() => ({ dispose() {} })), paths: path, data: fakeProjectData(),
     fs, reads: (logger) => ({ fs, paths: path, logger }),

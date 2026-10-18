@@ -208,6 +208,48 @@
         "enablement": "!isWeb"
       },
       {
+        "command": "labshelf.share.folder",
+        "title": "Share Folder as Link…",
+        "category": "LabShelf",
+        "enablement": "!isWeb"
+      },
+      {
+        "command": "labshelf.share.manage",
+        "title": "Manage Shared Links…",
+        "category": "LabShelf",
+        "enablement": "!isWeb"
+      },
+      {
+        "command": "labshelf.share.import",
+        "title": "Import Papers from Share Link…",
+        "category": "LabShelf",
+        "enablement": "!isWeb"
+      },
+      {
+        "command": "labshelf.relay.connect",
+        "title": "Connect Cloudflare…",
+        "category": "LabShelf",
+        "enablement": "!isWeb"
+      },
+      {
+        "command": "labshelf.relay.disconnect",
+        "title": "Disconnect Cloudflare",
+        "category": "LabShelf",
+        "enablement": "!isWeb"
+      },
+      {
+        "command": "labshelf.relay.offer",
+        "title": "Offer My Relay to This Project",
+        "category": "LabShelf",
+        "enablement": "!isWeb"
+      },
+      {
+        "command": "labshelf.relay.withdraw",
+        "title": "Withdraw My Relay from This Project",
+        "category": "LabShelf",
+        "enablement": "!isWeb"
+      },
+      {
         "command": "labshelf.collab.undo",
         "title": "Undo My Edit in Shared File",
         "category": "LabShelf"
@@ -839,6 +881,34 @@
         },
         {
           "command": "labshelf.collab.leave",
+          "when": "!isWeb"
+        },
+        {
+          "command": "labshelf.share.folder",
+          "when": "!isWeb"
+        },
+        {
+          "command": "labshelf.share.manage",
+          "when": "!isWeb"
+        },
+        {
+          "command": "labshelf.share.import",
+          "when": "!isWeb"
+        },
+        {
+          "command": "labshelf.relay.connect",
+          "when": "!isWeb"
+        },
+        {
+          "command": "labshelf.relay.disconnect",
+          "when": "!isWeb"
+        },
+        {
+          "command": "labshelf.relay.offer",
+          "when": "!isWeb"
+        },
+        {
+          "command": "labshelf.relay.withdraw",
           "when": "!isWeb"
         },
         {

@@ -4,8 +4,8 @@
  */
 import { errorMessage, type HostEndpoint, type ILogger, type UiToHost } from "@labshelf/core";
 import {
-  captureTab, createCitationMapHandlers, createFolder, createPaperFileHandlers, createPdfHandlers, deleteFolder, exportAnnotations, movePapers, offerOpenTabs, removePapers,
-  renameFolder, sendDetails, setNote, setStatus, setTags, writeClipboard, type CitationMapHandlers, type PaperFileHandlers,
+  captureTab, createFolder, createPaperFileHandlers, createPdfHandlers, deleteFolder, exportAnnotations, movePapers, offerOpenTabs, removePapers,
+  renameFolder, sendDetails, setNote, setStatus, setTags, writeClipboard, type PaperFileHandlers,
   type PdfHandlers,
 } from "./handlers";
 import { watchChangeNotices } from "./changeNotices";
@@ -33,10 +33,9 @@ async function onReady(ctx: HostContext, initialPaper: string | null | undefined
 interface Handlers {
   pdf: PdfHandlers;
   files: PaperFileHandlers;
-  citations: CitationMapHandlers;
 }
 
-function dispatch(ctx: HostContext, { pdf, files, citations }: Handlers, m: UiToHost, options: LibraryHostOptions): void {
+function dispatch(ctx: HostContext, { pdf, files }: Handlers, m: UiToHost, options: LibraryHostOptions): void {
   switch (m.type) {
     case "ready": run(ctx, () => onReady(ctx, options.initialPaper)); return;
     case "navigate": ctx.folder = m.folder; return;
@@ -63,24 +62,21 @@ function dispatch(ctx: HostContext, { pdf, files, citations }: Handlers, m: UiTo
     case "paper.remove": run(ctx, () => removePapers(ctx, m.ids)); return;
     case "paper.add": run(ctx, () => offerOpenTabs(ctx, m.folder)); return;
     case "paper.addFrom": run(ctx, () => captureTab(ctx, m.folder, m.sourceId, m.ifNoPdf, m.retryPdf)); return;
-    case "citationMap.refresh": run(ctx, () => citations.open()); return;
-    case "citationMap.import": run(ctx, () => citations.importWork(m.workId, m.doi)); return;
     case "clipboard.write": run(ctx, () => writeClipboard(ctx, m.text, m.label)); return;
     default:
       // The page declares none of the capabilities behind the other messages (text layer, similar content, reveal,
-      // open in the default app, fetch metadata), so the UI never sends them.
+      // open in the default app, fetch metadata) and never shows the citation map, so the UI never sends them.
       void ctx.log.log("WARN", "library-page", "Unhandled library UI message", { type: m.type });
   }
 }
 
 /** Starts answering the UI on `endpoint`. */
-export function attachLibraryHost(endpoint: HostEndpoint, options: LibraryHostOptions): { openCitationMap(): void; reloadSnapshots(): Promise<void> } {
+export function attachLibraryHost(endpoint: HostEndpoint, options: LibraryHostOptions): { reloadSnapshots(): Promise<void> } {
   const ctx = createHostContext(endpoint, options.log);
   const pdf = createPdfHandlers(ctx);
-  const citations = createCitationMapHandlers(ctx);
-  const handlers: Handlers = { pdf, files: createPaperFileHandlers(ctx, pdf.open), citations };
+  const handlers: Handlers = { pdf, files: createPaperFileHandlers(ctx, pdf.open) };
   endpoint.subscribe((m) => dispatch(ctx, handlers, m, options));
   watchLibraryChanges(ctx.snapshots, ctx.log);
   watchChangeNotices(ctx);
-  return { openCitationMap: () => run(ctx, () => citations.open()), reloadSnapshots: () => ctx.snapshots.reload() };
+  return { reloadSnapshots: () => ctx.snapshots.reload() };
 }

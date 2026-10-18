@@ -117,7 +117,7 @@ interface WritingParts {
 }
 
 /** The host values the Writing view reads; `convertDocument` is absent where documents cannot be converted. */
-type WritingAdapters = Pick<HostAdapters, "paths" | "fs" | "createProjectData" | "deviceLayout" | "reader" | "pdfjs" | "convertDocument">;
+type WritingAdapters = Pick<HostAdapters, "paths" | "uriOf" | "fs" | "createProjectData" | "deviceLayout" | "reader" | "pdfjs" | "convertDocument">;
 
 function registerProjectAndFigureCommands(parts: WritingParts): void {
   const { context, controller, host, projects, figures, readingLists, listPapers, adapters: { convertDocument } } = parts;
@@ -159,14 +159,14 @@ function citationFixDeps(
 function registerBuildAndPreviewCommands(
   parts: WritingParts, registerPlatformWriting: RegisterPlatformWriting, outcomes: BuildOutcomes,
 ): { session: ProjectSession; previews: BuildPreviews; recompile: (folder: string, root: string) => Promise<unknown> } {
-  const { context, controller, host, projects, figures, listPapers, includeOnly, includeOnlyTarget, publishedLookup, adapters: { reader } } = parts;
+  const { context, controller, host, projects, figures, listPapers, includeOnly, includeOnlyTarget, publishedLookup, adapters: { reader, uriOf } } = parts;
   // The platform registrations need `previews`, and `previews` needs their builders, so it reaches them through this variable once assigned.
   let platform: PlatformWriting | undefined;
   const counts = new CheckCounts();
   const recompile = (folder: string, root: string): Promise<unknown> => recompileRoot(projects, () => platform?.builders, includeOnlyTarget, folder, root);
   const rootOf: BuildRootOf = (folder, main, file) => buildRootOf(projects, folder, main, file);
   const previews = new BuildPreviews({
-    host, listPapers, paths: projects.paths,
+    host, listPapers, paths: projects.paths, uriOf,
     highlightsOf: async (paperId) => await controller.currentServices()?.paperDataStore.getAnnotations(paperId) ?? [], data: projects.data, extensionUri: context.extensionUri, ...reader,
     buildRootOf: rootOf,
     recompile,

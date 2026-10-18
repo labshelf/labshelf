@@ -10,8 +10,11 @@ export {
   type Envelope, type EnvelopeResult,
 } from "./wire/index.js";
 export {
-  attachAwareness, isPresenceState, type AwarenessOptions, type PresenceHandle, type PresenceState,
+  attachAwareness, isPresenceState, type AwarenessOptions, type PresenceHandle, type PresenceState, type RelayReport,
 } from "./awareness/index.js";
 export {
   attachBlobs, BLOB_CHUNK_BYTES, BlobFetchError, MAX_BLOB_BYTES, type BlobExchange, type BlobFetchErrorCode, type BlobsOptions,
 } from "./blobs/index.js";
+export {
+  attachRelaySync, memoryCursorStore, PUT_INTERVAL_MS, SNAPSHOT_AFTER_PUTS, type RelayCursorStore, type RelaySync, type RelaySyncOptions,
+} from "./relay/index.js";

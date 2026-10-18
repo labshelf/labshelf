@@ -45,7 +45,7 @@ function setup() {
   const host = fakeHost();
   const controller = { setBuildStatus: jest.fn(), reloadDocument: jest.fn(), revealPoint: jest.fn() };
   create.mockImplementation(() => ({ controller }));
-  const previews = new BuildPreviews({ host, paths: path, data: createProjectData({ fs: new NodeLibraryFileSystem(), path, logger: host.session.logger, deviceDirs: deviceLocalLayout(dir) }), listPapers: async () => [], highlightsOf: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false, buildRootOf: async (_folder: string, main: string) => main, recompile: async () => {}, projects: fakeProjects(), checkCounts: new CheckCounts(), setEngine: async () => {}, fixes: () => undefined });
+  const previews = new BuildPreviews({ host, paths: path, uriOf: (target: string) => vscode.Uri.file(target), data: createProjectData({ fs: new NodeLibraryFileSystem(), path, logger: host.session.logger, deviceDirs: deviceLocalLayout(dir) }), listPapers: async () => [], highlightsOf: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false, buildRootOf: async (_folder: string, main: string) => main, recompile: async () => {}, projects: fakeProjects(), checkCounts: new CheckCounts(), setEngine: async () => {}, fixes: () => undefined });
   const project = readyEntry(dir) as Project;
   const ports = () => create.mock.calls[0][1].preview;
   return { host, controller, previews, project, ports };

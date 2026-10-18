@@ -13,7 +13,7 @@ import { CHECK_COMMAND, checkDiagnostics } from "../index.js";
 interface CheckCommandDeps {
   context: vscode.ExtensionContext;
   host: WritingHost;
-  projects: Pick<WritingProjects, "data" | "list" | "paths">;
+  projects: Pick<WritingProjects, "data" | "list" | "paths" | "fs">;
   builders: ProjectBuilders;
   pdfjs: PdfjsLoader;
   /** Called with a project's finding count after each completed check. */

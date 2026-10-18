@@ -1,14 +1,17 @@
-// Connects this device to one shared project: its stored state, the peer session, presence, blobs and the disk mirror.
+// Connects this device to one shared project: its stored state, the peer session over the mesh and its relay, presence, blobs and the disk mirror.
 import { readFile } from "node:fs/promises";
 import * as path from "node:path";
 
 import {
-  attachAwareness, attachBlobs, COMMENTS_PATH, createShareSession, createTrysteroTransport, deriveAwarenessKey, deriveContentKey, importCommentsFile,
-  indexSettings, joinShare, readIndexKind, startShare, type ILogger, type PresenceHandle, type ShareSession,
+  attachAwareness, attachBlobs, COMMENTS_PATH, createShareSession, createSwitchableTransport, createTrysteroTransport, deriveAwarenessKey,
+  deriveContentKey, deriveRelayToken, importCommentsFile, indexSettings, joinShare, mergeTransports, readIndexKind, startShare, type ILogger,
+  type InviteRelay, type PresenceHandle, type ShareSession,
 } from "@labshelf/core";
 import {
   deviceLocalLayout, loadNodeRTCPeerConnection, nodeProjectCatalogContext, openCollabStore, startProjectMirror, type CollabStore, type ProjectMirror,
 } from "@labshelf/core/node";
+import { meshTurn } from "./meshTurn.js";
+import { followShareRelays, shareRelayUrls, type ShareRelays } from "./shareRelays.js";
 
 const JOIN_TIMEOUT_MS = 120_000;
 
@@ -20,6 +23,8 @@ export interface ShareConnection {
   readonly session: ShareSession;
   readonly presence: PresenceHandle;
   readonly mirror: ProjectMirror;
+  /** The relays the share syncs through besides the mesh, one at a time. */
+  readonly relays: ShareRelays;
   close(): Promise<void>;
 }
 
@@ -30,6 +35,8 @@ export interface ConnectOptions {
   libraryRoot: string;
   shareId: string;
   shareKey: Uint8Array;
+  /** The invite's relays, tried while the index lists none. */
+  relays: readonly InviteRelay[];
   logger: ILogger;
   /** True for a path of the folder an open editor holds. */
   isEditorOwned(folder: string, path: string): boolean;
@@ -96,11 +103,18 @@ async function placeProject(options: ConnectOptions, session: ShareSession, star
 async function connectSession(options: ConnectOptions, store: CollabStore, start: ShareStart): Promise<ShareConnection> {
   const { shareId, shareKey, logger } = options;
   const contentKey = await deriveContentKey(shareKey);
-  const transport = await createTrysteroTransport({ shareKey, logger, rtcPolyfill: await loadRtc() });
-  const session = createShareSession({ shareId, contentKey, transport, logger, index: store.index, createDoc: store.createDoc });
+  // CONTRACT: documents/contracts/collaboration.md#share-key — every relay of the share takes the token the share key derives.
+  const relayToken = await deriveRelayToken(shareKey);
+  const inviteRelays = options.relays.map((relay) => relay.url);
+  // PLATFORM: trystero takes TURN only when it is created, so the servers come from the list before any relay is chosen.
+  const turnConfig = await meshTurn(shareRelayUrls(store.index, inviteRelays), shareId, relayToken, logger);
+  const mesh = await createTrysteroTransport({ shareKey, logger, rtcPolyfill: await loadRtc(), ...(turnConfig ? { turnConfig } : {}) });
+  const slot = createSwitchableTransport();
+  const session = createShareSession({ shareId, contentKey, transport: mergeTransports(mesh, slot), logger, index: store.index, createDoc: store.createDoc });
   // TRAP: a peer sends its presence once, when this device appears, which during a join is before the project exists.
   // A channel attached after that would drop it as an unknown kind.
   const presence = attachAwareness(session, { awarenessKey: await deriveAwarenessKey(shareKey), logger });
+  const relays = followShareRelays({ session, slot, presence, inviteRelays, shareId, relayToken, contentKey, cursorsFor: store.relayCursors, logger });
   const blobs = attachBlobs(session, { contentKey, getBlob: (hash) => store.blobs.get(hash), logger });
   try {
     const folder = await placeProject(options, session, start);
@@ -108,12 +122,14 @@ async function connectSession(options: ConnectOptions, store: CollabStore, start
     // A joiner opens the project right after this returns, so the files already on hand must be on disk first.
     if (start.mode === "join") { await mirror.idle(); }
     return {
-      shareId, shareKey, folder, session, presence, mirror,
+      shareId, shareKey, folder, session, presence, mirror, relays,
       close: async () => {
         await presence.close();
         // The mirror waits for blob fetches in flight, so the exchange closes first.
         blobs.close();
         await mirror.close();
+        // The relay sync puts its last updates over the relay socket before the session closes.
+        await relays.close();
         await session.close();
         await store.close();
       },
@@ -121,6 +137,7 @@ async function connectSession(options: ConnectOptions, store: CollabStore, start
   } catch (error) {
     await presence.close();
     blobs.close();
+    await relays.close();
     await session.close();
     throw error;
   }

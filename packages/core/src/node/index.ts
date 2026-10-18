@@ -20,3 +20,4 @@ export * from "../writing/project/export/node/index.js";
 export * from "../writing/merge/node/index.js";
 export * from "../bridge/node/index.js";
 export * from "../collab/node/index.js";
+export * from "../share/node/index.js";

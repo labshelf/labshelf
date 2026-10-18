@@ -39,6 +39,7 @@ The library folder may be synced between devices by any file sync tool, so every
   projects.json                    project folders registered outside the library
   merge-bases/<project id>/<path>  per writing-project text file, the content this device last knew to be common with other devices: the base of a three-way merge of a conflict copy
   collab/<share id>/               per shared project, its Yjs state, blob cache and last agreed file hashes, see collaboration.md#device-local-state
+  shares.json                      the paper-folder share links this device made, see share-link.md#share-list
   logs/app.log                     VS Code log (JSON lines)
   logs/terminal.log                terminal log (JSON lines)
 ```
@@ -197,7 +198,7 @@ The device's list of project folders outside the library. Absolute paths differ 
 
 ## openalex/
 
-The citation map's cache of OpenAlex works. It can be rebuilt from OpenAlex at any time, so it is device-local; the browser keeps it under `.research/openalex/` in IndexedDB.
+The citation map's cache of OpenAlex works. It can be rebuilt from OpenAlex at any time, so it is device-local.
 
 - `papers/<paper id>.json` holds the work a library paper's DOI resolved to; `works/<work id>.json` holds a work that library papers cite.
 - Each file is `{ "fetchedAt": "<ISO timestamp>", "doi": "<DOI looked up>", "work": { "workId": "W…", "doi", "title", "authors": [], "year", "citedByCount", "references": ["W…"] } }`. `doi` at the top is present only under `papers/`, and `references` is empty under `works/`.

@@ -4,7 +4,8 @@ import { el } from "../../../ui/dom/index.js";
 import { icon } from "../../../ui/index.js";
 import type { LibraryTree, TagCount } from "../../derive/index.js";
 import { tagQuery } from "../../searchQueries.js";
-import { PROJECT_LIST_ACTIONS, projectTreeNodes, type ProjectOffers, type SidebarProject, type SidebarProjectActions } from "./sidebarProjects.js";
+import { projectListActions, projectTreeNodes, type ProjectOffers, type SidebarProjectActions } from "./sidebarProjects.js";
+import type { SidebarProject } from "../../projectRows/index.js";
 import { GROUP_ROW_DEPTH, allProjectsRow, exploreTemplatesRow, folderRow, paperRow, rowKey, allPapersRow, tagRow } from "./sidebarRows.js";
 import { groupRow, sectionRow, type GroupId, type SectionId } from "./sidebarSections.js";
 import { appendOpenProject } from "./sidebarOpenProject.js";
@@ -131,9 +132,9 @@ function appendProjects(t: SidebarState, frag: DocumentFragment): void {
   // An open project owns the section; the project list and the gallery return when it closes.
   if (t.openProject) { appendOpenProject(t, body, appendPane, () => render(t)); return; }
   if (t.offers.templates) body.append(exploreTemplatesRow());
-  body.append(allProjectsRow());
+  if (t.offers.allProjects) body.append(allProjectsRow());
   const listOpen = !t.collapsed.has("projects.list");
-  const list = appendPane(body, "projects.list", groupRow("projects.list", "My projects", listOpen, PROJECT_LIST_ACTIONS), listOpen);
+  const list = appendPane(body, "projects.list", groupRow("projects.list", "My projects", listOpen, projectListActions(t.offers)), listOpen);
   if (listOpen) list.append(...projectTreeNodes(t.projectList, t.expanded, t.offers));
 }
 

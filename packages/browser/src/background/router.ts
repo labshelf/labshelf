@@ -8,7 +8,7 @@ import type { LibraryMutations } from "../storage";
 import {
   handleCaptureAttachPdf, handleCaptureFindPdf, handleCaptureInspect, handleCaptureSave, handleCaptureTab,
   handleFindBetterPdf, handleFindPdfForPaper, handleLibraryFolders, handleLibraryLookup, handleLibraryOpen, handleListTabs,
-  handleAskAuthor, handleCitationMapBuild, handleCitationMapImportDoi, handleOpenForPdf, handleRemovePaper, handleSearchHitSave, accessTabDeps,
+  handleAskAuthor, handleOpenForPdf, handleRemovePaper, handleSearchHitSave, accessTabDeps,
 } from "./handlers/index";
 import { handlePdfOfferMessage, isPdfOfferMessage } from "./pdfOffer/index";
 
@@ -81,10 +81,6 @@ async function handle(msg: RuntimeMessage, deps: MessageRouterDeps, senderTabId:
       return handleLibraryOpen(msg);
     case "tabs.list":
       return handleListTabs();
-    case "citationMap.build":
-      return handleCitationMapBuild(log);
-    case "citationMap.importDoi":
-      return handleCitationMapImportDoi(log, mutations, msg.doi);
     default: {
       const exhaustive: never = msg;
       throw new Error(`Unhandled message type: ${JSON.stringify(exhaustive)}`);

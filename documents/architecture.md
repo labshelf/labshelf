@@ -38,6 +38,8 @@ core/src/<domain>/
   dom/        may use the DOM (consumed by VS Code webviews and browser pages)
 ```
 
+One folder runs in a runtime of its own: `relay/worker/` is the owner's Cloudflare Worker ([contracts/relay.md](contracts/relay.md)). It imports only runtime-neutral core code, declares the few Workers APIs it uses itself, and compiles under the neutral tsconfig; `tools/relayWorker/bundleRelayWorker.mjs` bundles it into the one script LabShelf uploads.
+
 The package exposes three entry points that match these runtimes: `@labshelf/core`, `@labshelf/core/node` and `@labshelf/core/dom`. A fourth, `@labshelf/core/math`, renders LaTeX math to SVG with MathJax; it stays out of the root barrel because MathJax is large and has import-time side effects, so only the code that renders math pulls it into a bundle. `@labshelf/core/typst` (runtime-neutral) and `@labshelf/core/typst/node` compile Typst to PDF with typst.ts and stay out of the other entries for the same reason; typst.ts is an ES module loaded with a dynamic `import()`, so core's tests run under `node --experimental-vm-modules`. Stylesheets are exported as `@labshelf/core/styles/*`. Separate tsconfigs (neutral code without the DOM and Node libs) and an import-boundary lint make a violation fail the build.
 
 Domains:

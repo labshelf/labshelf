@@ -68,11 +68,11 @@ Kinds 5 to 15 are reserved and 16 to 255 belong to channels. A message of an unk
 
 - When two peers connect, each sends a step 1 for every doc it holds, the index first, so edits made while either was offline arrive.
 - A peer holds the index and the docs it has opened; it opens the other text files listed in the index in the background, one at a time. A message for a doc it does not hold is ignored until it opens that doc.
-- A mesh holds at most 8 other peers. Further peers wait until a place frees, and the app tells the user that a relay is needed.
+- A mesh holds at most 8 other peers. Further peers wait until a place frees, and the app tells the user that a relay is needed; peers past the mesh join through a relay (see [relay.md](relay.md#clients)).
 
 ### Awareness
 
-Each peer publishes `{name, colour, file, anchor, head}`: its LabShelf user name, a colour from the core palette, the doc key of the file it is in, and its selection as Yjs relative positions in base64, or `null`. A peer sends its whole state to a peer that joins, and drops the states of a peer that leaves. Awareness is never stored.
+Each peer publishes `{name, colour, file, anchor, head}`: its LabShelf user name, a colour from the core palette, the doc key of the file it is in, and its selection as Yjs relative positions in base64, or `null`. A peer of a share with relays adds `relay` and `relaysDown` of the [relay list](#relay-list). A peer sends its whole state to a peer that joins, and drops the states of a peer that leaves. Awareness is never stored.
 
 ### Blobs
 
@@ -85,7 +85,7 @@ A blob message starts with a type byte:
 | 3 | missing | nothing |
 
 - A peer asks one holder at a time and moves on after a `missing`, a corrupt result, the holder leaving or 15 s of silence.
-- The receiver drops a chunk whose count is outside 1 to 4096, whose index is not below the count, or that is longer than 64 KiB. An empty blob is one empty chunk.
+- The receiver drops a chunk whose count is outside 1 to 4096, whose index is not below the count, or that is longer than 64 KiB. An empty blob is one empty chunk. A blob is at most 4096 chunks (256 MiB), and a peer answers `missing` for a larger one.
 - The reassembled bytes are handed out only when their SHA-256 is the requested hash.
 
 ## Device-local state
@@ -98,6 +98,7 @@ collab/<share id>/
   docs/<doc id hex>.log        the updates made since the snapshot, each a 4-byte big-endian length and the update
   blobs/<sha256>               a blob of the share, served to peers that ask for it
   known.json                   per shared path, the SHA-256 of the content disk and doc last agreed on
+  relay-cursors.json           per relay and doc, the last relay row applied; keys are `<relay url> <doc key>`
 ```
 
 - The log is append-only. Opening the share merges the log into the snapshot and removes it; a torn final record from an interrupted append is dropped.
@@ -117,6 +118,17 @@ The index doc holds:
 | `files` | path → `{kind: "text" \| "blob", hash?}`; `hash` is the SHA-256 hex of a blob; a rename or delete is an edit of this map |
 | `settings` | the shared `labshelf.yaml` keys |
 | `comments` | thread id → [comment thread](#comments) |
+| `relays` | a `Y.Array`, the [relay list](#relay-list) |
+
+### Relay list
+
+- `relays` holds `{url, addedBy}` entries in the order clients try them: an `https:` relay URL, once, and the LabShelf user name of the member who offered it. The relay token is the share's `relay` key, the same on every relay, so the list does not hold it.
+- A member removes only the entries whose `addedBy` is their own user name, from any of their devices.
+- A client tries the list of its index doc, or the relays of its invite while that list is empty, so a member who joined can reach a relay before the index arrives.
+- A client uses the first relay in list order that is not down and that answers `GET /version` with a compatible major within 3 s. It checks a relay that did not answer again after 60 s.
+- A client marks a relay down for one hour when the relay refuses for limits (HTTP 429, or Cloudflare's error 1027) or after three failures in a row: a probe or ticket request that gets no answer or a refusal, or a socket that closes before it opens. An open socket resets the count.
+- Each client publishes in its [awareness](#awareness) `relay`, the URL in use or `null`, and `relaysDown`, URL to the epoch milliseconds its hold ends. A client adopts every mark a peer publishes, capped at one hour from its own clock, so the group moves together off a relay one member found down and back to it when the hold ends.
+- A client that moves to another relay closes its socket to the previous one, then catches up on the new one from cursor 0 and puts what that relay lacks, so a member who later reaches only the new relay catches up there (see [relay.md](relay.md#clients)). Relay cursors are kept per relay URL.
 
 ### Shared files
 

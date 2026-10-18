@@ -1,8 +1,8 @@
-// Shows the helper setup card in the side pane, mounting it once, beside the last PDF rather than in its place.
+// Shows the helper setup card in its slot, mounting it once and bringing it back into view on every later request.
 import type { ILatexHelper } from "@labshelf/core/helper";
 
 export interface SetupSlot {
-  /** The element the card mounts into; separate from the preview, which stays as it is. */
+  /** The element the card mounts into. */
   readonly element: HTMLElement;
   reveal(): void;
 }

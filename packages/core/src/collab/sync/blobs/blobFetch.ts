@@ -9,7 +9,7 @@ import type { BlobMessage } from "./blobMessage.js";
 const LOG_MODULE = "collab.blobs";
 
 /** How long a peer may stay silent before the next one is asked, and how long a fetch waits for any peer to join. */
-export const BLOB_PEER_TIMEOUT_MS = 15_000;
+const BLOB_PEER_TIMEOUT_MS = 15_000;
 
 export interface BlobFetchDeps {
   hash: string;

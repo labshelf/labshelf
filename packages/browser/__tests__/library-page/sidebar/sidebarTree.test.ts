@@ -34,7 +34,7 @@ function mount(expanded: string[] = []): Setup {
   const ui = { sidebar: null, store, folders: { create: jest.fn(), rename: jest.fn(), remove: jest.fn() }, dropTarget: jest.fn(), dispose: jest.fn() } as unknown as LibraryUi;
   const slot = document.createElement("div");
   document.body.replaceChildren(slot);
-  (mountSidebarTree as unknown as (...a: unknown[]) => unknown)(ui, slot, prefs, jest.fn(), host);
+  mountSidebarTree(ui, slot, prefs, host, { rows: async () => [], openEditor: jest.fn(), openPdf: jest.fn() });
   return { store, slot, posted, prefs, saved };
 }
 

@@ -21,6 +21,8 @@ export interface DeviceLocalLayout {
   readonly mergeBasesDir: string;
   /** Per share id, the Yjs state and blob cache of a shared project. */
   readonly collabDir: string;
+  /** The shares this device made of paper folders, so it can show their links again and revoke them. */
+  readonly shareRegistryPath: string;
   /** Build output per project id; shared by every library on the device. */
   readonly buildCacheDir: string;
 }
@@ -62,6 +64,7 @@ export function deviceLocalLayout(libraryRoot: string, env: NodeJS.ProcessEnv = 
     projectRegistryPath: path.join(state, "projects.json"),
     mergeBasesDir: path.join(state, "merge-bases"),
     collabDir: path.join(state, "collab"),
+    shareRegistryPath: path.join(state, "shares.json"),
     buildCacheDir: path.join(deviceCache, "builds"),
   };
 }

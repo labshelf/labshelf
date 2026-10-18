@@ -1,4 +1,4 @@
-/** Exports the runtime-neutral library UI's public API: host protocol and configuration, view state, list derivations and keymap, PDF copy, the request-a-copy email, outcome copy, sidecar reads and the last-read paper. */
+/** Exports the runtime-neutral library UI's public API: host protocol and configuration, view state, list derivations and keymap, PDF copy, the request-a-copy email, outcome copy, sidecar reads, the last-read paper and sidebar project rows. */
 export * from "./protocol/index.js";
 export * from "./state/index.js";
 export * from "./derive/index.js";
@@ -15,4 +15,5 @@ export type { BatchFailure, OutcomeNotice } from "./outcomeCopy.js";
 export { createSidecarReader } from "./sidecarReads.js";
 export type { SidecarReader } from "./sidecarReads.js";
 export { fileIcon } from "./sidebarTrees.js";
+export * from "./projectRows/index.js";
 export type { DotTone, FileLabelTone, ProjectTreeView, SidebarNodeIcon, SidebarOpenProject, SidebarProjectTree, SidebarTreeAction, SidebarTreeNode } from "./sidebarTrees.js";

@@ -4,7 +4,7 @@ import type { ILogger } from "../../../ports/index.js";
 import { openFrame, sealFrame, type WebCryptoKey } from "../../crypto/index.js";
 import type { PeerId, PeerTransport } from "../../transport/index.js";
 import {
-  decodeDocPayload, decodeEnvelope, deriveDocId, DOC_ID_BYTES, encodeDocPayload, encodeEnvelope, MESSAGE_KIND, type Envelope,
+  decodeEnvelope, docIdCache, DOC_ID_BYTES, encodeEnvelope, MESSAGE_KIND, openDocFrame, sealDocFrame, type Envelope,
 } from "../wire/index.js";
 import { MeshAdmission } from "./meshAdmission.js";
 import { decodeSeqs, encodeSeqs, ReliableLink } from "./reliableLink.js";
@@ -35,11 +35,12 @@ class MeshSession implements SecureMesh {
   private peerListeners = new Set<(peer: PeerId, joined: boolean) => void>();
   private statusListeners = new Set<(status: SessionStatus) => void>();
   private warned = new Set<PeerId>();
-  private docIds = new Map<string, Promise<Uint8Array>>();
+  private docIdOf: (docKey: string) => Promise<Uint8Array>;
   private unsubscribe: (() => void)[];
 
   constructor(private options: SecureMeshOptions) {
     const { transport, logger } = options;
+    this.docIdOf = docIdCache(options.shareId);
     this.unsubscribe = [
       transport.onPeerJoin((peer) => this.join(peer)),
       transport.onPeerLeave((peer) => this.leave(peer)),
@@ -50,7 +51,7 @@ class MeshSession implements SecureMesh {
     transport.peers.forEach((peer) => this.join(peer));
   }
 
-  get peers(): readonly PeerId[] { return [...this.admission.admitted]; }
+  get peers(): readonly PeerId[] { return [...this.links.keys()]; }
 
   get status(): SessionStatus { return this.state; }
 
@@ -82,17 +83,18 @@ class MeshSession implements SecureMesh {
 
   private async send(spec: ChannelSpec, to: PeerId | "all", docKey: string, payload: Uint8Array): Promise<void> {
     const docId = await this.docIdOf(docKey);
-    const frame = await sealFrame(spec.key, this.contextOf(docId, spec.name), encodeDocPayload(docKey, payload));
+    const frame = await sealDocFrame({ shareId: this.options.shareId, key: spec.key, name: spec.name }, docId, docKey, payload);
     for (const peer of to === "all" ? [...this.links.keys()] : [to]) {
       const link = this.links.get(peer);
-      if (!link) { continue; }
+      // CONTRACT: documents/contracts/relay.md#clients
+      if (!link || (spec.kind === MESSAGE_KIND.update && this.options.transport.receivesUpdatesFromStore?.(peer))) { continue; }
       if (spec.reliable) { link.send((seq) => encodeEnvelope({ kind: spec.kind, seq, docId, frame })); }
       else { this.options.transport.send(peer, encodeEnvelope({ kind: spec.kind, seq: 0, docId, frame })); }
     }
   }
 
   private async receive(from: PeerId, bytes: Uint8Array): Promise<void> {
-    if (!this.admission.admitted.includes(from)) { this.join(from); }
+    if (!this.links.has(from)) { this.join(from); }
     const link = this.links.get(from);
     if (!link) { return; }
     const decoded = decodeEnvelope(bytes);
@@ -101,13 +103,11 @@ class MeshSession implements SecureMesh {
     if (envelope.kind === MESSAGE_KIND.ack) { return this.receiveAck(from, link, envelope); }
     const spec = this.channels.get(envelope.kind);
     if (!spec) { return this.warnOnce(from, "Dropped a message of an unknown kind", { kind: envelope.kind }); }
-    const opened = await openFrame(spec.key, this.contextOf(envelope.docId, spec.name), envelope.frame);
-    if (!opened.ok) { return this.warnOnce(from, "Dropped a frame that failed to open", { kind: spec.name, error: opened.error }); }
-    const message = decodeDocPayload(opened.bytes);
-    // INVARIANT: the header doc id is what a relay files the frame under, so it must name the doc the plaintext edits.
-    if (!message || bytesToHex(await this.docIdOf(message.docKey)) !== bytesToHex(envelope.docId)) {
+    const message = await openDocFrame({ shareId: this.options.shareId, key: spec.key, name: spec.name }, envelope, this.docIdOf);
+    if (!message.ok && message.error === "docMismatch") {
       return this.warnOnce(from, "Dropped a frame whose doc key does not match its doc id", { kind: spec.name });
     }
+    if (!message.ok) { return this.warnOnce(from, "Dropped a frame that failed to open", { kind: spec.name, error: message.error }); }
     if (this.links.get(from) !== link || (envelope.seq > 0 && !link.accept(envelope.seq))) { return; }
     spec.onMessage(from, message.docKey, message.payload);
   }
@@ -121,7 +121,8 @@ class MeshSession implements SecureMesh {
   private join(peer: PeerId): void {
     if (this.status === "closed") { return; }
     if (this.links.has(peer)) { this.leave(peer); }
-    if (this.admission.join(peer)) { this.openLink(peer); }
+    // A relay peer costs no direct link, so it is admitted beyond the mesh limit.
+    if (this.options.transport.receivesUpdatesFromStore?.(peer) || this.admission.join(peer)) { this.openLink(peer); }
     this.setStatus(this.admission.full ? "meshFull" : "open");
   }
 
@@ -167,15 +168,6 @@ class MeshSession implements SecureMesh {
     if (this.warned.has(peer)) { return; }
     this.warned.add(peer);
     void this.options.logger.log("WARN", LOG_MODULE, message, { peer, ...context });
-  }
-
-  private docIdOf(docKey: string): Promise<Uint8Array> {
-    let id = this.docIds.get(docKey);
-    if (!id) {
-      id = deriveDocId(this.options.shareId, docKey);
-      this.docIds.set(docKey, id);
-    }
-    return id;
   }
 
   private contextOf(docId: Uint8Array, name: string) {

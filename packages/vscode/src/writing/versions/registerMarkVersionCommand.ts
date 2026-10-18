@@ -15,7 +15,7 @@ export const MARK_VERSION_COMMAND = "labshelf.writing.markVersion";
 interface MarkVersionDeps {
   context: vscode.ExtensionContext;
   host: WritingHost;
-  projects: Pick<WritingProjects, "list" | "paths" | "data">;
+  projects: Pick<WritingProjects, "list" | "paths" | "data" | "fs">;
   builders: ProjectBuilders;
   /** Hears each marked version, which the project history keeps as a milestone. */
   onMarked(project: ReadyProject, name: string): void;

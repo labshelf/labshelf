@@ -22,7 +22,7 @@ interface CompareVersionsDeps {
   context: vscode.ExtensionContext;
   host: WritingHost;
   tex: ToolchainDeps["tex"];
-  projects: Pick<WritingProjects, "data" | "list" | "paths" | "reload">;
+  projects: Pick<WritingProjects, "data" | "list" | "paths" | "reload" | "fs">;
   builders: ProjectBuilders;
   pdfjs: PdfjsLoader;
   reader: Omit<ReaderPanelDeps, "logger" | "extensionUri">;

@@ -1,6 +1,6 @@
 /**
- * Builds the editor page into editor/: the page bundle, the workbench's workers, the extension-host iframe, the two
- * bundled web extensions with Tinymist's LSP worker, and the Typst compiler the page's preview runs.
+ * Builds the editor page into editor/: the page bundle, the workbench's workers, the extension-host iframe, the webview host,
+ * the two bundled web extensions with Tinymist's LSP worker, and the Typst compiler the page runs for LabShelf.
  */
 import { build } from "esbuild";
 import { copyFile, mkdir } from "node:fs/promises";
@@ -9,6 +9,7 @@ import { dirname, join, resolve } from "node:path";
 import { copyBundledExtensions } from "./bundledExtensions.mjs";
 import { cspPatchPlugin, writeExtensionHostIframe } from "./cspPatches.mjs";
 import { vscodeAssetsPlugin } from "./vscodeAssets.mjs";
+import { writeWebviewHost } from "./webviewHost.mjs";
 
 const common = {
   bundle: true,
@@ -53,6 +54,9 @@ export async function buildEditor({ outDir, pkgRoot }) {
     build({ ...common, ...fromPkg, entryPoints: { main: resolve(pkgRoot, "src/editor/main.ts") }, outdir: editorDir }),
     build({ ...common, ...fromPkg, entryPoints: WORKERS, outdir: workersDir }),
     writeExtensionHostIframe({ pkgRoot, workersDir }),
+    writeWebviewHost({ pkgRoot, editorDir }),
+    // The webview host injects it as a classic script before the content's own, so it is not a module.
+    build({ ...common, ...fromPkg, format: "iife", entryPoints: [resolve(pkgRoot, "src/editor/webview/contentApi.ts")], outfile: join(editorDir, "webview/vscodeApi.js") }),
     copyTypstCompiler(pkgRoot, editorDir),
     copyBundledExtensions({
       outDir,

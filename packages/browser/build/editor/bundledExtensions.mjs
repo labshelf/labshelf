@@ -8,7 +8,7 @@ import { dirname, join, posix, resolve } from "node:path";
 import { createRequire } from "node:module";
 import { unpackTinymist } from "./tinymistVsix.mjs";
 
-/** The folders of LabShelf's VS Code package its web build reads at runtime: icons and the webview bundles. */
+/** The folders of LabShelf's VS Code package its web build reads at runtime: icons and the webview bundles; pdf.js comes from vendor/. */
 const LABSHELF_ASSET_DIRS = ["media", "dist"];
 
 async function listFiles(root, dir = "") {
@@ -36,7 +36,7 @@ async function finishExtension(extensionDir, entry) {
   await writeFile(join(extensionDir, "files.json"), JSON.stringify(files));
 }
 
-async function copyLabShelf(pkgRoot, targetDir) {
+async function copyLabShelf(pkgRoot, outDir, targetDir) {
   const vscodeRoot = resolve(pkgRoot, "../vscode");
   const manifest = JSON.parse(await readFile(join(vscodeRoot, "package.json"), "utf8"));
   const entry = posix.normalize(manifest.browser);
@@ -49,6 +49,8 @@ async function copyLabShelf(pkgRoot, targetDir) {
   for (const dir of LABSHELF_ASSET_DIRS) {
     await cp(join(vscodeRoot, dir), join(targetDir, dir), { recursive: true, filter: (path) => !path.endsWith(".map") });
   }
+  // CONTRACT: documents/contracts/editor-host.md#pdfjs — the web build's reader loads pdf.js from its pdfjs/ folder.
+  await cp(join(outDir, "vendor/pdfjs"), join(targetDir, "pdfjs"), { recursive: true });
   await finishExtension(targetDir, entry);
 }
 
@@ -65,7 +67,7 @@ export async function copyBundledExtensions({ outDir, pkgRoot, buildTinymistServ
   const labshelf = join(extensionsDir, "labshelf");
   const tinymist = join(extensionsDir, "tinymist");
   await Promise.all([
-    copyLabShelf(pkgRoot, labshelf),
+    copyLabShelf(pkgRoot, outDir, labshelf),
     copyTinymist(pkgRoot, tinymist).then(() => buildTinymistServer(join(tinymist, "out/web-server.js"))).then(() => finishExtension(tinymist, "out/extension.web.js")),
   ]);
 }

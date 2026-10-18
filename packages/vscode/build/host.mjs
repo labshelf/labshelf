@@ -3,6 +3,7 @@ import { build, context } from "esbuild";
 import { readFile, rm } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { bundleRelayWorker } from "../../core/tools/relayWorker/bundleRelayWorker.mjs";
 import { writeArcMarks } from "./arcMarks.mjs";
 import { noNodePlugin } from "./noNodePlugin.mjs";
 
@@ -16,7 +17,7 @@ const production = process.argv.includes("--production");
 const manifest = JSON.parse(await readFile(resolve(pkgRoot, "package.json"), "utf8"));
 const externalDependencies = Object.keys(manifest.dependencies ?? {}).filter((name) => !name.startsWith("@labshelf/"));
 
-const options = {
+const baseOptions = {
   entryPoints: [resolve(pkgRoot, "src/extension.ts")],
   outfile: resolve(outDir, "extension.js"),
   bundle: true,
@@ -33,9 +34,12 @@ const options = {
   logLevel: "info",
 };
 
+// Only the desktop deploys the relay, so only its bundle carries the Worker script; watch mode keeps the script of its start.
+const options = { ...baseOptions, define: { RELAY_WORKER_SCRIPT: JSON.stringify(await bundleRelayWorker()) } };
+
 // The browser starts this file through Native Messaging; it loads nothing from node_modules.
 const bridgeHostOptions = {
-  ...options,
+  ...baseOptions,
   entryPoints: [resolve(pkgRoot, "../core/src/bridge/node/hostEntry.ts")],
   outfile: resolve(outDir, "bridgeHost.js"),
   external: [],
@@ -51,7 +55,7 @@ const helperHostOptions = {
 
 // The web extension host runs in a browser worker with no node_modules, so everything is bundled and Node is refused.
 const webOptions = {
-  ...options,
+  ...baseOptions,
   entryPoints: [resolve(pkgRoot, "src/extensionWeb.ts")],
   outfile: resolve(outDir, "web/extension.js"),
   platform: "browser",

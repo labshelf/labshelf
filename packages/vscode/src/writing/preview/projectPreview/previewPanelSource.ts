@@ -62,8 +62,8 @@ export function previewPanelSource(context: PreviewPanelContext): ReaderSource {
     key: `preview:${project.folder}`,
     paper: previewPaper(deps.paths, project, pdf),
     store: createPreviewStore(),
-    pdfUri: vscode.Uri.file(pdf),
-    rootDir: vscode.Uri.file(previewRootDir(deps, project)),
+    pdfUri: deps.uriOf(pdf),
+    rootDir: deps.uriOf(previewRootDir(deps, project)),
     preview: createPreviewPorts({
       bodyPages: context.bodyPages, fixes, ...(actions && { projectActions: actions }),
       logger, paths: deps.paths, projectFolder: project.folder, format: project.settings.format, listPapers: deps.listPapers,

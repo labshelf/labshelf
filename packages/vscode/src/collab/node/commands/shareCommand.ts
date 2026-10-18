@@ -1,8 +1,10 @@
-// Shares a project: makes a new share key, connects the project, keeps the invite and copies it for the collaborators.
+// Shares a project: makes a new share key, connects the project, offers the owner's relay, keeps the invite and copies it for the collaborators.
 import * as vscode from "vscode";
 
-import { deriveShareId, formatInvite, generateShareKey } from "@labshelf/core";
+import { deriveShareId, formatInvite, generateShareKey, type Invite } from "@labshelf/core";
 import { LOG_MODULE, projectName, reportFailure, type CollabHost } from "../collabHost.js";
+import { offerOwnRelay, rememberInvite } from "../ownRelay.js";
+import type { ShareConnection } from "../session/index.js";
 import { copyInvite } from "./copyInvite.js";
 import { pickProject, type ProjectTarget } from "./projectTarget.js";
 
@@ -25,23 +27,16 @@ export async function shareProject(host: CollabHost, target: ProjectTarget): Pro
         void vscode.window.showWarningMessage(`"${name}" is shared, but its invite is not on this device. Paste it with Join Shared Project to reconnect.`);
         return undefined;
       }
-      if (!host.shares.get(existing)) { await host.shares.hold(existing, () => host.connect(stored.invite, { mode: "resume", folder: project.folder })); }
-      await copyInvite(stored.link, name);
-      return stored.link;
+      const resume = () => host.connect(stored.invite, { mode: "resume", folder: project.folder });
+      const share = await host.shares.hold(existing, async () => host.shares.get(existing) ?? resume());
+      const link = await withOwnRelay(host, share);
+      await copyInvite(link, name);
+      return link;
     }
     const shareKey = generateShareKey();
     const shareId = await deriveShareId(shareKey);
-    const link = await formatInvite({ shareKey, relays: [] });
-    await host.shares.hold(shareId, async () => {
-      await host.keys.remember(link, shareId);
-      try {
-        await host.connect({ shareId, shareKey }, { mode: "share", folder: project.folder });
-      } catch (error) {
-        await host.keys.forget(shareId);
-        throw error;
-      }
-      await host.projects.reload();
-    });
+    const share = await host.shares.hold(shareId, () => connectNew(host, { shareId, shareKey, relays: [] }, project.folder));
+    const link = await withOwnRelay(host, share);
     void host.logger.log("INFO", LOG_MODULE, "Shared a project from VS Code", { folder: project.folder, shareId });
     await copyInvite(link, name);
     return link;
@@ -49,4 +44,23 @@ export async function shareProject(host: CollabHost, target: ProjectTarget): Pro
     reportFailure(host.logger, `share "${name}"`, error, { folder: project.folder, shareId: existing });
     return undefined;
   }
+}
+
+/** Keeps the invite before connecting, so the project list reload that follows finds the key. */
+async function connectNew(host: CollabHost, invite: Invite, folder: string): Promise<ShareConnection> {
+  await host.keys.remember(await formatInvite(invite), invite.shareId);
+  try {
+    const share = await host.connect(invite, { mode: "share", folder });
+    await host.projects.reload();
+    return share;
+  } catch (error) {
+    await host.keys.forget(invite.shareId);
+    throw error;
+  }
+}
+
+/** The invite link to hand out, after the owner's relay joined the share's list when one is connected. */
+async function withOwnRelay(host: CollabHost, share: ShareConnection): Promise<string> {
+  await offerOwnRelay(host, share);
+  return rememberInvite(host, share);
 }
