@@ -10,7 +10,6 @@ import type { InputEvent } from "../../src/tui/input";
 import type { Screen } from "../../src/tui/screen";
 import type { TerminalSize } from "../../src/tui/terminal";
 import { App, type TerminalLike } from "../../src/ui/app";
-import { computeLayout } from "../../src/ui/render";
 
 export class FakeTerminal implements TerminalLike {
   frames: Screen[] = [];
@@ -189,7 +188,7 @@ export const screenText = (app: App): string => app.frame().screen.toText();
 // The text of one pane (or of the header / status bar). Only valid for the ASCII-and-box-drawing content used here,
 // where every character takes exactly one cell.
 export function pane(app: App, which: "header" | "folders" | "papers" | "preview" | "status"): string {
-  const rect = computeLayout(120, 30, app.focus)[which];
+  const rect = app.layout[which];
   if (!rect) { return ""; }
   const screen = app.frame().screen;
   const rows: string[] = [];

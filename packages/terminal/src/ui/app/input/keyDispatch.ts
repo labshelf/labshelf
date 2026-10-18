@@ -29,7 +29,7 @@ export function handleKey(app: App, id: string): void {
 }
 
 function pageSize(app: App): number {
-  return Math.max(1, (app.layout.papers ?? app.layout.folders)!.h - 1);
+  return Math.max(1, (app.layout.papers ?? app.layout.writing ?? app.layout.folders)!.h - 1);
 }
 
 function dispatch(app: App, binding: Binding): void {
@@ -60,6 +60,7 @@ function dispatchNavigate(app: App, binding: Binding, page: number): boolean {
       return true;
     case "previewDown": app.previewScroll += 3; return true;
     case "previewUp": app.previewScroll = Math.max(0, app.previewScroll - 3); return true;
+    case "writing": app.focus = "writing"; return true;
     case "nextTab": app.previewTab = (app.previewTab + 1) % PREVIEW_TABS.length; app.previewScroll = 0; return true;
     case "prevTab": app.previewTab = (app.previewTab + PREVIEW_TABS.length - 1) % PREVIEW_TABS.length; app.previewScroll = 0; return true;
     case "reveal": reveal(app); return true;
@@ -147,6 +148,7 @@ function escape(app: App): void {
 }
 
 function up(app: App): void {
+  if (app.focus === "writing") { app.focus = "papers"; return; }
   if (app.focus === "papers") {
     if (app.search !== undefined) { app.historyNav.leaveSearch(); return; }
     app.focus = "folders";
@@ -156,6 +158,7 @@ function up(app: App): void {
 }
 
 export function down(app: App): void {
+  if (app.focus === "writing") { return; }
   if (app.focus === "folders") {
     app.focus = "papers";
     return;

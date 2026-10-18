@@ -1,4 +1,4 @@
-// Runs the TUI: folders, papers and preview panes driven by the keymap over the library the VS Code extension uses.
+// Runs the TUI: folders, papers, writing and preview panes driven by the keymap over the library the VS Code extension uses.
 // Holds UI state only; library changes go through TerminalPaperService, .
 import type { PaperData, PaperEntry } from "@labshelf/core";
 
@@ -9,10 +9,9 @@ import type { InputEvent } from "../../tui/index.js";
 import type { Screen } from "../../tui/index.js";
 import type { TerminalSize } from "../../tui/index.js";
 import type { InlineInput, Overlay } from "../overlays.js";
-import { computeLayout, type Layout } from "../render.js";
 import { frame } from "./drawing/index.js";
 import { handleInline, handleKey, handleMouse, handleOverlay } from "./input/index.js";
-import { HistoryNav, ListModel, SelectionState, TaskStatus } from "./state/index.js";
+import { HistoryNav, ListModel, SelectionState, TaskStatus, WritingModel, computeAppLayout, type AppLayout } from "./state/index.js";
 import { ALL, type FolderRow, type Focus, type ImagePlan, type Message, type TerminalLike } from "./types.js";
 
 export type { TerminalLike };
@@ -51,6 +50,7 @@ export class App {
   readonly historyNav: HistoryNav;
   readonly selectionState: SelectionState;
   readonly taskStatus: TaskStatus;
+  readonly writing: WritingModel;
 
   constructor(readonly ctx: AppContext, readonly term: TerminalLike, options: { now?: () => number } = {}) {
     this.size = term.size();
@@ -60,18 +60,21 @@ export class App {
     this.historyNav = new HistoryNav(this);
     this.selectionState = new SelectionState(this);
     this.taskStatus = new TaskStatus(this, options.now ?? Date.now);
+    this.writing = new WritingModel(this);
+    void this.writing.load();
     ctx.onRootLost(() => this.taskStatus.notify("Library folder not found", "warn"));
     ctx.conflicts.onChange(() => this.scheduleRender());
     ctx.store.onChange(() => {
       this.listModel.invalidateCaches();
       this.sidecars.clear();
       this.listModel.dropStale();
+      void this.writing.load();
       this.scheduleRender();
     });
   }
 
-  get layout(): Layout {
-    return computeLayout(this.size.cols, this.size.rows, this.focus);
+  get layout(): AppLayout {
+    return computeAppLayout(this.size.cols, this.size.rows, this.focus);
   }
 
   // ───────────────────────────── lifecycle ─────────────────────────────

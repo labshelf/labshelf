@@ -4,7 +4,6 @@ import type { AppContext } from "../../../../src/app/context";
 import * as system from "../../../../src/platform/system";
 import { ALL, App } from "../../../../src/ui/app";
 import { ATTENTION, BERT, EINSTEIN, LECUN, click, hoveredId, idle, makeTmpRoot, openApp, seedLibrary, wheel } from "../../../fixtures/appHarness";
-import { computeLayout } from "../../../../src/ui/render";
 
 jest.mock("../../../../src/platform/system", () => ({
   ...jest.requireActual<typeof import("../../../../src/platform/system")>("../../../../src/platform/system"),
@@ -32,7 +31,7 @@ afterEach(async () => {
 });
 
 describe("App mouse", () => {
-  const layout = (): ReturnType<typeof computeLayout> => computeLayout(120, 30, app.focus);
+  const layout = () => app.layout;
 
   it("hovers the paper that is clicked", () => {
     const papers = layout().papers!;

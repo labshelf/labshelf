@@ -6,7 +6,7 @@ import { down } from "./keyDispatch.js";
 
 export function handleMouse(app: App, event: MouseEvent): void {
   if (app.overlay) { return; }
-  const { folders, papers, preview } = app.layout;
+  const { folders, papers, preview, writing } = app.layout;
   const inside = (rect: Rect | undefined): rect is Rect => Boolean(rect)
     && event.x >= rect!.x && event.x < rect!.x + rect!.w && event.y >= rect!.y && event.y < rect!.y + rect!.h;
   if (event.kind === "wheel-down" || event.kind === "wheel-up") {
@@ -14,7 +14,7 @@ export function handleMouse(app: App, event: MouseEvent): void {
     if (inside(preview)) {
       app.previewScroll = Math.max(0, app.previewScroll + delta);
     } else {
-      app.focus = inside(folders) ? "folders" : "papers";
+      app.focus = inside(folders) ? "folders" : inside(writing) ? "writing" : "papers";
       app.listModel.move(delta);
     }
     return;
@@ -24,6 +24,10 @@ export function handleMouse(app: App, event: MouseEvent): void {
     const row = app.listModel.folderRows()[app.listModel.folderOffset + event.y - folders.y];
     app.focus = "folders";
     if (row) { app.listModel.setFolder(row.key); }
+  } else if (inside(writing)) {
+    const index = app.writing.offset + (event.y - writing.y);
+    if (index < app.writing.projects.length) { app.writing.index = index; }
+    app.focus = "writing";
   } else if (inside(papers)) {
     const index = app.listModel.cursorState().offset + (event.y - papers.y);
     if (index < app.listModel.papers().length) {

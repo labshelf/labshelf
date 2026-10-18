@@ -3,7 +3,7 @@
 
 type ActionId =
   | "down" | "up" | "top" | "bottom" | "halfDown" | "halfUp" | "pageDown" | "pageUp"
-  | "parent" | "enter" | "open" | "reveal" | "back" | "forward" | "home" | "toggleFlatten"
+  | "parent" | "enter" | "open" | "reveal" | "back" | "forward" | "home" | "writing" | "toggleFlatten"
   | "previewDown" | "previewUp" | "nextTab" | "prevTab"
   | "filter" | "find" | "findNext" | "findPrev" | "search" | "jumpCollection" | "jumpPaper"
   | "toggleSelect" | "visual" | "selectAll" | "escape"
@@ -55,6 +55,7 @@ export const BINDINGS: Binding[] = [
   b("H", "back", "Back in history", "Navigate"),
   b("L", "forward", "Forward in history", "Navigate"),
   b(["g", "a"], "home", "Go to All papers", "Navigate"),
+  b(["g", "w"], "writing", "Go to the Writing pane (projects)", "Navigate"),
   b(".", "toggleFlatten", "Include papers from subfolders", "Navigate"),
   b("J", "previewDown", "Scroll preview down", "Navigate"),
   b("K", "previewUp", "Scroll preview up", "Navigate"),

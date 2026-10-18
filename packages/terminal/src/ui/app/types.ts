@@ -24,7 +24,7 @@ export interface TerminalLike {
 /** The folders pane key of the "All papers" row; every other key is a folder path relative to papers/ ("" = Unfiled). */
 export const ALL = "*all";
 
-export type Focus = "folders" | "papers";
+export type Focus = "folders" | "papers" | "writing";
 
 export interface FolderRow extends FolderRowData {
   key: string;

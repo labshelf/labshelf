@@ -131,6 +131,7 @@ export class ListModel {
 
   move(delta: number): void {
     const app = this.app;
+    if (app.focus === "writing") { app.writing.move(delta); return; }
     if (app.focus === "folders") {
       const rows = this.folderRows();
       const next = rows[Math.max(0, Math.min(this.folderIndex() + delta, rows.length - 1))];
@@ -142,6 +143,7 @@ export class ListModel {
   }
 
   moveTo(position: "top" | "bottom"): void {
+    if (this.app.focus === "writing") { this.app.writing.moveTo(position); return; }
     if (this.app.focus === "folders") {
       const rows = this.folderRows();
       const row = position === "top" ? rows[0] : rows[rows.length - 1];

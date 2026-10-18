@@ -32,7 +32,7 @@ describe("App unknown and interrupted key sequences", () => {
 
   it("ignores an unbound continuation of a prefix", () => {
     const before = screenText(app);
-    press(app, "g", "w");
+    press(app, "g", "q");
     expect(app.pending).toEqual([]);
     expect(screenText(app)).toBe(before);
     press(app, "m", "q");
