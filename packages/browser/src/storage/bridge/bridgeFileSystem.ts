@@ -45,8 +45,8 @@ export class BridgeFileSystem extends ByteBackedFileSystem {
     await (await this.connection()).request({ op: "rename", from, to });
   }
 
-  /** The host has no trash: the delete is permanent. A symlink is removed as a file, never followed. */
-  async trash(target: string): Promise<void> {
+  /** A symlink is removed as a file, never followed. */
+  async removeTree(target: string): Promise<void> {
     const found = await this.stat(target);
     if (!found) return;
     const connection = await this.connection();

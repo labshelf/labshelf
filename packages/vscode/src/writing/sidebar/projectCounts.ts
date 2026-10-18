@@ -1,6 +1,5 @@
 // Counts the open checklist items of each ready project lazily, caches them per folder and drops a folder's count when its files change.
-import type { ChecklistSignals } from "@labshelf/core/node";
-import { buildChecklist, type ILogger } from "@labshelf/core";
+import { buildChecklist, type ChecklistSignals, type ILogger } from "@labshelf/core";
 import * as vscode from "vscode";
 
 import type { WritingProjects } from "../session/index.js";

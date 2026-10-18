@@ -1,7 +1,7 @@
 /** Holds the writing projects listed in the Writing pane and the cursor over them. */
 import * as path from "node:path";
 import type { ProjectEntry } from "@labshelf/core";
-import { listProjects } from "@labshelf/core/node";
+import { listProjectsOnDisk } from "@labshelf/core/node";
 
 import type { App } from "../app.js";
 
@@ -16,7 +16,7 @@ export class WritingModel {
   async load(): Promise<void> {
     const { paths, logger } = this.app.ctx;
     try {
-      const entries = await listProjects(paths.root, logger);
+      const entries = await listProjectsOnDisk(paths.root, logger);
       this.projects = entries.filter((entry) => entry.kind !== "ready" || !entry.settings.trashed);
       this.index = Math.min(this.index, Math.max(0, this.projects.length - 1));
       this.app.scheduleRender();

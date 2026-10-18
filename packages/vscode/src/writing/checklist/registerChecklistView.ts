@@ -2,8 +2,8 @@
 import { randomUUID } from "node:crypto";
 import * as vscode from "vscode";
 
-import type { ILogger, PaperStatus } from "@labshelf/core";
-import { readChecklistSignals, updateChecklist } from "@labshelf/core/node";
+import { updateChecklist, type ILogger, type PaperStatus } from "@labshelf/core";
+import { nodeProjectReadContext } from "@labshelf/core/node";
 import { CHECK_COMMAND } from "../check/index.js";
 import type { BuildPreviews } from "../preview/index.js";
 import type { ProjectReadingLists } from "../readingList/index.js";
@@ -11,6 +11,7 @@ import type { ProjectSession } from "../session/index.js";
 import type { BuiltTreeSpec } from "../sidebar/index.js";
 import { ChecklistView } from "./checklistView.js";
 import { OpenProjectSignals } from "./openProjectSignals.js";
+import { readSignalsOnDisk } from "./readSignalsOnDisk.js";
 
 export interface ChecklistViewRegistration {
   context: vscode.ExtensionContext;
@@ -28,7 +29,7 @@ export interface ChecklistViewRegistration {
 export function registerChecklistView(deps: ChecklistViewRegistration): BuiltTreeSpec {
   const { context, session, logger } = deps;
   const signals = new OpenProjectSignals({
-    session, readSignals: readChecklistSignals, onDidSaveTextDocument: vscode.workspace.onDidSaveTextDocument,
+    session, readSignals: readSignalsOnDisk, onDidSaveTextDocument: vscode.workspace.onDidSaveTextDocument,
     onDidCountBodyPages: deps.previews.onDidCountBodyPages, logger,
   });
   const view = new ChecklistView({
@@ -36,7 +37,7 @@ export function registerChecklistView(deps: ChecklistViewRegistration): BuiltTre
     reading: { of: (project) => deps.readingLists.of(project), onDidChange: deps.onDidChangeBacklinks },
     memory: context.workspaceState,
     setStatus: deps.setStatus,
-    updateChecklist,
+    updateChecklist: (folder, edit) => updateChecklist(nodeProjectReadContext(logger), folder, edit),
     logger,
     newId: randomUUID,
     now: () => new Date(),

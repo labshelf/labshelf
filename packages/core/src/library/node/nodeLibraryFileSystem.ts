@@ -82,6 +82,10 @@ export class NodeLibraryFileSystem implements LibraryFileSystem {
     await fs.rename(from, to);
   }
 
+  async removeTree(target: string): Promise<void> {
+    await fs.rm(target, { recursive: true, force: true });
+  }
+
   async trash(target: string): Promise<void> {
     if (!this.moveToTrash) { throw new Error(`Cannot trash "${target}": this file system has no trash`); }
     await this.moveToTrash(target);

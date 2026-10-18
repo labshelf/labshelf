@@ -3,11 +3,11 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import {
-  DEFAULT_BIBLIOGRAPHY, PROJECT_FILE, generateBibliography,
+  DEFAULT_BIBLIOGRAPHY, PROJECT_FILE, generateBibliography, projectCitationKeys, readProject, updateProjectBibliography,
   type ILogger, type PaperRecord, type ProjectEntry,
 } from "@labshelf/core";
 import {
-  projectCitationKeys, readOptionalFile, readProject, updateProjectBibliography, writeFileAtomic,
+  nodeProjectReadContext, readOptionalFile, writeFileAtomic,
 } from "@labshelf/core/node";
 
 export type ReadyProject = Extract<ProjectEntry, { kind: "ready" }>;
@@ -34,7 +34,7 @@ export async function locateProject(
   const start = path.resolve(folder ?? process.cwd());
   const found = await enclosingProject(start, folder === undefined);
   if (found === undefined) { return { reason: `no ${PROJECT_FILE} in ${start}` }; }
-  const entry = await readProject(found, "external", logger);
+  const entry = await readProject(nodeProjectReadContext(logger), found, "external");
   return entry.kind === "ready" ? { project: entry } : { reason: entry.reason };
 }
 
@@ -46,8 +46,9 @@ export async function locateProject(
 export async function addToBibliography(
   project: ReadyProject, picked: PaperRecord, papers: readonly PaperRecord[], logger: ILogger,
 ): Promise<void> {
-  await updateProjectBibliography(project, papers, logger);
-  const keys = [...await projectCitationKeys(project.folder, project.settings.format), picked.citeKey];
+  const context = nodeProjectReadContext(logger);
+  await updateProjectBibliography(context, project, papers);
+  const keys = [...await projectCitationKeys(context, project.folder, project.settings.format), picked.citeKey];
   const generated = generateBibliography(keys, papers);
   const file = path.join(project.folder, project.settings.bibliography ?? DEFAULT_BIBLIOGRAPHY);
   if (await readOptionalFile(file) === generated.text) { return; }

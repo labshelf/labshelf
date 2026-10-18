@@ -1,16 +1,18 @@
 // Tests Compare Versions: its pickers, the build before a current-build comparison, the latexdiff option and the marks on both readers.
 import * as vscode from "vscode";
 
-import { buildMarkedUpDiff, comparePdfs, findExecutable, listVersions } from "@labshelf/core/node";
+import { listVersions } from "@labshelf/core";
+import { buildMarkedUpDiff, comparePdfs, findExecutable } from "@labshelf/core/node";
 import { ReaderPanel } from "../../../../src/pdf-viewer";
 import { ensureToolchain } from "../../../../src/writing/build/node";
 import { COMPARE_VERSIONS_COMMAND, registerCompareVersionsCommand } from "../../../../src/writing/versions/node";
 import { builtPdf } from "../../../../src/writing/preview";
 import { commandHandler, fakeHost, fakeProjects, openInEditor, readyEntry } from "../../../support/writingFixtures";
 
+jest.mock("@labshelf/core", () => ({ ...jest.requireActual("@labshelf/core"), listVersions: jest.fn() }));
 jest.mock("@labshelf/core/node", () => ({
   ...jest.requireActual("@labshelf/core/node"),
-  buildMarkedUpDiff: jest.fn(), comparePdfs: jest.fn(), findExecutable: jest.fn(), listVersions: jest.fn(),
+  buildMarkedUpDiff: jest.fn(), comparePdfs: jest.fn(), findExecutable: jest.fn(),
 }));
 jest.mock("../../../../src/writing/preview", () => ({ builtPdf: jest.fn(), createPreviewStore: jest.fn(() => ({})) }));
 jest.mock("../../../../src/pdf-viewer", () => ({ ReaderPanel: { createOrShow: jest.fn() } }));

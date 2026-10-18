@@ -1,4 +1,3 @@
-/** Exports the Node values API: reading the JSON value files and writing labshelf-values.tex. */
-export { readProjectValues } from "./projectValues.js";
+/** Exports the Node values API: writing labshelf-values.tex. */
 export { updateProjectValues } from "./updateProjectValues.js";
 export type { ValuesUpdate } from "./updateProjectValues.js";

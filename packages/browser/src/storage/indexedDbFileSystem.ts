@@ -66,8 +66,7 @@ export class IndexedDbFileSystem extends ByteBackedFileSystem {
     return renameTree(from, to);
   }
 
-  /** The browser has no trash: the delete is permanent. */
-  trash(target: string): Promise<void> {
+  removeTree(target: string): Promise<void> {
     return deleteTree(target);
   }
 

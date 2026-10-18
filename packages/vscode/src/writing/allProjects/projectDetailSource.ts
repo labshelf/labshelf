@@ -1,7 +1,7 @@
 // Reads the build summary, cites and detail of a project from the core readers for All projects.
 import * as vscode from "vscode";
-import type { ILogger, PaperRecord, PdfjsLoader, ProjectBuildSummary, ProjectDetail } from "@labshelf/core";
-import { readProjectCites, readProjectDetail } from "@labshelf/core/node";
+import { readProjectCites, readProjectDetail, type ILogger, type PaperRecord, type PdfjsLoader, type ProjectBuildSummary, type ProjectDetail } from "@labshelf/core";
+import { nodeProjectReadContext } from "@labshelf/core/node";
 import type { ReadyProject } from "../mainDocument.js";
 import { builtPdf, rawLogFile } from "../preview/index.js";
 import type { WritingProjects } from "../session/index.js";
@@ -42,7 +42,7 @@ export function createProjectDetailSource(deps: ProjectDetailDeps): ProjectDetai
       const hit = cached.get(project.folder);
       if (modified !== undefined && hit?.modified === modified) { return hit.value; }
       try {
-        const { cites, unresolved } = await readProjectCites(project.folder, withMain(project), await deps.listPapers());
+        const { cites, unresolved } = await readProjectCites(nodeProjectReadContext(logger), project.folder, withMain(project), await deps.listPapers());
         const value = { cites, unresolved };
         if (modified !== undefined) { cached.set(project.folder, { modified, value }); }
         return value;
@@ -58,9 +58,9 @@ export function createProjectDetailSource(deps: ProjectDetailDeps): ProjectDetai
         deps.listPapers(), build(project), builtPdf(projects, project, project.main),
         project.main ? rawLogFile(projects, project, project.main) : undefined,
       ]);
-      return readProjectDetail({
+      return readProjectDetail(nodeProjectReadContext(logger), {
         id: project.folder, folder: project.folder, settings: withMain(project), papers, build: summary, pdf, log, pdfjs: deps.pdfjs,
-      }, logger);
+      });
     },
   };
 }

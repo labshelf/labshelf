@@ -94,6 +94,15 @@ export class VscodeFileSystem implements LibraryFileSystem {
     await vscode.workspace.fs.rename(uriOf(from), uriOf(to), { overwrite: false });
   }
 
+  async removeTree(target: string): Promise<void> {
+    try {
+      await vscode.workspace.fs.delete(uriOf(target), { recursive: true, useTrash: false });
+    } catch (error) {
+      if (isNotFound(error)) { return; }
+      throw error;
+    }
+  }
+
   async trash(target: string): Promise<void> {
     await vscode.workspace.fs.delete(uriOf(target), { recursive: true, useTrash: true });
   }

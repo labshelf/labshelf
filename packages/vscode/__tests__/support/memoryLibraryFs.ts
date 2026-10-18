@@ -52,6 +52,9 @@ export class MemoryLibraryFs implements LibraryFileSystem {
   }
   async trash(target: string): Promise<void> {
     if (this.trashFails.has(target)) { throw new Error(`Cannot move ${target} to the trash`); }
+    await this.removeTree(target);
+  }
+  async removeTree(target: string): Promise<void> {
     for (const file of [...this.files.keys()]) { if (under(file, target)) { this.files.delete(file); } }
     for (const dir of [...this.dirs]) { if (under(dir, target)) { this.dirs.delete(dir); } }
   }

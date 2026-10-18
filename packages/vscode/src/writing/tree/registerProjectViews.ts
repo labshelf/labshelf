@@ -2,10 +2,9 @@
 import * as vscode from "vscode";
 
 import type { ILogger, PaperStatus } from "@labshelf/core";
-import { readChecklistSignals } from "@labshelf/core/node";
 import type { ArcIcon } from "../../ui/index.js";
 import type { BuildOutcomes } from "../build/index.js";
-import { registerChecklistView } from "../checklist/index.js";
+import { readSignalsOnDisk, registerChecklistView } from "../checklist/index.js";
 import { OutlineTreeProvider, REVEAL_OUTLINE_COMMAND, registerTypstOutline, revealOutline } from "../outline/index.js";
 import { ProjectFiguresView, type ProjectFigures } from "../figures/index.js";
 import type { BuildPreviews } from "../preview/index.js";
@@ -68,7 +67,7 @@ function filesSpec(provider: ProjectFilesProvider): ProjectTreeSpec<ProjectFileN
 export function registerProjectViews(deps: ProjectViewsDeps): ProjectViewsHandles {
   const { context, projects, figures, session, logger, arcIcon, readingLists, outcomes } = deps;
   const projectsSource = new SidebarProjectsSource({
-    projects, logger, readingLists, buildOutcomes: outcomes, readSignals: readChecklistSignals, watchFolder,
+    projects, logger, readingLists, buildOutcomes: outcomes, readSignals: readSignalsOnDisk, watchFolder,
   });
   const files = new ProjectFilesProvider({ session, projects, logger });
   const outline = new OutlineTreeProvider(logger);

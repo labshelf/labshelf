@@ -1,4 +1,5 @@
-/** Exports the runtime-neutral values API: JSON leaves, the generated macro file, its main-file line and source lookups. */
+/** Exports the runtime-neutral values API: JSON leaves, reading the listed value files, the generated macro file, its main-file line and source lookups. */
+export { readProjectValues } from "./readProjectValues.js";
 export { flattenValues } from "./valueLeaves.js";
 export type { FlattenedValues, LeafValue, ValueLeaf, ValueProject } from "./valueLeaves.js";
 export { valueMembers } from "./valueMembers.js";

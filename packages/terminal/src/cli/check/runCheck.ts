@@ -2,8 +2,8 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import type { CheckFinding, ILogger } from "@labshelf/core";
-import { builtPdfPath, checkProject, createPdfjsLoader, type ProjectCheck } from "@labshelf/core/node";
+import { builtPdfPath, type CheckFinding, type ILogger } from "@labshelf/core";
+import { checkProject, createPdfjsLoader, type ProjectCheck } from "@labshelf/core/node";
 
 import type { AppContext } from "../../app/context.js";
 import { findProject } from "../build/index.js";
@@ -36,7 +36,7 @@ export async function runCheck(
   check: ProjectChecker = realChecker,
 ): Promise<number> {
   const project = await findProject(ctx.paths.root, ctx.logger, positionals[0], process.cwd());
-  const pdfPath = builtPdfPath(project);
+  const pdfPath = builtPdfPath(path, project);
   if (!pdfPath) {
     io.err(`${project.folder} has no main file. Set main: in labshelf.yaml.`);
     return 1;

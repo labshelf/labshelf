@@ -1,6 +1,6 @@
 // Lists the library's writing projects as text lines or, with --json, as a JSON array.
 import type { ProjectEntry } from "@labshelf/core";
-import { listProjects } from "@labshelf/core/node";
+import { listProjectsOnDisk } from "@labshelf/core/node";
 
 import type { AppContext } from "../../app/index.js";
 import type { ParsedArgs } from "../args.js";
@@ -29,7 +29,7 @@ export async function runProjects(
 ): Promise<number> {
   let projects: ReturnType<typeof describeProject>[];
   try {
-    projects = (await listProjects(ctx.paths.root, ctx.logger)).map(describeProject);
+    projects = (await listProjectsOnDisk(ctx.paths.root, ctx.logger)).map(describeProject);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     io.err(`Could not list projects in ${ctx.paths.root}: ${reason}`);

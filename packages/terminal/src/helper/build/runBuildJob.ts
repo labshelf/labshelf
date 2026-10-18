@@ -1,6 +1,8 @@
 // Runs one `build` request to its `built` reply: finds TeX, builds, installs missing files and rebuilds, and streams the PDF.
-import type { ILogger, LatexToolchain, LocatedProblem, ProjectEntry, ProjectBuildResult } from "@labshelf/core";
-import { builtPdfPath, type ProjectBuildQueue } from "@labshelf/core/node";
+import * as path from "node:path";
+
+import { builtPdfPath, type ILogger, type LatexToolchain, type LocatedProblem, type ProjectEntry, type ProjectBuildResult } from "@labshelf/core";
+import type { ProjectBuildQueue } from "@labshelf/core/node";
 import { PROTOCOL_VERSION, type HelperBuildStatus, type ProgressPhase, type ToHelperMessage } from "@labshelf/core/helper";
 
 import type { HelperSend } from "../dispatch/index.js";
@@ -56,7 +58,7 @@ async function installRound(job: BuildJob, fileName: string, round: number): Pro
 
 async function finish(job: BuildJob, result: ProjectBuildResult, problems: LocatedProblem[], round: number): Promise<"retry" | "done"> {
   if (result.status === "succeeded") {
-    await sendBuiltPdf(job.message.id, builtPdfPath(job.project)!, problems, job.send);
+    await sendBuiltPdf(job.message.id, builtPdfPath(path, job.project)!, problems, job.send);
     return "done";
   }
   const { missingFile, shellEscape } = classifyTexProblems(problems);

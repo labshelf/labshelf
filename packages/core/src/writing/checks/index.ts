@@ -8,3 +8,4 @@ export { walkOperators } from "./operatorWalk.js";
 export type { OperatorList, PageOperators } from "./operatorWalk.js";
 export type { CheckFinding, CheckLocation, CheckRule, CheckSource, PdfFacts, PdfPageFacts, PlacedImage } from "./checkTypes.js";
 export { countedPages, readingOrderTexts, wordsUpTo } from "./limits/index.js";
+export { readPdfFacts } from "./pdf/index.js";

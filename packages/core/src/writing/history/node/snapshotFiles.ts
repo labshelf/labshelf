@@ -3,7 +3,8 @@ import { createHash, randomBytes } from "node:crypto";
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { listProjectFiles } from "../../project/node/index.js";
+import { listProjectFiles } from "../../project/folder/index.js";
+import { nodeFileReads } from "../../project/node/index.js";
 import { HISTORY_OBJECTS } from "../historyLayout.js";
 
 /** Larger files, such as datasets or videos, would make every snapshot slow and the store large. */
@@ -33,17 +34,18 @@ async function storeObject(historyDir: string, hash: string, content: Buffer): P
 
 /** @returns project-relative paths with "/" separators → SHA-256 */
 export async function snapshotFiles(folder: string, historyDir: string): Promise<Record<string, string>> {
-  const files = await listProjectFiles(folder);
+  const relatives = await listProjectFiles(nodeFileReads, folder);
+  const files = relatives.map((relative) => path.join(folder, relative));
   const all = new Set(files);
   const map: Record<string, string> = {};
-  for (const file of files) {
+  for (const [index, file] of files.entries()) {
     if (isBuiltPdf(file, all)) { continue; }
     const stat = await fs.stat(file);
     if (stat.size > MAX_FILE_BYTES) { continue; }
     const content = await fs.readFile(file);
     const hash = createHash("sha256").update(content).digest("hex");
     await storeObject(historyDir, hash, content);
-    map[path.relative(folder, file).split(path.sep).join("/")] = hash;
+    map[relatives[index]!] = hash;
   }
   return map;
 }

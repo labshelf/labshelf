@@ -2,8 +2,8 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { PROJECT_FILE, type ILogger, type ProjectEntry } from "@labshelf/core";
-import { listProjects, readProject } from "@labshelf/core/node";
+import { PROJECT_FILE, readProject, type ILogger, type ProjectEntry } from "@labshelf/core";
+import { listProjectsOnDisk, nodeProjectReadContext } from "@labshelf/core/node";
 
 import { UsageError } from "../usage.js";
 
@@ -20,8 +20,8 @@ async function enclosingProjectFolder(from: string): Promise<string | undefined>
 
 async function entryFor(libraryRoot: string, logger: ILogger, argument: string, cwd: string): Promise<ProjectEntry> {
   const folder = path.resolve(cwd, argument);
-  if (await exists(folder)) { return readProject(folder, "external", logger); }
-  const byId = (await listProjects(libraryRoot, logger)).find((entry) => entry.kind === "ready" && entry.settings.id === argument);
+  if (await exists(folder)) { return readProject(nodeProjectReadContext(logger), folder, "external"); }
+  const byId = (await listProjectsOnDisk(libraryRoot, logger)).find((entry) => entry.kind === "ready" && entry.settings.id === argument);
   if (byId) { return byId; }
   throw new UsageError(`No project folder or project id "${argument}".`);
 }
@@ -37,7 +37,7 @@ export async function findProject(libraryRoot: string, logger: ILogger, argument
   } else {
     const folder = await enclosingProjectFolder(cwd);
     if (!folder) { throw new UsageError(`No ${PROJECT_FILE} in ${cwd} or above. Run build inside a writing project or name one.`); }
-    entry = await readProject(folder, "external", logger);
+    entry = await readProject(nodeProjectReadContext(logger), folder, "external");
   }
   if (entry.kind === "broken") { throw new UsageError(`${entry.folder}: ${entry.reason}`); }
   return entry;

@@ -8,7 +8,7 @@ import { claimCiteKey, joinWith, libraryLayout } from "../../../library/index.js
 import { writeFileAtomic } from "../../../library/node/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import { PROJECT_FILE, projectIdSlug, type LatexEngine, type ProjectEntry } from "../../project/index.js";
-import { listProjects } from "../../project/node/index.js";
+import { listProjectsOnDisk } from "../../project/node/index.js";
 import { parseTemplateManifest, serializeTemplateManifest, templateTreeProblem, type TemplateCategory, type TemplateManifest } from "../manifest/index.js";
 import { listProjectFiles } from "./projectFiles.js";
 import type { FoundFile } from "./walkFolder.js";
@@ -31,7 +31,7 @@ export interface SaveTemplateDetails {
 type ReadyProject = Extract<ProjectEntry, { kind: "ready" }>;
 
 async function findProject(libraryRoot: string, projectId: string, logger: ILogger): Promise<ReadyProject> {
-  const entry = (await listProjects(libraryRoot, logger)).find((e) => e.kind === "ready" && e.settings.id === projectId);
+  const entry = (await listProjectsOnDisk(libraryRoot, logger)).find((e) => e.kind === "ready" && e.settings.id === projectId);
   if (entry === undefined || entry.kind !== "ready") { throw new Error(`no project has the id "${projectId}"`); }
   return entry;
 }

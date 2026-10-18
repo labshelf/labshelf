@@ -3,8 +3,8 @@ import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import * as vscode from "vscode";
-import type { ProjectSettingsPatch } from "@labshelf/core";
-import { updateProjectSettings } from "@labshelf/core/node";
+import { updateProjectSettings, type ProjectSettingsPatch } from "@labshelf/core";
+import { nodeProjectReadContext } from "@labshelf/core/node";
 import { createProjectHostActions } from "../../../src/writing/allProjects/projectHostActions";
 import { fakeLogger, fakeProjects, readyEntry } from "../../support/writingFixtures";
 
@@ -102,7 +102,7 @@ describe("createProjectHostActions", () => {
     it("removes the target key from labshelf.yaml when given null", async () => {
       await writeYaml("id: a\nformat: latex\ntarget:\n  venue: NeurIPS\n  deadline: 2027-05-01\n");
       const { actions, deps } = setup();
-      deps.edit.mockImplementation((id, patch) => updateProjectSettings(id, patch, fakeLogger()));
+      deps.edit.mockImplementation((id, patch) => updateProjectSettings(nodeProjectReadContext(fakeLogger()), id, patch));
       await actions.setTarget(folder, null);
       expect(await fs.readFile(path.join(folder, "labshelf.yaml"), "utf8")).not.toContain("target");
     });

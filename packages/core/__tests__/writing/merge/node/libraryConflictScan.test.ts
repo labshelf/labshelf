@@ -2,7 +2,8 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { addExistingFolder, createProjectFromTemplate } from "../../../../src/writing/project/node/index";
+import { nodeProjectCatalogContext } from "../../../../src/writing/project/node/index";
+import { addExistingFolder, createProjectFromTemplate } from "../../../../src/writing/project/index";
 import { blankTemplate } from "../../../../src/writing/templates/index";
 import { FileMergeBaseStore, scanLibraryConflicts } from "../../../../src/writing/merge/node/index";
 import type { IMergeBaseStore } from "../../../../src/writing/merge/index";
@@ -55,7 +56,7 @@ function memoryStore(): IMergeBaseStore & { bases: Map<string, string> } {
 async function libraryProject(seed = true) {
   const lib = await makeTempDir();
   const logger = recordingLogger();
-  const entry = await createProjectFromTemplate(lib, { title: "Robust Nets", ...blankTemplate("latex", "Robust Nets") }, logger);
+  const entry = await createProjectFromTemplate(nodeProjectCatalogContext(logger), lib, { title: "Robust Nets", ...blankTemplate("latex", "Robust Nets") });
   const folder = entry.folder;
   const id = entry.kind === "ready" ? entry.settings.id : "";
   await fs.writeFile(path.join(folder, "main.tex"), doc(PARAGRAPHS));
@@ -207,7 +208,7 @@ describe("scanLibraryConflicts on project files", () => {
     await fs.mkdir(folder);
     await fs.writeFile(path.join(folder, "main.tex"), doc(PARAGRAPHS));
     const logger = recordingLogger();
-    await addExistingFolder(lib, { folder, format: "latex" }, logger);
+    await addExistingFolder(nodeProjectCatalogContext(logger), lib, { folder, format: "latex" });
     const store = new FileMergeBaseStore(lib, { XDG_STATE_HOME: state, XDG_CACHE_HOME: state });
     await scanLibraryConflicts(lib, store, logger);
 

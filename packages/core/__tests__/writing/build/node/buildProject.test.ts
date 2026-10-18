@@ -4,7 +4,7 @@ import * as path from "node:path";
 
 import { tectonicAsset } from "../../../../src/writing/index";
 import { typstPreviewPdf } from "../../../../src/writing/build/index";
-import { buildProject, builtPdfPath } from "../../../../src/writing/build/node/index";
+import { buildProject } from "../../../../src/writing/build/node/index";
 import { cleanupTempDirs, pathExists } from "../../../support/tempDirs";
 import { buildFixture, runCount } from "./projectBuildFixtures";
 
@@ -64,14 +64,5 @@ posixOnly("buildProject", () => {
     const result = await buildProject(project, fixture.deps, { unsaved: new Map([[path.join(fixture.folder, "main.typ"), "Draft"]]) });
     expect(result.status).toBe("succeeded");
     expect(await pathExists(path.join(fixture.folder, "main.pdf"))).toBe(false);
-  });
-});
-
-describe("builtPdfPath", () => {
-  it("names <root>.pdf next to the root, the main file by default, and nothing without a root", async () => {
-    const fixture = await buildFixture();
-    expect(builtPdfPath(fixture.project())).toBe(path.join(fixture.folder, "main.pdf"));
-    expect(builtPdfPath(fixture.project(), "chapters/intro.tex")).toBe(path.join(fixture.folder, "chapters", "intro.pdf"));
-    expect(builtPdfPath(fixture.project({}, null))).toBeUndefined();
   });
 });

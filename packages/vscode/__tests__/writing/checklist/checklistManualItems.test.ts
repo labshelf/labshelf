@@ -4,8 +4,8 @@ import * as os from "node:os";
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { addManualItem } from "@labshelf/core";
-import { readManualItems, updateChecklist } from "@labshelf/core/node";
+import { addManualItem, readManualItems, updateChecklist } from "@labshelf/core";
+import { nodeProjectReadContext } from "@labshelf/core/node";
 import { ChecklistView } from "../../../src/writing/checklist";
 import type { ReadyProject } from "../../../src/writing/figures";
 import { fakeLogger, readyEntry } from "../../support/writingFixtures";
@@ -28,7 +28,7 @@ function setup(initial?: string) {
     current: undefined as unknown,
     onDidChange: changed.event,
     refresh: jest.fn(async () => {
-      signals.current = { project, signals: { sources: [], todos: [], brokenRefs: [], staleFigures: [], manual: await readManualItems(folder, logger) }, pageOverflow: undefined };
+      signals.current = { project, signals: { sources: [], todos: [], brokenRefs: [], staleFigures: [], manual: await readManualItems(nodeProjectReadContext(logger), folder) }, pageOverflow: undefined };
       changed.fire();
     }),
   };
@@ -37,7 +37,7 @@ function setup(initial?: string) {
   const reading = { of: jest.fn(async () => ({ entries: [], neverOpened: 0 })), onDidChange: new vscode.EventEmitter<void>().event };
   const view = new ChecklistView({
     signals: signals as never, reading, memory: { get: () => undefined, update: async () => {}, keys: () => [] }, setStatus: async () => [],
-    updateChecklist, logger, arcIcon, newId: () => "item-1", now: () => new Date("2026-05-01T10:00:00Z"),
+    updateChecklist: (target, edit) => updateChecklist(nodeProjectReadContext(logger), target, edit), logger, arcIcon, newId: () => "item-1", now: () => new Date("2026-05-01T10:00:00Z"),
   });
   return { view, logger, signals, ready };
 }

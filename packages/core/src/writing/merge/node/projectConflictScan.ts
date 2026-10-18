@@ -4,7 +4,8 @@ import * as path from "node:path";
 
 import { parseConflictName, type ConflictCopy } from "../../../library/conflicts/index.js";
 import type { ILogger } from "../../../ports/index.js";
-import { listProjectFiles, listProjects } from "../../project/node/index.js";
+import { listProjectFiles } from "../../project/folder/index.js";
+import { listProjectsOnDisk, nodeFileReads } from "../../project/node/index.js";
 import { hasMergeableExtension, isMergeableTextFile } from "../mergeableTextFile.js";
 import type { IMergeBaseStore } from "../mergeBaseStore.js";
 import { mergeProjectCopies } from "./projectCopyMerge.js";
@@ -20,7 +21,8 @@ interface ProjectTree {
 
 async function projectTree(folder: string, projectId: string): Promise<ProjectTree> {
   const tree: ProjectTree = { files: new Map(), copies: new Map() };
-  for (const file of await listProjectFiles(folder)) {
+  for (const relative of await listProjectFiles(nodeFileReads, folder)) {
+    const file = path.join(folder, relative);
     const name = path.basename(file);
     if (name.startsWith(".")) { continue; }
     const parsed = parseConflictName(name);
@@ -64,7 +66,7 @@ async function scanProject(folder: string, projectId: string, store: IMergeBaseS
 /** @returns the project conflict copies left for the user; a project that cannot be listed is logged and skipped. */
 export async function scanProjectConflicts(libraryRoot: string, store: IMergeBaseStore, logger: ILogger): Promise<ConflictCopy[]> {
   const unresolved: ConflictCopy[] = [];
-  for (const entry of await listProjects(libraryRoot, logger)) {
+  for (const entry of await listProjectsOnDisk(libraryRoot, logger)) {
     if (entry.kind !== "ready") { continue; }
     try {
       unresolved.push(...await scanProject(entry.folder, entry.settings.id, store, logger));

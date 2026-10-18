@@ -3,14 +3,15 @@
 
 import * as path from "node:path";
 
+import { nodeProjectReadContext } from "../../project/node/index.js";
 import { readOptionalFile, writeFileAtomic } from "../../../library/node/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import type { OpenSources } from "../../project/index.js";
+import { readProjectValues } from "../readProjectValues.js";
 import type { ValueLeaf } from "../valueLeaves.js";
 import { VALUES_FILE_NAME, generateValuesFile } from "../valuesFile.js";
 import { withValuesInput } from "../valuesInputLine.js";
 import type { ValueProject } from "../valueLeaves.js";
-import { readProjectValues } from "./projectValues.js";
 
 const MODULE = "writing/values";
 
@@ -35,7 +36,7 @@ async function addMainLine(mainPath: string, logger: ILogger, open: OpenSources 
 export async function updateProjectValues(project: ValueProject, logger: ILogger, open?: OpenSources): Promise<ValuesUpdate> {
   if (project.settings.format !== "latex" || !project.settings.values?.length) { return { written: false, leaves: [], mainLine: "not-needed" }; }
   if (project.main === undefined) { return { written: false, leaves: [], mainLine: "no-main" }; }
-  const leaves = await readProjectValues(project, logger);
+  const leaves = await readProjectValues(project, nodeProjectReadContext(logger));
   const mainPath = path.join(project.folder, project.main);
   const valuesPath = path.join(path.dirname(mainPath), VALUES_FILE_NAME);
   const text = generateValuesFile(leaves);

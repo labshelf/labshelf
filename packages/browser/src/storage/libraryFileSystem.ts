@@ -94,6 +94,7 @@ function routedFileSystem(pick: () => Promise<LibraryFileSystem>): LibraryFileSy
     readText: (path) => run((fs) => fs.readText(path)),
     rename: (from, to) => run((fs) => fs.rename(from, to)),
     trash: (target) => run((fs) => fs.trash(target)),
+    removeTree: (target) => run((fs) => fs.removeTree(target)),
     mkdir: (dir) => run((fs) => fs.mkdir(dir)),
   };
 }

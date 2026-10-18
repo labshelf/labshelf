@@ -2,8 +2,8 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import type { ILogger, PdfjsLoader, ProjectEntry } from "@labshelf/core";
-import { buildMarkedUpDiff, comparePdfs, findExecutable, listVersions, projectBuildDir } from "@labshelf/core/node";
+import { listVersions, type ILogger, type PdfjsLoader, type ProjectEntry } from "@labshelf/core";
+import { buildMarkedUpDiff, comparePdfs, findExecutable, nodeProjectReadContext, projectBuildDir } from "@labshelf/core/node";
 import { executeSafely } from "../../../commands/index.js";
 import type { ReaderPanelDeps } from "../../../pdf-viewer/index.js";
 import { activeProject } from "../../build/index.js";
@@ -80,7 +80,7 @@ async function compareProject(deps: CompareVersionsDeps, panels: ComparePanels, 
       await vscode.window.showInformationMessage("Open a file of a writing project to compare its versions.");
       return;
     }
-    const versions = await listVersions(target.folder, session.logger);
+    const versions = await listVersions(nodeProjectReadContext(session.logger), target.folder);
     if (versions.length === 0) {
       await vscode.window.showInformationMessage("Mark a version first with Research: Mark Version.");
       return;

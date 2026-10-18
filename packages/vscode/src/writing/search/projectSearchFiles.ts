@@ -2,8 +2,8 @@
 import * as vscode from "vscode";
 
 import type { ILogger, PathOps, SearchScopeMode } from "@labshelf/core";
-import { isSearchableFile } from "@labshelf/core";
-import { listProjectFiles } from "@labshelf/core/node";
+import { isSearchableFile, listProjectFiles } from "@labshelf/core";
+import { NodeLibraryFileSystem } from "@labshelf/core/node";
 import { isInside } from "../mainDocument.js";
 
 export const SEARCH_LOG_MODULE = "writing/search";
@@ -39,7 +39,8 @@ async function readFromDisk(path: string, logger: ILogger): Promise<string | und
 async function scopedPaths(scope: SearchScope, logger: ILogger): Promise<string[]> {
   if (scope.mode === "file") { return [scope.file]; }
   try {
-    return await listProjectFiles(scope.folder);
+    const relatives = await listProjectFiles({ fs: new NodeLibraryFileSystem(), paths: scope.paths }, scope.folder);
+    return relatives.map((relative) => scope.paths.join(scope.folder, relative));
   } catch (error) {
     await logger.error(SEARCH_LOG_MODULE, error, { action: "list-files", folder: scope.folder });
     throw error;

@@ -21,6 +21,8 @@ export class MemoryLibraryFs implements LibraryFileSystem {
   readonly symlinks = new Set<string>();
   /** Folders whose listing fails. */
   readonly unreadable = new Set<string>();
+  /** Modification times in ms by path; a path without one stats as 0. */
+  readonly mtimes = new Map<string, number>();
   /** Paths whose trash fails. */
   readonly trashFails = new Set<string>();
   readonly trashed: string[] = [];
@@ -60,7 +62,7 @@ export class MemoryLibraryFs implements LibraryFileSystem {
   async deleteFile(file: string): Promise<void> { this.files.delete(file); }
 
   async stat(target: string): Promise<LocalStat | undefined> {
-    if (this.files.has(target)) { return { isFile: true, isDirectory: false, mtimeMs: 0, size: this.files.get(target)!.length }; }
+    if (this.files.has(target)) { return { isFile: true, isDirectory: false, mtimeMs: this.mtimes.get(target) ?? 0, size: this.files.get(target)!.length }; }
     if (this.dirs.has(target)) { return { isFile: false, isDirectory: true, mtimeMs: 0, size: 0 }; }
     if (this.symlinks.has(target)) { return { isFile: false, isDirectory: false, mtimeMs: 0, size: 0 }; }
     return undefined;
@@ -84,7 +86,7 @@ export class MemoryLibraryFs implements LibraryFileSystem {
 
   async trash(target: string): Promise<void> {
     if (this.trashFails.has(target)) { throw new Error(`Cannot move ${target} to the trash`); }
-    this.removeTree(target);
+    await this.removeTree(target);
     this.trashed.push(target);
   }
 
@@ -103,7 +105,7 @@ export class MemoryLibraryFs implements LibraryFileSystem {
     }
   }
 
-  private removeTree(target: string): void {
+  async removeTree(target: string): Promise<void> {
     for (const file of [...this.files.keys()]) { if (under(file, target)) { this.files.delete(file); } }
     for (const dir of [...this.dirs]) { if (under(dir, target)) { this.dirs.delete(dir); } }
   }

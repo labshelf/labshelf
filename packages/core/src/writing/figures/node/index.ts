@@ -1,4 +1,3 @@
-/** Exports the Node figure provenance API: staleness from the file system and the figure command runner. */
-export { readFigureStates } from "./readFigureStates.js";
+/** Exports the Node figure provenance API: the figure command runner. */
 export { runFigureCommand } from "./runFigureCommand.js";
 export type { FigureRun } from "./runFigureCommand.js";

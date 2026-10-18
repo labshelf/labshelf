@@ -9,8 +9,13 @@ export abstract class ByteBackedFileSystem implements LibraryFileSystem {
   abstract stat(targetPath: string): Promise<LocalStat | undefined>;
   abstract ensureDir(dirPath: string): Promise<void>;
   abstract rename(from: string, to: string): Promise<void>;
-  abstract trash(target: string): Promise<void>;
+  abstract removeTree(target: string): Promise<void>;
   abstract mkdir(dir: string): Promise<void>;
+
+  /** A byte-backed store has no trash, so trashing deletes permanently. */
+  trash(target: string): Promise<void> {
+    return this.removeTree(target);
+  }
 
   async exists(targetPath: string): Promise<boolean> {
     return (await this.stat(targetPath)) !== undefined;

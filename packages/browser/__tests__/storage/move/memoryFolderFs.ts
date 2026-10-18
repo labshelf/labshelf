@@ -58,7 +58,8 @@ export class MemoryFolderFs implements LibraryFileSystem {
   async writeText(path: string, text: string): Promise<void> { await this.writeFile(path, new TextEncoder().encode(text)); }
   async readText(path: string): Promise<string> { return new TextDecoder().decode(await this.readFile(path)); }
   async rename(): Promise<void> { throw new Error("not used"); }
-  async trash(target: string): Promise<void> {
+  async trash(target: string): Promise<void> { await this.removeTree(target); }
+  async removeTree(target: string): Promise<void> {
     const inside = (key: string): boolean => key === target || key.startsWith(`${target}/`);
     for (const key of [...this.files.keys()]) if (inside(key)) this.files.delete(key);
     for (const key of [...this.dirs]) if (inside(key)) this.dirs.delete(key);

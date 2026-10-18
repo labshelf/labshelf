@@ -1,14 +1,16 @@
 /** Runs the pre-submission check on a project folder and its built PDF. */
 import { promises as fs } from "node:fs";
+import * as path from "node:path";
 
 import type { PdfjsLoader } from "../../../import/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import type { CheckSettings } from "../../project/index.js";
-import { listProjectFiles } from "../../project/node/index.js";
+import { listProjectFiles } from "../../project/folder/index.js";
+import { nodeFileReads } from "../../project/node/index.js";
 import type { CheckFinding, CheckSource } from "../checkTypes.js";
+import { readPdfFacts } from "../pdf/index.js";
 import { runChecks } from "../runChecks.js";
 import { gitUserName } from "./gitUserName.js";
-import { readPdfFacts } from "./readPdfFacts.js";
 
 const MODULE = "writing/checks";
 const SOURCE_FILE = /\.(?:tex|typ)$/;
@@ -22,7 +24,7 @@ export interface ProjectCheck {
 }
 
 async function readSources(folder: string): Promise<CheckSource[]> {
-  const files = (await listProjectFiles(folder)).filter((file) => SOURCE_FILE.test(file)).sort();
+  const files = (await listProjectFiles(nodeFileReads, folder)).filter((file) => SOURCE_FILE.test(file)).map((file) => path.join(folder, file));
   return Promise.all(files.map(async (file) => ({ file, lines: (await fs.readFile(file, "utf8")).split(/\r?\n/) })));
 }
 
@@ -30,7 +32,7 @@ async function readSources(folder: string): Promise<CheckSource[]> {
 export async function checkProject(check: ProjectCheck, pdfjs: PdfjsLoader, logger: ILogger): Promise<CheckFinding[]> {
   const context = { folder: check.folder, pdf: check.pdfPath };
   try {
-    const [facts, sources, gitUser] = await Promise.all([readPdfFacts(pdfjs, check.pdfPath), readSources(check.folder), gitUserName(check.folder)]);
+    const [facts, sources, gitUser] = await Promise.all([readPdfFacts(nodeFileReads.fs, pdfjs, check.pdfPath), readSources(check.folder), gitUserName(check.folder)]);
     const findings = runChecks({ facts, sources, settings: check.settings, gitUser });
     await logger.log("INFO", MODULE, "Checked the project before submitting", {
       ...context, pages: facts.pages.length, sources: sources.length, gitUser: gitUser !== undefined, findings: findings.length,

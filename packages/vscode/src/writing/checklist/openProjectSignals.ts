@@ -2,8 +2,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import type { ChecklistSignals } from "@labshelf/core/node";
-import type { ILogger, PageOverflow } from "@labshelf/core";
+import type { ChecklistSignals, ILogger, PageOverflow } from "@labshelf/core";
 import type { ReadyProject } from "../figures/index.js";
 import type { BodyPagesCount } from "../preview/index.js";
 

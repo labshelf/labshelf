@@ -1,8 +1,8 @@
 // Lists the writing projects as sidebar rows and announces when any row's mark, count or tooltip may have changed.
 import * as vscode from "vscode";
 
-import type { ILogger, ProjectEntry, ProjectSettingsPatch, ReadingList } from "@labshelf/core";
-import { updateProjectSettings, type ChecklistSignals } from "@labshelf/core/node";
+import { updateProjectSettings, type ChecklistSignals, type ILogger, type ProjectEntry, type ProjectSettingsPatch, type ReadingList } from "@labshelf/core";
+import { nodeProjectReadContext } from "@labshelf/core/node";
 import type { SidebarProjectItem } from "../../ui/library/index.js";
 import type { BuildOutcomes } from "../build/index.js";
 import type { ReadyProject } from "../figures/index.js";
@@ -52,7 +52,7 @@ export class SidebarProjectsSource implements vscode.Disposable {
 
   /** Rewrites a project's labshelf.yaml; the project list picks the change up on its next reload. */
   update(folder: string, patch: ProjectSettingsPatch): Promise<void> {
-    return updateProjectSettings(folder, patch, this.deps.logger);
+    return updateProjectSettings(nodeProjectReadContext(this.deps.logger), folder, patch);
   }
 
   dispose(): void {

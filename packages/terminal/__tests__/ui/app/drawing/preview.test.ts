@@ -73,6 +73,7 @@ describe("App preview tabs", () => {
       highlight(ATTENTION, 1, "The dominant sequence\ntransduction mod-\nels are based on complex recurrent"),
       highlight(ATTENTION, 2, "Compare with the RNN baseline", { type: "note" }),
     ]);
+    await ctx.store.reload();
     press(app, "tab", "tab");
     await eventually(() => pane(app, "preview").includes("p. 1"), "the sidecar to load", app);
     const preview = pane(app, "preview");

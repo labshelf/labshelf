@@ -16,3 +16,5 @@ export { parseProjectRegistry, serializeProjectRegistry, withFolder, withoutFold
 export type { ProjectRegistry } from "./deviceLocal/index.js";
 export * from "./install/index.js";
 export * from "./export/index.js";
+export * from "./folder/index.js";
+export * from "./writes/index.js";

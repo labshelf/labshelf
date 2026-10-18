@@ -1,8 +1,7 @@
 // Tests the Checklist view: grouping, remembered state, the Reading group and the context keys.
 import * as vscode from "vscode";
 
-import { nextStatus, type PaperRecord, type ReadingList } from "@labshelf/core";
-import type { ChecklistSignals } from "@labshelf/core/node";
+import { nextStatus, type ChecklistSignals, type PaperRecord, type ReadingList } from "@labshelf/core";
 import { ChecklistView } from "../../../src/writing/checklist";
 import type { ReadyProject } from "../../../src/writing/figures";
 import { fakeLogger, readyEntry } from "../../support/writingFixtures";

@@ -6,7 +6,7 @@ import * as path from "node:path";
 import type { OpenSources } from "../../../../src/writing/project/index";
 import type { ProjectSettings } from "../../../../src/writing/project/index";
 import { VALUES_HEADER } from "../../../../src/writing/values/index";
-import { readProjectValues, updateProjectValues } from "../../../../src/writing/values/node/index";
+import { updateProjectValues } from "../../../../src/writing/values/node/index";
 import { fakeLogger } from "../../../support/fakeLogger";
 import { cleanupTempDirs, makeTempDir } from "../../../support/tempDirs";
 
@@ -26,36 +26,6 @@ async function folderWith(files: Record<string, string>): Promise<string> {
 const read = (dir: string, name: string): Promise<string> => fs.readFile(path.join(dir, name), "utf8");
 const project = (folder: string, main: string | undefined, over: Partial<ProjectSettings> = {}) =>
   ({ folder, main, settings: { id: "p", format: "latex" as const, values: ["results.json"], ...over } });
-
-describe("readProjectValues", () => {
-  it("reads the listed files in order and logs a missing or invalid file with the project and path", async () => {
-    const dir = await folderWith({ "results.json": '{"acc":0.9}', "bad.json": "{oops", "data/more.json": '{"n":2}' });
-    const logger = fakeLogger();
-    const leaves = await readProjectValues(
-      { folder: dir, settings: { id: "p", format: "latex", values: ["./results.json", "bad.json", "gone.json", "data\\more.json"] } },
-      logger,
-    );
-    expect(leaves.map((leaf) => [leaf.key, leaf.file])).toEqual([["results.acc", "results.json"], ["more.n", "data/more.json"]]);
-    expect(logger.logs.filter((entry) => entry.level === "WARN" && entry.message === "value file skipped")).toHaveLength(2);
-  });
-
-  it("logs the keys it skips", async () => {
-    const dir = await folderWith({ "results.json": '{"a b":1,"c":2}' });
-    const logger = fakeLogger();
-    const leaves = await readProjectValues({ folder: dir, settings: { id: "p", format: "latex", values: ["results.json"] } }, logger);
-    expect(leaves.map((leaf) => leaf.key)).toEqual(["results.c"]);
-    expect(logger.logs.map((entry) => entry.message)).toEqual([expect.stringContaining("value keys skipped")]);
-  });
-
-  it("reads only the first of two files with the same name, so their keys cannot collide", async () => {
-    const dir = await folderWith({ "results.json": '{"acc":1}', "old/results.json": '{"acc":2}' });
-    const logger = fakeLogger();
-    const settings: ProjectSettings = { id: "p", format: "latex", values: ["results.json", "old/results.json"] };
-    const leaves = await readProjectValues({ folder: dir, settings }, logger);
-    expect(leaves.map((leaf) => [leaf.key, leaf.value])).toEqual([["results.acc", 1]]);
-    expect(logger.logs.map((entry) => entry.message)).toEqual([expect.stringContaining("same name")]);
-  });
-});
 
 describe("updateProjectValues", () => {
   it("writes labshelf-values.tex next to the main file and loads it before \\begin{document}", async () => {

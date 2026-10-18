@@ -1,13 +1,13 @@
 // Tests the All projects adapter: where each project is listed, its build, cites and detail, and what trashing writes to labshelf.yaml.
 import * as vscode from "vscode";
-import { readProjectCites, readProjectDetail } from "@labshelf/core/node";
+import { readProjectCites, readProjectDetail } from "@labshelf/core";
 import { createProjectLibrary } from "../../../src/writing/allProjects/projectLibrary";
 import { fakeHost, fakeLogger, fakeProjects, readyEntry } from "../../support/writingFixtures";
 
-jest.mock("@labshelf/core/node", () => ({
-  ...jest.requireActual("@labshelf/core/node"),
+jest.mock("@labshelf/core", () => ({
+  ...jest.requireActual("@labshelf/core"),
   readProjectCites: jest.fn(async () => ({ cites: 5, unresolved: 2 })),
-  readProjectDetail: jest.fn(async (request: { id: string }) => ({ id: request.id, citations: [] })),
+  readProjectDetail: jest.fn(async (_context: unknown, request: { id: string }) => ({ id: request.id, citations: [] })),
 }));
 
 function setup() {
@@ -50,7 +50,7 @@ describe("createProjectLibrary", () => {
 
   it("reads cites with the main file filled into the settings", async () => {
     await setup().library.list();
-    expect(readProjectCites).toHaveBeenCalledWith("/lib/projects/a", expect.objectContaining({ id: "a", main: "main.tex" }), expect.anything());
+    expect(readProjectCites).toHaveBeenCalledWith(expect.anything(), "/lib/projects/a", expect.objectContaining({ id: "a", main: "main.tex" }), expect.anything());
   });
 
   it("reuses the cites of a project until its modified time changes", async () => {
@@ -72,8 +72,8 @@ describe("createProjectLibrary", () => {
     const detail = await library.detail("/lib/projects/a");
     expect(detail.id).toBe("/lib/projects/a");
     expect(readProjectDetail).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "/lib/projects/a", folder: "/lib/projects/a", papers, build: expect.objectContaining({ state: "ok", at: 7000 }), settings: expect.objectContaining({ main: "main.tex" }) }),
       expect.anything(),
+      expect.objectContaining({ id: "/lib/projects/a", folder: "/lib/projects/a", papers, build: expect.objectContaining({ state: "ok", at: 7000 }), settings: expect.objectContaining({ main: "main.tex" }) }),
     );
   });
 
