@@ -13,7 +13,7 @@ import { createFrameWriter } from "./stdio/index.js";
 import { createManagedTexProvider, createTexInstallHandlers, installTexLive, installTinyTex } from "./tex/index.js";
 import { createSelfUpdater } from "./update/index.js";
 
-const HELPER_VERSION = "0.1.0";
+const HELPER_VERSION = "0.1.1";
 
 // CONTRACT: documents/contracts/helper.md#data-folder
 function helperDataDir(env: NodeJS.ProcessEnv): string {

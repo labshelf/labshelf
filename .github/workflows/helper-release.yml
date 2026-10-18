@@ -66,14 +66,15 @@ jobs:
         if: matrix.os == 'macos'
         run: |
           bash packages/terminal/installers/macos/build-pkg.sh "$BINARY" "$VERSION" out
-          suffix="${{ matrix.arch == 'arm64' && '' || '-x64' }}"
+          # TRAP: an Actions `cond && '' || 'x'` always yields 'x' because '' is falsy, so the non-empty value goes first.
+          suffix="${{ matrix.arch == 'x64' && '-x64' || '' }}"
           mv out/labshelf-helper-macos.pkg "release/labshelf-helper-macos${suffix}.pkg"
 
       - name: Package Linux installers
         if: matrix.os == 'linux'
         run: |
           bash packages/terminal/installers/linux/build-linux.sh "$BINARY" "$VERSION" out "${{ matrix.deb_arch }}"
-          suffix="${{ matrix.arch == 'x64' && '' || '-arm64' }}"
+          suffix="${{ matrix.arch == 'arm64' && '-arm64' || '' }}"
           mv out/labshelf-helper-linux.deb "release/labshelf-helper-linux${suffix}.deb"
           mv out/labshelf-helper-linux.tar.gz "release/labshelf-helper-linux-${{ matrix.arch }}.tar.gz"
 
