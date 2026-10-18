@@ -2,5 +2,5 @@
 export { arxivBundle } from "./arxivBundle.js";
 export type { ArxivBundle, BibText } from "./arxivBundle.js";
 export { bibliographyFiles } from "./bibliographyFiles.js";
-export { projectFiles } from "./projectFiles.js";
+export { builtPdfPaths, isBuildOrToolPath, projectFiles } from "./projectFiles.js";
 export { DOCUMENT_EXPORT_EXTENSIONS, pandocArgs, type DocumentExport } from "./pandocArgs.js";

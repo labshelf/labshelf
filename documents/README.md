@@ -19,6 +19,7 @@ Read when you look for the document that answers a question about LabShelf; the 
 | Which configuration do apps share? | [contracts/library-format.md](contracts/library-format.md#shared-configuration) |
 | How does a library move between devices? | [contracts/sync.md](contracts/sync.md) |
 | How does the browser extension reach the library folder? | [contracts/bridge.md](contracts/bridge.md) |
+| How is a project shared, invited and encrypted? | [contracts/collaboration.md](contracts/collaboration.md) |
 | How is a link to a paper page written? | [contracts/links.md](contracts/links.md#grammar) |
 | What is a project template and its catalog index? | [contracts/templates.md](contracts/templates.md#manifest) |
 | How does a host start the PDF reader? | [contracts/reader-host.md](contracts/reader-host.md#startup) |

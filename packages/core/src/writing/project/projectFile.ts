@@ -31,6 +31,8 @@ export interface ProjectSettings extends UserKeys {
   title?: string | undefined;
   /** ISO 8601 time since which the project is in the trash; restoring removes the key. */
   trashed?: string | undefined;
+  /** Share id of a shared project; per user, never synced. */
+  shared?: string | undefined;
   /** Papers the project cites plus those the user added, each with its DOI when known. */
   papers?: ListedPaper[] | undefined;
   target?: ProjectTarget | undefined;
@@ -125,7 +127,7 @@ export function parseProjectFile(text: string): ProjectFileResult {
     return { ok: false, reason: "archived must be true or false" };
   }
   if (raw["archived"] === true) { settings.archived = true; }
-  for (const key of ["title", "trashed"] as const) {
+  for (const key of ["title", "trashed", "shared"] as const) {
     const value = raw[key];
     if (value !== undefined && value !== null && typeof value !== "string") { return { ok: false, reason: `${key} must be text` }; }
     if (typeof value === "string" && value.trim() !== "") { settings[key] = value.trim(); }

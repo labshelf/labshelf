@@ -11,10 +11,10 @@ Context: LabShelf users share a writing project folder; each holds a local copy;
 
 | Id | Package | Level | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| 2.1 | Keys, invite link, encryption framing | contract | implementer (opus), tests first → `architecture-reviewer` | crypto tests | [ ] |
-| 2.2 | Doc layout, shared files, settings split | contract | implementer (opus), tests first → `architecture-reviewer` | model tests | [ ] |
-| 2.3 | Contract text | task | main thread | `collaboration.md` written | [ ] |
-| 2.4 | Check, commit | — | `check` on Owns, `git commit` of Owns | gate passes | [ ] |
+| 2.1 | Keys, invite link, encryption framing | contract | implementer (opus), tests first → `architecture-reviewer` | crypto tests | [x] |
+| 2.2 | Doc layout, shared files, settings split | contract | implementer (opus), tests first → `architecture-reviewer` | model tests | [x] |
+| 2.3 | Contract text | task | main thread | `collaboration.md` written | [x] |
+| 2.4 | Check, commit | — | `check` on Owns, `git commit` of Owns | gate passes | [x] |
 
 2.1 and 2.2 in parallel (disjoint: `collab/{crypto,invite}/` vs `collab/model/`); 2.3 after both.
 

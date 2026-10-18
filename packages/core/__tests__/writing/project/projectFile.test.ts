@@ -116,6 +116,17 @@ describe("parseProjectFile title and trashed", () => {
   });
 });
 
+describe("parseProjectFile shared", () => {
+  it("reads the share id", () => {
+    const result = parseProjectFile("id: a\nformat: latex\nshared: s-123\n");
+    expect(result.ok && result.settings.shared).toBe("s-123");
+  });
+
+  it("rejects a share id that is not text", () => {
+    expect(parseProjectFile("id: a\nformat: latex\nshared: [x]\n")).toEqual({ ok: false, reason: "shared must be text" });
+  });
+});
+
 describe("target", () => {
   const head = "id: a\nformat: latex\n";
 

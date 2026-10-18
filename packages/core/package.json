@@ -20,7 +20,9 @@
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "~6.3.289",
     "tesseract.js": "^7.0.0",
-    "yaml": "^2.7.1"
+    "y-protocols": "^1.0.7",
+    "yaml": "^2.7.1",
+    "yjs": "^13.6.33"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
