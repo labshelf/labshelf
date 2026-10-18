@@ -60,6 +60,8 @@ Each entry of `problems` has `severity` (`"error"`, `"warning"` or `"info"`), `m
 
 A frame the helper cannot accept gets an `error` reply with the request's `id` when it had one, and `code` set to the rejection: `malformed`, `version`, `unknown-type`, `invalid-field`, `path`, `project-id` or `limit`.
 
+`installTex` and `installAllPackages` end with an `error` instead of `ready` when they cannot finish: `texlive-rollover` when a managed full TeX Live is a year behind the repository, so the page asks before reinstalling it; `no-managed-tex` when `installAllPackages` finds no managed install; `tex-install-failed` for any other failure. A managed TinyTeX that falls behind is reinstalled with its packages without asking. A system TeX is never changed.
+
 ## Chunks
 
 File contents and the PDF travel as chunks: `{ index, count, data }`. `data` is canonical base64 of at most 512 KiB of raw bytes, and the same rule holds in both directions. `count` is the number of chunks of the stream, at least 1; an empty file is one chunk with empty `data`. Chunks of one stream arrive in order from `index` 0 with the same `count`; a gap, a repeated index or a changed `count` rejects the stream.
