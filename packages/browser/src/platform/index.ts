@@ -3,8 +3,11 @@ export { bx } from "./browserApi";
 export { createBrowserLogger, StorageRingLogSink } from "./logging";
 export { sendRuntime } from "./sendRuntime";
 export { downloadTextFile } from "./downloadTextFile";
+export { connectBrowserNative, type NativePort } from "./nativePort";
+export { isHostNotFound } from "./hostNotFound";
 export { getSettings, updateSettings, type LabShelfSettings } from "./settings";
 export type {
-  AskAuthorData, AttachPdfData, DraftView, FolderOption, FoldersData, LibraryChangedBroadcast, LibraryRef, LookupData, LookupItem,
-  ImportedDoiData, PdfOfferView, PdfStatusData, RuntimeMessage, RuntimeResponse, SaveOutcome, SavedPaperData, SearchHit, TabSummary,
-} from "./runtimeMessages";
+  AskAuthorData, AttachPdfData, BibHealthData, CiteOutcome, DraftView, FolderOption, FoldersData, ImportedDoiData, InsertOutcome,
+  LibraryChangedBroadcast, LibraryRef, LookupData, LookupItem, PdfOfferView, PdfStatusData, ReviewStartData, RuntimeMessage,
+  RuntimeResponse, SaveOutcome, SavedPaperData, SearchHit, SiteMark, SitesLookupData, TabSummary, WritingMessage,
+} from "./messages";

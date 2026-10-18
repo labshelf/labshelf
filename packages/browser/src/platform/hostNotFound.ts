@@ -1,4 +1,4 @@
-// Tells whether a native-messaging failure means LabShelf Helper is not installed.
+// Tells whether a native-messaging failure means the native host is not installed.
 
 // PLATFORM: Chrome says "Specified native messaging host not found."; Firefox says "No such native application <name>".
 const NOT_FOUND = [/native messaging host not found/i, /no such native application/i];

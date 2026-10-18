@@ -1,14 +1,14 @@
 /**
- * Handles the messages that move text out of the reader: clipboard copies, the Markdown export and external links.
+ * Handles the messages that move text out of the reader: clipboard copies, the Markdown export, external links and citations into a project.
  */
 import { formatQuoteWithCitation } from "../citationFormat.js";
-import { isSafeExternalUrl } from "../protocol.js";
+import { isSafeExternalUrl } from "../protocol/index.js";
 import { exportAnnotations } from "./exportAnnotations.js";
 import { READER_LOG_MODULE, type MessageHandlers } from "./hostContext.js";
 
 export const shareHandlers: Pick<
   MessageHandlers,
-  "copyText" | "copyWithCitation" | "exportAnnotations" | "openExternalLink"
+  "copyText" | "copyWithCitation" | "exportAnnotations" | "openExternalLink" | "citeInProject"
 > = {
   copyText: async (ctx, msg) => {
     await ctx.ports.writeClipboard(msg.text);
@@ -20,6 +20,19 @@ export const shareHandlers: Pick<
     const text = formatQuoteWithCitation(msg.text, ports.paper, msg.pageNumber, ports.getPrefs().citationStyle);
     await ports.writeClipboard(text);
     ports.notify(`Copied with citation (@${ports.paper.citeKey}, p. ${msg.pageNumber})`, "ok");
+  },
+
+  citeInProject: async (ctx, msg) => {
+    const { ports } = ctx;
+    if (!ports.citeInProject) {
+      ports.notify("Cite in project is not available here", "info");
+      return;
+    }
+    await ports.citeInProject({
+      paperId: msg.paperId,
+      ...(msg.page === undefined ? {} : { page: msg.page }),
+      ...(msg.quote === undefined ? {} : { quote: msg.quote }),
+    });
   },
 
   exportAnnotations: (ctx, msg) => exportAnnotations(ctx.ports, msg.target),

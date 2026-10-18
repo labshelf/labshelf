@@ -1,6 +1,6 @@
 /** Exports the reader's runtime-neutral public API: protocol, host controller, sidecar store, preferences, themes and citation formats.
  * The reader UI is exported from `dom/`. */
-export * from "./protocol.js";
+export * from "./protocol/index.js";
 export * from "./previewProtocol.js";
 export * from "./previewRequests.js";
 export * from "./sidecar/index.js";

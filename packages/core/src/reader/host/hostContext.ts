@@ -2,7 +2,7 @@
  * Declares the per-reader state and helpers the message handlers share, and the shape of the handler table.
  */
 import type { Annotation, PdfTheme } from "../../model/index.js";
-import type { EffectiveTheme, HostToWebview, WebviewToHost } from "../protocol.js";
+import type { EffectiveTheme, HostToWebview, WebviewToHost } from "../protocol/index.js";
 import type { ReaderHostPorts } from "./ports.js";
 
 export const READER_LOG_MODULE = "reader";

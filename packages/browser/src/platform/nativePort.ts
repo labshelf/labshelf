@@ -1,5 +1,5 @@
-// Adapts the WebExtension native-messaging port to the small surface the helper client needs.
-import { bx } from "../../../platform/browserApi";
+// Adapts the WebExtension native-messaging port to the small surface the native-host clients need.
+import { bx } from "./browserApi";
 
 export interface NativePort {
   post(frame: unknown): void;
@@ -8,8 +8,6 @@ export interface NativePort {
   onDisconnect(listener: (reason: string | undefined) => void): void;
   disconnect(): void;
 }
-
-export type HelperPortFactory = () => NativePort;
 
 export function connectBrowserNative(hostName: string): NativePort {
   const port = bx.runtime.connectNative(hostName);

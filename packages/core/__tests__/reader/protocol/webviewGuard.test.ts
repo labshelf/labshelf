@@ -1,4 +1,4 @@
-import { isSafeExternalUrl, isWebviewMessage } from '../../src/reader/protocol';
+import { isSafeExternalUrl, isWebviewMessage } from '../../../src/reader/protocol/index';
 
 describe('isWebviewMessage', () => {
   describe('accepts a valid sample of every WebviewToHost command', () => {

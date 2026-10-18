@@ -1,7 +1,7 @@
 jest.mock("webextension-polyfill", () => ({ storage: { local: { get: async () => ({}), set: async () => undefined } } }));
 
 import { hitCacheKey } from "../../src/background/draftCache";
-import type { SearchHit } from "../../src/platform/runtimeMessages";
+import type { SearchHit } from "../../src/platform";
 
 const hit = (over: Partial<SearchHit> = {}): SearchHit => ({ key: "cid1", title: "A Title", authors: [], ...over });
 

@@ -3,7 +3,7 @@
  */
 import { inTextCitation } from "../library/index.js";
 import type { PaperRecord } from "../model/index.js";
-import type { CitationStyle } from "./protocol.js";
+import type { CitationStyle } from "./protocol/index.js";
 
 export type CitablePaper = Pick<PaperRecord, "citeKey" | "title" | "authors" | "year">;
 

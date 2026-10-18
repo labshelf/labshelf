@@ -1,9 +1,8 @@
-/**
- * Declares the runtime messages between the background and the extension pages and content script, in one typed envelope.
- */
+// Declares the runtime messages that capture papers and their PDFs, with their replies.
 import type { IfNoPdf, PdfAccess, PdfMiss } from "@labshelf/core";
+import type { LibraryRef } from "./libraryMessages";
 
-export type RuntimeMessage =
+export type CaptureMessage =
   /** Reads the paper shown in a tab (the popup's first call). */
   | { type: "capture.inspect"; tabId: number }
   /** Waits for the PDF search the inspect started; the popup shows the result. */
@@ -23,45 +22,10 @@ export type RuntimeMessage =
   | { type: "paper.openForPdf"; id: string; access: PdfAccess }
   /** Library page "Ask the author": drafts the request email for a saved paper without a PDF. */
   | { type: "paper.askAuthor"; id: string }
-  /** Removes a paper just saved (the popup's undo). */
-  | { type: "paper.remove"; id: string }
-  /** Collections a paper can be saved into, plus the last one used. */
-  | { type: "library.folders" }
-  /** Which of these papers the library already holds, by key. */
-  | { type: "library.lookup"; items: LookupItem[] }
-  /** Opens the library page on a collection, optionally selecting a paper. */
-  | { type: "library.open"; folder?: string; paperId?: string }
-  /** Lists the current window's http(s) tabs, excluding extension pages. */
-  | { type: "tabs.list" }
-  /** Library page: builds the citation map from OpenAlex for the library's papers. */
-  | { type: "citationMap.build" }
-  /** Library page: saves the paper with this DOI through the capture flow, or reports it already there. */
-  | { type: "citationMap.importDoi"; doi: string }
   /** Popup: the offer to attach a PDF this tab showed, or the latest download, to a paper without one; null when none. */
   | { type: "pdfOffer.get"; tabId: number }
   | { type: "pdfOffer.attach"; offerId: string }
   | { type: "pdfOffer.dismiss"; offerId: string };
-
-export type RuntimeResponse =
-  | { ok: true; data?: unknown }
-  | { ok: false; error: string };
-
-/** Reply to citationMap.importDoi. */
-export interface ImportedDoiData {
-  status: "saved" | "already-present";
-  id: string;
-  title: string;
-}
-
-/** The library's copy of a paper. */
-export interface LibraryRef {
-  id: string;
-  path: string;
-  /** Collection holding it. */
-  folder: string;
-  /** `<path>/paper.pdf` exists in the IndexedDB files store. Required, so the compiler finds every producer. */
-  hasPdf: boolean;
-}
 
 /** What the popup shows about the tab before saving. */
 export interface DraftView {
@@ -137,40 +101,6 @@ export interface PdfOfferView {
   onThisTab: boolean;
 }
 
-/**
- * Background (or the reader, for "annotations") -> extension pages after the library changed. Kept OUT of
- * RuntimeMessage, because background/index forces every RuntimeMessage to be
- * handled and this broadcast is not a request.
- */
-export interface LibraryChangedBroadcast {
-  type: "library.changed";
-  reason: "capture" | "attach" | "remove" | "annotations" | "askAuthor";
-  paperId?: string;
-  /** A sentence for open library pages to show, for a change the user did not start there (a watched tab's PDF). */
-  notice?: string;
-}
-
-export interface FolderOption {
-  path: string;
-  /** 0 for the root, 1 for its children, … */
-  depth: number;
-}
-
-export interface FoldersData {
-  folders: FolderOption[];
-  lastFolder: string;
-}
-
-export interface LookupItem {
-  key: string;
-  doi?: string;
-  arxivId?: string;
-  title?: string;
-  year?: number;
-}
-
-export type LookupData = Record<string, LibraryRef>;
-
 /** One Google Scholar or Google search result, as the content script reads it. */
 export interface SearchHit {
   /** Identity on its page: Scholar's cluster id (data-cid), or the result link on Google. */
@@ -184,10 +114,4 @@ export interface SearchHit {
   authors: string[];
   venue?: string;
   year?: number;
-}
-
-export interface TabSummary {
-  id: number;
-  title: string;
-  url: string;
 }

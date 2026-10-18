@@ -1,4 +1,4 @@
-import { DEFAULT_READER_PREFS } from '../../src/reader/protocol';
+import { DEFAULT_READER_PREFS } from '../../src/reader/protocol/index';
 import { normalizeReaderPrefs } from '../../src/reader/readerPrefs';
 
 describe('normalizeReaderPrefs', () => {

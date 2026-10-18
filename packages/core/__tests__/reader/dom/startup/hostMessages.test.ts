@@ -1,5 +1,5 @@
 // Checks how the reader applies a host's changed regions around a reload.
-import type { HostToWebview } from "../../../../src/reader/protocol";
+import type { HostToWebview } from "../../../../src/reader/protocol/index";
 import { bindHostMessages, type HostMessageTargets } from "../../../../src/reader/dom/startup/hostMessages";
 
 type Handler = (msg: HostToWebview) => void;

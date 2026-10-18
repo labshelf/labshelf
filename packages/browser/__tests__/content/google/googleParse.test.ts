@@ -6,7 +6,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { googleResults, isGoogleSearchUrl, isPaperHit, parseByline, readGoogleResult } from "../../../src/content/google/googleParse";
-import type { SearchHit } from "../../../src/platform/runtimeMessages";
+import type { SearchHit } from "../../../src/platform";
 
 function page(html: string): Document {
   return new DOMParser().parseFromString(html, "text/html");

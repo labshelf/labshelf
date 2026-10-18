@@ -7,7 +7,7 @@ import type { PaperDataStore } from "../sidecar/index.js";
 import type { LatexEngine } from "../../writing/project/index.js";
 import type { CitationEntry, CitationQuery, PagePoint } from "../previewProtocol.js";
 import type { CheckLimitsChange, CitationFix, ProjectCommandId } from "../previewRequests.js";
-import type { EffectiveTheme, HostToWebview, ReaderPrefs } from "../protocol.js";
+import type { CiteInProjectRequest, EffectiveTheme, HostToWebview, ReaderPrefs } from "../protocol/index.js";
 
 export type NoticeKind = "info" | "ok" | "error";
 
@@ -69,6 +69,8 @@ export interface ReaderHostPorts {
   saveAnnotations(markdown: string): Promise<void>;
   logger: ILogger;
   sidecarChanged?(change: SidecarChange): void;
+  /** Adds a citation of a paper to a writing project; present only when the host has projects to cite in. */
+  citeInProject?(request: CiteInProjectRequest): Promise<void>;
   /** Present only when the reader previews a build. */
   preview?: PreviewPorts;
   now?: () => number;

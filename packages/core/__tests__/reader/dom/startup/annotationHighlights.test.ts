@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 // Checks that a highlight the host sends is drawn on its page, not only listed in the Annotations tab.
-import type { HostToWebview } from "../../../../src/reader/protocol";
+import type { HostToWebview } from "../../../../src/reader/protocol/index";
 import { PageHighlights } from "../../../../src/reader/dom/highlights";
 import { bindHostMessages, type HostMessageTargets } from "../../../../src/reader/dom/startup/hostMessages";
 

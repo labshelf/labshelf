@@ -16,6 +16,7 @@ One host controller in core answers every message the reader sends. Each host im
 ## Rules
 
 - **Every message has one handler.** Adding a message means adding its handler to the shared host controller; a host changes only when the message needs a port it does not implement yet.
+- **`citeInProject` asks the host to cite a paper in a writing project.** The message carries `paperId` and optionally `page` (a positive integer) and `quote` (at most 2,000 characters). The controller passes it to the host's optional `citeInProject` port; a host without the port shows the notice `Cite in project is not available here`.
 - **Messages wait for `ready`.** The reader drops host messages other than `init` and `applyTheme` before the document is laid out. The controller holds the latest of each type and sends them on `ready`.
 - **Every failure is logged and shown.** A handler that throws is logged with the paper and command and becomes a `Reader action failed` notice; a rejected annotation write becomes a `Failed to create|update|delete annotation` notice and the reader keeps its list.
 - **The host validates untrusted input.** Messages from the reader go through `isWebviewMessage`, so a malformed message is rejected and never half-applied. External links go through `isSafeExternalUrl`, which allows only `http:`, `https:` and `mailto:`, so a crafted PDF cannot open `file:`, `command:` or `vscode:` URIs.

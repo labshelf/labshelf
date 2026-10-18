@@ -1,5 +1,5 @@
 // Tests validation of the preview messages a webview sends, and the protocol version.
-import { isWebviewMessage, PROTOCOL_VERSION } from '../../src/reader/protocol';
+import { isWebviewMessage, PROTOCOL_VERSION } from '../../src/reader/protocol/index';
 
 const ok = (m: unknown) => expect(isWebviewMessage(m)).toBe(true);
 const bad = (m: unknown) => expect(isWebviewMessage(m)).toBe(false);

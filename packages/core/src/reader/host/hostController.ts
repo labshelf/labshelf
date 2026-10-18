@@ -4,7 +4,7 @@
 import type { Annotation, PdfTheme } from "../../model/index.js";
 import { errorMessage } from "../../logging/index.js";
 import type { BuildState, PageArea, PagePoint, PreviewRoots } from "../previewProtocol.js";
-import { isWebviewMessage, type EffectiveTheme, type HostToWebview, type WebviewToHost } from "../protocol.js";
+import { isWebviewMessage, type EffectiveTheme, type HostToWebview, type WebviewToHost } from "../protocol/index.js";
 import { annotationHandlers } from "./annotationMessages.js";
 import { READER_LOG_MODULE, type HostContext, type HostState, type MessageHandler, type MessageHandlers } from "./hostContext.js";
 import type { ReaderHostPorts } from "./ports.js";
