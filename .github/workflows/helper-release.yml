@@ -1,0 +1,204 @@
+# Builds, packages, signs, attests and publishes LabShelf Helper for every supported OS and architecture on a helper-v* tag.
+# Secrets: HELPER_UPDATE_KEY (required), SIGNPATH_API_TOKEN (optional, enables Windows signing with the SIGNPATH_* variables).
+name: Helper release
+
+on:
+  push:
+    tags: ["helper-v*"]
+
+permissions: {}
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+      # The binary compares its built-in version with latest.json, so a mismatched tag would make every helper update forever.
+      - id: version
+        run: |
+          version="${GITHUB_REF_NAME#helper-v}"
+          built="$(sed -n 's/^const HELPER_VERSION = "\(.*\)";$/\1/p' packages/terminal/src/helper/main.ts)"
+          if [ "$version" != "$built" ]; then
+            echo "::error::Tag version $version does not match HELPER_VERSION $built in packages/terminal/src/helper/main.ts"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: version
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - { runner: macos-14, os: macos, arch: arm64 }
+          - { runner: macos-15-intel, os: macos, arch: x64 }
+          - { runner: windows-latest, os: windows, arch: x64 }
+          - { runner: ubuntu-latest, os: linux, arch: x64, deb_arch: amd64 }
+          - { runner: ubuntu-24.04-arm, os: linux, arch: arm64, deb_arch: arm64 }
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      BINARY: packages/terminal/dist/sea/labshelf-helper-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.os == 'windows' && '.exe' || '' }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+      # PLATFORM: only official nodejs.org builds, which setup-node installs, can build a single executable application.
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @labshelf/terminal build
+      - run: pnpm --filter @labshelf/terminal build:helper-sea
+      - run: mkdir -p release
+
+      - name: Package macOS installer
+        if: matrix.os == 'macos'
+        run: |
+          bash packages/terminal/installers/macos/build-pkg.sh "$BINARY" "$VERSION" out
+          suffix="${{ matrix.arch == 'arm64' && '' || '-x64' }}"
+          mv out/labshelf-helper-macos.pkg "release/labshelf-helper-macos${suffix}.pkg"
+
+      - name: Package Linux installers
+        if: matrix.os == 'linux'
+        run: |
+          bash packages/terminal/installers/linux/build-linux.sh "$BINARY" "$VERSION" out "${{ matrix.deb_arch }}"
+          suffix="${{ matrix.arch == 'x64' && '' || '-arm64' }}"
+          mv out/labshelf-helper-linux.deb "release/labshelf-helper-linux${suffix}.deb"
+          mv out/labshelf-helper-linux.tar.gz "release/labshelf-helper-linux-${{ matrix.arch }}.tar.gz"
+
+      - name: Check Windows signing
+        id: signing
+        if: matrix.os == 'windows'
+        env:
+          SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+        run: |
+          if [ -n "$SIGNPATH_API_TOKEN" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::SIGNPATH_API_TOKEN is not set; the Windows binary and installer are published unsigned"
+          fi
+
+      # The binary is signed before the installer is built so that the installer carries the signed binary.
+      - name: Upload unsigned Windows binary
+        id: unsigned-binary
+        if: steps.signing.outputs.enabled == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-windows-binary
+          path: ${{ env.BINARY }}
+      - name: Sign Windows binary
+        if: steps.signing.outputs.enabled == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.unsigned-binary.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: packages/terminal/dist/sea
+
+      # PLATFORM: Inno Setup is installed explicitly because the runner images do not promise a version of at least 6.3.
+      - name: Package Windows installer
+        if: matrix.os == 'windows'
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=$env:VERSION" "/DSourceBinary=$((Resolve-Path $env:BINARY).Path)" "/DOutputDir=$PWD\release" packages\terminal\installers\windows\labshelf-helper.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed with exit code $LASTEXITCODE" }
+
+      - name: Upload unsigned Windows installer
+        id: unsigned-installer
+        if: steps.signing.outputs.enabled == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-windows-installer
+          path: release/labshelf-helper-windows-setup.exe
+      - name: Sign Windows installer
+        if: steps.signing.outputs.enabled == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.unsigned-installer.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: release
+
+      # The self-updater downloads the raw executable, so it is a release asset too.
+      - run: cp "$BINARY" release/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.os }}-${{ matrix.arch }}
+          path: release/
+          if-no-files-found: error
+
+  publish:
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: assets
+          merge-multiple: true
+
+      # CONTRACT: packages/terminal/src/helper/update/latestManifest.ts reads assets["<process.platform>-<process.arch>"].{url,sha256}.
+      - name: Write latest.json
+        run: |
+          node --input-type=module - <<'EOF'
+          import { createHash } from "node:crypto";
+          import { readFileSync, writeFileSync } from "node:fs";
+          const { VERSION, GITHUB_REPOSITORY, GITHUB_REF_NAME } = process.env;
+          const binaries = {
+            "darwin-arm64": "labshelf-helper-macos-arm64",
+            "darwin-x64": "labshelf-helper-macos-x64",
+            "win32-x64": "labshelf-helper-windows-x64.exe",
+            "linux-x64": "labshelf-helper-linux-x64",
+            "linux-arm64": "labshelf-helper-linux-arm64",
+          };
+          const assets = {};
+          for (const [key, name] of Object.entries(binaries)) {
+            assets[key] = {
+              url: `https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/${name}`,
+              sha256: createHash("sha256").update(readFileSync(`assets/${name}`)).digest("hex"),
+            };
+          }
+          writeFileSync("assets/latest.json", `${JSON.stringify({ version: VERSION, assets }, null, 2)}\n`);
+          EOF
+      - name: Sign latest.json
+        env:
+          HELPER_UPDATE_KEY: ${{ secrets.HELPER_UPDATE_KEY }}
+        run: node scripts/helperReleaseKey.mjs sign assets/latest.json
+      - name: Write SHA256SUMS
+        working-directory: assets
+        run: sha256sum -- * > ../SHA256SUMS && mv ../SHA256SUMS .
+      - uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: assets/*
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" assets/* --verify-tag --title "LabShelf Helper $VERSION" --notes "LabShelf Helper $VERSION"

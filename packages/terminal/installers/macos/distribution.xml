@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="1">
+  <title>LabShelf Helper</title>
+  <domains enable_anywhere="false" enable_currentUserHome="true" enable_localSystem="false"/>
+  <options customize="never" require-scripts="false" hostArchitectures="HOST_ARCH"/>
+  <choices-outline>
+    <line choice="default"/>
+  </choices-outline>
+  <choice id="default" title="LabShelf Helper">
+    <pkg-ref id="dev.labshelf.helper"/>
+  </choice>
+  <pkg-ref id="dev.labshelf.helper" version="VERSION">component.pkg</pkg-ref>
+</installer-gui-script>

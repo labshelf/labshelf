@@ -1,0 +1,11 @@
+#!/bin/bash
+# Registers the installed LabShelf Helper with the user's browsers.
+# PLATFORM: a current-user-home install runs this script as the user, with HOME set to the home the payload was laid into.
+set -eu
+
+helper="$HOME/Library/Application Support/LabShelf Helper/bin/labshelf-helper"
+if [ ! -x "$helper" ]; then
+  echo "labshelf-helper postinstall: $helper is missing; the payload was not installed into this home" >&2
+  exit 1
+fi
+exec "$helper" --register

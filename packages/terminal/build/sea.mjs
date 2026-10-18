@@ -1,0 +1,124 @@
+// Builds dist/sea/labshelf-helper-<os>-<arch>, a Node single executable of LabShelf Helper for the host, and checks that it answers `hello`.
+import { build } from "esbuild";
+import { execFileSync, spawn } from "node:child_process";
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { inject } from "postject";
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const seaDir = resolve(root, "dist/sea");
+const OS_NAMES = { darwin: "macos", win32: "windows", linux: "linux" };
+const SENTINEL_FUSE = "NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2";
+const SMOKE_TIMEOUT_MS = 20_000;
+
+function targetName() {
+  const osName = OS_NAMES[process.platform];
+  if (!osName || !["x64", "arm64"].includes(process.arch)) {
+    throw new Error(`No SEA target for ${process.platform}-${process.arch}`);
+  }
+  return `labshelf-helper-${osName}-${process.arch}${process.platform === "win32" ? ".exe" : ""}`;
+}
+
+// PLATFORM: a SEA main must be a script, not an ES module, so the ESM bundle is re-bundled as one CommonJS file on every Node version.
+async function bundleCommonJs(outfile) {
+  await build({
+    entryPoints: [resolve(root, "dist/labshelf-helper.mjs")],
+    outfile,
+    bundle: true,
+    platform: "node",
+    format: "cjs",
+    target: "node22",
+    legalComments: "none",
+    logLevel: "warning",
+    // The ESM bundle's banner builds `require` from import.meta.url; in the executable that is the binary's own location.
+    define: { "import.meta.url": "__helperUrl" },
+    banner: { js: 'const __helperUrl = require("node:url").pathToFileURL(__filename).href;' },
+  });
+}
+
+async function writeBlob(tmpDir, mainFile) {
+  const config = join(tmpDir, "sea-config.json");
+  const blob = join(tmpDir, "sea-prep.blob");
+  await writeFile(config, JSON.stringify({ main: mainFile, output: blob, disableExperimentalSEAWarning: true }));
+  try {
+    execFileSync(process.execPath, ["--experimental-sea-config", config], { stdio: "inherit" });
+  } catch {
+    // TRAP: distro and Homebrew Node builds omit SEA support and fail here with "Single executable application is disabled".
+    throw new Error(`${process.execPath} cannot build a single executable application; run this script with an official nodejs.org build`);
+  }
+  return blob;
+}
+
+async function injectBlob(binary, blob) {
+  const isMac = process.platform === "darwin";
+  if (isMac) { execFileSync("codesign", ["--remove-signature", binary], { stdio: "inherit" }); }
+  await inject(binary, "NODE_SEA_BLOB", await readFile(blob), {
+    sentinelFuse: SENTINEL_FUSE,
+    ...(isMac ? { machoSegmentName: "NODE_SEA" } : {}),
+  });
+  if (isMac) { execFileSync("codesign", ["--sign", "-", binary], { stdio: "inherit" }); }
+}
+
+function encodeFrame(message) {
+  const body = Buffer.from(JSON.stringify(message), "utf8");
+  const header = Buffer.alloc(4);
+  header.writeUInt32LE(body.length, 0);
+  return Buffer.concat([header, body]);
+}
+
+/** Returns the first complete frame in `buffer`, or undefined while it is partial. */
+function firstFrame(buffer) {
+  if (buffer.length < 4 || buffer.length < 4 + buffer.readUInt32LE(0)) { return undefined; }
+  return JSON.parse(buffer.subarray(4, 4 + buffer.readUInt32LE(0)).toString("utf8"));
+}
+
+// The helper writes logs and checks for updates; a scratch home keeps both away from the user's real data folder.
+async function smokeCheck(binary, scratchHome) {
+  const env = { ...process.env, HOME: scratchHome, USERPROFILE: scratchHome, LOCALAPPDATA: scratchHome, XDG_DATA_HOME: scratchHome };
+  const child = spawn(binary, [], { env, stdio: ["pipe", "pipe", "pipe"] });
+  try {
+    const reply = await new Promise((resolveReply, reject) => {
+      let received = Buffer.alloc(0);
+      let stderr = "";
+      const timer = setTimeout(() => reject(new Error(`no reply to hello within ${SMOKE_TIMEOUT_MS} ms; stderr: ${stderr.trim() || "(empty)"}`)), SMOKE_TIMEOUT_MS);
+      child.stderr.on("data", (chunk) => { stderr += chunk; });
+      child.on("error", reject);
+      child.on("exit", (code) => reject(new Error(`helper exited with code ${code} before replying; stderr: ${stderr.trim() || "(empty)"}`)));
+      child.stdout.on("data", (chunk) => {
+        received = Buffer.concat([received, chunk]);
+        const frame = firstFrame(received);
+        if (frame) { clearTimeout(timer); resolveReply(frame); }
+      });
+      child.stdin.write(encodeFrame({ v: 1, id: "smoke", type: "hello", extensionVersion: "0.0.0" }));
+    });
+    if (reply.type !== "ready" || reply.id !== "smoke") { throw new Error(`expected ready for hello, got ${JSON.stringify(reply)}`); }
+    return reply;
+  } finally {
+    child.removeAllListeners("exit");
+    child.kill();
+  }
+}
+
+async function main() {
+  const binary = join(seaDir, targetName());
+  await mkdir(seaDir, { recursive: true });
+  const tmpDir = await mkdtemp(join(seaDir, "tmp-"));
+  try {
+    const mainFile = join(tmpDir, "labshelf-helper.cjs");
+    await bundleCommonJs(mainFile);
+    const blob = await writeBlob(tmpDir, mainFile);
+    await rm(binary, { force: true });
+    await copyFile(process.execPath, binary);
+    await injectBlob(binary, blob);
+    const reply = await smokeCheck(binary, join(tmpDir, "home"));
+    console.log(`[labshelf-helper-sea] built ${binary}; hello answered with ${JSON.stringify(reply)}`);
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+}
+
+main().catch((error) => {
+  console.error(`[labshelf-helper-sea] failed: ${error instanceof Error ? error.message : String(error)}`);
+  process.exit(1);
+});

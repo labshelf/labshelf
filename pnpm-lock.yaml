@@ -157,6 +157,9 @@ importers:
       jest:
         specifier: ^29.7.0
         version: 29.7.0(@types/node@22.19.19)(node-notifier@10.0.1)(supports-color@8.1.1)
+      postject:
+        specifier: 1.0.0-alpha.6
+        version: 1.0.0-alpha.6
       ts-jest:
         specifier: ^29.4.9
         version: 29.4.9(@babel/core@7.29.0(supports-color@8.1.1))(@jest/transform@29.7.0(supports-color@8.1.1))(@jest/types@29.6.3)(babel-jest@29.7.0(@babel/core@7.29.0(supports-color@8.1.1))(supports-color@8.1.1))(esbuild@0.24.2)(jest-util@29.7.0)(jest@29.7.0(@types/node@22.19.19)(node-notifier@10.0.1)(supports-color@8.1.1))
@@ -3039,6 +3042,11 @@ packages:
   playwright-core@1.64.1:
     resolution: {integrity: sha512-BC4s8y6SEVA6Q1rSxZTto8hI1KUI3xXlHGZgvGqP4IqPdI/a6FX9H29IDNz7vKo9l21b6LfYosScPL6M3xxyDQ==}
     engines: {node: '>=20'}
+    hasBin: true
+
+  postject@1.0.0-alpha.6:
+    resolution: {integrity: sha512-b9Eb8h2eVqNE8edvKdwqkrY6O7kAwmI8kcnBv1NScolYJbo59XUF0noFq+lxbC1yN20bmC0WBEbDC5H/7ASb0A==}
+    engines: {node: '>=14.0.0'}
     hasBin: true
 
   prelude-ls@1.2.1:
@@ -6784,6 +6792,10 @@ snapshots:
       find-up: 4.1.0
 
   playwright-core@1.64.1: {}
+
+  postject@1.0.0-alpha.6:
+    dependencies:
+      commander: 9.5.0
 
   prelude-ls@1.2.1: {}
 
