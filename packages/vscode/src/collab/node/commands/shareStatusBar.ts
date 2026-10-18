@@ -9,7 +9,7 @@ import { copyInvite } from "./copyInvite.js";
 import { LEAVE_COMMAND } from "./leaveCommand.js";
 
 const MANAGE_COMMAND = "labshelf.collab.manage";
-export const STATUS_COMMAND = "labshelf.collab.status";
+const STATUS_COMMAND = "labshelf.collab.status";
 
 /** The share of the active editor's file, else the first connected one. */
 function currentShare(host: CollabHost): ShareConnection | undefined {

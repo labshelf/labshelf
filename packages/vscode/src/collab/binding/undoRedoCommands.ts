@@ -5,9 +5,9 @@ import type { DocumentBinding } from "./bindDocument.js";
 
 const LOG_MODULE = "collab.binding";
 /** True while the active editor shows a shared document; the undo and redo keybindings depend on it. */
-export const SHARED_EDITOR_CONTEXT = "labshelf.collab.sharedEditor";
-export const UNDO_COMMAND = "labshelf.collab.undo";
-export const REDO_COMMAND = "labshelf.collab.redo";
+const SHARED_EDITOR_CONTEXT = "labshelf.collab.sharedEditor";
+const UNDO_COMMAND = "labshelf.collab.undo";
+const REDO_COMMAND = "labshelf.collab.redo";
 
 type BindingOf = (document: vscode.TextDocument) => DocumentBinding | undefined;
 type Step = "undo" | "redo";

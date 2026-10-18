@@ -6,7 +6,7 @@ import {
 
 import type { ShareLibrary } from "./shareLibrary.js";
 
-export const READ_ONLY_NOTICE = "This shared folder is read-only. Open it in LabShelf to keep your own copy.";
+const READ_ONLY_NOTICE = "This shared folder is read-only. Open it in LabShelf to keep your own copy.";
 const MODULE = "share-page";
 
 export interface ShareHostPorts {

@@ -1,9 +1,17 @@
 // Declares where a project's comment threads live, so the editor threads work the same over comments.json and over a share.
 import * as vscode from "vscode";
 
-import type { Comment, CommentAnchor, CommentThread, TextRange } from "@labshelf/core";
+import type { Comment, CommentAnchor, CommentThread, ShareSession, TextRange } from "@labshelf/core";
 
 export const COMMENTS_LOG_MODULE = "comments";
+
+/** The part of a connected share the shared comments use; the share connection satisfies it. */
+export interface CommentShare {
+  readonly shareId: string;
+  /** The project folder, absolute. */
+  readonly folder: string;
+  readonly session: Pick<ShareSession, "index" | "openDoc">;
+}
 
 export interface ProjectComments extends vscode.Disposable {
   /** The project folder, absolute. */

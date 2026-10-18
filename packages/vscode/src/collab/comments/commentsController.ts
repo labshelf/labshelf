@@ -3,9 +3,8 @@ import * as vscode from "vscode";
 
 import type { Comment, ILogger, ProjectEntry } from "@labshelf/core";
 import type { WritingProjects } from "../../writing/index.js";
-import type { ActiveShares } from "../node/session/index.js";
 import { FileComments } from "./fileComments.js";
-import { COMMENTS_LOG_MODULE, type ProjectComments } from "./projectComments.js";
+import { COMMENTS_LOG_MODULE, type CommentShare, type ProjectComments } from "./projectComments.js";
 import { SharedComments } from "./sharedComments.js";
 import { editorCommentRange, sourceCommentRange } from "./sourceRanges.js";
 import { ThreadView } from "./threadView.js";
@@ -17,7 +16,7 @@ export interface SourceComment { projectFolder: string; file: string; line: numb
 
 export interface CommentsDeps {
   projects: Pick<WritingProjects, "list" | "onDidChange" | "paths">;
-  shares: Pick<ActiveShares, "list" | "onDidChange">;
+  shares: { list(): readonly CommentShare[]; readonly onDidChange: vscode.Event<void> };
   /** The author name of this user's comments, the one their presence shows. */
   userName: string;
   logger: ILogger;

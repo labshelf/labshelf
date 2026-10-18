@@ -37,9 +37,22 @@ interface Active { url: string; transport: RelayTransport; sync: RelaySync }
 /** Every later attachment catches up from cursor 0, so the relay gets what it lacks from the time the group was elsewhere. */
 const fromStart = (store: RelayCursorStore): RelayCursorStore => ({ get: () => undefined, set: (docKey, cursor) => store.set(docKey, cursor) });
 
+function startRelay(options: RelayFollowOptions, scheduler: SessionScheduler, url: string, replayFromStart: boolean): Active {
+  const { session, slot, selector, shareId, relayToken, contentKey, logger } = options;
+  const connection = observeConnection(
+    { fetch: () => options.fetch ?? fetch, socketFactory: options.socketFactory ?? globalSocketFactory },
+    { failure: (kind) => selector.reportFailure(url, kind), connected: () => selector.reportConnected(url) },
+  );
+  const transport = createRelayTransport({ relayUrl: url, shareId, relayToken, logger, scheduler, ...connection });
+  slot.use(transport);
+  const stored = options.cursorsFor?.(url) ?? memoryCursorStore();
+  const sync = attachRelaySync(session, { relay: transport, shareId, contentKey, logger, scheduler, cursors: replayFromStart ? fromStart(stored) : stored });
+  return { url, transport, sync };
+}
+
 // CONTRACT: documents/contracts/collaboration.md#relay-list
 export function followRelaySelection(options: RelayFollowOptions): RelayFollower {
-  const { session, slot, selector } = options;
+  const { slot, selector } = options;
   const scheduler = options.scheduler ?? systemScheduler;
   let active: Active | undefined;
   let attached = false;
@@ -56,17 +69,8 @@ export function followRelaySelection(options: RelayFollowOptions): RelayFollower
   };
 
   const attach = (url: string) => {
-    const connection = observeConnection(
-      { fetch: () => options.fetch ?? fetch, socketFactory: options.socketFactory ?? globalSocketFactory },
-      { failure: (kind) => selector.reportFailure(url, kind), connected: () => selector.reportConnected(url) },
-    );
-    const { shareId, relayToken, contentKey, logger } = options;
-    const transport = createRelayTransport({ relayUrl: url, shareId, relayToken, logger, scheduler, ...connection });
-    slot.use(transport);
-    const stored = options.cursorsFor?.(url) ?? memoryCursorStore();
-    const sync = attachRelaySync(session, { relay: transport, shareId, contentKey, logger, scheduler, cursors: attached ? fromStart(stored) : stored });
+    active = startRelay(options, scheduler, url, attached);
     attached = true;
-    active = { url, transport, sync };
   };
 
   const follow = (url: string | undefined) => {

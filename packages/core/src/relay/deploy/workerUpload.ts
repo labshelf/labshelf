@@ -7,7 +7,7 @@ const SCRIPT_FILE = "worker.js";
 export interface WorkerUpload { accountId: string; workerName: string; script: string; kvNamespaceId: string; withMigrations: boolean }
 
 /** Migrations go only on the first upload: they create the Room class; later uploads keep its data and the secrets. */
-export function workerMetadata(kvNamespaceId: string, withMigrations: boolean): Record<string, unknown> {
+function workerMetadata(kvNamespaceId: string, withMigrations: boolean): Record<string, unknown> {
   return {
     main_module: SCRIPT_FILE,
     compatibility_date: COMPATIBILITY_DATE,

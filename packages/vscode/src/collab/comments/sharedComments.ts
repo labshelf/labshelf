@@ -6,8 +6,7 @@ import {
   addLiveThread, COMMENTS_PATH, fileText, indexComments, indexFiles, liveAnchorFor, liveThreads, locateThread, renderCommentsFile,
   replyToLiveThread, setLiveThreadResolved, type Comment, type CommentThread, type ILogger, type TextRange,
 } from "@labshelf/core";
-import type { ShareConnection } from "../node/session/index.js";
-import { COMMENTS_LOG_MODULE, projectFileUri, readTextFile, type ProjectComments } from "./projectComments.js";
+import { COMMENTS_LOG_MODULE, projectFileUri, readTextFile, type CommentShare, type ProjectComments } from "./projectComments.js";
 
 const WRITE_DELAY_MS = 500;
 
@@ -23,7 +22,7 @@ export class SharedComments implements ProjectComments {
   private reported = false;
   private readonly onMap = () => { this.changeEmitter.fire(); this.scheduleWrite(); };
 
-  constructor(private readonly share: ShareConnection, private readonly logger: ILogger) {
+  constructor(private readonly share: CommentShare, private readonly logger: ILogger) {
     this.folder = share.folder;
     this.fileUri = projectFileUri(share.folder, COMMENTS_PATH);
     indexComments(share.session.index).observeDeep(this.onMap);

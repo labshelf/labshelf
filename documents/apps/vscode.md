@@ -71,6 +71,15 @@ pnpm dev:vscode                        # watches the host and the webview bundle
 - A project with `values:` reads its JSON leaves in the sources. In LaTeX, `\lsvalue{` completes the keys and hovering a key shows the value, file and path; in Typst, `json("…")` paths and the members after them complete and show the same hover, for files listed under `values:`. Before every LaTeX build the extension writes `labshelf-values.tex` next to the main file and adds `\input{labshelf-values}` to the main file, in the editor when the file is open ([contract](../contracts/library-format.md#labshelf-valuestex)).
 - Commands and environments complete from a catalog of core and common-package names. Typing `}` after `\begin{name}`, or pressing Enter right after it, inserts the matching `\end{name}`.
 
+## Collaboration and sharing
+
+Everything here is the desktop extension host only: sharing needs WebRTC and a disk mirror, which the web build lacks. Each command also appears in the command palette; the contracts hold the behaviour.
+
+- **Share Project…**, **Join Shared Project…** and **Stop Sharing Project on This Device…** share a writing project live with an invite link and keep a full local copy of it ([contract](../contracts/collaboration.md)). Other members' cursors show in the editor, and **Undo My Edit in Shared File** and **Redo My Edit in Shared File** (the undo and redo keys in a shared file) undo only the user's own edits.
+- **Connect Cloudflare…** and **Disconnect Cloudflare** deploy and remove the owner's relay Worker from a Cloudflare API token. **Offer My Relay to This Project** and **Withdraw My Relay from This Project** add and remove it in a shared project's relay list ([contract](../contracts/relay.md)).
+- Comment threads on the source (the editor's comment gutter, **Comment**, **Resolve** and **Reopen**) are shared with the project, and a note written in a review PDF becomes a thread on its source line ([contract](../contracts/collaboration.md#comments)).
+- **Share Folder as Link…** uploads a library folder, encrypted, as a read-only link that opens on the website's share page. **Manage Shared Links…** lists the links and revokes them. **Import Papers from Share Link…** copies the papers of a link into the library ([contract](../contracts/share-link.md)).
+
 ## Adding papers
 
 - **Research: Add Paper by DOI or Link…** takes a DOI, arXiv id, PMID, PMCID or article link. It runs the core network import: metadata from the registries, then the core PDF chain ([architecture.md](../architecture.md)). A paper without a free PDF is saved without one.

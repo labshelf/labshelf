@@ -30,7 +30,7 @@ async function putSubdomain(client: CloudflareClient, path: string, accountId: s
 }
 
 /** A DNS label of at most 63 characters, made of lowercase letters, digits and hyphens. */
-export function derivedSubdomain(accountId: string): string {
+function derivedSubdomain(accountId: string): string {
   return `labshelf-${accountId.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 12)}`;
 }
 

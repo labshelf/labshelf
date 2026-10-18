@@ -68,7 +68,7 @@ Kinds 5 to 15 are reserved and 16 to 255 belong to channels. A message of an unk
 
 - When two peers connect, each sends a step 1 for every doc it holds, the index first, so edits made while either was offline arrive.
 - A peer holds the index and the docs it has opened; it opens the other text files listed in the index in the background, one at a time. A message for a doc it does not hold is ignored until it opens that doc.
-- A mesh holds at most 8 other peers. Further peers wait until a place frees, and the app tells the user that a relay is needed.
+- A mesh holds at most 8 other peers. Further peers wait until a place frees, and the app tells the user that a relay is needed; peers past the mesh join through a relay (see [relay.md](relay.md#clients)).
 
 ### Awareness
 
@@ -85,7 +85,7 @@ A blob message starts with a type byte:
 | 3 | missing | nothing |
 
 - A peer asks one holder at a time and moves on after a `missing`, a corrupt result, the holder leaving or 15 s of silence.
-- The receiver drops a chunk whose count is outside 1 to 4096, whose index is not below the count, or that is longer than 64 KiB. An empty blob is one empty chunk.
+- The receiver drops a chunk whose count is outside 1 to 4096, whose index is not below the count, or that is longer than 64 KiB. An empty blob is one empty chunk. A blob is at most 4096 chunks (256 MiB), and a peer answers `missing` for a larger one.
 - The reassembled bytes are handed out only when their SHA-256 is the requested hash.
 
 ## Device-local state
@@ -98,6 +98,7 @@ collab/<share id>/
   docs/<doc id hex>.log        the updates made since the snapshot, each a 4-byte big-endian length and the update
   blobs/<sha256>               a blob of the share, served to peers that ask for it
   known.json                   per shared path, the SHA-256 of the content disk and doc last agreed on
+  relay-cursors.json           per relay and doc, the last relay row applied; keys are `<relay url> <doc key>`
 ```
 
 - The log is append-only. Opening the share merges the log into the snapshot and removes it; a torn final record from an interrupted append is dropped.

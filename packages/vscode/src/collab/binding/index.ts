@@ -2,4 +2,4 @@
 export { bindDocument, type BindOptions, type DocumentBinding } from "./bindDocument.js";
 export { PeerCursors, type PeerCursor } from "./peerCursors.js";
 export { RemoteEditQueue } from "./remoteEditQueue.js";
-export { overrideUndoRedo, REDO_COMMAND, SHARED_EDITOR_CONTEXT, UNDO_COMMAND, type UndoRedoOverride } from "./undoRedoCommands.js";
+export { overrideUndoRedo, type UndoRedoOverride } from "./undoRedoCommands.js";

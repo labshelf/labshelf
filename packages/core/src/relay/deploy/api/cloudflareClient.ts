@@ -2,7 +2,7 @@
 import type { ILogger } from "../../../ports/index.js";
 import { CloudflareApiError } from "./cloudflareError.js";
 
-export const CLOUDFLARE_API = "https://api.cloudflare.com/client/v4";
+const CLOUDFLARE_API = "https://api.cloudflare.com/client/v4";
 const LOG_MODULE = "relay.deploy";
 
 export interface CloudflareClientOptions { token: string; fetch: typeof fetch; logger: ILogger }

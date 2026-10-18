@@ -22,7 +22,7 @@ export class PdfLoadError extends Error {
   }
 }
 
-export async function loadPdfBytes(share: OpenedShare, paper: SharedPaper): Promise<Uint8Array> {
+async function loadPdfBytes(share: OpenedShare, paper: SharedPaper): Promise<Uint8Array> {
   const result = await share.loadPdf(paper);
   if (!result.ok) throw new PdfLoadError(paper.metadata.id, result.error, result.detail);
   return result.bytes;

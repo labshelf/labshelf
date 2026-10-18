@@ -7,7 +7,8 @@ import type { ShareSession } from "../shareSession.js";
 import { CHANNEL_KIND } from "../wire/index.js";
 import { BlobFetch } from "./blobFetch.js";
 import { BlobFetchError } from "./blobFetchError.js";
-import { decodeBlobMessage, encodeBlobChunk, encodeBlobMissing, encodeBlobRequest, MAX_BLOB_BYTES, splitBlob } from "./blobMessage.js";
+import { decodeBlobMessage, encodeBlobMissing, encodeBlobRequest } from "./blobMessage.js";
+import { serveBlob } from "./serveBlob.js";
 
 const LOG_MODULE = "collab.blobs";
 const HASH_PATTERN = /^[0-9a-f]{64}$/;
@@ -46,26 +47,9 @@ export function attachBlobs(session: ShareSession, options: BlobsOptions): BlobE
     },
   });
 
-  async function serve(peer: PeerId, hash: string): Promise<void> {
-    const blob = HASH_PATTERN.test(hash) ? await holdingOf(hash) : undefined;
-    if (!blob) { return channel.send(peer, hash, encodeBlobMissing()); }
-    const chunks = splitBlob(blob);
-    for (const [index, chunk] of chunks.entries()) { await channel.send(peer, hash, encodeBlobChunk(index, chunks.length, chunk)); }
-  }
-
-  async function holdingOf(hash: string): Promise<Uint8Array | undefined> {
-    try {
-      const blob = await options.getBlob(hash);
-      if (blob && blob.length > MAX_BLOB_BYTES) {
-        void logger.log("WARN", LOG_MODULE, "Refused to serve a blob above the size limit", { hash, size: blob.length });
-        return undefined;
-      }
-      return blob;
-    } catch (error) {
-      void logger.error(LOG_MODULE, error, { hash });
-      return undefined;
-    }
-  }
+  const serve = (peer: PeerId, hash: string) => HASH_PATTERN.test(hash)
+    ? serveBlob({ channel, getBlob: options.getBlob, logger }, peer, hash)
+    : channel.send(peer, hash, encodeBlobMissing());
 
   const stopPeers = session.onPeer((peer, joined) => {
     fetches.forEach((fetch) => (joined ? fetch.peerJoined(peer) : fetch.peerLeft(peer)));
