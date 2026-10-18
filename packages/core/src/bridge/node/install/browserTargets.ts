@@ -28,12 +28,14 @@ const LABELS: Record<BrowserId, string> = { chrome: "Google Chrome", chromium: "
 const FAMILY: Record<BrowserId, BrowserFamily> = { chrome: "chromium", chromium: "chromium", brave: "chromium", firefox: "firefox" };
 
 // Per-user browser folders; the manifest goes in the NativeMessagingHosts child.
-const UNIX_DIRS: Record<"darwin" | "linux", Record<BrowserId, { browserDir: string; hostsDir: string }>> = {
+// TRAP: macOS Firefox keeps its profiles in Application Support/Firefox but reads host manifests from
+// Application Support/Mozilla, which does not exist until something creates it; presence checks the profile folder.
+const UNIX_DIRS: Record<"darwin" | "linux", Record<BrowserId, { browserDir: string; hostsDir: string; presenceDir?: string }>> = {
   darwin: {
     chrome: { browserDir: "Library/Application Support/Google/Chrome", hostsDir: "NativeMessagingHosts" },
     chromium: { browserDir: "Library/Application Support/Chromium", hostsDir: "NativeMessagingHosts" },
     brave: { browserDir: "Library/Application Support/BraveSoftware/Brave-Browser", hostsDir: "NativeMessagingHosts" },
-    firefox: { browserDir: "Library/Application Support/Mozilla", hostsDir: "NativeMessagingHosts" },
+    firefox: { browserDir: "Library/Application Support/Mozilla", hostsDir: "NativeMessagingHosts", presenceDir: "Library/Application Support/Firefox" },
   },
   linux: {
     chrome: { browserDir: ".config/google-chrome", hostsDir: "NativeMessagingHosts" },
@@ -59,10 +61,9 @@ export async function bridgeLayout(env: BridgeEnv): Promise<BridgeLayout> {
   if (platform !== "darwin" && platform !== "linux") throw new Error(`The LabShelf bridge does not support the ${platform} platform`);
   const bridgeDir = path.join(home, ".config", "labshelf", "bridge");
   const targets = BROWSERS.map((browser): BrowserTarget => {
-    const { browserDir, hostsDir } = UNIX_DIRS[platform][browser];
-    const dir = path.join(home, browserDir);
-    const manifestPath = path.join(dir, hostsDir, `${BRIDGE_HOST_NAME}.json`);
-    return { browser, label: LABELS[browser], family: FAMILY[browser], manifestPath, presence: { kind: "dir", path: dir } };
+    const { browserDir, hostsDir, presenceDir = browserDir } = UNIX_DIRS[platform][browser];
+    const manifestPath = path.join(home, browserDir, hostsDir, `${BRIDGE_HOST_NAME}.json`);
+    return { browser, label: LABELS[browser], family: FAMILY[browser], manifestPath, presence: { kind: "dir", path: path.join(home, presenceDir) } };
   });
   return { bridgeDir, launcherPath: path.join(bridgeDir, "labshelf-bridge"), targets };
 }

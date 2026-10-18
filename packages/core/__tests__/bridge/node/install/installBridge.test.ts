@@ -72,8 +72,9 @@ describe("installBridge on macOS", () => {
   });
 
   it("writes Firefox, Chromium and Brave manifests in their Application Support folders", async () => {
+    // Firefox keeps its profiles in .../Firefox; the Mozilla folder only exists once a host manifest is written.
     const e = await env("darwin", [
-      "Library/Application Support/Mozilla",
+      "Library/Application Support/Firefox",
       "Library/Application Support/Chromium",
       "Library/Application Support/BraveSoftware/Brave-Browser",
     ]);
