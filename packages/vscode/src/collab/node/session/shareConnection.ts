@@ -1,9 +1,10 @@
 // Connects this device to one shared project: its stored state, the peer session, presence, blobs and the disk mirror.
+import { readFile } from "node:fs/promises";
 import * as path from "node:path";
 
 import {
-  attachAwareness, attachBlobs, createShareSession, createTrysteroTransport, deriveAwarenessKey, deriveContentKey, indexSettings, joinShare,
-  readIndexKind, startShare, type ILogger, type PresenceHandle, type ShareSession,
+  attachAwareness, attachBlobs, COMMENTS_PATH, createShareSession, createTrysteroTransport, deriveAwarenessKey, deriveContentKey, importCommentsFile,
+  indexSettings, joinShare, readIndexKind, startShare, type ILogger, type PresenceHandle, type ShareSession,
 } from "@labshelf/core";
 import {
   deviceLocalLayout, loadNodeRTCPeerConnection, nodeProjectCatalogContext, openCollabStore, startProjectMirror, type CollabStore, type ProjectMirror,
@@ -62,10 +63,30 @@ function indexReady(session: ShareSession, signal: AbortSignal): Promise<void> {
   });
 }
 
+/** Seeds the share's comments map from the project's comments.json, which the map stands for from then on. */
+async function importComments(folder: string, session: ShareSession, logger: ILogger): Promise<void> {
+  let text: string;
+  try {
+    text = await readFile(path.join(folder, ...COMMENTS_PATH.split("/")), "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") { return; }
+    throw error;
+  }
+  const added = importCommentsFile(session.index, text);
+  if (added === undefined) {
+    void logger.log("WARN", "collab", "comments.json is not valid, so its threads are not shared", { folder, path: COMMENTS_PATH });
+    return;
+  }
+  void logger.log("INFO", "collab", "Shared the project's comment threads", { folder, threads: added });
+}
+
 async function placeProject(options: ConnectOptions, session: ShareSession, start: ShareStart): Promise<string> {
   const context = nodeProjectCatalogContext(options.logger);
   if (start.mode !== "join") {
-    if (start.mode === "share") { await startShare(context, { folder: start.folder, shareId: options.shareId, index: session.index }); }
+    if (start.mode === "share") {
+      await startShare(context, { folder: start.folder, shareId: options.shareId, index: session.index });
+      await importComments(start.folder, session, options.logger);
+    }
     return start.folder;
   }
   await indexReady(session, start.signal);

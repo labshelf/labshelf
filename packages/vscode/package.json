@@ -550,6 +550,23 @@
         "command": "labshelf.writing.addToReadingList",
         "title": "Add Paper to Reading List…",
         "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.comment.reply",
+        "title": "Comment",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.comment.resolve",
+        "title": "Resolve",
+        "category": "LabShelf",
+        "icon": "$(check)"
+      },
+      {
+        "command": "labshelf.comment.reopen",
+        "title": "Reopen",
+        "category": "LabShelf",
+        "icon": "$(discard)"
       }
     ],
     "viewsContainers": {
@@ -849,6 +866,18 @@
         {
           "command": "labshelf.writing.addExistingFolder",
           "when": "!isWeb"
+        },
+        {
+          "command": "labshelf.comment.reply",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.comment.resolve",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.comment.reopen",
+          "when": "false"
         }
       ],
       "editor/title": [
@@ -905,6 +934,25 @@
           "command": "labshelf.writing.setMain",
           "when": "resourceExtname =~ /^\\.(tex|typ)$/",
           "group": "2_workspace@9"
+        }
+      ],
+      "comments/commentThread/context": [
+        {
+          "command": "labshelf.comment.reply",
+          "group": "inline",
+          "when": "commentController == labshelf.comments"
+        }
+      ],
+      "comments/commentThread/title": [
+        {
+          "command": "labshelf.comment.resolve",
+          "group": "inline",
+          "when": "commentController == labshelf.comments && commentThread == labshelf.thread.open"
+        },
+        {
+          "command": "labshelf.comment.reopen",
+          "group": "inline",
+          "when": "commentController == labshelf.comments && commentThread == labshelf.thread.resolved"
         }
       ]
     },

@@ -4,7 +4,7 @@ import { withCitationFixes, type CitationFixDeps } from "./citationFixes/index.j
 import { lookupCitation, openCitedPaper, type PreviewCitationDeps } from "./citations/index.js";
 import type { ProjectActions } from "./projectActions/index.js";
 import type { WritingActions } from "./roots/index.js";
-import { showSource } from "./sourceLinks/index.js";
+import { addReviewComment, showSource } from "./sourceLinks/index.js";
 
 /** The body pages the reader counted in a project's preview. */
 export interface BodyPagesCount {
@@ -27,6 +27,7 @@ export interface PreviewPortsDeps extends PreviewCitationDeps {
 export function createPreviewPorts(deps: PreviewPortsDeps): PreviewPorts {
   return {
     showSource: (point) => showSource(deps, point),
+    addReviewComment: (point, quote, note) => addReviewComment(deps, point, quote, note),
     lookupCitation: async (query) => {
       const entries = await lookupCitation(deps, query);
       const fixes = deps.fixes?.();

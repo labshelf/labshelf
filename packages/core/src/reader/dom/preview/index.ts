@@ -4,3 +4,4 @@ export { mountPreviewChrome, type PreviewChrome } from "./mountPreviewChrome.js"
 export { countBodyPages } from "./countBodyPages.js";
 export { areaScroller } from "./scrollToArea.js";
 export { previewOutlineSource } from "./outlineSource.js";
+export { ReviewNote, type ReviewSelection } from "./reviewNote.js";

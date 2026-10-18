@@ -1,5 +1,5 @@
 /**
- * Shows a floating bubble over a text selection: five highlight colours and "copy with citation".
+ * Shows a floating bubble over a text selection: five highlight colours, "copy with citation" and, in a build preview, "comment".
  */
 import { ANNOTATION_COLORS, type AnnotationColor } from "../../../model/index.js";
 import type { ReaderContext } from "../session/index.js";
@@ -16,11 +16,14 @@ export interface SelectionInfo {
   page: HTMLElement;
 }
 
+/** Comments on the selection; `start` is its first line on screen and `bounds` its whole extent. */
+export type CommentOnSelection = (selection: SelectionInfo & { start: DOMRect; bounds: DOMRect }) => void;
+
 export class SelectionBubble {
   private readonly el = $("selection-toolbar");
   private hideTimer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(private readonly ctx: ReaderContext) {
+  constructor(private readonly ctx: ReaderContext, private readonly commentOn?: CommentOnSelection) {
     const mod = ctx.boot.isMac ? "Cmd" : "Ctrl";
     for (const color of ANNOTATION_COLORS) {
       const btn = el("button", { class: `rd-color-btn rd-color-${color}`, type: "button", title: `Highlight ${color}`, "aria-label": `Highlight ${color}` });
@@ -30,6 +33,11 @@ export class SelectionBubble {
     const cite = iconButton(icon("quote"), `Copy with citation (${mod}+Shift+C)`, "rd-btn-sm");
     cite.addEventListener("click", () => this.copyWithCitation());
     this.el.append(el("div", { class: "rd-pill-sep" }), cite);
+    if (commentOn) {
+      const comment = iconButton(icon("message"), "Comment on the source", "rd-btn-sm");
+      comment.addEventListener("click", () => this.comment());
+      this.el.append(comment);
+    }
 
     // Keep the selection alive while the bubble is being clicked.
     this.el.addEventListener("mousedown", (e) => {
@@ -71,6 +79,16 @@ export class SelectionBubble {
     const info = this.currentSelection();
     if (!info) { return; }
     this.ctx.host.post({ command: "copyWithCitation", text: info.text, pageNumber: info.pageNumber });
+    this.hide();
+  }
+
+  private comment(): void {
+    const info = this.currentSelection();
+    const range = window.getSelection()?.getRangeAt(0);
+    if (!info || !range || !this.commentOn) { return; }
+    const bounds = range.getBoundingClientRect();
+    this.commentOn({ ...info, start: range.getClientRects()[0] ?? bounds, bounds });
+    window.getSelection()?.removeAllRanges();
     this.hide();
   }
 

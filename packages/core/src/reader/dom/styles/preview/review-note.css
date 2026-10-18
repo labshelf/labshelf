@@ -1,0 +1,18 @@
+/* The note a reviewer types on text selected in a build preview, which the host adds as a comment at its source. */
+.rd-review-note {
+  position: fixed; z-index: 95; display: none; flex-direction: column; gap: var(--ls-space-2); width: 280px; padding: var(--ls-space-3);
+  background: var(--ls-reader-surface); border: 1px solid var(--ls-reader-border); border-radius: var(--ls-radius); box-shadow: var(--ls-reader-shadow);
+}
+.rd-review-note.rd-visible { display: flex; }
+.rd-review-note-input {
+  resize: vertical; min-height: 56px; padding: var(--ls-space-2); font: inherit;
+  color: var(--ls-reader-fg); background: var(--ls-reader-page); border: 1px solid var(--ls-reader-border); border-radius: var(--ls-radius-sm);
+}
+.rd-review-note-input:focus { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
+.rd-review-note-actions { display: flex; justify-content: flex-end; gap: var(--ls-space-2); }
+.rd-review-note-btn {
+  padding: var(--ls-space-1) var(--ls-space-3); font: inherit; cursor: pointer;
+  color: var(--ls-reader-fg); background: none; border: 1px solid var(--ls-reader-border); border-radius: var(--ls-radius-sm);
+}
+.rd-review-note-submit { color: var(--ls-button-fg); background: var(--ls-button-bg); border-color: var(--ls-button-bg); }
+.rd-review-note-submit:hover { background: var(--ls-button-hover); }

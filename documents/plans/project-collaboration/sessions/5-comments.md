@@ -11,11 +11,11 @@ Context: design `documents/plans/project-collaboration/research/collab-model.md`
 
 | Id | Package | Level | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| 5.1 | Comment model, anchors, `comments.json` | contract | implementer (opus), tests first → `architecture-reviewer` | anchor tests | [ ] |
-| 5.2 | Comments UI design | — | `ui-design` skill | design approved by the user | [ ] |
-| 5.3 | Comment controller | behaviour | implementer (sonnet) | typecheck | [ ] |
-| 5.4 | Review-PDF note to comment | behaviour | implementer (sonnet) | payload test | [ ] |
-| 5.5 | Check, commit | — | `check` on Owns, `git commit` of Owns | gate passes | [ ] |
+| 5.1 | Comment model, anchors, `comments.json` | contract | implementer (opus), tests first → `architecture-reviewer` | anchor tests | [x] |
+| 5.2 | Comments UI design | — | `ui-design` skill | design approved by the user | [x] |
+| 5.3 | Comment controller | behaviour | implementer (sonnet) | typecheck | [x] |
+| 5.4 | Review-PDF note to comment | behaviour | implementer (sonnet) | payload test | [x] |
+| 5.5 | Check, commit | — | `check` on Owns, `git commit` of Owns | gate passes | [x] |
 
 5.1 and 5.2 in parallel; 5.3 after both; 5.4 after 5.3.
 

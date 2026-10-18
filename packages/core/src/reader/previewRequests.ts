@@ -43,7 +43,9 @@ export type PreviewRequest =
   | { command: "setCheckLimits"; limits: CheckLimitsChange }
   | { command: "fixCitation"; fix: CitationFix }
   /** Opens a source line; `file` is relative to the project folder, `line` counts from 1. */
-  | { command: "openSourceLine"; file: string; line: number };
+  | { command: "openSourceLine"; file: string; line: number }
+  /** A review note on the selected text at `point`; a preview host adds it as a comment at the source behind it. */
+  | { command: "addReviewComment"; point: PagePoint; quote: string; note: string };
 
 type Fields = Record<string, unknown>;
 
@@ -84,6 +86,7 @@ const GUARDS: { [C in PreviewRequest["command"]]: (m: Fields) => boolean } = {
   setCheckLimits: (m) => isLimitsChange(m["limits"]),
   fixCitation: (m) => isCitationFix(m["fix"]),
   openSourceLine: (m) => isFilled(m["file"]) && isLine(m["line"]),
+  addReviewComment: (m) => isPagePoint(m["point"]) && isStr(m["quote"]) && isStr(m["note"]) && m["note"].trim().length > 0,
 };
 
 /**

@@ -52,6 +52,8 @@ export interface PreviewPorts {
   fixCitation?(fix: CitationFix): Promise<void>;
   /** Opens a line of a file inside the project folder. */
   openSourceLine?(file: string, line: number): Promise<void>;
+  /** Adds a review note on `quote` as a comment thread at the source behind `point`. */
+  addReviewComment?(point: PagePoint, quote: string, note: string): Promise<void>;
 }
 
 export interface ReaderHostPorts {

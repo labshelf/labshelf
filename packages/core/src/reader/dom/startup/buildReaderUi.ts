@@ -5,7 +5,7 @@ import { clampPage, type WebviewToHost } from "../../index.js";
 import { BuildBanner, Cheatsheet, SelectionBubble, StatusPill, type ThemeController, openThemePopover, Toolbar } from "../chrome/index.js";
 import { PageHighlights } from "../highlights/index.js";
 import { FindBar, NavHistory, ZoomController } from "../navigation/index.js";
-import { areaScroller, countBodyPages, LogsView, mountPreviewChrome, type PreviewChrome, previewOutlineSource } from "../preview/index.js";
+import { areaScroller, countBodyPages, LogsView, mountPreviewChrome, type PreviewChrome, previewOutlineSource, ReviewNote } from "../preview/index.js";
 import type { ReaderContext } from "../session/index.js";
 import { AnnotationsTab, OutlineTab, Sidebar, ThumbnailsTab } from "../sidebar/index.js";
 import { ReadingStateReporter } from "./readingStateReporter.js";
@@ -47,7 +47,8 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
   const findBar = new FindBar(ctx, history);
   const cheatsheet = new Cheatsheet(ctx);
   const pill = new StatusPill(ctx, zoom, goToPage);
-  const bubble = new SelectionBubble(ctx);
+  const reviewNote = ctx.boot.preview ? new ReviewNote(ctx) : null;
+  const bubble = new SelectionBubble(ctx, reviewNote ? (selection) => reviewNote.open(selection) : undefined);
   const reporter = new ReadingStateReporter(ctx, sidebar);
   const toolbar = new Toolbar(ctx.container, ctx.boot.paperTitle, ctx.boot.isMac, ctx.prefs.toolbarAutoHide, {
     toggleSidebar: () => sidebar.toggle(),

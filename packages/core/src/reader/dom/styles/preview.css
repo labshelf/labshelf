@@ -6,6 +6,7 @@
 @import "./preview/marks.css";
 @import "./preview/options.css";
 @import "./preview/only.css";
+@import "./preview/review-note.css";
 /* Desk and sheet: the desk is a grey apart from the sheet, and a sheet keeps a visible edge even when it is dark. */
 .rd-preview #viewerContainer { background: color-mix(in srgb, var(--ls-bg) 92%, var(--ls-fg)); }
 /* The edge is a ring around the canvas: pdf.js' 9px page border must keep its width or every layer drifts off the ink. */

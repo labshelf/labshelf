@@ -6,3 +6,4 @@
 - 2026-10-18 · session 2 · done: crypto, invite, model, collaboration.md; tsconfig base moved to NodeNext so CJS core imports ESM yjs
 - 2026-10-18 · session 3 · done: secure mesh with acks and resend, doc sync, awareness, blobs, trystero transport (neutral, rtcPolyfill injectable, lazy ESM import); two headless Chromium pages converged over Nostr in ~1.5 s
 - 2026-10-18 · session 4 · done: disk mirror and device-local state, copied OCT/p2p binding with rebased edit queue, node-datachannel trystero wrapper, share/join/leave and status bar; two isolated hosts passed A1–A5 (auto-resume from SecretStorage not checked: test mode keeps secrets in memory)
+- 2026-10-18 · session 5 · done: comment threads (index-doc map canonical in shared projects, comments.json otherwise), native Comments API controller, review-PDF note to source comment via SyncTeX (LaTeX only); 5.2 design decided in-session (native Comments API look)

@@ -56,6 +56,28 @@ describe("preview messages", () => {
     expect(preview.showSource).toHaveBeenCalledWith({ page: 1, x: 5, y: 6 });
   });
 
+  it.each([
+    [{ point: { page: 1, x: 5 }, quote: "a claim", note: "Cite this" }],
+    [{ point: { page: 1, x: 5, y: 6 }, quote: 3, note: "Cite this" }],
+    [{ point: { page: 1, x: 5, y: 6 }, quote: "a claim", note: "  " }],
+    [{ point: { page: 1, x: 5, y: 6 }, quote: "a claim" }],
+  ])("drops a malformed addReviewComment %j before the preview port", async (payload) => {
+    const { host, ports } = setupHost();
+    const preview = { addReviewComment: jest.fn(async () => undefined) };
+    Object.assign(ports, { preview });
+    await host.handle({ command: "addReviewComment", ...payload });
+    expect(preview.addReviewComment).not.toHaveBeenCalled();
+    expect(ports.logger.log).toHaveBeenCalledWith("WARN", "reader", "Ignored malformed reader message", { paperId: "p1" });
+  });
+
+  it("hands a review note with its point and quote to the preview port", async () => {
+    const { host, ports } = setupHost();
+    const preview = { addReviewComment: jest.fn(async () => undefined) };
+    Object.assign(ports, { preview });
+    await host.handle({ command: "addReviewComment", point: { page: 2, x: 5, y: 6 }, quote: "a claim", note: "Cite this" });
+    expect(preview.addReviewComment).toHaveBeenCalledWith({ page: 2, x: 5, y: 6 }, "a claim", "Cite this");
+  });
+
   const query = { area: { page: 1, left: 1, top: 2, right: 3, bottom: 4 }, link: true, dest: "cite.smith2020" };
 
   it("answers a citation lookup with the preview port's entries under the same request number", async () => {

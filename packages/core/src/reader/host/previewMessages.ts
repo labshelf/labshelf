@@ -84,4 +84,8 @@ export const previewHandlers: Pick<
   openSourceLine: async (ctx, msg) => {
     await previewPorts(ctx, "openSourceLine")?.openSourceLine?.(msg.file, msg.line);
   },
+
+  addReviewComment: async (ctx, msg) => {
+    await previewPorts(ctx, "addReviewComment")?.addReviewComment?.(msg.point, msg.quote, msg.note);
+  },
 };
