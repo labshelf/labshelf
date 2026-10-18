@@ -20,7 +20,6 @@ const state = (): SidebarState => (api.getState() as SidebarState | undefined) ?
 const saveState = (patch: SidebarState): void => api.setState({ ...state(), ...patch });
 let projects: SidebarProjectItem[] = [];
 let openProjectId: string | null = null;
-let desktopCommands = true;
 // The core sidebar names a tree by string; the host checks it is one of its views.
 const tree = (m: Omit<ProjectTreeMessage, "type" | "view"> & { view?: string }): void =>
   post({ ...m, type: "projectTree" } as ProjectTreeMessage);
@@ -44,7 +43,7 @@ const sidebar = mountLibrarySidebar(root.appendChild(document.createElement("div
   saveCollapsed: (sections) => saveState({ [COLLAPSED_KEY]: sections }),
   projects: {
     open: (id) => post({ type: "openProject", id }),
-    menu: (id, at) => { const project = projects.find((p) => p.id === id); if (project) { showProjectMenu(project, at, post, desktopCommands); } },
+    menu: (id, at) => { const project = projects.find((p) => p.id === id); if (project) { showProjectMenu(project, at, post); } },
     browseTemplates: () => post({ type: "projectAction", action: "browseTemplates" }),
     allProjects: () => post({ type: "projectAction", action: "allProjects" }),
     newBlank: () => post({ type: "projectAction", action: "newBlank" }),
@@ -54,7 +53,7 @@ const sidebar = mountLibrarySidebar(root.appendChild(document.createElement("div
     renameFolder: (path) => post({ type: "projectFolder", action: "rename", path }),
     deleteFolder: (path) => post({ type: "projectFolder", action: "delete", path }),
     closeProject: () => tree({ op: "close" }),
-    openProjectMenu: (anchor) => { const project = projects.find((p) => p.id === openProjectId); if (project) { showOpenProjectMenu(project, anchor, post, desktopCommands); } },
+    openProjectMenu: (anchor) => { const project = projects.find((p) => p.id === openProjectId); if (project) { showOpenProjectMenu(project, anchor, post); } },
     treeAction: (action) => tree({ op: "action", action }),
     treeClick: (view, key) => tree({ op: "click", view, key }),
     treeToggle: (view, key, open) => tree({ op: "toggle", view, key, open }),
@@ -70,10 +69,6 @@ window.addEventListener("message", (e: MessageEvent<HostToSidebar>) => {
   if (m.type === "library") { sidebar.setLibrary(m.folders, m.papers); }
   else if (m.type === "current") { sidebar.setCurrent(m.folder); }
   else if (m.type === "selected") { sidebar.setSelected(m.id); }
-  else if (m.type === "desktopCommands") {
-    desktopCommands = m.available;
-    sidebar.setProjectOffers({ templates: m.available, addExisting: m.available });
-  }
   else if (m.type === "projects") { projects = m.projects; sidebar.setProjects(m.projects); }
   else if (m.type === "openProject") { openProjectId = m.project?.id ?? null; sidebar.setOpenProject(m.project); }
 });

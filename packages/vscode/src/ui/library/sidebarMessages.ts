@@ -8,8 +8,6 @@ export type HostToSidebar =
   | { type: "current"; folder: string }
   | { type: "selected"; id: string | null }
   | { type: "projects"; projects: SidebarProjectItem[] }
-  /** Whether the commands only the desktop host registers (templates, adding a folder, exports, history, checks) can be offered. */
-  | { type: "desktopCommands"; available: boolean }
   /** The project open in the window with its trees, or null when none is open. */
   | { type: "openProject"; project: SidebarOpenProject | null };
 

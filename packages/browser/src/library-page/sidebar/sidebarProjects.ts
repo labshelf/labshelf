@@ -25,7 +25,6 @@ function menuEntries(source: ProjectsSource, row: BrowserProjectRow): MenuEntry[
   const { projectId, pdf } = row;
   if (projectId === undefined) return [];
   return [
-    { label: "Open in Editor", icon: "edit", onSelect: () => source.openEditor(projectId) },
     ...(pdf ? [{ label: "Open PDF", icon: "file-text" as const, onSelect: () => source.openPdf(projectId, pdf) }] : []),
   ];
 }

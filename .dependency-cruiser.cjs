@@ -78,7 +78,7 @@ module.exports = {
     },
     {
       name: "vscode-no-node-builtins-outside-node-folder",
-      comment: "VS Code code outside a node/ folder uses no Node built-in, so the extension can run as a web extension.",
+      comment: "VS Code code outside a node/ folder uses no Node built-in; Node code sits in node/ folders.",
       severity: "error",
       from: { path: "^packages/vscode/src/", pathNot: "/node/" },
       to: { dependencyTypes: BUILTINS },
@@ -98,7 +98,7 @@ module.exports = {
     },
     {
       name: "vscode-neutral-no-vscode-node-folder",
-      comment: "Only extension.ts reaches VS Code node/ folders, so the neutral extension still bundles without them as a web extension.",
+      comment: "Only extension.ts reaches VS Code node/ folders; the neutral code stays free of Node.",
       severity: "error",
       from: { path: "^packages/vscode/src/", pathNot: ["/node/", "^packages/vscode/src/extension\\.ts$"] },
       to: { path: "^packages/vscode/src/.*/node/" },

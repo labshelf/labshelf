@@ -29,7 +29,6 @@ Read when you look for the document that answers a question about LabShelf; the 
 | What is a project template and its catalog index? | [contracts/templates.md](contracts/templates.md#manifest) |
 | How does a host start the PDF reader? | [contracts/reader-host.md](contracts/reader-host.md#startup) |
 | Which rules bind the reader and its host? | [contracts/reader-host.md](contracts/reader-host.md#rules) |
-| Which commands does the web build call on the browser editor page? | [contracts/editor-host.md](contracts/editor-host.md) |
 | Which messages does the library UI exchange with its host? | [contracts/library-ui-host.md](contracts/library-ui-host.md#messages) |
 | Which rules bind the library UI and its host? | [contracts/library-ui-host.md](contracts/library-ui-host.md#rules) |
 | How do I set up the toolchain? | [apps/README.md](apps/README.md#prerequisites) |

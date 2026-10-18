@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  * @jest-environment-options {"customExportConditions": ["node", "node-addons"]}
  */
-// The browser sidebar lists the library's projects under Projects, opens one in the editor page and offers only what the browser can do.
+// The browser sidebar lists the library's projects under Projects and offers only what the browser can do.
 import { LibraryViewStore, type ProjectEntry } from "@labshelf/core";
 import type { LibraryUi } from "@labshelf/core/dom";
 import type { PagePrefs } from "../../../src/library-page/prefs";
@@ -20,7 +20,7 @@ async function mount(rows: BrowserProjectRow[] = [ready, broken]) {
   const prefs = { treeExpanded: () => [], saveTreeExpanded: jest.fn(), collapsedSections: () => [], saveCollapsedSections: jest.fn() } as unknown as PagePrefs;
   const ui = { sidebar: null, store, folders: { create: jest.fn(), rename: jest.fn(), remove: jest.fn() }, dropTarget: jest.fn(), dispose: jest.fn() } as unknown as LibraryUi;
   const source = {
-    rows: jest.fn(async () => rows), openEditor: jest.fn(), openPdf: jest.fn(),
+    rows: jest.fn(async () => rows), openPdf: jest.fn(),
     entryOf: jest.fn(async (id: string) => (id === "thesis" ? thesisEntry : undefined)),
   } satisfies ProjectsSource;
   const session = { openProject: jest.fn(async () => true), closeProject: jest.fn(async () => true), attachSidebar: jest.fn(), treeClick: jest.fn(), treeAction: jest.fn(async () => undefined) } satisfies SidebarSession;
@@ -71,11 +71,11 @@ describe("sidebar projects glue", () => {
     expect(session.attachSidebar).toHaveBeenCalledTimes(1);
   });
 
-  it("offers Open in Editor and Open PDF on a built project's menu", async () => {
+  it("offers Open PDF on a built project's menu", async () => {
     const { slot, source } = await mount();
     projectRow(slot, "projects/thesis").dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
-    expect(menuLabels()).toEqual(["Open in Editor", "Open PDF"]);
-    document.querySelectorAll<HTMLElement>(".ls-menu [role=menuitem]")[1]!.click();
+    expect(menuLabels()).toEqual(["Open PDF"]);
+    document.querySelectorAll<HTMLElement>(".ls-menu [role=menuitem]")[0]!.click();
     expect(source.openPdf).toHaveBeenCalledWith("thesis", "main.pdf");
   });
 

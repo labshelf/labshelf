@@ -13,3 +13,4 @@
 - 2026-10-18 — session 9 done: CodeMirror LaTeX editor (lazy chunk), live preview from helper pages, helper project per page; real run passed A1, A2; fixed helper WebSocket refusing permessage-deflate, SEA bundle missing pdf-lib, browser paper cache rebuild
 - 2026-10-18 — session 10 done: Typst LSP client over the helper (hand-written, no page didChange), comments store in core + browser panel and editor marks, history runtime-neutral in core + IndexedDB storage + History tab; Compare Versions desktop-only
 - 2026-10-18 — session 11 done: section preview (state capture at shipout, assembly, own-aux labels, page swap); 108-page run keeps numbering; section preview ~280–480 ms vs full ~1.3 s
+- 2026-10-18 — session 13 (deletions) done: monaco-vscode page, VS Code web build, editor-host contract and browser-editor plan removed; isWeb/desktop-only gates removed; typst.ts kept (VS Code desktop builds use it)

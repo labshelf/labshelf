@@ -17,7 +17,6 @@ Every extension context (background, library page, popup, options) probes the br
 ## Build
 
 ```bash
-pnpm --filter @labshelf/vscode build             # first: the editor page bundles packages/vscode/out/web
 pnpm --filter @labshelf/browser build            # both targets → dist/chrome, dist/firefox
 pnpm --filter @labshelf/browser build:chrome
 pnpm --filter @labshelf/browser build:firefox
@@ -26,17 +25,6 @@ pnpm --filter @labshelf/browser lint:manifest    # web-ext lint on dist/firefox
 
 - One source tree builds both targets. Only the manifest differs: Chrome uses a `service_worker`, and Firefox uses `background.scripts` plus the gecko id `labshelf@lucanaasser.dev`.
 - pdf.js is vendored from the `pdfjs-dist` legacy build into `vendor/pdfjs/`. `pdf_viewer.mjs` is lowered to es2023 so that `web-ext lint` passes.
-
-- The build fails with the missing path when `packages/vscode/out/web/extension.js` is absent.
-- The first build downloads Tinymist's pinned web VSIX from Open VSX, checks its SHA-256 and unpacks it with `unzip`, so it needs network access and `unzip`. The VSIX is cached in `node_modules/.cache/labshelf-editor/`, so later builds are offline.
-
-## Project editor page
-
-`editor/index.html` opens a writing project's files in monaco-vscode-api's workbench. The library page opens it in a new tab when a project in its sidebar's Projects section is clicked ([`openEditorInTab`](../../packages/browser/src/library-page/projects/openEditorInTab.ts)). A worker extension host runs the VS Code extension's web build and the Tinymist web extension, with Tinymist's language server in its own worker. The page serves the project files through a file system provider over the library, and registers the host commands the web build calls ([contract](../contracts/editor-host.md)): LaTeX through LabShelf Helper and Typst through the typst.ts compiler in the page. Once the web build has loaded the library it opens the project, and the page shows what VS Code shows: the LabShelf side bar, the editor actions and the extension's own preview reader in a webview.
-
-- The extension pages' CSP allows no `eval`, `blob:` workers or inline script, which monaco-vscode-api and typst.ts need. The build applies exact-text patches to those packages while bundling and writes the extension-host iframe as an html file plus a script file (`build/editor/cspPatches.mjs`). A patch whose text is not found fails the build, so upgrading a pinned version cannot ship unpatched.
-- The workbench loads each bundled extension from a build-wrapped `<entry>.esm.js` instead of evaluating its source.
-- VS Code's webview host page runs an inline script and serves resources through a service worker, which an extension page cannot register. The build writes a patched copy into `editor/webview/` (`build/editor/webviewHost.mjs`) and a script it injects into each webview (`src/editor/webview/`), which give the content its VS Code API and fetch its resources from the page or the workbench.
 
 ## Load
 
@@ -60,7 +48,7 @@ The minimum versions are the floor for pdf.js 6.3.
 
 ## Library page sidebar
 
-The sidebar is core's library sidebar, as in VS Code: Library, then Projects. Projects lists the library's writing projects with their tooltip (main file, compiler, reading progress over the papers a project lists). A click opens the project in the editor page, and the row menu offers Open in Editor and Open PDF when a built PDF sits beside the main file. The browser hides what it cannot do: templates, All projects, new projects, adding a folder and project folders.
+The sidebar is core's library sidebar, as in VS Code: Library, then Projects. Projects lists the library's writing projects with their tooltip (main file, compiler, reading progress over the papers a project lists). A click opens the project in the library page's project session, and the row menu offers Open PDF when a built PDF sits beside the main file. The browser hides what it cannot do: templates, All projects, new projects, adding a folder and project folders.
 
 ## Capture structure
 

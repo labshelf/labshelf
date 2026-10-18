@@ -11,7 +11,6 @@
     "Other"
   ],
   "main": "./out/extension.js",
-  "browser": "./out/web/extension.js",
   "activationEvents": [
     "workspaceContains:**/labshelf.yaml",
     "onLanguage:latex",
@@ -169,8 +168,7 @@
       {
         "command": "labshelf.moveLibrary",
         "title": "Move Library…",
-        "category": "LabShelf",
-        "enablement": "!isWeb"
+        "category": "LabShelf"
       },
       {
         "command": "labshelf.syncGuide",
@@ -180,74 +178,62 @@
       {
         "command": "labshelf.connectBrowser",
         "title": "Connect the Browser",
-        "category": "LabShelf",
-        "enablement": "!isWeb"
+        "category": "LabShelf"
       },
       {
         "command": "labshelf.buildLatexForBrowser",
         "title": "Build LaTeX for the Browser",
-        "category": "LabShelf",
-        "enablement": "!isWeb"
+        "category": "LabShelf"
       },
       {
         "command": "labshelf.collab.share",
         "title": "Share Project…",
-        "category": "LabShelf",
-        "enablement": "!isWeb"
+        "category": "LabShelf"
       },
       {
         "command": "labshelf.collab.join",
         "title": "Join Shared Project…",
-        "category": "LabShelf",
-        "enablement": "!isWeb"
+        "category": "LabShelf"
       },
       {
         "command": "labshelf.collab.leave",
         "title": "Stop Sharing Project on This Device…",
-        "category": "LabShelf",
-        "enablement": "!isWeb"
+        "category": "LabShelf"
       },
       {
         "command": "labshelf.share.folder",
         "title": "Share Folder as Link…",
-        "category": "LabShelf",
-        "enablement": "!isWeb"
+        "category": "LabShelf"
       },
       {
         "command": "labshelf.share.manage",
         "title": "Manage Shared Links…",
-        "category": "LabShelf",
-        "enablement": "!isWeb"
+        "category": "LabShelf"
       },
       {
         "command": "labshelf.share.import",
         "title": "Import Papers from Share Link…",
-        "category": "LabShelf",
-        "enablement": "!isWeb"
+        "category": "LabShelf"
       },
       {
         "command": "labshelf.relay.connect",
         "title": "Connect Cloudflare…",
-        "category": "LabShelf",
-        "enablement": "!isWeb"
+        "category": "LabShelf"
       },
       {
         "command": "labshelf.relay.disconnect",
         "title": "Disconnect Cloudflare",
-        "category": "LabShelf",
-        "enablement": "!isWeb"
+        "category": "LabShelf"
       },
       {
         "command": "labshelf.relay.offer",
         "title": "Offer My Relay to This Project",
-        "category": "LabShelf",
-        "enablement": "!isWeb"
+        "category": "LabShelf"
       },
       {
         "command": "labshelf.relay.withdraw",
         "title": "Withdraw My Relay from This Project",
-        "category": "LabShelf",
-        "enablement": "!isWeb"
+        "category": "LabShelf"
       },
       {
         "command": "labshelf.collab.undo",
@@ -343,8 +329,7 @@
         "command": "labshelf.templates.open",
         "title": "Research: Browse Templates…",
         "category": "LabShelf",
-        "icon": "$(add)",
-        "enablement": "!isWeb"
+        "icon": "$(add)"
       },
       {
         "command": "labshelf.projects.all",
@@ -360,21 +345,18 @@
       {
         "command": "labshelf.templates.saveProject",
         "title": "Research: Save Project as Template…",
-        "category": "LabShelf",
-        "enablement": "!isWeb"
+        "category": "LabShelf"
       },
       {
         "command": "labshelf.templates.publish",
         "title": "Research: Publish Project as Template…",
-        "category": "LabShelf",
-        "enablement": "!isWeb"
+        "category": "LabShelf"
       },
       {
         "command": "labshelf.writing.addExistingFolder",
         "title": "Research: Add Existing Folder as Project…",
         "category": "LabShelf",
-        "icon": "$(folder-opened)",
-        "enablement": "!isWeb"
+        "icon": "$(folder-opened)"
       },
       {
         "command": "labshelf.writing.refresh",
@@ -443,20 +425,17 @@
       {
         "command": "labshelf.writing.exportWord",
         "title": "Research: Export as Word (.docx)",
-        "category": "LabShelf",
-        "enablement": "!isWeb"
+        "category": "LabShelf"
       },
       {
         "command": "labshelf.writing.exportMarkdown",
         "title": "Research: Export as Markdown (.md)",
-        "category": "LabShelf",
-        "enablement": "!isWeb"
+        "category": "LabShelf"
       },
       {
         "command": "labshelf.writing.exportHtml",
         "title": "Research: Export as HTML (.html)",
-        "category": "LabShelf",
-        "enablement": "!isWeb"
+        "category": "LabShelf"
       },
       {
         "command": "labshelf.writing.copyProject",
@@ -497,8 +476,7 @@
       {
         "command": "labshelf.writing.checkBeforeSubmitting",
         "title": "Research: Check Before Submitting",
-        "category": "LabShelf",
-        "enablement": "!isWeb"
+        "category": "LabShelf"
       },
       {
         "command": "labshelf.writing.markVersion",
@@ -508,15 +486,13 @@
       {
         "command": "labshelf.writing.compareVersions",
         "title": "Research: Compare Versions",
-        "category": "LabShelf",
-        "enablement": "!isWeb"
+        "category": "LabShelf"
       },
       {
         "command": "labshelf.writing.showHistory",
         "title": "Research: Show Project History",
         "category": "LabShelf",
-        "icon": "$(history)",
-        "enablement": "!isWeb"
+        "icon": "$(history)"
       },
       {
         "command": "labshelf.installProjectPapers",
@@ -591,8 +567,7 @@
         "command": "labshelf.writing.regenerateFigure",
         "title": "Research: Regenerate Figure",
         "category": "LabShelf",
-        "icon": "$(sync)",
-        "enablement": "!isWeb"
+        "icon": "$(sync)"
       },
       {
         "command": "labshelf.writing.addToReadingList",
@@ -693,12 +668,12 @@
       "view/item/context": [
         {
           "command": "labshelf.writing.regenerateFigure",
-          "when": "view == labshelf.writing.figures && viewItem == labshelfFigureStale && !isWeb",
+          "when": "view == labshelf.writing.figures && viewItem == labshelfFigureStale",
           "group": "inline@1"
         },
         {
           "command": "labshelf.writing.regenerateFigure",
-          "when": "view == labshelf.writing.figures && viewItem =~ /^labshelfFigure/ && !isWeb",
+          "when": "view == labshelf.writing.figures && viewItem =~ /^labshelfFigure/",
           "group": "1_figure@1"
         }
       ],
@@ -861,55 +836,43 @@
         },
         {
           "command": "labshelf.writing.showHistory",
-          "when": "labshelf.writing.projectOpen || labshelf.writing.inProject && !isWeb"
+          "when": "labshelf.writing.projectOpen || labshelf.writing.inProject"
         },
         {
-          "command": "labshelf.connectBrowser",
-          "when": "!isWeb"
+          "command": "labshelf.connectBrowser"
         },
         {
-          "command": "labshelf.buildLatexForBrowser",
-          "when": "!isWeb"
+          "command": "labshelf.buildLatexForBrowser"
         },
         {
-          "command": "labshelf.collab.share",
-          "when": "!isWeb"
+          "command": "labshelf.collab.share"
         },
         {
-          "command": "labshelf.collab.join",
-          "when": "!isWeb"
+          "command": "labshelf.collab.join"
         },
         {
-          "command": "labshelf.collab.leave",
-          "when": "!isWeb"
+          "command": "labshelf.collab.leave"
         },
         {
-          "command": "labshelf.share.folder",
-          "when": "!isWeb"
+          "command": "labshelf.share.folder"
         },
         {
-          "command": "labshelf.share.manage",
-          "when": "!isWeb"
+          "command": "labshelf.share.manage"
         },
         {
-          "command": "labshelf.share.import",
-          "when": "!isWeb"
+          "command": "labshelf.share.import"
         },
         {
-          "command": "labshelf.relay.connect",
-          "when": "!isWeb"
+          "command": "labshelf.relay.connect"
         },
         {
-          "command": "labshelf.relay.disconnect",
-          "when": "!isWeb"
+          "command": "labshelf.relay.disconnect"
         },
         {
-          "command": "labshelf.relay.offer",
-          "when": "!isWeb"
+          "command": "labshelf.relay.offer"
         },
         {
-          "command": "labshelf.relay.withdraw",
-          "when": "!isWeb"
+          "command": "labshelf.relay.withdraw"
         },
         {
           "command": "labshelf.collab.undo",
@@ -920,32 +883,25 @@
           "when": "false"
         },
         {
-          "command": "labshelf.moveLibrary",
-          "when": "!isWeb"
+          "command": "labshelf.moveLibrary"
         },
         {
-          "command": "labshelf.templates.open",
-          "when": "!isWeb"
+          "command": "labshelf.templates.open"
         },
         {
-          "command": "labshelf.templates.publish",
-          "when": "!isWeb"
+          "command": "labshelf.templates.publish"
         },
         {
-          "command": "labshelf.templates.saveProject",
-          "when": "!isWeb"
+          "command": "labshelf.templates.saveProject"
         },
         {
-          "command": "labshelf.writing.compareVersions",
-          "when": "!isWeb"
+          "command": "labshelf.writing.compareVersions"
         },
         {
-          "command": "labshelf.writing.checkBeforeSubmitting",
-          "when": "!isWeb"
+          "command": "labshelf.writing.checkBeforeSubmitting"
         },
         {
-          "command": "labshelf.writing.addExistingFolder",
-          "when": "!isWeb"
+          "command": "labshelf.writing.addExistingFolder"
         },
         {
           "command": "labshelf.comment.reply",
@@ -963,7 +919,7 @@
       "editor/title": [
         {
           "command": "labshelf.writing.showHistory",
-          "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject && !isWeb",
+          "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject",
           "group": "navigation@1"
         },
         {
@@ -1251,7 +1207,6 @@
     "build": "pnpm run build:host && pnpm run build:webview",
     "build:host": "node build/host.mjs",
     "build:webview": "node build/webviews.mjs",
-    "smoke:web": "node scripts/webSmoke.mjs",
     "watch": "node build/host.mjs --watch",
     "watch:webview": "node build/webviews.mjs --watch",
     "dev": "node build/host.mjs --watch & node build/webviews.mjs --watch & wait",

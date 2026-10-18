@@ -1,11 +1,10 @@
-/** Bundles the desktop extension host into out/extension.js, the web extension host into out/web/extension.js the browser bridge host into out/bridgeHost.js and the LaTeX helper host into out/helperHost.js. @labshelf/* packages are bundled from source; every other dependency stays external and loads from node_modules, because pdf.js, Tesseract and the native canvas locate their own data files, workers and binaries next to themselves. */
+/** Bundles the desktop extension host into out/extension.js, the browser bridge host into out/bridgeHost.js and the LaTeX helper host into out/helperHost.js. @labshelf/* packages are bundled from source; every other dependency stays external and loads from node_modules, because pdf.js, Tesseract and the native canvas locate their own data files, workers and binaries next to themselves. */
 import { build, context } from "esbuild";
 import { readFile, rm } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { bundleRelayWorker } from "../../core/tools/relayWorker/bundleRelayWorker.mjs";
 import { writeArcMarks } from "./arcMarks.mjs";
-import { noNodePlugin } from "./noNodePlugin.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const pkgRoot = resolve(here, "..");
@@ -53,26 +52,15 @@ const helperHostOptions = {
   external: [],
 };
 
-// The web extension host runs in a browser worker with no node_modules, so everything is bundled and Node is refused.
-const webOptions = {
-  ...baseOptions,
-  entryPoints: [resolve(pkgRoot, "src/extensionWeb.ts")],
-  outfile: resolve(outDir, "web/extension.js"),
-  platform: "browser",
-  target: ["es2022"],
-  external: ["vscode", "@myriaddreamin/typst-ts-renderer"],
-  plugins: [noNodePlugin],
-};
-
 if (watch) {
   await writeArcMarks(outDir);
-  for (const entry of [options, webOptions, bridgeHostOptions, helperHostOptions]) {
+  for (const entry of [options, bridgeHostOptions, helperHostOptions]) {
     const ctx = await context(entry);
     await ctx.watch();
   }
   console.log(`[labshelf-host] watching → ${options.outfile}`);
 } else {
   await rm(outDir, { recursive: true, force: true });
-  await Promise.all([build(options), build(webOptions), build(bridgeHostOptions), build(helperHostOptions)]);
+  await Promise.all([build(options), build(bridgeHostOptions), build(helperHostOptions)]);
   await writeArcMarks(outDir);
 }

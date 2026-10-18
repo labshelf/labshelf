@@ -14,7 +14,7 @@ export interface BuildPreviewsDeps extends Pick<ReaderPanelDeps, "extensionUri" 
   listPapers: () => Promise<PaperRecord[]>;
   highlightsOf: (paperId: string) => Promise<Annotation[]>;
   paths: PathOps;
-  /** The URI VS Code reads a path by; the web build keeps build folders in extension storage rather than under file:. */
+  /** The URI VS Code reads a path by. */
   uriOf: UriOfPath;
   data: ProjectDataPort;
   /** The root the editor file builds into. */

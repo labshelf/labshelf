@@ -4,11 +4,11 @@ import type { TabKindName } from "../tabs";
 import type { SidebarProjects, SidebarSession } from "./sidebarProjects";
 
 export async function loadSidebarProjects(logger: ILogger, fileSystem: LibraryFileSystem, session: SidebarSession, openTab: (kind: TabKindName) => void): Promise<SidebarProjects> {
-  const [{ createProjectsSource, openEditorInTab, showPdfInTab }, { createBrowserProjects }, { createSidebarProjects }] = await Promise.all([
+  const [{ createProjectsSource, showPdfInTab }, { createBrowserProjects }, { createSidebarProjects }] = await Promise.all([
     import("../projects"), import("../../storage/projects"), import("./sidebarProjects"),
   ]);
   const source = createProjectsSource({
-    projects: createBrowserProjects({ fileSystem, logger }), fileSystem, logger, showPdf: showPdfInTab, openEditor: openEditorInTab,
+    projects: createBrowserProjects({ fileSystem, logger }), fileSystem, logger, showPdf: showPdfInTab,
   });
   return createSidebarProjects(source, openTab, session);
 }

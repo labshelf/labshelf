@@ -4,4 +4,3 @@ export {
   resolveLibraryRoot,
 } from "./libraryLocation.js";
 export type { SharedLibraryConfig } from "./sharedLibraryConfig.js";
-export { globalStateLibraryConfig } from "./globalStateLibraryConfig.js";

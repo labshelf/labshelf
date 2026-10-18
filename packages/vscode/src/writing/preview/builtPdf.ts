@@ -11,6 +11,5 @@ export async function builtPdf(projects: Pick<WritingProjects, "data" | "paths" 
     ? typstPreviewPdf(project, root, projects.data, projects.paths)
     : builtPdfPath(projects.paths, project, root);
   if (!pdf) { return undefined; }
-  // PLATFORM: the Typst preview sits in the build folder, which the web build keeps in extension storage rather than under file:.
   return await projects.fs.exists(pdf).then((found) => (found ? pdf : undefined), () => undefined);
 }

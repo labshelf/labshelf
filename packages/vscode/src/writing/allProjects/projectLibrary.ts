@@ -6,7 +6,6 @@ import { duplicateProject } from "../index.js";
 import { builtPdf, rawLogFile, type RootBuilds } from "../preview/index.js";
 import { OPEN_PROJECT_COMMAND, type ProjectSession, type WritingHost, type WritingProjects } from "../session/index.js";
 import type { SidebarProjectsSource } from "../sidebar/index.js";
-import { desktopCommandsAvailable } from "../../ui/library/index.js";
 import { projectMenuCommands, runProjectCommand } from "./projectCommands.js";
 
 export interface VscodeProjectLibraryDeps {
@@ -67,7 +66,7 @@ function createHostFunctions(deps: VscodeProjectLibraryDeps): ProjectHostFunctio
     duplicate: (entry, title) => duplicateProject({ host: deps.host, projects }, entry, title),
     runCommand: runProjectCommand,
     commands: () => projectMenuCommands(),
-    newKinds: () => (desktopCommandsAvailable() ? ["blank", "template", "folder"] : ["blank"]),
+    newKinds: () => ["blank", "template", "folder"],
     openLabel: () => "Open in VS Code",
     isOpen: (entry) => session.project?.folder === entry.folder,
     onChange(listener) {

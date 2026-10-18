@@ -1,4 +1,4 @@
-// Lists the library's writing projects as sidebar rows, each with its built PDF and reading progress, and opens their editor page and PDF.
+// Lists the library's writing projects as sidebar rows, each with its built PDF and reading progress, and opens their PDF.
 import {
   PaperDataStore, brokenProjectItem, buildReadingList, papersByCiteKey, readyProjectItem,
   type ILogger, type LibraryFileSystem, type ProjectEntry, type ReadingList, type ReadyEntry, type SidebarProjectItem,
@@ -10,7 +10,7 @@ const MODULE = "library-page.projects";
 
 /** A sidebar row plus what the browser needs to open it. */
 export interface BrowserProjectRow extends SidebarProjectItem {
-  /** The id the editor page opens; absent on a broken project. */
+  /** The id of the project to open; absent on a broken project. */
   projectId?: string;
   /** The built PDF beside the main file, relative to the project folder. */
   pdf?: string;
@@ -21,7 +21,6 @@ export interface ProjectsSource {
   rows(): Promise<BrowserProjectRow[]>;
   /** The entry of the project with this id; undefined when none matches or the listing failed (logged). */
   entryOf(projectId: string): Promise<ProjectEntry | undefined>;
-  openEditor(projectId: string): void;
   openPdf(projectId: string, pdf: string): void;
 }
 
@@ -31,8 +30,6 @@ export interface ProjectsSourceDeps {
   logger: ILogger;
   /** Shows a PDF's bytes in a browser tab. */
   showPdf(bytes: Uint8Array): Promise<void>;
-  /** Opens the editor page on a project's files. */
-  openEditor(projectId: string): Promise<void>;
 }
 
 const NO_READING: ReadingList = { entries: [], neverOpened: 0 };
@@ -90,9 +87,6 @@ export function createProjectsSource(deps: ProjectsSourceDeps): ProjectsSource {
     },
     openPdf(projectId, pdf) {
       void projects.readProjectFile(projectId, pdf).then((bytes) => deps.showPdf(bytes)).catch(report("openPdf", { project: projectId, pdf }));
-    },
-    openEditor(projectId) {
-      void deps.openEditor(projectId).catch(report("openEditor", { project: projectId }));
     },
   };
 }

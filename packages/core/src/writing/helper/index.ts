@@ -15,11 +15,5 @@ export type {
   HelperCompileRequest, HelperCompileResult, HelperEdit, HelperLspListener, HelperPageBytes, HelperProgressListener,
   HelperStatus, ILatexHelper,
 } from "./latexHelper.js";
-export { compileResultFromWire, projectToWire } from "./editorHost/index.js";
-export type {
-  EditorHostCompileResult, EditorHostLatexHelper, EditorHostProject, EditorHostProjectFile, WireProject,
-} from "./editorHost/index.js";
-export { typstOutcomeFromWire, typstOutcomeToWire, typstRequestFromWire } from "./editorHost/index.js";
-export type { TypstHostOutcome, TypstHostRequest } from "./editorHost/index.js";
 export { decodeSocketMessage, encodeSocketMessage } from "./socketFrame.js";
 export type { SocketMessage } from "./socketFrame.js";

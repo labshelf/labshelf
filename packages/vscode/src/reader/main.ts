@@ -13,9 +13,4 @@ import { createVsCodeTransport } from "./index.js";
 
 const perf = new PerfMarks();
 const boot = JSON.parse($("labshelf-boot").textContent ?? "{}") as ReaderBootParams;
-const { workerUrl } = boot.assets;
-// PLATFORM: in VS Code the worker URL is cross-origin, so the reader boots it from a Blob; a host that serves the extension's
-// files from the webview's own origin (the browser editor page) refuses Blob workers under its CSP and runs this one directly.
-const sameOriginWorker = workerUrl !== "" && new URL(workerUrl, location.href).origin === location.origin;
-const pdf = sameOriginWorker ? { createWorker: (url: string) => new Worker(url, { type: "module" }) } : undefined;
-startReader({ boot, transport: createVsCodeTransport(), perf, ...(pdf && { pdf }) }).catch(() => { /* already shown in #error-msg */ });
+startReader({ boot, transport: createVsCodeTransport(), perf }).catch(() => { /* already shown in #error-msg */ });

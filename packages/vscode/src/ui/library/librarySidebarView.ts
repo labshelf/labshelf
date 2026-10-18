@@ -3,7 +3,6 @@ import * as vscode from "vscode";
 import { PAPERS_DIR, folderTreeFromSnapshot, type LibrarySnapshot, type PathOps, type SidebarOpenProject, type SidebarProjectItem } from "@labshelf/core";
 import { onPaperChange, type LibraryEvents } from "../../events/index.js";
 import { libraryBundleDirectory, libraryPaths, listPanelHtml, type LibraryPaths } from "../list/index.js";
-import { desktopCommandsAvailable } from "./desktopCommands.js";
 import { rootNode, type LibraryNode } from "./libraryNode.js";
 import { runProjectEdit, runProjectFolderAction, type ProjectOrganizerPort } from "./projectOrganizer.js";
 import { handleProjectMessage, isProjectMessage, type SidebarProjectsPort } from "./sidebarProjectMessages.js";
@@ -135,7 +134,6 @@ export class LibrarySidebarView implements vscode.WebviewViewProvider {
     if (m.type === "refresh") { await vscode.commands.executeCommand("labshelf.library.refresh"); return; }
     if (m.type === "ready") {
       this._ready = true;
-      await this._post({ type: "desktopCommands", available: desktopCommandsAvailable() });
       // Neither push waits for the other: a slow project count must not delay the library.
       void this._pushProjects();
       void this._pushOpenProject();
