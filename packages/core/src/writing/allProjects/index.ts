@@ -7,3 +7,4 @@ export * from "./derive/index.js";
 export { serveAllProjects } from "./serveAllProjects.js";
 export { deadlineText, type DeadlineText } from "./deadlineText.js";
 export * from "./read/index.js";
+export * from "./library/index.js";

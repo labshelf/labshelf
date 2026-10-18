@@ -16,9 +16,8 @@ source: Explore scout, 2026-10-18
 - Snapshot types in core: `ProjectTreeView`, `SidebarTreeNode`, `SidebarProjectTree`, `SidebarOpenProject` (core/src/library-ui/sidebarTrees.ts). Renderer: core/src/library-ui/dom/sidebar/sidebarOpenProject.ts. vscode builds it in vscode/src/writing/sidebar/projectTreeMirror.ts (walks TreeDataProviders; vscode-bound).
 
 ## All projects
-- Core: `serveAllProjects` (core/src/writing/allProjects/serveAllProjects.ts) over `ProjectLibraryPort` (projectLibraryPort.ts:6-40); `mountAllProjects` (dom/mountAllProjects.ts); read/ (readProjectDetail, readProjectCites); `createProjectData({fs,path,logger,deviceDirs})` (core/src/writing/projectData/createProjectData.ts:21).
-- vscode/src/writing/allProjects/projectLibrary.ts:1-126 `createProjectLibrary(deps)`: portable list (rows + mtime cache + build + cites), detail, rename/move/archive/trash/setTarget, duplicate, deleteForever (refuses the open project), files. vscode-only: executeCommand for open/create, `vscode.open` of files, `desktopCommandsAvailable`, `openLabel` "Open in VS Code", vscode.Event subscriptions.
-- projectHostActions.ts:1-65: `createFile` portable (escape + exists check; TRAP :44); build/preview/openLog host-specific. projectBuildState.ts:1-36 `summariseBuild` pure over vscode build types (needs structural interfaces). projectRows.ts `toProjectRow` pure; projectDetailSource.ts uses vscode fs stat for PDF mtime.
+
+The library lives in `packages/core/src/writing/allProjects/library/`; VS Code composes it in `packages/vscode/src/writing/allProjects/projectLibrary.ts`.
 
 ## Citations
 - core/src/writing/citations/: `partialKeyStart(format, linePrefix)`, `scanCitationKeys`/`citedKeys`, `LATEX_CITE_COMMAND`, `citationSnippet`, `papersByCiteKey`, `pageArgumentContext`.

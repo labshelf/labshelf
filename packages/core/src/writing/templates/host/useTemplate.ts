@@ -1,5 +1,9 @@
 // Runs "Use template" for one gallery entry: asks the project title, reads the template's files and creates the project.
-import type { HostToGallery, ILogger, TemplateEntry, TemplateFile, TemplateKey, TemplateManifest, TemplateSource } from "@labshelf/core";
+import type { ILogger } from "../../../ports/index.js";
+import type { TemplateManifest } from "../manifest/index.js";
+import type { HostToGallery, TemplateKey } from "../protocol/index.js";
+import type { TemplateFile, TemplateSource } from "../sources/index.js";
+import type { TemplateEntry } from "../templateEntry.js";
 
 export const TEMPLATES_LOG_MODULE = "writing/templates";
 

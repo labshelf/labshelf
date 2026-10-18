@@ -1,16 +1,9 @@
 // Runs the Publish screen's work: opens a project, runs its checks, signs in to GitHub and submits the pull request.
-import type { PublishDraft, PublishProject } from "@labshelf/core";
+import type { PublishDraft, PublishHost, PublishProject } from "@labshelf/core";
 import { noteFailure, requireProject, type PublishContext } from "./publishContext.js";
 import { runPublishChecks } from "./runPublishChecks.js";
 import { submitPublish } from "./submitPublish.js";
 import type { PublishableProject, PublishMessage, PublishPorts } from "./types.js";
-
-export interface PublishHost {
-  /** Posts `publish.open` for the project, or for the one the user picks when no id is given. */
-  open(projectId?: string): Promise<void>;
-  /** Handles one validated `publish.*` message; failures are reported to the page, never thrown. */
-  handle(message: PublishMessage): Promise<void>;
-}
 
 const pageProject = (p: PublishableProject): PublishProject => ({ id: p.id, title: p.title, engineLabel: p.engineLabel });
 

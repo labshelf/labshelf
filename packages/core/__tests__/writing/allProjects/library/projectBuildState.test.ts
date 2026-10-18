@@ -1,8 +1,9 @@
 // Tests how a project's build in this session is summarised for the All projects page.
-import { summariseBuild, type BuildSources } from "../../../src/writing/allProjects/projectBuildState";
-import { readyEntry } from "../../support/writingFixtures";
+import { summariseBuild } from "../../../../src/writing/allProjects/library/projectBuildState";
+import type { BuildSources } from "../../../../src/writing/allProjects/library/projectLibraryDeps";
+import { readyEntry } from "../../../support/projectLibraryHarness";
 
-const project = readyEntry("/lib/projects/a") as Extract<ReturnType<typeof readyEntry>, { kind: "ready" }>;
+const project = readyEntry("/lib/projects/a");
 const problem = (severity: "error" | "warning" | "info", message: string) => ({ severity, message, file: "main.tex", line: 4 });
 
 function sources(over: { outcome?: { ok: boolean; at: Date }; problems?: ReturnType<typeof problem>[]; building?: boolean; pdfModified?: number } = {}) {
@@ -11,7 +12,7 @@ function sources(over: { outcome?: { ok: boolean; at: Date }; problems?: ReturnT
     builds: {
       builtRoots: () => ["main.tex"],
       problemsOf: () => over.problems ?? [],
-      stateOf: () => (over.building ? { state: "building", errors: 0 } : undefined),
+      stateOf: () => (over.building ? { state: "building" } : undefined),
     },
     pdfModified: jest.fn(async () => over.pdfModified),
   };

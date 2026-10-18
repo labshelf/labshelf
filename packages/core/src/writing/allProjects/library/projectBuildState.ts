@@ -1,17 +1,8 @@
 // Summarises a project's build in this session for All projects.
-import type { LocatedProblem, ProjectBuildSummary } from "@labshelf/core";
-import type { BuildOutcomes } from "../build/index.js";
-import type { ReadyProject } from "../mainDocument.js";
-import type { RootBuilds } from "../preview/index.js";
+import type { ProjectBuildSummary } from "../projectDetail.js";
+import type { BuildProblem, BuildSources, ReadyProject } from "./projectLibraryDeps.js";
 
-export interface BuildSources {
-  outcomes: Pick<BuildOutcomes, "last">;
-  builds: Pick<RootBuilds, "builtRoots" | "problemsOf" | "stateOf">;
-  /** The modification time of the main root's built PDF, when it exists. */
-  pdfModified(project: ReadyProject): Promise<number | undefined>;
-}
-
-function problemsOf({ builds }: BuildSources, folder: string): LocatedProblem[] {
+function problemsOf({ builds }: BuildSources, folder: string): BuildProblem[] {
   return [...builds.builtRoots(folder)].flatMap((root) => builds.problemsOf(folder, root) ?? []);
 }
 

@@ -1,5 +1,7 @@
 // Maps a writing project entry to the row the All projects page lists.
-import type { BuildMark, PathOps, ProjectEntry, ProjectPlace, ProjectRow } from "@labshelf/core";
+import type { PathOps } from "../../../library/mutations/index.js";
+import type { ProjectEntry } from "../../project/index.js";
+import type { BuildMark, ProjectPlace, ProjectRow } from "../projectRow.js";
 
 const placeOf = (entry: Extract<ProjectEntry, { kind: "ready" }>): ProjectPlace =>
   entry.settings.trashed ? "trash" : entry.settings.archived ? "archived" : "projects";

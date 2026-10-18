@@ -1,27 +1,20 @@
 // Runs the All projects page's build, preview, log, new file and target actions on any project.
-import * as vscode from "vscode";
-import type { ProjectLibraryPort, ProjectSettingsPatch } from "@labshelf/core";
-import type { ReadyProject } from "../mainDocument.js";
-import { rawLogFile } from "../preview/index.js";
-import type { WritingProjects } from "../session/index.js";
+import type { ProjectTarget } from "../../project/index.js";
+import type { ProjectLibraryPort } from "../projectLibraryPort.js";
+import type { ProjectLibraryDeps, ReadyProject } from "./projectLibraryDeps.js";
 
-const SHOW_PREVIEW_COMMAND = "labshelf.writing.showPreview";
-
-export interface ProjectHostActionDeps {
-  projects: Pick<WritingProjects, "data" | "paths" | "fs">;
+export interface ProjectHostActionDeps extends Pick<ProjectLibraryDeps, "fs" | "paths" | "host" | "locate"> {
   /** Throws when the id is not a readable project of the library. */
   findReady(id: string): ReadyProject;
-  /** Saves the editors and builds one root of the project, as Build Project does. */
-  recompile(folder: string, root: string): Promise<unknown>;
-  open(id: string): Promise<void>;
   openFile(id: string, file: string): Promise<void>;
   /** Writes the patch to the project's labshelf.yaml and reloads the project list. */
-  edit(id: string, patch: ProjectSettingsPatch): Promise<void>;
+  edit(id: string, patch: { target: ProjectTarget | null }): Promise<void>;
 }
 
 type HostActions = Pick<ProjectLibraryPort, "build" | "preview" | "openLog" | "createFile" | "setTarget">;
 
 export function createProjectHostActions(deps: ProjectHostActionDeps): HostActions {
+  const { host, locate, paths, fs } = deps;
   const mainOf = (project: ReadyProject): string => {
     if (!project.main) { throw new Error(`${project.folder} has no main file`); }
     return project.main;
@@ -30,22 +23,17 @@ export function createProjectHostActions(deps: ProjectHostActionDeps): HostActio
   return {
     async build(id) {
       const project = deps.findReady(id);
-      await deps.recompile(project.folder, mainOf(project));
+      await host.build(project, mainOf(project));
     },
-    async preview(id) {
-      deps.findReady(id);
-      await deps.open(id);
-      await vscode.commands.executeCommand(SHOW_PREVIEW_COMMAND);
-    },
+    preview: (id) => host.preview(deps.findReady(id)),
     async openLog(id) {
       const project = deps.findReady(id);
-      const log = await rawLogFile(deps.projects, project, mainOf(project));
+      const log = await locate.rawLog(project, mainOf(project));
       if (!log) { throw new Error(`No build log yet for ${project.folder}`); }
-      await vscode.commands.executeCommand("vscode.open", vscode.Uri.file(log));
+      await host.openLog(log);
     },
     async createFile(id, file) {
       const { folder } = deps.findReady(id);
-      const { paths, fs } = deps.projects;
       const target = paths.resolve(folder, file);
       // The page's parser already rejects these paths; the resolved path is checked again because it is what gets written.
       const inside = paths.relative(folder, target);

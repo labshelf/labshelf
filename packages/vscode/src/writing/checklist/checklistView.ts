@@ -2,17 +2,15 @@
 import * as vscode from "vscode";
 
 import {
-  MANUAL_ITEM_GROUPS, addManualItem, buildChecklist, citeSections, nextStatus, removeManualItem, sectionPlacer, setManualItemDone,
+  MANUAL_ITEM_GROUPS, addManualItem, buildChecklist, checklistSidebarNodes, citeSections, nextStatus, removeManualItem, sectionPlacer, setManualItemDone,
   type Checklist, type ChecklistDocument, type ChecklistGrouping, type ChecklistItem, type ILogger, type ManualItemGroup, type PaperStatus, type PathOps,
-  type ReadingItem, type SidebarTreeNode,
+  type ReadingItem, type ReadingPaper, type SidebarTreeNode,
 } from "@labshelf/core";
 import type { FigureNode, ReadyProject } from "../figures/index.js";
 import { REVEAL_OUTLINE_COMMAND } from "../outline/index.js";
 import type { ProjectReadingLists } from "../readingList/index.js";
 import type { ProjectTreeRequest } from "../sidebar/index.js";
 import { ChecklistMemory } from "./checklistMemory.js";
-import type { ReadingPaper } from "./checklistRows.js";
-import { checklistSidebarNodes } from "./checklistSidebarNodes.js";
 import type { OpenProjectSignals, ProjectSignals } from "./openProjectSignals.js";
 
 const MODULE = "writing/checklist";

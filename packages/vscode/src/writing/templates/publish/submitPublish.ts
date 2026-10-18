@@ -1,6 +1,5 @@
 // Submits the signed-in user's template as a pull request, then keeps a copy in My templates.
-import type { PublishDraft, PublishProject, TemplateManifest } from "@labshelf/core";
-import { TEMPLATES_LOG_MODULE } from "../useTemplate.js";
+import { TEMPLATES_LOG_MODULE, type PublishDraft, type PublishProject, type TemplateManifest } from "@labshelf/core";
 import { noteFailure, requireProject, type PublishContext } from "./publishContext.js";
 import { buildPublishManifest, withAuthors } from "./publishManifest.js";
 import { passingReport } from "./runPublishChecks.js";

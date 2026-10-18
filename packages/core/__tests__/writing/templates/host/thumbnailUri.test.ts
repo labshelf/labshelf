@@ -1,5 +1,5 @@
 // Pins which thumbnail bytes become data: URIs.
-import { thumbnailDataUri } from "../../../src/writing/templates/thumbnailUri.js";
+import { thumbnailDataUri } from "../../../../src/writing/templates/host/index.js";
 
 const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]);
 const WEBP = Uint8Array.from([0x52, 0x49, 0x46, 0x46, 9, 0, 0, 0, 0x57, 0x45, 0x42, 0x50, 7]);

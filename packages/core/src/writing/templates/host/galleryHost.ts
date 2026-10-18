@@ -1,11 +1,19 @@
 // Answers the template gallery page: lists each source on its own, serves thumbnails and engine checks, and runs "Use template".
-import {
-  engineProblem, parseGalleryMessage, SOURCE_LABELS,
-  type AvailableEngines, type GalleryToHost, type TemplateEntry, type TemplateKey, type TemplateSource, type TemplateSourceId,
-} from "@labshelf/core";
-import type { PublishHost } from "./publish/index.js";
+import { engineProblem, type AvailableEngines } from "../engineProblem.js";
+import { parseGalleryMessage, type GalleryToHost, type TemplateKey } from "../protocol/index.js";
+import type { TemplateSource } from "../sources/index.js";
+import type { TemplateEntry, TemplateSourceId } from "../templateEntry.js";
+import { SOURCE_LABELS } from "../templateLabels.js";
 import { thumbnailDataUri } from "./thumbnailUri.js";
 import { TEMPLATES_LOG_MODULE, useTemplate, type UseTemplatePorts } from "./useTemplate.js";
+
+/** What the gallery needs from the Publish screen; the host forwards validated `publish.*` messages to it. */
+export interface PublishHost {
+  /** Posts `publish.open` for the project, or for the one the user picks when no id is given. */
+  open(projectId?: string): Promise<void>;
+  /** Handles one validated `publish.*` message; failures are reported to the page, never thrown. */
+  handle(message: Extract<GalleryToHost, { type: `publish.${string}` }>): Promise<void>;
+}
 
 export interface GalleryHostDeps extends UseTemplatePorts {
   sources: readonly TemplateSource[];

@@ -1,90 +1,48 @@
-// Tests the All projects adapter: where each project is listed, its build, cites and detail, and what trashing writes to labshelf.yaml.
-import * as vscode from "vscode";
-import { readProjectCites, readProjectDetail } from "@labshelf/core";
+// Tests how the All projects library is composed for VS Code: open-project detection, merged change listeners and the offered new kinds.
 import { createProjectLibrary } from "../../../src/writing/allProjects/projectLibrary";
 import { fakeHost, fakeLogger, fakeProjects, readyEntry } from "../../support/writingFixtures";
 
-jest.mock("@labshelf/core", () => ({
-  ...jest.requireActual("@labshelf/core"),
-  readProjectCites: jest.fn(async () => ({ cites: 5, unresolved: 2 })),
-  readProjectDetail: jest.fn(async (_context: unknown, request: { id: string }) => ({ id: request.id, citations: [] })),
-}));
-
-function setup() {
-  (vscode.workspace.fs.stat as jest.Mock).mockRejectedValue(new Error("missing"));
-  const entries = [
-    readyEntry("/lib/projects/a", { settings: { id: "a", format: "latex", target: { venue: "NeurIPS", deadline: "2027-05-01" } } }),
-    readyEntry("/lib/projects/b", { settings: { id: "b", format: "typst", archived: true, title: "Bee" } }),
-    readyEntry("/lib/projects/c", { settings: { id: "c", format: "latex", trashed: "2026-01-01T00:00:00.000Z" } }),
-  ];
-  const projects = fakeProjects(entries);
-  const sourceListeners: Array<() => void> = [];
-  const source = {
-    list: () => entries,
-    find: (id: string) => entries.find((entry) => entry.folder === id),
-    update: jest.fn(async () => {}),
-    onDidChange: jest.fn((listener: () => void) => { sourceListeners.push(listener); return { dispose() {} }; }),
-  };
-  const outcomes = { last: jest.fn((folder: string) => (folder === "/lib/projects/a" ? { ok: true, at: new Date(7000) } : undefined)), onDidChange: jest.fn(() => ({ dispose() {} })) };
-  const builds = { builtRoots: () => [], problemsOf: () => undefined, stateOf: () => undefined };
-  const papers = [{ id: "p1" }];
+function setup(openFolder?: string) {
+  const entry = readyEntry("/lib/projects/a", { settings: { id: "a", format: "latex" } });
+  const projects = fakeProjects([entry]);
+  const disposers = [jest.fn(), jest.fn(), jest.fn()];
+  const event = (index: number) => jest.fn(() => ({ dispose: disposers[index] }));
   const library = createProjectLibrary({
-    host: fakeHost(), projects: projects as never, session: { project: undefined }, source: source as never,
-    outcomes: outcomes as never, builds, onDidChangeRootBuild: jest.fn(() => ({ dispose() {} })) as never,
-    listPapers: async () => papers as never, logger: fakeLogger(), pdfjs: {} as never, recompile: jest.fn(async () => undefined),
+    host: fakeHost(), projects: projects as never, session: { project: openFolder ? { folder: openFolder } : undefined } as never,
+    source: { list: () => [entry], find: (id: string) => (id === entry.folder ? entry : undefined), update: jest.fn(async () => {}), onDidChange: event(0) } as never,
+    outcomes: { last: () => undefined, onDidChange: event(1) } as never,
+    builds: { builtRoots: () => [], problemsOf: () => undefined, stateOf: () => undefined },
+    onDidChangeRootBuild: event(2) as never,
+    listPapers: async () => [], logger: fakeLogger(), pdfjs: {} as never, recompile: jest.fn(async () => undefined),
   });
-  return { library, source, projects, sourceListeners, outcomes, papers };
+  return { library, projects, disposers, entry };
 }
 
 describe("createProjectLibrary", () => {
-  beforeEach(() => { jest.clearAllMocks(); });
-
-  it("lists each project in its place with its title, cites, build and target", async () => {
-    const rows = await setup().library.list();
-    expect(rows.map((row) => [row.title, row.place, row.cites, row.unresolvedCites, row.build?.state])).toEqual([
-      ["a", "projects", 5, 2, "ok"], ["Bee", "archived", 5, 2, "never"], ["c", "trash", 5, 2, "never"],
-    ]);
-    expect(rows[0]).toMatchObject({ build: { state: "ok", at: 7000 }, target: { venue: "NeurIPS", deadline: "2027-05-01" } });
-    expect(rows[1]).not.toHaveProperty("target");
+  it("stops listening to the project list, the outcomes and the root builds together", () => {
+    const { library, disposers } = setup();
+    const stop = library.onDidChange(() => {});
+    disposers.forEach((dispose) => expect(dispose).not.toHaveBeenCalled());
+    stop();
+    disposers.forEach((dispose) => expect(dispose).toHaveBeenCalledTimes(1));
   });
 
-  it("reads cites with the main file filled into the settings", async () => {
-    await setup().library.list();
-    expect(readProjectCites).toHaveBeenCalledWith(expect.anything(), "/lib/projects/a", expect.objectContaining({ id: "a", main: "main.tex" }), expect.anything());
+  it("refuses to delete the project open in the window", async () => {
+    const { library, projects, entry } = setup("/lib/projects/a");
+    await expect(library.deleteForever(entry.folder)).rejects.toThrow("close the project before deleting it");
+    expect(projects.data.deleteProjectForever).not.toHaveBeenCalled();
   });
 
-  it("reuses the cites of a project until its modified time changes", async () => {
-    const { library, projects, sourceListeners } = setup();
-    projects.data.lastModified.mockResolvedValue(100);
-    await library.list();
-    library.onDidChange(() => {});
-    sourceListeners.forEach((listener) => listener());
-    await library.list();
-    expect(readProjectCites).toHaveBeenCalledTimes(3);
-    projects.data.lastModified.mockResolvedValue(200);
-    sourceListeners.forEach((listener) => listener());
-    await library.list();
-    expect(readProjectCites).toHaveBeenCalledTimes(6);
-  });
-
-  it("serves the detail of a project from the core reader with the library papers and the build summary", async () => {
-    const { library, papers } = setup();
-    const detail = await library.detail("/lib/projects/a");
-    expect(detail.id).toBe("/lib/projects/a");
-    expect(readProjectDetail).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ id: "/lib/projects/a", folder: "/lib/projects/a", papers, build: expect.objectContaining({ state: "ok", at: 7000 }), settings: expect.objectContaining({ main: "main.tex" }) }),
-    );
-  });
-
-  it("writes the trash time to the project's yaml and reloads the list", async () => {
-    const { library, source, projects } = setup();
-    await library.setTrashed("/lib/projects/a", true);
-    expect(source.update).toHaveBeenCalledWith("/lib/projects/a", { trashed: expect.stringMatching(/^\d{4}-\d\d-\d\dT/) });
+  it("deletes a project that is not open", async () => {
+    const { library, projects, entry } = setup("/lib/projects/other");
+    await library.deleteForever(entry.folder);
+    expect(projects.data.deleteProjectForever).toHaveBeenCalledWith("/lib", entry.folder);
     expect(projects.reload).toHaveBeenCalled();
   });
 
-  it("rejects an id that is not in the library", async () => {
-    await expect(setup().library.setTrashed("/nope", true)).rejects.toThrow("project /nope is not in the library");
+  it("offers VS Code's open label and at least a blank project", () => {
+    const { library } = setup();
+    expect(library.openLabel()).toBe("Open in VS Code");
+    expect(library.newKinds()).toContain("blank");
   });
 });

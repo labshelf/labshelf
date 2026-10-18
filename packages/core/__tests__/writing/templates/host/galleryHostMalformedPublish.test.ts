@@ -1,11 +1,11 @@
 // Pins how the gallery host answers a malformed publish.* message: the page is told, and the failure is logged.
-import type { HostToGallery } from "@labshelf/core";
-import { createGalleryHost } from "../../../src/writing/templates/galleryHost.js";
-import { fakeLogger } from "../../support/writingFixtures.js";
+import type { HostToGallery } from "../../../../src/writing/templates/index.js";
+import { createGalleryHost } from "../../../../src/writing/templates/host/index.js";
+import { jestLogger } from "./jestLogger.js";
 
 function setup() {
   const posts: HostToGallery[] = [];
-  const logger = fakeLogger();
+  const logger = jestLogger();
   const publish = { open: jest.fn(async () => {}), handle: jest.fn(async () => {}) };
   const host = createGalleryHost({
     sources: [], engines: jest.fn(), askTitle: jest.fn(), createProject: jest.fn(), logger, publish, post: (m: HostToGallery) => { posts.push(m); },

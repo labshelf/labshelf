@@ -1,8 +1,7 @@
 // Pins how the template gallery's host answers the page: listings per source, thumbnails, engine checks and "Use template".
-import type { HostToGallery, TemplateEntry, TemplateFile, TemplateSource, TemplateSourceId } from "@labshelf/core";
-import type { PublishHost } from "../../../src/writing/templates/publish/index.js";
-import { createGalleryHost, type GalleryHostDeps } from "../../../src/writing/templates/galleryHost.js";
-import { fakeLogger } from "../../support/writingFixtures.js";
+import type { HostToGallery, TemplateEntry, TemplateFile, TemplateSource, TemplateSourceId } from "../../../../src/writing/templates/index.js";
+import { createGalleryHost, type GalleryHostDeps, type PublishHost } from "../../../../src/writing/templates/host/index.js";
+import { jestLogger } from "./jestLogger.js";
 
 const entry = (source: TemplateSourceId, id: string, engine: TemplateEntry["engine"] = "typst"): TemplateEntry => ({
   source, id, name: `Name ${id}`, description: "d", category: "article", format: engine === "typst" ? "typst" : "latex",
@@ -22,7 +21,7 @@ function fakeSource(id: TemplateSourceId, entries: TemplateEntry[]): jest.Mocked
 
 function setup(over: Partial<GalleryHostDeps> = {}) {
   const posts: HostToGallery[] = [];
-  const logger = fakeLogger();
+  const logger = jestLogger();
   const community = fakeSource("community", [entry("community", "a")]);
   const universe = fakeSource("universe", [entry("universe", "u", "pdflatex")]);
   const deps: GalleryHostDeps = {

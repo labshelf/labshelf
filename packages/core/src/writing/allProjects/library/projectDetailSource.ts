@@ -1,17 +1,8 @@
 // Reads the build summary, cites and detail of a project from the core readers for All projects.
-import * as vscode from "vscode";
-import { readProjectCites, readProjectDetail, type ILogger, type PaperRecord, type PdfjsLoader, type ProjectBuildSummary, type ProjectDetail } from "@labshelf/core";
-import type { ReadyProject } from "../mainDocument.js";
-import { builtPdf, rawLogFile } from "../preview/index.js";
-import type { WritingProjects } from "../session/index.js";
-import { summariseBuild, type BuildSources } from "./projectBuildState.js";
-
-export interface ProjectDetailDeps extends Pick<BuildSources, "outcomes" | "builds"> {
-  projects: Pick<WritingProjects, "data" | "paths" | "reads" | "fs">;
-  listPapers: () => Promise<PaperRecord[]>;
-  logger: ILogger;
-  pdfjs: PdfjsLoader;
-}
+import type { ProjectBuildSummary, ProjectDetail } from "../projectDetail.js";
+import { readProjectCites, readProjectDetail } from "../read/index.js";
+import { summariseBuild } from "./projectBuildState.js";
+import type { ProjectLibraryDeps, ReadyProject } from "./projectLibraryDeps.js";
 
 interface ProjectCites { cites: number; unresolved: number }
 
@@ -25,11 +16,12 @@ export interface ProjectDetailSource {
 // The core readers take the main file from `settings.main`; the entry's main may be a detected one.
 const withMain = (project: ReadyProject): ReadyProject["settings"] => ({ ...project.settings, ...(project.main ? { main: project.main } : {}) });
 
-export function createProjectDetailSource(deps: ProjectDetailDeps): ProjectDetailSource {
-  const { projects, logger } = deps;
+export function createProjectDetailSource(deps: ProjectLibraryDeps): ProjectDetailSource {
+  const { fs, paths, logger, locate } = deps;
+  const context = { fs, paths, logger };
   const pdfModified = async (project: ReadyProject): Promise<number | undefined> => {
-    const pdf = await builtPdf(projects, project, project.main);
-    return pdf === undefined ? undefined : (await vscode.workspace.fs.stat(vscode.Uri.file(pdf))).mtime;
+    const pdf = await locate.pdf(project);
+    return pdf === undefined ? undefined : (await fs.stat(pdf))?.mtimeMs;
   };
   const build = (project: ReadyProject): Promise<ProjectBuildSummary> => summariseBuild({ ...deps, pdfModified }, project);
   // Reading the sources walks the project, so a count is kept until the project's modified time changes.
@@ -41,7 +33,7 @@ export function createProjectDetailSource(deps: ProjectDetailDeps): ProjectDetai
       const hit = cached.get(project.folder);
       if (modified !== undefined && hit?.modified === modified) { return hit.value; }
       try {
-        const { cites, unresolved } = await readProjectCites(projects.reads(logger), project.folder, withMain(project), await deps.listPapers());
+        const { cites, unresolved } = await readProjectCites(context, project.folder, withMain(project), await deps.listPapers());
         const value = { cites, unresolved };
         if (modified !== undefined) { cached.set(project.folder, { modified, value }); }
         return value;
@@ -54,10 +46,9 @@ export function createProjectDetailSource(deps: ProjectDetailDeps): ProjectDetai
     },
     async detail(project) {
       const [papers, summary, pdf, log] = await Promise.all([
-        deps.listPapers(), build(project), builtPdf(projects, project, project.main),
-        project.main ? rawLogFile(projects, project, project.main) : undefined,
+        deps.listPapers(), build(project), locate.pdf(project), project.main ? locate.rawLog(project, project.main) : undefined,
       ]);
-      return readProjectDetail(projects.reads(logger), {
+      return readProjectDetail(context, {
         id: project.folder, folder: project.folder, settings: withMain(project), papers, build: summary, pdf, log, pdfjs: deps.pdfjs,
       });
     },

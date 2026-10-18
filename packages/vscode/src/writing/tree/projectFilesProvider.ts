@@ -1,7 +1,7 @@
 // Shows the open project's folder as read from disk, folders first, as the rows of the Files view.
 import * as vscode from "vscode";
 
-import type { ILogger } from "@labshelf/core";
+import { projectFileRow, visibleEntries, type ILogger } from "@labshelf/core";
 import type { ReadyProject } from "../mainDocument.js";
 import type { ProjectSession, WritingProjects } from "../session/index.js";
 
@@ -10,9 +10,6 @@ export interface ProjectFileNode {
   uri: vscode.Uri;
   type: vscode.FileType;
 }
-
-// Build output lives in the cache, outside the project, so only these folders are not the user's sources.
-const HIDDEN_NAMES = new Set([".git", ".labshelf"]);
 
 interface ProjectFilesDeps {
   session: Pick<ProjectSession, "project" | "onDidChange">;
@@ -26,6 +23,8 @@ const isFolder = (type: vscode.FileType): boolean => (type & vscode.FileType.Dir
 export function projectFolderUri(project: ReadyProject): vscode.Uri {
   return vscode.Uri.file(project.folder);
 }
+
+const relativePath = (root: vscode.Uri, uri: vscode.Uri): string => uri.path.slice(root.path.length).replace(/^\/+/, "");
 
 export class ProjectFilesProvider implements vscode.TreeDataProvider<ProjectFileNode>, vscode.Disposable {
   private readonly changeEmitter = new vscode.EventEmitter<void>();
@@ -46,10 +45,8 @@ export class ProjectFilesProvider implements vscode.TreeDataProvider<ProjectFile
     const folder = parent?.uri ?? projectFolderUri(project);
     try {
       const entries = await vscode.workspace.fs.readDirectory(folder);
-      return entries
-        .filter(([name]) => !HIDDEN_NAMES.has(name))
-        .sort(([nameA, typeA], [nameB, typeB]) => Number(isFolder(typeB)) - Number(isFolder(typeA)) || nameA.localeCompare(nameB))
-        .map(([name, type]) => ({ uri: vscode.Uri.joinPath(folder, name), type }));
+      return visibleEntries(entries.map(([name, type]) => ({ name, type, folder: isFolder(type) })))
+        .map(({ name, type }) => ({ uri: vscode.Uri.joinPath(folder, name), type }));
     } catch (error) {
       await this.deps.logger.error("writing/tree", error, { action: "read-folder", uri: folder.fsPath });
       return [];
@@ -57,28 +54,18 @@ export class ProjectFilesProvider implements vscode.TreeDataProvider<ProjectFile
   }
 
   getTreeItem(node: ProjectFileNode): vscode.TreeItem {
+    const project = this.deps.session.project;
     const folder = isFolder(node.type);
-    const name = node.uri.path.split("/").pop() ?? node.uri.path;
-    const item = new vscode.TreeItem(name, folder ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
+    const path = project ? relativePath(projectFolderUri(project), node.uri) : node.uri.path;
+    const { kind, node: row } = projectFileRow(path, folder, { format: project?.settings.format, main: project?.main });
+    const item = new vscode.TreeItem(row.label, folder ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
     item.resourceUri = node.uri;
     item.id = node.uri.toString();
-    item.contextValue = folder ? "labshelfProjectFolder" : "labshelfProjectFile";
+    item.contextValue = { folder: "labshelfProjectFolder", file: "labshelfProjectFile", source: "labshelfProjectSource" }[kind];
     if (folder) { return item; }
-    // A source of the project's format that is not already the main file can become it.
-    if (!this.isMain(node.uri) && this.isSource(name)) { item.contextValue = "labshelfProjectSource"; }
     item.command = { command: "vscode.open", title: "Open File", arguments: [node.uri] };
-    if (this.isMain(node.uri)) { item.description = "main"; }
+    if (row.description) { item.description = row.description; }
     return item;
-  }
-
-  private isSource(name: string): boolean {
-    const format = this.deps.session.project?.settings.format;
-    return format !== undefined && name.toLowerCase().endsWith(format === "latex" ? ".tex" : ".typ");
-  }
-
-  private isMain(uri: vscode.Uri): boolean {
-    const project = this.deps.session.project;
-    return !!project?.main && vscode.Uri.joinPath(projectFolderUri(project), project.main).fsPath === uri.fsPath;
   }
 
   dispose(): void {

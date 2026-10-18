@@ -1,8 +1,8 @@
 // Opens the editor tab that shows the template gallery and connects its webview to the gallery host.
 import * as vscode from "vscode";
+import { createGalleryHost, type GalleryHost, type GalleryHostDeps } from "@labshelf/core";
 import { labshelfTabIcon } from "../../ui/index.js";
 import { galleryBundleDirectory, galleryHtml } from "./galleryHtml.js";
-import { createGalleryHost, type GalleryHost, type GalleryHostDeps } from "./galleryHost.js";
 import { askProjectTitle } from "./projectTitlePrompt.js";
 import { createPublishHost } from "./publish/index.js";
 import type { TemplateGalleryDeps } from "./index.js";

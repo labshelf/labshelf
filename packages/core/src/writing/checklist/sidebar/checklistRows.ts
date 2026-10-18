@@ -1,7 +1,9 @@
 // Renders one Checklist item as a sidebar row: its label, location or status, and what clicking it does.
-import {
-  STATUS_LABEL, familyName, type ChecklistItem, type DotTone, type PageOverflow, type PathOps, type PaperStatus, type SidebarTreeNode,
-} from "@labshelf/core";
+import type { DotTone, SidebarTreeNode } from "../../../library-ui/index.js";
+import { familyName } from "../../../library/format/index.js";
+import type { PathOps } from "../../../library/mutations/index.js";
+import { STATUS_LABEL, type PaperStatus } from "../../../model/index.js";
+import type { ChecklistItem, PageOverflow } from "../buildChecklist.js";
 
 /** What the Checklist knows about a reading-list paper beyond its checklist item. */
 export interface ReadingPaper {

@@ -22,3 +22,5 @@ export * from "./search/index.js";
 export * from "./allProjects/index.js";
 export * from "./build/index.js";
 export * from "./merge/index.js";
+export * from "./outline/index.js";
+export * from "./projectTree/index.js";

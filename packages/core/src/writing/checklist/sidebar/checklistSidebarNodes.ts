@@ -1,7 +1,7 @@
 // Lays a built checklist out as the sidebar's Checklist tree: ordered groups with dots, the folded "N read" rows and the manual items.
-import type {
-  Checklist, ChecklistGroup, ChecklistGrouping, ChecklistItem, DotTone, PageOverflow, PathOps, SidebarTreeNode,
-} from "@labshelf/core";
+import type { DotTone, SidebarTreeNode } from "../../../library-ui/index.js";
+import type { PathOps } from "../../../library/mutations/index.js";
+import type { Checklist, ChecklistGroup, ChecklistGrouping, ChecklistItem, PageOverflow } from "../buildChecklist.js";
 import { itemKey, itemRow, pagesHead, type ReadingPaper } from "./checklistRows.js";
 
 type ReadingChecklistItem = Extract<ChecklistItem, { kind: "reading" }>;

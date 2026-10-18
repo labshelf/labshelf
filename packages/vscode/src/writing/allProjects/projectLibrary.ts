@@ -1,18 +1,15 @@
-// Implements the All projects page's storage port over the writing projects of the open library.
+// Composes the core All projects library with the VS Code editor, build state and project commands.
 import * as vscode from "vscode";
-import type { ILogger, NewProjectKind, PaperRecord, PdfjsLoader, ProjectDetail, ProjectEntry, ProjectLibraryPort, ProjectRow, ProjectSettingsPatch } from "@labshelf/core";
+import { createProjectLibrary as createCoreLibrary, type ILogger, type NewProjectKind, type PaperRecord, type PdfjsLoader, type ProjectEntry, type ProjectHostFunctions, type ProjectLibraryPort } from "@labshelf/core";
 import type { BuildOutcomes } from "../build/index.js";
 import { duplicateProject } from "../index.js";
-import type { RootBuilds } from "../preview/index.js";
+import { builtPdf, rawLogFile, type RootBuilds } from "../preview/index.js";
 import { OPEN_PROJECT_COMMAND, type ProjectSession, type WritingHost, type WritingProjects } from "../session/index.js";
 import type { SidebarProjectsSource } from "../sidebar/index.js";
 import { desktopCommandsAvailable } from "../../ui/library/index.js";
 import { projectMenuCommands, runProjectCommand } from "./projectCommands.js";
-import { createProjectDetailSource } from "./projectDetailSource.js";
-import { createProjectHostActions } from "./projectHostActions.js";
-import { toProjectRow } from "./projectRows.js";
 
-export interface ProjectLibraryDeps {
+export interface VscodeProjectLibraryDeps {
   host: WritingHost;
   projects: WritingProjects;
   /** The project open in the window; it cannot be deleted. */
@@ -28,99 +25,54 @@ export interface ProjectLibraryDeps {
   recompile: (folder: string, root: string) => Promise<unknown>;
 }
 
+const SHOW_PREVIEW_COMMAND = "labshelf.writing.showPreview";
+
 const CREATE_COMMANDS: Record<NewProjectKind, string> = {
   blank: "labshelf.writing.newBlankProject",
   template: "labshelf.templates.open",
   folder: "labshelf.writing.addExistingFolder",
 };
 
-type ReadyEntry = Extract<ProjectEntry, { kind: "ready" }>;
+export function createProjectLibrary(deps: VscodeProjectLibraryDeps): ProjectLibraryPort {
+  const { host, projects, source, outcomes, builds } = deps;
+  return createCoreLibrary({
+    data: projects.data, fs: projects.fs, paths: projects.paths, logger: deps.logger,
+    session: () => host.current(),
+    // Arrow wrappers keep `this` on the class instances.
+    projects: { find: (folder) => source.find(folder), list: () => source.list(), update: (folder, patch) => source.update(folder, patch), reload: () => projects.reload() },
+    outcomes, builds, listPapers: deps.listPapers, pdfjs: deps.pdfjs,
+    locate: {
+      pdf: (project) => builtPdf(projects, project, project.main),
+      rawLog: (project, root) => rawLogFile(projects, project, root),
+    },
+    host: createHostFunctions(deps),
+  });
+}
 
-export function createProjectLibrary(deps: ProjectLibraryDeps): ProjectLibraryPort {
-  const { host, projects, session: openSession, source } = deps;
-  const find = (id: string): ProjectEntry => findEntry(source, id);
-  const findReady = (id: string): ReadyEntry => findReadyEntry(source, id);
-  const open = async (id: string): Promise<void> => { await vscode.commands.executeCommand(OPEN_PROJECT_COMMAND, find(id)); };
-  const openFile = async (id: string, file: string): Promise<void> => {
-    const entry = findReady(id);
-    if (openSession.project?.folder !== entry.folder) { await open(id); }
-    await vscode.commands.executeCommand("vscode.open", vscode.Uri.file(projects.paths.join(entry.folder, ...file.split("/"))));
-  };
-  const edit = async (id: string, patch: ProjectSettingsPatch): Promise<void> => {
-    await source.update(findReady(id).folder, patch);
-    await projects.reload();
-  };
-
+function createHostFunctions(deps: VscodeProjectLibraryDeps): ProjectHostFunctions {
+  const { projects, source, session } = deps;
+  const openProject = async (entry: ProjectEntry): Promise<void> => { await vscode.commands.executeCommand(OPEN_PROJECT_COMMAND, entry); };
   return {
-    ...createRowsPort(deps),
-    ...createProjectHostActions({ projects, findReady, recompile: deps.recompile, open, openFile, edit }),
-    openLabel: () => "Open in VS Code",
-    commands: projectMenuCommands,
+    openProject,
+    createProject: async (kind) => { await vscode.commands.executeCommand(CREATE_COMMANDS[kind]); },
+    openFile: async (entry, file) => {
+      await vscode.commands.executeCommand("vscode.open", vscode.Uri.file(projects.paths.join(entry.folder, ...file.split("/"))));
+    },
+    build: async (entry, root) => { await deps.recompile(entry.folder, root); },
+    preview: async (entry) => {
+      await openProject(entry);
+      await vscode.commands.executeCommand(SHOW_PREVIEW_COMMAND);
+    },
+    openLog: async (path) => { await vscode.commands.executeCommand("vscode.open", vscode.Uri.file(path)); },
+    duplicate: (entry, title) => duplicateProject({ host: deps.host, projects }, entry, title),
+    runCommand: runProjectCommand,
+    commands: () => projectMenuCommands(),
     newKinds: () => (desktopCommandsAvailable() ? ["blank", "template", "folder"] : ["blank"]),
-    open,
-    create: async (kind) => { await vscode.commands.executeCommand(CREATE_COMMANDS[kind]); },
-    rename: (id, title) => edit(id, { title: title === findReady(id).settings.id ? undefined : title }),
-    duplicate: (id, title) => duplicateProject({ host, projects }, findReady(id), title),
-    move: (id, folder) => edit(id, { folder }),
-    setArchived: (id, archived) => edit(id, { archived: archived || undefined }),
-    setTrashed: (id, trashed) => edit(id, { trashed: trashed ? new Date().toISOString() : undefined }),
-    async deleteForever(id) {
-      const entry = find(id);
-      const session = host.current();
-      if (!session) { throw new Error("open a library before deleting a project"); }
-      if (openSession.project?.folder === entry.folder) { throw new Error("close the project before deleting it"); }
-      await projects.data.deleteProjectForever(session.root, entry.folder);
-      await log(session.logger, "project deleted forever", { folder: entry.folder, location: entry.location });
-      await projects.reload();
-    },
-    runCommand: (id, command) => runProjectCommand(command, find(id)),
-    files: (id) => projects.data.listProjectFiles(findReady(id).folder),
-    openFile,
-  };
-}
-
-function findEntry(source: ProjectLibraryDeps["source"], id: string): ProjectEntry {
-  const entry = source.find(id);
-  if (!entry) { throw new Error(`project ${id} is not in the library`); }
-  return entry;
-}
-
-function findReadyEntry(source: ProjectLibraryDeps["source"], id: string): ReadyEntry {
-  const entry = findEntry(source, id);
-  if (entry.kind !== "ready") { throw new Error(`project ${id} cannot be read: ${entry.reason}`); }
-  return entry;
-}
-
-function createRowsPort(deps: ProjectLibraryDeps): Pick<ProjectLibraryPort, "list" | "detail" | "onDidChange"> {
-  const { projects, source } = deps;
-  const details = createProjectDetailSource(deps);
-  // Reading modification times walks each project's files, so a time is kept until the project list changes.
-  const modifiedTimes = new Map<string, Promise<number | undefined>>();
-  const modified = (folder: string): Promise<number | undefined> => {
-    let time = modifiedTimes.get(folder);
-    if (!time) { time = projects.data.lastModified(folder); modifiedTimes.set(folder, time); }
-    return time;
-  };
-  return {
-    async list(): Promise<ProjectRow[]> {
-      return Promise.all(source.list().map(async (entry) => {
-        const time = await modified(entry.folder);
-        if (entry.kind !== "ready") { return toProjectRow(projects.paths, entry, time); }
-        const [build, cites] = await Promise.all([details.build(entry), details.cites(entry, time)]);
-        return toProjectRow(projects.paths, entry, time, { build, cites });
-      }));
-    },
-    detail: (id): Promise<ProjectDetail> => details.detail(findReadyEntry(source, id)),
-    onDidChange(listener) {
-      const subscriptions = [
-        source.onDidChange(() => { modifiedTimes.clear(); listener(); }),
-        deps.outcomes.onDidChange(listener),
-        deps.onDidChangeRootBuild(listener),
-      ];
+    openLabel: () => "Open in VS Code",
+    isOpen: (entry) => session.project?.folder === entry.folder,
+    onChange(listener) {
+      const subscriptions = [source.onDidChange(listener), deps.outcomes.onDidChange(listener), deps.onDidChangeRootBuild(listener)];
       return () => subscriptions.forEach((subscription) => subscription.dispose());
     },
   };
 }
-
-const log = (logger: ILogger, message: string, context: Record<string, unknown>): Promise<void> =>
-  logger.log("INFO", "writing.allProjects", message, context);

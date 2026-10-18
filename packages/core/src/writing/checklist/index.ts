@@ -10,3 +10,4 @@ export { readManualItems } from "./readManualItems.js";
 export { readChecklistSignals } from "./readChecklistSignals.js";
 export type { ChecklistSignals } from "./readChecklistSignals.js";
 export { updateChecklist } from "./updateChecklist.js";
+export * from "./sidebar/index.js";
