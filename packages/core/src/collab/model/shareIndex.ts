@@ -1,6 +1,5 @@
 /** Reads and initialises the index doc of a share: its kind, its file entries, its shared settings and its comment threads. */
 
-// PLATFORM: yjs ships ESM types, so this CommonJS package imports them with an explicit resolution mode.
 import type { Doc, Map as YMap } from "yjs";
 
 export const SHARE_KINDS = ["project"] as const;

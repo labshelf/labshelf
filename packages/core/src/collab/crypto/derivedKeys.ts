@@ -1,8 +1,7 @@
 // Derives the per-purpose keys and credentials of a share from its share key.
-import { bytesToBase64Url } from "../../encoding/index.js";
+import { bytesToBase64Url, bytesToHex } from "../../encoding/index.js";
 import { deriveAesKey, deriveBytes } from "./hkdf.js";
 import type { WebCryptoKey } from "./hkdf.js";
-import { bytesToHex } from "./shareKey.js";
 
 export interface RoomCredentials {
   roomId: string;

@@ -1,7 +1,6 @@
 /** Writes the shared settings into the index doc's settings map and reads them back. */
 
-// PLATFORM: yjs ships ESM types, so this CommonJS package imports them with an explicit resolution mode.
-import type { Doc, Map as YMap } from "yjs";
+import type { Map as YMap } from "yjs";
 import { SHARED_SETTING_KEYS, type SharedSettings } from "./sharedSettings.js";
 
 /** Sets changed keys and deletes absent ones in one transaction; an unchanged key is left alone so no update is sent. */

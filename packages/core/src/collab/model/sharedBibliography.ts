@@ -25,6 +25,8 @@ function workIds(entry: BibEntry): WorkIds {
   return { doi, arxiv: arxiv?.toLowerCase() };
 }
 
+const ARXIV_DOI = /^10\.48550\/arxiv\./i;
+
 const idLabel = ({ doi, arxiv }: WorkIds): string | undefined =>
   doi ? `doi:${doi}` : arxiv ? `arXiv:${arxiv}` : undefined;
 
@@ -33,6 +35,9 @@ const idLabel = ({ doi, arxiv }: WorkIds): string | undefined =>
  * an arXiv DOI or an arxiv.org url), else when the shared entry names neither, since nothing then says otherwise.
  */
 function sameWork(shared: WorkIds, local: WorkIds): boolean {
+  // An arXiv DOI names the preprint, so a published DOI beside it does not make another work.
+  const publishedDoi = (doi: string | undefined) => (doi && !ARXIV_DOI.test(doi) ? doi : undefined);
+  if (publishedDoi(shared.doi) && publishedDoi(local.doi)) { return shared.doi === local.doi; }
   if (shared.doi && shared.doi === local.doi) { return true; }
   if (shared.arxiv && shared.arxiv === local.arxiv) { return true; }
   return !shared.doi && !shared.arxiv;

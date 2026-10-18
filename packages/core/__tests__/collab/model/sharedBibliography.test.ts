@@ -32,6 +32,12 @@ describe("mergeGeneratedBibliography", () => {
     });
   });
 
+  it("reports a clash when the DOIs differ even though the arXiv ids match", () => {
+    const shared = "@article{bert,\n  doi = {10.1000/a},\n  eprint = {1810.04805}\n}";
+    const local = "@article{bert,\n  doi = {10.2000/b},\n  eprint = {1810.04805}\n}";
+    expect(mergeGeneratedBibliography(bib(shared), bib(local)).clashes).toHaveLength(1);
+  });
+
   it("updates an entry with the same arXiv id from eprint, url or an arXiv DOI", () => {
     const shared = "@misc{bert,\n  title = {BERT},\n  doi = {10.48550/arXiv.1810.04805}\n}";
     const local = "@article{bert,\n  title = {BERT, published},\n  doi = {10.18653/v1/N19-1423},\n  eprint = {1810.04805v2}\n}";

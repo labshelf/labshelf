@@ -30,6 +30,11 @@ describe("invite", () => {
     expect(parsed).toEqual({ ok: true, invite: { shareId: await deriveShareId(shareKey), shareKey, relays: [] } });
   });
 
+  it("accepts a link followed by sentence punctuation", async () => {
+    const text = await formatInvite({ shareKey: generateShareKey(), relays: [] });
+    expect((await parseInvite(`Join (${text}).`)).ok).toBe(true);
+  });
+
   it("rejects text that is not an invite", async () => {
     expect(await parseInvite("hello")).toEqual({ ok: false, error: "notAnInvite" });
     expect(await parseInvite("labshelf://join#")).toEqual({ ok: false, error: "notAnInvite" });

@@ -39,7 +39,8 @@ function decodeKey(text: string): Uint8Array | undefined {
 
 /** Finds the link anywhere in pasted text; never throws on user input. */
 export async function parseInvite(text: string): Promise<ParseInviteResult> {
-  const fragment = /labshelf:\/\/join#(\S+)/.exec(text.trim())?.[1];
+  // A sentence may end right after the link, and no segment ends in these characters, so they are punctuation.
+  const fragment = /labshelf:\/\/join#(\S+)/.exec(text)?.[1]?.replace(/[.,;:!?)\]}>"']+$/, "");
   const segments = fragment?.split(".") ?? [];
   if (!/^v\d+$/.test(segments[0] ?? "")) { return { ok: false, error: "notAnInvite" }; }
   if (segments[0] !== INVITE_VERSION) { return { ok: false, error: "unsupportedVersion" }; }
