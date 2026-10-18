@@ -1,2 +1,3 @@
-/** Exports the Node side of section state: writing its package into a build folder and reading what a full build recorded. */
+/** Exports the Node side of a section preview: section state files and swapping the section's pages into the full PDF. */
 export { readSectionStates, writeSectionStatePackage } from "./sectionStateFiles.js";
+export { swapSectionPages } from "./swapSectionPages.js";

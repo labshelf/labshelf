@@ -19,6 +19,12 @@ describe("tab kinds", () => {
     expect(parseTabId(TAB_KINDS.comments.id(params))).toEqual({ kind: "comments", params });
   });
 
+  it("round-trips a history tab id by project", () => {
+    const params = { projectId: "thesis" };
+    expect(parseTabId(TAB_KINDS.history.id(params))).toEqual({ kind: "history", params });
+    expect(TAB_KINDS.history.title(params)).toBe("History");
+  });
+
   it("returns null for an unknown kind or a wrong number of params", () => {
     expect(parseTabId("editor")).toBeNull();
     expect(parseTabId("preview")).toBeNull();

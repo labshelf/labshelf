@@ -5,8 +5,6 @@ import type { SectionState } from "../sectionStateFile.js";
 export interface SectionDocumentInput {
   /** The format dumped from the main file's preamble, without extension. */
   formatName: string;
-  /** A copy of the full build's aux, filtered by `filterAuxForSection`. */
-  auxCopyName: string;
   definitions: readonly string[];
   state: SectionState;
   sectionText: string;
@@ -18,11 +16,11 @@ export interface SectionDocument {
   headerLines: number;
 }
 
-// INVARIANT: the aux and the definitions come before the restore: the aux's `\@input{chap.aux}` runs `\@setckpt`,
-// and `\newcounter` or `\newtheorem` reset counters, so either would overwrite the restored values.
+// INVARIANT: the job's own aux holds the full build's filtered aux; `\begin{document}` reads it while preamble-only
+// commands such as `\newlabel` still work, and before the restore, whose values its `\@setckpt` lines would overwrite.
+// The definitions come before the restore too, because `\newcounter` and `\newtheorem` reset counters.
 export function assembleSectionDocument(input: SectionDocumentInput): SectionDocument {
   const header = `%&${input.formatName}\n\\begin{document}\n`
-    + `\\makeatletter\\input{${input.auxCopyName}}\\makeatother\n`
     + input.definitions.map((definition) => `${definition}\n`).join("")
     + restoreSectionState(input.state);
   return { text: `${header}${input.sectionText}\n\\end{document}\n`, headerLines: header.split("\n").length - 1 };

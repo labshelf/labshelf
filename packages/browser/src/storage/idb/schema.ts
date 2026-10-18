@@ -1,5 +1,5 @@
 /**
- * Declares the IndexedDB stores of the labshelf browser extension. Schema: files (raw bytes), metadata (PaperRecord cache).
+ * Declares the IndexedDB stores of the labshelf browser extension. Schema: files (raw bytes), metadata (PaperRecord cache), historyLog and historyObjects (project history).
  */
 import type { PaperRecord } from "@labshelf/core";
 
@@ -22,6 +22,18 @@ interface MetadataRow {
   folderPath: string;
 }
 
+/** The history log of one project: the serialized entries, one per line. */
+export interface HistoryLogRow {
+  projectId: string;
+  text: string;
+}
+
+/** One file content of any project history, keyed by its SHA-256 hex digest. */
+export interface HistoryObjectRow {
+  hash: string;
+  bytes: Uint8Array;
+}
+
 export interface LabShelfSchema {
   files: {
     key: string;
@@ -30,5 +42,13 @@ export interface LabShelfSchema {
   metadata: {
     key: string;
     value: MetadataRow;
+  };
+  historyLog: {
+    key: string;
+    value: HistoryLogRow;
+  };
+  historyObjects: {
+    key: string;
+    value: HistoryObjectRow;
   };
 }

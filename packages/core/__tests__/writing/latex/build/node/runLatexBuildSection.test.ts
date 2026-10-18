@@ -71,9 +71,11 @@ posixOnly("runLatexBuild section preview", () => {
     expect(document).toMatch(/^%&/);
     expect(document).toContain("\\section{Two}\ntwo\n");
     expect(document).not.toContain("one");
-    const aux = await fs.readdir(s.request.outDir);
-    const copy = aux.find((name) => name.endsWith(".aux") && name !== "main.aux" && name !== "main-section.aux");
-    expect(await fs.readFile(path.join(s.request.outDir, copy!), "utf8")).not.toContain("@writefile");
+    // The kernel reads the job's own aux at `\begin{document}`, where `\newlabel` still works.
+    const aux = await fs.readFile(path.join(s.request.outDir, "main-section.aux"), "utf8");
+    expect(aux).toContain("\\newlabel{a}");
+    expect(aux).not.toContain("@writefile");
+    expect(document).not.toContain("\\input");
     const pdf = await fs.readFile(path.join(s.request.projectFolder, "main.pdf"));
     const before = await diffPages([], s.full);
     const after = await diffPages(before.hashes, pdf);

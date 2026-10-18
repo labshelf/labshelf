@@ -1,13 +1,17 @@
 // Connects the page to LabShelf Helper lazily and keeps the open project open there, with its builds and problems.
 import type { ILogger, ProjectEntry } from "@labshelf/core";
 import type { CompileMode, HelperCompileResult, HelperStatus, ILatexHelper } from "@labshelf/core/helper";
-import { createBuildScheduler, type BuildScheduler, type BuildTimers } from "../preview";
+import { assemblePdf, createBuildScheduler, type BuildScheduler, type BuildTimers } from "../preview";
 import { createLspChannel, type HelperLspChannel } from "./lspChannel";
 import { createProblemStore, type ProblemStore } from "./problemStore";
 
 const MODULE = "library-page.helperProject";
 
-export type BuildEvent = { type: "building" } | { type: "result"; result: HelperCompileResult; mode: CompileMode };
+export type BuildEvent =
+  | { type: "building" }
+  /** The whole PDF after a succeeded build; always sent before that build's `result`. */
+  | { type: "pdf"; bytes: Uint8Array; mode: CompileMode }
+  | { type: "result"; result: HelperCompileResult; mode: CompileMode };
 
 /** What a source editor needs from the helper, available only while its project is open there. */
 export type EditorHelperPort = Pick<ILatexHelper, "status" | "save"> & {
@@ -27,6 +31,8 @@ export interface HelperProject {
   editorPort(projectId: string): EditorHelperPort;
   lsp(projectId: string): HelperLspChannel;
   problems: Pick<ProblemStore, "subscribe">;
+  /** The whole PDF of the latest succeeded full build of the open project, else undefined. */
+  lastFullPdf(projectId: string): Uint8Array | undefined;
   /** Starts a full build now; resolves once it has started, and its result arrives through `onBuild`. */
   build(projectId: string): Promise<void>;
   onBuild(listener: (event: BuildEvent) => void): () => void;
@@ -42,7 +48,8 @@ export interface HelperProjectOptions {
 }
 
 type ReadyEntry = Extract<ProjectEntry, { kind: "ready" }>;
-interface OpenProject { id: string; scheduler: BuildScheduler | undefined }
+interface PdfState { latest?: Uint8Array | undefined; full?: Uint8Array | undefined; queue: Promise<void>; closed: boolean }
+interface OpenProject { id: string; scheduler: BuildScheduler | undefined; pdf: PdfState }
 
 export function createHelperProject({ helper, logger, timers }: HelperProjectOptions): HelperProject {
   const store = createProblemStore();
@@ -55,15 +62,33 @@ export function createHelperProject({ helper, logger, timers }: HelperProjectOpt
   const emit = (event: BuildEvent): void => { for (const listener of [...buildListeners]) listener(event); };
   const isOpen = (id: string): boolean => open?.id === id;
 
-  function schedulerFor(entry: ReadyEntry): BuildScheduler | undefined {
-    if (entry.main === undefined) return undefined;
+  // INVARIANT: each result builds on the previous PDF, so results are assembled one at a time through `pdf.queue`.
+  async function assemble(pdf: PdfState, projectId: string, main: string, result: HelperCompileResult, mode: CompileMode): Promise<void> {
+    let outcome = result;
+    if (result.status === "succeeded") {
+      try {
+        pdf.latest = await assemblePdf(pdf.latest, { pageCount: result.pageCount ?? 0, changed: result.changed });
+        if (mode === "full") pdf.full = pdf.latest;
+        if (!pdf.closed) emit({ type: "pdf", bytes: pdf.latest, mode });
+      } catch (error) {
+        await logger.error(MODULE, error, { action: "assemble pdf", projectId, mode });
+        const message = error instanceof Error ? error.message : String(error);
+        outcome = { status: "failed", changed: [], problems: [{ severity: "error", message, file: main }] };
+      }
+    }
+    if (!pdf.closed) emit({ type: "result", result: outcome, mode });
+  }
+
+  function schedulerFor(entry: ReadyEntry, pdf: PdfState): BuildScheduler | undefined {
+    const { main } = entry;
+    if (main === undefined) return undefined;
     const { id, engine } = entry.settings;
     return createBuildScheduler({
       helper, logger, ...(timers ? { timers } : {}),
-      target: { projectId: id, main: entry.main, ...(engine ? { engine } : {}) },
+      target: { projectId: id, main, ...(engine ? { engine } : {}) },
       onResult(result, mode) {
         if (result.status !== "cancelled") store.publish(result.problems);
-        emit({ type: "result", result, mode });
+        pdf.queue = pdf.queue.then(() => assemble(pdf, id, main, result, mode));
       },
     });
   }
@@ -77,7 +102,8 @@ export function createHelperProject({ helper, logger, timers }: HelperProjectOpt
     try {
       await helper.openProject(id, entry.folder);
       if (wanted !== entry) { await helper.closeProject(id); return; }
-      open = { id, scheduler: schedulerFor(entry) };
+      const pdf: PdfState = { queue: Promise.resolve(), closed: false };
+      open = { id, scheduler: schedulerFor(entry, pdf), pdf };
       void logger.log("INFO", MODULE, "project opened in the helper", { projectId: id });
       for (const listener of [...openedListeners]) listener(id);
     } catch (error) {
@@ -92,6 +118,8 @@ export function createHelperProject({ helper, logger, timers }: HelperProjectOpt
     if (closing === undefined) return;
     open = undefined;
     closing.scheduler?.dispose();
+    closing.pdf.closed = true;
+    closing.pdf.full = undefined;
     store.publish([]);
     try {
       await helper.closeProject(closing.id);
@@ -136,6 +164,7 @@ export function createHelperProject({ helper, logger, timers }: HelperProjectOpt
     editorPort: port,
     lsp: (id) => createLspChannel({ helper, isOpen, onOpened }, id),
     problems: store,
+    lastFullPdf: (id) => (isOpen(id) ? open?.pdf.full : undefined),
     async build(id) {
       if (!isOpen(id) || open?.scheduler === undefined) return;
       open.scheduler.save();

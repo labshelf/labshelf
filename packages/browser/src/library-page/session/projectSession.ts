@@ -40,7 +40,7 @@ const mainOf = (entry: ProjectEntry): string | undefined => (entry.kind === "rea
 function belongsTo(projectId: string): (tabId: string) => boolean {
   return (tabId) => {
     const tab = parseTabId(tabId);
-    return tab !== null && (tab.kind === "source" || tab.kind === "preview" || tab.kind === "comments") && tab.params["projectId"] === projectId;
+    return tab !== null && (tab.kind === "source" || tab.kind === "preview" || tab.kind === "comments" || tab.kind === "history") && tab.params["projectId"] === projectId;
   };
 }
 
@@ -111,6 +111,7 @@ export function createProjectSession({ workspace, snapshot, logger, onReveal, on
       const id = open === undefined ? undefined : projectIdOf(open);
       if (open === undefined || id === undefined) { return; }
       if (action === "comments") { workspace.openTab("comments", { projectId: id }, 1); return; }
+      if (action === "history") { workspace.openTab("history", { projectId: id }, 1); return; }
       if (action !== "byKind" && action !== "bySection") { return; }
       grouping = action === "byKind" ? "kind" : "section";
       await publish(open, ++generation);

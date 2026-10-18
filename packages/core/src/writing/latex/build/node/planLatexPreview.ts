@@ -8,6 +8,7 @@ import { resolveIncludePath, scanLatexSource } from "../../source/index.js";
 import type { LatexToolchain } from "../../toolchain/index.js";
 import type { BuildCommand } from "../latexBuildCommand.js";
 import { latexPreviewCommand } from "../latexPreviewCommand.js";
+import { mainFolderPath } from "./mainFolderPath.js";
 import { preambleFormat } from "./preambleFormat/index.js";
 
 export interface PreviewPlanInput {
@@ -33,8 +34,7 @@ const MODULE = "writing/build";
 /** The `\include` argument, as written in main, that names the edited file. */
 async function includedChapter(input: PreviewPlanInput): Promise<string | undefined> {
   if (input.editedFile === undefined) { return undefined; }
-  // TRAP: the engine runs in main's folder, so include paths resolve from there, not from the project root.
-  const edited = path.relative(path.dirname(path.join(input.projectFolder, input.main)), path.join(input.projectFolder, input.editedFile)).split(path.sep).join("/");
+  const edited = mainFolderPath(input.projectFolder, input.main, input.editedFile);
   const text = (await readOptionalFile(path.join(input.projectFolder, input.main))) ?? "";
   const include = scanLatexSource(text).includes.find((fact) => fact.command === "include" && resolveIncludePath(fact.path) === edited);
   return include?.path.replace(/\.tex$/, "");

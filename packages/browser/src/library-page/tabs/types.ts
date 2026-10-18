@@ -7,7 +7,7 @@ import type { CommentThreads } from "../review";
 import type { ProjectSession } from "../session";
 import type { Workspace } from "../workspace";
 
-export type TabKindName = "library" | "all-projects" | "templates" | "source" | "preview" | "comments";
+export type TabKindName = "library" | "all-projects" | "templates" | "source" | "preview" | "comments" | "history";
 
 export type TabParams = Readonly<Record<string, string>>;
 

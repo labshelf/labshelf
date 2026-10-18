@@ -3,7 +3,7 @@ import { restoreSectionState } from "../../../../../src/writing/latex/build/sect
 
 describe("restoreSectionState", () => {
   it("sets every captured counter, the page included, skipping counters the document does not define", () => {
-    const state = { command: "section", absolutePage: 3, line: 12, file: "main.tex", counters: { page: 3, section: 2, "@pps": 1 } };
+    const state = { command: "section", absolutePage: 3, fillingPage: 3, line: 12, file: "main.tex", counters: { page: 3, section: 2, "@pps": 1 } };
     expect(restoreSectionState(state)).toBe(
       "\\ifcsname c@page\\endcsname\\setcounter{page}{3}\\fi\n"
       + "\\ifcsname c@section\\endcsname\\setcounter{section}{2}\\fi\n"
@@ -12,6 +12,6 @@ describe("restoreSectionState", () => {
   });
 
   it("renders nothing for a state without counters", () => {
-    expect(restoreSectionState({ command: "part", absolutePage: 1, line: 1, file: "main.tex", counters: {} })).toBe("");
+    expect(restoreSectionState({ command: "part", absolutePage: 1, fillingPage: 1, line: 1, file: "main.tex", counters: {} })).toBe("");
   });
 });

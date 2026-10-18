@@ -17,6 +17,7 @@ export const TAB_KINDS: Record<TabKindName, TabKind> = {
   source: define("source", ["projectId", "path"], (p) => baseName(p["path"] ?? ""), "file-text", () => import("./source/index.js")),
   preview: define("preview", ["projectId"], () => "Preview", "file", () => import("./preview/index.js")),
   comments: define("comments", ["projectId"], () => "Comments", "message", () => import("./comments/index.js")),
+  history: define("history", ["projectId"], () => "History", "history", () => import("./history/index.js")),
 };
 
 const isKindName = (name: string): name is TabKindName => Object.hasOwn(TAB_KINDS, name);

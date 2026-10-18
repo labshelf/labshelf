@@ -10,12 +10,12 @@ interface FakeRange { lo: string; hi: string }
   bound: (lo: string, hi: string): FakeRange => ({ lo, hi }),
 };
 
-type StoreName = "files" | "metadata";
+type StoreName = "files" | "metadata" | "historyLog" | "historyObjects";
 type Row = { [key: string]: unknown };
 
-/** The metadata store of the schema, keyed like the real one. */
-export const fakeRows: Record<Exclude<StoreName, "files">, Map<string, Row>> = { metadata: new Map() };
-const KEY_OF: Record<StoreName, string> = { files: "path", metadata: "paperId" };
+/** The stores of the schema other than files, keyed like the real ones. */
+export const fakeRows: Record<Exclude<StoreName, "files">, Map<string, Row>> = { metadata: new Map(), historyLog: new Map(), historyObjects: new Map() };
+const KEY_OF: Record<StoreName, string> = { files: "path", metadata: "paperId", historyLog: "projectId", historyObjects: "hash" };
 
 function storeOf(name: StoreName) {
   const rows = (name === "files" ? fakeFiles : fakeRows[name]) as Map<string, Row>;

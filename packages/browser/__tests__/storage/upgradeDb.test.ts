@@ -19,11 +19,11 @@ function fakeDatabase(stores: Record<string, ReturnType<typeof fakeStore>>) {
 }
 
 describe("upgradeDb", () => {
-  it("creates only the files and metadata stores in a new database", () => {
+  it("creates the files, metadata and history stores in a new database", () => {
     const stores: Record<string, ReturnType<typeof fakeStore>> = {};
     const db = fakeDatabase(stores);
     upgradeDb(db as never, 0, {} as never);
-    expect(Object.keys(stores)).toEqual(["files", "metadata"]);
+    expect(Object.keys(stores)).toEqual(["files", "metadata", "historyLog", "historyObjects"]);
   });
 
   it("drops the version 1 indexes and the sync manifest store of a version 1 database", () => {
@@ -34,7 +34,7 @@ describe("upgradeDb", () => {
     upgradeDb(db as never, 1, { objectStore: (n: string) => stores[n as keyof typeof stores] } as never);
     expect(files.deleteIndex).toHaveBeenCalledWith("byHash");
     expect(metadata.deleteIndex).toHaveBeenCalledWith("byFolder");
-    expect(Object.keys(stores)).toEqual(["files", "metadata"]);
+    expect(Object.keys(stores)).toEqual(["files", "metadata", "historyLog", "historyObjects"]);
   });
 
   it("removes the sync manifest store of a version 2 database and keeps the stored files and papers", () => {
@@ -47,10 +47,18 @@ describe("upgradeDb", () => {
     const stores = { files, metadata, manifest };
     const db = fakeDatabase(stores);
     upgradeDb(db as never, 2, {} as never);
-    expect(Object.keys(stores)).toEqual(["files", "metadata"]);
+    expect(Object.keys(stores)).toEqual(["files", "metadata", "historyLog", "historyObjects"]);
     expect(files.rows.size).toBe(1);
     expect(metadata.rows.size).toBe(1);
     expect(files.deleteIndex).not.toHaveBeenCalled();
-    expect(DB_VERSION).toBe(3);
+    expect(DB_VERSION).toBe(4);
+  });
+
+  it("adds the history stores to a version 3 database without touching the others", () => {
+    const files = fakeStore([]);
+    const stores = { files, metadata: fakeStore([]) };
+    const db = fakeDatabase(stores);
+    upgradeDb(db as never, 3, {} as never);
+    expect(Object.keys(stores)).toEqual(["files", "metadata", "historyLog", "historyObjects"]);
   });
 });

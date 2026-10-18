@@ -1,16 +1,21 @@
-/** Verifies which pages of the full PDF a section covers, from the pages its heading and the next one were recorded on. */
+/** Verifies which pages of the full PDF a section covers, from the page its heading lands on and the page the next one starts on. */
 import { sectionPageRange } from "../../../../../../src/writing/latex/build/section/index";
 import type { SectionState } from "../../../../../../src/writing/latex/build/section/index";
 
-const at = (command: string, absolutePage: number): SectionState => ({ command, absolutePage, line: 1, file: "main.tex", counters: {} });
+const at = (command: string, absolutePage: number, fillingPage = absolutePage): SectionState =>
+  ({ command, absolutePage, fillingPage, line: 1, file: "main.tex", counters: {} });
 
 describe("sectionPageRange", () => {
-  it("includes the page the next section starts on, which holds this section's tail", () => {
+  it("includes the page the next section starts on mid-page, which holds this section's tail", () => {
     expect(sectionPageRange([at("section", 2), at("section", 4)], 0, 10)).toEqual({ start: 1, end: 3 });
   });
 
-  it("includes the page a next chapter is recorded on, since the record precedes its clearpage", () => {
-    expect(sectionPageRange([at("chapter", 1), at("chapter", 5)], 0, 10)).toEqual({ start: 0, end: 4 });
+  it("starts on the page the heading lands on and ends before a next heading pushed to a fresh page", () => {
+    expect(sectionPageRange([at("section", 3, 2), at("section", 6, 5)], 0, 10)).toEqual({ start: 2, end: 4 });
+  });
+
+  it("ends on the page a next chapter clears, not on the chapter's own page", () => {
+    expect(sectionPageRange([at("chapter", 1), at("chapter", 6, 5)], 0, 10)).toEqual({ start: 0, end: 4 });
   });
 
   it("runs the last section to the end of the PDF", () => {

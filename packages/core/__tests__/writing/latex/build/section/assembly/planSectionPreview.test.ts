@@ -15,7 +15,7 @@ const MAIN = [
 ].join("\n");
 const CHAP = "\\section{Method}\nm\n\\subsection{Detail}\nd\n";
 
-const state = (command: string, line: number, file: string): SectionState => ({ command, absolutePage: 1, line, file, counters: {} });
+const state = (command: string, line: number, file: string): SectionState => ({ command, absolutePage: 1, fillingPage: 1, line, file, counters: {} });
 // The first record is the kernel's `\section*` inside `\tableofcontents`, which has no heading in the source.
 const STATES = [
   state("section", 3, "main.tex"), state("section", 4, "main.tex"), state("section", 6, "main.tex"),

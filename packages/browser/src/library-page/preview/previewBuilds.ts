@@ -1,10 +1,9 @@
-// Turns each helper build of a project into a PDF and a build status on a preview frame.
+// Shows each PDF and build status of a project on a preview frame.
 import type { ILogger } from "@labshelf/core";
-import type { HelperCompileResult } from "@labshelf/core/helper";
-import { assemblePdf } from "./pdfAssembly";
+import type { CompileMode, HelperCompileResult } from "@labshelf/core/helper";
 import type { PreviewBuildStatus, PreviewFrame } from "./previewFrame";
 
-export type PreviewBuildEvent = { type: "building" } | { type: "result"; result: HelperCompileResult };
+export type PreviewBuildEvent = { type: "building" } | { type: "pdf"; bytes: Uint8Array; mode: CompileMode } | { type: "result"; result: HelperCompileResult };
 
 export interface PreviewBuildSource {
   build(projectId: string): Promise<unknown>;
@@ -22,27 +21,11 @@ function statusOf(result: HelperCompileResult): PreviewBuildStatus {
 /** Starts a build and keeps the frame in step with every build until disposed. */
 export function followBuilds(source: PreviewBuildSource, frame: Pick<PreviewFrame, "showPdf" | "setBuildStatus">, projectId: string, logger: ILogger): { dispose(): void } {
   let disposed = false;
-  let pdf: Uint8Array | undefined;
-  // INVARIANT: results are assembled one at a time, in arrival order, because each builds on the previous PDF.
-  let queue: Promise<void> = Promise.resolve();
-
-  const apply = async (result: HelperCompileResult): Promise<void> => {
-    try {
-      if (result.status === "succeeded") {
-        pdf = await assemblePdf(pdf, { pageCount: result.pageCount ?? 0, changed: result.changed });
-        if (disposed) return;
-        frame.showPdf(pdf);
-      }
-      if (!disposed) frame.setBuildStatus(statusOf(result));
-    } catch (error) {
-      await logger.error("preview", error, { action: "assemble", projectId });
-      if (!disposed) frame.setBuildStatus({ state: "failed", errors: 1 });
-    }
-  };
-
   const off = source.onBuild((event) => {
-    if (event.type === "building") { frame.setBuildStatus({ state: "building", errors: 0 }); return; }
-    queue = queue.then(() => apply(event.result));
+    if (disposed) return;
+    if (event.type === "building") frame.setBuildStatus({ state: "building", errors: 0 });
+    else if (event.type === "pdf") frame.showPdf(event.bytes);
+    else frame.setBuildStatus(statusOf(event.result));
   });
   source.build(projectId).catch(async (error: unknown) => {
     await logger.error("preview", error, { action: "build", projectId });

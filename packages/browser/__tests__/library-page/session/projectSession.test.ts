@@ -129,4 +129,12 @@ describe("createProjectSession", () => {
     await session.treeAction("comments");
     expect(events).toEqual(['open comments {"projectId":"a"} g1']);
   });
+
+  it("opens the history tab of the open project on the history action", async () => {
+    const { session, events } = setup();
+    await session.openProject(project("a"));
+    events.length = 0;
+    await session.treeAction("history");
+    expect(events).toEqual(['open history {"projectId":"a"} g1']);
+  });
 });

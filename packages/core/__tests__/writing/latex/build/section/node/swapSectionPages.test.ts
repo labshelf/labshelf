@@ -24,7 +24,7 @@ describe("swapSectionPages", () => {
   it("shifts the pages after the range when the section's page count changes", async () => {
     const full = await pdfOf(["p1", "p2", "p3", "p4"]);
     const before = await diffPages([], full);
-    const swapped = await swapSectionPages(full, await pdfOf(["s2", "s2b", "s3"]), { start: 1, end: 1 });
+    const swapped = await swapSectionPages(full, await pdfOf(["s2", "s2b", "s3"]), { start: 1, end: 2 });
     const after = await diffPages(before.hashes, swapped);
     expect(after.pageCount).toBe(5);
     expect(after.hashes[0]).toBe(before.hashes[0]);

@@ -2,3 +2,4 @@
 export { createBrowserProjectData, createBrowserProjectLibrary, type BrowserProjectLibraryDeps } from "./browserProjectLibrary";
 export { browserPdfjs } from "./browserPdfjs";
 export { askBlankProject, askProjectTitle } from "./askProject";
+export { findProject } from "./findProject";

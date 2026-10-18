@@ -9,5 +9,6 @@ export {
   listAllRecords,
 } from "./paperRecordStore";
 export { buildFolderTree, scanLibrary, pdfDirs } from "./folderTreeStore";
+export { idbHistoryStorage } from "./idb";
 export { stagePdf, stagedPdf, unstagePdf, keepStagedPdfs } from "./pdfStaging";
 export { countBrowserPapers, moveBrowserLibraryToFolder } from "./move";

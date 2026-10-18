@@ -4,6 +4,7 @@ import { EditorState, type Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import type { ILogger, PaperRecord } from "@labshelf/core";
 import type { HelperLspChannel } from "../helperProject";
+import { commentSupport, type EditorComments } from "./commentSupport";
 import { editorExtensions } from "./editorExtensions";
 import { createHelperEdits, type EditorHelper } from "./helperEdits";
 import { createLabelIndex, latexSupport, type LabelIndex } from "./latex";
@@ -33,8 +34,12 @@ export interface SourceEditorDeps {
   lsp?: HelperLspChannel;
   /** Opens a definition's file in a tab. */
   openTab?: DefinitionTarget["openTab"];
+  /** The file's comment threads; without it the editor shows and adds no comments. */
+  comments?: EditorComments;
   logger: ILogger;
   onDirty(dirty: boolean): void;
+  /** Runs after each successful write of the file. */
+  onSaved?(): void;
 }
 
 export interface SourceEditor {
@@ -79,10 +84,13 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   const language = sourceLanguage(deps, labels, currentText, (diagnostics) => {
     if (view) view.dispatch(setDiagnostics(view.state, lspDiagnostics(view.state.doc, diagnostics)));
   });
+  let savedText = text;
   const save = createSaveScheduler({
     file: path, logger, text: currentText,
-    write: (content) => deps.files.write(path, content), onDirty: deps.onDirty, onSaved: helperEdits.saved,
+    write: async (content) => { await deps.files.write(path, content); savedText = content; },
+    onDirty: deps.onDirty, onSaved: () => { helperEdits.saved(); deps.onSaved?.(); },
   });
+  const commentsSupport = deps.comments && commentSupport({ comments: deps.comments, lineBreak, savedText: () => savedText, flush: save.flush, logger });
   const onUpdate = EditorView.updateListener.of((update) => {
     if (!update.docChanged) return;
     save.changed();
@@ -93,17 +101,19 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
     parent: host,
     state: EditorState.create({
       doc: text,
-      extensions: [EditorState.lineSeparator.of(lineBreak), ...editorExtensions(language.extension), onUpdate],
+      extensions: [EditorState.lineSeparator.of(lineBreak), ...editorExtensions(language.extension), ...(commentsSupport?.extensions ?? []), onUpdate],
     }),
   });
   helperEdits.changed(view.state.changes(), view.state.doc);
   const stopProblems = language.hasDiagnostics ? undefined : deps.problems?.(path, (problems) => applyProblems(view!, problems));
+  const stopComments = commentsSupport?.attach(view);
   const unregister = registerOpenEditor(deps.projectId, path, { revealLine: (line) => revealLine(view!, line) });
   return {
     flush: save.flush,
     async dispose() {
       unregister();
       stopProblems?.();
+      stopComments?.();
       language.close();
       labels.dispose();
       await save.flush();

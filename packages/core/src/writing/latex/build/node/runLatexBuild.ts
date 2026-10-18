@@ -2,18 +2,17 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { readOptionalFile, writeFileAtomic } from "../../../../library/node/index.js";
+import { writeFileAtomic } from "../../../../library/node/index.js";
 import type { ILogger } from "../../../../ports/index.js";
-import { parseTexLog } from "../../log/index.js";
-import { engineLabel, type LatexToolchain } from "../../toolchain/index.js";
-import type { LatexBuildResult, LocatedProblem } from "../buildResult.js";
-import { latexBuildCommand, type BuildCommand, type PartialBuild } from "../latexBuildCommand.js";
-import { locateProblems, type ProblemPlaces } from "./locateProblems.js";
+import type { LatexToolchain } from "../../toolchain/index.js";
+import type { LatexBuildResult } from "../buildResult.js";
+import { latexBuildCommand, type PartialBuild } from "../latexBuildCommand.js";
+import { writeSectionStatePackage } from "../section/node/index.js";
+import { compileLatex } from "./compileLatex.js";
+import type { ProblemPlaces } from "./locateProblems.js";
 import { planLatexPreview } from "./planLatexPreview.js";
 import { withIncludeOnlyFile } from "./preambleFormat/index.js";
-import { writeSectionStatePackage } from "../section/node/index.js";
-import { withToolchainOnPath } from "../../toolchain/node/system/index.js";
-import { BuildCancelled, runCancellable } from "./runCancellable.js";
+import { runSectionPreview, shownPdfName } from "./runSectionPreview.js";
 
 export interface LatexBuildRequest extends PartialBuild {
   toolchain: LatexToolchain;
@@ -34,33 +33,28 @@ export interface LatexBuildRequest extends PartialBuild {
 
 const MODULE = "writing/build";
 
-/** The reason a run failed when its log names no error: a crash or a missing engine. */
-function failureReason(output: string, request: LatexBuildRequest, code: number | null): string {
-  const lines = output.split(/\r?\n/).map((line) => line.trim()).filter((line) => line !== "");
-  return `${engineLabel(request.toolchain.engine)} stopped with exit code ${code ?? "none"}: ${lines.at(-1) ?? "no output"}`;
+/** Puts a built PDF next to main; a full build's also becomes the base later section previews swap into. */
+async function publishPdf(request: LatexBuildRequest, places: ProblemPlaces, base: string, result: LatexBuildResult, full: boolean): Promise<LatexBuildResult> {
+  if (result.status !== "succeeded") { return result; }
+  const bytes = await fs.readFile(result.pdf);
+  const pdf = path.join(places.workDir, `${base}.pdf`);
+  await writeFileAtomic(pdf, bytes);
+  if (full) { await writeFileAtomic(path.join(request.outDir, shownPdfName(base)), bytes); }
+  return { ...result, pdf };
 }
 
-async function compile(request: LatexBuildRequest, places: ProblemPlaces, base: string, command: BuildCommand): Promise<LatexBuildResult> {
-  let outcome;
-  try {
-    outcome = await runCancellable(command.executable, command.args, places.workDir, request.signal, { env: { ...withToolchainOnPath(request.toolchain, process.env), ...command.env } });
-  } catch (error) {
-    if (error instanceof BuildCancelled) { return { status: "cancelled" }; }
-    await request.logger.error(MODULE, error, { executable: command.executable, main: request.main });
-    return { status: "failed", problems: [{ severity: "error", message: `Could not start ${command.executable}: ${String(error)}`, file: places.mainFile }] };
+/** A preview tries the edited section alone, then the chapter preview; without a full build's aux it runs the full build. */
+async function build(request: LatexBuildRequest, places: ProblemPlaces, base: string): Promise<{ result: LatexBuildResult; mode: string }> {
+  if (request.mode === "preview") {
+    const section = await runSectionPreview(request, places, base);
+    if (section) { return { result: section, mode: "section" }; }
   }
-  const log = (await readOptionalFile(path.join(request.outDir, `${base}.log`))) ?? "";
-  const problems = await locateProblems(parseTexLog(log, request.toolchain.engine), places);
-  const builtPdf = path.join(request.outDir, `${base}.pdf`);
-  if (outcome.code === 0 && await fs.stat(builtPdf).then(() => true, () => false)) {
-    const pdf = path.join(places.workDir, `${base}.pdf`);
-    await writeFileAtomic(pdf, await fs.readFile(builtPdf));
-    return { status: "succeeded", pdf, problems };
-  }
-  if (!problems.some((problem) => problem.severity === "error")) {
-    problems.unshift({ severity: "error", message: failureReason(outcome.output, request, outcome.code), file: places.mainFile });
-  }
-  return { status: "failed", problems };
+  const preview = request.mode === "preview" ? await planLatexPreview(request) : undefined;
+  if (!preview) { await writeSectionStatePackage(request.outDir); }
+  const command = preview?.command ?? latexBuildCommand(request.toolchain, path.basename(request.main), request.outDir, { ...request, capturesSectionState: true });
+  const run = (): Promise<LatexBuildResult> => compileLatex(request, places, { job: base, command });
+  const result = await (preview ? withIncludeOnlyFile(request.outDir, preview.includeOnlyFile, run) : run());
+  return { result: await publishPdf(request, places, base, result, !preview), mode: preview ? "preview" : "full" };
 }
 
 export async function runLatexBuild(request: LatexBuildRequest): Promise<LatexBuildResult> {
@@ -69,17 +63,16 @@ export async function runLatexBuild(request: LatexBuildRequest): Promise<LatexBu
   const base = path.basename(request.main, path.extname(request.main));
   const started = Date.now();
   await fs.mkdir(request.outDir, { recursive: true });
-  const preview = request.mode === "preview" ? await planLatexPreview(request) : undefined;
-  if (!preview) { await writeSectionStatePackage(request.outDir); }
-  const command = preview?.command ?? latexBuildCommand(request.toolchain, path.basename(request.main), request.outDir, { ...request, capturesSectionState: true });
-  const run = (): Promise<LatexBuildResult> => compile(request, places, base, command);
-  const result = await (preview ? withIncludeOnlyFile(request.outDir, preview.includeOnlyFile, run) : run()).finally(async () => {
-    // INVARIANT: a preview changes the build files behind latexmk's back, so its database goes and the next full build reruns.
-    if (preview) { await fs.rm(path.join(request.outDir, `${base}.fdb_latexmk`), { force: true }); }
+  // INVARIANT: a preview changes the build files behind latexmk's back, so its database goes and the next full build reruns.
+  const dropDatabase = (): Promise<void> => fs.rm(path.join(request.outDir, `${base}.fdb_latexmk`), { force: true });
+  const { result, mode } = await build(request, places, base).catch(async (error: unknown) => {
+    if (request.mode === "preview") { await dropDatabase(); }
+    throw error;
   });
+  if (mode !== "full") { await dropDatabase(); }
   const errors = result.status === "cancelled" ? 0 : result.problems.filter((problem) => problem.severity === "error").length;
   await request.logger.log(result.status === "failed" ? "WARN" : "INFO", MODULE, `LaTeX build ${result.status}`, {
-    main: mainFile, engine: request.toolchain.engine, mode: preview ? "preview" : "full", outDir: request.outDir, errors, ms: Date.now() - started,
+    main: mainFile, engine: request.toolchain.engine, mode, outDir: request.outDir, errors, ms: Date.now() - started,
   });
   return result;
 }

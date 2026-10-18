@@ -1,24 +1,13 @@
 // Shows a project source file in the lazily loaded source editor, reading and writing it in the library folder.
-import { listProjectFiles, posixPathOps, type ILogger, type LibraryFileSystem, type ProjectEntry } from "@labshelf/core";
+import { listProjectFiles, posixPathOps, type LibraryFileSystem, type ProjectEntry } from "@labshelf/core";
 import { el, toast } from "@labshelf/core/dom";
 import { listAllRecords } from "../../../storage";
-import { createBrowserProjectData } from "../../projects-data";
+import { findProject } from "../../projects-data";
+import { recordProjectEdit } from "../../review";
 import type { SourceEditor, SourceFileAccess } from "../../editor/index.js";
 import type { TabModule } from "../types";
 
 const MODULE = "tabs.source";
-
-const isProject = (entry: ProjectEntry | undefined, projectId: string): entry is ProjectEntry =>
-  entry?.kind === "ready" && entry.settings.id === projectId;
-
-/** The open project is the usual answer; a tab restored after a reload finds its project in the library folder. */
-async function findProject(fs: LibraryFileSystem, logger: ILogger, open: ProjectEntry | undefined, projectId: string): Promise<ProjectEntry> {
-  if (isProject(open, projectId)) return open;
-  const entries = await createBrowserProjectData({ fs, logger }).listProjects("");
-  const entry = entries.find((candidate) => isProject(candidate, projectId));
-  if (!entry) throw new Error(`Project ${projectId} is not in the library folder`);
-  return entry;
-}
 
 function projectFiles(fs: LibraryFileSystem, entry: ProjectEntry): SourceFileAccess {
   const full = (path: string): string => posixPathOps.join(entry.folder, path);
@@ -29,7 +18,7 @@ function projectFiles(fs: LibraryFileSystem, entry: ProjectEntry): SourceFileAcc
   };
 }
 
-export const mountTab: TabModule["mountTab"] = (host, params, { fs, logger, session, tab, helperProject, workspace }) => {
+export const mountTab: TabModule["mountTab"] = (host, params, { fs, logger, session, tab, helperProject, workspace, comments }) => {
   const projectId = params["projectId"] ?? "";
   const path = params["path"] ?? "";
   const body = host.appendChild(el("div", { class: "ls-workspace-fill" }));
@@ -53,6 +42,12 @@ export const mountTab: TabModule["mountTab"] = (host, params, { fs, logger, sess
         projectId, path, files: projectFiles(fs, entry), papers: listAllRecords,
         helper: helperProject.editorPort(projectId), problems: helperProject.problems.subscribe,
         lsp: helperProject.lsp(projectId), openTab: workspace.openTab, logger, onDirty: tab.setDirty,
+        onSaved: () => void recordProjectEdit({ fs, logger }, { id: projectId, folder: entry.folder }),
+        comments: {
+          subscribe: comments.commentAnchorsFor(projectId, path).subscribe,
+          add: (range, text) => comments.addComment(projectId, path, range, text),
+          open: () => workspace.openTab("comments", { projectId }, 1),
+        },
       });
       loading.remove();
       if (disposed) void mounted.dispose(); else editor = mounted;

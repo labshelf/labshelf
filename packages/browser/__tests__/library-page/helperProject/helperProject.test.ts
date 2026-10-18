@@ -1,4 +1,5 @@
 // Pins the page's helper project: lazy connect, opening the session's project, edits feeding builds, problems per file.
+import { PDFDocument } from "pdf-lib";
 import type { ILogger, ProjectEntry } from "@labshelf/core";
 import type { HelperCompileRequest, HelperCompileResult, HelperStatus, ILatexHelper } from "@labshelf/core/helper";
 import { createHelperProject, type BuildEvent } from "../../../src/library-page/helperProject";
@@ -8,13 +9,22 @@ const READY: HelperStatus = { state: "ready", helperVersion: "1", tex: { source:
 const project = (id: string): ProjectEntry => ({
   kind: "ready", folder: `projects/${id}`, location: "library", main: "main.tex", settings: { id, format: "latex" },
 });
-const flush = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
+const flush = async (): Promise<void> => { for (let i = 0; i < 5; i++) await new Promise((resolve) => setImmediate(resolve)); };
 
-function fakeHelper(answer: HelperStatus) {
+async function succeededWith(width: number): Promise<HelperCompileResult> {
+  const doc = await PDFDocument.create();
+  doc.addPage([width, 100]);
+  return { status: "succeeded", problems: [], pageCount: 1, changed: [{ index: 0, bytes: await doc.save() }] };
+}
+async function widthOf(bytes: Uint8Array | undefined): Promise<number | undefined> {
+  return bytes ? (await PDFDocument.load(bytes)).getPage(0).getWidth() : undefined;
+}
+
+function fakeHelper(answer: HelperStatus, initial?: HelperCompileResult) {
   let current: HelperStatus | undefined;
   const calls: string[] = [];
   const compiles: HelperCompileRequest[] = [];
-  let result: HelperCompileResult = { status: "succeeded", problems: [], pageCount: 1, changed: [] };
+  let result: HelperCompileResult = initial ?? { status: "succeeded", problems: [], pageCount: 0, changed: [] };
   const helper = {
     connect: jest.fn(async () => { current = answer; calls.push("connect"); return answer; }),
     status: () => current,
@@ -57,7 +67,7 @@ describe("createHelperProject", () => {
   });
 
   it("forwards edits and schedules a preview build; a save asks for a full build after the helper heard it", async () => {
-    const fake = fakeHelper(READY);
+    const fake = fakeHelper(READY, await succeededWith(101));
     const hp = createHelperProject({ helper: fake.helper, logger, timers: { setTimeout: () => 0, clearTimeout: () => undefined } });
     await hp.projectChanged(project("a"));
     const events: BuildEvent["type"][] = [];
@@ -67,7 +77,7 @@ describe("createHelperProject", () => {
     await port.save("a", "main.tex");
     await flush();
     expect(fake.calls.slice(2)).toEqual(["edit a main.tex 1", "save a main.tex", "compile full"]);
-    expect(events).toEqual(["building", "building", "result"]);
+    expect(events).toEqual(["building", "building", "pdf", "result"]);
   });
 
   it("passes the line of an edit to the preview build", async () => {
@@ -107,5 +117,58 @@ describe("createHelperProject", () => {
     expect(hp.isOpen("a")).toBe(false);
     hp.build("a");
     expect(fake.compiles).toEqual([]);
+  });
+
+  it("keeps the PDF of the latest full build only, and forgets it when the project closes", async () => {
+    const fake = fakeHelper(READY, await succeededWith(101));
+    const pending: Array<{ fn: () => void; ms: number }> = [];
+    const timers = { setTimeout: (fn: () => void, ms: number) => { pending.push({ fn, ms }); return pending.length; }, clearTimeout: () => undefined };
+    const hp = createHelperProject({ helper: fake.helper, logger, timers });
+    await hp.projectChanged(project("a"));
+    await hp.editorPort("a").edit("a", "main.tex", 1, { text: "x" });
+    pending.splice(0).filter(({ ms }) => ms === 500).forEach(({ fn }) => fn());
+    await flush();
+    expect(fake.compiles.map((req) => req.mode)).toEqual(["preview"]);
+    expect(hp.lastFullPdf("a")).toBeUndefined();
+    await hp.build("a");
+    await flush();
+    expect(await widthOf(hp.lastFullPdf("a"))).toBe(101);
+    fake.setResult(await succeededWith(202));
+    await hp.editorPort("a").edit("a", "main.tex", 2, { text: "y" });
+    pending.splice(0).filter(({ ms }) => ms === 500).forEach(({ fn }) => fn());
+    await flush();
+    expect(fake.compiles.map((req) => req.mode)).toEqual(["preview", "full", "preview"]);
+    expect(await widthOf(hp.lastFullPdf("a"))).toBe(101);
+    await hp.projectChanged(undefined);
+    expect(hp.lastFullPdf("a")).toBeUndefined();
+  });
+
+  it("sends the assembled PDF before the build's result", async () => {
+    const fake = fakeHelper(READY, await succeededWith(101));
+    const hp = createHelperProject({ helper: fake.helper, logger, timers: instantTimers });
+    await hp.projectChanged(project("a"));
+    const events: BuildEvent[] = [];
+    hp.onBuild((event) => events.push(event));
+    await hp.build("a");
+    await flush();
+    expect(events.map((event) => event.type)).toEqual(["building", "pdf", "result"]);
+    const pdf = events[1];
+    expect(pdf?.type === "pdf" ? pdf.mode : undefined).toBe("full");
+    expect(pdf?.type === "pdf" ? await widthOf(pdf.bytes) : undefined).toBe(101);
+  });
+
+  it("reports a failed result and logs when a succeeded build cannot be assembled", async () => {
+    const fake = fakeHelper(READY, { status: "succeeded", problems: [], pageCount: 2, changed: [] });
+    const hp = createHelperProject({ helper: fake.helper, logger, timers: instantTimers });
+    await hp.projectChanged(project("a"));
+    const events: BuildEvent[] = [];
+    hp.onBuild((event) => events.push(event));
+    await hp.build("a");
+    await flush();
+    expect(events.map((event) => event.type)).toEqual(["building", "result"]);
+    const last = events[1];
+    expect(last?.type === "result" ? last.result.status : undefined).toBe("failed");
+    expect(logger.error).toHaveBeenCalled();
+    expect(hp.lastFullPdf("a")).toBeUndefined();
   });
 });
