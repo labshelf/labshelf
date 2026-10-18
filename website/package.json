@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@labshelf/core": "workspace:*",
+    "fflate": "^0.8.2",
     "pdfjs-dist": "~6.3.289"
   },
   "devDependencies": {

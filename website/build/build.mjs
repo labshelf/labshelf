@@ -1,4 +1,4 @@
-/** Bundles the website demo entries and the pdf.js assets the reader demo loads into website/dist/. */
+/** Bundles the website demo entries, the share page and the pdf.js assets the reader demo loads into website/dist/. */
 import { build } from "esbuild";
 import { cp, mkdir, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
@@ -30,7 +30,7 @@ async function copyPdfjs() {
 
 await rm(outDir, { recursive: true, force: true });
 await build({
-  entryPoints: { "demos/library": join(pkgRoot, "src/demos/library.ts"), "demos/reader": join(pkgRoot, "src/demos/reader.ts") },
+  entryPoints: { "demos/library": join(pkgRoot, "src/demos/library.ts"), "demos/reader": join(pkgRoot, "src/demos/reader.ts"), share: join(pkgRoot, "src/share.ts") },
   outdir: outDir,
   bundle: true,
   format: "esm",
