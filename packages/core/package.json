@@ -17,6 +17,7 @@
     "@napi-rs/canvas": "^1.0.9",
     "@trystero-p2p/nostr": "^0.26.0",
     "mathjax-full": "3.2.2",
+    "node-datachannel": "0.33.4",
     "node-diff3": "^3.2.1",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "~6.3.289",

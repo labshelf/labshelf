@@ -1,5 +1,6 @@
 // Regenerates a project's labshelf.bib from the keys its sources cite and loads it from the main file on the first citation.
 // CONTRACT: documents/contracts/library-format.md#labshelfbib
+import { mergeGeneratedBibliography } from "../../../collab/model/index.js";
 import type { PaperRecord } from "../../../model/index.js";
 import { readOptionalText, type ProjectReadContext } from "../../project/folder/index.js";
 import { DEFAULT_BIBLIOGRAPHY, updateProjectSettings, type OpenSources, type ProjectFormat } from "../../project/index.js";
@@ -38,6 +39,18 @@ async function addMainLine(
   return result.kind;
 }
 
+// CONTRACT: documents/contracts/collaboration.md#bibliography
+/** A shared labshelf.bib also holds other members' entries, so the generated one is merged in and never replaces it. */
+async function mergedIntoShared(
+  { logger }: ProjectReadContext, bibPath: string, current: string | undefined, generated: string,
+): Promise<string> {
+  const merged = mergeGeneratedBibliography(current ?? "", generated);
+  for (const clash of merged.clashes) {
+    await logger.log("WARN", "citations", "shared bibliography keeps another member's entry under a clashing cite key", { bibPath, ...clash });
+  }
+  return merged.text;
+}
+
 /**
  * Writes labshelf.bib for the project's current citations and keeps the `papers` list of labshelf.yaml in sync with
  * them. The main file and `bibliography:` are touched only until the main file loads labshelf.bib, starting with the
@@ -53,8 +66,9 @@ export async function updateProjectBibliography(
   const generated = generateBibliography(keys, papers);
   const current = await readOptionalText(fs, bibPath);
   const needed = generated.resolved.length > 0 || current !== undefined;
-  const written = needed && current !== generated.text;
-  if (written) { await fs.writeText(bibPath, generated.text); }
+  const text = project.settings.shared === undefined ? generated.text : await mergedIntoShared(context, bibPath, current, generated.text);
+  const written = needed && current !== text;
+  if (written) { await fs.writeText(bibPath, text); }
   let mainLine: BibliographyUpdate["mainLine"] = "not-needed";
   // PLATFORM: Typst fails the build when #bibliography names a missing file, so the line follows the file.
   if (generated.resolved.length > 0 && project.settings.bibliography === undefined) {

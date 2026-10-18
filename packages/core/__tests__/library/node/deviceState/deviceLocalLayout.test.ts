@@ -60,6 +60,7 @@ describe("deviceLocalLayout", () => {
     expect(l.terminalLogPath).toBe(path.join(state, "logs", "terminal.log"));
     expect(l.projectRegistryPath).toBe(path.join(state, "projects.json"));
     expect(l.mergeBasesDir).toBe(path.join(state, "merge-bases"));
+    expect(l.collabDir).toBe(path.join(state, "collab"));
   });
 
   it("keeps builds in the device cache, shared by every library", () => {

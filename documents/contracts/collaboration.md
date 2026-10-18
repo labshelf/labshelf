@@ -90,25 +90,45 @@ A blob message starts with a type byte:
 
 ## Device-local state
 
-Yjs state and the blob cache live in the library's state dir (see [library-format.md](library-format.md#layout)), under `collab/<share id>/`, never in the library, where the user's sync tool would make conflict copies of them.
+Yjs state and the blob cache live in the library's state dir (see [library-format.md](library-format.md#device-local-files)), under `collab/<share id>/`, never in the library, where the user's sync tool would make conflict copies of them:
+
+```
+collab/<share id>/
+  docs/<doc id hex>.snapshot   a doc's Yjs state as one update; the doc id is the one of the envelope, so no path appears
+  docs/<doc id hex>.log        the updates made since the snapshot, each a 4-byte big-endian length and the update
+  blobs/<sha256>               a blob of the share, served to peers that ask for it
+  known.json                   per shared path, the SHA-256 of the content disk and doc last agreed on
+```
+
+- The log is append-only. Opening the share merges the log into the snapshot and removes it; a torn final record from an interrupted append is dropped.
+- A file whose disk hash differs from its `known.json` hash was changed outside the share since disk and doc last agreed, so that change enters the doc. A file with no entry there is compared as new.
 
 ## Project shares
 
 ### Docs
 
-A project share holds one Yjs doc per shared text file, keyed by its POSIX path relative to the project folder, plus one index doc, keyed `/index`:
+A project share holds one Yjs doc per shared text file, keyed by its POSIX path relative to the project folder, plus one index doc, keyed `/index`. Each file doc holds its text in the `Y.Text` named `content`.
+
+The index doc holds:
 
 | Index map | Holds |
 |---|---|
 | `share` | `kind: "project"`; a client that reads another kind, or none, refuses the share with a typed error |
 | `files` | path → `{kind: "text" \| "blob", hash?}`; `hash` is the SHA-256 hex of a blob; a rename or delete is an edit of this map |
 | `settings` | the shared `labshelf.yaml` keys |
-| `comments` | comment threads |
+| `comments` | thread id → [comment thread](#comments) |
 
 ### Shared files
 
-- A project shares what an export would hold (no `.git/`, `.labshelf/`, compiler output or PDFs built from a root `.tex` or `.typ`), plus `labshelf.bib`, `.labshelf/checklist.json` and `.labshelf/comments.json`. `labshelf.yaml` is never a text doc.
+- A project shares what an export would hold (no `.git/`, `.labshelf/`, compiler output or PDFs built from a root `.tex` or `.typ`), plus `labshelf.bib` and `.labshelf/checklist.json`. `labshelf.yaml` is never a text doc, and neither is `.labshelf/comments.json`, whose threads travel in [`comments`](#comments).
 - A file is text when its extension is a known text extension and its bytes are valid UTF-8, and a blob otherwise.
+
+### Comments
+
+- Each thread in `comments` is a `Y.Map` with the keys of a thread in [comments.json](library-format.md#labshelfcommentsjson): `id`, `file`, `anchor` and `resolved` as plain JSON values, and `comments` as a `Y.Array` of plain comment objects. A reply is a push onto that array, so replies two members add at once both survive. Keys a client does not know are kept.
+- A live anchor adds `start` and `end` to `{quote, prefix, suffix}`: Yjs relative positions in the file doc's `content`, in base64. `start` binds to the character after it and `end` to the character before it, so text typed at either edge stays outside the thread.
+- A client places a thread in this order: the range between `start` and `end` when both resolve to a non-empty range in the file's `content`; else an exact occurrence of `quote`, the one whose surrounding text best matches `prefix` and `suffix`; else the closest approximate match of `quote` above a similarity threshold. A thread placed nowhere is detached: it stays listed, without a place in the text.
+- Each client writes its project's `.labshelf/comments.json` from the map, so every member's file holds the same threads in the same order. Top-level keys and entries that are not valid threads stay in the file they were in and do not travel. Sharing a project imports the threads of its `comments.json` into the map.
 
 ### Settings
 

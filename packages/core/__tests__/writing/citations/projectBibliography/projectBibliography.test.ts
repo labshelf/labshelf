@@ -104,3 +104,23 @@ describe("updateProjectBibliography with open editors", () => {
     expect(read(context, "main.typ")).toBe("= Intro\n");
   });
 });
+
+describe("updateProjectBibliography in a shared project", () => {
+  const shared = (settings: { bibliography?: string }) =>
+    ({ folder: DIR, main: "main.typ", settings: { id: "p", format: "typst" as const, shared: "a".repeat(32), ...settings } });
+
+  it("adds its entries to the shared labshelf.bib, keeps the other members' and logs a clashing key", async () => {
+    const others = "@article{ana2019,\n  title = {Ana's paper}\n}\n\n@article{smith2020,\n  doi = {10.1000/other}\n}\n";
+    const context = await folderWith({
+      "labshelf.yaml": "id: p\nformat: typst\nbibliography: labshelf.bib\n", "main.typ": "@smith2020 @doe2021\n", "labshelf.bib": others,
+    });
+    const withDoi = papers.map((paper) => (paper.id === "smith2020" ? { ...paper, doi: "10.1000/mine" } : paper));
+    const result = await updateProjectBibliography(context, shared({ bibliography: "labshelf.bib" }), withDoi);
+    const text = read(context, "labshelf.bib");
+    expect(result.written).toBe(true);
+    expect(text.startsWith(others.trimEnd())).toBe(true);
+    expect(text).toContain("@article{doe2021,");
+    expect(text).not.toContain("10.1000/mine");
+    expect(context.logger.logs.some((entry) => entry.level === "WARN" && entry.module === "citations")).toBe(true);
+  });
+});

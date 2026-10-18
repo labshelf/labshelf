@@ -38,6 +38,7 @@ The library folder may be synced between devices by any file sync tool, so every
 <state dir>/libraries/<library key>/      $XDG_STATE_HOME/labshelf (default ~/Library/Application Support/labshelf on macOS, ~/.local/state/labshelf elsewhere, Windows included)
   projects.json                    project folders registered outside the library
   merge-bases/<project id>/<path>  per writing-project text file, the content this device last knew to be common with other devices: the base of a three-way merge of a conflict copy
+  collab/<share id>/               per shared project, its Yjs state, blob cache and last agreed file hashes, see collaboration.md#device-local-state
   logs/app.log                     VS Code log (JSON lines)
   logs/terminal.log                terminal log (JSON lines)
 ```
@@ -223,6 +224,34 @@ A project's Checklist keeps the items its users add by hand in `<project>/.labsh
 - An item with a missing or invalid key is not shown and is kept unchanged on rewrite. Unknown keys, at the top level and in items, are preserved on rewrite.
 - A file that is not a JSON object with an `items` array is reported and never overwritten.
 - Two devices that edit the file offline produce a conflict copy; no item is lost.
+
+## .labshelf/comments.json
+
+A project's comment threads on its text files live in `<project>/.labshelf/comments.json`, in unshared projects too. In a shared project each member's file is written from the share (see [collaboration.md](collaboration.md#comments)).
+
+```json
+{
+  "threads": [
+    {
+      "id": "t7c2m1",
+      "file": "sections/intro.tex",
+      "anchor": { "quote": "a strong baseline", "prefix": "We compare against ", "suffix": " on three datasets" },
+      "comments": [
+        { "id": "c91kd0", "author": "Ana", "body": "Which one?", "createdAt": "2026-10-16T09:12:00.000Z" }
+      ],
+      "resolved": false
+    }
+  ]
+}
+```
+
+- `id` is a non-empty string, unique in the file, and never reused; so is each comment's `id`. `file` is the POSIX path of the text file relative to the project folder. `resolved` is a boolean.
+- `anchor.quote` is the non-empty text the thread is on; `prefix` and `suffix` are up to 32 characters before and after it. In a shared project the anchor also holds `start` and `end`, which only the share reads.
+- `comments` holds at least one comment, oldest first: `author` and `body` are non-empty strings, `createdAt` an ISO timestamp. A comment with a missing or invalid key is not shown and is kept on rewrite.
+- A thread whose quote no longer occurs, exactly or approximately, is detached: it is still listed.
+- The file is written with keys in the order above, two-space indent and a final newline. A missing file reads as no threads.
+- A thread with a missing or invalid key is not shown and is kept unchanged on rewrite. Unknown keys, at the top level, in threads, anchors and comments, are preserved on rewrite.
+- A file that is not a JSON object with a `threads` array is reported and never overwritten.
 
 ## .labshelf/versions/
 

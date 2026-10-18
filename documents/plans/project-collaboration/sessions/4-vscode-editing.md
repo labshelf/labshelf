@@ -11,11 +11,11 @@ Context: design `documents/plans/project-collaboration/research/collab-model.md`
 
 | Id | Package | Level | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| 4.1 | Disk mirror and device-local state | contract | implementer (opus), tests first | mirror tests | [ ] |
-| 4.2 | Binding, undo, cursors | behaviour | implementer (opus), tests first for offsets and undo | binding tests | [ ] |
-| 4.3 | WebRTC host, share and join commands | behaviour | implementer (sonnet) | typecheck | [ ] |
-| 4.4 | Two-host run | task | main thread, `verify` skill | A1–A5 | [ ] |
-| 4.5 | Check, commit | — | `check` on Owns, `git commit` of Owns | gate passes | [ ] |
+| 4.1 | Disk mirror and device-local state | contract | implementer (opus), tests first | mirror tests | [x] |
+| 4.2 | Binding, undo, cursors | behaviour | implementer (opus), tests first for offsets and undo | binding tests | [x] |
+| 4.3 | WebRTC host, share and join commands | behaviour | implementer (sonnet) | typecheck | [x] |
+| 4.4 | Two-host run | task | main thread, `verify` skill | A1–A5 | [x] |
+| 4.5 | Check, commit | — | `check` on Owns, `git commit` of Owns | gate passes | [x] |
 
 4.1 and 4.2 in parallel (disjoint: `collab/node/` vs `collab/binding/` and `vscode/src/collab/binding/`); 4.3 after both.
 

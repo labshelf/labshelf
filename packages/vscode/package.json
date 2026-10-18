@@ -184,6 +184,34 @@
         "enablement": "!isWeb"
       },
       {
+        "command": "labshelf.collab.share",
+        "title": "Share Project…",
+        "category": "LabShelf",
+        "enablement": "!isWeb"
+      },
+      {
+        "command": "labshelf.collab.join",
+        "title": "Join Shared Project…",
+        "category": "LabShelf",
+        "enablement": "!isWeb"
+      },
+      {
+        "command": "labshelf.collab.leave",
+        "title": "Stop Sharing Project on This Device…",
+        "category": "LabShelf",
+        "enablement": "!isWeb"
+      },
+      {
+        "command": "labshelf.collab.undo",
+        "title": "Undo My Edit in Shared File",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.collab.redo",
+        "title": "Redo My Edit in Shared File",
+        "category": "LabShelf"
+      },
+      {
         "command": "labshelf.resolveConflicts",
         "title": "Resolve Conflicting Copies",
         "category": "LabShelf"
@@ -775,6 +803,26 @@
           "when": "!isWeb"
         },
         {
+          "command": "labshelf.collab.share",
+          "when": "!isWeb"
+        },
+        {
+          "command": "labshelf.collab.join",
+          "when": "!isWeb"
+        },
+        {
+          "command": "labshelf.collab.leave",
+          "when": "!isWeb"
+        },
+        {
+          "command": "labshelf.collab.undo",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.collab.redo",
+          "when": "false"
+        },
+        {
           "command": "labshelf.moveLibrary",
           "when": "!isWeb"
         },
@@ -1050,6 +1098,23 @@
         "key": "ctrl+i",
         "mac": "cmd+i",
         "when": "editorTextFocus && editorLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject"
+      },
+      {
+        "command": "labshelf.collab.undo",
+        "key": "ctrl+z",
+        "mac": "cmd+z",
+        "when": "editorTextFocus && !editorReadonly && labshelf.collab.sharedEditor"
+      },
+      {
+        "command": "labshelf.collab.redo",
+        "key": "ctrl+y",
+        "mac": "cmd+shift+z",
+        "when": "editorTextFocus && !editorReadonly && labshelf.collab.sharedEditor"
+      },
+      {
+        "command": "labshelf.collab.redo",
+        "key": "ctrl+shift+z",
+        "when": "editorTextFocus && !editorReadonly && labshelf.collab.sharedEditor"
       }
     ]
   },
@@ -1079,9 +1144,11 @@
     "@labshelf/core": "workspace:*",
     "@myriaddreamin/typst-ts-web-compiler": "0.7.0",
     "@napi-rs/canvas": "^1.0.9",
+    "node-datachannel": "0.33.4",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "~6.3.289",
-    "tesseract.js": "^7.0.0"
+    "tesseract.js": "^7.0.0",
+    "yjs": "^13.6.33"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

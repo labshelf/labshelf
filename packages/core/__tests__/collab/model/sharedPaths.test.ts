@@ -12,9 +12,9 @@ describe("sharedPaths", () => {
     expect(sharedPaths(list)).toEqual(["labshelf.bib", "main.tex", "fig/plot.pdf", "refs.bib"]);
   });
 
-  it("admits only the checklist and comments of .labshelf/", () => {
+  it("admits only the checklist of .labshelf/, because comments travel in the index doc", () => {
     const list = [".labshelf/checklist.json", ".labshelf/comments.json", ".labshelf/state.json", "sub/.labshelf/checklist.json"];
-    expect(sharedPaths(list)).toEqual([".labshelf/checklist.json", ".labshelf/comments.json"]);
+    expect(sharedPaths(list)).toEqual([".labshelf/checklist.json"]);
   });
 
   it("drops the built PDF of a Typst root in a subfolder", () => {
