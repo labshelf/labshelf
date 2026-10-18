@@ -16,7 +16,7 @@ Context: design `documents/plans/project-collaboration/research/share-links.md`.
 | 8.3 | Share page design | — | `ui-design` skill | design approved by the user | [x] |
 | 8.4 | Share page | behaviour | implementer (sonnet) | website build | [x] |
 | 8.5 | VS Code commands | behaviour | implementer (sonnet) | typecheck | [x] |
-| 8.6 | Real run | task | main thread, headless Chromium | A11 | [ ] |
+| 8.6 | Real run | task | main thread, headless Chromium | A11 | [x] |
 | 8.7 | Check, commit | — | `check` on Owns, `git commit` of Owns | gate passes | [ ] |
 
 8.1, 8.2 and 8.3 in parallel; 8.4 and 8.5 after.

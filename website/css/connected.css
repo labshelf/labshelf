@@ -1,0 +1,19 @@
+/* Lays out the sign-in result page: the logo, a short terminal transcript and what to do next, centred on the ink desk. */
+
+body{display:grid;min-height:100dvh;place-items:center;padding-block:48px}
+.done{width:min(560px,100%)}
+.done .logo{font:500 17px var(--mono);color:var(--tx);letter-spacing:-.02em}
+.done .logo:hover{text-decoration:none}
+.done .logo .cur{width:.55em}
+
+.term{margin:40px 0 36px;padding:18px 22px;background:var(--ink2);border:1px solid var(--line);border-radius:8px;font:13.5px/1.9 var(--mono)}
+.term p{margin:0}
+.cmd{color:var(--tx)}
+.out{display:flex;gap:10px;align-items:center;color:var(--green)}
+.out.err{color:var(--red)}
+.mark-ok{width:15px;height:15px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+h1{margin:0 0 10px;font:500 clamp(30px,6vw,40px)/1.15 var(--serif);letter-spacing:-.01em}
+.lead{margin:0;color:var(--tx)}
+.note{margin:18px 0 0;color:var(--dim);font-size:15px}
+.note:empty{display:none}

@@ -1,0 +1,11 @@
+# Only what the browser loads is published; sources, tests and build scripts stay in the repository.
+node_modules
+/__tests__
+/build
+/src
+/tools
+/*.json
+/*.jsonc
+/*.cjs
+*.map
+.assetsignore

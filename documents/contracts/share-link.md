@@ -10,7 +10,7 @@ A *share link* gives anyone who has it a read-only copy of a folder of papers: t
 <page origin>/share/#<worker host>/<share id>/<link key>
 ```
 
-- The page origin is `https://labshelf.app`, one constant in core, filled in when the site is published.
+- The page origin is `https://labshelf.org`, one constant in core.
 - The worker host is the host of the owner's Worker URL (`<worker>.<subdomain>.workers.dev`), without scheme, port or path; the Worker is reached at `https://<worker host>`.
 - The share id is 16 random bytes as 32 lowercase hex characters. It is not derived from the link key, so the Worker's paths and KV keys reveal nothing about the key.
 - The link key is 16 random bytes, base64url without padding (22 characters).

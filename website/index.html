@@ -599,7 +599,12 @@ exists vaswani2017attention  (1706.03762)</pre></div>
     <tr><td>doi.org, api.unpaywall.org, arxiv.org and the publisher and repository sites they point to</td><td>Finding a PDF</td></tr>
     <tr><td>packages.typst.org, cdn.jsdelivr.net, raw.githubusercontent.com, github.com</td><td>Browsing templates and downloading the Typst and Tectonic tools</td></tr>
     <tr><td>api.github.com</td><td>Submitting a template, only when you publish one</td></tr>
+    <tr><td>dash.cloudflare.com, api.cloudflare.com</td><td>Connecting your Cloudflare account, and installing or updating your relay in it</td></tr>
+    <tr><td>&lt;relay&gt;.&lt;your subdomain&gt;.workers.dev</td><td>Editing a shared project and opening a share link: the relay in the Cloudflare account of whoever connected it</td></tr>
+    <tr><td>labshelf.org</td><td>Opening a share link in a browser</td></tr>
   </tbody></table></div>
+  <p>Shared projects and share links go through a relay that LabShelf installs in the Cloudflare account of the person who connects one, never in an account LabShelf runs. Connecting signs you in to Cloudflare in your browser and asks only to manage Workers, Workers KV and Realtime and to read account settings. LabShelf keeps that sign-in on your device, to update the relay, and Cloudflare's own <a href="https://www.cloudflare.com/privacypolicy/">privacy policy</a> covers the account.</p>
+  <p>Everything a relay stores or forwards is encrypted on your device: files, edits, comments, cursors, paper metadata and PDFs. The key travels only inside the invite or the share link, after the <code>#</code>, which a browser never sends to a server. The account owner and Cloudflare see opaque identifiers, sizes and times, never the content. Revoking a share link deletes its copy from the relay.</p>
   <p>A lookup by identifier sends only the identifier. Searching or matching by title sends the title. Finding a PDF for a paper without a DOI or arXiv id sends its title, and the first author's surname to export.arxiv.org. Registry lookups also send a contact address, <code>contact@labshelf.dev</code>.</p>
 </section>
 

@@ -13,7 +13,7 @@ Context: CRDT state lives in clients, so relays are interchangeable; pooling rel
 |---|---|---|---|---|---|
 | 7.1 | Relay list and selection | contract | implementer (opus), tests first → `architecture-reviewer` | selection tests | [x] |
 | 7.2 | "Offer my relay" in VS Code | behaviour | implementer (sonnet) | typecheck | [x] |
-| 7.3 | Two-relay run | task | main thread with the user's scratch accounts | A10 | [ ] |
+| 7.3 | Two-relay run | task | main thread with the user's scratch accounts | A10 (gaps go to session 10) | [x] |
 | 7.4 | Check, commit | — | `check` on Owns, `git commit` of Owns | gate passes | [ ] |
 
 ## 7.1 — Relay list and selection
@@ -34,4 +34,5 @@ Context: CRDT state lives in clients, so relays are interchangeable; pooling rel
 
 ## 7.3 — Two-relay run
 
-- **Do:** two scratch accounts' Workers in one project; stop the first (delete its route) mid-session; check every client moves and no edit is lost (A10).
+- **Do:** two scratch accounts' Workers in one project; stop the first mid-session by uploading a Worker that answers 503 to every request; check every client moves and no edit is lost (A10).
+- **Trap:** disabling the route or deleting the script does not stop a live session: sockets already open to the Durable Object keep working for minutes while new connections are refused.

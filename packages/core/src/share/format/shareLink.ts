@@ -3,7 +3,7 @@ import { base64UrlToBytes, bytesToBase64Url } from "../../encoding/index.js";
 import { isShareId } from "../../relay/index.js";
 
 // CONTRACT: documents/contracts/share-link.md#link
-export const SHARE_PAGE_ORIGIN = "https://labshelf.app";
+export const SHARE_PAGE_ORIGIN = "https://labshelf.org";
 export const SHARE_LINK_KEY_BYTES = 16;
 
 export interface ShareLinkParts {

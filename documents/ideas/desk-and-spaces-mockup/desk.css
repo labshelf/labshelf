@@ -1,0 +1,69 @@
+/* Lays out the global Desk: capture bar, cards in your hands, dated rows and the Arrived inbox. Mockup only. */
+.desk { max-width: 1180px; margin: 0 auto; padding: 24px 32px 48px; }
+.dk-head { display: flex; align-items: flex-end; gap: var(--ls-space-6); }
+.dk-title { font: 600 28px/1.2 var(--ls-serif); margin: 0; }
+.dk-date { margin-top: 2px; font-family: var(--ls-serif); font-size: var(--ls-text-xl); color: var(--ls-desc); }
+.dk-ics { margin-left: auto; }
+
+.dk-capture { margin-top: 18px; padding: 10px 12px; background: var(--ls-bg); border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius-lg); }
+.dk-capture-row { display: flex; align-items: center; gap: var(--ls-space-4); }
+.dk-capture-row > span { display: inline-flex; color: var(--ls-desc); }
+.dk-capture-row > span svg { width: 16px; height: 16px; }
+.dk-input { flex: 1; min-width: 0; height: 28px; padding: 0 10px; font: var(--ls-text-md) var(--ls-mono); color: var(--ls-input-fg); background: var(--ls-input-bg); border: 1px solid var(--ls-input-border); border-radius: var(--ls-radius); }
+.dk-input:focus { outline: none; border-color: var(--ls-focus); }
+.dk-input::placeholder { color: var(--ls-input-placeholder); }
+.dk-preview { margin: 8px 0 0 24px; }
+
+.dk-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(320px, 1fr); gap: 32px; margin-top: 24px; }
+.dk-col { display: flex; flex-direction: column; gap: 26px; min-width: 0; }
+.dk-sec-head { display: flex; align-items: baseline; gap: var(--ls-space-4); margin-bottom: 8px; min-height: 28px; }
+.dk-sec-head .ls-btn { margin-left: auto; align-self: center; }
+.dk-sec-title { font-size: var(--ls-text-md); font-weight: 600; color: var(--ls-desc); }
+.dk-sec-hint { font-size: var(--ls-text-sm); color: var(--ls-desc); opacity: .8; }
+.dk-toggle { width: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; align-items: center; }
+.dk-toggle .tw { color: var(--ls-desc); }
+.dk-empty { color: var(--ls-desc); font-size: var(--ls-text-md); font-style: italic; padding: 6px 0; }
+
+/* In your hands: sheets that are open right now. */
+.hands { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.hand { display: grid; grid-template-rows: auto auto 1fr auto; gap: 4px; padding: 10px 12px; background: var(--ls-bg); border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius-lg); box-shadow: var(--ls-page-shadow); }
+.hand-top { display: flex; align-items: center; gap: var(--ls-space-3); font-size: var(--ls-text-sm); color: var(--ls-desc); }
+.hand-at { font-family: var(--ls-mono); color: var(--ls-fg); }
+.hand-app::before { content: "·"; margin-right: 6px; }
+.hand-top .ls-icon-btn { margin-left: auto; width: 20px; height: 20px; }
+.hand-top .ls-icon-btn svg { width: 13px; height: 13px; }
+.hand-title { font-family: var(--ls-serif); font-size: var(--ls-font-size); line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.hand-sub { font-size: var(--ls-text-sm); color: var(--ls-desc); }
+.hand-sub.q { color: var(--ls-mark-warn); }
+.hand-resume { justify-self: start; margin-top: 4px; }
+
+/* Dated rows: reading, writing todos, desk items and deadlines. */
+.dues { display: flex; flex-direction: column; }
+.due { display: grid; grid-template-columns: 18px 36px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; padding: 7px 4px; border-top: 1px solid var(--ls-row-rule); }
+.due:last-child { border-bottom: 1px solid var(--ls-row-rule); }
+.due:hover { background: var(--ls-list-hover); }
+.due-check { width: 14px; height: 14px; margin: 0; accent-color: var(--ls-button-bg); cursor: pointer; align-self: center; }
+.due-flag { display: inline-flex; color: var(--ls-mark-err); align-self: center; }
+.due-flag svg { width: 13px; height: 13px; }
+.due-main { min-width: 0; }
+.due-text { display: block; }
+.due-meta { display: flex; flex-wrap: wrap; gap: 0 10px; font-size: var(--ls-text-sm); color: var(--ls-desc); margin-top: 1px; }
+.due-day { font: var(--ls-text-sm) var(--ls-mono); color: var(--ls-desc); white-space: nowrap; }
+.due-day.late { color: var(--ls-mark-err); }
+.due.done .due-text { color: var(--ls-desc); text-decoration: line-through; }
+
+/* Arrived: the inbox, one triage row per notice. */
+.arrived { display: flex; flex-direction: column; }
+.arr { position: relative; display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 10px; padding: 10px 4px; border-top: 1px solid var(--ls-row-rule); }
+.arr:first-child { border-top: 0; padding-top: 2px; }
+.arr-ic { display: inline-flex; color: var(--ls-desc); padding-top: 1px; }
+.arr-ic svg { width: 15px; height: 15px; }
+.arr.k-retraction .arr-ic { color: var(--ls-mark-err); }
+.arr.k-version .arr-ic, .arr.k-citing .arr-ic { color: var(--ls-mark-accent); }
+.arr-title { line-height: 1.4; }
+.arr-line { margin-top: 2px; font-size: var(--ls-text-sm); color: var(--ls-desc); line-height: 1.5; }
+.arr-line .space-chip { margin-left: 6px; }
+.arr-acts { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.arr-acts .ls-icon-btn { width: 28px; height: 28px; }
+.dk-menu { position: absolute; z-index: 10; left: 30px; top: calc(100% - 6px); }
+.dk-pick input { margin-left: auto; height: 20px; font: var(--ls-text-sm) var(--ls-font); color: var(--ls-input-fg); background: var(--ls-input-bg); border: 1px solid var(--ls-input-border); border-radius: var(--ls-radius-sm); color-scheme: dark; }

@@ -1,0 +1,35 @@
+/* Lays out the Discover tab: search, filter chips, the ranked feed and the Watching summary. Mockup only. */
+.dc-grid { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 32px; margin-top: 20px; }
+.dc-main { min-width: 0; }
+.dc-search { height: 30px; }
+.dc-search input { font-size: var(--ls-text-md); }
+.dc-chips { display: flex; gap: 6px; margin: 12px 0 8px; }
+.dc-chip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius-pill); background: none; color: var(--ls-desc); font: var(--ls-text-md) var(--ls-font); cursor: pointer; }
+.dc-chip:hover { color: var(--ls-fg); background: var(--ls-list-hover); }
+.dc-chip.on { color: var(--ls-button-soft-fg); background: var(--ls-button-soft-bg); border-color: transparent; }
+.dc-n { font: var(--ls-text-xs) var(--ls-mono); opacity: .8; }
+
+.dc-feed { display: flex; flex-direction: column; }
+.dc-item { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 11px 4px; border-top: 1px solid var(--ls-row-rule); }
+.dc-item:hover { background: var(--ls-list-hover); }
+.dc-rank { align-self: start; padding-top: 2px; font: var(--ls-text-sm) var(--ls-mono); color: var(--ls-desc); text-align: right; }
+.dc-body { min-width: 0; }
+.dc-title { font-family: var(--ls-serif); font-size: var(--ls-text-xl); line-height: 1.35; }
+.dc-authors { margin-top: 1px; font-size: var(--ls-text-sm); color: var(--ls-desc); display: flex; gap: 10px; align-items: center; }
+.dc-owned { display: inline-flex; align-items: center; gap: 3px; color: var(--ls-mark-ok); }
+.dc-owned svg { width: 11px; height: 11px; }
+.dc-why { display: flex; align-items: center; gap: 5px; margin-top: 3px; font-size: var(--ls-text-sm); color: var(--ls-mark-accent); }
+.dc-why svg { width: 11px; height: 11px; flex: none; }
+.dc-acts { display: flex; gap: 4px; align-items: center; }
+.dc-acts .ls-icon-btn { width: 28px; height: 28px; }
+
+.dc-watch { align-self: start; padding: 14px 16px; background: var(--ls-bg); border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius-lg); display: flex; flex-direction: column; gap: 8px; }
+.dc-watch-head { display: flex; align-items: center; gap: 6px; font-size: var(--ls-text-md); font-weight: 600; color: var(--ls-desc); }
+.dc-watch-head svg { width: 14px; height: 14px; }
+.dc-watch-big { font: 600 var(--ls-text-2xl) var(--ls-serif); }
+.dc-watch-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: var(--ls-text-md); }
+.dc-watch-list li { display: flex; align-items: center; gap: 6px; }
+.dc-watch-list svg { width: 12px; height: 12px; color: var(--ls-desc); }
+.dc-watch-meta { font-size: var(--ls-text-sm); color: var(--ls-desc); line-height: 1.5; }
+.dc-watch .ls-btn { align-self: flex-start; }
+.dc-acts .ls-btn-ghost { min-width: 64px; justify-content: center; }

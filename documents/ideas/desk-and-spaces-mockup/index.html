@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>LabShelf — Desk and Spaces (mockup)</title>
+<link rel="stylesheet" href="../../../packages/core/src/ui/dom/tokens.css">
+<link rel="stylesheet" href="../../../packages/core/src/ui/dom/base.css">
+<link rel="stylesheet" href="chrome.css">
+<link rel="stylesheet" href="commands.css">
+<link rel="stylesheet" href="space.css">
+<link rel="stylesheet" href="desk.css">
+<link rel="stylesheet" href="notebook.css">
+<link rel="stylesheet" href="discover.css">
+<link rel="stylesheet" href="glossary.css">
+<link rel="stylesheet" href="capture.css">
+</head>
+<body>
+<div class="win">
+  <div class="titlebar"><div class="cmd">[Extension Development Host] test-workspace</div>
+    <button class="tb-capture" data-act="capture" title="Capture (Cmd+Shift+L)" aria-label="Capture"><span data-i="square-plus"></span></button></div>
+  <div class="body">
+    <nav class="activity">
+      <span data-i="file"></span><span data-i="search"></span><span data-i="layers"></span><span data-i="list"></span>
+      <span class="on" data-i="chevron-right"></span>
+    </nav>
+
+    <aside class="vs-sidebar">
+      <div class="vs-title">LabShelf<span class="sp"></span><i data-i="gear"></i><i data-i="more"></i></div>
+      <div class="node nav top" data-view="desk"><span class="ic" data-i="target"></span><span class="lbl">Desk</span><span class="cnt" id="side-desk-count"></span></div>
+      <div class="vs-sec"><span class="tw" data-i="chevron-right"></span>Library</div>
+      <div class="vs-sec"><span class="tw" data-i="chevron-right"></span>Projects</div>
+      <div class="vs-sec"><span class="tw" data-i="chevron-down"></span>Spaces</div>
+      <div class="node" style="padding-left:12px"><span class="tw" data-i="chevron-down"></span><span class="lbl">Thesis — chapter 3</span></div>
+      <div class="node nav" data-view="overview" style="padding-left:36px"><span class="ic" data-i="layers"></span><span class="lbl">Overview</span></div>
+      <div class="node nav" data-view="notebook" style="padding-left:36px"><span class="ic" data-i="note"></span><span class="lbl">Notebook</span><span class="cnt" id="side-nb-count"></span></div>
+      <div class="node nav" data-view="discover" style="padding-left:36px"><span class="ic" data-i="compass"></span><span class="lbl">Discover</span></div>
+      <div class="node nav" data-view="glossary" style="padding-left:36px"><span class="ic" data-i="book-a"></span><span class="lbl">Glossary</span></div>
+      <div class="node" style="padding-left:12px"><span class="tw" data-i="chevron-right"></span><span class="lbl">RL seminar</span></div>
+      <div class="node" style="padding-left:12px"><span class="tw empty" data-i="chevron-right"></span><span class="ic muted" data-i="plus"></span><span class="lbl muted">New space</span></div>
+    </aside>
+
+    <main class="editor">
+      <div class="tabsbar"><div class="etab"><span data-i="chevron-right"></span><span id="tab-title">Thesis — chapter 3</span><span class="x" data-i="x"></span></div></div>
+      <div class="webview" id="view"></div>
+    </main>
+  </div>
+  <footer class="statusbar"><span>0 errors · 0 warnings</span><span class="sp"></span><span id="status-desk"></span></footer>
+</div>
+<div class="toast" id="toast" role="status"></div>
+<div class="scrim" id="scrim" hidden></div>
+<script src="icons.js"></script>
+<script src="data.js"></script>
+<script src="dates.js"></script>
+<script src="commands.js"></script>
+<script src="apply.js"></script>
+<script src="schedule.js"></script>
+<script src="space.js"></script>
+<script src="desk.js"></script>
+<script src="notebook.js"></script>
+<script src="discover.js"></script>
+<script src="glossary.js"></script>
+<script src="capture.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

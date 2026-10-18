@@ -1,0 +1,34 @@
+/* Styles the command language everywhere it appears: kind tags, the "This will…" preview, mentions and source links. Mockup only. */
+.cmd-tag { font: 600 var(--ls-text-xs)/16px var(--ls-mono); flex: none; min-width: 32px; letter-spacing: .02em; }
+.t-desk { color: var(--ls-mark-accent); }
+.t-read { color: var(--ls-status-reading); }
+.t-todo { color: var(--ls-file-tex); }
+.t-msg { color: var(--ls-file-typ); }
+.t-ask { color: var(--ls-mark-warn); }
+.t-decided { color: var(--ls-mark-ok); }
+.t-backlink { color: var(--ls-desc); }
+.t-warn, .t-deadline { color: var(--ls-mark-err); }
+
+.cmd-preview { list-style: none; margin: 0; padding: 0; }
+.cmd-preview li { display: flex; align-items: baseline; gap: var(--ls-space-4); padding: 5px 0; font-size: var(--ls-text-md); border-top: 1px solid var(--ls-row-rule); }
+.cmd-preview li:first-child { border-top: 0; }
+.cmd-label { min-width: 0; }
+.cmd-preview li.k-warn .cmd-label { color: var(--ls-mark-err); }
+.cmd-target { color: var(--ls-desc); font-size: var(--ls-text-sm); white-space: nowrap; }
+.cmd-due { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font: var(--ls-text-sm) var(--ls-mono); color: var(--ls-desc); white-space: nowrap; }
+.cmd-due svg { width: 11px; height: 11px; }
+.cmd-empty { color: var(--ls-desc); font-style: italic; font-size: var(--ls-text-md); padding: 4px 0; }
+.cmd-hint { display: flex; flex-wrap: wrap; gap: 2px 14px; margin-top: var(--ls-space-4); font-size: var(--ls-text-sm); color: var(--ls-desc); }
+.cmd-hint b { font: 600 var(--ls-text-sm) var(--ls-mono); color: var(--ls-fg); }
+.cmd-hint .once { flex-basis: 100%; font-style: italic; }
+
+.mention-link { padding: 0 2px; border: 0; background: none; font: .9em var(--ls-mono); color: var(--ls-link); cursor: pointer; border-radius: var(--ls-radius-sm); }
+.mention-link:hover { background: var(--ls-button-soft-bg); }
+.mention-link.file { color: var(--ls-file-tex); }
+.src-link { padding: 0; border: 0; background: none; font: var(--ls-text-sm) var(--ls-font); color: var(--ls-link); cursor: pointer; }
+.src-link:hover { text-decoration: underline; }
+.src-link.plain { color: var(--ls-desc); cursor: default; }
+.src-link.plain:hover { text-decoration: none; }
+.space-chip { display: inline-flex; align-items: center; gap: 4px; margin-left: var(--ls-space-4); padding: 0 6px; font-size: var(--ls-text-xs); line-height: 16px; color: var(--ls-desc); border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius-pill); white-space: nowrap; }
+.space-chip svg { width: 10px; height: 10px; }
+.ft.mtg { color: var(--ls-mark-accent); }

@@ -16,7 +16,7 @@ Context: limits, budget rules, auth and the deploy recipe: `documents/plans/proj
 | 6.3 | Relay transport and batching in clients | behaviour | implementer (sonnet), tests first | budget tests | [x] |
 | 6.4 | API deploy and update | behaviour | implementer (sonnet), tests first against a fake API | deploy tests | [x] |
 | 6.5 | Token setup UI in VS Code | behaviour | `ui-design` first, then implementer (sonnet) | typecheck | [x] |
-| 6.6 | Real account run | task | main thread with the user's scratch account | A7–A9 | [ ] |
+| 6.6 | Real account run | task | main thread with the user's scratch account | A7, A8 (A9 moves to session 10) | [x] |
 | 6.7 | Check, commit | — | `check` on Owns, `git commit` of Owns | gate passes | [x] |
 
 6.1 first; 6.2, 6.3 and 6.4 in parallel (disjoint: `relay/worker/`, `collab/transport/relay*`, `relay/deploy/`); 6.5 after 6.4.
