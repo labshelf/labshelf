@@ -25,7 +25,7 @@ Every path is relative to the library root, `/`-separated; `""` names the root. 
 
 Backslash is a path separator too. A segment that is a Windows device name (`con`, `prn`, `aux`, `nul`, `com1`–`com9`, `lpt1`–`lpt9`, with or without an extension, any case) is refused with `outsideLibrary` on every platform, because the library is shared across operating systems.
 
-`stat`, `listDir` and `deleteFile` act on a symlink entry itself: `stat` reports it as neither a file nor a folder, and `deleteFile` removes the link, whether it points inside, outside or nowhere. Reading or writing through a symlink that leaves the root is refused. `rename` overwrites an existing target. Writes are always atomic, through a temp file in `.research/tmp`; when that folder is on another volume the write fails with `io` rather than writing in place.
+`stat`, `listDir` and `deleteFile` act on a symlink entry itself: `stat` reports it as neither a file nor a folder, and `deleteFile` and `deleteDir` remove the link, whether it points inside, outside or nowhere. `deleteDir` never follows a symlink inside the folder it removes. Reading or writing through a symlink that leaves the root is refused. `rename` overwrites an existing target. Writes are always atomic, through a temp file in `.research/tmp`; when that folder is on another volume the write fails with `io` rather than writing in place.
 
 Write, rename and delete resolve the entry's folder through the root's real path and check that folder again just before the final rename or unlink. A process that swaps a folder for a symlink between that check and the system call can still redirect the operation; closing that window needs `openat`-style calls Node does not offer.
 
@@ -45,6 +45,7 @@ A request is `{id, op, …}` with an integer `id` chosen by the browser. The hos
 | `chunk` | `data` | none |
 | `commit` | `size` | `{size}`; refused when `size` differs from the staged byte count |
 | `deleteFile` | `path` | `{}`; a missing file is not an error |
+| `deleteDir` | `path` | `{}`; removes the folder and everything in it; a missing folder is not an error; refused with `outsideLibrary` for the root and with `io` for a file |
 | `ensureDir` | `path` | `{}`; creates parents |
 | `rename` | `from`, `to` | `{}`; creates the parents of `to` |
 

@@ -74,7 +74,7 @@ function dispatch(ctx: HostContext, { pdf, files, citations }: Handlers, m: UiTo
 }
 
 /** Starts answering the UI on `endpoint`. */
-export function attachLibraryHost(endpoint: HostEndpoint, options: LibraryHostOptions): { openCitationMap(): void } {
+export function attachLibraryHost(endpoint: HostEndpoint, options: LibraryHostOptions): { openCitationMap(): void; reloadSnapshots(): Promise<void> } {
   const ctx = createHostContext(endpoint, options.log);
   const pdf = createPdfHandlers(ctx);
   const citations = createCitationMapHandlers(ctx);
@@ -82,5 +82,5 @@ export function attachLibraryHost(endpoint: HostEndpoint, options: LibraryHostOp
   endpoint.subscribe((m) => dispatch(ctx, handlers, m, options));
   watchLibraryChanges(ctx.snapshots, ctx.log);
   watchChangeNotices(ctx);
-  return { openCitationMap: () => run(ctx, () => citations.open()) };
+  return { openCitationMap: () => run(ctx, () => citations.open()), reloadSnapshots: () => ctx.snapshots.reload() };
 }

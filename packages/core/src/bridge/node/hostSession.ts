@@ -89,6 +89,7 @@ export class BridgeHostSession {
       case "chunk": this.staged.append(request.id, request.data); return undefined;
       case "commit": return this.commit(files, request.id, request.size);
       case "deleteFile": await files.deleteFile(request.path); return {};
+      case "deleteDir": await files.deleteDir(request.path); return {};
       case "ensureDir": await files.ensureDir(request.path); return {};
       case "rename": await files.rename(request.from, request.to); return {};
     }

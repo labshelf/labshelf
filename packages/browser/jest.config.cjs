@@ -11,6 +11,7 @@ module.exports = {
     '^.+\\.tsx?$': ['ts-jest', { compiler: 'typescript-js', tsconfig: '<rootDir>/tsconfig.test.json' }],
   },
   roots: ['<rootDir>/__tests__'],
+  setupFiles: ['<rootDir>/__tests__/support/mockWebextensionPolyfill.ts'],
   testMatch: ['**/__tests__/**/*.test.ts'],
   moduleFileExtensions: ['ts', 'js', 'json'],
   collectCoverageFrom: [
@@ -22,7 +23,7 @@ module.exports = {
     'src/content/searchHitIds.ts',
     'src/popup/format.ts',
     'src/reader/sidecarChangeNotice.ts',
-    'src/storage/idbSidecarPort.ts',
+    'src/storage/sidecarPort.ts',
     'src/reader/inPageTransport.ts',
     // Injected into pages or driving real tabs: verified in a browser, not in node.
     '!src/capture/pageProbeContentScript.ts',

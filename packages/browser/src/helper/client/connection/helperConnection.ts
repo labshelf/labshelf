@@ -1,9 +1,10 @@
 // Pairs requests with the helper's replies by id and fails every pending request when the port closes.
 import { parseHelperMessage, PROTOCOL_VERSION, type ToHelperMessage, type ToPageMessage } from "@labshelf/core/helper";
 import type { ILogger } from "@labshelf/core";
-import type { NativePort } from "./nativePort";
+import type { NativePort } from "../../../platform";
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
+export type HelperPortFactory = () => NativePort;
 export type RequestBody = DistributiveOmit<ToHelperMessage, "v" | "id">;
 /** Returns `{ done }` to settle the request with a value, or undefined to wait for more frames. */
 type FrameStep<T> = (message: ToPageMessage) => { done: T } | undefined;

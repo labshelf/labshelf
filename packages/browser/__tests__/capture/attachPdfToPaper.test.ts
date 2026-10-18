@@ -23,9 +23,9 @@ describe("safeFolder", () => {
   it("accepts collections under papers/ and falls back to the root otherwise", () => {
     expect(safeFolder("papers/Thesis/Ch2/")).toBe("papers/Thesis/Ch2");
     expect(safeFolder(undefined)).toBe("papers");
-    expect(safeFolder("appdata/secrets")).toBe("papers");
-    expect(safeFolder("papers/../appdata")).toBe("papers");
-    expect(safeFolder("papers\\..\\appdata")).toBe("papers");
+    expect(safeFolder(".research/secrets")).toBe("papers");
+    expect(safeFolder("papers/../.research")).toBe("papers");
+    expect(safeFolder("papers\\..\\.research")).toBe("papers");
     expect(safeFolder("papers/a\\b")).toBe("papers");
   });
 });

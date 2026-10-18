@@ -93,6 +93,39 @@ describe("bridge file operations", () => {
     expect(await pathExists(path.join(root, "papers", "c", "bib.bib"))).toBe(false);
     await bridge.close();
   });
+
+  it("deletes a folder tree in one request and treats a missing folder as done", async () => {
+    const root = await library();
+    await fs.mkdir(path.join(root, "papers", "a", "notes"), { recursive: true });
+    await fs.writeFile(path.join(root, "papers", "a", "notes", "n.md"), "n");
+    await fs.writeFile(path.join(root, "papers", "a", "metadata.yaml"), "m");
+    const bridge = await startBridge(root);
+    await bridge.hello();
+    expect((await bridge.call({ id: 1, op: "deleteDir", path: "papers/a" }))[0]).toEqual({ id: 1, ok: true, result: {} });
+    expect(await pathExists(path.join(root, "papers", "a"))).toBe(false);
+    expect(await pathExists(path.join(root, "papers"))).toBe(true);
+    expect((await bridge.call({ id: 2, op: "deleteDir", path: "papers/a" }))[0]).toEqual({ id: 2, ok: true, result: {} });
+    await bridge.close();
+  });
+
+  it.each(["", ".", "../library", "../outside"])("refuses to delete the folder %j, which is the root or outside it", async (relative) => {
+    const root = await library();
+    const bridge = await startBridge(root);
+    await bridge.hello();
+    expect((await bridge.call({ id: 1, op: "deleteDir", path: relative }))[0]).toMatchObject({ ok: false, error: { code: "outsideLibrary" } });
+    expect(await pathExists(path.join(root, "papers", "a"))).toBe(true);
+    await bridge.close();
+  });
+
+  it("refuses deleteDir on a file with io and keeps the file", async () => {
+    const root = await library();
+    await fs.writeFile(path.join(root, "papers", "a", "bib.bib"), "@x{}");
+    const bridge = await startBridge(root);
+    await bridge.hello();
+    expect((await bridge.call({ id: 1, op: "deleteDir", path: "papers/a/bib.bib" }))[0]).toMatchObject({ ok: false, error: { code: "io" } });
+    expect(await fs.readFile(path.join(root, "papers", "a", "bib.bib"), "utf8")).toBe("@x{}");
+    await bridge.close();
+  });
 });
 
 describe("LibraryFileOperations confinement and atomicity", () => {
@@ -160,6 +193,29 @@ describe("LibraryFileOperations confinement and atomicity", () => {
     }
     expect((await ops.listDir("papers")).names).toEqual(["a"]);
     expect(await fs.readFile(path.join(outside, "secret.txt"), "utf8")).toBe("s");
+  });
+
+  it("deleteDir removes symlink entries and never their targets", async () => {
+    const { root, outside, ops } = await withOutside();
+    const papers = path.join(root, "papers");
+    await fs.writeFile(path.join(outside, "secret.txt"), "s");
+    await fs.writeFile(path.join(papers, "a", "keep.txt"), "k");
+    await fs.symlink(outside, path.join(papers, "escape"));
+    await fs.symlink(path.join(papers, "a"), path.join(papers, "alias"));
+    await fs.mkdir(path.join(papers, "b"));
+    await fs.symlink(outside, path.join(papers, "b", "inner"));
+    for (const name of ["escape", "alias", "b"]) await ops.deleteDir(`papers/${name}`);
+    expect((await ops.listDir("papers")).names).toEqual(["a"]);
+    expect(await fs.readFile(path.join(papers, "a", "keep.txt"), "utf8")).toBe("k");
+    expect(await fs.readFile(path.join(outside, "secret.txt"), "utf8")).toBe("s");
+  });
+
+  it("refuses deleteDir through a folder that links outside the library", async () => {
+    const { root, outside, ops } = await withOutside();
+    await fs.mkdir(path.join(outside, "x"));
+    await fs.symlink(outside, path.join(root, "papers", "escape"));
+    await expect(ops.deleteDir("papers/escape/x")).rejects.toMatchObject({ code: "outsideLibrary" });
+    expect(await pathExists(path.join(outside, "x"))).toBe(true);
   });
 
   it("refuses reads and writes through an escaping symlink", async () => {

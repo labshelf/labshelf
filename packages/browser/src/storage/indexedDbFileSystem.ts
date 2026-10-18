@@ -2,12 +2,13 @@
  * Implements the library file system over the "files" IndexedDB store: keys are POSIX paths, and directories are the
  * prefixes of keys.
  */
-import type { LibraryFileSystem, LocalStat } from "@labshelf/core";
+import type { LocalStat } from "@labshelf/core";
 import { sha256Hex } from "@labshelf/core";
 import { belowDir, deleteTree, renameTree } from "./idbFileTree";
 import { getDb } from "./idb";
+import { ByteBackedFileSystem } from "./byteBacked";
 
-export class IndexedDbFileSystem implements LibraryFileSystem {
+export class IndexedDbFileSystem extends ByteBackedFileSystem {
   async listDir(dirPath: string): Promise<string[]> {
     const db = await getDb();
     const prefix = dirPath ? `${dirPath}/` : "";
@@ -58,18 +59,6 @@ export class IndexedDbFileSystem implements LibraryFileSystem {
 
   async ensureDir(_dirPath: string): Promise<void> {
     // Directories are implicit in the IDB file store; no sentinel needed.
-  }
-
-  async exists(targetPath: string): Promise<boolean> {
-    return (await this.stat(targetPath)) !== undefined;
-  }
-
-  async writeText(filePath: string, text: string): Promise<void> {
-    await this.writeFile(filePath, new TextEncoder().encode(text));
-  }
-
-  async readText(filePath: string): Promise<string> {
-    return new TextDecoder().decode(await this.readFile(filePath));
   }
 
   /** Fails when the destination exists. */

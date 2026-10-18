@@ -13,7 +13,7 @@ import {
 import { PDF_FILE, errorMessage } from "@labshelf/core";
 import { createInPageChannel, startReader, PerfMarks, resolveTheme, toast } from "@labshelf/core/dom";
 import { bx, createBrowserLogger, downloadTextFile } from "../platform";
-import { IndexedDbFileSystem, createIdbSidecarPort, getRecord } from "../storage";
+import { createLibraryFileSystem, createSidecarPort, getRecord } from "../storage";
 import { getThemePref, onThemeChange } from "../ui";
 import { loadReaderPrefs, onReaderPrefsChange } from "./access";
 import { installPageGuards, isMacPlatform } from "./pageGuards";
@@ -23,7 +23,7 @@ import { announceSidecarChange } from "./sidecarChangeNotice";
 // First statement, so scriptStart measures the whole open like in VS Code.
 const perf = new PerfMarks();
 const logger = createBrowserLogger();
-const fs = new IndexedDbFileSystem();
+const fs = createLibraryFileSystem();
 const PDFJS = "vendor/pdfjs/";
 
 function asset(path: string): string {
@@ -82,7 +82,7 @@ function createHostWithChannel(
   page: number | undefined,
   getPrefs: () => ReaderPrefs,
 ): { host: ReaderHostController; channel: ReturnType<typeof createInPageChannel> } {
-  const store = new PaperDataStore(createIdbSidecarPort(fs));
+  const store = new PaperDataStore(createSidecarPort(fs));
   // The host answers through the channel, which needs the host to exist first.
   let send: (msg: HostToWebview) => void = () => undefined;
   const host = new ReaderHostController({

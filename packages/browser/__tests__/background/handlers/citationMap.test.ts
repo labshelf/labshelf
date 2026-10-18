@@ -10,7 +10,7 @@ const mockBroadcast = jest.fn();
 jest.mock("../../../src/platform", () => ({ getSettings: async () => ({ contactEmail: "me@uni.edu" }) }));
 jest.mock("../../../src/storage", () => ({
   listAllRecords: async () => mockRecords,
-  IndexedDbFileSystem: class { readonly kind = "idb"; },
+  createLibraryFileSystem: () => ({ kind: "idb" }),
 }));
 jest.mock("../../../src/capture/index", () => ({
   draftFromDoi: (...a: unknown[]) => mockDraftFromDoi(...a),

@@ -10,12 +10,14 @@ describe("parseBridgeRequest", () => {
     expect(parseBridgeRequest({ id: 3, op: "chunk", data: "AA==" })).toEqual({ id: 3, op: "chunk", data: "AA==" });
     expect(parseBridgeRequest({ id: 4, op: "commit", size: 0 })).toEqual({ id: 4, op: "commit", size: 0 });
     expect(parseBridgeRequest({ id: 5, op: "listDir", path: "" })).toEqual({ id: 5, op: "listDir", path: "" });
+    expect(parseBridgeRequest({ id: 6, op: "deleteDir", path: "papers/a" })).toEqual({ id: 6, op: "deleteDir", path: "papers/a" });
   });
 
   it.each([
     ["no id", { op: "stat", path: "a" }],
     ["unknown op", { id: 1, op: "format" }],
     ["missing path", { id: 1, op: "stat" }],
+    ["deleteDir without a path", { id: 1, op: "deleteDir" }],
     ["non-string path", { id: 1, op: "readFile", path: 3 }],
     ["missing rename target", { id: 1, op: "rename", from: "a" }],
     ["not an object", "hello"],

@@ -1,8 +1,9 @@
 // Saves the paper on the current tab from the toolbar popup.
 // States (data-state on #popup): loading, form | library | empty, saving, saved. A matched PDF offer shows as library.
-import { bx, sendRuntime } from "../platform";
+import { bx, createBrowserLogger, sendRuntime } from "../platform";
 import type { FoldersData } from "../platform";
 import { $ } from "@labshelf/core/dom";
+import { mountSourceBanner } from "../library-source";
 import { applyTheme } from "../ui";
 import { errorMessage, icon } from "@labshelf/core";
 import { renderFolders, showStatus, autoGrow } from "./render";
@@ -44,6 +45,7 @@ async function init(): Promise<void> {
   $("title").classList.add("muted");
   setState("loading");
   wire();
+  mountSourceBanner($("sourceBanner"), { logger: createBrowserLogger(), onFolder: () => undefined });
 
   const [tab] = await bx.tabs.query({ active: true, currentWindow: true });
   // A PDF downloaded from any page, or opened from disk, can still match a paper; the offer then fills the popup.

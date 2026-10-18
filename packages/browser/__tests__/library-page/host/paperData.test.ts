@@ -12,6 +12,7 @@ jest.mock("../../../src/platform", () => ({
   bx: mockApi,
   sendRuntime: async (message: never) => (mockApi.runtime.sendMessage as jest.Mock)(message),
   downloadTextFile: jest.fn(async () => undefined),
+  createBrowserLogger: () => ({ log: async () => undefined, error: async () => undefined }),
 }));
 jest.mock("../../../src/capture", () => ({ attachPdfToPaper: jest.fn() }));
 jest.mock("../../../src/reader/access", () => ({ openReader: jest.fn() }));
@@ -35,7 +36,7 @@ function sidecar(annotations: unknown[], reading?: { page: number; updatedAt: st
 async function seedLibrary(data: string): Promise<void> {
   putFile("papers/smith2020/metadata.yaml", METADATA);
   putFile("papers/smith2020/paper.pdf", new Uint8Array(2048));
-  putFile("appdata/smith2020/data.json", data);
+  putFile(".research/papers/smith2020/data.json", data);
   await upsertRecord({ ...PAPER, tags: ["old"], hasPdf: true }, PAPER.path);
 }
 
@@ -171,7 +172,7 @@ describe("annotation changes made in the reader", () => {
     await seedLibrary(sidecar([highlight("a", 1)]));
     const app = start();
     await app.send({ type: "ready" });
-    putFile("appdata/smith2020/data.json", sidecar([highlight("a", 1), highlight("b", 2)]));
+    putFile(".research/papers/smith2020/data.json", sidecar([highlight("a", 1), highlight("b", 2)]));
     app.runtime()({ type: "library.changed", reason: "annotations", paperId: "smith2020" });
     await flush();
     expect(app.last("snapshot")?.snapshot.stats["smith2020"]?.annotations).toBe(2);
@@ -182,7 +183,7 @@ describe("annotation changes made in the reader", () => {
     const app = start();
     await app.send({ type: "ready" });
     const snapshots = app.received.filter((m) => m.type === "snapshot").length;
-    putFile("appdata/smith2020/data.json", sidecar([{ ...highlight("a", 1), color: "green" }]));
+    putFile(".research/papers/smith2020/data.json", sidecar([{ ...highlight("a", 1), color: "green" }]));
     app.runtime()({ type: "library.changed", reason: "annotations", paperId: "smith2020" });
     await flush();
     expect(app.last("sidecarChanged")).toEqual({ type: "sidecarChanged", id: "smith2020" });
@@ -193,7 +194,7 @@ describe("annotation changes made in the reader", () => {
     await seedLibrary(sidecar([]));
     const app = start();
     await app.send({ type: "ready" });
-    putFile("appdata/smith2020/data.json", sidecar([highlight("a", 1)]));
+    putFile(".research/papers/smith2020/data.json", sidecar([highlight("a", 1)]));
     app.runtime()({ type: "library.changed", reason: "capture" });
     await flush();
     expect(app.last("snapshot")?.snapshot.stats["smith2020"]?.annotations).toBe(1);

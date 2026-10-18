@@ -3,7 +3,7 @@ import { buildCitationMap, type CitationMap, type ILogger } from "@labshelf/core
 import type { ImportedDoiData } from "../../platform";
 import { getSettings } from "../../platform";
 import { draftFromDoi, saveOrAsk } from "../../capture/index";
-import { IndexedDbFileSystem, listAllRecords, type LibraryMutations } from "../../storage";
+import { createLibraryFileSystem, listAllRecords, type LibraryMutations } from "../../storage";
 import { broadcastChanged } from "../broadcast";
 
 const MODULE = "citationMap";
@@ -14,7 +14,7 @@ const CACHE_DIR = ".research/openalex";
 export async function handleCitationMapBuild(log: ILogger): Promise<CitationMap> {
   const [records, settings] = await Promise.all([listAllRecords(), getSettings()]);
   return buildCitationMap(
-    { registry: { logger: log, contactEmail: settings.contactEmail }, fs: new IndexedDbFileSystem(), cacheDir: CACHE_DIR, logger: log },
+    { registry: { logger: log, contactEmail: settings.contactEmail }, fs: createLibraryFileSystem(), cacheDir: CACHE_DIR, logger: log },
     records,
   );
 }

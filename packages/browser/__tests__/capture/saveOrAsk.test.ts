@@ -56,7 +56,7 @@ describe("saveOrAsk", () => {
   it("saves the PDF it found under the fallback title into a safe folder, and remembers that folder", async () => {
     mockPdf = { bytes: new Uint8Array([37, 80, 68, 70]), url: "https://pub.example/a.pdf", source: "page" };
 
-    const decision = await saveOrAsk(log, mutations, draft({ metadata: {} }), { folder: "appdata/secrets" });
+    const decision = await saveOrAsk(log, mutations, draft({ metadata: {} }), { folder: ".research/secrets" });
 
     expect(decision).toMatchObject({ kind: "saved", saved: { folder: "papers", pdfSource: "page" } });
     const [folder, paper] = importPaper.mock.calls[0]!;

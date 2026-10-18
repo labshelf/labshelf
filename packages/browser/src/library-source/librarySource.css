@@ -1,0 +1,21 @@
+/*
+ * Styles the storage banner and the move offer shown above the library and in the popup.
+ * Requires core tokens.css and base.css.
+ */
+.lsrc-banner {
+  display: flex; align-items: flex-start; gap: var(--ls-space-4); margin: var(--ls-space-4); padding: 7px 9px;
+  border-radius: var(--ls-radius); font-size: var(--ls-text-sm); line-height: 1.45; color: var(--ls-fg);
+  background: var(--ls-warning-bg); border: 1px solid var(--ls-warning-border);
+}
+.lsrc-banner.neutral { background: var(--ls-widget-bg); border-color: var(--ls-border); }
+.lsrc-icon { flex-shrink: 0; display: flex; padding-top: 1px; color: var(--ls-warning); }
+.lsrc-banner.neutral .lsrc-icon { color: var(--ls-link); }
+.lsrc-icon svg, .lsrc-glyph svg, .lsrc-spin svg { width: 14px; height: 14px; }
+.lsrc-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.lsrc-reason { margin-top: var(--ls-space-1); color: var(--ls-desc); overflow-wrap: anywhere; }
+.lsrc-actions { display: flex; flex-wrap: wrap; gap: var(--ls-space-3); margin-top: 7px; }
+.lsrc-actions .ls-btn { display: inline-flex; align-items: center; gap: var(--ls-space-2); }
+.lsrc-glyph, .lsrc-spin { display: inline-flex; }
+.lsrc-spin { animation: lsrc-spin 1.2s linear infinite; }
+.lsrc-banner code { font-family: var(--ls-mono); font-size: var(--ls-text-sm); }
+@keyframes lsrc-spin { to { transform: rotate(360deg); } }

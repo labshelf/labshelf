@@ -3,6 +3,10 @@
  * sidebar. Requires tokens.css, base.css and the library UI sheets.
  */
 
+/* ── Storage banner and move offer above the library frame ──────── */
+.lsrc-surfaces { flex-shrink: 0; }
+.lsrc-surfaces:empty, .lsrc-surfaces > div:empty { display: none; }
+
 /* ── Status bar (22px, VS Code) ─────────────────────────────────── */
 .status-bar {
   display: flex; align-items: center; height: var(--ls-row-h); flex-shrink: 0; padding: 0 var(--ls-space-2);

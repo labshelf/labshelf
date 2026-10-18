@@ -1,7 +1,8 @@
 // Wires capture and the PDF watcher into the runtime message channel the UI pages use.
 // Runs as an MV3 service worker in Chrome and a non-persistent background script in Firefox.
 import { bx, createBrowserLogger } from "../platform";
-import { createLibraryMutations } from "../storage";
+import { createLibraryMutations, getLibrarySource, onLibraryFilesChanged, rebuildFromFiles } from "../storage";
+import { broadcastChanged } from "./broadcast";
 import { forgetDraft } from "./draftCache";
 import { registerMessageRouter } from "./router";
 import { accessTabDeps } from "./handlers/index";
@@ -13,6 +14,15 @@ const MODULE = "background";
 const mutations = createLibraryMutations(log);
 
 registerMessageRouter({ log, mutations });
+
+onLibraryFilesChanged((paths) => {
+  void rebuildFromFiles(log).then(
+    () => broadcastChanged("folder"),
+    (error: unknown) => log.error(MODULE, error, { op: "rebuildFromFiles", changed: paths.length, first: paths[0] }),
+  );
+});
+// PLATFORM: a woken service worker has no native port until something opens the link, and changed events need one.
+void getLibrarySource().catch((error: unknown) => log.error(MODULE, error, { op: "openLibraryLink" }));
 
 bx.runtime.onInstalled.addListener((details) => {
   void log.log("INFO", MODULE, "extension installed", { reason: details.reason });

@@ -39,7 +39,7 @@ export interface LibraryRef {
  */
 export interface LibraryChangedBroadcast {
   type: "library.changed";
-  reason: "capture" | "attach" | "remove" | "annotations" | "askAuthor";
+  reason: "capture" | "attach" | "remove" | "annotations" | "askAuthor" | "folder";
   paperId?: string;
   /** A sentence for open library pages to show, for a change the user did not start there (a watched tab's PDF). */
   notice?: string;

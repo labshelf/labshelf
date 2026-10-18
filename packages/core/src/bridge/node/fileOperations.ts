@@ -88,6 +88,20 @@ export class LibraryFileOperations {
     await fs.rm(entryPath(parent), { force: true });
   }
 
+  // rm does not follow a symlink entry or the links inside the tree, so no target outside the folder is touched.
+  async deleteDir(relative: string): Promise<void> {
+    const parent = await this.parentOf(relative);
+    const target = entryPath(parent);
+    const entry = await fs.lstat(target).catch((error: unknown) => {
+      if (missing(error)) return undefined;
+      throw error;
+    });
+    if (!entry) return;
+    if (entry.isFile()) throw new BridgeError("io", `Cannot delete "${relative}" as a folder: it is a file`);
+    await assertInLibrary(parent.realRoot, parent.realParent);
+    await fs.rm(target, { recursive: true, force: true });
+  }
+
   async ensureDir(relative: string): Promise<void> {
     await fs.mkdir(await this.resolve(relative), { recursive: true });
   }

@@ -5,7 +5,7 @@
 import {
   PAPERS_DIR, PDF_FILE, PaperDataStore, createSidecarReader, paperDetailsOf, type ILogger, type PaperDetails, type PaperRecord, type PaperStats,
 } from "@labshelf/core";
-import { IndexedDbFileSystem, createIdbSidecarPort } from "../../../storage";
+import { createLibraryFileSystem, createSidecarPort } from "../../../storage";
 
 export interface SidecarReads {
   /** The stats of every paper whose sidecar can be read; an unreadable sidecar only costs that row its marks. */
@@ -17,8 +17,8 @@ export interface SidecarReads {
 }
 
 export function createSidecarReads(log: ILogger): SidecarReads {
-  const fs = new IndexedDbFileSystem();
-  const store = new PaperDataStore(createIdbSidecarPort(fs), { logger: log });
+  const fs = createLibraryFileSystem();
+  const store = new PaperDataStore(createSidecarPort(fs), { logger: log });
   const reader = createSidecarReader((id) => store.load(id), log, "library-page/sidecars");
 
   async function pdfOnDevice(paper: PaperRecord): Promise<PaperDetails["pdf"]> {

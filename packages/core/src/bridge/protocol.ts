@@ -18,7 +18,7 @@ export type BridgeErrorCode = "notFound" | "outsideLibrary" | "noLibrary" | "pro
 /** Paths are relative to the library root, "/"-separated; "" names the root. */
 export type BridgeRequest =
   | { id: number; op: "hello"; protocol: number }
-  | { id: number; op: "listDir" | "stat" | "readFile" | "writeFile" | "deleteFile" | "ensureDir"; path: string }
+  | { id: number; op: "listDir" | "stat" | "readFile" | "writeFile" | "deleteFile" | "deleteDir" | "ensureDir"; path: string }
   | { id: number; op: "rename"; from: string; to: string }
   | { id: number; op: "chunk"; data: string }
   /** `size` is the total byte count the browser sent; the host refuses the commit when the staged bytes differ. */
@@ -41,6 +41,7 @@ export interface BridgeResults {
   writeFile: never;
   commit: { size: number };
   deleteFile: Record<string, never>;
+  deleteDir: Record<string, never>;
   ensureDir: Record<string, never>;
   rename: Record<string, never>;
 }

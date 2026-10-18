@@ -2,7 +2,7 @@
 import { BridgeError } from "./bridgeError.js";
 import { BRIDGE_PROTOCOL, type BridgeRequest } from "./protocol.js";
 
-const PATH_OPS = new Set(["listDir", "stat", "readFile", "writeFile", "deleteFile", "ensureDir"]);
+const PATH_OPS = new Set(["listDir", "stat", "readFile", "writeFile", "deleteFile", "deleteDir", "ensureDir"]);
 
 const refuse = (message: string): never => { throw new BridgeError("protocol", message); };
 

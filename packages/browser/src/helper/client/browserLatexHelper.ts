@@ -1,9 +1,8 @@
 // Builds the LaTeX helper client for an extension page, wired to the browser's native messaging.
 import { HELPER_HOST_NAME, type ILatexHelper } from "@labshelf/core/helper";
 import type { ILogger } from "@labshelf/core";
-import { bx } from "../../platform/browserApi";
+import { bx, connectBrowserNative } from "../../platform";
 import { createNativeLatexHelper } from "./createNativeLatexHelper";
-import { connectBrowserNative } from "./connection";
 
 export function createBrowserLatexHelper(logger: ILogger): ILatexHelper {
   return createNativeLatexHelper({

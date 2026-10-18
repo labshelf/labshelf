@@ -5,7 +5,7 @@ import { createInPageChannel } from "@labshelf/core/dom";
 
 jest.mock("webextension-polyfill", () => ({ runtime: { getURL: (p: string) => `chrome-extension://ext/${p}` } }));
 
-import { createIdbSidecarPort, sidecarPath } from "../../../src/storage/idbSidecarPort";
+import { createSidecarPort } from "../../../src/storage/sidecarPort";
 import { parseReaderQuery, readerUrl } from "../../../src/reader/access/readerTabs";
 
 describe("reader page shell", () => {
@@ -29,18 +29,17 @@ describe("reader page shell", () => {
   });
 });
 
-describe("idbSidecarPort", () => {
-  it("keeps the sidecar at the appdata path VS Code maps to .research/papers/<id>/data.json", async () => {
-    expect(sidecarPath("abc")).toBe("appdata/abc/data.json");
+describe("sidecarPort", () => {
+  it("keeps the sidecar at the library layout's .research/papers/<id>/data.json", async () => {
     const files = new Map<string, Uint8Array>();
-    const port = createIdbSidecarPort({
+    const port = createSidecarPort({
       stat: async (p: string) => (files.has(p) ? { isFile: true, isDirectory: false, mtimeMs: 0, size: 0 } : undefined),
       readFile: async (p: string) => files.get(p)!,
       writeFile: async (p: string, b: Uint8Array) => { files.set(p, b); },
     });
     expect(await port.read("abc")).toBeNull();
     await port.write("abc", "{\"theme\":\"dark\"}");
-    expect([...files.keys()]).toEqual(["appdata/abc/data.json"]);
+    expect([...files.keys()]).toEqual([".research/papers/abc/data.json"]);
     expect(await port.read("abc")).toBe("{\"theme\":\"dark\"}");
   });
 });

@@ -1,11 +1,11 @@
 // Handles the UI's PDF requests: open in the reader, search the web, attach a local file, open the page in the way,
 // ask the authors for a copy.
 // INVARIANT: PDF bytes never cross runtime messaging; the page and the background write IndexedDB themselves.
-import { PDF_FILE, errorMessage, isPdfBytes, pdfSourceLabel, type PdfAccess } from "@labshelf/core";
+import { PDF_FILE, errorMessage, isPdfBytes, pdfSourceLabel, type LibraryFileSystem, type PdfAccess } from "@labshelf/core";
 import { attachPdfToPaper } from "../../../capture";
 import { sendRuntime, type AskAuthorData, type AttachPdfData } from "../../../platform";
 import { openReader } from "../../../reader/access";
-import { IndexedDbFileSystem } from "../../../storage";
+import { createLibraryFileSystem } from "../../../storage";
 import type { HostContext } from "../hostContext";
 
 /** Local PDFs above this size are refused, matching the fetch layer's cap. */
@@ -57,7 +57,7 @@ async function reportFind(ctx: HostContext, id: string, result: AttachPdfData, r
   ctx.endpoint.post({ type: "pdf.findResult", id, miss: result.miss ?? { tried: 0, sources: [], blocked: false, needsLogin: false } });
 }
 
-async function openPdf(ctx: HostContext, fs: IndexedDbFileSystem, id: string): Promise<void> {
+async function openPdf(ctx: HostContext, fs: LibraryFileSystem, id: string): Promise<void> {
   const paper = ctx.papers([id])[0];
   if (!paper) return;
   // A key can exist with zero or corrupt bytes, so the header is checked before the reader opens.
@@ -95,7 +95,7 @@ function pickLocalPdf(ctx: HostContext, id: string): void {
 }
 
 export function createPdfHandlers(ctx: HostContext): PdfHandlers {
-  const fs = new IndexedDbFileSystem();
+  const fs = createLibraryFileSystem();
   const searching = new Set<string>();
   return {
     open: (id) => openPdf(ctx, fs, id),

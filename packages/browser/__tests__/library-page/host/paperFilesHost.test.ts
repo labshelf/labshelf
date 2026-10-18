@@ -11,11 +11,11 @@ jest.mock("../../../src/storage", () => ({
   createLibraryMutations: () => mockMutations,
   listAllRecords: async () => [{ id: "p1", title: "P1", citeKey: "p1", path: "papers/ml/p1", status: "unread" }],
   scanLibrary: async () => ({ tree: [], pdfDirs: new Set() }),
-  IndexedDbFileSystem: class {
-    async stat(path: string) { return mockBytes.has(path) ? { size: mockBytes.get(path)!.length } : undefined; }
-    async readFile(path: string) { return mockBytes.get(path); }
-  },
-  createIdbSidecarPort: () => ({}),
+  createLibraryFileSystem: () => ({
+    async stat(path: string) { return mockBytes.has(path) ? { size: mockBytes.get(path)!.length } : undefined; },
+    async readFile(path: string) { return mockBytes.get(path); },
+  }),
+  createSidecarPort: () => ({}),
 }));
 jest.mock("../../../src/capture", () => ({ attachPdfToPaper: jest.fn() }));
 const mockOpenReader = jest.fn();

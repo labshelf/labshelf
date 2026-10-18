@@ -1,7 +1,7 @@
 // Answers the file tray of a paper: lists its folder, describes, opens and copies the path of one entry.
-import { PDF_FILE, errorMessage, type PaperRecord } from "@labshelf/core";
+import { PDF_FILE, errorMessage, type LibraryFileSystem, type PaperRecord } from "@labshelf/core";
 import { bx } from "../../../platform";
-import { IndexedDbFileSystem } from "../../../storage";
+import { createLibraryFileSystem } from "../../../storage";
 import type { HostContext } from "../hostContext";
 import { writeClipboard } from "./paperHandlers";
 
@@ -52,7 +52,7 @@ async function describeFile(ctx: HostContext, id: string, name: string, descript
   await listFiles(ctx, id);
 }
 
-async function openFile(ctx: HostContext, fs: IndexedDbFileSystem, openPdf: (id: string) => Promise<void>, id: string, name: string): Promise<void> {
+async function openFile(ctx: HostContext, fs: LibraryFileSystem, openPdf: (id: string) => Promise<void>, id: string, name: string): Promise<void> {
   const paper = resolveEntry(ctx, id, name, "open");
   if (!paper) return;
   if (name === PDF_FILE) { await openPdf(id); return; }
@@ -70,7 +70,7 @@ async function openFile(ctx: HostContext, fs: IndexedDbFileSystem, openPdf: (id:
 
 /** `openPdf` is the reader route paper.pdf takes, the same one the paper's Open uses. */
 export function createPaperFileHandlers(ctx: HostContext, openPdf: (id: string) => Promise<void>): PaperFileHandlers {
-  const fs = new IndexedDbFileSystem();
+  const fs = createLibraryFileSystem();
   return {
     list: (id) => listFiles(ctx, id),
     describe: (id, name, description) => describeFile(ctx, id, name, description),

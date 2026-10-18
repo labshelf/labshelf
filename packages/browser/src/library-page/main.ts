@@ -3,8 +3,9 @@
  * synchronous loopback channel, and adds the page's own glue (folder tree, URL hash, status bar).
  */
 import { createLoopbackTransport } from "@labshelf/core";
-import { mountLibraryUi } from "@labshelf/core/dom";
+import { el, mountLibraryUi } from "@labshelf/core/dom";
 import { createBrowserLogger } from "../platform";
+import { mountMoveOffer, mountSourceBanner } from "../library-source";
 import { applyTheme } from "../ui";
 import { attachLibraryHost } from "./host";
 import { attachLinkHandling } from "./openLink";
@@ -14,6 +15,16 @@ import { mountSidebarTree } from "./sidebar";
 import { mountStatusBar } from "./statusBar";
 
 const log = createBrowserLogger();
+
+/** Puts the storage banner and the move offer above the library frame, which keeps filling the remaining height. */
+function mountSourceSurfaces(root: HTMLElement, reloadSnapshots: () => Promise<void>): void {
+  const bannerHost = el("div");
+  const offerHost = el("div");
+  root.prepend(el("div", { class: "lsrc-surfaces" }, bannerHost, offerHost));
+  const offer = mountMoveOffer(offerHost, { logger: log, onMoved: reloadSnapshots });
+  mountSourceBanner(bannerHost, { logger: log, onFolder: () => { void reloadSnapshots().then(() => offer.refresh()); } });
+  void offer.refresh();
+}
 
 function boot(): void {
   const root = document.getElementById("root");
@@ -34,6 +45,7 @@ function boot(): void {
     },
   });
   if (ui.sidebar) mountSidebarTree(ui, ui.sidebar, prefs, libraryHost.openCitationMap, host);
+  mountSourceSurfaces(root, libraryHost.reloadSnapshots);
   mountStatusBar(root, (listener) => ui.store.select((s) => s.papers.length, listener));
   attachLinkHandling(log);
   void log.log("INFO", "library", "library page mounted");

@@ -5,6 +5,7 @@ import { createBrowserLatexHelper, createHelperSetupSection } from "../helper";
 import { StorageRingLogSink, bx, createBrowserLogger, getSettings, updateSettings } from "../platform";
 import { loadReaderPrefs, saveReaderPrefs } from "../reader/access";
 import { applyTheme } from "../ui";
+import { createLibrarySourceSection } from "./librarySourceSection";
 import { createAppearanceSection } from "./appearanceSection";
 import { createResolverSection } from "./customResolvers";
 import type { EditableListSection } from "./editableList";
@@ -77,6 +78,7 @@ async function init(): Promise<void> {
     proxies.element,
     resolvers.element,
     reader.section,
+    createLibrarySourceSection(logger),
     createHelperSetupSection(createBrowserLatexHelper(logger), {
       logger,
       getPlatformInfo: () => bx.runtime.getPlatformInfo(),

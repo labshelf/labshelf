@@ -1,7 +1,7 @@
 // Scripts a LabShelf Helper behind a fake native port so client tests run without a browser.
 import { chunkBytes, PROTOCOL_VERSION, type HelperBuildStatus, type TexStatus } from "@labshelf/core/helper";
 import type { ILogger } from "@labshelf/core";
-import type { NativePort } from "../../../src/helper/client";
+import type { NativePort } from "../../../src/platform";
 
 export interface BuiltScript { status: HelperBuildStatus; pdf?: Uint8Array; pdfSha256?: string }
 

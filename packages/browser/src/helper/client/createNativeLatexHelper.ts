@@ -1,7 +1,8 @@
 // Implements ILatexHelper over a native-messaging port that an extension page owns.
 import { HELPER_HOST_NAME, PROTOCOL_VERSION, type HelperProgressListener, type HelperStatus, type ILatexHelper } from "@labshelf/core/helper";
 import { type ILogger } from "@labshelf/core";
-import { HelperClosedError, HelperConnection, isHostNotFound, statusFromReady, type HelperPortFactory } from "./connection";
+import { isHostNotFound } from "../../platform";
+import { HelperClosedError, HelperConnection, statusFromReady, type HelperPortFactory } from "./connection";
 import { buildProject, progressOf, syncProject } from "./project";
 
 interface NativeLatexHelperDeps {

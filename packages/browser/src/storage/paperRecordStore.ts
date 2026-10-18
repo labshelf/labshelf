@@ -26,3 +26,12 @@ export async function listAllRecords(): Promise<PaperRecord[]> {
   const rows = await db.getAll("metadata");
   return rows.map((r) => r.record);
 }
+
+/** Replaces the whole cache with these records in one transaction, so a reader never sees it half-filled. */
+export async function replaceAllRecords(records: readonly PaperRecord[]): Promise<void> {
+  const db = await getDb();
+  const tx = db.transaction("metadata", "readwrite");
+  await tx.store.clear();
+  for (const record of records) await tx.store.put({ paperId: record.id, record, folderPath: record.path });
+  await tx.done;
+}

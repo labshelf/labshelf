@@ -7,7 +7,7 @@ import type {
   BatchOutcome, FieldsBatchOutcome, ILogger, ImportedPaper, IPaperRecordIndex, MoveOutcome, MutationContext, PaperFilesState, PaperRecord, PaperRef, PaperStatus,
   PdfVersion,
 } from "@labshelf/core";
-import { IndexedDbFileSystem } from "./indexedDbFileSystem";
+import { createLibraryFileSystem } from "./libraryFileSystem";
 import { deleteRecord, listAllRecords, upsertRecord } from "./paperRecordStore";
 
 export interface LibraryMutations {
@@ -81,7 +81,7 @@ function folderMutations(ctx: MutationContext): FolderMutations {
 
 /** The mutations run on disk first and the cache follows, so a failed write never leaves the cache ahead of the files. */
 export function createLibraryMutations(logger: ILogger): LibraryMutations {
-  const fs = new IndexedDbFileSystem();
+  const fs = createLibraryFileSystem();
   const ctx: MutationContext = { fs, paths: posixPathOps, artifacts: new BibTeXService(fs), logger, papersRoot: PAPERS_DIR };
 
   return {

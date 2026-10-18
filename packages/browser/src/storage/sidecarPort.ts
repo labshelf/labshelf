@@ -1,27 +1,20 @@
-// Implements SidecarPort over the IndexedDB file store at appdata/<paperId>/data.json.
-// INVARIANT: that path is the "appdata" root, which VS Code maps to <library>/.research/papers.
-import { APPDATA_DIR, SIDECAR_FILE, type SidecarPort } from "@labshelf/core";
-import type { IndexedDbFileSystem } from "./indexedDbFileSystem";
+// Reads and writes paper sidecars at the library layout's .research/papers/<paperId>/data.json in either library source.
+import { joinWith, libraryLayout, type LibraryFileSystem, type SidecarPort } from "@labshelf/core";
+
+const layout = libraryLayout("", joinWith("/"));
 
 /**
- * @returns the IndexedDB path of a paper's sidecar.
+ * @returns a SidecarPort reading and writing UTF-8 JSON through the library file system; a missing file reads as null.
  */
-export function sidecarPath(paperId: string): string {
-  return `${APPDATA_DIR}/${paperId}/${SIDECAR_FILE}`;
-}
-
-/**
- * @returns a SidecarPort reading and writing UTF-8 JSON in the IndexedDB file store.
- */
-export function createIdbSidecarPort(fs: Pick<IndexedDbFileSystem, "stat" | "readFile" | "writeFile">): SidecarPort {
+export function createSidecarPort(fs: Pick<LibraryFileSystem, "stat" | "readFile" | "writeFile">): SidecarPort {
   return {
     async read(paperId) {
-      const path = sidecarPath(paperId);
+      const path = layout.paperDataPath(paperId);
       if (!(await fs.stat(path))?.isFile) return null;
       return new TextDecoder().decode(await fs.readFile(path));
     },
     async write(paperId, text) {
-      await fs.writeFile(sidecarPath(paperId), new TextEncoder().encode(text));
+      await fs.writeFile(layout.paperDataPath(paperId), new TextEncoder().encode(text));
     },
   };
 }
