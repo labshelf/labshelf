@@ -16,7 +16,7 @@ export interface TexLiveInstaller {
   bytes: Buffer;
 }
 
-export function texLiveInstallerName(platform: string): Pick<TexLiveInstaller, "name" | "kind"> {
+function texLiveInstallerName(platform: string): Pick<TexLiveInstaller, "name" | "kind"> {
   return platform === "win32" ? { name: "install-tl.zip", kind: "zip" } : { name: "install-tl-unx.tar.gz", kind: "tar.gz" };
 }
 

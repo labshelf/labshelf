@@ -3,7 +3,7 @@ import * as os from "node:os";
 
 const HEADER_BYTES = 4;
 // The page's largest frame is a sync of 5000 files, well under this; a bigger length means a corrupt stream.
-export const MAX_INCOMING_FRAME_BYTES = 4 * 1024 * 1024;
+const MAX_INCOMING_FRAME_BYTES = 4 * 1024 * 1024;
 
 export interface ReadFramesOptions {
   maxFrameBytes?: number;

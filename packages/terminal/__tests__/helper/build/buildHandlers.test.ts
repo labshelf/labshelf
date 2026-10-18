@@ -59,7 +59,10 @@ test("the missing-file loop installs and rebuilds at most 10 rounds, then fails"
   expect(installs).toHaveLength(10);
   expect(h.tex.installMissing).toHaveBeenCalledTimes(10);
   expect(h.tex.installMissing).toHaveBeenCalledWith("foo.sty");
-  expect(await runs()).toHaveLength(11);
+  const allRuns = await runs();
+  expect(allRuns).toHaveLength(11);
+  // A rebuild after an install must be forced: latexmk skips a failed build whose sources did not change.
+  expect(allRuns.map((args) => args.includes("-g"))).toEqual([false, ...Array(10).fill(true)]);
   const result = built(frames);
   expect(result.status).toBe("failed");
   expect(result.problems[0]).toMatchObject({ severity: "error", file: "main.tex" });

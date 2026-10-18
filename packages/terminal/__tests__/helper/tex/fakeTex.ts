@@ -23,7 +23,14 @@ export const ROLLOVER_MESSAGE = [
   "See https://tug.org/texlive/upgrade.html for details.",
 ].join("\n");
 
-export interface FakeTlmgr { rollover: boolean; installed: string[] }
+export const STALE_TLMGR_MESSAGE = [
+  "tlmgr itself needs to be updated.",
+  "Please do this via either",
+  "  tlmgr update --self",
+].join("\n");
+
+/** `staleSelf`: every repository action fails with the stale-tlmgr message until `update --self` runs. */
+export interface FakeTlmgr { rollover: boolean; installed: string[]; staleSelf?: boolean }
 
 /** A node tlmgr that logs every call to `callsFile`, keeps its installed list next to itself and answers `/foo.sty` with `foopkg`. */
 export function fakeTlmgrScript(callsFile: string, options: FakeTlmgr): string {
@@ -34,8 +41,14 @@ const listFile = path.join(__dirname, "installed.json");
 if (!fs.existsSync(listFile)) fs.writeFileSync(listFile, ${JSON.stringify(JSON.stringify(options.installed))});
 const installed = JSON.parse(fs.readFileSync(listFile, "utf8"));
 fs.appendFileSync(${JSON.stringify(callsFile)}, JSON.stringify({ tlmgr: __filename, args }) + "\\n");
+const selfFile = path.join(__dirname, "self-updated");
 if (args[0] === "info") {
   process.stdout.write(installed.join("\\n") + "\\n");
+} else if (args[0] === "update" && args[1] === "--self") {
+  fs.writeFileSync(selfFile, "");
+} else if (${options.staleSelf ?? false} && !fs.existsSync(selfFile)) {
+  process.stderr.write(${JSON.stringify(STALE_TLMGR_MESSAGE)} + "\\n");
+  process.exitCode = 255;
 } else if (${options.rollover}) {
   process.stderr.write(${JSON.stringify(ROLLOVER_MESSAGE)} + "\\n");
   process.exitCode = 1;

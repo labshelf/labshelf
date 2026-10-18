@@ -14,7 +14,7 @@ export interface BrowserTarget {
 
 interface ChromiumBrowser { name: string; mac: string[]; linux: string[]; win: string[] }
 
-// PLATFORM: Brave and Vivaldi paths are unverified (documents/plans/browser-latex-helper/research/release.md).
+// PLATFORM: Brave and Vivaldi paths are unverified; no browser vendor documents them.
 const CHROMIUM_BROWSERS: ChromiumBrowser[] = [
   { name: "Chrome", mac: ["Google", "Chrome"], linux: ["google-chrome"], win: ["Google", "Chrome"] },
   { name: "Chromium", mac: ["Chromium"], linux: ["chromium"], win: ["Chromium"] },

@@ -1,7 +1,7 @@
 import { join } from "node:path";
 
 import { createTlmgr, isRollover, TlmgrFailed } from "../../../src/helper/tex";
-import { asLogger, createTexFixture, ROLLOVER_MESSAGE, writeTexTree, type FakeTlmgr, type TexFixture } from "./fakeTex";
+import { asLogger, createTexFixture, ROLLOVER_MESSAGE, STALE_TLMGR_MESSAGE, writeTexTree, type FakeTlmgr, type TexFixture } from "./fakeTex";
 
 describe("tlmgr", () => {
   let fixture: TexFixture;
@@ -31,6 +31,18 @@ describe("tlmgr", () => {
     expect(await tlmgr.searchFile("nothing.sty")).toBeNull();
   });
 
+  it("updates itself once and retries when the repository needs a newer tlmgr", async () => {
+    const tlmgr = await tlmgrWith({ rollover: false, installed: [], staleSelf: true });
+    await tlmgr.install(["foopkg"]);
+    expect(await tlmgr.listInstalled()).toEqual(["foopkg"]);
+    expect((await fixture.calls()).map((call) => call.args)).toEqual([
+      ["install", "foopkg"],
+      ["update", "--self"],
+      ["install", "foopkg"],
+      ["info", "--list", "--only-installed", "--data", "name"],
+    ]);
+  });
+
   it("fails with the output when the release rolled over", async () => {
     const tlmgr = await tlmgrWith({ rollover: true, installed: [] });
     const failure = await tlmgr.searchFile("foo.sty").catch((error: unknown) => error);
@@ -42,6 +54,7 @@ describe("tlmgr", () => {
 describe("isRollover", () => {
   it("recognises the cross-release message and nothing else", () => {
     expect(isRollover(ROLLOVER_MESSAGE)).toBe(true);
+    expect(isRollover(STALE_TLMGR_MESSAGE)).toBe(false);
     expect(isRollover("tlmgr: package repository https://x (verified)")).toBe(false);
   });
 });

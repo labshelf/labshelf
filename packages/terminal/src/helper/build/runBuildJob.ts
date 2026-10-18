@@ -76,7 +76,8 @@ export async function runBuildJob(job: BuildJob): Promise<void> {
   if (token.cancelled) { return reply(job, "cancelled"); }
   if (toolchain === "missing") { return reply(job, "toolchain-missing"); }
   for (let round = 1; ; round++) {
-    const result = await job.queue.request(job.project);
+    // TRAP: latexmk does not rerun a failed build whose sources are unchanged, so a rebuild after an install is forced.
+    const result = await job.queue.request(job.project, round > 1 ? { force: true } : {});
     if (token.cancelled || result.status === "cancelled") { return reply(job, "cancelled"); }
     if (result.status === "toolchain-missing") { return reply(job, "toolchain-missing"); }
     const problems = pageProblems("problems" in result ? result.problems : [], job.project.folder);

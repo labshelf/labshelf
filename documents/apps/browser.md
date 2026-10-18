@@ -42,6 +42,7 @@ The minimum versions are the floor for pdf.js 6.3.
 - The extension pages' CSP is `script-src 'self' 'wasm-unsafe-eval'`, which pdf.js needs for its WebAssembly decoders.
 - Firefox refuses `blob:` workers, so the pdf.js worker starts from its extension URL.
 - The search page content script (Scholar and Google results) renders inside a shadow root and loads the tokens as text, with `:root` rewritten to `:host`.
+- Native messaging to LabShelf Helper is opened by extension pages, not by the service worker, so the helper lives only while such a page is open ([contract](../contracts/helper.md#transport)).
 - Cloudflare-protected publishers (ACM, SIAM, ScienceDirect) block headless browsers and plain `fetch`. Real downloads from them can only be tested by hand.
 
 ## Citation map

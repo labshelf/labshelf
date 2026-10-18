@@ -87,7 +87,7 @@ export function readProjectId(body: Body): string {
 }
 
 export const isNonNegativeInteger = (n: number): boolean => Number.isInteger(n) && n >= 0;
-export const isSha256 = (text: string): boolean => /^[0-9a-f]{64}$/.test(text);
+const isSha256 = (text: string): boolean => /^[0-9a-f]{64}$/.test(text);
 
 export function readSha256(body: Body, key: string): string {
   const value = readString(body, key);

@@ -1,7 +1,7 @@
 // Exports the building blocks of the helper's managed TeX: layout, profile, tool runs and tlmgr.
 export { findManagedTex, managedTexRoot, readTexLiveYear } from "./texLayout.js";
 export type { ManagedTex, ManagedTexKind } from "./texLayout.js";
-export { progressFraction, runTexTool, TEX_MODULE } from "./runTexTool.js";
+export { progressFraction, runTexTool } from "./runTexTool.js";
 export type { TexToolOutcome, TexToolRun } from "./runTexTool.js";
 export { texLiveProfile } from "./texLiveProfile.js";
 export { createTlmgr, isRollover, TlmgrFailed } from "./tlmgr.js";

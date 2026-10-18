@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Code signing policy · LabShelf</title>
+<meta name="description" content="How LabShelf Helper is built and signed, who can approve a release, and what the signature covers.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@300;400;500;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400;1,8..60,500&display=swap">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/page/topbar.css">
+<link rel="stylesheet" href="css/manual/article.css">
+<link rel="stylesheet" href="css/manual/blocks.css">
+</head>
+<body>
+<header class="top" id="top">
+  <div class="wrap">
+    <a class="logo" href="index.html" aria-label="labshelf home"><span class="prompt">&gt;</span> labshelf<span class="cur" aria-hidden="true"></span></a>
+    <nav class="lsnav" aria-label="Site"><a href="index.html#man">man</a></nav>
+  </div>
+</header>
+
+<main class="wrap" style="padding-top:32px">
+<article class="man mdoc">
+  <h1 class="atitle">Code signing policy</h1>
+  <p class="aaff">LabShelf Helper · Windows installer and program</p>
+
+<section>
+  <p>Free code signing for the Windows version of LabShelf Helper is provided by <a href="https://signpath.io">SignPath.io</a>, and the certificate is issued by the <a href="https://signpath.org">SignPath Foundation</a>. The macOS helper is not signed by Apple; <a href="index.html#helper-unsigned">the manual explains why</a> and how to check it instead.</p>
+
+  <h2>What is signed</h2>
+  <p>Only the files the <a href="https://github.com/lucaanasser/labshelf/blob/main/.github/workflows/helper-release.yml">helper release workflow</a> builds from the <a href="https://github.com/lucaanasser/labshelf">LabShelf repository</a>: the Windows helper program, then the Windows installer that carries the signed program. The repository is open source, and no other software is signed with this certificate.</p>
+
+  <h2>How a release is made</h2>
+  <ul>
+    <li>A release starts when the maintainer pushes a <code>helper-v*</code> tag. The workflow runs on GitHub's hosted runners and builds the program from the tagged source; nothing is built on a personal computer.</li>
+    <li>The workflow uploads the unsigned file as a build artifact and submits it to SignPath, which signs it only when the request comes from this repository's workflow and the maintainer approves the signing request manually.</li>
+    <li>Each published file has a build attestation and a SHA-256 in <code>SHA256SUMS</code>, so anyone can check that it came from the workflow.</li>
+  </ul>
+
+  <h2>Roles</h2>
+  <p>LabShelf has one maintainer, <a href="https://github.com/lucaanasser">Luca Nasser</a>, who writes and reviews the code and approves each signing request. The maintainer's account on GitHub and SignPath uses multi-factor authentication.</p>
+
+  <h2>Privacy</h2>
+  <p>LabShelf Helper does not collect or send your data to the maintainer or to SignPath. It contacts a network host only when you ask it to install a TeX, and to look for a newer helper on GitHub. The <a href="index.html#s9">privacy section of the manual</a> lists the hosts the apps contact.</p>
+</section>
+</article>
+
+<footer>
+  <a class="logo" href="index.html"><span class="prompt">&gt;</span> labshelf<span class="cur" aria-hidden="true"></span></a>
+  <span>free and open source</span>
+  <a href="index.html#man">man labshelf</a>
+</footer>
+</main>
+</body>
+</html>

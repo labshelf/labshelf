@@ -58,7 +58,7 @@ Keys a message does not define are dropped when the frame is read.
 
 Each entry of `problems` has `severity` (`"error"`, `"warning"` or `"info"`), `message` and `file` (a project path), and may have `hint`, `line` (from 1), `kind` (`"undefinedCitation"`, `"undefinedReference"` or `"overfull"`) and `subject` (the cite key or label). `pdfSha256` is present when `status` is `"succeeded"` and is the hash of the bytes the `pdf` chunks carry.
 
-A frame the helper cannot accept gets an `error` reply with the request's `id` when it had one, and `code` set to the rejection: `malformed`, `version`, `unknown-type`, `invalid-field`, `path`, `project-id` or `limit`.
+A frame the helper cannot accept gets an `error` reply with the request's `id` when it had one, and `code` set to the rejection: `malformed`, `version`, `unknown-type`, `invalid-field`, `path`, `project-id` or `limit`. A handler that fails while working replies `io` (the mirror could not be read or written) or `internal` (any other failure), with the failure in `message`.
 
 `installTex` and `installAllPackages` end with an `error` instead of `ready` when they cannot finish: `texlive-rollover` when a managed full TeX Live is a year behind the repository, so the page asks before reinstalling it; `no-managed-tex` when `installAllPackages` finds no managed install; `tex-install-failed` for any other failure. A managed TinyTeX that falls behind is reinstalled with its packages without asking. A system TeX is never changed.
 
@@ -102,13 +102,25 @@ The helper keeps its data in one per-user folder:
 | Linux | `$XDG_DATA_HOME/labshelf-helper/` |
 
 ```
-projects/<projectId>/   a source mirror plus its build folder, so latexmk reruns only what changed
+projects/<projectId>/
+  src/                  the source mirror, written only through paths that stay inside it
+  incoming/             files being received, moved into src/ once complete
+  mirror-index.json     path, size and hash of each mirror file, so a `sync` hashes only what changed
+  build/                latexmk's output folder, kept so latexmk reruns only what changed
 tex/                    the managed TeX
 bin/
 logs/
 ```
 
 The helper writes nowhere else.
+
+## Registration
+
+`labshelf-helper --register` writes the native-messaging host manifest for every supported browser found for the user (Chrome, Chromium, Edge, Brave, Vivaldi, Firefox); `--unregister` removes it. The manifest names the helper's absolute path and lists the extension ids allowed to connect. On Windows each browser also gets a registry key below `HKCU`. The helper writes nothing outside the user's home. The installers run both flags.
+
+## Self-update
+
+After it answers `hello`, the helper checks `latest.json` of the latest GitHub release at most once a day. The manifest is signed with Ed25519 and the helper rejects it unless the signature verifies against the public key built into it; the download must also match the asset's `sha256`. A newer version replaces the helper's binary and runs from the next launch. A failed check is logged and never affects the session. A system TeX or a user's projects are not touched.
 
 ## No shell-escape
 

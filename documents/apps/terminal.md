@@ -63,6 +63,29 @@ jobs:
         with: { name: paper, path: "*.pdf" }
 ```
 
+## LabShelf Helper
+
+LabShelf Helper builds LaTeX projects for the browser extension over native messaging ([contract](../contracts/helper.md)). Its source is `src/helper/`; it shares nothing at run time with the `labshelf` command.
+
+```bash
+pnpm --filter @labshelf/terminal build              # → dist/labshelf-helper.mjs, run with Node
+pnpm --filter @labshelf/terminal build:helper-sea   # → dist/sea/labshelf-helper-<os>-<arch>, a single executable that answers `hello`
+```
+
+- `labshelf-helper --register` writes the host manifest for every installed browser and `--unregister` removes it. The installers run both.
+- Its data and logs live in the per-user data folder ([contract](../contracts/helper.md#data-folder)). On macOS and Linux the folder follows `HOME` (and `XDG_DATA_HOME` on Linux), so a run with a scratch `HOME` stays isolated.
+
+To verify against the unpacked extension, in Playwright's Chrome for Testing and never the user's browser:
+
+1. Build the helper and the extension (`pnpm --filter @labshelf/browser build:chrome`).
+2. Write a wrapper script, because the manifest `path` must be an executable without arguments:
+   ```bash
+   #!/bin/sh
+   HOME=<scratch>/home exec node <repo>/packages/terminal/dist/labshelf-helper.mjs "$@"
+   ```
+3. Put the manifest at `<user-data-dir>/NativeMessagingHosts/dev.labshelf.helper.json` with `name` `dev.labshelf.helper`, `type` `stdio`, `path` the wrapper, and `allowed_origins` from `src/helper/register/allowedOrigins.ts`. The manifest's `key` gives the unpacked extension that id.
+4. Launch Chrome for Testing as in [browser.md → headless run](browser.md#headless-run), with `--user-data-dir=<user-data-dir>`, and open `options/index.html`. The helper's frames are in `<scratch>/home/Library/Application Support/LabShelf Helper/logs/`.
+
 ## Adding papers over the network
 
 - `labshelf add` and the explorer's add accept a DOI, PMID, PMCID, arXiv id or a landing-page URL. The core network import resolves metadata, skips a paper the library already has (DOI, arXiv id, or title and year), and finds the PDF through the core chain. A landing page without a downloadable PDF is saved without one.

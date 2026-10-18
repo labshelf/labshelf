@@ -65,7 +65,7 @@
         "src/pdfText/offscreen.ts",
         "src/reader/index.ts",
         "src/ui/themeBoot.ts",
-        "src/content/scholar.ts",
+        "src/content/searchResults.ts",
         "build/*.mjs",
         "__tests__/**/*.ts"
       ],
@@ -78,6 +78,7 @@
     "packages/terminal": {
       "entry": [
         "src/main.ts",
+        "src/helper/main.ts",
         "src/preview/thumbnailWorker.ts",
         "__tests__/**/*.ts"
       ],
@@ -87,7 +88,8 @@
         "__tests__/**/*.ts"
       ],
       "ignoreBinaries": [
-        "pdftoppm"
+        "pdftoppm",
+        "reg.exe"
       ],
       "ignoreDependencies": [
         "@napi-rs/canvas",

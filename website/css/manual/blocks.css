@@ -32,3 +32,5 @@
 .afig figcaption b{font-weight:600;color:var(--pink)}
 .afig svg,.afig video{display:block;width:100%;height:auto}
 .mfoot{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:48px;padding-top:12px;border-top:1px solid var(--pline);font:11.5px var(--mono);color:var(--pdim)}
+/* Marks where a screenshot goes until the image exists. */
+.afig .shot{display:flex;align-items:center;justify-content:center;min-height:200px;padding:24px;text-align:center;font:12.5px/1.6 var(--mono);color:var(--pdim);border:1.5px dashed #b9bdc6}

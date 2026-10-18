@@ -14,7 +14,7 @@ export interface TinyTexAsset {
 
 interface ReleaseAsset { name?: unknown; digest?: unknown; browser_download_url?: unknown }
 
-export function tinyTexPlatform(platform: string, arch: string): string {
+function tinyTexPlatform(platform: string, arch: string): string {
   if (platform === "darwin") { return "darwin"; }
   if (platform === "win32") { return "windows"; }
   if (platform === "linux" && arch === "x64") { return "linux-x86_64"; }

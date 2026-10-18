@@ -23,7 +23,7 @@ An app contains only two kinds of code:
 2. **Code that cannot exist anywhere else:**
    - VS Code: `vscode` API usage (activation, commands, tree views, webview panels, `SecretStorage`, settings).
    - Browser: manifests, the background service worker, content scripts, `chrome.*`/`browser.*` APIs, IndexedDB adapters, the popup and options pages, the helper-tab PDF fetch.
-   - Terminal: raw TTY input and screen, kitty/iTerm2 images, CLI argument parsing, keychain token storage, the system clipboard, opener and trash.
+   - Terminal: raw TTY input and screen, kitty/iTerm2 images, CLI argument parsing, keychain token storage, the system clipboard, opener and trash. The terminal package also builds the LabShelf Helper entry, the native host the browser extension builds LaTeX through.
 
 Anything else that two apps need moves to `core`, even if only one app uses it today but another plausibly will.
 
