@@ -3,7 +3,7 @@
  * from a click handler reaches the host inside the same user gesture (a file picker opened there is allowed).
  */
 import type { HostToUi, UiToHost } from "./messages.js";
-import type { HostEndpoint, LibraryTransport } from "./transport.js";
+import type { MessageEnd } from "./transport.js";
 
 interface Lane<T> {
   deliver(message: T): void;
@@ -27,10 +27,10 @@ function lane<T>(): Lane<T> {
   };
 }
 
-/** Creates both ends of a synchronous in-page channel. */
-export function createLoopbackTransport(): { ui: LibraryTransport; host: HostEndpoint } {
-  const toHost = lane<UiToHost>();
-  const toUi = lane<HostToUi>();
+/** Creates both ends of a synchronous in-page channel; the message types default to the library UI protocol. */
+export function createLoopbackTransport<ToHost = UiToHost, ToUi = HostToUi>(): { ui: MessageEnd<ToHost, ToUi>; host: MessageEnd<ToUi, ToHost> } {
+  const toHost = lane<ToHost>();
+  const toUi = lane<ToUi>();
   return {
     ui: { post: (m) => toHost.deliver(m), subscribe: (h) => toUi.subscribe(h) },
     host: { post: (m) => toUi.deliver(m), subscribe: (h) => toHost.subscribe(h) },

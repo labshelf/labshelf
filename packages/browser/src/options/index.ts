@@ -14,6 +14,7 @@ import { createLogSection } from "./logSection";
 import { createProxySection } from "./proxy";
 import { createReaderForm, type ReaderForm } from "./readerForm";
 import { createSavedFlag } from "./savedFlag";
+import { createSidebarSectionsForm } from "./sidebarSectionsForm";
 
 const ring = new StorageRingLogSink();
 const logger = createBrowserLogger(ring);
@@ -70,6 +71,12 @@ async function init(): Promise<void> {
   const proxies = createProxySection(() => scheduleProxySave());
   let scheduleResolverSave = (): void => undefined;
   const resolvers = createResolverSection(() => scheduleResolverSave());
+  const sidebar = createSidebarSectionsForm((sidebarSections) => {
+    void updateSettings({ sidebarSections }).then(
+      () => { saved.flash(); return logger.log("INFO", "options", "sidebar sections saved", { ...sidebarSections }); },
+      (err: unknown) => logger.error("options", err, { action: "save sidebar sections" }),
+    );
+  });
   const log = createLogSection(ring);
 
   $("root").replaceChildren(settingsPage(
@@ -84,6 +91,7 @@ async function init(): Promise<void> {
       getPlatformInfo: () => bx.runtime.getPlatformInfo(),
       openUrl: (url) => void bx.tabs.create({ url }),
     }),
+    sidebar.section,
     createAppearanceSection(saved.flash),
     log.element,
   ));
@@ -91,6 +99,7 @@ async function init(): Promise<void> {
   const settings = await getSettings();
   general.fill(settings);
   reader.fill(await loadReaderPrefs());
+  sidebar.fill(settings.sidebarSections);
   proxies.fill(settings.proxies);
   resolvers.fill(settings.customResolvers);
   autosaveForms(general, reader, saved);

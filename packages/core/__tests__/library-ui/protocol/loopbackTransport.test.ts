@@ -28,4 +28,16 @@ describe("createLoopbackTransport", () => {
     host.subscribe((m) => seen.push(m.type));
     expect(seen).toEqual(["ready", "navigate"]);
   });
+
+  it("carries any pair of message types between its two ends", () => {
+    const { ui, host } = createLoopbackTransport<{ ask: number }, { answer: string }>();
+    const toHost: { ask: number }[] = [];
+    const toUi: { answer: string }[] = [];
+    host.subscribe((m) => toHost.push(m));
+    ui.subscribe((m) => toUi.push(m));
+    ui.post({ ask: 1 });
+    host.post({ answer: "x" });
+    expect(toHost).toEqual([{ ask: 1 }]);
+    expect(toUi).toEqual([{ answer: "x" }]);
+  });
 });

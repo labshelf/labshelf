@@ -2,20 +2,23 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 import { cleanupTempDirs, makeTempDir, pathExists } from "../../../support/tempDirs";
-import { createFsTemplateCache } from "../../../../src/writing/templates/node/index.js";
+import { NodeLibraryFileSystem } from "../../../../src/library/node/index.js";
+import { createLibraryTemplateCache } from "../../../../src/writing/templates/index.js";
 
 afterEach(cleanupTempDirs);
 
-describe("createFsTemplateCache", () => {
+const nodeCache = (libraryRoot: string) => createLibraryTemplateCache({ fs: new NodeLibraryFileSystem(), paths: path, libraryRoot });
+
+describe("createLibraryTemplateCache", () => {
   it("reads undefined from an empty library", async () => {
-    const cache = createFsTemplateCache(await makeTempDir());
+    const cache = nodeCache(await makeTempDir());
     expect(await cache.readIndex("community")).toBeUndefined();
     expect(await cache.readIndex("universe")).toBeUndefined();
   });
 
   it("writes the body byte for byte and the etag, and reads both back", async () => {
     const lib = await makeTempDir();
-    const cache = createFsTemplateCache(lib);
+    const cache = nodeCache(lib);
     const body = '{ "a":1 ,\n"é": "ü" }\n';
     await cache.writeIndex("community", { body, etag: '"abc"' });
     const dir = path.join(lib, ".research", "templates", "community");
@@ -26,7 +29,7 @@ describe("createFsTemplateCache", () => {
 
   it("drops an older etag when written without one", async () => {
     const lib = await makeTempDir();
-    const cache = createFsTemplateCache(lib);
+    const cache = nodeCache(lib);
     await cache.writeIndex("community", { body: "[1]", etag: "e1" });
     await cache.writeIndex("community", { body: "[2]" });
     const read = await cache.readIndex("community");
@@ -37,7 +40,7 @@ describe("createFsTemplateCache", () => {
 
   it("keeps universe in its own folder", async () => {
     const lib = await makeTempDir();
-    const cache = createFsTemplateCache(lib);
+    const cache = nodeCache(lib);
     await cache.writeIndex("universe", { body: "[\"u\"]", etag: "eu" });
     expect(await cache.readIndex("community")).toBeUndefined();
     expect(await fs.readFile(path.join(lib, ".research/templates/universe/index.json"), "utf8")).toBe("[\"u\"]");
@@ -48,12 +51,12 @@ describe("createFsTemplateCache", () => {
     const bytes = new Uint8Array([0, 255, 1, 2]);
 
     it("reads undefined for a thumbnail never written", async () => {
-      expect(await createFsTemplateCache(await makeTempDir()).readThumbnail("community/abc.png")).toBeUndefined();
+      expect(await nodeCache(await makeTempDir()).readThumbnail("community/abc.png")).toBeUndefined();
     });
 
     it("stores bytes under <source>/thumbnails and reads them back", async () => {
       const lib = await makeTempDir();
-      const cache = createFsTemplateCache(lib);
+      const cache = nodeCache(lib);
       await cache.writeThumbnail("universe/charged-0.1.0-small.webp", bytes);
       const file = path.join(lib, ".research/templates/universe/thumbnails/charged-0.1.0-small.webp");
       expect(Array.from(await fs.readFile(file))).toEqual(Array.from(bytes));
@@ -63,7 +66,7 @@ describe("createFsTemplateCache", () => {
     it.each(["../escape.png", "community/../../escape.png", "community/../escape.png", "../../../outside"])(
       "cannot write or read outside the thumbnails folder with key %s", async (key) => {
         const lib = await makeTempDir();
-        const cache = createFsTemplateCache(lib);
+        const cache = nodeCache(lib);
         await cache.writeThumbnail(key, bytes).catch(() => undefined);
         expect(await cache.readThumbnail(key).catch(() => undefined)).toBeUndefined();
         const written: string[] = [];

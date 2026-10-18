@@ -3,7 +3,10 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 import { cleanupTempDirs, makeTempDir } from "../../../support/tempDirs";
 import { fakeLogger } from "../../../support/fakeLogger";
-import { createMineSource } from "../../../../src/writing/templates/node/index.js";
+import { NodeLibraryFileSystem } from "../../../../src/library/node/index.js";
+import { createMineSource } from "../../../../src/writing/templates/index.js";
+
+const nodeFs = new NodeLibraryFileSystem();
 
 afterEach(cleanupTempDirs);
 
@@ -19,7 +22,7 @@ async function put(root: string, rel: string, content: string): Promise<void> {
 async function setup() {
   const libraryRoot = await makeTempDir();
   const logger = fakeLogger();
-  return { libraryRoot, logger, source: createMineSource({ libraryRoot, logger }) };
+  return { libraryRoot, logger, source: createMineSource({ fs: nodeFs, paths: path, libraryRoot, logger }) };
 }
 
 describe("createMineSource", () => {
@@ -72,7 +75,7 @@ describe("createMineSource", () => {
     const { libraryRoot, source } = await setup();
     await put(libraryRoot, "templates/alpha/template.yaml", manifest("alpha"));
     const [entry] = (await source.list()).entries;
-    const spy = jest.spyOn(fs, "readdir");
+    const spy = jest.spyOn(nodeFs, "listDir");
     const before = spy.mock.calls.length;
     await expect(source.files({ ...entry!, id })).rejects.toThrow();
     expect(spy.mock.calls.length).toBe(before);

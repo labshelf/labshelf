@@ -1,4 +1,4 @@
-/** Exports the runtime-neutral template model: manifests and their serializer, path rules, the catalog index, the gallery entry and its filter, the blank templates, the download count, the gallery protocol, and the gallery host. */
+/** Exports the runtime-neutral template model: manifests and their serializer, path rules, the catalog index, the gallery entry and its filter, the blank templates, the library-backed My templates source and index cache, the download count, the gallery protocol, and the gallery host. */
 export { blankTemplate } from "./blankTemplates.js";
 export { TEMPLATE_CATEGORIES, TEMPLATE_ENGINES, isLicenseExpression, parseCatalogIndex, parseTemplateManifest, readTemplateFields, serializeTemplateManifest, templatePathProblem, templateTreeProblem } from "./manifest/index.js";
 export type { CatalogBlob, CatalogEntry, CatalogFile, CatalogIndexResult, ProjectTemplate, SkippedEntry, TemplateCategory, TemplateEngine, TemplateManifest, TemplateManifestResult } from "./manifest/index.js";
@@ -15,6 +15,7 @@ export type { PublishBuildResult, PublishCheck, PublishCheckInput, PublishCheckR
 export { TEMPLATE_SOURCES } from "./templateEntry.js";
 export type { TemplateEntry, TemplateSourceId } from "./templateEntry.js";
 export * from "./sources/index.js";
+export * from "./libraryFs/index.js";
 export { countDownloads } from "./downloads/index.js";
 export * from "./protocol/index.js";
 export * from "./host/index.js";

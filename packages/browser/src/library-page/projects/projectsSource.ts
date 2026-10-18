@@ -1,7 +1,7 @@
 // Lists the library's writing projects as sidebar rows, each with its built PDF and reading progress, and opens their editor page and PDF.
 import {
   PaperDataStore, brokenProjectItem, buildReadingList, papersByCiteKey, readyProjectItem,
-  type ILogger, type LibraryFileSystem, type ReadingList, type ReadyEntry, type SidebarProjectItem,
+  type ILogger, type LibraryFileSystem, type ProjectEntry, type ReadingList, type ReadyEntry, type SidebarProjectItem,
 } from "@labshelf/core";
 import { createSidecarPort, listAllRecords } from "../../storage";
 import type { BrowserProjects } from "../../storage/projects";
@@ -19,6 +19,8 @@ export interface BrowserProjectRow extends SidebarProjectItem {
 export interface ProjectsSource {
   /** Logs and rethrows a failure to list. */
   rows(): Promise<BrowserProjectRow[]>;
+  /** The entry of the project with this id; undefined when none matches or the listing failed (logged). */
+  entryOf(projectId: string): Promise<ProjectEntry | undefined>;
   openEditor(projectId: string): void;
   openPdf(projectId: string, pdf: string): void;
 }
@@ -76,6 +78,14 @@ export function createProjectsSource(deps: ProjectsSourceDeps): ProjectsSource {
       } catch (error) {
         await logger.error(MODULE, error, { action: "listProjects" });
         throw error;
+      }
+    },
+    async entryOf(projectId) {
+      try {
+        return (await projects.listBrowserProjects()).find((entry) => entry.kind === "ready" && entry.settings.id === projectId);
+      } catch (error) {
+        await logger.error(MODULE, error, { action: "entryOf", project: projectId });
+        return undefined;
       }
     },
     openPdf(projectId, pdf) {

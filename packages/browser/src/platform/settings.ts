@@ -6,6 +6,7 @@ import {
   type CustomResolver, type LibraryProxy, type RequestLanguage,
 } from "@labshelf/core";
 import { migrateMirrorSettings } from "./migrations";
+import { DEFAULT_SIDEBAR_SECTIONS, readSidebarSections, type SidebarSections } from "./sidebarSections";
 
 /** Persisted user preferences. */
 export interface LabShelfSettings {
@@ -23,6 +24,8 @@ export interface LabShelfSettings {
   requesterAffiliation: string;
   /** Language of that email; the browser's language until the user picks one. */
   requestLanguage: RequestLanguage;
+  /** The sections the library page sidebar shows. */
+  sidebarSections: SidebarSections;
 }
 
 export const SETTINGS_STORAGE_KEY = "labshelf.settings";
@@ -35,6 +38,7 @@ const DEFAULTS: LabShelfSettings = {
   requesterName: "",
   requesterAffiliation: "",
   requestLanguage: "en",
+  sidebarSections: DEFAULT_SIDEBAR_SECTIONS,
 };
 
 /** Keeps the entries of a stored proxy list that have the right shape; storage is outside the type system. */
@@ -81,6 +85,7 @@ export async function getSettings(): Promise<LabShelfSettings> {
     requesterName: textOr(stored.requesterName),
     requesterAffiliation: textOr(stored.requesterAffiliation),
     requestLanguage: isRequestLanguage(stored.requestLanguage) ? stored.requestLanguage : requestLanguageFrom(globalThis.navigator?.language),
+    sidebarSections: readSidebarSections(stored.sidebarSections),
   };
 }
 

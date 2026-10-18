@@ -62,6 +62,7 @@
     "./styles/library-tabs.css": "./src/library-ui/dom/styles/library-tabs.css",
     "./styles/library-citation-map.css": "./src/library-ui/dom/styles/library-citation-map.css",
     "./styles/library-sidebar.css": "./src/library-ui/dom/styles/library-sidebar.css",
+    "./styles/editor-area.css": "./src/library-ui/dom/styles/editor-area.css",
     "./styles/template-gallery.css": "./src/writing/templates/dom/styles/template-gallery.css",
     "./styles/template-publish.css": "./src/writing/templates/dom/styles/template-publish.css",
     "./styles/project-search.css": "./src/writing/search/dom/styles/project-search.css",

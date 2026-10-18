@@ -3,25 +3,33 @@
  * @jest-environment-options {"customExportConditions": ["node", "node-addons"]}
  */
 // The browser sidebar lists the library's projects under Projects, opens one in the editor page and offers only what the browser can do.
-import { LibraryViewStore } from "@labshelf/core";
+import { LibraryViewStore, type ProjectEntry } from "@labshelf/core";
 import type { LibraryUi } from "@labshelf/core/dom";
 import type { PagePrefs } from "../../../src/library-page/prefs";
 import type { BrowserProjectRow, ProjectsSource } from "../../../src/library-page/projects";
+import { createSidebarProjects, type SidebarSession } from "../../../src/library-page/sidebar/sidebarProjects";
 import { mountSidebarTree } from "../../../src/library-page/sidebar/sidebarTree";
 
 const ready: BrowserProjectRow = { id: "projects/thesis", name: "Thesis", format: "latex", tooltip: "thesis", kind: "ready", external: false, projectId: "thesis", pdf: "main.pdf" };
 const broken: BrowserProjectRow = { id: "projects/gone", name: "gone", count: "missing", tooltip: "gone", kind: "broken", external: false };
 
+const thesisEntry = { kind: "ready", folder: "projects/thesis", settings: { id: "thesis" } } as unknown as ProjectEntry;
+
 async function mount(rows: BrowserProjectRow[] = [ready, broken]) {
   const store = new LibraryViewStore({ folders: [], papers: [], loading: false });
   const prefs = { treeExpanded: () => [], saveTreeExpanded: jest.fn(), collapsedSections: () => [], saveCollapsedSections: jest.fn() } as unknown as PagePrefs;
   const ui = { sidebar: null, store, folders: { create: jest.fn(), rename: jest.fn(), remove: jest.fn() }, dropTarget: jest.fn(), dispose: jest.fn() } as unknown as LibraryUi;
-  const source = { rows: jest.fn(async () => rows), openEditor: jest.fn(), openPdf: jest.fn() } satisfies ProjectsSource;
+  const source = {
+    rows: jest.fn(async () => rows), openEditor: jest.fn(), openPdf: jest.fn(),
+    entryOf: jest.fn(async (id: string) => (id === "thesis" ? thesisEntry : undefined)),
+  } satisfies ProjectsSource;
+  const session = { openProject: jest.fn(async () => true), closeProject: jest.fn(async () => true), attachSidebar: jest.fn(), treeClick: jest.fn(), treeAction: jest.fn(async () => undefined) } satisfies SidebarSession;
   const slot = document.createElement("div");
   document.body.replaceChildren(slot);
-  mountSidebarTree(ui, slot, prefs, { post: jest.fn() }, source);
+  const openTab = jest.fn();
+  mountSidebarTree(ui, slot, prefs, { post: jest.fn() }, createSidebarProjects(source, openTab, session), openTab, true);
   await new Promise((resolve) => setTimeout(resolve, 0));
-  return { slot, source };
+  return { slot, source, openTab, session };
 }
 
 const projectRow = (slot: HTMLElement, id: string): HTMLElement => slot.querySelector<HTMLElement>(`[data-project="${id}"]`)!;
@@ -36,21 +44,31 @@ describe("sidebar projects glue", () => {
     expect(slot.textContent).not.toContain("Citation map");
   });
 
-  it("lists the projects and hides what the browser cannot do", async () => {
-    const { slot } = await mount();
+  it("lists the projects, offers Templates and All projects as tabs and hides what is not wired yet", async () => {
+    const { slot, openTab } = await mount();
     expect(projectRow(slot, "projects/thesis").textContent).toContain("Thesis");
-    expect(slot.querySelector("[data-templates]")).toBeNull();
-    expect(slot.querySelector("[data-all-projects]")).toBeNull();
+    slot.querySelector<HTMLElement>("[data-templates]")!.click();
+    slot.querySelector<HTMLElement>("[data-all-projects]")!.click();
+    expect(openTab.mock.calls).toEqual([["templates"], ["all-projects"]]);
     expect(slot.querySelector('[data-tree="blank"]')).toBeNull();
+    expect(slot.querySelector('[data-tree="add"]')).toBeNull();
     expect(slot.querySelector('[data-tree="project-folder"]')).toBeNull();
   });
 
-  it("opens a ready project in the editor page by its project id", async () => {
-    const { slot, source } = await mount();
+  it("opens a ready project in the session with the entry that matches its project id", async () => {
+    const { slot, source, session } = await mount();
     projectRow(slot, "projects/thesis").click();
-    expect(source.openEditor).toHaveBeenCalledWith("thesis");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(session.openProject).toHaveBeenCalledWith(thesisEntry);
     projectRow(slot, "projects/gone").click();
-    expect(source.openEditor).toHaveBeenCalledTimes(1);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(source.entryOf).toHaveBeenCalledTimes(1);
+    expect(session.openProject).toHaveBeenCalledTimes(1);
+  });
+
+  it("gives the session the sidebar so it can show the open project", async () => {
+    const { session } = await mount();
+    expect(session.attachSidebar).toHaveBeenCalledTimes(1);
   });
 
   it("offers Open in Editor and Open PDF on a built project's menu", async () => {

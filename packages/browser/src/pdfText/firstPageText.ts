@@ -1,21 +1,5 @@
 // Reads the first page of a PDF as text, one line per line of the page, with the vendored pdf.js.
-import type * as Pdfjs from "pdfjs-dist";
-import { bx } from "../platform";
-
-type PdfjsLib = typeof Pdfjs;
-
-let pdfjs: Promise<PdfjsLib> | undefined;
-
-// Needs a document with workers: the Firefox event page or the Chrome offscreen document, never a service worker.
-function loadPdfjs(): Promise<PdfjsLib> {
-  pdfjs ??= (async () => {
-    const lib = (await import(bx.runtime.getURL("vendor/pdfjs/build/pdf.min.mjs"))) as PdfjsLib;
-    // PLATFORM: MV3 pages may not start blob: workers (Firefox refuses them); the extension's own module URL works.
-    lib.GlobalWorkerOptions.workerPort = new Worker(bx.runtime.getURL("vendor/pdfjs/build/pdf.worker.min.mjs"), { type: "module" });
-    return lib;
-  })();
-  return pdfjs;
-}
+import { loadPdfjs } from "./loadPdfjs";
 
 /** @returns the text of page 1 with a newline wherever pdf.js ends a line */
 export async function firstPageText(bytes: Uint8Array): Promise<string> {

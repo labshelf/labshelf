@@ -17,7 +17,8 @@ export function hashForFolder(folder: string): string {
 
 /** Starts syncing the UI's folder with location.hash; returns a disposer. */
 export function attachRouter(endpoint: HostEndpoint): () => void {
-  const onHash = (): void => { endpoint.post({ type: "navigate", folder: folderFromHash(location.hash) }); };
+  // A tabs hash (`#/tabs/...`) belongs to the workspace and names no folder, so the open folder stays.
+  const onHash = (): void => { if (!location.hash.startsWith("#/tabs/")) endpoint.post({ type: "navigate", folder: folderFromHash(location.hash) }); };
   window.addEventListener("hashchange", onHash);
   const off = endpoint.subscribe((m) => {
     if (m.type === "ready") onHash();

@@ -41,6 +41,8 @@ export interface LibrarySidebar {
   setProjectOffers(offers: Partial<ProjectOffers>): void;
   /** Shows only the open project's trees under Projects; null restores My projects and the gallery row. */
   setOpenProject(project: SidebarOpenProject | null): void;
+  /** Folds or unfolds a section or group by id and persists it as a click does; a section already in that state is left alone. */
+  setSectionCollapsed(id: SectionId | GroupId, collapsed: boolean): void;
 }
 
 const rowAt = (e: Event): HTMLElement | null => (e.target as HTMLElement).closest<HTMLElement>(NAV_ROWS);
@@ -166,6 +168,7 @@ export function mountLibrarySidebar(slot: HTMLElement, o: LibrarySidebarOptions)
       t.openProject = project;
       render(t);
     },
+    setSectionCollapsed: (id, collapsed) => { if (t.collapsed.has(id) !== collapsed) toggleSection(t, id); },
     setCurrent: (folder) => { t.current = folder; t.target = folder; expandTo(t, parentDir(folder, "/")); render(t); },
     setSelected: (id) => {
       t.selectedId = id;

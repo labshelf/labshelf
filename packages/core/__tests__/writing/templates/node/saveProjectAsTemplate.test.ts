@@ -3,8 +3,9 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 import { nodeProjectCatalogContext } from "../../../../src/writing/project/node/index";
 import { createProjectFromTemplate } from "../../../../src/writing/project/index";
-import { blankTemplate, parseTemplateManifest } from "../../../../src/writing/templates/index";
-import { createMineSource, saveProjectAsTemplate } from "../../../../src/writing/templates/node/index";
+import { NodeLibraryFileSystem } from "../../../../src/library/node/index";
+import { blankTemplate, createMineSource, parseTemplateManifest } from "../../../../src/writing/templates/index";
+import { saveProjectAsTemplate } from "../../../../src/writing/templates/node/index";
 import { fakeLogger } from "../../../support/fakeLogger";
 import { cleanupTempDirs, listFiles, makeTempDir, pathExists } from "../../../support/tempDirs";
 
@@ -101,7 +102,7 @@ describe("saveProjectAsTemplate", () => {
     const { lib, logger, project, main } = await setup();
     await put(project, "sections/a.tex", "A");
     await saveProjectAsTemplate(lib, "source", details, logger);
-    const source = createMineSource({ libraryRoot: lib, logger });
+    const source = createMineSource({ fs: new NodeLibraryFileSystem(), paths: path, libraryRoot: lib, logger });
     const { entries } = await source.list();
     expect(entries.map((e) => e.id)).toEqual(["my-thesis"]);
     const files = await source.files(entries[0]!);
@@ -114,7 +115,7 @@ describe("saveProjectAsTemplate", () => {
     const second = await saveProjectAsTemplate(lib, "source", details, logger);
     expect(second.id).not.toBe(first.id);
     expect(second.id.startsWith("my-thesis")).toBe(true);
-    expect((await createMineSource({ libraryRoot: lib, logger }).list()).entries.length).toBe(2);
+    expect((await createMineSource({ fs: new NodeLibraryFileSystem(), paths: path, libraryRoot: lib, logger }).list()).entries.length).toBe(2);
   });
 
   it("rejects a symlink anywhere in the project naming its path, and writes nothing", async () => {

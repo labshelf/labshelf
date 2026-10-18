@@ -1,0 +1,54 @@
+/*
+ * Styles the editor area after VS Code's editor groups: one scrolling row of tabs per group, the active tab's accent edge,
+ * the unsaved dot in the close button's place, and the sash between two groups. Requires tokens.css and base.css.
+ */
+.ls-editor-area { display: flex; flex: 1; min-width: 0; min-height: 0; overflow: hidden; background: var(--ls-bg); color: var(--ls-fg); }
+.ls-editor-area.resizing, .ls-editor-area.resizing * { cursor: col-resize !important; user-select: none !important; }
+.ls-editor-group { display: flex; flex-direction: column; flex: 1 1 0; min-width: 0; min-height: 0; position: relative; }
+.ls-editor-area.split .ls-editor-group.sized { flex: 0 1 auto; }
+.ls-editor-group[hidden] { display: none; }
+/* While a tab drags, an empty group shows as the place to drop it. */
+.ls-editor-area.tab-dragging .ls-editor-group[hidden] { display: flex; }
+.ls-editor-group.drop-target::after { content: ""; position: absolute; inset: 0; background: var(--ls-list-drop-bg); pointer-events: none; }
+
+.ls-editor-tabs {
+  display: flex; flex-shrink: 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin;
+  background: var(--ls-sidebar-bg); border-bottom: thin solid var(--ls-border-soft);
+}
+.ls-editor-tab {
+  position: relative; display: inline-flex; align-items: center; gap: var(--ls-space-3); flex-shrink: 0;
+  height: calc(var(--ls-row-h) + var(--ls-space-6)); padding: 0 var(--ls-space-2) 0 var(--ls-space-5);
+  border-right: thin solid var(--ls-border-faint); color: var(--ls-desc); font-size: var(--ls-text-md);
+  cursor: pointer; user-select: none; white-space: nowrap;
+}
+.ls-editor-tab:hover { color: var(--ls-fg); background: var(--ls-list-hover); }
+.ls-editor-tab.active { color: var(--ls-fg); background: var(--ls-bg); }
+/* Only the focused group's active tab carries the accent edge, as in VS Code. */
+.ls-editor-group:focus-within .ls-editor-tab.active::before,
+.ls-editor-area:not(.split) .ls-editor-tab.active::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: var(--ls-space-1); background: var(--ls-tab-active-border);
+}
+.ls-editor-tab:focus-visible { outline: thin solid var(--ls-focus); outline-offset: calc(-1 * var(--ls-space-1)); }
+.ls-editor-tab-icon, .ls-editor-tab-close { display: inline-flex; flex-shrink: 0; }
+.ls-editor-tab-icon svg { width: var(--ls-text-lg); height: var(--ls-text-lg); }
+.ls-editor-tab-label { max-width: var(--ls-gallery-sidebar-w); overflow: hidden; text-overflow: ellipsis; }
+.ls-editor-tab-close {
+  align-items: center; justify-content: center; width: var(--ls-row-h); height: var(--ls-row-h); padding: 0;
+  border: none; border-radius: var(--ls-radius-sm); background: none; color: inherit; cursor: pointer; visibility: hidden;
+}
+.ls-editor-tab-close svg { width: var(--ls-text-lg); height: var(--ls-text-lg); }
+.ls-editor-tab-close:hover { background: var(--ls-toolbar-hover); }
+.ls-editor-tab:hover .ls-editor-tab-close, .ls-editor-tab.active .ls-editor-tab-close, .ls-editor-tab.dirty .ls-editor-tab-close { visibility: visible; }
+/* An unsaved tab shows a dot where the close icon goes, until the pointer is over the button. */
+.ls-editor-tab.dirty .ls-editor-tab-close:not(:hover) svg { display: none; }
+.ls-editor-tab.dirty .ls-editor-tab-close:not(:hover)::before {
+  content: ""; width: var(--ls-space-4); height: var(--ls-space-4); border-radius: var(--ls-radius-pill); background: currentColor;
+}
+
+.ls-editor-panels { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.ls-editor-panel { flex: 1; min-height: 0; overflow: auto; }
+.ls-editor-panel[hidden] { display: none; }
+
+.ls-editor-sash { width: var(--ls-space-2); flex-shrink: 0; margin: 0 calc(-1 * var(--ls-space-1)); z-index: 5; cursor: col-resize; background: var(--ls-border); background-clip: content-box; padding: 0 var(--ls-space-1); box-sizing: border-box; transition: background var(--ls-fast); }
+.ls-editor-sash[hidden] { display: none; }
+.ls-editor-sash:hover, .ls-editor-sash.dragging { background: var(--ls-sash-hover); background-clip: border-box; }

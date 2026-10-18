@@ -8,3 +8,4 @@
 - 2026-10-18 — session 5 done: helper protocol v2 (native hello → loopback socket, edits, changed pages), browser client, review fixes; real browser build run deferred to session 9
 - 2026-10-18 — session 6 done: managed Tinymist 0.15.10 (own lock in the shared tools folder), helper LSP relay and Typst compile, VS Code language server; A11 not run in a VS Code host
 - 2026-10-18 — session 7 done: TeX -no-shell-escape/openout_any=p/-norc, Tinymist confined (no raw file:, no page config, minimal env), pinned TinyTeX, signed install-tl, private modes, redaction, --uninstall, signed Windows releases required; Q1: macOS stays ad-hoc
+- 2026-10-18 — session 8 done: core editor area, workspace shell with page sidebar, tab chunks, hash + sessionStorage restore, project session with Files/Outline/Checklist, All projects/Templates tabs (My templates and template cache now runtime-neutral in core), sidebar sections setting; headless A1–A3/A10 run deferred to the session 9 check

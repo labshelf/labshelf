@@ -19,7 +19,7 @@ interface TemplatesDeps {
   context: vscode.ExtensionContext;
   host: WritingHost;
   tex: ToolchainDeps["tex"];
-  projects: Pick<WritingProjects, "data" | "list" | "paths" | "reload">;
+  projects: Pick<WritingProjects, "data" | "fs" | "list" | "paths" | "reload">;
   builders: PublishBuilders;
 }
 
@@ -46,7 +46,7 @@ export function registerTemplates(deps: TemplatesDeps): void {
   const gallery = createTemplateGallery({
     context,
     logger: sessionLogger(host),
-    sources: createTemplateSources(host, fetch),
+    sources: createTemplateSources(host, deps.projects, fetch),
     engines: () => detectEngines(deps.tex),
     createProject: createProjectInstaller(deps),
     publish: createPublishPorts({ tex: deps.tex, host, projects: deps.projects, builders: deps.builders, fetch: publishFetch }),

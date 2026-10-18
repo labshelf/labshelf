@@ -1,6 +1,6 @@
 /**
  * Stores the library page's preferences in localStorage under one key: the shared library UI prefs plus the
- * sidebar tree's expanded folders and collapsed sections. A corrupt or missing entry falls back to the defaults field by field.
+ * sidebar tree's expanded folders and collapsed sections and the editor area's first-group width. A corrupt or missing entry falls back to the defaults field by field.
  */
 import { sanitizePrefs, type LibraryUiPrefs, type PrefsPort } from "@labshelf/core";
 
@@ -13,6 +13,9 @@ export interface PagePrefs extends PrefsPort {
   saveTreeExpanded(paths: string[]): void;
   collapsedSections(): string[];
   saveCollapsedSections(ids: string[]): void;
+  /** The first editor group's width in pixels while two groups show; null until the user drags the sash. */
+  editorWidth(): number | null;
+  saveEditorWidth(width: number): void;
 }
 
 function readRaw(storage: PrefsStorage): Record<string, unknown> {
@@ -26,7 +29,12 @@ function readRaw(storage: PrefsStorage): Record<string, unknown> {
 
 export function createLocalStoragePrefs(storage: PrefsStorage = localStorage): PagePrefs {
   const write = (patch: Record<string, unknown>): void => {
-    const next = { ...sanitizePrefs(readRaw(storage)), treeExpanded: stringsOf(readRaw(storage), "treeExpanded"), collapsedSections: stringsOf(readRaw(storage), "collapsedSections"), ...patch };
+    const raw = readRaw(storage);
+    const editorWidth = widthOf(raw);
+    const next = {
+      ...sanitizePrefs(raw), treeExpanded: stringsOf(raw, "treeExpanded"), collapsedSections: stringsOf(raw, "collapsedSections"),
+      ...(editorWidth === null ? {} : { editorWidth }), ...patch,
+    };
     // Private windows can refuse writes; the page then works with the in-memory state only.
     try { storage.setItem(PREFS_KEY, JSON.stringify(next)); } catch { /* storage unavailable */ }
   };
@@ -37,10 +45,17 @@ export function createLocalStoragePrefs(storage: PrefsStorage = localStorage): P
     saveTreeExpanded: (paths) => write({ treeExpanded: paths }),
     collapsedSections: () => stringsOf(readRaw(storage), "collapsedSections"),
     saveCollapsedSections: (ids) => write({ collapsedSections: ids }),
+    editorWidth: () => widthOf(readRaw(storage)),
+    saveEditorWidth: (width) => write({ editorWidth: width }),
   };
 }
 
 function stringsOf(raw: Record<string, unknown>, field: string): string[] {
   const v = raw[field];
   return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+}
+
+function widthOf(raw: Record<string, unknown>): number | null {
+  const v = raw["editorWidth"];
+  return typeof v === "number" && Number.isFinite(v) && v > 0 ? v : null;
 }

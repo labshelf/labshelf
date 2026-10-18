@@ -1,7 +1,4 @@
-/** Exports the Node side of the template catalog: the on-disk index cache, the Typst Universe and My templates sources, the safe folder reader, saving a project as a template, checking one for submission and validating or indexing a catalog checkout. */
-export { createFsTemplateCache } from "./fsTemplateCache.js";
-export { createMineSource } from "./mineSource.js";
-export type { MineSourceDeps } from "./mineSource.js";
+/** Exports the Node side of the template catalog: the Typst Universe source, the safe folder reader, saving a project as a template, checking one for submission and validating or indexing a catalog checkout. */
 export { readTemplateTree } from "./readTemplateTree.js";
 export { saveProjectAsTemplate } from "./saveProjectAsTemplate.js";
 export type { SaveTemplateDetails } from "./saveProjectAsTemplate.js";

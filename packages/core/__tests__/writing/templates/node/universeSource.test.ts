@@ -3,9 +3,13 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 import { cleanupTempDirs, makeTempDir } from "../../../support/tempDirs";
 import { fakeLogger } from "../../../support/fakeLogger";
-import { createFsTemplateCache, createUniverseSource } from "../../../../src/writing/templates/node/index.js";
+import { NodeLibraryFileSystem } from "../../../../src/library/node/index.js";
+import { createLibraryTemplateCache } from "../../../../src/writing/templates/index.js";
+import { createUniverseSource } from "../../../../src/writing/templates/node/index.js";
 
 afterEach(cleanupTempDirs);
+
+const fileCache = (libraryRoot: string) => createLibraryTemplateCache({ fs: new NodeLibraryFileSystem(), paths: path, libraryRoot });
 
 const index = [
   {
@@ -39,7 +43,7 @@ async function setup(options: { download?: (spec: Spec, dir: string) => Promise<
     return new Response(JSON.stringify(index), { status: 200, headers: { etag: '"v1"' } });
   };
   const source = createUniverseSource({
-    fetch, cache: createFsTemplateCache(libraryRoot), logger, packages: { download }, packageCacheDir,
+    fetch, cache: fileCache(libraryRoot), logger, packages: { download }, packageCacheDir,
   });
   return { source, calls, logger, packageCacheDir, requested, libraryRoot };
 }
@@ -129,7 +133,7 @@ describe("createUniverseSource files", () => {
 describe("createUniverseSource list freshness", () => {
   it("reports fromCache true when the index fetch fails and the cached index is used", async () => {
     const libraryRoot = await makeTempDir();
-    const cache = createFsTemplateCache(libraryRoot);
+    const cache = fileCache(libraryRoot);
     await cache.writeIndex("universe", { body: JSON.stringify(index), etag: '"v1"' });
     const source = createUniverseSource({
       fetch: async () => { throw new Error("offline"); }, cache, logger: fakeLogger(),

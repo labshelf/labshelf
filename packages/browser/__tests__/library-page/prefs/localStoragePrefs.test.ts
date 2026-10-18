@@ -27,7 +27,7 @@ describe("localStorage prefs", () => {
     expect(prefs.treeExpanded()).toEqual(["papers/A"]);
     expect(prefs.collapsedSections()).toEqual(["projects"]);
     expect(Object.keys(JSON.parse(storage.getItem(PREFS_KEY)!)).sort()).toEqual([
-      "citeFormat", "collapsedSections", "detailCollapsed", "detailTab", "detailWidth", "secCollapsed", "sidebarCollapsed", "sidebarWidth", "sortDir", "sortKey",
+      "citeFormat", "collapsedSections", "columns", "detailCollapsed", "detailTab", "detailWidth", "secCollapsed", "sidebarCollapsed", "sidebarWidth", "sortDir", "sortKey",
       "treeExpanded",
     ]);
   });
@@ -36,5 +36,17 @@ describe("localStorage prefs", () => {
     const storage = new MemoryStorage();
     storage.setItem(PREFS_KEY, JSON.stringify({ treeExpanded: ["papers/A", 5] }));
     expect(createLocalStoragePrefs(storage).treeExpanded()).toEqual(["papers/A"]);
+  });
+
+  it("keeps the editor width across other saves", () => {
+    const storage = new MemoryStorage();
+    const prefs = createLocalStoragePrefs(storage);
+    expect(prefs.editorWidth()).toBeNull();
+    prefs.saveEditorWidth(420);
+    prefs.save({ sortKey: "year" });
+    prefs.saveTreeExpanded(["papers/A"]);
+    expect(prefs.editorWidth()).toBe(420);
+    storage.setItem(PREFS_KEY, JSON.stringify({ editorWidth: "wide" }));
+    expect(prefs.editorWidth()).toBeNull();
   });
 });

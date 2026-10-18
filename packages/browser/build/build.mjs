@@ -16,7 +16,8 @@ const ENTRIES = [
   { entry: "background/index.ts", out: "background/index.js", format: "esm" },
   { entry: "popup/index.ts", out: "popup/index.js", format: "esm" },
   { entry: "options/index.ts", out: "options/index.js", format: "esm" },
-  { entry: "library-page/main.ts", out: "library-page/main.js", format: "esm" },
+  // Code-split: each workspace tab kind is a dynamic import, emitted as its own chunk under library-page/chunks.
+  { entry: "library-page/main.ts", out: "library-page/main.js", format: "esm", splitting: true },
   // The PDF reader page: the shared reader UI from @labshelf/core/dom over an in-page host.
   { entry: "reader/index.ts", out: "reader/index.js", format: "esm" },
   // Chrome's offscreen document, where pdf.js reads page 1 of a PDF the background matches to a paper.
@@ -48,7 +49,9 @@ async function buildOne(target) {
     ENTRIES.filter((e) => !e.chromeOnly || target === "chrome").map((e) =>
       esbuild({
         entryPoints: [resolve(srcRoot, e.entry)],
-        outfile: resolve(outDir, e.out),
+        ...(e.splitting
+          ? { outdir: resolve(outDir, dirname(e.out)), outbase: resolve(srcRoot, dirname(e.entry)), entryNames: "[dir]/[name]", chunkNames: "chunks/[name]-[hash]", splitting: true }
+          : { outfile: resolve(outDir, e.out) }),
         bundle: true,
         format: e.format,
         // pdf.js 6.3 (the reader) needs Chrome 125 / Firefox 128; the manifests declare the same minimums.

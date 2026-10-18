@@ -121,3 +121,16 @@ describe("settings for asking authors", () => {
     expect(await getSettings()).toMatchObject({ requesterName: "", requesterAffiliation: "", requestLanguage: "pt" });
   });
 });
+
+describe("settings sidebar sections", () => {
+  it("defaults to both sections", async () => {
+    expect((await getSettings()).sidebarSections).toEqual({ library: true, projects: true });
+  });
+
+  it("reads back a saved choice and repairs a stored one that hides everything", async () => {
+    await updateSettings({ sidebarSections: { library: false, projects: true } });
+    expect((await getSettings()).sidebarSections).toEqual({ library: false, projects: true });
+    store[SETTINGS_STORAGE_KEY] = { sidebarSections: { library: false, projects: false } };
+    expect((await getSettings()).sidebarSections).toEqual({ library: true, projects: true });
+  });
+});
