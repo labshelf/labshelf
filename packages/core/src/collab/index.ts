@@ -2,3 +2,5 @@
 export * from "./crypto/index.js";
 export * from "./invite/index.js";
 export * from "./model/index.js";
+export * from "./transport/index.js";
+export * from "./sync/index.js";

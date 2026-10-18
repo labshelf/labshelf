@@ -41,6 +41,53 @@ version (1 byte, 1) | nonce (12 random bytes) | AES-GCM ciphertext and 16-byte t
 - The additional data is the version byte followed by the share id, the doc key and the payload kind, each as a 4-byte big-endian length and its UTF-8 bytes. A frame therefore opens only for the share, doc and kind it was sealed for.
 - A frame that fails to open is dropped and never applied.
 
+## Messages
+
+Peers exchange messages over a transport: a WebRTC mesh, signalled through public Nostr relays in a room derived from the `room` key, or a relay. Each message is a clear envelope followed by one [frame](#frame):
+
+```
+version (1 byte, 1) | kind (1 byte) | seq (4 bytes, big-endian) | doc id (16 bytes) | frame
+```
+
+- The doc id is the first 16 bytes of SHA-256 over the UTF-8 of `<share id>\0<doc key>`, so a relay can store frames per doc without learning paths. A doc key is a file's POSIX path, or `/index` for the index doc, which no relative path can be.
+- The frame is sealed with the doc id in hex as its doc key and the kind's name as its payload kind. Its plaintext is the doc key (2-byte big-endian length and UTF-8) followed by the payload. A receiver drops a message whose doc key does not hash to the envelope's doc id.
+- `seq` is a per-peer sequence number for reliable kinds and `0` for the rest. The receiver acknowledges reliable messages within about 200 ms. The sender resends a message that has no acknowledgement after 2 s and gives up after 8 attempts, and the next sync on rejoin carries what was lost. Delivery is at least once and unordered, which Yjs updates tolerate.
+
+| Kind | Name | Reliable | Payload |
+|---|---|---|---|
+| 1 | `syncStep1` | yes | the sender's Yjs state vector of the doc |
+| 2 | `syncStep2` | yes | the Yjs update the receiver lacks, answering a step 1 |
+| 3 | `update` | yes | a Yjs update made locally |
+| 4 | `ack` | no | the acknowledged sequence numbers, 4 bytes each; doc id all zeros |
+| 16 | `awareness` | no | a y-protocols awareness update, doc key `/awareness`, sealed with the `awareness` key |
+| 17 | `blob` | yes | a [blob](#blobs) message, doc key the blob's SHA-256 hex |
+
+Kinds 5 to 15 are reserved and 16 to 255 belong to channels. A message of an unknown kind is dropped.
+
+### Sync
+
+- When two peers connect, each sends a step 1 for every doc it holds, the index first, so edits made while either was offline arrive.
+- A peer holds the index and the docs it has opened; it opens the other text files listed in the index in the background, one at a time. A message for a doc it does not hold is ignored until it opens that doc.
+- A mesh holds at most 8 other peers. Further peers wait until a place frees, and the app tells the user that a relay is needed.
+
+### Awareness
+
+Each peer publishes `{name, colour, file, anchor, head}`: its LabShelf user name, a colour from the core palette, the doc key of the file it is in, and its selection as Yjs relative positions in base64, or `null`. A peer sends its whole state to a peer that joins, and drops the states of a peer that leaves. Awareness is never stored.
+
+### Blobs
+
+A blob message starts with a type byte:
+
+| Type | Message | Rest |
+|---|---|---|
+| 1 | request | nothing |
+| 2 | chunk | index and count (4 bytes each, big-endian), then at most 64 KiB of the blob |
+| 3 | missing | nothing |
+
+- A peer asks one holder at a time and moves on after a `missing`, a corrupt result, the holder leaving or 15 s of silence.
+- The receiver drops a chunk whose count is outside 1 to 4096, whose index is not below the count, or that is longer than 64 KiB. An empty blob is one empty chunk.
+- The reassembled bytes are handed out only when their SHA-256 is the requested hash.
+
 ## Device-local state
 
 Yjs state and the blob cache live in the library's state dir (see [library-format.md](library-format.md#layout)), under `collab/<share id>/`, never in the library, where the user's sync tool would make conflict copies of them.
@@ -49,7 +96,7 @@ Yjs state and the blob cache live in the library's state dir (see [library-forma
 
 ### Docs
 
-A project share holds one Yjs doc per shared text file, keyed by its POSIX path relative to the project folder, plus one `index` doc:
+A project share holds one Yjs doc per shared text file, keyed by its POSIX path relative to the project folder, plus one index doc, keyed `/index`:
 
 | Index map | Holds |
 |---|---|

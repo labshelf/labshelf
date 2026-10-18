@@ -11,10 +11,10 @@ Context: design in `documents/plans/project-collaboration/research/collab-model.
 
 | Id | Package | Level | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| 3.1 | Transport port and sync protocol | contract | implementer (opus), tests first → `architecture-reviewer` | convergence tests | [ ] |
-| 3.2 | Awareness and blobs | behaviour | implementer (sonnet), tests first | awareness/blob tests | [ ] |
-| 3.3 | trystero transport | behaviour | implementer (sonnet) | typecheck, one two-page check | [ ] |
-| 3.4 | Check, commit | — | `check` on Owns, `git commit` of Owns | gate passes | [ ] |
+| 3.1 | Transport port and sync protocol | contract | implementer (opus), tests first → `architecture-reviewer` | convergence tests | [x] |
+| 3.2 | Awareness and blobs | behaviour | implementer (sonnet), tests first | awareness/blob tests | [x] |
+| 3.3 | trystero transport | behaviour | implementer (sonnet) | typecheck, one two-page check | [x] |
+| 3.4 | Check, commit | — | `check` on Owns, `git commit` of Owns | gate passes | [x] |
 
 3.1 first; 3.2 and 3.3 in parallel (disjoint: `collab/sync/` awareness and blob files vs `collab/dom/`).
 
