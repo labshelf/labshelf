@@ -6,7 +6,6 @@ import type { ActiveServices } from '../../../src/commands/index.js';
 const buildServices = jest.fn();
 jest.mock('../../../src/activation/serviceComposition/index.js', () => ({
   buildServices: (...args: unknown[]) => buildServices(...args),
-  createFileSystem: jest.fn(),
 }));
 
 import type { HostAdapters } from '../../../src/activation/serviceComposition/index.js';

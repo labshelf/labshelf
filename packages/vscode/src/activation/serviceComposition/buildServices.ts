@@ -14,7 +14,7 @@ import type { ILogger, PathOps } from "@labshelf/core";
 import type { HostAdapters } from "./hostAdapters.js";
 
 // The adapter belongs to one library root: its temp folder for atomic writes sits inside that root.
-export const createFileSystem = (root: vscode.Uri, paths: PathOps): VscodeFileSystem => new VscodeFileSystem(root.fsPath, paths);
+const createFileSystem = (root: vscode.Uri, paths: PathOps): VscodeFileSystem => new VscodeFileSystem(root.fsPath, paths);
 
 // textLayers is read lazily (through getTextLayers) because PaperService, which PaperTextLayers wraps, needs this
 // same reindexer before it exists yet.

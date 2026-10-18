@@ -3,7 +3,6 @@
 
 export const PAPERS_DIR = "papers";
 export const RESEARCH_DIR = ".research";
-export const APPDATA_DIR = "appdata";
 export const PROJECTS_DIR = "projects";
 
 export const PDF_FILE = "paper.pdf";

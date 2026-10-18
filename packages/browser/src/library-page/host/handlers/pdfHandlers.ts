@@ -1,6 +1,6 @@
 // Handles the UI's PDF requests: open in the reader, search the web, attach a local file, open the page in the way,
 // ask the authors for a copy.
-// INVARIANT: PDF bytes never cross runtime messaging; the page and the background write IndexedDB themselves.
+// INVARIANT: PDF bytes never cross runtime messaging; the page and the background write the library files themselves.
 import { PDF_FILE, errorMessage, isPdfBytes, pdfSourceLabel, type LibraryFileSystem, type PdfAccess } from "@labshelf/core";
 import { attachPdfToPaper } from "../../../capture";
 import { sendRuntime, type AskAuthorData, type AttachPdfData } from "../../../platform";

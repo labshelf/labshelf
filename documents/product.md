@@ -22,7 +22,7 @@ When a user moves from one app to another, it should feel like the same product:
 - **Same words.** A folder is a "folder" and a paper is a "paper" in every app. The reading statuses are Unread, Reading and Done.
 - **Same behaviour.** A feature that exists in two apps behaves the same in both, because its logic lives once in core. Examples are search and filters, citation formats, metadata lookup, and the reader with its keys.
 - **Same first run.** LabShelf suggests a folder inside a sync tool the user already runs and never calls a cloud API itself.
-- **Same data.** A paper added, read or annotated in one app shows up in the others: through the shared folder, which the user's sync tool carries between devices ([contracts/sync.md](contracts/sync.md)).
+- **Same data.** A paper added, read or annotated in one app shows up in the others: through the shared folder, which the user's sync tool carries between devices ([contracts/sync.md](contracts/sync.md)). The browser extension reaches the folder through a small desktop host; without it, it keeps the library in the browser and warns that uninstalling the extension deletes it ([apps/browser.md](apps/browser.md#where-the-library-lives)).
 
 ## UX principles
 

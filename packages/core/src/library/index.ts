@@ -4,7 +4,7 @@ export type { IPaperRecordIndex } from "./paperRecordReindex.js";
 export { paperRecordFromMetadata, parsePaperMetadata } from "./paperMetadata.js";
 export type { PaperLocation } from "./paperMetadata.js";
 export {
-  PAPERS_DIR, RESEARCH_DIR, APPDATA_DIR, PROJECTS_DIR,
+  PAPERS_DIR, RESEARCH_DIR, PROJECTS_DIR,
   PDF_FILE, METADATA_FILE, BIB_FILE, SIDECAR_FILE,
   joinWith, libraryLayout, paperFiles,
 } from "./layout.js";

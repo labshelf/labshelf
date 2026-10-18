@@ -1,13 +1,13 @@
 import * as path from "node:path";
 
 import {
-  APPDATA_DIR, BIB_FILE, METADATA_FILE, PAPERS_DIR, PDF_FILE, RESEARCH_DIR, SIDECAR_FILE,
+  BIB_FILE, METADATA_FILE, PAPERS_DIR, PDF_FILE, RESEARCH_DIR, SIDECAR_FILE,
   joinWith, libraryLayout, paperFiles,
 } from "@labshelf/core";
 
 describe("layout constants", () => {
   it("pin the on-disk names", () => {
-    expect([PAPERS_DIR, RESEARCH_DIR, APPDATA_DIR]).toEqual(["papers", ".research", "appdata"]);
+    expect([PAPERS_DIR, RESEARCH_DIR]).toEqual(["papers", ".research"]);
     expect([PDF_FILE, METADATA_FILE, BIB_FILE, SIDECAR_FILE]).toEqual(["paper.pdf", "metadata.yaml", "bib.bib", "data.json"]);
   });
 });

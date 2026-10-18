@@ -1,4 +1,4 @@
-/** Attaches a found PDF to a paper already in the IndexedDB library, at the paper's current folder. */
+/** Attaches a found PDF to a paper already in the library, at the paper's current folder. */
 import type { PaperRecord, PdfVersion } from "@labshelf/core";
 import { PDF_FILE } from "@labshelf/core";
 import { createLibraryFileSystem, listAllRecords, type LibraryMutations } from "../storage";
@@ -22,11 +22,11 @@ export async function attachPdfToPaper(
   if (!record) {
     throw new Error(`Paper "${paperId}" is no longer in the library.`);
   }
-  const idb = createLibraryFileSystem();
+  const files = createLibraryFileSystem();
   const pdfPath = `${record.path}/${PDF_FILE}`;
-  if (!options.replace && (await idb.stat(pdfPath))) {
+  if (!options.replace && (await files.stat(pdfPath))) {
     return { record, written: false };
   }
-  await idb.writeFile(pdfPath, bytes);
+  await files.writeFile(pdfPath, bytes);
   return { record: await mutations.recordPdfAttached(record, options.version), written: true };
 }
