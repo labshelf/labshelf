@@ -1,10 +1,8 @@
 // Builds the ports of the Publish screen from VS Code, the project builders and the core publishing functions.
 import { readFile } from "node:fs/promises";
 
-import type { ProjectFormat, TemplateManifest } from "@labshelf/core";
-import {
-  checkTemplateForPublish, renderFirstPagePng, saveProjectAsTemplate, submitTemplatePullRequest, type PublishBuildResult,
-} from "@labshelf/core/node";
+import { submitTemplatePullRequest, type ProjectFormat, type PublishBuildResult, type TemplateManifest } from "@labshelf/core";
+import { checkTemplateForPublish, renderFirstPagePng, saveProjectAsTemplate } from "@labshelf/core/node";
 import type { FinishedBuild } from "../../../build/index.js";
 import type { PublishableProject, PublishPorts } from "../../publish/index.js";
 import { signInToGitHub } from "./githubAuth.js";

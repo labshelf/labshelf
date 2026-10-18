@@ -2,7 +2,6 @@
 import * as vscode from "vscode";
 
 import { libraryLayout, type AiService } from "@labshelf/core";
-import { deviceLocalLayout } from "@labshelf/core/node";
 import { resolveLibraryRoot } from "./storage/paths/index.js";
 import { migrateLibraryRootFromGlobalState } from "./storage/migrations/index.js";
 import { createNodeAdapters } from "./activation/node/index.js";
@@ -97,6 +96,7 @@ function createLibraryController(deps: LibraryControllerDeps): LibraryRootContro
   const conflicts = new ConflictHandling({
     getServices: () => controller.currentServices(),
     getRoot: () => controller.currentRoot()?.fsPath ?? null,
+    scanConflicts: adapters.scanLibraryConflicts,
   });
   registerConflictCommand(context, conflicts);
   const externalChangeHandling = new ExternalChangeHandling({
@@ -104,6 +104,7 @@ function createLibraryController(deps: LibraryControllerDeps): LibraryRootContro
     getActiveServices: () => controller.currentServices(),
     onRefresh: refreshViews,
     onConflicts: (copies) => conflicts.onConflicts(copies),
+    scanConflicts: adapters.scanLibraryConflicts,
   });
   const controller = new LibraryRootController(context, events, externalChangeHandling, adapters, () => chooseLibraryRoot(adapters));
   return controller;
@@ -117,7 +118,7 @@ async function loadConfiguredLibrary(
   adapters: ReturnType<typeof createNodeAdapters>,
 ): Promise<AiService | null> {
   const unmigratedRoot = await migrateLibraryRootFromGlobalState(context.globalState, adapters.sharedLibraryConfig, (root) =>
-    adapters.createLogger(deviceLocalLayout(root).appLogPath));
+    adapters.createLogger(adapters.deviceLayout(root).appLogPath));
   const savedRoot = await resolveLibraryRoot(adapters.sharedLibraryConfig)
     ?? (unmigratedRoot ? vscode.Uri.file(unmigratedRoot) : undefined);
   const initialRoot = savedRoot ?? await chooseLibraryRoot(adapters);

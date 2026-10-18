@@ -1,5 +1,6 @@
 // Tracks whether the PDF of each build root is older than its project's source files, and when it was built.
-import * as path from "node:path";
+import type { PathOps } from "@labshelf/core";
+import { isInside } from "../../mainDocument.js";
 
 export interface SourceEvents {
   onSourceChanged(listener: (filePath: string) => void): { dispose(): void };
@@ -25,7 +26,7 @@ export class StaleSources {
   private readonly subscription: { dispose(): void };
 
   /** `onStale` fires once when a built root turns stale, not on every later change. */
-  constructor(events: SourceEvents, private readonly now: () => number, private readonly onStale: (folder: string, root: string) => void) {
+  constructor(private readonly paths: PathOps, events: SourceEvents, private readonly now: () => number, private readonly onStale: (folder: string, root: string) => void) {
     this.subscription = events.onSourceChanged((filePath) => this.changed(filePath));
   }
 
@@ -62,10 +63,9 @@ export class StaleSources {
   }
 
   private changed(filePath: string): void {
-    if (!SOURCE_EXTENSIONS.has(path.extname(filePath))) { return; }
+    if (!SOURCE_EXTENSIONS.has(this.paths.extname(filePath))) { return; }
     for (const [folder, records] of this.roots) {
-      const relative = path.relative(folder, filePath);
-      if (relative.startsWith("..") || path.isAbsolute(relative)) { continue; }
+      if (!isInside(this.paths, folder, filePath)) { continue; }
       for (const [root, record] of records) {
         record.changedSinceStart = true;
         if (record.builtAt === undefined || record.stale) { continue; }

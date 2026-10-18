@@ -1,6 +1,6 @@
 // Holds the state the Publish handlers share (ports, GitHub session, cached passing report) and reports their failures.
 import type { PublishDraft } from "@labshelf/core";
-import type { PublishCheckReport } from "@labshelf/core/node";
+import type { PublishCheckReport } from "@labshelf/core";
 import { TEMPLATES_LOG_MODULE } from "../useTemplate.js";
 import type { GitHubSignIn, PublishableProject, PublishPorts } from "./types.js";
 

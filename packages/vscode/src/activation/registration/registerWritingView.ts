@@ -1,8 +1,9 @@
 // Registers the Writing sidebar view with its commands, builds, previews, citations and editing support.
-import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { publishedVersionLookup, type ILogger, type PaperRecord, type PaperStatus, type PublishedVersionLookup } from "@labshelf/core";
+import {
+  publishedVersionLookup, type ILogger, type PaperRecord, type PaperStatus, type PathOps, type ProjectDeviceDirs, type PublishedVersionLookup,
+} from "@labshelf/core";
 import {
   WritingProjects, registerMainCommands, registerMainStatusBar, registerProjectCommands,
   registerProjectItemCommands, registerReadingListCommands, ProjectBacklinkIndex, ProjectReadingLists, type WritingHost,
@@ -21,7 +22,7 @@ import { registerMarkVersionCommand } from "../../writing/versions/index.js";
 import { registerTinymistBridge } from "../../writing/typst/index.js";
 import { BuildPreviews, CheckCounts, FocusFollower, registerShowInPreview, registerShowPreview } from "../../writing/preview/index.js";
 import { CiteSectionsCache, registerCitationProviders, type CitationWorkspace } from "../../writing/citations/index.js";
-import { readCiteSources } from "../../writing/citations/node/index.js";
+import { signalsReader } from "../../writing/checklist/index.js";
 import { registerLabshelfLinks } from "../../writing/links/index.js";
 import { registerProjectSession, type ProjectSession } from "../../writing/session/index.js";
 import { registerProjectViews } from "../../writing/tree/index.js";
@@ -71,6 +72,20 @@ function openLibraryLogger(controller: Controller): ILogger {
   return {
     log: async (...args) => { await current()?.log(...args); },
     error: async (...args) => { await current()?.error(...args); },
+  };
+}
+
+/** Names the open library's device folders at every read, since the library root can change. */
+function openLibraryDeviceDirs(controller: Controller, deviceLayout: HostAdapters["deviceLayout"]): ProjectDeviceDirs {
+  const current = (): ProjectDeviceDirs => {
+    const root = controller.currentRoot();
+    if (!root) { throw new Error("No library is open, so the project folders have no device-local place"); }
+    return deviceLayout(root.fsPath);
+  };
+  return {
+    get projectRegistryPath() { return current().projectRegistryPath; },
+    get buildCacheDir() { return current().buildCacheDir; },
+    get mergeBasesDir() { return current().mergeBasesDir; },
   };
 }
 
@@ -126,12 +141,12 @@ async function recompileRoot(
 
 /** What the preview's citation cards need to fix a citation, while a library is open. */
 function citationFixDeps(
-  controller: Controller, listPapers: () => Promise<PaperRecord[]>, publishedLookup: PublishedVersionLookup, projectFolder: string,
+  controller: Controller, listPapers: () => Promise<PaperRecord[]>, publishedLookup: PublishedVersionLookup, projectFolder: string, paths: PathOps,
 ): CitationFixDeps | undefined {
   const services = controller.currentServices();
   if (!services) { return undefined; }
   return {
-    projectFolder, logger: services.logger, publishedLookup, importer: services.importer, ctx: services.mutations,
+    projectFolder, paths, logger: services.logger, publishedLookup, importer: services.importer, ctx: services.mutations,
     reindex: services.reindexLibrary, takenIds: () => [...services.library.snapshot.papers.keys()],
     shelfKeys: async () => (await listPapers()).map((paper) => ({
       key: paper.citeKey, authors: paper.authors ?? [], ...(paper.year !== undefined ? { year: String(paper.year) } : {}),
@@ -154,7 +169,7 @@ function registerBuildAndPreviewCommands(
     recompile,
     projects, checkCounts: counts, includeOnly,
     setEngine: async (project, engine) => { await setEngine({ host, projects }, project, engine); },
-    fixes: (projectFolder) => citationFixDeps(controller, listPapers, publishedLookup, projectFolder),
+    fixes: (projectFolder) => citationFixDeps(controller, listPapers, publishedLookup, projectFolder, projects.paths),
   });
   const session = registerProjectSession({ context, host, projects, previews });
   const diagnostics = new BuildDiagnostics();
@@ -210,7 +225,7 @@ function createIncludeOnly(
   const includeOnlyTarget: IncludeOnlyTarget = async (project, root) => {
     const editor = activeProjectEditor(projects.paths, project.folder);
     if (!editor) { return undefined; }
-    const focused = path.relative(project.folder, editor.document.uri.fsPath).split(path.sep).join("/");
+    const focused = projects.paths.relative(project.folder, editor.document.uri.fsPath).split(projects.paths.sep).join("/");
     return includeOnly.target(project, root, focused);
   };
   return { includeOnly, includeOnlyTarget };
@@ -218,13 +233,13 @@ function createIncludeOnly(
 
 export function registerWritingView(
   context: vscode.ExtensionContext, controller: LibraryRootController, reader: HostAdapters["reader"],
-  adapters: Pick<HostAdapters, "paths" | "createProjectData">,
+  adapters: Pick<HostAdapters, "paths" | "fs" | "createProjectData" | "deviceLayout">,
   registerNodeWriting: RegisterNodeWriting,
 ): WritingViewHandles {
   const host = createWritingHost(controller);
   const logger = openLibraryLogger(controller);
-  const data = adapters.createProjectData(logger);
-  const projects = new WritingProjects(host, adapters.paths, data);
+  const data = adapters.createProjectData(logger, openLibraryDeviceDirs(controller, adapters.deviceLayout));
+  const projects = new WritingProjects(host, adapters.paths, adapters.fs, data);
   const figures = new ProjectFigures(host, data);
   const backlinks = new ProjectBacklinkIndex(projects, host);
   const readingLists = createReadingLists(controller, backlinks);
@@ -236,8 +251,10 @@ export function registerWritingView(
     controller.onDidChangeRoot(() => void projects.reload()),
   );
   const listPapers = async (): Promise<PaperRecord[]> => await controller.currentServices()?.paperService.listPapers() ?? [];
+  const readSignals = signalsReader(projects);
   const citeSections = new CiteSectionsCache({
-    readSources: readCiteSources, onDidSaveTextDocument: vscode.workspace.onDidSaveTextDocument, paths: projects.paths,
+    readSources: async (project, siteLogger) => (await readSignals(project, siteLogger)).sources,
+    onDidSaveTextDocument: vscode.workspace.onDidSaveTextDocument, paths: projects.paths,
   });
   context.subscriptions.push(citeSections);
   const { includeOnly, includeOnlyTarget } = createIncludeOnly(controller, projects);

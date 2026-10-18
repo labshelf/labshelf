@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import { parseSearchMessage, type HostToSearch, type ILogger, type SearchOptions, type SearchScopeMode, type SearchToHost } from "@labshelf/core";
 import { mainPathIn, owningProject, type ProjectLookup, type ReadyProject } from "../mainDocument.js";
-import type { WritingHost } from "../session/index.js";
+import type { WritingHost, WritingProjects } from "../session/index.js";
 import { openMatch } from "./openMatch.js";
 import { readScopeTexts, SEARCH_LOG_MODULE, type SearchScope } from "./projectSearchFiles.js";
 import { matchesIn, replaceInProject } from "./replaceInProject.js";
@@ -15,7 +15,7 @@ const DEBOUNCE_MS = 200;
 
 interface ProjectSearchDeps {
   extensionUri: vscode.Uri;
-  projects: ProjectLookup;
+  projects: ProjectLookup & Pick<WritingProjects, "fs">;
   host: WritingHost;
 }
 
@@ -98,7 +98,7 @@ export class ProjectSearchView implements vscode.WebviewViewProvider, vscode.Dis
   }
 
   private scopeOf(target: Target, mode: SearchScopeMode): SearchScope {
-    return { mode, folder: target.project.folder, file: target.file, paths: this.deps.projects.paths };
+    return { mode, folder: target.project.folder, file: target.file, paths: this.deps.projects.paths, fs: this.deps.projects.fs };
   }
 
   private postScope(): void {

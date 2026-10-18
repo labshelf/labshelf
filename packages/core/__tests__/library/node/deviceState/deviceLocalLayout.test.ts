@@ -62,6 +62,11 @@ describe("deviceLocalLayout", () => {
     expect(l.mergeBasesDir).toBe(path.join(state, "merge-bases"));
   });
 
+  it("keeps builds in the device cache, shared by every library", () => {
+    expect(l.buildCacheDir).toBe(path.join("/xdg/cache", "labshelf", "builds"));
+    expect(deviceLocalLayout("/data/other", env).buildCacheDir).toBe(l.buildCacheDir);
+  });
+
   it("keeps every path outside the library", () => {
     for (const file of Object.values(l)) { expect(file.startsWith("/data/lib")).toBe(false); }
   });

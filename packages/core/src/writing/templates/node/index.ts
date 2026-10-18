@@ -10,4 +10,3 @@ export type { UniverseSourceDeps } from "./universeSource.js";
 export { buildCatalogIndex, validateCatalog } from "./catalog/index.js";
 export type { CatalogProblem } from "./catalog/index.js";
 export { checkTemplateForPublish } from "./publish/index.js";
-export type { PublishBuildResult, PublishCheck, PublishCheckInput, PublishCheckReport, PublishFile } from "./publish/index.js";

@@ -23,6 +23,7 @@ const window = {
   showInputBox: jest.fn(async () => undefined),
   showQuickPick: jest.fn(async () => undefined),
   showSaveDialog: jest.fn(async () => undefined),
+  registerWebviewViewProvider: jest.fn(() => ({ dispose: () => {} })),
   registerUriHandler: jest.fn(() => ({ dispose: () => {} })),
   showTextDocument: jest.fn(async () => ({ revealRange: jest.fn() })),
   createWebviewPanel: jest.fn((viewType, title, column, options) => makeWebviewPanel(viewType, title, column, options)),

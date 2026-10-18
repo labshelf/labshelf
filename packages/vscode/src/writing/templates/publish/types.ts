@@ -1,6 +1,8 @@
 // Declares the ports the Publish screen's host needs and the project shape it works on.
-import type { GalleryToHost, HostToGallery, ILogger, TemplateManifest } from "@labshelf/core";
-import type { PublishBuildResult, PublishCheckInput, PublishCheckReport, SubmitTemplateInput, SubmitTemplateResult } from "@labshelf/core/node";
+import type {
+  GalleryToHost, HostToGallery, ILogger, PublishBuildResult, PublishCheckInput, PublishCheckReport, SubmitTemplateInput, SubmitTemplateResult,
+  TemplateManifest,
+} from "@labshelf/core";
 
 /** A writing project ready to publish: its build engine is already resolved. */
 export interface PublishableProject {

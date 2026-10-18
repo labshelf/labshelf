@@ -1,8 +1,8 @@
 // Shows the conflict notification after a scan and walks the user through resolving the copies.
 import * as path from "node:path";
 import * as vscode from "vscode";
-import { errorMessage, type ConflictCopy, type ConflictResolution } from "@labshelf/core";
-import { FileMergeBaseStore, resolveConflictCopy, scanLibraryConflicts } from "@labshelf/core/node";
+import { errorMessage, type ConflictCopy, type ConflictResolution, type ILogger } from "@labshelf/core";
+import { resolveConflictCopy } from "@labshelf/core/node";
 import type { ActiveServices } from "../../commands/index.js";
 import { conflictChoices, toolName } from "./conflictChoices.js";
 import { ConflictNotifier, conflictMessage } from "./conflictNotifier.js";
@@ -13,6 +13,7 @@ const MODULE = "library/conflicts";
 export interface ConflictHandlingDeps {
   getServices: () => ActiveServices | null;
   getRoot: () => string | null;
+  scanConflicts: (root: string, logger: ILogger) => Promise<ConflictCopy[]>;
 }
 
 export class ConflictHandling {
@@ -37,7 +38,7 @@ export class ConflictHandling {
     this.resolving = true;
     let remaining = 0;
     try {
-      const copies = await scanLibraryConflicts(root, new FileMergeBaseStore(root), services.logger);
+      const copies = await this.deps.scanConflicts(root, services.logger);
       if (copies.length === 0) { void vscode.window.showInformationMessage("No conflicting copies"); return; }
       remaining = await walkConflicts(copies, {
         ask: (copy, index, total) => this.ask(copy, index, total, services),

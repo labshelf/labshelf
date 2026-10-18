@@ -4,6 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 import type { ILogger } from "@labshelf/core";
+import { NodeLibraryFileSystem } from "@labshelf/core/node";
 import { readScopeTexts, type SearchScope } from "../../../src/writing/search/projectSearchFiles";
 
 const logger = { log: jest.fn(async () => {}), error: jest.fn(async () => {}) } as unknown as ILogger;
@@ -18,7 +19,7 @@ describe("readScopeTexts", () => {
       fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
       fs.writeFileSync(path.join(root, file), text);
     }
-    scope = { mode: "project", folder: path.join(root, "paper"), file: path.join(root, "paper/main.tex"), paths: path };
+    scope = { mode: "project", folder: path.join(root, "paper"), file: path.join(root, "paper/main.tex"), paths: path, fs: new NodeLibraryFileSystem() };
   });
 
   afterEach(() => fs.rmSync(root, { recursive: true, force: true }));

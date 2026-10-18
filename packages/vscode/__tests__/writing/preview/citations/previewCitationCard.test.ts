@@ -1,4 +1,5 @@
 // Tests the preview citation card data: the citing command, the cited page, page-first highlights and the .bib record.
+import * as path from "node:path";
 import * as vscode from "vscode";
 
 import { BIBLIOGRAPHY_HEADER, sourceAt, type Annotation, type PaperRecord } from "@labshelf/core";
@@ -20,7 +21,7 @@ const text = "intro\nas shown by \\cite[see][p.~4]{smith2020, doe2019}\n";
 
 function deps(over: Partial<PreviewCitationDeps> = {}): PreviewCitationDeps {
   return {
-    logger: fakeLogger(), projectFolder: "/p/paper", format: "latex", listPapers: async () => [smith],
+    logger: fakeLogger(), projectFolder: "/p/paper", paths: path, format: "latex", listPapers: async () => [smith],
     highlightsOf: async () => [],
     typstCites: () => [], synctex: async () => found, ...over,
   };

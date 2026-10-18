@@ -1,12 +1,12 @@
 // Replaces one cited key on a source line, leaving the other keys of the same cite untouched.
-import * as path from "node:path";
 import * as vscode from "vscode";
 
-import type { CitationFix, ILogger } from "@labshelf/core";
+import type { CitationFix, ILogger, PathOps } from "@labshelf/core";
 import { PREVIEW_LOG_MODULE } from "../previewStrings.js";
 
 export interface ReplaceKeyDeps {
   projectFolder: string;
+  paths: PathOps;
   logger: ILogger;
 }
 
@@ -27,7 +27,7 @@ function keyRange(line: string, key: string): [number, number] | undefined {
 }
 
 export async function replaceCitedKey(deps: ReplaceKeyDeps, fix: Extract<CitationFix, { kind: "replace" }>): Promise<void> {
-  const uri = vscode.Uri.file(path.join(deps.projectFolder, fix.file));
+  const uri = vscode.Uri.file(deps.paths.join(deps.projectFolder, fix.file));
   const document = await vscode.workspace.openTextDocument(uri);
   const lineIndex = fix.line - 1;
   const range = lineIndex >= 0 && lineIndex < document.lineCount ? keyRange(document.lineAt(lineIndex).text, fix.key) : undefined;

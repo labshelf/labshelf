@@ -1,4 +1,4 @@
-/** Locates a library's device-local files (AI index, OpenAlex cache, logs, project registry, merge bases) outside the synced
+/** Locates a library's device-local files (AI index, OpenAlex cache, logs, project registry, merge bases, builds) outside the synced
  * library folder, in per-library folders of the cache and state directories. */
 import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
@@ -19,6 +19,8 @@ export interface DeviceLocalLayout {
   readonly projectRegistryPath: string;
   /** Per project text file, the content last known to be common with other devices (writing merge bases). */
   readonly mergeBasesDir: string;
+  /** Build output per project id; shared by every library on the device. */
+  readonly buildCacheDir: string;
 }
 
 /**
@@ -45,7 +47,8 @@ export function libraryKey(libraryRoot: string, platform: NodeJS.Platform = proc
 
 export function deviceLocalLayout(libraryRoot: string, env: NodeJS.ProcessEnv = process.env): DeviceLocalLayout {
   const key = libraryKey(libraryRoot);
-  const cache = path.join(cacheDir(env), "libraries", key);
+  const deviceCache = cacheDir(env);
+  const cache = path.join(deviceCache, "libraries", key);
   const state = path.join(stateDir(env), "libraries", key);
   const logsDir = path.join(state, "logs");
   return {
@@ -56,5 +59,6 @@ export function deviceLocalLayout(libraryRoot: string, env: NodeJS.ProcessEnv = 
     terminalLogPath: path.join(logsDir, "terminal.log"),
     projectRegistryPath: path.join(state, "projects.json"),
     mergeBasesDir: path.join(state, "merge-bases"),
+    buildCacheDir: path.join(deviceCache, "builds"),
   };
 }

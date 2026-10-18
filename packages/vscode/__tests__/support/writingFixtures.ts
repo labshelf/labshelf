@@ -2,7 +2,8 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import type { ILogger, ProjectDataPort, ProjectEntry } from "@labshelf/core";
+import type { ILogger, LibraryFileSystem, ProjectDataPort, ProjectEntry, ProjectReadContext } from "@labshelf/core";
+import { NodeLibraryFileSystem } from "@labshelf/core/node";
 import type { WritingHost, WritingSession } from "../../src/writing/index.js";
 
 export function fakeLogger(): { log: jest.Mock; error: jest.Mock } & ILogger {
@@ -39,8 +40,13 @@ export function fakeProjectData(): { [K in keyof ProjectDataPort]: jest.Mock } {
 
 export function fakeProjects(entries: ProjectEntry[] = []): {
   reload: jest.Mock; list: jest.Mock; onDidChange: jest.Mock; paths: typeof path; data: ReturnType<typeof fakeProjectData>;
+  fs: LibraryFileSystem; reads: (logger: ILogger) => ProjectReadContext;
 } {
-  return { reload: jest.fn(async () => {}), list: jest.fn(() => entries), onDidChange: jest.fn(() => ({ dispose() {} })), paths: path, data: fakeProjectData() };
+  const fs = new NodeLibraryFileSystem();
+  return {
+    reload: jest.fn(async () => {}), list: jest.fn(() => entries), onDidChange: jest.fn(() => ({ dispose() {} })), paths: path, data: fakeProjectData(),
+    fs, reads: (logger) => ({ fs, paths: path, logger }),
+  };
 }
 
 export function readyEntry(folder: string, over: Partial<Extract<ProjectEntry, { kind: "ready" }>> = {}): ProjectEntry {

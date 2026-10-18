@@ -32,7 +32,7 @@ export class BuildPreviews implements BuildListener {
   constructor(private readonly deps: BuildPreviewsDeps) {
     this.builds = new RootBuilds(deps.paths);
     this.synctex = new ProjectSynctex(deps.host, deps.paths, deps.data);
-    this.stale = new StaleSources(vscodeSourceEvents, Date.now, (folder, root) => this.resendStatus(folder, root));
+    this.stale = new StaleSources(deps.paths, vscodeSourceEvents, Date.now, (folder, root) => this.resendStatus(folder, root));
     this.roots = new RootsPublisher(deps, { panels: this.panels, shown: this.shown, builds: this.builds, synctex: this.synctex });
   }
 

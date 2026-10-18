@@ -3,7 +3,7 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 
 import { listVersions, type ILogger, type PdfjsLoader, type ProjectEntry } from "@labshelf/core";
-import { buildMarkedUpDiff, comparePdfs, findExecutable, nodeProjectReadContext, projectBuildDir } from "@labshelf/core/node";
+import { buildMarkedUpDiff, comparePdfs, findExecutable, nodeProjectReadContext } from "@labshelf/core/node";
 import { executeSafely } from "../../../commands/index.js";
 import type { ReaderPanelDeps } from "../../../pdf-viewer/index.js";
 import { activeProject } from "../../build/index.js";
@@ -65,7 +65,7 @@ async function markedUp(deps: CompareVersionsDeps, panels: ComparePanels, projec
     token.onCancellationRequested(() => abort.abort());
     return buildMarkedUpDiff({
       beforeDir: sides.base.sourcesDir, afterDir: sides.other.sourcesDir, main, toolchain, signal: abort.signal,
-      outDir: path.join(projectBuildDir(project.settings.id), "compare", name),
+      outDir: path.join(deps.projects.data.projectBuildDir(project.settings.id), "compare", name),
     }, logger);
   });
   panels.showPdf(logger, project, { slug: name, name: `${sides.base.name} vs ${sides.other.name}`, pdfPath, sourcesDir: sides.other.sourcesDir }, `${name}:marked-up`);

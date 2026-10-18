@@ -14,3 +14,4 @@ export * from "./ui/index.js";
 export * from "./library-ui/index.js";
 export * from "./writing/index.js";
 export * from "./bridge/index.js";
+export * from "./github/index.js";

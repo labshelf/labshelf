@@ -1,7 +1,7 @@
 // Registers the Project Search panel and the command that focuses it, seeded with the editor's selection.
 import * as vscode from "vscode";
 
-import type { WritingHost } from "../session/index.js";
+import type { WritingHost, WritingProjects } from "../session/index.js";
 import type { ProjectLookup } from "../mainDocument.js";
 import { PROJECT_SEARCH_VIEW, ProjectSearchView } from "./projectSearchView.js";
 
@@ -9,7 +9,7 @@ const SEARCH_IN_PROJECT_COMMAND = "labshelf.writing.searchInProject";
 
 interface ProjectSearchDeps {
   context: vscode.ExtensionContext;
-  projects: ProjectLookup;
+  projects: ProjectLookup & Pick<WritingProjects, "fs">;
   host: WritingHost;
 }
 

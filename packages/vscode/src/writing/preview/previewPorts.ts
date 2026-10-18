@@ -1,5 +1,5 @@
 // Answers the reader's requests from a build preview: opens the source behind a double-click, runs its writing actions and names the papers it cites.
-import type { PathOps, PreviewPorts } from "@labshelf/core";
+import type { PreviewPorts } from "@labshelf/core";
 import { withCitationFixes, type CitationFixDeps } from "./citationFixes/index.js";
 import { lookupCitation, openCitedPaper, type PreviewCitationDeps } from "./citations/index.js";
 import type { ProjectActions } from "./projectActions/index.js";
@@ -16,7 +16,6 @@ export interface BodyPagesCount {
 }
 
 export interface PreviewPortsDeps extends PreviewCitationDeps {
-  paths: PathOps;
   bodyPages: (root: string, contentPages: number) => void;
   actions: WritingActions;
   /** The toolbar's project actions; the reader hides the controls whose action is absent. */

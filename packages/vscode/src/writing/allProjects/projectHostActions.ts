@@ -1,6 +1,4 @@
 // Runs the All projects page's build, preview, log, new file and target actions on any project.
-import * as fs from "node:fs/promises";
-import * as path from "node:path";
 import * as vscode from "vscode";
 import type { ProjectLibraryPort, ProjectSettingsPatch } from "@labshelf/core";
 import type { ReadyProject } from "../mainDocument.js";
@@ -10,7 +8,7 @@ import type { WritingProjects } from "../session/index.js";
 const SHOW_PREVIEW_COMMAND = "labshelf.writing.showPreview";
 
 export interface ProjectHostActionDeps {
-  projects: Pick<WritingProjects, "data" | "paths">;
+  projects: Pick<WritingProjects, "data" | "paths" | "fs">;
   /** Throws when the id is not a readable project of the library. */
   findReady(id: string): ReadyProject;
   /** Saves the editors and builds one root of the project, as Build Project does. */
@@ -47,15 +45,17 @@ export function createProjectHostActions(deps: ProjectHostActionDeps): HostActio
     },
     async createFile(id, file) {
       const { folder } = deps.findReady(id);
-      const target = path.resolve(folder, file);
+      const { paths, fs } = deps.projects;
+      const target = paths.resolve(folder, file);
       // The page's parser already rejects these paths; the resolved path is checked again because it is what gets written.
-      const inside = path.relative(folder, target);
-      if (!inside || inside.startsWith("..") || path.isAbsolute(inside)) { throw new Error(`${file} is outside ${folder}`); }
-      await fs.mkdir(path.dirname(target), { recursive: true });
+      const inside = paths.relative(folder, target);
+      if (!inside || inside.startsWith("..") || paths.isAbsolute(inside)) { throw new Error(`${file} is outside ${folder}`); }
+      // TRAP: the port has no exclusive create, so a file that appears between this check and the write is overwritten.
+      if (await fs.stat(target)) { throw new Error(`${file} already exists in ${folder}`); }
       try {
-        await fs.writeFile(target, "", { flag: "wx" });
+        await fs.ensureDir(paths.dirname(target));
+        await fs.writeFile(target, new Uint8Array());
       } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === "EEXIST") { throw new Error(`${file} already exists in ${folder}`); }
         throw new Error(`${file} could not be created in ${folder}: ${error instanceof Error ? error.message : String(error)}`);
       }
       await deps.openFile(id, file);

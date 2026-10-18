@@ -1,5 +1,4 @@
 // Adds the paper a .bib entry describes to the library: imported by its DOI or arXiv id, or written from the entry's fields.
-import { basename } from "node:path";
 
 import * as vscode from "vscode";
 
@@ -61,7 +60,7 @@ export async function addBibToLibrary(deps: AddBibDeps, key: string): Promise<vo
     file = found.document.uri.fsPath;
     const input = identifierOf(found.entry);
     if (!input) {
-      const id = await writeFromFields(deps, found.entry, basename(file));
+      const id = await writeFromFields(deps, found.entry, deps.ctx.paths.basename(file));
       await deps.logger.log("INFO", MODULE, "Wrote a library paper from a .bib entry", { key, file, id });
       void vscode.window.showInformationMessage(`Added ${id} to the library from its .bib entry.`);
       return;

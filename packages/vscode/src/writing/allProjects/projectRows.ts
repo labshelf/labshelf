@@ -1,6 +1,5 @@
 // Maps a writing project entry to the row the All projects page lists.
-import * as path from "node:path";
-import type { BuildMark, ProjectEntry, ProjectPlace, ProjectRow } from "@labshelf/core";
+import type { BuildMark, PathOps, ProjectEntry, ProjectPlace, ProjectRow } from "@labshelf/core";
 
 const placeOf = (entry: Extract<ProjectEntry, { kind: "ready" }>): ProjectPlace =>
   entry.settings.trashed ? "trash" : entry.settings.archived ? "archived" : "projects";
@@ -10,10 +9,10 @@ export interface ProjectRowExtras {
   build?: BuildMark;
 }
 
-export function toProjectRow(entry: ProjectEntry, modified: number | undefined, extras: ProjectRowExtras = {}): ProjectRow {
+export function toProjectRow(paths: PathOps, entry: ProjectEntry, modified: number | undefined, extras: ProjectRowExtras = {}): ProjectRow {
   const external = entry.location === "external";
   if (entry.kind === "broken") {
-    return { id: entry.folder, title: path.basename(entry.folder), place: "projects", external, broken: entry.reason };
+    return { id: entry.folder, title: paths.basename(entry.folder), place: "projects", external, broken: entry.reason };
   }
   const { settings } = entry;
   const { cites, build } = extras;
@@ -21,7 +20,7 @@ export function toProjectRow(entry: ProjectEntry, modified: number | undefined, 
     id: entry.folder,
     title: settings.title ?? settings.id,
     format: settings.format,
-    ...(entry.main ? { main: path.relative(entry.folder, path.resolve(entry.folder, entry.main)).split(path.sep).join("/") } : {}),
+    ...(entry.main ? { main: paths.relative(entry.folder, paths.resolve(entry.folder, entry.main)).split(paths.sep).join("/") } : {}),
     ...(settings.folder ? { folder: settings.folder } : {}),
     place: placeOf(entry),
     ...(modified !== undefined ? { modified } : {}),

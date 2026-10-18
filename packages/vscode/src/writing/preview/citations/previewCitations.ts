@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import {
   citationEntries, citedKeysAt,
-  type Annotation, type CitationEntry, type CitationQuery, type ILogger, type PagePoint, type PaperRecord, type ProjectFormat, type TypstCite,
+  type Annotation, type CitationEntry, type CitationQuery, type ILogger, type PagePoint, type PaperRecord, type PathOps, type ProjectFormat, type TypstCite,
 } from "@labshelf/core";
 import { PREVIEW_LOG_MODULE } from "../previewStrings.js";
 import type { SynctexLookup } from "../sourceLinks/index.js";
@@ -14,6 +14,7 @@ import { sourceLineAt, type LocatedSourceLine } from "./sourceLineAt.js";
 export interface PreviewCitationDeps {
   logger: ILogger;
   projectFolder: string;
+  paths: PathOps;
   format: ProjectFormat;
   listPapers: () => Promise<PaperRecord[]>;
   /** Where the Typst build behind the shown PDF placed its citations. */
@@ -49,7 +50,7 @@ async function citingSitesAt(
 ): Promise<Map<string, CitingSite>> {
   try {
     const source = await locate();
-    return source ? citingSites(deps.format, deps.projectFolder, source, keys) : new Map();
+    return source ? citingSites(deps.paths, deps.format, deps.projectFolder, source, keys) : new Map();
   } catch (error) {
     await warn(deps, "Reading the citing source for the citation card failed", error);
     return new Map();

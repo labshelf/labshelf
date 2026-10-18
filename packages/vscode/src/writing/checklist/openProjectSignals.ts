@@ -1,9 +1,9 @@
 // Keeps the open project's checklist signals current: re-read on open and, debounced, on save, plus its page count.
-import * as path from "node:path";
 import * as vscode from "vscode";
 
-import type { ChecklistSignals, ILogger, PageOverflow } from "@labshelf/core";
+import type { ChecklistSignals, ILogger, PageOverflow, PathOps } from "@labshelf/core";
 import type { ReadyProject } from "../figures/index.js";
+import { isInside } from "../mainDocument.js";
 import type { BodyPagesCount } from "../preview/index.js";
 
 const SAVE_DEBOUNCE_MS = 400;
@@ -22,12 +22,8 @@ export interface OpenProjectSignalsDeps {
   onDidSaveTextDocument: vscode.Event<vscode.TextDocument>;
   onDidCountBodyPages: vscode.Event<BodyPagesCount>;
   logger: ILogger;
+  paths: PathOps;
 }
-
-const isInside = (folder: string, file: string): boolean => {
-  const relative = path.relative(folder, file);
-  return relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative);
-};
 
 export class OpenProjectSignals implements vscode.Disposable {
   private state: ProjectSignals | undefined;
@@ -100,7 +96,7 @@ export class OpenProjectSignals implements vscode.Disposable {
 
   private onSaved(document: vscode.TextDocument): void {
     const project = this.deps.session.project;
-    if (!project || !isInside(project.folder, document.uri.fsPath)) { return; }
+    if (!project || !isInside(this.deps.paths, project.folder, document.uri.fsPath)) { return; }
     this.clearTimer();
     this.timer = setTimeout(() => {
       this.timer = undefined;

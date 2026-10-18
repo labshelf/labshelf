@@ -1,43 +1,14 @@
 /** Checks a writing project against the catalog rules and, when all pass, lays out the files of a submission. */
 // CONTRACT: documents/contracts/templates.md#manifest
 
-import type { ILogger } from "../../../../ports/index.js";
-import { readTemplateFields, type TemplateManifest } from "../../manifest/index.js";
-import type { PublishCheckId } from "../../publishCheckLabels.js";
+import { readTemplateFields } from "../../manifest/index.js";
+import type { PublishCheck, PublishCheckInput, PublishCheckReport } from "../../publishTypes.js";
 import { SAMPLE_MAX_BYTES, THUMBNAIL_MAX_BYTES, thumbnailProblem } from "../catalog/index.js";
-import { layOutPublishFiles, type PublishFile } from "./publishFiles.js";
+import { layOutPublishFiles } from "./publishFiles.js";
 import { runSourceChecks } from "./sourceChecks.js";
 
 const MODULE = "templates";
 const SKIPPED = "Skipped: an earlier check failed.";
-
-export interface PublishCheck {
-  id: PublishCheckId;
-  ok: boolean;
-  /** Why the check failed; absent when it passed. */
-  message?: string;
-}
-
-/** `files`, `thumbnail` and `sample` are present only when every check passed. */
-export interface PublishCheckReport {
-  checks: PublishCheck[];
-  ok: boolean;
-  files?: PublishFile[];
-  thumbnail?: Uint8Array;
-  sample?: Uint8Array;
-}
-
-export type PublishBuildResult = { ok: true; pdf: Uint8Array } | { ok: false; problems: string[] };
-
-export interface PublishCheckInput {
-  projectFolder: string;
-  manifest: TemplateManifest;
-  /** Builds the project with its declared engine; never with shell escape. */
-  buildPdf: () => Promise<PublishBuildResult>;
-  /** Renders page 1 of the built PDF to a PNG. */
-  renderThumbnail: (pdf: Uint8Array) => Promise<Uint8Array>;
-  logger: ILogger;
-}
 
 const failed = (id: PublishCheck["id"], message: string): PublishCheck => ({ id, ok: false, message });
 

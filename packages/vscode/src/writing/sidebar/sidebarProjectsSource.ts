@@ -2,7 +2,6 @@
 import * as vscode from "vscode";
 
 import { updateProjectSettings, type ChecklistSignals, type ILogger, type ProjectEntry, type ProjectSettingsPatch, type ReadingList } from "@labshelf/core";
-import { nodeProjectReadContext } from "@labshelf/core/node";
 import type { SidebarProjectItem } from "../../ui/library/index.js";
 import type { BuildOutcomes } from "../build/index.js";
 import type { ReadyProject } from "../figures/index.js";
@@ -11,7 +10,7 @@ import { ProjectCounts } from "./projectCounts.js";
 import { brokenProjectItem, readyProjectItem, type ReadyEntry } from "./sidebarProject.js";
 
 export interface SidebarProjectsSourceDeps {
-  projects: Pick<WritingProjects, "list" | "onDidChange">;
+  projects: Pick<WritingProjects, "list" | "onDidChange" | "reads">;
   logger: ILogger;
   readSignals: (project: ReadyEntry, logger: ILogger) => Promise<ChecklistSignals>;
   readingLists: { of(project: ReadyProject): Promise<ReadingList> };
@@ -52,7 +51,7 @@ export class SidebarProjectsSource implements vscode.Disposable {
 
   /** Rewrites a project's labshelf.yaml; the project list picks the change up on its next reload. */
   update(folder: string, patch: ProjectSettingsPatch): Promise<void> {
-    return updateProjectSettings(nodeProjectReadContext(this.deps.logger), folder, patch);
+    return updateProjectSettings(this.deps.projects.reads(this.deps.logger), folder, patch);
   }
 
   dispose(): void {

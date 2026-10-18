@@ -2,7 +2,6 @@
 import * as vscode from "vscode";
 
 import { LibraryStore, PaperDataStore, PdfImportParser, BibTeXService, libraryLayout, scanLibrary, type MutationContext } from "@labshelf/core";
-import { deviceLocalLayout } from "@labshelf/core/node";
 import { PaperImporter, PaperService, PaperTextLayers } from "../../core/index.js";
 import { ensureLibraryStructure } from "../../storage/paths/index.js";
 import { VscodeFileSystem } from "../../storage/index.js";
@@ -41,7 +40,7 @@ export async function buildServices(
   const paths = libraryLayout(root, vscode.Uri.joinPath);
   const fileSystem = createFileSystem(root, adapters.paths);
   await ensureLibraryStructure(root, fileSystem);
-  const device = deviceLocalLayout(root.fsPath);
+  const device = adapters.deviceLayout(root.fsPath);
   const logger = adapters.createLogger(device.appLogPath);
   const { ocr, textLayerBuilder } = adapters.createPdfTextServices(logger);
   const pdfImportParser = new PdfImportParser(adapters.pdfOpener, { ocr, logger });

@@ -1,6 +1,7 @@
 /** The Node adapters fill every host port with the process's own values. */
 import * as path from 'node:path';
 import type * as vscode from 'vscode';
+import { deviceLocalLayout } from '@labshelf/core/node';
 import { createNodeAdapters } from '../../../src/activation/node/index';
 
 describe('createNodeAdapters', () => {
@@ -15,5 +16,10 @@ describe('createNodeAdapters', () => {
     expect(adapters.sharedLibraryConfig.path()).toContain('labshelf');
     expect(adapters.reader.isMac).toBe(process.platform === 'darwin');
     expect(adapters.reader.locatePdfjs()).not.toBeNull();
+  });
+
+  it('places the device layout under the library\'s device-local folders', () => {
+    const root = path.resolve('/tmp/labshelf-adapters-library');
+    expect(adapters.deviceLayout(root)).toEqual(deviceLocalLayout(root));
   });
 });

@@ -1,8 +1,6 @@
 // Renders one Checklist item as a sidebar row: its label, location or status, and what clicking it does.
-import * as path from "node:path";
-
 import {
-  STATUS_LABEL, familyName, type ChecklistItem, type DotTone, type PageOverflow, type PaperStatus, type SidebarTreeNode,
+  STATUS_LABEL, familyName, type ChecklistItem, type DotTone, type PageOverflow, type PathOps, type PaperStatus, type SidebarTreeNode,
 } from "@labshelf/core";
 
 /** What the Checklist knows about a reading-list paper beyond its checklist item. */
@@ -29,9 +27,9 @@ export function itemKey(item: ChecklistItem): string {
 }
 
 /** A source location row: `<file stem>:<line>` as description and a click that opens it. */
-function located(key: string, label: string, file: string, line: number): SidebarTreeNode {
+function located(paths: PathOps, key: string, label: string, file: string, line: number): SidebarTreeNode {
   const at = line + 1;
-  return { key, label, description: `${path.basename(file, path.extname(file))}:${at}`, tooltip: `${file}:${at}`, clickable: true };
+  return { key, label, description: `${paths.basename(file, paths.extname(file))}:${at}`, tooltip: `${file}:${at}`, clickable: true };
 }
 
 const pagesText = (pages: number): string => Number.isInteger(pages) ? String(pages) : pages.toFixed(1);
@@ -62,10 +60,10 @@ function readingRow(key: string, item: ReadingChecklistItem, paper: ReadingPaper
   };
 }
 
-export function itemRow(key: string, item: ChecklistItem, reading: ReadonlyMap<string, ReadingPaper>): SidebarTreeNode {
+export function itemRow(paths: PathOps, key: string, item: ChecklistItem, reading: ReadonlyMap<string, ReadingPaper>): SidebarTreeNode {
   switch (item.kind) {
-    case "todo": return located(key, item.todo.text, item.todo.file, item.todo.line);
-    case "ref": return located(key, `\\ref{${item.ref.ref}}`, item.ref.file, item.ref.line);
+    case "todo": return located(paths, key, item.todo.text, item.todo.file, item.todo.line);
+    case "ref": return located(paths, key, `\\ref{${item.ref.ref}}`, item.ref.file, item.ref.line);
     case "figure": return { key, label: item.figure.name, tooltip: "Stale figure", inlineAction: { action: "regenerate", label: "Regenerate" } };
     case "pages": return { key, ...pagesHead(item.overflow) };
     case "manual": return {

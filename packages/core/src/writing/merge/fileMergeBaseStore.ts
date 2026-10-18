@@ -1,10 +1,8 @@
 // Keeps merge bases as files in the library's device-local state directory, outside the synced library.
-import { promises as fs } from "node:fs";
-import * as path from "node:path";
-
-import { deviceLocalLayout, writeFileAtomic } from "../../../library/node/index.js";
-import { isProjectPath } from "../../history/index.js";
-import type { IMergeBaseStore } from "../mergeBaseStore.js";
+import type { PathOps } from "../../library/mutations/index.js";
+import type { LibraryFileSystem } from "../../ports/index.js";
+import { isProjectPath } from "../history/index.js";
+import type { IMergeBaseStore } from "./mergeBaseStore.js";
 
 /**
  * @throws unless the value is a "/"-separated path inside its folder, and one segment for a project id:
@@ -18,14 +16,14 @@ function safeSegments(label: string, value: string, singleSegment: boolean): str
 }
 
 export class FileMergeBaseStore implements IMergeBaseStore {
-  private readonly baseDir: string;
-
-  constructor(libraryRoot: string, env: NodeJS.ProcessEnv = process.env) {
-    this.baseDir = deviceLocalLayout(libraryRoot, env).mergeBasesDir;
-  }
+  constructor(
+    private readonly fs: LibraryFileSystem,
+    private readonly paths: PathOps,
+    private readonly baseDir: string,
+  ) {}
 
   private fileFor(projectId: string, relativePath: string): string {
-    return path.join(
+    return this.paths.join(
       this.baseDir, ...safeSegments("project id", projectId, true), ...safeSegments("path", relativePath, false),
     );
   }
@@ -33,9 +31,9 @@ export class FileMergeBaseStore implements IMergeBaseStore {
   async read(projectId: string, relativePath: string): Promise<string | undefined> {
     const file = this.fileFor(projectId, relativePath);
     try {
-      return await fs.readFile(file, "utf8");
+      return await this.fs.readText(file);
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") { return undefined; }
+      if ((error as { code?: unknown }).code === "ENOENT") { return undefined; }
       throw new Error(`Cannot read merge base ${file}`, { cause: error });
     }
   }
@@ -43,7 +41,7 @@ export class FileMergeBaseStore implements IMergeBaseStore {
   async write(projectId: string, relativePath: string, text: string): Promise<void> {
     const file = this.fileFor(projectId, relativePath);
     try {
-      await writeFileAtomic(file, text);
+      await this.fs.writeText(file, text);
     } catch (error) {
       throw new Error(`Cannot write merge base ${file}`, { cause: error });
     }

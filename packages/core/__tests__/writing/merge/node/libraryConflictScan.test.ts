@@ -5,8 +5,9 @@ import * as path from "node:path";
 import { nodeProjectCatalogContext } from "../../../../src/writing/project/node/index";
 import { addExistingFolder, createProjectFromTemplate } from "../../../../src/writing/project/index";
 import { blankTemplate } from "../../../../src/writing/templates/index";
-import { FileMergeBaseStore, scanLibraryConflicts } from "../../../../src/writing/merge/node/index";
-import type { IMergeBaseStore } from "../../../../src/writing/merge/index";
+import { NodeLibraryFileSystem } from "../../../../src/library/node/index";
+import { scanLibraryConflicts } from "../../../../src/writing/merge/node/index";
+import { FileMergeBaseStore, type IMergeBaseStore } from "../../../../src/writing/merge/index";
 import type { ILogger } from "../../../../src/ports/index";
 import { cleanupTempDirs, makeTempDir } from "../../../support/tempDirs";
 
@@ -209,7 +210,7 @@ describe("scanLibraryConflicts on project files", () => {
     await fs.writeFile(path.join(folder, "main.tex"), doc(PARAGRAPHS));
     const logger = recordingLogger();
     await addExistingFolder(nodeProjectCatalogContext(logger), lib, { folder, format: "latex" });
-    const store = new FileMergeBaseStore(lib, { XDG_STATE_HOME: state, XDG_CACHE_HOME: state });
+    const store = new FileMergeBaseStore(new NodeLibraryFileSystem(), path, path.join(state, "merge-bases"));
     await scanLibraryConflicts(lib, store, logger);
 
     await fs.writeFile(path.join(folder, "main.tex"), doc(edit(0, "Local intro.")));

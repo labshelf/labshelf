@@ -21,7 +21,7 @@ const found: SynctexLookup = { status: "found", index: { files: [], pages: [], b
 function deps(over: Partial<PreviewCitationDeps> = {}) {
   const logger = fakeLogger();
   const all: PreviewCitationDeps = {
-    logger, projectFolder: "/p/paper", format: "latex", listPapers: async () => [smith],
+    logger, projectFolder: "/p/paper", paths: path, format: "latex", listPapers: async () => [smith],
     highlightsOf: async () => [],
     typstCites: () => [], synctex: async () => ({ status: "unsupported" }), ...over,
   };

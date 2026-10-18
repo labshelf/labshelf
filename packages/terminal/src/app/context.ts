@@ -3,11 +3,11 @@
 import * as path from "node:path";
 
 import {
-  BibTeXService, Logger, PdfImportParser, errorMessage,
+  BibTeXService, FileMergeBaseStore, Logger, PdfImportParser, errorMessage,
   processChangeBatch, type ILogger, type LibraryStore, type PdfjsLoader,
 } from "@labshelf/core";
 import {
-  FileLogSink, FileMergeBaseStore, NodeLibraryFileSystem, NodePdfOpener, TesseractOcrEngine, cacheDir, createPdfjsLoader,
+  FileLogSink, NodeLibraryFileSystem, NodePdfOpener, TesseractOcrEngine, cacheDir, createPdfjsLoader,
   deviceLocalLayout, scanLibraryConflicts,
 } from "@labshelf/core/node";
 
@@ -90,6 +90,10 @@ function createThumbnails(env: NodeJS.ProcessEnv, workerUrl: URL, logger: ILogge
   return { renderer, thumbnails: new ThumbnailService(cacheDir(env), renderer.render, logger) };
 }
 
+function mergeBaseStore(root: string): FileMergeBaseStore {
+  return new FileMergeBaseStore(new NodeLibraryFileSystem(), path, deviceLocalLayout(root).mergeBasesDir);
+}
+
 function startWatcher(
   paths: LibraryRoot, store: LibraryStore, logger: ILogger, conflicts: ConflictFeed,
   indexAnnotations: () => Promise<void>, onRootLost: () => void,
@@ -98,7 +102,7 @@ function startWatcher(
     void processChangeBatch({
       logger,
       isRootPresent: () => watcher.rootPresent(),
-      scanConflicts: () => scanLibraryConflicts(paths.root, new FileMergeBaseStore(paths.root), logger),
+      scanConflicts: () => scanLibraryConflicts(paths.root, mergeBaseStore(paths.root), logger),
       onConflicts: (copies) => conflicts.set(copies),
       reindex: () => store.reload().then(() => void indexAnnotations()),
     });
@@ -120,7 +124,7 @@ async function openConflictFeed(
   root: string, logger: ILogger, scanAtStart: boolean | undefined,
 ): Promise<{ conflicts: ConflictFeed; rescanConflicts: () => Promise<void> }> {
   const conflicts = new ConflictFeed();
-  const rescanConflicts = async (): Promise<void> => { conflicts.set(await scanLibraryConflicts(root, new FileMergeBaseStore(root), logger)); };
+  const rescanConflicts = async (): Promise<void> => { conflicts.set(await scanLibraryConflicts(root, mergeBaseStore(root), logger)); };
   if (scanAtStart) {
     await rescanConflicts().catch((error: unknown) => logger.log("WARN", "terminal/app", "Startup conflict scan failed", { message: errorMessage(error) }));
   }

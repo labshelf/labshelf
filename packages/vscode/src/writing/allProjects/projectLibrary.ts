@@ -1,5 +1,4 @@
 // Implements the All projects page's storage port over the writing projects of the open library.
-import * as path from "node:path";
 import * as vscode from "vscode";
 import type { ILogger, NewProjectKind, PaperRecord, PdfjsLoader, ProjectDetail, ProjectEntry, ProjectLibraryPort, ProjectRow, ProjectSettingsPatch } from "@labshelf/core";
 import type { BuildOutcomes } from "../build/index.js";
@@ -44,7 +43,7 @@ export function createProjectLibrary(deps: ProjectLibraryDeps): ProjectLibraryPo
   const openFile = async (id: string, file: string): Promise<void> => {
     const entry = findReady(id);
     if (openSession.project?.folder !== entry.folder) { await open(id); }
-    await vscode.commands.executeCommand("vscode.open", vscode.Uri.file(path.join(entry.folder, ...file.split("/"))));
+    await vscode.commands.executeCommand("vscode.open", vscode.Uri.file(projects.paths.join(entry.folder, ...file.split("/"))));
   };
   const edit = async (id: string, patch: ProjectSettingsPatch): Promise<void> => {
     await source.update(findReady(id).folder, patch);
@@ -104,9 +103,9 @@ function createRowsPort(deps: ProjectLibraryDeps): Pick<ProjectLibraryPort, "lis
     async list(): Promise<ProjectRow[]> {
       return Promise.all(source.list().map(async (entry) => {
         const time = await modified(entry.folder);
-        if (entry.kind !== "ready") { return toProjectRow(entry, time); }
+        if (entry.kind !== "ready") { return toProjectRow(projects.paths, entry, time); }
         const [build, cites] = await Promise.all([details.build(entry), details.cites(entry, time)]);
-        return toProjectRow(entry, time, { build, cites });
+        return toProjectRow(projects.paths, entry, time, { build, cites });
       }));
     },
     detail: (id): Promise<ProjectDetail> => details.detail(findReadyEntry(source, id)),

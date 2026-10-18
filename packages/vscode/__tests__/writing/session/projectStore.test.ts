@@ -2,6 +2,7 @@
 import * as path from "node:path";
 
 import { WritingProjects } from "../../../src/writing";
+import { NodeLibraryFileSystem } from "@labshelf/core/node";
 import { fakeHost, fakeProjectData, readyEntry } from "../../support/writingFixtures";
 
 describe("WritingProjects", () => {
@@ -13,7 +14,7 @@ describe("WritingProjects", () => {
     const host = fakeHost();
     const entry = readyEntry("/lib/projects/a");
     list.mockResolvedValue([entry]);
-    const store = new WritingProjects(host, path, data);
+    const store = new WritingProjects(host, path, new NodeLibraryFileSystem(), data);
     const changed = jest.fn();
     store.onDidChange(changed);
     await store.reload();
@@ -23,7 +24,7 @@ describe("WritingProjects", () => {
   });
 
   it("is empty while no library is configured", async () => {
-    const store = new WritingProjects({ current: () => undefined }, path, data);
+    const store = new WritingProjects({ current: () => undefined }, path, new NodeLibraryFileSystem(), data);
     await store.reload();
     expect(store.list()).toEqual([]);
     expect(list).not.toHaveBeenCalled();
@@ -32,14 +33,14 @@ describe("WritingProjects", () => {
   it("logs a failed listing and shows no projects", async () => {
     const host = fakeHost();
     list.mockRejectedValue(new Error("disk"));
-    const store = new WritingProjects(host, path, data);
+    const store = new WritingProjects(host, path, new NodeLibraryFileSystem(), data);
     await store.reload();
     expect(host.session.logger.error).toHaveBeenCalledWith("writing/projects", expect.any(Error), { action: "list" });
     expect(store.list()).toEqual([]);
   });
 
   it("keeps the result of the newest reload when an older one finishes last", async () => {
-    const store = new WritingProjects(fakeHost(), path, data);
+    const store = new WritingProjects(fakeHost(), path, new NodeLibraryFileSystem(), data);
     let finishOld!: (entries: unknown[]) => void;
     list.mockImplementationOnce(() => new Promise((resolve) => { finishOld = resolve; }));
     const newest = readyEntry("/lib/projects/new");

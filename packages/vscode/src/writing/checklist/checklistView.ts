@@ -1,10 +1,9 @@
 // Builds the open project's Checklist for the sidebar and runs what its rows ask for.
-import * as path from "node:path";
 import * as vscode from "vscode";
 
 import {
   MANUAL_ITEM_GROUPS, addManualItem, buildChecklist, citeSections, nextStatus, removeManualItem, sectionPlacer, setManualItemDone,
-  type Checklist, type ChecklistDocument, type ChecklistGrouping, type ChecklistItem, type ILogger, type ManualItemGroup, type PaperStatus,
+  type Checklist, type ChecklistDocument, type ChecklistGrouping, type ChecklistItem, type ILogger, type ManualItemGroup, type PaperStatus, type PathOps,
   type ReadingItem, type SidebarTreeNode,
 } from "@labshelf/core";
 import type { FigureNode, ReadyProject } from "../figures/index.js";
@@ -20,6 +19,7 @@ const MODULE = "writing/checklist";
 const REGENERATE_FIGURE_COMMAND = "labshelf.writing.regenerateFigure";
 
 export interface ChecklistViewDeps {
+  paths: PathOps;
   signals: Pick<OpenProjectSignals, "current" | "onDidChange" | "refresh">;
   reading: Pick<ProjectReadingLists, "of"> & { onDidChange: vscode.Event<void> };
   memory: vscode.Memento;
@@ -60,7 +60,7 @@ export class ChecklistView implements vscode.Disposable {
     if (!rendered) { this.items.clear(); this.groups.clear(); return []; }
     const { project, grouping, checklist, pageCount } = rendered;
     const tree = checklistSidebarNodes({
-      checklist, grouping, pageCount, reading: this.reading?.folder === project.folder ? this.reading.papers : new Map(),
+      paths: this.deps.paths, checklist, grouping, pageCount, reading: this.reading?.folder === project.folder ? this.reading.papers : new Map(),
       isExpanded: (groupId, byDefault) => this.memory.isExpanded(project.folder, grouping, groupId, byDefault),
     });
     this.items = tree.items;
@@ -143,7 +143,7 @@ export class ChecklistView implements vscode.Disposable {
     const at = item.kind === "todo" ? item.todo : item.kind === "ref" ? item.ref : undefined;
     if (!project || !at) { return; }
     const range = new vscode.Range(at.line, 0, at.line, 0);
-    await vscode.commands.executeCommand(REVEAL_OUTLINE_COMMAND, vscode.Uri.file(path.join(project.folder, at.file)), range);
+    await vscode.commands.executeCommand(REVEAL_OUTLINE_COMMAND, vscode.Uri.file(this.deps.paths.join(project.folder, at.file)), range);
   }
 
   private async regenerate(item: ChecklistItem): Promise<void> {

@@ -1,6 +1,6 @@
 // Pins the Publish screen's host: checks, sign-in, the pull request and every failure path (logged, posted and noticed).
 import type { HostToGallery, PublishDraft } from "@labshelf/core";
-import type { PublishCheckReport } from "@labshelf/core/node";
+import type { PublishCheckReport } from "@labshelf/core";
 import { createPublishHost } from "../../../../src/writing/templates/publish/publishHost.js";
 import type { PublishableProject, PublishPorts } from "../../../../src/writing/templates/publish/types.js";
 import { fakeLogger } from "../../../support/writingFixtures.js";

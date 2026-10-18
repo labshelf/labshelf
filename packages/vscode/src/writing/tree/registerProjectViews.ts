@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 import type { ILogger, PaperStatus } from "@labshelf/core";
 import type { ArcIcon } from "../../ui/index.js";
 import type { BuildOutcomes } from "../build/index.js";
-import { readSignalsOnDisk, registerChecklistView } from "../checklist/index.js";
+import { registerChecklistView, signalsReader } from "../checklist/index.js";
 import { OutlineTreeProvider, REVEAL_OUTLINE_COMMAND, registerTypstOutline, revealOutline } from "../outline/index.js";
 import { ProjectFiguresView, type ProjectFigures } from "../figures/index.js";
 import type { BuildPreviews } from "../preview/index.js";
@@ -67,7 +67,7 @@ function filesSpec(provider: ProjectFilesProvider): ProjectTreeSpec<ProjectFileN
 export function registerProjectViews(deps: ProjectViewsDeps): ProjectViewsHandles {
   const { context, projects, figures, session, logger, arcIcon, readingLists, outcomes } = deps;
   const projectsSource = new SidebarProjectsSource({
-    projects, logger, readingLists, buildOutcomes: outcomes, readSignals: readSignalsOnDisk, watchFolder,
+    projects, logger, readingLists, buildOutcomes: outcomes, readSignals: signalsReader(projects), watchFolder,
   });
   const files = new ProjectFilesProvider({ session, projects, logger });
   const outline = new OutlineTreeProvider(logger);
@@ -85,7 +85,7 @@ export function registerProjectViews(deps: ProjectViewsDeps): ProjectViewsHandle
     registerTypstOutline(),
   );
   registerProjectFileCommands({ context, session, logger });
-  const checklist = registerChecklistView({ context, session, previews: deps.previews, readingLists, onDidChangeBacklinks: deps.onDidChangeBacklinks, setStatus: deps.setStatus, logger });
+  const checklist = registerChecklistView({ context, session, projects, previews: deps.previews, readingLists, onDidChangeBacklinks: deps.onDidChangeBacklinks, setStatus: deps.setStatus, logger });
   const outlineSpec: ProjectTreeSpec<unknown> = {
     view: "outline", title: "Outline", provider: outline, empty: "Open a source file to see its outline.", actions: [], menus: {},
   };

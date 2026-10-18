@@ -1,9 +1,8 @@
 // Reads the text of the files a project search covers, preferring unsaved editor content.
 import * as vscode from "vscode";
 
-import type { ILogger, PathOps, SearchScopeMode } from "@labshelf/core";
+import type { ILogger, LibraryFileSystem, PathOps, SearchScopeMode } from "@labshelf/core";
 import { isSearchableFile, listProjectFiles } from "@labshelf/core";
-import { NodeLibraryFileSystem } from "@labshelf/core/node";
 import { isInside } from "../mainDocument.js";
 
 export const SEARCH_LOG_MODULE = "writing/search";
@@ -23,6 +22,7 @@ export interface SearchScope {
   /** Absolute path of the active file. */
   file: string;
   paths: PathOps;
+  fs: LibraryFileSystem;
 }
 
 async function readFromDisk(path: string, logger: ILogger): Promise<string | undefined> {
@@ -39,7 +39,7 @@ async function readFromDisk(path: string, logger: ILogger): Promise<string | und
 async function scopedPaths(scope: SearchScope, logger: ILogger): Promise<string[]> {
   if (scope.mode === "file") { return [scope.file]; }
   try {
-    const relatives = await listProjectFiles({ fs: new NodeLibraryFileSystem(), paths: scope.paths }, scope.folder);
+    const relatives = await listProjectFiles({ fs: scope.fs, paths: scope.paths }, scope.folder);
     return relatives.map((relative) => scope.paths.join(scope.folder, relative));
   } catch (error) {
     await logger.error(SEARCH_LOG_MODULE, error, { action: "list-files", folder: scope.folder });

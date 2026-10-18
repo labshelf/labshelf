@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import * as vscode from "vscode";
 
+import { NodeLibraryFileSystem } from "@labshelf/core/node";
 import { registerWritingView } from "../../../src/activation/registration/registerWritingView";
 import type { LibraryRootController } from "../../../src/activation/libraryLifecycle";
 import type { RegisterNodeWriting } from "../../../src/writing/nodePort";
@@ -32,7 +33,8 @@ function setup(root: string | undefined, register: RegisterNodeWriting = fakeReg
     extension: { packageJSON: { version: "0.0.0" } },
     workspaceState: { get: () => undefined, update: jest.fn(async () => {}) },
   };
-  registerWritingView(context as unknown as vscode.ExtensionContext, controller, { locatePdfjs: () => null, isMac: false }, { paths: path, createProjectData: () => data }, register);
+  const adapters = { paths: path, fs: new NodeLibraryFileSystem(), createProjectData: () => data, deviceLayout: () => { throw new Error("The fake project data reads no device dirs"); } };
+  registerWritingView(context as unknown as vscode.ExtensionContext, controller, { locatePdfjs: () => null, isMac: false }, adapters, register);
   return { emitter, listProjects: data.listProjects };
 }
 
@@ -48,10 +50,10 @@ describe("registerWritingView", () => {
     expect(registered).toEqual(contributed);
   });
 
-  it("creates the contributed Files, Outline, Checklist, Figures and Versions tree views", () => {
+  it("creates the contributed Figures tree view", () => {
     setup("/lib");
     const created = (vscode.window.createTreeView as jest.Mock).mock.calls.map(([id]) => id as string);
-    expect(created).toEqual(["labshelf.writing.figures", "labshelf.writing.files", "labshelf.writing.outline", "labshelf.writing.checklist"]);
+    expect(created).toEqual(["labshelf.writing.figures"]);
     expect(manifest.contributes.views.labshelfContainer.map((v) => v.id)).toEqual(expect.arrayContaining(created));
   });
 
@@ -62,11 +64,9 @@ describe("registerWritingView", () => {
     expect(manifest.contributes.menus.commandPalette).toContainEqual({ command: "labshelf.writing.revealOutline", when: "false" });
   });
 
-  it("hides the Checklist row commands from the palette and offers Add Item while a project is open", () => {
+  it("hides Run Check from the palette and offers Add Item while a project is open", () => {
     const palette = manifest.contributes.menus.commandPalette;
-    for (const id of ["bySection", "byKind", "removeItem", "nextStatus", "runCheck"]) {
-      expect(palette).toContainEqual({ command: `labshelf.writing.checklist.${id}`, when: "false" });
-    }
+    expect(palette).toContainEqual({ command: "labshelf.writing.checklist.runCheck", when: "false" });
     expect(palette).toContainEqual({ command: "labshelf.writing.checklist.addItem", when: "labshelf.writing.projectOpen" });
   });
 

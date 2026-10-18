@@ -1,3 +1,4 @@
+import * as path from "node:path";
 import * as vscode from "vscode";
 
 import { replaceCitedKey } from "../../../../src/writing/preview/citationFixes/replaceCitedKey";
@@ -19,7 +20,7 @@ describe("replaceCitedKey", () => {
 
   it("changes only the missing key of a multi-key cite", async () => {
     openLine(String.raw`As shown \citep[p.~2]{smith2020, jonse2021,doe2019} here.`);
-    await replaceCitedKey({ projectFolder: "/proj", logger: fakeLogger() }, fix("jonse2021", "jones2021"));
+    await replaceCitedKey({ projectFolder: "/proj", paths: path.posix, logger: fakeLogger() }, fix("jonse2021", "jones2021"));
 
     const edit = (vscode.workspace.applyEdit as jest.Mock).mock.calls[0][0];
     expect(edit.replacements).toHaveLength(1);
@@ -34,7 +35,7 @@ describe("replaceCitedKey", () => {
   it("changes a Typst @key without touching a longer key that shares its prefix", async () => {
     const line = "See @smith2020b and @smith2020.";
     openLine(line);
-    await replaceCitedKey({ projectFolder: "/proj", logger: fakeLogger() }, fix("smith2020", "smyth2020", "main.typ"));
+    await replaceCitedKey({ projectFolder: "/proj", paths: path.posix, logger: fakeLogger() }, fix("smith2020", "smyth2020", "main.typ"));
 
     const { range } = (vscode.workspace.applyEdit as jest.Mock).mock.calls[0][0].replacements[0];
     expect(range.start.character).toBe(line.lastIndexOf("smith2020"));
@@ -43,7 +44,7 @@ describe("replaceCitedKey", () => {
   it("warns and edits nothing when the key is not cited on the line", async () => {
     openLine(String.raw`\cite{other}`);
     const logger = fakeLogger();
-    await replaceCitedKey({ projectFolder: "/proj", logger }, fix("missing", "found"));
+    await replaceCitedKey({ projectFolder: "/proj", paths: path.posix, logger }, fix("missing", "found"));
 
     expect(vscode.workspace.applyEdit).not.toHaveBeenCalled();
     expect(vscode.window.showWarningMessage).toHaveBeenCalled();

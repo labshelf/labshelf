@@ -1,21 +1,20 @@
 // Creates the open project's Checklist and describes it for the sidebar mirror.
-import { randomUUID } from "node:crypto";
 import * as vscode from "vscode";
 
 import { updateChecklist, type ILogger, type PaperStatus } from "@labshelf/core";
-import { nodeProjectReadContext } from "@labshelf/core/node";
 import { CHECK_COMMAND } from "../check/index.js";
 import type { BuildPreviews } from "../preview/index.js";
 import type { ProjectReadingLists } from "../readingList/index.js";
-import type { ProjectSession } from "../session/index.js";
+import type { ProjectSession, WritingProjects } from "../session/index.js";
 import type { BuiltTreeSpec } from "../sidebar/index.js";
 import { ChecklistView } from "./checklistView.js";
 import { OpenProjectSignals } from "./openProjectSignals.js";
-import { readSignalsOnDisk } from "./readSignalsOnDisk.js";
+import { signalsReader } from "./signalsReader.js";
 
 export interface ChecklistViewRegistration {
   context: vscode.ExtensionContext;
   session: ProjectSession;
+  projects: Pick<WritingProjects, "reads" | "paths">;
   previews: Pick<BuildPreviews, "onDidCountBodyPages">;
   readingLists: ProjectReadingLists;
   /** Fires when the project backlinks, and so the reading lists, change. */
@@ -29,17 +28,18 @@ export interface ChecklistViewRegistration {
 export function registerChecklistView(deps: ChecklistViewRegistration): BuiltTreeSpec {
   const { context, session, logger } = deps;
   const signals = new OpenProjectSignals({
-    session, readSignals: readSignalsOnDisk, onDidSaveTextDocument: vscode.workspace.onDidSaveTextDocument,
-    onDidCountBodyPages: deps.previews.onDidCountBodyPages, logger,
+    session, readSignals: signalsReader(deps.projects), onDidSaveTextDocument: vscode.workspace.onDidSaveTextDocument,
+    onDidCountBodyPages: deps.previews.onDidCountBodyPages, logger, paths: deps.projects.paths,
   });
   const view = new ChecklistView({
     signals,
+    paths: deps.projects.paths,
     reading: { of: (project) => deps.readingLists.of(project), onDidChange: deps.onDidChangeBacklinks },
     memory: context.workspaceState,
     setStatus: deps.setStatus,
-    updateChecklist: (folder, edit) => updateChecklist(nodeProjectReadContext(logger), folder, edit),
+    updateChecklist: (folder, edit) => updateChecklist(deps.projects.reads(logger), folder, edit),
     logger,
-    newId: randomUUID,
+    newId: () => globalThis.crypto.randomUUID(),
     now: () => new Date(),
   });
   const command = vscode.commands.registerCommand;

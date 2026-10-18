@@ -1,4 +1,6 @@
 // Declares the inputs, result and step names of the template pull request flow.
+import type { TemplateFile } from "../writing/templates/index.js";
+
 export type GitHubStep =
   | "fork"
   | "wait"
@@ -13,12 +15,6 @@ export type GitHubStep =
 export interface RepoRef {
   owner: string;
   repo: string;
-}
-
-export interface TemplateFile {
-  /** Path relative to the template root. */
-  path: string;
-  bytes: Uint8Array;
 }
 
 export interface SubmitTemplateInput {

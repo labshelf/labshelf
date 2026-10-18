@@ -1,4 +1,5 @@
 // Tests that a .bib entry becomes a library paper: imported by identifier with its cite key, or written from its fields.
+import * as path from "node:path";
 import * as vscode from "vscode";
 
 import { addBibToLibrary } from "../../../../src/writing/preview/citationFixes/addBibToLibrary";
@@ -14,7 +15,7 @@ function setup(bib: string) {
   const importFromNetwork = jest.fn(async () => ({ status: "added", input: "x" }));
   const writeArtifacts = jest.fn(async () => {});
   const ctx = {
-    papersRoot: "/lib/papers", logger: fakeLogger(), paths: { join: (...parts: string[]) => parts.join("/") },
+    papersRoot: "/lib/papers", logger: fakeLogger(), paths: { join: (...parts: string[]) => parts.join("/"), basename: path.basename },
     fs: { exists: async () => false, writeFile: jest.fn(async () => {}) }, artifacts: { writePaperArtifacts: writeArtifacts },
   };
   const reindex = jest.fn(async () => {});

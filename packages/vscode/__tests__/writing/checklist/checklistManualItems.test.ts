@@ -11,7 +11,6 @@ import type { ReadyProject } from "../../../src/writing/figures";
 import { fakeLogger, readyEntry } from "../../support/writingFixtures";
 
 const flush = () => new Promise((resolve) => setImmediate(resolve));
-const arcIcon = () => ({ light: vscode.Uri.file("/l.svg"), dark: vscode.Uri.file("/d.svg") });
 let folder: string;
 const file = () => path.join(folder, ".labshelf", "checklist.json");
 const onDisk = () => JSON.parse(fs.readFileSync(file(), "utf8")).items as Array<{ id: string; text: string; done: boolean }>;
@@ -28,7 +27,7 @@ function setup(initial?: string) {
     current: undefined as unknown,
     onDidChange: changed.event,
     refresh: jest.fn(async () => {
-      signals.current = { project, signals: { sources: [], todos: [], brokenRefs: [], staleFigures: [], manual: await readManualItems(nodeProjectReadContext(logger), folder) }, pageOverflow: undefined };
+      signals.current = { project, signals: { sources: [], todos: [], brokenRefs: [], staleFigures: [], manual: await readManualItems(nodeProjectReadContext(logger), folder) }, pageOverflow: undefined, pageCount: undefined };
       changed.fire();
     }),
   };
@@ -36,16 +35,13 @@ function setup(initial?: string) {
   const ready = signals.refresh();
   const reading = { of: jest.fn(async () => ({ entries: [], neverOpened: 0 })), onDidChange: new vscode.EventEmitter<void>().event };
   const view = new ChecklistView({
-    signals: signals as never, reading, memory: { get: () => undefined, update: async () => {}, keys: () => [] }, setStatus: async () => [],
-    updateChecklist: (target, edit) => updateChecklist(nodeProjectReadContext(logger), target, edit), logger, arcIcon, newId: () => "item-1", now: () => new Date("2026-05-01T10:00:00Z"),
+    paths: path, signals: signals as never, reading, memory: { get: () => undefined, update: async () => {}, keys: () => [] }, setStatus: async () => [],
+    updateChecklist: (target, edit) => updateChecklist(nodeProjectReadContext(logger), target, edit), logger, newId: () => "item-1", now: () => new Date("2026-05-01T10:00:00Z"),
   });
   return { view, logger, signals, ready };
 }
 
-const manualRows = (view: ChecklistView) => {
-  const group = (view.getChildren() as unknown[]).find((n) => view.getTreeItem(n as never).label === "Manual");
-  return group ? (view.getChildren(group as never) as unknown[]) : [];
-};
+const manualRows = (view: ChecklistView) => view.nodes().find((node) => node.label === "My items")?.children ?? [];
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -60,10 +56,7 @@ describe("ChecklistView: manual items", () => {
     await view.addItem();
     await flush();
     expect(onDisk()).toEqual([expect.objectContaining({ id: "item-1", text: "Thank reviewers", done: false })]);
-    const item = view.getTreeItem(manualRows(view)[0] as never);
-    expect(item.label).toBe("Thank reviewers");
-    expect(item.contextValue).toBe("labshelfChecklistManual");
-    expect(item.checkboxState).toBe(vscode.TreeItemCheckboxState.Unchecked);
+    expect(manualRows(view)[0]).toEqual(expect.objectContaining({ label: "Thank reviewers", checked: false }));
   });
 
   it("writes nothing when the input box is cancelled", async () => {
@@ -77,10 +70,10 @@ describe("ChecklistView: manual items", () => {
     const seed = JSON.stringify(addManualItem({ items: [] }, { id: "m1", text: "Cite more", now: "2026-04-01T00:00:00.000Z" }));
     const { view, ready } = setup(seed);
     await ready;
-    await view.setChecked(manualRows(view)[0] as never, vscode.TreeItemCheckboxState.Checked);
+    await view.handle({ op: "check", key: manualRows(view)[0]!.key, checked: true });
     await flush();
     expect(onDisk()[0]).toEqual(expect.objectContaining({ id: "m1", done: true, doneAt: "2026-05-01T10:00:00.000Z" }));
-    await view.setChecked(manualRows(view)[0] as never, vscode.TreeItemCheckboxState.Unchecked);
+    await view.handle({ op: "check", key: manualRows(view)[0]!.key, checked: false });
     expect(onDisk()[0]).toEqual(expect.objectContaining({ id: "m1", done: false }));
   });
 
@@ -88,7 +81,7 @@ describe("ChecklistView: manual items", () => {
     const seed = JSON.stringify(addManualItem({ items: [] }, { id: "m1", text: "Cite more", now: "2026-04-01T00:00:00.000Z" }));
     const { view, ready } = setup(seed);
     await ready;
-    await view.removeItem(manualRows(view)[0] as never);
+    await view.handle({ op: "menu", key: manualRows(view)[0]!.key, action: "removeItem" });
     expect(onDisk()).toEqual([]);
   });
 

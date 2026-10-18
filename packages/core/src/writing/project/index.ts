@@ -12,8 +12,11 @@ export type { OpenSources } from "./openSources.js";
 export type { ProjectEntry, ProjectLocation } from "./projectEntry.js";
 export { readProjectEntry, type ProjectFolderReader } from "./readProjectEntry.js";
 export { projectIdSlug } from "./projectId.js";
-export { parseProjectRegistry, serializeProjectRegistry, withFolder, withoutFolder } from "./deviceLocal/index.js";
-export type { ProjectRegistry } from "./deviceLocal/index.js";
+export {
+  loadProjectRegistry, parseProjectRegistry, projectFolderRegistry, registerProjectFolder, serializeProjectRegistry,
+  unregisterProjectFolder, withFolder, withoutFolder,
+} from "./deviceLocal/index.js";
+export type { ProjectRegistry, ProjectRegistryFileContext } from "./deviceLocal/index.js";
 export * from "./install/index.js";
 export * from "./export/index.js";
 export * from "./folder/index.js";

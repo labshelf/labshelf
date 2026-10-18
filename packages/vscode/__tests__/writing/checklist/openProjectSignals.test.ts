@@ -5,9 +5,9 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 
 import type { ChecklistSignals } from "@labshelf/core";
-import { OpenProjectSignals, readSignalsOnDisk } from "../../../src/writing/checklist";
+import { OpenProjectSignals, signalsReader } from "../../../src/writing/checklist";
 import type { ReadyProject } from "../../../src/writing/figures";
-import { fakeLogger, readyEntry } from "../../support/writingFixtures";
+import { fakeLogger, fakeProjects, readyEntry } from "../../support/writingFixtures";
 
 const emptySignals = (todo = ""): ChecklistSignals => ({
   sources: [], todos: todo ? [{ file: "main.tex", line: 0, text: todo } as never] : [], brokenRefs: [], staleFigures: [], manual: [],
@@ -23,7 +23,7 @@ function setup(project: ReadyProject | undefined, readSignals = jest.fn(async ()
   const counts = new vscode.EventEmitter<{ folder: string; root: string; contentPages: number }>();
   const logger = fakeLogger();
   const signals = new OpenProjectSignals({
-    session, readSignals, onDidSaveTextDocument: saves.event, onDidCountBodyPages: counts.event, logger,
+    session, readSignals, onDidSaveTextDocument: saves.event, onDidCountBodyPages: counts.event, logger, paths: path,
   });
   const changed = jest.fn();
   signals.onDidChange(changed);
@@ -206,7 +206,7 @@ describe("OpenProjectSignals with the real signal reader", () => {
     const main = path.join(folder, "main.tex");
     try {
       fs.writeFileSync(main, "\\documentclass{article}\n% TODO x\n\\begin{document}\\end{document}\n");
-      const { signals, save, changed } = setup(withPages(folder, undefined), readSignalsOnDisk as never);
+      const { signals, save, changed } = setup(withPages(folder, undefined), signalsReader(fakeProjects()) as never);
       await new Promise((resolve) => setTimeout(resolve, 200));
       expect(signals.current?.signals.todos).toHaveLength(1);
       changed.mockClear();

@@ -1,7 +1,8 @@
 // Assembles what a build run needs from the terminal: the build queue with its dependencies, the source watcher and Ctrl-C.
 import * as path from "node:path";
 
-import { cacheDir, nodeProjectData, ProjectBuildQueue } from "@labshelf/core/node";
+import { createProjectData } from "@labshelf/core";
+import { cacheDir, deviceLocalLayout, NodeLibraryFileSystem, ProjectBuildQueue } from "@labshelf/core/node";
 
 import type { AppContext } from "../../app/context.js";
 import type { ReadyProject } from "./findProject.js";
@@ -27,7 +28,9 @@ export function processAsk(): Ask | undefined {
 const rejectTypst = (): Promise<never> => Promise.reject(new Error("Typst projects cannot be built from the terminal yet."));
 
 export function terminalBuildEnvironment(ctx: BuildContext, tty: { ask: Ask | undefined }): BuildEnvironment {
-  const data = nodeProjectData(ctx.logger);
+  const data = createProjectData({
+    fs: new NodeLibraryFileSystem(), path, logger: ctx.logger, deviceDirs: deviceLocalLayout(ctx.paths.root),
+  });
   return {
     queue: new ProjectBuildQueue({
       logger: ctx.logger,

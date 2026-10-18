@@ -1,4 +1,6 @@
 // Tests which source changes mark a root's PDF stale, when a build clears that, and that the stale event fires once.
+import * as path from "node:path";
+
 import { StaleSources } from "../../../../src/writing/preview/stale";
 
 function setup() {
@@ -7,7 +9,7 @@ function setup() {
   const events = { onSourceChanged: (listener: (filePath: string) => void) => { emit = listener; return { dispose }; } };
   let clock = 1000;
   const onStale = jest.fn();
-  const sources = new StaleSources(events, () => clock, onStale);
+  const sources = new StaleSources(path, events, () => clock, onStale);
   return { sources, onStale, dispose, edit: (file: string) => emit(file), tick: (to: number) => { clock = to; } };
 }
 

@@ -2,7 +2,6 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { projectBuildDir } from "../../../../../src/writing/project/node/index";
 import { rootBuildFolder } from "../../../../../src/writing/project/roots/index";
 import { runLatexBuild, type LatexBuildRequest } from "../../../../../src/writing/latex/build/node/index";
 import { fakeLogger } from "../../../../support/fakeLogger";
@@ -91,11 +90,5 @@ posixOnly("runLatexBuild", () => {
     expect(await running).toEqual({ status: "cancelled" });
     expect(Date.now() - started).toBeLessThan(5000);
     await expect(fs.stat(path.join(request.projectFolder, "main.pdf"))).rejects.toThrow();
-  });
-});
-
-describe("projectBuildDir", () => {
-  it("keeps each project's build under the shared cache", () => {
-    expect(projectBuildDir("deep-nets", { XDG_CACHE_HOME: "/xdg" })).toBe(path.join("/xdg", "labshelf", "builds", "deep-nets"));
   });
 });

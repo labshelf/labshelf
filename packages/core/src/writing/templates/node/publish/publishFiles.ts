@@ -2,13 +2,8 @@
 import { promises as fs } from "node:fs";
 
 import { serializeTemplateManifest, type TemplateManifest } from "../../manifest/index.js";
+import type { PublishFile } from "../../publishTypes.js";
 import type { FoundFile } from "../walkFolder.js";
-
-export interface PublishFile {
-  /** Relative to the template's folder in the catalog. */
-  path: string;
-  bytes: Uint8Array;
-}
 
 /** @param projectFiles the files that passed the checks, laid out under `files/` */
 export async function layOutPublishFiles(

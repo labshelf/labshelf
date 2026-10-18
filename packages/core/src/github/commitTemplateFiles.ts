@@ -1,7 +1,8 @@
 // Creates blobs, a tree, a commit and a branch on the fork holding the template files.
 import { bytesToBase64 } from "../encoding/index.js";
 import { githubRequest, type GitHubClient } from "./githubRequest.js";
-import type { RepoRef, TemplateFile } from "./types.js";
+import type { TemplateFile } from "../writing/templates/index.js";
+import type { RepoRef } from "./types.js";
 
 export const BASE_BRANCH = "main";
 

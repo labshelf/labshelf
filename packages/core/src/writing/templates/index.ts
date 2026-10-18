@@ -11,6 +11,7 @@ export type { TemplateFilter } from "./filterTemplates.js";
 export { CATEGORY_LABELS, ENGINE_LABELS, FORMAT_LABELS, SOURCE_LABELS, templateByLine, templateMetaLine, templateUsesCount, templateUsesLabel } from "./templateLabels.js";
 export { PUBLISH_CHECK_IDS, publishCheckLabel } from "./publishCheckLabels.js";
 export type { PublishCheckId } from "./publishCheckLabels.js";
+export type { PublishBuildResult, PublishCheck, PublishCheckInput, PublishCheckReport, PublishFile } from "./publishTypes.js";
 export { TEMPLATE_SOURCES } from "./templateEntry.js";
 export type { TemplateEntry, TemplateSourceId } from "./templateEntry.js";
 export * from "./sources/index.js";

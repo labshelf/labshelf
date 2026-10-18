@@ -1,23 +1,19 @@
-/** Verifies the on-disk merge base store: round trip, location outside the library, no deletion, path rejection. */
-import { promises as fs } from "node:fs";
+/** Verifies the merge base store: round trip, location under its folder, no deletion, path rejection. */
 import * as path from "node:path";
 
-import { deviceLocalLayout } from "../../../../src/library/node/index";
-import { FileMergeBaseStore } from "../../../../src/writing/merge/node/index";
-import { cleanupTempDirs, makeTempDir } from "../../../support/tempDirs";
+import { FileMergeBaseStore } from "../../../src/writing/merge/index";
+import { MemoryLibraryFs } from "../../support/memoryLibraryFs";
 
-afterEach(cleanupTempDirs);
+const basesDir = "/state/lib-key/merge-bases";
 
-async function makeStore() {
-  const library = await makeTempDir();
-  const state = await makeTempDir();
-  const env = { XDG_STATE_HOME: state, XDG_CACHE_HOME: state };
-  return { library, state, store: new FileMergeBaseStore(library, env), layout: deviceLocalLayout(library, env) };
+function makeStore() {
+  const fs = new MemoryLibraryFs();
+  return { fs, store: new FileMergeBaseStore(fs, path.posix, basesDir) };
 }
 
 describe("FileMergeBaseStore", () => {
   it("reads back what it wrote, including nested paths", async () => {
-    const { store } = await makeStore();
+    const { store } = makeStore();
     await store.write("p1", "chapters/intro.tex", "hello");
     expect(await store.read("p1", "chapters/intro.tex")).toBe("hello");
     await store.write("p1", "chapters/intro.tex", "second");
@@ -25,35 +21,31 @@ describe("FileMergeBaseStore", () => {
   });
 
   it("reads undefined for an unknown file or project", async () => {
-    const { store } = await makeStore();
+    const { store } = makeStore();
     expect(await store.read("p1", "main.tex")).toBeUndefined();
     await store.write("p1", "main.tex", "x");
     expect(await store.read("p2", "main.tex")).toBeUndefined();
   });
 
   it("keeps a base after the project file is deleted", async () => {
-    const { store, library } = await makeStore();
-    const projectFile = path.join(library, "main.tex");
-    await fs.writeFile(projectFile, "text");
+    const { fs, store } = makeStore();
+    await fs.writeText("/lib/main.tex", "text");
     await store.write("p1", "main.tex", "text");
-    await fs.rm(projectFile);
+    await fs.removeTree("/lib/main.tex");
     expect(await store.read("p1", "main.tex")).toBe("text");
   });
 
-  it("stores under the state directory, outside the library", async () => {
-    const { store, library, state, layout } = await makeStore();
+  it("stores under its folder, one segment per path part", async () => {
+    const { fs, store } = makeStore();
     await store.write("p1", "sub/main.tex", "text");
-    const file = path.join(layout.mergeBasesDir, "p1", "sub", "main.tex");
-    expect(layout.mergeBasesDir.startsWith(path.join(state, "labshelf", "libraries"))).toBe(true);
-    expect(await fs.readFile(file, "utf8")).toBe("text");
-    expect(file.startsWith(library)).toBe(false);
+    expect([...fs.files.keys()]).toEqual([`${basesDir}/p1/sub/main.tex`]);
   });
 
   it.each([
     ["", "main.tex"], ["p1", ""], ["p1", "../main.tex"], ["p1", "a/../../main.tex"], ["p1", "/etc/passwd"],
     ["p1", "C:\\x.tex"], ["../p2", "main.tex"], ["/abs", "main.tex"], ["p1", "..\\main.tex"], ["p1", "sub\\main.tex"], [".", "main.tex"], ["p1", "./main.tex"], ["a/b", "main.tex"],
   ])("rejects project %j with path %j", async (projectId, relativePath) => {
-    const { store } = await makeStore();
+    const { store } = makeStore();
     await expect(store.write(projectId, relativePath, "x")).rejects.toThrow(/merge base/i);
     await expect(store.read(projectId, relativePath)).rejects.toThrow(/merge base/i);
   });

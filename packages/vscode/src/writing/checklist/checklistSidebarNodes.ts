@@ -1,12 +1,13 @@
 // Lays a built checklist out as the sidebar's Checklist tree: ordered groups with dots, the folded "N read" rows and the manual items.
 import type {
-  Checklist, ChecklistGroup, ChecklistGrouping, ChecklistItem, DotTone, PageOverflow, SidebarTreeNode,
+  Checklist, ChecklistGroup, ChecklistGrouping, ChecklistItem, DotTone, PageOverflow, PathOps, SidebarTreeNode,
 } from "@labshelf/core";
 import { itemKey, itemRow, pagesHead, type ReadingPaper } from "./checklistRows.js";
 
 type ReadingChecklistItem = Extract<ChecklistItem, { kind: "reading" }>;
 
 export interface ChecklistTreeInput {
+  paths: PathOps;
   checklist: Checklist;
   grouping: ChecklistGrouping;
   /** Shown as the Pages row in By kind; undefined without a page limit or a count. */
@@ -51,7 +52,7 @@ function groupNode(input: ChecklistTreeInput, tree: ChecklistTree, group: Checkl
   const row = (item: ChecklistItem): SidebarTreeNode => {
     const rowKey = `${key}/${itemKey(item)}`;
     tree.items.set(rowKey, item);
-    return itemRow(rowKey, item, input.reading);
+    return itemRow(input.paths, rowKey, item, input.reading);
   };
   // Manual items follow the group's own rows, the folded "N read" row included.
   const own = group.items.filter((item) => item.kind !== "manual" || group.id === "manual" || group.id.startsWith("#"));

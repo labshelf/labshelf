@@ -5,8 +5,8 @@ import * as path from "node:path";
 import { gzipSync } from "node:zlib";
 import * as vscode from "vscode";
 
-import { rootBuildFolder } from "@labshelf/core";
-import { nodeProjectData } from "@labshelf/core/node";
+import { createProjectData, rootBuildFolder } from "@labshelf/core";
+import { NodeLibraryFileSystem, deviceLocalLayout } from "@labshelf/core/node";
 import { ReaderPanel } from "../../../src/pdf-viewer";
 import { BuildPreviews, CheckCounts } from "../../../src/writing/preview";
 import { fakeHost, fakeProjects, openInEditor, readyEntry } from "../../support/writingFixtures";
@@ -34,7 +34,7 @@ function setup(type: "latex" | "typst" = "latex") {
   const recompile = jest.fn(async () => {});
   const project = (type === "latex" ? readyEntry(dir) : readyEntry(dir, { main: "main.typ", settings: { id: path.basename(dir), format: "typst" } })) as Project;
   const previews = new BuildPreviews({
-    host, paths: path, data: nodeProjectData(host.session.logger), listPapers: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false,
+    host, paths: path, data: createProjectData({ fs: new NodeLibraryFileSystem(), path, logger: host.session.logger, deviceDirs: deviceLocalLayout(dir) }), listPapers: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false,
     buildRootOf: async (_folder: string, main: string) => main, recompile,
     projects: fakeProjects(), checkCounts: new CheckCounts(),
   } as never);
