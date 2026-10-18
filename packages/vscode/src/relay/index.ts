@@ -1,0 +1,3 @@
+/** Exports the owner's Cloudflare relay on the desktop: its stored connection and its commands. */
+export { RelayAccounts, type RelayAccount } from "./relayAccounts.js";
+export { registerRelay } from "./registerRelay.js";

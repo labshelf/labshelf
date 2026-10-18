@@ -1,0 +1,44 @@
+// Disconnects Cloudflare: deletes the owner's relay from the account, forgets the token and takes the relay out of the shared projects.
+import * as vscode from "vscode";
+
+import { deleteRelay } from "@labshelf/core";
+import type { RelayDeps } from "./connectRelay.js";
+import { LOG_MODULE, RELAY_WORKER_NAME } from "./relayAccounts.js";
+import { reportRelayFailure } from "./relayFailure.js";
+
+export const DISCONNECT_RELAY_COMMAND = "labshelf.relay.disconnect";
+
+export interface DisconnectDeps extends RelayDeps {
+  /** Takes the relay out of the invites of the shared projects on this device and reconnects them without it. */
+  dropRelayFromShares(relayUrl: string): Promise<void>;
+}
+
+async function confirmDisconnect(relayUrl: string): Promise<boolean> {
+  const disconnect = "Disconnect";
+  const answer = await vscode.window.showWarningMessage("Disconnect Cloudflare and delete your relay?", {
+    modal: true,
+    detail: `LabShelf deletes the relay at ${relayUrl} from your Cloudflare account, with the encrypted edits it keeps, and takes it out of your shared projects. `
+      + "Collaborators keep syncing directly while they are online together.",
+  }, disconnect);
+  return answer === disconnect;
+}
+
+export async function disconnectRelay(deps: DisconnectDeps): Promise<void> {
+  const account = await deps.accounts.get();
+  if (!account) {
+    void vscode.window.showInformationMessage("Cloudflare is not connected.");
+    return;
+  }
+  if (!(await confirmDisconnect(account.relayUrl))) { return; }
+  try {
+    const { token, accountId, kvNamespaceId, turnKeyId, relayUrl } = account;
+    await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: "Deleting your relay from Cloudflare" }, () =>
+      deleteRelay({ token, accountId, workerName: RELAY_WORKER_NAME, kvNamespaceId, turnKeyId, logger: deps.logger, fetch: globalThis.fetch }));
+    await deps.accounts.forget();
+    await deps.dropRelayFromShares(relayUrl);
+    void deps.logger.log("INFO", LOG_MODULE, "Disconnected Cloudflare", { accountId, relayUrl });
+    void vscode.window.showInformationMessage("Cloudflare disconnected, and your relay is deleted.");
+  } catch (error) {
+    reportRelayFailure(deps.logger, "disconnect Cloudflare", error);
+  }
+}

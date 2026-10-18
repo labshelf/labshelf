@@ -10,7 +10,7 @@ export function encodeRelayList(relays: InviteRelay[]): string {
   return bytesToBase64Url(new TextEncoder().encode(JSON.stringify(relays)));
 }
 
-function isHttpsUrl(text: string): boolean {
+export function isHttpsUrl(text: string): boolean {
   try {
     return new URL(text).protocol === "https:";
   } catch {

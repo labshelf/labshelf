@@ -4,11 +4,12 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 import * as Y from "yjs";
 import type { ILogger } from "../../../ports/index.js";
+import type { RelayCursorStore } from "../../sync/index.js";
 import { INDEX_DOC_KEY } from "../../sync/index.js";
 import { BlobCache } from "./blobCache.js";
 import { docFileStem } from "./docFileStem.js";
 import { loadDocState, logRecord } from "./docLog.js";
-import { KnownFiles } from "./knownFiles.js";
+import { JsonMapFile } from "./jsonMapFile.js";
 
 const LOG_MODULE = "collab.state";
 /** Marks the stored state applied on load, so it is not appended to the log again. */
@@ -27,12 +28,18 @@ export interface CollabStore {
   /** Creates a file doc holding its stored state; pass it to createShareSession. */
   createDoc(path: string): Y.Doc;
   readonly blobs: BlobCache;
-  readonly known: KnownFiles;
+  /** Per shared path, the SHA-256 of the content disk and doc last agreed on. */
+  readonly known: JsonMapFile<string>;
+  /** The relay cursor of each doc, saved only after the doc updates it covers are on disk. */
+  readonly relayCursors: RelayCursorStore;
   /** Waits for every pending append and save. */
   flush(): Promise<void>;
   /** Flushes and stops storing updates. */
   close(): Promise<void>;
 }
+
+const isString = (value: unknown): value is string => typeof value === "string";
+const isCursor = (value: unknown): value is number => Number.isInteger(value) && (value as number) >= 0;
 
 async function loadAll(docsDir: string, logger: ILogger): Promise<Map<string, Uint8Array>> {
   await fs.mkdir(docsDir, { recursive: true });
@@ -48,8 +55,10 @@ async function loadAll(docsDir: string, logger: ILogger): Promise<Map<string, Ui
 export async function openCollabStore({ dir, shareId, logger }: CollabStoreOptions): Promise<CollabStore> {
   const docsDir = path.join(dir, "docs");
   const stored = await loadAll(docsDir, logger);
-  const known = await KnownFiles.load(path.join(dir, "known.json"), logger);
+  const known = await JsonMapFile.load({ file: path.join(dir, "known.json"), label: "known file hashes", isValue: isString, logger });
   const pending = new Set<Promise<void>>();
+  const appended = async () => { while (pending.size > 0) { await Promise.all([...pending]); } };
+  const relayCursors = await JsonMapFile.load({ file: path.join(dir, "relay-cursors.json"), label: "relay cursors", isValue: isCursor, logger, beforeSave: appended });
   const detach: (() => void)[] = [];
 
   function restore(docKey: string): Y.Doc {
@@ -74,8 +83,8 @@ export async function openCollabStore({ dir, shareId, logger }: CollabStoreOptio
   }
 
   const flush = async () => {
-    while (pending.size > 0) { await Promise.all([...pending]); }
-    await known.flush();
+    await appended();
+    await Promise.all([known.flush(), relayCursors.flush()]);
   };
   await logger.log("INFO", LOG_MODULE, "Opened the share state", { dir, docs: stored.size });
   return {
@@ -83,6 +92,7 @@ export async function openCollabStore({ dir, shareId, logger }: CollabStoreOptio
     createDoc: (docPath) => restore(docPath),
     blobs: new BlobCache(path.join(dir, "blobs")),
     known,
+    relayCursors,
     flush,
     close: async () => {
       await flush();

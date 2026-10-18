@@ -6,7 +6,7 @@ import type { WebCryptoKey } from "../../crypto/index.js";
 import type { PeerId } from "../../transport/index.js";
 import type { ShareSession } from "../shareSession.js";
 import { CHANNEL_KIND } from "../wire/index.js";
-import { isPresenceState, type PresenceState } from "./presence.js";
+import { isPresenceState, type PresenceState, type RelayReport } from "./presence.js";
 
 const LOG_MODULE = "collab.awareness";
 // The leading slash cannot start a relative path, so it never names a file doc.
@@ -22,6 +22,8 @@ export interface PresenceHandle {
   /** The y-protocols awareness an editor cursor extension binds to; its remote states are unchecked, unlike `remote()`. */
   readonly awareness: Awareness;
   setLocal(state: PresenceState): void;
+  /** Publishes the relay this user is on with every later presence; it waits for a presence when none is set yet. */
+  setRelay(report: RelayReport): void;
   /** The presence of the other peers, by awareness client id, without any state that has the wrong shape. */
   remote(): Map<number, PresenceState>;
   /** Tells the peers this user left, then stops. */
@@ -39,6 +41,7 @@ export function attachAwareness(session: ShareSession, options: AwarenessOptions
   const reported = new Map<PeerId, Set<number>>();
   const inFlight = new Set<Promise<void>>();
   let closed = false;
+  let relay: RelayReport | undefined;
 
   const channel = session.channel({
     kind: CHANNEL_KIND.awareness,
@@ -88,7 +91,12 @@ export function attachAwareness(session: ShareSession, options: AwarenessOptions
 
   return {
     awareness,
-    setLocal: (state) => awareness.setLocalState({ ...state }),
+    setLocal: (state) => awareness.setLocalState({ ...state, ...relay }),
+    setRelay: (report) => {
+      relay = { relay: report.relay, relaysDown: { ...report.relaysDown } };
+      const current = awareness.getLocalState();
+      if (current !== null) { awareness.setLocalState({ ...current, ...relay }); }
+    },
     remote: () => {
       const states = new Map<number, PresenceState>();
       awareness.getStates().forEach((state, id) => { if (id !== awareness.clientID && isPresenceState(state)) { states.set(id, state); } });

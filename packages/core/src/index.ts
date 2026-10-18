@@ -17,3 +17,4 @@ export * from "./bridge/index.js";
 export * from "./github/index.js";
 export * from "./collab/index.js";
 export * from "./relay/index.js";
+export * from "./share/index.js";

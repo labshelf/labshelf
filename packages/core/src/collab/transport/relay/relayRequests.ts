@@ -1,13 +1,23 @@
-// Asks a relay for a socket ticket or for TURN credentials over its JSON endpoints.
+// Calls a relay's JSON endpoints: the owner's claim of a share, a socket ticket and TURN credentials.
 import type { TurnServerConfig } from "@trystero-p2p/nostr";
+import { base64UrlToBytes } from "../../../encoding/index.js";
+import { sha256Hex } from "../../../hash/index.js";
 import {
-  decodeRefusal, decodeTicketResponse, decodeTurnResponse, encodeRelayBody, RELAY_PATH,
+  decodeClaimResponse, decodeRefusal, decodeTicketResponse, decodeTurnResponse, encodeRelayBody, RELAY_PATH,
   type ResponseResult, type TicketResponse,
 } from "../../../relay/index.js";
 import { RelayRequestError } from "./relayRequestError.js";
 
+export interface ClaimRequestOptions { relayUrl: string; ownerSecret: string; shareId: string; relayToken: string; fetch?: typeof fetch }
 export interface TicketRequestOptions { relayUrl: string; shareId: string; relayToken: string; fetch?: typeof fetch }
 export interface TurnRequestOptions { relayUrl: string; shareId: string; ticket: string; fetch?: typeof fetch }
+
+// CONTRACT: documents/contracts/relay.md#auth
+/** Registers the share on the owner's relay; claiming it again with the same token is a no-op. */
+export async function claimShare({ relayUrl, ownerSecret, shareId, relayToken, fetch: doFetch = fetch }: ClaimRequestOptions): Promise<void> {
+  const relayTokenHash = await sha256Hex(base64UrlToBytes(relayToken));
+  await post(doFetch, relayUrl, RELAY_PATH.claim, encodeRelayBody({ shareId, relayTokenHash }), decodeClaimResponse, { authorization: `Bearer ${ownerSecret}` });
+}
 
 // CONTRACT: documents/contracts/relay.md#endpoints
 export function fetchTicket({ relayUrl, shareId, relayToken, fetch: doFetch = fetch }: TicketRequestOptions): Promise<TicketResponse> {
@@ -21,13 +31,13 @@ export async function fetchTurnServers({ relayUrl, shareId, ticket, fetch: doFet
 }
 
 async function post<T>(
-  doFetch: typeof fetch, relayUrl: string, path: string, body: string, decode: (value: unknown) => ResponseResult<T>,
+  doFetch: typeof fetch, relayUrl: string, path: string, body: string, decode: (value: unknown) => ResponseResult<T>, headers: Record<string, string> = {},
 ): Promise<T> {
   const url = `${relayUrl.replace(/\/+$/, "")}${path}`;
   let response: Response;
   let json: unknown;
   try {
-    response = await doFetch(url, { method: "POST", headers: { "content-type": "application/json" }, body });
+    response = await doFetch(url, { method: "POST", headers: { "content-type": "application/json", ...headers }, body });
     json = await response.json();
   } catch (error) {
     throw new RelayRequestError("network", 0, `${path}: ${String(error)}`);

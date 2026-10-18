@@ -1,14 +1,16 @@
-// Wires project collaboration on the desktop: the share, join and leave commands, editor binding, presence, comments and status bar.
+// Wires project collaboration on the desktop: the share, join and leave commands, the owner's relay, editor binding, presence, comments and status bar.
 import * as vscode from "vscode";
 
 import type { ILogger } from "@labshelf/core";
 import type { LibraryRootController } from "../../activation/libraryLifecycle/index.js";
+import { RelayAccounts, registerRelay } from "../../relay/index.js";
 import type { WritingProjects } from "../../writing/index.js";
 import type { CollabHost } from "./collabHost.js";
 import {
   JOIN_COMMAND, joinProject, LEAVE_COMMAND, leaveProject, registerShareStatusBar, SHARE_COMMAND, shareProject, type ProjectTarget,
 } from "./commands/index.js";
 import { SharedEditors, SharedPresence } from "./editors/index.js";
+import { dropRelayFromShares } from "./ownRelay.js";
 import { registerComments } from "./registerComments.js";
 import { resumeShares } from "./resumeShares.js";
 import { ActiveShares, connectShare, ShareKeys } from "./session/index.js";
@@ -37,10 +39,12 @@ function createHost(context: vscode.ExtensionContext, controller: Controller, pr
     requireLibrary: async () => { await controller.require(); return libraryRoot(); },
     logger, projects, shares, editors,
     keys: new ShareKeys(context.secrets, logger),
-    connect: async ({ shareId, shareKey }, start) => {
+    relay: new RelayAccounts(context.secrets, logger),
+    connect: async ({ shareId, shareKey, relays }, start) => {
       const root = libraryRoot();
       if (!root) { throw new Error("no library is open"); }
-      const share = await connectShare({ libraryRoot: root, shareId, shareKey, logger, isEditorOwned: (folder, file) => editors.isOwned(folder, file) }, start);
+      const isEditorOwned = (folder: string, file: string) => editors.isOwned(folder, file);
+      const share = await connectShare({ libraryRoot: root, shareId, shareKey, relays, logger, isEditorOwned }, start);
       shares.add(share);
       return share;
     },
@@ -50,6 +54,7 @@ function createHost(context: vscode.ExtensionContext, controller: Controller, pr
 export function registerCollaboration(context: vscode.ExtensionContext, controller: Controller, projects: WritingProjects): void {
   const host = createHost(context, controller, projects);
   registerShareStatusBar(context, host);
+  registerRelay(context, { accounts: host.relay, logger: host.logger, dropRelayFromShares: (relayUrl) => dropRelayFromShares(host, relayUrl) });
   registerComments(context, { projects, shares: host.shares, userName: userName(), logger: host.logger });
   context.subscriptions.push(
     vscode.commands.registerCommand(SHARE_COMMAND, (target?: unknown) => shareProject(host, projectTarget(target))),

@@ -23,10 +23,11 @@ function describe(share: ShareConnection): { text: string; tooltip: string } {
   if (share.session.status === "meshFull") {
     return { text: "$(broadcast) Shared · relay needed", tooltip: "Too many collaborators for direct connections; a relay is needed to connect more." };
   }
+  const relay = share.relayUrl ? { text: " · relay", tooltip: ` Edits also sync through the relay at ${share.relayUrl}.` } : { text: "", tooltip: "" };
   if (share.session.status === "closed" || online === 0) {
-    return { text: "$(broadcast) Shared · offline", tooltip: "No collaborator is connected. Edits sync when one opens the project." };
+    return { text: `$(broadcast) Shared · offline${relay.text}`, tooltip: `No collaborator is connected. Edits sync when one opens the project.${relay.tooltip}` };
   }
-  return { text: `$(broadcast) Shared · ${online} online`, tooltip: `${online} collaborator${online === 1 ? "" : "s"} connected.` };
+  return { text: `$(broadcast) Shared · ${online} online${relay.text}`, tooltip: `${online} collaborator${online === 1 ? "" : "s"} connected.${relay.tooltip}` };
 }
 
 async function manage(host: CollabHost): Promise<void> {
@@ -64,7 +65,7 @@ export function registerShareStatusBar(context: vscode.ExtensionContext, host: C
     vscode.commands.registerCommand(MANAGE_COMMAND, () => manage(host)),
     // For scripts and end-to-end runs: the connected shares as plain data.
     vscode.commands.registerCommand(STATUS_COMMAND, () => host.shares.list().map((share) => ({
-      shareId: share.shareId, folder: share.folder, status: share.session.status, peers: share.session.peers.length,
+      shareId: share.shareId, folder: share.folder, status: share.session.status, peers: share.session.peers.length, relayUrl: share.relayUrl,
     }))),
   );
   update();

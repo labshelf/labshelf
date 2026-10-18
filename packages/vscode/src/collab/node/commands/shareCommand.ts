@@ -1,8 +1,10 @@
-// Shares a project: makes a new share key, connects the project, keeps the invite and copies it for the collaborators.
+// Shares a project: makes a new share key, adds the owner's relay, connects the project, keeps the invite and copies it for the collaborators.
 import * as vscode from "vscode";
 
-import { deriveShareId, formatInvite, generateShareKey } from "@labshelf/core";
+import { deriveShareId, generateShareKey } from "@labshelf/core";
 import { LOG_MODULE, projectName, reportFailure, type CollabHost } from "../collabHost.js";
+import { withOwnRelay, type StoredInvite } from "../ownRelay.js";
+import { chooseRelay } from "../session/index.js";
 import { copyInvite } from "./copyInvite.js";
 import { pickProject, type ProjectTarget } from "./projectTarget.js";
 
@@ -25,17 +27,18 @@ export async function shareProject(host: CollabHost, target: ProjectTarget): Pro
         void vscode.window.showWarningMessage(`"${name}" is shared, but its invite is not on this device. Paste it with Join Shared Project to reconnect.`);
         return undefined;
       }
-      if (!host.shares.get(existing)) { await host.shares.hold(existing, () => host.connect(stored.invite, { mode: "resume", folder: project.folder })); }
-      await copyInvite(stored.link, name);
-      return stored.link;
+      const current = await withOwnRelay(host, stored.invite);
+      await host.shares.hold(existing, () => reconnect(host, current, project.folder));
+      await copyInvite(current.link, name);
+      return current.link;
     }
     const shareKey = generateShareKey();
     const shareId = await deriveShareId(shareKey);
-    const link = await formatInvite({ shareKey, relays: [] });
+    const { link, invite } = await withOwnRelay(host, { shareId, shareKey, relays: [] });
     await host.shares.hold(shareId, async () => {
       await host.keys.remember(link, shareId);
       try {
-        await host.connect({ shareId, shareKey }, { mode: "share", folder: project.folder });
+        await host.connect(invite, { mode: "share", folder: project.folder });
       } catch (error) {
         await host.keys.forget(shareId);
         throw error;
@@ -49,4 +52,14 @@ export async function shareProject(host: CollabHost, target: ProjectTarget): Pro
     reportFailure(host.logger, `share "${name}"`, error, { folder: project.folder, shareId: existing });
     return undefined;
   }
+}
+
+/** Keeps the invite and connects the share unless it already runs through the invite's relay. */
+async function reconnect(host: CollabHost, current: StoredInvite, folder: string): Promise<void> {
+  const { shareId, relays } = current.invite;
+  await host.keys.remember(current.link, shareId);
+  const active = host.shares.get(shareId);
+  if (active && active.relayUrl === chooseRelay(relays)?.url) { return; }
+  await host.shares.remove(shareId);
+  await host.connect(current.invite, { mode: "resume", folder });
 }

@@ -1,0 +1,91 @@
+// Keeps a share session on the relay its selector chooses: one relay transport and relay sync at a time, swapped on a change.
+import type { ILogger } from "../../ports/index.js";
+import type { WebCryptoKey } from "../crypto/index.js";
+import {
+  attachRelaySync, memoryCursorStore, systemScheduler, type RelayCursorStore, type RelaySync, type SessionScheduler, type ShareSession,
+} from "../sync/index.js";
+import { createRelayTransport, globalSocketFactory, type RelaySocketFactory, type RelayTransport } from "../transport/index.js";
+import { observeConnection } from "./observedConnection.js";
+import type { RelaySelector } from "./relaySelector.js";
+import type { SwitchableTransport } from "./switchableTransport.js";
+
+export interface RelayFollowOptions {
+  session: ShareSession;
+  /** The switchable transport the session was created over, alone or merged with the mesh. */
+  slot: SwitchableTransport;
+  selector: RelaySelector;
+  shareId: string;
+  relayToken: string;
+  contentKey: WebCryptoKey;
+  logger: ILogger;
+  scheduler?: SessionScheduler;
+  fetch?: typeof fetch;
+  socketFactory?: RelaySocketFactory;
+  /** The persisted cursors of one relay; defaults to memory. */
+  cursorsFor?: (relayUrl: string) => RelayCursorStore;
+}
+
+export interface RelayFollower {
+  /** The relay transport in use, for TURN credentials and status; undefined while no relay is usable. */
+  readonly relay: RelayTransport | undefined;
+  /** Flushes and closes the relay sync and transport; call it before closing the session. */
+  close(): Promise<void>;
+}
+
+interface Active { url: string; transport: RelayTransport; sync: RelaySync }
+
+/** Every later attachment catches up from cursor 0, so the relay gets what it lacks from the time the group was elsewhere. */
+const fromStart = (store: RelayCursorStore): RelayCursorStore => ({ get: () => undefined, set: (docKey, cursor) => store.set(docKey, cursor) });
+
+// CONTRACT: documents/contracts/collaboration.md#relay-list
+export function followRelaySelection(options: RelayFollowOptions): RelayFollower {
+  const { session, slot, selector } = options;
+  const scheduler = options.scheduler ?? systemScheduler;
+  let active: Active | undefined;
+  let attached = false;
+  let closed = false;
+  let queue = Promise.resolve();
+
+  const detach = async () => {
+    if (!active) { return; }
+    const { transport, sync } = active;
+    active = undefined;
+    await sync.close();
+    slot.use(undefined);
+    await transport.close();
+  };
+
+  const attach = (url: string) => {
+    const connection = observeConnection(
+      { fetch: () => options.fetch ?? fetch, socketFactory: options.socketFactory ?? globalSocketFactory },
+      { failure: (kind) => selector.reportFailure(url, kind), connected: () => selector.reportConnected(url) },
+    );
+    const { shareId, relayToken, contentKey, logger } = options;
+    const transport = createRelayTransport({ relayUrl: url, shareId, relayToken, logger, scheduler, ...connection });
+    slot.use(transport);
+    const stored = options.cursorsFor?.(url) ?? memoryCursorStore();
+    const sync = attachRelaySync(session, { relay: transport, shareId, contentKey, logger, scheduler, cursors: attached ? fromStart(stored) : stored });
+    attached = true;
+    active = { url, transport, sync };
+  };
+
+  const follow = (url: string | undefined) => {
+    queue = queue.then(async () => {
+      if (closed || active?.url === url) { return; }
+      await detach();
+      if (url && !closed) { attach(url); }
+    }).catch((error) => void options.logger.error("collab.relays", error, { shareId: options.shareId, relayUrl: url ?? null }));
+  };
+
+  const stop = selector.onChange(follow);
+  follow(selector.current);
+  return {
+    get relay() { return active?.transport; },
+    close: async () => {
+      closed = true;
+      stop();
+      await queue;
+      await detach();
+    },
+  };
+}

@@ -87,7 +87,7 @@ The free plan allows 100,000 Worker and Durable Object requests a day and 100,00
 - writes a `snapshot`, a `syncStep2` message with `seq` 0 holding the doc's whole state, after 500 `put`s of a doc since its last snapshot, only when it holds every row up to `covers`;
 - asks `since` for the index doc and then for every doc it holds when its socket opens, from the last cursor it received for that doc;
 - reconnects with exponential backoff, because a Worker update can drop a socket at any time;
-- reads `/version` at most once per app start, and a ticket only to open a socket or ask for TURN credentials.
+- reads `/version` at most once per app start and once before it moves to a relay, and a ticket only to open a socket or ask for TURN credentials.
 
 ## Deploy
 
@@ -107,4 +107,5 @@ How a LabShelf client meets these obligations alongside the peer-to-peer mesh of
 - The relay transport holds no key. It sends an awareness message to a peer at most once a second, keeping only the latest, because each one carries the sender's whole presence.
 - When its socket opens, the relay sync asks `since` for the index doc, then for each held doc, and for a doc opened later when it opens. It saves a doc's cursor only after applying the rows below it, through a cursor store the caller persists with the doc state; without one, every start asks from cursor 0. After a catch-up from cursor 0 it puts what the device holds beyond the relay's rows, which seeds a fresh relay with the owner's project.
 - A device writes a doc's snapshot after it has seen 500 rows of the doc stored since the last snapshot, and only once it has caught up on the open socket.
+- A share with several relays uses one at a time, chosen and switched as the [relay list](collaboration.md#relay-list) says.
 - The relay transport fetches a ticket for each socket and reconnects with exponential backoff from 1 s to 60 s, logging each drop. It stops on a relay of another major. The app fetches TURN credentials with its own ticket and passes them to the trystero transport as `turnConfig`.
