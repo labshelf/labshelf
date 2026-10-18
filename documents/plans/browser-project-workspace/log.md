@@ -4,3 +4,4 @@
 - 2026-10-18 — session 1 done: transport-spike.md (no browser blocks the loopback socket; Firefox needs upgrade-insecure-requests removed)
 - 2026-10-18 — session 2 done: tree/checklist/outline, All projects library and gallery host in core; 2.2 split in two after a budget stop
 - 2026-10-18 — session 4 done: helper --register serves both hosts, labshelf-bridge alias, argv0/--host=bridge dispatch; SEA run answered bridge hello
+- 2026-10-18 — session 3 done: one-pass preview, \includeonly of the edited chapter, pdflatex preamble .fmt (preview 240 ms vs full 991 ms)

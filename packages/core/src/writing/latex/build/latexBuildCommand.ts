@@ -5,6 +5,8 @@ import type { LatexToolchain } from "../toolchain/index.js";
 export interface BuildCommand {
   executable: string;
   args: string[];
+  /** Variables the run adds to the toolchain's environment. */
+  env?: Record<string, string>;
 }
 
 const LATEXMK_ENGINE = { xelatex: "-xelatex", pdflatex: "-pdf", lualatex: "-lualatex" } as const;
