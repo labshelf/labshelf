@@ -44,6 +44,7 @@
     "./math": "./src/writing/latex/math/index.ts",
     "./helper": "./src/writing/helper/index.ts",
     "./helper/node": "./src/writing/helper/node/index.ts",
+    "./bridge/node": "./src/bridge/node/index.ts",
     "./nativeHost/node": "./src/nativeHost/node/index.ts",
     "./typst": "./src/writing/typst/index.ts",
     "./typst/node": "./src/writing/typst/node/index.ts",

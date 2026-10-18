@@ -8,5 +8,5 @@ Install for your user:
      ~/.local/share/labshelf-helper/bin/ (create the folder first).
   2. Run: ./labshelf-helper --register
 
---register writes the native messaging host manifest for each browser found
+--register writes the native messaging host manifests (helper and bridge) for each browser found
 in your home directory. To remove it, run: ./labshelf-helper --unregister

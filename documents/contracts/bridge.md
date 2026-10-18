@@ -7,7 +7,7 @@ The browser extension reaches the library folder through a desktop host program 
 - The host name is `app.labshelf.bridge`.
 - The browser starts one host per connection. The host reads the library root once at start and exits when its stdin closes.
 - The host logs to `bridge.log` in the library's device-local logs folder ([library-format.md#device-local-files](library-format.md#device-local-files)). With no library configured, it logs to `logs/bridge.log` in the device state folder (`$XDG_STATE_HOME/labshelf`, else `~/Library/Application Support/labshelf` on macOS and `~/.local/state/labshelf` elsewhere). It never writes anything but frames to stdout.
-- The apps install the host on the user's request (VS Code **Connect the Browser**, `labshelf bridge install`). The launcher, manifests and registration follow [native-host.md](native-host.md).
+- The apps install the host on the user's request (VS Code **Connect the Browser**, `labshelf bridge install`), and the standalone LabShelf Helper registers it with its own host. The launcher, manifests and registration follow [native-host.md](native-host.md).
 
 ## Framing
 

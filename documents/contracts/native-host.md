@@ -26,7 +26,7 @@ Each host keeps its launcher, `host.json` and, on Windows, its manifests in one 
 
 An app that runs the host as a script installs a launcher in the host folder (`labshelf-<dir>` on macOS and Linux, `labshelf-<dir>.cmd` on Windows) and points the manifests at it. The launcher runs the app's bundled host script with the app's Node binary and forwards its arguments. VS Code has no Node of its own, so its launcher runs VS Code's Electron binary with `ELECTRON_RUN_AS_NODE=1`.
 
-The standalone LabShelf Helper has no launcher: its manifests point at the helper binary.
+The standalone LabShelf Helper has no launcher: it serves both hosts from one binary. Native messaging passes no host name to the program it starts (Chrome passes the caller origin, Firefox the manifest path and extension id), so each host gets its own program name: the installer puts `labshelf-bridge` next to `labshelf-helper` (a symlink on macOS and Linux, a `labshelf-bridge.cmd` shim on Windows), each manifest points at its own name, and the binary serves the host named by the basename it was started as (`argv[0]`, because the executable path resolves the symlink); the Windows shim runs `labshelf-helper.exe --host=bridge`, which the binary also accepts as its first argument on every platform. `--register` creates this name and `--unregister` removes it.
 
 ## Manifests
 
@@ -51,13 +51,11 @@ An install writes a manifest for each browser the user has installed, found by t
 
 ## Precedence
 
-Several programs can serve the helper host, and a browser has one manifest per host.
+Several programs can serve each host, and a browser has one manifest per host.
 
-- The standalone helper's `--register` always writes its manifests, replacing any other.
+- The standalone helper's `--register` always writes the manifests of both hosts, replacing any other; `--unregister` removes both.
 - An app's install leaves the manifests alone when one points at an existing standalone helper. The app reports it and writes nothing, unless the user chooses to use that app instead.
 - Between VS Code and the terminal app the last install wins: each rewrites the launcher and `host.json` it shares with the other.
-
-The bridge host has no standalone program.
 
 ## Refresh
 

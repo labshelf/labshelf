@@ -1,31 +1,27 @@
-// Composition root of LabShelf Helper, the native-messaging host the browser extension launches to build LaTeX projects.
+// Composition root of LabShelf Helper, the native-messaging host the browser extension launches to build LaTeX projects and, under the labshelf-bridge name, to read the library folder.
 // CONTRACT: documents/contracts/helper.md#transport
 import * as os from "node:os";
 
+import { runBridgeHost } from "@labshelf/core/bridge/node";
 import { createHelperLogger, helperDataDir, runHelperHost } from "@labshelf/core/helper/node";
 import { HELPER_VERSION } from "@labshelf/core/helper";
-import { HELPER_HOST_SPEC, installNativeHost, systemNativeHostEnv, uninstallNativeHost } from "@labshelf/core/nativeHost/node";
+import { systemNativeHostEnv } from "@labshelf/core/nativeHost/node";
 
+import { registerStandaloneHosts, servedHost, unregisterStandaloneHosts } from "./register/index.js";
 import { createSelfUpdater } from "./update/index.js";
 
-const binary = { kind: "binary", path: process.execPath } as const;
-
-async function register(logger: ReturnType<typeof createHelperLogger>): Promise<number> {
-  const result = await installNativeHost(systemNativeHostEnv(logger), HELPER_HOST_SPEC, binary);
-  return result.browsers.length > 0 ? 0 : 1;
-}
-
-async function unregister(logger: ReturnType<typeof createHelperLogger>): Promise<number> {
-  const result = await uninstallNativeHost(systemNativeHostEnv(logger), HELPER_HOST_SPEC, binary);
-  return result.warnings.length > 0 ? 1 : 0;
-}
-
 async function main(): Promise<number | undefined> {
+  // PLATFORM: process.execPath resolves the labshelf-bridge symlink to the helper binary; argv0 keeps the name the browser used.
+  if (servedHost(process.argv0, process.argv.slice(2)) === "bridge") {
+    await runBridgeHost();
+    return undefined;
+  }
   const dataDir = helperDataDir(process.env, process.platform, os.homedir());
   const logger = createHelperLogger(dataDir);
   const flag = process.argv[2];
   if (flag === "--register" || flag === "--unregister") {
-    return flag === "--register" ? register(logger) : unregister(logger);
+    const env = systemNativeHostEnv(logger);
+    return flag === "--register" ? registerStandaloneHosts(env, process.execPath) : unregisterStandaloneHosts(env, process.execPath);
   }
   const updater = createSelfUpdater({
     currentVersion: HELPER_VERSION, platform: process.platform, arch: process.arch, binaryPath: process.execPath,
@@ -39,5 +35,9 @@ async function main(): Promise<number | undefined> {
 
 main().then(
   (code) => { process.exitCode = code ?? 0; },
-  () => { process.exitCode = 1; },
+  (error: unknown) => {
+    // PLATFORM: stdout carries the Native Messaging frames, so failures go to stderr only.
+    process.stderr.write(`labshelf helper failed: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`);
+    process.exitCode = 1;
+  },
 );
