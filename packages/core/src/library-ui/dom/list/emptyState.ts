@@ -14,7 +14,8 @@ export interface EmptyStateOptions {
   /** How papers get into the library on this host. */
   hint: string;
   onClearFilters: () => void;
-  onAdd: () => void;
+  /** Absent when papers cannot be added (a read-only library). */
+  onAdd: (() => void) | null;
 }
 
 export function buildLoading(): HTMLElement {
@@ -44,8 +45,8 @@ export function buildEmptyState(o: EmptyStateOptions): HTMLElement {
   }
   box.innerHTML = `<div class="ls-empty-icon">${icon("book")}</div>` +
     `<div class="ls-empty-text">${emptyText(o)}</div>` +
-    `<button class="ls-btn ls-btn-primary" type="button">${icon("plus")}<span>Add a paper</span></button>` +
+    (o.onAdd ? `<button class="ls-btn ls-btn-primary" type="button">${icon("plus")}<span>Add a paper</span></button>` : "") +
     `<div class="ls-empty-hint">${escapeHtml(o.hint)}</div>`;
-  box.querySelector("button")!.addEventListener("click", o.onAdd);
+  if (o.onAdd) box.querySelector("button")!.addEventListener("click", o.onAdd);
   return box;
 }

@@ -8,7 +8,7 @@ export interface ConnectionReports {
 }
 
 // TRAP: Cloudflare answers a Worker past its daily requests with its own error page, code 1027, not the relay's JSON.
-const isLimitRefusal = async (response: Response) =>
+export const isLimitRefusal = async (response: Response) =>
   response.status === 429 || (!response.ok && /\b1027\b/.test(await response.clone().text().catch(() => "")));
 
 /** The fetch and socket factory to hand a relay transport; each reports to `reports` and otherwise behaves like `base`. */

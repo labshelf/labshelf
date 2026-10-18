@@ -1,6 +1,6 @@
 /** Plays a share's relay Durable Object in process on virtual time, counting the requests the free plan bills. */
 import {
-  decodeClientMessage, encodeRelayBody, encodeRelayMessage, type RelayRow, type RelayServerMessage,
+  decodeClientMessage, encodeRelayBody, encodeRelayMessage, RELAY_PATH, RELAY_WORKER_BUILD, type RelayRow, type RelayServerMessage,
 } from "../../../../src/relay/index";
 import type { RelaySocket } from "../../../../src/collab/transport/index";
 import type { FakeClock } from "../../sync/fakeNetwork";
@@ -37,9 +37,9 @@ class FakeSocket implements RelaySocket {
 
 export class FakeRelay {
   readonly counts = { http: 0, opens: 0, put: 0, since: 0, snapshot: 0, forward: 0 };
-  /** Put times per connection and doc. */
   /** Forwarded share messages by envelope kind. */
   readonly forwardKinds = new Map<number, number>();
+  /** Put times per connection and doc. */
   readonly putTimes = new Map<string, number[]>();
   readonly rows = new Map<string, RelayRow[]>();
   readonly snapshots = new Map<string, { covers: number; frame: Uint8Array }>();
@@ -49,6 +49,8 @@ export class FakeRelay {
   private nextId = 1;
   /** While false, tickets are refused as if the relay were down. */
   up = true;
+  /** While true, every snapshot is refused as `staleSnapshot`. */
+  staleSnapshots = false;
 
   constructor(readonly clock: FakeClock) {}
 
@@ -61,6 +63,9 @@ export class FakeRelay {
     this.counts.http += 1;
     const url = String(input);
     if (!this.up) { throw new TypeError("fetch failed"); }
+    if (url.endsWith(RELAY_PATH.version) && (init?.method ?? "GET") === "GET") {
+      return new Response(encodeRelayBody({ worker: RELAY_WORKER_BUILD }), { status: 200 });
+    }
     if (!url.endsWith("/ticket") || init?.method !== "POST") { return new Response("{}", { status: 404 }); }
     return new Response(encodeRelayBody({ ticket: "1.ticket", expires: 2_000_000_000 }), { status: 200 });
   };
@@ -72,6 +77,9 @@ export class FakeRelay {
   };
 
   /** Drops every socket, as a Worker update does. */
+  /** The sockets open now. */
+  get live(): number { return this.sockets.size; }
+
   dropAll(): void { [...this.sockets.values()].forEach((socket) => this.drop(socket, 1012, "service restart")); }
 
   drop(socket: FakeSocket, code: number, reason: string): void {
@@ -112,7 +120,7 @@ export class FakeRelay {
       case "snapshot": {
         const rows = this.rows.get(message.doc) ?? [];
         const stored = this.snapshots.get(message.doc);
-        if ((stored && message.covers <= stored.covers) || message.covers > (this.lastByDoc.get(message.doc) ?? 0)) {
+        if (this.staleSnapshots || (stored && message.covers <= stored.covers) || message.covers > (this.lastByDoc.get(message.doc) ?? 0)) {
           return from.deliver({ type: "error", code: 4, doc: message.doc });
         }
         this.snapshots.set(message.doc, { covers: message.covers, frame: message.frame });

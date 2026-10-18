@@ -3,13 +3,15 @@ import { updateRelayIfOlder } from "../../../src/relay/index";
 import { ACCOUNT, TOKEN, fakeCloudflare, metadataOf, recordingLogger } from "./fakeCloudflare";
 
 async function update(deployed: string, bundledVersion = "1.0.3") {
+  let tokenAsks = 0;
+  const accessToken = async () => { tokenAsks += 1; return TOKEN; };
   const cloudflare = fakeCloudflare({ hasSubdomain: true, relayVersion: { v: deployed.split(".").slice(0, 2).join("."), worker: deployed } });
   const logger = recordingLogger();
   const outcome = await updateRelayIfOlder({
-    relayUrl: "https://relay.lab.workers.dev/", bundledVersion, token: TOKEN, accountId: ACCOUNT,
+    relayUrl: "https://relay.lab.workers.dev/", bundledVersion, accessToken, accountId: ACCOUNT,
     script: "// bundle", workerName: "relay", kvNamespaceId: "kv-1", logger, fetch: cloudflare.fetch,
   });
-  return { ...cloudflare, logger, outcome };
+  return { ...cloudflare, logger, outcome, tokenAsks };
 }
 
 describe("updateRelayIfOlder", () => {
@@ -32,10 +34,11 @@ describe("updateRelayIfOlder", () => {
     expect((await update("1.9.9", "2.0.0")).outcome).toBe("updated");
   });
 
-  it("does nothing, and calls no Cloudflare API, when the builds are equal", async () => {
-    const { requests, outcome } = await update("1.0.3");
+  it("does nothing, and neither asks for a token nor calls the Cloudflare API, when the builds are equal", async () => {
+    const { requests, outcome, tokenAsks } = await update("1.0.3");
     expect(outcome).toBe("current");
     expect(requests).toHaveLength(1);
+    expect(tokenAsks).toBe(0);
   });
 
   it("never downgrades: a newer deployed build is left alone and logged", async () => {
@@ -55,7 +58,7 @@ describe("updateRelayIfOlder", () => {
   it("throws with context when /version has no valid build", async () => {
     const cloudflare = fakeCloudflare({ relayVersion: { v: "1.0" } });
     await expect(updateRelayIfOlder({
-      relayUrl: "https://relay.lab.workers.dev", bundledVersion: "1.0.3", token: TOKEN, accountId: ACCOUNT, script: "", workerName: "relay",
+      relayUrl: "https://relay.lab.workers.dev", bundledVersion: "1.0.3", accessToken: async () => TOKEN, accountId: ACCOUNT, script: "", workerName: "relay",
       kvNamespaceId: "kv-1", logger: recordingLogger(), fetch: cloudflare.fetch,
     })).rejects.toThrow(/Could not read the relay's version/);
   });

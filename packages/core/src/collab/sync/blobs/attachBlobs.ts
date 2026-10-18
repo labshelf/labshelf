@@ -19,6 +19,8 @@ export interface BlobsOptions {
   getBlob(hash: string): Promise<Uint8Array | undefined>;
   logger: ILogger;
   scheduler?: SessionScheduler;
+  /** True for a peer never asked for a blob, as a relay watcher that holds none. */
+  skipPeer(peer: PeerId): boolean;
 }
 
 export interface BlobExchange {
@@ -31,6 +33,7 @@ export interface BlobExchange {
 export function attachBlobs(session: ShareSession, options: BlobsOptions): BlobExchange {
   const { logger } = options;
   const scheduler = options.scheduler ?? systemScheduler;
+  const isSource = (peer: PeerId) => !options.skipPeer(peer);
   const fetches = new Map<string, BlobFetch>();
   let closed = false;
 
@@ -52,6 +55,7 @@ export function attachBlobs(session: ShareSession, options: BlobsOptions): BlobE
     : channel.send(peer, hash, encodeBlobMissing());
 
   const stopPeers = session.onPeer((peer, joined) => {
+    if (joined && !isSource(peer)) { return; }
     fetches.forEach((fetch) => (joined ? fetch.peerJoined(peer) : fetch.peerLeft(peer)));
   });
 
@@ -63,7 +67,7 @@ export function attachBlobs(session: ShareSession, options: BlobsOptions): BlobE
       if (existing) { return existing.result; }
       const fetch = new BlobFetch({
         hash, scheduler, logger,
-        peers: () => session.peers,
+        peers: () => session.peers.filter(isSource),
         request: (peer) => void channel.send(peer, hash, encodeBlobRequest()),
         onSettled: () => void fetches.delete(hash),
       });

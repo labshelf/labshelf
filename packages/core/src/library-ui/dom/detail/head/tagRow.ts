@@ -9,11 +9,11 @@ import { libraryTags } from "../../../derive/index.js";
 import { changeTags } from "../../flows/index.js";
 import type { UiContext } from "../../uiContext.js";
 
-function chip(tag: string): string {
+function chip(tag: string, readOnly: boolean): string {
   const hash = `<span class="tag-hash" aria-hidden="true">#</span>`;
   const name = `<button class="tag-name" type="button" data-action="searchTag" data-tag="${escapeHtml(tag)}" title="Show papers tagged ${escapeHtml(tag)}">${escapeHtml(tag)}</button>`;
   const remove = `<button class="tag-x" type="button" data-action="removeTag" data-tag="${escapeHtml(tag)}" title="Remove tag" aria-label="Remove tag ${escapeHtml(tag)}">${icon("x")}</button>`;
-  return `<span class="tag-chip">${hash}${name}${remove}</span>`;
+  return `<span class="tag-chip">${hash}${name}${readOnly ? "" : remove}</span>`;
 }
 
 /** The library's tags that not every selected paper carries yet, A to Z. */
@@ -41,9 +41,9 @@ export function openTagMenu(ctx: UiContext, anchor: HTMLElement): void {
 
 /** The row of `tags`; `editing` shows the field in place of the Add tag button. */
 export function tagRowHtml(ctx: UiContext, tags: readonly string[], editing: boolean): string {
-  const add = editing ? tagInput(ctx)
+  const add = ctx.readOnly ? "" : editing ? tagInput(ctx)
     : `<button class="ls-icon-btn tag-add" type="button" data-action="addTag" title="Add tag" aria-label="Add tag">${icon("plus")}</button>`;
-  return `<div class="tag-row">${tags.map(chip).join("")}${add}</div>`;
+  return `<div class="tag-row">${tags.map((t) => chip(t, ctx.readOnly)).join("")}${add}</div>`;
 }
 
 /** Handles a key in the tag field; `ids` are the papers the row edits, `tags` the ones it shows. */

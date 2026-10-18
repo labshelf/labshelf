@@ -70,6 +70,7 @@ function showLibrary(page: Page, share: OpenedShare, library: ShareLibrary): voi
     // The page keeps nothing, so the list's preferences reset on reload.
     prefs: { load: () => ({ ...DEFAULT_PREFS }), save: () => undefined },
     capabilities: {},
+    readOnly: true,
     labels: { addTooltip: "Open in LabShelf to add papers", emptyHint: "This shared folder holds no papers." },
   });
 }

@@ -13,7 +13,7 @@ import { globalSocketFactory, messageBytes, relaySocketUrl, type RelaySocket, ty
 const LOG_MODULE = "collab.relay";
 const PEER_PREFIX = "relay:";
 /** Cursor moves reach relay peers at most this often; each forward is a billed socket message. */
-export const RELAY_AWARENESS_INTERVAL_MS = 1000;
+export const RELAY_AWARENESS_INTERVAL_MS = 250;
 export const RECONNECT_FIRST_MS = 1000;
 export const RECONNECT_MAX_MS = 60_000;
 /** A forward adds its type, `to` and frame length to the share message. */
@@ -32,9 +32,7 @@ export interface RelayStore {
   onConnection(listener: (open: boolean) => void): () => void;
 }
 
-export interface RelayTransport extends PeerTransport, RelayStore {
-  receivesUpdatesFromStore(peer: PeerId): boolean;
-}
+export type RelayTransport = PeerTransport & RelayStore;
 
 export interface RelayTransportOptions {
   relayUrl: string;
@@ -100,7 +98,6 @@ class RelayConnection implements RelayTransport {
   onPeerLeave(fn: (peer: PeerId) => void): () => void { return this.leave.add(fn); }
   onStore(fn: (answer: RelayStoreAnswer) => void): () => void { return this.store.add(fn); }
   onConnection(fn: (open: boolean) => void): () => void { return this.connection.add(fn); }
-  receivesUpdatesFromStore(peer: PeerId): boolean { return peer.startsWith(PEER_PREFIX); }
 
   async close(): Promise<void> {
     this.closed = true;

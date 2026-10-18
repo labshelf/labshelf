@@ -37,7 +37,7 @@ describe("Worker share client", () => {
   });
 
   it("turns a refusal into a typed error", async () => {
-    const { doFetch } = fakeFetch(() => new Response(JSON.stringify({ v: "1.1", error: "unauthorized" }), { status: 401 }));
+    const { doFetch } = fakeFetch(() => new Response(JSON.stringify({ v: "2.0", error: "unauthorized" }), { status: 401 }));
     const failure = createWorkerShareBackend({ relayUrl, ownerSecret: "bad", fetch: doFetch }).putManifest(id, new Uint8Array([1]));
     await expect(failure).rejects.toBeInstanceOf(ShareRequestError);
     await expect(failure).rejects.toMatchObject({ code: "unauthorized", status: 401 });
@@ -49,7 +49,7 @@ describe("Worker share client", () => {
     expect(await reader.fetchBlob(id, hash)).toEqual(new Uint8Array([7, 8]));
     expect(found.calls[0]!.url).toBe(`https://relay.someone.workers.dev/share/${id}/blob/${hash}`);
     expect(found.calls[0]!.init?.headers).toBeUndefined();
-    const missing = fakeFetch(() => new Response(JSON.stringify({ v: "1.1", error: "notFound" }), { status: 404 }));
+    const missing = fakeFetch(() => new Response(JSON.stringify({ v: "2.0", error: "notFound" }), { status: 404 }));
     expect(await createWorkerShareReader({ relayUrl, fetch: missing.doFetch }).fetchManifest(id)).toBeUndefined();
   });
 });

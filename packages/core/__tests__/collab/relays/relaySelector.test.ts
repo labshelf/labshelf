@@ -30,6 +30,7 @@ class PresenceBus {
         });
       },
       onPeersChange: (fn) => { this.listeners.get(id)!.add(fn); return () => this.listeners.get(id)!.delete(fn); },
+      watch: () => {},
     };
   }
 }
@@ -42,7 +43,7 @@ function group(urls: string[], members: string[], reachable: Set<string>) {
   const probes: string[] = [];
   const selectors = new Map<string, RelaySelector>(members.map((id) => [id, createRelaySelector({
     index, presence: bus.member(id), clock, logger: fakeLogger(),
-    probe: async (url) => { probes.push(url); return reachable.has(url); },
+    probe: async (url) => { probes.push(url); return reachable.has(url) ? "ok" : "error"; },
   })]));
   const current = () => [...selectors.values()].map((selector) => selector.current);
   return { clock, bus, index, selectors, current, probes, close: () => selectors.forEach((s) => s.close()) };
@@ -91,14 +92,33 @@ describe("relay selector", () => {
     g.close();
   });
 
-  it("checks a relay that did not answer again, and holds it down after three silent probes", async () => {
+  it("retries a relay that did not answer after 20 s, holds it down after three silent probes and checks it every minute", async () => {
     const reachable = new Set([TWO]);
     const g = group([ONE, TWO], ["a"], reachable);
     await runFor(g.clock, 1000);
     expect(g.current()).toEqual([TWO]);
-    await runFor(g.clock, 130_000, 1000);
+    await runFor(g.clock, 45_000, 1000);
     expect(g.probes.filter((url) => url === ONE)).toHaveLength(3);
     expect(g.bus.reports.get("a")!.relaysDown[ONE]).toBeGreaterThan(g.clock.now());
+    await runFor(g.clock, 60_000, 1000);
+    expect(g.probes.filter((url) => url === ONE)).toHaveLength(4);
+    reachable.add(ONE);
+    await runFor(g.clock, 61_000, 1000);
+    expect(g.current()).toEqual([ONE]);
+    expect(g.bus.reports.get("a")!.relaysDown).toEqual({});
+    g.close();
+  });
+
+  it("keeps a relay after one failed re-probe and leaves it after three", async () => {
+    const reachable = new Set([ONE, TWO]);
+    const g = group([ONE, TWO], ["a", "b"], reachable);
+    await runFor(g.clock, 1000);
+    expect(g.current()).toEqual([ONE, ONE]);
+    reachable.delete(ONE);
+    await runFor(g.clock, 61_000, 1000);
+    expect(g.current()).toEqual([ONE, ONE]);
+    await runFor(g.clock, 45_000, 1000);
+    expect(g.current()).toEqual([TWO, TWO]);
     g.close();
   });
 
@@ -123,7 +143,7 @@ describe("relay selector", () => {
     const clock = new FakeClock();
     const index = new Y.Doc();
     const selector = createRelaySelector({
-      index, inviteRelays: [TWO], presence: new PresenceBus(clock).member("a"), clock, logger: fakeLogger(), probe: async () => true,
+      index, inviteRelays: [TWO], presence: new PresenceBus(clock).member("a"), clock, logger: fakeLogger(), probe: async () => "ok",
     });
     await runFor(clock, 1000);
     expect(selector.current).toBe(TWO);

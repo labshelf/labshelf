@@ -1,7 +1,7 @@
 /** Pins the invite link: format/parse round trip and one typed error per malformed part. */
 import { bytesToBase64Url } from "../../../src/encoding/index";
 import { deriveShareId, generateShareKey } from "../../../src/collab/crypto/index";
-import { formatInvite, parseInvite } from "../../../src/collab/invite/index";
+import { assertInviteHasRelay, formatInvite, InviteWithoutRelayError, parseInvite } from "../../../src/collab/invite/index";
 
 const encodeRelays = (value: unknown): string => bytesToBase64Url(new TextEncoder().encode(JSON.stringify(value)));
 
@@ -83,5 +83,12 @@ describe("invite", () => {
     const segments = await parts();
     segments[1] = "0".repeat(32);
     expect(await parseInvite(link(segments))).toEqual({ ok: false, error: "shareIdMismatch" });
+  });
+
+  it("refuses an invite without a relay with a typed error", async () => {
+    const shareKey = generateShareKey();
+    const shareId = await deriveShareId(shareKey);
+    expect(() => assertInviteHasRelay({ shareId, shareKey, relays: [] })).toThrow(InviteWithoutRelayError);
+    expect(() => assertInviteHasRelay({ shareId, shareKey, relays: [{ url: "https://relay.example.com/" }] })).not.toThrow();
   });
 });

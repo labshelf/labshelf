@@ -2,14 +2,13 @@
 
 import { base64UrlToBytes } from "../../encoding/index.js";
 import { RELAY_WORKER_BUILD } from "../protocolVersion.js";
-import { decodeClaimRequest, decodeTicketRequest, decodeTurnRequest, isShareId, RELAY_PATH } from "../http/index.js";
+import { decodeClaimRequest, decodeTicketRequest, isShareId, RELAY_PATH } from "../http/index.js";
 import type { RelayEnv, RoomStub } from "./cloudflareRuntime.js";
 import { answer, notFound, preflight, refuse } from "./httpAnswers.js";
 import { ROOM_PATH } from "./room/index.js";
 import { handleShareRequest } from "./shareRoutes.js";
 import { SHARE_PATH } from "../../share/http/index.js";
 import { carriesOwnerSecret, mintTicket, sha256Hex, verifyTicket } from "./auth/index.js";
-import { mintIceServers } from "./turnCredentials.js";
 
 const MAX_BODY_CHARS = 4096;
 
@@ -44,16 +43,6 @@ async function ticket(request: Request, env: RelayEnv): Promise<Response> {
   return answer(await mintTicket(env.OWNER_SECRET, body.value.shareId, nowSeconds()));
 }
 
-async function turn(request: Request, env: RelayEnv): Promise<Response> {
-  const body = decodeTurnRequest(await readJson(request));
-  if (!body.ok) { return refuse(body.error); }
-  if (!env.OWNER_SECRET || !(await verifyTicket(env.OWNER_SECRET, body.value.shareId, body.value.ticket, nowSeconds()))) {
-    return refuse("unauthorized");
-  }
-  const minted = await mintIceServers(env, nowSeconds());
-  return minted.ok ? answer({ iceServers: minted.iceServers, expires: minted.expires }) : refuse(minted.error);
-}
-
 async function openSocket(request: Request, env: RelayEnv, url: URL): Promise<Response> {
   const shareId = url.pathname.slice(RELAY_PATH.project.length);
   if (!isShareId(shareId)) { return notFound(); }
@@ -70,7 +59,6 @@ export async function handleRelayRequest(request: Request, env: RelayEnv): Promi
   if (route === `GET ${RELAY_PATH.version}`) { return answer({ worker: RELAY_WORKER_BUILD }); }
   if (route === `POST ${RELAY_PATH.claim}`) { return claim(request, env); }
   if (route === `POST ${RELAY_PATH.ticket}`) { return ticket(request, env); }
-  if (route === `POST ${RELAY_PATH.turn}`) { return turn(request, env); }
   if (url.pathname.startsWith(SHARE_PATH.prefix)) { return handleShareRequest(request, env, url.pathname); }
   if (request.method === "GET" && url.pathname.startsWith(RELAY_PATH.project)) { return openSocket(request, env, url); }
   return notFound();

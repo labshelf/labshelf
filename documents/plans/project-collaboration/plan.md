@@ -1,7 +1,7 @@
 # Plan: Project collaboration — shared writing projects and paper share links
 
 Status: approved
-Size: 10 sessions — spikes, core model and contract, transport, VS Code editing, comments, the owner's Cloudflare relay, relay failover, paper share links, the browser-editor plan reconciled, and relay-only collaboration with Cloudflare sign-in
+Size: 11 sessions — spikes, core model and contract, transport, VS Code editing, comments, the owner's Cloudflare relay, relay failover, paper share links, the browser-editor plan reconciled, and relay-only collaboration with Cloudflare sign-in, and the real run on two accounts
 
 ## 1. Goal
 
@@ -22,7 +22,7 @@ LabShelf users share a writing project (a LaTeX or Typst folder) with other LabS
 - [ ] **D11** Later phase: a project carries a list of relays from members who connected Cloudflare; clients use the first that answers in list order and fail over together. CRDT state lives in clients, so relays are interchangeable. — The only way pooling adds capacity.
 - [ ] **D12** Paper share links: LabShelf uploads copies of the chosen papers (with or without the user's annotations, the user chooses) to the owner's Worker KV; a page of `website/` shows the folder read-only without sign-in, with Install LabShelf, Open in LabShelf (import) and Download. Revoke deletes. A notice says the sharer is responsible for the right to share. Detail: `research/share-links.md`. — Free at course scale (20 papers × 100 students).
 - [ ] **D13** Contracts this plan adds, tests first with `architecture-reviewer`: `documents/contracts/collaboration.md` (invite link, key derivation, encryption framing, doc layout, awareness, sync messages), `documents/contracts/relay.md` (Worker endpoints, versioning, auth), `documents/contracts/share-link.md`. `library-format.md` gains `shared:` in `labshelf.yaml` and `.labshelf/comments.json`.
-- [ ] **D14** Out of scope: mobile; the browser editor (plan `browser-editor` joins through this protocol, session 9); sharing whole libraries live; any server Luca pays for.
+- [ ] **D14** Out of scope: mobile; the browser editor (plan `browser-project-workspace` session 14 joins through this protocol); sharing whole libraries live; any server Luca pays for.
 
 - [ ] **D15** This plan absorbs `writing-2-writing-sync` session 3b (comments, controller, review-PDF note) as session 5; its session 3c (OCT bridge, coauthor notice) and decisions D5–D8 are deleted from that plan, whose three-way merge stays. — user choice, 2026-10-17.
 - [ ] **D16** Share-link contents (manifest and PDFs) are encrypted with a key in the link `#fragment`; the owner's account holds only ciphertext. — user choice, 2026-10-17.
@@ -32,6 +32,8 @@ LabShelf users share a writing project (a LaTeX or Typst folder) with other LabS
 
 - [ ] **D20** Sharing a project requires a connected Cloudflare account: "Share Project…" runs "Connect Cloudflare…" first when none is connected. — Relay-only transport (D4); signing in takes a minute. User choice, 2026-10-18.
 - [ ] **D21** The share page origin is `https://labshelf.org`, served from the `labshelf-website` Worker (static assets, `website/wrangler.jsonc`) in the LabShelf Cloudflare account; the OAuth client is public with that domain verified. — Settles D17. User choice, 2026-10-18.
+
+- [ ] **D22** A group never stays split across relays: the client with the lowest awareness id on the relay in use watches every other listed relay over an awareness-only socket and adopts down marks published there, and a client that sees its group on an earlier relay retries it at once. — A relay can refuse some sockets while answering `/version`; a one-hour split is not acceptable. User choice, 2026-10-18.
 
 Open: none.
 
@@ -48,7 +50,7 @@ Open: none.
 - [ ] **A9** "Share Project…" without a connected Cloudflare account asks to connect one first, and cancelling cancels the share.
 - [ ] **A10** With two relays in the list, stopping the first moves every client to the second without losing edits, also when the first refuses only new connections and a newcomer joins meanwhile.
 - [ ] **A11** "Share Folder as Link…" gives a link that opens the folder read-only in a browser without LabShelf; Open in LabShelf imports the papers; after revoke the page says the link was removed.
-- [ ] **A12** `browser-editor` joins shared projects through this plan's protocol and stays within its file limits.
+- [ ] **A12** The browser editor (plan `browser-project-workspace`) joins shared projects through this plan's protocol and stays within its file limits.
 - [ ] **A13** A user signs in to Cloudflare once; after the access token expires LabShelf renews it without asking, and a restarted VS Code updates the relay without a sign-in.
 
 ## 4. Sessions
@@ -66,4 +68,5 @@ Sessions run in order. Every session from 2 to 8 and session 10 adds or removes 
 | 7 | [sessions/7-relay-list.md](sessions/7-relay-list.md) | relay list and failover | `packages/core/src/collab/relays/`, relay-offer glue in `packages/vscode/src/relay/` | alone |
 | 8 | [sessions/8-share-links.md](sessions/8-share-links.md) | paper-folder share links and page | `packages/core/src/share/`, share endpoints in `relay/worker/`, `packages/vscode/src/share/`, `website/`, `documents/contracts/share-link.md` | alone |
 | 9 | [sessions/9-browser-editor-plan.md](sessions/9-browser-editor-plan.md) | `browser-editor` reconciled | `documents/plans/browser-editor/**` | 2 |
-| 10 | [sessions/10-relay-only-sign-in.md](sessions/10-relay-only-sign-in.md) | relay-only transport, Cloudflare sign-in, re-probe, real-run fixes | see the session file | alone |
+| 10 | sessions/10-relay-only-sign-in.md (done) | relay-only transport, Cloudflare sign-in, re-probe, relay watch, real-run fixes | — | alone |
+| 11 | [sessions/11-real-run.md](sessions/11-real-run.md) | A7–A10, A13 on accounts A and B | scratch dirs | alone |

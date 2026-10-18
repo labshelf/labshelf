@@ -1,4 +1,4 @@
-// Mints and checks the short-lived HMAC tickets that open a share's socket and mint its TURN credentials.
+// Mints and checks the short-lived HMAC tickets that open a share's socket.
 
 import { base64UrlToBytes, bytesToBase64Url } from "../../../encoding/index.js";
 

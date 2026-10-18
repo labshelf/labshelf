@@ -2,6 +2,7 @@
 import * as vscode from "vscode";
 
 import { deriveShareId, formatInvite, generateShareKey, type Invite } from "@labshelf/core";
+import { CONNECT_RELAY_COMMAND } from "../../../relay/index.js";
 import { LOG_MODULE, projectName, reportFailure, type CollabHost } from "../collabHost.js";
 import { offerOwnRelay, rememberInvite } from "../ownRelay.js";
 import type { ShareConnection } from "../session/index.js";
@@ -33,6 +34,7 @@ export async function shareProject(host: CollabHost, target: ProjectTarget): Pro
       await copyInvite(link, name);
       return link;
     }
+    if (!(await ensureRelay(host))) { return undefined; }
     const shareKey = generateShareKey();
     const shareId = await deriveShareId(shareKey);
     const share = await host.shares.hold(shareId, () => connectNew(host, { shareId, shareKey, relays: [] }, project.folder));
@@ -44,6 +46,16 @@ export async function shareProject(host: CollabHost, target: ProjectTarget): Pro
     reportFailure(host.logger, `share "${name}"`, error, { folder: project.folder, shareId: existing });
     return undefined;
   }
+}
+
+/** True when a Cloudflare relay is connected, after running Connect Cloudflare when none was; a cancelled connect cancels the share. */
+async function ensureRelay(host: CollabHost): Promise<boolean> {
+  if (await host.relay.get()) { return true; }
+  await vscode.commands.executeCommand(CONNECT_RELAY_COMMAND);
+  if (await host.relay.get()) { return true; }
+  void host.logger.log("INFO", LOG_MODULE, "Sharing cancelled: no Cloudflare relay was connected");
+  void vscode.window.showInformationMessage("Sharing needs a Cloudflare relay: every edit travels through it, end-to-end encrypted. Connect Cloudflare to share.");
+  return false;
 }
 
 /** Keeps the invite before connecting, so the project list reload that follows finds the key. */

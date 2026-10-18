@@ -1,14 +1,18 @@
 /** Pins the relay path: an hour of typing within the free plan, catch-up with nobody online, and reconnects after a drop. */
+import { createRelaySelector, relayPresence, relayProbe } from "../../../../src/collab/relays/index";
 import { MESSAGE_KIND, PUT_INTERVAL_MS, SNAPSHOT_AFTER_PUTS } from "../../../../src/collab/sync/index";
+import { ONE, openGroupClient, RelayHosts, TWO } from "../../relays/relayGroup";
 import { FakeClock, seededRandom } from "../../sync/fakeNetwork";
 import { FakeRelay, runFor } from "./fakeRelay";
-import { openRelayClient, type RelayClient } from "./relayClient";
+import { openRelayClient, RELAY_URL, type RelayClient } from "./relayClient";
 
 const HOUR_MS = 60 * 60 * 1000;
+/** One relay leaves no other relay to watch. */
+const idleWatch = { follow: () => {}, publish: () => {}, reports: () => [], onChange: () => () => {}, close: async () => {} };
 const KEY_INTERVAL_MS = 300;
 
 /** Each typist types bursts of 20 to 80 characters, one per 300 ms, then pauses 5 to 60 s. */
-function scriptTypist(clock: FakeClock, client: RelayClient, letter: string, seed: number, untilMs: number): void {
+function scriptTypist(clock: FakeClock, client: Pick<RelayClient, "text" | "presence">, letter: string, seed: number, untilMs: number): void {
   const random = seededRandom(seed);
   // One timer at a time: the fake clock scans every pending timer whenever one fires.
   const type = (left: number) => {
@@ -28,6 +32,11 @@ describe("relay transport and relay sync", () => {
     const clock = new FakeClock();
     const relay = new FakeRelay(clock);
     const clients = await Promise.all([1, 2, 3].map(() => openRelayClient(relay, clock)));
+    // Each client also re-probes its relay's /version every minute, as a relay selector does.
+    const selectors = clients.map((client) => createRelaySelector({
+      index: client.session.index, inviteRelays: [RELAY_URL], presence: relayPresence(client.presence, idleWatch), clock, logger: client.logger,
+      probe: relayProbe({ logger: client.logger, fetch: relay.fetch, scheduler: clock }),
+    }));
     await runFor(clock, 2000);
     const start = clock.now();
     clients.forEach((client, i) => scriptTypist(clock, client, "abc"[i]!, i + 7, start + HOUR_MS));
@@ -42,8 +51,49 @@ describe("relay transport and relay sync", () => {
     expect(relay.forwardKinds.get(MESSAGE_KIND.update)).toBeUndefined();
     process.stdout.write(`relay hour: ${JSON.stringify({ ...relay.counts, billed: relay.billed, chars: texts[0]!.length })}\n`);
     expect(relay.billed).toBeLessThan(2000);
+    selectors.forEach((selector) => selector.close());
     await Promise.all(clients.map((client) => client.close()));
   }, 300_000);
+
+  it("keeps three typists of an hour on one relay and their watch on the other under 2,000 billed requests on each", async () => {
+    const clock = new FakeClock();
+    const hosts = new RelayHosts(clock);
+    const clients = [await openGroupClient(hosts, clock, "a", { owner: true })];
+    clients.push(...await Promise.all(["b", "c"].map((name) => openGroupClient(hosts, clock, name))));
+    await runFor(clock, 5000);
+    expect(clients.map((client) => client.selector.current)).toEqual([ONE, ONE, ONE]);
+    expect(hosts.relay(TWO).live).toBe(1);
+    const start = clock.now();
+    clients.forEach((client, i) => scriptTypist(clock, client, "abc"[i]!, i + 7, start + HOUR_MS));
+    await runFor(clock, HOUR_MS + 10_000, 100);
+
+    const texts = clients.map((client) => client.text().toString());
+    expect(texts[0]!.length).toBeGreaterThan(5000);
+    expect(new Set(texts).size).toBe(1);
+    const billed = { one: hosts.relay(ONE).billed, two: hosts.relay(TWO).billed };
+    process.stdout.write(`two-relay hour: ${JSON.stringify({ ...billed, one_counts: hosts.relay(ONE).counts, two_counts: hosts.relay(TWO).counts })}\n`);
+    expect(billed.one).toBeLessThan(2000);
+    expect(billed.two).toBeLessThan(2000);
+    await Promise.all(clients.map((client) => client.close()));
+  }, 300_000);
+
+  it("starts the next put window when a slow put is sent, not when its window ended", async () => {
+    const clock = new FakeClock();
+    const relay = new FakeRelay(clock);
+    const client = await openRelayClient(relay, clock);
+    await runFor(clock, 2000);
+    client.text().insert(0, "a");
+    // Synchronous advances run the window timer while the put still seals, as on a loaded machine.
+    clock.advance(PUT_INTERVAL_MS + 1000);
+    client.text().insert(1, "b");
+    clock.advance(1500);
+    await runFor(clock, 3 * PUT_INTERVAL_MS);
+
+    const [times] = [...relay.putTimes.values()];
+    expect(times).toHaveLength(2);
+    expect(times![1]! - times![0]!).toBeGreaterThanOrEqual(PUT_INTERVAL_MS);
+    await client.close();
+  });
 
   it("catches a client up from the relay alone when nobody else is online", async () => {
     const clock = new FakeClock();

@@ -1,7 +1,7 @@
 // Keeps a share session on one relay of its list at a time, as the relay selector chooses, and tells which one and which are down.
 import {
-  createRelaySelector, followRelaySelection, relayList, relayPresence, relayProbe, systemScheduler, type ILogger, type PresenceHandle,
-  type RelayCursorStore, type RelayReport, type ShareSession, type SwitchableTransport, type WebCryptoKey,
+  createRelaySelector, createRelayWatch, followRelaySelection, relayList, relayPresence, relayProbe, systemScheduler, type ILogger,
+  type PresenceHandle, type RelayCursorStore, type RelayReport, type ShareSession, type SwitchableTransport, type WebCryptoKey,
 } from "@labshelf/core";
 
 export interface ShareRelayState {
@@ -22,33 +22,37 @@ export interface ShareRelays {
 
 export interface ShareRelaysOptions {
   session: ShareSession;
-  /** The transport the session was created over, merged with the mesh. */
+  /** The transport the session was created over. */
   slot: SwitchableTransport;
   presence: PresenceHandle;
   inviteRelays: readonly string[];
   shareId: string;
   relayToken: string;
   contentKey: WebCryptoKey;
+  awarenessKey: WebCryptoKey;
   cursorsFor(relayUrl: string): RelayCursorStore;
   logger: ILogger;
 }
 
 /** The index list, else the invite's while the index lists none, as the selector tries them. */
-export const shareRelayUrls = (index: ShareSession["index"], inviteRelays: readonly string[]): string[] => {
+const shareRelayUrls = (index: ShareSession["index"], inviteRelays: readonly string[]): string[] => {
   const listed = relayList(index).map((entry) => entry.url);
   return listed.length > 0 ? listed : [...inviteRelays];
 };
 
 // CONTRACT: documents/contracts/collaboration.md#relay-list
 export function followShareRelays(options: ShareRelaysOptions): ShareRelays {
-  const { session, slot, presence, inviteRelays, shareId, relayToken, contentKey, cursorsFor, logger } = options;
-  const port = relayPresence(presence);
+  const { session, slot, presence, inviteRelays, shareId, relayToken, contentKey, awarenessKey, cursorsFor, logger } = options;
+  const watch = createRelayWatch({ shareId, relayToken, contentKey, awarenessKey, logger, scheduler: systemScheduler });
+  const port = relayPresence(presence, watch);
   let report: RelayReport = { relay: null, relaysDown: {} };
   const selector = createRelaySelector({
     index: session.index, inviteRelays, probe: relayProbe({ logger }), clock: systemScheduler, logger,
     presence: { ...port, publish: (next) => { report = next; port.publish(next); } },
   });
-  const follower = followRelaySelection({ session, slot, selector, shareId, relayToken, contentKey, logger, cursorsFor });
+  const follower = followRelaySelection({
+    session, slot, selector, shareId, relayToken, contentKey, logger, cursorsFor, isSnapshotWriter: () => presence.isLowestId(),
+  });
   return {
     get current() { return selector.current; },
     list: () => shareRelayUrls(session.index, inviteRelays).map((url) => ({ url, downUntil: report.relaysDown[url] })),
@@ -56,6 +60,7 @@ export function followShareRelays(options: ShareRelaysOptions): ShareRelays {
     close: async () => {
       selector.close();
       await follower.close();
+      await watch.close();
     },
   };
 }

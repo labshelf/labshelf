@@ -2,7 +2,6 @@
 import { bytesToBase64Url } from "../../encoding/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { createCloudflareClient, type CloudflareClient } from "./api/index.js";
-import { createTurnKey } from "./turnKey.js";
 import { uploadWorker } from "./workerUpload.js";
 import { ensureWorkersSubdomain } from "./workersSubdomain.js";
 
@@ -23,7 +22,6 @@ export interface DeployedRelay {
   /** Kept on the owner's devices only: it authorises `/claim`. */
   ownerSecret: string;
   kvNamespaceId: string;
-  turnKeyId: string;
 }
 
 export async function deployRelay(options: DeployRelayOptions): Promise<DeployedRelay> {
@@ -38,16 +36,12 @@ export async function deployRelay(options: DeployRelayOptions): Promise<Deployed
   await uploadWorker(client, { accountId, workerName, script, kvNamespaceId, withMigrations: true });
 
   const ownerSecret = bytesToBase64Url(crypto.getRandomValues(new Uint8Array(OWNER_SECRET_BYTES)));
-  const turnKey = await createTurnKey(client, accountId, title);
-  const secrets = { OWNER_SECRET: ownerSecret, TURN_KEY_ID: turnKey.uid, TURN_KEY_SECRET: turnKey.secret };
-  for (const [name, text] of Object.entries(secrets)) {
-    await client.call("PUT", `${account}/workers/scripts/${workerName}/secrets`, { name, text, type: "secret_text" });
-  }
+  await client.call("PUT", `${account}/workers/scripts/${workerName}/secrets`, { name: "OWNER_SECRET", text: ownerSecret, type: "secret_text" });
   await client.call("POST", `${account}/workers/scripts/${workerName}/subdomain`, { enabled: true, previews_enabled: false });
 
   const relayUrl = `https://${workerName}.${subdomain}.workers.dev`;
-  await logger.log("INFO", "relay.deploy", "Relay deployed", { relayUrl, kvNamespaceId, turnKeyId: turnKey.uid });
-  return { relayUrl, ownerSecret, kvNamespaceId, turnKeyId: turnKey.uid };
+  await logger.log("INFO", "relay.deploy", "Relay deployed", { relayUrl, kvNamespaceId });
+  return { relayUrl, ownerSecret, kvNamespaceId };
 }
 
 /** Reuses the namespace with this title so a retried deploy does not leave a second one behind. */

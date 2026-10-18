@@ -1,7 +1,7 @@
 // Joins a shared project from an invite link into the library, or reconnects a shared project whose key this device lost.
 import * as vscode from "vscode";
 
-import { formatInvite, parseInvite, type Invite, type InviteError } from "@labshelf/core";
+import { assertInviteHasRelay, formatInvite, InviteWithoutRelayError, parseInvite, type Invite, type InviteError } from "@labshelf/core";
 import { OPEN_PROJECT_COMMAND } from "../../../writing/session/index.js";
 import { LOG_MODULE, projectName, reportFailure, type CollabHost } from "../collabHost.js";
 import type { ShareConnection } from "../session/index.js";
@@ -70,6 +70,7 @@ export async function joinProject(host: CollabHost, inviteText: string | undefin
     return active.folder;
   }
   try {
+    assertInviteHasRelay(invite);
     const link = await formatInvite({ shareKey: invite.shareKey, relays: invite.relays });
     const known = host.projects.list().find((entry) => entry.kind === "ready" && entry.settings.shared === invite.shareId);
     const folder = await host.shares.hold(invite.shareId, async () => {
@@ -82,6 +83,11 @@ export async function joinProject(host: CollabHost, inviteText: string | undefin
     if (!known) { offerNextSteps(host, folder); }
     return folder;
   } catch (error) {
+    if (error instanceof InviteWithoutRelayError) {
+      void host.logger.log("WARN", LOG_MODULE, "Refused an invite that lists no relay", { shareId: invite.shareId });
+      void vscode.window.showErrorMessage(error.message);
+      return undefined;
+    }
     reportFailure(host.logger, "join the shared project", error, { shareId: invite.shareId });
     return undefined;
   }

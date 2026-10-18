@@ -82,7 +82,7 @@ function placeholder(list: List, view: ReturnType<typeof deriveListView>): HTMLE
     folderLabel: folderLabel(PAPERS_DIR, s.folder, "/"),
     hint: ctx.labels.emptyHint,
     onClearFilters: () => { ctx.store.set({ query: "" }); ctx.focusSearch(); },
-    onAdd: () => requestAddPaper(ctx),
+    onAdd: ctx.readOnly ? null : () => requestAddPaper(ctx),
   });
 }
 

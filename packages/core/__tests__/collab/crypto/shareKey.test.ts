@@ -1,7 +1,6 @@
-/** Pins share key generation, deterministic share ids, derived credentials and rotation. */
+/** Pins share key generation, deterministic share ids, the relay token and rotation. */
 import {
   deriveRelayToken,
-  deriveRoomCredentials,
   deriveShareId,
   generateShareKey,
   rotateShareKey,
@@ -22,12 +21,8 @@ describe("share key", () => {
     expect(await deriveShareId(new Uint8Array(16).fill(8))).not.toBe(id);
   });
 
-  it("derives stable room credentials and relay token distinct from the share id", async () => {
+  it("derives a stable relay token", async () => {
     const key = new Uint8Array(16).fill(3);
-    const room = await deriveRoomCredentials(key);
-    expect(await deriveRoomCredentials(key)).toEqual(room);
-    expect(room.roomId).not.toBe(await deriveShareId(key));
-    expect(room.password).not.toBe("");
     const token = await deriveRelayToken(key);
     expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(await deriveRelayToken(key)).toBe(token);

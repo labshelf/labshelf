@@ -8,7 +8,8 @@ export interface UpdateRelayOptions {
   relayUrl: string;
   /** The `<major>.<minor>.<patch>` build of the bundled script. */
   bundledVersion: string;
-  token: string;
+  /** Asked only when the relay needs the update, so a current relay costs no token refresh. */
+  accessToken(): Promise<string>;
   accountId: string;
   script: string;
   workerName: string;
@@ -19,7 +20,7 @@ export interface UpdateRelayOptions {
 
 export type RelayUpdateOutcome = "updated" | "current" | "deployedNewer";
 
-/** Reads the public /version first, so a current relay costs no API call and needs no token. */
+/** Reads the public /version first, so a current relay costs no API call. */
 export async function updateRelayIfOlder(options: UpdateRelayOptions): Promise<RelayUpdateOutcome> {
   const { relayUrl, bundledVersion, logger } = options;
   const bundled = parseWorkerBuild(bundledVersion);
@@ -33,7 +34,7 @@ export async function updateRelayIfOlder(options: UpdateRelayOptions): Promise<R
   }
   if (order === 0) { return "current"; }
   await logger.log("INFO", "relay.deploy", "Updating relay", versions);
-  const client = createCloudflareClient({ token: options.token, fetch: options.fetch, logger });
+  const client = createCloudflareClient({ token: await options.accessToken(), fetch: options.fetch, logger });
   const { accountId, workerName, script, kvNamespaceId } = options;
   await uploadWorker(client, { accountId, workerName, script, kvNamespaceId, withMigrations: false });
   return "updated";

@@ -99,9 +99,9 @@ describe("relay room", () => {
     const room = new FakeRoom();
     const socket = room.connect();
     socket.take();
-    room.room.webSocketMessage(socket, Uint8Array.of(1, 0, 1, 0xaa).buffer);
+    room.room.webSocketMessage(socket, Uint8Array.of(2, 0, 1, 0xaa).buffer);
     expect(socket.take()).toEqual([{ type: "error", code: RELAY_ERROR_CODE.malformed }]);
-    room.room.webSocketMessage(socket, Uint8Array.of(2, 0, 1).buffer);
+    room.room.webSocketMessage(socket, Uint8Array.of(3, 0, 1).buffer);
     expect(socket.take()).toEqual([{ type: "error", code: RELAY_ERROR_CODE.incompatibleVersion }]);
     room.room.webSocketMessage(socket, "hello");
     expect(socket.take()).toEqual([]);

@@ -1,7 +1,7 @@
 // Writes the relay's HTTP answers: JSON bodies and refusals with CORS headers for any origin.
 
 import { SHARE_REFUSAL } from "../../share/http/index.js";
-import { encodeRelayBody, RELAY_REFUSAL, type IceServer } from "../http/index.js";
+import { encodeRelayBody, RELAY_REFUSAL } from "../http/index.js";
 
 // CONTRACT: documents/contracts/relay.md#endpoints — any origin, since no cookie is involved.
 const CORS_HEADERS = {
@@ -14,12 +14,12 @@ const CORS_HEADERS = {
 export type RefusalCode = keyof typeof RELAY_REFUSAL | keyof typeof SHARE_REFUSAL;
 
 const REFUSAL_STATUS: Record<RefusalCode, number> = {
-  malformed: 400, incompatibleVersion: 400, unauthorized: 401, forbidden: 403, claimed: 409, turnUnavailable: 503,
+  malformed: 400, incompatibleVersion: 400, unauthorized: 401, forbidden: 403, claimed: 409,
   notFound: 404, tooLarge: 413,
 };
 
 type AnswerFields =
-  | { worker: string } | Record<string, never> | { ticket: string; expires: number } | { iceServers: IceServer[]; expires: number };
+  | { worker: string } | Record<string, never> | { ticket: string; expires: number };
 
 export function answer(fields: AnswerFields): Response {
   return new Response(encodeRelayBody(fields), { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });

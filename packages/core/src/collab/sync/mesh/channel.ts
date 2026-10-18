@@ -2,7 +2,7 @@
 import type { WebCryptoKey } from "../../crypto/index.js";
 import type { PeerId } from "../../transport/index.js";
 
-export type SessionStatus = "open" | "meshFull" | "closed";
+export type SessionStatus = "open" | "closed";
 
 export interface ChannelSpec {
   /** Envelope kind byte; extensions use EXTENSION_KIND_MIN and above. */
@@ -16,7 +16,7 @@ export interface ChannelSpec {
 }
 
 export interface Channel {
-  /** Sends to one admitted peer or to all of them; a peer outside the mesh gets nothing. Failures are logged, never thrown. */
+  /** Sends to one connected peer or to all of them. Failures are logged, never thrown. */
   send(to: PeerId | "all", docKey: string, payload: Uint8Array): Promise<void>;
 }
 

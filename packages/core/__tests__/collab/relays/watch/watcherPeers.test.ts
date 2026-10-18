@@ -1,0 +1,81 @@
+/** Pins that the clients of a watched relay keep a watcher out of their blob fetches and do not flood its socket. */
+import { deriveAwarenessKey, deriveContentKey, deriveRelayToken } from "../../../../src/collab/crypto/index";
+import { createRelayWatch } from "../../../../src/collab/relays/index";
+import { attachBlobs, type BlobExchange } from "../../../../src/collab/sync/index";
+import type { RelaySocket } from "../../../../src/collab/transport/index";
+import { sha256Hex } from "../../../../src/hash/index";
+import { FakeClock } from "../../sync/fakeNetwork";
+import { fakeLogger, SHARE_ID, SHARE_KEY } from "../../sync/testSession";
+import { openRelayClient, RELAY_URL, type RelayClient } from "../../transport/relay/relayClient";
+import { FakeRelay, runFor } from "../../transport/relay/fakeRelay";
+import { TWO } from "../relayGroup";
+
+const TEN_MINUTES_MS = 600_000;
+const LETTERS = 20;
+/** Two presences, one blob request per client at most, and one doc update per letter typed, with room for the opening sync. */
+const WATCHER_MESSAGE_BOUND = 2 * LETTERS + 40;
+
+const state = (name: string) => ({ name, colour: "#000000", file: null, anchor: null, head: null });
+
+/** Counts the messages the relay delivers to the sockets this factory opens. */
+function countingSockets(inner: (url: string) => RelaySocket, counter: { received: number }): (url: string) => RelaySocket {
+  return (url) => {
+    const socket = inner(url);
+    let handler: RelaySocket["onmessage"] = null;
+    Object.defineProperty(socket, "onmessage", {
+      get: () => handler,
+      set: (fn: RelaySocket["onmessage"]) => { handler = fn && ((event) => { counter.received += 1; fn(event); }); },
+    });
+    return socket;
+  };
+}
+
+/** A relay client of the group on the watched relay, with blobs that skip the peers reporting another relay. */
+async function openMember(relay: FakeRelay, clock: FakeClock, name: string, held?: Uint8Array): Promise<RelayClient & { blobs: BlobExchange }> {
+  const client = await openRelayClient(relay, clock);
+  client.presence.setRelay({ relay: RELAY_URL, relaysDown: {} });
+  client.presence.setLocal(state(name));
+  const blobs = attachBlobs(client.session, {
+    contentKey: await deriveContentKey(SHARE_KEY), getBlob: async () => held, logger: client.logger, scheduler: clock,
+    skipPeer: (peer) => client.presence.reportsOtherRelay(peer),
+  });
+  return { ...client, blobs, close: async () => { blobs.close(); await client.close(); } };
+}
+
+describe("a relay watcher seen by the clients of the relay it watches", () => {
+  it("gets no blob request and few messages while two clients type and exchange a blob for ten minutes", async () => {
+    const clock = new FakeClock();
+    const relay = new FakeRelay(clock);
+    const counter = { received: 0 };
+    const logger = fakeLogger();
+    const watch = createRelayWatch({
+      shareId: SHARE_ID, relayToken: await deriveRelayToken(SHARE_KEY), contentKey: await deriveContentKey(SHARE_KEY),
+      awarenessKey: await deriveAwarenessKey(SHARE_KEY), logger, scheduler: clock,
+      fetch: relay.fetch, socketFactory: countingSockets(relay.socketFactory, counter),
+    });
+    const blob = new TextEncoder().encode("figure bytes");
+    // The fetcher meets the watcher before the holder, so a fetch that asked every peer in turn would ask the watcher first.
+    const fetcher = await openMember(relay, clock, "Grace");
+    await runFor(clock, 1000);
+    watch.publish({ ...state("Ada"), relay: TWO, relaysDown: {} });
+    watch.follow([RELAY_URL], () => ({ failure: () => {}, connected: () => {} }));
+    await runFor(clock, 5000);
+    const holder = await openMember(relay, clock, "Ken", blob);
+    await runFor(clock, 5000);
+
+    let fetched: Uint8Array | undefined;
+    void fetcher.blobs.fetch(await sha256Hex(blob)).then((bytes) => { fetched = bytes; });
+    await runFor(clock, 2000);
+    expect(fetched && new TextDecoder().decode(fetched)).toBe("figure bytes");
+
+    [fetcher, holder].forEach((client, i) => {
+      const text = client.text();
+      for (let n = 0; n < LETTERS; n += 1) { clock.after(n * 3000 + i * 1000, () => text.insert(text.length, "ab"[i]!)); }
+    });
+    await runFor(clock, TEN_MINUTES_MS, 1000);
+    expect(fetcher.text().length).toBe(2 * LETTERS);
+    expect(counter.received).toBeLessThan(WATCHER_MESSAGE_BOUND);
+
+    await Promise.all([fetcher.close(), holder.close(), watch.close()]);
+  }, 60_000);
+});

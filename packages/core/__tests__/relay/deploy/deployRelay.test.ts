@@ -20,10 +20,6 @@ describe("deployRelay", () => {
       "GET /accounts/<A>/workers/subdomain",
       "PUT /accounts/<A>/workers/subdomain",
       "PUT /accounts/<A>/workers/scripts/relay",
-      "GET /accounts/<A>/calls/turn_keys",
-      "POST /accounts/<A>/calls/turn_keys",
-      "PUT /accounts/<A>/workers/scripts/relay/secrets",
-      "PUT /accounts/<A>/workers/scripts/relay/secrets",
       "PUT /accounts/<A>/workers/scripts/relay/secrets",
       "POST /accounts/<A>/workers/scripts/relay/subdomain",
     ]);
@@ -64,17 +60,15 @@ describe("deployRelay", () => {
     expect(await scriptPart.text()).toBe(script);
   });
 
-  it("sets the owner secret and the TURN key as secrets, and returns what the caller keeps", async () => {
+  it("sets the owner secret as a secret, and returns what the caller keeps", async () => {
     const { requests, result } = await deploy();
     const secrets = requests.filter((r) => r.path.endsWith("/secrets")).map((r) => r.json);
     expect(secrets).toEqual([
       { name: "OWNER_SECRET", text: result.ownerSecret, type: "secret_text" },
-      { name: "TURN_KEY_ID", text: "turn-1", type: "secret_text" },
-      { name: "TURN_KEY_SECRET", text: "turn-SECRET", type: "secret_text" },
     ]);
     expect(result.ownerSecret).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(requests.find((r) => r.path.endsWith("/relay/subdomain"))!.json).toEqual({ enabled: true, previews_enabled: false });
-    expect(result).toMatchObject({ kvNamespaceId: "kv-1", turnKeyId: "turn-1" });
+    expect(result).toMatchObject({ kvNamespaceId: "kv-1" });
   });
 
   it("draws a different owner secret on every deploy", async () => {
@@ -82,11 +76,11 @@ describe("deployRelay", () => {
     expect(first.result.ownerSecret).not.toBe(second.result.ownerSecret);
   });
 
-  it("never logs the token, the owner secret or the TURN secret", async () => {
+  it("never logs the token, or the owner secret", async () => {
     const { logger, result } = await deploy();
     const logged = JSON.stringify(logger.calls);
     expect(logger.calls.length).toBeGreaterThan(5);
-    for (const secret of [TOKEN, result.ownerSecret, "turn-SECRET"]) { expect(logged).not.toContain(secret); }
+    for (const secret of [TOKEN, result.ownerSecret]) { expect(logged).not.toContain(secret); }
   });
 
   it("fails with a readable error and logs it without the token when the token is wrong", async () => {
@@ -111,12 +105,6 @@ describe("deployRelay", () => {
       expect(await metadataOf(requests.find((r) => r.path.endsWith("/workers/scripts/relay"))!)).toMatchObject({
         bindings: expect.arrayContaining([{ type: "kv_namespace", name: "KV", namespace_id: "kv-old" }]),
       });
-    });
-
-    it("deletes TURN keys with the same name before creating one, and only those", async () => {
-      const { requests } = await deploy({ existingTurnKeys: [{ uid: "old-1", name: "labshelf-relay-relay" }, { uid: "keep", name: "mine" }, { uid: "old-2", name: "labshelf-relay-relay" }] });
-      const turn = requests.filter((r) => r.path.includes("/calls/turn_keys")).map((r) => `${r.method} ${r.path.split("/").pop()}`);
-      expect(turn).toEqual(["GET turn_keys", "DELETE old-1", "DELETE old-2", "POST turn_keys"]);
     });
 
     it("retries a taken subdomain name once with a random suffix", async () => {

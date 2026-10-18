@@ -11,7 +11,7 @@ import type { SwitchableTransport } from "./switchableTransport.js";
 
 export interface RelayFollowOptions {
   session: ShareSession;
-  /** The switchable transport the session was created over, alone or merged with the mesh. */
+  /** The switchable transport the session was created over. */
   slot: SwitchableTransport;
   selector: RelaySelector;
   shareId: string;
@@ -21,12 +21,14 @@ export interface RelayFollowOptions {
   scheduler?: SessionScheduler;
   fetch?: typeof fetch;
   socketFactory?: RelaySocketFactory;
+  /** See `RelaySyncOptions.isSnapshotWriter`. */
+  isSnapshotWriter: () => boolean;
   /** The persisted cursors of one relay; defaults to memory. */
   cursorsFor?: (relayUrl: string) => RelayCursorStore;
 }
 
 export interface RelayFollower {
-  /** The relay transport in use, for TURN credentials and status; undefined while no relay is usable. */
+  /** The relay transport in use, for its status; undefined while no relay is usable. */
   readonly relay: RelayTransport | undefined;
   /** Flushes and closes the relay sync and transport; call it before closing the session. */
   close(): Promise<void>;
@@ -38,7 +40,7 @@ interface Active { url: string; transport: RelayTransport; sync: RelaySync }
 const fromStart = (store: RelayCursorStore): RelayCursorStore => ({ get: () => undefined, set: (docKey, cursor) => store.set(docKey, cursor) });
 
 function startRelay(options: RelayFollowOptions, scheduler: SessionScheduler, url: string, replayFromStart: boolean): Active {
-  const { session, slot, selector, shareId, relayToken, contentKey, logger } = options;
+  const { session, slot, selector, shareId, relayToken, contentKey, logger, isSnapshotWriter } = options;
   const connection = observeConnection(
     { fetch: () => options.fetch ?? fetch, socketFactory: options.socketFactory ?? globalSocketFactory },
     { failure: (kind) => selector.reportFailure(url, kind), connected: () => selector.reportConnected(url) },
@@ -46,7 +48,7 @@ function startRelay(options: RelayFollowOptions, scheduler: SessionScheduler, ur
   const transport = createRelayTransport({ relayUrl: url, shareId, relayToken, logger, scheduler, ...connection });
   slot.use(transport);
   const stored = options.cursorsFor?.(url) ?? memoryCursorStore();
-  const sync = attachRelaySync(session, { relay: transport, shareId, contentKey, logger, scheduler, cursors: replayFromStart ? fromStart(stored) : stored });
+  const sync = attachRelaySync(session, { relay: transport, shareId, contentKey, logger, scheduler, isSnapshotWriter, cursors: replayFromStart ? fromStart(stored) : stored });
   return { url, transport, sync };
 }
 

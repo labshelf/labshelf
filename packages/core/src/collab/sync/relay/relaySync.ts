@@ -1,37 +1,19 @@
 // Keeps a share session's docs on its relay: batched encrypted puts, catch-up from stored rows, and snapshots that compact them.
 import * as Y from "yjs";
 import { bytesToHex } from "../../../encoding/index.js";
-import type { ILogger } from "../../../ports/index.js";
-import type { WebCryptoKey } from "../../crypto/index.js";
-import type { RelayStore, RelayStoreAnswer } from "../../transport/index.js";
-import { systemScheduler, type SessionScheduler } from "../mesh/index.js";
+import type { RelayStoreAnswer } from "../../transport/index.js";
+import { systemScheduler } from "../mesh/index.js";
 import type { ShareSession } from "../shareSession.js";
 import { docIdCache, MESSAGE_KIND } from "../wire/index.js";
 import { memoryCursorStore, type RelayCursorStore } from "./relayCursors.js";
+import { RELAY_ERROR_CODE } from "../../../relay/index.js";
 import { RelayDocLane } from "./relayDocLane.js";
+import { RelayDocPuts } from "./relayDocPuts.js";
+import type { RelaySync, RelaySyncOptions } from "./relaySyncTypes.js";
 import { openStored, sealStored, type StoredFrameContext } from "./storedFrames.js";
 
 const LOG_MODULE = "collab.relay";
-/** At most one put per doc in this window while the user types; the window's end is also the idle flush. */
-export const PUT_INTERVAL_MS = 2000;
 export const SNAPSHOT_AFTER_PUTS = 500;
-
-export interface RelaySyncOptions {
-  relay: RelayStore;
-  shareId: string;
-  contentKey: WebCryptoKey;
-  logger: ILogger;
-  scheduler?: SessionScheduler;
-  /** Defaults to memory, so every app start catches up from cursor 0. */
-  cursors?: RelayCursorStore;
-}
-
-export interface RelaySync {
-  /** Puts every pending update now. */
-  flush(): Promise<void>;
-  /** Flushes and stops; call it before closing the session, whose transport closes the socket. */
-  close(): Promise<void>;
-}
 
 // CONTRACT: documents/contracts/relay.md#clients
 export function attachRelaySync(session: ShareSession, options: RelaySyncOptions): RelaySync {
@@ -43,15 +25,15 @@ class RelayDocSync implements RelaySync {
   private readonly byDocId = new Map<string, RelayDocLane>();
   private readonly stops: (() => void)[] = [];
   private readonly frames: StoredFrameContext;
-  private readonly scheduler: SessionScheduler;
+  private readonly puts: RelayDocPuts;
   private readonly cursors: RelayCursorStore;
   private queue: Promise<void> = Promise.resolve();
 
   constructor(private session: ShareSession, private options: RelaySyncOptions) {
     this.frames = { shareId: options.shareId, key: options.contentKey, docIdOf: docIdCache(options.shareId) };
-    this.scheduler = options.scheduler ?? systemScheduler;
+    const { relay, logger, shareId } = options;
+    this.puts = new RelayDocPuts({ relay, logger, shareId, scheduler: options.scheduler ?? systemScheduler, seal: (lane, kind, payload) => this.seal(lane, kind, payload) });
     this.cursors = options.cursors ?? memoryCursorStore();
-    const { relay } = options;
     this.stops.push(
       relay.onStore((answer) => this.enqueue(() => this.answer(answer))),
       relay.onConnection((open) => this.enqueue(() => (open ? this.opened() : this.dropped()))),
@@ -62,7 +44,7 @@ class RelayDocSync implements RelaySync {
   }
 
   async flush(): Promise<void> {
-    await Promise.all([...this.lanes.values()].map((lane) => this.flushLane(lane)));
+    await Promise.all([...this.lanes.values()].map((lane) => this.puts.flush(lane)));
   }
 
   async close(): Promise<void> {
@@ -85,7 +67,7 @@ class RelayDocSync implements RelaySync {
     const onUpdate = (update: Uint8Array, origin: unknown) => {
       if (origin === this.session.remoteOrigin) { return; }
       lane.pending.push(update);
-      lane.cancelFlush ??= this.scheduler.after(PUT_INTERVAL_MS, () => { lane.cancelFlush = undefined; void this.flushLane(lane); });
+      lane.cancelFlush ??= this.puts.schedule(lane);
     };
     doc.on("update", onUpdate);
     this.stops.push(() => { doc.off("update", onUpdate); lane.cancelFlush?.(); });
@@ -96,7 +78,7 @@ class RelayDocSync implements RelaySync {
     for (const lane of this.lanes.values()) {
       lane.outstanding = [];
       await this.catchUp(lane);
-      if (lane.pending.length > 0 && !lane.cancelFlush) { void this.flushLane(lane); }
+      if (lane.pending.length > 0 && !lane.cancelFlush) { void this.puts.flush(lane); }
     }
   }
 
@@ -126,13 +108,23 @@ class RelayDocSync implements RelaySync {
     } else {
       const request = lane.outstanding.shift();
       if (answer.type === "error") {
-        void this.options.logger.log("WARN", LOG_MODULE, "The relay refused a request", { docKey: lane.docKey, code: answer.code, request: request?.type });
+        this.logRefusal(lane, answer.code, request?.type);
         if (request?.type === "since") { lane.catching = false; }
       }
       if (request?.type === "snapshot") { lane.rowsSinceSnapshot = 0; }
       if (request?.type === "put" && answer.type === "accepted") { lane.rowsSinceSnapshot += 1; this.advance(lane, answer.cursor); }
     }
     await this.snapshotIfDue(lane);
+  }
+
+  /** A stale snapshot is expected when two clients reach the same cursor, so it is not a failure. */
+  private logRefusal(lane: RelayDocLane, code: number, request: string | undefined): void {
+    const context = { docKey: lane.docKey, code, request };
+    if (request === "snapshot" && code === RELAY_ERROR_CODE.staleSnapshot) {
+      void this.options.logger.log("INFO", LOG_MODULE, "The relay holds a newer snapshot than the stale one this device sent", context);
+    } else {
+      void this.options.logger.log("WARN", LOG_MODULE, "The relay refused a request", context);
+    }
   }
 
   private async rows(lane: RelayDocLane, answer: Extract<RelayStoreAnswer, { type: "rows" }>): Promise<void> {
@@ -182,23 +174,13 @@ class RelayDocSync implements RelaySync {
     const local = Y.decodeStateVector(Y.encodeStateVector(lane.doc));
     if (![...local].some(([client, clock]) => clock > (relayVector.get(client) ?? 0))) { return; }
     lane.pending.unshift(Y.encodeStateAsUpdate(lane.doc, Y.encodeStateVector(relayVector)));
-    void this.flushLane(lane);
-  }
-
-  private async flushLane(lane: RelayDocLane): Promise<void> {
-    lane.cancelFlush?.();
-    lane.cancelFlush = undefined;
-    if (lane.pending.length === 0 || !this.options.relay.connected) { return; }
-    const update = lane.pending.length === 1 ? lane.pending[0]! : Y.mergeUpdates(lane.pending);
-    lane.pending = [];
-    const { doc, frame } = await this.seal(lane, MESSAGE_KIND.update, update);
-    if (this.options.relay.request({ type: "put", doc, frame })) { lane.outstanding.push({ type: "put", update }); }
-    else { lane.pending.unshift(update); }
+    void this.puts.flush(lane);
   }
 
   /** Only a device that saw every row up to `covers` writes the snapshot, so it never drops an edit it lacks. */
   private async snapshotIfDue(lane: RelayDocLane): Promise<void> {
     if (!lane.caughtUp || lane.rowsSinceSnapshot < SNAPSHOT_AFTER_PUTS || lane.outstanding.some((r) => r.type === "snapshot")) { return; }
+    if (!this.options.isSnapshotWriter()) { return; }
     const covers = lane.cursor;
     const { doc, frame } = await this.seal(lane, MESSAGE_KIND.syncStep2, Y.encodeStateAsUpdate(lane.doc));
     if (this.options.relay.request({ type: "snapshot", doc, covers, frame })) {

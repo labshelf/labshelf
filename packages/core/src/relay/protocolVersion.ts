@@ -1,8 +1,8 @@
 // Parses relay protocol versions and decides whether a client and a Worker can talk.
 
 // CONTRACT: documents/contracts/relay.md#versions
-export const RELAY_PROTOCOL_MAJOR = 1;
-export const RELAY_PROTOCOL_MINOR = 1;
+export const RELAY_PROTOCOL_MAJOR = 2;
+export const RELAY_PROTOCOL_MINOR = 0;
 export const RELAY_PROTOCOL_VERSION = `${RELAY_PROTOCOL_MAJOR}.${RELAY_PROTOCOL_MINOR}`;
 /** The Worker build `/version` reports; the patch counts Worker changes that keep the protocol. */
 export const RELAY_WORKER_BUILD = `${RELAY_PROTOCOL_VERSION}.0`;

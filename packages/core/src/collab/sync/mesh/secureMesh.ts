@@ -1,4 +1,4 @@
-// Carries encrypted, authenticated channel messages between the admitted peers of a share over a transport.
+// Carries encrypted, authenticated channel messages between the connected peers of a share over a transport.
 import { bytesToHex } from "../../../encoding/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import { openFrame, sealFrame, type WebCryptoKey } from "../../crypto/index.js";
@@ -6,7 +6,6 @@ import type { PeerId, PeerTransport } from "../../transport/index.js";
 import {
   decodeEnvelope, docIdCache, DOC_ID_BYTES, encodeEnvelope, MESSAGE_KIND, openDocFrame, sealDocFrame, type Envelope,
 } from "../wire/index.js";
-import { MeshAdmission } from "./meshAdmission.js";
 import { decodeSeqs, encodeSeqs, ReliableLink } from "./reliableLink.js";
 import type { SessionScheduler } from "./scheduler.js";
 import type { Channel, ChannelSpec, SecureMesh, SessionStatus } from "./channel.js";
@@ -21,6 +20,8 @@ export interface SecureMeshOptions {
   transport: PeerTransport;
   logger: ILogger;
   scheduler: SessionScheduler;
+  /** Acks the reliable messages of kinds no channel reads, so a peer that is not a doc peer is not sent them again. */
+  ackUnknownKinds?: boolean;
 }
 
 export function createSecureMesh(options: SecureMeshOptions): SecureMesh {
@@ -29,7 +30,6 @@ export function createSecureMesh(options: SecureMeshOptions): SecureMesh {
 
 class MeshSession implements SecureMesh {
   private state: SessionStatus = "open";
-  private admission = new MeshAdmission();
   private links = new Map<PeerId, ReliableLink>();
   private channels = new Map<number, ChannelSpec>();
   private peerListeners = new Set<(peer: PeerId, joined: boolean) => void>();
@@ -86,8 +86,7 @@ class MeshSession implements SecureMesh {
     const frame = await sealDocFrame({ shareId: this.options.shareId, key: spec.key, name: spec.name }, docId, docKey, payload);
     for (const peer of to === "all" ? [...this.links.keys()] : [to]) {
       const link = this.links.get(peer);
-      // CONTRACT: documents/contracts/relay.md#clients
-      if (!link || (spec.kind === MESSAGE_KIND.update && this.options.transport.receivesUpdatesFromStore?.(peer))) { continue; }
+      if (!link) { continue; }
       if (spec.reliable) { link.send((seq) => encodeEnvelope({ kind: spec.kind, seq, docId, frame })); }
       else { this.options.transport.send(peer, encodeEnvelope({ kind: spec.kind, seq: 0, docId, frame })); }
     }
@@ -102,6 +101,11 @@ class MeshSession implements SecureMesh {
     const { envelope } = decoded;
     if (envelope.kind === MESSAGE_KIND.ack) { return this.receiveAck(from, link, envelope); }
     const spec = this.channels.get(envelope.kind);
+    if (!spec && this.options.ackUnknownKinds) {
+      // INVARIANT: the frame stays unopened, so this acks a seq no one authenticated; such a mesh discards every one of them.
+      if (envelope.seq > 0) { link.accept(envelope.seq); }
+      return;
+    }
     if (!spec) { return this.warnOnce(from, "Dropped a message of an unknown kind", { kind: envelope.kind }); }
     const message = await openDocFrame({ shareId: this.options.shareId, key: spec.key, name: spec.name }, envelope, this.docIdOf);
     if (!message.ok && message.error === "docMismatch") {
@@ -121,16 +125,11 @@ class MeshSession implements SecureMesh {
   private join(peer: PeerId): void {
     if (this.status === "closed") { return; }
     if (this.links.has(peer)) { this.leave(peer); }
-    // A relay peer costs no direct link, so it is admitted beyond the mesh limit.
-    if (this.options.transport.receivesUpdatesFromStore?.(peer) || this.admission.join(peer)) { this.openLink(peer); }
-    this.setStatus(this.admission.full ? "meshFull" : "open");
+    this.openLink(peer);
   }
 
   private leave(peer: PeerId): void {
     this.closeLink(peer);
-    const next = this.admission.leave(peer);
-    if (next !== undefined) { this.openLink(next); }
-    if (this.status !== "closed") { this.setStatus(this.admission.full ? "meshFull" : "open"); }
   }
 
   private openLink(peer: PeerId): void {
@@ -158,9 +157,6 @@ class MeshSession implements SecureMesh {
   private setStatus(next: SessionStatus): void {
     if (next === this.state) { return; }
     this.state = next;
-    if (next === "meshFull") {
-      void this.options.logger.log("INFO", LOG_MODULE, "Mesh is full; further peers wait for a free slot", { shareId: this.options.shareId });
-    }
     this.statusListeners.forEach((listener) => listener(next));
   }
 

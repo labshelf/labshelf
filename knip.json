@@ -58,7 +58,6 @@
       ],
       "ignoreDependencies": [
         "@napi-rs/canvas",
-        "node-datachannel",
         "pdf-lib",
         "pdfjs-dist",
         "tesseract.js"

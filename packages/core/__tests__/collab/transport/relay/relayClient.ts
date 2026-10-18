@@ -2,7 +2,7 @@
 import * as Y from "yjs";
 import { deriveAwarenessKey, deriveContentKey, deriveRelayToken } from "../../../../src/collab/crypto/index";
 import { attachAwareness, attachRelaySync, createShareSession, type PresenceHandle, type RelaySync, type ShareSession } from "../../../../src/collab/sync/index";
-import { createRelayTransport, mergeTransports, type RelayTransport } from "../../../../src/collab/transport/index";
+import { createRelayTransport, type RelayTransport } from "../../../../src/collab/transport/index";
 import type { FakeClock } from "../../sync/fakeNetwork";
 import { fakeLogger, SHARE_ID, SHARE_KEY, type FakeLogger } from "../../sync/testSession";
 import type { FakeRelay } from "./fakeRelay";
@@ -30,11 +30,11 @@ export async function openRelayClient(fake: FakeRelay, clock: FakeClock, docs: Y
   const byPath = new Map<string, Y.Doc>();
   if (docs[0]) { byPath.set(DOC_PATH, docs[0]); }
   const session = createShareSession({
-    shareId: SHARE_ID, contentKey, transport: mergeTransports(relay), logger, scheduler: clock,
+    shareId: SHARE_ID, contentKey, transport: relay, logger, scheduler: clock,
     createDoc: (path) => byPath.get(path) ?? new Y.Doc(),
   });
-  const relaySync = attachRelaySync(session, { relay, shareId: SHARE_ID, contentKey, logger, scheduler: clock });
   const presence = attachAwareness(session, { awarenessKey: await deriveAwarenessKey(SHARE_KEY), logger });
+  const relaySync = attachRelaySync(session, { relay, shareId: SHARE_ID, contentKey, logger, scheduler: clock, isSnapshotWriter: () => presence.isLowestId() });
   session.openDoc(DOC_PATH);
   return {
     session, relay, relaySync, presence, logger,

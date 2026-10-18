@@ -1,4 +1,4 @@
-/** Simulates a peer network on virtual time that can drop, delay, reorder and partition frames. */
+/** Simulates a peer mesh on virtual time that can partition and rejoin peers. */
 import type { PeerId, PeerTransport } from "../../../src/collab/transport/index";
 import type { SessionScheduler } from "../../../src/collab/sync/index";
 
@@ -45,17 +45,14 @@ interface Listeners {
   leave: Set<(peer: PeerId) => void>;
 }
 
-export interface NetworkConditions { dropRate: number; maxDelayMs: number }
-
 export class FakeNetwork {
-  conditions: NetworkConditions = { dropRate: 0, maxDelayMs: 0 };
   readonly sent: { from: PeerId; to: PeerId }[] = [];
   private transports = new Map<PeerId, Listeners>();
   /** Peer to its connection count; a frame in flight across a reconnect is lost, as on a real link. */
   private online = new Map<PeerId, number>();
   private connections = 0;
 
-  constructor(private clock: FakeClock, private random: () => number = seededRandom(1)) {}
+  constructor(private clock: FakeClock) {}
 
   join(id: PeerId): PeerTransport {
     const listeners: Listeners = { message: new Set(), join: new Set(), leave: new Set() };
@@ -102,9 +99,8 @@ export class FakeNetwork {
     for (const target of targets) {
       const toConnection = this.online.get(target);
       this.sent.push({ from, to: target });
-      if (this.random() < this.conditions.dropRate) { continue; }
       const copy = bytes.slice();
-      this.clock.after(Math.floor(this.random() * this.conditions.maxDelayMs), () => {
+      this.clock.after(0, () => {
         if (this.online.get(target) === toConnection && this.online.get(from) === fromConnection) {
           this.transports.get(target)!.message.forEach((fn) => fn(from, copy));
         }

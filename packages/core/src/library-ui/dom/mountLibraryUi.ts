@@ -24,6 +24,8 @@ export interface LibraryUiOptions {
   labels: LibraryUiLabels;
   /** Adds a resizable sidebar slot left of the list. */
   withSidebar?: boolean;
+  /** Shows the library for reading only: no Add button, tag editing or note editor; search stays. */
+  readOnly?: boolean;
 }
 
 /** What a host's own glue (such as a sidebar folder tree) can use. */
@@ -52,7 +54,7 @@ export function mountLibraryUi(host: HTMLElement, options: LibraryUiOptions): Li
   const store = new LibraryViewStore({ sortKey: saved.sortKey, sortDir: saved.sortDir, columns: saved.columns });
   const { transport, prefs, capabilities: caps, labels } = options;
   const frame = buildFrame(host, prefs, { withSidebar: options.withSidebar ?? false, withCitationMap: true, detailLabel: "Paper details" });
-  const ctx = createUiContext(frame.root, { store, transport, prefs, caps, labels });
+  const ctx = createUiContext(frame.root, { store, transport, prefs, caps, labels, readOnly: options.readOnly ?? false });
   const offs = [
     attachHostMessages(ctx),
     mountListHeader(ctx, frame.header),

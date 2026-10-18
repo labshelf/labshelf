@@ -40,13 +40,11 @@ export interface KvNamespace {
   delete(key: string): Promise<void>;
 }
 
-/** The bindings and secrets the deploy sets; the TURN key is optional. */
+/** The bindings and secrets the deploy sets. */
 export interface RelayEnv {
   ROOM: RoomNamespace;
   KV: KvNamespace;
   OWNER_SECRET?: string;
-  TURN_KEY_ID?: string;
-  TURN_KEY_SECRET?: string;
 }
 
 // PLATFORM: WebSocketPair and a 101 Response carrying `webSocket` exist only on Workers, so they are reached untyped.

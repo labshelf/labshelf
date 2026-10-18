@@ -1,15 +1,22 @@
-// Connects the owner's Cloudflare account: a token guide, the token, the account, then the relay deployed and serving.
+// Connects the owner's Cloudflare account: a sign-in (or a pasted token on a remote host), the account, then the relay deployed and serving.
 import * as vscode from "vscode";
 
 import {
   createCloudflareClient, deployRelay, listCloudflareAccounts, verifyCloudflareToken, waitUntilServing, type CloudflareClient, type ILogger,
 } from "@labshelf/core";
-import { LOG_MODULE, RELAY_WORKER_NAME, type RelayAccounts } from "./relayAccounts.js";
+import { LOG_MODULE, RELAY_WORKER_NAME, type RelayAccounts, type RelayCredential } from "./relayAccounts.js";
+import { relayClock } from "./relayClock.js";
 import { reportRelayFailure } from "./relayFailure.js";
 import { relayWorkerScript } from "./relayWorkerScript.js";
+import { accountAccessToken, LoopbackUnavailableError, signInToCloudflare } from "./signIn/index.js";
 
 export const CONNECT_RELAY_COMMAND = "labshelf.relay.connect";
 const TOKEN_PAGE = "https://dash.cloudflare.com/profile/api-tokens";
+const RELAY_PURPOSE = "LabShelf sets up a small relay in your own Cloudflare account, on the free plan. It carries every edit between "
+  + "collaborators, end-to-end encrypted, and keeps them so collaborators sync even when you are offline.";
+// INVARIANT: the same access as the OAuth scopes in core's oauthClient, so both credentials deploy alike.
+const TOKEN_PERMISSIONS = "Create a custom token with Account · Workers Scripts: Edit, Account · Workers KV Storage: Edit "
+  + "and Account · Account Settings: Read. The token stays on this device.";
 
 export interface RelayDeps {
   accounts: RelayAccounts;
@@ -21,34 +28,65 @@ export interface ConnectDeps extends RelayDeps {
   offerToShares(): Promise<void>;
 }
 
-async function showGuide(): Promise<boolean> {
-  const open = "Open Token Page";
-  const paste = "Paste Token";
+async function confirmSignIn(): Promise<boolean> {
+  const signIn = "Sign In with Cloudflare";
   const answer = await vscode.window.showInformationMessage("Connect Cloudflare to give your shared projects a relay", {
     modal: true,
-    detail: "LabShelf sets up a small relay in your own Cloudflare account, on the free plan. It keeps your projects' edits, encrypted, "
-      + "so collaborators sync even when you are offline, and it connects them when a network blocks direct links.\n\n"
-      + "Create an API token with \"Create Custom Token\" and these permissions:\n"
-      + "- Account · Workers Scripts: Edit\n- Account · Workers KV Storage: Edit\n- Account · Cloudflare Calls/Realtime: Edit (TURN)\n"
-      + "- Account · Account Settings: Read\n\nThe token stays on this device.",
-  }, open, paste);
-  if (answer === open) { await vscode.env.openExternal(vscode.Uri.parse(TOKEN_PAGE)); }
-  return answer === open || answer === paste;
+    detail: `${RELAY_PURPOSE}\n\nLabShelf opens Cloudflare in your browser, where you sign in and allow it to manage Workers in your account.`,
+  }, signIn);
+  return answer === signIn;
 }
 
 function askToken(): Thenable<string | undefined> {
   return vscode.window.showInputBox({
     title: "Connect Cloudflare",
-    prompt: "Paste the Cloudflare API token",
+    prompt: `Paste the Cloudflare API token. ${TOKEN_PERMISSIONS}`,
     password: true,
     ignoreFocusOut: true,
     validateInput: (value) => (/\s/.test(value.trim()) ? "A token has no spaces" : undefined),
   });
 }
 
+type Fallback = "paste" | "tokenPage" | "signIn";
+
+/** Offered where the browser cannot come back to this host: a remote window, or a loopback port LabShelf cannot use. */
+async function pickFallback(why: string, canSignIn: boolean): Promise<RelayCredential | "signIn" | undefined> {
+  const items: (vscode.QuickPickItem & { choice: Fallback })[] = [
+    { label: "Paste an API token", detail: TOKEN_PERMISSIONS, choice: "paste" },
+    { label: "Create an API token", detail: "Opens the Cloudflare token page, then asks for the token", choice: "tokenPage" },
+  ];
+  if (canSignIn) { items.push({ label: "Sign in with Cloudflare", detail: "Works when port 8976 of this host is forwarded to your computer", choice: "signIn" }); }
+  const picked = await vscode.window.showQuickPick(items, { title: "Connect Cloudflare", placeHolder: `${why}. ${RELAY_PURPOSE}`, ignoreFocusOut: true });
+  if (!picked) { return undefined; }
+  if (picked.choice === "signIn") { return "signIn"; }
+  if (picked.choice === "tokenPage") { await vscode.env.openExternal(vscode.Uri.parse(TOKEN_PAGE)); }
+  const token = (await askToken())?.trim();
+  return token ? { kind: "token", token } : undefined;
+}
+
+async function signIn(deps: RelayDeps): Promise<RelayCredential | undefined> {
+  try {
+    await signInToCloudflare(deps);
+    return { kind: "oauth" };
+  } catch (error) {
+    if (!(error instanceof LoopbackUnavailableError)) { throw error; }
+    await deps.logger.log("WARN", LOG_MODULE, "Offering a pasted token: the sign-in loopback is unavailable", { reason: error.reason });
+    const fallback = await pickFallback(`Port 8976 on this device is busy (${error.reason}), so the browser sign-in cannot reach LabShelf`, false);
+    return fallback === "signIn" ? undefined : fallback;
+  }
+}
+
+async function chooseCredential(deps: RelayDeps): Promise<RelayCredential | undefined> {
+  const remote = vscode.env.remoteName;
+  if (!remote) { return (await confirmSignIn()) ? signIn(deps) : undefined; }
+  await deps.logger.log("INFO", LOG_MODULE, "Offering a pasted token: the window runs on a remote host", { remote });
+  const choice = await pickFallback("This window runs on a remote host, which the browser sign-in cannot reach", true);
+  return choice === "signIn" ? signIn(deps) : choice;
+}
+
 async function pickAccount(client: CloudflareClient): Promise<string | undefined> {
   const accounts = await listCloudflareAccounts(client);
-  if (accounts.length === 0) { throw new Error("the token reaches no Cloudflare account; give it the account permissions in the guide"); }
+  if (accounts.length === 0) { throw new Error("the credential reaches no Cloudflare account; give it the account permissions LabShelf asks for"); }
   if (accounts.length === 1) { return accounts[0]?.id; }
   const picked = await vscode.window.showQuickPick(accounts.map((account) => ({ label: account.name, description: account.id, id: account.id })), {
     title: "Connect Cloudflare", placeHolder: "Account to set up the relay in",
@@ -56,19 +94,30 @@ async function pickAccount(client: CloudflareClient): Promise<string | undefined
   return picked?.id;
 }
 
-const clock = { now: () => Date.now(), sleep: (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)) };
-
-async function deploy(deps: RelayDeps, token: string, accountId: string): Promise<string> {
+async function deploy(deps: RelayDeps, credential: RelayCredential, token: string, accountId: string): Promise<string> {
   const { logger } = deps;
   return vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: "Setting up your relay on Cloudflare" }, async (progress) => {
     progress.report({ message: "uploading the relay" });
     const deployed = await deployRelay({ token, accountId, script: relayWorkerScript(), workerName: RELAY_WORKER_NAME, logger, fetch: globalThis.fetch });
     // Saved before the wait, so a relay that answers late is still used and can be deleted.
-    await deps.accounts.save({ token, accountId, ...deployed });
+    await deps.accounts.save({ credential, accountId, ...deployed });
     progress.report({ message: "waiting for its address to answer, which takes up to 4 minutes the first time" });
-    await waitUntilServing({ relayUrl: deployed.relayUrl, fetch: globalThis.fetch, logger, clock });
+    await waitUntilServing({ relayUrl: deployed.relayUrl, fetch: globalThis.fetch, logger, clock: relayClock });
     return deployed.relayUrl;
   });
+}
+
+async function connectWith(deps: ConnectDeps, credential: RelayCredential): Promise<void> {
+  const token = await accountAccessToken(deps, credential)();
+  const client = createCloudflareClient({ token, fetch: globalThis.fetch, logger: deps.logger });
+  // An OAuth token has no /user/tokens/verify; listing its accounts proves it works.
+  if (credential.kind === "token") { await verifyCloudflareToken(client); }
+  const accountId = await pickAccount(client);
+  if (!accountId) { return; }
+  const relayUrl = await deploy(deps, credential, token, accountId);
+  void deps.logger.log("INFO", LOG_MODULE, "Connected Cloudflare", { accountId, relayUrl, credential: credential.kind });
+  await deps.offerToShares();
+  void vscode.window.showInformationMessage(`Cloudflare connected. Your shared projects open here and the ones you share later list your relay at ${relayUrl}.`);
 }
 
 export async function connectRelay(deps: ConnectDeps): Promise<void> {
@@ -77,19 +126,12 @@ export async function connectRelay(deps: ConnectDeps): Promise<void> {
     void vscode.window.showInformationMessage(`Cloudflare is connected, with your relay at ${existing.relayUrl}. Disconnect it first to use another account.`);
     return;
   }
-  if (!(await showGuide())) { return; }
-  const token = (await askToken())?.trim();
-  if (!token) { return; }
   try {
-    const client = createCloudflareClient({ token, fetch: globalThis.fetch, logger: deps.logger });
-    await verifyCloudflareToken(client);
-    const accountId = await pickAccount(client);
-    if (!accountId) { return; }
-    const relayUrl = await deploy(deps, token, accountId);
-    void deps.logger.log("INFO", LOG_MODULE, "Connected Cloudflare", { accountId, relayUrl });
-    await deps.offerToShares();
-    void vscode.window.showInformationMessage(`Cloudflare connected. Your shared projects open here and the ones you share later list your relay at ${relayUrl}.`);
+    const credential = await chooseCredential(deps);
+    if (credential) { await connectWith(deps, credential); }
   } catch (error) {
     reportRelayFailure(deps.logger, "connect Cloudflare", error);
   }
+  // Tokens from a sign-in that never became a connection would otherwise stay in SecretStorage with nothing to delete them.
+  if (!(await deps.accounts.get())) { await deps.accounts.forget(); }
 }

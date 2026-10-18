@@ -1,6 +1,6 @@
-/** Pins the claim, ticket and TURN requests: the bodies sent, the trystero turnConfig shape, and typed refusals. */
+/** Pins the claim and ticket requests: the bodies sent and typed refusals. */
 import { createHash } from "node:crypto";
-import { claimShare, fetchTicket, fetchTurnServers, RelayRequestError } from "../../../../src/collab/transport/index";
+import { claimShare, fetchTicket, RelayRequestError } from "../../../../src/collab/transport/index";
 
 const SHARE_ID = "a".repeat(32);
 
@@ -19,32 +19,37 @@ describe("relay requests", () => {
     const seen: Seen[] = [];
     const token = Buffer.alloc(32, 7);
     await claimShare({
-      relayUrl: "https://relay.example", ownerSecret: "owner", shareId: SHARE_ID, relayToken: token.toString("base64url"), fetch: answering(200, { v: "1.1" }, seen),
+      relayUrl: "https://relay.example", ownerSecret: "owner", shareId: SHARE_ID, relayToken: token.toString("base64url"), fetch: answering(200, { v: "2.0" }, seen),
     });
     const relayTokenHash = createHash("sha256").update(token).digest("hex");
-    expect(seen).toEqual([{ url: "https://relay.example/claim", body: { v: "1.1", shareId: SHARE_ID, relayTokenHash }, authorization: "Bearer owner" }]);
-    const claimed = claimShare({ relayUrl: "https://relay.example", ownerSecret: "owner", shareId: SHARE_ID, relayToken: "AA", fetch: answering(409, { v: "1.1", error: "claimed" }) });
+    expect(seen).toEqual([{ url: "https://relay.example/claim", body: { v: "2.0", shareId: SHARE_ID, relayTokenHash }, authorization: "Bearer owner" }]);
+    const claimed = claimShare({ relayUrl: "https://relay.example", ownerSecret: "owner", shareId: SHARE_ID, relayToken: "AA", fetch: answering(409, { v: "2.0", error: "claimed" }) });
     await expect(claimed).rejects.toMatchObject({ code: "claimed", status: 409 });
   });
 
-  it("maps the relay's ICE servers to trystero's turnConfig", async () => {
-    const seen: Seen[] = [];
-    const iceServers = [{ urls: ["turn:turn.example:3478"], username: "u", credential: "c" }, { urls: "stun:stun.example" }];
-    const servers = await fetchTurnServers({
-      relayUrl: "https://relay.example/", shareId: SHARE_ID, ticket: "1.mac", fetch: answering(200, { v: "1.1", iceServers, expires: 1_900_000_000 }, seen),
-    });
-    expect(seen).toEqual([{ url: "https://relay.example/turn", body: { v: "1.1", shareId: SHARE_ID, ticket: "1.mac" } }]);
-    expect(servers).toEqual([
-      { urls: ["turn:turn.example:3478"], username: "u", credential: "c" },
-      { urls: "stun:stun.example", username: undefined, credential: undefined },
-    ]);
-  });
-
   it("names a refusal and a relay of another major", async () => {
-    const refused = fetchTicket({ relayUrl: "https://relay.example", shareId: SHARE_ID, relayToken: "t", fetch: answering(403, { v: "1.1", error: "forbidden" }) });
+    const refused = fetchTicket({ relayUrl: "https://relay.example", shareId: SHARE_ID, relayToken: "t", fetch: answering(403, { v: "2.0", error: "forbidden" }) });
     await expect(refused).rejects.toMatchObject({ code: "forbidden", status: 403 });
-    const newer = fetchTicket({ relayUrl: "https://relay.example", shareId: SHARE_ID, relayToken: "t", fetch: answering(200, { v: "2.0", ticket: "x", expires: 1 }) });
+    const newer = fetchTicket({ relayUrl: "https://relay.example", shareId: SHARE_ID, relayToken: "t", fetch: answering(200, { v: "3.0", ticket: "x", expires: 1 }) });
     await expect(newer).rejects.toBeInstanceOf(RelayRequestError);
     await expect(newer).rejects.toMatchObject({ code: "incompatibleRelay" });
+  });
+
+  it.each([
+    ["a 503 HTML page", 503, "<html><body>Service Unavailable</body></html>"],
+    ["a 502 empty body", 502, ""],
+    ["a 200 HTML page", 200, "<html>captive portal</html>"],
+  ])("names %s from /ticket a relayDown refusal with the status", async (_name, status, body) => {
+    const down: typeof fetch = async () => new Response(body, { status });
+    const refused = fetchTicket({ relayUrl: "https://relay.example", shareId: SHARE_ID, relayToken: "t", fetch: down });
+    await expect(refused).rejects.toMatchObject({ code: "relayDown", status });
+    await expect(refused).rejects.toThrow(`HTTP ${status}`);
+  });
+
+  it("names a 5xx that carries JSON a relayDown refusal and a failed fetch a network error", async () => {
+    const failing = fetchTicket({ relayUrl: "https://relay.example", shareId: SHARE_ID, relayToken: "t", fetch: answering(500, { v: "2.0", error: "internal" }) });
+    await expect(failing).rejects.toMatchObject({ code: "relayDown", status: 500 });
+    const offline: typeof fetch = async () => { throw new TypeError("fetch failed"); };
+    await expect(fetchTicket({ relayUrl: "https://relay.example", shareId: SHARE_ID, relayToken: "t", fetch: offline })).rejects.toMatchObject({ code: "network", status: 0 });
   });
 });

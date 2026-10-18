@@ -23,6 +23,18 @@ export type InviteError =
   | "shareIdMismatch";
 export type ParseInviteResult = { ok: true; invite: Invite } | { ok: false; error: InviteError };
 
+/** A joiner reaches the share only through a relay, so an invite that lists none cannot be joined. */
+export class InviteWithoutRelayError extends Error {
+  constructor() {
+    super("The invite lists no relay. Ask the owner for a new invite after they connect Cloudflare.");
+    this.name = "InviteWithoutRelayError";
+  }
+}
+
+export function assertInviteHasRelay(invite: Invite): void {
+  if (invite.relays.length === 0) { throw new InviteWithoutRelayError(); }
+}
+
 export async function formatInvite(share: { shareKey: Uint8Array; relays: InviteRelay[] }): Promise<string> {
   const segments = [INVITE_VERSION, await deriveShareId(share.shareKey), bytesToBase64Url(share.shareKey), encodeRelayList(share.relays)];
   return INVITE_PREFIX + segments.join(".");

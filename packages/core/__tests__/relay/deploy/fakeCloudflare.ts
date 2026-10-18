@@ -13,7 +13,6 @@ export interface FakeCloudflareOptions {
   /** Body of GET <relay>/version, or a status to answer with. */
   relayVersion?: unknown;
   existingKvNamespaces?: { id: string; title: string }[];
-  existingTurnKeys?: { uid: string; name: string }[];
   /** PUT workers/subdomain answers 409 for this name. */
   takenSubdomain?: string;
   /** The token is account-owned: the user endpoint refuses it. */
@@ -46,7 +45,6 @@ export function fakeCloudflare(options: FakeCloudflareOptions = {}) {
       case "GET /user/tokens/verify":
         return options.accountOwnedToken ? failure(403, 9109, "Unauthorized to access requested resource") : envelope(200, { id: "t", status: "active" });
       case "GET /accounts/<A>/storage/kv/namespaces": return envelope(200, options.existingKvNamespaces ?? []);
-      case "GET /accounts/<A>/calls/turn_keys": return envelope(200, options.existingTurnKeys ?? []);
       case "GET /accounts": return envelope(200, [{ id: ACCOUNT, name: "Lab" }]);
       case "POST /accounts/<A>/storage/kv/namespaces": return envelope(200, { id: "kv-1" });
       case "GET /accounts/<A>/workers/subdomain":
@@ -61,7 +59,6 @@ export function fakeCloudflare(options: FakeCloudflareOptions = {}) {
       }
       case "PUT /accounts/<A>/workers/scripts/relay/secrets": return envelope(201, { name: "x" });
       case "POST /accounts/<A>/workers/scripts/relay/subdomain": return envelope(200, { enabled: true });
-      case "POST /accounts/<A>/calls/turn_keys": return new Response(JSON.stringify({ uid: "turn-1", name: "n", secret: "turn-SECRET" }), { status: 201 });
       default:
         return route.startsWith("DELETE ") ? envelope(200, {}) : failure(404, 7003, `no route ${route}`);
     }

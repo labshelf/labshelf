@@ -1,12 +1,16 @@
-/** Opens a project mirror on a temp folder over a share session with no peers, for the tests of the disk mirror. */
+/** Opens a project mirror on a temp folder over a share session, alone or on a fake relay, for the tests of the disk mirror. */
 import { promises as fs } from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { createProjectIndex } from "../../../../src/collab/model/index";
 import { openCollabStore, startProjectMirror, type CollabStore, type ProjectMirror } from "../../../../src/collab/node/index";
-import { attachBlobs, createShareSession, type BlobExchange, type ShareSession } from "../../../../src/collab/sync/index";
+import { deriveRelayToken } from "../../../../src/collab/crypto/index";
+import { attachBlobs, attachRelaySync, createShareSession, type BlobExchange, type ShareSession } from "../../../../src/collab/sync/index";
+import { createRelayTransport, type PeerTransport } from "../../../../src/collab/transport/index";
 import { FakeClock, FakeNetwork } from "../../sync/fakeNetwork";
-import { contentKey, fakeLogger, SHARE_ID, type FakeLogger } from "../../sync/testSession";
+import { contentKey, fakeLogger, SHARE_ID, SHARE_KEY, type FakeLogger } from "../../sync/testSession";
+import type { FakeRelay } from "../../transport/relay/fakeRelay";
+import { RELAY_URL } from "../../transport/relay/relayClient";
 
 export const STABLE_MS = 40;
 
@@ -22,9 +26,9 @@ export interface MirrorFixture {
 }
 
 export interface FixtureOptions {
-  net?: FakeNetwork;
+  /** The relay the mirror's members meet on; without one the session has no peers. */
+  relay?: FakeRelay;
   clock?: FakeClock;
-  peer?: string;
   /** Marks the index as a project's before the mirror starts. */
   project?: boolean;
   folder?: string;
@@ -40,13 +44,18 @@ export async function openMirror(options: FixtureOptions = {}): Promise<MirrorFi
   const stateDir = options.stateDir ?? await tempDir("mirror-state");
   const logger = fakeLogger();
   const store = await openCollabStore({ dir: stateDir, shareId: SHARE_ID, logger });
-  const net = options.net ?? new FakeNetwork(clock);
+  const relay = options.relay ? createRelayTransport({
+    relayUrl: RELAY_URL, shareId: SHARE_ID, relayToken: await deriveRelayToken(SHARE_KEY), logger,
+    socketFactory: options.relay.socketFactory, fetch: options.relay.fetch, scheduler: clock,
+  }) : undefined;
+  const transport: PeerTransport = relay ?? new FakeNetwork(clock).join("a");
   const session = createShareSession({
-    shareId: SHARE_ID, contentKey: await contentKey(), transport: net.join(options.peer ?? "a"), logger, scheduler: clock,
+    shareId: SHARE_ID, contentKey: await contentKey(), transport, logger, scheduler: clock,
     index: store.index, createDoc: store.createDoc,
   });
+  const relaySync = relay ? attachRelaySync(session, { relay, shareId: SHARE_ID, contentKey: await contentKey(), logger, scheduler: clock, isSnapshotWriter: () => true }) : undefined;
   if (options.project !== false) { createProjectIndex(session.index); }
-  const blobs = attachBlobs(session, { contentKey: await contentKey(), getBlob: (hash) => store.blobs.get(hash), logger, scheduler: clock });
+  const blobs = attachBlobs(session, { contentKey: await contentKey(), getBlob: (hash) => store.blobs.get(hash), logger, scheduler: clock, skipPeer: () => false });
   const mirror = startProjectMirror({
     folder, session, blobs, store, logger, watch: false, stableMs: STABLE_MS,
     ...(options.isEditorOwned ? { isEditorOwned: options.isEditorOwned } : {}),
@@ -56,6 +65,7 @@ export async function openMirror(options: FixtureOptions = {}): Promise<MirrorFi
     close: async () => {
       blobs.close();
       await mirror.close();
+      await relaySync?.close();
       await session.close();
       await store.close();
     },

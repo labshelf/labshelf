@@ -39,9 +39,6 @@ function describeRelays(share: ShareConnection): { text: string; tooltip: string
 
 function describe(share: ShareConnection): { text: string; tooltip: string } {
   const online = share.session.peers.length;
-  if (share.session.status === "meshFull") {
-    return { text: "$(broadcast) Shared · relay needed", tooltip: "Too many collaborators for direct connections; a relay is needed to connect more." };
-  }
   const relay = describeRelays(share);
   if (share.session.status === "closed" || online === 0) {
     return { text: `$(broadcast) Shared · offline${relay.text}`, tooltip: `No collaborator is connected. Edits sync when one opens the project.${relay.tooltip}` };

@@ -2,7 +2,7 @@
 export { createShareSession, type ShareSession, type ShareSessionOptions } from "./shareSession.js";
 export { INDEX_DOC_KEY } from "./docSync.js";
 export {
-  ACK_DELAY_MS, MAX_MESH_PEERS, MAX_SEND_ATTEMPTS, RESEND_AFTER_MS, systemScheduler,
+  ACK_DELAY_MS, createSecureMesh, MAX_SEND_ATTEMPTS, RESEND_AFTER_MS, systemScheduler,
   type Channel, type ChannelSpec, type SessionScheduler, type SessionStatus,
 } from "./mesh/index.js";
 export {

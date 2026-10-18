@@ -1,16 +1,14 @@
-// Calls a relay's JSON endpoints: the owner's claim of a share, a socket ticket and TURN credentials.
-import type { TurnServerConfig } from "@trystero-p2p/nostr";
+// Calls a relay's JSON endpoints: the owner's claim of a share and a socket ticket.
 import { base64UrlToBytes } from "../../../encoding/index.js";
 import { sha256Hex } from "../../../hash/index.js";
 import {
-  decodeClaimResponse, decodeRefusal, decodeTicketResponse, decodeTurnResponse, encodeRelayBody, RELAY_PATH,
+  decodeClaimResponse, decodeRefusal, decodeTicketResponse, encodeRelayBody, RELAY_PATH,
   type ResponseResult, type TicketResponse,
 } from "../../../relay/index.js";
 import { RelayRequestError } from "./relayRequestError.js";
 
 export interface ClaimRequestOptions { relayUrl: string; ownerSecret: string; shareId: string; relayToken: string; fetch?: typeof fetch }
 export interface TicketRequestOptions { relayUrl: string; shareId: string; relayToken: string; fetch?: typeof fetch }
-export interface TurnRequestOptions { relayUrl: string; shareId: string; ticket: string; fetch?: typeof fetch }
 
 // CONTRACT: documents/contracts/relay.md#auth
 /** Registers the share on the owner's relay; claiming it again with the same token is a no-op. */
@@ -24,23 +22,23 @@ export function fetchTicket({ relayUrl, shareId, relayToken, fetch: doFetch = fe
   return post(doFetch, relayUrl, RELAY_PATH.ticket, encodeRelayBody({ shareId, relayToken }), decodeTicketResponse);
 }
 
-/** The relay's TURN servers in the shape the trystero transport's `turnConfig` takes. */
-export async function fetchTurnServers({ relayUrl, shareId, ticket, fetch: doFetch = fetch }: TurnRequestOptions): Promise<TurnServerConfig[]> {
-  const answer = await post(doFetch, relayUrl, RELAY_PATH.turn, encodeRelayBody({ shareId, ticket }), decodeTurnResponse);
-  return answer.iceServers.map(({ urls, username, credential }) => ({ urls, username, credential }) as TurnServerConfig);
-}
-
 async function post<T>(
   doFetch: typeof fetch, relayUrl: string, path: string, body: string, decode: (value: unknown) => ResponseResult<T>, headers: Record<string, string> = {},
 ): Promise<T> {
   const url = `${relayUrl.replace(/\/+$/, "")}${path}`;
   let response: Response;
-  let json: unknown;
   try {
     response = await doFetch(url, { method: "POST", headers: { "content-type": "application/json", ...headers }, body });
-    json = await response.json();
   } catch (error) {
     throw new RelayRequestError("network", 0, `${path}: ${String(error)}`);
+  }
+  // TRAP: a down relay answers with a Cloudflare or proxy HTML page, so a 5xx or a body that is not JSON says the relay is down, not that the network failed.
+  if (response.status >= 500) { throw new RelayRequestError("relayDown", response.status, `${path}: HTTP ${response.status}`); }
+  let json: unknown;
+  try {
+    json = await response.json();
+  } catch {
+    throw new RelayRequestError("relayDown", response.status, `${path}: HTTP ${response.status} with a body that is not JSON`);
   }
   const decoded = response.ok ? decode(json) : decodeRefusal(json);
   if (!decoded.ok) {

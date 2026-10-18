@@ -2,7 +2,7 @@
 
 Read when you change how a share is keyed, invited, encrypted or laid out, or when an app joins one.
 
-A *share* is a unit that LabShelf users edit together, peer to peer, each on a full local copy. Everything that travels between peers or through a relay is encrypted end to end with keys derived from one share key. A writing project is the only kind of share. Keys, the invite and frames never read the kind, so another kind adds a sibling of [Project shares](#project-shares) and changes nothing above it. Core's `collab` module is the one implementation, and every app uses it.
+A *share* is a unit that LabShelf users edit together, each on a full local copy. Everything that travels between members, through the share's [relay](relay.md), is encrypted end to end with keys derived from one share key. A writing project is the only kind of share. Keys, the invite and frames never read the kind, so another kind adds a sibling of [Project shares](#project-shares) and changes nothing above it. Core's `collab` module is the one implementation, and every app uses it.
 
 ## Share key
 
@@ -15,7 +15,6 @@ A *share* is a unit that LabShelf users edit together, peer to peer, each on a f
 | `share-id` | 16 bytes, written as 32 lowercase hex characters | the share id: public, opaque, written into `labshelf.yaml` as `shared` |
 | `content` | AES-GCM-256 key | doc updates, snapshots and blobs |
 | `awareness` | AES-GCM-256 key | cursors and presence |
-| `room` | 32 bytes | the signalling room: bytes 0–15 in hex are the room id, bytes 16–31 in base64url the room password |
 | `relay` | 32 bytes, base64url | the relay token a client presents to a relay |
 
 - Removing a member means rotating: the owner makes a fresh share key, which gives a new share id, and invites the remaining members again. Frames sealed under the replaced key stay readable only to whoever kept it.
@@ -26,7 +25,7 @@ A *share* is a unit that LabShelf users edit together, peer to peer, each on a f
 labshelf://join#v1.<share id>.<share key>.<relay list>
 ```
 
-- The share key is base64url without padding. The relay list is a JSON array of `{url, relayToken?}` objects, UTF-8, base64url without padding, and `[]` when there are none. Every `url` is `https:`.
+- The share key is base64url without padding. The relay list is a JSON array of `{url, relayToken?}` objects, UTF-8, base64url without padding, and `[]` when there are none. Every `url` is `https:`. A joiner reaches the share only through a relay, so an app refuses to join with an invite whose list is empty.
 - The secrets sit in the fragment, so a server that sees the URL never sees them.
 - An app finds the link anywhere in pasted text. It rejects the link, naming the reason, when the version is unknown, a part is malformed, a relay entry has another field or a non-`https:` URL, or the share id is not the one the key derives.
 
@@ -43,7 +42,7 @@ version (1 byte, 1) | nonce (12 random bytes) | AES-GCM ciphertext and 16-byte t
 
 ## Messages
 
-Peers exchange messages over a transport: a WebRTC mesh, signalled through public Nostr relays in a room derived from the `room` key, or a relay. Each message is a clear envelope followed by one [frame](#frame):
+Members exchange messages through the share's relay, which is the only transport; [relay.md](relay.md#socket-messages) defines how it carries and stores them. Each message is a clear envelope followed by one [frame](#frame):
 
 ```
 version (1 byte, 1) | kind (1 byte) | seq (4 bytes, big-endian) | doc id (16 bytes) | frame
@@ -51,28 +50,29 @@ version (1 byte, 1) | kind (1 byte) | seq (4 bytes, big-endian) | doc id (16 byt
 
 - The doc id is the first 16 bytes of SHA-256 over the UTF-8 of `<share id>\0<doc key>`, so a relay can store frames per doc without learning paths. A doc key is a file's POSIX path, or `/index` for the index doc, which no relative path can be.
 - The frame is sealed with the doc id in hex as its doc key and the kind's name as its payload kind. Its plaintext is the doc key (2-byte big-endian length and UTF-8) followed by the payload. A receiver drops a message whose doc key does not hash to the envelope's doc id.
-- `seq` is a per-peer sequence number for reliable kinds and `0` for the rest. The receiver acknowledges reliable messages within about 200 ms. The sender resends a message that has no acknowledgement after 2 s and gives up after 8 attempts, and the next sync on rejoin carries what was lost. Delivery is at least once and unordered, which Yjs updates tolerate.
+- `seq` is a per-peer sequence number for reliable kinds and `0` for the rest. The receiver acknowledges reliable messages within about 200 ms. The sender resends a message that has no acknowledgement after 2 s and gives up after 8 attempts, and the next sync on rejoin carries what was lost. Delivery is at least once and unordered, which Yjs updates tolerate. An `update` has `seq` 0: the relay stores it and pushes it to the connected sockets (see [relay.md](relay.md#clients)), so no peer acknowledges or resends it.
 
 | Kind | Name | Reliable | Payload |
 |---|---|---|---|
 | 1 | `syncStep1` | yes | the sender's Yjs state vector of the doc |
 | 2 | `syncStep2` | yes | the Yjs update the receiver lacks, answering a step 1 |
-| 3 | `update` | yes | a Yjs update made locally |
+| 3 | `update` | no | the Yjs updates a client made locally in one batch, merged into one update |
 | 4 | `ack` | no | the acknowledged sequence numbers, 4 bytes each; doc id all zeros |
-| 16 | `awareness` | no | a y-protocols awareness update, doc key `/awareness`, sealed with the `awareness` key |
+| 16 | `awareness` | no | a y-protocols awareness update, doc key `/awareness`, sealed with the `awareness` key; the relay forwards it and never stores it |
 | 17 | `blob` | yes | a [blob](#blobs) message, doc key the blob's SHA-256 hex |
 
 Kinds 5 to 15 are reserved and 16 to 255 belong to channels. A message of an unknown kind is dropped.
 
 ### Sync
 
-- When two peers connect, each sends a step 1 for every doc it holds, the index first, so edits made while either was offline arrive.
+- When two peers connect, each sends a step 1 for every doc it holds, the index first, so edits made while either was offline arrive. A peer is another socket of the same share on the relay.
+- A client also catches up from the relay's stored rows and puts what it holds beyond them ([relay.md](relay.md#clients)); the relay's rows are the catch-up for members who are not connected at the same time.
 - A peer holds the index and the docs it has opened; it opens the other text files listed in the index in the background, one at a time. A message for a doc it does not hold is ignored until it opens that doc.
-- A mesh holds at most 8 other peers. Further peers wait until a place frees, and the app tells the user that a relay is needed; peers past the mesh join through a relay (see [relay.md](relay.md#clients)).
+- A session is `open` until the app closes it, then `closed`.
 
 ### Awareness
 
-Each peer publishes `{name, colour, file, anchor, head}`: its LabShelf user name, a colour from the core palette, the doc key of the file it is in, and its selection as Yjs relative positions in base64, or `null`. A peer of a share with relays adds `relay` and `relaysDown` of the [relay list](#relay-list). A peer sends its whole state to a peer that joins, and drops the states of a peer that leaves. Awareness is never stored.
+Each peer publishes `{name, colour, file, anchor, head}`: its LabShelf user name, a colour from the core palette, the doc key of the file it is in, and its selection as Yjs relative positions in base64, or `null`. A peer adds `relay` and `relaysDown` of the [relay list](#relay-list). A peer sends its whole state to a peer that joins, and drops the states of a peer that leaves. Awareness is never stored, and the transport sends a client's awareness at most once every 250 ms, keeping only the latest.
 
 ### Blobs
 
@@ -125,8 +125,10 @@ The index doc holds:
 - `relays` holds `{url, addedBy}` entries in the order clients try them: an `https:` relay URL, once, and the LabShelf user name of the member who offered it. The relay token is the share's `relay` key, the same on every relay, so the list does not hold it.
 - A member removes only the entries whose `addedBy` is their own user name, from any of their devices.
 - A client tries the list of its index doc, or the relays of its invite while that list is empty, so a member who joined can reach a relay before the index arrives.
-- A client uses the first relay in list order that is not down and that answers `GET /version` with a compatible major within 3 s. It checks a relay that did not answer again after 60 s.
-- A client marks a relay down for one hour when the relay refuses for limits (HTTP 429, or Cloudflare's error 1027) or after three failures in a row: a probe or ticket request that gets no answer or a refusal, or a socket that closes before it opens. An open socket resets the count.
+- A client uses the first relay in list order that is not down and that answers `GET /version` with a compatible major within 3 s.
+- While connected, a client probes the relay it uses and every relay listed before it with `GET /version` every 60 s, and retries a failed probe after 20 s. One failed probe does not move it.
+- A client marks a relay down for one hour when the relay refuses for limits (HTTP 429, or Cloudflare's error 1027) or after three failures in a row: a probe or ticket request that gets no answer or a refusal, or a socket that closes before it opens. An open socket resets the count. A down mark moves the client as a closed socket does.
+- A probe that a relay answers ends a down mark this client's own probes set; it does not end a mark from its connection or adopted from a peer. So a newcomer that could not reach a relay rejoins it at its next answered probe, and a group that moved together stays together until the hour ends. The client with the lowest awareness id on the relay in use is the watcher. After its socket opens it keeps an awareness-only socket to every other listed relay it does not hold down, publishes the group's relay there and adopts the down marks published there, so the group moves together within seconds. A watcher acks the reliable messages it does not read and is never a doc or blob peer. Failures of a watch socket count toward the three in a row. A client that sees its group on a relay listed before its own, which it does not hold down, retries that relay at once; only the hold rules above hold it down.
 - Each client publishes in its [awareness](#awareness) `relay`, the URL in use or `null`, and `relaysDown`, URL to the epoch milliseconds its hold ends. A client adopts every mark a peer publishes, capped at one hour from its own clock, so the group moves together off a relay one member found down and back to it when the hold ends.
 - A client that moves to another relay closes its socket to the previous one, then catches up on the new one from cursor 0 and puts what that relay lacks, so a member who later reaches only the new relay catches up there (see [relay.md](relay.md#clients)). Relay cursors are kept per relay URL.
 

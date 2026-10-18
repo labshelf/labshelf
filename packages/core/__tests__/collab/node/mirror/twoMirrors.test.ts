@@ -1,11 +1,12 @@
-/** Pins that two members' project folders converge, text and blobs, over a share session between them. */
+/** Pins that two members' project folders converge, text and blobs, through a fake relay only. */
 import { readFileSync, existsSync, promises as fs } from "node:fs";
 import * as path from "node:path";
 import { indexSettings } from "../../../../src/collab/model/index";
 import { joinShare, startShare } from "../../../../src/collab/share/index";
 import { nodeProjectCatalogContext } from "../../../../src/writing/project/node/index";
-import { FakeClock, FakeNetwork, runUntil } from "../../sync/fakeNetwork";
+import { FakeClock, runUntil } from "../../sync/fakeNetwork";
 import { fakeLogger, SHARE_ID } from "../../sync/testSession";
+import { FakeRelay } from "../../transport/relay/fakeRelay";
 import { openMirror, tempDir, type MirrorFixture } from "./mirrorFixture";
 
 const read = (folder: string, file: string) => {
@@ -22,7 +23,7 @@ describe("two mirrors", () => {
     process.env["XDG_STATE_HOME"] = await tempDir("two-mirrors-xdg");
     try {
       const clock = new FakeClock();
-      const net = new FakeNetwork(clock);
+      const relay = new FakeRelay(clock);
       const owner = await tempDir("owner");
       const png = Uint8Array.from({ length: 70_000 }, (_, i) => (i * 7) % 256);
       await fs.writeFile(path.join(owner, "labshelf.yaml"), "id: survey\nformat: typst\nmain: main.typ\ntitle: Deep Survey\n");
@@ -30,21 +31,21 @@ describe("two mirrors", () => {
       await fs.mkdir(path.join(owner, "figures"));
       await fs.writeFile(path.join(owner, "figures", "plot.png"), png);
       const logger = fakeLogger();
-      const a = await openMirror({ net, clock, peer: "a", folder: owner, project: false });
+      const a = await openMirror({ relay, clock, folder: owner, project: false });
       fixtures.push(a);
       await startShare(nodeProjectCatalogContext(logger), { folder: owner, shareId: SHARE_ID, index: a.session.index });
       a.mirror.changed("labshelf.yaml");
       await a.mirror.idle();
 
       const library = await tempDir("joiner-library");
-      const b = await openMirror({ net, clock, peer: "b", project: false });
+      const b = await openMirror({ relay, clock, project: false });
       fixtures.push(b);
       expect(await runUntil(clock, () => indexSettings(b.session.index).get("title") === "Deep Survey")).toBe(true);
       const joined = await joinShare(nodeProjectCatalogContext(logger), { libraryRoot: library, shareId: SHARE_ID, index: b.session.index });
       expect(joined.folder).toBe(path.join(library, "projects", "deep-survey"));
       await b.close();
       fixtures = [a];
-      const member = await openMirror({ net, clock, peer: "b2", folder: joined.folder, project: false });
+      const member = await openMirror({ relay, clock, folder: joined.folder, project: false });
       fixtures.push(member);
 
       expect(await runUntil(clock, () =>

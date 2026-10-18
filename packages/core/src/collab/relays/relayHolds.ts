@@ -41,6 +41,14 @@ export class RelayHolds {
 
   succeeded(url: string): void { this.failures.delete(url); }
 
+  /** Ends the hold of `url` and its run of failures without waiting out the hour. */
+  release(url: string): void {
+    this.until.delete(url);
+    this.timers.get(url)?.();
+    this.timers.delete(url);
+    this.failures.delete(url);
+  }
+
   /** The holds in force, URL to the epoch milliseconds they end, as presence carries them. */
   active(): Record<string, number> {
     const now = this.clock.now();

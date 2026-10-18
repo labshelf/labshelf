@@ -1,7 +1,7 @@
 // Decodes the untrusted JSON bodies the Worker receives, refusing anything but the fields of this major.
 
-import type { ClaimRequest, TicketRequest, TurnRequest } from "./httpBodies.js";
-import { isRelayToken, isSha256Hex, isShareId, isTicket, readBody, type BodyReader } from "./bodyFields.js";
+import type { ClaimRequest, TicketRequest } from "./httpBodies.js";
+import { isRelayToken, isSha256Hex, isShareId, readBody, type BodyReader } from "./bodyFields.js";
 
 export type RequestResult<T> = { ok: true; value: T } | { ok: false; error: "malformed" | "incompatibleVersion" };
 
@@ -17,6 +17,3 @@ export const decodeClaimRequest = (value: unknown): RequestResult<ClaimRequest> 
 export const decodeTicketRequest = (value: unknown): RequestResult<TicketRequest> =>
   decodeRequest<TicketRequest>(value, ({ shareId, relayToken }) =>
     isShareId(shareId) && isRelayToken(relayToken) ? { shareId, relayToken } : undefined);
-
-export const decodeTurnRequest = (value: unknown): RequestResult<TurnRequest> =>
-  decodeRequest<TurnRequest>(value, ({ shareId, ticket }) => (isShareId(shareId) && isTicket(ticket) ? { shareId, ticket } : undefined));

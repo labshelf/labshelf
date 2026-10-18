@@ -32,7 +32,6 @@ export function createSwitchableTransport(): SwitchableTransport {
     onMessage: (fn) => listen(message, fn),
     onPeerJoin: (fn) => listen(join, fn),
     onPeerLeave: (fn) => listen(leave, fn),
-    receivesUpdatesFromStore: (peer) => inner?.receivesUpdatesFromStore?.(peer) ?? false,
     use,
     close: async () => {
       const current = inner;

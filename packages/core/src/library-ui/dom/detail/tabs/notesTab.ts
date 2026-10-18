@@ -3,7 +3,7 @@
  * in the PDF below it.
  */
 import { escapeHtml, icon } from "../../../../ui/index.js";
-import { iconBtn, section } from "../detailMarkup.js";
+import { iconBtn, muted, section } from "../detailMarkup.js";
 import type { PaneState, PaperView } from "../paneState.js";
 import { annotationCard } from "./annotationsTab.js";
 
@@ -19,6 +19,7 @@ function editor(pane: PaneState, v: PaperView): string {
 
 export function notesTabHtml(pane: PaneState, v: PaperView): string {
   const pdfNotes = v.details?.annotations.filter((a) => a.type !== "highlight") ?? [];
-  return `<div class="notes-tab">${editor(pane, v)}</div>` +
+  if (pane.ctx.readOnly && pdfNotes.length === 0) return muted("No notes.");
+  return (pane.ctx.readOnly ? "" : `<div class="notes-tab">${editor(pane, v)}</div>`) +
     (pdfNotes.length ? section("pdfnotes", "Notes in the PDF", pdfNotes.map(annotationCard).join(""), pane.collapsed, { count: pdfNotes.length }) : "");
 }

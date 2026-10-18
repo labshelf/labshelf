@@ -33,19 +33,19 @@ const serverMessages: RelayServerMessage[] = [
 
 describe("relay socket messages", () => {
   it.each(clientMessages)("round-trips client message %#", (message) => {
-    expect(decodeClientMessage(encodeRelayMessage(message))).toEqual({ ok: true, minor: 1, message });
+    expect(decodeClientMessage(encodeRelayMessage(message))).toEqual({ ok: true, minor: 0, message });
   });
 
   it.each(serverMessages)("round-trips server message %#", (message) => {
-    expect(decodeServerMessage(encodeRelayMessage(message))).toEqual({ ok: true, minor: 1, message });
+    expect(decodeServerMessage(encodeRelayMessage(message))).toEqual({ ok: true, minor: 0, message });
   });
 
   it("lays out version, type, doc and a length-prefixed frame", () => {
     const bytes = encodeRelayMessage({ type: "put", doc, frame });
-    expect([...bytes.subarray(0, 3)]).toEqual([1, 1, 1]);
+    expect([...bytes.subarray(0, 3)]).toEqual([2, 0, 1]);
     expect([...bytes.subarray(3, 19)]).toEqual([0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff]);
     expect([...bytes.subarray(19)]).toEqual([0, 0, 0, 3, 7, 8, 9]);
-    expect([...encodeRelayMessage({ type: "joined", id: 0x01020304 })]).toEqual([1, 1, 21, 1, 2, 3, 4]);
+    expect([...encodeRelayMessage({ type: "joined", id: 0x01020304 })]).toEqual([2, 0, 21, 1, 2, 3, 4]);
   });
 
   it("refuses to encode a bad doc id, an out-of-range integer or an empty frame", () => {
@@ -66,23 +66,23 @@ describe("relay socket messages", () => {
     it("returns typed errors and never throws", () => {
       expect(decodeClientMessage(new Uint8Array())).toEqual({ ok: false, error: "tooShort" });
       expect(decodeClientMessage(new Uint8Array([1, 0]))).toEqual({ ok: false, error: "tooShort" });
-      expect(decodeClientMessage(new Uint8Array([2, 0, 1]))).toEqual({ ok: false, error: "incompatibleVersion", major: 2 });
+      expect(decodeClientMessage(new Uint8Array([3, 0, 1]))).toEqual({ ok: false, error: "incompatibleVersion", major: 3 });
       expect(decodeClientMessage(new Uint8Array([0, 0, 1]))).toEqual({ ok: false, error: "incompatibleVersion", major: 0 });
       expect(decodeClientMessage(put.subarray(0, 10))).toEqual({ ok: false, error: "malformed" });
       expect(decodeClientMessage(put.subarray(0, put.length - 1))).toEqual({ ok: false, error: "malformed" });
-      expect(decodeClientMessage(new Uint8Array(MAX_RELAY_MESSAGE_BYTES + 1).fill(1))).toEqual({ ok: false, error: "tooLarge" });
+      expect(decodeClientMessage(new Uint8Array(MAX_RELAY_MESSAGE_BYTES + 1).fill(2))).toEqual({ ok: false, error: "tooLarge" });
     });
 
     it("refuses a frame length beyond the message and an empty frame", () => {
       const huge = put.slice();
       new DataView(huge.buffer).setUint32(19, 0xffffffff);
       expect(decodeClientMessage(huge)).toEqual({ ok: false, error: "malformed" });
-      const empty = new Uint8Array([1, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0]);
+      const empty = new Uint8Array([2, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0]);
       expect(decodeClientMessage(empty)).toEqual({ ok: false, error: "malformed" });
     });
 
     it("refuses a count that the message cannot hold", () => {
-      expect(decodeServerMessage(new Uint8Array([1, 0, 20, 0xff, 0xff, 0xff, 0xff, 0, 0, 0, 1]))).toEqual({ ok: false, error: "malformed" });
+      expect(decodeServerMessage(new Uint8Array([2, 0, 20, 0xff, 0xff, 0xff, 0xff, 0, 0, 0, 1]))).toEqual({ ok: false, error: "malformed" });
       const rows = encodeRelayMessage({ type: "rows", doc, more: false, items: [{ cursor: 1, frame }] });
       new DataView(rows.buffer).setUint32(20, 1000);
       expect(decodeServerMessage(rows)).toEqual({ ok: false, error: "malformed" });
@@ -108,14 +108,14 @@ describe("relay socket messages", () => {
     });
 
     it("reports a type it does not know so the receiver can ignore it", () => {
-      expect(decodeClientMessage(new Uint8Array([1, 1, 5, 9, 9]))).toEqual({ ok: false, error: "unknownType", type: 5 });
-      expect(decodeServerMessage(new Uint8Array([1, 1, 30]))).toEqual({ ok: false, error: "unknownType", type: 30 });
+      expect(decodeClientMessage(new Uint8Array([2, 1, 5, 9, 9]))).toEqual({ ok: false, error: "unknownType", type: 5 });
+      expect(decodeServerMessage(new Uint8Array([2, 1, 30]))).toEqual({ ok: false, error: "unknownType", type: 30 });
     });
 
     it("keeps an error code it does not know", () => {
       const bytes = encodeRelayMessage({ type: "error", code: 1 });
       bytes[3] = 200;
-      expect(decodeServerMessage(bytes)).toEqual({ ok: true, minor: 1, message: { type: "error", code: 200 } });
+      expect(decodeServerMessage(bytes)).toEqual({ ok: true, minor: 0, message: { type: "error", code: 200 } });
     });
   });
 });

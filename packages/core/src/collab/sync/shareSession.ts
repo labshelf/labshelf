@@ -34,7 +34,7 @@ export interface ShareSession {
   readonly remoteOrigin: unknown;
   readonly status: SessionStatus;
   onStatus(listener: (status: SessionStatus) => void): () => void;
-  /** The peers admitted into the mesh. */
+  /** The peers connected right now. */
   readonly peers: readonly PeerId[];
   onPeer(listener: (peer: PeerId, joined: boolean) => void): () => void;
   /** Adds a message kind, such as awareness or blobs, over the same encrypted links. */

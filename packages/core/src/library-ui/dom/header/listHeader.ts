@@ -12,7 +12,7 @@ import { renderCrumbs } from "./breadcrumb.js";
 const SEARCH_SYNTAX_TIP = SYNTAX_HELP.map((row) => `${row.syntax}   ${row.description}`).join("\n");
 const SEARCH_DEBOUNCE_MS = 80;
 
-const headerHtml = (addTooltip: string): string => `
+const headerHtml = (addTooltip: string, readOnly: boolean): string => `
   <button class="ls-icon-btn sidebar-toggle" data-act="sidebar" title="Show library sidebar">${icon("panel-left")}</button>
   <nav class="breadcrumb" aria-label="List scope"></nav>
   <div class="ls-search" title="${escapeHtml(SEARCH_SYNTAX_TIP)}">
@@ -21,7 +21,7 @@ const headerHtml = (addTooltip: string): string => `
     <kbd class="ls-search-key" aria-hidden="true">/</kbd>
     <button class="ls-search-clear" data-act="clear" title="Clear search (Esc)">${icon("x")}</button>
   </div>
-  <button class="ls-btn ls-btn-ghost" data-act="add" title="${escapeHtml(addTooltip)}">${icon("plus")}<span>Add</span></button>
+  ${readOnly ? "" : `<button class="ls-btn ls-btn-ghost" data-act="add" title="${escapeHtml(addTooltip)}">${icon("plus")}<span>Add</span></button>`}
   <button class="ls-icon-btn" data-act="detail" title="Toggle details panel">${icon("panel-right")}</button>`;
 
 function wireSearch(ctx: UiContext, search: HTMLInputElement): void {
@@ -51,7 +51,7 @@ function onToolbarClick(ctx: UiContext, act: string | undefined, search: HTMLInp
 
 /** Mounts the header and returns its unsubscribe function. */
 export function mountListHeader(ctx: UiContext, container: HTMLElement): () => void {
-  container.innerHTML = headerHtml(ctx.labels.addTooltip);
+  container.innerHTML = headerHtml(ctx.labels.addTooltip, ctx.readOnly);
   const search = container.querySelector<HTMLInputElement>(".ls-library-search")!;
   const searchBox = container.querySelector<HTMLElement>(".ls-search")!;
   const crumbs = container.querySelector<HTMLElement>(".breadcrumb")!;

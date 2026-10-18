@@ -19,6 +19,9 @@ export interface AwarenessOptions {
   logger: ILogger;
 }
 
+/** The part of a share session presence travels over; a bare secure mesh has it too. */
+export type AwarenessLinks = Pick<ShareSession, "channel" | "onPeer">;
+
 export interface PresenceHandle {
   /** The y-protocols awareness an editor cursor extension binds to; its remote states are unchecked, unlike `remote()`. */
   readonly awareness: Awareness;
@@ -27,6 +30,10 @@ export interface PresenceHandle {
   setRelay(report: RelayReport): void;
   /** The presence of the other peers, by awareness client id, without any state that has the wrong shape. */
   remote(): Map<number, PresenceState>;
+  /** True when no peer on this client's relay has a lower awareness id; peers drop out when they leave. */
+  isLowestId(): boolean;
+  /** True when this peer reports another relay than this client's: a watcher bridging presence, which holds no doc or blob. */
+  reportsOtherRelay(peer: PeerId): boolean;
   /** Tells the peers this user left, then stops. */
   close(): Promise<void>;
 }
@@ -57,7 +64,13 @@ function wellFormedRemote(awareness: Awareness): Map<number, PresenceState> {
   return states;
 }
 
-function openChannel(session: ShareSession, options: AwarenessOptions, awareness: Awareness, isClosed: () => boolean): Channel {
+/** A peer that reports another relay is a watcher bridging presence from there, not a member of this relay's group. */
+function onOtherRelay(state: unknown, relay: RelayReport | undefined): boolean {
+  const theirs = (state as { relay?: unknown } | null)?.relay;
+  return typeof theirs === "string" && typeof relay?.relay === "string" && theirs !== relay.relay;
+}
+
+function openChannel(session: AwarenessLinks, options: AwarenessOptions, awareness: Awareness, isClosed: () => boolean): Channel {
   return session.channel({
     kind: CHANNEL_KIND.awareness,
     name: "awareness",
@@ -86,7 +99,7 @@ function sendTracker() {
   };
 }
 
-export function attachAwareness(session: ShareSession, options: AwarenessOptions): PresenceHandle {
+export function attachAwareness(session: AwarenessLinks, options: AwarenessOptions): PresenceHandle {
   const awareness = new Awareness(new Y.Doc());
   // No presence is announced until the editor sets one.
   awareness.setLocalState(null);
@@ -121,6 +134,8 @@ export function attachAwareness(session: ShareSession, options: AwarenessOptions
       if (current !== null) { awareness.setLocalState({ ...current, ...relay }); }
     },
     remote: () => wellFormedRemote(awareness),
+    isLowestId: () => [...awareness.getStates()].every(([id, state]) => id >= awareness.clientID || onOtherRelay(state, relay)),
+    reportsOtherRelay: (peer) => [...(reported.get(peer) ?? [])].some((id) => onOtherRelay(awareness.states.get(id), relay)),
     close: async () => {
       if (closed) { return; }
       awareness.setLocalState(null);

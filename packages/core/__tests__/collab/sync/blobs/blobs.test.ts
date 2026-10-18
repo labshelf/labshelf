@@ -23,7 +23,7 @@ describe("blobs", () => {
 
   async function attach(id: string, getBlob: (hash: string) => Promise<Uint8Array | undefined> = async () => undefined) {
     const client = await openSession(net, clock, id);
-    const exchange = attachBlobs(client.session, { contentKey: await contentKey(), getBlob, logger: client.logger, scheduler: clock });
+    const exchange = attachBlobs(client.session, { contentKey: await contentKey(), getBlob, logger: client.logger, scheduler: clock, skipPeer: () => false });
     clients.push(client);
     exchanges.push(exchange);
     return { client, exchange };

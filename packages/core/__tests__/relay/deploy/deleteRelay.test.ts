@@ -1,17 +1,16 @@
-/** Pins the three deletions of a disconnect, tolerance of already-deleted resources and error reporting. */
+/** Pins the two deletions of a disconnect, tolerance of already-deleted resources and error reporting. */
 import { deleteRelay } from "../../../src/relay/index";
 import { ACCOUNT, TOKEN, fakeCloudflare, recordingLogger } from "./fakeCloudflare";
 
-const base = { token: TOKEN, accountId: ACCOUNT, workerName: "relay", kvNamespaceId: "kv-1", turnKeyId: "turn-1" };
+const base = { token: TOKEN, accountId: ACCOUNT, workerName: "relay", kvNamespaceId: "kv-1" };
 
 describe("deleteRelay", () => {
-  it("deletes the Worker, the KV namespace and the TURN key", async () => {
+  it("deletes the Worker and the KV namespace", async () => {
     const cloudflare = fakeCloudflare();
     await deleteRelay({ ...base, logger: recordingLogger(), fetch: cloudflare.fetch });
     expect(cloudflare.requests.map((r) => `${r.method} ${r.path.replace(ACCOUNT, "<A>")}`)).toEqual([
       "DELETE /accounts/<A>/workers/scripts/relay?force=true",
       "DELETE /accounts/<A>/storage/kv/namespaces/kv-1",
-      "DELETE /accounts/<A>/calls/turn_keys/turn-1",
     ]);
   });
 
@@ -23,7 +22,7 @@ describe("deleteRelay", () => {
         : new Response(JSON.stringify({ success: true, result: {} }), { status: 200 });
     }) as unknown as typeof fetch;
     await deleteRelay({ ...base, logger: recordingLogger(), fetch: fetchStub });
-    expect(calls).toHaveLength(3);
+    expect(calls).toHaveLength(2);
   });
 
   it("tries every deletion and then throws the first real failure", async () => {
@@ -34,6 +33,6 @@ describe("deleteRelay", () => {
         : new Response(JSON.stringify({ success: true, result: {} }), { status: 200 });
     }) as unknown as typeof fetch;
     await expect(deleteRelay({ ...base, logger: recordingLogger(), fetch: fetchStub })).rejects.toMatchObject({ code: 10000 });
-    expect(calls).toHaveLength(3);
+    expect(calls).toHaveLength(2);
   });
 });

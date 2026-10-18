@@ -1,4 +1,4 @@
-// Keeps the index doc and the held file docs of a share in sync with every admitted peer through Yjs state vectors and updates.
+// Catches the index doc and the held file docs of a share up with each connected peer through Yjs state vectors.
 import * as Y from "yjs";
 import type { WebCryptoKey } from "../crypto/index.js";
 import type { PeerId } from "../transport/index.js";
@@ -18,14 +18,13 @@ export interface DocSyncOptions {
 
 export class DocSync {
   readonly docs = new Map<string, Y.Doc>();
-  /** Marks updates this sync applies, so they are not broadcast back. */
+  /** Marks updates that came from peers, so the relay sync does not store them again. */
   readonly origin = Symbol("remote");
   private readonly holdListeners = new Set<(docKey: string, doc: Y.Doc) => void>();
   private readonly step1Sent = new Map<PeerId, Set<string>>();
   private readonly detach: (() => void)[] = [];
   private readonly step1: Channel;
   private readonly step2: Channel;
-  private readonly update: Channel;
 
   constructor(private options: DocSyncOptions) {
     const { mesh, key } = options;
@@ -33,7 +32,6 @@ export class DocSync {
       mesh.channel({ kind, name, key, reliable: true, onMessage });
     this.step1 = channel(MESSAGE_KIND.syncStep1, "syncStep1", (from, docKey, vector) => this.answer(from, docKey, vector));
     this.step2 = channel(MESSAGE_KIND.syncStep2, "syncStep2", (_from, docKey, update) => this.apply(docKey, update));
-    this.update = channel(MESSAGE_KIND.update, "update", (_from, docKey, update) => this.apply(docKey, update));
     this.detach.push(mesh.onPeer((peer, joined) => {
       this.step1Sent.delete(peer);
       if (joined) { for (const docKey of this.docs.keys()) { this.sendStep1(peer, docKey); } }
@@ -63,11 +61,6 @@ export class DocSync {
 
   private hold(docKey: string, doc: Y.Doc): void {
     this.docs.set(docKey, doc);
-    const onUpdate = (update: Uint8Array, origin: unknown) => {
-      if (origin !== this.origin) { void this.update.send("all", docKey, update); }
-    };
-    doc.on("update", onUpdate);
-    this.detach.push(() => doc.off("update", onUpdate));
     this.holdListeners.forEach((listener) => listener(docKey, doc));
   }
 

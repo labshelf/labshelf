@@ -3,29 +3,24 @@
 import { RELAY_PROTOCOL_VERSION } from "../protocolVersion.js";
 
 // CONTRACT: documents/contracts/relay.md#endpoints
-export const RELAY_PATH = { version: "/version", claim: "/claim", ticket: "/ticket", project: "/project/", turn: "/turn" } as const;
+export const RELAY_PATH = { version: "/version", claim: "/claim", ticket: "/ticket", project: "/project/" } as const;
 
 export const RELAY_REFUSAL = {
   malformed: "malformed", incompatibleVersion: "incompatibleVersion", unauthorized: "unauthorized", forbidden: "forbidden", claimed: "claimed",
-  turnUnavailable: "turnUnavailable",
 } as const;
 
 export interface ClaimRequest { v: string; shareId: string; relayTokenHash: string }
 export interface TicketRequest { v: string; shareId: string; relayToken: string }
-export interface TurnRequest { v: string; shareId: string; ticket: string }
 
 /** `worker` is the Worker build, `<major>.<minor>.<patch>`, whose `major.minor` is `v`. */
 export interface VersionResponse { v: string; worker: string }
 export interface ClaimResponse { v: string }
 /** `expires` is a Unix time in seconds. */
 export interface TicketResponse { v: string; ticket: string; expires: number }
-export interface IceServer { urls: string | string[]; username?: string; credential?: string }
-export interface TurnResponse { v: string; iceServers: IceServer[]; expires: number }
 /** `error` may be a code of a newer minor, which a client reads as a refusal. */
 export interface Refusal { v: string; error: string }
 
-type RelayBody =
-  | ClaimRequest | TicketRequest | TurnRequest | VersionResponse | ClaimResponse | TicketResponse | TurnResponse | Refusal;
+type RelayBody = ClaimRequest | TicketRequest | VersionResponse | ClaimResponse | TicketResponse | Refusal;
 type BodyFields = RelayBody extends infer Body ? (Body extends RelayBody ? Omit<Body, "v"> : never) : never;
 
 /** The JSON text of a body, stamped with this side's protocol version. */

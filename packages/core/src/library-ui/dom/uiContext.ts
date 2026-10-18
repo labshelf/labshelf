@@ -25,6 +25,8 @@ export interface UiContext {
   prefs: PrefsPort;
   caps: LibraryUiCapabilities;
   labels: LibraryUiLabels;
+  /** The library is shown for reading only; components render no editing control. */
+  readOnly: boolean;
   /** The `.ls-library` element. */
   root: HTMLElement;
   /** Set by the paper list when it mounts. */
@@ -43,6 +45,7 @@ export interface UiContextParts {
   prefs: PrefsPort;
   caps: LibraryUiCapabilities;
   labels: LibraryUiLabels;
+  readOnly: boolean;
 }
 
 export function createUiContext(root: HTMLElement, parts: UiContextParts): UiContext {
