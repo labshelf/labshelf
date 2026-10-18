@@ -11,7 +11,7 @@ import { bx, createBrowserLogger } from "../platform";
 import { createLibraryFileSystem } from "../storage";
 import { createBrowserProjects, type BrowserProjects } from "../storage/projects";
 import { createProjectFileSystemProvider, type ProjectFileSystemProvider } from "./fileSystem";
-import { createEditorHostCommands, createHelperSetupShower, registerHostCommands } from "./host";
+import { checkLatexHelper, createEditorHostCommands, createHelperSetupShower, registerHostCommands } from "./host";
 import { PROJECT_PARAM } from "./pageUrl";
 import { createSidePane, startTypstPreview, type SidePane } from "./preview";
 import { bootWorkbench, LIBRARY_ROOT, projectFolderUri, registerBundledExtensions, toWorkbenchProvider } from "./workbench";
@@ -21,7 +21,8 @@ const log = createBrowserLogger();
 
 type ReadyProject = Extract<ProjectEntry, { kind: "ready" }>;
 
-function registerHost(pane: SidePane, logger: ILogger): void {
+/** Registers the host commands and resolves the check that shows the helper setup for a LaTeX project. */
+function registerHost(pane: SidePane, logger: ILogger): (project: ReadyProject) => Promise<void> {
   const helper = createBrowserLatexHelper(logger);
   const showHelperSetup = createHelperSetupShower(pane.setup, helper, (root) => mountHelperSetupCard(root, helper, {
     logger,
@@ -32,6 +33,7 @@ function registerHost(pane: SidePane, logger: ILogger): void {
     helper, logger, libraryFolder: LIBRARY_ROOT, showHelperSetup,
     onProgress: (progress) => pane.status(`LaTeX: ${progress.phase}…`),
   }));
+  return (project) => checkLatexHelper({ helper, logger, showHelperSetup, format: project.settings.format, projectId: project.settings.id });
 }
 
 function previewTypst(project: ReadyProject, projects: BrowserProjects, files: ProjectFileSystemProvider, pane: SidePane): void {
@@ -64,13 +66,14 @@ async function boot(): Promise<void> {
   document.title = `${project.settings.title ?? projectId} — LabShelf`;
 
   const pane = createSidePane(document.body);
-  registerHost(pane, log);
+  const checkHelper = registerHost(pane, log);
   const folder = projectFolderUri(projectId);
   await bootWorkbench(container, { folder });
   await registerBundledExtensions();
   if (project.main) await (await getService(IEditorService)).openEditor({ resource: URI.joinPath(folder, project.main) });
   await log.log("INFO", MODULE, "Editor page opened a project", { project: projectId, main: project.main });
   previewTypst(project, projects, files, pane);
+  await checkHelper(project);
 }
 
 boot().catch((error: unknown) => {
