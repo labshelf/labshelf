@@ -2,7 +2,7 @@
 import type { PaperRecord } from "@labshelf/core";
 
 import { Screen } from "../../tui/index.js";
-import { theme } from "../../ui/theme.js";
+import { theme } from "../../ui/index.js";
 import { pickerMatches, type PickerState } from "./pickerState.js";
 
 const HINT = "enter cite   esc cancel   up/down move";

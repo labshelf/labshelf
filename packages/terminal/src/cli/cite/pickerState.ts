@@ -3,7 +3,7 @@ import type { PaperRecord } from "@labshelf/core";
 import { rankFuzzy } from "@labshelf/core";
 
 import type { InputEvent } from "../../tui/index.js";
-import { editText, textInput, type TextInputState } from "../../ui/textInput.js";
+import { editText, textInput, type TextInputState } from "../../ui/index.js";
 
 export interface PickerState {
   query: TextInputState;
