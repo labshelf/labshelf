@@ -38,13 +38,13 @@ beforeEach(() => jest.clearAllMocks());
 describe("HelperLatexBuilds", () => {
   it("compiles the project's files through the helper and writes the PDF next to the root", async () => {
     const helper = fakeHelper(READY);
-    const { deps, builds } = await setup(helper);
+    const { deps, fs, builds } = await setup(helper);
     const result = await builds.request("/lib/paper", "main.tex", "command");
     const project = helper.compile.mock.calls[0]![0];
     expect(project).toEqual(expect.objectContaining({ projectId: "paper", main: "main.tex", engine: "xelatex" }));
     expect(project.files.map((file: { path: string }) => file.path).sort()).toEqual(["main.tex", "refs.bib"]);
     expect(result).toEqual({ status: "succeeded", pdf: "/lib/paper/main.pdf", problems: [] });
-    expect(vscode.workspace.fs.writeFile).toHaveBeenCalledWith(expect.objectContaining({ fsPath: "/lib/paper/main.pdf" }), PDF);
+    expect(await fs.readFile("/lib/paper/main.pdf")).toEqual(PDF);
     expect(deps.previews.building).toHaveBeenCalledWith("/lib/paper", "main.tex");
     expect(deps.previews.finished).toHaveBeenCalledWith(expect.objectContaining({ folder: "/lib/paper" }), "main.tex", result, "command");
     expect(deps.showHelperSetup).not.toHaveBeenCalled();

@@ -150,3 +150,71 @@ describe("listProjectDirectory and statProjectPath", () => {
     for (const call of calls) expect(call).not.toHaveBeenCalled();
   });
 });
+
+describe("renameProjectPath, deleteProjectPath and createProjectDirectory", () => {
+  it("renames a file inside the project", async () => {
+    const { fileSystem, projects } = setup();
+    await projects.renameProjectPath("thesis", "main.tex", "body.tex");
+    expect(fileSystem.text("projects/thesis/body.tex")).toMatch(/documentclass/);
+    expect(fileSystem.files.has("projects/thesis/main.tex")).toBe(false);
+  });
+
+  it("replaces an existing file, writing it whole before the source goes, as a staged write needs", async () => {
+    const { fileSystem, projects } = setup();
+    fileSystem.put("projects/thesis/.main.tex.1234.tmp", "Replaced");
+    const rename = jest.spyOn(fileSystem, "rename");
+    await projects.renameProjectPath("thesis", ".main.tex.1234.tmp", "main.tex");
+    expect(fileSystem.text("projects/thesis/main.tex")).toBe("Replaced");
+    expect(fileSystem.files.has("projects/thesis/.main.tex.1234.tmp")).toBe(false);
+    expect(rename).not.toHaveBeenCalled();
+  });
+
+  it("keeps the source when writing the replaced target fails", async () => {
+    const { fileSystem, projects } = setup();
+    fileSystem.put("projects/thesis/.main.tex.1234.tmp", "Replaced");
+    fileSystem.failWriteOn = "projects/thesis/main.tex";
+    await expect(projects.renameProjectPath("thesis", ".main.tex.1234.tmp", "main.tex")).rejects.toThrow(/disk full/);
+    expect(fileSystem.text("projects/thesis/.main.tex.1234.tmp")).toBe("Replaced");
+    expect(fileSystem.text("projects/thesis/main.tex")).toMatch(/documentclass/);
+  });
+
+  it("renames a folder with everything in it", async () => {
+    const { fileSystem, projects } = setup();
+    await projects.renameProjectPath("thesis", "chapters", "parts");
+    expect(fileSystem.text("projects/thesis/parts/intro.tex")).toBe("Intro");
+    expect(await projects.statProjectPath("thesis", "chapters")).toBeUndefined();
+  });
+
+  it("changes only the letter case through a rename, never by copying the file onto itself", async () => {
+    const { fileSystem, projects } = setup();
+    const write = jest.spyOn(fileSystem, "writeFile");
+    await projects.renameProjectPath("thesis", "main.tex", "Main.tex");
+    expect(fileSystem.text("projects/thesis/Main.tex")).toMatch(/documentclass/);
+    expect(write).not.toHaveBeenCalled();
+  });
+
+  it.each([["../notes/x.tex", "main.tex"], ["main.tex", "../notes/x.tex"], ["main.tex", ""]])(
+    "refuses the escaping rename %p to %p before any file system call",
+    async (from, to) => {
+      const { fileSystem, projects } = setup();
+      const calls = (["listDir", "readFile", "writeFile", "stat", "rename"] as const).map((name) => jest.spyOn(fileSystem, name));
+      await expect(projects.renameProjectPath("thesis", from, to)).rejects.toThrow(/path/i);
+      for (const call of calls) expect(call).not.toHaveBeenCalled();
+    },
+  );
+
+  it("deletes a file and a folder tree inside the project", async () => {
+    const { fileSystem, projects } = setup();
+    await projects.deleteProjectPath("thesis", "main.tex");
+    await projects.deleteProjectPath("thesis", "chapters");
+    expect([...fileSystem.files.keys()].filter((key) => key.startsWith("projects/thesis/"))).toEqual(["projects/thesis/labshelf.yaml"]);
+  });
+
+  it("creates a folder inside the project and refuses the project folder itself", async () => {
+    const { projects } = setup();
+    await projects.createProjectDirectory("thesis", "figures");
+    expect(await projects.statProjectPath("thesis", "figures")).toMatchObject({ isDirectory: true });
+    await expect(projects.deleteProjectPath("thesis", "")).rejects.toThrow(/path/i);
+    await expect(projects.createProjectDirectory("thesis", "")).rejects.toThrow(/path/i);
+  });
+});

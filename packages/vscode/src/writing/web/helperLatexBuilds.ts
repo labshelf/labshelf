@@ -124,14 +124,12 @@ export class HelperLatexBuilds {
       return undefined;
     }
     if (result.status === "cancelled") { return undefined; }
-    const { paths } = this.deps.projects;
+    const { fs, paths } = this.deps.projects;
     let finished: FinishedBuild = { status: "failed", problems: result.problems };
     if (result.status === "succeeded") {
       // INVARIANT: root is non-empty, so the PDF path exists.
       const pdf = builtPdfPath(paths, project, root)!;
-      // PLATFORM: the editor page's project store can neither rename nor delete, so the library file system's staged
-      // write (temp file, then rename over the target) fails there; the store writes each file whole in one call.
-      await vscode.workspace.fs.writeFile(vscode.Uri.file(pdf), result.pdf);
+      await fs.writeFile(pdf, result.pdf);
       finished = { status: "succeeded", pdf, problems: result.problems };
     }
     this.deps.diagnostics.publish(paths.join(project.folder, root), result.problems);

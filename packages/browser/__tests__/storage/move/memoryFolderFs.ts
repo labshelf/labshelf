@@ -60,7 +60,21 @@ export class MemoryFolderFs implements LibraryFileSystem {
   async exists(path: string): Promise<boolean> { return (await this.stat(path)) !== undefined; }
   async writeText(path: string, text: string): Promise<void> { await this.writeFile(path, new TextEncoder().encode(text)); }
   async readText(path: string): Promise<string> { return new TextDecoder().decode(await this.readFile(path)); }
-  async rename(): Promise<void> { throw new Error("not used"); }
+  /** Refuses an existing target, as the port does, except a rename that changes only letter case. */
+  async rename(from: string, to: string): Promise<void> {
+    const caseOnly = from !== to && from.toLowerCase() === to.toLowerCase();
+    if (!caseOnly && await this.exists(to)) throw new Error(`${to} already exists`);
+    if (!(await this.exists(from))) throw new Error(`missing ${from}`);
+    const moved = (key: string): string | undefined => (key === from ? to : key.startsWith(`${from}/`) ? `${to}${key.slice(from.length)}` : undefined);
+    for (const [key, bytes] of [...this.files]) {
+      const target = moved(key);
+      if (target !== undefined) { this.files.delete(key); this.files.set(target, bytes); }
+    }
+    for (const key of [...this.dirs]) {
+      const target = moved(key);
+      if (target !== undefined) { this.dirs.delete(key); this.dirs.add(target); }
+    }
+  }
   async trash(target: string): Promise<void> { await this.removeTree(target); }
   async removeTree(target: string): Promise<void> {
     const inside = (key: string): boolean => key === target || key.startsWith(`${target}/`);

@@ -1,4 +1,4 @@
-// Pins the labshelf-project: file system over the project store: reads, directory listing, and writes that never lose a concurrent edit.
+// Pins the labshelf-project: file system over the project store: reads, listing, writes that never lose a concurrent edit, renames, deletes and folders.
 import type { ILogger, ProjectEntry } from "@labshelf/core";
 import { createProjectFileSystemProvider, FileChangeType, FileType, type ProjectUri } from "../../../src/editor/fileSystem";
 import { ProjectFileNotFoundError } from "../../../src/storage/projects";
@@ -20,6 +20,7 @@ function setup() {
     ["thesis/chapters/intro.typ", text.encode("Intro")],
     ["deep/src/paper.typ", text.encode("Deep")],
   ]);
+  const dirs = new Set<string>();
   const entries: ProjectEntry[] = [
     ready("thesis", "main.typ"),
     ready("deep", "src/paper.typ"),
@@ -47,8 +48,19 @@ function setup() {
       const bytes = files.get(`${id}/${path}`);
       if (bytes !== undefined) return { isFile: true, isDirectory: false, mtimeMs: 42, size: bytes.length };
       const folder = path === "" ? `${id}/` : `${id}/${path}/`;
-      return [...files.keys()].some((key) => key.startsWith(folder)) ? { isFile: false, isDirectory: true, mtimeMs: 0, size: 0 } : undefined;
+      const isFolder = dirs.has(`${id}/${path}`) || [...files.keys()].some((key) => key.startsWith(folder));
+      return isFolder ? { isFile: false, isDirectory: true, mtimeMs: 0, size: 0 } : undefined;
     }),
+    renameProjectPath: jest.fn(async (id: string, from: string, to: string) => {
+      for (const [key, bytes] of [...files]) {
+        const rest = key === `${id}/${from}` ? "" : key.startsWith(`${id}/${from}/`) ? key.slice(`${id}/${from}`.length) : undefined;
+        if (rest !== undefined) { files.delete(key); files.set(`${id}/${to}${rest}`, bytes); }
+      }
+    }),
+    deleteProjectPath: jest.fn(async (id: string, path: string) => {
+      for (const key of [...files.keys()]) if (key === `${id}/${path}` || key.startsWith(`${id}/${path}/`)) files.delete(key);
+    }),
+    createProjectDirectory: jest.fn(async (id: string, path: string) => { dirs.add(`${id}/${path}`); }),
   };
   const logger: ILogger & { error: jest.Mock } = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
   const provider = createProjectFileSystemProvider({ projects, logger });
@@ -213,15 +225,115 @@ describe("writeFile", () => {
   });
 });
 
-describe("operations the project store cannot do", () => {
-  it("rejects delete, rename and createDirectory with NoPermissions", async () => {
-    const { provider } = setup();
-    await expect(provider.delete(uri("/thesis/main.typ"), { recursive: false })).rejects.toMatchObject({ code: "NoPermissions" });
-    await expect(provider.rename(uri("/thesis/main.typ"), uri("/thesis/a.typ"), { overwrite: false })).rejects.toMatchObject({ code: "NoPermissions" });
-    await expect(provider.createDirectory(uri("/thesis/new"))).rejects.toMatchObject({ code: "NoPermissions" });
+describe("rename", () => {
+  it("moves a file and announces the source deleted and the target created", async () => {
+    const { provider, files } = setup();
+    const events = jest.fn();
+    provider.onDidChangeFile(events);
+    await provider.rename(uri("/thesis/main.typ"), uri("/thesis/body.typ"), { overwrite: false });
+    expect(decode(files.get("thesis/body.typ") as Uint8Array)).toBe("= Thesis");
+    expect(files.has("thesis/main.typ")).toBe(false);
+    expect(events).toHaveBeenCalledWith([
+      { type: FileChangeType.Deleted, resource: uri("/thesis/main.typ") },
+      { type: FileChangeType.Created, resource: uri("/thesis/body.typ") },
+    ]);
   });
 
-  it("watch returns a disposable", () => {
+  it("completes a staged write: a temp file renamed over the target leaves the target's new content and no temp file", async () => {
+    const { provider, files } = setup();
+    await provider.readFile(uri("/thesis/main.typ"));
+    const tmp = uri("/thesis/.main.typ.0f9c.tmp");
+    await provider.writeFile(tmp, text.encode("= Staged"), { create: true, overwrite: true });
+    await provider.rename(tmp, uri("/thesis/main.typ"), { overwrite: true });
+    expect(decode(files.get("thesis/main.typ") as Uint8Array)).toBe("= Staged");
+    expect([...files.keys()].filter((key) => key.endsWith(".tmp"))).toEqual([]);
+  });
+
+  it("refuses to replace an existing target without overwrite and keeps both files", async () => {
+    const { provider, files } = setup();
+    await expect(provider.rename(uri("/thesis/main.typ"), uri("/thesis/chapters/intro.typ"), { overwrite: false }))
+      .rejects.toMatchObject({ code: "EntryExists" });
+    expect(decode(files.get("thesis/chapters/intro.typ") as Uint8Array)).toBe("Intro");
+    expect(files.has("thesis/main.typ")).toBe(true);
+  });
+
+  it("refuses to replace a folder even with overwrite", async () => {
+    const { provider, projects } = setup();
+    await expect(provider.rename(uri("/thesis/main.typ"), uri("/thesis/chapters"), { overwrite: true }))
+      .rejects.toMatchObject({ code: "EntryIsADirectory" });
+    expect(projects.renameProjectPath).not.toHaveBeenCalled();
+  });
+
+  it("changes only the letter case on a store that ignores case, without counting the source as the target", async () => {
+    const { provider, projects, files } = setup();
+    const caseBlind = projects.statProjectPath.getMockImplementation()!;
+    projects.statProjectPath.mockImplementation((id, path) => caseBlind(id, path.toLowerCase()));
+    await provider.rename(uri("/thesis/main.typ"), uri("/thesis/Main.typ"), { overwrite: false });
+    expect(files.has("thesis/Main.typ")).toBe(true);
+  });
+
+  it("fails a missing source with EntryNotFound, and refuses moves between projects or of a project folder", async () => {
+    const { provider, projects } = setup();
+    await expect(provider.rename(uri("/thesis/ghost.typ"), uri("/thesis/a.typ"), { overwrite: false })).rejects.toMatchObject({ code: "EntryNotFound" });
+    await expect(provider.rename(uri("/thesis/main.typ"), uri("/deep/main.typ"), { overwrite: false })).rejects.toMatchObject({ code: "NoPermissions" });
+    await expect(provider.rename(uri("/thesis"), uri("/thesis2"), { overwrite: false })).rejects.toMatchObject({ code: "NoPermissions" });
+    expect(projects.renameProjectPath).not.toHaveBeenCalled();
+  });
+});
+
+describe("delete", () => {
+  it("deletes a file and announces it", async () => {
+    const { provider, files } = setup();
+    const events = jest.fn();
+    provider.onDidChangeFile(events);
+    await provider.delete(uri("/thesis/main.typ"), { recursive: false });
+    expect(files.has("thesis/main.typ")).toBe(false);
+    expect(events).toHaveBeenCalledWith([{ type: FileChangeType.Deleted, resource: uri("/thesis/main.typ") }]);
+  });
+
+  it("fails a missing file with EntryNotFound", async () => {
+    const { provider, projects } = setup();
+    await expect(provider.delete(uri("/thesis/ghost.typ"), { recursive: false })).rejects.toMatchObject({ code: "EntryNotFound" });
+    expect(projects.deleteProjectPath).not.toHaveBeenCalled();
+  });
+
+  it("deletes a folder with files only when recursive", async () => {
+    const { provider, files } = setup();
+    await expect(provider.delete(uri("/thesis/chapters"), { recursive: false })).rejects.toMatchObject({ code: "NoPermissions" });
+    expect(files.has("thesis/chapters/intro.typ")).toBe(true);
+    await provider.delete(uri("/thesis/chapters"), { recursive: true });
+    expect(files.has("thesis/chapters/intro.typ")).toBe(false);
+  });
+
+  it("refuses to delete a project folder or the root", async () => {
+    const { provider } = setup();
+    await expect(provider.delete(uri("/thesis"), { recursive: true })).rejects.toMatchObject({ code: "NoPermissions" });
+    await expect(provider.delete(uri("/"), { recursive: true })).rejects.toMatchObject({ code: "NoPermissions" });
+  });
+});
+
+describe("createDirectory", () => {
+  it("creates a folder inside a project and announces it", async () => {
+    const { provider, projects } = setup();
+    const events = jest.fn();
+    provider.onDidChangeFile(events);
+    await provider.createDirectory(uri("/thesis/figures"));
+    expect(projects.createProjectDirectory).toHaveBeenCalledWith("thesis", "figures");
+    expect(await provider.stat(uri("/thesis/figures"))).toMatchObject({ type: FileType.Directory });
+    expect(events).toHaveBeenCalledWith([{ type: FileChangeType.Created, resource: uri("/thesis/figures") }]);
+  });
+
+  it("fails with EntryExists for a path that exists, a project folder or the root", async () => {
+    const { provider } = setup();
+    await expect(provider.createDirectory(uri("/thesis/chapters"))).rejects.toMatchObject({ code: "EntryExists" });
+    await expect(provider.createDirectory(uri("/thesis/main.typ"))).rejects.toMatchObject({ code: "EntryExists" });
+    await expect(provider.createDirectory(uri("/thesis"))).rejects.toMatchObject({ code: "EntryExists" });
+    await expect(provider.createDirectory(uri("/"))).rejects.toMatchObject({ code: "EntryExists" });
+  });
+});
+
+describe("watch", () => {
+  it("returns a disposable", () => {
     const { provider } = setup();
     expect(() => provider.watch(uri("/thesis"), { recursive: true, excludes: [] }).dispose()).not.toThrow();
   });
