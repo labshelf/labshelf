@@ -1,7 +1,7 @@
 // Answers the host commands LabShelf's web build calls on the editor page: the library folder, LaTeX through the helper, its setup card.
 import type { ILogger } from "@labshelf/core";
 import {
-  compileResultToWire, projectFromWire, TEX_INSTALL_KINDS, type HelperProgressListener, type ILatexHelper,
+  compileResultToWire, projectFromWire, TEX_INSTALL_KINDS, type HelperCompileResult, type HelperProgressListener, type ILatexHelper,
 } from "@labshelf/core/helper";
 
 export const EDITOR_HOST_COMMANDS = {
@@ -23,14 +23,20 @@ export interface EditorHostDeps {
   showHelperSetup(): void;
   /** Hears build and install progress, which cannot cross back to the extension. */
   onProgress: HelperProgressListener;
+  /** Hears how each build ended. */
+  onCompiled(status: HelperCompileResult["status"]): void;
 }
 
 export type HostCommand = (...args: unknown[]) => Promise<unknown>;
 
-function helperCall(helper: ILatexHelper, onProgress: HelperProgressListener, method: unknown, args: unknown[]): Promise<unknown> {
+function helperCall(deps: EditorHostDeps, method: unknown, args: unknown[]): Promise<unknown> {
+  const { helper, onProgress } = deps;
   switch (method) {
     case "connect": return helper.connect();
-    case "compile": return helper.compile(projectFromWire(args[0]), onProgress).then(compileResultToWire);
+    case "compile": return helper.compile(projectFromWire(args[0]), onProgress).then((result) => {
+      deps.onCompiled(result.status);
+      return compileResultToWire(result);
+    });
     case "cancel":
       if (typeof args[0] !== "string") throw new Error("cancel needs a project id");
       return helper.cancel(args[0]);
@@ -45,7 +51,7 @@ function helperCall(helper: ILatexHelper, onProgress: HelperProgressListener, me
 }
 
 export function createEditorHostCommands(deps: EditorHostDeps): Record<string, HostCommand> {
-  const { helper, logger, onProgress } = deps;
+  const { logger } = deps;
   return {
     [EDITOR_HOST_COMMANDS.libraryFolder]: async () => {
       await logger.log("INFO", MODULE, "LabShelf asked for the library folder", { folder: deps.libraryFolder });
@@ -53,7 +59,7 @@ export function createEditorHostCommands(deps: EditorHostDeps): Record<string, H
     },
     [EDITOR_HOST_COMMANDS.latexHelper]: async (method, ...args) => {
       try {
-        return await helperCall(helper, onProgress, method, args);
+        return await helperCall(deps, method, args);
       } catch (error) {
         await logger.error(MODULE, error, { action: "latex helper", method: String(method) });
         throw error;

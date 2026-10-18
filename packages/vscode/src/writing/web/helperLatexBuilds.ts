@@ -1,4 +1,4 @@
-// Builds LaTeX projects through LabShelf Helper and asks the page for the helper setup when the helper or TeX is missing.
+// Builds LaTeX projects through LabShelf Helper, one build per project at a time, and asks the page for the helper setup when the helper or TeX is missing.
 import * as vscode from "vscode";
 
 import { builtPdfPath, errorMessage, listProjectFiles, type ILogger, type LatexEngine } from "@labshelf/core";
@@ -18,16 +18,48 @@ export interface HelperLatexBuildsDeps {
   showHelperSetup(): Thenable<unknown>;
 }
 
-// The helper runs a TeX distribution, which has no Tectonic; pdfLaTeX builds what Tectonic would.
+// The helper runs a TeX distribution, which has no Tectonic; Tectonic runs XeTeX, so XeLaTeX builds what it would.
 function helperEngine(engine: LatexEngine | undefined): HelperEngine {
+  if (engine === "tectonic") { return "xelatex"; }
   return HELPER_ENGINES.find((candidate) => candidate === engine) ?? "pdflatex";
 }
 
+interface ProjectLane {
+  running?: Promise<FinishedBuild | undefined> | undefined;
+  // INVARIANT: set only while a build runs; a newer request replaces it, so the latest one runs next.
+  waiting?: { root: string; trigger: BuildTrigger; settle(result: Promise<FinishedBuild | undefined> | undefined): void } | undefined;
+}
+
 export class HelperLatexBuilds {
+  private readonly lanes = new Map<string, ProjectLane>();
+
   constructor(private readonly deps: HelperLatexBuildsDeps) {}
 
-  /** Resolves with the build's result, or `undefined` when it did not finish: helper missing, cancelled or failed to run. */
-  async request(projectFolder: string, root: string, trigger: BuildTrigger): Promise<FinishedBuild | undefined> {
+  /**
+   * Resolves with the build's result, or `undefined` when it did not finish: helper missing, replaced or failed to run.
+   * A request made while the project builds waits; a newer one replaces it, so saves during a build cost one more build.
+   */
+  request(projectFolder: string, root: string, trigger: BuildTrigger): Promise<FinishedBuild | undefined> {
+    const lane = this.lanes.get(projectFolder) ?? {};
+    this.lanes.set(projectFolder, lane);
+    if (!lane.running) { return this.start(lane, projectFolder, root, trigger); }
+    lane.waiting?.settle(undefined);
+    return new Promise((resolve) => { lane.waiting = { root, trigger, settle: resolve }; });
+  }
+
+  private start(lane: ProjectLane, projectFolder: string, root: string, trigger: BuildTrigger): Promise<FinishedBuild | undefined> {
+    const run = this.build(projectFolder, root, trigger);
+    lane.running = run;
+    void run.catch(() => undefined).then(() => {
+      lane.running = undefined;
+      const next = lane.waiting;
+      lane.waiting = undefined;
+      if (next) { next.settle(this.start(lane, projectFolder, next.root, next.trigger)); }
+    });
+    return run;
+  }
+
+  private async build(projectFolder: string, root: string, trigger: BuildTrigger): Promise<FinishedBuild | undefined> {
     const logger = this.deps.host.current()?.logger;
     const project = this.project(projectFolder);
     if (!logger || !project) { return undefined; }
@@ -92,12 +124,14 @@ export class HelperLatexBuilds {
       return undefined;
     }
     if (result.status === "cancelled") { return undefined; }
-    const { paths, fs } = this.deps.projects;
+    const { paths } = this.deps.projects;
     let finished: FinishedBuild = { status: "failed", problems: result.problems };
     if (result.status === "succeeded") {
       // INVARIANT: root is non-empty, so the PDF path exists.
       const pdf = builtPdfPath(paths, project, root)!;
-      await fs.writeFile(pdf, result.pdf);
+      // PLATFORM: the editor page's project store can neither rename nor delete, so the library file system's staged
+      // write (temp file, then rename over the target) fails there; the store writes each file whole in one call.
+      await vscode.workspace.fs.writeFile(vscode.Uri.file(pdf), result.pdf);
       finished = { status: "succeeded", pdf, problems: result.problems };
     }
     this.deps.diagnostics.publish(paths.join(project.folder, root), result.problems);

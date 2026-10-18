@@ -20,8 +20,9 @@ function setup() {
   const logger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
   const showHelperSetup = jest.fn();
   const onProgress = jest.fn();
-  const commands = createEditorHostCommands({ helper, logger, libraryFolder: "/library", showHelperSetup, onProgress });
-  return { helper, logger, showHelperSetup, onProgress, commands };
+  const onCompiled = jest.fn();
+  const commands = createEditorHostCommands({ helper, logger, libraryFolder: "/library", showHelperSetup, onProgress, onCompiled });
+  return { helper, logger, showHelperSetup, onProgress, onCompiled, commands };
 }
 
 describe("editor host commands", () => {
@@ -31,12 +32,13 @@ describe("editor host commands", () => {
   });
 
   it("compiles a LaTeX project through ILatexHelper, decoding the files and encoding the PDF", async () => {
-    const { commands, helper, onProgress } = setup();
+    const { commands, helper, onProgress, onCompiled } = setup();
     const wire = { projectId: "thesis", main: "main.tex", engine: "pdflatex", files: [{ path: "main.tex", base64: "aGk=" }] };
     const result = await commands[EDITOR_HOST_COMMANDS.latexHelper]!("compile", wire);
     expect(helper.compile).toHaveBeenCalledWith(
       { projectId: "thesis", main: "main.tex", engine: "pdflatex", files: [{ path: "main.tex", bytes: new Uint8Array([104, 105]) }] }, onProgress);
     expect(result).toEqual({ status: "succeeded", problems: [], pdfBase64: "JVBERg==" });
+    expect(onCompiled).toHaveBeenCalledWith("succeeded");
   });
 
   it("forwards connect, cancel and the installs to ILatexHelper", async () => {

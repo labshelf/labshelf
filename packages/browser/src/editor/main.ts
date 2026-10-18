@@ -1,11 +1,11 @@
 /**
  * Bootstraps the editor page for the project named by `?project=<id>`: the library through the native bridge under file:,
- * the host commands LabShelf's web build calls, the trimmed workbench, the two web extensions, and the side pane.
+ * the host commands LabShelf's web build calls, the trimmed workbench, the two web extensions, and the side pane preview.
  */
 import { getService, IEditorService } from "@codingame/monaco-vscode-api/services";
 import { URI } from "@codingame/monaco-vscode-api/vscode/vs/base/common/uri";
 import { registerFileSystemOverlay } from "@codingame/monaco-vscode-files-service-override";
-import type { ILogger, ProjectEntry } from "@labshelf/core";
+import { builtPdfPath, posixPathOps, type ILogger, type ProjectEntry } from "@labshelf/core";
 import { createBrowserLatexHelper, mountHelperSetupCard } from "../helper";
 import { bx, createBrowserLogger } from "../platform";
 import { createLibraryFileSystem } from "../storage";
@@ -13,7 +13,7 @@ import { createBrowserProjects, type BrowserProjects } from "../storage/projects
 import { createProjectFileSystemProvider, type ProjectFileSystemProvider } from "./fileSystem";
 import { checkLatexHelper, createEditorHostCommands, createHelperSetupShower, registerHostCommands } from "./host";
 import { PROJECT_PARAM } from "./pageUrl";
-import { createSidePane, startTypstPreview, type SidePane } from "./preview";
+import { createSidePane, renderPdfPages, startLatexPreview, startTypstPreview, type SidePane } from "./preview";
 import { bootWorkbench, LIBRARY_ROOT, projectFolderUri, registerBundledExtensions, toWorkbenchProvider } from "./workbench";
 
 const MODULE = "editor";
@@ -32,22 +32,30 @@ function registerHost(pane: SidePane, logger: ILogger): (project: ReadyProject) 
   registerHostCommands(createEditorHostCommands({
     helper, logger, libraryFolder: LIBRARY_ROOT, showHelperSetup,
     onProgress: (progress) => pane.status(`LaTeX: ${progress.phase}…`),
+    // A successful build clears the status when its PDF is drawn; a failed one writes no PDF, so the status says so.
+    onCompiled: (status) => { if (status !== "succeeded") pane.status(status === "failed" ? "The build failed; the Problems panel lists why." : ""); },
   }));
   return (project) => checkLatexHelper({ helper, logger, showHelperSetup, format: project.settings.format, projectId: project.settings.id });
 }
 
-function previewTypst(project: ReadyProject, projects: BrowserProjects, files: ProjectFileSystemProvider, pane: SidePane): void {
-  if (project.settings.format !== "typst" || !project.main) return;
+/** Starts the side pane preview of the project's format: Typst compiled in the page, LaTeX's PDF as the extension builds it. */
+function preview(project: ReadyProject, projects: BrowserProjects, files: ProjectFileSystemProvider, pane: SidePane): void {
+  if (!project.main) return;
   const projectId = project.settings.id;
   const prefix = `/${projectId}/`;
-  void startTypstPreview({
-    projects, projectId, main: project.main, folder: projectFolderUri(projectId), pane, logger: log,
-    onFileWritten: (listener) => files.onDidChangeFile((changes) => {
-      for (const { resource } of changes) if (resource.path.startsWith(prefix)) listener(resource.path.slice(prefix.length));
-    }),
-  }).catch((error: unknown) => {
+  const onFileWritten = (listener: (relative: string) => void): void => void files.onDidChangeFile((changes) => {
+    for (const { resource } of changes) if (resource.path.startsWith(prefix)) listener(resource.path.slice(prefix.length));
+  });
+  const started = project.settings.format === "typst"
+    ? startTypstPreview({ projects, projectId, main: project.main, folder: projectFolderUri(projectId), pane, logger: log, onFileWritten })
+    // INVARIANT: with an empty folder the built PDF path is relative to the project, which is how the page names files.
+    : startLatexPreview({
+      projects, projectId, pdf: builtPdfPath(posixPathOps, { ...project, folder: "" })!, pane, logger: log, onFileWritten,
+      render: (bytes) => renderPdfPages(pane.pages, bytes),
+    });
+  started.catch((error: unknown) => {
     pane.status("The preview could not start; see the log.");
-    void log.error(MODULE, error, { project: projectId, action: "start the Typst preview" });
+    void log.error(MODULE, error, { project: projectId, action: `start the ${project.settings.format} preview` });
   });
 }
 
@@ -72,7 +80,7 @@ async function boot(): Promise<void> {
   await registerBundledExtensions();
   if (project.main) await (await getService(IEditorService)).openEditor({ resource: URI.joinPath(folder, project.main) });
   await log.log("INFO", MODULE, "Editor page opened a project", { project: projectId, main: project.main });
-  previewTypst(project, projects, files, pane);
+  preview(project, projects, files, pane);
   await checkHelper(project);
 }
 

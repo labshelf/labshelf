@@ -1,15 +1,12 @@
-// Tests when saved LaTeX files trigger a build: the root of the saved file is built, debounced per root.
+// Tests when saved LaTeX files trigger a build: the root of the saved file is built, debounced per root, while auto compile is on.
 import * as vscode from "vscode";
 
 import { buildRootOf } from "@labshelf/core";
-import { registerLatexBuild } from "../../../../src/writing/build/node/registerLatexBuild";
+import { registerLatexSaveBuilds } from "../../../../src/writing/build/triggers/latexSaveBuilds";
 import { fakeHost, fakeProjects, readyEntry } from "../../../support/writingFixtures";
 
-const request = jest.fn();
+const request = jest.fn<Promise<unknown>, [string, string, string | undefined]>(async () => undefined);
 jest.mock("@labshelf/core", () => ({ ...jest.requireActual("@labshelf/core"), buildRootOf: jest.fn() }));
-jest.mock("../../../../src/writing/build/node/latexBuilds", () => ({
-  LatexBuilds: jest.fn(() => ({ request: (...args: unknown[]) => request(...args), cancelAll: jest.fn() })),
-}));
 
 const rootOf = buildRootOf as jest.Mock;
 const workspace = vscode.workspace as unknown as {
@@ -20,14 +17,13 @@ const workspace = vscode.workspace as unknown as {
 const doc = (fsPath: string) => ({ uri: Object.assign(vscode.Uri.file(fsPath), { scheme: "file" }) });
 const save = (fsPath: string) => workspace._fireDocumentEvent("save", doc(fsPath));
 
-let context: { subscriptions: { dispose(): void }[]; globalStorageUri: vscode.Uri };
+let context: { subscriptions: { dispose(): void }[] };
 
 function setup(host = fakeHost(), includeOnlyTarget?: jest.Mock) {
   const projects = fakeProjects([readyEntry("/p/tex", { main: "main.tex" }), readyEntry("/p/typ", { main: "main.typ", settings: { id: "typ", format: "typst" } })]);
-  context = { subscriptions: [], globalStorageUri: vscode.Uri.file("/storage") };
-  registerLatexBuild({
-    context: context as never, host, projects: projects as never,
-    diagnostics: { publish: jest.fn() }, previews: { building: jest.fn(), finished: jest.fn() },
+  context = { subscriptions: [] };
+  registerLatexSaveBuilds({
+    context, host, projects: projects as never, request,
     ...(includeOnlyTarget ? { includeOnlyTarget } : {}),
   });
 }
@@ -44,7 +40,7 @@ afterEach(() => {
   jest.useRealTimers();
 });
 
-describe("registerLatexBuild saves", () => {
+describe("registerLatexSaveBuilds saves", () => {
   it("builds the main file 300 ms after a save of a chapter that is not a root", async () => {
     setup();
     save("/p/tex/chapters/one.tex");
@@ -52,7 +48,7 @@ describe("registerLatexBuild saves", () => {
     expect(request).not.toHaveBeenCalled();
     await jest.advanceTimersByTimeAsync(1);
     expect(rootOf).toHaveBeenCalledWith(expect.anything(), "/p/tex", "main.tex", "/p/tex/chapters/one.tex");
-    expect(request).toHaveBeenCalledWith("/p/tex", "main.tex", "save", undefined);
+    expect(request).toHaveBeenCalledWith("/p/tex", "main.tex", undefined);
   });
 
   it("passes the include-only target of the root to the build", async () => {
@@ -61,7 +57,7 @@ describe("registerLatexBuild saves", () => {
     save("/p/tex/chapters/one.tex");
     await jest.advanceTimersByTimeAsync(300);
     expect(target).toHaveBeenCalledWith(expect.objectContaining({ folder: "/p/tex" }), "main.tex");
-    expect(request).toHaveBeenCalledWith("/p/tex", "main.tex", "save", "chapters/one");
+    expect(request).toHaveBeenCalledWith("/p/tex", "main.tex", "chapters/one");
   });
 
   it("builds a second root itself, one build per root for a burst", async () => {
@@ -83,7 +79,7 @@ describe("registerLatexBuild saves", () => {
   });
 });
 
-describe("registerLatexBuild auto compile", () => {
+describe("registerLatexSaveBuilds auto compile", () => {
   const setAutoCompile = (on: boolean) => {
     workspace._config["labshelf.writing"] = { autoCompile: on };
     workspace._fireConfigChange("labshelf.writing.autoCompile");
@@ -106,7 +102,7 @@ describe("registerLatexBuild auto compile", () => {
     setAutoCompile(true);
     save("/p/tex/main.tex");
     await jest.advanceTimersByTimeAsync(300);
-    expect(request).toHaveBeenCalledWith("/p/tex", "main.tex", "save", undefined);
+    expect(request).toHaveBeenCalledWith("/p/tex", "main.tex", undefined);
   });
 
   it("logs the skip once per setting value, not once per save", async () => {

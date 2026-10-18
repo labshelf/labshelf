@@ -38,23 +38,59 @@ beforeEach(() => jest.clearAllMocks());
 describe("HelperLatexBuilds", () => {
   it("compiles the project's files through the helper and writes the PDF next to the root", async () => {
     const helper = fakeHelper(READY);
-    const { deps, fs, builds } = await setup(helper);
+    const { deps, builds } = await setup(helper);
     const result = await builds.request("/lib/paper", "main.tex", "command");
     const project = helper.compile.mock.calls[0]![0];
     expect(project).toEqual(expect.objectContaining({ projectId: "paper", main: "main.tex", engine: "xelatex" }));
     expect(project.files.map((file: { path: string }) => file.path).sort()).toEqual(["main.tex", "refs.bib"]);
     expect(result).toEqual({ status: "succeeded", pdf: "/lib/paper/main.pdf", problems: [] });
-    expect(fs.files.get("/lib/paper/main.pdf")).toEqual(PDF);
+    expect(vscode.workspace.fs.writeFile).toHaveBeenCalledWith(expect.objectContaining({ fsPath: "/lib/paper/main.pdf" }), PDF);
     expect(deps.previews.building).toHaveBeenCalledWith("/lib/paper", "main.tex");
     expect(deps.previews.finished).toHaveBeenCalledWith(expect.objectContaining({ folder: "/lib/paper" }), "main.tex", result, "command");
     expect(deps.showHelperSetup).not.toHaveBeenCalled();
   });
 
-  it("builds Tectonic projects with pdfLaTeX, which the helper's TeX has", async () => {
+  it("builds Tectonic projects with XeLaTeX, the engine Tectonic runs", async () => {
     const helper = fakeHelper(READY);
     const { builds } = await setup(helper, readyEntry("/lib/paper", { settings: { id: "paper", format: "latex", engine: "tectonic" } }));
     await builds.request("/lib/paper", "main.tex", "command");
+    expect(helper.compile.mock.calls[0]![0].engine).toBe("xelatex");
+  });
+
+  it("builds projects without an engine with pdfLaTeX", async () => {
+    const helper = fakeHelper(READY);
+    const { builds } = await setup(helper, readyEntry("/lib/paper", { settings: { id: "paper", format: "latex" } }));
+    await builds.request("/lib/paper", "main.tex", "command");
     expect(helper.compile.mock.calls[0]![0].engine).toBe("pdflatex");
+  });
+
+  it("runs one build of a project at a time, and of the requests waiting meanwhile only the latest", async () => {
+    const helper = fakeHelper(READY);
+    const finishes: (() => void)[] = [];
+    helper.compile.mockImplementation(() => new Promise((resolve) => finishes.push(() => resolve({ status: "succeeded", problems: [], pdf: PDF }))));
+    const { builds } = await setup(helper);
+    const first = builds.request("/lib/paper", "main.tex", "focus");
+    const replaced = builds.request("/lib/paper", "main.tex", "save");
+    const latest = builds.request("/lib/paper", "main.tex", "command");
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(helper.compile).toHaveBeenCalledTimes(1);
+    finishes[0]!();
+    expect(await first).toEqual(expect.objectContaining({ status: "succeeded" }));
+    expect(await replaced).toBeUndefined();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(helper.compile).toHaveBeenCalledTimes(2);
+    finishes[1]!();
+    expect(await latest).toEqual(expect.objectContaining({ status: "succeeded" }));
+  });
+
+  it("starts the next build after a build that threw", async () => {
+    const helper = fakeHelper(READY);
+    helper.compile.mockRejectedValueOnce(new Error("port closed"));
+    const { builds } = await setup(helper);
+    const first = builds.request("/lib/paper", "main.tex", "save");
+    const second = builds.request("/lib/paper", "main.tex", "save");
+    expect(await first).toBeUndefined();
+    expect(await second).toEqual(expect.objectContaining({ status: "succeeded" }));
   });
 
   it("publishes a failed build's problems and reports it as failed", async () => {
