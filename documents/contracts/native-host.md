@@ -20,7 +20,7 @@ Each host keeps its launcher, `host.json` and, on Windows, its manifests in one 
 | macOS, Linux | `~/.config/labshelf/<dir>/` |
 | Windows | `%LOCALAPPDATA%\LabShelf\<dir>\` (`<home>\AppData\Local` when the variable is unset) |
 
-`<dir>` is `bridge` or `helper`.
+`<dir>` is `bridge` or `helper`. On macOS and Linux the host folder is `0o700`, `host.json` and the manifests are `0o600` and the launcher is `0o755`; an install fixes the modes of the paths it writes.
 
 ## Launcher
 

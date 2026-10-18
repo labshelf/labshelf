@@ -28,7 +28,7 @@ async function compileDiff(request: MarkedUpDiffRequest, diffTex: string): Promi
   // latexdiff leaves in place resolve as in the project's own build.
   const cwd = path.dirname(path.join(request.afterDir, request.main));
   const command = latexBuildCommand(request.toolchain, diffTex, request.outDir);
-  const outcome = await runCancellable(command.executable, command.args, cwd, request.signal);
+  const outcome = await runCancellable(command.executable, command.args, cwd, request.signal, { env: { ...process.env, ...command.env } });
   const pdf = path.join(request.outDir, "diff.pdf");
   if (outcome.code === 0 && await fs.stat(pdf).then(() => true, () => false)) { return pdf; }
   throw new Error(`The marked-up PDF did not compile (exit code ${outcome.code ?? "none"}):\n${outputTail(outcome.output)}`);

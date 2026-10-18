@@ -1,5 +1,5 @@
 # Builds, packages, signs, attests and publishes LabShelf Helper for every supported OS and architecture on a helper-v* tag.
-# Secrets: HELPER_UPDATE_KEY (required), SIGNPATH_API_TOKEN (optional, enables Windows signing with the SIGNPATH_* variables).
+# Secrets: HELPER_UPDATE_KEY (required), SIGNPATH_API_TOKEN (required, with the SIGNPATH_* variables, to sign the Windows artifacts).
 name: Helper release
 
 on:
@@ -78,28 +78,26 @@ jobs:
           mv out/labshelf-helper-linux.deb "release/labshelf-helper-linux${suffix}.deb"
           mv out/labshelf-helper-linux.tar.gz "release/labshelf-helper-linux-${{ matrix.arch }}.tar.gz"
 
-      - name: Check Windows signing
-        id: signing
+      - name: Require Windows signing
         if: matrix.os == 'windows'
         env:
           SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
         run: |
-          if [ -n "$SIGNPATH_API_TOKEN" ]; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::warning::SIGNPATH_API_TOKEN is not set; the Windows binary and installer are published unsigned"
+          if [ -z "$SIGNPATH_API_TOKEN" ]; then
+            echo "::error::SIGNPATH_API_TOKEN is not set; the release is not published with unsigned Windows artifacts"
+            exit 1
           fi
 
       # The binary is signed before the installer is built so that the installer carries the signed binary.
       - name: Upload unsigned Windows binary
+        if: matrix.os == 'windows'
         id: unsigned-binary
-        if: steps.signing.outputs.enabled == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: unsigned-windows-binary
           path: ${{ env.BINARY }}
       - name: Sign Windows binary
-        if: steps.signing.outputs.enabled == 'true'
+        if: matrix.os == 'windows'
         uses: signpath/github-action-submit-signing-request@v3
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
@@ -120,14 +118,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "ISCC failed with exit code $LASTEXITCODE" }
 
       - name: Upload unsigned Windows installer
+        if: matrix.os == 'windows'
         id: unsigned-installer
-        if: steps.signing.outputs.enabled == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: unsigned-windows-installer
           path: release/labshelf-helper-windows-setup.exe
       - name: Sign Windows installer
-        if: steps.signing.outputs.enabled == 'true'
+        if: matrix.os == 'windows'
         uses: signpath/github-action-submit-signing-request@v3
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}

@@ -11,4 +11,4 @@ export interface ManagedTinymist {
 
 export type LspChild = Pick<ChildProcessWithoutNullStreams, "stdin" | "stdout" | "stderr" | "kill" | "on">;
 
-export type SpawnLsp = (command: string, args: readonly string[], options: { cwd: string }) => LspChild;
+export type SpawnLsp = (command: string, args: readonly string[], options: { cwd: string; env: Record<string, string> }) => LspChild;

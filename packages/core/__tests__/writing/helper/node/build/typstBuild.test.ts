@@ -1,4 +1,7 @@
 // Pins the Typst `compile` path: progress, install failure, the exported PDF as pages, failing diagnostics and cancelling.
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+
 import type { ToPageMessage } from "../../../../../src/writing/helper/index.js";
 
 import { createBuildHarness, type BuildHarness } from "./harness";
@@ -92,4 +95,18 @@ test("a newer build queues behind the one before it, and both end", async () => 
 
   expect(first.at(-1)).toMatchObject({ type: expect.stringMatching(/built|pages/) });
   expect(second.some((f) => f.type === "pages")).toBe(true);
+});
+
+test("the export runs with the data folder's package cache and none of the helper's other variables", async () => {
+  process.env.LABSHELF_TEST_SECRET = "x";
+  try {
+    await h.typst("ok");
+    await compileTypst("t1");
+    await h.finished("t1");
+  } finally { delete process.env.LABSHELF_TEST_SECRET; }
+
+  const env = JSON.parse((await readFile(join(h.buildDir, "main.pdf.env"), "utf8")).trim());
+  const dataDir = join(h.buildDir, "..", "..", "..");
+  expect(env).toMatchObject({ HOME: dataDir, TYPST_PACKAGE_CACHE_PATH: join(dataDir, "typst-packages", "cache"), TYPST_PACKAGE_PATH: join(dataDir, "typst-packages", "local") });
+  expect(env).not.toHaveProperty("LABSHELF_TEST_SECRET");
 });

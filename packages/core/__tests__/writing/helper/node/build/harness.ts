@@ -51,6 +51,7 @@ const { PDFDocument } = require(${JSON.stringify(require.resolve("pdf-lib"))});
 const [, , , main, out] = process.argv.slice(2);
 const mode = (/\\/\\/FAKE:(\\w+)/.exec(fs.readFileSync(main, "utf8")) || [])[1] || "ok";
 fs.appendFileSync(out + ".runs", JSON.stringify(process.argv.slice(2)) + "\\n");
+fs.appendFileSync(out + ".env", JSON.stringify(process.env) + "\\n");
 if (mode === "fail") {
   process.stderr.write("error: unknown variable: x\\n  ┌─ " + main + ":3:2\\n  │\\n3 │ #x\\n  │  ^\\n");
   process.exitCode = 1;

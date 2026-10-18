@@ -2,7 +2,12 @@ import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
+jest.mock("../../../../../../../src/writing/latex/toolchain/node/managed/install/texLiveKey", () => ({
+  TEX_LIVE_SIGNING_KEY: jest.requireActual("../../openPgp/fakeOpenPgp").TEST_SIGNING_KEY.armoredPublicKey,
+}));
+
 import { installTexLive } from "../../../../../../../src/writing/latex/toolchain/node/managed/install/index";
+import { armoredSignature, createTestSigningKey } from "../../openPgp/fakeOpenPgp";
 import { asLogger, createTexFixture, INSTALL_TL_MIRROR, type TexFixture } from "../fakeTex";
 
 const TLMGR = { rollover: false, installed: [] };
@@ -29,18 +34,53 @@ describe("installTexLive", () => {
     expect(await readdir(fixture.texRoot)).toEqual(["texlive"]);
   });
 
-  it("rejects an installer whose SHA-512 differs and runs nothing", async () => {
+  it("rejects an installer whose SHA-512 differs from the signed checksum, logs both and runs nothing", async () => {
     await fixture.serveInstallTl(2026, TLMGR);
-    fixture.routes.set(`${INSTALL_TL_MIRROR}.sha512`, `${"0".repeat(128)}  install-tl-unx.tar.gz\n`);
+    fixture.serveSignedChecksum(`${"0".repeat(128)}  install-tl-unx.tar.gz\n`);
     await expect(install()).rejects.toThrow(/Checksum mismatch/);
     expect(await fixture.calls()).toEqual([]);
     expect(existsSync(fixture.texRoot)).toBe(false);
+    expect(fixture.logger.log).toHaveBeenCalledWith("WARN", expect.any(String), expect.stringMatching(/checksum mismatch/i), expect.objectContaining({
+      asset: "install-tl-unx.tar.gz", expected: "0".repeat(128), actual: expect.stringMatching(/^[0-9a-f]{128}$/),
+    }));
   });
 
-  it("rejects a checksum file without a SHA-512", async () => {
+  it("rejects a checksum whose signature does not match it and runs nothing", async () => {
     await fixture.serveInstallTl(2026, TLMGR);
-    fixture.routes.set(`${INSTALL_TL_MIRROR}.sha512`, "not found");
+    fixture.routes.set(`${INSTALL_TL_MIRROR}.sha512`, `${"0".repeat(128)}  install-tl-unx.tar.gz\n`);
+    await expect(install()).rejects.toThrow(/signature/);
+    expect(await fixture.calls()).toEqual([]);
+    expect(existsSync(fixture.texRoot)).toBe(false);
+    expect(fixture.logger.log).toHaveBeenCalledWith("WARN", expect.any(String), expect.stringMatching(/signature/i), expect.objectContaining({ asset: "install-tl-unx.tar.gz" }));
+  });
+
+  it("rejects a checksum signed by a key that is not the pinned one", async () => {
+    await fixture.serveInstallTl(2026, TLMGR);
+    const checksum = fixture.routes.get(`${INSTALL_TL_MIRROR}.sha512`) as string;
+    fixture.routes.set(`${INSTALL_TL_MIRROR}.sha512.asc`, armoredSignature(Buffer.from(checksum), createTestSigningKey().privateKey));
+    await expect(install()).rejects.toThrow(/signature/);
+    expect(await fixture.calls()).toEqual([]);
+  });
+
+  it("rejects a checksum without its signature", async () => {
+    await fixture.serveInstallTl(2026, TLMGR);
+    fixture.routes.delete(`${INSTALL_TL_MIRROR}.sha512.asc`);
+    await expect(install()).rejects.toThrow(/HTTP 404 from .*sha512\.asc/);
+    expect(await fixture.calls()).toEqual([]);
+  });
+
+  it("rejects a signed checksum without a SHA-512", async () => {
+    await fixture.serveInstallTl(2026, TLMGR);
+    fixture.serveSignedChecksum("not found");
     await expect(install()).rejects.toThrow(/SHA-512/);
+  });
+
+  it("rejects a signed checksum of another file", async () => {
+    await fixture.serveInstallTl(2026, TLMGR);
+    const checksum = fixture.routes.get(`${INSTALL_TL_MIRROR}.sha512`) as string;
+    fixture.serveSignedChecksum(checksum.replace("install-tl-unx.tar.gz", "install-tl.zip"));
+    await expect(install()).rejects.toThrow(/install-tl\.zip/);
+    expect(await fixture.calls()).toEqual([]);
   });
 
   it("fails with the exit code and output when install-tl fails, cleaning its staging", async () => {

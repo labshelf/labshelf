@@ -1,7 +1,7 @@
 /** Keeps a script host's launcher on disk: the launcher script and the host.json record of what it runs. */
 import { promises as fs } from "node:fs";
 
-import { writeFileAtomic } from "../../../library/node/index.js";
+import { ensurePrivateDir, PRIVATE_FILE_MODE, writeFileAtomic } from "../../../library/node/index.js";
 import type { HostLayout } from "../layout/index.js";
 import { INSTALL_LOG_MODULE, type NativeHostEnv, type ScriptLaunch } from "../nativeHostEnv.js";
 import { launcherScript } from "./launcherScript.js";
@@ -9,12 +9,14 @@ import { launcherScript } from "./launcherScript.js";
 export type HostRecord = Omit<ScriptLaunch, "kind">;
 
 export async function writeLauncher(env: NativeHostEnv, layout: HostLayout, launch: ScriptLaunch): Promise<void> {
+  const posix = env.platform !== "win32";
+  if (posix) await ensurePrivateDir(layout.hostDir);
   await writeFileAtomic(layout.launcherPath, launcherScript(env.platform, launch));
-  if (env.platform !== "win32") await fs.chmod(layout.launcherPath, 0o755);
+  if (posix) await fs.chmod(layout.launcherPath, 0o755);
   const { owner, nodePath, hostScript, electronRunAsNode } = launch;
   // CONTRACT: documents/contracts/native-host.md#host-record
   // INVARIANT: host.json describes the launcher next to it; refresh compares against it, so both are rewritten together.
-  await writeFileAtomic(layout.recordPath, `${JSON.stringify({ owner, nodePath, hostScript, electronRunAsNode }, null, 2)}\n`);
+  await writeFileAtomic(layout.recordPath, `${JSON.stringify({ owner, nodePath, hostScript, electronRunAsNode }, null, 2)}\n`, undefined, posix ? PRIVATE_FILE_MODE : undefined);
 }
 
 /** The record, or undefined when it is missing or not a record this installer wrote. */

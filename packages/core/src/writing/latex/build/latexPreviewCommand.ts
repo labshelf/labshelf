@@ -2,6 +2,7 @@
 
 import type { LatexToolchain } from "../toolchain/index.js";
 import type { BuildCommand } from "./latexBuildCommand.js";
+import { NO_SHELL_ESCAPE, TEX_FILE_ACCESS_ENV } from "./texSandbox.js";
 
 export interface PreviewFormat {
   /** The precompiled preamble format, passed as `-fmt`. */
@@ -26,7 +27,7 @@ export function latexPreviewCommand(engine: LatexToolchain["engine"], mainFile: 
   const base = mainFile.replace(/\.tex$/, "");
   // PLATFORM: a mylatexformat format discards the first input up to `\begin{document}`, so main must be that input.
   const source = includeOnly === undefined || format ? [mainFile] : [`-jobname=${base}`, `\\includeonly{${includeOnly}}\\input{${mainFile}}`];
-  const common = ["-interaction=nonstopmode", "-file-line-error", "-synctex=1", `-output-directory=${outDir}`, ...source];
-  if (!format) { return { executable: engine, args: common }; }
-  return { executable: engine, args: [`-fmt=${format.name}`, ...common], env: { TEXFORMATS: format.searchPath } };
+  const common = ["-interaction=nonstopmode", "-file-line-error", "-synctex=1", NO_SHELL_ESCAPE, `-output-directory=${outDir}`, ...source];
+  if (!format) { return { executable: engine, args: common, env: TEX_FILE_ACCESS_ENV }; }
+  return { executable: engine, args: [`-fmt=${format.name}`, ...common], env: { ...TEX_FILE_ACCESS_ENV, TEXFORMATS: format.searchPath } };
 }

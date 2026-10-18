@@ -19,6 +19,12 @@ describe("page to file URIs", () => {
     expect(() => pageUrisToFiles({ uri: "labshelf:/%2Fetc%2Fpasswd" }, root)).toThrow(UriRefusedError);
     expect(() => pageUrisToFiles({ uri: "labshelf:/%E0%A4%A" }, root)).toThrow(UriRefusedError);
   });
+
+  it("refuses any raw file: string, in any case, as a value or a key", () => {
+    expect(() => pageUrisToFiles({ params: { textDocument: { uri: "file:///etc/passwd" } } }, root)).toThrow(UriRefusedError);
+    expect(() => pageUrisToFiles({ params: { event: { added: [{ uri: "FILE:///etc" }] } } }, root)).toThrow(UriRefusedError);
+    expect(() => pageUrisToFiles({ changes: { "File:/x": [] } }, root)).toThrow(UriRefusedError);
+  });
 });
 
 describe("file to page URIs", () => {
@@ -36,6 +42,20 @@ describe("file to page URIs", () => {
   });
 });
 
+describe("URIs as object keys", () => {
+  it("maps keys in both directions, as in a WorkspaceEdit's changes", () => {
+    expect(pageUrisToFiles({ changes: { "labshelf:/a.typ": [] } }, root)).toEqual({ changes: { [fileUri("a.typ")]: [] } });
+    expect(fileUrisToPage({ changes: { [fileUri("a.typ")]: [] } }, root).payload).toEqual({ changes: { "labshelf:/a.typ": [] } });
+  });
+
+  it("lists a key outside the working copy and omits it", () => {
+    const outsideUri = pathToFileURL(path.join(path.sep, "etc", "hosts")).href;
+    const { payload, outside } = fileUrisToPage({ changes: { [outsideUri]: [] } }, root);
+    expect(payload).toEqual({ changes: {} });
+    expect(outside).toEqual([outsideUri]);
+  });
+});
+
 describe("rootInitialize", () => {
   it("points rootUri and workspaceFolders at the working copy", () => {
     const out = rootInitialize({ method: "initialize", id: 1, params: { rootUri: "file:///home/x", rootPath: "/home/x", workspaceFolders: [{ uri: "file:///home/x", name: "x" }], capabilities: {} } }, root);
@@ -46,8 +66,22 @@ describe("rootInitialize", () => {
     expect(params.capabilities).toEqual({});
   });
 
+  it("replaces the page's initializationOptions with an empty object", () => {
+    const out = rootInitialize({ method: "initialize", id: 1, params: { initializationOptions: { rootPath: "/", typstExtraArgs: ["--root", "/"] } } }, root);
+    expect((out.params as Record<string, unknown>).initializationOptions).toEqual({});
+  });
+
   it("leaves other messages untouched", () => {
     const message = { method: "textDocument/didOpen", params: { rootUri: "x" } };
     expect(rootInitialize(message, root)).toBe(message);
+  });
+});
+
+describe("document text", () => {
+  it("passes text and newText that begin with file: unchanged", () => {
+    const payload = { textDocument: { uri: "labshelf:/a.typ", text: "file: notes" }, edits: [{ newText: "file:x" }] };
+    const mapped = pageUrisToFiles(payload, "/wc") as { textDocument: { text: string }; edits: { newText: string }[] };
+    expect(mapped.textDocument.text).toBe("file: notes");
+    expect(mapped.edits[0]?.newText).toBe("file:x");
   });
 });

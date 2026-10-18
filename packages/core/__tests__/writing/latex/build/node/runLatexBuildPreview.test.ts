@@ -14,7 +14,7 @@ interface PreviewSetup { request: LatexBuildRequest; calls: string; args: string
 
 // Each fake program appends its name to `calls`, writes its arguments to `args` and produces a PDF and a log.
 function fakeProgram(name: string, outDir: string, calls: string, args: string): string {
-  return `#!/bin/sh\necho ${name} >> "${calls}"\nprintf '%s\\n' "$@" > "${args}"\nOUT="${outDir}"\n`
+  return `#!/bin/sh\necho ${name} >> "${calls}"\nprintf '%s\\n' "$@" > "${args}"\necho "$openout_any $openin_any" > "${args}.env"\nOUT="${outDir}"\n`
     + `echo "%PDF ${name}" > "$OUT/main.pdf"; echo "(main.tex)" > "$OUT/main.log"; echo aux > "$OUT/main.aux"; echo fdb > "$OUT/main.fdb_latexmk"\n`;
 }
 
@@ -53,7 +53,8 @@ posixOnly("runLatexBuild preview", () => {
     const result = await runLatexBuild({ ...s.request, mode: "preview" });
     expect(result).toEqual({ status: "succeeded", pdf: path.join(s.request.projectFolder, "main.pdf"), problems: [] });
     expect(await lines(s.calls)).toEqual(["xelatex"]);
-    expect(await lines(s.args)).toEqual(["-interaction=nonstopmode", "-file-line-error", "-synctex=1", `-output-directory=${s.request.outDir}`, "main.tex"]);
+    expect(await lines(s.args)).toEqual(["-interaction=nonstopmode", "-file-line-error", "-synctex=1", "-no-shell-escape", `-output-directory=${s.request.outDir}`, "main.tex"]);
+    expect(await lines(`${s.args}.env`)).toEqual(["p p"]);
     await expect(fs.stat(path.join(s.request.outDir, "main.fdb_latexmk"))).rejects.toThrow();
     expect(await fs.readFile(path.join(s.request.outDir, "main.aux"), "utf8")).toBe("aux\n");
   });

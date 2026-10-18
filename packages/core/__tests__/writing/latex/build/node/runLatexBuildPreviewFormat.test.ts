@@ -19,12 +19,12 @@ const BODY = "\\begin{document}\n\\include{chapters/intro}\n\\input{chapters/set
 function fakeEtex(calls: string, failing: boolean): string {
   const loop = 'for a in "$@"; do case "$a" in -output-directory=*) D="${a#-output-directory=}";; -jobname=*) J="${a#-jobname=}";; esac; done\n';
   const make = failing ? 'mkdir -p "$D"; echo "! Emergency stop." > "$D/$J.log"; exit 1\n' : 'mkdir -p "$D"; echo fmt > "$D/$J.fmt"\n';
-  return `#!/bin/sh\necho etex >> "${calls}"\n${loop}${make}`;
+  return `#!/bin/sh\necho etex >> "${calls}"\nprintf '%s\\n' "$@" > "${calls}.etex-args"\necho "$openout_any $openin_any" > "${calls}.etex-env"\n${loop}${make}`;
 }
 
 // Each engine run records its arguments, TEXFORMATS and the include-only file it can see.
 function fakeEngine(name: string, outDir: string, calls: string, args: string, seen: string): string {
-  return `#!/bin/sh\necho ${name} >> "${calls}"\nprintf '%s\\n' "$@" > "${args}"\nOUT="${outDir}"\n`
+  return `#!/bin/sh\necho ${name} >> "${calls}"\nprintf '%s\\n' "$@" > "${args}"\necho "$openout_any $openin_any" > "${args}.env"\nOUT="${outDir}"\n`
     + `echo "TEXFORMATS=$TEXFORMATS" > "${seen}"; cat "$OUT/labshelf-includeonly.tex" >> "${seen}" 2>/dev/null\n`
     + `echo "%PDF ${name}" > "$OUT/main.pdf"; echo "(main.tex)" > "$OUT/main.log"; echo aux > "$OUT/main.aux"\n`;
 }
@@ -76,6 +76,15 @@ posixOnly("runLatexBuild preview with a preamble format", () => {
     expect(args).toContain(`-fmt=${path.basename(format!, ".fmt")}`);
     expect(args.at(-1)).toBe("main.tex");
     expect((await lines(s.seen))[0]).toBe(`TEXFORMATS=${formatDir(s)}${path.delimiter}`);
+  });
+
+  it("builds the format and previews without shell escape and with limited file access", async () => {
+    const s = await setup();
+    await runLatexBuild(s.request);
+    expect(await lines(`${s.calls}.etex-args`)).toContain("-no-shell-escape");
+    expect(await lines(`${s.calls}.etex-env`)).toEqual(["p p"]);
+    expect(await lines(s.args)).toContain("-no-shell-escape");
+    expect(await lines(`${s.args}.env`)).toEqual(["p p"]);
   });
 
   it("rebuilds the format when a local package of the preamble changes and deletes the old one", async () => {

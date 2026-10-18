@@ -1,4 +1,4 @@
-// Builds fake TinyTeX and install-tl archives, a fake download server and a fake system TeX for the managed TeX tests.
+// Builds fake TinyTeX and signed install-tl archives, a fake download server and a fake system TeX for the managed TeX tests.
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { chmod, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
@@ -7,10 +7,10 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 
 import type { ILogger } from "../../../../../../src/ports/index.js";
+import { armoredSignature, TEST_SIGNING_KEY } from "../openPgp/fakeOpenPgp";
 
 const run = promisify(execFile);
 
-export const TINYTEX_API = "https://api.github.com/repos/rstudio/tinytex-releases/releases/latest";
 export const TINYTEX_ASSET = "TinyTeX-1-linux-x86_64-v2026.10.tar.xz";
 export const TINYTEX_URL = `https://github.com/rstudio/tinytex-releases/releases/download/v2026.10/${TINYTEX_ASSET}`;
 export const INSTALL_TL_URL = "https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz";
@@ -102,10 +102,12 @@ export interface TexFixture {
   logger: { log: jest.Mock; error: jest.Mock };
   /** Every tlmgr call, in order. */
   calls(): Promise<Array<{ tlmgr: string; args: string[] }>>;
-  /** Serves a TinyTeX archive whose tree is `.TinyTeX/`, with the digest of `digestOf` (the archive itself by default). */
-  serveTinyTex(year: number, tlmgr: FakeTlmgr, digestOf?: Buffer): Promise<void>;
+  /** Serves a TinyTeX archive whose tree is `.TinyTeX/` and returns its SHA-256. */
+  serveTinyTex(year: number, tlmgr: FakeTlmgr): Promise<string>;
   /** Serves an install-tl whose run writes a TeX tree of `year` into the profile's TEXDIR and copies the profile beside `callsFile`. */
   serveInstallTl(year: number, tlmgr: FakeTlmgr): Promise<void>;
+  /** Serves `text` as the installer's .sha512, with a .sha512.asc signed by the test key. */
+  serveSignedChecksum(text: string): void;
   cleanup(): Promise<void>;
 }
 
@@ -142,6 +144,10 @@ export async function createTexFixture(): Promise<TexFixture> {
   await writeFile(callsFile, "");
   const routes = new Map<string, Buffer | string>();
   let builds = 0;
+  const serveSignedChecksum = (text: string): void => {
+    routes.set(`${INSTALL_TL_MIRROR}.sha512`, text);
+    routes.set(`${INSTALL_TL_MIRROR}.sha512.asc`, armoredSignature(Buffer.from(text), TEST_SIGNING_KEY.privateKey));
+  };
   return {
     root, texRoot, callsFile, routes,
     logger: { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) },
@@ -151,26 +157,21 @@ export async function createTexFixture(): Promise<TexFixture> {
       return respond(url, routes.get(url));
     },
     calls: async () => (await readFile(callsFile, "utf8")).split("\n").filter(Boolean).map((line) => JSON.parse(line)),
-    async serveTinyTex(year, tlmgr, digestOf) {
+    async serveTinyTex(year, tlmgr) {
       const dir = join(root, `tinytex-${(builds += 1)}`);
       await writeTexTree(join(dir, ".TinyTeX"), year, callsFile, tlmgr);
       const archive = await tarGz(dir, ".TinyTeX");
       routes.set(TINYTEX_URL, archive);
-      routes.set(TINYTEX_API, JSON.stringify({
-        tag_name: "v2026.10",
-        assets: [
-          { name: "TinyTeX-1-darwin-v2026.10.tar.xz", digest: `sha256:${"0".repeat(64)}`, browser_download_url: "https://github.com/rstudio/tinytex-releases/releases/download/v2026.10/TinyTeX-1-darwin-v2026.10.tar.xz" },
-          { name: TINYTEX_ASSET, digest: `sha256:${sha256(digestOf ?? archive)}`, browser_download_url: TINYTEX_URL },
-        ],
-      }));
+      return sha256(archive);
     },
+    serveSignedChecksum,
     async serveInstallTl(year, tlmgr) {
       const dir = join(root, `install-tl-${(builds += 1)}`);
       await mkdir(join(dir, "install-tl-20261017"), { recursive: true });
       await writeExecutable(join(dir, "install-tl-20261017", "install-tl"), fakeInstallTl(year, callsFile, tlmgr));
       const archive = await tarGz(dir, "install-tl-20261017");
       routes.set(INSTALL_TL_MIRROR, archive);
-      routes.set(`${INSTALL_TL_MIRROR}.sha512`, `${sha512(archive)}  install-tl-unx.tar.gz\n`);
+      serveSignedChecksum(`${sha512(archive)}  install-tl-unx.tar.gz\n`);
     },
     cleanup: () => rm(root, { recursive: true, force: true }),
   };

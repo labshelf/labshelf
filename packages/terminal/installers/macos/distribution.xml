@@ -2,6 +2,7 @@
 <installer-gui-script minSpecVersion="1">
   <title>LabShelf Helper</title>
   <domains enable_anywhere="false" enable_currentUserHome="true" enable_localSystem="false"/>
+  <conclusion file="conclusion.txt"/>
   <options customize="never" require-scripts="false" hostArchitectures="HOST_ARCH"/>
   <choices-outline>
     <line choice="default"/>

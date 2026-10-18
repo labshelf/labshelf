@@ -145,7 +145,7 @@ test("a document that needs shell escape ends needs-shell-escape and latexmk nev
   expect(result.status).toBe("needs-shell-escape");
   expect(result.problems[0]).toMatchObject({ severity: "error", file: "main.tex", message: expect.stringContaining("minted") });
   const args = (await runs()).flat();
-  expect(args.some((arg) => /shell.?escape|write18/i.test(arg))).toBe(false);
+  expect(args.some((arg) => /(?<!no-)shell.?escape|write18/i.test(arg))).toBe(false);
   expect(h.tex.installMissing).not.toHaveBeenCalled();
 });
 

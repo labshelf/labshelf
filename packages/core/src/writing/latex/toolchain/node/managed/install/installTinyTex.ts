@@ -1,16 +1,16 @@
-// Installs the latest TinyTeX-1 for this user into <texRoot>/tinytex, without admin rights.
+// Installs the pinned TinyTeX-1 for this user into <texRoot>/tinytex, without admin rights.
 import { execFile } from "node:child_process";
 import { mkdir, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
 import { downloadVerified } from "../../index.js";
+import { tinyTexAsset, type TinyTexAsset } from "../../../index.js";
 
 import { managedTexRoot } from "../texLayout.js";
 import { runTexTool, TEX_MODULE } from "../runTexTool.js";
 import type { TexInstallDeps, TexInstallRun } from "./installTypes.js";
 import { singleTopDir } from "./singleTopDir.js";
-import { latestTinyTexAsset, type TinyTexAsset } from "./tinyTexAsset.js";
 import { withStagingDir } from "./stagingDir.js";
 
 const execFileAsync = promisify(execFile);
@@ -23,7 +23,7 @@ async function download(deps: TexInstallDeps, asset: TinyTexAsset): Promise<Buff
     return bytes;
   } catch (error) {
     await deps.logger.log("WARN", TEX_MODULE, "TinyTeX download failed its HTTP or checksum check", {
-      url: asset.url, error: error instanceof Error ? error.message : String(error),
+      asset: asset.name, url: asset.url, expected: asset.sha256, error: error instanceof Error ? error.message : String(error),
     });
     throw error;
   }
@@ -45,7 +45,8 @@ async function unpack(deps: TexInstallDeps, archive: string, tree: string): Prom
 
 export async function installTinyTex(deps: TexInstallDeps, run: TexInstallRun): Promise<void> {
   run.onProgress(null);
-  const asset = await latestTinyTexAsset(deps.fetchImpl, process.platform, process.arch);
+  const asset = tinyTexAsset(process.platform, process.arch);
+  if (!asset) { throw new Error(`TinyTeX has no build for ${process.platform}-${process.arch}`); }
   const bytes = await download(deps, asset);
   const target = managedTexRoot(run.texRoot, "tinytex");
   await withStagingDir(run.texRoot, "tinytex", async (staging) => {

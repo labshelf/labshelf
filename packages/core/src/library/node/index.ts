@@ -1,5 +1,6 @@
 /** Exports the library's Node file-system adapters for the core ports. */
 export { writeFileAtomic, writeSyncedFile } from "./atomicWrite.js";
+export { ensurePrivateDir, isGroupOrOtherWritable, PRIVATE_DIR_MODE, PRIVATE_FILE_MODE } from "./privateDir.js";
 export { readOptionalFile } from "./readOptionalFile.js";
 export { cacheDir } from "./cacheDirectory.js";
 export { resolveConflictCopy } from "../conflicts/node/index.js";

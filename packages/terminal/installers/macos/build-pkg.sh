@@ -23,4 +23,4 @@ pkgbuild --root "$work/payload" \
   --scripts "$work/scripts" "$work/component.pkg"
 
 sed -e "s/VERSION/$version/" -e "s/HOST_ARCH/$arch/" "$here/distribution.xml" > "$work/distribution.xml"
-productbuild --distribution "$work/distribution.xml" --package-path "$work" "$out/labshelf-helper-macos.pkg"
+productbuild --distribution "$work/distribution.xml" --resources "$here/resources" --package-path "$work" "$out/labshelf-helper-macos.pkg"

@@ -5,6 +5,7 @@ import * as path from "node:path";
 import { readOptionalFile } from "../../../../../library/node/index.js";
 import type { ILogger } from "../../../../../ports/index.js";
 import type { LatexToolchain } from "../../../toolchain/index.js";
+import { NO_SHELL_ESCAPE, TEX_FILE_ACCESS_ENV } from "../../texSandbox.js";
 import { withToolchainOnPath } from "../../../toolchain/node/system/index.js";
 import { BuildCancelled, runCancellable } from "../runCancellable.js";
 import { preambleHash } from "./preambleHash.js";
@@ -37,7 +38,7 @@ const failedHashes = new Set<string>();
 // from the command line; the hook reads it from a file instead, found through the run's `-output-directory`.
 function formatArgs(name: string, dir: string, mainFile: string): string[] {
   return [
-    "-ini", "-interaction=nonstopmode", `-jobname=${name}`, `-output-directory=${dir}`, "&pdflatex",
+    "-ini", NO_SHELL_ESCAPE, "-interaction=nonstopmode", `-jobname=${name}`, `-output-directory=${dir}`, "&pdflatex",
     `\\AddToHook{begindocument/before}{\\InputIfFileExists{${INCLUDE_ONLY_FILE}}{}{}}\\input mylatexformat.ltx`, `"${mainFile}"`,
   ];
 }
@@ -54,7 +55,7 @@ async function compileFormat(request: FormatRequest, name: string, dir: string):
   const started = Date.now();
   await fs.mkdir(dir, { recursive: true });
   const outcome = await runCancellable("etex", formatArgs(name, dir, path.basename(mainPath)), path.dirname(mainPath), request.signal, {
-    env: withToolchainOnPath(toolchain, process.env),
+    env: { ...withToolchainOnPath(toolchain, process.env), ...TEX_FILE_ACCESS_ENV },
   }).catch(async (error: unknown) => {
     if (error instanceof BuildCancelled) { return undefined; }
     await logger.error(MODULE, error, { executable: "etex", main: mainPath });

@@ -1,6 +1,8 @@
 // Exports what an app needs to run LabShelf Helper in a Node process: the host loop, its building blocks, its data folder and its logger.
 export { helperDataDir } from "./helperDataDir.js";
 export { createHelperLogger } from "./log/index.js";
+export type { HelperLogger } from "./log/index.js";
+export { assertHelperPrivatePaths } from "./privacy/index.js";
 export { runHelperHost } from "./runHelperHost.js";
 export type { HelperHostOptions } from "./runHelperHost.js";
 export { runHelperScriptHost } from "./runHelperScriptHost.js";

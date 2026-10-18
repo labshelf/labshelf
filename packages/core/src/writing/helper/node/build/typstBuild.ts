@@ -66,7 +66,7 @@ export async function runTypstBuild(job: TypstBuildJob): Promise<void> {
   await mkdir(path.dirname(outPdf), { recursive: true });
   await startServer(job);
   if (token.cancelled) { return reply(job, "cancelled"); }
-  const result = await exportTypst(binary, folder, message.main, outPdf, token);
+  const result = await exportTypst(binary, folder, dataDir, message.main, outPdf, token);
   if (result.status === "cancelled") { return reply(job, "cancelled"); }
   if (result.code === 0) {
     return sendPages(message.id, outPdf, scanTinymistDiagnostics(result.stderr, folder), job.sent, job.send);

@@ -3,5 +3,7 @@ export { ensureTinymistBinary } from "./ensureTinymistBinary.js";
 export type { ReportInstall } from "./ensureTinymistBinary.js";
 export { createLspHandler } from "./lspHandler.js";
 export { createLspServers } from "./lspServers.js";
+export { tinymistEnv } from "./tinymistEnv.js";
+export type { FontHost } from "./tinymistEnv.js";
 export type { LspServers, LspServersOptions } from "./lspServers.js";
 export type { LspChild, ManagedTinymist, SpawnLsp } from "./tinymistTypes.js";

@@ -1,12 +1,12 @@
 import { PassThrough } from "node:stream";
 
-import type { ILogger } from "../../../../../src/ports/index.js";
+import type { HelperLogger } from "../../../../../src/writing/helper/node/log/index.js";
 import { answerHello, createDispatcher, runHelperLoop, type HelloAnswer } from "../../../../../src/writing/helper/node/dispatch/index.js";
 import type { HelperSocket } from "../../../../../src/writing/helper/node/socket/index.js";
 import { createFrameWriter } from "../../../../../src/writing/helper/node/stdio/index.js";
 import { decodeFrames, encodeFrame } from "../stdio/frameCodec.js";
 
-const logger = { log: async () => undefined, error: async () => undefined } as unknown as ILogger;
+const logger = { log: async () => undefined, error: async () => undefined, redact: () => undefined } as unknown as HelperLogger;
 const hello = (id: string, origin = "chrome-extension://abcdefghijklmnop") => encodeFrame({ v: 2, id, type: "hello", extensionVersion: "0.2.0", origin });
 
 async function run(inputChunks: Buffer[]): Promise<Array<Record<string, unknown>>> {

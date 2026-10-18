@@ -15,6 +15,7 @@ export interface TinymistProcessOptions {
   binary: string;
   /** The working copy; also the project root Tinymist resolves paths against. */
   cwd: string;
+  env: Record<string, string>;
   projectId: string;
   spawn: SpawnLsp;
   logger: ILogger;
@@ -25,7 +26,7 @@ export interface TinymistProcessOptions {
 
 export function startTinymistProcess(options: TinymistProcessOptions): TinymistProcess {
   const { logger, projectId } = options;
-  const child = options.spawn(options.binary, ["lsp"], { cwd: options.cwd });
+  const child = options.spawn(options.binary, ["lsp"], { cwd: options.cwd, env: options.env });
   let stopped = false;
   let stderrTail = "";
   const parse = createLspFrameParser(options.onMessage, (reason) => {

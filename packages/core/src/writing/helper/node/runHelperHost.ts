@@ -3,10 +3,10 @@
 import { spawn } from "node:child_process";
 import * as os from "node:os";
 
-import type { ILogger } from "../../../ports/index.js";
 import type { HelperHost } from "../index.js";
 import { createManagedTinymist } from "../../typst/toolchain/node/index.js";
 import { createSharedTexProvider } from "../../latex/toolchain/node/managed/index.js";
+import type { HelperLogger } from "./log/index.js";
 import { createBuildHandlers } from "./build/index.js";
 import { createLspHandler, createLspServers } from "./lsp/index.js";
 import { answerHello, createDispatcher, runHelperLoop, type HelloAnswer } from "./dispatch/index.js";
@@ -17,7 +17,7 @@ import { createTexInstallHandlers } from "./tex/index.js";
 
 export interface HelperHostOptions {
   dataDir: string;
-  logger: ILogger;
+  logger: HelperLogger;
   helperVersion: string;
   /** The program running the loop, which `ready` names. */
   host: HelperHost;

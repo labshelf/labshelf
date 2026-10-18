@@ -2,8 +2,8 @@
 // CONTRACT: documents/contracts/helper.md#transport
 import { randomBytes } from "node:crypto";
 
-import type { ILogger } from "../../../../ports/index.js";
 import { PROTOCOL_VERSION, type HelperHost, type TexStatus, type ToHelperMessage } from "../../index.js";
+import type { HelperLogger } from "../log/index.js";
 import { EXTENSION_ORIGIN, startHelperSocket, type HelperSocket, type HelperSocketOptions } from "../socket/index.js";
 import type { HelperSend } from "./handlerTypes.js";
 
@@ -18,7 +18,7 @@ export interface HelloOptions {
   texStatus(): Promise<TexStatus>;
   /** The caller origin Chrome passed on the command line, when it did. */
   callerOrigin?: string | undefined;
-  logger: ILogger;
+  logger: HelperLogger;
   handle: HelperSocketOptions["handle"];
 }
 
@@ -32,6 +32,7 @@ export async function answerHello(message: HelloMessage, send: HelperSend, optio
     return undefined;
   }
   const token = randomBytes(32).toString("base64url");
+  logger.redact(token);
   const socket = await startHelperSocket({ token, origin, callerOrigin: options.callerOrigin, logger, handle: options.handle });
   send({ v: PROTOCOL_VERSION, id, type: "ready", protocol: PROTOCOL_VERSION, helperVersion: options.helperVersion, host: options.host, tex: await options.texStatus() });
   send({ v: PROTOCOL_VERSION, id, type: "session", port: socket.port, token });

@@ -7,3 +7,4 @@
 - 2026-10-18 — session 3 done: one-pass preview, \includeonly of the edited chapter, pdflatex preamble .fmt (preview 240 ms vs full 991 ms)
 - 2026-10-18 — session 5 done: helper protocol v2 (native hello → loopback socket, edits, changed pages), browser client, review fixes; real browser build run deferred to session 9
 - 2026-10-18 — session 6 done: managed Tinymist 0.15.10 (own lock in the shared tools folder), helper LSP relay and Typst compile, VS Code language server; A11 not run in a VS Code host
+- 2026-10-18 — session 7 done: TeX -no-shell-escape/openout_any=p/-norc, Tinymist confined (no raw file:, no page config, minimal env), pinned TinyTeX, signed install-tl, private modes, redaction, --uninstall, signed Windows releases required; Q1: macOS stays ad-hoc

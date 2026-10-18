@@ -35,6 +35,12 @@ posixOnly("runLatexBuild", () => {
     expect((await fs.readdir(request.projectFolder)).sort()).toEqual(["chapters", "main.pdf", "main.tex"]);
   });
 
+  it("runs latexmk with TeX file access limited to the project and output folders", async () => {
+    const request = await setup('echo "$openout_any $openin_any" > "$OUT/env"; echo "%PDF" > "$OUT/main.pdf"');
+    await runLatexBuild(request);
+    expect(await fs.readFile(path.join(request.outDir, "env"), "utf8")).toBe("p p\n");
+  });
+
   it("keeps the previous PDF on failure and places the error in the \\input file the log names", async () => {
     const request = await setup(writesLog(["(main.tex (chapters/intro.tex", "! Undefined control sequence.", "l.3 Another \\badmacro"]));
     await fs.writeFile(path.join(request.projectFolder, "main.pdf"), "old");

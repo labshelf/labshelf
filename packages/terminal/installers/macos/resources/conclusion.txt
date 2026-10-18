@@ -1,0 +1,7 @@
+LabShelf Helper is installed and registered with your browsers.
+
+To remove it later, open Terminal and run:
+
+  "$HOME/Library/Application Support/LabShelf Helper/bin/labshelf-helper" --uninstall
+
+--uninstall unregisters the helper and the library bridge and deletes the helper's bin folder. Your projects and the shared managed tools folder stay.

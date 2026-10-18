@@ -1,13 +1,15 @@
-// Downloads the TeX Live network installer from a CTAN mirror and checks it against that mirror's SHA-512.
+// Downloads the TeX Live network installer from a CTAN mirror and checks it against that mirror's signed SHA-512.
 import { createHash } from "node:crypto";
 
 import type { ILogger } from "../../../../../../ports/index.js";
 import type { FetchLike } from "../../index.js";
 
+import { verifyDetachedSignature } from "../../openPgp/index.js";
 import { TEX_MODULE } from "../runTexTool.js";
+import { TEX_LIVE_SIGNING_KEY } from "./texLiveKey.js";
 
 const TLNET = "https://mirror.ctan.org/systems/texlive/tlnet/";
-const SHA512 = /^([0-9a-f]{128})\b/i;
+const SHA512_LINE = /^([0-9a-f]{128})\s+\*?(\S+)$/im;
 
 export interface TexLiveInstaller {
   /** The archive file name, e.g. `install-tl-unx.tar.gz`. */
@@ -27,11 +29,18 @@ async function fetchOk(fetchImpl: FetchLike, url: string): Promise<Response> {
 }
 
 // TRAP: mirror.ctan.org redirects to a random mirror; the checksum must come from the mirror that served the bytes.
-async function expectedSha512(fetchImpl: FetchLike, mirrorUrl: string): Promise<string> {
+async function expectedSha512(fetchImpl: FetchLike, logger: ILogger, mirrorUrl: string, asset: string): Promise<string> {
   const checksumUrl = `${mirrorUrl}.sha512`;
-  const digest = SHA512.exec((await (await fetchOk(fetchImpl, checksumUrl)).text()).trim())?.[1];
-  if (!digest) { throw new Error(`No SHA-512 found in ${checksumUrl}`); }
-  return digest.toLowerCase();
+  const checksum = Buffer.from(await (await fetchOk(fetchImpl, checksumUrl)).arrayBuffer());
+  const signature = await (await fetchOk(fetchImpl, `${checksumUrl}.asc`)).text();
+  if (!verifyDetachedSignature(checksum, signature, TEX_LIVE_SIGNING_KEY)) {
+    await logger.log("WARN", TEX_MODULE, "TeX Live checksum signature does not match the pinned key", { asset, url: checksumUrl });
+    throw new Error(`The OpenPGP signature of ${checksumUrl} does not match the pinned TeX Live key`);
+  }
+  const match = SHA512_LINE.exec(checksum.toString("utf8"));
+  if (!match?.[1]) { throw new Error(`No SHA-512 found in ${checksumUrl}`); }
+  if (match[2] !== asset) { throw new Error(`${checksumUrl} is the checksum of ${match[2]}, not ${asset}`); }
+  return match[1].toLowerCase();
 }
 
 export async function downloadTexLiveInstaller(fetchImpl: FetchLike, logger: ILogger, platform: string): Promise<TexLiveInstaller> {
@@ -42,10 +51,10 @@ export async function downloadTexLiveInstaller(fetchImpl: FetchLike, logger: ILo
   const mirrorUrl = response.url || url;
   if (!mirrorUrl.startsWith("https://")) { throw new Error(`CTAN redirected the TeX Live installer to a non-HTTPS mirror: ${mirrorUrl}`); }
   const bytes = Buffer.from(await response.arrayBuffer());
-  const expected = await expectedSha512(fetchImpl, mirrorUrl);
+  const expected = await expectedSha512(fetchImpl, logger, mirrorUrl, name);
   const actual = createHash("sha512").update(bytes).digest("hex");
   if (actual !== expected) {
-    await logger.log("WARN", TEX_MODULE, "TeX Live installer checksum mismatch", { url: mirrorUrl, expected, actual });
+    await logger.log("WARN", TEX_MODULE, "TeX Live installer checksum mismatch", { asset: name, url: mirrorUrl, expected, actual });
     throw new Error(`Checksum mismatch for ${mirrorUrl}: expected ${expected}, got ${actual}`);
   }
   await logger.log("INFO", TEX_MODULE, "TeX Live installer checksum ok", { url: mirrorUrl, bytes: bytes.length });

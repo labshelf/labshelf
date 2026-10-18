@@ -5,20 +5,21 @@ import * as path from "node:path";
 
 /**
  * Writes a file atomically: temp file in tmpDir (same volume as the library), then rename over the target.
+ * `mode` is the new file's permission bits (POSIX).
  */
-export async function writeFileAtomic(target: string, content: string | Uint8Array, tmpDir?: string): Promise<void> {
+export async function writeFileAtomic(target: string, content: string | Uint8Array, tmpDir?: string, mode?: number): Promise<void> {
   await fs.mkdir(path.dirname(target), { recursive: true });
   const dir = tmpDir ?? path.dirname(target);
   await fs.mkdir(dir, { recursive: true });
   const tmp = path.join(dir, `.${path.basename(target)}.${randomUUID()}.tmp`);
   try {
-    await writeSyncedFile(tmp, content);
+    await writeSyncedFile(tmp, content, mode);
     await fs.rename(tmp, target);
   } catch (error) {
     await fs.rm(tmp, { force: true }).catch(() => undefined);
     // A temp dir on another volume (rename EXDEV) falls back to a direct write.
     if ((error as NodeJS.ErrnoException).code === "EXDEV") {
-      await fs.writeFile(target, content);
+      await fs.writeFile(target, content, mode === undefined ? undefined : { mode });
       return;
     }
     throw error;
@@ -26,8 +27,8 @@ export async function writeFileAtomic(target: string, content: string | Uint8Arr
 }
 
 /** Writes and fsyncs a temp file, so a rename over the target never exposes an empty file after a crash. */
-export async function writeSyncedFile(file: string, content: string | Uint8Array): Promise<void> {
-  const handle = await fs.open(file, "w");
+export async function writeSyncedFile(file: string, content: string | Uint8Array, mode?: number): Promise<void> {
+  const handle = await fs.open(file, "w", mode);
   try {
     await handle.writeFile(content);
     await handle.sync();

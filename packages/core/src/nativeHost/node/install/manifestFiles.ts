@@ -1,7 +1,7 @@
 /** Registers, inspects and removes one browser's host manifest and, on Windows, the HKCU key that points at it. */
 import { promises as fs } from "node:fs";
 
-import { writeFileAtomic } from "../../../library/node/index.js";
+import { PRIVATE_FILE_MODE, writeFileAtomic } from "../../../library/node/index.js";
 import type { NativeHostSpec } from "../../hostSpecs.js";
 import { buildHostManifest, type BrowserTarget } from "../layout/index.js";
 import { requireRegistry, type NativeHostEnv } from "../nativeHostEnv.js";
@@ -11,7 +11,7 @@ export type ManifestState = { kind: "missing" } | { kind: "unreadable" } | { kin
 
 export async function writeManifest(env: NativeHostEnv, spec: NativeHostSpec, target: BrowserTarget, executablePath: string): Promise<void> {
   const manifest = buildHostManifest(spec, target.family, executablePath);
-  await writeFileAtomic(target.manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  await writeFileAtomic(target.manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, undefined, env.platform === "win32" ? undefined : PRIVATE_FILE_MODE);
   if (!target.registryKey) return;
   const args = ["add", target.registryKey, "/ve", "/t", "REG_SZ", "/d", target.manifestPath, "/f"];
   const { exitCode, stderr } = await requireRegistry(env)(args);

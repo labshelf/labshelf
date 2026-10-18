@@ -1,6 +1,7 @@
 /** Builds the command line that compiles a LaTeX main file with every output file in one build folder. */
 
 import type { LatexToolchain } from "../toolchain/index.js";
+import { NO_SHELL_ESCAPE, TEX_FILE_ACCESS_ENV } from "./texSandbox.js";
 
 export interface BuildCommand {
   executable: string;
@@ -29,11 +30,17 @@ export function latexBuildCommand(toolchain: LatexToolchain, mainFile: string, o
     ...(partial.force || includeOnly !== undefined ? ["-g"] : []),
     ...(includeOnly !== undefined ? [`-usepretex=\\includeonly{${includeOnly}}`] : []),
   ];
+  const engine = toolchain.engine;
   return {
     executable: toolchain.executable,
     args: [
-      LATEXMK_ENGINE[toolchain.engine], "-interaction=nonstopmode", "-file-line-error", "-synctex=1",
-      `-auxdir=${outDir}`, `-outdir=${outDir}`, ...partialArgs, mainFile,
+      // PLATFORM: latexmk runs a project `latexmkrc` as Perl; `-norc` skips every rc file, and all settings are on this command line.
+      "-norc", LATEXMK_ENGINE[engine], "-interaction=nonstopmode", "-file-line-error", "-synctex=1",
+      `-auxdir=${outDir}`, `-outdir=${outDir}`,
+      // PLATFORM: latexmk has no flag for the engine's options; its command string is set from Perl.
+      "-e", `$${engine} = '${engine} ${NO_SHELL_ESCAPE} %O %S';`,
+      ...partialArgs, mainFile,
     ],
+    env: TEX_FILE_ACCESS_ENV,
   };
 }

@@ -27,6 +27,8 @@ tinytex-packages.txt    the TinyTeX package list written before a rollover reins
 
 A `tinytex/` or `texlive/` tree counts as installed once it has a `bin/<arch>/` folder; installers build the tree in a staging folder and move it in only when it is complete. When both exist, `texlive/` is used. The release year comes from the tree's `release-texlive.txt`.
 
+Downloads: TinyTeX is pinned by version and SHA-256 in core. install-tl is checked against CTAN's SHA-512 file, and that file against its OpenPGP signature by the TeX Live key pinned in core. A download that fails either check is not installed.
+
 ## Lock
 
 Only LabShelf apps change a tool's subfolder, and only while they hold its `.lock`. An app creates the file exclusively, with the JSON `{ "pid": <number>, "operation": "<what it does>", "startedAt": "<ISO time>" }`, and removes it when the change ends, whether it succeeded or failed.
