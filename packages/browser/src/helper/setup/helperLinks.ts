@@ -15,4 +15,4 @@ export function helperDownloadUrl(os: string): string {
 }
 
 /** The manual section that explains how to open the unsigned macOS installer. */
-export const MACOS_GUIDE_URL = "https://github.com/labshelf/labshelf#helper-macos";
+export const MACOS_GUIDE_URL = "https://labshelf.github.io/labshelf/#helper-macos";

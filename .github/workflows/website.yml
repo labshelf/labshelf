@@ -1,0 +1,48 @@
+# Builds the website and publishes it to GitHub Pages on every push to main that touches it.
+name: Website
+
+on:
+  push:
+    branches: [main]
+    paths: ["website/**", "packages/core/**", ".github/workflows/website.yml"]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @labshelf/website build
+      # Only what the browser loads is published; sources, tests and build scripts stay in the repository.
+      - run: rsync -a --exclude node_modules --exclude /__tests__ --exclude /build --exclude /src --exclude /tools --exclude '/*.json' --exclude '/*.cjs' --exclude '*.map' website/ _site/
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
