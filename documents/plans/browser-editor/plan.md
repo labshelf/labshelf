@@ -50,6 +50,8 @@ Sessions run in order. Every session after the spike adds dependencies or change
 | Session | File | Deliverable | Owns | Runs with |
 |---|---|---|---|---|
 | 1 | [sessions/01.md](sessions/01.md) | Spike: Q1 answered with numbers | `packages/browser/src/editor-spike/` on a throwaway branch, `documents/plans/browser-editor/log.md` (append only) | alone |
+| 2a | [sessions/02a.md](sessions/02a.md) | Project reads and writes run over `LibraryFileSystem` | `packages/core/src/writing/`, `packages/core/src/ports/libraryFileSystem.ts`, `packages/browser/src/storage/projects/` (move out), importers | alone |
+| 2b | [sessions/02b.md](sessions/02b.md) | `createProjectData` factory; device directories through `HostAdapters` | `packages/core/src/writing/projectData/`, `packages/vscode/src/activation/`, `packages/vscode/src/writing/` (imports) | alone |
 | 2 | [sessions/02.md](sessions/02.md) | The VS Code extension runs on the web | `packages/vscode/` (manifest, build, composition root), `packages/vscode/__tests__/` | alone |
 | 3 | [sessions/03.md](sessions/03.md) | The editor page: A1, A2, A3, A6, A7 | `packages/browser/src/editor/`, `packages/browser/__tests__/editor/`, browser manifest and build | alone |
 | 4 | [sessions/04.md](sessions/04.md) | Collaboration and comments: A4, A5 | `packages/browser/src/editor/collab/` | alone |
