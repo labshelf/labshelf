@@ -32,6 +32,7 @@ Setup:
   conflicts                        list and resolve conflicting copies left by a sync tool
   where                            print the library, config and log paths
   doctor                           check the setup
+  bridge install|status|uninstall  connect the browser extension to the library (installs the native messaging host)
 
 Options:
   -L, --library <path>             use this library (else LABSHELF_LIBRARY, else ~/.config/labshelf/config.json)

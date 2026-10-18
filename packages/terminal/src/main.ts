@@ -2,14 +2,15 @@
 // A first run without a configured library asks for its folder and saves it in the shared config file.
 import * as path from "node:path";
 import * as os from "node:os";
+import { fileURLToPath } from "node:url";
 
 import { Logger, PAPERS_DIR, RESEARCH_DIR, errorMessage, syncGuide } from "@labshelf/core";
-import { FileLogSink, deviceLocalLayout, sharedConfigPath, updateSharedConfig } from "@labshelf/core/node";
+import { FileLogSink, bridgeLogPath, deviceLocalLayout, sharedConfigPath, systemBridgeEnv, updateSharedConfig } from "@labshelf/core/node";
 
 import { loadTerminalConfig, resolveLibraryRoot, type TerminalConfig } from "./app/index.js";
 import { openLibrary, type AppContext } from "./app/index.js";
 import { parseArgs, stringFlag, type ParsedArgs } from "./cli/index.js";
-import { runDoctor, runLibraryCommand, USAGE, UsageError, type Output } from "./cli/index.js";
+import { runBridgeCommand, runDoctor, runLibraryCommand, USAGE, UsageError, type Output } from "./cli/index.js";
 import { dumpFrame, promptForLibrary, runConflicts, runMove, syncGuideText, withPrompt } from "./cli/index.js";
 import { ensureLibraryStructure, LibraryRoot, looksLikeLibrary } from "./library/index.js";
 import { expandHome } from "./platform/index.js";
@@ -134,6 +135,11 @@ async function runLibraryFreeCommand(
     const root = resolveLibraryRoot(libraryFlag, process.env, config).root;
     const progress = process.stderr.isTTY ? (text: string) => process.stderr.write(text) : () => undefined;
     return runCommand(() => runMove(args.positionals, root, io, { logger: fileLogger, env: process.env, progress }));
+  }
+  if (args.command === "bridge") {
+    const env = systemBridgeEnv(new Logger([new FileLogSink(bridgeLogPath())], { onSinkError: () => undefined }));
+    const launch = { nodePath: process.execPath, hostScript: fileURLToPath(new URL("./bridgeHost.js", import.meta.url)), electronRunAsNode: false };
+    return runCommand(() => runBridgeCommand(args.positionals[0], io, env, launch));
   }
   if (args.command === "doctor") {
     const resolution = resolveLibraryRoot(libraryFlag, process.env, config);

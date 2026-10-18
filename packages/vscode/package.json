@@ -176,6 +176,11 @@
         "category": "LabShelf"
       },
       {
+        "command": "labshelf.connectBrowser",
+        "title": "Connect the Browser",
+        "category": "LabShelf"
+      },
+      {
         "command": "labshelf.resolveConflicts",
         "title": "Resolve Conflicting Copies",
         "category": "LabShelf"

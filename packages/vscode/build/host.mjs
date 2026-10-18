@@ -1,4 +1,4 @@
-/** Bundles the extension host into out/extension.js. @labshelf/* packages are bundled from source; every other dependency stays external and loads from node_modules, because pdf.js, Tesseract and the native canvas locate their own data files, workers and binaries next to themselves. */
+/** Bundles the extension host into out/extension.js and the browser bridge host into out/bridgeHost.js. @labshelf/* packages are bundled from source; every other dependency stays external and loads from node_modules, because pdf.js, Tesseract and the native canvas locate their own data files, workers and binaries next to themselves. */
 import { build, context } from "esbuild";
 import { readFile, rm } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -32,13 +32,23 @@ const options = {
   logLevel: "info",
 };
 
+// The browser starts this file through Native Messaging; it loads nothing from node_modules.
+const bridgeHostOptions = {
+  ...options,
+  entryPoints: [resolve(pkgRoot, "../core/src/bridge/node/hostEntry.ts")],
+  outfile: resolve(outDir, "bridgeHost.js"),
+  external: [],
+};
+
 if (watch) {
   await writeArcMarks(outDir);
-  const ctx = await context(options);
-  await ctx.watch();
+  for (const entry of [options, bridgeHostOptions]) {
+    const ctx = await context(entry);
+    await ctx.watch();
+  }
   console.log(`[labshelf-host] watching → ${options.outfile}`);
 } else {
   await rm(outDir, { recursive: true, force: true });
-  await build(options);
+  await Promise.all([build(options), build(bridgeHostOptions)]);
   await writeArcMarks(outDir);
 }

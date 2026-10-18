@@ -16,11 +16,13 @@
     },
     "packages/core": {
       "entry": [
+        "src/bridge/node/hostEntry.ts",
         "__tests__/**/*.ts"
       ],
       "ignoreBinaries": [
         "pdflatex",
-        "pdftotext"
+        "pdftotext",
+        "reg"
       ],
       "project": [
         "src/**/*.ts",

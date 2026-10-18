@@ -23,6 +23,7 @@ import {
   registerSettingsMenu,
   registerPanelCommands,
   registerWritingView,
+  registerBridgeCommand,
 } from "./activation/index.js";
 import { chooseLibraryRoot, ConflictHandling, offerLibraryMove, registerConflictCommand, registerSyncGuideCommand } from "./library/index.js";
 import { registerNodeWriting } from "./writing/node/index.js";
@@ -69,6 +70,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   registerLibraryCommands({ context, controller, folderHost, librarySidebar });
   registerSyncGuideCommand(context, () => controller.currentServices()?.logger);
+  registerBridgeCommand(context, adapters);
 
   registerCommands(context, requireServices);
   registerAiCommands(context, () => aiService);

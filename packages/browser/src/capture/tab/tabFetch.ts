@@ -2,7 +2,7 @@
  * Fetches a URL from inside a tab: same origin, same cookies, same bot clearance as the page the user is looking at.
  * The bytes come back base64-encoded because script results must be JSON.
  */
-import { isPdfBytes } from "@labshelf/core";
+import { base64ToBytes, isPdfBytes } from "@labshelf/core";
 import type { InTabAnswer } from "@labshelf/core";
 import { scriptingApi } from "./scripting";
 
@@ -28,9 +28,7 @@ export async function fetchInTab(tabId: number, url: string): Promise<InTabAnswe
     if (!result) return undefined;
     if (result.html !== undefined) return { finalUrl: result.url, html: result.html };
     if (!result.b64) return undefined;
-    const binary = atob(result.b64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const bytes = base64ToBytes(result.b64);
     return isPdfBytes(bytes) ? { finalUrl: result.url, pdf: { bytes, url: result.url } } : undefined;
   } catch {
     // A tab that cannot be scripted (a browser page, a closed tab) is no source; the caller moves on.
@@ -38,7 +36,7 @@ export async function fetchInTab(tabId: number, url: string): Promise<InTabAnswe
   }
 }
 
-// Runs in the tab (serialized): must not reference anything outside itself.
+// TRAP: runs in the tab (serialized), so it must not reference anything outside itself, core's base64 included.
 async function inTabFetch(url: string, maxHtml: number): Promise<InTabResult | null> {
   try {
     const res = await fetch(url, { credentials: "include" });

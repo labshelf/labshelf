@@ -67,5 +67,6 @@ describe("ChunkAssembler", () => {
     const big = btoa("x".repeat(CHUNK_MAX_BYTES + 1));
     expect(new ChunkAssembler().add({ index: 0, count: 1, data: big })).toEqual({ status: "rejected", reason: "invalid-chunk" });
     expect(new ChunkAssembler().add({ index: 0, count: 1, data: "@@@" })).toEqual({ status: "rejected", reason: "invalid-chunk" });
+    expect(new ChunkAssembler().add({ index: 0, count: 1, data: "AB==" })).toEqual({ status: "rejected", reason: "invalid-chunk" });
   });
 });

@@ -4,3 +4,4 @@ export { registerLibraryCommands } from "./registerLibraryCommands.js";
 export { registerSettingsMenu } from "./registerSettingsMenu.js";
 export { registerPanelCommands } from "./registerPanelCommands.js";
 export { registerWritingView } from "./registerWritingView.js";
+export { registerBridgeCommand } from "./registerBridgeCommand.js";

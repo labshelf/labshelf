@@ -7,4 +7,5 @@ export {
   registerSettingsMenu,
   registerPanelCommands,
   registerWritingView,
+  registerBridgeCommand,
 } from "./registration/index.js";

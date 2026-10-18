@@ -25,3 +25,4 @@ export * from "../writing/project/export/node/index.js";
 export * from "../github/index.js";
 export * from "../writing/allProjects/node/index.js";
 export * from "../writing/merge/node/index.js";
+export * from "../bridge/node/index.js";
