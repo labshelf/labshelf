@@ -36,10 +36,22 @@ const download = (label: string, actions: SetupActions): HTMLButtonElement =>
 const retry = (label: string, actions: SetupActions): HTMLButtonElement =>
   actionButton({ label, icon: "refresh", primary: true, onClick: actions.retry });
 
+const WHAT_IT_IS = "LabShelf Helper is a small program that runs on your computer. A browser cannot run TeX, so LabShelf sends your "
+  + "LaTeX project to the helper, which compiles it with a TeX distribution on this computer and sends back the PDF. Your files "
+  + "never leave this computer. Typst projects compile in the page and do not need it.";
+
+function installSteps(isMac: boolean): HTMLElement {
+  const steps = [
+    "Download LabShelf Helper and run the installer.",
+    isMac ? "Open it once. macOS asks you to confirm an app from the internet; the guide below shows how." : undefined,
+    "Come back here. This section notices the helper on its own and offers to install TeX if this computer has none.",
+  ];
+  return el("ol", { class: "setting-desc" }, ...steps.map((step) => step && el("li", { text: step })));
+}
+
 function notInstalled(isMac: boolean, actions: SetupActions): SetupView {
-  const controls: Node[] = [download("Download LabShelf Helper", actions)];
+  const controls: Node[] = [el("p", { class: "setting-desc", text: WHAT_IT_IS }), installSteps(isMac), download("Download LabShelf Helper", actions)];
   if (isMac) { controls.push(actionButton({ label: "How to open it on macOS", icon: "external", onClick: actions.openMacosGuide })); }
-  controls.push(el("p", { class: "setting-desc", text: "This section updates when the helper starts." }));
   return { text: "LabShelf Helper is not installed on this computer.", tone: "idle", controls };
 }
 
