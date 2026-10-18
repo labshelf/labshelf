@@ -2,4 +2,5 @@
 export { mountSourceBanner } from "./sourceBanner";
 export { mountMoveOffer } from "./moveOffer";
 export { recheckSource } from "./recheckSource";
+export { chooseLibraryFolder } from "./chooseLibraryFolder";
 export { sourceReason } from "./sourceReason";

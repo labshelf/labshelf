@@ -30,7 +30,7 @@ describe("library source choice", () => {
 
   it.each([
     ["not-installed", (host: FakeBridgeHost) => { host.missingReason = "Specified native messaging host not found."; }],
-    ["protocol-mismatch", (host: FakeBridgeHost) => { host.protocol = 2; }],
+    ["protocol-mismatch", (host: FakeBridgeHost) => { host.protocol = 1; }],
     ["no-library", (host: FakeBridgeHost) => { host.libraryRoot = undefined; }],
   ])("falls back to browser storage with reason %s", async (reason, configure) => {
     const { fileSystem, getLibrarySource, hosts } = setup(configure);

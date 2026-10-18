@@ -10,6 +10,8 @@ describe("parseBridgeRequest", () => {
     expect(parseBridgeRequest({ id: 3, op: "chunk", data: "AA==" })).toEqual({ id: 3, op: "chunk", data: "AA==" });
     expect(parseBridgeRequest({ id: 4, op: "commit", size: 0 })).toEqual({ id: 4, op: "commit", size: 0 });
     expect(parseBridgeRequest({ id: 5, op: "listDir", path: "" })).toEqual({ id: 5, op: "listDir", path: "" });
+    expect(parseBridgeRequest({ id: 7, op: "setLibrary", root: "/Users/you/LabShelf" })).toEqual({ id: 7, op: "setLibrary", root: "/Users/you/LabShelf" });
+    expect(parseBridgeRequest({ id: 8, op: "setLibrary", root: "C:\\Users\\you\\LabShelf" })).toMatchObject({ op: "setLibrary" });
     expect(parseBridgeRequest({ id: 6, op: "deleteDir", path: "papers/a" })).toEqual({ id: 6, op: "deleteDir", path: "papers/a" });
   });
 
@@ -21,6 +23,10 @@ describe("parseBridgeRequest", () => {
     ["non-string path", { id: 1, op: "readFile", path: 3 }],
     ["missing rename target", { id: 1, op: "rename", from: "a" }],
     ["not an object", "hello"],
+    ["setLibrary without a root", { id: 1, op: "setLibrary" }],
+    ["setLibrary with a non-string root", { id: 1, op: "setLibrary", root: 3 }],
+    ["setLibrary with an empty root", { id: 1, op: "setLibrary", root: "" }],
+    ["setLibrary with a relative root", { id: 1, op: "setLibrary", root: "LabShelf" }],
     ["commit without size", { id: 1, op: "commit" }],
     ["commit with a negative size", { id: 1, op: "commit", size: -1 }],
     ["commit with a fractional size", { id: 1, op: "commit", size: 1.5 }],

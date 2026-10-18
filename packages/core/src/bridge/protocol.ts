@@ -2,7 +2,7 @@
 import type { LocalStat } from "../ports/index.js";
 
 /** The protocol major; both sides refuse any other value. */
-export const BRIDGE_PROTOCOL = 1;
+export const BRIDGE_PROTOCOL = 2;
 
 /** The Native Messaging host name; Chrome requires lowercase reverse-DNS. */
 export const BRIDGE_HOST_NAME = "app.labshelf.bridge";
@@ -20,6 +20,8 @@ export type BridgeRequest =
   | { id: number; op: "hello"; protocol: number }
   | { id: number; op: "listDir" | "stat" | "readFile" | "writeFile" | "deleteFile" | "deleteDir" | "ensureDir"; path: string }
   | { id: number; op: "rename"; from: string; to: string }
+  /** `root` is an absolute path; only a host that serves no library accepts it. */
+  | { id: number; op: "setLibrary"; root: string }
   | { id: number; op: "chunk"; data: string }
   /** `size` is the total byte count the browser sent; the host refuses the commit when the staged bytes differ. */
   | { id: number; op: "commit"; size: number };
@@ -35,6 +37,7 @@ export interface HelloResult {
 /** The result each op answers with; `chunk` has none because chunks are answered by the `commit`. */
 export interface BridgeResults {
   hello: HelloResult;
+  setLibrary: Pick<HelloResult, "libraryRoot" | "paperCount">;
   listDir: { names: string[] };
   stat: { stat: LocalStat | null };
   readFile: { done: true; size: number };

@@ -12,6 +12,8 @@ import { StagedWrites } from "./staging/index.js";
 export interface BridgeHostSessionDeps {
   /** Undefined when the shared config names no library. */
   files: LibraryFileOperations | undefined;
+  /** Checks the folder, records it in the shared config and starts serving it; refuses with `noLibrary`. */
+  openLibrary(root: string): Promise<LibraryFileOperations>;
   send(message: HostMessage): Promise<void>;
   logger: ILogger;
   /** Stops reading the connection; called after refusing a hello of another protocol version. */
@@ -26,11 +28,14 @@ export class BridgeHostSession {
   private queue: Promise<void> = Promise.resolve();
   /** Writes opened by `writeFile` and not yet committed, by request id. */
   private readonly staged = new StagedWrites();
+  private files: LibraryFileOperations | undefined;
   private greeted = false;
   /** Set when a hello of another protocol version arrives; later messages are dropped. */
   private refused = false;
 
-  constructor(private readonly deps: BridgeHostSessionDeps) {}
+  constructor(private readonly deps: BridgeHostSessionDeps) {
+    this.files = deps.files;
+  }
 
   // INVARIANT: requests run one at a time, so a write's chunks and commit apply in the order they arrived.
   receive(message: unknown): Promise<void> {
@@ -75,7 +80,8 @@ export class BridgeHostSession {
   private async dispatch(request: BridgeRequest): Promise<Result | undefined> {
     if (request.op === "hello") this.greet(request.protocol);
     else if (!this.greeted) throw new BridgeError("protocol", `Send hello before ${request.op}`);
-    const files = this.deps.files;
+    if (request.op === "setLibrary") return this.setLibrary(request.root);
+    const files = this.files;
     if (!files) throw new BridgeError("noLibrary", "No library folder is set up; open LabShelf in VS Code or the terminal first");
     switch (request.op) {
       case "hello": return { protocol: BRIDGE_PROTOCOL, libraryRoot: files.root, paperCount: await files.paperCount() };
@@ -93,6 +99,15 @@ export class BridgeHostSession {
       case "ensureDir": await files.ensureDir(request.path); return {};
       case "rename": await files.rename(request.from, request.to); return {};
     }
+  }
+
+  // CONTRACT: documents/contracts/bridge.md#messages
+  private async setLibrary(root: string): Promise<Result> {
+    if (this.files) throw new BridgeError("protocol", "A library is already set");
+    const files = await this.deps.openLibrary(root);
+    this.files = files;
+    await this.deps.logger.log("INFO", MODULE, "Library folder set by the browser", { libraryRoot: files.root });
+    return { libraryRoot: files.root, paperCount: await files.paperCount() };
   }
 
   private async streamFile(files: LibraryFileOperations, id: number, relative: string): Promise<Result> {

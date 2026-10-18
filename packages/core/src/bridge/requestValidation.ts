@@ -4,6 +4,9 @@ import { BRIDGE_PROTOCOL, type BridgeRequest } from "./protocol.js";
 
 const PATH_OPS = new Set(["listDir", "stat", "readFile", "writeFile", "deleteFile", "deleteDir", "ensureDir"]);
 
+// Runtime-neutral absolute-path check: POSIX root, drive letter or UNC.
+const ABSOLUTE_PATH = /^(\/|[A-Za-z]:[\\/]|\\\\)/;
+
 const refuse = (message: string): never => { throw new BridgeError("protocol", message); };
 
 function stringField(value: Record<string, unknown>, key: string): string {
@@ -32,6 +35,10 @@ export function parseBridgeRequest(value: unknown): BridgeRequest {
       return { id, op, protocol: typeof protocol === "number" ? protocol : refuse("Op \"hello\" needs a number \"protocol\"") };
     }
     case "rename": return { id, op, from: stringField(message, "from"), to: stringField(message, "to") };
+    case "setLibrary": {
+      const root = stringField(message, "root");
+      return { id, op, root: ABSOLUTE_PATH.test(root) ? root : refuse("Op \"setLibrary\" needs an absolute \"root\"") };
+    }
     case "chunk": return { id, op, data: stringField(message, "data") };
     case "commit": {
       const size = message["size"];

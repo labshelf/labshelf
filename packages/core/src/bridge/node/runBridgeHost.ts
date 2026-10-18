@@ -3,7 +3,7 @@ import * as path from "node:path";
 
 import { Logger } from "../../logging/index.js";
 import { FileLogSink } from "../../logging/node/index.js";
-import { deviceLocalLayout, readSharedLibraryRoot, sharedConfigPath, stateDir } from "../../library/node/index.js";
+import { deviceLocalLayout, readSharedLibraryRoot, sharedConfigPath, stateDir, updateSharedConfig } from "../../library/node/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { changedEvents } from "../changedEvents.js";
 import { encodeFrame, FrameDecoder } from "../framing.js";
@@ -29,7 +29,8 @@ function hostLogger(root: string | undefined, env: NodeJS.ProcessEnv): ILogger {
 export async function runBridgeHost(options: BridgeHostOptions = {}): Promise<void> {
   // PLATFORM: stdout carries the Native Messaging frames; anything else written to it breaks the connection.
   const { input = process.stdin, output = process.stdout, env = process.env, watchDebounceMs = 300 } = options;
-  const root = await readSharedLibraryRoot(options.configFile ?? sharedConfigPath(env));
+  const configFile = options.configFile ?? sharedConfigPath(env);
+  const root = await readSharedLibraryRoot(configFile);
   const logger = hostLogger(root, env);
   await logger.log("INFO", "bridge", "Host started", { libraryRoot: root ?? null });
   const logFailure = (action: string) => (error: unknown): void => { void logger.error("bridge", error, { action }); };
@@ -47,11 +48,19 @@ export async function runBridgeHost(options: BridgeHostOptions = {}): Promise<vo
     stop();
   };
   input.once("end", stop);
-  const session = new BridgeHostSession({ files: root ? new LibraryFileOperations(root) : undefined, send, logger, close });
   const onChanged = (paths: string[]): void => {
     for (const event of changedEvents(paths)) send(event).catch(logFailure("changed"));
   };
-  const stopWatching = root ? watchLibrary(root, onChanged, logger, watchDebounceMs) : undefined;
+  let stopWatching = root ? watchLibrary(root, onChanged, logger, watchDebounceMs) : undefined;
+  const openLibrary = async (chosen: string): Promise<LibraryFileOperations> => {
+    const files = await LibraryFileOperations.open(chosen);
+    await updateSharedConfig({ libraryRoot: files.root }, configFile, logger);
+    stopWatching = watchLibrary(files.root, onChanged, logger, watchDebounceMs);
+    return files;
+  };
+  const session = new BridgeHostSession({
+    files: root ? new LibraryFileOperations(root) : undefined, openLibrary, send, logger, close,
+  });
   const decoder = new FrameDecoder();
   let pending = Promise.resolve();
   input.on("data", (bytes: Uint8Array) => {

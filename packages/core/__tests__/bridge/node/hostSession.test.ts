@@ -14,7 +14,7 @@ describe("BridgeHostSession", () => {
       if (calls === 1) throw Object.assign(new Error("write EPIPE"), { code: "EPIPE" });
       sent.push(message);
     };
-    const session = new BridgeHostSession({ files: undefined, send, logger, close: jest.fn() });
+    const session = new BridgeHostSession({ files: undefined, openLibrary: jest.fn(), send, logger, close: jest.fn() });
     await expect(session.receive({ id: 1, op: "hello", protocol: BRIDGE_PROTOCOL })).resolves.toBeUndefined();
     await session.receive({ id: 2, op: "listDir", path: "papers" });
     expect(sent).toEqual([expect.objectContaining({ id: 2, ok: false, error: expect.objectContaining({ code: "noLibrary" }) })]);

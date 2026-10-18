@@ -1,7 +1,7 @@
 // Picks where the library files live, the folder through the bridge or this browser's storage, and routes every call there.
 import { BRIDGE_HOST_NAME, type ILogger, type LibraryFileSystem } from "@labshelf/core";
 import { connectBrowserNative, createBrowserLogger, type NativePort } from "../platform";
-import { BridgeFileSystem, BridgeLink, classifyBridgeFailure, type BridgeFailureReason, type OpenBridge } from "./bridge";
+import { BridgeFileSystem, BridgeLink, classifyBridgeFailure, setBridgeLibrary, type BridgeFailureReason, type OpenBridge } from "./bridge";
 import { IndexedDbFileSystem } from "./indexedDbFileSystem";
 
 export type LibrarySource =
@@ -17,6 +17,8 @@ export interface LibrarySources {
   getLibrarySource(): Promise<LibrarySource>;
   /** Probes the bridge again; only a context that chose browser storage can change its choice. */
   recheckLibrarySource(): Promise<LibrarySource>;
+  /** Asks a host without a library to serve `root`; the caller then rechecks the source. */
+  setLibraryFolder(root: string): Promise<void>;
   onLibraryFilesChanged(listener: (paths: string[]) => void): () => void;
 }
 
@@ -77,7 +79,11 @@ export function createLibrarySources({ connect, logger, browserFs }: SourceDeps)
     await openFolder().catch((error: unknown) => logger.error(MODULE, error, { note: "the folder stays the library source; its calls fail until the bridge is back" }));
     return folder;
   };
-  return { fileSystem, folderFileSystem: bridgeFs, getLibrarySource, recheckLibrarySource, onLibraryFilesChanged: (listener) => link.onChanged(listener) };
+  const setLibraryFolder = async (root: string): Promise<void> => { await setBridgeLibrary(connect, logger, root); };
+  return {
+    fileSystem, folderFileSystem: bridgeFs, getLibrarySource, recheckLibrarySource, setLibraryFolder,
+    onLibraryFilesChanged: (listener) => link.onChanged(listener),
+  };
 }
 
 function routedFileSystem(pick: () => Promise<LibraryFileSystem>): LibraryFileSystem {
@@ -124,6 +130,10 @@ export function getLibrarySource(): Promise<LibrarySource> {
 
 export function recheckLibrarySource(): Promise<LibrarySource> {
   return sharedSources().recheckLibrarySource();
+}
+
+export function setLibraryFolder(root: string): Promise<void> {
+  return sharedSources().setLibraryFolder(root);
 }
 
 export function onLibraryFilesChanged(listener: (paths: string[]) => void): () => void {

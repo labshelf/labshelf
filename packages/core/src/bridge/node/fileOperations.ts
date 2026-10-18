@@ -18,6 +18,14 @@ const entryPath = ({ realParent, name }: LibraryParent): string => path.join(rea
 export class LibraryFileOperations {
   constructor(readonly root: string) {}
 
+  /** @throws BridgeError `noLibrary` when `root` is not an existing folder */
+  static async open(root: string): Promise<LibraryFileOperations> {
+    if (!path.isAbsolute(root)) throw new BridgeError("protocol", `The library folder must be an absolute path: ${root}`);
+    const isFolder = await fs.stat(root).then((s) => s.isDirectory(), () => false);
+    if (!isFolder) throw new BridgeError("noLibrary", `The library folder ${root} does not exist or is not a folder`);
+    return new LibraryFileOperations(root);
+  }
+
   resolve(relative: string): Promise<string> {
     return resolveInLibrary(this.root, relative);
   }

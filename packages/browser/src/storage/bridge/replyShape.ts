@@ -11,6 +11,7 @@ const isStat = (value: unknown): boolean => value === null
 // CONTRACT: documents/contracts/bridge.md#messages
 const SHAPES: Partial<Record<string, (result: Result) => boolean>> = {
   hello: (r) => typeof r.protocol === "number" && typeof r.libraryRoot === "string" && typeof r.paperCount === "number",
+  setLibrary: (r) => typeof r.libraryRoot === "string" && typeof r.paperCount === "number",
   listDir: (r) => Array.isArray(r.names) && r.names.every((name) => typeof name === "string"),
   stat: (r) => isStat(r.stat),
   readFile: (r) => r.done === true && typeof r.size === "number",

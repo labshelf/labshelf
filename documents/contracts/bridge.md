@@ -15,7 +15,7 @@ Every message is a 4-byte length in native byte order (little-endian on every pl
 
 ## Versioning
 
-`protocol` is an integer, currently `1`. The browser sends it in `hello`. A side that sees another value refuses the connection and tells the user to update LabShelf in the browser and on the desktop to the same release: the host answers that `hello` with a `protocol` error and stops. The host refuses every op before a successful `hello` with a `protocol` error. A `hello` succeeds when the versions match, even when it is answered with `noLibrary`.
+`protocol` is an integer, currently `2`. The browser sends it in `hello`. A side that sees another value refuses the connection and tells the user to update LabShelf in the browser and on the desktop to the same release: the host answers that `hello` with a `protocol` error and stops. The host refuses every op before a successful `hello` with a `protocol` error. A `hello` succeeds when the versions match, even when it is answered with `noLibrary`.
 
 ## Paths
 
@@ -36,6 +36,7 @@ A request is `{id, op, …}` with an integer `id` chosen by the browser. The hos
 | `op` | Fields | `result` |
 |---|---|---|
 | `hello` | `protocol` | `{protocol, libraryRoot, paperCount}` |
+| `setLibrary` | `root`: an absolute path to an existing folder | `{libraryRoot, paperCount}`; only while the host serves no library, refused with `protocol` otherwise |
 | `listDir` | `path` | `{names}`; `[]` for a missing folder |
 | `stat` | `path` | `{stat: {isFile, isDirectory, mtimeMs, size} \| null}`; a symlink is neither file nor folder |
 | `readFile` | `path` | chunks, then `{done: true, size}` |
@@ -48,6 +49,8 @@ A request is `{id, op, …}` with an integer `id` chosen by the browser. The hos
 | `rename` | `from`, `to` | `{}`; creates the parents of `to` |
 
 `paperCount` counts the folders in `papers/` that hold a `metadata.yaml`.
+
+`setLibrary` lets a user who has only the standalone LabShelf Helper choose the library folder from the extension's options page; it may follow a `hello` answered with `noLibrary`. The host writes `libraryRoot` to the shared configuration ([library-format.md#shared-configuration](library-format.md#shared-configuration)), keeping the keys it does not own, and serves that folder from then on. Once a library is set, only a desktop app changes it.
 
 Error codes:
 

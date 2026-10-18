@@ -19,6 +19,8 @@ export interface BridgeHarness {
   close(): Promise<void>;
   /** Resolves when the host stops on its own or after `close`. */
   finished: Promise<void>;
+  /** The shared config file the host reads and writes. */
+  configFile: string;
 }
 
 export async function startBridge(libraryRoot: string | undefined): Promise<BridgeHarness> {
@@ -65,5 +67,6 @@ export async function startBridge(libraryRoot: string | undefined): Promise<Brid
     call,
     async close() { input.end(); await run; },
     finished: run,
+    configFile,
   };
 }

@@ -12,7 +12,7 @@ describe("changed events", () => {
     const root = path.join(await makeTempDir(), "library");
     await fs.mkdir(path.join(root, "papers", "a"), { recursive: true });
     const bridge = await startBridge(root);
-    await bridge.call({ id: 1, op: "hello", protocol: 1 });
+    await bridge.hello();
     await fs.writeFile(path.join(root, "papers", "a", ".DS_Store"), "x");
     await fs.writeFile(path.join(root, "papers", "a", "metadata.yaml"), "title: x\n");
     const seen = new Set<string>();

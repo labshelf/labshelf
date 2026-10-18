@@ -42,6 +42,7 @@ export class FakeBridgeHost implements NativePort {
 
   private answer(m: Message): void {
     if (m.op === "hello") return this.hello(m);
+    if (m.op === "setLibrary") return this.setLibrary(m);
     if (this.libraryRoot === undefined) return this.fail(m.id, "noLibrary", "no library");
     if (this.replies.has(m.op)) return this.ok(m.id, this.replies.get(m.op));
     switch (m.op) {
@@ -57,6 +58,13 @@ export class FakeBridgeHost implements NativePort {
       case "rename": return this.rename(m);
       default: return this.fail(m.id, "protocol", `unknown op ${String(m.op)}`);
     }
+  }
+
+  private setLibrary(m: Message): void {
+    if (this.libraryRoot !== undefined) return this.fail(m.id, "protocol", "A library is already set");
+    if (m.root.includes("missing")) return this.fail(m.id, "noLibrary", `The library folder ${m.root} does not exist`);
+    this.libraryRoot = m.root;
+    this.ok(m.id, { libraryRoot: m.root, paperCount: 0 });
   }
 
   private hello(m: Message): void {

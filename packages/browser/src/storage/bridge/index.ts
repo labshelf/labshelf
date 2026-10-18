@@ -3,3 +3,4 @@ export { BridgeClosedError, BridgeConnection } from "./bridgeConnection";
 export { BridgeLink, type OpenBridge } from "./bridgeLink";
 export { BridgeFileSystem } from "./bridgeFileSystem";
 export { classifyBridgeFailure, type BridgeFailureReason } from "./bridgeFailure";
+export { setBridgeLibrary } from "./setBridgeLibrary";
