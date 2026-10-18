@@ -32,7 +32,7 @@ pnpm --filter @labshelf/browser lint:manifest    # web-ext lint on dist/firefox
 
 ## Project editor page
 
-`editor/index.html` opens a writing project's files in monaco-vscode-api's workbench. The library page opens it in a new tab ([`openEditorInTab`](../../packages/browser/src/library-page/writing/openEditorInTab.ts)). A worker extension host runs the VS Code extension's web build and the Tinymist web extension, with Tinymist's language server in its own worker. The page serves the project files through a file system provider over the library, and registers the host commands the web build calls ([contract](../contracts/editor-host.md)): LaTeX through LabShelf Helper and Typst through the typst.ts compiler in the page. Once the web build has loaded the library it opens the project, and the page shows what VS Code shows: the LabShelf side bar, the editor actions and the extension's own preview reader in a webview.
+`editor/index.html` opens a writing project's files in monaco-vscode-api's workbench. The library page opens it in a new tab when a project in its sidebar's Projects section is clicked ([`openEditorInTab`](../../packages/browser/src/library-page/projects/openEditorInTab.ts)). A worker extension host runs the VS Code extension's web build and the Tinymist web extension, with Tinymist's language server in its own worker. The page serves the project files through a file system provider over the library, and registers the host commands the web build calls ([contract](../contracts/editor-host.md)): LaTeX through LabShelf Helper and Typst through the typst.ts compiler in the page. Once the web build has loaded the library it opens the project, and the page shows what VS Code shows: the LabShelf side bar, the editor actions and the extension's own preview reader in a webview.
 
 - The extension pages' CSP allows no `eval`, `blob:` workers or inline script, which monaco-vscode-api and typst.ts need. The build applies exact-text patches to those packages while bundling and writes the extension-host iframe as an html file plus a script file (`build/editor/cspPatches.mjs`). A patch whose text is not found fails the build, so upgrading a pinned version cannot ship unpatched.
 - The workbench loads each bundled extension from a build-wrapped `<entry>.esm.js` instead of evaluating its source.
@@ -57,9 +57,9 @@ The minimum versions are the floor for pdf.js 6.3.
 - Native messaging to LabShelf Helper is opened by extension pages, not by the service worker, so the helper lives only while such a page is open ([contract](../contracts/helper.md#transport)).
 - Cloudflare-protected publishers (ACM, SIAM, ScienceDirect) block headless browsers and plain `fetch`. Real downloads from them can only be tested by hand.
 
-## Citation map
+## Library page sidebar
 
-A fixed **Citation map** row at the top of the library page's sidebar opens the citation map in place of the paper list ([contract](../contracts/library-ui-host.md#citation-map)). The background builds it from OpenAlex and caches the data in IndexedDB ([contract](../contracts/library-format.md#openalex)).
+The sidebar is core's library sidebar, as in VS Code: Library, then Projects. Projects lists the library's writing projects with their tooltip (main file, compiler, reading progress over the papers a project lists). A click opens the project in the editor page, and the row menu offers Open in Editor and Open PDF when a built PDF sits beside the main file. The browser hides what it cannot do: templates, All projects, new projects, adding a folder and project folders.
 
 ## Capture structure
 

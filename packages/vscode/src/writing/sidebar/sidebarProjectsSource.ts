@@ -1,13 +1,14 @@
 // Lists the writing projects as sidebar rows and announces when any row's mark, count or tooltip may have changed.
 import * as vscode from "vscode";
 
-import { updateProjectSettings, type ChecklistSignals, type ILogger, type ProjectEntry, type ProjectSettingsPatch, type ReadingList } from "@labshelf/core";
-import type { SidebarProjectItem } from "../../ui/library/index.js";
+import {
+  brokenProjectItem, readyProjectItem, updateProjectSettings,
+  type ChecklistSignals, type ILogger, type ProjectEntry, type ProjectSettingsPatch, type ReadingList, type ReadyEntry, type SidebarProjectItem,
+} from "@labshelf/core";
 import type { BuildOutcomes } from "../build/index.js";
 import type { ReadyProject } from "../figures/index.js";
 import type { WritingProjects } from "../session/index.js";
 import { ProjectCounts } from "./projectCounts.js";
-import { brokenProjectItem, readyProjectItem, type ReadyEntry } from "./sidebarProject.js";
 
 export interface SidebarProjectsSourceDeps {
   projects: Pick<WritingProjects, "list" | "onDidChange" | "reads">;

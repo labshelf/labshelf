@@ -1,6 +1,28 @@
 // Maps a writing project entry to the row the sidebar Projects section shows, with its count and tooltip.
-import type { ProjectEntry, ReadingList } from "@labshelf/core";
-import type { SidebarProjectItem } from "../../ui/library/index.js";
+import type { ProjectEntry } from "../../writing/project/index.js";
+import type { ReadingList } from "../../writing/readingList/index.js";
+
+/** A writing project as the sidebar lists it; `id` is the host's opaque key (a folder path). */
+export interface SidebarProject {
+  id: string;
+  name: string;
+  /** Absent when the project's settings cannot be read. */
+  format?: "latex" | "typst";
+  /** Folder path inside My projects, segments joined by "/"; absent at the top level. */
+  folder?: string;
+  /** Archived or trashed: left out of the tree, listed only in the All projects tab. */
+  hidden?: true;
+  /** Right-aligned text, like a folder's count. */
+  count?: string;
+  /** Multi-line `title` attribute. */
+  tooltip: string;
+}
+
+/** A sidebar project plus what a host needs to offer the right menu. */
+export interface SidebarProjectItem extends SidebarProject {
+  kind: "ready" | "broken";
+  external: boolean;
+}
 
 export type ReadyEntry = Extract<ProjectEntry, { kind: "ready" }>;
 export type BrokenEntry = Extract<ProjectEntry, { kind: "broken" }>;
@@ -10,22 +32,23 @@ export interface LastBuild { ok: boolean; at: Date }
 const pad = (value: number): string => String(value).padStart(2, "0");
 
 function engineOf(entry: ReadyEntry): string {
-  if (entry.settings.format === "typst") { return "typst"; }
+  if (entry.settings.format === "typst") return "typst";
   return entry.settings.engine ?? "compiler not chosen";
 }
 
 /** One line per fact worth a glance; the reading and stale-figure lines appear only when they have something to say. */
 export function detailLines(entry: ReadyEntry, counted: Counted | undefined, build: LastBuild | undefined, reading: ReadingList): string[] {
   const lines = [`${entry.main ?? "no main file"} · ${engineOf(entry)}`];
-  if (build) { lines.push(`Last build ${build.ok ? "succeeded" : "failed"} ${pad(build.at.getHours())}:${pad(build.at.getMinutes())}`); }
+  if (build) lines.push(`Last build ${build.ok ? "succeeded" : "failed"} ${pad(build.at.getHours())}:${pad(build.at.getMinutes())}`);
   const inLibrary = reading.entries.filter((candidate) => candidate.paper);
   if (inLibrary.length > 0) {
     lines.push(`Reading ${inLibrary.filter((candidate) => candidate.paper?.status === "done").length} of ${inLibrary.length}`);
   }
-  if (counted && counted.stale > 0) { lines.push(`${counted.stale} stale figures`); }
+  if (counted && counted.stale > 0) lines.push(`${counted.stale} stale figures`);
   return lines;
 }
 
+/** `counted` and `build` are undefined when the host does not know them yet or cannot know them. */
 export function readyProjectItem(
   entry: ReadyEntry, counted: Counted | undefined, build: LastBuild | undefined, reading: ReadingList,
 ): SidebarProjectItem {

@@ -1,13 +1,8 @@
 /**
  * Binds the open folder to the URL hash (`#/papers/Project/Refs`), so back/forward walk the folder history and a reload
- * lands on the same folder; `#/writing` is the Writing tab. The host tells the UI about hash changes and follows the UI's own navigation.
+ * lands on the same folder. The host tells the UI about hash changes and follows the UI's own navigation.
  */
 import { PAPERS_DIR, isLibraryPath, type HostEndpoint } from "@labshelf/core";
-
-/** The route of the Writing tab, which is not a folder. */
-export const WRITING_HASH = "#/writing";
-
-export const isWritingHash = (hash: string): boolean => hash === WRITING_HASH;
 
 /** Parses a location hash into a folder path, falling back to the root. */
 export function folderFromHash(hash: string): string {
@@ -22,8 +17,7 @@ export function hashForFolder(folder: string): string {
 
 /** Starts syncing the UI's folder with location.hash; returns a disposer. */
 export function attachRouter(endpoint: HostEndpoint): () => void {
-  // The library keeps its folder while the Writing tab is shown, and a folder hash brings it back.
-  const onHash = (): void => { if (!isWritingHash(location.hash)) endpoint.post({ type: "navigate", folder: folderFromHash(location.hash) }); };
+  const onHash = (): void => { endpoint.post({ type: "navigate", folder: folderFromHash(location.hash) }); };
   window.addEventListener("hashchange", onHash);
   const off = endpoint.subscribe((m) => {
     if (m.type === "ready") onHash();

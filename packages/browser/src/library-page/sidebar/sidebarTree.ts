@@ -1,14 +1,15 @@
-// Mounts the sidebar: the brand, the citation map entry and the core library sidebar, which follows the page's store.
-// Clicking a paper asks the host to reveal it.
+// Mounts the sidebar: the brand and the core library sidebar, whose Library follows the page's store and whose Projects open
+// in the editor page. Clicking a paper asks the host to reveal it.
 import { icon, parentDir, type HostEndpoint } from "@labshelf/core";
 import { mountLibrarySidebar, type LibraryUi } from "@labshelf/core/dom";
 import type { PagePrefs } from "../prefs";
-import { citationMapEntry } from "./citationMapEntry";
+import type { ProjectsSource } from "../projects";
+import { createSidebarProjects } from "./sidebarProjects";
 
-/** Fills the sidebar slot with the brand, the citation map entry and the tree; returns the tree's unsubscribe function. */
-export function mountSidebarTree(ui: LibraryUi, slot: HTMLElement, prefs: PagePrefs, openCitationMap: () => void, host: Pick<HostEndpoint, "post">): () => void {
+/** Fills the sidebar slot with the brand and the tree; returns the tree's unsubscribe function. */
+export function mountSidebarTree(ui: LibraryUi, slot: HTMLElement, prefs: PagePrefs, host: Pick<HostEndpoint, "post">, projectsSource: ProjectsSource): () => void {
   slot.innerHTML = `<div class="tree-head"><span class="ls-brand">${icon("logo")}<span>LabShelf</span></span></div>`;
-  slot.append(citationMapEntry(openCitationMap));
+  const projects = createSidebarProjects(projectsSource);
   const treeEl = slot.appendChild(document.createElement("div"));
   const { store, folders } = ui;
   const sidebar = mountLibrarySidebar(treeEl, {
@@ -24,8 +25,10 @@ export function mountSidebarTree(ui: LibraryUi, slot: HTMLElement, prefs: PagePr
     saveExpanded: (paths) => prefs.saveTreeExpanded(paths),
     collapsed: prefs.collapsedSections(),
     saveCollapsed: (ids) => prefs.saveCollapsedSections(ids),
+    projects: projects.actions,
     dropTarget: (row, path) => ui.dropTarget(row, path),
   });
+  projects.attach(sidebar);
   // Browser record paths are IndexedDB keys relative to the library root, so the parent is the tree folder.
   const offLibrary = store.select((s) => ({ folders: s.folders, papers: s.papers }), ({ folders: tree, papers }) =>
     sidebar.setLibrary(tree, papers.map((record) => ({ record, folder: parentDir(record.path, "/") }))));

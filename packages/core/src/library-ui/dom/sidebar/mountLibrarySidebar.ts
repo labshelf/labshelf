@@ -1,13 +1,14 @@
 // Mounts the library sidebar: collapsible Library and Projects sections, driven by the host through the returned handle.
 import { PAPERS_DIR, parentDir, type FolderTreeNode } from "../../../library/index.js";
-import { showMenu } from "../../../ui/dom/index.js";
+import { showMenu, type MenuEntry } from "../../../ui/dom/index.js";
 import { libraryTags, libraryTree, type TreePaper } from "../../derive/index.js";
 import { tagQuery } from "../../searchQueries.js";
 import { onSidebarKey } from "./sidebarKeys.js";
 import { isTreeInput } from "./sidebarTreeInput.js";
 import { activateTreeRow, onOpenProjectClick, onOpenProjectMenu } from "./sidebarOpenProject.js";
 import type { SidebarOpenProject } from "../../sidebarTrees.js";
-import { ALL_PROJECT_OFFERS, projectFolderKey, type ProjectOffers, type SidebarProject, type SidebarProjectActions } from "./sidebarProjects.js";
+import { ALL_PROJECT_OFFERS, projectFolderKey, type ProjectOffers, type SidebarProjectActions } from "./sidebarProjects.js";
+import type { SidebarProject } from "../../projectRows/index.js";
 import { rowKey } from "./sidebarRows.js";
 import type { GroupId, SectionId } from "./sidebarSections.js";
 import { NAV_ROWS, expandTo, paintFocus, render, setExpanded, toggleSection, type SidebarActions, type SidebarState } from "./sidebarView.js";
@@ -36,8 +37,8 @@ export interface LibrarySidebar {
   /** Marks the tag row whose search is `query`; any other text clears the mark. */
   setQuery(query: string): void;
   setProjects(projects: readonly SidebarProject[]): void;
-  /** Leaves out the Projects buttons and menu items whose action the host cannot run; every action is offered until this is called. */
-  setProjectOffers(offers: ProjectOffers): void;
+  /** Leaves out the Projects buttons and menu items whose action the host cannot run; an offer left out stays available. */
+  setProjectOffers(offers: Partial<ProjectOffers>): void;
   /** Shows only the open project's trees under Projects; null restores My projects and the gallery row. */
   setOpenProject(project: SidebarOpenProject | null): void;
 }
@@ -95,6 +96,7 @@ function projectContextMenu(e: MouseEvent, r: HTMLElement | null, p: SidebarProj
   const folder = r?.dataset["projectFolder"];
   const at = { x: e.clientX, y: e.clientY };
   if (folder !== undefined) {
+    if (!offers.projectFolders) return false;
     showMenu(at, [
       { label: "New Subfolder…", icon: "folder-plus", onSelect: () => p.newFolder(folder) },
       "separator",
@@ -102,12 +104,14 @@ function projectContextMenu(e: MouseEvent, r: HTMLElement | null, p: SidebarProj
       { label: "Delete Folder", icon: "trash", danger: true, onSelect: () => p.deleteFolder(folder) },
     ]);
   } else if (r?.dataset["group"] === "projects.list") {
-    showMenu(at, [
-      { label: "New Blank Project…", icon: "new-file", onSelect: () => p.newBlank() },
-      { label: "New Folder…", icon: "new-folder", onSelect: () => p.newFolder("") },
+    const entries: MenuEntry[] = [
+      ...(offers.newBlank ? [{ label: "New Blank Project…", icon: "new-file" as const, onSelect: () => p.newBlank() }] : []),
+      ...(offers.projectFolders ? [{ label: "New Folder…", icon: "new-folder" as const, onSelect: () => p.newFolder("") }] : []),
       ...(offers.addExisting ? [{ label: "Add Existing Folder…", icon: "folder-open" as const, onSelect: () => p.addExisting() }] : []),
       ...(offers.templates ? ["separator" as const, { label: "Explore Templates", icon: "layers" as const, onSelect: () => p.browseTemplates() }] : []),
-    ]);
+    ];
+    if (entries.length === 0) return false;
+    showMenu(at, entries);
   } else return false;
   e.preventDefault();
   return true;
@@ -153,7 +157,7 @@ export function mountLibrarySidebar(slot: HTMLElement, o: LibrarySidebarOptions)
     setLibrary: (folders, papers) => { t.tree = libraryTree({ folders, papers }); t.tags = libraryTags(papers.map((p) => p.record)); render(t); },
     setQuery: (query) => { t.query = query; render(t); },
     setProjects: (projects) => { t.projectList = projects; render(t); },
-    setProjectOffers: (offers) => { t.offers = offers; render(t); },
+    setProjectOffers: (offers) => { t.offers = { ...ALL_PROJECT_OFFERS, ...offers }; render(t); },
     setOpenProject: (project) => {
       if (project?.id !== t.openProject?.id) {
         t.treeOpen.clear();

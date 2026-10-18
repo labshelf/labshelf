@@ -1,23 +1,8 @@
-// Builds the Projects section rows: the project folder tree with its projects, or an empty state with three actions.
+// Builds the Projects section rows: the project folder tree with its projects, or an empty state with the actions the host offers.
 import { el } from "../../../ui/dom/index.js";
 import { icon } from "../../../ui/index.js";
+import type { SidebarProject } from "../../projectRows/index.js";
 import { GROUP_ROW_DEPTH, projectFolderRow, projectRow } from "./sidebarRows.js";
-
-/** A writing project as the sidebar lists it; `id` is the host's opaque key (a folder path). */
-export interface SidebarProject {
-  id: string;
-  name: string;
-  /** Absent when the project's settings cannot be read. */
-  format?: "latex" | "typst";
-  /** Folder path inside My projects, segments joined by "/"; absent at the top level. */
-  folder?: string;
-  /** Archived or trashed: left out of the tree, listed only in the All projects tab. */
-  hidden?: true;
-  /** Right-aligned text, like a folder's count. */
-  count?: string;
-  /** Multi-line `title` attribute. */
-  tooltip: string;
-}
 
 /** What the Projects section asks the host to do. Folder paths are project folder paths ("" for the top level). */
 export interface SidebarProjectActions {
@@ -50,17 +35,22 @@ export interface SidebarProjectActions {
 export interface ProjectOffers {
   templates: boolean;
   addExisting: boolean;
+  newBlank: boolean;
+  /** Creating, renaming and deleting the folders of My projects. */
+  projectFolders: boolean;
+  /** The All projects row. */
+  allProjects: boolean;
 }
 
-export const ALL_PROJECT_OFFERS: ProjectOffers = { templates: true, addExisting: true };
+export const ALL_PROJECT_OFFERS: ProjectOffers = { templates: true, addExisting: true, newBlank: true, projectFolders: true, allProjects: true };
 
 /** Expansion keys of project folders share the sidebar's expanded set with library folder paths. */
 export const projectFolderKey = (path: string): string => `project-folder:${path}`;
 
 // The Explorer's own title actions, in its order: new file, new folder, refresh, collapse all.
-export const PROJECT_LIST_ACTIONS =
-  `<button class="ls-icon-btn" data-tree="blank" title="New blank project">${icon("new-file")}</button>` +
-  `<button class="ls-icon-btn" data-tree="project-folder" title="New folder">${icon("new-folder")}</button>` +
+export const projectListActions = (offers: ProjectOffers): string =>
+  (offers.newBlank ? `<button class="ls-icon-btn" data-tree="blank" title="New blank project">${icon("new-file")}</button>` : "") +
+  (offers.projectFolders ? `<button class="ls-icon-btn" data-tree="project-folder" title="New folder">${icon("new-folder")}</button>` : "") +
   `<button class="ls-icon-btn" data-tree="project-refresh" title="Refresh">${icon("reload")}</button>` +
   `<button class="ls-icon-btn" data-tree="project-collapse" title="Collapse all">${icon("collapse-all")}</button>`;
 
@@ -68,9 +58,10 @@ const emptyButton = (action: string, label: string, glyph: "plus" | "folder-plus
   `<button class="ls-btn" data-tree="${action}" tabindex="-1">${icon(glyph)}${label}</button>`;
 
 function emptyState(offers: ProjectOffers): HTMLElement {
-  const buttons = (offers.templates ? emptyButton("browse", "Browse templates", "plus") : "") + emptyButton("blank", "New blank project", "folder-plus") +
+  const buttons = (offers.templates ? emptyButton("browse", "Browse templates", "plus") : "") +
+    (offers.newBlank ? emptyButton("blank", "New blank project", "folder-plus") : "") +
     (offers.addExisting ? emptyButton("add", "Add existing folder", "folder-open") : "");
-  return el("div", { class: "tree-empty", html: `No projects yet.<div class="tree-empty-actions">${buttons}</div>` });
+  return el("div", { class: "tree-empty", html: buttons ? `No projects yet.<div class="tree-empty-actions">${buttons}</div>` : "No projects yet." });
 }
 
 const byName = (a: SidebarProject, b: SidebarProject): number => a.name.localeCompare(b.name);

@@ -28,14 +28,3 @@
   border-bottom: 1px solid var(--ls-sidebar-border); margin-bottom: var(--ls-space-2);
 }
 .tree-head .ls-brand { color: var(--ls-fg); padding-left: var(--ls-space-4); }
-
-/* ── Tabs above the frame: Library and Writing ──────────────────── */
-.ls-library[hidden], .writing-pane[hidden] { display: none; }
-.writing-pane { flex: 1; min-height: 0; overflow: auto; }
-.page-tabs { display: flex; align-items: flex-end; height: 35px; flex-shrink: 0; padding: 0 var(--ls-space-2); background: var(--ls-sidebar-bg); border-bottom: 1px solid var(--ls-sidebar-border); }
-.page-tab {
-  height: 100%; padding: 0 var(--ls-space-4); border: none; border-bottom: 1px solid transparent; background: none; border-radius: 0;
-  color: var(--ls-desc); font-size: var(--ls-text-md); cursor: pointer;
-}
-.page-tab:hover { color: var(--ls-fg); }
-.page-tab.active { color: var(--ls-fg); border-bottom-color: var(--ls-focus); }

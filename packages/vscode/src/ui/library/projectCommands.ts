@@ -1,5 +1,5 @@
 // Lists the commands a project row and the open project's title menu offer, and which of them apply to a row; shared by the host and the webview, so it imports no vscode.
-import type { SidebarProjectItem } from "./sidebarMessages.js";
+import type { SidebarProjectItem } from "@labshelf/core";
 
 export interface ProjectCommand {
   command: string;

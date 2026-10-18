@@ -1,10 +1,10 @@
 // Tests the sidebar project row mapper: counts, hidden flags, tooltips and broken rows.
-import type { ProjectEntry, ReadingList } from "@labshelf/core";
+import { brokenProjectItem, detailLines, readyProjectItem, type BrokenEntry, type ReadyEntry } from "../../../src/library-ui/projectRows";
+import type { ReadingList } from "../../../src/writing/readingList";
 
-import { brokenProjectItem, detailLines, readyProjectItem, type ReadyEntry } from "../../../src/writing/sidebar/sidebarProject";
-import { readyEntry } from "../../support/writingFixtures";
-
-const ready = (folder: string, over: Parameters<typeof readyEntry>[1] = {}): ReadyEntry => readyEntry(folder, over) as ReadyEntry;
+const ready = (folder: string, over: Partial<ReadyEntry> = {}): ReadyEntry => ({
+  kind: "ready", folder, location: "library", main: "main.tex", settings: { id: folder.split("/").pop()!, format: "latex" }, ...over,
+});
 const reading = (entries: Array<{ paper: { status: string } | undefined }> = []): ReadingList => ({ entries, neverOpened: 0 }) as never;
 const entry = ready("/lib/projects/a");
 
@@ -46,7 +46,7 @@ describe("readyProjectItem", () => {
 
 describe("brokenProjectItem", () => {
   it("names the missing folder with the reason in the tooltip", () => {
-    const broken: Extract<ProjectEntry, { kind: "broken" }> = { kind: "broken", folder: "/code/gone", location: "external", reason: "no such folder" };
+    const broken: BrokenEntry = { kind: "broken", folder: "/code/gone", location: "external", reason: "no such folder" };
     expect(brokenProjectItem(broken)).toEqual({
       id: "/code/gone", name: "gone", count: "missing", tooltip: "/code/gone\nno such folder", kind: "broken", external: true,
     });

@@ -1,22 +1,6 @@
 // Declares the messages between the Library sidebar webview and the extension host, and checks the ones the webview sends.
 import { isSidebarProjectCommand } from "./projectCommands.js";
-import { PAPERS_DIR, type FolderTreeNode, type ProjectTreeView, type SidebarOpenProject, type TreePaper } from "@labshelf/core";
-
-/**
- * A writing project as the sidebar lists it, plus what the host needs to offer the right menu.
- * The first fields are core's `SidebarProject` (@labshelf/core/dom), declared here because the node build cannot load the DOM-typed module.
- */
-export interface SidebarProjectItem {
-  id: string;
-  name: string;
-  format?: "latex" | "typst";
-  folder?: string;
-  hidden?: true;
-  count?: string;
-  tooltip: string;
-  kind: "ready" | "broken";
-  external: boolean;
-}
+import { PAPERS_DIR, type FolderTreeNode, type ProjectTreeView, type SidebarOpenProject, type SidebarProjectItem, type TreePaper } from "@labshelf/core";
 
 export type HostToSidebar =
   | { type: "library"; folders: FolderTreeNode[]; papers: Array<{ record: TreePaper; folder: string }> }

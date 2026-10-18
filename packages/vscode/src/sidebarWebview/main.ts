@@ -4,7 +4,8 @@ import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
 import "@labshelf/core/styles/library-sidebar.css";
 import { $, mountLibrarySidebar } from "@labshelf/core/dom";
-import type { HostToSidebar, ProjectTreeMessage, SidebarProjectItem, SidebarToHost } from "../ui/library/sidebarMessages.js";
+import type { SidebarProjectItem } from "@labshelf/core";
+import type { HostToSidebar, ProjectTreeMessage, SidebarToHost } from "../ui/library/sidebarMessages.js";
 import { folderDropTarget, showOpenProjectMenu, showProjectMenu } from "./index.js";
 
 const EXPANDED_KEY = "treeExpanded";

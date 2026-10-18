@@ -1,13 +1,13 @@
 // Hosts the Library sidebar webview: sends it the folders and papers, and runs what its rows ask for.
 import * as vscode from "vscode";
-import { PAPERS_DIR, folderTreeFromSnapshot, type LibrarySnapshot, type PathOps, type SidebarOpenProject } from "@labshelf/core";
+import { PAPERS_DIR, folderTreeFromSnapshot, type LibrarySnapshot, type PathOps, type SidebarOpenProject, type SidebarProjectItem } from "@labshelf/core";
 import { onPaperChange, type LibraryEvents } from "../../events/index.js";
 import { libraryBundleDirectory, libraryPaths, listPanelHtml, type LibraryPaths } from "../list/index.js";
 import { desktopCommandsAvailable } from "./desktopCommands.js";
 import { rootNode, type LibraryNode } from "./libraryNode.js";
 import { runProjectEdit, runProjectFolderAction, type ProjectOrganizerPort } from "./projectOrganizer.js";
 import { handleProjectMessage, isProjectMessage, type SidebarProjectsPort } from "./sidebarProjectMessages.js";
-import { parseSidebarMessage, type HostToSidebar, type ProjectTreeMessage, type SidebarProjectItem, type SidebarToHost } from "./sidebarMessages.js";
+import { parseSidebarMessage, type HostToSidebar, type ProjectTreeMessage, type SidebarToHost } from "./sidebarMessages.js";
 
 const REFRESH_DEBOUNCE_MS = 60;
 

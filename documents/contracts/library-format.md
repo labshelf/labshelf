@@ -198,7 +198,7 @@ The device's list of project folders outside the library. Absolute paths differ 
 
 ## openalex/
 
-The citation map's cache of OpenAlex works. It can be rebuilt from OpenAlex at any time, so it is device-local; the browser keeps it under `.research/openalex/` in IndexedDB.
+The citation map's cache of OpenAlex works. It can be rebuilt from OpenAlex at any time, so it is device-local.
 
 - `papers/<paper id>.json` holds the work a library paper's DOI resolved to; `works/<work id>.json` holds a work that library papers cite.
 - Each file is `{ "fetchedAt": "<ISO timestamp>", "doi": "<DOI looked up>", "work": { "workId": "W…", "doi", "title", "authors": [], "year", "citedByCount", "references": ["W…"] } }`. `doi` at the top is present only under `papers/`, and `references` is empty under `works/`.
