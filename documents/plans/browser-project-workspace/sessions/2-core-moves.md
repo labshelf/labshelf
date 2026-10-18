@@ -3,7 +3,7 @@
 - **Goal:** the Files tree nodes, checklist sidebar rows, outline nesting, the portable All projects library and the template gallery host live in core, and VS Code imports them from there.
 - **Starts from:** plan approved.
 - **Ends with:** core exports the pieces below with their tests moved; VS Code behaviour unchanged; `pnpm --filter @labshelf/core test`, `pnpm --filter @labshelf/vscode test` and both typechecks pass.
-- **Owns:** `packages/core/src/writing/{projectTree,checklist,outline,allProjects,templates}/`, `packages/vscode/src/writing/{tree,checklist,outline,allProjects,templates}/`, the matching `__tests__/` folders.
+- **Owns:** `packages/core/src/writing/{projectTree,checklist/sidebar,outline,allProjects/library,templates/host}/`, `packages/vscode/src/writing/{tree,checklist,outline,allProjects,templates}/`, the matching `__tests__/` folders.
 
 Facts with paths and line ranges: `documents/plans/browser-project-workspace/research/core-reuse.md` and `documents/plans/browser-project-workspace/research/browser-runtime.md` (Templates).
 

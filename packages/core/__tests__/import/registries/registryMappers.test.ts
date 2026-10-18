@@ -48,7 +48,7 @@ describe('registry clients', () => {
       expect(url).toBe('https://api.crossref.org/works/10.1%2Fx');
       expect(init.headers).toEqual({
         Accept: 'application/json',
-        'User-Agent': 'LabShelf/0.1 (research paper manager; mailto:contact@labshelf.dev)',
+        'User-Agent': 'LabShelf/0.1 (research paper manager; mailto:contact@labshelf.org)',
       });
     });
 
