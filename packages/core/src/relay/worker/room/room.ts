@@ -2,8 +2,8 @@
 
 import {
   decodeClientMessage, encodeRelayMessage, RELAY_ERROR_CODE, type RelayClientMessage, type RelayServerMessage,
-} from "../socket/index.js";
-import { openSocketPair, upgradeResponse, type HibernatingSocket, type RoomState } from "./cloudflareRuntime.js";
+} from "../../socket/index.js";
+import { openSocketPair, upgradeResponse, type HibernatingSocket, type RoomState } from "../cloudflareRuntime.js";
 import { MAX_STORED_FRAME_BYTES, RoomStorage } from "./roomStorage.js";
 
 /** The paths the Worker uses to ask a share's Durable Object about its claim; the body is the relay-token hash. */

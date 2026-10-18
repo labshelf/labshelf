@@ -12,7 +12,7 @@ Context: design `documents/plans/project-collaboration/research/share-links.md`.
 | Id | Package | Level | Runner | Done when | OK |
 |---|---|---|---|---|---|
 | 8.1 | Share format, upload, revoke | contract | implementer (opus), tests first → `architecture-reviewer` | share tests | [x] |
-| 8.2 | Worker share endpoints | contract | implementer (sonnet), tests first | endpoint tests | [ ] |
+| 8.2 | Worker share endpoints | contract | implementer (sonnet), tests first | endpoint tests | [x] |
 | 8.3 | Share page design | — | `ui-design` skill | design approved by the user | [ ] |
 | 8.4 | Share page | behaviour | implementer (sonnet) | website build | [ ] |
 | 8.5 | VS Code commands | behaviour | implementer (sonnet) | typecheck | [ ] |

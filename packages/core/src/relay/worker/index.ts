@@ -3,8 +3,8 @@
 import type { RelayEnv } from "./cloudflareRuntime.js";
 import { handleRelayRequest } from "./handleRelayRequest.js";
 
-export { Room } from "./room.js";
-export type { HibernatingSocket, RelayEnv, RoomState, SqlCursor, SqlStorage, SqlValue } from "./cloudflareRuntime.js";
+export { Room } from "./room/index.js";
+export type { HibernatingSocket, KvNamespace, RelayEnv, RoomState, SqlCursor, SqlStorage, SqlValue } from "./cloudflareRuntime.js";
 
 export default {
   fetch: (request: Request, env: RelayEnv): Promise<Response> => handleRelayRequest(request, env),

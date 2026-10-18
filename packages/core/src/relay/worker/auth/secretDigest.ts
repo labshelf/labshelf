@@ -1,6 +1,6 @@
 // Digests secrets with SHA-256, so the relay stores only hashes and compares secrets in constant time.
 
-import { bytesToHex } from "../../encoding/index.js";
+import { bytesToHex } from "../../../encoding/index.js";
 
 export async function sha256Hex(bytes: Uint8Array): Promise<string> {
   return bytesToHex(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes as Uint8Array<ArrayBuffer>)));

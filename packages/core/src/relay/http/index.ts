@@ -4,7 +4,7 @@ export {
   type ClaimRequest, type ClaimResponse, type IceServer, type Refusal, type TicketRequest, type TicketResponse, type TurnRequest,
   type TurnResponse, type VersionResponse,
 } from "./httpBodies.js";
-export { isShareId } from "./bodyFields.js";
+export { isSha256Hex, isShareId } from "./bodyFields.js";
 export { decodeClaimRequest, decodeTicketRequest, decodeTurnRequest, type RequestResult } from "./decodeRequestBody.js";
 export {
   decodeClaimResponse, decodeRefusal, decodeTicketResponse, decodeTurnResponse, decodeVersionResponse, type ResponseResult,

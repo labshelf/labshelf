@@ -7,10 +7,11 @@ import { RelayAccounts, registerRelay } from "../../relay/index.js";
 import type { WritingProjects } from "../../writing/index.js";
 import type { CollabHost } from "./collabHost.js";
 import {
-  JOIN_COMMAND, joinProject, LEAVE_COMMAND, leaveProject, registerShareStatusBar, SHARE_COMMAND, shareProject, type ProjectTarget,
+  JOIN_COMMAND, joinProject, LEAVE_COMMAND, leaveProject, OFFER_RELAY_COMMAND, offerRelay, registerShareStatusBar, SHARE_COMMAND, shareProject,
+  WITHDRAW_RELAY_COMMAND, withdrawRelay, type ProjectTarget,
 } from "./commands/index.js";
 import { SharedEditors, SharedPresence } from "./editors/index.js";
-import { dropRelayFromShares } from "./ownRelay.js";
+import { offerToShares, withdrawFromShares } from "./ownRelay.js";
 import { registerComments } from "./registerComments.js";
 import { resumeShares } from "./resumeShares.js";
 import { ActiveShares, connectShare, ShareKeys } from "./session/index.js";
@@ -54,12 +55,18 @@ function createHost(context: vscode.ExtensionContext, controller: Controller, pr
 export function registerCollaboration(context: vscode.ExtensionContext, controller: Controller, projects: WritingProjects): void {
   const host = createHost(context, controller, projects);
   registerShareStatusBar(context, host);
-  registerRelay(context, { accounts: host.relay, logger: host.logger, dropRelayFromShares: (relayUrl) => dropRelayFromShares(host, relayUrl) });
+  registerRelay(context, {
+    accounts: host.relay, logger: host.logger,
+    offerToShares: () => offerToShares(host),
+    withdrawFromShares: (relayUrl) => withdrawFromShares(host, relayUrl),
+  });
   registerComments(context, { projects, shares: host.shares, userName: userName(), logger: host.logger });
   context.subscriptions.push(
     vscode.commands.registerCommand(SHARE_COMMAND, (target?: unknown) => shareProject(host, projectTarget(target))),
     vscode.commands.registerCommand(JOIN_COMMAND, (invite?: unknown) => joinProject(host, typeof invite === "string" ? invite : undefined)),
     vscode.commands.registerCommand(LEAVE_COMMAND, (target?: unknown) => leaveProject(host, projectTarget(target))),
+    vscode.commands.registerCommand(OFFER_RELAY_COMMAND, () => offerRelay(host)),
+    vscode.commands.registerCommand(WITHDRAW_RELAY_COMMAND, () => withdrawRelay(host)),
     resumeShares(host),
   );
 }

@@ -11,3 +11,4 @@
 - 2026-10-18 · session 6 · 6.1–6.5 done: binary relay protocol, Worker (SQLite DO, hibernation, tickets, TURN), API deploy over a pasted token (decision: token, not OAuth, so start-up updates need no sign-in), batching relay transport (scripted hour of 3 typists = 471 billed requests), Connect/Disconnect Cloudflare; Worker verified in local workerd (auth, relay-only catch-up, compaction, no plaintext, hibernation). 6.6 real-account run pending the user's token
 - 2026-10-18 · session 7 · 7.1 done: relay list in the index doc, list-order selection with shared one-hour down marks, switchable transport and follower
 - 2026-10-18 · session 8 · 8.1 done: share-link format, convergent blob encryption, upload/revoke over a share backend port
+- 2026-10-18 · sessions 7.2, 8.2 · done: VS Code shares follow the relay list (offer/withdraw, auto-offer on Connect), Worker share endpoints on KV (protocol 1.1)

@@ -5,9 +5,10 @@ import { RELAY_WORKER_BUILD } from "../protocolVersion.js";
 import { decodeClaimRequest, decodeTicketRequest, decodeTurnRequest, isShareId, RELAY_PATH } from "../http/index.js";
 import type { RelayEnv, RoomStub } from "./cloudflareRuntime.js";
 import { answer, notFound, preflight, refuse } from "./httpAnswers.js";
-import { ROOM_PATH } from "./room.js";
-import { secretsMatch, sha256Hex } from "./secretDigest.js";
-import { mintTicket, verifyTicket } from "./ticket.js";
+import { ROOM_PATH } from "./room/index.js";
+import { handleShareRequest } from "./shareRoutes.js";
+import { SHARE_PATH } from "../../share/http/index.js";
+import { carriesOwnerSecret, mintTicket, sha256Hex, verifyTicket } from "./auth/index.js";
 import { mintIceServers } from "./turnCredentials.js";
 
 const MAX_BODY_CHARS = 4096;
@@ -25,9 +26,7 @@ async function readJson(request: Request): Promise<unknown> {
 }
 
 async function claim(request: Request, env: RelayEnv): Promise<Response> {
-  const bearer = /^Bearer (.+)$/.exec(request.headers.get("Authorization") ?? "")?.[1];
-  if (!env.OWNER_SECRET) { console.error("relay claim: OWNER_SECRET is not set, refusing every claim"); }
-  if (!env.OWNER_SECRET || bearer === undefined || !(await secretsMatch(bearer, env.OWNER_SECRET))) { return refuse("unauthorized"); }
+  if (!(await carriesOwnerSecret(request, env, "claim"))) { return refuse("unauthorized"); }
   const body = decodeClaimRequest(await readJson(request));
   if (!body.ok) { return refuse(body.error); }
   const room = await askRoom(env, body.value.shareId, ROOM_PATH.claim, body.value.relayTokenHash);
@@ -72,6 +71,7 @@ export async function handleRelayRequest(request: Request, env: RelayEnv): Promi
   if (route === `POST ${RELAY_PATH.claim}`) { return claim(request, env); }
   if (route === `POST ${RELAY_PATH.ticket}`) { return ticket(request, env); }
   if (route === `POST ${RELAY_PATH.turn}`) { return turn(request, env); }
+  if (url.pathname.startsWith(SHARE_PATH.prefix)) { return handleShareRequest(request, env, url.pathname); }
   if (request.method === "GET" && url.pathname.startsWith(RELAY_PATH.project)) { return openSocket(request, env, url); }
   return notFound();
 }

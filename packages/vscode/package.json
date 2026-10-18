@@ -214,6 +214,18 @@
         "enablement": "!isWeb"
       },
       {
+        "command": "labshelf.relay.offer",
+        "title": "Offer My Relay to This Project",
+        "category": "LabShelf",
+        "enablement": "!isWeb"
+      },
+      {
+        "command": "labshelf.relay.withdraw",
+        "title": "Withdraw My Relay from This Project",
+        "category": "LabShelf",
+        "enablement": "!isWeb"
+      },
+      {
         "command": "labshelf.collab.undo",
         "title": "Undo My Edit in Shared File",
         "category": "LabShelf"
@@ -849,6 +861,14 @@
         },
         {
           "command": "labshelf.relay.disconnect",
+          "when": "!isWeb"
+        },
+        {
+          "command": "labshelf.relay.offer",
+          "when": "!isWeb"
+        },
+        {
+          "command": "labshelf.relay.withdraw",
           "when": "!isWeb"
         },
         {

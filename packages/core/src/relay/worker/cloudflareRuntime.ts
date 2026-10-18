@@ -33,9 +33,17 @@ export interface RoomNamespace {
   get(id: unknown): RoomStub;
 }
 
+/** The part of a Workers KV namespace the share endpoints use; values are read as streams so a check never buffers a blob. */
+export interface KvNamespace {
+  get(key: string, type: "stream"): Promise<ReadableStream<Uint8Array> | null>;
+  put(key: string, value: ArrayBuffer): Promise<void>;
+  delete(key: string): Promise<void>;
+}
+
 /** The bindings and secrets the deploy sets; the TURN key is optional. */
 export interface RelayEnv {
   ROOM: RoomNamespace;
+  KV: KvNamespace;
   OWNER_SECRET?: string;
   TURN_KEY_ID?: string;
   TURN_KEY_SECRET?: string;

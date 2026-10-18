@@ -30,8 +30,8 @@ export interface CollabStore {
   readonly blobs: BlobCache;
   /** Per shared path, the SHA-256 of the content disk and doc last agreed on. */
   readonly known: JsonMapFile<string>;
-  /** The relay cursor of each doc, saved only after the doc updates it covers are on disk. */
-  readonly relayCursors: RelayCursorStore;
+  /** The relay cursor of each doc on one relay, saved only after the doc updates it covers are on disk. */
+  relayCursors(relayUrl: string): RelayCursorStore;
   /** Waits for every pending append and save. */
   flush(): Promise<void>;
   /** Flushes and stops storing updates. */
@@ -40,6 +40,12 @@ export interface CollabStore {
 
 const isString = (value: unknown): value is string => typeof value === "string";
 const isCursor = (value: unknown): value is number => Number.isInteger(value) && (value as number) >= 0;
+
+/** One relay's view of the cursor file. */
+function cursorsOf(cursors: JsonMapFile<number>, relayUrl: string): RelayCursorStore {
+  // INVARIANT: a URL holds no space, so the `<relay url> <doc key>` keys of two relays never collide.
+  return { get: (docKey) => cursors.get(`${relayUrl} ${docKey}`), set: (docKey, cursor) => cursors.set(`${relayUrl} ${docKey}`, cursor) };
+}
 
 async function loadAll(docsDir: string, logger: ILogger): Promise<Map<string, Uint8Array>> {
   await fs.mkdir(docsDir, { recursive: true });
@@ -58,7 +64,7 @@ export async function openCollabStore({ dir, shareId, logger }: CollabStoreOptio
   const known = await JsonMapFile.load({ file: path.join(dir, "known.json"), label: "known file hashes", isValue: isString, logger });
   const pending = new Set<Promise<void>>();
   const appended = async () => { while (pending.size > 0) { await Promise.all([...pending]); } };
-  const relayCursors = await JsonMapFile.load({ file: path.join(dir, "relay-cursors.json"), label: "relay cursors", isValue: isCursor, logger, beforeSave: appended });
+  const cursors = await JsonMapFile.load({ file: path.join(dir, "relay-cursors.json"), label: "relay cursors", isValue: isCursor, logger, beforeSave: appended });
   const detach: (() => void)[] = [];
 
   function restore(docKey: string): Y.Doc {
@@ -84,7 +90,7 @@ export async function openCollabStore({ dir, shareId, logger }: CollabStoreOptio
 
   const flush = async () => {
     await appended();
-    await Promise.all([known.flush(), relayCursors.flush()]);
+    await Promise.all([known.flush(), cursors.flush()]);
   };
   await logger.log("INFO", LOG_MODULE, "Opened the share state", { dir, docs: stored.size });
   return {
@@ -92,7 +98,7 @@ export async function openCollabStore({ dir, shareId, logger }: CollabStoreOptio
     createDoc: (docPath) => restore(docPath),
     blobs: new BlobCache(path.join(dir, "blobs")),
     known,
-    relayCursors,
+    relayCursors: (relayUrl) => cursorsOf(cursors, relayUrl),
     flush,
     close: async () => {
       await flush();

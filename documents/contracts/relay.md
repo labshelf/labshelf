@@ -6,7 +6,7 @@ A relay is a Cloudflare Worker that a project owner deploys into their own accou
 
 ## Versions
 
-- The protocol version is `major.minor`, two decimal integers, currently `1.0`. Every HTTP body and every socket message carries it.
+- The protocol version is `major.minor`, two decimal integers, currently `1.1`. Every HTTP body and every socket message carries it. Minor `1` adds the [share endpoints](share-link.md#worker-endpoints); a `1.0` Worker answers them with `404`.
 - A client talks to any Worker of the same major. A minor adds only optional fields and message types that a peer of a lower minor may miss without harm, so a Worker never breaks an older client and a newer client works against an older Worker.
 - A receiver ignores fields it does not know: JSON keys, and bytes after the fields it reads in a socket message.
 - A body or message of another major is refused: the Worker answers `incompatibleVersion`, and a client stops with the typed error `incompatibleRelay`, which tells the user to update LabShelf or the relay.
@@ -14,7 +14,7 @@ A relay is a Cloudflare Worker that a project owner deploys into their own accou
 
 ## Auth
 
-- `OWNER_SECRET` is a Worker secret set by the owner's LabShelf at deploy and kept on the owner's devices only. It authorises `/claim`.
+- `OWNER_SECRET` is a Worker secret set by the owner's LabShelf at deploy and kept on the owner's devices only. It authorises `/claim` and the owner requests of the [share endpoints](share-link.md#worker-endpoints).
 - A share's relay token is the `relay` key of [collaboration.md](collaboration.md#share-key). The Worker stores only its `relayTokenHash`: SHA-256 over the token's 32 decoded bytes, as 64 lowercase hex characters.
 - A ticket is `<expires>.<mac>`: `expires` is a Unix time in seconds, 5 minutes after minting, and `mac` is HMAC-SHA-256, base64url without padding, over the UTF-8 of `<share id>|<expires>`, keyed with HKDF-SHA-256 over the UTF-8 of `OWNER_SECRET` with an empty salt, `info` `ticket` and 32 bytes. Clients treat a ticket as opaque. The Worker checks it when a socket opens and on `/turn`; an open socket outlives its ticket.
 

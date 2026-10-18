@@ -1,6 +1,6 @@
 // Mints and checks the short-lived HMAC tickets that open a share's socket and mint its TURN credentials.
 
-import { base64UrlToBytes, bytesToBase64Url } from "../../encoding/index.js";
+import { base64UrlToBytes, bytesToBase64Url } from "../../../encoding/index.js";
 
 const TICKET_SECONDS = 300;
 const TICKET_PATTERN = /^([1-9]\d{0,11})\.([A-Za-z0-9_-]{43})$/;

@@ -1,7 +1,7 @@
 // Keeps one share's claim, stored frames and snapshots as rows of its Durable Object's SQLite database.
 
-import { MAX_RELAY_MESSAGE_BYTES, type RelayRow, type RelayServerMessage } from "../socket/index.js";
-import type { SqlStorage, SqlValue } from "./cloudflareRuntime.js";
+import { MAX_RELAY_MESSAGE_BYTES, type RelayRow, type RelayServerMessage } from "../../socket/index.js";
+import type { SqlStorage, SqlValue } from "../cloudflareRuntime.js";
 
 // TRAP: a stored frame is replayed inside `rows`, whose overhead (32 bytes) exceeds that of `put` (23), so a frame that fits
 // a put could never be replayed. Frames are capped here; under 1 MiB they also fit the 2 MB row limit without chunking.

@@ -16,6 +16,11 @@ export interface RelayDeps {
   logger: ILogger;
 }
 
+export interface ConnectDeps extends RelayDeps {
+  /** Offers the relay to the shared projects connected on this device. */
+  offerToShares(): Promise<void>;
+}
+
 async function showGuide(): Promise<boolean> {
   const open = "Open Token Page";
   const paste = "Paste Token";
@@ -66,7 +71,7 @@ async function deploy(deps: RelayDeps, token: string, accountId: string): Promis
   });
 }
 
-export async function connectRelay(deps: RelayDeps): Promise<void> {
+export async function connectRelay(deps: ConnectDeps): Promise<void> {
   const existing = await deps.accounts.get();
   if (existing) {
     void vscode.window.showInformationMessage(`Cloudflare is connected, with your relay at ${existing.relayUrl}. Disconnect it first to use another account.`);
@@ -82,9 +87,8 @@ export async function connectRelay(deps: RelayDeps): Promise<void> {
     if (!accountId) { return; }
     const relayUrl = await deploy(deps, token, accountId);
     void deps.logger.log("INFO", LOG_MODULE, "Connected Cloudflare", { accountId, relayUrl });
-    void vscode.window.showInformationMessage(
-      `Cloudflare connected. Projects you share use your relay at ${relayUrl}. For a project you already share, run Share Project again to add it and copy the new invite.`,
-    );
+    await deps.offerToShares();
+    void vscode.window.showInformationMessage(`Cloudflare connected. Your shared projects open here and the ones you share later list your relay at ${relayUrl}.`);
   } catch (error) {
     reportRelayFailure(deps.logger, "connect Cloudflare", error);
   }

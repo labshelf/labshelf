@@ -1,19 +1,21 @@
 // Writes the relay's HTTP answers: JSON bodies and refusals with CORS headers for any origin.
 
+import { SHARE_REFUSAL } from "../../share/http/index.js";
 import { encodeRelayBody, RELAY_REFUSAL, type IceServer } from "../http/index.js";
 
 // CONTRACT: documents/contracts/relay.md#endpoints — any origin, since no cookie is involved.
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, HEAD, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Authorization, Content-Type",
   "Access-Control-Max-Age": "86400",
 };
 
-export type RefusalCode = keyof typeof RELAY_REFUSAL;
+export type RefusalCode = keyof typeof RELAY_REFUSAL | keyof typeof SHARE_REFUSAL;
 
 const REFUSAL_STATUS: Record<RefusalCode, number> = {
   malformed: 400, incompatibleVersion: 400, unauthorized: 401, forbidden: 403, claimed: 409, turnUnavailable: 503,
+  notFound: 404, tooLarge: 413,
 };
 
 type AnswerFields =
@@ -32,3 +34,9 @@ export function refuse(error: RefusalCode): Response {
 export const preflight = (): Response => new Response(null, { status: 204, headers: CORS_HEADERS });
 
 export const notFound = (): Response => new Response(null, { status: 404, headers: CORS_HEADERS });
+
+export const noContent = (): Response => new Response(null, { status: 204, headers: CORS_HEADERS });
+
+/** Raw stored bytes; the share page reads them cross-origin. */
+export const bytesAnswer = (body: ConstructorParameters<typeof Response>[0]): Response =>
+  new Response(body, { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/octet-stream" } });

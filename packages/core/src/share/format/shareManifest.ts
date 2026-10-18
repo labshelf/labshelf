@@ -1,6 +1,7 @@
 // Declares a share's manifest and reads one from untrusted JSON, keeping only the fields the contract names.
 import { BIBLIOGRAPHIC_STRING_FIELDS, type Annotation, type BibliographicFields } from "../../model/index.js";
 import { normalizePaperData } from "../../reader/index.js";
+import { isSha256Hex } from "../../relay/index.js";
 
 // CONTRACT: documents/contracts/share-link.md#manifest
 export const SHARE_MANIFEST_VERSION = 1;
@@ -34,7 +35,6 @@ const isObject = (value: unknown): value is Json => typeof value === "object" &&
 const isString = (value: unknown): value is string => typeof value === "string";
 const isStringList = (value: unknown): value is string[] => Array.isArray(value) && value.every(isString);
 const isSize = (value: unknown): value is number => Number.isSafeInteger(value) && (value as number) >= 0;
-const isHash = (value: unknown): value is string => isString(value) && /^[0-9a-f]{64}$/.test(value);
 
 /** The shareable fields of a paper; the user's own fields (status, tags, note, files) never pass. */
 export function sharedMetadataOf(value: unknown): SharedPaperMetadata | undefined {
@@ -54,7 +54,7 @@ function pdfOf(value: unknown): SharedPdf | undefined {
   if (!isObject(value) || !isSize(value["size"]) || !Array.isArray(value["parts"])) { return undefined; }
   const parts: SharedPdfPart[] = [];
   for (const part of value["parts"]) {
-    if (!isObject(part) || !isHash(part["blob"]) || !isHash(part["content"]) || !isSize(part["size"])) { return undefined; }
+    if (!isObject(part) || !isSha256Hex(part["blob"]) || !isSha256Hex(part["content"]) || !isSize(part["size"])) { return undefined; }
     parts.push({ blob: part["blob"], content: part["content"], size: part["size"] });
   }
   const total = parts.reduce((sum, part) => sum + part.size, 0);

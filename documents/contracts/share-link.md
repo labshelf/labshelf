@@ -72,8 +72,19 @@ The owner's Worker serves shares from protocol `1.1` of the [relay](relay.md#ver
 ## Upload and revoke
 
 - Upload writes the share to the device's [share list](#share-list) first, so whatever reaches the Worker can be revoked. It then puts every blob the Worker does not hold yet, and the manifest last, so a link never names a missing blob. A failed upload revokes what it wrote; if that fails too, the share stays listed for the user to revoke.
-- Revoke deletes the manifest first, which ends the link at once, then every blob of the share that no other share in the list names, then removes the share from the list. A failure keeps the share listed; the deletes are idempotent, so revoking again finishes.
+- Revoke deletes the manifest first, which ends the link once Cloudflare KV drops its edge copies (up to about 60 s), then every blob of the share that no other share in the list names, then removes the share from the list. A failure keeps the share listed; the deletes are idempotent, so revoking again finishes.
 - The share list is per device. A blob that a share made on another device also uses is deleted by a revoke here, and that share's PDF reads as missing.
+
+## Open in LabShelf
+
+The share page's Open in LabShelf button opens
+
+```
+vscode://labshelf.labshelf/importShare?link=<percent-encoded share link>
+```
+
+- The link is the one [link](#link) form, written with the page origin constant whatever origin the page was served from.
+- The extension's URI handler parses it with the same parser as any share link and copies the share's papers into the user's library; a link it cannot parse is refused with the parse error named.
 
 ## Share list
 

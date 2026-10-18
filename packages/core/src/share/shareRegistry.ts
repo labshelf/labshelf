@@ -1,5 +1,5 @@
 // Reads and writes the device's list of the shares it made, through a store port the app backs with a file.
-import { isShareId } from "../relay/index.js";
+import { isSha256Hex, isShareId } from "../relay/index.js";
 import { base64UrlToBytes } from "../encoding/index.js";
 import { formatShareLink } from "./format/index.js";
 
@@ -30,7 +30,7 @@ function recordOf(value: unknown): ShareRecord | undefined {
   const { id, folder, relayUrl, key, createdAt, blobs } = value as Json;
   const fields = [folder, relayUrl, key, createdAt];
   if (!isShareId(id) || !fields.every((field) => typeof field === "string")) { return undefined; }
-  if (!Array.isArray(blobs) || !blobs.every((hash) => typeof hash === "string" && /^[0-9a-f]{64}$/.test(hash))) { return undefined; }
+  if (!Array.isArray(blobs) || !blobs.every((hash) => isSha256Hex(hash))) { return undefined; }
   return { id, folder: folder as string, relayUrl: relayUrl as string, key: key as string, createdAt: createdAt as string, blobs };
 }
 

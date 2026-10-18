@@ -2,8 +2,8 @@
 import { isCompatibleRelay, parseRelayVersion, RELAY_PROTOCOL_VERSION } from "../../src/relay/index";
 
 describe("relay protocol version", () => {
-  it("is 1.0", () => {
-    expect(RELAY_PROTOCOL_VERSION).toBe("1.0");
+  it("is 1.1", () => {
+    expect(RELAY_PROTOCOL_VERSION).toBe("1.1");
   });
 
   it("parses major.minor and refuses anything else", () => {

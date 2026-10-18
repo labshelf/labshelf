@@ -3,6 +3,7 @@ import { DatabaseSync } from "node:sqlite";
 import {
   decodeServerMessage, encodeRelayMessage, type RelayClientMessage, type RelayServerMessage,
 } from "../../../src/relay/index";
+import { fakeKv } from "./fakeKv";
 import { Room, type HibernatingSocket, type RelayEnv, type RoomState, type SqlCursor, type SqlValue } from "../../../src/relay/worker/index";
 
 export const OWNER_SECRET = "owner-secret-for-tests";
@@ -78,13 +79,14 @@ export class FakeRoom {
   }
 }
 
-/** A Worker env whose namespace keeps one FakeRoom per share and records the socket upgrades it receives. */
+/** A Worker env whose namespace keeps one FakeRoom per share and records the socket upgrades it receives; `KV` is a map. */
 export function fakeEnv(overrides: Partial<RelayEnv> = {}) {
   const rooms = new Map<string, FakeRoom>();
   const upgrades: Request[] = [];
   const roomFor = (name: string) => rooms.get(name) ?? rooms.set(name, new FakeRoom()).get(name)!;
   const env: RelayEnv = {
     OWNER_SECRET,
+    KV: fakeKv(),
     ROOM: {
       idFromName: (name) => name,
       get: (id) => ({
