@@ -42,3 +42,4 @@ node signalling-probe.mjs --strategy nostr --role guest --room campus-1 --count 
 Output is one JSON line per join and a final `summary` line (successes, median and p90 in ms, errors, per-relay open counts). Same-machine check: `--role both` (add `--intruder 1 --password correct --grace 4000` for the password check).
 
 ## Campus network results
+Not run: the user does not test from a university network. Direct P2P, TURN and `workers.dev` reachability on campus networks stay unmeasured; the relay and TURN fallback cover blocked direct paths.
