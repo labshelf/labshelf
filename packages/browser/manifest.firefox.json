@@ -54,10 +54,11 @@
         "https://*/*"
       ],
       "include_globs": [
-        "https://scholar.google.*/scholar*"
+        "https://scholar.google.*/scholar*",
+        "https://www.google.*/search*"
       ],
       "js": [
-        "content/scholar.js"
+        "content/searchResults.js"
       ],
       "run_at": "document_idle"
     }

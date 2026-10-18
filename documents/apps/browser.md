@@ -2,7 +2,7 @@
 
 Read when you build, load, change or verify the browser extension.
 
-A Chrome and Firefox MV3 extension. It captures papers from any tab or from Google Scholar, keeps its own copy of the library in IndexedDB and reads PDFs with the same reader as VS Code.
+A Chrome and Firefox MV3 extension. It captures papers from any tab or from Google Scholar and Google search results, keeps its own copy of the library in IndexedDB and reads PDFs with the same reader as VS Code.
 
 ## Build
 
@@ -31,7 +31,7 @@ The minimum versions are the floor for pdf.js 6.3.
 - MV3 forbids inline scripts. The theme is applied before first paint by a separate classic script in `<head>`, with the preference stored in `localStorage["labshelf.theme"]`.
 - The extension pages' CSP is `script-src 'self' 'wasm-unsafe-eval'`, which pdf.js needs for its WebAssembly decoders.
 - Firefox refuses `blob:` workers, so the pdf.js worker starts from its extension URL.
-- The Scholar content script renders inside a shadow root and loads the tokens as text, with `:root` rewritten to `:host`.
+- The search page content script (Scholar and Google results) renders inside a shadow root and loads the tokens as text, with `:root` rewritten to `:host`.
 - Cloudflare-protected publishers (ACM, SIAM, ScienceDirect) block headless browsers and plain `fetch`. Real downloads from them can only be tested by hand.
 
 ## Citation map
@@ -84,7 +84,7 @@ Playwright's full Chrome for Testing can load the unpacked extension. Run it out
 - The DevTools port is in `<user-data-dir>/DevToolsActivePort`. Node has a global `WebSocket`, so the DevTools protocol can be driven without dependencies.
 - Pick the extension's service worker by `url.endsWith("/background/index.js")`. Chrome for Testing ships a component extension whose worker comes first. Read `chrome.storage.local` by evaluating in that worker.
 - To test a page without the background, serve `dist/chrome` statically and inject a callback-style `window.chrome` stub (webextension-polyfill needs only `runtime.id`). Seed IndexedDB `labshelf` v1 on the same origin before navigating to `library-page/index.html`, which mounts core's library UI over an in-page loopback ([library-ui-host.md](../contracts/library-ui-host.md)) and reads reading stats and annotations from the papers' sidecars.
-- To test the Scholar content script on a fixture, `Fetch.enable` for `https://scholar.google.com/scholar*` and fulfil the request with the fixture HTML.
+- To test the search page content script on a fixture, `Fetch.enable` for `https://scholar.google.com/scholar*` or `https://www.google.com/search*` and fulfil the request with the fixture HTML.
 - To test the popup against an article tab, open `popup/index.html` in a 340 px target, overriding `chrome.tabs.query` through `Page.addScriptToEvaluateOnNewDocument`.
 - For reader parity with VS Code, render both readers on the same real paper and pixel-diff the toolbar and sidebar. CDP drags do not create text selections in either reader; select with a `Range` plus a synthetic `mouseup` instead.
 

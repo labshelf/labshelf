@@ -5,6 +5,7 @@ export type {
 export { resolvePdf } from "./resolvePdf.js";
 export { proxiedUrl, proxyKind, type ProxyKind } from "./access/index.js";
 export { isCustomResolverTemplate, isPreprintServerUrl } from "./resolvers/index.js";
+export { isScholarlyHost } from "./rules/index.js";
 export { makeResolveContext } from "./resolveContext.js";
 export { findPaperPdf } from "./findPaperPdf.js";
 export type { PdfSearch } from "./findPaperPdf.js";

@@ -1,4 +1,4 @@
-// Handles the capture.* and scholar.save runtime messages: inspecting a tab, searching for its
+// Handles the capture.* and searchHit.save runtime messages: inspecting a tab, searching for its
 // PDF, saving the draft and attaching a PDF to an already-saved paper.
 import type { IfNoPdf, ILogger } from "@labshelf/core";
 import { bx } from "../../platform";
@@ -9,7 +9,7 @@ import {
   attachPdfToPaper, findPdf, refreshExisting, resetPdfSearch, saveOrAsk, summarizeAttempts,
 } from "../../capture/index";
 import type { CaptureDraft, SaveDecision, SavedPaper } from "../../capture/index";
-import { draftForTab, scholarDraftFor } from "../draftCache";
+import { draftForTab, hitDraftFor } from "../draftCache";
 import { broadcastChanged } from "../broadcast";
 import type { LibraryMutations } from "../../storage";
 import { pdfExists, ref } from "./libraryRef";
@@ -149,13 +149,13 @@ export async function handleCaptureTab(
   return saveUnlessInLibrary(log, mutations, draft, { folder: msg.targetFolder, ifNoPdf: msg.ifNoPdf, retryPdf: msg.retryPdf, tabId: msg.tabId });
 }
 
-export async function handleScholarSave(
+export async function handleSearchHitSave(
   log: ILogger,
   mutations: LibraryMutations,
-  msg: Extract<RuntimeMessage, { type: "scholar.save" }>,
-  scholarTabId: number | undefined,
+  msg: Extract<RuntimeMessage, { type: "searchHit.save" }>,
+  pageTabId: number | undefined,
 ): Promise<SaveOutcome | SavedPaperData> {
-  return saveUnlessInLibrary(log, mutations, await scholarDraftFor(log, msg.hit), { ...msg, tabId: scholarTabId });
+  return saveUnlessInLibrary(log, mutations, await hitDraftFor(log, msg.hit), { ...msg, tabId: pageTabId });
 }
 
 /**

@@ -12,8 +12,8 @@ export type RuntimeMessage =
   | { type: "capture.save"; tabId: number; folder?: string; tags?: string[]; note?: string; ifNoPdf?: IfNoPdf; retryPdf?: boolean }
   /** Inspects and saves a tab in one go (the library page's "Add from open tab"). */
   | { type: "capture.tab"; tabId: number; targetFolder?: string; ifNoPdf?: IfNoPdf; retryPdf?: boolean }
-  /** Saves one Google Scholar result. */
-  | { type: "scholar.save"; hit: ScholarHit; folder?: string; ifNoPdf?: IfNoPdf; retryPdf?: boolean }
+  /** Saves one Google Scholar or Google search result. */
+  | { type: "searchHit.save"; hit: SearchHit; folder?: string; ifNoPdf?: IfNoPdf; retryPdf?: boolean }
   /** Popup, paper already in the library without a PDF: attach the PDF found for this tab to that copy. */
   | { type: "capture.attachPdf"; tabId: number }
   /** Library page "Find PDF": run the resolver chain for a saved paper and attach what it finds. */
@@ -97,7 +97,7 @@ interface NoPdfData {
   miss: PdfMiss;
 }
 
-/** Reply to capture.save, capture.tab and scholar.save. */
+/** Reply to capture.save, capture.tab and searchHit.save. */
 export type SaveOutcome = SavedPaperData | NoPdfData;
 
 /** Reply to capture.attachPdf and paper.findPdf. */
@@ -171,14 +171,14 @@ export interface LookupItem {
 
 export type LookupData = Record<string, LibraryRef>;
 
-/** One Google Scholar result, as the content script reads it. */
-export interface ScholarHit {
-  /** Scholar's cluster id (data-cid). */
+/** One Google Scholar or Google search result, as the content script reads it. */
+export interface SearchHit {
+  /** Identity on its page: Scholar's cluster id (data-cid), or the result link on Google. */
   key: string;
   title: string;
   /** The title link — the article's landing page. */
   url?: string;
-  /** The "[PDF]" link in the right column. */
+  /** Scholar's "[PDF]" link in the right column. */
   pdfUrl?: string;
   /** As printed: abbreviated, possibly truncated. */
   authors: string[];

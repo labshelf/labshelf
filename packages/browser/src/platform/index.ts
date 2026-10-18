@@ -6,5 +6,5 @@ export { downloadTextFile } from "./downloadTextFile";
 export { getSettings, updateSettings, type LabShelfSettings } from "./settings";
 export type {
   AskAuthorData, AttachPdfData, DraftView, FolderOption, FoldersData, LibraryChangedBroadcast, LibraryRef, LookupData, LookupItem,
-  ImportedDoiData, PdfOfferView, PdfStatusData, RuntimeMessage, RuntimeResponse, SaveOutcome, SavedPaperData, ScholarHit, TabSummary,
+  ImportedDoiData, PdfOfferView, PdfStatusData, RuntimeMessage, RuntimeResponse, SaveOutcome, SavedPaperData, SearchHit, TabSummary,
 } from "./runtimeMessages";

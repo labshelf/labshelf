@@ -23,7 +23,7 @@ const ENTRIES = [
   // Classic script: runs in <head> before the stylesheets so the theme is set pre-paint.
   { entry: "ui/themeBoot.ts", out: "ui/themeBoot.js", format: "iife" },
   // Content scripts are classic scripts too: no module loading in page worlds.
-  { entry: "content/scholar.ts", out: "content/scholar.js", format: "iife" },
+  { entry: "content/searchResults.ts", out: "content/searchResults.js", format: "iife" },
 ];
 
 const TARGETS = ["chrome", "firefox"];

@@ -1,14 +1,14 @@
-// Keeps capture drafts (keyed by tab id or Scholar result identity) between the calls that confirm a save.
+// Keeps capture drafts (keyed by tab id or search result identity) between the calls that confirm a save.
 // Lets the second call reuse the record and the PDF search already run.
 import type { ILogger } from "@labshelf/core";
-import { draftFromScholarHit, inspectTab } from "../capture/index";
+import { draftFromSearchHit, inspectTab } from "../capture/index";
 import type { CaptureDraft } from "../capture/index";
-import type { ScholarHit } from "../platform";
+import type { SearchHit } from "../platform";
 
 // PLATFORM: both caches live in memory; a suspended MV3 service worker drops them and the next call rebuilds.
 const TTL_MS = 10 * 60_000;
-// TRAP: Scholar hits are untrusted page data, so that cache is size-capped as well as TTL-bounded.
-const SCHOLAR_MAX = 64;
+// TRAP: search hits are untrusted page data, so that cache is size-capped as well as TTL-bounded.
+const HIT_MAX = 64;
 
 interface Entry {
   url: string;
@@ -17,7 +17,7 @@ interface Entry {
 }
 
 const entries = new Map<number, Entry>();
-const scholarEntries = new Map<string, { at: number; draft: Promise<CaptureDraft> }>();
+const hitEntries = new Map<string, { at: number; draft: Promise<CaptureDraft> }>();
 
 /**
  * The tab's draft, inspected once per URL and reused for TTL_MS.
@@ -40,33 +40,33 @@ export function forgetDraft(tabId: number): void {
 }
 
 /**
- * A Scholar result's cache key. hit.key falls back to the title, so the links
+ * A search result's cache key. hit.key falls back to the title, so the links
  * are part of the identity: two results that share a title but link to
  * different papers must not collide.
  */
-export function scholarCacheKey(hit: ScholarHit): string {
+export function hitCacheKey(hit: SearchHit): string {
   return JSON.stringify([hit.key, hit.url ?? "", hit.pdfUrl ?? "", hit.title]);
 }
 
 /**
- * The Scholar result's draft, built once and reused for TTL_MS, so the
+ * The search result's draft, built once and reused for TTL_MS, so the
  * "Save without PDF" confirmation reuses the finished search instead of
  * re-fetching the landing page and re-running the whole chain.
  */
-export function scholarDraftFor(log: ILogger, hit: ScholarHit): Promise<CaptureDraft> {
+export function hitDraftFor(log: ILogger, hit: SearchHit): Promise<CaptureDraft> {
   const now = Date.now();
-  for (const [k, e] of scholarEntries) if (now - e.at > TTL_MS) scholarEntries.delete(k);
-  const key = scholarCacheKey(hit);
-  const cached = scholarEntries.get(key);
+  for (const [k, e] of hitEntries) if (now - e.at > TTL_MS) hitEntries.delete(k);
+  const key = hitCacheKey(hit);
+  const cached = hitEntries.get(key);
   if (cached) return cached.draft;
-  const draft = draftFromScholarHit(log, hit);
-  scholarEntries.set(key, { at: now, draft });
+  const draft = draftFromSearchHit(log, hit);
+  hitEntries.set(key, { at: now, draft });
   // A failed build must not be served again.
-  draft.catch(() => { if (scholarEntries.get(key)?.draft === draft) scholarEntries.delete(key); });
+  draft.catch(() => { if (hitEntries.get(key)?.draft === draft) hitEntries.delete(key); });
   // Bound the cache: the hit is untrusted page data.
-  for (const oldest of scholarEntries.keys()) {
-    if (scholarEntries.size <= SCHOLAR_MAX) break;
-    scholarEntries.delete(oldest);
+  for (const oldest of hitEntries.keys()) {
+    if (hitEntries.size <= HIT_MAX) break;
+    hitEntries.delete(oldest);
   }
   return draft;
 }
@@ -77,7 +77,7 @@ export function forgetPaper(paperId: string): void {
   for (const entry of entries.values()) {
     void entry.draft.then(clear).catch(() => undefined);
   }
-  for (const entry of scholarEntries.values()) {
+  for (const entry of hitEntries.values()) {
     void entry.draft.then(clear).catch(() => undefined);
   }
 }

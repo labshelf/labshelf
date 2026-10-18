@@ -1,24 +1,24 @@
-// Routes runtime messages from the popup, options, library page and Google Scholar buttons to the
-// capture/library handlers, gating which message types a Scholar content script may send.
+// Routes runtime messages from the popup, options, library page and search result buttons to the
+// capture/library handlers, gating which message types the search page content script may send.
 import { errorMessage, type ILogger } from "@labshelf/core";
 import { bx } from "../platform";
 import type { LibraryChangedBroadcast, RuntimeMessage, RuntimeResponse } from "../platform";
-import { isScholarUrl } from "../content";
+import { isSearchPageUrl } from "../content";
 import type { LibraryMutations } from "../storage";
 import {
   handleCaptureAttachPdf, handleCaptureFindPdf, handleCaptureInspect, handleCaptureSave, handleCaptureTab,
   handleFindBetterPdf, handleFindPdfForPaper, handleLibraryFolders, handleLibraryLookup, handleLibraryOpen, handleListTabs,
-  handleAskAuthor, handleCitationMapBuild, handleCitationMapImportDoi, handleOpenForPdf, handleRemovePaper, handleScholarSave, accessTabDeps,
+  handleAskAuthor, handleCitationMapBuild, handleCitationMapImportDoi, handleOpenForPdf, handleRemovePaper, handleSearchHitSave, accessTabDeps,
 } from "./handlers/index";
 import { handlePdfOfferMessage, isPdfOfferMessage } from "./pdfOffer/index";
 
-// Web pages reach the background only through the Scholar content script,
+// Web pages reach the background only through the search page content script (Scholar and Google),
 // and only for what its buttons need; everything else is for extension pages.
-const PAGE_MESSAGES: ReadonlySet<RuntimeMessage["type"]> = new Set(["scholar.save", "library.lookup", "library.folders", "library.open"]);
+const PAGE_MESSAGES: ReadonlySet<RuntimeMessage["type"]> = new Set(["searchHit.save", "library.lookup", "library.folders", "library.open"]);
 
 function allowedFrom(msg: RuntimeMessage, sender: { url?: string }): boolean {
   if (sender.url?.startsWith(bx.runtime.getURL(""))) return true;
-  return PAGE_MESSAGES.has(msg?.type) && isScholarUrl(sender.url);
+  return PAGE_MESSAGES.has(msg?.type) && isSearchPageUrl(sender.url);
 }
 
 export interface MessageRouterDeps {
@@ -59,8 +59,8 @@ async function handle(msg: RuntimeMessage, deps: MessageRouterDeps, senderTabId:
       return handleCaptureSave(log, mutations, msg);
     case "capture.tab":
       return handleCaptureTab(log, mutations, msg);
-    case "scholar.save":
-      return handleScholarSave(log, mutations, msg, senderTabId);
+    case "searchHit.save":
+      return handleSearchHitSave(log, mutations, msg, senderTabId);
     case "capture.attachPdf":
       return handleCaptureAttachPdf(log, mutations, msg);
     case "paper.findPdf":
