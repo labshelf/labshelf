@@ -1,5 +1,5 @@
 // Maps the browser's OS to the LabShelf Helper installer to download, and names the macOS opening guide.
-const RELEASES = "https://github.com/lucaanasser/labshelf/releases/latest";
+const RELEASES = "https://github.com/labshelf/labshelf/releases/latest";
 
 // The release workflow publishes installers under these names.
 const ASSET_BY_OS: Record<string, string> = {
@@ -15,4 +15,4 @@ export function helperDownloadUrl(os: string): string {
 }
 
 /** The manual section that explains how to open the unsigned macOS installer. */
-export const MACOS_GUIDE_URL = "https://github.com/lucaanasser/labshelf#helper-macos";
+export const MACOS_GUIDE_URL = "https://github.com/labshelf/labshelf#helper-macos";

@@ -41,7 +41,7 @@
     <div class="sub">
       <p>LabShelf is a local-first reference manager that lives where you write: <span class="mark">VS Code</span>, the terminal and the browser. <span class="d">It knows what you read, what you marked, and what your thesis cites.</span></p>
       <div class="install">
-        <div class="row"><span class="prompt">&gt;</span><code id="ic">git clone https://github.com/lucaanasser/labshelf</code><button class="cp" data-copy="#ic">copy</button></div>
+        <div class="row"><span class="prompt">&gt;</span><code id="ic">git clone https://github.com/labshelf/labshelf</code><button class="cp" data-copy="#ic">copy</button></div>
         <span class="alt">Build from source · free and open source · no account · your library is a folder</span>
       </div>
     </div>
@@ -190,7 +190,7 @@
 <section id="s1"><h2><span class="n">1</span>Getting started</h2>
   <p>LabShelf is three apps over one library: a VS Code extension, a terminal app and a browser extension. None of them is published yet, so you build them from the repository. <mark class="h" data-m="blue" title="blue">VS Code and the terminal read the same folder on your disk; the browser keeps its own copy in IndexedDB</mark>. To use the library on several computers, sync the folder with your own sync tool; LabShelf calls no cloud service.</p>
     <h3 id="s1-1"><span class="n">1.1</span>Build the apps</h3>
-  <p>Each app builds from a clone of <a href="https://github.com/lucaanasser/labshelf">github.com/lucaanasser/labshelf</a> with pnpm. Build only the apps you use; Table 1 lists the command and how to load each one.</p>
+  <p>Each app builds from a clone of <a href="https://github.com/labshelf/labshelf">github.com/labshelf/labshelf</a> with pnpm. Build only the apps you use; Table 1 lists the command and how to load each one.</p>
   <ol class="steps">
     <li>Clone the repository and run <code>pnpm install</code> at its root.<span class="res">The install ends without errors. The terminal app needs Node 22.6 or later; the extension needs VS Code 1.98 or later.</span></li>
     <li>Run the build command for your app from Table 1.<span class="res">The build writes the app into its package: <code>out/</code> and <code>dist/</code> for VS Code, <code>dist/labshelf.mjs</code> for the terminal, <code>dist/chrome</code> and <code>dist/firefox</code> for the browser.</span></li>
@@ -470,7 +470,7 @@ projects/&lt;project id&gt;/       <span class="c"># your LaTeX or Typst project
   <h3 id="helper-macos"><span class="n">5.10</span>Install LabShelf Helper on macOS</h3>
   <p>LabShelf Helper is a small program that builds LaTeX projects for the browser extension, which cannot run a TeX compiler by itself. The extension sends the helper a project's files; the helper runs <code>latexmk</code>, using a TeX it installs for you or the one on your computer, and sends back the problems and the PDF. It runs as you, writes only to <code>~/Library/Application Support/LabShelf Helper</code> and needs no administrator rights. The steps below are for macOS 15 or later. The installer is not signed by Apple, so macOS blocks it the first time (<a class="xref" href="#helper-unsigned">why</a>).</p>
   <ol class="steps">
-    <li>Download <code>labshelf-helper-macos.pkg</code> (Apple silicon) or <code>labshelf-helper-macos-x64.pkg</code> (Intel) from the <a href="https://github.com/lucaanasser/labshelf/releases">releases page</a>, and open it.<span class="res">macOS says the installer cannot be opened because Apple cannot check it for malicious software. Click <b>Done</b>; do not move it to the Bin.</span></li>
+    <li>Download <code>labshelf-helper-macos.pkg</code> (Apple silicon) or <code>labshelf-helper-macos-x64.pkg</code> (Intel) from the <a href="https://github.com/labshelf/labshelf/releases">releases page</a>, and open it.<span class="res">macOS says the installer cannot be opened because Apple cannot check it for malicious software. Click <b>Done</b>; do not move it to the Bin.</span></li>
     <li>Open <b>System Settings</b> and choose <b>Privacy &amp; Security</b>.<span class="res">Under <b>Security</b>, a line says the installer was blocked to protect your Mac.</span></li>
     <li>Click <b>Open Anyway</b>.<span class="res">macOS asks for your password or Touch ID.</span></li>
     <li>Enter your password, then confirm with <b>Open Anyway</b> in the dialog that follows.<span class="res">The installer opens. Click <b>Continue</b> and <b>Install</b>; it ends with <b>The installation was successful</b>.</span></li>
@@ -480,12 +480,12 @@ projects/&lt;project id&gt;/       <span class="c"># your LaTeX or Typst project
   <div class="fix"><b>If it goes wrong</b>When Privacy &amp; Security shows no <b>Open Anyway</b> button, open the <code>.pkg</code> again; the button stays for about an hour after the block. When the extension still says the helper is missing, quit the browser completely and open it again.</div>
 
   <h3 id="helper-unsigned"><span class="n">5.11</span>Why the macOS helper is unsigned</h3>
-  <p>LabShelf is free and open source. A Developer ID certificate, which lets Apple vouch for a program, costs US$ 99 a year, so the macOS helper is not signed by Apple. What you can check instead is where the file came from. The public <a href="https://github.com/lucaanasser/labshelf/blob/main/.github/workflows/helper-release.yml">release workflow</a> builds every helper binary and installer from the repository, attaches a build attestation that ties each file to that workflow run, and publishes the SHA-256 of every file in <code>SHA256SUMS</code>. The Windows helper is signed through the SignPath Foundation; see the <a href="code-signing-policy.html">code signing policy</a>.</p>
+  <p>LabShelf is free and open source. A Developer ID certificate, which lets Apple vouch for a program, costs US$ 99 a year, so the macOS helper is not signed by Apple. What you can check instead is where the file came from. The public <a href="https://github.com/labshelf/labshelf/blob/main/.github/workflows/helper-release.yml">release workflow</a> builds every helper binary and installer from the repository, attaches a build attestation that ties each file to that workflow run, and publishes the SHA-256 of every file in <code>SHA256SUMS</code>. The Windows helper is signed through the SignPath Foundation; see the <a href="code-signing-policy.html">code signing policy</a>.</p>
   <ol class="steps">
     <li>Install the <a href="https://cli.github.com">GitHub CLI</a> and run the command in Listing 9 on the file you downloaded.<span class="res">It prints <code>Verification succeeded!</code> with the workflow that built the file.</span></li>
     <li>Compare the file with its published SHA-256: run <code>shasum -a 256 labshelf-helper-macos.pkg</code> and look for the same value in <code>SHA256SUMS</code> on the release.<span class="res">The two values are equal.</span></li>
   </ol>
-  <div class="pre"><span class="lab">Listing 9. Verifying a downloaded installer.</span><pre><span class="pk">gh attestation verify</span> labshelf-helper-macos.pkg --repo lucaanasser/labshelf</pre><button class="cp">copy</button></div>
+  <div class="pre"><span class="lab">Listing 9. Verifying a downloaded installer.</span><pre><span class="pk">gh attestation verify</span> labshelf-helper-macos.pkg --repo labshelf/labshelf</pre><button class="cp">copy</button></div>
   <div class="fix"><b>If it goes wrong</b>When verification fails or the SHA-256 differs, do not open the file. Download it again from the releases page, and report it in an issue if it fails again.</div>
 
   <h3 id="helper-uninstall"><span class="n">5.12</span>Uninstall LabShelf Helper on macOS</h3>
@@ -609,7 +609,7 @@ exists vaswani2017attention  (1706.03762)</pre></div>
   title   = {LabShelf: a local-first research paper manager},
   author  = {Nasser, Luca Marinho},
   year    = {2026},
-  url     = {https://github.com/lucaanasser/labshelf}
+  url     = {https://github.com/labshelf/labshelf}
 }</pre><button class="cp">copy</button></div>
 </section>
         <div class="mfoot"><span>labshelf-manual.pdf</span><span>October 2026</span><span>5 pages</span></div>

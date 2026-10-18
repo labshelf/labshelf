@@ -45,7 +45,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
-        with: { repository: lucaanasser/labshelf, path: .labshelf }
+        with: { repository: labshelf/labshelf, path: .labshelf }
       - uses: pnpm/action-setup@v4
         with: { version: 9 }
       - uses: actions/setup-node@v4

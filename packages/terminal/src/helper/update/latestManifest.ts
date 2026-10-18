@@ -3,7 +3,7 @@ import { createPublicKey, verify } from "node:crypto";
 
 import type { FetchLike } from "@labshelf/core/node";
 
-export const LATEST_MANIFEST_URL = "https://github.com/lucaanasser/labshelf/releases/latest/download/latest.json";
+export const LATEST_MANIFEST_URL = "https://github.com/labshelf/labshelf/releases/latest/download/latest.json";
 
 export interface ReleaseAsset {
   version: string;

@@ -2,7 +2,7 @@ Package: labshelf-helper
 Version: @VERSION@
 Architecture: @ARCH@
 Maintainer: LabShelf <lucaanasser@users.noreply.github.com>
-Homepage: https://github.com/lucaanasser/labshelf
+Homepage: https://github.com/labshelf/labshelf
 Section: utils
 Priority: optional
 Description: LabShelf Helper builds LaTeX projects for the LabShelf browser extension.

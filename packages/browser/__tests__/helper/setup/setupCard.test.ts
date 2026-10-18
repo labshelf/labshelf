@@ -7,7 +7,7 @@ import type { HelperProgress, HelperProgressListener, HelperStatus, ILatexHelper
 import { mountHelperSetupCard, type HelperSetupDeps } from "../../../src/helper/setup";
 
 const ready = (tex: TexStatus): HelperStatus => ({ state: "ready", helperVersion: "1.2.0", tex });
-const ASSETS = "https://github.com/lucaanasser/labshelf/releases/latest/download/";
+const ASSETS = "https://github.com/labshelf/labshelf/releases/latest/download/";
 
 interface FakeHelper extends ILatexHelper {
   connect: jest.Mock<Promise<HelperStatus>, []>;
