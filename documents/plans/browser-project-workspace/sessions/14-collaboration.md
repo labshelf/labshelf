@@ -15,8 +15,8 @@ Runs alone: it adds dependencies.
 
 ## 14.1 — Join
 
-- **Read only:** `documents/contracts/collaboration.md`; `documents/contracts/relay.md`; `packages/core/src/collab/index.ts` and `collab/dom/index.ts`; `packages/core/src/collab/comments/` index; `packages/browser/src/library-page/editor/index.ts`.
-- **Decided:** the page runs the core session and the relay transport natively; `y-codemirror.next` binds each open file's Yjs text and awareness; a per-user `Y.UndoManager` per file. The invite link is pasted in the page or comes from the hash; its `#fragment` carries the share key, which stays in extension storage, never in the project folder. Comments use the core store on the index doc. Nothing is copied from `packages/vscode/`.
+- **Read only:** `documents/contracts/collaboration.md`; `documents/contracts/relay.md`; `packages/core/src/collab/index.ts` and `collab/transport/index.ts`; `packages/core/src/collab/comments/` index; `packages/browser/src/library-page/editor/index.ts`.
+- **Decided:** the page runs the core session over the relay transport, the only transport (no WebRTC), and joins with the relay the invite carries; `y-codemirror.next` binds each open file's Yjs text and awareness; a per-user `Y.UndoManager` per file. The invite link is pasted in the page or comes from the hash; its `#fragment` carries the share key, which stays in extension storage, never in the project folder. Comments use the core store on the index doc. Nothing is copied from `packages/vscode/`.
 - **Done when:** a test joins two in-memory peers, one bound to an `EditorView`, and an edit and a comment reach the other.
 - **Do not touch:** `packages/vscode/`, core contracts.
 

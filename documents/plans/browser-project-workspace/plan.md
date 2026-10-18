@@ -1,6 +1,6 @@
 # Plan: the browser library page as a project workspace
 
-Status: draft
+Status: approved
 Size: 14 sessions — spike, core moves, bridge, helper protocol, Tinymist, hardening, editor area, CodeMirror, LaTeX speed, lists, deletions, collaboration.
 
 ## 1. Goal
