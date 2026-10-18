@@ -23,7 +23,13 @@ Library:
   status <id…> <unread|reading|done>
   tag <id…> +tag -tag              add / remove tags
   mv <id…> <collection>            move papers to a collection
+
+Writing:
   install [project-dir]            import the papers a writing project lists in labshelf.yaml and the library lacks
+  build [project] [--watch]        build a project's PDF (--watch: rebuild on source changes until Ctrl-C)
+  cite [project] [--format latex|typst|key]  pick a paper and print its citation
+  projects [--json]                list the library's writing projects
+  check [project] [--json]         check a project's built PDF and sources before submitting
 
 Setup:
   init [path]                      create or adopt a library and remember it

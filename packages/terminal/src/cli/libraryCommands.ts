@@ -1,10 +1,10 @@
-// Runs the non-interactive library subcommands (ls, search, show, add, bib, open, status, tag, mv, copy): each
-// opens the library through the same composition root as the TUI and writes plain text or --json to stdout.
+// Runs the non-interactive library subcommands (ls, search, show, add, bib, open, status, tag, mv, copy), handing other words to the project commands:
+// each opens the library through the same composition root as the TUI and writes plain text or --json to stdout.
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import {
-  formatBytes, paperComparator, paperFiles, paperLink, papersUnder, venueLine, type PaperEntry, type PaperRecord, type PaperStatus, type SortSpec,
+  paperComparator, papersUnder, type PaperEntry, type PaperRecord, type PaperStatus, type SortSpec,
 } from "@labshelf/core";
 
 import { isSortKey, type AppContext, type TerminalConfig } from "../app/index.js";
@@ -14,7 +14,8 @@ import { STATUS_GLYPH } from "../ui/index.js";
 import { stringFlag, type ParsedArgs } from "./args.js";
 import { runOpen } from "./openCommand.js";
 import { requirePaper } from "./paperLookup.js";
-import { runInstall } from "./project/index.js";
+import { runProjectCommand } from "./project/index.js";
+import { showText } from "./show/index.js";
 import { Output, UsageError } from "./usage.js";
 
 const STATUS_WORDS: Record<string, PaperStatus> = { unread: "unread", u: "unread", reading: "reading", r: "reading", done: "done", d: "done" };
@@ -65,9 +66,7 @@ export async function runLibraryCommand(ctx: AppContext, args: ParsedArgs, io: O
     case "tag": case "tags": return runTag(ctx, positionals, io);
     case "mv": return runMv(ctx, positionals, io);
     case "copy": return runCopy(ctx, positionals, io);
-    case "install": return runInstall(ctx, positionals, io);
-    default:
-      throw new UsageError(`Unknown command "${command}". Run labshelf --help.`);
+    default: return runProjectCommand(ctx, args, io);
   }
 }
 
@@ -189,28 +188,4 @@ async function runCopy(ctx: AppContext, positionals: string[], io: Output): Prom
   const entry = requirePaper(ctx, positionals[0] ?? "");
   await copyToClipboard(entry.record.citeKey);
   return 0;
-}
-
-function showText(entry: PaperEntry, highlights: number, page: number | undefined): string {
-  const r = entry.record;
-  const lines = [r.title];
-  if (r.authors?.length) { lines.push(r.authors.join(", ")); }
-  const venue = venueLine(r);
-  if (venue) { lines.push(venue); }
-  lines.push("");
-  const rows: Array<[string, string | undefined]> = [
-    ["id", r.id],
-    ["status", `${STATUS_GLYPH[r.status]} ${r.status}`],
-    ["tags", r.tags?.join(", ")],
-    ["doi", r.doi],
-    ["url", r.url],
-    ["in", entry.collection || "(library root)"],
-    ["pdf", r.hasPdf === false ? "not on this device" : `${paperFiles(r.path, path.join).pdf} (${formatBytes(entry.pdfBytes ?? 0)})`],
-    ["notes", highlights ? `${highlights} highlight(s)` : undefined],
-    ["read", page ? `stopped at page ${page}` : undefined],
-  ];
-  for (const [label, value] of rows) { if (value) { lines.push(`${label.padEnd(7)}${value}`); } }
-  if (r.note?.trim()) { lines.push("", "note:", r.note.trim()); }
-  if (r.summary?.trim()) { lines.push("", r.summary.trim()); }
-  return lines.join("\n");
 }

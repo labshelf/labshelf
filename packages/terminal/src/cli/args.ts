@@ -16,6 +16,8 @@ const OPTIONS = {
   "dump-frame": { type: "string" },
   keys: { type: "string" },
   sort: { type: "string" },
+  format: { type: "string" },
+  watch: { type: "boolean" },
   recursive: { type: "boolean", short: "r" },
   help: { type: "boolean", short: "h" },
   version: { type: "boolean", short: "v" },

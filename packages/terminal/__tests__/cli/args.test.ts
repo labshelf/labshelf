@@ -138,3 +138,14 @@ describe("library setup commands", () => {
     expect(parseArgs(["conflicts", "-L", "/lib"])).toEqual({ command: "conflicts", positionals: [], flags: { library: "/lib" } });
   });
 });
+
+describe("project command flags", () => {
+  it("takes --format as a string value, spaced or with '='", () => {
+    expect(parseArgs(["cite", "--format", "latex"])).toEqual({ command: "cite", positionals: [], flags: { format: "latex" } });
+    expect(parseArgs(["cite", "--format=typst"]).flags).toEqual({ format: "typst" });
+  });
+
+  it("treats --watch as a boolean that leaves the next argument a positional", () => {
+    expect(parseArgs(["build", "--watch", "main.tex"])).toEqual({ command: "build", positionals: ["main.tex"], flags: { watch: true } });
+  });
+});

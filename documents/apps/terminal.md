@@ -22,10 +22,50 @@ labshelf doctor                             # checks library, config and the ima
 - PDFs open in the system viewer, or in `LABSHELF_PDF_VIEWER` or `terminal.pdfViewer` from the config. The viewer is a command; the PDF path is appended to it. A `{page}` token in the command is replaced by the page to open, for example `zathura -P {page}`, `okular -p {page}` or `evince -i {page}`.
 - `labshelf open <id | cite key | link>` accepts a [`labshelf:` link](../contracts/links.md) (`labshelf:vaswani2017#p5`, `web+labshelf:` or percent-encoded). A viewer with `{page}` gets the link's page, else the paper's saved reading position, else 1. The system opener cannot take a page, so with it the command opens the PDF and prints `Opened <key> — go to page <n>` for a link that names a page. A link whose cite key matches no paper fails with a usage error naming the key.
 
+## Writing projects
+
+The project commands act on the writing project in the current folder or the folder given as the first argument. They exit 0 on success, 1 on findings or errors, and 2 when a toolchain is missing or a question cannot be asked.
+
+- `labshelf install [project-dir]` (default: the current folder) reads the project's `labshelf.yaml` and imports, one at a time by DOI, each listed paper whose cite key the library lacks, under the listed key. It prints a line per paper (added, already in the library, in the library under another key, no DOI, failed, added without a PDF) and a summary, and exits 1 when a listed key still resolves to no paper. A missing or unreadable `labshelf.yaml` is a usage error (exit 2).
+- `labshelf build [--watch]` builds the project and prints each error as `file:line: message`. On the first build it asks for the LaTeX engine; without TeX Live it offers Tectonic and downloads it once. Without a terminal it declines every question, so a CI run sets `engine:` in `labshelf.yaml` and installs TeX Live. `--watch` rebuilds on every source change until Ctrl-C.
+- `labshelf cite [--format latex|typst|key]` opens a fuzzy paper picker on `/dev/tty`, prints the citation of the picked paper to stdout and adds its entry to `labshelf.bib`.
+- `labshelf projects [--json]` lists the library's writing projects; `g w` opens the same list as the explorer's Writing pane.
+- `labshelf check [--json]` runs the pre-submission checks on the built PDF and exits 1 when one fails, for example a de-anonymised submission.
+
+A GitHub Actions workflow that builds and checks a LaTeX project on every push. LabShelf is not published, so the job builds it from source. The project commits `labshelf.bib` and sets `engine: pdflatex` in `labshelf.yaml`, because the job library starts empty and the job cannot answer questions:
+
+```yaml
+name: paper
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      LABSHELF_LIBRARY: ${{ runner.temp }}/library
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with: { repository: lucaanasser/labshelf, path: .labshelf }
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: sudo apt-get install -y latexmk texlive-latex-recommended texlive-latex-extra
+      - run: pnpm install --frozen-lockfile && pnpm --filter @labshelf/terminal build
+        working-directory: .labshelf
+      - run: |
+          labshelf() { node .labshelf/packages/terminal/dist/labshelf.mjs "$@"; }
+          labshelf init "$LABSHELF_LIBRARY"
+          labshelf install
+          labshelf build
+          labshelf check
+      - uses: actions/upload-artifact@v4
+        with: { name: paper, path: "*.pdf" }
+```
+
 ## Adding papers over the network
 
 - `labshelf add` and the explorer's add accept a DOI, PMID, PMCID, arXiv id or a landing-page URL. The core network import resolves metadata, skips a paper the library already has (DOI, arXiv id, or title and year), and finds the PDF through the core chain. A landing page without a downloadable PDF is saved without one.
-- `labshelf install [project-dir]` (default: the current folder) reads the project's `labshelf.yaml` and imports, one at a time by DOI, each listed paper whose cite key the library lacks, under the listed key. It prints a line per paper (added, already in the library, in the library under another key, no DOI, failed, added without a PDF) and a summary, and exits 1 when a listed key still resolves to no paper. A missing or unreadable `labshelf.yaml` is a usage error (exit 2).
 - No custom resolver is configured and the registries' contact email is the default, until a setting exists.
 
 ## Verification
@@ -42,7 +82,7 @@ XDG_CONFIG_HOME=<scratch>/config XDG_CACHE_HOME=<scratch>/cache LABSHELF_TOKEN_S
 
 There are two ways to check the app:
 
-- **Text frames.** `--dump-frame 120x30 --keys "h j l <tab> <enter> <C-d>"` renders one frame as plain text through the real app and input decoder. No TTY is needed. Use this to check layout and key handling.
+- **Text frames.** `--dump-frame 120x30 --keys "hjl<tab><enter><C-d>"` renders one frame as plain text through the real app and input decoder. No TTY is needed. A space in `--keys` is a key press. Use this to check layout and key handling.
 - **Real pty.** Use a small Python `pty.fork()` harness (run Python with `-I`) that sets the window size with `TIOCSWINSZ`, writes keys with delays and captures the bytes. Check:
   - alternate screen in and out: `\x1b[?1049h` / `\x1b[?1049l`;
   - cursor restored: `\x1b[?25h`;
