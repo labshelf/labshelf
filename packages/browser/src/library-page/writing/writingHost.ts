@@ -15,6 +15,8 @@ export interface WritingHostDeps {
   logger: ILogger;
   /** Shows a PDF's bytes in a browser tab. */
   showPdf(bytes: Uint8Array): Promise<void>;
+  /** Opens the editor page on a project's files. */
+  openEditor(projectId: string): Promise<void>;
 }
 
 type ReadyEntry = Extract<ProjectEntry, { kind: "ready" }>;
@@ -68,6 +70,9 @@ export function createWritingHost(deps: WritingHostDeps): WritingTabHost {
     },
     openPaper(paperId) {
       void openReader(paperId).catch(report("openPaper", { paperId }));
+    },
+    editProject(projectId) {
+      void deps.openEditor(projectId).catch(report("editProject", { project: projectId }));
     },
   };
 }

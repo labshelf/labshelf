@@ -5,6 +5,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { copyAssets } from "./copyAssets.mjs";
 import { vendorReader } from "./vendorReader.mjs";
+import { buildEditor } from "./editor/buildEditor.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const pkgRoot = resolve(here, "..");
@@ -66,6 +67,8 @@ async function buildOne(target) {
 
   await copyAssets({ srcRoot, outDir, target, pkgRoot });
   await vendorReader({ outDir, pkgRoot });
+  // The project editor page: monaco-vscode-api hosting the LabShelf and Tinymist web extensions.
+  await buildEditor({ outDir, pkgRoot });
   // eslint-disable-next-line no-console
   console.log(`[labshelf-browser] built ${target} → ${outDir}`);
 }

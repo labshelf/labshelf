@@ -17,12 +17,11 @@ describe("createHostPageLatexHelper", () => {
     expect(helper.status()).toEqual({ state: "not-installed" });
   });
 
-  it("forwards compile with the project and returns the page's result", async () => {
-    const result = { status: "failed", problems: [] };
-    execute.mockResolvedValueOnce(result);
-    const project = { projectId: "paper", main: "main.tex", engine: "pdflatex" as const, files: [] };
-    expect(await createHostPageLatexHelper().compile(project, () => undefined)).toBe(result);
-    expect(execute).toHaveBeenCalledWith(LATEX_HELPER_COMMAND, "compile", project);
+  it("forwards compile with the file bytes as base64 and decodes the page's PDF", async () => {
+    execute.mockResolvedValueOnce({ status: "succeeded", problems: [], pdfBase64: "JVBERg==" });
+    const project = { projectId: "paper", main: "main.tex", engine: "pdflatex" as const, files: [{ path: "main.tex", bytes: new Uint8Array([104, 105]) }] };
+    expect(await createHostPageLatexHelper().compile(project, () => undefined)).toEqual({ status: "succeeded", problems: [], pdf: new Uint8Array([37, 80, 68, 70]) });
+    expect(execute).toHaveBeenCalledWith(LATEX_HELPER_COMMAND, "compile", { projectId: "paper", main: "main.tex", engine: "pdflatex", files: [{ path: "main.tex", base64: "aGk=" }] });
   });
 
   it("forwards cancel and the installs", async () => {

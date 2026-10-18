@@ -7,6 +7,8 @@ export class MemoryFolderFs implements LibraryFileSystem {
   readonly dirs = new Set<string>();
   /** A write to this path throws. */
   failWriteOn?: string;
+  /** A read of this path throws, though the file exists. */
+  failReadOn?: string;
   /** A write to this path stores different bytes than it was given. */
   corruptWriteOn?: string;
 
@@ -29,6 +31,7 @@ export class MemoryFolderFs implements LibraryFileSystem {
   }
 
   async readFile(path: string): Promise<Uint8Array> {
+    if (path === this.failReadOn) throw new Error(`unreadable ${path}`);
     const bytes = this.files.get(path);
     if (!bytes) throw new Error(`missing ${path}`);
     return bytes;

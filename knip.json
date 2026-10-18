@@ -38,6 +38,12 @@
         "src/reader/main.ts",
         "src/libraryWebview/main.ts",
         "src/writing/templates/webview/main.ts",
+        "src/extensionWeb.ts",
+        "src/sidebarWebview/main.ts",
+        "src/writing/search/webview/main.ts",
+        "src/writing/history/webview/main.ts",
+        "src/writing/allProjects/webview/main.ts",
+        "src/library/syncGuidePanel/webview/main.ts",
         "build/*.mjs",
         "__tests__/**/*.ts"
       ],
@@ -66,6 +72,9 @@
         "src/reader/index.ts",
         "src/ui/themeBoot.ts",
         "src/content/searchResults.ts",
+        "src/editor/main.ts",
+        "src/editor/workers/extensionHostBootstrap.ts",
+        "src/editor/workers/tinymistServer.ts",
         "build/*.mjs",
         "__tests__/**/*.ts"
       ],
@@ -73,6 +82,11 @@
         "src/**/*.ts",
         "build/*.mjs",
         "__tests__/**/*.ts"
+      ],
+      "ignoreDependencies": [
+        "@codingame/*",
+        "tinymist-web",
+        "vscode-languageserver"
       ]
     },
     "packages/terminal": {

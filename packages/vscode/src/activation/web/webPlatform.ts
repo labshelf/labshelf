@@ -1,10 +1,11 @@
-// Builds the web platform: web adapters, LaTeX through LabShelf Helper, and a library folder chosen with the open dialog.
+// Builds the web platform: web adapters, LaTeX through LabShelf Helper, and the library folder from the editor page or the open dialog.
 import type * as vscode from "vscode";
 
 import { chooseLibraryFolder } from "../../library/index.js";
 import { registerWebWriting } from "../../writing/web/index.js";
 import type { ExtensionPlatform } from "../extensionPlatform.js";
 import { createOutputChannelLogger } from "./outputChannelLogger.js";
+import { hostPageLibraryFolder } from "./hostPageLibraryFolder.js";
 import { createWebAdapters } from "./webAdapters.js";
 
 export function createWebPlatform(context: vscode.ExtensionContext): ExtensionPlatform {
@@ -14,6 +15,7 @@ export function createWebPlatform(context: vscode.ExtensionContext): ExtensionPl
   return {
     adapters,
     registerWriting: registerWebWriting,
-    chooseLibraryRoot: () => chooseLibraryFolder({ sharedLibraryConfig: adapters.sharedLibraryConfig, logger }),
+    chooseLibraryRoot: async () =>
+      (await hostPageLibraryFolder(logger)) ?? chooseLibraryFolder({ sharedLibraryConfig: adapters.sharedLibraryConfig, logger }),
   };
 }

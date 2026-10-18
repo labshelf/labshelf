@@ -15,7 +15,7 @@ import { createLocalStoragePrefs } from "./prefs";
 import { attachRouter, hashForFolder } from "./router";
 import { mountSidebarTree } from "./sidebar";
 import { mountStatusBar } from "./statusBar";
-import { createWritingHost, mountPageTabs, showPdfInTab } from "./writing";
+import { createWritingHost, mountPageTabs, openEditorInTab, showPdfInTab } from "./writing";
 
 const log = createBrowserLogger();
 
@@ -34,9 +34,11 @@ function mountWriting(root: HTMLElement, ui: LibraryUi): void {
   const frame = root.querySelector<HTMLElement>(".ls-library");
   if (!frame) throw new Error("Missing library frame");
   const fileSystem = createLibraryFileSystem();
-  const host = createWritingHost({ projects: createBrowserProjects({ fileSystem, logger: log }), fileSystem, logger: log, showPdf: showPdfInTab });
-  const pane = mountPageTabs(frame, () => hashForFolder(ui.store.get().folder), () => { void tab.refresh(); });
-  const tab = mountWritingTab(pane, host);
+  const host = createWritingHost({ projects: createBrowserProjects({ fileSystem, logger: log }), fileSystem, logger: log, showPdf: showPdfInTab, openEditor: openEditorInTab });
+  // TRAP: opened on #/writing, the tab bar shows the pane while it mounts, before the tab exists; the tab lists on mount anyway.
+  let tab: ReturnType<typeof mountWritingTab> | undefined;
+  const pane = mountPageTabs(frame, () => hashForFolder(ui.store.get().folder), () => { void tab?.refresh(); });
+  tab = mountWritingTab(pane, host);
 }
 
 function boot(): void {

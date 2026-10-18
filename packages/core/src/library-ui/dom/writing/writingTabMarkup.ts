@@ -70,7 +70,7 @@ export function readyProjectHtml(project: ReadyProject, index: number, open: boo
       `</button>` +
       `<span class="wt-location">${LOCATION_LABEL[project.location]}</span>` +
       `<span class="wt-actions">${pdfActionHtml(project)}` +
-        `<button class="ls-btn ls-btn-ghost" type="button" disabled title="Editing in the browser is not available yet">${icon("edit")}Edit</button>` +
+        `<button class="ls-btn ls-btn-ghost" type="button" data-action="edit" data-project="${escapeHtml(project.id)}" title="Edit ${escapeHtml(project.name)}">${icon("edit")}Edit</button>` +
       `</span>` +
     `</div>` + readingListHtml(listId, project, open) + `</li>`;
 }

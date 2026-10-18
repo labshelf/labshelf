@@ -17,6 +17,7 @@ Every extension context (background, library page, popup, options) probes the br
 ## Build
 
 ```bash
+pnpm --filter @labshelf/vscode build             # first: the editor page bundles packages/vscode/out/web
 pnpm --filter @labshelf/browser build            # both targets → dist/chrome, dist/firefox
 pnpm --filter @labshelf/browser build:chrome
 pnpm --filter @labshelf/browser build:firefox
@@ -25,6 +26,16 @@ pnpm --filter @labshelf/browser lint:manifest    # web-ext lint on dist/firefox
 
 - One source tree builds both targets. Only the manifest differs: Chrome uses a `service_worker`, and Firefox uses `background.scripts` plus the gecko id `labshelf@lucanaasser.dev`.
 - pdf.js is vendored from the `pdfjs-dist` legacy build into `vendor/pdfjs/`. `pdf_viewer.mjs` is lowered to es2023 so that `web-ext lint` passes.
+
+- The build fails with the missing path when `packages/vscode/out/web/extension.js` is absent.
+- The first build downloads Tinymist's pinned web VSIX from Open VSX, checks its SHA-256 and unpacks it with `unzip`, so it needs network access and `unzip`. The VSIX is cached in `node_modules/.cache/labshelf-editor/`, so later builds are offline.
+
+## Project editor page
+
+`editor/index.html` opens a writing project's files in monaco-vscode-api's workbench. The library page opens it in a new tab ([`openEditorInTab`](../../packages/browser/src/library-page/writing/openEditorInTab.ts)). A worker extension host runs the VS Code extension's web build and the Tinymist web extension, with Tinymist's language server in its own worker. The page serves the project files through a file system provider over the library, registers the host commands the web build calls ([contract](../contracts/editor-host.md)), and renders Typst previews itself with the typst.ts compiler.
+
+- The extension pages' CSP allows no `eval`, `blob:` workers or inline script, which monaco-vscode-api and typst.ts need. The build applies exact-text patches to those packages while bundling and writes the extension-host iframe as an html file plus a script file (`build/editor/cspPatches.mjs`). A patch whose text is not found fails the build, so upgrading a pinned version cannot ship unpatched.
+- The workbench loads each bundled extension from a build-wrapped `<entry>.esm.js` instead of evaluating its source.
 
 ## Load
 

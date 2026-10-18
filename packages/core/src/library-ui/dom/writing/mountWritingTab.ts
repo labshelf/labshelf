@@ -50,6 +50,7 @@ export function mountWritingTab(root: HTMLElement, host: WritingTabHost): Writin
     if (action === "toggle") { toggleReadingList(button, expanded); }
     else if (action === "openPdf" && project !== undefined && pdf !== undefined) { host.openPdf(project, pdf); }
     else if (action === "openPaper" && paper !== undefined) { host.openPaper(paper); }
+    else if (action === "edit" && project !== undefined) { host.editProject(project); }
     else if (action === "retry") { void refresh(); }
   }
 

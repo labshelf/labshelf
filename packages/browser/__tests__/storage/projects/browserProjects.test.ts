@@ -1,7 +1,7 @@
 // Pins how the browser lists library projects and reads and writes their files through the folder file system.
 import type { ILogger } from "@labshelf/core";
 import { MemoryFolderFs } from "../move/memoryFolderFs";
-import { createBrowserProjects } from "../../../src/storage/projects";
+import { createBrowserProjects, ProjectFileNotFoundError } from "../../../src/storage/projects";
 
 function makeLogger(): ILogger & { log: jest.Mock; error: jest.Mock } {
   return { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
@@ -89,9 +89,16 @@ describe("readProjectFile and writeProjectFile", () => {
     await expect(projects.writeProjectFile("thesis", "main.tex", new Uint8Array([1]))).rejects.toThrow(/disk full/);
     expect(logger.error).toHaveBeenCalledWith(expect.any(String), expect.any(Error),
       { project: "thesis", path: "main.tex", action: "write" });
-    await expect(projects.readProjectFile("thesis", "absent.tex")).rejects.toThrow(/missing/);
+    fileSystem.failReadOn = "projects/thesis/main.tex";
+    await expect(projects.readProjectFile("thesis", "main.tex")).rejects.toThrow(/unreadable/);
     expect(logger.error).toHaveBeenLastCalledWith(expect.any(String), expect.any(Error),
-      { project: "thesis", path: "absent.tex", action: "read" });
+      { project: "thesis", path: "main.tex", action: "read" });
+  });
+
+  it("rejects a missing file with ProjectFileNotFoundError and does not log it as a failure", async () => {
+    const { logger, projects } = setup();
+    await expect(projects.readProjectFile("thesis", ".vscode/settings.json")).rejects.toBeInstanceOf(ProjectFileNotFoundError);
+    expect(logger.error).not.toHaveBeenCalled();
   });
 
   it("logs a bridge failure while finding the project with project and path and rethrows it", async () => {
@@ -107,5 +114,39 @@ describe("readProjectFile and writeProjectFile", () => {
     const readText = jest.spyOn(fileSystem, "readText");
     await projects.readProjectFile("thesis", "main.tex");
     for (const [path] of readText.mock.calls) expect(path).toMatch(/^projects\/[^/]+\/labshelf\.yaml$/);
+  });
+});
+
+describe("listProjectDirectory and statProjectPath", () => {
+  const sorted = <T extends { name: string }>(entries: T[]) => [...entries].sort((a, b) => a.name.localeCompare(b.name));
+
+  it("lists a project's folder with each entry's kind, the root named by an empty path", async () => {
+    const { projects } = setup();
+    expect(sorted(await projects.listProjectDirectory("thesis", ""))).toEqual([
+      { name: "chapters", kind: "directory" }, { name: "labshelf.yaml", kind: "file" }, { name: "main.tex", kind: "file" },
+    ]);
+    expect(await projects.listProjectDirectory("thesis", "chapters")).toEqual([{ name: "intro.tex", kind: "file" }]);
+  });
+
+  it("lists nothing for a folder that does not exist", async () => {
+    const { projects } = setup();
+    expect(await projects.listProjectDirectory("thesis", "ghost")).toEqual([]);
+  });
+
+  it("stats files and folders, and answers undefined for a missing path without logging", async () => {
+    const { logger, projects } = setup();
+    expect(await projects.statProjectPath("thesis", "")).toMatchObject({ isDirectory: true });
+    expect(await projects.statProjectPath("thesis", "chapters")).toMatchObject({ isDirectory: true });
+    expect(await projects.statProjectPath("thesis", "main.tex")).toMatchObject({ isFile: true, size: expect.any(Number) });
+    expect(await projects.statProjectPath("thesis", ".vscode/settings.json")).toBeUndefined();
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
+  it("refuses an escaping path before any file system call", async () => {
+    const { fileSystem, projects } = setup();
+    const calls = (["listDir", "stat"] as const).map((name) => jest.spyOn(fileSystem, name));
+    await expect(projects.listProjectDirectory("thesis", "../notes")).rejects.toThrow(/path/i);
+    await expect(projects.statProjectPath("thesis", "/etc")).rejects.toThrow(/path/i);
+    for (const call of calls) expect(call).not.toHaveBeenCalled();
   });
 });

@@ -14,11 +14,14 @@ The full LabShelf workspace inside VS Code:
 ## Build and run
 
 ```bash
-pnpm --filter @labshelf/vscode build   # host → out/extension.js, reader → dist/reader/, list → dist/library/
+pnpm --filter @labshelf/vscode build   # host → out/extension.js and out/web/extension.js, reader → dist/reader/, list → dist/library/
 pnpm dev:vscode                        # watches the host and the webview bundles
 ```
 
 - esbuild bundles the extension host from source, including `@labshelf/*`. Other dependencies (pdf.js, Tesseract, the native canvas) stay external and load from `node_modules`, because they locate their data files and binaries next to themselves. `tsc` only typechecks.
+
+- The build also bundles the web extension host (`src/extensionWeb.ts` → `out/web/extension.js`, the `browser` entry of `package.json`). It runs in a browser worker, so esbuild bundles every dependency and a plugin (`build/noNodePlugin.mjs`) fails the build on any import of `node:*`, a Node builtin or a `node/` folder. The browser extension's editor page bundles this file ([browser.md](browser.md#project-editor-page)), and the page answers the web build's host commands ([contract](../contracts/editor-host.md)).
+- `pnpm --filter @labshelf/vscode smoke:web` loads the built web extension in VS Code for the web (`@vscode/test-web`, headless Playwright Chromium) and fails unless it activates cleanly. Run `build` first.
 
 - Open the repository in VS Code and press F5. This launches an Extension Development Host. On first run, use **LabShelf: Configure Library**.
 - The default local library folder is `~/LabShelf`. When no library is configured, and in **Configure Library**, a pick offers `<sync folder>/LabShelf` for each detected sync folder (Dropbox, Google Drive, OneDrive, iCloud Drive, Nextcloud, Syncthing), `~/LabShelf` (only on this computer), **Choose a folder…** and **How to sync between computers…**. A folder that already holds a library asks "Found your library with N papers. Open it?". When the library is local-only and a sync folder appears, a notification offers to move it; "Not now" stops asking for that tool.
