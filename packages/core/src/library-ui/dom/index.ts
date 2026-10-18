@@ -7,6 +7,7 @@ export {
   GroupedRows, RowReconciler, paintSortableHeads, sortableHeadHtml, wireSortableHeads, type GroupAccess, type RowGroup, type SortableHead,
   buildFailedRow, buildLoadingRow, buildTrayRow, replaceTrayRows, type TrayEntry,
   collapseOrLeave, expandOrEnter, focusRow, focusedChildRow, focusedRow, paperIdOf, paperRowOf, visibleRows,
+  createRowWindow, measureRowHeight, type RowSlice, type RowViewport, type RowWindow,
 } from "./list/index.js";
 export { attachSash, buildFrame, togglePane, type FrameOptions, type FrameSlots, type SashOptions } from "./shell/index.js";
 export { iconBtn, kv, loading, muted, section, tabBarHtml, type TabSpec } from "./detail/index.js";

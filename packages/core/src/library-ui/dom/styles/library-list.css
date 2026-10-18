@@ -5,10 +5,10 @@
 /* ── Folder groups ──────────────────────────────────────────────── */
 /* A section label is a small muted path, not a folder row: the sidebar navigates folders, the list groups papers.
    Like siblings in a VS Code tree, a label lines up with the titles of the scope's own papers, past the twistie column. */
-.ls-library .paper-group + .paper-group { margin-top: var(--ls-space-4); }
 .ls-library .group-label {
   position: sticky; top: var(--heads-h, 0); z-index: 1; display: flex; align-items: center; gap: var(--ls-space-2); min-width: 0;
-  min-height: 32px; padding: var(--ls-space-5) var(--ls-space-6) var(--ls-space-3) calc(var(--ls-space-2) * 2 + 28px); box-sizing: border-box;
+  /* A label is one fixed-height row of the windowed list; its top padding is the gap between groups. */
+  height: var(--ls-row-h); padding: var(--ls-space-5) var(--ls-space-6) var(--ls-space-3) calc(var(--ls-space-2) * 2 + 28px); box-sizing: border-box;
   font-size: var(--ls-text-sm); font-weight: 600; color: var(--ls-desc); background: var(--ls-sidebar-bg);
   user-select: none; white-space: nowrap; overflow: hidden;
 }
@@ -52,6 +52,8 @@
   /* The edge tracks hold the twistie and the menu button; other item lists build their --cols from the same tracks. */
   --w-edge: 28px; --w-title: minmax(240px, 3fr);
   --cols: var(--w-edge) var(--w-title) var(--w-creator) var(--w-venue) var(--w-year) var(--w-read) var(--w-status) var(--w-edge);
+  /* Paper rows and group labels share one fixed height, so the list can render only the rows near the viewport. */
+  --ls-row-h: calc(22px + var(--ls-space-6));
   flex: 1; overflow: auto; outline: none;
 }
 .ls-library .paper-list:not(:has(.col-head.col-creator)) { --m-creator: 0px; }
@@ -85,7 +87,7 @@
 .ls-library .paper-row:is(.selected, .expanded, :has(> .paper-row-main:hover))::before,
 .ls-library .paper-row:is(.selected, .expanded, :has(> .paper-row-main:hover)) + .paper-row::before { opacity: 0; }
 .ls-library .paper-row-main {
-  display: grid; grid-template-columns: var(--cols); align-items: center; min-height: 34px; padding: 0 var(--ls-space-2); gap: 0;
+  display: grid; grid-template-columns: var(--cols); align-items: center; height: var(--ls-row-h); box-sizing: border-box; padding: 0 var(--ls-space-2); gap: 0;
 }
 .ls-library .paper-row-main:hover { background: var(--ls-list-hover); }
 .ls-library .paper-row.expanded .paper-row-main { background: var(--ls-row-open); }

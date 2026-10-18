@@ -19,12 +19,16 @@ import { buildPaperRow, type RowHandlers, type RowView } from "./paperRow.js";
 import { RowReconciler } from "./rowReconciler.js";
 import { paintSortableHeads } from "./sortableHeads.js";
 import { paintTabStop, treeCursor, wireTabStop } from "./treeNav/index.js";
+import { createWindowedList, type WindowedList } from "./window/index.js";
 
 interface List {
   ctx: UiContext;
   el: HTMLElement;
   heads: HTMLElement;
   rows: GroupedRows<ListPaper, PaperGroup>;
+  windowed: WindowedList;
+  /** The empty or loading state rendered after the rows, if any. */
+  trailing: HTMLElement | null;
   order: string[];
   lastFolder: string | null;
   /** What the rows of the current render are built from. */
@@ -123,6 +127,12 @@ function paintColumns(list: List): void {
   }
 }
 
+/** Renders the windowed groups and repaints the attribute state on the rows they hold. */
+function paintRows(list: List, groups: readonly PaperGroup[]): void {
+  list.rows.update(groups, list.trailing);
+  paintSelection(list); paintOpen(list); paintTray(list.ctx, list.el, list.records);
+}
+
 function render(list: List): void {
   const s = list.ctx.store.get();
   const view = deriveListView(s);
@@ -132,19 +142,17 @@ function render(list: List): void {
   paintSortableHeads(list.heads, s.sortKey, s.sortDir === 1);
   const groups = groupPapers(view.rows, s.folder);
   list.order = groups.flatMap((g) => g.papers.map((p) => p.id));
-  list.rows.update(groups, placeholder(list, view));
-  paintHeadsHeight(list);
+  list.trailing = placeholder(list, view);
   const folderChanged = list.lastFolder !== s.folder;
   if (folderChanged) list.el.scrollTop = 0;
   list.lastFolder = s.folder;
+  list.windowed.update(groups, s.open);
+  paintHeadsHeight(list);
   if (s.cursor && !list.order.includes(s.cursor)) {
     const alive = new Set(list.order);
     const selected = new Set([...s.selected].filter((id) => alive.has(id)));
     list.ctx.store.set({ selected, cursor: null, anchor: selected.size ? s.anchor : null });
   }
-  paintSelection(list);
-  paintOpen(list);
-  paintTray(list.ctx, list.el, list.records);
   const searchFocused = document.activeElement?.classList.contains("ls-library-search") ?? false;
   if (folderChanged && !searchFocused && !overlayOpen()) list.el.focus();
 }
@@ -155,13 +163,16 @@ export function mountPaperList(ctx: UiContext, container: HTMLElement): () => vo
   container.innerHTML = `<div class="paper-list" tabindex="-1" role="treegrid" aria-multiselectable="true">` +
     `<div class="col-heads" role="row"></div><div class="paper-rows" role="none"></div></div>`;
   const el = container.querySelector<HTMLElement>(".paper-list")!;
+  const heads = container.querySelector<HTMLElement>(".col-heads")!;
+  const body = el.querySelector<HTMLElement>(".paper-rows")!;
   // A row renders from its record, PDF presence, location, reading stats, OCR job and the highlighted terms; anything
   // else keeps the node.
   const list: List = {
-    ctx, el, heads: container.querySelector<HTMLElement>(".col-heads")!, order: [], lastFolder: null, terms: [], records: new Map(), columns: [],
-    rows: new GroupedRows(el.querySelector<HTMLElement>(".paper-rows")!, (body) => new RowReconciler<ListPaper>(body, (p) => buildPaperRow(p, rowView(list, p), handlers),
+    ctx, el, heads, order: [], lastFolder: null, terms: [], records: new Map(), columns: [], trailing: null,
+    windowed: createWindowedList({ list: el, heads, body, paint: (groups) => paintRows(list, groups), cursor: () => ctx.store.get().cursor }),
+    rows: new GroupedRows(body, (groupBody) => new RowReconciler<ListPaper>(groupBody, (p) => buildPaperRow(p, rowView(list, p), handlers),
       (p) => [list.records.get(p.id), p.hasPdf, p.relFolder, list.terms.join("\u0000"), ctx.store.get().columns, ctx.store.get().stats[p.id], ctx.store.get().jobs[p.id]]),
-      { items: (g) => g.papers, ariaLabel: (g) => groupAriaLabel(g.segments, g.papers.length) }),
+      { items: (g) => g.papers, ariaLabel: (g) => groupAriaLabel(g.segments, g.total) }),
   };
   const handlers = rowHandlers(list);
   wireColumnHeads(ctx, list.heads);
@@ -169,7 +180,7 @@ export function mountPaperList(ctx: UiContext, container: HTMLElement): () => vo
     const folder = (e.target as HTMLElement).closest<HTMLElement>(".group-label [data-folder]")?.dataset["folder"];
     if (folder) ctx.store.openFolder(folder);
   });
-  ctx.cursor = treeCursor(ctx.store, el, () => list.order);
+  ctx.cursor = treeCursor(ctx.store, el, () => list.order, list.windowed);
   const offKeys = attachListKeys(ctx, ctx.cursor);
   const offTabStop = wireTabStop(el, () => ctx.store.get().cursor);
   const offRows = ctx.store.select(
@@ -184,5 +195,5 @@ export function mountPaperList(ctx: UiContext, container: HTMLElement): () => vo
   const headsObserver = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => paintHeadsHeight(list));
   headsObserver?.observe(list.heads);
   const offSel = ctx.store.select((s) => ({ selected: s.selected, cursor: s.cursor }), () => paintSelection(list));
-  return () => { headsObserver?.disconnect(); offRows(); offFiles(); offSel(); offKeys(); offTabStop(); };
+  return () => { headsObserver?.disconnect(); list.windowed.dispose(); offRows(); offFiles(); offSel(); offKeys(); offTabStop(); };
 }

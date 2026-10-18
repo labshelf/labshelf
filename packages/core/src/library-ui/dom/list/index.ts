@@ -6,3 +6,4 @@ export { paintSortableHeads, sortableHeadHtml, wireSortableHeads, type SortableH
 export { GroupedRows, type GroupAccess, type RowGroup } from "./groups/index.js";
 export { buildFailedRow, buildLoadingRow, buildTrayRow, replaceTrayRows, type TrayEntry } from "./tray/index.js";
 export { collapseOrLeave, expandOrEnter, focusRow, focusedChildRow, focusedRow, paperIdOf, paperRowOf, visibleRows } from "./treeNav/index.js";
+export { createRowWindow, measureRowHeight, type RowSlice, type RowViewport, type RowWindow } from "./rowWindow/index.js";

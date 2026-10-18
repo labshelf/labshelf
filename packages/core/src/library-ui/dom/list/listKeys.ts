@@ -39,7 +39,8 @@ function perform(ctx: UiContext, cursor: ListCursor, action: ListKeyAction): boo
   switch (action.kind) {
     case "focusSearch": ctx.focusSearch(true); return true;
     case "step": cursor.step(action.delta, action.extend); return true;
-    case "edge": ctx.store.set({ cursor: null }); cursor.step(action.to === "first" ? 1 : -1, false); return true;
+    case "page": cursor.page(action.dir, action.extend); return true;
+    case "edge": cursor.edge(action.to); return true;
     case "parent": if (s.folder.includes("/")) ctx.store.openFolder(parentDir(s.folder, "/")); return true;
     case "open": {
       // A child row acts as its own click does, so each kind of child row decides what opening it means.

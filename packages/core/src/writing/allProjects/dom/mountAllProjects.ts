@@ -11,7 +11,7 @@ import type { NewProjectKind, ProjectMenuCommand, ProjectPlace, ProjectRow } fro
 import { mountAllProjectsHeader } from "./allProjectsHeader.js";
 import { emptyTrash } from "./projectActions.js";
 import { buildProjectEmptyState } from "./projectEmptyState.js";
-import { mountProjectList, type ProjectListHandlers } from "./projectList.js";
+import { mountProjectList, type ProjectListHandlers } from "./list/index.js";
 import { projectMenuEntries } from "./projectMenu.js";
 import { createDetailRequests, mountProjectDetail, type DetailRequests, type ProjectDetailView } from "./detail/index.js";
 import { createProjectExpansion, type ProjectExpansion } from "./tray/index.js";

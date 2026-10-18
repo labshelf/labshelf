@@ -13,6 +13,10 @@ export interface ListCursor {
   order(): readonly string[];
   /** Moves the cursor by `delta` rows (from the edge when there is none), extending the selection when asked. */
   step(delta: 1 | -1, extend: boolean): void;
+  /** Moves the cursor by a viewport of rows minus one, extending the selection when asked. */
+  page(dir: 1 | -1, extend: boolean): void;
+  /** Moves the cursor to the first or last paper of the whole list, rendered or not. */
+  edge(to: "first" | "last"): void;
 }
 
 export interface UiContext {

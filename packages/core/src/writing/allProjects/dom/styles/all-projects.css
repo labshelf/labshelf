@@ -38,6 +38,15 @@
 @media (prefers-reduced-motion: reduce) { .ls-all-projects .ls-build-dot.b-building { animation: none; } }
 
 /* ── Rows ───────────────────────────────────────────────────────── */
+/* Every row is one fixed height, so the windowed list can place rows by index. */
+.ls-all-projects .paper-list { --ls-row-h: calc(22px + var(--ls-space-6)); }
+.ls-all-projects :is(.paper-row-main, .file-row, .group-label) { height: var(--ls-row-h); min-height: 0; box-sizing: border-box; padding-block: 0; }
+/* A folder header is a treegrid row that toggles its projects, so it scrolls with them instead of sticking. */
+.ls-all-projects .group-label { position: static; cursor: pointer; }
+.ls-all-projects .group-label:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
+.ls-all-projects .group-cell { display: flex; align-items: center; gap: var(--ls-space-2); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ls-all-projects .group-chevron { display: inline-flex; flex-shrink: 0; }
+.ls-all-projects .group-chevron svg { width: var(--ls-space-6); height: var(--ls-space-6); }
 .ls-all-projects .paper-row-main.is-broken .title-cell { color: var(--ls-desc); }
 .ls-all-projects .ls-project-external { color: var(--ls-desc); }
 /* The actions button shows where the pointer or the selection is, like the Library's Columns button. */
@@ -48,6 +57,13 @@
 /* ── Files tray ─────────────────────────────────────────────────── */
 /* Nested files and folders step right by their depth in the project; an open folder's chevron points down. */
 .ls-all-projects .file-row > .file-type { margin-left: calc(var(--depth, 0) * var(--ls-space-7)); }
+/* The tray steps in once more under a grouped project, set by --indent. */
+.ls-all-projects .file-row { flex-wrap: nowrap; padding-left: calc(28px + var(--ls-space-4) + var(--indent, 0) * (var(--ls-space-7) + var(--ls-space-4))); }
+/* The windowed list keeps every row one line, so a narrow pane truncates the fact instead of wrapping it. */
+@container list-pane (max-width: 470px) {
+  .ls-all-projects .file-row { flex-wrap: nowrap; }
+  .ls-all-projects .file-fact { flex-basis: auto; margin-left: var(--ls-space-4); }
+}
 .ls-all-projects .file-row[data-kind="folder"] .file-type svg { transition: transform var(--ls-fast); }
 .ls-all-projects .file-row.open .file-type svg { transform: rotate(90deg); }
 
@@ -61,8 +77,6 @@
 .ls-all-projects .ls-place-tab[aria-selected="true"] { font-weight: 600; }
 .ls-all-projects .ls-place-tab:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: var(--ls-space-1); border-radius: var(--ls-radius-sm); }
 .ls-all-projects .ls-place-count { font-family: var(--ls-mono); font-size: var(--ls-text-md); font-weight: 400; color: var(--ls-desc); }
-/* The page has no folder scope to open, so the Library's breadcrumb buttons stay plain text here. */
-.ls-all-projects .group-label button { pointer-events: none; }
 .ls-all-projects .file-row[data-name=":add"] { color: var(--ls-desc); }
 
 /* ── Detail pane: head and status row ───────────────────────────── */

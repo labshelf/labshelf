@@ -23,6 +23,11 @@ describe("listKeyAction", () => {
     expect(listKeyAction(press("c", { ctrl: true }))).toEqual({ kind: "copyKeys" });
   });
 
+  it("pages with PageUp and PageDown, extending with Shift", () => {
+    expect(listKeyAction(press("PageDown"))).toEqual({ kind: "page", dir: 1, extend: false });
+    expect(listKeyAction(press("PageUp", { shift: true }))).toEqual({ kind: "page", dir: -1, extend: true });
+  });
+
   it("keeps the navigation keys", () => {
     expect(listKeyAction(press("/"))).toEqual({ kind: "focusSearch" });
     expect(listKeyAction(press("f", { meta: true }))).toEqual({ kind: "focusSearch" });

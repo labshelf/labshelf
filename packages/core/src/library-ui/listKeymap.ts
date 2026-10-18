@@ -17,6 +17,7 @@ export interface KeyPress {
 export type ListKeyAction =
   | { kind: "focusSearch" }
   | { kind: "step"; delta: 1 | -1; extend: boolean }
+  | { kind: "page"; dir: 1 | -1; extend: boolean }
   | { kind: "edge"; to: "first" | "last" }
   | { kind: "expand" }
   | { kind: "collapse" }
@@ -55,6 +56,8 @@ export function listKeyAction(k: KeyPress): ListKeyAction | null {
     case "ArrowUp": return { kind: "step", delta: -1, extend: k.shift };
     case "ArrowRight": return mod || k.alt ? null : { kind: "expand" };
     case "ArrowLeft": return mod || k.alt ? null : { kind: "collapse" };
+    case "PageDown": return { kind: "page", dir: 1, extend: k.shift };
+    case "PageUp": return { kind: "page", dir: -1, extend: k.shift };
     case "Home": return { kind: "edge", to: "first" };
     case "End": return { kind: "edge", to: "last" };
     case "Enter": return { kind: "open" };

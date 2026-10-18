@@ -1,10 +1,10 @@
 // Builds one project as a treegrid row: files twistie, title with venue chip, engine, cites, build dot, last modified (or trashed) time and the actions button.
-import { compactTime } from "../../../library/index.js";
-import { formatLabel } from "../../../library-ui/dom/index.js";
-import { el, highlight } from "../../../ui/dom/index.js";
-import { escapeHtml, icon } from "../../../ui/index.js";
-import { deadlineText } from "../deadlineText.js";
-import type { BuildMark, ProjectBuildState, ProjectPlace, ProjectRow } from "../projectRow.js";
+import { compactTime } from "../../../../library/index.js";
+import { formatLabel } from "../../../../library-ui/dom/index.js";
+import { el, highlight } from "../../../../ui/dom/index.js";
+import { escapeHtml, icon } from "../../../../ui/index.js";
+import { deadlineText } from "../../deadlineText.js";
+import type { BuildMark, ProjectBuildState, ProjectPlace, ProjectRow } from "../../projectRow.js";
 
 export interface ProjectRowView {
   place: ProjectPlace;
@@ -73,8 +73,7 @@ function rowHtml(row: ProjectRow, v: ProjectRowView): string {
   return `<div class="paper-row-main${row.broken ? " is-broken" : ""}" role="row" aria-level="1" aria-selected="false" tabindex="-1"${expandable}>` +
     twistieCell(row) + titleCell(row, v) + engineCell(row) + citesCell(row) + buildCell(row, v.now) + timeCell(row, v) +
     `<div class="col-actions"><button class="ls-icon-btn" type="button" tabindex="-1" title="Project actions" aria-label="Project actions" data-act="menu">${icon("more")}</button></div>` +
-    `</div>` +
-    `<div class="paper-children" role="none"></div>`;
+    `</div>`;
 }
 
 export function buildProjectRow(row: ProjectRow, v: ProjectRowView): HTMLElement {

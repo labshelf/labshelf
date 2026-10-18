@@ -12,6 +12,8 @@ export interface PaperGroup {
   /** Holder folder path below the scope; empty for the papers directly in the scope. */
   segments: string[];
   papers: ListPaper[];
+  /** The group's paper count, also when `papers` is cut to the rendered window. */
+  total: number;
 }
 
 function segmentsBelow(scope: string, folderPath: string): string[] {
@@ -22,8 +24,9 @@ function segmentsBelow(scope: string, folderPath: string): string[] {
 export function groupPapers(papers: readonly ListPaper[], scope: string): PaperGroup[] {
   const byFolder = new Map<string, PaperGroup>();
   for (const p of papers) {
-    const group = byFolder.get(p.folderPath) ?? { key: p.folderPath, segments: segmentsBelow(scope, p.folderPath), papers: [] };
+    const group = byFolder.get(p.folderPath) ?? { key: p.folderPath, segments: segmentsBelow(scope, p.folderPath), papers: [], total: 0 };
     group.papers.push(p);
+    group.total++;
     byFolder.set(p.folderPath, group);
   }
   const path = (g: PaperGroup): string => g.segments.join(SEP);
