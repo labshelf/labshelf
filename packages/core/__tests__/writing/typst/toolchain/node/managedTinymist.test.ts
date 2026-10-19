@@ -12,7 +12,7 @@ const URL = "https://example.org/tinymist-test";
 
 jest.mock("../../../../../src/writing/typst/toolchain/tinymistPin", () => ({
   TINYMIST_VERSION: "9.9.9",
-  tinymistAsset: (platform: string, arch: string) => platform === "linux" && arch === "x64"
+  tinymistAsset: (platform: string, arch: string) => (platform === "linux" || platform === "darwin") && arch === "x64"
     ? { version: "9.9.9", url: URL, sha256: createHash("sha256").update(BINARY).digest("hex"), binaryName: "tinymist" }
     : undefined,
 }));
@@ -90,5 +90,43 @@ describe("createManagedTinymist", () => {
     await expect(create(fetchImpl, "freebsd").ensure()).rejects.toThrow(/freebsd-x64/);
     expect(fetchImpl).not.toHaveBeenCalled();
     expect(existsSync(join(root, "tinymist"))).toBe(false);
+  });
+
+  describe("on macOS", () => {
+    const createDarwin = (execFileImpl: jest.Mock) =>
+      createManagedTinymist({ logger: logger(), fetchImpl: fakeFetch(), platform: "darwin", arch: "x64", root, env: { PATH: emptyPath }, execFileImpl });
+    const binary = () => join(root, "tinymist", "9.9.9", "tinymist");
+
+    it("removes the quarantine attribute from a fresh install", async () => {
+      const exec = jest.fn(async () => undefined);
+      await createDarwin(exec).ensure();
+      expect(exec).toHaveBeenCalledWith("/usr/bin/xattr", ["-d", "com.apple.quarantine", binary()]);
+    });
+
+    it("removes it from an installed binary once, so existing installs heal", async () => {
+      await mkdir(join(root, "tinymist", "9.9.9"), { recursive: true });
+      await writeFile(binary(), BINARY, { mode: 0o755 });
+      const exec = jest.fn(async () => undefined);
+      const tinymist = createDarwin(exec);
+      await tinymist.resolve();
+      await tinymist.ensure();
+      expect(exec).toHaveBeenCalledTimes(1);
+    });
+
+    it("treats a missing attribute as success and logs other failures without throwing", async () => {
+      const missing = Object.assign(new Error("failed"), { stderr: "xattr: No such xattr: com.apple.quarantine" });
+      const quiet = logger();
+      await createManagedTinymist({ logger: quiet, fetchImpl: fakeFetch(), platform: "darwin", arch: "x64", root, env: { PATH: emptyPath }, execFileImpl: jest.fn(async () => { throw missing; }) }).ensure();
+      expect(quiet.error).not.toHaveBeenCalled();
+      const loud = logger();
+      await createManagedTinymist({ logger: loud, platform: "darwin", arch: "x64", root, env: { PATH: emptyPath }, execFileImpl: jest.fn(async () => { throw new Error("denied"); }) }).ensure();
+      expect(loud.error).toHaveBeenCalledTimes(1);
+    });
+
+    it("never runs xattr on other systems", async () => {
+      const exec = jest.fn(async () => undefined);
+      await createManagedTinymist({ logger: logger(), fetchImpl: fakeFetch(), platform: "linux", arch: "x64", root, env: { PATH: emptyPath }, execFileImpl: exec }).ensure();
+      expect(exec).not.toHaveBeenCalled();
+    });
   });
 });

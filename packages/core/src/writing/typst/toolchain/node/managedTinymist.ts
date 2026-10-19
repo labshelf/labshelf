@@ -9,6 +9,7 @@ import type { ILogger } from "../../../../ports/index.js";
 import { findExecutable, sharedToolsRoot, withToolLock } from "../../../latex/toolchain/node/index.js";
 import { tinymistAsset } from "../index.js";
 
+import { clearQuarantine, type ExecFile } from "./clearQuarantine.js";
 import { installTinymist, TINYMIST_MODULE } from "./installTinymist.js";
 
 export type TinymistProgress = (p: { message: string; fraction?: number }) => void;
@@ -21,6 +22,8 @@ export interface ManagedTinymistDeps {
   /** The shared tools folder; Tinymist lives in its `tinymist/` subfolder. Defaults to sharedToolsRoot. */
   root?: string;
   env?: NodeJS.ProcessEnv;
+  /** Runs xattr on macOS; tests inject a fake. */
+  execFileImpl?: ExecFile;
 }
 
 export interface ManagedTinymist {
@@ -47,7 +50,15 @@ export function createManagedTinymist(deps: ManagedTinymistDeps): ManagedTinymis
   const folder = join(deps.root ?? sharedToolsRoot(env, platform, homedir()), "tinymist");
   const asset = tinymistAsset(platform, arch);
   const managed = asset ? join(folder, asset.version, asset.binaryName) : undefined;
-  const findManaged = async () => (managed && (await executable(managed)) ? managed : undefined);
+  const cleared = new Set<string>();
+  // Once per binary and process: it costs a spawn, and it heals installs made before the attribute was removed.
+  const unquarantine = async (file: string) => {
+    if (platform !== "darwin" || cleared.has(file)) { return file; }
+    cleared.add(file);
+    await clearQuarantine(file, logger, deps.execFileImpl);
+    return file;
+  };
+  const findManaged = async () => (managed && (await executable(managed)) ? unquarantine(managed) : undefined);
   const resolve = async () => (await findManaged()) ?? (await findExecutable("tinymist", env));
 
   async function install(onProgress: TinymistProgress): Promise<string> {
@@ -60,7 +71,7 @@ export function createManagedTinymist(deps: ManagedTinymistDeps): ManagedTinymis
     try {
       return await withToolLock(folder, `install Tinymist ${asset.version}`, logger, async () =>
         // INVARIANT: another app may have installed it while this one waited for the lock.
-        (await findManaged()) ?? installTinymist({ folder, asset, fetchImpl, logger, onProgress }));
+        (await findManaged()) ?? unquarantine(await installTinymist({ folder, asset, fetchImpl, logger, onProgress })));
     } catch (error) {
       await logger.error(TINYMIST_MODULE, error, { step: "install Tinymist", ...context });
       const reason = error instanceof Error ? error.message : String(error);

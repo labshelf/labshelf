@@ -66,6 +66,6 @@ tinymist/
   .lock
 ```
 
-Core pins one Tinymist version and the SHA-256 of its release asset for each supported OS and architecture. The app downloads the asset of that version from Tinymist's GitHub release, refuses it unless the hash matches, and moves the binary into `<version>/` only once it is complete and executable. A pinned version that changes installs the new one beside the old and removes older version folders after the move. An OS or architecture without a pinned asset has no managed Tinymist.
+Core pins one Tinymist version and the SHA-256 of its release asset for each supported OS and architecture. The app downloads the asset of that version from Tinymist's GitHub release, refuses it unless the hash matches, and moves the binary into `<version>/` only once it is complete and executable. A pinned version that changes installs the new one beside the old and removes older version folders after the move. An OS or architecture without a pinned asset has no managed Tinymist. On macOS the app removes the `com.apple.quarantine` attribute from the managed binary after installing it and when it finds an installed one: a helper started by a browser writes files that inherit the attribute, and macOS kills an ad-hoc signed binary that carries it.
 
 Resolution: the managed binary of the pinned version, then `tinymist` on `PATH`, then missing. A Tinymist on the system is never changed.
