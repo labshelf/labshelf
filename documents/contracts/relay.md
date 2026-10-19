@@ -79,9 +79,9 @@ major (1 byte) | minor (1 byte) | type (1 byte) | fields
 
 The free plan allows 100,000 Worker and Durable Object requests a day and 100,000 rows written, and bills incoming socket messages at 20 to 1; per-keystroke writes exhaust it within a day. Every client:
 
-- puts `update` messages only, with `seq` 0, and batches them: at most one `put` per doc every 2 s while the user types, merging the updates in between, and flushing when typing stops and before the socket closes;
+- puts `update` messages only, with epoch and `seq` 0, and batches them: at most one `put` per doc every 2 s while the user types, merging the updates in between, and flushing when typing stops and before the socket closes;
 - sends awareness, acknowledgements and sync steps with `forward`, never with `put`;
-- writes a `snapshot`, a `syncStep2` message with `seq` 0 holding the doc's whole state, after 500 `put`s of a doc since its last snapshot, only when it holds every row up to `covers` and has the lowest awareness id among the clients it sees, so one client writes it; a `staleSnapshot` refusal is expected and not a failure;
+- writes a `snapshot`, a `syncStep2` message with epoch and `seq` 0 holding the doc's whole state, after 500 `put`s of a doc since its last snapshot, only when it holds every row up to `covers` and has the lowest awareness id among the clients it sees, so one client writes it; a `staleSnapshot` refusal is expected and not a failure;
 - asks `since` for the index doc and then for every doc it holds when its socket opens, from the last cursor it received for that doc;
 - reconnects with exponential backoff, because a Worker update can drop a socket at any time;
 - reads `/version` at most once per app start and once before it moves to a relay, and a ticket only to open a socket.
@@ -105,7 +105,7 @@ LabShelf uploads the Worker through the Cloudflare API with a token from the own
 How a LabShelf client meets these obligations:
 
 - A share session has the relay transport as its only transport. Each other relay connection is a session peer: sync steps, acknowledgements, awareness and blobs reach it through `forward`.
-- The relay sync, a layer beside the session that holds the content key, puts every local update of a doc: it merges the updates of a 2 s window into one `update` message with `seq` 0, sealed once, and puts it at the window's end, before the socket closes, and again after a reconnect when the relay never answered it. Other peers apply a `stored` or `rows` frame like any update from a peer; it is never acknowledged or resent, since the relay holds it.
+- The relay sync, a layer beside the session that holds the content key, puts every local update of a doc: it merges the updates of a 2 s window into one `update` message with epoch and `seq` 0, sealed once, and puts it at the window's end, before the socket closes, and again after a reconnect when the relay never answered it. Other peers apply a `stored` or `rows` frame like any update from a peer; it is never acknowledged or resent, since the relay holds it.
 - The relay transport holds no key. It sends an awareness message to a peer at most once every 250 ms, keeping only the latest, because each one carries the sender's whole presence.
 - When its socket opens, the relay sync asks `since` for the index doc, then for each held doc, and for a doc opened later when it opens. It saves a doc's cursor only after applying the rows below it, through a cursor store the caller persists with the doc state; without one, every start asks from cursor 0. After a catch-up from cursor 0 it puts what the device holds beyond the relay's rows, which seeds a fresh relay with the owner's project.
 - A device writes a doc's snapshot after it has seen 500 rows of the doc stored since the last snapshot, and only once it has caught up on the open socket.

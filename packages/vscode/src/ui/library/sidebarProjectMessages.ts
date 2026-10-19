@@ -14,6 +14,7 @@ const ACTION_COMMANDS: Record<ProjectAction, string> = {
   allProjects: "labshelf.projects.all",
   newBlank: "labshelf.writing.newBlankProject",
   addExisting: "labshelf.writing.addExistingFolder",
+  joinShared: "labshelf.collab.join",
   refresh: "labshelf.writing.refresh",
 };
 

@@ -24,7 +24,7 @@ export interface ProjectTreeMessage {
   text?: string;
 }
 
-export type ProjectAction = "browseTemplates" | "allProjects" | "newBlank" | "addExisting" | "refresh";
+export type ProjectAction = "browseTemplates" | "allProjects" | "newBlank" | "addExisting" | "joinShared" | "refresh";
 
 /** What a project folder row or the My projects heading asks for; `path` is "" for the top level. */
 export type ProjectFolderAction = "new" | "rename" | "delete";
@@ -54,7 +54,7 @@ export type SidebarToHost =
   | { type: "projectEdit"; id: string; edit: ProjectEdit }
   | ProjectTreeMessage;
 
-const PROJECT_ACTIONS: readonly string[] = ["browseTemplates", "allProjects", "newBlank", "addExisting", "refresh"];
+const PROJECT_ACTIONS: readonly string[] = ["browseTemplates", "allProjects", "newBlank", "addExisting", "joinShared", "refresh"];
 const PROJECT_FOLDER_ACTIONS: readonly string[] = ["new", "rename", "delete"];
 const PROJECT_EDITS: readonly string[] = ["move", "archive"];
 const TREE_VIEWS: readonly string[] = ["files", "outline", "checklist"];

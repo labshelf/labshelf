@@ -110,6 +110,7 @@ function projectContextMenu(e: MouseEvent, r: HTMLElement | null, p: SidebarProj
       ...(offers.newBlank ? [{ label: "New Blank Project…", icon: "new-file" as const, onSelect: () => p.newBlank() }] : []),
       ...(offers.projectFolders ? [{ label: "New Folder…", icon: "new-folder" as const, onSelect: () => p.newFolder("") }] : []),
       ...(offers.addExisting ? [{ label: "Add Existing Folder…", icon: "folder-open" as const, onSelect: () => p.addExisting() }] : []),
+      ...(offers.joinShared ? [{ label: "Join Shared Project…", icon: "link" as const, onSelect: () => p.joinShared() }] : []),
       ...(offers.templates ? ["separator" as const, { label: "Explore Templates", icon: "layers" as const, onSelect: () => p.browseTemplates() }] : []),
     ];
     if (entries.length === 0) return false;

@@ -14,6 +14,8 @@ export interface SidebarProjectActions {
   allProjects(): void;
   newBlank(): void;
   addExisting(): void;
+  /** Asks the user for an invite link and joins the shared project it names. */
+  joinShared(): void;
   newFolder(parent: string): void;
   renameFolder(path: string): void;
   deleteFolder(path: string): void;
@@ -40,9 +42,11 @@ export interface ProjectOffers {
   projectFolders: boolean;
   /** The All projects row. */
   allProjects: boolean;
+  /** Joining a shared project from an invite link. */
+  joinShared: boolean;
 }
 
-export const ALL_PROJECT_OFFERS: ProjectOffers = { templates: true, addExisting: true, newBlank: true, projectFolders: true, allProjects: true };
+export const ALL_PROJECT_OFFERS: ProjectOffers = { templates: true, addExisting: true, newBlank: true, projectFolders: true, allProjects: true, joinShared: true };
 
 /** Expansion keys of project folders share the sidebar's expanded set with library folder paths. */
 export const projectFolderKey = (path: string): string => `project-folder:${path}`;

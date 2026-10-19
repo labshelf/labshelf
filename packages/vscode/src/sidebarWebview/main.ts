@@ -48,6 +48,7 @@ const sidebar = mountLibrarySidebar(root.appendChild(document.createElement("div
     allProjects: () => post({ type: "projectAction", action: "allProjects" }),
     newBlank: () => post({ type: "projectAction", action: "newBlank" }),
     addExisting: () => post({ type: "projectAction", action: "addExisting" }),
+    joinShared: () => post({ type: "projectAction", action: "joinShared" }),
     refresh: () => post({ type: "projectAction", action: "refresh" }),
     newFolder: (path) => post({ type: "projectFolder", action: "new", path }),
     renameFolder: (path) => post({ type: "projectFolder", action: "rename", path }),

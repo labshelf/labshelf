@@ -69,7 +69,7 @@ describe("share session", () => {
       const plaintext = new Uint8Array([key.length >> 8, key.length & 0xff, ...key, ...update]);
       const docIdHex = Buffer.from(docId).toString("hex");
       const frame = await sealFrame(await keyOf(1), { shareId: SHARE_ID, docKey: docIdHex, kind: "syncStep2" }, plaintext);
-      raw.send("a", encodeEnvelope({ kind: MESSAGE_KIND.syncStep2, seq: 1, docId, frame }));
+      raw.send("a", encodeEnvelope({ kind: MESSAGE_KIND.syncStep2, epoch: 1n, seq: 1, docId, frame }));
     };
     await send("main.typ", INDEX_DOC_KEY);
     await runUntil(clock, () => false, 1_000);

@@ -187,3 +187,20 @@ describe("project mirror", () => {
     expect(await readFile(fixture, "main.typ")).toBe("one two");
   });
 });
+
+describe("project mirror path safety", () => {
+  let fixture: MirrorFixture;
+  afterEach(async () => { await fixture.close(); });
+
+  it("refuses and logs an index path that would leave the folder or overwrite the project file", async () => {
+    fixture = await openMirror();
+    for (const bad of ["../escape.typ", "/abs.typ", "a/../../x.typ", ".labshelf/comments.json"]) { indexFiles(fixture.session.index).set(bad, { kind: "text" }); }
+    textFile(fixture, "ok.typ", "fine");
+    await fixture.mirror.idle();
+    expect(await readFile(fixture, "ok.typ")).toBe("fine");
+    expect(await exists(fixture, ".labshelf/comments.json")).toBe(false);
+    expect(await exists(fixture, "../escape.typ")).toBe(false);
+    const refusals = fixture.logger.log.mock.calls.filter(([level, , message]) => level === "WARN" && /refused/i.test(message));
+    expect(refusals.length).toBeGreaterThanOrEqual(4);
+  });
+});

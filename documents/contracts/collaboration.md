@@ -45,19 +45,20 @@ version (1 byte, 1) | nonce (12 random bytes) | AES-GCM ciphertext and 16-byte t
 Members exchange messages through the share's relay, which is the only transport; [relay.md](relay.md#socket-messages) defines how it carries and stores them. Each message is a clear envelope followed by one [frame](#frame):
 
 ```
-version (1 byte, 1) | kind (1 byte) | seq (4 bytes, big-endian) | doc id (16 bytes) | frame
+version (1 byte, 3) | kind (1 byte) | epoch (8 bytes, big-endian) | seq (4 bytes, big-endian) | doc id (16 bytes) | frame
 ```
 
 - The doc id is the first 16 bytes of SHA-256 over the UTF-8 of `<share id>\0<doc key>`, so a relay can store frames per doc without learning paths. A doc key is a file's POSIX path, or `/index` for the index doc, which no relative path can be.
 - The frame is sealed with the doc id in hex as its doc key and the kind's name as its payload kind. Its plaintext is the doc key (2-byte big-endian length and UTF-8) followed by the payload. A receiver drops a message whose doc key does not hash to the envelope's doc id.
-- `seq` is a per-peer sequence number for reliable kinds and `0` for the rest. The receiver acknowledges reliable messages within about 200 ms. The sender resends a message that has no acknowledgement after 2 s and gives up after 8 attempts, and the next sync on rejoin carries what was lost. Delivery is at least once and unordered, which Yjs updates tolerate. An `update` has `seq` 0: the relay stores it and pushes it to the connected sockets (see [relay.md](relay.md#clients)), so no peer acknowledges or resends it.
+- `epoch` names the sender's link to the receiver. The sender picks one each time it opens a link to a peer: the high 48 bits are the open time in Unix milliseconds and the low 16 bits are random. When its clock has gone backwards it uses its previous epoch plus 1, so a sender's epochs only increase and a link one side reopens is never mistaken for the old one. Messages that are not reliable carry epoch `0`.
+- `seq` is a per-link sequence number for reliable kinds, starting at 1 in each epoch, and `0` for the rest. A receiver tracks only the current epoch of each peer. A reliable message of a higher epoch makes it forget the sequence numbers of the current one and adopt the higher one; a reliable message of a lower epoch, or of epoch `0`, is dropped and not acknowledged. The first message a receiver sees in an epoch may have a `seq` above 1, because the receiver may have reopened its own link while the sender kept its own. When more than 1,024 sequence numbers arrived past a gap, the oldest gap has used up its resends and the receiver counts it as delivered. The receiver acknowledges reliable messages within about 200 ms. The sender resends a message that has no acknowledgement after 2 s and gives up after 8 attempts, and the next sync on rejoin carries what was lost. Delivery is at least once and unordered, which Yjs updates tolerate. An `update` has `seq` 0: the relay stores it and pushes it to the connected sockets (see [relay.md](relay.md#clients)), so no peer acknowledges or resends it.
 
 | Kind | Name | Reliable | Payload |
 |---|---|---|---|
 | 1 | `syncStep1` | yes | the sender's Yjs state vector of the doc |
 | 2 | `syncStep2` | yes | the Yjs update the receiver lacks, answering a step 1 |
 | 3 | `update` | no | the Yjs updates a client made locally in one batch, merged into one update |
-| 4 | `ack` | no | the acknowledged sequence numbers, 4 bytes each; doc id all zeros |
+| 4 | `ack` | no | the epoch of the acknowledged messages (8 bytes), then their sequence numbers, 4 bytes each; doc id all zeros. A sender applies an ack only when its epoch is the one of its current link to that peer |
 | 16 | `awareness` | no | a y-protocols awareness update, doc key `/awareness`, sealed with the `awareness` key; the relay forwards it and never stores it |
 | 17 | `blob` | yes | a [blob](#blobs) message, doc key the blob's SHA-256 hex |
 

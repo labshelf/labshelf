@@ -4,7 +4,7 @@ import type * as Y from "yjs";
 import type { ILogger } from "../../../ports/index.js";
 import { listProjectFiles, PROJECT_FILE } from "../../../writing/project/index.js";
 import { nodeFileReads } from "../../../writing/project/node/index.js";
-import { indexFiles, indexSettings, SHARED_TOOL_FILES, sharedPaths, type ShareFileEntry } from "../../model/index.js";
+import { indexFiles, indexSettings, isSafeSharePath, SHARED_TOOL_FILES, sharedPaths, type ShareFileEntry } from "../../model/index.js";
 import type { BlobExchange, ShareSession } from "../../sync/index.js";
 import type { CollabStore } from "../state/index.js";
 import { reconcileBlob } from "./blobMirror.js";
@@ -47,6 +47,7 @@ export function startProjectMirror(options: ProjectMirrorOptions): ProjectMirror
   const isEditorOwned = options.isEditorOwned ?? (() => false);
   const detach: (() => void)[] = [];
   const attached = new Set<string>();
+  const refused = new Set<string>();
   const queue = new PathQueue({ stableMs, logger, run: (path, settled) => reconcile(path, settled) });
   const context: MirrorContext = {
     folder, session, blobs: options.blobs, store: options.store, logger, bases: new Map(), settingsBase: undefined, missingBlobs: new Set(),
@@ -55,7 +56,7 @@ export function startProjectMirror(options: ProjectMirrorOptions): ProjectMirror
   };
 
   function attach(path: string): void {
-    if (attached.has(path) || indexFiles(session.index).get(path)?.kind !== "text") { return; }
+    if (attached.has(path) || !isSafeSharePath(path) || indexFiles(session.index).get(path)?.kind !== "text") { return; }
     attached.add(path);
     const doc = session.openDoc(path);
     const onUpdate = (_update: Uint8Array, origin: unknown) => { if (origin !== DISK_ORIGIN) { queue.request(path, false); } };
@@ -64,6 +65,12 @@ export function startProjectMirror(options: ProjectMirrorOptions): ProjectMirror
   }
 
   async function reconcile(path: string, settled: boolean): Promise<ReconcileOutcome> {
+    if (path !== PROJECT_FILE && !isSafeSharePath(path)) {
+      if (refused.has(path)) { return "done"; }
+      refused.add(path);
+      await logger.log("WARN", LOG_MODULE, "Refused a shared path that is not safe to write", { folder, path });
+      return "done";
+    }
     const disk = await readDisk(diskPath(context, path), settled ? stableMs : undefined);
     if (path === PROJECT_FILE) { return reconcileSettings(context, disk, settled); }
     if (isEditorOwned(path)) { return "done"; }

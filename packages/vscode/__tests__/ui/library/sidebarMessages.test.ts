@@ -21,6 +21,7 @@ describe('parseSidebarMessage', () => {
     [{ type: 'projectAction', action: 'browseTemplates' }],
     [{ type: 'projectAction', action: 'newBlank' }],
     [{ type: 'projectAction', action: 'addExisting' }],
+    [{ type: 'projectAction', action: 'joinShared' }],
   ])('accepts %j', (message) => {
     expect(parseSidebarMessage(message)).toEqual(message);
   });

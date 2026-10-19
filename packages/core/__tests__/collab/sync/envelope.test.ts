@@ -5,25 +5,26 @@ import {
 
 describe("envelope", () => {
   it("pins the protocol version and message kinds", () => {
-    expect(ENVELOPE_VERSION).toBe(1);
+    expect(ENVELOPE_VERSION).toBe(3);
     expect(MESSAGE_KIND).toEqual({ syncStep1: 1, syncStep2: 2, update: 3, ack: 4 });
     expect(EXTENSION_KIND_MIN).toBe(16);
-    expect(ENVELOPE_HEADER_BYTES).toBe(22);
+    expect(ENVELOPE_HEADER_BYTES).toBe(30);
   });
 
-  it("lays out version, kind, sequence and doc id before the frame", () => {
+  it("lays out version, kind, epoch, sequence and doc id before the frame", () => {
     const docId = new Uint8Array(16).fill(0xab);
-    const bytes = encodeEnvelope({ kind: 3, seq: 0x01020304, docId, frame: new Uint8Array([9, 9]) });
-    expect([...bytes.subarray(0, 6)]).toEqual([1, 3, 1, 2, 3, 4]);
-    expect(bytes.subarray(6, 22)).toEqual(docId);
-    expect([...bytes.subarray(22)]).toEqual([9, 9]);
-    expect(decodeEnvelope(bytes)).toEqual({ ok: true, envelope: { kind: 3, seq: 0x01020304, docId, frame: new Uint8Array([9, 9]) } });
+    const envelope = { kind: 3, epoch: 0xa1b2c3d4e5f60718n, seq: 0x01020304, docId, frame: new Uint8Array([9, 9]) };
+    const bytes = encodeEnvelope(envelope);
+    expect([...bytes.subarray(0, 14)]).toEqual([3, 3, 0xa1, 0xb2, 0xc3, 0xd4, 0xe5, 0xf6, 0x07, 0x18, 1, 2, 3, 4]);
+    expect(bytes.subarray(14, 30)).toEqual(docId);
+    expect([...bytes.subarray(30)]).toEqual([9, 9]);
+    expect(decodeEnvelope(bytes)).toEqual({ ok: true, envelope });
   });
 
   it("refuses a short header and an unknown version", () => {
-    expect(decodeEnvelope(new Uint8Array(21))).toEqual({ ok: false, error: "tooShort" });
-    const bytes = encodeEnvelope({ kind: 1, seq: 1, docId: new Uint8Array(16), frame: new Uint8Array() });
-    bytes[0] = 2;
+    expect(decodeEnvelope(new Uint8Array(29))).toEqual({ ok: false, error: "tooShort" });
+    const bytes = encodeEnvelope({ kind: 1, epoch: 7n, seq: 1, docId: new Uint8Array(16), frame: new Uint8Array() });
+    bytes[0] = 1;
     expect(decodeEnvelope(bytes)).toEqual({ ok: false, error: "badVersion" });
   });
 

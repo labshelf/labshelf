@@ -6,7 +6,7 @@ import type { PeerId, PeerTransport } from "../../transport/index.js";
 import {
   decodeEnvelope, docIdCache, DOC_ID_BYTES, encodeEnvelope, MESSAGE_KIND, openDocFrame, sealDocFrame, type Envelope,
 } from "../wire/index.js";
-import { decodeSeqs, encodeSeqs, ReliableLink } from "./reliableLink.js";
+import { createEpochSource, decodeAck, encodeAck, ReliableLink } from "./reliableLink.js";
 import type { SessionScheduler } from "./scheduler.js";
 import type { Channel, ChannelSpec, SecureMesh, SessionStatus } from "./channel.js";
 
@@ -35,6 +35,7 @@ class MeshSession implements SecureMesh {
   private peerListeners = new Set<(peer: PeerId, joined: boolean) => void>();
   private statusListeners = new Set<(status: SessionStatus) => void>();
   private warned = new Set<PeerId>();
+  private nextEpoch = createEpochSource();
   private docIdOf: (docKey: string) => Promise<Uint8Array>;
   private unsubscribe: (() => void)[];
 
@@ -87,8 +88,8 @@ class MeshSession implements SecureMesh {
     for (const peer of to === "all" ? [...this.links.keys()] : [to]) {
       const link = this.links.get(peer);
       if (!link) { continue; }
-      if (spec.reliable) { link.send((seq) => encodeEnvelope({ kind: spec.kind, seq, docId, frame })); }
-      else { this.options.transport.send(peer, encodeEnvelope({ kind: spec.kind, seq: 0, docId, frame })); }
+      if (spec.reliable) { link.send((seq) => encodeEnvelope({ kind: spec.kind, epoch: link.epoch, seq, docId, frame })); }
+      else { this.options.transport.send(peer, encodeEnvelope({ kind: spec.kind, epoch: 0n, seq: 0, docId, frame })); }
     }
   }
 
@@ -103,7 +104,7 @@ class MeshSession implements SecureMesh {
     const spec = this.channels.get(envelope.kind);
     if (!spec && this.options.ackUnknownKinds) {
       // INVARIANT: the frame stays unopened, so this acks a seq no one authenticated; such a mesh discards every one of them.
-      if (envelope.seq > 0) { link.accept(envelope.seq); }
+      if (envelope.seq > 0) { link.accept(envelope.epoch, envelope.seq); }
       return;
     }
     if (!spec) { return this.warnOnce(from, "Dropped a message of an unknown kind", { kind: envelope.kind }); }
@@ -112,14 +113,15 @@ class MeshSession implements SecureMesh {
       return this.warnOnce(from, "Dropped a frame whose doc key does not match its doc id", { kind: spec.name });
     }
     if (!message.ok) { return this.warnOnce(from, "Dropped a frame that failed to open", { kind: spec.name, error: message.error }); }
-    if (this.links.get(from) !== link || (envelope.seq > 0 && !link.accept(envelope.seq))) { return; }
+    if (this.links.get(from) !== link || (envelope.seq > 0 && !link.accept(envelope.epoch, envelope.seq))) { return; }
     spec.onMessage(from, message.docKey, message.payload);
   }
 
   private async receiveAck(from: PeerId, link: ReliableLink, envelope: Envelope): Promise<void> {
     const opened = await openFrame(this.options.key, this.contextOf(envelope.docId, "ack"), envelope.frame);
     if (!opened.ok) { return this.warnOnce(from, "Dropped a frame that failed to open", { kind: "ack", error: opened.error }); }
-    link.acknowledge(decodeSeqs(opened.bytes));
+    const { epoch, seqs } = decodeAck(opened.bytes);
+    link.acknowledge(epoch, seqs);
   }
 
   private join(peer: PeerId): void {
@@ -135,9 +137,9 @@ class MeshSession implements SecureMesh {
   private openLink(peer: PeerId): void {
     const link = new ReliableLink({
       transmit: (bytes) => this.options.transport.send(peer, bytes),
-      sendAck: (seqs) => { this.sendAck(peer, seqs).catch((error) => void this.options.logger.error(LOG_MODULE, error, { peer })); },
+      sendAck: (epoch, seqs) => { this.sendAck(peer, epoch, seqs).catch((error) => void this.options.logger.error(LOG_MODULE, error, { peer })); },
       onGiveUp: (seq) => this.warnOnce(peer, "Peer never acked a message; it resyncs on rejoin", { seq }),
-    }, this.options.scheduler);
+    }, this.options.scheduler, this.nextEpoch());
     this.links.set(peer, link);
     this.peerListeners.forEach((listener) => listener(peer, true));
   }
@@ -147,10 +149,10 @@ class MeshSession implements SecureMesh {
     if (this.links.delete(peer)) { this.peerListeners.forEach((listener) => listener(peer, false)); }
   }
 
-  private async sendAck(peer: PeerId, seqs: number[]): Promise<void> {
-    const frame = await sealFrame(this.options.key, this.contextOf(ACK_DOC_ID, "ack"), encodeSeqs(seqs));
+  private async sendAck(peer: PeerId, epoch: bigint, seqs: number[]): Promise<void> {
+    const frame = await sealFrame(this.options.key, this.contextOf(ACK_DOC_ID, "ack"), encodeAck(epoch, seqs));
     if (this.links.has(peer)) {
-      this.options.transport.send(peer, encodeEnvelope({ kind: MESSAGE_KIND.ack, seq: 0, docId: ACK_DOC_ID, frame }));
+      this.options.transport.send(peer, encodeEnvelope({ kind: MESSAGE_KIND.ack, epoch: 0n, seq: 0, docId: ACK_DOC_ID, frame }));
     }
   }
 
