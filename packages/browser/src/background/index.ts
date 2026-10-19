@@ -1,7 +1,7 @@
 // Wires capture and the PDF watcher into the runtime message channel the UI pages use.
 // Runs as an MV3 service worker in Chrome and a non-persistent background script in Firefox.
 import { bx, createBrowserLogger } from "../platform";
-import { createLibraryMutations, getLibrarySource, onLibraryFilesChanged, rebuildFromFiles } from "../storage";
+import { createLibraryMutations, getLibrarySource, onFolderRecordsRebuilt, onLibraryFilesChanged, rebuildFromFiles } from "../storage";
 import { broadcastChanged } from "./broadcast";
 import { forgetDraft } from "./draftCache";
 import { registerMessageRouter } from "./router";
@@ -21,6 +21,7 @@ onLibraryFilesChanged((paths) => {
     (error: unknown) => log.error(MODULE, error, { op: "rebuildFromFiles", changed: paths.length, first: paths[0] }),
   );
 });
+onFolderRecordsRebuilt(() => broadcastChanged("folder"));
 // PLATFORM: a woken service worker has no native port until something opens the link, and changed events need one.
 void getLibrarySource().catch((error: unknown) => log.error(MODULE, error, { op: "openLibraryLink" }));
 

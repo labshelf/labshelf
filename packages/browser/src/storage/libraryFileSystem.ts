@@ -21,6 +21,8 @@ export interface LibrarySources {
   /** Asks a host without a library to serve `root`; the caller then rechecks the source. */
   setLibraryFolder(root: string): Promise<void>;
   onLibraryFilesChanged(listener: (paths: string[]) => void): () => void;
+  /** Fires in this context each time the rebuild that follows choosing the folder finishes, so open pages can reload their records. */
+  onFolderRecordsRebuilt(listener: () => void): () => void;
 }
 
 interface SourceDeps {
@@ -48,6 +50,7 @@ export function createLibrarySources({ connect, logger, browserFs, rebuild }: So
   const bridgeFs = new BridgeFileSystem(async () => (await openFolder()).connection);
   let browserChoice: Promise<LibrarySource> | undefined;
   let browserSince: number | undefined;
+  const rebuiltListeners = new Set<() => void>();
 
   const getLibrarySource = (): Promise<LibrarySource> => {
     if (folder) return Promise.resolve(folder);
@@ -64,7 +67,10 @@ export function createLibrarySources({ connect, logger, browserFs, rebuild }: So
       folder = { kind: "folder", root: hello.libraryRoot };
       // The cache holds whatever an earlier choice left, so the folder's papers are not listed until it is rebuilt.
       // INVARIANT: not awaited, because the scan reads through `bridgeFs`, which does not wait for this probe.
-      rebuild(bridgeFs).catch((error: unknown) => logger.error(MODULE, error, { op: "rebuildOnFolderChoice", root: hello.libraryRoot }));
+      rebuild(bridgeFs).then(
+        () => rebuiltListeners.forEach((listener) => listener()),
+        (error: unknown) => logger.error(MODULE, error, { op: "rebuildOnFolderChoice", root: hello.libraryRoot }),
+      );
       return folder;
     },
     (error: unknown): LibrarySource => {
@@ -89,6 +95,10 @@ export function createLibrarySources({ connect, logger, browserFs, rebuild }: So
   return {
     fileSystem, folderFileSystem: bridgeFs, getLibrarySource, recheckLibrarySource, setLibraryFolder,
     onLibraryFilesChanged: (listener) => link.onChanged(listener),
+    onFolderRecordsRebuilt: (listener) => {
+      rebuiltListeners.add(listener);
+      return () => { rebuiltListeners.delete(listener); };
+    },
   };
 }
 
@@ -151,4 +161,8 @@ export function setLibraryFolder(root: string): Promise<void> {
 
 export function onLibraryFilesChanged(listener: (paths: string[]) => void): () => void {
   return sharedSources().onLibraryFilesChanged(listener);
+}
+
+export function onFolderRecordsRebuilt(listener: () => void): () => void {
+  return sharedSources().onFolderRecordsRebuilt(listener);
 }

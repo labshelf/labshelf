@@ -149,5 +149,42 @@ describe("library source choice", () => {
       await settle();
       expect(logger.error).toHaveBeenCalledTimes(1);
     });
+
+    it("notifies a subscribed listener once when the probe's rebuild finishes, and not after it unsubscribes", async () => {
+      const { getLibrarySource, recheckLibrarySource, onFolderRecordsRebuilt } = setup();
+      const heard = jest.fn();
+      const gone = jest.fn();
+      onFolderRecordsRebuilt(heard);
+      onFolderRecordsRebuilt(gone)();
+      await getLibrarySource();
+      await recheckLibrarySource();
+      await settle();
+      expect(heard).toHaveBeenCalledTimes(1);
+      expect(gone).not.toHaveBeenCalled();
+    });
+
+    it("does not notify while the rebuild runs or after it fails", async () => {
+      const { getLibrarySource, rebuild, onFolderRecordsRebuilt } = setup();
+      const heard = jest.fn();
+      onFolderRecordsRebuilt(heard);
+      let finish = (): void => undefined;
+      rebuild.mockImplementationOnce(() => new Promise<undefined>((resolve) => { finish = () => resolve(undefined); }));
+      await getLibrarySource();
+      await settle();
+      expect(heard).not.toHaveBeenCalled();
+      finish();
+      await settle();
+      expect(heard).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not notify when the rebuild fails", async () => {
+      const { getLibrarySource, rebuild, onFolderRecordsRebuilt } = setup();
+      const heard = jest.fn();
+      onFolderRecordsRebuilt(heard);
+      rebuild.mockRejectedValueOnce(new Error("scan failed"));
+      await getLibrarySource();
+      await settle();
+      expect(heard).not.toHaveBeenCalled();
+    });
   });
 });

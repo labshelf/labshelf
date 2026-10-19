@@ -16,6 +16,7 @@ jest.mock("../../../src/storage", () => ({
     async readFile(path: string) { return mockBytes.get(path); },
   }),
   createSidecarPort: () => ({}),
+  onFolderRecordsRebuilt: () => () => undefined,
 }));
 jest.mock("../../../src/capture", () => ({ attachPdfToPaper: jest.fn() }));
 const mockOpenReader = jest.fn();

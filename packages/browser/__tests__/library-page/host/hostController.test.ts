@@ -9,6 +9,7 @@ jest.mock("../../../src/storage", () => ({
   scanLibrary: async () => ({ tree: [], pdfDirs: new Set() }),
   createLibraryFileSystem: () => ({}),
   createSidecarPort: () => ({}),
+  onFolderRecordsRebuilt: () => () => undefined,
 }));
 jest.mock("../../../src/capture", () => ({ attachPdfToPaper: jest.fn() }));
 jest.mock("../../../src/reader/access", () => ({ openReader: jest.fn() }));

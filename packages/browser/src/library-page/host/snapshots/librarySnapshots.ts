@@ -4,7 +4,7 @@
  */
 import { PAPERS_DIR, errorMessage, type HostEndpoint, type ILogger, type LibraryUiSnapshot, type PaperRecord, type PaperStats } from "@labshelf/core";
 import { bx, type LibraryChangedBroadcast } from "../../../platform";
-import { listAllRecords, scanLibrary } from "../../../storage";
+import { listAllRecords, onFolderRecordsRebuilt, scanLibrary } from "../../../storage";
 import type { SidecarReads } from "./sidecarReads";
 
 export interface LibrarySnapshots {
@@ -65,7 +65,7 @@ export function createLibrarySnapshots(endpoint: HostEndpoint, sidecars: Sidecar
   };
 }
 
-/** Refreshes when the page shows again or the background broadcasts a library change; returns a disposer. */
+/** Refreshes when the page shows again, the background broadcasts a library change or the folder's records finish rebuilding; returns a disposer. */
 export function watchLibraryChanges(snapshots: LibrarySnapshots, log: ILogger): () => void {
   const run = (why: string, work: Promise<void>): void => {
     void work.catch((err: unknown) => log.error("library-page", err, { refreshAfter: why }));
@@ -81,9 +81,12 @@ export function watchLibraryChanges(snapshots: LibrarySnapshots, log: ILogger): 
     if (change.reason === "annotations" && change.paperId) run("an annotation change in the reader", snapshots.sidecarChanged(change.paperId));
     else run("a library change elsewhere", snapshots.reload());
   };
+  // The background's broadcast does not reach the context that ran the rebuild, so this page listens to its own.
+  const stopRebuilt = onFolderRecordsRebuilt(() => run("the folder's records were rebuilt", snapshots.reload()));
   document.addEventListener("visibilitychange", onVisible);
   bx.runtime.onMessage.addListener(onRuntime);
   return () => {
+    stopRebuilt();
     document.removeEventListener("visibilitychange", onVisible);
     bx.runtime.onMessage.removeListener(onRuntime);
   };
