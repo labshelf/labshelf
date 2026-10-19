@@ -17,7 +17,7 @@ const iconHtml = (i: SidebarNodeIcon | undefined): string => {
 const nodeKey = (view: string, key: string): string => `${view}:${key}`;
 
 /** Whether a folding node is open: the user's last toggle, else the host's default. */
-export const isNodeOpen = (t: SidebarState, view: string, n: SidebarTreeNode): boolean => t.treeOpen.get(nodeKey(view, n.key)) ?? n.open ?? false;
+const isNodeOpen = (t: SidebarState, view: string, n: SidebarTreeNode): boolean => t.treeOpen.get(nodeKey(view, n.key)) ?? n.open ?? false;
 
 function nodeRow(t: SidebarState, view: string, n: SidebarTreeNode, depth: number): HTMLElement {
   const folds = n.children !== undefined;

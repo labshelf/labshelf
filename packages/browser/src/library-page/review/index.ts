@@ -3,5 +3,4 @@ export { createCommentThreads } from "./commentThreads";
 export { createRoutedCommentThreads } from "./routedCommentThreads";
 export type { RoutedCommentThreadsOptions } from "./routedCommentThreads";
 export type { CommentThreads, CommentThreadsOptions, ReviewThread } from "./commentThreads";
-export { projectHistoryTarget, recordProjectEdit, mountHistoryHost, markProjectVersion } from "./history";
-export type { HistoryHostOptions, MarkProjectVersionDeps } from "./history";
+export { recordProjectEdit, mountHistoryHost } from "./history";

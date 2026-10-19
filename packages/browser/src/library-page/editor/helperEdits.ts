@@ -14,7 +14,7 @@ export interface HelperEdits {
 }
 
 /** CodeMirror reports each change against the text before the transaction, which is what the helper expects. */
-export function textChanges(changes: ChangeSet): TextChange[] {
+function textChanges(changes: ChangeSet): TextChange[] {
   const result: TextChange[] = [];
   changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => { result.push({ from: fromA, to: toA, insert: inserted.toString() }); });
   return result;

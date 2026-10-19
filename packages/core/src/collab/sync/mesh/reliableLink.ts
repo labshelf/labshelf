@@ -6,7 +6,7 @@ export const RESEND_AFTER_MS = 2000;
 /** A peer that has not acked a message after this many sends is not reading it; a rejoin resyncs what it missed. */
 export const MAX_SEND_ATTEMPTS = 8;
 /** Past this many seqs held beyond a gap, the oldest gap has used up its resends and counts as delivered. */
-export const MAX_SEQS_PAST_GAP = 1024;
+const MAX_SEQS_PAST_GAP = 1024;
 
 interface Pending { bytes: Uint8Array; sentAt: number; attempts: number }
 

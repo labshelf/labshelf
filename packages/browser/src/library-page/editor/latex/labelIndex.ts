@@ -12,7 +12,7 @@ export interface LabelIndex {
   dispose(): void;
 }
 
-export const SCAN_DELAY_MS = 300;
+const SCAN_DELAY_MS = 300;
 const MODULE = "editor.labelIndex";
 
 export function createLabelIndex(logger: ILogger): LabelIndex {

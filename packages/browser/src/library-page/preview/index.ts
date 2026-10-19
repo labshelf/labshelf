@@ -2,4 +2,4 @@
 export { createBuildScheduler, type BuildScheduler, type BuildSchedulerOptions, type BuildTimers } from "./buildScheduler";
 export { assemblePdf, type ChangedPages } from "./pdfAssembly";
 export { followBuilds, type PreviewBuildEvent, type PreviewBuildSource } from "./previewBuilds";
-export { createPreviewFrame, previewReaderUrl, type PreviewBuildStatus, type PreviewFrame, type PreviewFrameMessage } from "./previewFrame";
+export { createPreviewFrame, type PreviewBuildStatus, type PreviewFrame, type PreviewFrameMessage } from "./previewFrame";

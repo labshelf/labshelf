@@ -14,7 +14,7 @@ export interface PreviewFrame {
   dispose(): void;
 }
 
-export function previewReaderUrl(projectId: string, title: string): string {
+function previewReaderUrl(projectId: string, title: string): string {
   const query = new URLSearchParams({ preview: "1", project: projectId, title });
   return `${READER_PAGE}?${query.toString()}`;
 }

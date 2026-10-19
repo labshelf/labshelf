@@ -4,7 +4,7 @@ import {
 } from "@labshelf/core";
 
 const LOG_MODULE = "collab.mirror";
-export const DOC_WRITE_DELAY_MS = 500;
+const DOC_WRITE_DELAY_MS = 500;
 
 export interface DocFileWriterOptions {
   session: Pick<ShareSession, "index" | "openDoc">;

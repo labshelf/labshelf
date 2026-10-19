@@ -50,6 +50,18 @@ The minimum versions are the floor for pdf.js 6.3.
 
 The sidebar is core's library sidebar, as in VS Code: Library, then Projects. Projects lists the library's writing projects with their tooltip (main file, compiler, reading progress over the papers a project lists). A click opens the project in the library page's project session, and the row menu offers Open PDF when a built PDF sits beside the main file. The browser hides what it cannot do: templates, All projects, new projects, adding a folder and project folders.
 
+## Library page workspace
+
+The library page is a tabbed workspace. Tab kinds are Library, Templates, All projects, a project's Source, Preview, History and Comments. The open tabs and the active one are written to the page hash as `#/tabs/<id>,<id>;active=<id>`, and to `sessionStorage["labshelf.library.tabs"]`, so a reload restores them. A folder deep link (`#/papers/...`) and the tabs hash coexist: the router leaves the open folder alone while the hash is a tabs hash.
+
+- Source edits a project file in a CodeMirror editor; edits go to LabShelf Helper for builds ([helper.md](../contracts/helper.md)). Preview shows the built PDF in the core reader and updates page by page from `pages`.
+- History lists the project's recorded edits, versions and restores, with Restore this point and Mark Version. Open editors reload after a restore. The history is kept in the browser's storage, not in the project folder. Compare Versions is desktop-only: the page toasts that it needs the VS Code extension or the terminal app.
+- Comments lists a project's comment threads from `comments.json`; in a joined project the threads are live over the share.
+
+### Joining a shared project
+
+A join link ([share-link.md](../contracts/share-link.md)) opened as `library-page/index.html#/join/<invite>` joins the project over the relay, with the invite in the fragment so it never reaches a server. The page asks for a display name, waits for a member to answer, mirrors the project's files into the library through the bridge (or browser storage), and edits it with live cursors and comments ([collaboration.md](../contracts/collaboration.md)). The share id, key and relays of each joined project, and the display name, are kept in `chrome.storage.local["collabShares"]` so a reload reconnects without the invite.
+
 ## Capture structure
 
 Identifier detection, landing-page parsing, metadata resolution and the PDF finder live in core `import/` and are shared with the other apps. `src/capture/` keeps only what needs the browser: the page probe content script, the helper tab and tab fetch (`capture/tab/`), the watched sign-in tab (`capture/watch/`), the capture and Scholar flows, and mapping a draft to a record.

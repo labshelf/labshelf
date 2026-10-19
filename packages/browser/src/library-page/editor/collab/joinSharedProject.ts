@@ -8,7 +8,7 @@ import { connectShare, type ConnectShareOptions, type ShareConnection } from "./
 import { saveShare } from "./shareKeyStore";
 
 const LOG_MODULE = "collab.join";
-export const JOIN_TIMEOUT_MS = 30_000;
+const JOIN_TIMEOUT_MS = 30_000;
 
 /** The share is of a kind this version cannot open, so nothing is created for it. */
 export class UnknownShareKindError extends Error {
