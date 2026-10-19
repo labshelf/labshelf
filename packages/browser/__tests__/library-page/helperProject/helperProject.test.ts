@@ -119,6 +119,24 @@ describe("createHelperProject", () => {
     expect(fake.compiles).toEqual([]);
   });
 
+  it("keeps the project open in the helper when the session reports it again while it is still opening", async () => {
+    const fake = fakeHelper(READY);
+    const hp = createHelperProject({ helper: fake.helper, logger, timers: instantTimers });
+    await hp.connect();
+    await Promise.all([hp.projectChanged(project("a")), hp.projectChanged(project("a"))]);
+    expect(fake.calls).toEqual(["connect", "open a projects/a"]);
+    expect(hp.isOpen("a")).toBe(true);
+  });
+
+  it("closes a project the session left while it was opening, and opens the one it went to", async () => {
+    const fake = fakeHelper(READY);
+    const hp = createHelperProject({ helper: fake.helper, logger, timers: instantTimers });
+    await hp.connect();
+    await Promise.all([hp.projectChanged(project("a")), hp.projectChanged(project("b"))]);
+    expect(fake.calls).toEqual(["connect", "open a projects/a", "open b projects/b", "close a"]);
+    expect(hp.isOpen("b")).toBe(true);
+  });
+
   it("keeps the PDF of the latest full build only, and forgets it when the project closes", async () => {
     const fake = fakeHelper(READY, await succeededWith(101));
     const pending: Array<{ fn: () => void; ms: number }> = [];

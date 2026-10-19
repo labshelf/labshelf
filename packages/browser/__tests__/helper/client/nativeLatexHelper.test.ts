@@ -47,6 +47,13 @@ describe("connect", () => {
     expect(logger.error).toHaveBeenCalledWith(expect.any(String), expect.any(Error), expect.objectContaining({ step: "handshake" }));
   });
 
+  it("shares one handshake between connects that overlap, so every request uses the socket the project opened on", async () => {
+    const { fake, helper } = setup();
+    const [first, second] = await Promise.all([helper.connect(), helper.connect()]);
+    expect(second).toEqual(first);
+    expect(fake.sockets).toHaveLength(1);
+  });
+
   it("reports the protocol mismatch without opening a socket", async () => {
     const fake = new FakeHelper();
     fake.protocol = 3;

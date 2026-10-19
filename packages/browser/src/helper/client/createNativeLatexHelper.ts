@@ -29,6 +29,7 @@ export function createNativeLatexHelper(deps: NativeLatexHelperDeps): ILatexHelp
   let session: Session | undefined;
   let current: HelperStatus | undefined;
   let generation = 0;
+  let connecting: Promise<HelperStatus> | undefined;
 
   function dropSession(reason: string | undefined, forGeneration: number): void {
     if (forGeneration !== generation) { return; }
@@ -54,7 +55,13 @@ export function createNativeLatexHelper(deps: NativeLatexHelperDeps): ILatexHelp
     }
   }
 
-  async function connect(): Promise<HelperStatus> {
+  // INVARIANT: the helper keeps open projects per socket, so overlapping connects share one handshake instead of each replacing the socket.
+  function connect(): Promise<HelperStatus> {
+    connecting ??= openSession().finally(() => { connecting = undefined; });
+    return connecting;
+  }
+
+  async function openSession(): Promise<HelperStatus> {
     const mine = ++generation;
     const previous = session;
     session = undefined;

@@ -95,15 +95,17 @@ export function createHelperProject({ helper, logger, timers }: HelperProjectOpt
 
   async function openWanted(): Promise<void> {
     const entry = wanted;
-    if (entry === undefined || open?.id === entry.settings.id || opening === entry) return;
+    // TRAP: the session reports one project again with a new entry (restore, then the records rebuild), so ids decide, not identity.
+    if (entry === undefined || open?.id === entry.settings.id || opening?.settings.id === entry.settings.id) return;
     if (helper.status()?.state !== "ready") return;
     opening = entry;
     const id = entry.settings.id;
     try {
       await helper.openProject(id, entry.folder);
-      if (wanted !== entry) { await helper.closeProject(id); return; }
+      const latest = wanted;
+      if (latest?.settings.id !== id) { await helper.closeProject(id); return; }
       const pdf: PdfState = { queue: Promise.resolve(), closed: false };
-      open = { id, scheduler: schedulerFor(entry, pdf), pdf };
+      open = { id, scheduler: schedulerFor(latest, pdf), pdf };
       void logger.log("INFO", MODULE, "project opened in the helper", { projectId: id });
       for (const listener of [...openedListeners]) listener(id);
     } catch (error) {
