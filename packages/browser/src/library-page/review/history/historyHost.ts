@@ -3,6 +3,8 @@ import {
   historyDiff, historyRows, restoreSnapshot, type HistoryRow, type HistoryToHost, type HostToHistory, type ILogger, type LibraryFileSystem, type MessageEnd,
 } from "@labshelf/core";
 import { confirmDialog, toast } from "@labshelf/core/dom";
+import { flushProjectEditors, reloadProjectEditors } from "../../openEditors";
+import { onEditRecorded } from "./editRecorded";
 import { projectHistoryTarget } from "./historyTarget";
 import { markProjectVersion } from "./markProjectVersion";
 import { recordProjectEdit } from "./recordProjectEdit";
@@ -24,6 +26,15 @@ export function mountHistoryHost({ fs, logger, endpoint, project, lastFullPdf }:
   const refresh = async (): Promise<void> => {
     endpoint.post({ type: "history", project: project.id, rows: await historyRows(target.storage, logger) });
   };
+  let disposed = false;
+  let stopEdits: (() => void) | undefined;
+  // Saves made while the page is open show up in its timeline; the page's own first record is already in its first rows.
+  const followEdits = (): void => {
+    if (disposed) return;
+    stopEdits ??= onEditRecorded(project.id, () => {
+      refresh().catch((error: unknown) => logger.error(MODULE, error, { action: "refresh after edit", projectId: project.id }));
+    });
+  };
 
   async function restore(id: string): Promise<void> {
     const row = (await historyRows(target.storage, logger)).find((entry) => entry.id === id);
@@ -36,7 +47,14 @@ export function mountHistoryHost({ fs, logger, endpoint, project, lastFullPdf }:
     if (!accepted) return;
     endpoint.post({ type: "busy", busy: true });
     try {
+      // Unsaved edits are written first, so the history keeps them, and the editors reload after, so none saves its stale text over the restore.
+      if (!(await flushProjectEditors(project.id))) {
+        void logger.log("WARN", MODULE, "kept the project as it is: an open file could not be saved", { projectId: project.id, id });
+        toast(`Could not save an open file of ${project.id}, so nothing was restored.`, "error");
+        return;
+      }
       await restoreSnapshot(target, id, logger);
+      await reloadProjectEditors(project.id);
     } finally {
       endpoint.post({ type: "busy", busy: false });
     }
@@ -48,6 +66,7 @@ export function mountHistoryHost({ fs, logger, endpoint, project, lastFullPdf }:
     if (message.type === "ready") {
       await recordProjectEdit({ fs, logger }, project);
       await refresh();
+      followEdits();
     } else if (message.type === "diff") {
       endpoint.post({ ...message, lines: await historyDiff(target.storage, message.id, message.path, logger) });
     } else if (message.type === "restore") {
@@ -65,5 +84,5 @@ export function mountHistoryHost({ fs, logger, endpoint, project, lastFullPdf }:
       toast(`History: ${error instanceof Error ? error.message : String(error)}`, "error");
     });
   });
-  return { dispose: stop };
+  return { dispose: () => { disposed = true; stop(); stopEdits?.(); } };
 }

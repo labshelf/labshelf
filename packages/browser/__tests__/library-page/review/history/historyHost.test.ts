@@ -2,7 +2,7 @@
 import type { HistoryToHost, HostToHistory, ILogger } from "@labshelf/core";
 import { createLoopbackTransport } from "@labshelf/core";
 import { toast, confirmDialog } from "@labshelf/core/dom";
-import { mountHistoryHost } from "../../../../src/library-page/review/history";
+import { mountHistoryHost, recordProjectEdit } from "../../../../src/library-page/review/history";
 import { clearFakeDb } from "../../../support/fakeIdb";
 import { memoryLibraryFs } from "../../../support/memoryLibraryFs";
 
@@ -34,6 +34,17 @@ describe("mountHistoryHost", () => {
     await settle();
     expect(history()).toHaveLength(1);
     expect(history()[0]).toMatchObject({ project: "thesis", rows: [{ kind: "edit", changes: [{ path: "main.typ" }] }] });
+  });
+
+  it("posts the rows again when a save records an edit while the page is open", async () => {
+    const { fs, ui, history } = setup();
+    await fs.writeText("proj/main.typ", "one");
+    ui.post({ type: "ready" });
+    await settle();
+    await fs.writeText("proj/main.typ", "two");
+    await recordProjectEdit({ fs, logger }, project);
+    await settle();
+    expect(history().map((message) => message.rows.length)).toEqual([1, 2]);
   });
 
   it("answers a diff request with the lines the entry changed", async () => {

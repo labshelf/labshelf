@@ -8,7 +8,7 @@ import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import type { ILogger, PaperRecord } from "@labshelf/core";
 import type { HelperLspChannel } from "../../../../src/library-page/helperProject";
-import { registerOpenEditor } from "../../../../src/library-page/editor/openEditors";
+import { registerOpenEditor } from "../../../../src/library-page/openEditors";
 import { goToDefinition, hoverSource, lspDiagnostics, openTypstDocument, typstCompletion, type TypstDocument } from "../../../../src/library-page/editor/typst";
 
 type Message = Record<string, unknown>;
@@ -107,7 +107,7 @@ describe("typst language server session", () => {
     const { doc, projectId } = await open("", { "textDocument/definition": target });
     const openTab = jest.fn();
     const revealed: number[] = [];
-    const unregister = registerOpenEditor(projectId, "lib/a b.typ", { revealLine: (line) => revealed.push(line) });
+    const unregister = registerOpenEditor(projectId, "lib/a b.typ", { revealLine: (line) => { revealed.push(line); }, flush: async () => true, reload: async () => undefined });
     const view = new EditorView({ doc: "#f()" });
     expect(await goToDefinition(view, doc, 1, { projectId, openTab })).toBe(true);
     expect(openTab).toHaveBeenCalledWith("source", { projectId, path: "lib/a b.typ" }, 0);

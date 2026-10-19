@@ -10,7 +10,7 @@ import { mountMoveOffer, mountSourceBanner } from "../library-source";
 import { createLibraryFileSystem } from "../storage";
 import { applyTheme } from "../ui";
 import { createPageShares, runJoinDialog } from "./editor/collab";
-import { revealInOpenEditor } from "./editor/openEditors";
+import { revealInOpenEditor } from "./openEditors";
 import { attachLibraryHost } from "./host";
 import { createHelperProject } from "./helperProject";
 import { attachLinkHandling } from "./openLink";

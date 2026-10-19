@@ -1,6 +1,6 @@
 // Mounts a CodeMirror editor on one project source file, saving it and feeding the helper and the label index.
 import { setDiagnostics } from "@codemirror/lint";
-import { EditorState, type Extension } from "@codemirror/state";
+import { Annotation, EditorState, type Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import type { ILogger, PaperRecord, PresenceHandle } from "@labshelf/core";
 import type { HelperLspChannel } from "../helperProject";
@@ -11,7 +11,7 @@ import { editorExtensions } from "./editorExtensions";
 import { createHelperEdits, type EditorHelper } from "./helperEdits";
 import { createLabelIndex, latexSupport, type LabelIndex } from "./latex";
 import { applyProblems, type ProblemSource } from "./problemDiagnostics";
-import { registerOpenEditor } from "./openEditors";
+import { registerOpenEditor } from "../openEditors";
 import { revealLine } from "./revealLine";
 import { createSaveScheduler, type SaveScheduler } from "./saveScheduler";
 import { lspDiagnostics, typstLanguage, typstSupport, type DefinitionTarget, type LspDiagnostic } from "./typst";
@@ -54,6 +54,8 @@ export interface SourceEditor {
 }
 
 const MODULE = "editor.mount";
+/** Marks the transaction that loads the file's text from disk, which is not an edit to save. */
+const fromDisk = Annotation.define<boolean>();
 
 interface SourceLanguage {
   extension: Extension;
@@ -80,6 +82,21 @@ function documentExtensions({ collab, path }: SourceEditorDeps, languageSupport:
   return [collabExtensions({ ...collab, file: path }), ...editorExtensions(languageSupport, { history: false })];
 }
 
+/**
+ * Replaces the editor's text with the file on disk. A shared file's change goes into its shared text, so the peers get it
+ * and its file writer saves it; a local file's change is not an edit to save.
+ */
+async function loadFromDisk(view: EditorView, { files, path, projectId, logger }: SourceEditorDeps, onLoaded: (disk: string) => void): Promise<void> {
+  try {
+    const disk = await files.read(path);
+    onLoaded(disk);
+    if (disk === view.state.doc.sliceString(0, undefined, view.state.lineBreak)) return;
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: disk }, annotations: fromDisk.of(true) });
+  } catch (error) {
+    void logger.error(MODULE, error, { action: "reloadSource", projectId, path });
+  }
+}
+
 export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDeps): Promise<SourceEditor> {
   const { path, logger, collab } = deps;
   const labels = createLabelIndex(logger);
@@ -104,21 +121,18 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   const commentsSupport = deps.comments && commentSupport({ comments: deps.comments, lineBreak, savedText: collab ? currentText : () => savedText, flush: save.flush, logger });
   const onUpdate = EditorView.updateListener.of((update) => {
     if (!update.docChanged) return;
-    save.changed();
+    if (!update.transactions.some((tr) => tr.annotation(fromDisk))) save.changed();
     helperEdits.changed(update.changes, update.state.doc);
     if (path.endsWith(".tex")) labels.schedule(path, () => update.view.state.doc.toString());
   });
-  view = new EditorView({
-    parent: host,
-    state: EditorState.create({
-      doc: text,
-      extensions: [...documentExtensions(deps, language.extension, lineBreak), ...(commentsSupport?.extensions ?? []), onUpdate],
-    }),
-  });
+  const extensions = [...documentExtensions(deps, language.extension, lineBreak), ...(commentsSupport?.extensions ?? []), onUpdate];
+  view = new EditorView({ parent: host, state: EditorState.create({ doc: text, extensions }) });
   helperEdits.changed(view.state.changes(), view.state.doc);
   const stopProblems = language.hasDiagnostics ? undefined : deps.problems?.(path, (problems) => applyProblems(view!, problems));
   const stopComments = commentsSupport?.attach(view);
-  const unregister = registerOpenEditor(deps.projectId, path, { revealLine: (line) => revealLine(view!, line) });
+  const unregister = registerOpenEditor(deps.projectId, path, {
+    revealLine: (line) => revealLine(view!, line), flush: save.flush, reload: () => loadFromDisk(view!, deps, (disk) => { savedText = disk; }),
+  });
   return {
     flush: save.flush,
     async dispose() {

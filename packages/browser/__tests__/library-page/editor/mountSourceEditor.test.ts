@@ -7,7 +7,7 @@ import { EditorView } from "@codemirror/view";
 import type { ILogger } from "@labshelf/core";
 import type { HelperEdit } from "@labshelf/core/helper";
 import { mountSourceEditor, type SourceFileAccess } from "../../../src/library-page/editor/mountSourceEditor";
-import { revealInOpenEditor } from "../../../src/library-page/editor/openEditors";
+import { revealInOpenEditor } from "../../../src/library-page/openEditors";
 
 const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
 

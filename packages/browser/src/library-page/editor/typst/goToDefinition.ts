@@ -2,7 +2,7 @@
 import { Prec, type Extension } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import type { Workspace } from "../../workspace";
-import { revealInOpenEditor } from "../openEditors";
+import { revealInOpenEditor } from "../../openEditors";
 import { pathOfPageUri, toLspPosition, type LspRange, type TypstDocument } from "./lsp";
 
 export interface DefinitionTarget {
