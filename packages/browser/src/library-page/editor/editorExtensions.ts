@@ -8,10 +8,11 @@ import type { Extension } from "@codemirror/state";
 import { drawSelection, EditorView, highlightActiveLine, keymap, lineNumbers } from "@codemirror/view";
 import { editorTheme } from "./editorTheme";
 
-export function editorExtensions(languageSupport: Extension): Extension[] {
+/** `history: false` leaves undo to another owner of the document, such as a shared text's own undo manager. */
+export function editorExtensions(languageSupport: Extension, { history: withHistory = true } = {}): Extension[] {
   return [
-    lineNumbers(), history(), drawSelection(), highlightActiveLine(), indentOnInput(), bracketMatching(), closeBrackets(),
+    lineNumbers(), ...(withHistory ? [history()] : []), drawSelection(), highlightActiveLine(), indentOnInput(), bracketMatching(), closeBrackets(),
     highlightSelectionMatches(), EditorView.lineWrapping, editorTheme, languageSupport,
-    keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...searchKeymap, ...historyKeymap, ...completionKeymap, ...lintKeymap, indentWithTab]),
+    keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...searchKeymap, ...(withHistory ? historyKeymap : []), ...completionKeymap, ...lintKeymap, indentWithTab]),
   ];
 }

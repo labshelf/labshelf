@@ -30,3 +30,12 @@ export function parseWorkspaceHash(hash: string): WorkspaceHashState | null {
 
 /** True for a folder deep link (`#/papers/...`), the hash the library router writes. */
 export const isFolderHash = (hash: string): boolean => hash === `#/${PAPERS_DIR}` || hash.startsWith(`#/${PAPERS_DIR}/`);
+
+export const JOIN_PREFIX = "#/join/";
+
+/** The invite a join link carries in its fragment, which never reaches a server; undefined for any other hash. */
+export function takeJoinInvite(hash: string): string | undefined {
+  if (!hash.startsWith(JOIN_PREFIX)) return undefined;
+  const invite = decode(hash.slice(JOIN_PREFIX.length));
+  return invite === null || invite === "" ? undefined : invite;
+}

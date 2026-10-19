@@ -3,6 +3,7 @@
  * lands on the same folder. The host tells the UI about hash changes and follows the UI's own navigation.
  */
 import { PAPERS_DIR, isLibraryPath, type HostEndpoint } from "@labshelf/core";
+import { JOIN_PREFIX } from "./workspace";
 
 /** Parses a location hash into a folder path, falling back to the root. */
 export function folderFromHash(hash: string): string {
@@ -17,8 +18,8 @@ export function hashForFolder(folder: string): string {
 
 /** Starts syncing the UI's folder with location.hash; returns a disposer. */
 export function attachRouter(endpoint: HostEndpoint): () => void {
-  // A tabs hash (`#/tabs/...`) belongs to the workspace and names no folder, so the open folder stays.
-  const onHash = (): void => { if (!location.hash.startsWith("#/tabs/")) endpoint.post({ type: "navigate", folder: folderFromHash(location.hash) }); };
+  // A tabs hash (`#/tabs/...`) belongs to the workspace and a join hash carries an invite; neither names a folder, so the open folder stays.
+  const onHash = (): void => { if (!location.hash.startsWith("#/tabs/") && !location.hash.startsWith(JOIN_PREFIX)) endpoint.post({ type: "navigate", folder: folderFromHash(location.hash) }); };
   window.addEventListener("hashchange", onHash);
   const off = endpoint.subscribe((m) => {
     if (m.type === "ready") onHash();

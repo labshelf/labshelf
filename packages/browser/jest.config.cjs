@@ -11,7 +11,7 @@ module.exports = {
     '^.+\\.tsx?$': ['ts-jest', { compiler: 'typescript-js', tsconfig: '<rootDir>/tsconfig.test.json' }],
   },
   roots: ['<rootDir>/__tests__'],
-  setupFiles: ['<rootDir>/__tests__/support/mockWebextensionPolyfill.ts'],
+  setupFiles: ['<rootDir>/__tests__/support/mockWebextensionPolyfill.ts', '<rootDir>/__tests__/support/webPlatformGlobals.ts'],
   testMatch: ['**/__tests__/**/*.test.ts'],
   moduleFileExtensions: ['ts', 'js', 'json'],
   collectCoverageFrom: [

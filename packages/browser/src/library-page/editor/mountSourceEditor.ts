@@ -2,8 +2,10 @@
 import { setDiagnostics } from "@codemirror/lint";
 import { EditorState, type Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import type { ILogger, PaperRecord } from "@labshelf/core";
+import type { ILogger, PaperRecord, PresenceHandle } from "@labshelf/core";
 import type { HelperLspChannel } from "../helperProject";
+import type * as Y from "yjs";
+import { collabExtensions } from "./collab";
 import { commentSupport, type EditorComments } from "./commentSupport";
 import { editorExtensions } from "./editorExtensions";
 import { createHelperEdits, type EditorHelper } from "./helperEdits";
@@ -11,7 +13,7 @@ import { createLabelIndex, latexSupport, type LabelIndex } from "./latex";
 import { applyProblems, type ProblemSource } from "./problemDiagnostics";
 import { registerOpenEditor } from "./openEditors";
 import { revealLine } from "./revealLine";
-import { createSaveScheduler } from "./saveScheduler";
+import { createSaveScheduler, type SaveScheduler } from "./saveScheduler";
 import { lspDiagnostics, typstLanguage, typstSupport, type DefinitionTarget, type LspDiagnostic } from "./typst";
 
 export interface SourceFileAccess {
@@ -36,6 +38,8 @@ export interface SourceEditorDeps {
   openTab?: DefinitionTarget["openTab"];
   /** The file's comment threads; without it the editor shows and adds no comments. */
   comments?: EditorComments;
+  /** The file's shared text: the editor edits it in place, and the share's file writer saves the file. */
+  collab?: { text: Y.Text; presence: PresenceHandle; name: string };
   logger: ILogger;
   onDirty(dirty: boolean): void;
   /** Runs after each successful write of the file. */
@@ -70,27 +74,34 @@ function sourceLanguage(
   return { extension: support.extension, hasDiagnostics: true, close: support.close };
 }
 
+/** The editing extensions; a shared file binds to its Y.Text, which brings its own undo history and line separator. */
+function documentExtensions({ collab, path }: SourceEditorDeps, languageSupport: Extension, lineBreak: string): Extension[] {
+  if (!collab) return [EditorState.lineSeparator.of(lineBreak), ...editorExtensions(languageSupport)];
+  return [collabExtensions({ ...collab, file: path }), ...editorExtensions(languageSupport, { history: false })];
+}
+
 export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDeps): Promise<SourceEditor> {
-  const { path, logger } = deps;
+  const { path, logger, collab } = deps;
   const labels = createLabelIndex(logger);
-  const text = await deps.files.read(path);
+  const text = collab ? collab.text.toString() : await deps.files.read(path);
   void deps.files.list().then((files) => labels.load(files, deps.files.read))
     .catch((error: unknown) => logger.error(MODULE, error, { action: "listProjectFiles", projectId: deps.projectId }));
   const helperEdits = createHelperEdits(deps.helper, deps.projectId, path, logger);
-  // The document is split on the file's own line break, so saving writes back the endings the file was read with.
-  const lineBreak = text.includes("\r\n") ? "\r\n" : "\n";
+  // The document is split on the file's own line break, so saving writes back the endings the file was read with; a shared text is LF only.
+  const lineBreak = !collab && text.includes("\r\n") ? "\r\n" : "\n";
   let view: EditorView | undefined;
   const currentText = (): string => (view ? view.state.doc.sliceString(0, undefined, view.state.lineBreak) : text);
   const language = sourceLanguage(deps, labels, currentText, (diagnostics) => {
     if (view) view.dispatch(setDiagnostics(view.state, lspDiagnostics(view.state.doc, diagnostics)));
   });
   let savedText = text;
-  const save = createSaveScheduler({
+  // The share's doc file writer saves a shared file, so the editor has nothing to write.
+  const save: Pick<SaveScheduler, "changed" | "flush"> = collab ? { changed: () => undefined, flush: async () => true } : createSaveScheduler({
     file: path, logger, text: currentText,
     write: async (content) => { await deps.files.write(path, content); savedText = content; },
     onDirty: deps.onDirty, onSaved: () => { helperEdits.saved(); deps.onSaved?.(); },
   });
-  const commentsSupport = deps.comments && commentSupport({ comments: deps.comments, lineBreak, savedText: () => savedText, flush: save.flush, logger });
+  const commentsSupport = deps.comments && commentSupport({ comments: deps.comments, lineBreak, savedText: collab ? currentText : () => savedText, flush: save.flush, logger });
   const onUpdate = EditorView.updateListener.of((update) => {
     if (!update.docChanged) return;
     save.changed();
@@ -101,7 +112,7 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
     parent: host,
     state: EditorState.create({
       doc: text,
-      extensions: [EditorState.lineSeparator.of(lineBreak), ...editorExtensions(language.extension), ...(commentsSupport?.extensions ?? []), onUpdate],
+      extensions: [...documentExtensions(deps, language.extension, lineBreak), ...(commentsSupport?.extensions ?? []), onUpdate],
     }),
   });
   helperEdits.changed(view.state.changes(), view.state.doc);

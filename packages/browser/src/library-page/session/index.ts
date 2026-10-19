@@ -3,3 +3,4 @@ export { createProjectSession } from "./projectSession";
 export type { ProjectSession, ProjectSessionOptions, SessionSidebar } from "./projectSession";
 export { createOpenProjectSnapshot } from "./openProjectSnapshot";
 export type { OpenProjectSnapshot, OpenProjectSnapshotOptions } from "./openProjectSnapshot";
+export { resumeRestoredProject } from "./resumeRestoredProject";

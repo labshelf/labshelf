@@ -27,9 +27,10 @@ async function mount(rows: BrowserProjectRow[] = [ready, broken]) {
   const slot = document.createElement("div");
   document.body.replaceChildren(slot);
   const openTab = jest.fn();
-  mountSidebarTree(ui, slot, prefs, { post: jest.fn() }, createSidebarProjects(source, openTab, session), openTab, true);
+  const joinShared = jest.fn();
+  mountSidebarTree(ui, slot, prefs, { post: jest.fn() }, createSidebarProjects(source, openTab, session, joinShared), openTab, true);
   await new Promise((resolve) => setTimeout(resolve, 0));
-  return { slot, source, openTab, session };
+  return { slot, source, openTab, session, joinShared };
 }
 
 const projectRow = (slot: HTMLElement, id: string): HTMLElement => slot.querySelector<HTMLElement>(`[data-project="${id}"]`)!;
@@ -83,5 +84,13 @@ describe("sidebar projects glue", () => {
     const { slot, source } = await mount();
     slot.querySelector<HTMLElement>('[data-tree="project-refresh"]')!.click();
     expect(source.rows).toHaveBeenCalledTimes(2);
+  });
+
+  it("starts the join dialog from the Projects menu", async () => {
+    const { slot, joinShared } = await mount();
+    slot.querySelector<HTMLElement>('[data-group="projects.list"]')!.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+    expect(menuLabels()).toContain("Join Shared Project…");
+    [...document.querySelectorAll<HTMLElement>(".ls-menu [role=menuitem]")].find((item) => item.textContent?.includes("Join Shared"))!.click();
+    expect(joinShared).toHaveBeenCalledTimes(1);
   });
 });

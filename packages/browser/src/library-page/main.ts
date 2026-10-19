@@ -9,6 +9,7 @@ import { createBrowserLogger, getSettings } from "../platform";
 import { mountMoveOffer, mountSourceBanner } from "../library-source";
 import { createLibraryFileSystem } from "../storage";
 import { applyTheme } from "../ui";
+import { createPageShares, runJoinDialog } from "./editor/collab";
 import { revealInOpenEditor } from "./editor/openEditors";
 import { attachLibraryHost } from "./host";
 import { createHelperProject } from "./helperProject";
@@ -16,11 +17,11 @@ import { attachLinkHandling } from "./openLink";
 import { createLocalStoragePrefs } from "./prefs";
 import { attachRouter } from "./router";
 import type { TabKindName } from "./tabs";
-import { createCommentThreads } from "./review";
-import { createOpenProjectSnapshot, createProjectSession } from "./session";
+import { createCommentThreads, createRoutedCommentThreads } from "./review";
+import { createOpenProjectSnapshot, createProjectSession, resumeRestoredProject } from "./session";
 import { loadSidebarProjects, mountSidebarTree } from "./sidebar";
 import { planPage } from "./sections";
-import { createPageShell, createWorkspace } from "./workspace";
+import { createPageShell, createWorkspace, takeJoinInvite } from "./workspace";
 import { mountStatusBar } from "./statusBar";
 
 const log = createBrowserLogger();
@@ -68,10 +69,11 @@ async function boot(): Promise<void> {
     },
   });
   const fs = createLibraryFileSystem();
+  const shares = createPageShares({ fs, logger: log });
   const helperProject = createHelperProject({ helper: createBrowserLatexHelper(log), logger: log });
   const workspace = createWorkspace(shell.centre, {
     prefs: { load: prefs.editorWidth, save: prefs.saveEditorWidth }, logger: log, plan,
-    services: () => ({ libraryView, logger: log, fs, prefs, session, helperProject, comments }),
+    services: () => ({ libraryView, logger: log, fs, prefs, session, helperProject, comments, shares }),
   });
   const session = createProjectSession({
     workspace, snapshot: createOpenProjectSnapshot({ fs, logger: log }), logger: log,
@@ -83,14 +85,21 @@ async function boot(): Promise<void> {
       revealInOpenEditor(open.settings.id, path, line);
     },
   });
-  const comments = createCommentThreads({ fs, session, logger: log });
+  const comments = createRoutedCommentThreads({ files: createCommentThreads({ fs, session, logger: log }), shares, session });
   const openTab = (kind: TabKindName): void => workspace.openTab(kind);
-  const projects = plan.projects ? await loadSidebarProjects(log, fs, session, openTab) : null;
+  const joinShared = (invite?: string): Promise<void> => runJoinDialog({ shares, fs, logger: log, session, ...(invite === undefined ? {} : { invite }) });
+  const projects = plan.projects ? await loadSidebarProjects(log, fs, session, openTab, () => { void joinShared(); }) : null;
   mountSidebarTree(ui, shell.sidebar, prefs, host, projects, openTab, plan.library);
+  // The share key sits in the fragment, so a join link is taken off the address before anything can keep it in history.
+  const invite = takeJoinInvite(location.hash);
+  if (invite !== undefined) history.replaceState(null, "", location.pathname + location.search);
   workspace.restore(location.hash);
+  void resumeRestoredProject(workspace, session, fs, log);
+  if (invite !== undefined) void joinShared(invite);
   mountSourceSurfaces(root, libraryHost.reloadSnapshots);
   mountStatusBar(root, (listener) => ui.store.select((s) => s.papers.length, listener));
   attachLinkHandling(log);
+  window.addEventListener("pagehide", () => { void shares.closeAll(); });
   void log.log("INFO", "library", "library page mounted");
 }
 

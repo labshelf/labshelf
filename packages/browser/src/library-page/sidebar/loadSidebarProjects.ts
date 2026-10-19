@@ -3,12 +3,12 @@ import type { ILogger, LibraryFileSystem } from "@labshelf/core";
 import type { TabKindName } from "../tabs";
 import type { SidebarProjects, SidebarSession } from "./sidebarProjects";
 
-export async function loadSidebarProjects(logger: ILogger, fileSystem: LibraryFileSystem, session: SidebarSession, openTab: (kind: TabKindName) => void): Promise<SidebarProjects> {
+export async function loadSidebarProjects(logger: ILogger, fileSystem: LibraryFileSystem, session: SidebarSession, openTab: (kind: TabKindName) => void, joinShared: () => void): Promise<SidebarProjects> {
   const [{ createProjectsSource, showPdfInTab }, { createBrowserProjects }, { createSidebarProjects }] = await Promise.all([
     import("../projects"), import("../../storage/projects"), import("./sidebarProjects"),
   ]);
   const source = createProjectsSource({
     projects: createBrowserProjects({ fileSystem, logger }), fileSystem, logger, showPdf: showPdfInTab,
   });
-  return createSidebarProjects(source, openTab, session);
+  return createSidebarProjects(source, openTab, session, joinShared);
 }

@@ -1,10 +1,11 @@
 // Shows a project source file in the lazily loaded source editor, reading and writing it in the library folder.
-import { listProjectFiles, posixPathOps, type LibraryFileSystem, type ProjectEntry } from "@labshelf/core";
+import { fileText, listProjectFiles, posixPathOps, type ILogger, type LibraryFileSystem, type ProjectEntry } from "@labshelf/core";
 import { el, toast } from "@labshelf/core/dom";
 import { listAllRecords } from "../../../storage";
 import { findProject } from "../../projects-data";
 import { recordProjectEdit } from "../../review";
-import type { SourceEditor, SourceFileAccess } from "../../editor/index.js";
+import type { PageShares } from "../../editor/collab";
+import type { SourceEditor, SourceEditorDeps, SourceFileAccess } from "../../editor/index.js";
 import type { TabModule } from "../types";
 
 const MODULE = "tabs.source";
@@ -18,7 +19,23 @@ function projectFiles(fs: LibraryFileSystem, entry: ProjectEntry): SourceFileAcc
   };
 }
 
-export const mountTab: TabModule["mountTab"] = (host, params, { fs, logger, session, tab, helperProject, workspace, comments }) => {
+/** The file's shared text when the project has a share; undefined for a local project or when the share cannot be joined (the file is then edited locally). */
+async function sharedText(shares: PageShares, entry: ProjectEntry, path: string, logger: ILogger): Promise<SourceEditorDeps["collab"]> {
+  if (entry.kind !== "ready" || entry.settings.shared === undefined) return undefined;
+  const projectId = entry.settings.id;
+  try {
+    await shares.connect(projectId, entry.settings.shared, entry.folder);
+    const active = shares.active(projectId);
+    if (!active) throw new Error(`The share of project ${projectId} is not connected`);
+    return { text: fileText(active.session.openDoc(path)), presence: active.presence, name: shares.name() };
+  } catch (error) {
+    void logger.error(MODULE, error, { action: "joinSharedSession", projectId, path });
+    toast("Could not join the shared session; editing this file locally.", "error");
+    return undefined;
+  }
+}
+
+export const mountTab: TabModule["mountTab"] = (host, params, { fs, logger, session, tab, helperProject, workspace, comments, shares }) => {
   const projectId = params["projectId"] ?? "";
   const path = params["path"] ?? "";
   const body = host.appendChild(el("div", { class: "ls-workspace-fill" }));
@@ -38,10 +55,13 @@ export const mountTab: TabModule["mountTab"] = (host, params, { fs, logger, sess
   void Promise.all([import("../../editor/index.js"), findProject(fs, logger, session.current(), projectId)])
     .then(async ([module, entry]) => {
       if (disposed) return;
+      const collab = await sharedText(shares, entry, path, logger);
+      if (disposed) return;
       const mounted = await module.mountSourceEditor(body, {
         projectId, path, files: projectFiles(fs, entry), papers: listAllRecords,
         helper: helperProject.editorPort(projectId), problems: helperProject.problems.subscribe,
         lsp: helperProject.lsp(projectId), openTab: workspace.openTab, logger, onDirty: tab.setDirty,
+        ...(collab ? { collab } : {}),
         onSaved: () => void recordProjectEdit({ fs, logger }, { id: projectId, folder: entry.folder }),
         comments: {
           subscribe: comments.commentAnchorsFor(projectId, path).subscribe,
