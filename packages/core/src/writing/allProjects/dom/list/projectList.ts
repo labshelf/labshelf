@@ -79,48 +79,64 @@ function wireRows(el: HTMLElement, h: ProjectListHandlers): void {
 
 type Item = ProjectListRow & { id: string };
 
+function createRowWindow(el: HTMLElement, heads: HTMLElement, frame: () => ProjectListFrame, toggleGroup: (key: string) => void) {
+  const terms = (): string[] => frame().view.query.split(/\s+/).filter(Boolean);
+  return createWindowedRows<Item>(el, el.querySelector<HTMLElement>(".paper-rows")!, heads, {
+    build: (item) => item.kind === "group" ? buildGroupRow(item.group, item.collapsed, toggleGroup)
+      : item.kind === "file" ? item.tray.node : buildProjectRow(item.row, { place: frame().view.place, terms: terms(), now: Date.now() }),
+    inputs: (item) => item.kind === "group" ? [item.group.key, item.group.rows.length, item.collapsed]
+      : item.kind === "file" ? [item.tray.node] : [item.row, frame().view.place, frame().view.query],
+    decorate: (item, node, index) => paintRowState(item, node, index, { selected: frame().selected, expanded: frame().tray.expanded }),
+    focus: keepRowFocus(el),
+  });
+}
+
+// Collapsing the folder around the focused row would drop focus to the page, so focus moves to the folder's header.
+// Returns that header's index, or -1 when focus is not inside the folder.
+function headerHoldingFocus(el: HTMLElement, model: readonly ProjectListRow[], key: string, collapsed: ReadonlySet<string>): number {
+  const focused = el.contains(document.activeElement) ? document.activeElement!.closest<HTMLElement>("[data-key]")?.dataset["key"] : undefined;
+  const at = focused ? model.findIndex((r) => r.key === focused) : -1;
+  const header = model.findIndex((r) => r.key === `g:${key}`);
+  const holdsFocus = !collapsed.has(key) && header >= 0 && at > header && !model.slice(header + 1, at + 1).some((r) => r.kind === "group");
+  return holdsFocus ? header : -1;
+}
+
+// A selected project inside a collapsed folder would be hidden, so its folder opens.
+function openFolderOf(groups: readonly ProjectGroup[], id: string, collapsed: Set<string>): void {
+  const group = groups.find((g) => g.segments.length > 0 && g.rows.some((r) => r.id === id));
+  if (group) collapsed.delete(group.key);
+}
+
+function paintHeads(el: HTMLElement, heads: HTMLElement, view: ProjectViewState, headsPlace: ProjectPlace | null): void {
+  if (headsPlace !== view.place) heads.innerHTML = headsHtml(view.place);
+  paintSortableHeads(heads, view.sort.key, view.sort.dir === "asc");
+  el.style.setProperty("--heads-h", `${heads.offsetHeight}px`);
+}
+
 export function mountProjectList(container: HTMLElement, h: ProjectListHandlers): ProjectList {
   container.innerHTML = `<div class="paper-list" tabindex="0" role="treegrid" aria-label="Projects">` +
     `<div class="col-heads" role="row" aria-rowindex="1"></div><div class="paper-rows" role="none"></div></div>`;
   const el = container.querySelector<HTMLElement>(".paper-list")!;
   const heads = el.querySelector<HTMLElement>(".col-heads")!;
   let frame: ProjectListFrame | null = null;
-  let headsPlace: ProjectPlace | null = null;
-  let model: ProjectListRow[] = [];
+  let headsPlace: ProjectPlace | null = null, model: ProjectListRow[] = [];
   const collapsed = new Set<string>();
   const trayRows = createProjectTrayRows(h);
-  const terms = (): string[] => (frame?.view.query ?? "").split(/\s+/).filter(Boolean);
-  const win = createWindowedRows<Item>(el, el.querySelector<HTMLElement>(".paper-rows")!, heads, {
-    build: (item) => item.kind === "group" ? buildGroupRow(item.group, item.collapsed, toggleGroup)
-      : item.kind === "file" ? item.tray.node : buildProjectRow(item.row, { place: frame!.view.place, terms: terms(), now: Date.now() }),
-    inputs: (item) => item.kind === "group" ? [item.group.key, item.group.rows.length, item.collapsed]
-      : item.kind === "file" ? [item.tray.node] : [item.row, frame!.view.place, frame!.view.query],
-    decorate: (item, node, index) => paintRowState(item, node, index, { selected: frame!.selected, expanded: frame!.tray.expanded }),
-    focus: keepRowFocus(el),
-  });
+  const win = createRowWindow(el, heads, () => frame!, toggleGroup);
+  const indexOf = (key: string): number => model.findIndex((r) => r.key === key);
   const paint = (next: ProjectListFrame): void => {
     model = projectListRows({ groups: next.groups, collapsed, expanded: next.tray.expanded, trayRows: (row) => trayRows(row, next.tray) });
     el.setAttribute("aria-rowcount", String(model.length + 1));
     win.update(model.map((r) => ({ ...r, id: r.key })), next.empty);
     el.tabIndex = el.querySelector(".paper-row.selected") ? -1 : 0;
   };
-  const indexOf = (key: string): number => model.findIndex((r) => r.key === key);
-  // Collapsing the folder around the focused row would drop focus to the page, so it moves to the folder's header.
   function toggleGroup(key: string): void {
-    const focused = el.contains(document.activeElement) ? document.activeElement!.closest<HTMLElement>("[data-key]")?.dataset["key"] : undefined;
-    const at = focused ? indexOf(focused) : -1;
-    const header = indexOf(`g:${key}`);
-    const holdsFocus = !collapsed.has(key) && header >= 0 && at > header && !model.slice(header + 1, at + 1).some((r) => r.kind === "group");
+    const header = headerHoldingFocus(el, model, key, collapsed);
     if (!collapsed.delete(key)) collapsed.add(key);
     if (!frame) return;
     paint(frame);
-    if (holdsFocus) { const node = win.reveal(header); if (node) ariaRowOf(node).focus(); }
+    if (header >= 0) { const node = win.reveal(header); if (node) ariaRowOf(node).focus(); }
   }
-  // A selected project inside a collapsed folder would be hidden, so its folder opens.
-  const openFolderOf = (id: string): void => {
-    const group = frame?.groups.find((g) => g.segments.length > 0 && g.rows.some((r) => r.id === id));
-    if (group) collapsed.delete(group.key);
-  };
   wireSortableHeads(heads, (key) => h.onSort(key as ProjectSortKey));
   wireRows(el, h);
   const api: ProjectList = {
@@ -128,10 +144,9 @@ export function mountProjectList(container: HTMLElement, h: ProjectListHandlers)
       const placeChanged = frame?.view.place !== next.view.place;
       const selectionChanged = frame?.selected !== next.selected;
       frame = next;
-      if (selectionChanged && next.selected) openFolderOf(next.selected);
-      if (headsPlace !== next.view.place) { heads.innerHTML = headsHtml(next.view.place); headsPlace = next.view.place; }
-      paintSortableHeads(heads, next.view.sort.key, next.view.sort.dir === "asc");
-      el.style.setProperty("--heads-h", `${heads.offsetHeight}px`);
+      if (selectionChanged && next.selected) openFolderOf(next.groups, next.selected, collapsed);
+      paintHeads(el, heads, next.view, headsPlace);
+      headsPlace = next.view.place;
       if (placeChanged) el.scrollTop = 0;
       paint(next);
       if (selectionChanged && next.selected) api.reveal(indexOf(projectKey(next.selected)));

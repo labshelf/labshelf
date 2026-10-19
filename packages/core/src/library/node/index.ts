@@ -10,6 +10,6 @@ export {
   loadSharedConfig, readSharedLibraryRoot, sharedConfigDir, sharedConfigPath, updateSharedConfig,
 } from "./sharedConfigFile.js";
 export {
-  detectSyncFolders, inspectLibraryFolder, moveLibrary,
+  countPaperFolders, detectSyncFolders, inspectLibraryFolder, moveLibrary,
   type DetectSyncFoldersOptions, type LibraryFolderInfo, type MoveLibraryOptions, type SyncFolder, type SyncFolderTool,
 } from "./location/index.js";

@@ -13,36 +13,39 @@ export interface SashOptions {
   defaultWidth?: number;
 }
 
-/** Wires one sash; returns the function that removes its window listeners. */
-export function attachSash(sash: HTMLElement, o: SashOptions): () => void {
+/** Wires one sash. The sash captures the pointer so a drag over an iframe still ends with the button. */
+export function attachSash(sash: HTMLElement, o: SashOptions): void {
   let dragging = false;
   const width = (): number => parseInt(o.pane.style.width, 10) || o.limits.min;
-  sash.addEventListener("mousedown", (e) => {
+  sash.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0 || dragging) return;
     dragging = true;
+    sash.setPointerCapture(e.pointerId);
     sash.classList.add("dragging");
     o.root.classList.add("resizing");
     e.preventDefault();
   });
-  const onMove = (e: MouseEvent): void => {
+  sash.addEventListener("pointermove", (e) => {
     if (!dragging) return;
     const desired = o.widthFromPointer(e.clientX);
     if (desired < o.limits.collapseAt) { o.root.classList.add(o.collapsedClass); return; }
     o.root.classList.remove(o.collapsedClass);
     o.pane.style.width = `${Math.min(o.limits.max, Math.max(o.limits.min, desired))}px`;
-  };
-  const onUp = (): void => {
+  });
+  // Releasing capture fires lostpointercapture, so every way a drag ends reaches the same handler.
+  const end = (): void => {
     if (!dragging) return;
     dragging = false;
     sash.classList.remove("dragging");
     o.root.classList.remove("resizing");
     o.persist(width(), o.root.classList.contains(o.collapsedClass));
   };
+  sash.addEventListener("pointerup", end);
+  sash.addEventListener("pointercancel", end);
+  sash.addEventListener("lostpointercapture", end);
   sash.addEventListener("dblclick", () => {
     o.root.classList.remove(o.collapsedClass);
     if (o.defaultWidth) o.pane.style.width = `${o.defaultWidth}px`;
     o.persist(width(), false);
   });
-  window.addEventListener("mousemove", onMove);
-  window.addEventListener("mouseup", onUp);
-  return () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
 }

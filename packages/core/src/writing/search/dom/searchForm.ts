@@ -17,6 +17,8 @@ export interface SearchForm {
   replacement: HTMLInputElement;
   replaceAll: HTMLButtonElement;
   state(): SearchFormState;
+  /** Shows or hides the choice to search one file; without it every search covers the project. */
+  offerFileScope(offered: boolean): void;
   replacing(): boolean;
 }
 
@@ -29,7 +31,7 @@ function toggle(name: IconName, label: string, onChange: () => void): HTMLButton
   return button;
 }
 
-function scopeSwitch(onChange: () => void): { root: HTMLElement; value: () => SearchScopeMode } {
+function scopeSwitch(onChange: () => void): { root: HTMLElement; value: () => SearchScopeMode; offer(offered: boolean): void } {
   const option = (label: string, checked: boolean): HTMLButtonElement =>
     el("button", { type: "button", class: "ls-psearch-scope-option", role: "radio", "aria-checked": String(checked), text: label });
   const file = option("This file", false);
@@ -43,7 +45,11 @@ function scopeSwitch(onChange: () => void): { root: HTMLElement; value: () => Se
     });
   }
   const root = el("div", { class: "ls-psearch-scope", role: "radiogroup", "aria-label": "Search in" }, file, project);
-  return { root, value: () => (file.getAttribute("aria-checked") === "true" ? "file" : "project") };
+  return {
+    root,
+    value: () => (!root.hidden && file.getAttribute("aria-checked") === "true" ? "file" : "project"),
+    offer: (offered) => { root.hidden = !offered; },
+  };
 }
 
 /** `onChange` fires on every edit of the query or an option; replace edits do not search again. */
@@ -72,6 +78,7 @@ export function createSearchForm(onChange: () => void): SearchForm {
   return {
     root, query, replacement, replaceAll,
     replacing: () => !replaceRow.hidden,
+    offerFileScope: scope.offer,
     state: () => ({
       query: query.value,
       replacement: replacement.value,

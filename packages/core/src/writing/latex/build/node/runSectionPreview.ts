@@ -48,7 +48,7 @@ async function readSources(request: LatexBuildRequest, mainDir: string): Promise
 }
 
 async function fallBack(request: LatexBuildRequest, reason: string): Promise<undefined> {
-  await request.logger.log("INFO", MODULE, `LaTeX section preview falls back to the chapter preview: ${reason}`, { main: request.main, reason });
+  await request.logger.log("INFO", MODULE, `LaTeX section preview gives way to the one-pass preview of the edited chapter or the whole document: ${reason}`, { main: request.main, reason });
   return undefined;
 }
 

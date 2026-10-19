@@ -99,6 +99,25 @@ posixOnly("runLatexBuild section preview", () => {
     expect(s.logger.logs).toContainEqual(expect.objectContaining({ level: "INFO", message: expect.stringContaining("outside-section") }));
   });
 
+  it("builds the whole document when the preview has no edit, and keeps that PDF as the base", async () => {
+    const s = await setup();
+    await fs.rm(path.join(s.request.outDir, "main-full.pdf"));
+    const result = await runLatexBuild(s.request);
+    expect(result.status).toBe("succeeded");
+    const built = await fs.readFile(path.join(s.request.outDir, "main.pdf"));
+    expect(await fs.readFile(path.join(s.request.outDir, "main-full.pdf"))).toEqual(built);
+    expect(await fs.readFile(path.join(s.request.projectFolder, "main.pdf"))).toEqual(built);
+    expect(s.logger.logs).toContainEqual(expect.objectContaining({ level: "INFO", message: expect.stringContaining("no-edit") }));
+  });
+
+  it("builds the whole document when an edited preview has no full PDF yet", async () => {
+    const s = await setup();
+    await fs.rm(path.join(s.request.outDir, "main-full.pdf"));
+    await runLatexBuild({ ...s.request, editedLine: 6 });
+    expect(await fs.stat(path.join(s.request.outDir, "main-full.pdf"))).toBeTruthy();
+    expect(s.logger.logs).toContainEqual(expect.objectContaining({ level: "INFO", message: expect.stringContaining("no full PDF yet") }));
+  });
+
   it("keeps the full build's PDF for later section previews", async () => {
     const s = await setup();
     await fs.rm(path.join(s.request.outDir, "main-full.pdf"));

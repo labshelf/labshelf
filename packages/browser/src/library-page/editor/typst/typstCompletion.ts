@@ -1,35 +1,22 @@
-// Completes Typst from Tinymist, with the library's papers first after an `@`.
+// Completes Typst from the core language service, with the library's papers first after an `@`.
 import { snippet, type Completion, type CompletionContext, type CompletionResult, type CompletionSource } from "@codemirror/autocomplete";
 import type { PaperRecord } from "@labshelf/core";
+import type { TypstCompletion, TypstCompletionKind, TypstLanguageService } from "@labshelf/core/typst/language";
 import { libraryCitationOptions } from "../citations";
 import { snippetTemplate } from "../latex";
-import { toLspPosition, toOffset, type LspRange, type TypstDocument } from "./lsp";
 
-interface LspCompletionItem {
-  label: string;
-  kind?: number;
-  detail?: string;
-  insertText?: string;
-  insertTextFormat?: number;
-  textEdit?: { range?: LspRange; newText: string };
-}
-
-const SNIPPET_FORMAT = 2;
-// LSP CompletionItemKind (index) to the closest CodeMirror completion type.
-const TYPES: Record<number, string> = {
-  1: "text", 2: "method", 3: "function", 4: "function", 5: "property", 6: "variable", 7: "class", 8: "interface", 9: "namespace",
-  10: "property", 12: "constant", 13: "enum", 14: "keyword", 15: "text", 17: "text", 18: "variable", 20: "enum", 21: "constant",
-  22: "class", 24: "keyword", 25: "type",
+const TYPES: Record<TypstCompletionKind, string> = {
+  function: "function", variable: "variable", keyword: "keyword", label: "constant", citation: "constant",
+  file: "text", parameter: "property", module: "namespace", type: "type", value: "constant",
 };
 
-function toCompletion(item: LspCompletionItem): Completion {
-  const insert = item.textEdit?.newText ?? item.insertText ?? item.label;
-  const type = item.kind === undefined ? undefined : TYPES[item.kind];
+function toCompletion(item: TypstCompletion): Completion {
   return {
     label: item.label,
+    type: TYPES[item.kind],
     ...(item.detail !== undefined && { detail: item.detail }),
-    ...(type !== undefined && { type }),
-    apply: item.insertTextFormat === SNIPPET_FORMAT ? snippet(snippetTemplate(insert)) : insert,
+    ...(item.doc !== undefined && { info: item.doc }),
+    apply: item.snippet ? snippet(snippetTemplate(item.insert)) : item.insert,
   };
 }
 
@@ -39,21 +26,19 @@ async function libraryItems(papers: () => Promise<readonly PaperRecord[]>, after
   return { options: await libraryCitationOptions(async () => all), keys: new Set(all.map((paper) => paper.citeKey)) };
 }
 
-export function typstCompletion(doc: TypstDocument, papers: () => Promise<readonly PaperRecord[]>): CompletionSource {
+export function typstCompletion(service: TypstLanguageService, path: string, papers: () => Promise<readonly PaperRecord[]>): CompletionSource {
   return async (context: CompletionContext): Promise<CompletionResult | null> => {
     const word = context.matchBefore(/[\w-]*/)!;
     const before = context.state.sliceDoc(Math.max(0, word.from - 1), word.from);
     if (!context.explicit && word.from === word.to && !/[#@.(]/.test(before)) return null;
-    const aborted = new AbortController();
-    context.addEventListener("abort", () => aborted.abort());
-    const result = await doc.ask<LspCompletionItem[] | { items: LspCompletionItem[] }>(
-      "textDocument/completion", toLspPosition(context.state.doc, context.pos), aborted.signal);
-    const items = (Array.isArray(result) ? result : result?.items) ?? [];
+    const result = await service.complete(path, context.state.doc.toString(), context.pos, context.explicit);
     const library = await libraryItems(papers, before === "@");
-    const edit = items.find((item) => item.textEdit?.range)?.textEdit?.range;
+    const items = (result?.options ?? []).filter((item) => !library.keys.has(item.label));
+    if (!result && library.options.length === 0) return null;
     return {
-      from: edit ? toOffset(context.state.doc, edit.start) : word.from,
-      options: [...library.options, ...items.filter((item) => !library.keys.has(item.label)).map(toCompletion)],
+      from: result?.from ?? word.from,
+      ...(result && { to: result.to }),
+      options: [...library.options, ...items.map(toCompletion)],
     };
   };
 }

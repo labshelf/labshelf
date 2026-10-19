@@ -46,9 +46,10 @@ export function mountEditorArea(slot: HTMLElement, options: EditorAreaOptions = 
     open: (tab, group, how) => state.open(tab, group, how?.background === true),
     close,
     activate: (id) => state.focus(id),
+    refreshActions: (id) => state.refreshActions(id),
     tabs: () => state.tabs(),
     split: () => { const id = state.focusedId(); if (id) state.move(id, otherGroup(state.groupOf(id).index)); },
-    dispose: () => { state.disposeAll(); sash.dispose(); root.remove(); },
+    dispose: () => { state.disposeAll(); root.remove(); },
   };
 }
 

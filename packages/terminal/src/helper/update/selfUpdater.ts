@@ -1,4 +1,4 @@
-// Replaces the helper binary with a newer signed release, at most once a day, never failing the caller.
+// Replaces the helper binary with a newer signed release, at most once a day unless the caller bypasses that, never failing the caller.
 import { rm } from "node:fs/promises";
 
 import { downloadVerified } from "@labshelf/core/helper/node";
@@ -13,8 +13,11 @@ import { isNewerVersion } from "./versionOrder.js";
 const MODULE = "helper/update";
 
 export interface SelfUpdater {
-  /** Runs one throttled check and resolves with what happened; never rejects. */
-  check: () => Promise<UpdateOutcome>;
+  /**
+   * Runs one check and resolves with what happened; never rejects. It is throttled to once a day unless `bypassThrottle` is set,
+   * which a helper that the page refused for its protocol version uses to look for the update that fixes it.
+   */
+  check: (options?: { bypassThrottle?: boolean }) => Promise<UpdateOutcome>;
   /** Starts `check` without waiting for it. */
   checkInBackground: () => void;
   /** Deletes the previous executable that a win32 update left beside the new one. */
@@ -31,9 +34,9 @@ async function update(deps: SelfUpdateDeps): Promise<UpdateOutcome> {
   return "updated";
 }
 
-async function checkOnce(deps: SelfUpdateDeps): Promise<UpdateOutcome> {
+async function checkOnce(deps: SelfUpdateDeps, bypassThrottle = false): Promise<UpdateOutcome> {
   try {
-    if (!(await isCheckDue(deps.dataDir, deps.now()))) { return "throttled"; }
+    if (!bypassThrottle && !(await isCheckDue(deps.dataDir, deps.now()))) { return "throttled"; }
     // Recorded before the request so that an offline or failing release still waits a day.
     await recordCheck(deps.dataDir, deps.now());
     return await update(deps);
@@ -46,7 +49,7 @@ async function checkOnce(deps: SelfUpdateDeps): Promise<UpdateOutcome> {
 
 export function createSelfUpdater(deps: SelfUpdateDeps): SelfUpdater {
   return {
-    check: () => checkOnce(deps),
+    check: (options) => checkOnce(deps, options?.bypassThrottle),
     checkInBackground: () => { void checkOnce(deps); },
     cleanupAfterRestart: async () => {
       if (deps.platform !== "win32") { return; }

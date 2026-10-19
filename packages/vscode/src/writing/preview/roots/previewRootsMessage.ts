@@ -1,5 +1,5 @@
 // Assembles the build roots a preview reader is told about: one entry per built root with its problems and what the host can open.
-import type { BuildOptions, LocatedProblem, PathOps, PreviewRoot, PreviewRoots } from "@labshelf/core";
+import { previewProblems, type BuildOptions, type LocatedProblem, type PathOps, type PreviewRoot, type PreviewRoots } from "@labshelf/core";
 import type { ReadyProject } from "../../mainDocument.js";
 import { rawLogFile, type RawLogDeps } from "./rawLogFile.js";
 import { rootFindings, type RootFindingsInput } from "./rootFindings.js";
@@ -30,13 +30,7 @@ async function previewRoot(input: PreviewRootsInput, root: string): Promise<Prev
     failed: input.failed(root),
     rawLog: (await rawLogFile(input, project, root)) !== undefined,
     sourceLinks: project.settings.format === "latex",
-    problems: input.problemsOf(root).map((problem) => ({
-      severity: problem.severity,
-      message: problem.message,
-      ...(problem.hint ? { hint: problem.hint } : {}),
-      ...(problem.file ? { file: projectRelative(paths, project.folder, problem.file) } : {}),
-      ...(problem.line !== undefined ? { line: problem.line } : {}),
-    })),
+    problems: previewProblems(input.problemsOf(root), (file) => projectRelative(paths, project.folder, file)),
   };
 }
 

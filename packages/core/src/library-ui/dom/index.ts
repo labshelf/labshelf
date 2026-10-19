@@ -11,4 +11,4 @@ export {
 } from "./list/index.js";
 export { attachSash, buildFrame, togglePane, type FrameOptions, type FrameSlots, type SashOptions } from "./shell/index.js";
 export { iconBtn, kv, loading, muted, section, tabBarHtml, type TabSpec } from "./detail/index.js";
-export { mountEditorArea, type EditorArea, type EditorAreaOptions, type EditorAreaPrefsPort, type EditorGroupIndex, type EditorTab, type EditorTabBody, type EditorTabInfo } from "./editorArea/index.js";
+export { mountEditorArea, type EditorArea, type EditorAreaOptions, type EditorAreaPrefsPort, type EditorGroupIndex, type EditorTab, type EditorTabAction, type EditorTabBody, type EditorTabInfo } from "./editorArea/index.js";

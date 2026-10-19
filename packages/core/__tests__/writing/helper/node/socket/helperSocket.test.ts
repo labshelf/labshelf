@@ -3,10 +3,11 @@ import { RawWebSocketClient } from "../../../../support/rawWebSocketClient";
 import { fakeLogger, type RecordingLogger } from "../../../../support/fakeLogger";
 import { decodeSocketMessage, encodeSocketMessage } from "../../../../../src/writing/helper/socketFrame";
 import { startHelperSocket } from "../../../../../src/writing/helper/node/socket/index";
+import { PROTOCOL_VERSION } from "../../../../../src/writing/helper/index";
 
 const ORIGIN = "chrome-extension://abcdefghijklmnop";
 const TOKEN = "t0ken";
-const auth = (token = TOKEN) => encodeSocketMessage({ v: 2, id: "1", type: "auth", token });
+const auth = (token = TOKEN) => encodeSocketMessage({ v: PROTOCOL_VERSION, id: "1", type: "auth", token });
 
 type Handle = (envelope: Record<string, unknown>, payload: Uint8Array, send: (envelope: Record<string, unknown>, payload?: Uint8Array) => void) => void | Promise<void>;
 let logger: RecordingLogger;
@@ -37,8 +38,8 @@ describe("startHelperSocket", () => {
     await start();
     const { client } = await RawWebSocketClient.connect(server.port, ORIGIN);
     client.sendBinary(auth());
-    expect(decodeSocketMessage(await client.nextMessage()).envelope).toMatchObject({ v: 2, id: "1", type: "authed" });
-    client.sendBinary(encodeSocketMessage({ v: 2, id: "2", type: "save", projectId: "p", path: "a.tex" }, new Uint8Array([5, 6])));
+    expect(decodeSocketMessage(await client.nextMessage()).envelope).toMatchObject({ v: PROTOCOL_VERSION, id: "1", type: "authed" });
+    client.sendBinary(encodeSocketMessage({ v: PROTOCOL_VERSION, id: "2", type: "save", projectId: "p", path: "a.tex" }, new Uint8Array([5, 6])));
     await new Promise((resolve) => setTimeout(resolve, 100));
     expect(received).toHaveLength(1);
     expect(received[0]!.envelope).toMatchObject({ id: "2", type: "save" });
@@ -47,11 +48,11 @@ describe("startHelperSocket", () => {
   });
 
   it("lets handle reply on the socket with a payload", async () => {
-    await start({ handle: (envelope, _payload, send) => send({ v: 2, id: envelope.id, type: "pages" }, new Uint8Array([7])) });
+    await start({ handle: (envelope, _payload, send) => send({ v: PROTOCOL_VERSION, id: envelope.id, type: "pages" }, new Uint8Array([7])) });
     const { client } = await RawWebSocketClient.connect(server.port, ORIGIN);
     client.sendBinary(auth());
     await client.nextMessage();
-    client.sendBinary(encodeSocketMessage({ v: 2, id: "3", type: "compile" }));
+    client.sendBinary(encodeSocketMessage({ v: PROTOCOL_VERSION, id: "3", type: "compile" }));
     const reply = decodeSocketMessage(await client.nextMessage());
     expect(reply.envelope).toMatchObject({ id: "3", type: "pages" });
     expect(Array.from(reply.payload)).toEqual([7]);
@@ -118,7 +119,7 @@ describe("startHelperSocket", () => {
   it("closes the socket when the first frame is not auth", async () => {
     await start();
     const { client } = await RawWebSocketClient.connect(server.port, ORIGIN);
-    client.sendBinary(encodeSocketMessage({ v: 2, id: "1", type: "save", projectId: "p", path: "a.tex" }));
+    client.sendBinary(encodeSocketMessage({ v: PROTOCOL_VERSION, id: "1", type: "save", projectId: "p", path: "a.tex" }));
     await client.closed;
     expect(logged(/auth/i)).toBe(true);
     expect(received).toHaveLength(0);
@@ -133,7 +134,7 @@ describe("startHelperSocket", () => {
     second.sendBinary(auth());
     await second.closed;
     expect(logged(/second|already/i)).toBe(true);
-    first.sendBinary(encodeSocketMessage({ v: 2, id: "9", type: "save", projectId: "p", path: "a.tex" }));
+    first.sendBinary(encodeSocketMessage({ v: PROTOCOL_VERSION, id: "9", type: "save", projectId: "p", path: "a.tex" }));
     await new Promise((resolve) => setTimeout(resolve, 100));
     expect(received).toHaveLength(1);
     first.destroy();
@@ -142,7 +143,7 @@ describe("startHelperSocket", () => {
   it("closes the socket when the first frame is an auth without a token", async () => {
     await start();
     const { client } = await RawWebSocketClient.connect(server.port, ORIGIN);
-    client.sendBinary(encodeSocketMessage({ v: 2, id: "1", type: "auth" }));
+    client.sendBinary(encodeSocketMessage({ v: PROTOCOL_VERSION, id: "1", type: "auth" }));
     await client.closed;
     expect(logged(/not a valid auth/i)).toBe(true);
   });
@@ -173,7 +174,7 @@ describe("startHelperSocket", () => {
     client.sendBinary(auth());
     await client.nextMessage();
     await new Promise((resolve) => setTimeout(resolve, 250));
-    client.sendBinary(encodeSocketMessage({ v: 2, id: "2", type: "save", projectId: "p", path: "a.tex" }));
+    client.sendBinary(encodeSocketMessage({ v: PROTOCOL_VERSION, id: "2", type: "save", projectId: "p", path: "a.tex" }));
     await new Promise((resolve) => setTimeout(resolve, 100));
     expect(received).toHaveLength(1);
     client.destroy();

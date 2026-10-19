@@ -77,6 +77,14 @@ describe("createSelfUpdater", () => {
     expect(JSON.parse(await readFile(join(fixture.dataDir, "update-check.json"), "utf8"))).toEqual({ lastCheckAt: NOW + DAY_MS });
   });
 
+  it("checks again within the day when the throttle is bypassed", async () => {
+    fixture.serve({ version: "1.0.0" });
+    await expect(updater().check()).resolves.toBe("current");
+    await expect(updater().check({ bypassThrottle: true })).resolves.toBe("current");
+    fixture.serve({ version: "1.10.0" });
+    await expect(updater({ currentVersion: "1.9.0" }).check({ bypassThrottle: true })).resolves.toBe("updated");
+  });
+
   it("treats an unreadable throttle file as never checked", async () => {
     await updater().check();
     await writeFile(join(fixture.dataDir, "update-check.json"), "not json");

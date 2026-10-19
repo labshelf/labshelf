@@ -1,3 +1,3 @@
 // Exports the workspace tab registry: the kinds, the id reader and their types.
 export { TAB_KINDS, parseTabId } from "./tabKinds";
-export type { TabContext, TabHooks, TabKind, TabKindName, TabModule, TabParams } from "./types";
+export type { ProjectServices, TabContext, TabHooks, TabKindName, TabParams } from "./types";

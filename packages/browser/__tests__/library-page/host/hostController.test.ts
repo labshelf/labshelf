@@ -1,11 +1,12 @@
 const mockSendRuntime = jest.fn();
+const mockRecords: Array<{ id: string; path: string }> = [];
 jest.mock("../../../src/platform", () => ({
   sendRuntime: (...a: unknown[]) => mockSendRuntime(...a),
   bx: { runtime: { sendMessage: jest.fn(), onMessage: { addListener: jest.fn(), removeListener: jest.fn() } } },
 }));
 jest.mock("../../../src/storage", () => ({
   createLibraryMutations: () => ({}),
-  listAllRecords: async () => [],
+  listAllRecords: async () => mockRecords,
   scanLibrary: async () => ({ tree: [], pdfDirs: new Set() }),
   createLibraryFileSystem: () => ({}),
   createSidecarPort: () => ({}),
@@ -39,5 +40,14 @@ describe("library page host", () => {
     ui.post({ type: "paper.attachPdf", id: "p1" });
     expect(input.click).toHaveBeenCalledTimes(1);
     expect(input.accept).toBe(".pdf,application/pdf");
+  });
+
+  it("resolves a library path to the paper stored there, once the library has loaded", async () => {
+    mockRecords.push({ id: "vaswani2017attention", path: "papers/ml/vaswani2017attention" });
+    const { host } = createLoopbackTransport();
+    const { paperIdAtPath } = attachLibraryHost(host, { log: { log: async () => undefined, error: async () => undefined } });
+    await expect(paperIdAtPath("papers/ml/vaswani2017attention")).resolves.toBe("vaswani2017attention");
+    await expect(paperIdAtPath("papers/ml")).resolves.toBeNull();
+    await expect(paperIdAtPath("papers/ml/unknown")).resolves.toBeNull();
   });
 });

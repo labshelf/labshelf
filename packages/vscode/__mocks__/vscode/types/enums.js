@@ -31,7 +31,8 @@ const TreeItemCheckboxState = {
 };
 
 const CodeActionKind = { QuickFix: 'quickfix' };
-const CompletionItemKind = { Field: 4, Function: 2, Value: 11, Snippet: 14, Reference: 17 };
+const CompletionItemKind = { Function: 2, Field: 4, Variable: 5, Class: 6, Module: 8, Value: 11, Keyword: 13, Snippet: 14, File: 16, Reference: 17 };
+const CompletionTriggerKind = { Invoke: 0, TriggerCharacter: 1 };
 const SymbolKind = { Module: 1, Namespace: 2, Class: 4, Property: 6, Field: 7, Struct: 22, Constant: 13 };
 const DiagnosticSeverity = { Error: 0, Warning: 1, Information: 2, Hint: 3 };
 const StatusBarAlignment = { Left: 1, Right: 2 };
@@ -48,6 +49,7 @@ module.exports = {
   TreeItemCheckboxState,
   CodeActionKind,
   CompletionItemKind,
+  CompletionTriggerKind,
   SymbolKind,
   DiagnosticSeverity,
   StatusBarAlignment,

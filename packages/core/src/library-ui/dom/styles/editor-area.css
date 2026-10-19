@@ -4,6 +4,7 @@
  */
 .ls-editor-area { display: flex; flex: 1; min-width: 0; min-height: 0; overflow: hidden; background: var(--ls-bg); color: var(--ls-fg); }
 .ls-editor-area.resizing, .ls-editor-area.resizing * { cursor: col-resize !important; user-select: none !important; }
+.ls-editor-area.resizing iframe { pointer-events: none; }
 .ls-editor-group { display: flex; flex-direction: column; flex: 1 1 0; min-width: 0; min-height: 0; position: relative; }
 .ls-editor-area.split .ls-editor-group.sized { flex: 0 1 auto; }
 .ls-editor-group[hidden] { display: none; }
@@ -11,10 +12,14 @@
 .ls-editor-area.tab-dragging .ls-editor-group[hidden] { display: flex; }
 .ls-editor-group.drop-target::after { content: ""; position: absolute; inset: 0; background: var(--ls-list-drop-bg); pointer-events: none; }
 
-.ls-editor-tabs {
-  display: flex; flex-shrink: 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin;
-  background: var(--ls-sidebar-bg); border-bottom: thin solid var(--ls-border-soft);
-}
+.ls-editor-titlebar { display: flex; flex-shrink: 0; background: var(--ls-sidebar-bg); border-bottom: thin solid var(--ls-border-soft); }
+.ls-editor-tabs { display: flex; flex: 1 1 0; min-width: 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
+/* The group's editor actions sit still at the end of the strip while the tabs scroll. */
+.ls-editor-actions { display: flex; flex-shrink: 0; align-items: center; align-self: center; gap: var(--ls-space-1); padding: 0 var(--ls-space-4); }
+.ls-editor-actions[hidden] { display: none; }
+.ls-editor-actions .ls-icon-btn { color: var(--ls-desc); }
+.ls-editor-actions .ls-icon-btn:hover:not(:disabled) { color: var(--ls-fg); }
+.ls-editor-actions .ls-icon-btn:focus-visible { outline: thin solid var(--ls-focus); outline-offset: calc(-1 * var(--ls-space-1)); }
 .ls-editor-tab {
   position: relative; display: inline-flex; align-items: center; gap: var(--ls-space-3); flex-shrink: 0;
   height: calc(var(--ls-row-h) + var(--ls-space-6)); padding: 0 var(--ls-space-2) 0 var(--ls-space-5);
@@ -49,6 +54,8 @@
 .ls-editor-panel { flex: 1; min-height: 0; overflow: auto; }
 .ls-editor-panel[hidden] { display: none; }
 
-.ls-editor-sash { width: var(--ls-space-2); flex-shrink: 0; margin: 0 calc(-1 * var(--ls-space-1)); z-index: 5; cursor: col-resize; background: var(--ls-border); background-clip: content-box; padding: 0 var(--ls-space-1); box-sizing: border-box; transition: background var(--ls-fast); }
+.ls-editor-sash { position: relative; touch-action: none; width: var(--ls-space-2); flex-shrink: 0; margin: 0 calc(-1 * var(--ls-space-1)); z-index: 5; cursor: col-resize; background: var(--ls-border); background-clip: content-box; padding: 0 var(--ls-space-1); box-sizing: border-box; transition: background var(--ls-fast); }
+/* The invisible strip widens the grab area without changing the visible line. */
+.ls-editor-sash::before { content: ""; position: absolute; inset: 0 calc(-1 * var(--ls-space-3)); }
 .ls-editor-sash[hidden] { display: none; }
 .ls-editor-sash:hover, .ls-editor-sash.dragging { background: var(--ls-sash-hover); background-clip: border-box; }

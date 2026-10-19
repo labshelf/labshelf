@@ -1,8 +1,7 @@
 // Replaces search matches in one undoable workspace edit and saves the files that were clean before.
 import * as vscode from "vscode";
 
-import { findInText, matchReplacement, type ILogger, type MatchLocation } from "@labshelf/core";
-import type { ProjectText } from "./projectSearchFiles.js";
+import { matchReplacement, type ILogger, type MatchLocation } from "@labshelf/core";
 import { SEARCH_LOG_MODULE } from "./projectSearchFiles.js";
 
 export interface ReplaceRequest {
@@ -12,13 +11,6 @@ export interface ReplaceRequest {
   logger: ILogger;
   /** Ask before editing; Replace All sets it. */
   confirm: boolean;
-}
-
-/** Every match of the pattern in the texts, optionally only in one file. */
-export function matchesIn(texts: readonly ProjectText[], pattern: RegExp, onlyPath?: string): MatchLocation[] {
-  return texts
-    .filter(({ path }) => onlyPath === undefined || path === onlyPath)
-    .flatMap(({ path, text }) => findInText(text, pattern).map(({ line, column, length }) => ({ path, line, column, length })));
 }
 
 async function buildEdit(request: ReplaceRequest): Promise<{ edit: vscode.WorkspaceEdit; documents: vscode.TextDocument[]; count: number; files: number }> {

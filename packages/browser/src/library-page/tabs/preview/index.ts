@@ -2,10 +2,13 @@
 import { el } from "@labshelf/core/dom";
 import { mountHelperSetupCard } from "../../../helper/setup";
 import { bx } from "../../../platform";
-import { createPreviewFrame, followBuilds } from "../../preview";
+import { createBrowserProjectData } from "../../projects-data";
+import { createPreviewFrame, followBuilds, type PreviewLimits } from "../../preview";
 import type { TabModule } from "../types";
+import { previewRequestHandler } from "./previewRequests";
 
-export const mountTab: TabModule["mountTab"] = (host, params, { helperProject, logger }) => {
+export const mountTab: TabModule["mountTab"] = (host, params, { project, logger, fs, workspace }) => {
+  const { helperProject, session } = project();
   const projectId = params["projectId"] ?? "";
   const body = host.appendChild(el("div", { class: "ls-workspace-fill" }));
   let current: { dispose(): void } | undefined;
@@ -14,9 +17,16 @@ export const mountTab: TabModule["mountTab"] = (host, params, { helperProject, l
   const showFrame = (): void => {
     current?.dispose();
     body.replaceChildren();
-    const frame = createPreviewFrame(body, { id: projectId, title: "Preview" });
-    const follow = followBuilds(helperProject, frame, projectId, logger);
-    current = { dispose() { follow.dispose(); frame.dispose(); } };
+    const entry = session.current();
+    const ready = entry?.kind === "ready" && entry.settings.id === projectId ? entry : undefined;
+    const frame = createPreviewFrame(body, { id: projectId, title: ready?.settings.title ?? projectId });
+    const limits: PreviewLimits = { ...ready?.settings.check };
+    const follow = followBuilds(helperProject, frame, { id: projectId, main: ready?.main, limits: () => limits }, logger);
+    const offRequest = frame.onRequest(previewRequestHandler({
+      project: { id: projectId, folder: ready?.folder }, fs, logger, workspace, helperProject,
+      data: createBrowserProjectData({ fs, logger }), builds: follow, limits,
+    }));
+    current = { dispose() { offRequest(); follow.dispose(); frame.dispose(); } };
     showingFrame = true;
   };
   const showSetup = (): void => {

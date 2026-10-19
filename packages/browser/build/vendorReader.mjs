@@ -38,8 +38,12 @@ export async function vendorReader({ outDir, pkgRoot }) {
   await mkdir(join(outDir, "reader"), { recursive: true });
   await copyFile(require.resolve("@labshelf/core/styles/reader.css"), join(outDir, "reader/reader.css"));
   await copyFile(join(dirname(require.resolve("@labshelf/core/styles/reader.css")), "citation-card.css"), join(outDir, "reader/citation-card.css"));
+  // preview.css @imports the files of preview/ by relative path, so the folder is copied beside it.
+  const previewCss = require.resolve("@labshelf/core/styles/preview.css");
+  await copyFile(previewCss, join(outDir, "reader/preview.css"));
+  await copyDir(join(dirname(previewCss), "preview"), join(outDir, "reader/preview"));
   await mkdir(join(outDir, "ui/styles"), { recursive: true });
-  for (const sheet of ["tokens", "base", "toast", "settings", "library-ui", "library-list", "library-detail", "library-tabs", "library-sidebar", "editor-area", "all-projects", "template-gallery", "template-publish"]) {
+  for (const sheet of ["tokens", "base", "toast", "settings", "library-ui", "library-list", "library-detail", "library-tabs", "library-sidebar", "editor-area", "all-projects", "template-gallery", "template-publish", "project-history", "project-search"]) {
     await copyFile(require.resolve(`@labshelf/core/styles/${sheet}.css`), join(outDir, `ui/styles/${sheet}.css`));
   }
 }

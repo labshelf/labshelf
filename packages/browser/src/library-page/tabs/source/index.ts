@@ -5,6 +5,8 @@ import { listAllRecords } from "../../../storage";
 import { findProject } from "../../projects-data";
 import { recordProjectEdit } from "../../review";
 import type { PageShares } from "../../editor/collab";
+import { sourceLanguageOf } from "../../editor/insert";
+import { sourceActions } from "./actions";
 import type { SourceEditor, SourceEditorDeps, SourceFileAccess } from "../../editor/index.js";
 import type { TabModule } from "../types";
 
@@ -35,13 +37,15 @@ async function sharedText(shares: PageShares, entry: ProjectEntry, path: string,
   }
 }
 
-export const mountTab: TabModule["mountTab"] = (host, params, { fs, logger, session, tab, helperProject, workspace, comments, shares }) => {
+export const mountTab: TabModule["mountTab"] = (host, params, { fs, logger, tab, workspace, project }) => {
+  const { session, helperProject, comments, shares } = project();
   const projectId = params["projectId"] ?? "";
   const path = params["path"] ?? "";
   const body = host.appendChild(el("div", { class: "ls-workspace-fill" }));
   const loading = body.appendChild(el("p", { class: "ls-workspace-placeholder" }, `Loading ${path}…`));
   let disposed = false;
   let editor: SourceEditor | undefined;
+  let loaded: ProjectEntry | undefined;
   // PLATFORM: pagehide is the last event a closing page reliably gets; the write is best effort once it has started.
   const flushOnLeave = (): void => { void editor?.flush(); };
   window.addEventListener("pagehide", flushOnLeave);
@@ -60,7 +64,7 @@ export const mountTab: TabModule["mountTab"] = (host, params, { fs, logger, sess
       const mounted = await module.mountSourceEditor(body, {
         projectId, path, files: projectFiles(fs, entry), papers: listAllRecords,
         helper: helperProject.editorPort(projectId), problems: helperProject.problems.subscribe,
-        lsp: helperProject.lsp(projectId), openTab: workspace.openTab, logger, onDirty: tab.setDirty,
+        openTab: workspace.openTab, logger, onDirty: tab.setDirty,
         ...(collab ? { collab } : {}),
         onSaved: () => void recordProjectEdit({ fs, logger }, { id: projectId, folder: entry.folder }),
         comments: {
@@ -70,13 +74,21 @@ export const mountTab: TabModule["mountTab"] = (host, params, { fs, logger, sess
         },
       });
       loading.remove();
-      if (disposed) void mounted.dispose(); else editor = mounted;
+      if (disposed) void mounted.dispose(); else { editor = mounted; loaded = entry; }
     })
     .catch((error: unknown) => {
       loading.textContent = `Could not open ${path}.`;
       void logger.error(MODULE, error, { action: "openSource", projectId, path });
     });
+  const actions = sourceActions({
+    projectId, path, language: sourceLanguageOf(path), fs, logger,
+    target: () => (editor && loaded ? { edits: editor, flush: editor.flush, entry: loaded } : undefined),
+    openHistory: () => workspace.openTab("history", { projectId }, 1),
+    openSearch: () => workspace.openTab("search", { projectId }, 1),
+    papers: listAllRecords,
+  });
   return {
+    actions,
     dispose: () => {
       disposed = true;
       window.removeEventListener("pagehide", flushOnLeave);

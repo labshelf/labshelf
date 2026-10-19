@@ -73,10 +73,12 @@ const OLDER_BY_HOST: Record<Exclude<HelperHost, "helper">, string> = {
   terminal: "The LabShelf terminal app is older than this extension. Run npm install -g @labshelf/terminal to update it.",
 };
 
-function updateHelper(host: HelperHost, actions: SetupActions): SetupView {
-  if (host === "helper") {
-    return { text: "LabShelf Helper is older than this extension.", tone: "idle", controls: [download("Download the update", actions)] };
-  }
+const OLDER_HELPER_TEXT = "Update LabShelf Helper: it is older than this extension.";
+const OLDER_UNKNOWN_HOST_TEXT = `${OLDER_HELPER_TEXT} If LabShelf runs through VS Code or the terminal app, update that app instead.`;
+
+function updateHelper(host: HelperHost | undefined, actions: SetupActions): SetupView {
+  if (host === undefined) { return { text: OLDER_UNKNOWN_HOST_TEXT, tone: "idle", controls: [download("Download the update", actions)] }; }
+  if (host === "helper") { return { text: OLDER_HELPER_TEXT, tone: "idle", controls: [download("Download the update", actions)] }; }
   return { text: OLDER_BY_HOST[host], tone: "idle", controls: [] };
 }
 
@@ -85,7 +87,7 @@ function statusView(status: HelperStatus, os: string, actions: SetupActions): Se
     case "not-installed": return notInstalled(os, actions);
     case "update-helper": return updateHelper(status.host, actions);
     case "update-extension":
-      return { text: "LabShelf Helper needs a newer version of the LabShelf extension.", tone: "idle", controls: [retry("Check again", actions)] };
+      return { text: "Update LabShelf: LabShelf Helper needs a newer version of the LabShelf extension.", tone: "idle", controls: [retry("Check again", actions)] };
     case "ready": return status.tex.source === "none" ? chooseTex(actions) : readyView(status.tex, status.host, actions);
   }
 }

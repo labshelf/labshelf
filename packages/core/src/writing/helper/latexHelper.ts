@@ -5,10 +5,13 @@ import type { LocatedProblem, TexInstallKind } from "../latex/index.js";
 import type { LatexEngine } from "../project/index.js";
 import type { CompileMode, HelperBuildStatus, HelperHost, HelperProgress, TexStatus, TextChange } from "./helperMessages.js";
 
-/** "update-helper" when the helper's protocol is lower than the page's, "update-extension" when it is higher. */
+/**
+ * "update-helper" when the helper's protocol is lower than the page's, "update-extension" when it is higher.
+ * A helper that refused the page's `hello` for its version never said which program runs it, so `host` is then undefined.
+ */
 export type HelperStatus =
   | { state: "not-installed" }
-  | { state: "update-helper"; protocol: number; host: HelperHost }
+  | { state: "update-helper"; protocol: number; host: HelperHost | undefined }
   | { state: "update-extension"; protocol: number }
   | { state: "ready"; helperVersion: string; tex: TexStatus; host: HelperHost };
 
@@ -41,8 +44,6 @@ export interface HelperCompileResult {
 /** The whole text of a file, or edits against the text of the previous version. */
 export type HelperEdit = { text: string } | { changes: TextChange[] };
 
-export type HelperLspListener = (payload: Record<string, unknown>) => void;
-
 export interface ILatexHelper {
   /** Opens the native host, exchanges hello/ready and, when the helper is ready, opens and authenticates the session socket. */
   connect(): Promise<HelperStatus>;
@@ -59,7 +60,4 @@ export interface ILatexHelper {
   cancel(projectId: string): Promise<void>;
   installTex(kind: TexInstallKind, onProgress: HelperProgressListener): Promise<void>;
   installAllPackages(onProgress: HelperProgressListener): Promise<void>;
-  /** Listens to the language server's messages for the project; returns the function that stops listening. */
-  onLsp(projectId: string, listener: HelperLspListener): () => void;
-  sendLsp(projectId: string, payload: Record<string, unknown>): Promise<void>;
 }

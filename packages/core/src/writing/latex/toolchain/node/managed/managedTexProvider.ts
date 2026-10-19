@@ -8,7 +8,7 @@ import type { TexStatus } from "../../../../helper/index.js";
 import type { LatexEngine } from "../../../../project/index.js";
 
 import type { TexInstallKind, TexProvider } from "../../index.js";
-import type { TexInstallRun } from "./install/index.js";
+import { clearQuarantine, type ExecFile, type TexInstallRun } from "./install/index.js";
 import { TEX_MODULE } from "./runTexTool.js";
 import { withToolLock } from "./toolLock.js";
 import { findManagedTex, type ManagedTex } from "./texLayout.js";
@@ -29,6 +29,10 @@ export interface ManagedTexProviderOptions {
   /** The shared TeX folder; `tex/` under sharedToolsRoot. */
   texRoot: string;
   logger: ILogger;
+  /** macOS clears the quarantine attribute from an existing TinyTeX on first use; unset skips it. */
+  platform?: NodeJS.Platform;
+  /** Runs xattr; tests inject a fake. */
+  execFileImpl?: ExecFile;
   /** Used when no managed install exists; never changed. */
   system: TexProvider;
   installers: Record<TexInstallKind, TexInstaller>;
@@ -149,9 +153,17 @@ async function installEveryPackage(ctx: ManagedTexProviderOptions, onProgress: T
 }
 
 export function createManagedTexProvider(ctx: ManagedTexProviderOptions): ManagedTexProvider {
+  let healed = false;
+  // Heals installs made before the attribute was removed. INVARIANT: xattr removal is idempotent, so it needs no tool lock.
+  const heal = async (tex: ManagedTex) => {
+    if (ctx.platform !== "darwin" || tex.kind !== "tinytex" || healed) { return; }
+    healed = true;
+    await clearQuarantine(tex.root, ctx.logger, ctx.execFileImpl);
+  };
   return {
     async resolve(engine: LatexEngine) {
       const tex = await findManagedTex(ctx.texRoot);
+      if (tex) { await heal(tex); }
       return tex ? { engine, executable: latexmkIn(tex.binDir), binDir: tex.binDir } : ctx.system.resolve(engine);
     },
     installMissing: (fileName) => installMissingFile(ctx, fileName),

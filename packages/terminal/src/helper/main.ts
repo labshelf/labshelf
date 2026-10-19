@@ -1,6 +1,7 @@
 // Composition root of LabShelf Helper, the native-messaging host the browser extension launches to build LaTeX projects and, under the labshelf-bridge name, to read the library folder.
 // CONTRACT: documents/contracts/helper.md#transport
 import * as os from "node:os";
+import { getAsset } from "node:sea";
 
 import { runBridgeHost } from "@labshelf/core/bridge/node";
 import { assertHelperPrivatePaths, createHelperLogger, helperDataDir, runHelperHost } from "@labshelf/core/helper/node";
@@ -10,6 +11,8 @@ import { systemNativeHostEnv } from "@labshelf/core/nativeHost/node";
 import { registerStandaloneHosts, servedHost, uninstallStandaloneHelper, unregisterStandaloneHosts } from "./register/index.js";
 import { createSelfUpdater } from "./update/index.js";
 
+// The SEA asset name `build/sea.mjs` packs the compiler WASM under.
+const TYPST_WASM_ASSET = "typst_ts_web_compiler_bg.wasm";
 const MANAGEMENT_FLAGS = ["--register", "--unregister", "--uninstall"];
 
 async function main(): Promise<number | undefined> {
@@ -38,8 +41,12 @@ async function main(): Promise<number | undefined> {
     dataDir, fetchImpl: fetch, now: Date.now, logger,
   });
   await updater.cleanupAfterRestart();
-  // The update runs after ready and is throttled to once a day; a replaced binary takes effect on the next launch.
-  await runHelperHost({ dataDir, logger, helperVersion: HELPER_VERSION, host: "helper", args: process.argv.slice(2), afterHello: () => updater.checkInBackground() });
+  // The update runs after ready and is throttled to once a day, except after a version refusal; a replaced binary takes effect on the next launch.
+  await runHelperHost({ dataDir, logger, helperVersion: HELPER_VERSION, host: "helper", args: process.argv.slice(2),
+    // PLATFORM: getAsset returns a view of the executable's memory; slice copies it before the compiler takes it.
+    typstWasm: async () => new Uint8Array(getAsset(TYPST_WASM_ASSET).slice(0)),
+    afterHello: () => updater.checkInBackground(),
+    afterVersionRejected: async () => { await updater.check({ bypassThrottle: true }); } });
   return undefined;
 }
 

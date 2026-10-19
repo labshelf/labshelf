@@ -3,7 +3,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 import type { ILogger } from "../../../../../src/ports/index.js";
-import type { ToPageMessage } from "../../../../../src/writing/helper/index.js";
+import { PROTOCOL_VERSION, type ToPageMessage } from "../../../../../src/writing/helper/index.js";
 import { createDispatcher, type HelperHandlers } from "../../../../../src/writing/helper/node/dispatch/index.js";
 import { createLibraryProjects, createProjectHandlers, type LibraryProjects } from "../../../../../src/writing/helper/node/projectHandlers/index.js";
 
@@ -29,7 +29,7 @@ async function projectSetup(libraryRoot?: string) {
   const dataDir = path.join(dir, "data");
   const projects: LibraryProjects = createLibraryProjects({ sharedConfigFile, logger });
   const forgotten: string[] = [];
-  return { dataDir, projects, forgotten, ...setup(createProjectHandlers({ dataDir, projects, forgetBuilds: (id) => { forgotten.push(id); }, edited: async () => undefined, stopServer: async () => undefined })) };
+  return { dataDir, projects, forgotten, ...setup(createProjectHandlers({ dataDir, projects, forgetBuilds: (id) => { forgotten.push(id); } })) };
 }
 
 describe("createDispatcher", () => {
@@ -38,22 +38,22 @@ describe("createDispatcher", () => {
   it("replies with the parser's code and the request id on a rejected message", async () => {
     const { sent, handle, drain } = setup({});
     handle({ v: 1, id: "5", type: "cancel", projectId: "p" });
-    handle({ v: 2, id: "6", type: "cancel" });
+    handle({ v: PROTOCOL_VERSION, id: "6", type: "cancel" });
     handle("nope");
     await drain();
     expect(sent).toMatchObject([{ type: "error", id: "5", code: "version" }, { type: "error", id: "6", code: "invalid-field" }, { type: "error", id: "0", code: "malformed" }]);
   });
 
-  it("replies unknown-type for lsp and other messages with no handler", async () => {
+  it("replies unknown-type for a message with no handler", async () => {
     const { sent, handle, drain } = setup({});
-    handle({ v: 2, id: "3", type: "lsp", projectId: "p", payload: {} });
+    handle({ v: PROTOCOL_VERSION, id: "3", type: "save", projectId: "p", path: "main.tex" });
     await drain();
     expect(sent).toMatchObject([{ type: "error", id: "3", code: "unknown-type" }]);
   });
 
   it("answers a throwing handler with an internal error and logs it", async () => {
     const { sent, handle, drain } = setup({ save: async () => { throw new Error("disk full"); } });
-    handle({ v: 2, id: "4", type: "save", projectId: "p", path: "main.tex" });
+    handle({ v: PROTOCOL_VERSION, id: "4", type: "save", projectId: "p", path: "main.tex" });
     await drain();
     expect(sent).toMatchObject([{ type: "error", id: "4", code: "internal" }]);
     expect(logs.join("\n")).toContain("disk full");
@@ -68,9 +68,9 @@ describe("createDispatcher", () => {
       save: async () => { order.push("save"); },
       cancel: async () => { order.push("cancel"); release(); },
     });
-    handle({ v: 2, id: "1", type: "compile", projectId: "p", main: "main.tex", mode: "preview" });
-    handle({ v: 2, id: "2", type: "save", projectId: "p", path: "main.tex" });
-    handle({ v: 2, id: "3", type: "cancel", projectId: "p" });
+    handle({ v: PROTOCOL_VERSION, id: "1", type: "compile", projectId: "p", main: "main.tex", mode: "preview" });
+    handle({ v: PROTOCOL_VERSION, id: "2", type: "save", projectId: "p", path: "main.tex" });
+    handle({ v: PROTOCOL_VERSION, id: "3", type: "cancel", projectId: "p" });
     await drain();
     expect(order).toEqual(["compile:start", "cancel", "compile:end", "save"]);
   });
@@ -79,14 +79,14 @@ describe("createDispatcher", () => {
 describe("project messages on the socket", () => {
   it("refuses openProject with no-library when no library is set up", async () => {
     const { sent, handle, drain } = await projectSetup();
-    handle({ v: 2, id: "1", type: "openProject", projectId: "thesis", root: "writing/thesis" });
+    handle({ v: PROTOCOL_VERSION, id: "1", type: "openProject", projectId: "thesis", root: "writing/thesis" });
     await drain();
     expect(sent).toMatchObject([{ type: "error", id: "1", code: "no-library" }]);
   });
 
   it("refuses an edit of a project that is not open with project-id", async () => {
     const { sent, handle, drain } = await projectSetup(await tempDir());
-    handle({ v: 2, id: "1", type: "edit", projectId: "thesis", path: "main.tex", version: 1, text: "x" });
+    handle({ v: PROTOCOL_VERSION, id: "1", type: "edit", projectId: "thesis", path: "main.tex", version: 1, text: "x" });
     await drain();
     expect(sent).toMatchObject([{ type: "error", id: "1", code: "project-id" }]);
   });
@@ -100,16 +100,16 @@ describe("project messages on the socket", () => {
     await fs.mkdir(path.dirname(stale), { recursive: true });
     await fs.writeFile(stale, "old");
 
-    handle({ v: 2, id: "1", type: "openProject", projectId: "thesis", root: "writing/thesis" });
-    handle({ v: 2, id: "2", type: "edit", projectId: "thesis", path: "main.tex", version: 1, text: "unsaved" });
+    handle({ v: PROTOCOL_VERSION, id: "1", type: "openProject", projectId: "thesis", root: "writing/thesis" });
+    handle({ v: PROTOCOL_VERSION, id: "2", type: "edit", projectId: "thesis", path: "main.tex", version: 1, text: "unsaved" });
     await drain();
-    expect(sent).toEqual([{ v: 2, id: "1", type: "opened", projectId: "thesis", files: ["main.tex"] }]);
+    expect(sent).toEqual([{ v: PROTOCOL_VERSION, id: "1", type: "opened", projectId: "thesis", files: ["main.tex"] }]);
     await expect(projects.textOf("thesis", "main.tex")).resolves.toBe("unsaved");
     await expect(fs.stat(stale)).rejects.toThrow();
 
-    handle({ v: 2, id: "3", type: "closeProject", projectId: "thesis" });
+    handle({ v: PROTOCOL_VERSION, id: "3", type: "closeProject", projectId: "thesis" });
     await drain();
-    expect(sent[1]).toEqual({ v: 2, id: "3", type: "closed", projectId: "thesis" });
+    expect(sent[1]).toEqual({ v: PROTOCOL_VERSION, id: "3", type: "closed", projectId: "thesis" });
     expect(() => projects.textOf("thesis", "main.tex")).toThrow(expect.objectContaining({ code: "project-id" }));
     expect(forgotten).toEqual(["thesis", "thesis"]);
   });

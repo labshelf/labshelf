@@ -76,14 +76,11 @@ const READERS: Readers = {
     ...envelope, type: "pages", pdfSha256: readSha256(body, "pdfSha256"),
     pageCount: readNumber(body, "pageCount", isNonNegativeInteger), changed: readChangedPages(body),
   }),
-  lsp: (body, envelope) => ({
-    v: envelope.v, type: "lsp", projectId: readProjectId(body), payload: readBody(body, "payload"),
-  }),
   error: (body, envelope) => ({ ...envelope, type: "error", code: readText(body, "code"), message: readString(body, "message") }),
 };
 
 /** The validated message, or undefined when `type` is not one the helper sends. */
 export function readToPage(type: string, body: Body, envelope: { v: number; id?: string }): ToPageMessage | undefined {
-  // INVARIANT: the caller leaves `id` out only for `lsp` and `error`, whose readers do not require it.
+  // INVARIANT: the caller leaves `id` out only for `error`, whose reader does not require it.
   return Object.hasOwn(READERS, type) ? READERS[type as ToPageMessage["type"]](body, envelope as Envelope) : undefined;
 }

@@ -19,7 +19,7 @@ function setup() {
   const { ui, host } = createLoopbackTransport<HistoryToHost, HostToHistory>();
   const received: HostToHistory[] = [];
   ui.subscribe((message) => received.push(message));
-  const mounted = mountHistoryHost({ fs, logger, endpoint: host, project, lastFullPdf: () => undefined });
+  const mounted = mountHistoryHost({ fs, logger, endpoint: host, project, lastFullPdf: () => undefined, shares: { active: () => undefined } });
   const history = () => received.filter((m): m is Extract<HostToHistory, { type: "history" }> => m.type === "history");
   return { fs, ui, received, history, mounted };
 }

@@ -47,7 +47,7 @@ A host can show a build's output in the reader, e.g. a writing project's compile
   - LaTeX: a destination named `cite.<key>` (hyperref; biblatex writes `cite.<n>@<key>`) names its key, and any other LaTeX link names none. Text without a link, from a build without hyperref, goes through SyncTeX to the keys cited on its source line.
   - Typst: a link names the citation that the last build placed inside it.
   - Hovering a single citation shows a card with the byline and year, the REF or BIB tag, the title, the venue and folder, the source line of the citing command, the highlights on the cited page followed by the rest folded, and Open at p. N or Go to source; several citations show one row per key. Clicking a citation link whose key has a library paper opens that paper (`openCitedPaper`) instead of jumping to the bibliography; any other link keeps its jump.
-- **The browser previews nothing yet.** Its host has no preview ports, so the controller logs a preview request from its reader and ignores it.
+- **The browser preview runs in a frame of the library page.** Page and frame exchange `postMessage`; the frame forwards each preview request to the page, which serves Recompile, a problem's source line, Compare (opens the project's History tab), Mark version and the check limits, and logs every other request as a warning. Its roots carry `sourceLinks: false`, so the reader hides Comment in the selection bubble; the reader shows Comment only while the shown root has `sourceLinks`.
 
 ## Changes
 

@@ -2,9 +2,10 @@
 // The index also exports the browser-wired factory, which loads the polyfill.
 jest.mock("webextension-polyfill", () => ({ runtime: {} }));
 
+import { PROTOCOL_VERSION } from "@labshelf/core/helper";
 import { createNativeLatexHelper } from "../../../src/helper/client";
 import type { HelperPortFactory } from "../../../src/helper/client/connection";
-import { statusFromReady } from "../../../src/helper/client/connection";
+import { HelperConnection, HelperVersionError, statusFromReady } from "../../../src/helper/client/connection";
 import { fakeLogger, FakeHelper } from "./fakeHelper";
 
 function setup(fake = new FakeHelper(), connectNative?: HelperPortFactory) {
@@ -56,15 +57,52 @@ describe("connect", () => {
 
   it("reports the protocol mismatch without opening a socket", async () => {
     const fake = new FakeHelper();
-    fake.protocol = 3;
+    fake.protocol = PROTOCOL_VERSION + 1;
     const { helper } = setup(fake);
-    expect(await helper.connect()).toEqual({ state: "update-extension", protocol: 3 });
+    expect(await helper.connect()).toEqual({ state: "update-extension", protocol: PROTOCOL_VERSION + 1 });
     expect(fake.sockets).toHaveLength(0);
   });
 });
 
+describe("a hello refused for its protocol version", () => {
+  it.each([
+    ["older", PROTOCOL_VERSION - 1, { state: "update-helper", protocol: PROTOCOL_VERSION - 1, host: undefined }],
+    ["newer", PROTOCOL_VERSION + 1, { state: "update-extension", protocol: PROTOCOL_VERSION + 1 }],
+  ])("maps a %s helper to the program to update instead of a raw error", async (_which, v, status) => {
+    const fake = new FakeHelper();
+    fake.refuseHelloWithV = v;
+    const { helper, logger } = setup(fake);
+    expect(await helper.connect()).toEqual(status);
+    expect(fake.sockets).toHaveLength(0);
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+});
+
+describe("HelperConnection version errors", () => {
+  const channel = () => {
+    let deliver: (message: unknown) => void = () => undefined;
+    return { post: jest.fn(), close: jest.fn(), onMessage: (l: typeof deliver) => { deliver = l; }, onClose: () => undefined, send: (m: unknown) => deliver(m) };
+  };
+
+  it("fails a pending request with HelperVersionError carrying the helper's v, for a frame of another version", async () => {
+    const ch = channel();
+    const connection = new HelperConnection(ch as never, fakeLogger());
+    const pending = connection.request({ type: "cancel", projectId: "p" }, () => undefined);
+    ch.send({ v: PROTOCOL_VERSION - 1, id: "1", type: "ready" });
+    await expect(pending).rejects.toEqual(new HelperVersionError(PROTOCOL_VERSION - 1));
+  });
+
+  it("fails a pending request with HelperVersionError when an error reply has code version", async () => {
+    const ch = channel();
+    const connection = new HelperConnection(ch as never, fakeLogger());
+    const pending = connection.request({ type: "cancel", projectId: "p" }, () => undefined);
+    ch.send({ v: PROTOCOL_VERSION, id: "1", type: "error", code: "version", message: "v is 2" });
+    await expect(pending).rejects.toBeInstanceOf(HelperVersionError);
+  });
+});
+
 describe("statusFromReady", () => {
-  const ready = { v: 2, id: "1", type: "ready" as const, host: "vscode" as const, helperVersion: "1.0.0", tex: { source: "none" as const, complete: false } };
+  const ready = { v: PROTOCOL_VERSION, id: "1", type: "ready" as const, host: "vscode" as const, helperVersion: "1.0.0", tex: { source: "none" as const, complete: false } };
 
   it("reports update-helper when the helper's protocol is lower than the page's", () => {
     expect(statusFromReady({ ...ready, protocol: 1 }, 2)).toEqual({ state: "update-helper", protocol: 1, host: "vscode" });

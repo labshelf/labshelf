@@ -1,18 +1,12 @@
 // Reads the text of the files a project search covers, preferring unsaved editor content.
 import * as vscode from "vscode";
 
-import type { ILogger, LibraryFileSystem, PathOps, SearchScopeMode } from "@labshelf/core";
+import type { ILogger, LibraryFileSystem, PathOps, ProjectText, SearchScopeMode } from "@labshelf/core";
 import { isSearchableFile, listProjectFiles } from "@labshelf/core";
 import { isInside } from "../mainDocument.js";
 
 export const SEARCH_LOG_MODULE = "writing/search";
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
-
-export interface ProjectText {
-  /** Absolute path. */
-  path: string;
-  text: string;
-}
 
 /** What a search covers: the active file alone, or every searchable file of the project that owns it. */
 export interface SearchScope {

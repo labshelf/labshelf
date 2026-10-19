@@ -7,7 +7,7 @@ import type { OpenProjectSnapshot } from "./openProjectSnapshot";
 const MODULE = "library-page.session";
 
 /** What the session drives in the sidebar. */
-export interface SessionSidebar {
+interface SessionSidebar {
   setOpenProject(snapshot: SidebarOpenProject | undefined): void;
   collapseLibrary(): void;
 }

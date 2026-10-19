@@ -58,7 +58,8 @@ export function mountProjectSearch(root: HTMLElement, transport: SearchTransport
   function renderScope(): void {
     showScope(scope !== null);
     if (!scope) { return; }
-    scopeLine.textContent = form.state().scope === "file" ? scope.file : `${scope.project} · ${scope.folder}`;
+    form.offerFileScope(scope.file !== null);
+    scopeLine.textContent = form.state().scope === "file" && scope.file !== null ? scope.file : `${scope.project} · ${scope.folder}`;
     scopeLine.title = scopeLine.textContent;
   }
 

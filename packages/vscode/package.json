@@ -14,7 +14,6 @@
   "activationEvents": [
     "workspaceContains:**/labshelf.yaml",
     "onLanguage:latex",
-    "onLanguage:typst",
     "onUri",
     "onStartupFinished"
   ],
@@ -36,10 +35,18 @@
         "extensions": [
           ".typ"
         ],
+        "configuration": "./language-configuration/typst.json",
         "icon": {
           "light": "./media/typst.png",
           "dark": "./media/typst.png"
         }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "typst",
+        "scopeName": "source.typst",
+        "path": "./syntaxes/typst.tmLanguage.json"
       }
     ],
     "commands": [
@@ -1230,7 +1237,6 @@
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "~6.3.289",
     "tesseract.js": "^7.0.0",
-    "vscode-languageclient": "^9.0.1",
     "yjs": "^13.6.33"
   },
   "devDependencies": {

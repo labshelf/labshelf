@@ -1,5 +1,5 @@
 // Pins the TinyTeX-1 release LabShelf installs and the SHA-256 of its archive for each supported OS and architecture.
-export const TINYTEX_VERSION = "2026.10";
+const TINYTEX_VERSION = "2026.10";
 
 const RELEASE_URL = `https://github.com/rstudio/tinytex-releases/releases/download/v${TINYTEX_VERSION}/`;
 

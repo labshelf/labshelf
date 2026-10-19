@@ -43,13 +43,23 @@ async function publishPdf(request: LatexBuildRequest, places: ProblemPlaces, bas
   return { ...result, pdf };
 }
 
-/** A preview tries the edited section alone, then the chapter preview; without a full build's aux it runs the full build. */
+/** Why a preview must build the whole document: it has no edit to scope to, or no full PDF exists to swap pages into. */
+async function wholeDocumentReason(request: LatexBuildRequest, base: string): Promise<string | undefined> {
+  if (request.editedFile === undefined || request.editedLine === undefined) { return "no-edit"; }
+  const hasFullPdf = await fs.stat(path.join(request.outDir, shownPdfName(base))).then(() => true, () => false);
+  return hasFullPdf ? undefined : "no full PDF yet";
+}
+
+/** A preview tries the edited section alone, then the chapter preview; with no edit or no full PDF yet it builds the whole document. */
 async function build(request: LatexBuildRequest, places: ProblemPlaces, base: string): Promise<{ result: LatexBuildResult; mode: string }> {
-  if (request.mode === "preview") {
+  const reason = request.mode === "preview" ? await wholeDocumentReason(request, base) : undefined;
+  if (reason) { await request.logger.log("INFO", MODULE, `LaTeX preview builds the whole document: ${reason}`, { main: request.main, reason }); }
+  const isPreview = request.mode === "preview" && !reason;
+  if (isPreview) {
     const section = await runSectionPreview(request, places, base);
     if (section) { return { result: section, mode: "section" }; }
   }
-  const preview = request.mode === "preview" ? await planLatexPreview(request) : undefined;
+  const preview = isPreview ? await planLatexPreview(request) : undefined;
   if (!preview) { await writeSectionStatePackage(request.outDir); }
   const command = preview?.command ?? latexBuildCommand(request.toolchain, path.basename(request.main), request.outDir, { ...request, capturesSectionState: true });
   const run = (): Promise<LatexBuildResult> => compileLatex(request, places, { job: base, command });

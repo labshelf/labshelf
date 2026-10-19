@@ -1,6 +1,6 @@
 # Managed tools
 
-Every LabShelf app on a machine (the helper, the VS Code extension and the terminal app) uses one managed TeX and one managed Tinymist per user, kept in one shared folder. The managed TeX module in core (`writing/latex/toolchain/node/managed`) and the managed Tinymist module (`writing/typst/toolchain`) implement this document for every app.
+Every LabShelf app on a machine (the helper, the VS Code extension and the terminal app) uses one managed TeX per user, kept in one shared folder. The managed TeX module in core (`writing/latex/toolchain/node/managed`) implements this document for every app.
 
 ## Folder
 
@@ -10,7 +10,7 @@ Every LabShelf app on a machine (the helper, the VS Code extension and the termi
 | Windows | `%LOCALAPPDATA%\LabShelf\` (`<home>\AppData\Local` when the variable is unset) |
 | Linux | `$XDG_DATA_HOME/labshelf/` (`~/.local/share` when the variable is unset or empty) |
 
-Each tool has its own subfolder, `tex/` or `tinymist/`, with its own `.lock`. The lock rules below hold for both.
+TeX lives in the `tex/` subfolder, which has its own `.lock`.
 
 ## TeX layout
 
@@ -27,17 +27,17 @@ tinytex-packages.txt    the TinyTeX package list written before a rollover reins
 
 A `tinytex/` or `texlive/` tree counts as installed once it has a `bin/<arch>/` folder; installers build the tree in a staging folder and move it in only when it is complete. When both exist, `texlive/` is used. The release year comes from the tree's `release-texlive.txt`.
 
-Downloads: TinyTeX is pinned by version and SHA-256 in core. install-tl is checked against CTAN's SHA-512 file, and that file against its OpenPGP signature by the TeX Live key pinned in core. A download that fails either check is not installed.
+Downloads: TinyTeX is pinned by version and SHA-256 in core. install-tl is checked against CTAN's SHA-512 file, and that file against its OpenPGP signature by the TeX Live key pinned in core. A download that fails either check is not installed. On macOS the helper removes the quarantine attribute from the TinyTeX folder after install and on first use, because macOS kills quarantined binaries at exec.
 
 ## Lock
 
-Only LabShelf apps change a tool's subfolder, and only while they hold its `.lock`. An app creates the file exclusively, with the JSON `{ "pid": <number>, "operation": "<what it does>", "startedAt": "<ISO time>" }`, and removes it when the change ends, whether it succeeded or failed.
+Only LabShelf apps change the `tex/` subfolder, and only while they hold its `.lock`. An app creates the file exclusively, with the JSON `{ "pid": <number>, "operation": "<what it does>", "startedAt": "<ISO time>" }`, and removes it when the change ends, whether it succeeded or failed.
 
 A lock is stale when its `pid` is not a running process, or when its content is not that JSON and the file is older than the wait limit. An app takes over a stale lock and logs its content. Otherwise it waits, checking every 500 ms for up to 15 minutes, then fails with an error naming its own operation and the holder.
 
-After taking the lock an app looks at the subfolder again: what another app installed during the wait is not installed a second time.
+After taking the lock an app looks at the folder again: what another app installed during the wait is not installed a second time.
 
-Installing TeX, installing every package, installing a missing package, the rollover reinstall and installing Tinymist run under their subfolder's lock. Reading the status and resolving latexmk or Tinymist do not take it.
+Installing TeX, installing every package, installing a missing package, and the rollover reinstall run under the lock. Reading the status and resolving latexmk do not take it.
 
 ## TeX resolution
 
@@ -54,18 +54,3 @@ Once a year the package repository moves to the next TeX Live release and tlmgr 
 ## Download all packages
 
 "Download all packages" installs `scheme-full` into a managed TinyTeX, so a build never stops to install one. It needs a managed TeX; a full TeX Live already counts as complete.
-
-## Tinymist
-
-Tinymist is the Typst language server and compiler LabShelf runs for Typst projects: the helper for the browser extension, and the VS Code extension as its Typst language server. It is installed on the first Typst use and never asked about.
-
-```
-tinymist/
-  <version>/tinymist    the binary (tinymist.exe on Windows)
-  .staging-*/           a download in progress, removed when it ends
-  .lock
-```
-
-Core pins one Tinymist version and the SHA-256 of its release asset for each supported OS and architecture. The app downloads the asset of that version from Tinymist's GitHub release, refuses it unless the hash matches, and moves the binary into `<version>/` only once it is complete and executable. A pinned version that changes installs the new one beside the old and removes older version folders after the move. An OS or architecture without a pinned asset has no managed Tinymist. On macOS the app removes the `com.apple.quarantine` attribute from the managed binary after installing it and when it finds an installed one: a helper started by a browser writes files that inherit the attribute, and macOS kills an ad-hoc signed binary that carries it.
-
-Resolution: the managed binary of the pinned version, then `tinymist` on `PATH`, then missing. A Tinymist on the system is never changed.

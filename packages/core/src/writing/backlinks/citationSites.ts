@@ -1,4 +1,5 @@
 /** Places each citation of a source by line and by the heading it falls under. */
+import { lineOf, lineStarts } from "../lineIndex/index.js";
 import { citedKeys } from "../citations/index.js";
 import type { ProjectFormat } from "../project/index.js";
 import { sourceHeadings } from "./sourceHeadings.js";
@@ -9,22 +10,6 @@ export interface CitationSite {
   line: number;
   /** Title of the nearest heading above; undefined before the first heading. */
   section: string | undefined;
-}
-
-function lineStarts(text: string): number[] {
-  const starts = [0];
-  for (let i = text.indexOf("\n"); i !== -1; i = text.indexOf("\n", i + 1)) { starts.push(i + 1); }
-  return starts;
-}
-
-function lineOf(starts: readonly number[], offset: number): number {
-  let low = 0;
-  let high = starts.length - 1;
-  while (low < high) {
-    const middle = (low + high + 1) >> 1;
-    if (starts[middle]! <= offset) { low = middle; } else { high = middle - 1; }
-  }
-  return low;
 }
 
 /** Every citation in the text, in text order. */

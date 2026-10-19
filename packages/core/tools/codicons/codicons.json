@@ -9,5 +9,10 @@
   "whole-word": "whole-word",
   "regex": "regex",
   "replace": "replace",
-  "replace-all": "replace-all"
+  "replace-all": "replace-all",
+  "bold": "bold",
+  "italic": "italic",
+  "table": "table",
+  "file-media": "file-media",
+  "symbol-operator": "symbol-operator"
 }

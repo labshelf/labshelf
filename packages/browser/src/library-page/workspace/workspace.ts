@@ -63,12 +63,19 @@ export function createWorkspace(slot: HTMLElement, { prefs, services, logger, pl
     let disposed = false;
     let body: EditorTabBody | null = null;
     TAB_KINDS[kind].load()
-      .then((module) => { if (!disposed) body = module.mountTab(host, params, { ...services(), workspace, tab: tabHooks(id, kind, params) }); })
+      .then((module) => {
+        if (disposed) return;
+        body = module.mountTab(host, params, { ...services(), workspace, tab: tabHooks(id, kind, params) });
+        area.refreshActions(id);
+      })
       .catch((error: unknown) => {
         void logger.error(MODULE, error, { action: "mountTab", kind });
         host.append(el("p", { class: "ls-workspace-placeholder", role: "alert" }, `Could not load the ${TAB_KINDS[kind].title(params)} tab.`));
       });
-    return { dispose: () => { disposed = true; beforeClose.delete(id); body?.dispose(); } };
+    return {
+      get actions() { return body?.actions ?? []; },
+      dispose: () => { disposed = true; beforeClose.delete(id); body?.dispose(); },
+    };
   };
 
   // A tab opened again keeps the dirty mark its body set.

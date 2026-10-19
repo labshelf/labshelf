@@ -1,5 +1,5 @@
 // Exports the project preview: build scheduling, page assembly and the embedded preview reader.
-export { createBuildScheduler, type BuildScheduler, type BuildSchedulerOptions, type BuildTimers } from "./buildScheduler";
-export { assemblePdf, type ChangedPages } from "./pdfAssembly";
-export { followBuilds, type PreviewBuildEvent, type PreviewBuildSource } from "./previewBuilds";
-export { createPreviewFrame, type PreviewBuildStatus, type PreviewFrame, type PreviewFrameMessage } from "./previewFrame";
+export { createBuildScheduler, type BuildScheduler, type BuildTimers } from "./buildScheduler";
+export { assemblePdf } from "./pdfAssembly";
+export { followBuilds, type FollowedBuilds, type PreviewBuildEvent, type PreviewBuildSource, type PreviewLimits } from "./previewBuilds";
+export { createPreviewFrame } from "./previewFrame";

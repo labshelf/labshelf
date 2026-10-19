@@ -1,10 +1,14 @@
 // Describes what the managed TeX installers need from the host and from the caller.
 import type { ILogger } from "../../../../../../ports/index.js";
 import type { FetchLike } from "../../index.js";
+import type { ExecFile } from "./clearQuarantine.js";
 
 export interface TexInstallDeps {
   fetchImpl: FetchLike;
   logger: ILogger;
+  platform: NodeJS.Platform;
+  /** Runs xattr on macOS; tests inject a fake. */
+  execFileImpl?: ExecFile;
 }
 
 export interface TexInstallRun {

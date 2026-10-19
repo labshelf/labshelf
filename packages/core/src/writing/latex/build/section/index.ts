@@ -5,6 +5,4 @@ export { parseSectionStates } from "./sectionStateFile.js";
 export type { ParsedSectionStates, SectionState } from "./sectionStateFile.js";
 export { SECTION_STATE_PACKAGE, sectionStateFileName, sectionStatePackage } from "./sectionStatePackage.js";
 export { definitionsBeforeSection } from "./definitionsBeforeSection.js";
-export type { DefinitionsBeforeSectionInput } from "./definitionsBeforeSection.js";
 export { mapSectionProblems } from "./mapSectionProblems.js";
-export type { SectionPlacement } from "./mapSectionProblems.js";

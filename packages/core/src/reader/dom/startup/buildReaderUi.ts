@@ -67,19 +67,29 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
     previewChrome: null,
     openLogs: (rootPath) => console.warn(`LabShelf reader: no logs view to open for ${rootPath}`),
   };
-  if (ctx.boot.preview) {
-    const post = (msg: WebviewToHost): void => ctx.host.post(msg);
-    // The pane covers #viewerContainer's parent, so it neither scrolls with the pages nor hides the sidebar.
-    const logs = new LogsView({ parent: ctx.container.parentElement ?? ctx.container, post });
-    ui.openLogs = (rootPath) => logs.open(rootPath);
-    ui.previewChrome = mountPreviewChrome({
-      post, logs, outline: previewOutlineSource(ctx),
-      countBodyPages: () => countBodyPages(ctx.pdfDocument),
-      pdfViewer: ctx.pdfViewer, scrollTo: areaScroller(ctx),
-      setPagesDark: (dark) => theme.lockPages(dark ? "dark" : "light"),
-    });
-  }
+  if (ctx.boot.preview) { attachPreview(ctx, theme, ui); }
   return ui;
+}
+
+/** Mounts the preview's logs view and chrome; Comment in the selection bubble follows the shown root's source links. */
+function attachPreview(ctx: ReaderContext, theme: ThemeController, ui: ReaderUi): void {
+  const post = (msg: WebviewToHost): void => ctx.host.post(msg);
+  // The pane covers #viewerContainer's parent, so it neither scrolls with the pages nor hides the sidebar.
+  const logs = new LogsView({ parent: ctx.container.parentElement ?? ctx.container, post });
+  ui.openLogs = (rootPath) => logs.open(rootPath);
+  const chrome = mountPreviewChrome({
+    post, logs, outline: previewOutlineSource(ctx),
+    countBodyPages: () => countBodyPages(ctx.pdfDocument),
+    pdfViewer: ctx.pdfViewer, scrollTo: areaScroller(ctx),
+    setPagesDark: (dark) => theme.lockPages(dark ? "dark" : "light"),
+  });
+  ui.previewChrome = {
+    ...chrome,
+    applyRoots(roots) {
+      chrome.applyRoots(roots);
+      ui.bubble.setCommentable(roots.roots.find((root) => root.path === roots.shown)?.sourceLinks ?? false);
+    },
+  };
 }
 
 /** A jump records the departure first, so Back returns to where the reader was. */

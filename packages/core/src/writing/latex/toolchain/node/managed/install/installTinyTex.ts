@@ -7,6 +7,7 @@ import { promisify } from "node:util";
 import { downloadVerified } from "../../index.js";
 import { tinyTexAsset, type TinyTexAsset } from "../../../index.js";
 
+import { clearQuarantine } from "./clearQuarantine.js";
 import { managedTexRoot } from "../texLayout.js";
 import { runTexTool, TEX_MODULE } from "../runTexTool.js";
 import type { TexInstallDeps, TexInstallRun } from "./installTypes.js";
@@ -45,8 +46,8 @@ async function unpack(deps: TexInstallDeps, archive: string, tree: string): Prom
 
 export async function installTinyTex(deps: TexInstallDeps, run: TexInstallRun): Promise<void> {
   run.onProgress(null);
-  const asset = tinyTexAsset(process.platform, process.arch);
-  if (!asset) { throw new Error(`TinyTeX has no build for ${process.platform}-${process.arch}`); }
+  const asset = tinyTexAsset(deps.platform, process.arch);
+  if (!asset) { throw new Error(`TinyTeX has no build for ${deps.platform}-${process.arch}`); }
   const bytes = await download(deps, asset);
   const target = managedTexRoot(run.texRoot, "tinytex");
   await withStagingDir(run.texRoot, "tinytex", async (staging) => {
@@ -61,6 +62,7 @@ export async function installTinyTex(deps: TexInstallDeps, run: TexInstallRun): 
     await rm(target, { recursive: true, force: true });
     await rename(top, target);
   });
+  if (deps.platform === "darwin") { await clearQuarantine(target, deps.logger, deps.execFileImpl); }
   await deps.logger.log("INFO", TEX_MODULE, "TinyTeX installed", { root: target, asset: asset.name });
   run.onProgress(1);
 }

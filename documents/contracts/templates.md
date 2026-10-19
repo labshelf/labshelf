@@ -124,7 +124,7 @@ Typst Universe templates come from `https://packages.typst.org/preview/index.jso
 | thumbnails | `https://packages.typst.org/preview/thumbnails/<name>-<version>-small.webp` (cards) and `…/<name>-<version>.webp` (detail) |
 
 - An entry whose `template.path` or `template.entrypoint` breaks [Paths](#paths) is left out and logged.
-- Installing downloads the package into the Typst package cache, the same one the build and Tinymist use, then copies `template.path` from it as the new project's files. The files list is known only once the package is in the cache.
+- Installing downloads `https://packages.typst.org/preview/<name>-<version>.tar.gz`, unpacks it in memory and takes the files under `template.path` as the new project's files, so every app installs the same way with or without a disk. A link anywhere under `template.path` refuses the template. The files list is known only once the archive is downloaded. The build downloads the package itself when the project first imports it.
 - A template whose `compiler` is newer than LabShelf's bundled Typst can still be installed, and the gallery says which version it needs.
 
 ## My templates

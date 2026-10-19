@@ -2,7 +2,6 @@
 import type { ILogger, ProjectEntry } from "@labshelf/core";
 import type { CompileMode, HelperCompileResult, HelperStatus, ILatexHelper } from "@labshelf/core/helper";
 import { assemblePdf, createBuildScheduler, type BuildScheduler, type BuildTimers } from "../preview";
-import { createLspChannel, type HelperLspChannel } from "./lspChannel";
 import { createProblemStore, type ProblemStore } from "./problemStore";
 
 const MODULE = "library-page.helperProject";
@@ -29,7 +28,6 @@ export interface HelperProject {
   helper(): ILatexHelper | undefined;
   isOpen(projectId: string): boolean;
   editorPort(projectId: string): EditorHelperPort;
-  lsp(projectId: string): HelperLspChannel;
   problems: Pick<ProblemStore, "subscribe">;
   /** The whole PDF of the latest succeeded full build of the open project, else undefined. */
   lastFullPdf(projectId: string): Uint8Array | undefined;
@@ -164,7 +162,6 @@ export function createHelperProject({ helper, logger, timers }: HelperProjectOpt
     helper: () => (helper.status()?.state === "ready" ? helper : undefined),
     isOpen,
     editorPort: port,
-    lsp: (id) => createLspChannel({ helper, isOpen, onOpened }, id),
     problems: store,
     lastFullPdf: (id) => (isOpen(id) ? open?.pdf.full : undefined),
     async build(id) {

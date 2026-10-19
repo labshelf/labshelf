@@ -9,7 +9,6 @@ export interface EditorSash {
   el: HTMLElement;
   /** Applies the saved width while both groups show; one group fills the area. */
   layout(split: boolean): void;
-  dispose(): void;
 }
 
 /** Wires the sash between `root`'s groups; `first` is the group it sizes. */
@@ -22,12 +21,12 @@ export function createEditorSash(root: HTMLElement, first: HTMLElement, prefs: E
     first.classList.toggle("sized", sized);
   };
   // Until the first drag both groups share the width equally; the drag starts from the width they have.
-  sash.addEventListener("mousedown", () => {
+  sash.addEventListener("pointerdown", () => {
     if (width !== null) return;
     width = Math.round(first.getBoundingClientRect().width) || MIN_GROUP_WIDTH;
     apply(true);
   });
-  const detach = attachSash(sash, {
+  attachSash(sash, {
     root, pane: first, collapsedClass: "never-collapsed",
     limits: { min: MIN_GROUP_WIDTH, max: Number.POSITIVE_INFINITY, collapseAt: Number.NEGATIVE_INFINITY },
     widthFromPointer: (x) => {
@@ -39,6 +38,5 @@ export function createEditorSash(root: HTMLElement, first: HTMLElement, prefs: E
   return {
     el: sash,
     layout: (split) => { sash.hidden = !split; apply(split); },
-    dispose: detach,
   };
 }

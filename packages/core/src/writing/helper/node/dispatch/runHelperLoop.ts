@@ -28,13 +28,14 @@ function parseFrame(frame: Buffer, reply: ErrorReply, logger: ILogger): HelperPa
   return parseHelperMessage(raw, "toHelper");
 }
 
-async function answerFrame(frame: Buffer, greeted: boolean, hello: HelloAnswer, send: HelperSend, logger: ILogger): Promise<boolean> {
+async function answerFrame(frame: Buffer, greeted: boolean, hello: HelloAnswer, send: HelperSend, logger: ILogger, onVersionRejected: () => void): Promise<boolean> {
   const reply: ErrorReply = (id, code, message) => send({ v: PROTOCOL_VERSION, id, type: "error", code, message });
   const parsed = parseFrame(frame, reply, logger);
   if (!parsed) { return false; }
   if (!parsed.ok) {
     void logger.log("WARN", LOG_MODULE, "Frame rejected", { code: parsed.code, reason: parsed.reason, id: parsed.id });
     reply(parsed.id ?? NO_ID, parsed.code, parsed.reason);
+    if (parsed.code === "version") { onVersionRejected(); }
     return false;
   }
   const { message } = parsed;
@@ -52,14 +53,19 @@ async function answerFrame(frame: Buffer, greeted: boolean, hello: HelloAnswer, 
   }
 }
 
-/** Resolves at EOF; rejects when the stream is corrupt (a frame past the size cap), after logging it. */
-export async function runHelperLoop(input: AsyncIterable<Uint8Array>, hello: HelloAnswer, send: HelperSend, logger: ILogger): Promise<void> {
+/**
+ * Resolves at EOF; rejects when the stream is corrupt (a frame past the size cap), after logging it.
+ * `onVersionRejected` runs after a frame is refused for its protocol version, so the caller can look for an update.
+ */
+export async function runHelperLoop(
+  input: AsyncIterable<Uint8Array>, hello: HelloAnswer, send: HelperSend, logger: ILogger, onVersionRejected: () => void = () => undefined,
+): Promise<void> {
   let greeted = false;
   try {
     for await (const frame of readFrames(input, {
       onTruncated: (bytes) => void logger.log("WARN", LOG_MODULE, "Input ended inside a frame", { bytes }),
     })) {
-      greeted = (await answerFrame(frame, greeted, hello, send, logger)) || greeted;
+      greeted = (await answerFrame(frame, greeted, hello, send, logger, onVersionRejected)) || greeted;
     }
   } catch (error) {
     await logger.error(LOG_MODULE, error);

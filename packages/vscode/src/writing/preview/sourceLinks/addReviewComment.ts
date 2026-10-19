@@ -7,18 +7,12 @@ import { NOT_BUILT_MESSAGE, PREVIEW_LOG_MODULE } from "../previewStrings.js";
 import { openSourceLine } from "./openSourceLine.js";
 import type { ShowSourceDeps } from "./showSource.js";
 
-const TYPST_REVIEW_MESSAGE = "Review notes become comments in LaTeX projects; in a Typst project, comment on the source in the editor.";
 const NO_SOURCE_LINE_MESSAGE = "No source line found for this text, so the note was not added. Comment on the source in the editor.";
 
 export async function addReviewComment(deps: ShowSourceDeps, point: PagePoint, quote: string, note: string): Promise<void> {
   const { logger, projectFolder } = deps;
   const context = { projectFolder, page: point.page, x: point.x, y: point.y };
   const lookup = await deps.synctex();
-  if (lookup.status === "unsupported") {
-    await logger.log("WARN", PREVIEW_LOG_MODULE, "A review note in a project without SyncTeX was not added", context);
-    void vscode.window.showInformationMessage(TYPST_REVIEW_MESSAGE);
-    return;
-  }
   const source = lookup.status === "found" ? sourceAt(lookup.index, point) : undefined;
   if (!source) {
     await logger.log("WARN", PREVIEW_LOG_MODULE, "No source found for a review note", { ...context, reason: lookup.status === "found" ? "no hit" : lookup.status });

@@ -10,14 +10,14 @@ function setup() {
     build: jest.fn(async () => undefined),
     onBuild: (l) => { listener = l; return () => { listener = undefined; }; },
   };
-  const frame = { showPdf: jest.fn(), setBuildStatus: jest.fn() };
+  const frame = { showPdf: jest.fn(), setBuildStatus: jest.fn(), setPreviewRoots: jest.fn() };
   return { source, frame, send: (event: PreviewBuildEvent) => listener?.(event), isListening: () => listener !== undefined };
 }
 
 describe("followBuilds", () => {
   it("shows the bytes of each pdf event and sets the status from the result", () => {
     const { source, frame, send } = setup();
-    followBuilds(source, frame, "a", logger);
+    followBuilds(source, frame, { id: "a", main: "main.tex" }, logger);
     const bytes = new Uint8Array([1, 2, 3]);
     send({ type: "building" });
     send({ type: "pdf", bytes, mode: "preview" });
@@ -27,9 +27,36 @@ describe("followBuilds", () => {
     expect(frame.setBuildStatus.mock.calls.map(([status]) => status.state)).toEqual(["building", "succeeded"]);
   });
 
+  it("posts the main root with its problems after a failed and a succeeded result", () => {
+    const { source, frame, send } = setup();
+    followBuilds(source, frame, { id: "a", main: "main.tex" }, logger);
+    const problem = { severity: "error" as const, message: "Undefined control sequence", file: "intro.tex", line: 3, kind: "overfull" as const };
+    send({ type: "result", result: { status: "failed", problems: [problem], changed: [] } });
+    send({ type: "result", result: { status: "succeeded", problems: [], changed: [] } });
+    const root = (failed: boolean, problems: unknown[]) => ({
+      main: "main.tex", focused: "main.tex", shown: "main.tex",
+      roots: [{ path: "main.tex", failed, rawLog: false, sourceLinks: false, problems }],
+    });
+    expect(frame.setPreviewRoots.mock.calls).toEqual([
+      [root(true, [{ severity: "error", message: "Undefined control sequence", file: "intro.tex", line: 3 }])],
+      [root(false, [])],
+    ]);
+  });
+
+  it("carries the project's limits and posts them again on resend", () => {
+    const { source, frame, send } = setup();
+    const limits: { pages?: number; words?: number } = { pages: 8 };
+    const follow = followBuilds(source, frame, { id: "a", main: "main.tex", limits: () => limits }, logger);
+    send({ type: "result", result: { status: "succeeded", problems: [], changed: [] } });
+    limits.words = 4000;
+    follow.resendRoots();
+    expect(frame.setPreviewRoots.mock.calls.map(([roots]) => [roots.pageLimit, roots.wordLimit])).toEqual([[8, undefined], [8, 4000]]);
+    expect(follow.roots()?.wordLimit).toBe(4000);
+  });
+
   it("stops following when disposed", () => {
     const { source, frame, isListening } = setup();
-    followBuilds(source, frame, "a", logger).dispose();
+    followBuilds(source, frame, { id: "a", main: "main.tex" }, logger).dispose();
     expect(isListening()).toBe(false);
   });
 });

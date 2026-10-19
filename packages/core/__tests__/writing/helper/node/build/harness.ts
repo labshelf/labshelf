@@ -1,14 +1,17 @@
-// Builds a mirrored project over a temp folder with a fake latexmk, and collects the frames the build handlers send.
+// Builds a mirrored project over a temp folder with a fake latexmk or the real Typst compiler, and collects the frames the build handlers send.
 import { chmod, mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import type { ILogger } from "../../../../../src/ports/index.js";
-import type { ToPageMessage } from "../../../../../src/writing/helper/index.js";
+import { PROTOCOL_VERSION, type ToPageMessage } from "../../../../../src/writing/helper/index.js";
 
 import { createBuildHandlers } from "../../../../../src/writing/helper/node/build/index";
 import { createHelperProjects, type HelperProjects } from "../../../../../src/writing/helper/node/projects/index";
 import type { ManagedTexProvider } from "../../../../../src/writing/latex/toolchain/node/managed/index";
+import { TypstPackageStore } from "../../../../../src/writing/typst/node/index";
+import type { TypstSession } from "../../../../../src/writing/typst/index";
+import { openTestSession, TYPST_TEST_FONT_SETTING } from "../../../../support/typstFixtures";
 
 // Writes main.log and main.pdf into -outdir= by the `%FAKE:<mode>` line of the main file, and records its arguments.
 // An ok build writes one real PDF page per `\newpage`-separated chunk of the main file, so a page's content follows its text.
@@ -44,31 +47,16 @@ if (mode === "ok") {
 }
 `;
 
-// Stands for `tinymist compile --root . <main> <out>`: the `//FAKE:<mode>` line of the main file picks ok, warn or fail.
-const FAKE_TINYMIST = `#!${process.execPath}
-const fs = require("fs");
-const { PDFDocument } = require(${JSON.stringify(require.resolve("pdf-lib"))});
-const [, , , main, out] = process.argv.slice(2);
-const mode = (/\\/\\/FAKE:(\\w+)/.exec(fs.readFileSync(main, "utf8")) || [])[1] || "ok";
-fs.appendFileSync(out + ".runs", JSON.stringify(process.argv.slice(2)) + "\\n");
-fs.appendFileSync(out + ".env", JSON.stringify(process.env) + "\\n");
-if (mode === "fail") {
-  process.stderr.write("error: unknown variable: x\\n  ┌─ " + main + ":3:2\\n  │\\n3 │ #x\\n  │  ^\\n");
-  process.exitCode = 1;
-} else {
-  if (mode === "warn") process.stderr.write("warning: unused import\\n  ┌─ " + main + ":1:9\\n");
-  PDFDocument.create().then(async (pdf) => { pdf.addPage().drawText("typst", { x: 20, y: 700, size: 12 }); fs.writeFileSync(out, await pdf.save()); });
-}
-`;
-
 export interface BuildHarness {
   root: string;
   texDir: string;
   buildDir: string;
   tex: { resolve: jest.Mock; installMissing: jest.Mock };
   logger: { log: jest.Mock; error: jest.Mock };
-  tinymist: { resolve: jest.Mock; ensure: jest.Mock };
-  servers: { start: jest.Mock };
+  /** Opens the real Typst compiler once per harness; tests may replace it. */
+  typst: { get: jest.Mock };
+  /** The font-download wrapper the handlers gave the Typst compiler. */
+  withFontDownload<T>(run: () => Promise<T>): Promise<T>;
   handlers: ReturnType<typeof createBuildHandlers>;
   projects: HelperProjects;
   sent: ToPageMessage[];
@@ -76,8 +64,8 @@ export interface BuildHarness {
   payloadOf(message: ToPageMessage): Uint8Array | undefined;
   /** Sets the unsaved text of main.tex: the fake latexmk's mode line, then the chunks, one PDF page each. */
   project(mode: "ok" | "missing" | "minted" | "hang", ...pages: string[]): Promise<void>;
-  /** Sets the unsaved text of main.typ; its `//FAKE:` line makes the fake Tinymist succeed, warn or fail. */
-  typst(mode: "ok" | "warn" | "fail"): Promise<void>;
+  /** Sets the unsaved text of main.typ, after a line that picks the one font the test compiler has. */
+  typstSource(body: string): Promise<void>;
   compile(id: string, extra?: Record<string, unknown>): Promise<void>;
   cancel(id: string): Promise<void>;
   /** Resolves once the request `id` has ended: `built` without a success, `pages`, or an `error`. */
@@ -107,15 +95,17 @@ export async function createBuildHarness(): Promise<BuildHarness> {
     installMissing: jest.fn(async () => true),
     install: jest.fn(), status: jest.fn(), installAllPackages: jest.fn(),
   };
-  const tinymistPath = join(root, "tinymist");
-  await writeFile(tinymistPath, FAKE_TINYMIST);
-  await chmod(tinymistPath, 0o755);
-  const tinymist = { resolve: jest.fn(async () => tinymistPath), ensure: jest.fn(async () => tinymistPath) };
-  const servers = { start: jest.fn(async () => undefined) };
+  let session: Promise<TypstSession> | undefined;
+  const packages = new TypstPackageStore({ data: join(dataDir, "typst-packages", "local"), cache: join(dataDir, "typst-packages", "cache") });
+  const typst = { get: jest.fn(async () => ({ session: await (session ??= openTestSession(packages)), packages })) };
+  let withFontDownload: BuildHarness["withFontDownload"] = () => Promise.reject(new Error("the handlers never opened the Typst compiler"));
   const logger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
   const projects = createHelperProjects({ libraryRoot: library, logger: logger as unknown as ILogger });
   await projects.open(PROJECT, `writing/${PROJECT}`);
-  const handlers = createBuildHandlers({ dataDir, projects, tex: tex as unknown as ManagedTexProvider, tinymist, servers, logger: logger as unknown as ILogger });
+  const handlers = createBuildHandlers({
+    dataDir, projects, tex: tex as unknown as ManagedTexProvider, logger: logger as unknown as ILogger,
+    openTypst: (wrap) => { withFontDownload = wrap; return typst; },
+  });
   const sent: ToPageMessage[] = [];
   const payloads = new Map<ToPageMessage, Uint8Array>();
   const waiters: Array<() => void> = [];
@@ -126,19 +116,20 @@ export async function createBuildHarness(): Promise<BuildHarness> {
   };
   let version = 0;
   return {
-    root, texDir, buildDir: join(dataDir, "projects", PROJECT, "build"), tex, tinymist, servers, logger, handlers, projects, sent,
+    root, texDir, buildDir: join(dataDir, "projects", PROJECT, "build"), tex, typst, logger, handlers, projects, sent,
+    withFontDownload: (run) => withFontDownload(run),
     payloadOf: (message) => payloads.get(message),
     async project(mode, ...pages) {
       const text = `%FAKE:${mode}\n${(pages.length > 0 ? pages : ["page"]).join("\n\\newpage\n")}\n`;
       version += 1;
       await projects.edit(PROJECT, "main.tex", version, { text });
     },
-    async typst(mode) {
+    async typstSource(body) {
       version += 1;
-      await projects.edit(PROJECT, "main.typ", version, { text: `//FAKE:${mode}\n= Title\n` });
+      await projects.edit(PROJECT, "main.typ", version, { text: `${TYPST_TEST_FONT_SETTING}${body}` });
     },
-    compile: (id, extra = {}) => handlers.compile({ v: 2, id, type: "compile", projectId: PROJECT, main: "main.tex", mode: "full", engine: "pdflatex", ...extra }, push),
-    cancel: (id) => handlers.cancel({ v: 2, id, type: "cancel", projectId: PROJECT }, push),
+    compile: (id, extra = {}) => handlers.compile({ v: PROTOCOL_VERSION, id, type: "compile", projectId: PROJECT, main: "main.tex", mode: "full", engine: "pdflatex", ...extra }, push),
+    cancel: (id) => handlers.cancel({ v: PROTOCOL_VERSION, id, type: "cancel", projectId: PROJECT }, push),
     finished: (id) => new Promise((resolve) => {
       const check = (): void => {
         const frames = sent.filter((f) => f.id === id);

@@ -18,10 +18,11 @@ export interface SharedTexProviderOptions {
 }
 
 export function createSharedTexProvider({ env, platform, homeDir, logger, fetchImpl }: SharedTexProviderOptions): ManagedTexProvider {
-  const deps = { fetchImpl, logger };
+  const deps = { fetchImpl, logger, platform };
   return createManagedTexProvider({
     texRoot: join(sharedToolsRoot(env, platform, homeDir), "tex"),
     logger,
+    platform,
     system: systemTexProvider(),
     installers: { tinytex: (run) => installTinyTex(deps, run), texlive: (run) => installTexLive(deps, run) },
   });

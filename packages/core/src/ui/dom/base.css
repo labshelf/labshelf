@@ -163,6 +163,11 @@ kbd {
   display: flex; align-items: center; gap: 8px; height: var(--ls-row-h); padding: 0 8px; border-radius: var(--ls-radius-sm);
   cursor: pointer; font-size: 13px; white-space: nowrap;
 }
+.ls-quick-sep {
+  height: var(--ls-row-h); padding: 0 8px; display: flex; align-items: center; flex-shrink: 0;
+  border-top: 1px solid var(--ls-border); color: var(--ls-desc); font-size: 11px;
+}
+.ls-quick-sep:first-child { border-top: 0; }
 .ls-quick-item svg { width: 16px; height: 16px; opacity: .8; flex-shrink: 0; }
 .ls-quick-item .label { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .ls-quick-item .desc { color: var(--ls-desc); font-size: 12px; overflow: hidden; text-overflow: ellipsis; }

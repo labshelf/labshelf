@@ -20,7 +20,7 @@ export interface TypstPackageDirs {
   cache: string;
 }
 
-// The Typst CLI's and Tinymist's own folders, so the three share every download.
+// The Typst CLI's own folders, so the CLI and LabShelf share every download.
 export function typstPackageDirs(env: NodeJS.ProcessEnv = process.env, platform: NodeJS.Platform = process.platform): TypstPackageDirs {
   const home = os.homedir();
   const data = platform === "darwin" ? path.join(home, "Library", "Application Support")

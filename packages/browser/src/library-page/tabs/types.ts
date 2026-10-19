@@ -8,7 +8,7 @@ import type { CommentThreads } from "../review";
 import type { ProjectSession } from "../session";
 import type { Workspace } from "../workspace";
 
-export type TabKindName = "library" | "all-projects" | "templates" | "source" | "preview" | "comments" | "history";
+export type TabKindName = "library" | "all-projects" | "templates" | "source" | "preview" | "comments" | "history" | "search";
 
 export type TabParams = Readonly<Record<string, string>>;
 
@@ -20,6 +20,16 @@ export interface TabHooks {
   onBeforeClose(handler: () => Promise<boolean> | boolean): void;
 }
 
+/** What only project tabs use; created when the page loads its project wiring. */
+export interface ProjectServices {
+  session: ProjectSession;
+  helperProject: HelperProject;
+  /** The open project's comment threads, shared by every tab. */
+  comments: CommentThreads;
+  /** The live connections of the shared projects joined on this page. */
+  shares: PageShares;
+}
+
 export interface TabContext {
   /** The library UI, mounted once at page level so the sidebar's Library section follows its store. */
   libraryView: HTMLElement;
@@ -29,12 +39,8 @@ export interface TabContext {
   /** The library folder, shared by every tab so they read one cache. */
   fs: LibraryFileSystem;
   prefs: PagePrefs;
-  session: ProjectSession;
-  helperProject: HelperProject;
-  /** The open project's comment threads, shared by every tab. */
-  comments: CommentThreads;
-  /** The live connections of the shared projects joined on this page. */
-  shares: PageShares;
+  /** The project services; throws when the page has not loaded them, which only a project tab on a page without Projects would hit. */
+  project(): ProjectServices;
 }
 
 /** What each tab body chunk (`tabs/<kind>/index.ts`) exports. */

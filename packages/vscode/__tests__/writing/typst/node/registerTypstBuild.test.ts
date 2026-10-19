@@ -9,7 +9,7 @@ import { fakeHost, fakeProjects, readyEntry } from "../../../support/writingFixt
 jest.mock("@labshelf/core", () => ({ ...jest.requireActual("@labshelf/core"), buildRootOf: jest.fn() }));
 jest.mock("@labshelf/core/typst/node", () => ({ ...jest.requireActual("@labshelf/core/typst/node"), runTypstBuild: jest.fn() }));
 jest.mock("../../../../src/writing/typst/node/typstCompilerHost", () => ({
-  TypstCompilerHost: jest.fn(() => ({ get: async () => ({ session: {}, packages: {} }) })),
+  createTypstCompilerHost: jest.fn(() => ({ get: async () => ({ session: {}, packages: {} }) })),
 }));
 jest.mock("../../../../src/writing/typst/typstVersionPin", () => ({ recordTypstVersion: jest.fn(async () => {}) }));
 

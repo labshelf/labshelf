@@ -1,4 +1,4 @@
-/** Keeps Typst's default fonts in the app's storage folder: downloads the missing ones with their checksums checked, then reads them all. */
+/** Keeps Typst's default fonts in a version folder under the app's fonts folder: downloads the missing ones with their checksums checked, then reads them all. */
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
@@ -16,24 +16,24 @@ export interface TypstFontOptions {
   fetch?: FetchLike;
 }
 
-function fontDir(storageDir: string): string {
-  return path.join(storageDir, "typst", "fonts", TYPST_VERSION);
+function versionDir(fontsDir: string): string {
+  return path.join(fontsDir, TYPST_VERSION);
 }
 
 async function exists(file: string): Promise<boolean> {
   return fs.stat(file).then((stat) => stat.isFile(), () => false);
 }
 
-/** The default fonts not in storage yet; a font is only ever written after its checksum matched. */
-export async function missingTypstFonts(storageDir: string): Promise<TypstFontFile[]> {
-  const present = await Promise.all(TYPST_FONTS.map((font) => exists(path.join(fontDir(storageDir), font.file))));
+/** The default fonts not stored yet; a font is only ever written after its checksum matched. */
+export async function missingTypstFonts(fontsDir: string): Promise<TypstFontFile[]> {
+  const present = await Promise.all(TYPST_FONTS.map((font) => exists(path.join(versionDir(fontsDir), font.file))));
   return TYPST_FONTS.filter((_, index) => !present[index]);
 }
 
 /** Every default font's bytes, downloading the missing ones first; throws when a download fails or a checksum differs. */
-export async function loadTypstFonts(storageDir: string, options: TypstFontOptions): Promise<Uint8Array[]> {
-  const dir = fontDir(storageDir);
-  const missing = await missingTypstFonts(storageDir);
+export async function loadTypstFonts(fontsDir: string, options: TypstFontOptions): Promise<Uint8Array[]> {
+  const dir = versionDir(fontsDir);
+  const missing = await missingTypstFonts(fontsDir);
   if (missing.length > 0) {
     await options.logger.log("INFO", MODULE, "Downloading Typst fonts", { count: missing.length, dir });
     await fs.mkdir(dir, { recursive: true });

@@ -1,27 +1,18 @@
-// Shows the language server's hover text for the word under the pointer as a tooltip.
+// Shows the language service's hover text for the word under the pointer as a tooltip.
 import type { EditorView, Tooltip } from "@codemirror/view";
-import { toLspPosition, toOffset, type LspRange, type TypstDocument } from "./lsp";
-
-type MarkedString = string | { value: string };
-interface Hover { contents: MarkedString | MarkedString[]; range?: LspRange }
+import type { TypstLanguageService } from "@labshelf/core/typst/language";
 
 const FENCE = /^```.*$/gm;
 
-function hoverText(contents: Hover["contents"]): string {
-  const parts = Array.isArray(contents) ? contents : [contents];
-  return parts.map((part) => (typeof part === "string" ? part : part.value)).join("\n\n").replace(FENCE, "").trim();
-}
-
-/** For `hoverTooltip`: the tooltip is plain text, since Tinymist answers in markdown. */
-export function hoverSource(doc: TypstDocument): (view: EditorView, pos: number, side: -1 | 1) => Promise<Tooltip | null> {
+/** For `hoverTooltip`: the tooltip is plain text, since the service answers in markdown. */
+export function hoverSource(service: TypstLanguageService, path: string): (view: EditorView, pos: number, side: -1 | 1) => Promise<Tooltip | null> {
   return async (view, pos) => {
-    const hover = await doc.ask<Hover>("textDocument/hover", toLspPosition(view.state.doc, pos));
-    const text = hover ? hoverText(hover.contents) : "";
+    const hover = await service.hover(path, view.state.doc.toString(), pos);
+    const text = hover?.text.replace(FENCE, "").trim() ?? "";
     if (!hover || text === "") return null;
-    const range = hover.range;
     return {
-      pos: range ? toOffset(view.state.doc, range.start) : pos,
-      ...(range && { end: toOffset(view.state.doc, range.end) }),
+      pos: hover.from,
+      end: hover.to,
       above: true,
       create: () => {
         const dom = document.createElement("div");

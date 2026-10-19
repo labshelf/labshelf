@@ -74,6 +74,6 @@ export function mountLibraryUi(host: HTMLElement, options: LibraryUiOptions): Li
       remove: (path) => { void confirmDeleteFolder(ctx, path); },
     },
     dropTarget: (el, folder) => makeDropTarget(ctx, el, folder),
-    dispose: () => { offs.forEach((off) => off()); frame.dispose(); frame.root.remove(); },
+    dispose: () => { offs.forEach((off) => off()); frame.root.remove(); },
   };
 }

@@ -1,10 +1,11 @@
-/** Exports the Node side of Typst: file access for the compiler, the default fonts, the package folders, the project build and the managed Tinymist.
+/** Exports the Node side of Typst: file access for the compiler, the default fonts, the package folders, the shared compiler host and the project build.
  * It is the `@labshelf/core/typst/node` entry, kept out of `@labshelf/core/node` so typst.ts stays out of bundles that do not compile Typst. */
 export { runTypstBuild } from "./runTypstBuild.js";
 export type { TypstBuildRequest } from "./runTypstBuild.js";
+export { TypstCompilerHost } from "./typstCompilerHost.js";
+export type { TypstCompiler, TypstCompilerHostOptions } from "./typstCompilerHost.js";
 export { fromCompilerPath, nodeTypstFiles, toCompilerPath } from "./typstFileAccess.js";
 export { loadTypstFonts, missingTypstFonts } from "./typstFonts.js";
 export type { TypstFontOptions } from "./typstFonts.js";
 export { packageLabel, typstPackageDirs, TypstPackageStore } from "./typstPackages.js";
 export type { TypstPackageDirs } from "./typstPackages.js";
-export * from "../toolchain/node/index.js";

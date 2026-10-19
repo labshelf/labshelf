@@ -7,7 +7,8 @@ import type { TabModule } from "../types";
 
 const MODULE = "tabs.history";
 
-export const mountTab: TabModule["mountTab"] = (host, params, { fs, logger, session, helperProject }) => {
+export const mountTab: TabModule["mountTab"] = (host, params, { fs, logger, project }) => {
+  const { session, helperProject, shares } = project();
   const projectId = params["projectId"] ?? "";
   const body = host.appendChild(el("div", { class: "ls-workspace-fill" }));
   const loading = body.appendChild(el("p", { class: "ls-workspace-placeholder" }, "Loading history…"));
@@ -17,7 +18,7 @@ export const mountTab: TabModule["mountTab"] = (host, params, { fs, logger, sess
     .then((entry) => {
       if (disposed) return;
       const { ui, host: endpoint } = createLoopbackTransport<HistoryToHost, HostToHistory>();
-      hostEnd = mountHistoryHost({ fs, logger, endpoint, project: { id: projectId, folder: entry.folder }, lastFullPdf: helperProject.lastFullPdf });
+      hostEnd = mountHistoryHost({ fs, logger, endpoint, project: { id: projectId, folder: entry.folder }, lastFullPdf: helperProject.lastFullPdf, shares });
       loading.remove();
       mountProjectHistory(body, ui);
     })

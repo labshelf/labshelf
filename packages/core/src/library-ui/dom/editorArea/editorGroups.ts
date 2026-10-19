@@ -1,13 +1,15 @@
 // Keeps the open tabs of the two editor groups: which group holds each, which one each group shows and which group has focus.
 import { el } from "../../../ui/dom/index.js";
+import { createEditorActionsBar, type EditorActionsBar } from "./actions/index.js";
 import { createTabEntry, paintTab, selectTab, type TabEntry } from "./editorTab.js";
-import type { EditorAreaOptions, EditorGroupIndex, EditorTab, EditorTabInfo } from "./types.js";
+import type { EditorAreaOptions, EditorGroupIndex, EditorTab, EditorTabAction, EditorTabInfo } from "./types.js";
 
 export interface EditorGroup {
   index: EditorGroupIndex;
   el: HTMLElement;
   tablist: HTMLElement;
   panels: HTMLElement;
+  actions: EditorActionsBar;
   order: string[];
   active: string | null;
 }
@@ -17,10 +19,13 @@ export const otherGroup = (g: EditorGroupIndex): EditorGroupIndex => (g === 0 ? 
 function createGroup(index: EditorGroupIndex): EditorGroup {
   const tablist = el("div", { class: "ls-editor-tabs", role: "tablist", "aria-label": index === 0 ? "Editors" : "Editors, second group" });
   const panels = el("div", { class: "ls-editor-panels" });
-  const group = el("section", { class: "ls-editor-group", hidden: true }, tablist, panels);
+  const actions = createEditorActionsBar();
+  const group = el("section", { class: "ls-editor-group", hidden: true }, el("div", { class: "ls-editor-titlebar" }, tablist, actions.el), panels);
   group.dataset.group = String(index);
-  return { index, el: group, tablist, panels, order: [], active: null };
+  return { index, el: group, tablist, panels, actions, order: [], active: null };
 }
+
+const NO_ACTIONS: readonly EditorTabAction[] = [];
 
 type Events = Pick<EditorAreaOptions, "onActivate" | "onMove">;
 
@@ -55,6 +60,12 @@ export class EditorGroups {
     selectTab(existing, this.groupOf(tab.id).active === tab.id);
     if (group !== undefined && group !== existing.tab.group) this.move(tab.id, group);
     else this.focus(tab.id);
+  }
+
+  refreshActions(id: string): void {
+    const e = this.entries.get(id);
+    if (!e?.body || this.groupOf(id).active !== id) return;
+    this.groupOf(id).actions.render(e.body.actions ?? NO_ACTIONS);
   }
 
   focus(id: string, moveDomFocus = false): void {
@@ -120,6 +131,7 @@ export class EditorGroups {
     for (const each of g.order) selectTab(this.entry(each), each === id);
     const shown = this.entry(id);
     shown.body ??= shown.tab.mount(shown.panel);
+    g.actions.render(shown.body.actions ?? NO_ACTIONS);
   }
 
   // Takes the tab out of its group and shows a neighbour there; returns whether it was the focused tab.
@@ -132,6 +144,7 @@ export class EditorGroups {
     g.active = null;
     const next = g.order[at] ?? g.order[at - 1];
     if (next) this.reveal(g, next);
+    else g.actions.render(NO_ACTIONS);
     return wasFocused;
   }
 

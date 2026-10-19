@@ -4,4 +4,4 @@ export {
   type Envelope, type EnvelopeResult,
 } from "./envelope.js";
 export { deriveDocId } from "./docId.js";
-export { docIdCache, openDocFrame, sealDocFrame, type DocFrameContext, type OpenedDocFrame } from "./docMessage.js";
+export { docIdCache, openDocFrame, sealDocFrame } from "./docMessage.js";

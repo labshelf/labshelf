@@ -25,8 +25,8 @@ function run(ctx: HostContext, work: () => Promise<void>): void {
   });
 }
 
-async function onReady(ctx: HostContext, initialPaper: string | null | undefined): Promise<void> {
-  await ctx.snapshots.load();
+async function onReady(ctx: HostContext, loaded: () => Promise<void>, initialPaper: string | null | undefined): Promise<void> {
+  await loaded();
   if (initialPaper && ctx.papers([initialPaper]).length) ctx.endpoint.post({ type: "select", id: initialPaper });
 }
 
@@ -35,9 +35,9 @@ interface Handlers {
   files: PaperFileHandlers;
 }
 
-function dispatch(ctx: HostContext, { pdf, files }: Handlers, m: UiToHost, options: LibraryHostOptions): void {
+function dispatch(ctx: HostContext, { pdf, files }: Handlers, loaded: () => Promise<void>, m: UiToHost, options: LibraryHostOptions): void {
   switch (m.type) {
-    case "ready": run(ctx, () => onReady(ctx, options.initialPaper)); return;
+    case "ready": run(ctx, () => onReady(ctx, loaded, options.initialPaper)); return;
     case "navigate": ctx.folder = m.folder; return;
     case "folder.create": run(ctx, () => createFolder(ctx, m.parent, m.name)); return;
     case "folder.rename": run(ctx, () => renameFolder(ctx, m.path, m.name)); return;
@@ -71,12 +71,23 @@ function dispatch(ctx: HostContext, { pdf, files }: Handlers, m: UiToHost, optio
 }
 
 /** Starts answering the UI on `endpoint`. */
-export function attachLibraryHost(endpoint: HostEndpoint, options: LibraryHostOptions): { reloadSnapshots(): Promise<void> } {
+export function attachLibraryHost(
+  endpoint: HostEndpoint, options: LibraryHostOptions,
+): { reloadSnapshots(): Promise<void>; paperIdAtPath(path: string): Promise<string | null> } {
   const ctx = createHostContext(endpoint, options.log);
   const pdf = createPdfHandlers(ctx);
   const handlers: Handlers = { pdf, files: createPaperFileHandlers(ctx, pdf.open) };
-  endpoint.subscribe((m) => dispatch(ctx, handlers, m, options));
+  // The router asks for a paper path while the first load is still running; both wait on the same load.
+  let firstLoad: Promise<void> | null = null;
+  const loaded = (): Promise<void> => (firstLoad ??= ctx.snapshots.load());
+  endpoint.subscribe((m) => dispatch(ctx, handlers, loaded, m, options));
   watchLibraryChanges(ctx.snapshots, ctx.log);
   watchChangeNotices(ctx);
-  return { reloadSnapshots: () => ctx.snapshots.reload() };
+  return {
+    reloadSnapshots: () => ctx.snapshots.reload(),
+    paperIdAtPath: async (path) => {
+      await loaded();
+      return ctx.snapshots.current().papers.find((p) => p.path === path)?.id ?? null;
+    },
+  };
 }

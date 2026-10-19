@@ -1,9 +1,10 @@
 /** Bundles @labshelf/terminal into dist/labshelf.mjs (the `labshelf` command), dist/thumbnailWorker.mjs, dist/labshelf-helper.mjs (LabShelf Helper) and dist/helperHost.mjs (the terminal app as the browser's LaTeX helper), which are self-contained (pdf-lib is bundled; no PDF renderer, canvas or OCR), and dist/bridgeHost.js (the browser bridge host, an ES module that the launcher starts with Node). @labshelf/core is bundled from source; pdfjs-dist, Tesseract and the native canvas stay external and are loaded from node_modules at run time, only when a PDF is parsed, read by OCR or rendered. */
 import { build, context } from "esbuild";
 import { builtinModules } from "node:module";
-import { chmod } from "node:fs/promises";
+import { chmod, copyFile, mkdir } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { TYPST_WASM_FILE, typstWasmPath } from "./typstWasm.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "..");
@@ -15,6 +16,8 @@ const banner = [
   "const require = __labshelfCreateRequire(import.meta.url);",
 ].join("\n");
 
+const TYPST_RENDERER = "@myriaddreamin/typst-ts-renderer";
+
 const common = {
   bundle: true,
   platform: "node",
@@ -23,7 +26,8 @@ const common = {
   sourcemap: true,
   logLevel: "info",
   // Loaded lazily from node_modules: pdfjs reads its data files next to itself, the canvas is a native module. pdf-lib is plain JavaScript and is bundled.
-  external: ["pdfjs-dist", "pdfjs-dist/*", "@napi-rs/canvas", "tesseract.js"],
+  // TRAP: typst.ts dynamically imports its optional renderer peer, which is not installed; the helper only compiles, so that import never runs.
+  external: ["pdfjs-dist", "pdfjs-dist/*", "@napi-rs/canvas", "tesseract.js", TYPST_RENDERER],
   banner: { js: banner },
 };
 
@@ -49,11 +53,15 @@ function assertHelperBundle(result, name) {
     throw new Error(`${name} must not import the PDF renderer, canvas or OCR, but the bundle reaches: ${[...new Set(offenders)].join(", ")}`);
   }
   // The executable ships without node_modules, so the only imports left are Node built-ins.
-  const external = output.imports.filter((entry) => entry.external && !isNodeBuiltin(entry.path));
+  const external = output.imports.filter((entry) => entry.external && !isNodeBuiltin(entry.path) && entry.path !== TYPST_RENDERER);
   if (external.length > 0) {
     throw new Error(`${name} must be self-contained, but it imports: ${[...new Set(external.map((entry) => entry.path))].join(", ")}`);
   }
 }
+
+// The helper script loads nothing from node_modules, so its Typst compiler WASM sits beside it (`runHelperScriptHost` reads it there).
+await mkdir(resolve(root, "dist"), { recursive: true });
+await copyFile(typstWasmPath(), resolve(root, "dist", TYPST_WASM_FILE));
 
 if (watch) {
   for (const options of entries) {

@@ -1,14 +1,13 @@
 // Runs one helper session: the native hello on stdio, then project, build and TeX messages on the loopback socket.
 // CONTRACT: documents/contracts/helper.md#transport
-import { spawn } from "node:child_process";
 import * as os from "node:os";
+import * as path from "node:path";
 
 import type { HelperHost } from "../index.js";
-import { createManagedTinymist } from "../../typst/toolchain/node/index.js";
+import { TypstCompilerHost } from "../../typst/node/index.js";
 import { createSharedTexProvider } from "../../latex/toolchain/node/managed/index.js";
 import type { HelperLogger } from "./log/index.js";
 import { createBuildHandlers } from "./build/index.js";
-import { createLspHandler, createLspServers } from "./lsp/index.js";
 import { answerHello, createDispatcher, runHelperLoop, type HelloAnswer } from "./dispatch/index.js";
 import { createLibraryProjects, createProjectHandlers } from "./projectHandlers/index.js";
 import type { HelperSocket } from "./socket/index.js";
@@ -23,8 +22,12 @@ export interface HelperHostOptions {
   host: HelperHost;
   /** The process's command-line arguments; Chrome passes the caller's origin among them, Firefox the manifest path. */
   args: readonly string[];
+  /** The typst.ts compiler's WASM, which each composition root locates in its own bundle. */
+  typstWasm(): Promise<Uint8Array>;
   /** Runs after the hello opened the session. */
   afterHello?: () => void;
+  /** Runs once when the page's `hello` is refused for its protocol version; the host waits for it before exiting. */
+  afterVersionRejected?: () => Promise<void>;
   input?: AsyncIterable<Uint8Array>;
   output?: NodeJS.WritableStream;
 }
@@ -37,13 +40,14 @@ export async function runHelperHost(options: HelperHostOptions): Promise<void> {
   const send = createFrameWriter(options.output ?? process.stdout, logger);
   const tex = createSharedTexProvider({ env: process.env, platform: process.platform, homeDir: os.homedir(), logger, fetchImpl: fetch });
   const projects = createLibraryProjects({ logger });
-  const tinymist = createManagedTinymist({ logger });
-  const servers = createLspServers({ dataDir, logger, tinymist, projects, spawn });
-  const builds = createBuildHandlers({ dataDir, logger, projects, tex, tinymist, servers });
+  const packageDirs = { data: path.join(dataDir, "typst-packages", "local"), cache: path.join(dataDir, "typst-packages", "cache") };
+  const openTypst = (withFontDownload: <T>(run: () => Promise<T>) => Promise<T>): TypstCompilerHost =>
+    new TypstCompilerHost({ wasm: options.typstWasm, fontsDir: path.join(dataDir, "typst-fonts"), packageDirs, withFontDownload });
+  const builds = createBuildHandlers({ dataDir, logger, projects, tex, openTypst });
   const dispatcher = createDispatcher(
     {
-      ...createProjectHandlers({ dataDir, projects, forgetBuilds: builds.forget, edited: servers.edited, stopServer: servers.stop }),
-      compile: builds.compile, cancel: builds.cancel, lsp: createLspHandler(servers),
+      ...createProjectHandlers({ dataDir, projects, forgetBuilds: builds.forget }),
+      compile: builds.compile, cancel: builds.cancel,
       ...createTexInstallHandlers({ tex, helperVersion, host, logger }),
     },
     logger,
@@ -56,14 +60,18 @@ export async function runHelperHost(options: HelperHostOptions): Promise<void> {
     if (socket) { options.afterHello?.(); }
     return socket !== undefined;
   };
+  let versionRejected: Promise<void> | undefined;
+  const onVersionRejected = () => {
+    versionRejected ??= (options.afterVersionRejected?.() ?? Promise.resolve()).catch((error: unknown) => logger.error("helper", error, { step: "afterVersionRejected" }));
+  };
   await logger.log("INFO", "helper", "Helper started", { version: helperVersion, host, dataDir });
   try {
-    await runHelperLoop(options.input ?? process.stdin, hello, send, logger);
+    await runHelperLoop(options.input ?? process.stdin, hello, send, logger, onVersionRejected);
   } finally {
     builds.cancelAll();
     await socket?.close();
     await dispatcher.drain();
-    await servers.stopAll();
+    await versionRejected;
     await projects.closeAll();
     await logger.log("INFO", "helper", "Input closed; helper exits");
   }

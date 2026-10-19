@@ -1,11 +1,11 @@
 // Lists the open project's comment threads with a reply box and a Resolve button on each.
 import { el, icon } from "@labshelf/core/dom";
-import type { TabContext, TabModule } from "../types";
-import type { ReviewThread } from "../../review";
+import type { TabModule } from "../types";
+import type { CommentThreads, ReviewThread } from "../../review";
 
 const MODULE = "library-page.comments";
 
-function threadItem(thread: ReviewThread, act: (run: () => Promise<void>) => void, ctx: TabContext): HTMLElement {
+function threadItem(thread: ReviewThread, act: (run: () => Promise<void>) => void, threads: CommentThreads): HTMLElement {
   const place = thread.line === undefined ? `${thread.file} (text changed)` : `${thread.file}:${thread.line}`;
   const comments = el("ul", { class: "ls-comment-list", "aria-label": `Comments on ${place}` },
     ...thread.comments.map((each) => el("li", {}, el("strong", { text: each.author }), " ", el("span", { text: each.body }))));
@@ -15,12 +15,12 @@ function threadItem(thread: ReviewThread, act: (run: () => Promise<void>) => voi
   const send = el("button", { class: "ls-btn", type: "button", text: "Reply" });
   const submit = (): void => {
     const text = box.value.trim();
-    if (text !== "") { act(() => ctx.comments.reply(thread.id, text)); }
+    if (text !== "") { act(() => threads.reply(thread.id, text)); }
   };
   send.addEventListener("click", submit);
   box.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); submit(); } });
   const resolve = el("button", { class: "ls-btn", type: "button", html: `${icon("check")}<span>Resolve</span>` });
-  resolve.addEventListener("click", () => act(() => ctx.comments.resolve(thread.id)));
+  resolve.addEventListener("click", () => act(() => threads.resolve(thread.id)));
   const actions = el("div", { class: "ls-comment-actions" }, box, send, ...(thread.resolved ? [] : [resolve]));
   const head = el("div", { class: "ls-comment-place", text: thread.resolved ? `${place} - resolved` : place });
   head.append(el("blockquote", { class: "ls-comment-quote", text: thread.anchor.quote }));
@@ -29,6 +29,7 @@ function threadItem(thread: ReviewThread, act: (run: () => Promise<void>) => voi
 
 export const mountTab: TabModule["mountTab"] = (host, params, ctx) => {
   const projectId = params["projectId"] ?? "";
+  const { comments } = ctx.project();
   const body = host.appendChild(el("section", { class: "ls-comment-panel", "aria-label": "Comments" }));
   const status = el("p", { class: "ls-comment-status", role: "status" });
 
@@ -37,9 +38,9 @@ export const mountTab: TabModule["mountTab"] = (host, params, ctx) => {
   };
   const render = async (): Promise<void> => {
     try {
-      const threads = await ctx.comments.threads(projectId);
+      const threads = await comments.threads(projectId);
       status.textContent = "";
-      const list = el("ul", { class: "ls-comment-threads", "aria-label": "Comment threads" }, ...threads.map((each) => threadItem(each, act, ctx)));
+      const list = el("ul", { class: "ls-comment-threads", "aria-label": "Comment threads" }, ...threads.map((each) => threadItem(each, act, comments)));
       body.replaceChildren(status, threads.length === 0 ? el("p", { class: "ls-empty-text", text: "No comments yet." }) : list);
     } catch (error) {
       void ctx.logger.error(MODULE, error, { action: "list comment threads", projectId });
@@ -47,7 +48,7 @@ export const mountTab: TabModule["mountTab"] = (host, params, ctx) => {
       body.replaceChildren(status);
     }
   };
-  const stop = ctx.comments.onDidChange(() => void render());
+  const stop = comments.onDidChange(() => void render());
   void render();
   return { dispose() { stop(); body.remove(); } };
 };

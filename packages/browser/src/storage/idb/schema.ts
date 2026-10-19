@@ -23,13 +23,13 @@ interface MetadataRow {
 }
 
 /** The history log of one project: the serialized entries, one per line. */
-export interface HistoryLogRow {
+interface HistoryLogRow {
   projectId: string;
   text: string;
 }
 
 /** One file content of any project history, keyed by its SHA-256 hex digest. */
-export interface HistoryObjectRow {
+interface HistoryObjectRow {
   hash: string;
   bytes: Uint8Array;
 }

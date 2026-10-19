@@ -27,13 +27,13 @@ Firefox upgrades `ws://` to `wss://` under the CSP directive `upgrade-insecure-r
 Every message has the same envelope:
 
 ```json
-{ "v": 2, "id": "7", "type": "compile", "projectId": "thesis", "main": "main.tex", "mode": "preview" }
+{ "v": 3, "id": "7", "type": "compile", "projectId": "thesis", "main": "main.tex", "mode": "preview" }
 ```
 
 | Key | Type | Notes |
 |---|---|---|
-| `v` | integer | the protocol version, `2`. A message whose `v` differs is rejected |
-| `id` | string | 1 to 64 characters, chosen by the page. A reply carries the `id` of the request it answers, and every `progress` message of a request carries that request's `id`. Messages the helper sends unasked (`lsp`) have no `id` |
+| `v` | integer | the protocol version, `3`. A message whose `v` differs is rejected |
+| `id` | string | 1 to 64 characters, chosen by the page. A reply carries the `id` of the request it answers, and every `progress` message of a request carries that request's `id`. An `error` for a frame that carried no valid `id` has none |
 | `type` | string | one of the messages below for its direction and transport; any other value is rejected |
 
 Keys a message does not define are dropped when it is read.
@@ -52,12 +52,11 @@ Keys a message does not define are dropped when it is read.
 |---|---|---|
 | `auth` | `token` | `authed`; anything else closes the socket |
 | `openProject` | `projectId`; `root`: the project folder as a library path ([bridge.md#paths](bridge.md#paths)) | `opened` with `files`: the project's paths |
-| `closeProject` | `projectId` | `closed`; the helper drops the project's unsaved text and stops its language server |
+| `closeProject` | `projectId` | `closed`; the helper drops the project's unsaved text |
 | `edit` | `projectId`, `path`, `version`: integer from 1; either `text`, the whole file, or `changes`: `{ from, to, insert }[]`, non-overlapping ranges of UTF-16 offsets in the text of `version - 1` | none; `error` `stale` when `changes` do not apply to the helper's version, and the page then sends `text` |
 | `save` | `projectId`, `path` | none; the page wrote the file through its own storage, and the helper drops its unsaved text for it and reads the file from disk again |
 | `compile` | `projectId`; `main`; `mode`: `"preview"` or `"full"`; `engine?`: `"pdflatex"`, `"xelatex"` or `"lualatex"` for a `.tex` main; `editedFile?`; `editedLine?`: the 1-based line of the edit in `editedFile` | `progress`, then `built`, then `pages` when it succeeded |
 | `cancel` | `projectId` | the running build ends with `built` `status: "cancelled"` |
-| `lsp` | `projectId`; `payload`: one JSON-RPC message for the project's Typst language server | none; the server's messages come back as `lsp` |
 | `installTex` | `kind`: `"tinytex"` or `"texlive"` | `progress`, then `ready` |
 | `installAllPackages` | none | `progress`, then `ready` |
 
@@ -65,7 +64,7 @@ Keys a message does not define are dropped when it is read.
 
 `edit` changes only the helper's copy of the text. The helper never writes into the library folder. A `.tex` `compile` builds the project's files from disk with the unsaved text of each edited path in their place. `mode: "preview"` runs one engine pass; `"full"` runs latexmk with the bibliography and every pass it needs. The page asks for `"full"` on save and after 2 s without typing.
 
-A Typst project runs on the managed Tinymist ([managed-tools.md#tinymist](managed-tools.md#tinymist)), installed on first use with `progress` phase `"installing-tinymist"`. The helper starts one Tinymist per open Typst project, on its first `lsp` or `compile`, with the project's working copy as root, and stops it on `closeProject` or when the socket closes. Every `edit` of the project reaches the server as `textDocument/didChange`, so completion and diagnostics see unsaved text. Document URIs in `lsp` payloads are `labshelf:/<path>` with a project path, each segment percent-encoded; the helper maps them to and from the files of the working copy, so the page never sees a path on the computer. The helper refuses a page `lsp` message whose method is `workspace/executeCommand` or `workspace/didChangeConfiguration`, or that holds a raw `file:` URI or a URI that leaves the project: a request gets a JSON-RPC error reply (`-32600`), a notification is dropped; a server `workspace/applyEdit` that names a file outside the project is dropped and answered as not applied. Tinymist runs, for the language server and for `compile`, with a minimal environment (`PATH`, `LANG`, the temporary folder, `HOME` set to the helper's data folder) and with Typst's package cache and local packages in `typst-packages/` of that folder, so it never reads or fills the user's own caches; it still sees the system fonts and the user's font folders. The page's initialization options and configuration are not passed to Tinymist: the helper answers the server's configuration requests itself. A `.typ` `compile` exports the PDF through Tinymist; `mode` makes no difference.
+A `.typ` `compile` runs Typst 0.14.2 through the bundled WASM compiler, and `mode` makes no difference. Its fonts are in `typst-fonts/` and its packages in `typst-packages/` of the helper's data folder; the helper never reads or fills the user's own Typst folders.
 
 ### Helper to page
 
@@ -76,10 +75,9 @@ A Typst project runs on the managed Tinymist ([managed-tools.md#tinymist](manage
 | `authed` | socket | none |
 | `opened` | socket | `projectId`; `files`: string[] |
 | `closed` | socket | `projectId` |
-| `progress` | socket | `phase`: `"installing-tex"`, `"installing-package"`, `"installing-tinymist"`, `"building"` or `"updating"`; `message`: one line for the user; `fraction?`: 0 to 1 |
+| `progress` | socket | `phase`: `"installing-tex"`, `"installing-package"`, `"building"` or `"updating"`; `message`: one line for the user; `fraction?`: 0 to 1 |
 | `built` | socket | `status`: `"succeeded"`, `"failed"`, `"cancelled"`, `"toolchain-missing"` or `"needs-shell-escape"`; `problems`; `pdfSha256?` |
 | `pages` | socket | `pdfSha256`; `pageCount`; `changed`: `{ index, offset, length }[]`; the payload |
-| `lsp` | socket | `projectId`; `payload` |
 | `error` | native, socket | `code`: non-empty string; `message`: string |
 
 `tex.source` is `"none"`, `"tinytex"`, `"texlive"` or `"system"`; `year` is the TeX Live release year; `complete` is true when every package is installed, so a build never stops to install one.
@@ -88,7 +86,7 @@ Each entry of `problems` has `severity` (`"error"`, `"warning"` or `"info"`), `m
 
 `pages` carries only the pages whose content differs from the last `pages` the helper sent for that project on this socket; the first one after `openProject` carries every page. Each entry of `changed` is a page `index` from 0 and the `offset` and `length` in the payload of a standalone one-page PDF of that page. A page index at or past `pageCount` no longer exists.
 
-A `.tex` `compile` in `preview` mode that edits one section builds only that section, as `<base>-section.tex` in the build directory, and swaps its pages into `<base>-full.pdf`, the PDF the build directory keeps for display (`<base>` is the main file's name without extension). The section build needs an earlier full build of the same main; without one, or when the edit lies outside a section, the preview builds the whole document. `pages` and `pdfSha256` describe `<base>-full.pdf` in both cases, so the page never tells the two builds apart.
+A `.tex` `compile` in `preview` mode that edits one section builds only that section, as `<base>-section.tex` in the build directory, and swaps its pages into `<base>-full.pdf`, the PDF the build directory keeps for display (`<base>` is the main file's name without extension). The section build needs an earlier full build of the same main; without one, when the edit lies outside a section, or when the compile names no edit, the preview builds the whole document. `pages` and `pdfSha256` describe `<base>-full.pdf` in both cases, so the page never tells the two builds apart.
 
 A message the helper cannot accept gets an `error` reply with the request's `id` when it had one, and `code` set to the rejection: `malformed`, `version`, `unknown-type`, `invalid-field`, `path`, `project-id`, `stale`, `no-library` or `limit`. A handler that fails while working replies `io` (a project file could not be read) or `internal` (any other failure), with the failure in `message`.
 
@@ -118,7 +116,7 @@ A message past a limit is rejected with `limit`; a socket message past 16 MiB cl
 
 ## Version
 
-`PROTOCOL_VERSION` rises with every change to a message, a limit or the handshake. The page sends `hello` first; the helper answers `ready` with its `protocol`. When `protocol` is lower than the page's, the page asks to update the program `host` names (LabShelf Helper, or the VS Code extension or terminal app that runs the helper script); when it is higher, it shows "Update LabShelf". A message rejected for `version` reports the `v` it carried, so either side can tell which one is older.
+`PROTOCOL_VERSION` rises with every change to a message, a limit or the handshake. The page sends `hello` first; the helper answers `ready` with its `protocol`. When `protocol` is lower than the page's, the page asks to update the program `host` names (LabShelf Helper, or the VS Code extension or terminal app that runs the helper script); when it is higher, it shows "Update LabShelf". A message rejected for `version` reports the `v` it carried, so either side can tell which one is older. When the helper refuses the page's `hello` for `version`, its `error` reply carries the helper's `v`: the page treats a lower `v` as "Update LabShelf Helper" (the host is unknown, so it also names the VS Code extension and the terminal app) and a higher one as "Update LabShelf", and never shows the raw error. The standalone helper runs its self-update check after such a refusal, ignoring the once-a-day limit, and waits for it before it exits.
 
 ## Data folder
 
@@ -150,7 +148,7 @@ The desktop apps register the same host name with their own launcher: VS Code wi
 
 ## Self-update
 
-Only the standalone binary updates itself. After it answers `hello`, it checks `latest.json` of the latest GitHub release at most once a day. The manifest is signed with Ed25519 and the helper rejects it unless the signature verifies against the public key built into it; the download must also match the asset's `sha256`. A newer version replaces the binary and runs from the next launch. A failed check is logged and never affects the session. A system TeX or a user's projects are not touched.
+Only the standalone binary updates itself. After it answers `hello`, it checks `latest.json` of the latest GitHub release at most once a day. After it refuses a `hello` for `version`, it checks regardless of that limit. The manifest is signed with Ed25519 and the helper rejects it unless the signature verifies against the public key built into it; the download must also match the asset's `sha256`. A newer version replaces the binary and runs from the next launch. A failed check is logged and never affects the session. A system TeX or a user's projects are not touched.
 
 A helper run by VS Code or the terminal app never updates itself; it updates with that app.
 

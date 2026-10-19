@@ -10,6 +10,14 @@ export interface QuickPickItem<T> {
   value: T;
 }
 
+/** A non-selectable category heading; it shows only while an item follows it in the filtered list. */
+export interface QuickPickSeparator {
+  kind: "separator";
+  label: string;
+}
+
+export type QuickPickEntry<T> = QuickPickItem<T> | QuickPickSeparator;
+
 export interface QuickPickOptions {
   title?: string;
   placeholder?: string;
@@ -24,8 +32,22 @@ export interface InputBoxOptions {
   validate?: (value: string) => string | null | undefined;
 }
 
+/** The entries that match every token, each separator kept only when a matching item follows it. */
+function filterEntries<T>(entries: QuickPickEntry<T>[], toks: string[]): QuickPickEntry<T>[] {
+  const matches = (it: QuickPickItem<T>): boolean => toks.every((t) => `${it.label} ${it.description ?? ""}`.toLowerCase().includes(t));
+  const kept: QuickPickEntry<T>[] = [];
+  let heading: QuickPickSeparator | undefined;
+  for (const entry of entries) {
+    if ("kind" in entry) { heading = entry; continue; }
+    if (!matches(entry)) continue;
+    if (heading) { kept.push(heading); heading = undefined; }
+    kept.push(entry);
+  }
+  return kept;
+}
+
 /** Shows a filterable list; resolves with the chosen item's value. */
-export function quickPick<T>(items: QuickPickItem<T>[], opts: QuickPickOptions = {}): Promise<T | undefined> {
+export function quickPick<T>(entries: QuickPickEntry<T>[], opts: QuickPickOptions = {}): Promise<T | undefined> {
   return new Promise((resolve) => {
     const input = el("input", { class: "ls-input", type: "text", placeholder: opts.placeholder ?? "", spellcheck: "false", autocomplete: "off" });
     const list = el("div", { class: "ls-quick-list", role: "listbox" });
@@ -33,26 +55,28 @@ export function quickPick<T>(items: QuickPickItem<T>[], opts: QuickPickOptions =
       opts.title ? el("div", { class: "ls-quick-title", text: opts.title }) : null, input, list);
     const { close } = mountOverlay(box, () => resolve(undefined));
 
-    let visible: QuickPickItem<T>[] = items;
+    let visible: QuickPickItem<T>[] = [];
     let active = 0;
 
     const render = (): void => {
       const toks = input.value.toLowerCase().split(" ").filter(Boolean);
-      visible = toks.length
-        ? items.filter((it) => toks.every((t) => `${it.label} ${it.description ?? ""}`.toLowerCase().includes(t)))
-        : items;
+      const rows = filterEntries(entries, toks);
+      visible = rows.filter((entry): entry is QuickPickItem<T> => !("kind" in entry));
       active = Math.min(active, Math.max(0, visible.length - 1));
       list.innerHTML = visible.length === 0 ? `<div class="ls-quick-empty">No matching results</div>` : "";
-      visible.forEach((it, i) => {
+      let index = 0;
+      for (const entry of rows) {
+        if ("kind" in entry) { list.append(el("div", { class: "ls-quick-sep", role: "presentation", text: entry.label })); continue; }
+        const i = index++;
         const row = el("div", {
           class: `ls-quick-item${i === active ? " active" : ""}`,
           role: "option",
-          html: `${it.icon ? icon(it.icon) : ""}<span class="label">${highlight(it.label, toks)}</span>${it.description ? `<span class="desc">${highlight(it.description, toks)}</span>` : ""}`,
+          html: `${entry.icon ? icon(entry.icon) : ""}<span class="label">${highlight(entry.label, toks)}</span>${entry.description ? `<span class="desc">${highlight(entry.description, toks)}</span>` : ""}`,
         });
         row.addEventListener("mousemove", () => { if (active !== i) { active = i; paintActive(); } });
         row.addEventListener("click", () => pick(i));
         list.append(row);
-      });
+      }
     };
     const paintActive = (): void => {
       list.querySelectorAll(".ls-quick-item").forEach((r, i) => r.classList.toggle("active", i === active));

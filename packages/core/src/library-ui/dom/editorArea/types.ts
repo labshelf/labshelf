@@ -3,7 +3,21 @@ import type { IconName } from "../../../ui/icons/index.js";
 
 export type EditorGroupIndex = 0 | 1;
 
-export interface EditorTabBody { dispose(): void }
+export interface EditorTabAction {
+  id: string;
+  icon: IconName;
+  /** Tooltip and accessible name. */
+  label: string;
+  run(): void;
+  /** Goes into the group's "More Actions" menu instead of the toolbar, like VS Code's non-navigation groups. */
+  overflow?: boolean;
+}
+
+export interface EditorTabBody {
+  dispose(): void;
+  /** Shown at the end of the tab strip while this tab is its group's active one; read on reveal and on `refreshActions`. */
+  actions?: readonly EditorTabAction[];
+}
 
 export interface EditorTab {
   id: string;
@@ -51,6 +65,8 @@ export interface EditorArea {
   /** Resolves false when the tab is not open or `onClose` kept it. */
   close(id: string): Promise<boolean>;
   activate(id: string): void;
+  /** Repaints the toolbar from the body's current `actions` while `id` is its group's active tab, for a body that gets them after mount. */
+  refreshActions(id: string): void;
   tabs(): EditorTabInfo[];
   /** Moves the focused tab to the other group. */
   split(): void;

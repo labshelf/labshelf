@@ -33,6 +33,8 @@ export class FakeHelper implements NativePort {
   built: { status: HelperBuildStatus; pages?: PagesScript } = { status: "failed" };
   /** Answers `edit` messages that carry `changes` with a `stale` error. */
   staleChanges = false;
+  /** Answers `hello` with a `version` error that carries this `v`, as a helper of that protocol does. */
+  refuseHelloWithV: number | undefined;
   /** Leaves `hello` unanswered, so a test can close the port while it is pending. */
   muteHello = false;
   readonly nativePosted: Envelope[] = [];
@@ -54,6 +56,10 @@ export class FakeHelper implements NativePort {
     if (this.muteHello) { return; }
     const reply = (body: Envelope) => this.messageListener({ v: PROTOCOL_VERSION, id: message.id, ...body });
     queueMicrotask(() => {
+      if (this.refuseHelloWithV !== undefined) {
+        reply({ v: this.refuseHelloWithV, type: "error", code: "version", message: `v is ${PROTOCOL_VERSION}, expected ${this.refuseHelloWithV}` });
+        return;
+      }
       reply({ type: "ready", host: "helper", protocol: this.protocol, helperVersion: "1.0.0", tex: this.tex });
       if (this.protocol === PROTOCOL_VERSION) { reply({ type: "session", port: 4321, token: "secret" }); }
     });

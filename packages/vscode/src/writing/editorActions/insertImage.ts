@@ -1,16 +1,10 @@
 // Inserts a figure for an image the user picks, copying the image into the project when it lies outside.
 import * as vscode from "vscode";
 
-import { imageSnippet, type ILogger } from "@labshelf/core";
+import { IMAGE_EXTENSIONS, IMAGE_FOLDER, freeImageName, imageBaseFolder, imageSnippet, type ILogger } from "@labshelf/core";
 
 import { isInside, owningProject, type ProjectLookup, type ReadyProject } from "../mainDocument.js";
 import type { WritingLanguage } from "./editorLanguage.js";
-
-const IMAGE_FOLDER = "images";
-const EXTENSIONS: Record<WritingLanguage, string[]> = {
-  latex: ["png", "jpg", "jpeg", "pdf", "eps"],
-  typst: ["png", "jpg", "jpeg", "gif", "svg"],
-};
 
 async function exists(uri: vscode.Uri): Promise<boolean> {
   try { await vscode.workspace.fs.stat(uri); return true; } catch { return false; }
@@ -19,22 +13,10 @@ async function exists(uri: vscode.Uri): Promise<boolean> {
 /** Copies into the project's images folder under a free name; an existing file is never overwritten. */
 async function copyIntoProject(projects: ProjectLookup, project: ReadyProject, source: string): Promise<string> {
   const { paths } = projects;
-  const extension = paths.extname(source);
-  const stem = paths.basename(source, extension);
   const folder = paths.join(project.folder, IMAGE_FOLDER);
-  let target = paths.join(folder, stem + extension);
-  for (let suffix = 2; await exists(vscode.Uri.file(target)); suffix += 1) {
-    target = paths.join(folder, `${stem}-${suffix}${extension}`);
-  }
+  const target = await freeImageName(paths, folder, paths.basename(source), (path) => exists(vscode.Uri.file(path)));
   await vscode.workspace.fs.copy(vscode.Uri.file(source), vscode.Uri.file(target), { overwrite: false });
   return target;
-}
-
-/** LaTeX resolves graphics from the main file's folder; Typst from the folder of the file that names the image. */
-function baseFolder(projects: ProjectLookup, project: ReadyProject, language: WritingLanguage, documentPath: string): string {
-  const { paths } = projects;
-  if (language === "latex" && project.main) { return paths.dirname(paths.join(project.folder, project.main)); }
-  return paths.dirname(documentPath);
 }
 
 export async function insertImage(editor: vscode.TextEditor, language: WritingLanguage, projects: ProjectLookup, logger: ILogger | undefined): Promise<void> {
@@ -44,7 +26,7 @@ export async function insertImage(editor: vscode.TextEditor, language: WritingLa
   const picked = await vscode.window.showOpenDialog({
     canSelectMany: false,
     defaultUri: vscode.Uri.file(project.folder),
-    filters: { Images: EXTENSIONS[language] },
+    filters: { Images: IMAGE_EXTENSIONS[language] },
     openLabel: "Insert Image",
   });
   const source = picked?.[0]?.fsPath;
@@ -61,6 +43,6 @@ export async function insertImage(editor: vscode.TextEditor, language: WritingLa
       return;
     }
   }
-  const relative = paths.relative(baseFolder(projects, project, language, documentPath), image).split(paths.sep).join("/");
+  const relative = paths.relative(imageBaseFolder(language, project.folder, project.main, documentPath, paths), image).split(paths.sep).join("/");
   await editor.insertSnippet(new vscode.SnippetString(imageSnippet(language, relative)));
 }

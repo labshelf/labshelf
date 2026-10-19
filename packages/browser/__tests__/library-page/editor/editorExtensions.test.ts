@@ -8,7 +8,7 @@ import { editorExtensions } from "../../../src/library-page/editor/editorExtensi
 
 describe("editorExtensions", () => {
   it("types the environment name into both \\begin and \\end of the snippet", () => {
-    const view = new EditorView({ doc: "\\", extensions: editorExtensions([]), parent: document.body });
+    const view = new EditorView({ doc: "\\", extensions: editorExtensions([], { onSave: () => undefined }), parent: document.body });
     snippet("\\begin{${1:environment}}\n\t${0}\n\\end{${1:environment}}")(view, null, 0, 1);
     view.dispatch(view.state.replaceSelection("itemize"));
     expect(view.state.doc.toString()).toMatch(/^\\begin{itemize}\n\s*\n\\end{itemize}$/);

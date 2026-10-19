@@ -110,6 +110,17 @@ describe("setup card states", () => {
     card.dispose();
   });
 
+  it("update-helper from a refused hello: asks to update the helper, or the app that runs it, and offers the download", async () => {
+    const { root, deps, card } = setup(fakeHelper({ state: "update-helper", protocol: 2, host: undefined }), "mac");
+    await settle();
+    expect(root.textContent).toContain("Update LabShelf Helper: it is older than this extension.");
+    expect(root.textContent).toContain("update that app instead");
+    expect(root.textContent).not.toContain("version");
+    button(root, "Download the update").click();
+    expect(deps.openUrl).toHaveBeenCalledWith(`${ASSETS}labshelf-helper-macos.pkg`);
+    card.dispose();
+  });
+
   it.each([
     ["vscode", "LabShelf in VS Code is older than this extension. Update the LabShelf extension in VS Code and reload it."],
     ["terminal", "The LabShelf terminal app is older than this extension. Run npm install -g @labshelf/terminal to update it."],
@@ -148,7 +159,7 @@ describe("setup card states", () => {
     const helper = fakeHelper({ state: "update-extension", protocol: 9 });
     const { root, card } = setup(helper);
     await settle();
-    expect(root.textContent).toContain("LabShelf Helper needs a newer version of the LabShelf extension.");
+    expect(root.textContent).toContain("Update LabShelf: LabShelf Helper needs a newer version of the LabShelf extension.");
     button(root, "Check again").click();
     await settle();
     expect(helper.connect).toHaveBeenCalledTimes(2);

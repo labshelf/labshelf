@@ -5,9 +5,9 @@ import type { LocatedProblem, TexInstallKind } from "../latex/index.js";
 import type { LatexEngine } from "../project/index.js";
 
 export const HELPER_HOST_NAME = "dev.labshelf.helper";
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 3;
 // The helper program's version, kept beside the program so every app that bundles it reports the same one.
-export const HELPER_VERSION = "0.1.1";
+export const HELPER_VERSION = "0.2.0";
 
 // CONTRACT: documents/contracts/helper.md#limits
 export const MAX_SOCKET_MESSAGE_BYTES = 16 * 1024 * 1024;
@@ -22,7 +22,7 @@ export type TexSource = (typeof TEX_SOURCES)[number];
 /** The program that answers: the standalone LabShelf Helper, or a desktop app running the helper script. */
 export const HELPER_HOSTS = ["helper", "vscode", "terminal"] as const;
 export type HelperHost = (typeof HELPER_HOSTS)[number];
-export const PROGRESS_PHASES = ["installing-tex", "installing-package", "installing-tinymist", "building", "updating"] as const;
+export const PROGRESS_PHASES = ["installing-tex", "installing-package", "building", "updating"] as const;
 export type ProgressPhase = (typeof PROGRESS_PHASES)[number];
 export const HELPER_BUILD_STATUSES = ["succeeded", "failed", "cancelled", "toolchain-missing", "needs-shell-escape"] as const;
 export type HelperBuildStatus = (typeof HELPER_BUILD_STATUSES)[number];
@@ -36,8 +36,6 @@ export interface TextChange { from: number; to: number; insert: string }
 export interface ChangedPage { index: number; offset: number; length: number }
 
 type Envelope<T extends string> = { v: number; id: string; type: T };
-/** Messages the helper may send without a request carry no id. */
-type UnaskedEnvelope<T extends string> = { v: number; id?: undefined; type: T };
 
 export type ToHelperMessage =
   | Envelope<"hello"> & { extensionVersion: string; origin: string }
@@ -49,7 +47,6 @@ export type ToHelperMessage =
     | { changes: TextChange[]; text?: undefined })
   | Envelope<"save"> & { projectId: string; path: string }
   | Envelope<"compile"> & { projectId: string; main: string; mode: CompileMode; engine?: LatexEngine; editedFile?: string; editedLine?: number }
-  | Envelope<"lsp"> & { projectId: string; payload: Record<string, unknown> }
   | Envelope<"cancel"> & { projectId: string }
   | Envelope<"installTex"> & { kind: TexInstallKind }
   | Envelope<"installAllPackages">;
@@ -63,7 +60,6 @@ export type ToPageMessage =
   | Envelope<"progress"> & HelperProgress
   | Envelope<"built"> & { status: HelperBuildStatus; problems: LocatedProblem[]; pdfSha256?: string }
   | Envelope<"pages"> & { pdfSha256: string; pageCount: number; changed: ChangedPage[] }
-  | UnaskedEnvelope<"lsp"> & { projectId: string; payload: Record<string, unknown> }
   | (Omit<Envelope<"error">, "id"> & { id?: string | undefined; code: string; message: string });
 
 export type HelperDirection = "toHelper" | "toPage";

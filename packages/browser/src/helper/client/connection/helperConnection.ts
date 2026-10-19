@@ -13,9 +13,14 @@ export class HelperClosedError extends Error {
   constructor(message: string, readonly reason: string | undefined) { super(message); }
 }
 
+/** The helper refused or sent a message of another protocol version; `helperProtocol` is the `v` it carried, when it carried a number. */
+export class HelperVersionError extends Error {
+  constructor(readonly helperProtocol: number | undefined) {
+    super(`LabShelf Helper speaks protocol ${helperProtocol ?? "unknown"}, this page speaks ${PROTOCOL_VERSION}`);
+  }
+}
+
 export interface ConnectionHooks {
-  /** Messages the helper sends unasked. */
-  onLsp?: (message: Extract<ToPageMessage, { type: "lsp" }>) => void;
   /** An `error` that answers no pending request, such as `stale` for an `edit`. */
   onUnmatchedError?: (message: ErrorMessage) => void;
   onClose?: (reason: string | undefined) => void;
@@ -79,18 +84,22 @@ export class HelperConnection {
     const parsed = parseHelperMessage(raw, "toPage");
     if (!parsed.ok) {
       void this.logger.log("WARN", MODULE, "Dropped an unreadable helper message", { code: parsed.code, reason: parsed.reason });
-      this.settleError(parsed.id, new Error(`LabShelf Helper sent an unreadable message (${parsed.code}): ${parsed.reason}`));
+      const error = parsed.code === "version"
+        ? new HelperVersionError(parsed.received)
+        : new Error(`LabShelf Helper sent an unreadable message (${parsed.code}): ${parsed.reason}`);
+      this.settleError(parsed.id, error);
       return;
     }
     const message = parsed.message;
-    if (message.type === "lsp") { this.hooks.onLsp?.(message); return; }
     const pending = message.id === undefined ? undefined : this.pending.get(message.id);
     if (!pending || message.id === undefined) {
       if (message.type === "error") { this.hooks.onUnmatchedError?.(message); }
       return;
     }
     if (message.type === "error") {
-      this.settleError(message.id, new Error(`LabShelf Helper refused ${pending.type} (${message.code}): ${message.message}`));
+      this.settleError(message.id, message.code === "version"
+        ? new HelperVersionError(message.v)
+        : new Error(`LabShelf Helper refused ${pending.type} (${message.code}): ${message.message}`));
       return;
     }
     try {

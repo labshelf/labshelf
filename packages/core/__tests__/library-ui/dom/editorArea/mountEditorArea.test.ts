@@ -147,9 +147,10 @@ test("the sash width loads from and saves to the prefs port", () => {
   area.open(probe("b", 1).tab);
   expect(groups()[0]!.style.width).toBe("420px");
   const sash = slot.querySelector<HTMLElement>(".ls-editor-sash")!;
-  sash.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
-  window.dispatchEvent(new MouseEvent("mousemove", { clientX: 300 }));
-  window.dispatchEvent(new MouseEvent("mouseup"));
+  sash.setPointerCapture = jest.fn();
+  sash.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+  sash.dispatchEvent(new MouseEvent("pointermove", { clientX: 300 }));
+  sash.dispatchEvent(new MouseEvent("pointerup"));
   expect(save).toHaveBeenCalledWith(parseInt(groups()[0]!.style.width, 10));
 });
 

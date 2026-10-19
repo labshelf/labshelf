@@ -48,13 +48,16 @@ The minimum versions are the floor for pdf.js 6.3.
 
 ## Library page sidebar
 
-The sidebar is core's library sidebar, as in VS Code: Library, then Projects. Projects lists the library's writing projects with their tooltip (main file, compiler, reading progress over the papers a project lists). A click opens the project in the library page's project session, and the row menu offers Open PDF when a built PDF sits beside the main file. The browser hides what it cannot do: templates, All projects, new projects, adding a folder and project folders.
+The sidebar is core's library sidebar, as in VS Code: Library, then Projects. Projects lists the library's writing projects with their tooltip (main file, compiler, reading progress over the papers a project lists). A click opens the project in the library page's project session, and the row menu offers Open PDF when a built PDF sits beside the main file. The browser hides what it cannot do: new blank projects, adding a folder and project folders. Explore templates opens the Templates tab, the same gallery as VS Code over the same sources; only publishing needs VS Code or the terminal.
 
 ## Library page workspace
 
-The library page is a tabbed workspace. Tab kinds are Library, Templates, All projects, a project's Source, Preview, History and Comments. The open tabs and the active one are written to the page hash as `#/tabs/<id>,<id>;active=<id>`, and to `sessionStorage["labshelf.library.tabs"]`, so a reload restores them. A folder deep link (`#/papers/...`) and the tabs hash coexist: the router leaves the open folder alone while the hash is a tabs hash.
+The library page is a tabbed workspace. Tab kinds are Library, Templates, All projects, a project's Source, Preview, History, Comments and Search. The open tabs and the active one are written to the page hash as `#/tabs/<id>,<id>;active=<id>`, and to `sessionStorage["labshelf.library.tabs"]`, so a reload restores them. A folder deep link (`#/papers/...`) and the tabs hash coexist: the router leaves the open folder alone while the hash is a tabs hash. A paper's path in the hash (`#/papers/<folder>/<id>`) opens its folder and selects it.
 
-- Source edits a project file in a CodeMirror editor; edits go to LabShelf Helper for builds ([helper.md](../contracts/helper.md)). Preview shows the built PDF in the core reader and updates page by page from `pages`.
+- Source edits a project file in a CodeMirror editor; edits go to LabShelf Helper for builds ([helper.md](../contracts/helper.md)). Cmd/Ctrl+S in the editor saves the file and asks the helper for a build. The editor's title bar carries the VS Code actions: Show Project History, Insert Symbol, Insert Table, Insert Image, Search in Project, Cite from Library, and Bold and Italic in the overflow menu.
+- Preview shows the built PDF in the core reader and updates page by page from `pages`. The page serves the reader's header and footer actions: Recompile, a problem's source line, Compare, Mark version and the check limits.
+- Search finds and replaces text across the project's files.
+- Typst completion, hover and go to definition run in the page, from the core Typst language service, with or without the helper.
 - History lists the project's recorded edits, versions and restores, with Restore this point and Mark Version. Open editors reload after a restore. The history is kept in the browser's storage, not in the project folder. Compare Versions is desktop-only: the page toasts that it needs the VS Code extension or the terminal app.
 - Comments lists a project's comment threads from `comments.json`; in a joined project the threads are live over the share.
 

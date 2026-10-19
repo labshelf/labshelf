@@ -1,4 +1,4 @@
-/** Exports the runtime-neutral citation API: citations in sources, where a key is being typed, labshelf.bib text and the main file's bibliography line, the page argument of a citation, papers by cite key, the papers list of labshelf.yaml, the fixes a citation card offers, writing a project's labshelf.bib. */
+/** Exports the runtime-neutral citation API: citations in sources, where a key is being typed, labshelf.bib text and the main file's bibliography line, the page argument of a citation, papers by cite key, the papers list of labshelf.yaml, the fixes a citation card offers, writing a project's labshelf.bib, the words of the Cite from Library pickers. */
 export { BIBLIOGRAPHY_HEADER, generateBibliography } from "./bibliographyFile.js";
 export type { GeneratedBibliography } from "./bibliographyFile.js";
 export { withBibliographyLine } from "./bibliographyLine.js";
@@ -17,3 +17,6 @@ export type { SuggestableKey } from "./fixes/index.js";
 export { DISK_ONLY, projectSources } from "./sources/index.js";
 export type { ProjectSource } from "./sources/index.js";
 export { projectCitationKeys, updateProjectBibliography } from "./projectBibliography/index.js";
+export { quotableHighlights } from "./highlights/index.js";
+export { CITE_WITHOUT_PAGE, choiceCitationOptions, highlightLabel, highlightPage, paperPickText } from "./citePick/index.js";
+export type { HighlightChoice, PickText } from "./citePick/index.js";

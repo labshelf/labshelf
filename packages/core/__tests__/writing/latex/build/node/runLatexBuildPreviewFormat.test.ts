@@ -43,10 +43,11 @@ async function setup(engine: "pdflatex" | "xelatex" = "pdflatex", failing = fals
   await fs.writeFile(path.join(bin, engine), fakeEngine(engine, outDir, calls, args, seen), { mode: 0o755 });
   await fs.mkdir(outDir, { recursive: true });
   await fs.writeFile(path.join(outDir, "main.aux"), "aux\n");
+  await fs.writeFile(path.join(outDir, "main-full.pdf"), "%PDF full\n");
   const logger = fakeLogger();
   const request: LatexBuildRequest = {
     toolchain: { engine, executable: path.join(bin, "latexmk") }, projectFolder, main: "main.tex", outDir, mode: "preview",
-    signal: new AbortController().signal, logger,
+    editedFile: "main.tex", editedLine: 1, signal: new AbortController().signal, logger,
   };
   return { request, logger, bin, calls, args, seen };
 }

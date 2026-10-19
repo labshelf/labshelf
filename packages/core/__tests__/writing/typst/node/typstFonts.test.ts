@@ -11,7 +11,7 @@ import { respond } from "../../../support/typstFixtures";
 afterEach(cleanupTempDirs);
 
 function fontsDir(storage: string): string {
-  return path.join(storage, "typst", "fonts", TYPST_VERSION);
+  return path.join(storage, TYPST_VERSION);
 }
 
 async function writeFonts(storage: string, files: readonly string[]): Promise<void> {

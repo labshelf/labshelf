@@ -21,7 +21,7 @@ export interface SectionPreviewInput {
   hasFormat: boolean;
 }
 
-export type SectionFallbackReason =
+type SectionFallbackReason =
   | "no-full-build" | "engine" | "no-format" | "outside-section" | "no-matching-state" | SectionTextFallback;
 
 export type SectionPreviewPlan =

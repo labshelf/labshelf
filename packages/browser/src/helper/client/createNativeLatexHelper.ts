@@ -1,6 +1,6 @@
 // Implements ILatexHelper over a native-messaging handshake and the loopback WebSocket the helper opens for the session.
 import {
-  PROTOCOL_VERSION, type HelperCompileRequest, type HelperEdit, type HelperLspListener, type HelperProgressListener,
+  PROTOCOL_VERSION, type HelperCompileRequest, type HelperEdit, type HelperProgressListener,
   type HelperStatus, type ILatexHelper, type ToPageMessage,
 } from "@labshelf/core/helper";
 import type { ILogger } from "@labshelf/core";
@@ -25,7 +25,6 @@ const MODULE = "browser.helper";
 export function createNativeLatexHelper(deps: NativeLatexHelperDeps): ILatexHelper {
   const { logger } = deps;
   const edits = new EditTracker();
-  const lspListeners = new Map<string, Set<HelperLspListener>>();
   let session: Session | undefined;
   let current: HelperStatus | undefined;
   let generation = 0;
@@ -69,7 +68,6 @@ export function createNativeLatexHelper(deps: NativeLatexHelperDeps): ILatexHelp
     previous?.socket.disconnect();
     const handshakeDeps: HandshakeDeps = { ...deps, webSocket: deps.webSocket ?? globalThis.WebSocket };
     const outcome = await handshake(handshakeDeps, {
-      onLsp: (message) => lspListeners.get(message.projectId)?.forEach((listener) => listener(message.payload)),
       onUnmatchedError: resendStale,
       onClose: (reason) => dropSession(reason, mine),
     });
@@ -134,12 +132,5 @@ export function createNativeLatexHelper(deps: NativeLatexHelperDeps): ILatexHelp
     cancel: async (projectId) => { (await readySocket()).post({ type: "cancel", projectId }); },
     installTex: (kind, onProgress) => logged("installTex", { kind }, () => install({ type: "installTex", kind }, onProgress)),
     installAllPackages: (onProgress) => logged("installAllPackages", {}, () => install({ type: "installAllPackages" }, onProgress)),
-    onLsp(projectId, listener) {
-      const listeners = lspListeners.get(projectId) ?? new Set();
-      listeners.add(listener);
-      lspListeners.set(projectId, listeners);
-      return () => { listeners.delete(listener); };
-    },
-    sendLsp: (projectId, payload) => logged("sendLsp", { projectId }, async () => { (await readySocket()).post({ type: "lsp", projectId, payload }); }),
   };
 }

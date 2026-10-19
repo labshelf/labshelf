@@ -2,11 +2,10 @@
 import * as vscode from "vscode";
 
 import {
-  pageArgumentContext, papersByCiteKey, type Annotation, type PaperRecord, type ProjectFormat,
+  pageArgumentContext, papersByCiteKey, quotableHighlights, type Annotation, type PaperRecord, type ProjectFormat,
 } from "@labshelf/core";
 import type { CitationSession } from "../citationWorkspace.js";
 import { highlightItems } from "./highlightItems.js";
-import { quotableHighlights } from "./quotableHighlights.js";
 
 async function highlightsOfPapers(
   session: CitationSession, papers: readonly PaperRecord[],

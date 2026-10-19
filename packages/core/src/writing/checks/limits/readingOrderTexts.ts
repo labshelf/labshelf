@@ -1,12 +1,7 @@
 /** Flattens a LaTeX include tree into the pieces of text in the order they read, each include at the place it is written. */
+import { lineStarts } from "../../lineIndex/index.js";
 import type { ProjectSourceFile } from "../../latex/source/index.js";
 import { resolveIncludePath } from "../../latex/source/index.js";
-
-function lineStarts(text: string): number[] {
-  const starts = [0];
-  for (let i = text.indexOf("\n"); i >= 0; i = text.indexOf("\n", i + 1)) { starts.push(i + 1); }
-  return starts;
-}
 
 /** `files` lists the main file first; a file reached twice is placed at its first include only. */
 export function readingOrderTexts(files: readonly ProjectSourceFile[], texts: ReadonlyMap<string, string>): { text: string }[] {

@@ -1,3 +1,4 @@
 // Exports the library page sidebar's public API.
 export { mountSidebarTree } from "./sidebarTree";
-export { loadSidebarProjects } from "./loadSidebarProjects";
+export { createSidebarProjects } from "./sidebarProjects";
+export type { SidebarProjects } from "./sidebarProjects";

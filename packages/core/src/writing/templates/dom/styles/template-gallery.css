@@ -2,9 +2,14 @@
  * Styles the template gallery under .ls-tpl: the sources sidebar, the facet bar, the card grid and the detail page.
  * A narrow gallery stacks the sidebar above the main column.
  */
-/* The webview mounts into a plain wrapper div with no height, so the gallery sizes itself to the viewport; otherwise the frame, and so the sidebar background, ends at the content. */
+/*
+ * The gallery fills whatever holds it: a webview's #root or a browser workspace tab. #root gets a height so the frame,
+ * and so the sidebar background, does not end at the content.
+ * TRAP: inline-size containment gives .ls-tpl no intrinsic width, so inside a flex parent it collapses to 0 without width: 100%.
+ */
+html, body, #root { height: 100%; }
 body { overflow: hidden; }
-.ls-tpl { container: ls-tpl / inline-size; height: 100vh; background: var(--ls-bg); color: var(--ls-fg); font: var(--ls-font-size) var(--ls-font); }
+.ls-tpl { container: ls-tpl / inline-size; width: 100%; height: 100%; min-width: 0; min-height: 0; background: var(--ls-bg); color: var(--ls-fg); font: var(--ls-font-size) var(--ls-font); }
 .ls-tpl-frame { display: grid; grid-template-columns: var(--ls-gallery-sidebar-w) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); height: 100%; }
 .ls-tpl-frame > main { min-width: 0; overflow-y: auto; }
 .ls-tpl-section {

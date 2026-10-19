@@ -1,12 +1,11 @@
 // Registers Cite from Library, which inserts a citation of a picked paper, and optionally one of its highlights, at every cursor.
 import * as vscode from "vscode";
 
-import { citationSnippet, type PaperRecord, type ProjectFormat } from "@labshelf/core";
+import { choiceCitationOptions, citationSnippet, quotableHighlights, type HighlightChoice, type PaperRecord, type ProjectFormat } from "@labshelf/core";
 import { paperPickItem } from "../../../commands/index.js";
 import { UPDATE_BIBLIOGRAPHY_COMMAND } from "../citationCompletion.js";
 import { citingProject, type CitationSession, type CitationWorkspace } from "../citationWorkspace.js";
-import { quotableHighlights } from "../highlights/index.js";
-import { chooseHighlight, type HighlightChoice } from "./highlightChoice.js";
+import { chooseHighlight } from "./highlightChoice.js";
 
 const CITE_FROM_LIBRARY_COMMAND = "labshelf.writing.citeFromLibrary";
 
@@ -37,11 +36,7 @@ async function pickHighlight(session: CitationSession, paper: PaperRecord): Prom
 async function insertCitation(
   editor: vscode.TextEditor, session: CitationSession, format: ProjectFormat, paper: PaperRecord, choice: HighlightChoice,
 ): Promise<boolean> {
-  const { highlight } = choice;
-  const text = citationSnippet(format, paper.citeKey, {
-    ...(highlight ? { page: highlight.pageNumber } : {}),
-    ...(highlight && choice.quote ? { quotation: highlight.content } : {}),
-  });
+  const text = citationSnippet(format, paper.citeKey, choiceCitationOptions(choice));
   const applied = await editor.edit((edit) => {
     for (const selection of editor.selections) { edit.replace(selection, text); }
   });

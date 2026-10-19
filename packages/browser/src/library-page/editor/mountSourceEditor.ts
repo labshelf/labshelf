@@ -1,20 +1,19 @@
 // Mounts a CodeMirror editor on one project source file, saving it and feeding the helper and the label index.
-import { setDiagnostics } from "@codemirror/lint";
 import { Annotation, EditorState, type Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import type { ILogger, PaperRecord, PresenceHandle } from "@labshelf/core";
-import type { HelperLspChannel } from "../helperProject";
 import type * as Y from "yjs";
 import { collabExtensions } from "./collab";
-import { commentSupport, type EditorComments } from "./commentSupport";
+import { commentSupport, type EditorComments } from "./comments";
 import { editorExtensions } from "./editorExtensions";
 import { createHelperEdits, type EditorHelper } from "./helperEdits";
+import { createSourceEdits, formattingKeymap, sourceLanguageOf, type SourceEdits } from "./insert";
 import { createLabelIndex, latexSupport, type LabelIndex } from "./latex";
 import { applyProblems, type ProblemSource } from "./problemDiagnostics";
 import { registerOpenEditor } from "../openEditors";
 import { revealLine } from "./revealLine";
 import { createSaveScheduler, type SaveScheduler } from "./saveScheduler";
-import { lspDiagnostics, typstLanguage, typstSupport, type DefinitionTarget, type LspDiagnostic } from "./typst";
+import { typstLanguage, typstSupport, type DefinitionTarget } from "./typst";
 
 export interface SourceFileAccess {
   /** Project-relative paths of the project's files. */
@@ -32,9 +31,7 @@ export interface SourceEditorDeps {
   helper: EditorHelper | undefined;
   /** Listens to the build problems of this file; the listener runs at once with the current ones. */
   problems?: ProblemSource;
-  /** The helper's language-server channel of this project; Typst files use it for completion, hover, definition and diagnostics. */
-  lsp?: HelperLspChannel;
-  /** Opens a definition's file in a tab. */
+  /** Opens a definition's file in a tab; without it a Typst file gets highlighting only. */
   openTab?: DefinitionTarget["openTab"];
   /** The file's comment threads; without it the editor shows and adds no comments. */
   comments?: EditorComments;
@@ -46,7 +43,7 @@ export interface SourceEditorDeps {
   onSaved?(): void;
 }
 
-export interface SourceEditor {
+export interface SourceEditor extends SourceEdits {
   /** Writes pending edits now; resolves whether the file is saved afterwards (false when the write failed). */
   flush(): Promise<boolean>;
   /** Saves pending edits, then removes the editor. */
@@ -57,29 +54,18 @@ const MODULE = "editor.mount";
 /** Marks the transaction that loads the file's text from disk, which is not an edit to save. */
 const fromDisk = Annotation.define<boolean>();
 
-interface SourceLanguage {
-  extension: Extension;
-  /** True when the language server reports this file's diagnostics, so build problems would show them twice. */
-  hasDiagnostics: boolean;
-  close(): void;
-}
-
-/** LaTeX, or Typst with the language server when the helper offers one. */
-function sourceLanguage(
-  deps: SourceEditorDeps, labels: LabelIndex, text: () => string, onDiagnostics: (diagnostics: readonly LspDiagnostic[]) => void,
-): SourceLanguage {
-  const none = (): void => undefined;
-  if (!deps.path.endsWith(".typ")) return { extension: latexSupport({ labels: labels.labels, papers: deps.papers }), hasDiagnostics: false, close: none };
-  if (!deps.lsp || !deps.openTab) return { extension: typstLanguage, hasDiagnostics: false, close: none };
-  const { projectId, path, logger, papers } = deps;
-  const support = typstSupport({ projectId, path, channel: deps.lsp, openTab: deps.openTab, logger, papers, text, onDiagnostics });
-  return { extension: support.extension, hasDiagnostics: true, close: support.close };
+/** LaTeX, or Typst with the language service. */
+function sourceLanguage(deps: SourceEditorDeps, labels: LabelIndex): Extension {
+  if (!deps.path.endsWith(".typ")) return latexSupport({ labels: labels.labels, papers: deps.papers });
+  if (!deps.openTab) return typstLanguage;
+  const { projectId, path, files, logger, papers, openTab } = deps;
+  return typstSupport({ projectId, path, files, openTab, logger, papers });
 }
 
 /** The editing extensions; a shared file binds to its Y.Text, which brings its own undo history and line separator. */
-function documentExtensions({ collab, path }: SourceEditorDeps, languageSupport: Extension, lineBreak: string): Extension[] {
-  if (!collab) return [EditorState.lineSeparator.of(lineBreak), ...editorExtensions(languageSupport)];
-  return [collabExtensions({ ...collab, file: path }), ...editorExtensions(languageSupport, { history: false })];
+function documentExtensions({ collab, path }: SourceEditorDeps, languageSupport: Extension, lineBreak: string, onSave: () => void): Extension[] {
+  if (!collab) return [EditorState.lineSeparator.of(lineBreak), ...editorExtensions(languageSupport, { onSave })];
+  return [collabExtensions({ ...collab, file: path }), ...editorExtensions(languageSupport, { history: false, onSave })];
 }
 
 /**
@@ -108,16 +94,20 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   const lineBreak = !collab && text.includes("\r\n") ? "\r\n" : "\n";
   let view: EditorView | undefined;
   const currentText = (): string => (view ? view.state.doc.sliceString(0, undefined, view.state.lineBreak) : text);
-  const language = sourceLanguage(deps, labels, currentText, (diagnostics) => {
-    if (view) view.dispatch(setDiagnostics(view.state, lspDiagnostics(view.state.doc, diagnostics)));
-  });
+  const language = sourceLanguage(deps, labels);
+  const kind = sourceLanguageOf(path);
   let savedText = text;
   // The share's doc file writer saves a shared file, so the editor has nothing to write.
-  const save: Pick<SaveScheduler, "changed" | "flush"> = collab ? { changed: () => undefined, flush: async () => true } : createSaveScheduler({
+  const save: Pick<SaveScheduler, "changed" | "flush" | "dirty"> = collab ? { changed: () => undefined, flush: async () => true, dirty: () => false } : createSaveScheduler({
     file: path, logger, text: currentText,
     write: async (content) => { await deps.files.write(path, content); savedText = content; },
     onDirty: deps.onDirty, onSaved: () => { helperEdits.saved(); deps.onSaved?.(); },
   });
+  // Writing a dirty file already asks the helper for a full build; a clean or shared file asks for it here.
+  const saveNow = (): void => {
+    const wasDirty = save.dirty();
+    void save.flush().then((clean) => { if (clean && !wasDirty) helperEdits.saved(); });
+  };
   const commentsSupport = deps.comments && commentSupport({ comments: deps.comments, lineBreak, savedText: collab ? currentText : () => savedText, flush: save.flush, logger });
   const onUpdate = EditorView.updateListener.of((update) => {
     if (!update.docChanged) return;
@@ -125,21 +115,21 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
     helperEdits.changed(update.changes, update.state.doc);
     if (path.endsWith(".tex")) labels.schedule(path, () => update.view.state.doc.toString());
   });
-  const extensions = [...documentExtensions(deps, language.extension, lineBreak), ...(commentsSupport?.extensions ?? []), onUpdate];
+  const extensions = [formattingKeymap(kind), ...documentExtensions(deps, language, lineBreak, saveNow), ...(commentsSupport?.extensions ?? []), onUpdate];
   view = new EditorView({ parent: host, state: EditorState.create({ doc: text, extensions }) });
   helperEdits.changed(view.state.changes(), view.state.doc);
-  const stopProblems = language.hasDiagnostics ? undefined : deps.problems?.(path, (problems) => applyProblems(view!, problems));
+  const stopProblems = deps.problems?.(path, (problems) => applyProblems(view!, problems));
   const stopComments = commentsSupport?.attach(view);
   const unregister = registerOpenEditor(deps.projectId, path, {
     revealLine: (line) => revealLine(view!, line), flush: save.flush, reload: () => loadFromDisk(view!, deps, (disk) => { savedText = disk; }),
   });
   return {
+    ...createSourceEdits(view, kind),
     flush: save.flush,
     async dispose() {
       unregister();
       stopProblems?.();
       stopComments?.();
-      language.close();
       labels.dispose();
       await save.flush();
       view?.destroy();

@@ -121,6 +121,8 @@ The index doc holds:
 | `comments` | thread id → [comment thread](#comments) |
 | `relays` | a `Y.Array`, the [relay list](#relay-list) |
 
+A History restore writes the restored text into each shared file's doc so peers receive it, and a file the restore removes leaves the `files` map.
+
 ### Relay list
 
 - `relays` holds `{url, addedBy}` entries in the order clients try them: an `https:` relay URL, once, and the LabShelf user name of the member who offered it. The relay token is the share's `relay` key, the same on every relay, so the list does not hold it.

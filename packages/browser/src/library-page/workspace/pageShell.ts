@@ -7,7 +7,6 @@ export interface PageShell {
   root: HTMLElement;
   sidebar: HTMLElement;
   centre: HTMLElement;
-  dispose(): void;
 }
 
 /** Reuses the library frame's sidebar and sash styles (`.ls-library.has-sidebar`); the sidebar width and collapsed state persist in the prefs. */
@@ -19,12 +18,12 @@ export function createPageShell(host: HTMLElement, prefs: PagePrefs): PageShell 
   const centre = el("div", { class: "ls-workspace-centre" });
   sidebar.style.width = `${saved.sidebarWidth}px`;
   root.classList.toggle("sidebar-collapsed", saved.sidebarCollapsed);
-  const detach = attachSash(sash, {
+  attachSash(sash, {
     root, pane: sidebar, collapsedClass: "sidebar-collapsed", limits: PANE_LIMITS.sidebar,
     widthFromPointer: (x) => x - root.getBoundingClientRect().left,
     persist: (sidebarWidth, sidebarCollapsed) => prefs.save({ sidebarWidth, sidebarCollapsed }),
   });
   root.append(sidebar, sash, centre);
   host.append(root);
-  return { root, sidebar, centre, dispose: () => { detach(); root.remove(); } };
+  return { root, sidebar, centre };
 }

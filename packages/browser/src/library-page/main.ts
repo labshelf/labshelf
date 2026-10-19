@@ -4,23 +4,18 @@
  */
 import { createLoopbackTransport } from "@labshelf/core";
 import { el, mountLibraryUi } from "@labshelf/core/dom";
-import { createBrowserLatexHelper } from "../helper/client";
 import { createBrowserLogger, getSettings } from "../platform";
 import { mountMoveOffer, mountSourceBanner } from "../library-source";
 import { createLibraryFileSystem } from "../storage";
 import { applyTheme } from "../ui";
-import { createPageShares, runJoinDialog } from "./editor/collab";
-import { revealInOpenEditor } from "./openEditors";
 import { attachLibraryHost } from "./host";
-import { createHelperProject } from "./helperProject";
 import { attachLinkHandling } from "./openLink";
 import { createLocalStoragePrefs } from "./prefs";
 import { attachRouter } from "./router";
-import type { TabKindName } from "./tabs";
-import { createCommentThreads, createRoutedCommentThreads } from "./review";
-import { createOpenProjectSnapshot, createProjectSession, resumeRestoredProject } from "./session";
-import { loadSidebarProjects, mountSidebarTree } from "./sidebar";
-import { planPage } from "./sections";
+import type { ProjectWiring, ProjectWiringOptions } from "./projectWiring";
+import { mountSidebarTree } from "./sidebar";
+import { planPage, type PagePlan } from "./sections";
+import type { ProjectServices, TabKindName } from "./tabs";
 import { createPageShell, createWorkspace, takeJoinInvite } from "./workspace";
 import { mountStatusBar } from "./statusBar";
 
@@ -46,6 +41,20 @@ async function readPagePlan(): Promise<ReturnType<typeof planPage>> {
   }
 }
 
+/**
+ * Loads the project code only when the page shows Projects or was opened from a share link, so a library-only page never
+ * downloads it; a failed load leaves the library working without projects.
+ */
+async function loadProjectWiring(plan: PagePlan, invite: string | undefined, options: ProjectWiringOptions): Promise<ProjectWiring | null> {
+  if (!plan.projects && invite === undefined) return null;
+  try {
+    return (await import("./projectWiring/index.js")).mountProjectWiring(options);
+  } catch (err) {
+    void log.error("library", err, { action: "loadProjectWiring" });
+    return null;
+  }
+}
+
 async function boot(): Promise<void> {
   const plan = await readPagePlan();
   const root = document.getElementById("root");
@@ -56,7 +65,7 @@ async function boot(): Promise<void> {
   // The host listens before the UI mounts, so the UI's ready message finds it. Opened from the popup or a Scholar
   // button, the page selects the paper just saved.
   const libraryHost = attachLibraryHost(host, { log, initialPaper: new URLSearchParams(location.search).get("paper") });
-  attachRouter(host);
+  attachRouter(host, libraryHost.paperIdAtPath);
   const shell = createPageShell(root, prefs);
   // Mounted once, detached: the Library tab shows this element and the sidebar follows its store.
   const libraryView = el("div", { class: "ls-workspace-fill" });
@@ -69,37 +78,26 @@ async function boot(): Promise<void> {
     },
   });
   const fs = createLibraryFileSystem();
-  const shares = createPageShares({ fs, logger: log });
-  const helperProject = createHelperProject({ helper: createBrowserLatexHelper(log), logger: log });
+  let project: ProjectWiring | null = null;
+  const projectServices = (): ProjectServices => {
+    if (!project) throw new Error("The project services are not loaded: this page hides Projects");
+    return project.services;
+  };
   const workspace = createWorkspace(shell.centre, {
     prefs: { load: prefs.editorWidth, save: prefs.saveEditorWidth }, logger: log, plan,
-    services: () => ({ libraryView, logger: log, fs, prefs, session, helperProject, comments, shares }),
+    services: () => ({ libraryView, logger: log, fs, prefs, project: projectServices }),
   });
-  const session = createProjectSession({
-    workspace, snapshot: createOpenProjectSnapshot({ fs, logger: log }), logger: log,
-    onProjectChange: helperProject.projectChanged,
-    onReveal: (path, line) => {
-      const open = session.current();
-      if (open?.kind !== "ready") return;
-      workspace.openTab("source", { projectId: open.settings.id, path }, 0);
-      revealInOpenEditor(open.settings.id, path, line);
-    },
-  });
-  const comments = createRoutedCommentThreads({ files: createCommentThreads({ fs, session, logger: log }), shares, session });
   const openTab = (kind: TabKindName): void => workspace.openTab(kind);
-  const joinShared = (invite?: string): Promise<void> => runJoinDialog({ shares, fs, logger: log, session, ...(invite === undefined ? {} : { invite }) });
-  const projects = plan.projects ? await loadSidebarProjects(log, fs, session, openTab, () => { void joinShared(); }) : null;
-  mountSidebarTree(ui, shell.sidebar, prefs, host, projects, openTab, plan.library);
   // The share key sits in the fragment, so a join link is taken off the address before anything can keep it in history.
   const invite = takeJoinInvite(location.hash);
   if (invite !== undefined) history.replaceState(null, "", location.pathname + location.search);
+  project = await loadProjectWiring(plan, invite, { workspace, fs, logger: log, openTab });
+  mountSidebarTree(ui, shell.sidebar, prefs, host, plan.projects && project ? project.sidebarProjects() : null, openTab, plan.library);
   workspace.restore(location.hash);
-  void resumeRestoredProject(workspace, session, fs, log);
-  if (invite !== undefined) void joinShared(invite);
+  project?.start(invite);
   mountSourceSurfaces(root, libraryHost.reloadSnapshots);
   mountStatusBar(root, (listener) => ui.store.select((s) => s.papers.length, listener));
   attachLinkHandling(log);
-  window.addEventListener("pagehide", () => { void shares.closeAll(); });
   void log.log("INFO", "library", "library page mounted");
 }
 

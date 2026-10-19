@@ -12,7 +12,7 @@ export { checkHelperPath, isHelperProjectId } from "./helperPaths.js";
 export { parseHelperMessage } from "./parseHelperMessage.js";
 export type { MessageFor } from "./parseHelperMessage.js";
 export type {
-  HelperCompileRequest, HelperCompileResult, HelperEdit, HelperLspListener, HelperPageBytes, HelperProgressListener,
+  HelperCompileRequest, HelperCompileResult, HelperEdit, HelperPageBytes, HelperProgressListener,
   HelperStatus, ILatexHelper,
 } from "./latexHelper.js";
 export { decodeSocketMessage, encodeSocketMessage } from "./socketFrame.js";

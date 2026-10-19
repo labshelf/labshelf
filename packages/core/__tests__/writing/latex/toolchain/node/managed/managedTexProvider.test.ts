@@ -125,3 +125,26 @@ describe("annual rollover", () => {
     expect(await provider().status()).toEqual({ source: "texlive", year: 2025, complete: true });
   });
 });
+
+describe("quarantine healing on macOS", () => {
+  const healing = (platform: NodeJS.Platform, exec: jest.Mock) =>
+    createManagedTexProvider({ texRoot: fx.texRoot, logger: asLogger(fx.logger), system: system as unknown as TexProvider, installers, platform, execFileImpl: exec });
+
+  it("clears the TinyTeX folder once per process when it first resolves an existing install", async () => {
+    await managed("tinytex", 2026, { rollover: false, installed: [] });
+    const exec = jest.fn(async () => ({}));
+    const tex = healing("darwin", exec);
+    await tex.resolve("xelatex");
+    await tex.resolve("pdflatex");
+    expect(exec).toHaveBeenCalledTimes(1);
+    expect(exec).toHaveBeenCalledWith("/usr/bin/xattr", ["-dr", "com.apple.quarantine", managedTexRoot(fx.texRoot, "tinytex")]);
+  });
+
+  it("does nothing off macOS or without a managed install", async () => {
+    const exec = jest.fn(async () => ({}));
+    await healing("darwin", exec).resolve("xelatex");
+    await managed("tinytex", 2026, { rollover: false, installed: [] });
+    await healing("linux", exec).resolve("xelatex");
+    expect(exec).not.toHaveBeenCalled();
+  });
+});

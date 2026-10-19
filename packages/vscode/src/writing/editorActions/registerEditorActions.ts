@@ -1,9 +1,10 @@
 // Registers the commands that wrap the active LaTeX or Typst selection in bold or italic.
 import * as vscode from "vscode";
 
+import { wrapSelection, type WrapStyle } from "@labshelf/core";
+
 import type { WritingHost } from "../session/index.js";
 import { writingLanguageOf } from "./editorLanguage.js";
-import { wrapSelection, type WrapStyle } from "./wrapSelection.js";
 
 const COMMANDS: Record<WrapStyle, string> = { bold: "labshelf.writing.bold", italic: "labshelf.writing.italic" };
 

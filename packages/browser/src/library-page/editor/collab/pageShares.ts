@@ -10,7 +10,7 @@ import { loadDisplayName, loadShare, saveDisplayName } from "./shareKeyStore";
 const LOG_MODULE = "collab.shares";
 const DEFAULT_NAME = "Guest";
 
-export interface ActiveShare extends Pick<ShareConnection, "session" | "presence"> {
+interface ActiveShare extends Pick<ShareConnection, "session" | "presence"> {
   comments: CommentThreads;
 }
 

@@ -1,32 +1,20 @@
 // Asks which highlight of a paper to cite, and whether to quote it, or to cite without a page.
 import * as vscode from "vscode";
 
-import type { Annotation } from "@labshelf/core";
+import { CITE_WITHOUT_PAGE, highlightLabel, highlightPage, type Annotation, type HighlightChoice } from "@labshelf/core";
 
-const LABEL_LENGTH = 120;
 const QUOTE_BUTTON: vscode.QuickInputButton = { iconPath: new vscode.ThemeIcon("quote"), tooltip: "Cite with quotation" };
-
-/** `highlight` is undefined for a citation without a page. */
-export interface HighlightChoice {
-  highlight?: Annotation;
-  quote: boolean;
-}
 
 interface HighlightPickItem extends vscode.QuickPickItem {
   highlight?: Annotation;
 }
 
-function singleLine(text: string): string {
-  const flat = text.replace(/\s+/g, " ").trim();
-  return flat.length > LABEL_LENGTH ? `${flat.slice(0, LABEL_LENGTH).trimEnd()}…` : flat;
-}
-
 function pickItems(highlights: readonly Annotation[]): HighlightPickItem[] {
   return [
-    { label: "Cite without a page" },
+    { label: CITE_WITHOUT_PAGE },
     ...highlights.map((highlight) => ({
-      label: singleLine(highlight.content),
-      description: `p. ${highlight.pageNumber}`,
+      label: highlightLabel(highlight),
+      description: highlightPage(highlight),
       buttons: [QUOTE_BUTTON],
       highlight,
     })),

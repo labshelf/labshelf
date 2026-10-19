@@ -1,5 +1,5 @@
 // Pins the helper's TeX setup prompt: it declines installing TeX and reports package installs as progress for its build.
-import type { ToPageMessage } from "../../../../../src/writing/helper/index";
+import { PROTOCOL_VERSION, type ToPageMessage } from "../../../../../src/writing/helper/index";
 import { helperToolchainPrompt } from "../../../../../src/writing/helper/node/build/helperToolchainPrompt";
 
 describe("helperToolchainPrompt", () => {
@@ -13,8 +13,8 @@ describe("helperToolchainPrompt", () => {
       .progress("Installing the LaTeX package for foo.sty", async (report) => { report("50%"); return true; });
     expect(result).toBe(true);
     expect(sent).toEqual([
-      { v: 2, id: "b1", type: "progress", phase: "installing-package", message: "Installing the LaTeX package for foo.sty" },
-      { v: 2, id: "b1", type: "progress", phase: "installing-package", message: "Installing the LaTeX package for foo.sty: 50%" },
+      { v: PROTOCOL_VERSION, id: "b1", type: "progress", phase: "installing-package", message: "Installing the LaTeX package for foo.sty" },
+      { v: PROTOCOL_VERSION, id: "b1", type: "progress", phase: "installing-package", message: "Installing the LaTeX package for foo.sty: 50%" },
     ]);
   });
 });

@@ -7,7 +7,7 @@ import type { TabModule } from "../types";
 
 export const mountTab: TabModule["mountTab"] = (host, _params, ctx) => {
   const library = createBrowserProjectLibrary({
-    fs: ctx.fs, logger: ctx.logger, workspace: ctx.workspace, session: ctx.session, pdfjs: browserPdfjs, listPapers: listAllRecords, askBlank: askBlankProject,
+    fs: ctx.fs, logger: ctx.logger, workspace: ctx.workspace, session: ctx.project().session, pdfjs: browserPdfjs, listPapers: listAllRecords, askBlank: askBlankProject,
   });
   const { ui, host: endpoint } = createLoopbackTransport<AllProjectsToHost, HostToAllProjects>();
   const stop = serveAllProjects(endpoint, library, ctx.logger);

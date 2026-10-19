@@ -18,7 +18,7 @@ describe("installTexLive", () => {
   afterEach(() => fixture.cleanup());
 
   const install = (progress: Array<number | null> = []) => installTexLive(
-    { fetchImpl: fixture.fetchImpl, logger: asLogger(fixture.logger) },
+    { fetchImpl: fixture.fetchImpl, logger: asLogger(fixture.logger), platform: "linux" },
     { texRoot: fixture.texRoot, onProgress: (fraction) => { progress.push(fraction); } },
   );
 

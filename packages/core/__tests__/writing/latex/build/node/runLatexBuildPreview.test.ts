@@ -44,13 +44,14 @@ async function lines(file: string): Promise<string[]> {
 async function withPriorBuild(setup: PreviewSetup): Promise<void> {
   await fs.mkdir(setup.request.outDir, { recursive: true });
   await fs.writeFile(path.join(setup.request.outDir, "main.aux"), "aux\n");
+  await fs.writeFile(path.join(setup.request.outDir, "main-full.pdf"), "%PDF full\n");
 }
 
 posixOnly("runLatexBuild preview", () => {
   it("runs the engine once without latexmk and removes latexmk's database", async () => {
     const s = await setup();
     await withPriorBuild(s);
-    const result = await runLatexBuild({ ...s.request, mode: "preview" });
+    const result = await runLatexBuild({ ...s.request, mode: "preview", editedFile: "main.tex", editedLine: 1 });
     expect(result).toEqual({ status: "succeeded", pdf: path.join(s.request.projectFolder, "main.pdf"), problems: [] });
     expect(await lines(s.calls)).toEqual(["xelatex"]);
     expect(await lines(s.args)).toEqual(["-interaction=nonstopmode", "-file-line-error", "-synctex=1", "-no-shell-escape", `-output-directory=${s.request.outDir}`, "main.tex"]);
@@ -62,7 +63,7 @@ posixOnly("runLatexBuild preview", () => {
   it("typesets only the edited \\include chapter without changing the source", async () => {
     const s = await setup();
     await withPriorBuild(s);
-    await runLatexBuild({ ...s.request, mode: "preview", editedFile: "chapters/intro.tex" });
+    await runLatexBuild({ ...s.request, mode: "preview", editedFile: "chapters/intro.tex", editedLine: 1 });
     expect(await lines(s.calls)).toEqual(["xelatex"]);
     expect((await lines(s.args)).slice(-2)).toEqual(["-jobname=main", "\\includeonly{chapters/intro}\\input{main.tex}"]);
   });
@@ -70,13 +71,15 @@ posixOnly("runLatexBuild preview", () => {
   it("compiles main as is when the edited file is \\input, not \\include", async () => {
     const s = await setup();
     await withPriorBuild(s);
-    await runLatexBuild({ ...s.request, mode: "preview", editedFile: "chapters/setup.tex" });
+    await runLatexBuild({ ...s.request, mode: "preview", editedFile: "chapters/setup.tex", editedLine: 1 });
     expect((await lines(s.args)).at(-1)).toBe("main.tex");
   });
 
   it("runs a full latexmk build when no build has written the .aux yet", async () => {
     const s = await setup();
-    await runLatexBuild({ ...s.request, mode: "preview", editedFile: "chapters/intro.tex" });
+    await fs.mkdir(s.request.outDir, { recursive: true });
+    await fs.writeFile(path.join(s.request.outDir, "main-full.pdf"), "%PDF full\n");
+    await runLatexBuild({ ...s.request, mode: "preview", editedFile: "chapters/intro.tex", editedLine: 1 });
     expect(await lines(s.calls)).toEqual(["latexmk"]);
     expect(await fs.readFile(path.join(s.request.outDir, "main.fdb_latexmk"), "utf8")).toBe("fdb\n");
   });

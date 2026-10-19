@@ -21,9 +21,9 @@ jobs:
       - id: version
         run: |
           version="${GITHUB_REF_NAME#helper-v}"
-          built="$(sed -n 's/^const HELPER_VERSION = "\(.*\)";$/\1/p' packages/terminal/src/helper/main.ts)"
+          built="$(sed -n 's/^export const HELPER_VERSION = "\(.*\)";$/\1/p' packages/core/src/writing/helper/helperMessages.ts)"
           if [ "$version" != "$built" ]; then
-            echo "::error::Tag version $version does not match HELPER_VERSION $built in packages/terminal/src/helper/main.ts"
+            echo "::error::Tag version $version does not match HELPER_VERSION $built in packages/core/src/writing/helper/helperMessages.ts"
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"

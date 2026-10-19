@@ -10,7 +10,7 @@ import { planPage } from "../../../src/library-page/sections";
 
 const captured: TabContext[] = [];
 jest.mock("../../../src/library-page/tabs/templates/index", () => ({
-  mountTab: (_host: HTMLElement, _params: unknown, ctx: TabContext) => { captured.push(ctx); return { dispose: jest.fn() }; },
+  mountTab: (_host: HTMLElement, _params: unknown, ctx: TabContext) => { captured.push(ctx); return { dispose: jest.fn(), actions: [{ id: "x", icon: "bold", label: "Do x", run: jest.fn() }] }; },
 }));
 
 const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
@@ -21,7 +21,7 @@ async function setup(): Promise<{ workspace: Workspace; ctx: TabContext }> {
   captured.length = 0;
   const workspace = createWorkspace(document.body.appendChild(document.createElement("div")), {
     prefs: { load: () => null, save: () => undefined }, logger, plan: planPage({ library: true, projects: true }), storage,
-    services: () => ({ libraryView: document.createElement("div"), logger, fs: {} as never, prefs: {} as never, session: {} as never, helperProject: {} as never, comments: {} as never, shares: {} as never }),
+    services: () => ({ libraryView: document.createElement("div"), logger, fs: {} as never, prefs: {} as never, project: () => ({}) as never }),
   });
   workspace.openTab("templates");
   await tick();
@@ -31,6 +31,14 @@ async function setup(): Promise<{ workspace: Workspace; ctx: TabContext }> {
 const templates = (workspace: Workspace) => workspace.tabs().find((t) => t.id === "templates")!;
 
 describe("workspace tab hooks", () => {
+  it("shows the actions of a lazily loaded body in the tab strip toolbar", async () => {
+    const { workspace } = await setup();
+    const bar = document.querySelector<HTMLElement>(".ls-editor-actions")!;
+    expect(bar.hidden).toBe(false);
+    expect(bar.querySelector("button")?.getAttribute("aria-label")).toBe("Do x");
+    workspace.dispose();
+  });
+
   it("shows the dirty mark a body sets and clears it", async () => {
     const { workspace, ctx } = await setup();
     ctx.tab.setDirty(true);

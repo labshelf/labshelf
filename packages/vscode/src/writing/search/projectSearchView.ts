@@ -1,14 +1,14 @@
 // Serves the Project Search panel: runs its searches on the active file's writing project and carries out its opens and replacements.
 import * as vscode from "vscode";
 
-import { parseSearchMessage, type HostToSearch, type ILogger, type SearchOptions, type SearchScopeMode, type SearchToHost } from "@labshelf/core";
+import { emptySearchRun, matchesIn, parseSearchMessage, type HostToSearch, type ILogger, type SearchOptions, type SearchScopeMode, type SearchToHost } from "@labshelf/core";
 import { mainPathIn, owningProject, type ProjectLookup, type ReadyProject } from "../mainDocument.js";
 import type { WritingHost, WritingProjects } from "../session/index.js";
 import { openMatch } from "./openMatch.js";
 import { readScopeTexts, SEARCH_LOG_MODULE, type SearchScope } from "./projectSearchFiles.js";
-import { matchesIn, replaceInProject } from "./replaceInProject.js";
+import { replaceInProject } from "./replaceInProject.js";
 import { searchBundleDirectory, searchHtml } from "./searchHtml.js";
-import { emptySearchRun, runSearch } from "./searchRun.js";
+import { runSearch } from "./searchRun.js";
 
 export const PROJECT_SEARCH_VIEW = "labshelf.writing.projectSearch";
 const DEBOUNCE_MS = 200;

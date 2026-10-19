@@ -9,6 +9,7 @@ import {
   type HostToWebview,
   type ReaderBootParams,
   type PaperRecord,
+  type PreviewPorts,
   type ReaderPrefs,
   type ReaderSidecarStore,
 } from "@labshelf/core";
@@ -21,7 +22,7 @@ import { loadReaderPrefs, onReaderPrefsChange } from "./access";
 import { installPageGuards, isMacPlatform } from "./pageGuards";
 import { parseReaderQuery } from "./access";
 import { announceSidecarChange } from "./sidecarChangeNotice";
-import { bindPreviewPage, previewPaper } from "./previewBoot";
+import { bindPreviewPage, previewPaper, previewPorts } from "./previewBoot";
 
 // First statement, so scriptStart measures the whole open like in VS Code.
 const perf = new PerfMarks();
@@ -88,6 +89,7 @@ function createHostWithChannel(
   page: number | undefined,
   getPrefs: () => ReaderPrefs,
   store: ReaderSidecarStore,
+  preview?: PreviewPorts,
 ): { host: ReaderHostController; channel: ReturnType<typeof createInPageChannel> } {
   // The host answers through the channel, which needs the host to exist first.
   let send: (msg: HostToWebview) => void = () => undefined;
@@ -103,6 +105,7 @@ function createHostWithChannel(
     saveAnnotations: (markdown) => downloadTextFile(`${paper.citeKey}-annotations.md`, markdown, "text/markdown"),
     logger,
     sidecarChanged: (change) => announceSidecarChange(paper.id, change),
+    ...(preview ? { preview } : {}),
   }, page !== undefined ? { page } : {});
   const channel = createInPageChannel((msg) => { void host.handle(msg); });
   send = channel.send;
@@ -157,7 +160,7 @@ function forwardChangesToHost(host: ReaderHostController, setPrefs: (prefs: Read
 async function openPreview(paper: PaperRecord): Promise<void> {
   // INVARIANT: the parent page posts once this page loads, so the listener is bound before the first await; the host asks for prefs only after they load.
   let currentPrefs: ReaderPrefs | undefined;
-  const { host, channel } = createHostWithChannel(paper, undefined, () => currentPrefs!, createPreviewStore());
+  const { host, channel } = createHostWithChannel(paper, undefined, () => currentPrefs!, createPreviewStore(), previewPorts(logger));
   const readBytes = bindPreviewPage(host);
   currentPrefs = await loadReaderPrefs();
   forwardChangesToHost(host, (next) => { currentPrefs = next; });

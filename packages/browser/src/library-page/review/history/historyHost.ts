@@ -1,8 +1,9 @@
 // Answers the shared history page in the same page: records the project, serves diffs, restores a point and marks versions.
 import {
-  historyDiff, historyRows, restoreSnapshot, type HistoryRow, type HistoryToHost, type HostToHistory, type ILogger, type LibraryFileSystem, type MessageEnd,
+  applyRestoredFiles, historyDiff, historyRows, restoreSnapshot, type HistoryRow, type HistoryToHost, type HostToHistory, type ILogger, type LibraryFileSystem, type MessageEnd,
 } from "@labshelf/core";
 import { confirmDialog, toast } from "@labshelf/core/dom";
+import type { PageShares } from "../../editor/collab";
 import { flushProjectEditors, reloadProjectEditors } from "../../openEditors";
 import { onEditRecorded } from "./editRecorded";
 import { projectHistoryTarget } from "./historyTarget";
@@ -10,6 +11,7 @@ import { markProjectVersion } from "./markProjectVersion";
 import { recordProjectEdit } from "./recordProjectEdit";
 
 const MODULE = "library-page.history";
+const RESTORE_ORIGIN = "history-restore";
 const when = (row: HistoryRow): string => new Date(row.at).toLocaleString();
 
 export interface HistoryHostOptions {
@@ -18,9 +20,10 @@ export interface HistoryHostOptions {
   endpoint: MessageEnd<HostToHistory, HistoryToHost>;
   project: { id: string; folder: string };
   lastFullPdf(projectId: string): Uint8Array | undefined;
+  shares: Pick<PageShares, "active">;
 }
 
-export function mountHistoryHost({ fs, logger, endpoint, project, lastFullPdf }: HistoryHostOptions): { dispose(): void } {
+export function mountHistoryHost({ fs, logger, endpoint, project, lastFullPdf, shares }: HistoryHostOptions): { dispose(): void } {
   const target = projectHistoryTarget(fs, project.folder, project.id);
 
   const refresh = async (): Promise<void> => {
@@ -34,6 +37,17 @@ export function mountHistoryHost({ fs, logger, endpoint, project, lastFullPdf }:
     stopEdits ??= onEditRecorded(project.id, () => {
       refresh().catch((error: unknown) => logger.error(MODULE, error, { action: "refresh after edit", projectId: project.id }));
     });
+  };
+
+  // The restore writes to disk only, so a shared file's doc is brought to the restored text before the disk mirror writes the doc back.
+  const syncShareToRestore = async (): Promise<void> => {
+    const share = shares.active(project.id);
+    if (!share) return;
+    const restored = async (path: string): Promise<string | null> => {
+      const file = `${project.folder}/${path}`;
+      return (await fs.exists(file)) ? fs.readText(file) : null;
+    };
+    await applyRestoredFiles({ session: share.session, restored, origin: RESTORE_ORIGIN, logger });
   };
 
   async function restore(id: string): Promise<void> {
@@ -54,6 +68,7 @@ export function mountHistoryHost({ fs, logger, endpoint, project, lastFullPdf }:
         return;
       }
       await restoreSnapshot(target, id, logger);
+      await syncShareToRestore();
       await reloadProjectEditors(project.id);
     } finally {
       endpoint.post({ type: "busy", busy: false });

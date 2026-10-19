@@ -6,7 +6,7 @@ import type { ProjectGroup } from "../../derive/index.js";
 /** The project row's cell count, which the header's single cell spans. */
 const COLUMNS = 7;
 
-export const groupAriaLabel = (g: ProjectGroup): string =>
+const groupAriaLabel = (g: ProjectGroup): string =>
   `${g.segments.join(" / ")}, ${g.rows.length} ${g.rows.length === 1 ? "project" : "projects"}`;
 
 export function buildGroupRow(group: ProjectGroup, collapsed: boolean, onToggle: (key: string) => void): HTMLElement {

@@ -8,9 +8,7 @@ import { buildProject, type ProjectBuildDeps, type ProjectBuildQueue } from "@la
 import type { ReadyProject } from "../../mainDocument.js";
 import type { BuildListener, BuildTrigger, FinishedBuild } from "../../build/index.js";
 import type { WritingHost, WritingProjects } from "../../session/index.js";
-import { languageServerRunning } from "../languageServerState.js";
-import { recordTypstVersion } from "../typstVersionPin.js";
-import type { TypstTrigger } from "../typstTriggers.js";
+import { recordTypstVersion, type TypstTrigger } from "../index.js";
 
 
 export interface TypstBuildsDeps {
@@ -98,8 +96,7 @@ export class TypstBuilds {
       const result = await this.deps.queue.request(project, { root });
       if (result.status === "cancelled" || result.status === "no-main" || result.status === "toolchain-missing") { return undefined; }
       const errors = result.problems.filter((problem) => problem.severity === "error").length;
-      // The language server already lists Typst errors while typing; a second copy would double every entry in Problems.
-      this.deps.diagnostics.publish(path.join(project.folder, root), languageServerRunning() ? [] : result.problems);
+      this.deps.diagnostics.publish(path.join(project.folder, root), result.problems);
       this.deps.previews.finished(project, root, result, trigger);
       vscode.window.setStatusBarMessage(result.status === "succeeded" ? `$(check) Built ${path.parse(root).name}.pdf` : `$(error) Build of ${root} failed: ${errors} ${errors === 1 ? "error" : "errors"}`, 5000);
       if (result.status === "succeeded") { await recordTypstVersion(project, this.deps); }

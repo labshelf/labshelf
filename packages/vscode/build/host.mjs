@@ -1,6 +1,7 @@
 /** Bundles the desktop extension host into out/extension.js, the browser bridge host into out/bridgeHost.js and the LaTeX helper host into out/helperHost.js. @labshelf/* packages are bundled from source; every other dependency stays external and loads from node_modules, because pdf.js, Tesseract and the native canvas locate their own data files, workers and binaries next to themselves. */
 import { build, context } from "esbuild";
-import { readFile, rm } from "node:fs/promises";
+import { copyFile, mkdir, readFile, rm } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { bundleRelayWorker } from "../../core/tools/relayWorker/bundleRelayWorker.mjs";
@@ -49,11 +50,18 @@ const helperHostOptions = {
   ...options,
   entryPoints: [resolve(pkgRoot, "src/helperHost.ts")],
   outfile: resolve(outDir, "helperHost.js"),
-  external: [],
+  external: ["@myriaddreamin/typst-ts-renderer"],
 };
+
+// The helper host loads nothing from node_modules, so its Typst compiler WASM sits beside it under the name `runHelperScriptHost` reads.
+async function copyTypstWasm() {
+  await mkdir(outDir, { recursive: true });
+  await copyFile(createRequire(import.meta.url).resolve("@myriaddreamin/typst-ts-web-compiler/wasm"), resolve(outDir, "typst_ts_web_compiler_bg.wasm"));
+}
 
 if (watch) {
   await writeArcMarks(outDir);
+  await copyTypstWasm();
   for (const entry of [options, bridgeHostOptions, helperHostOptions]) {
     const ctx = await context(entry);
     await ctx.watch();
@@ -63,4 +71,5 @@ if (watch) {
   await rm(outDir, { recursive: true, force: true });
   await Promise.all([build(options), build(bridgeHostOptions), build(helperHostOptions)]);
   await writeArcMarks(outDir);
+  await copyTypstWasm();
 }

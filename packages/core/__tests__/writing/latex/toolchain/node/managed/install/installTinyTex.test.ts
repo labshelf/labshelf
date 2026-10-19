@@ -5,7 +5,7 @@ import { join } from "node:path";
 const mockPin = { sha256: "" };
 
 jest.mock("../../../../../../../src/writing/latex/toolchain/tinyTexPin", () => ({
-  tinyTexAsset: (platform: string, arch: string) => platform === "linux" && arch === "x64"
+  tinyTexAsset: (platform: string, arch: string) => (platform === "linux" || platform === "darwin") && arch === "x64"
     ? {
       version: "2026.10",
       name: "TinyTeX-1-linux-x86_64-v2026.10.tar.xz",
@@ -15,15 +15,15 @@ jest.mock("../../../../../../../src/writing/latex/toolchain/tinyTexPin", () => (
     : undefined,
 }));
 
-import { installTinyTex } from "../../../../../../../src/writing/latex/toolchain/node/managed/install/index";
+import { installTinyTex, type ExecFile } from "../../../../../../../src/writing/latex/toolchain/node/managed/install/index";
 import { asLogger, createTexFixture, TINYTEX_URL, type TexFixture } from "../fakeTex";
 
 const TLMGR = { rollover: false, installed: [] };
 
-function pretend(property: "platform" | "arch", value: string): () => void {
-  const original = Object.getOwnPropertyDescriptor(process, property);
-  Object.defineProperty(process, property, { value, configurable: true });
-  return () => { if (original) { Object.defineProperty(process, property, original); } };
+function pretendArch(value: string): () => void {
+  const original = Object.getOwnPropertyDescriptor(process, "arch");
+  Object.defineProperty(process, "arch", { value, configurable: true });
+  return () => { if (original) { Object.defineProperty(process, "arch", original); } };
 }
 
 describe("installTinyTex", () => {
@@ -31,16 +31,16 @@ describe("installTinyTex", () => {
   let restore: Array<() => void>;
   beforeEach(async () => {
     fixture = await createTexFixture();
-    // The pin mock has a linux-x64 asset only.
-    restore = [pretend("platform", "linux"), pretend("arch", "x64")];
+    // The pin mock has x64 assets only.
+    restore = [pretendArch("x64")];
   });
   afterEach(async () => {
     restore.forEach((undo) => undo());
     await fixture.cleanup();
   });
 
-  const install = (progress: Array<number | null> = []) => installTinyTex(
-    { fetchImpl: fixture.fetchImpl, logger: asLogger(fixture.logger) },
+  const install = (progress: Array<number | null> = [], platform: NodeJS.Platform = "linux", execFileImpl?: ExecFile) => installTinyTex(
+    { fetchImpl: fixture.fetchImpl, logger: asLogger(fixture.logger), platform, ...(execFileImpl ? { execFileImpl } : {}) },
     { texRoot: fixture.texRoot, onProgress: (fraction) => { progress.push(fraction); } },
   );
 
@@ -80,13 +80,35 @@ describe("installTinyTex", () => {
     const fetched: string[] = [];
     const fetchImpl = fixture.fetchImpl;
     fixture.fetchImpl = (url) => { fetched.push(url); return fetchImpl(url); };
-    await installTinyTex({ fetchImpl: fixture.fetchImpl, logger: asLogger(fixture.logger) }, { texRoot: fixture.texRoot, onProgress: () => undefined });
+    await installTinyTex({ fetchImpl: fixture.fetchImpl, logger: asLogger(fixture.logger), platform: "linux" }, { texRoot: fixture.texRoot, onProgress: () => undefined });
     expect(fetched).toEqual([TINYTEX_URL]);
   });
 
   it("refuses a platform without a pinned asset", async () => {
     await fixture.serveTinyTex(2026, TLMGR);
-    restore.push(pretend("arch", "ia32"));
+    restore.push(pretendArch("ia32"));
     await expect(install()).rejects.toThrow(/no build for linux-ia32/);
+  });
+
+  it("clears the quarantine attribute from the installed folder on macOS", async () => {
+    mockPin.sha256 = await fixture.serveTinyTex(2026, TLMGR);
+    const exec = jest.fn(async () => ({}));
+    await install([], "darwin", exec);
+    expect(exec).toHaveBeenCalledWith("/usr/bin/xattr", ["-dr", "com.apple.quarantine", join(fixture.texRoot, "tinytex")]);
+  });
+
+  it("does not run xattr elsewhere", async () => {
+    mockPin.sha256 = await fixture.serveTinyTex(2026, TLMGR);
+    const exec = jest.fn(async () => ({}));
+    await install([], "linux", exec);
+    expect(exec).not.toHaveBeenCalled();
+  });
+
+  it("logs an xattr failure and still finishes the install", async () => {
+    mockPin.sha256 = await fixture.serveTinyTex(2026, TLMGR);
+    const exec = jest.fn(async () => { throw new Error("Operation not permitted"); });
+    await install([], "darwin", exec);
+    expect(fixture.logger.error).toHaveBeenCalled();
+    expect(existsSync(join(fixture.texRoot, "tinytex", "bin"))).toBe(true);
   });
 });

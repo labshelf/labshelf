@@ -4,7 +4,7 @@ import type { LatexToolchain } from "../toolchain/index.js";
 import type { BuildCommand } from "./latexBuildCommand.js";
 import { NO_SHELL_ESCAPE, TEX_FILE_ACCESS_ENV } from "./texSandbox.js";
 
-export interface PreviewFormat {
+interface PreviewFormat {
   /** The precompiled preamble format, passed as `-fmt`. */
   name: string;
   /** The TEXFORMATS value that finds it; the environment keeps a folder with spaces off the command line. */

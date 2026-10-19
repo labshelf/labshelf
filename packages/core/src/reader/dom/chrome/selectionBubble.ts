@@ -22,6 +22,7 @@ export type CommentOnSelection = (selection: SelectionInfo & { start: DOMRect; b
 export class SelectionBubble {
   private readonly el = $("selection-toolbar");
   private hideTimer: ReturnType<typeof setTimeout> | null = null;
+  private commentButton: HTMLButtonElement | null = null;
 
   constructor(private readonly ctx: ReaderContext, private readonly commentOn?: CommentOnSelection) {
     const mod = ctx.boot.isMac ? "Cmd" : "Ctrl";
@@ -35,8 +36,11 @@ export class SelectionBubble {
     this.el.append(el("div", { class: "rd-pill-sep" }), cite);
     if (commentOn) {
       const comment = iconButton(icon("message"), "Comment on the source", "rd-btn-sm");
+      // Hidden until the host's roots say the shown PDF maps to its source, which a comment needs.
+      comment.hidden = true;
       comment.addEventListener("click", () => this.comment());
       this.el.append(comment);
+      this.commentButton = comment;
     }
 
     // Keep the selection alive while the bubble is being clicked.
@@ -90,6 +94,11 @@ export class SelectionBubble {
     this.commentOn({ ...info, start: range.getClientRects()[0] ?? bounds, bounds });
     window.getSelection()?.removeAllRanges();
     this.hide();
+  }
+
+  /** Shows Comment only while the shown PDF maps to source positions. */
+  setCommentable(on: boolean): void {
+    if (this.commentButton) { this.commentButton.hidden = !on; }
   }
 
   /**

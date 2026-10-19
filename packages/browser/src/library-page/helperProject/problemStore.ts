@@ -2,7 +2,7 @@
 import type { HelperCompileResult } from "@labshelf/core/helper";
 
 export type HelperProblem = HelperCompileResult["problems"][number];
-export type ProblemListener = (problems: readonly HelperProblem[]) => void;
+type ProblemListener = (problems: readonly HelperProblem[]) => void;
 
 export interface ProblemStore {
   /** Calls `listener` at once with the file's current problems; returns the function that stops listening. */

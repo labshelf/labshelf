@@ -26,8 +26,8 @@ export type SearchToHost =
 export interface SearchScopeLabel {
   project: string;
   folder: string;
-  /** The active file, relative to the project folder. */
-  file: string;
+  /** The active file, relative to the project folder; null when the host has no active file, which hides the "This file" choice. */
+  file: string | null;
 }
 
 export type HostToSearch =

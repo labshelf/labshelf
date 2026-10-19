@@ -4,8 +4,8 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import type { LocalStat } from "../../ports/index.js";
-import { libraryLayout, METADATA_FILE } from "../../library/index.js";
-import { writeSyncedFile } from "../../library/node/index.js";
+import { libraryLayout } from "../../library/index.js";
+import { countPaperFolders, writeSyncedFile } from "../../library/node/index.js";
 import { BridgeError } from "../bridgeError.js";
 import type { BridgeResults } from "../protocol.js";
 import { assertInLibrary, resolveInLibrary, resolveParentInLibrary, type LibraryParent } from "./pathConfinement.js";
@@ -126,17 +126,6 @@ export class LibraryFileOperations {
 
   /** Paper folders at any depth under papers/: a folder holding a metadata file is a paper and is not descended into. */
   async paperCount(): Promise<number> {
-    return countPapers(path.join(this.root, "papers"));
+    return countPaperFolders(path.join(this.root, "papers"));
   }
-}
-
-// Dirent reports a symlink as neither file nor folder, so links are never followed or counted.
-async function countPapers(dir: string): Promise<number> {
-  const entries = await fs.readdir(dir, { withFileTypes: true }).catch((error: unknown) => {
-    if (missing(error)) return [];
-    throw error;
-  });
-  if (entries.some((e) => e.isFile() && e.name === METADATA_FILE)) return 1;
-  const counts = await Promise.all(entries.filter((e) => e.isDirectory()).map((e) => countPapers(path.join(dir, e.name))));
-  return counts.reduce((sum, n) => sum + n, 0);
 }

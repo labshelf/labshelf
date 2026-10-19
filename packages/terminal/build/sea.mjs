@@ -5,13 +5,14 @@ import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promi
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { inject } from "postject";
+import { TYPST_WASM_FILE, typstWasmPath } from "./typstWasm.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const seaDir = resolve(root, "dist/sea");
 const OS_NAMES = { darwin: "macos", win32: "windows", linux: "linux" };
 const SENTINEL_FUSE = "NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2";
 const SMOKE_TIMEOUT_MS = 20_000;
-const PROTOCOL_VERSION = 2;
+const PROTOCOL_VERSION = 3;
 const SMOKE_ORIGIN = "chrome-extension://abcdefghijklmnopabcdefghijklmnop";
 
 function targetName() {
@@ -33,16 +34,19 @@ async function bundleCommonJs(outfile) {
     target: "node22",
     legalComments: "none",
     logLevel: "warning",
+    // TRAP: typst.ts imports its renderer, an optional peer the helper never loads, so it stays out of the bundle.
+    external: ["@myriaddreamin/typst-ts-renderer"],
     // The ESM bundle's banner builds `require` from import.meta.url; in the executable that is the binary's own location.
     define: { "import.meta.url": "__helperUrl" },
     banner: { js: 'const __helperUrl = require("node:url").pathToFileURL(__filename).href;' },
   });
 }
 
+// The executable has no node_modules, so the compiler WASM is a SEA asset that `main.ts` reads with getAsset.
 async function writeBlob(tmpDir, mainFile) {
   const config = join(tmpDir, "sea-config.json");
   const blob = join(tmpDir, "sea-prep.blob");
-  await writeFile(config, JSON.stringify({ main: mainFile, output: blob, disableExperimentalSEAWarning: true }));
+  await writeFile(config, JSON.stringify({ main: mainFile, output: blob, disableExperimentalSEAWarning: true, assets: { [TYPST_WASM_FILE]: typstWasmPath() } }));
   try {
     execFileSync(process.execPath, ["--experimental-sea-config", config], { stdio: "inherit" });
   } catch {

@@ -3,7 +3,7 @@ import { HELPER_HOST_NAME, PROTOCOL_VERSION, type HelperStatus, type ToPageMessa
 import type { ILogger } from "@labshelf/core";
 import { isHostNotFound } from "../../platform";
 import {
-  HelperClosedError, HelperConnection, nativeChannel, openSocketChannel, statusFromReady,
+  HelperClosedError, HelperConnection, HelperVersionError, nativeChannel, openSocketChannel, statusFromReady, statusFromVersionError,
   type ConnectionHooks, type HelperPortFactory, type HelperWebSocketConstructor,
 } from "./connection";
 
@@ -62,6 +62,10 @@ export async function handshake(deps: HandshakeDeps, hooks: ConnectionHooks & Re
     return { status, native, socket: await openSession(deps, session, hooks) };
   } catch (error) {
     native?.disconnect();
+    if (error instanceof HelperVersionError) {
+      await deps.logger.log("WARN", "browser.helper", "LabShelf Helper and this page speak different protocol versions", { helperProtocol: error.helperProtocol, pageProtocol: PROTOCOL_VERSION });
+      return { status: statusFromVersionError(error, PROTOCOL_VERSION) };
+    }
     if (!isHostNotFound(failureReason(error))) {
       await deps.logger.error("browser.helper", error, { step: "handshake", host: HELPER_HOST_NAME });
       throw error;

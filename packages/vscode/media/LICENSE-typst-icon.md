@@ -1,6 +1,6 @@
 # media/typst.png
 
-The Typst file icon comes from Tinymist (https://github.com/Myriad-Dreamin/tinymist), `icons/typst-small.png`, version 0.15.10, so `.typ` files show the same icon with or without Tinymist installed. It is used under the Apache License 2.0:
+The Typst file icon comes from Tinymist (https://github.com/Myriad-Dreamin/tinymist), `icons/typst-small.png`, version 0.15.10. It is used under the Apache License 2.0:
 
 ```
                                  Apache License
