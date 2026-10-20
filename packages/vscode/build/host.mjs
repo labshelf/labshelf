@@ -34,7 +34,7 @@ const baseOptions = {
   logLevel: "info",
 };
 
-// Only the desktop deploys the relay, so only its bundle carries the Worker script; watch mode keeps the script of its start.
+// Only the extension bundle deploys the relay, so only it carries the Worker script; watch mode keeps the script of its start.
 const options = { ...baseOptions, define: { RELAY_WORKER_SCRIPT: JSON.stringify(await bundleRelayWorker()) } };
 
 // The browser starts this file through Native Messaging; it loads nothing from node_modules.

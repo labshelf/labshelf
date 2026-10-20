@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import type { LibraryRootController } from "../../activation/libraryLifecycle/index.js";
 import { openLibraryLogger } from "../../activation/registration/index.js";
-import { RelayAccounts, registerRelay } from "../../relay/index.js";
+import { openRelayAccounts, registerRelay } from "../../relay/index.js";
 import type { WritingProjects } from "../../writing/index.js";
 import type { CollabHost } from "./collabHost.js";
 import {
@@ -32,7 +32,7 @@ function createHost(context: vscode.ExtensionContext, controller: Controller, pr
     requireLibrary: async () => { await controller.require(); return libraryRoot(); },
     logger, projects, shares, editors,
     keys: new ShareKeys(context.secrets, logger),
-    relay: new RelayAccounts(context.secrets, logger),
+    relay: openRelayAccounts(context.secrets, logger),
     connect: async ({ shareId, shareKey, relays }, start) => {
       const root = libraryRoot();
       if (!root) { throw new Error("no library is open"); }

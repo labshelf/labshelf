@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import type { ILogger } from "@labshelf/core";
 import type { LibraryRootController } from "../../activation/libraryLifecycle/index.js";
-import { RelayAccounts } from "../../relay/index.js";
+import { openRelayAccounts } from "../../relay/index.js";
 import { IMPORT_SHARE_COMMAND } from "../importShareCommandId.js";
 import { importShare } from "./importShareCommand.js";
 import { MANAGE_SHARES_COMMAND, manageShares } from "./manageSharesCommand.js";
@@ -20,7 +20,7 @@ export function registerShareLinks(context: vscode.ExtensionContext, controller:
   const host: ShareLinkHost = {
     requireServices: () => controller.require(),
     libraryRoot: () => controller.currentRoot()?.fsPath,
-    relay: new RelayAccounts(context.secrets, logger),
+    relay: openRelayAccounts(context.secrets, logger),
   };
   context.subscriptions.push(
     vscode.commands.registerCommand(SHARE_FOLDER_COMMAND, (target?: unknown) => shareFolder(host, target)),

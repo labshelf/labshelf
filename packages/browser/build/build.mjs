@@ -3,6 +3,7 @@ import { build as esbuild } from "esbuild";
 import { mkdir, rm } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { bundleRelayWorker } from "../../core/tools/relayWorker/bundleRelayWorker.mjs";
 import { copyAssets } from "./copyAssets.mjs";
 import { vendorFonts } from "./vendorFonts.mjs";
 import { vendorReader } from "./vendorReader.mjs";
@@ -17,7 +18,8 @@ const ENTRIES = [
   { entry: "popup/index.ts", out: "popup/index.js", format: "esm" },
   { entry: "options/index.ts", out: "options/index.js", format: "esm" },
   // Code-split: each workspace tab kind is a dynamic import, emitted as its own chunk under library-page/chunks.
-  { entry: "library-page/main.ts", out: "library-page/main.js", format: "esm", splitting: true },
+  // Only the library page deploys the relay, so only it carries the Worker script.
+  { entry: "library-page/main.ts", out: "library-page/main.js", format: "esm", splitting: true, relayWorker: true },
   // The PDF reader page: the shared reader UI from @labshelf/core/dom over an in-page host.
   { entry: "reader/index.ts", out: "reader/index.js", format: "esm" },
   // Chrome's offscreen document, where pdf.js reads page 1 of a PDF the background matches to a paper.
@@ -40,7 +42,7 @@ function parseTargetFlag() {
   return value;
 }
 
-async function buildOne(target) {
+async function buildOne(target, relayWorkerScript) {
   const outDir = resolve(outRoot, target);
   await rm(outDir, { recursive: true, force: true });
   await mkdir(outDir, { recursive: true });
@@ -62,6 +64,7 @@ async function buildOne(target) {
         loader: { ".css": "text" },
         define: {
           "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV ?? "production"),
+          ...(e.relayWorker ? { RELAY_WORKER_SCRIPT: relayWorkerScript } : {}),
         },
         logLevel: "info",
       })
@@ -78,8 +81,9 @@ async function buildOne(target) {
 async function main() {
   const single = parseTargetFlag();
   const targets = single ? [single] : TARGETS;
+  const relayWorkerScript = JSON.stringify(await bundleRelayWorker());
   for (const t of targets) {
-    await buildOne(t);
+    await buildOne(t, relayWorkerScript);
   }
 }
 

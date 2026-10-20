@@ -2,6 +2,7 @@
 import type { ILogger, LibraryFileSystem } from "@labshelf/core";
 import { createBrowserLatexHelper } from "../../helper/client";
 import { getSettings } from "../../platform";
+import { updateOwnRelayOnStart } from "../../relay";
 import { currentLibraryId, librarySources } from "../../storage";
 import { createBrowserProjects } from "../../storage/projects";
 import { createPageShares, runJoinDialog } from "../editor/collab";
@@ -48,6 +49,8 @@ export function mountProjectWiring({ workspace, fs, logger, openTab }: ProjectWi
   const comments = createRoutedCommentThreads({ files: createCommentThreads({ fs, session, logger }), shares, session });
   const joinShared = (invite?: string): Promise<void> => runJoinDialog({ shares, fs, logger, session, ...(invite === undefined ? {} : { invite }) });
   window.addEventListener("pagehide", () => { void shares.closeAll(); });
+  // Never awaited: mounting does not wait on the network.
+  void updateOwnRelayOnStart(logger);
   return {
     services: { session, helperProject, comments, shares },
     sidebarProjects: () => {
