@@ -1,6 +1,6 @@
 /*
- * Styles the All projects page on top of the Library sheets (library-ui.css, library-list.css, library-detail.css, library-tabs.css,
- * library-sidebar.css for the format badge): column tracks, place tabs, rows, the files tray tree and the project detail pane.
+ * Styles the All projects page on top of the Library sheets (library-ui.css, library-list.css, library-sidebar.css for the format badge): column tracks,
+ * place tabs, rows and the files tray tree under .ls-all-projects, and the project details under .ls-details (with library-detail.css, library-tabs.css).
  */
 /* ── Columns ────────────────────────────────────────────────────── */
 .ls-all-projects .paper-list {
@@ -81,34 +81,34 @@
 
 /* ── Detail pane: head and status row ───────────────────────────── */
 /* A project is named by its folder, so its title is set in mono where a paper's is set in serif. */
-.ls-all-projects .detail-title { font-family: var(--ls-mono); font-size: calc(var(--ls-font-size) * 1.4); line-height: 1.35; text-wrap: pretty; }
-.ls-all-projects :is(.status-build, .status-target) { display: inline-flex; align-items: center; gap: var(--ls-space-3); font-size: var(--ls-font-size); color: var(--ls-fg); }
-.ls-all-projects .status-target { color: var(--ls-desc); }
-.ls-all-projects .status-target svg { width: var(--ls-text-lg); height: var(--ls-text-lg); flex-shrink: 0; }
+.ls-details .detail-title { font-family: var(--ls-mono); font-size: calc(var(--ls-font-size) * 1.4); line-height: 1.35; text-wrap: pretty; }
+.ls-details :is(.status-build, .status-target) { display: inline-flex; align-items: center; gap: var(--ls-space-3); font-size: var(--ls-font-size); color: var(--ls-fg); }
+.ls-details .status-target { color: var(--ls-desc); }
+.ls-details .status-target svg { width: var(--ls-text-lg); height: var(--ls-text-lg); flex-shrink: 0; }
 /* The target's tones match the list's venue chip: near is a warning, passed fades. */
-.ls-all-projects .status-target.tone-near { color: var(--ls-warning); }
-.ls-all-projects .status-target.tone-passed { opacity: .7; }
+.ls-details .status-target.tone-near { color: var(--ls-warning); }
+.ls-details .status-target.tone-passed { opacity: .7; }
 
 /* ── Detail pane: Overview ──────────────────────────────────────── */
-.ls-all-projects .kv-value > .ls-build-dot { vertical-align: middle; margin-right: var(--ls-space-1); }
-.ls-all-projects .kv-value code { font-family: var(--ls-mono); font-size: var(--ls-text-md); }
-.ls-all-projects .ls-limit-bar { height: var(--ls-space-2); margin-top: var(--ls-space-5); border-radius: var(--ls-radius-pill); background: var(--ls-border-soft); overflow: hidden; }
-.ls-all-projects .ls-limit-fill { height: 100%; border-radius: inherit; background: var(--ls-progress); transition: width var(--ls-normal); }
-.ls-all-projects .ls-limit-bar.at-limit > .ls-limit-fill { background: var(--ls-warning); }
-.ls-all-projects .ls-limit-bar.past-limit > .ls-limit-fill { background: var(--ls-error); }
-.ls-all-projects .ls-limit-bar + .muted-note, .ls-all-projects .kv-grid + .muted-note { margin-top: var(--ls-space-3); }
-.ls-all-projects .build-actions { display: flex; gap: var(--ls-space-3); flex-wrap: wrap; margin-top: var(--ls-space-4); }
+.ls-details .kv-value > .ls-build-dot { vertical-align: middle; margin-right: var(--ls-space-1); }
+.ls-details .kv-value code { font-family: var(--ls-mono); font-size: var(--ls-text-md); }
+.ls-details .ls-limit-bar { height: var(--ls-space-2); margin-top: var(--ls-space-5); border-radius: var(--ls-radius-pill); background: var(--ls-border-soft); overflow: hidden; }
+.ls-details .ls-limit-fill { height: 100%; border-radius: inherit; background: var(--ls-progress); transition: width var(--ls-normal); }
+.ls-details .ls-limit-bar.at-limit > .ls-limit-fill { background: var(--ls-warning); }
+.ls-details .ls-limit-bar.past-limit > .ls-limit-fill { background: var(--ls-error); }
+.ls-details .ls-limit-bar + .muted-note, .ls-all-projects .kv-grid + .muted-note { margin-top: var(--ls-space-3); }
+.ls-details .build-actions { display: flex; gap: var(--ls-space-3); flex-wrap: wrap; margin-top: var(--ls-space-4); }
 
 /* ── Detail pane: Citations and Versions ────────────────────────── */
-.ls-all-projects :is(.ls-cite-row, .ls-version-row) {
+.ls-details :is(.ls-cite-row, .ls-version-row) {
   display: flex; align-items: baseline; gap: var(--ls-space-1) var(--ls-space-4); padding: var(--ls-space-3) var(--pane-x);
   border-bottom: 1px solid var(--ls-border-faint); font-size: var(--ls-font-size); line-height: 1.4; user-select: text;
 }
-.ls-all-projects .ls-cite-row { flex-wrap: wrap; }
-.ls-all-projects :is(.cite-key, .version-name) { font-family: var(--ls-mono); font-size: var(--ls-text-md); min-width: 0; overflow-wrap: anywhere; }
-.ls-all-projects :is(.cite-text, .cite-source, .version-time) { color: var(--ls-desc); min-width: 0; overflow-wrap: anywhere; }
-.ls-all-projects .cite-source { font-size: var(--ls-text-sm); }
-.ls-all-projects .ls-cite-row.missing { color: var(--ls-error); }
-.ls-all-projects .cite-missing { font-size: var(--ls-text-sm); font-weight: 600; }
-.ls-all-projects .ls-version-row { justify-content: space-between; }
-.ls-all-projects .version-time { flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.ls-details .ls-cite-row { flex-wrap: wrap; }
+.ls-details :is(.cite-key, .version-name) { font-family: var(--ls-mono); font-size: var(--ls-text-md); min-width: 0; overflow-wrap: anywhere; }
+.ls-details :is(.cite-text, .cite-source, .version-time) { color: var(--ls-desc); min-width: 0; overflow-wrap: anywhere; }
+.ls-details .cite-source { font-size: var(--ls-text-sm); }
+.ls-details .ls-cite-row.missing { color: var(--ls-error); }
+.ls-details .cite-missing { font-size: var(--ls-text-sm); font-weight: 600; }
+.ls-details .ls-version-row { justify-content: space-between; }
+.ls-details .version-time { flex-shrink: 0; font-variant-numeric: tabular-nums; }

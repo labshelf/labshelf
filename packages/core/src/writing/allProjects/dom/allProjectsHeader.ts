@@ -12,7 +12,6 @@ export interface HeaderHandlers {
   onQuery: (query: string) => void;
   onNew: (anchor: HTMLElement) => void;
   onEmptyTrash: () => void;
-  onToggleDetail: () => void;
   /** Moves focus from the search box to the rows. */
   onLeaveSearch: () => void;
 }
@@ -34,8 +33,7 @@ const headerHtml = (): string => `
     <button class="ls-search-clear" type="button" data-act="clear" title="Clear search (Esc)">${icon("x")}</button>
   </div>
   <button class="ls-btn ls-btn-ghost" type="button" data-act="new" title="New project">${icon("plus")}<span>New project</span></button>
-  <button class="ls-btn ls-btn-ghost" type="button" data-act="empty-trash" title="Delete every project in the trash">${icon("trash")}<span>Empty trash</span></button>
-  <button class="ls-icon-btn" type="button" data-act="detail" title="Toggle details panel">${icon("panel-right")}</button>`;
+  <button class="ls-btn ls-btn-ghost" type="button" data-act="empty-trash" title="Delete every project in the trash">${icon("trash")}<span>Empty trash</span></button>`;
 
 function wireSearch(search: HTMLInputElement, h: HeaderHandlers): void {
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -85,7 +83,6 @@ export function mountAllProjectsHeader(container: HTMLElement, h: HeaderHandlers
   wireTabs(tabs, h);
   newBtn.addEventListener("click", () => h.onNew(newBtn));
   emptyBtn.addEventListener("click", h.onEmptyTrash);
-  container.querySelector('[data-act="detail"]')!.addEventListener("click", h.onToggleDetail);
   container.querySelector('[data-act="clear"]')!.addEventListener("click", () => { search.value = ""; h.onQuery(""); search.focus(); });
   return {
     paint(place, counts, query) {

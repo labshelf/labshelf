@@ -1,6 +1,6 @@
 /*
- * Styles the library UI frame and sashes, list header under .ls-library on the --ls-* tokens.
- * Requires tokens.css and base.css; the list and the detail pane have their own sheets.
+ * Styles the library UI frame, sashes and list header under .ls-library, the Details surface frame under .ls-details, and the
+ * helpers both share, on the --ls-* tokens. Requires tokens.css and base.css; the list and the detail pane have their own sheets.
  */
 .ls-library {
   display: flex; flex: 1; min-height: 0; overflow: hidden;
@@ -9,11 +9,11 @@
 /* A frame under the cursor would swallow the drag's pointer events. */
 .ls-library.resizing iframe { pointer-events: none; }
 @keyframes ls-spin { to { transform: rotate(360deg); } }
-.ls-library .spin { display: inline-flex; animation: ls-spin 1s linear infinite; }
-.ls-library .tb-spacer { flex: 1; }
-.ls-library .muted-text { color: var(--ls-desc); }
-.ls-library .mono { font-family: var(--ls-mono); font-size: var(--ls-text-sm); }
-.ls-library .muted-note { color: var(--ls-desc); font-style: italic; font-size: var(--ls-text-sm); line-height: 1.5; }
+:is(.ls-library, .ls-details) .spin { display: inline-flex; animation: ls-spin 1s linear infinite; }
+:is(.ls-library, .ls-details) .tb-spacer { flex: 1; }
+:is(.ls-library, .ls-details) .muted-text { color: var(--ls-desc); }
+:is(.ls-library, .ls-details) .mono { font-family: var(--ls-mono); font-size: var(--ls-text-sm); }
+:is(.ls-library, .ls-details) .muted-note { color: var(--ls-desc); font-style: italic; font-size: var(--ls-text-sm); line-height: 1.5; }
 
 /* ── Frame and sashes ───────────────────────────────────────────── */
 /* The page around .ls-library fills the window; the host's #root is the flex column that holds it. */
@@ -24,11 +24,10 @@ body, #root { display: flex; flex-direction: column; }
 /* The invisible strip widens the grab area without changing the visible line. */
 .ls-library .sash::before { content: ""; position: absolute; inset: 0 calc(-1 * var(--ls-space-3)); }
 .ls-library .sash-sidebar { margin-left: calc(-1 * var(--ls-space-1)); }
-.ls-library .sash-detail { margin-right: calc(-1 * var(--ls-space-1)); }
 .ls-library .sash:hover, .ls-library .sash.dragging { background: var(--ls-focus); }
 /* A collapsed pane keeps a visible edge so it can be grabbed back. */
-.ls-library.sidebar-collapsed .sash-sidebar, .ls-library.detail-collapsed .sash-detail { background: var(--ls-border); }
-.ls-library.sidebar-collapsed .sash-sidebar:hover, .ls-library.detail-collapsed .sash-detail:hover { background: var(--ls-focus); }
+.ls-library.sidebar-collapsed .sash-sidebar { background: var(--ls-border); }
+.ls-library.sidebar-collapsed .sash-sidebar:hover { background: var(--ls-focus); }
 .ls-library .sidebar {
   width: 220px; flex-shrink: 0; display: flex; flex-direction: column; min-width: 0; overflow: hidden;
   background: var(--ls-sidebar-bg); border-right: 1px solid var(--ls-sidebar-border);
@@ -36,11 +35,16 @@ body, #root { display: flex; flex-direction: column; }
 .ls-library.sidebar-collapsed .sidebar { display: none; }
 .ls-library .list-pane { container: list-pane / inline-size; flex: 1; background: var(--ls-sidebar-bg); display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
 .ls-library .list-body { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-.ls-library .detail-pane {
-  position: relative; width: 360px; min-width: 260px; max-width: 760px; flex-shrink: 0; overflow-y: auto; overflow-x: hidden;
-  display: flex; flex-direction: column; background: var(--ls-sidebar-bg); border-left: 1px solid var(--ls-sidebar-border);
+
+/* ── Details surface ────────────────────────────────────────────── */
+.ls-details { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+.ls-details .detail-pane {
+  position: relative; flex: 1; min-width: 0; overflow-y: auto; overflow-x: hidden;
+  display: flex; flex-direction: column; background: var(--ls-sidebar-bg);
 }
-.ls-library.detail-collapsed .detail-pane { display: none; }
+.ls-details .detail-placeholder { flex: 1; }
+/* PLATFORM: the slots set display, which beats the hidden attribute, so hidden is restated here. */
+.ls-details > :is(.detail-pane, .detail-placeholder)[hidden] { display: none; }
 
 /* ── Header and breadcrumb ──────────────────────────────────────── */
 .ls-library .list-header {

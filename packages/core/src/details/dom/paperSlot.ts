@@ -42,7 +42,7 @@ function libraryChannel(transport: PaperSlotParts["transport"]): LibraryTranspor
   };
 }
 
-/** `root` is the surface's `.ls-library` element; `el` is the slot the pane renders into. */
+/** `root` is the surface's root element; `el` is the slot the pane renders into. */
 export function mountPaperSlot(root: HTMLElement, el: HTMLElement, parts: PaperSlotParts): PaperSlot {
   const transport = libraryChannel(parts.transport);
   const store = new DetailsViewStore(transport.post);

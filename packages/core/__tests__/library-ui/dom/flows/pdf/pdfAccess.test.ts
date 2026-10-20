@@ -2,9 +2,9 @@
  * @jest-environment jsdom
  */
 // A miss that a sign-in or a bot check caused offers to open that page; one without access offers what it did before.
-import { askNoPdf } from "../../../../src/library-ui/dom/flows/pdfDialogs";
-import type { PdfMiss } from "../../../../src/library-ui/protocol";
-import { mountForTest, paper } from "../mountHarness";
+import { askNoPdf } from "../../../../../src/library-ui/dom/flows/pdf/index";
+import type { PdfMiss } from "../../../../../src/library-ui/protocol";
+import { mountForTest, paper } from "../../mountHarness";
 
 const ACCESS = { kind: "login" as const, url: "https://publisher.example/doi/pdf/10.1/x" };
 const miss = (over: Partial<PdfMiss> = {}): PdfMiss => ({ tried: 2, sources: ["publisher"], blocked: false, needsLogin: true, ...over });

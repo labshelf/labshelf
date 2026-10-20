@@ -6,7 +6,7 @@
 import { showMenu } from "../../../../ui/dom/index.js";
 import { escapeHtml, icon } from "../../../../ui/index.js";
 import { libraryTags } from "../../../derive/index.js";
-import { changeTags } from "../../flows/index.js";
+import { changeTags, splitTags } from "../../flows/index.js";
 import type { UiContext } from "../../uiContext.js";
 
 function chip(tag: string, readOnly: boolean): string {
@@ -49,7 +49,7 @@ export function tagRowHtml(ctx: UiContext, tags: readonly string[], editing: boo
 /** Handles a key in the tag field; `ids` are the papers the row edits, `tags` the ones it shows. */
 export function onTagKey(ctx: UiContext, e: KeyboardEvent, input: HTMLInputElement, ids: string[], tags: readonly string[]): void {
   if (e.key === "Enter") {
-    const add = input.value.split(",").map((s) => s.trim()).filter(Boolean);
+    const add = splitTags(input.value);
     input.value = "";
     changeTags(ctx, ids, add, []);
     e.preventDefault();
@@ -72,5 +72,5 @@ export function onTagInput(ctx: UiContext, input: HTMLInputElement, ids: string[
   if (!input.value.includes(",")) return;
   const parts = input.value.split(",");
   input.value = parts.pop() ?? "";
-  changeTags(ctx, ids, parts.map((s) => s.trim()).filter(Boolean), []);
+  changeTags(ctx, ids, splitTags(parts.join(",")), []);
 }

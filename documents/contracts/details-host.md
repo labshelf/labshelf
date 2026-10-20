@@ -15,7 +15,7 @@ Every message except `details.show` wraps one message of an existing protocol:
 
 A message is valid only on its own channel. The host answers a wrapped message the way that protocol's host answers it, and wraps the answer on the same channel. Two exceptions:
 
-- `folder.open` on the library channel asks the host to forward `navigate` to the paper list.
+- `folder.open` on the library channel is not answered as a library message. The host exposes it as an event and shows that folder in the paper list: the VS Code view fires `onDidRequestFolder` and the extension navigates the list; the browser page intercepts it before the library endpoint, posts `navigate` to the list and focuses the Library tab.
 - `project.selected` is not sent by Details; only the All projects page reports a selection.
 
 ## `details.show`

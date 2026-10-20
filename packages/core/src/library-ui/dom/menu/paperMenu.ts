@@ -7,10 +7,9 @@ import { PAPER_STATUSES, STATUS_LABEL, isPrePublication } from "../../../model/i
 import { showMenu, type MenuAnchor, type MenuEntry } from "../../../ui/dom/index.js";
 import { listPapersUnder, type ListPaper } from "../../derive/index.js";
 import {
-  attachPdf, confirmFindBetterPdf, confirmRemove, copyCitation, findPdf, fixableIds, hostFileAction, makeSearchable, openPaper, pickMoveTarget, setPaperStatus,
+  attachPdf, confirmFindBetterPdf, confirmRemove, copyCitation, findPdf, fixableIds, hostFileAction, makeSearchable, openPaper, pickMoveTarget, promptAddTags, setPaperStatus,
 } from "../flows/index.js";
 import { KEY_HINT, type UiContext } from "../uiContext.js";
-import { focusTagInput } from "./tagInputFocus.js";
 
 function openEntries(ctx: UiContext, p: ListPaper): MenuEntry[] {
   const lastPage = ctx.store.get().stats[p.id]?.lastPage ?? 0;
@@ -49,7 +48,7 @@ function statusEntries(ctx: UiContext, ids: string[]): MenuEntry[] {
 
 function organizeEntries(ctx: UiContext, ids: string[], one: ListPaper | null): MenuEntry[] {
   const entries: MenuEntry[] = [];
-  entries.push({ icon: "tag", label: ids.length > 1 ? `Tag ${ids.length} Papers…` : "Add Tag…", onSelect: () => focusTagInput(ctx) });
+  entries.push({ icon: "tag", label: ids.length > 1 ? `Tag ${ids.length} Papers…` : "Add Tag…", onSelect: () => { void promptAddTags(ctx, ids); } });
   entries.push({ icon: "folder-move", label: "Move to…", onSelect: () => { void pickMoveTarget(ctx, ids); } });
   if (one && ctx.caps.reveal) entries.push({ icon: "folder", label: ctx.labels.revealPaper ?? "Reveal Folder", onSelect: () => hostFileAction(ctx, "paper.reveal", one.id) });
   const fix = ctx.caps.textLayer ? fixableIds(ctx, ids) : [];

@@ -2,10 +2,10 @@
  * Runs the paper actions that need no dialog. Each asks the host; status, tag and note changes and queued OCR also
  * show at once, before the host confirms them.
  */
-import type { PaperStatus } from "../../../model/index.js";
-import { hasNoText, listPapersUnder } from "../../derive/index.js";
-import { PAPERS_DIR } from "../../../library/index.js";
-import type { UiContext } from "../uiContext.js";
+import type { PaperStatus } from "../../../../model/index.js";
+import { hasNoText, listPapersUnder } from "../../../derive/index.js";
+import { PAPERS_DIR } from "../../../../library/index.js";
+import type { UiContext } from "../../uiContext.js";
 
 export function openPaper(ctx: UiContext, id: string, page?: number): void {
   ctx.transport.post(page ? { type: "paper.open", id, page } : { type: "paper.open", id });
@@ -22,6 +22,11 @@ export function setPaperStatus(ctx: UiContext, ids: readonly string[], status: P
   if (changed.length === 0) return;
   ctx.store.applyStatus(changed, status);
   ctx.transport.post({ type: "paper.setStatus", ids: changed, status });
+}
+
+/** The tags in comma-separated `text`, trimmed, empty ones dropped. */
+export function splitTags(text: string): string[] {
+  return text.split(",").map((s) => s.trim()).filter(Boolean);
 }
 
 export function changeTags(ctx: UiContext, ids: readonly string[], add: string[], remove: string[]): void {

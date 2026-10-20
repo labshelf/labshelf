@@ -1,11 +1,11 @@
 /**
- * Renders the list header: sidebar toggle, scope title with a match count while narrowed, search box, and toolbar (Add, details toggle).
+ * Renders the list header: sidebar toggle, scope title with a match count while narrowed, search box, and toolbar (Add).
  */
 import { SYNTAX_HELP } from "../../../library/index.js";
 import { escapeHtml, icon } from "../../../ui/index.js";
 import { deriveScope } from "../../derive/index.js";
 import { requestAddPaper } from "../flows/index.js";
-import { togglePane } from "../shell/index.js";
+import { toggleSidebar } from "../shell/index.js";
 import type { UiContext } from "../uiContext.js";
 import { renderCrumbs } from "./breadcrumb.js";
 
@@ -21,8 +21,7 @@ const headerHtml = (addTooltip: string, readOnly: boolean): string => `
     <kbd class="ls-search-key" aria-hidden="true">/</kbd>
     <button class="ls-search-clear" data-act="clear" title="Clear search (Esc)">${icon("x")}</button>
   </div>
-  ${readOnly ? "" : `<button class="ls-btn ls-btn-ghost" data-act="add" title="${escapeHtml(addTooltip)}">${icon("plus")}<span>Add</span></button>`}
-  <button class="ls-icon-btn" data-act="detail" title="Toggle details panel">${icon("panel-right")}</button>`;
+  ${readOnly ? "" : `<button class="ls-btn ls-btn-ghost" data-act="add" title="${escapeHtml(addTooltip)}">${icon("plus")}<span>Add</span></button>`}`;
 
 function wireSearch(ctx: UiContext, search: HTMLInputElement): void {
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -44,8 +43,7 @@ function onToolbarClick(ctx: UiContext, act: string | undefined, search: HTMLInp
   switch (act) {
     case "clear": ctx.store.set({ query: "" }); search.value = ""; search.focus(); return;
     case "add": requestAddPaper(ctx); return;
-    case "detail": togglePane(ctx.root, ctx.prefs, "detail"); return;
-    case "sidebar": togglePane(ctx.root, ctx.prefs, "sidebar"); return;
+    case "sidebar": toggleSidebar(ctx.root, ctx.prefs); return;
   }
 }
 

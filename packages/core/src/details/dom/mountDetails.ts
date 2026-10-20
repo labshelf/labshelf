@@ -24,15 +24,11 @@ function slot(kind: string, label: string): HTMLElement {
   return el;
 }
 
-// PLATFORM: `.detail-pane` sets `display: flex`, which beats the `hidden` attribute, so visibility goes through the inline style.
-function setShown(el: HTMLElement, shown: boolean): void { el.style.display = shown ? "" : "none"; }
-
 /** Mounts the surface into `host`, says `ready` on both channels and returns the function that unmounts it. */
 export function mountDetails(host: HTMLElement, options: DetailsOptions): () => void {
   const { transport } = options;
-  // Detail styles are scoped under `.ls-library`, so the root carries it too.
   const root = document.createElement("div");
-  root.className = "ls-details ls-library";
+  root.className = "ls-details";
   const paperEl = slot("paper", "Paper details");
   const projectEl = slot("project", "Project details");
   const empty = document.createElement("div");
@@ -46,9 +42,9 @@ export function mountDetails(host: HTMLElement, options: DetailsOptions): () => 
   const refresh = (): void => {
     const paperShown = target?.kind === "paper" && paper.hasContent();
     const projectShown = target?.kind === "project" && project.hasContent();
-    setShown(paperEl, paperShown);
-    setShown(projectEl, projectShown);
-    setShown(empty, !paperShown && !projectShown);
+    paperEl.hidden = !paperShown;
+    projectEl.hidden = !projectShown;
+    empty.hidden = paperShown || projectShown;
   };
   const offWatch = paper.watch(refresh);
   project.watch(refresh);
