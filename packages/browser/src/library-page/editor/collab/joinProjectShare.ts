@@ -1,5 +1,5 @@
 // Joins a shared project from a pasted invite under its tab lease, and stores the invite once the project exists in the library.
-import { assertInviteHasRelay, parseInvite, type ILogger, type Invite, type RelayNetwork } from "@labshelf/core";
+import { assertInviteHasRelay, parseInvite, type ILogger, type Invite, type RelayNetwork, type ShareConnection } from "@labshelf/core";
 import { acquireTabLease, tabLeaseName } from "../../../storage";
 import { connectBrowserShare, type ShareSources } from "./browserShareConnection";
 import { ProjectShare, type ShareEntryOptions } from "./projectShareEntry";
@@ -28,10 +28,13 @@ export async function joinProjectShare(options: JoinProjectShareOptions): Promis
   assertInviteHasRelay(invite);
   const held = await acquireTabLease(tabLeaseName(libraryId, invite.shareId));
   if (held.kind === "busy") { throw new Error("This shared project is open in another tab"); }
+  let connection: ShareConnection | undefined;
   try {
-    const connection = await connectBrowserShare({
+    connection = await connectBrowserShare({
       invite, libraryId, tab: held.lease, sources, name, logger, network, start: { mode: "join", signal },
     });
+    // The signal stops only the wait for a peer, so a page that closed after it still cancels here.
+    if (signal.aborted) { throw new Error("Joining was cancelled"); }
     await saveShare(libraryId, invite.shareId, invite.shareKey, invite.relays);
     const projectId = connection.joinedId ?? connection.folder;
     const share = new ProjectShare(options.entry(projectId, connection.folder, invite));
@@ -39,6 +42,7 @@ export async function joinProjectShare(options: JoinProjectShareOptions): Promis
     await logger.log("INFO", LOG_MODULE, "Joined a shared project", { shareId: invite.shareId, folder: connection.folder });
     return { projectId, share };
   } catch (error) {
+    await connection?.close().catch((closeError: unknown) => logger.error(LOG_MODULE, closeError, { action: "close a share whose join failed", shareId: invite.shareId }));
     await held.lease.release();
     throw error;
   }

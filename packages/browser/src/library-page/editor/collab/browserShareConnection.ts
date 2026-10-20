@@ -25,8 +25,7 @@ export interface BrowserShareOptions {
 const noOutsideFolders: ProjectFolderRegistry = { folders: async () => [], register: async () => undefined, unregister: async () => undefined };
 
 function toMirrorStart(result: BrowserMirrorStart): MirrorStart {
-  if (result.kind === "running") { return result; }
-  return { kind: "busy", holder: result.holder, takeOver: async () => toMirrorStart(await result.takeOver()) };
+  return result.kind === "running" ? result : { kind: "busy", holder: result.holder };
 }
 
 export function connectBrowserShare({ invite, libraryId, tab, sources, name, logger, network, start }: BrowserShareOptions): Promise<ShareConnection> {

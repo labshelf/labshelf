@@ -10,10 +10,8 @@ export interface ConnectionMirror {
   close(): Promise<void>;
 }
 
-/** `busy` while another mirror owns the folder; `takeOver` writes over its ownership ("Use here"). */
-export type MirrorStart =
-  | { kind: "running"; mirror: ConnectionMirror }
-  | { kind: "busy"; holder: LeaseHolder | "tab"; takeOver(): Promise<MirrorStart> };
+/** `busy` while another mirror owns the folder; the connection then runs without one. */
+export type MirrorStart = { kind: "running"; mirror: ConnectionMirror } | { kind: "busy"; holder: LeaseHolder | "tab" };
 
 export interface MirrorInput {
   folder: string;

@@ -2,7 +2,7 @@
 import { indexSettings, readIndexKind } from "../model/index.js";
 import type { ShareSession } from "../sync/index.js";
 
-export const JOIN_TIMEOUT_MS = 120_000;
+const JOIN_TIMEOUT_MS = 120_000;
 
 /** The share is of a kind this version cannot open, so nothing is created for it. */
 export class UnknownShareKindError extends Error {

@@ -65,6 +65,10 @@ class PageShareRegistry implements PageShares {
         inviteText, libraryId: library, sources: this.options.sources, name: this.displayName, logger: this.options.logger,
         network: this.options.network, signal: abort.signal, entry: (id, folder, invite) => this.entryOptions(id, folder, library, invite),
       });
+      if (abort.signal.aborted) {
+        await share.close();
+        throw new Error("Joining was cancelled because the page closed");
+      }
       this.entries.set(projectId, share);
       return { projectId, folder: share.folder };
     } finally {

@@ -56,7 +56,7 @@ export class ProjectShare {
 
   /** Takes the lease from the tab that holds it ("Use here"); that tab then observes. */
   async takeOver(): Promise<void> {
-    if (this.connection || this.closed) { return; }
+    if (this.connection || this.closed || this.current.kind === "connecting") { return; }
     this.waiting?.abort();
     await this.resume(await takeOverTabLease(this.leaseName()));
   }
@@ -121,7 +121,10 @@ export class ProjectShare {
     );
   }
 
-  /** Another tab took the lease: the mirror already stopped writing, so the connection closes and this tab observes. */
+  /**
+   * Another tab took the lease: the mirror already stopped writing, so the connection closes and this tab observes.
+   * INVARIANT: closing still flushes this tab's pending updates to the share's state; appends only add, so the new owner loses none.
+   */
   private async lost(): Promise<void> {
     void this.options.logger.log("INFO", LOG_MODULE, "Another tab took the shared project over", { shareId: this.options.invite.shareId });
     this.lease = undefined;

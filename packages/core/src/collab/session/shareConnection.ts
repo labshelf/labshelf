@@ -38,8 +38,6 @@ export interface ShareConnection {
   readonly mirror: ConnectionMirror | undefined;
   state(): ShareConnectionState;
   onStateChange(listener: () => void): () => void;
-  /** Takes the folder over from the mirror that owns it; does nothing while this connection's mirror runs. */
-  takeOverMirror(): Promise<void>;
   /** Closes in order and stores every pending update; rejects when state stays unstored. Later calls return the same promise. */
   close(): Promise<void>;
 }
@@ -149,7 +147,6 @@ async function connectParts(options: ShareConnectionOptions, start: ShareStart, 
     get mirror() { return parts.mirror; },
     state: () => ({ status: session.status, relay: relays.current, persistenceFailure: health.failure, mirror: mirrors.state() }),
     onStateChange: (listener) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
-    takeOverMirror: () => mirrors.takeOver(),
     close: () => (closing ??= (async () => {
       stops.forEach((stop) => stop());
       listeners.clear();
@@ -162,16 +159,13 @@ async function connectParts(options: ShareConnectionOptions, start: ShareStart, 
 /** Starts the mirror into `parts.mirror` and keeps what the connection reports of it. */
 function trackMirror(startMirror: MirrorFactory, input: Omit<Parameters<MirrorFactory>[0], "onStopped">, parts: Parts) {
   let state: MirrorState = { kind: "stopped", reason: "not started" };
-  let takeOver: (() => Promise<MirrorStart>) | undefined;
   const listeners = new Set<() => void>();
   const set = (next: MirrorState): void => { state = next; listeners.forEach((listener) => listener()); };
   const apply = (result: MirrorStart): void => {
     if (result.kind === "running") {
       parts.mirror = result.mirror;
-      takeOver = undefined;
       set({ kind: "running" });
     } else {
-      takeOver = result.takeOver;
       set({ kind: "busy", holder: result.holder });
     }
   };
@@ -180,6 +174,5 @@ function trackMirror(startMirror: MirrorFactory, input: Omit<Parameters<MirrorFa
     state: () => state,
     onChange: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
     start: async () => apply(await startMirror({ ...input, onStopped })),
-    takeOver: async () => { if (takeOver) { apply(await takeOver()); } },
   };
 }
