@@ -23,6 +23,7 @@ Read when you look for the document that answers a question about LabShelf; the 
 | How are the bridge and helper hosts registered with the browsers? | [contracts/native-host.md](contracts/native-host.md) |
 | What does the browser extension send LabShelf Helper? | [contracts/helper.md](contracts/helper.md) |
 | How is a project shared, invited and encrypted? | [contracts/collaboration.md](contracts/collaboration.md) |
+| How is sharing parity between browser and VS Code planned? | [plans/browser-sharing-parity/plan.md](plans/browser-sharing-parity/plan.md) |
 | What does the owner's relay Worker accept and answer? | [contracts/relay.md](contracts/relay.md) |
 | How is a folder of papers shared as a link? | [contracts/share-link.md](contracts/share-link.md) |
 | How is a link to a paper page written? | [contracts/links.md](contracts/links.md#grammar) |
