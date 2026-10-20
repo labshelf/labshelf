@@ -25,7 +25,7 @@ export function createPageShell(host: HTMLElement, prefs: PagePrefs): PageShell 
   const sidebar = el("aside", { class: "sidebar", "aria-label": "Library" });
   const sash = el("div", { class: "sash sash-sidebar", title: "Drag to resize" });
   const centre = el("div", { class: "ls-workspace-centre" });
-  const details = el("aside", { class: "ls-page-details", "aria-label": "Details" });
+  const details = el("aside", { class: "ls-page-details ls-pane", "aria-label": "Details" });
   const detailSash = el("div", { class: "sash sash-detail", title: "Drag to resize" });
   // Until the user resizes Details, it opens as wide as the sidebar, within its own minimum.
   const detailDefault = Math.max(DETAILS_LIMITS.min, saved.sidebarWidth);

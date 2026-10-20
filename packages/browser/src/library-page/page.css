@@ -39,7 +39,7 @@
 .ls-comment-actions .ls-input { flex: 1; }
 
 /* ── Details pane: the page-level right pane outside the tabs ───── */
-.ls-page-details { flex-shrink: 0; display: flex; min-width: 0; overflow: hidden; }
+.ls-page-details { flex-shrink: 0; display: flex; min-width: 0; overflow: hidden; background: var(--ls-sidebar-bg); }
 .ls-page-details .ls-details { flex: 1; display: flex; min-width: 0; }
 .ls-library.details-collapsed .ls-page-details { display: none; }
 .ls-library.details-collapsed .sash-detail { background: var(--ls-border); }
