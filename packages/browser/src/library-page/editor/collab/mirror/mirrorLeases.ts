@@ -1,12 +1,12 @@
-// Acquires the tab lease and, for a folder source, the folder lease a browser mirror needs before it writes.
+// Acquires, for a folder source, the folder lease a browser mirror needs next to the caller's tab lease before it writes.
 // CONTRACT: documents/contracts/collaboration.md#mirror-ownership
 import { acquireFolderLease, type FolderLease, type ILogger, type LeaseHolder, type LeaseScheduler, type LibraryFileSystem } from "@labshelf/core";
-import { acquireTabLease, takeOverTabLease, tabLeaseName, type LibrarySource, type LibrarySources, type TabLease } from "../../../../storage";
+import type { LibrarySource, LibrarySources, TabLease } from "../../../../storage";
 
 export interface MirrorLeaseOptions {
   sources: Pick<LibrarySources, "folderFileSystem" | "browserFileSystem" | "getLibrarySource">;
-  libraryId: string;
-  shareId: string;
+  /** Held by the caller for the whole share session; the mirror never acquires or releases it. */
+  tab: TabLease;
   folder: string;
   logger: ILogger;
   scheduler?: LeaseScheduler;
@@ -24,32 +24,15 @@ export interface MirrorLeases {
 }
 
 export type MirrorLeasesResult =
-  | { kind: "busy"; holder: "tab" | LeaseHolder }
+  | { kind: "busy"; holder: LeaseHolder }
   | { kind: "owned"; leases: MirrorLeases };
 
-async function tabLeaseFor(options: MirrorLeaseOptions): Promise<TabLease | undefined> {
-  const name = tabLeaseName(options.libraryId, options.shareId);
-  if (options.takeOver) { return takeOverTabLease(name); }
-  const result = await acquireTabLease(name);
-  return result.kind === "owned" ? result.lease : undefined;
-}
-
 export async function acquireMirrorLeases(options: MirrorLeaseOptions): Promise<MirrorLeasesResult> {
-  const { sources, folder, logger, scheduler, takeOver } = options;
-  const tab = await tabLeaseFor(options);
-  if (!tab) { return { kind: "busy", holder: "tab" }; }
-  try {
-    const source = await sources.getLibrarySource();
-    if (source.kind === "browser") { return { kind: "owned", leases: { source, fs: sources.browserFileSystem, tab } }; }
-    const fs = sources.folderFileSystem;
-    const result = await acquireFolderLease({ fs, folder, app: "browser", logger, takeOver, ...(scheduler ? { scheduler } : {}) });
-    if (result.kind === "busy") {
-      await tab.release();
-      return result;
-    }
-    return { kind: "owned", leases: { source, fs, tab, folder: result.lease } };
-  } catch (error) {
-    await tab.release();
-    throw error;
-  }
+  const { sources, tab, folder, logger, scheduler, takeOver } = options;
+  const source = await sources.getLibrarySource();
+  if (source.kind === "browser") { return { kind: "owned", leases: { source, fs: sources.browserFileSystem, tab } }; }
+  const fs = sources.folderFileSystem;
+  const result = await acquireFolderLease({ fs, folder, app: "browser", logger, takeOver, ...(scheduler ? { scheduler } : {}) });
+  if (result.kind === "busy") { return result; }
+  return { kind: "owned", leases: { source, fs, tab, folder: result.lease } };
 }

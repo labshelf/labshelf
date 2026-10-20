@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 
 import { projectName, type CollabHost } from "../collabHost.js";
 import { rememberInvite } from "../ownRelay.js";
-import type { ShareConnection } from "../session/index.js";
+import type { ShareConnection } from "@labshelf/core";
 import { copyInvite } from "./copyInvite.js";
 import { LEAVE_COMMAND } from "./leaveCommand.js";
 

@@ -182,6 +182,11 @@ function sharedSources(): LibrarySources {
   return shared;
 }
 
+/** The page's one set of library sources, for composition roots that hand them to adapters. */
+export function librarySources(): LibrarySources {
+  return sharedSources();
+}
+
 export function rebuildFromFiles(logger: ILogger): Promise<void> {
   return rebuildRecords(sharedSources().fileSystem, logger);
 }

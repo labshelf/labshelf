@@ -1,8 +1,11 @@
 // Keeps a share session on one relay of its list at a time, as the relay selector chooses, and tells which one and which are down.
+import type { ILogger } from "../../ports/index.js";
+import type { WebCryptoKey } from "../crypto/index.js";
 import {
-  createRelaySelector, createRelayWatch, followRelaySelection, relayList, relayPresence, relayProbe, systemScheduler, type ILogger,
-  type PresenceHandle, type RelayCursorStore, type RelayReport, type ShareSession, type SwitchableTransport, type WebCryptoKey,
-} from "@labshelf/core";
+  createRelaySelector, createRelayWatch, followRelaySelection, relayList, relayPresence, relayProbe, type SwitchableTransport,
+} from "../relays/index.js";
+import { systemScheduler, type PresenceHandle, type RelayCursorStore, type RelayReport, type SessionScheduler, type ShareSession } from "../sync/index.js";
+import type { RelaySocketFactory } from "../transport/index.js";
 
 export interface ShareRelayState {
   url: string;
@@ -20,6 +23,13 @@ export interface ShareRelays {
   close(): Promise<void>;
 }
 
+/** How a connection reaches its relays; tests pass in-process relays and a fake clock. */
+export interface RelayNetwork {
+  scheduler?: SessionScheduler;
+  fetch?: typeof fetch;
+  socketFactory?: RelaySocketFactory;
+}
+
 export interface ShareRelaysOptions {
   session: ShareSession;
   /** The transport the session was created over. */
@@ -32,6 +42,7 @@ export interface ShareRelaysOptions {
   awarenessKey: WebCryptoKey;
   cursorsFor(relayUrl: string): RelayCursorStore;
   logger: ILogger;
+  network?: RelayNetwork;
 }
 
 /** The index list, else the invite's while the index lists none, as the selector tries them. */
@@ -43,15 +54,17 @@ const shareRelayUrls = (index: ShareSession["index"], inviteRelays: readonly str
 // CONTRACT: documents/contracts/collaboration.md#relay-list
 export function followShareRelays(options: ShareRelaysOptions): ShareRelays {
   const { session, slot, presence, inviteRelays, shareId, relayToken, contentKey, awarenessKey, cursorsFor, logger } = options;
-  const watch = createRelayWatch({ shareId, relayToken, contentKey, awarenessKey, logger, scheduler: systemScheduler });
+  const { scheduler = systemScheduler, ...reach } = options.network ?? {};
+  const watch = createRelayWatch({ shareId, relayToken, contentKey, awarenessKey, logger, scheduler, ...reach });
   const port = relayPresence(presence, watch);
   let report: RelayReport = { relay: null, relaysDown: {} };
   const selector = createRelaySelector({
-    index: session.index, inviteRelays, probe: relayProbe({ logger }), clock: systemScheduler, logger,
+    index: session.index, inviteRelays, probe: relayProbe({ logger, scheduler, ...(reach.fetch ? { fetch: reach.fetch } : {}) }), clock: scheduler, logger,
     presence: { ...port, publish: (next) => { report = next; port.publish(next); } },
   });
+  // INVARIANT: only the connected client with the lowest awareness id writes relay snapshots, so two never race for one cursor.
   const follower = followRelaySelection({
-    session, slot, selector, shareId, relayToken, contentKey, logger, cursorsFor, isSnapshotWriter: () => presence.isLowestId(),
+    session, slot, selector, shareId, relayToken, contentKey, logger, scheduler, cursorsFor, isSnapshotWriter: () => presence.isLowestId(), ...reach,
   });
   return {
     get current() { return selector.current; },

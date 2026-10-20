@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 import { CONNECT_RELAY_COMMAND } from "../../../relay/index.js";
 import { projectName, reportFailure, type CollabHost } from "../collabHost.js";
 import { offerOwnRelay, withdrawOwnRelay } from "../ownRelay.js";
-import type { ShareConnection } from "../session/index.js";
+import type { ShareConnection } from "@labshelf/core";
 import { pickProject } from "./projectTarget.js";
 
 export const OFFER_RELAY_COMMAND = "labshelf.relay.offer";

@@ -1,9 +1,8 @@
 // Shares this user's cursor in shared files with the peers, and draws theirs in the visible editors of the same file.
 import * as vscode from "vscode";
 
-import { fileText, peerColour, toAbsoluteSelection, toRelativeSelection, type PresenceState } from "@labshelf/core";
+import { fileText, peerColour, toAbsoluteSelection, toRelativeSelection, type PresenceState, type ShareConnection } from "@labshelf/core";
 import { PeerCursors, type PeerCursor } from "../../binding/index.js";
-import type { ShareConnection } from "../session/index.js";
 import type { SharedEditors } from "./sharedEditors.js";
 
 const PUBLISH_DELAY_MS = 100;

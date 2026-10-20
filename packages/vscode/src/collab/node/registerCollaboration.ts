@@ -14,7 +14,7 @@ import { SharedEditors, SharedPresence } from "./editors/index.js";
 import { offerToShares, withdrawFromShares } from "./ownRelay.js";
 import { registerComments } from "./registerComments.js";
 import { resumeShares } from "./resumeShares.js";
-import { ActiveShares, connectShare, ShareKeys } from "./session/index.js";
+import { ActiveShares, connectDesktopShare, ShareKeys } from "./session/index.js";
 import { userName } from "./userName.js";
 
 type Controller = Pick<LibraryRootController, "currentRoot" | "currentServices" | "require">;
@@ -45,7 +45,7 @@ function createHost(context: vscode.ExtensionContext, controller: Controller, pr
       const root = libraryRoot();
       if (!root) { throw new Error("no library is open"); }
       const isEditorOwned = (folder: string, file: string) => editors.isOwned(folder, file);
-      const share = await connectShare({ libraryRoot: root, shareId, shareKey, relays, logger, isEditorOwned }, start);
+      const share = await connectDesktopShare({ libraryRoot: root, shareId, shareKey, relays, name: userName(), logger, isEditorOwned }, start);
       shares.add(share);
       return share;
     },

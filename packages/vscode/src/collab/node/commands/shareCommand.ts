@@ -1,11 +1,10 @@
 // Shares a project: makes a new share key, connects the project, offers the owner's relay, keeps the invite and copies it for the collaborators.
 import * as vscode from "vscode";
 
-import { deriveShareId, formatInvite, generateShareKey, type Invite } from "@labshelf/core";
+import { deriveShareId, formatInvite, generateShareKey, type Invite, type ShareConnection } from "@labshelf/core";
 import { CONNECT_RELAY_COMMAND } from "../../../relay/index.js";
 import { LOG_MODULE, projectName, reportFailure, type CollabHost } from "../collabHost.js";
 import { offerOwnRelay, rememberInvite } from "../ownRelay.js";
-import type { ShareConnection } from "../session/index.js";
 import { copyInvite } from "./copyInvite.js";
 import { pickProject, type ProjectTarget } from "./projectTarget.js";
 

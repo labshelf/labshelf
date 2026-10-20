@@ -54,6 +54,9 @@ export class FakeRelay {
 
   constructor(readonly clock: FakeClock) {}
 
+  /** Sockets open right now. */
+  get liveSockets(): number { return this.sockets.size; }
+
   get billed(): number {
     const socketMessages = this.counts.put + this.counts.since + this.counts.snapshot + this.counts.forward;
     return this.counts.http + this.counts.opens + socketMessages / SOCKET_MESSAGES_PER_REQUEST;

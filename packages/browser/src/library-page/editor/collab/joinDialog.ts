@@ -1,9 +1,8 @@
 // Asks for an invite link and a display name, joins the shared project and opens it in the page's project session.
-import type { ILogger, LibraryFileSystem } from "@labshelf/core";
+import { UnknownShareKindError, type ILogger, type LibraryFileSystem } from "@labshelf/core";
 import { inputBox, toast } from "@labshelf/core/dom";
 import { findProject } from "../../projects-data/findProject";
 import type { ProjectSession } from "../../session";
-import { UnknownShareKindError } from "./joinSharedProject";
 import type { PageShares } from "./pageShares";
 import { loadDisplayName } from "./shareKeyStore";
 

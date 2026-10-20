@@ -1,34 +1,25 @@
-/** Pins that one tab per library and share owns the browser project mirror, and that VS Code's folder lease keeps it busy. */
+/** Pins that the browser project mirror follows the caller's tab lease without releasing it, and that VS Code's folder lease keeps it busy. */
 import { acquireTabLease, tabLeaseName, takeOverTabLease } from "../../../../../src/storage";
-import type { BrowserMirrorStopReason } from "../../../../../src/library-page/editor/collab/mirror";
 import { FOLDER, LIBRARY_ID, openTestbed, running, SHARE_ID, until, type Testbed } from "./mirrorTestbed";
 
 const FILE = `${FOLDER}/main.typ`;
+const TAB = tabLeaseName(LIBRARY_ID, SHARE_ID);
 
 describe("browser project mirror ownership", () => {
   let bed: Testbed;
   afterEach(async () => { await bed.close(); });
 
-  it("reports a second instance busy until it takes over, which stops the first", async () => {
+  it("leaves the tab lease held by the caller when it closes", async () => {
     bed = await openTestbed("browser");
-    const firstStops: BrowserMirrorStopReason[] = [];
-    running(await bed.start(firstStops));
-    const second = await bed.start();
-    if (second.kind !== "busy") { throw new Error("expected busy"); }
-    expect(second.holder).toBe("tab");
-    const mirror = running(await second.takeOver());
-    await until(() => firstStops.length > 0);
-    expect(firstStops).toEqual(["tab-taken"]);
-    bed.peerEdit("main.typ", "Hello");
-    mirror.changed("main.typ");
-    await until(async () => (await bed.browserFs.text(FILE)) === "Hello");
+    await running(await bed.start()).close();
+    expect(await acquireTabLease(TAB)).toEqual({ kind: "busy" });
     expect(bed.stops).toEqual([]);
   });
 
-  it("writes nothing to disk once another tab took the lease", async () => {
+  it("stops and writes nothing to disk once another tab took the tab lease", async () => {
     bed = await openTestbed("browser");
     const mirror = running(await bed.start());
-    const stolen = await takeOverTabLease(tabLeaseName(LIBRARY_ID, SHARE_ID));
+    const stolen = await takeOverTabLease(TAB);
     await until(() => bed.stops.length > 0);
     expect(bed.stops).toEqual(["tab-taken"]);
     bed.peerEdit("main.typ", "Hello");
@@ -39,15 +30,17 @@ describe("browser project mirror ownership", () => {
     await stolen.release();
   });
 
-  it("is busy while VS Code holds a live folder lease, and frees the tab lease", async () => {
+  it("is busy with the folder holder while VS Code holds a live folder lease, until it takes over", async () => {
     bed = await openTestbed("folder");
     const lease = { owner: "vscode-owner", app: "vscode", renewedAt: Date.now(), ttlMs: 30_000 };
     await bed.folderFs.writeText(`${FOLDER}/.labshelf/mirror-lease.json`, JSON.stringify(lease));
     const result = await bed.start();
-    expect(result.kind).toBe("busy");
-    if (result.kind === "busy") { expect(result.holder).toEqual({ app: "vscode", renewedAt: lease.renewedAt }); }
-    const tab = await acquireTabLease(tabLeaseName(LIBRARY_ID, SHARE_ID));
-    expect(tab.kind).toBe("owned");
-    if (tab.kind === "owned") { await tab.lease.release(); }
+    if (result.kind !== "busy") { throw new Error("expected busy"); }
+    expect(result.holder).toEqual({ app: "vscode", renewedAt: lease.renewedAt });
+    const mirror = running(await result.takeOver());
+    bed.peerEdit("main.typ", "Hello");
+    mirror.changed("main.typ");
+    await until(async () => (await bed.folderFs.text(FILE)) === "Hello");
+    expect(bed.stops).toEqual([]);
   });
 });

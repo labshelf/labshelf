@@ -2,12 +2,11 @@
  * @jest-environment jsdom
  * @jest-environment-options {"customExportConditions": ["node", "node-addons"]}
  */
-// A history restore of a shared project reaches the docs of files no editor has open, so the disk mirror keeps the restored text.
+// Restores a shared project from history into the docs of files no editor has open, so the disk mirror keeps the restored text.
 import * as Y from "yjs";
 import type { HistoryToHost, HostToHistory, ILogger } from "@labshelf/core";
 import { createLoopbackTransport, fileText, indexFiles } from "@labshelf/core";
 import { confirmDialog } from "@labshelf/core/dom";
-import { startDocFileWriter, type DocFileWriter } from "../../../../src/library-page/editor/collab";
 import { mountHistoryHost } from "../../../../src/library-page/review/history";
 import { clearFakeDb } from "../../../support/fakeIdb";
 import { memoryLibraryFs } from "../../../support/memoryLibraryFs";
@@ -18,7 +17,6 @@ jest.mock("../../../../src/storage/idb/db", () => ({ getDb: async () => require(
 const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
 const project = { id: "thesis", folder: "proj" };
 const settle = async (): Promise<void> => { for (let i = 0; i < 20; i++) await jest.advanceTimersByTimeAsync(0); };
-let writer: DocFileWriter | undefined;
 
 async function setup() {
   const fs = memoryLibraryFs();
@@ -37,16 +35,14 @@ async function setup() {
     fileText(session.openDoc(path)).insert(0, text);
     await fs.writeText(`proj/${path}`, text);
   }
-  writer = startDocFileWriter({ session, fs, folder: project.folder, logger });
-  await jest.advanceTimersByTimeAsync(500);
   return { fs, ui, index, session, firstId: rows[0]![0]!.id };
 }
 
 beforeEach(() => { jest.useFakeTimers(); clearFakeDb(); jest.clearAllMocks(); (confirmDialog as jest.Mock).mockResolvedValue(true); });
-afterEach(async () => { await writer?.close(); writer = undefined; jest.useRealTimers(); });
+afterEach(() => { jest.useRealTimers(); });
 
 describe("history restore of a shared project", () => {
-  it("holds the restored text in the doc of a file no editor has open, and the mirror keeps it on disk", async () => {
+  it("holds the restored text in the doc of a file no editor has open, and on disk", async () => {
     const { fs, ui, session, firstId } = await setup();
     ui.post({ type: "restore", id: firstId });
     await settle();
@@ -55,7 +51,7 @@ describe("history restore of a shared project", () => {
     expect(await fs.readText("proj/main.tex")).toBe("one");
   });
 
-  it("drops a file the restore removed from the share index, so the mirror does not recreate it", async () => {
+  it("drops a file the restore removed from the share index, and from disk", async () => {
     const { fs, ui, index, firstId } = await setup();
     ui.post({ type: "restore", id: firstId });
     await settle();
