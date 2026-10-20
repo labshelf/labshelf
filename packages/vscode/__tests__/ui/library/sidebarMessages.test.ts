@@ -13,7 +13,6 @@ describe('parseSidebarMessage', () => {
     [{ type: 'addFiles', path: 'papers' }],
     [{ type: 'renameFolder', path: 'papers/ml' }],
     [{ type: 'removeFolder', path: 'papers/ml' }],
-    [{ type: 'shareFolder', path: 'papers/ml' }],
     [{ type: 'import', path: 'papers/ml', uris: 'file:///a.pdf\nfile:///b.pdf' }],
     [{ type: 'moveFolder', path: 'papers/ml', target: 'papers/vision' }],
     [{ type: 'moveFolder', path: 'papers/ml', target: 'papers' }],
@@ -22,7 +21,6 @@ describe('parseSidebarMessage', () => {
     [{ type: 'projectAction', action: 'browseTemplates' }],
     [{ type: 'projectAction', action: 'newBlank' }],
     [{ type: 'projectAction', action: 'addExisting' }],
-    [{ type: 'projectAction', action: 'joinShared' }],
   ])('accepts %j', (message) => {
     expect(parseSidebarMessage(message)).toEqual(message);
   });
@@ -37,7 +35,8 @@ describe('parseSidebarMessage', () => {
     ['a sibling of papers', { type: 'openFolder', path: 'papers-extra/x' }],
     ['a path that climbs out', { type: 'removeFolder', path: 'papers/../secret' }],
     ['a dot segment', { type: 'renameFolder', path: 'papers/./ml' }],
-    ['a share of a path that climbs out', { type: 'shareFolder', path: 'papers/../secret' }],
+    ['a removed share message', { type: 'shareFolder', path: 'papers/ml' }],
+    ['a removed join action', { type: 'projectAction', action: 'joinShared' }],
     ['an empty segment', { type: 'openFolder', path: 'papers//ml' }],
     ['a trailing slash', { type: 'openFolder', path: 'papers/ml/' }],
     ['a missing path', { type: 'openFolder' }],
