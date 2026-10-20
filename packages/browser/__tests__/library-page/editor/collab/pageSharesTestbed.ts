@@ -1,7 +1,7 @@
 // Builds pages of one browser profile over a shared memory library, IndexedDB, fake Web Locks and a network that reaches no relay.
 import "fake-indexeddb/auto";
-import { deriveShareId, fileText, type ILogger, type LibraryFileSystem, type RelayNetwork } from "@labshelf/core";
-import { createPageShares, saveShare, type PageShares } from "../../../../src/library-page/editor/collab";
+import { deriveShareId, fileText, type ILogger, type LibraryFileSystem, type RelayNetwork, type StoredInvite } from "@labshelf/core";
+import { createPageShares, createShareKeyStore, ShareOpenInAnotherTabError, type PageShares } from "../../../../src/library-page/editor/collab";
 import type { LibrarySource, LibrarySources } from "../../../../src/storage";
 import { installFakeLocks, type FakeLocks } from "../../../support/fakeLocks";
 import { memoryLibraryFs } from "../../../support/memoryLibraryFs";
@@ -26,7 +26,7 @@ export async function until(condition: () => boolean | Promise<boolean>, timeout
 }
 
 /** A memory file system whose stat reports a fresh mtime per write and the real size. */
-function libraryFs(): LibraryFileSystem {
+export function libraryFs(): LibraryFileSystem {
   const inner = memoryLibraryFs();
   const mtimes = new Map<string, number>();
   let clock = 0;
@@ -44,6 +44,8 @@ function libraryFs(): LibraryFileSystem {
 
 export interface Page {
   shares: PageShares;
+  /** Resumes the seeded share as the resume workflow does; another tab's lease leaves the page observing. */
+  connect(): Promise<void>;
   /** Paths this page wrote to the library, in order. */
   writes: string[];
   docText(path: string): string;
@@ -73,7 +75,9 @@ export async function openProfile(): Promise<Profile> {
   const fs = libraryFs();
   await fs.writeText(`${FOLDER}/labshelf.yaml`, `id: thesis\nshared: ${shareId}\n`);
   await fs.writeText(MAIN, "hello");
-  await saveShare(libraryId, shareId, SHARE_KEY, [{ url: "https://relay.example" }]);
+  const keys = createShareKeyStore(async () => libraryId);
+  const invite: StoredInvite = { shareId, shareKey: SHARE_KEY, relays: [{ url: "https://relay.example" }] };
+  await keys.remember(invite);
   const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
   const pages: Page[] = [];
   const crashed: Page[] = [];
@@ -89,10 +93,18 @@ export async function openProfile(): Promise<Profile> {
         getLibrarySource: async () => BROWSER,
         onLibraryFilesChanged: () => () => undefined,
       } as unknown as LibrarySources;
-      const shares = createPageShares({ sources, libraryId: async () => libraryId, logger, network: offline });
+      const shares = createPageShares({ sources, libraryId: async () => libraryId, keys, projectIdOf: () => "thesis", logger, network: offline });
       const page: Page = {
         shares, writes,
-        docText: (path) => { const active = shares.active("thesis"); return active ? fileText(active.session.openDoc(path)).toString() : ""; },
+        connect: async () => {
+          if (shares.active(shareId)) { return; }
+          try {
+            shares.add(await shares.connect(invite, { mode: "resume", folder: FOLDER }));
+          } catch (error) {
+            if (!(error instanceof ShareOpenInAnotherTabError)) { throw error; }
+          }
+        },
+        docText: (path) => { const live = shares.live("thesis"); return live ? fileText(live.session.openDoc(path)).toString() : ""; },
       };
       pages.push(page);
       return page;

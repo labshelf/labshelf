@@ -39,7 +39,8 @@ function mount(expanded: string[] = [], sections = { library: true, projects: tr
   const openTab = jest.fn();
   const projects = sections.projects ? createSidebarProjects(
     { rows: async () => [], entryOf: async () => undefined, openPdf: jest.fn() }, openTab,
-    { openProject: jest.fn(), closeProject: jest.fn(), attachSidebar: jest.fn(), treeClick: jest.fn(), treeAction: jest.fn() }
+    { current: () => undefined, openProject: jest.fn(), closeProject: jest.fn(), attachSidebar: jest.fn(), treeClick: jest.fn(), treeAction: jest.fn() },
+    { join: jest.fn(), menu: () => [] },
   ) : null;
   mountSidebarTree(ui, slot, prefs, host, projects && { projects, manageRelay: jest.fn() }, openTab, sections.library, sharing);
   return { store, slot, posted, prefs, saved, openTab };

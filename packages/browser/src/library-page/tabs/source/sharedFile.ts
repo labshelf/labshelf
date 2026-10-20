@@ -1,6 +1,6 @@
-// Decides how a source tab opens a project file: local, bound to its share's text, or unresolved when the share cannot start.
+// Decides how a source tab opens a project file: local, bound to its share's text, or unresolved when the share is not connected here.
 import { fileText, type ILogger, type ProjectEntry } from "@labshelf/core";
-import type { PageShares } from "../../editor/collab";
+import type { PageSharing } from "../../editor/collab";
 import type { SourceEditorDeps } from "../../editor/index.js";
 
 const MODULE = "tabs.source";
@@ -11,16 +11,16 @@ export type SourceFileMode =
   | { kind: "shared"; collab: NonNullable<SourceEditorDeps["collab"]> }
   | { kind: "unresolved" };
 
-export async function sourceFileMode(shares: PageShares, entry: ProjectEntry, path: string, logger: ILogger): Promise<SourceFileMode> {
+/** `retried`: the user asked to try again, which reconnects the share from its stored key. */
+export async function sourceFileMode(sharing: Pick<PageSharing, "liveShare" | "shares">, entry: ProjectEntry, path: string, logger: ILogger, retried: boolean): Promise<SourceFileMode> {
   if (entry.kind !== "ready" || entry.settings.shared === undefined) return { kind: "local" };
-  const projectId = entry.settings.id;
+  const context = { projectId: entry.settings.id, shareId: entry.settings.shared, path, note: "the file opens read-only until the share connects in this tab" };
   try {
-    await shares.connect(projectId, entry.settings.shared, entry.folder);
-    const active = shares.active(projectId);
-    if (!active) throw new Error(`The share of project ${projectId} is not connected in this tab`);
-    return { kind: "shared", collab: { text: fileText(active.session.openDoc(path)), presence: active.presence, name: shares.name() } };
+    const live = await sharing.liveShare(entry, retried);
+    if (live) return { kind: "shared", collab: { text: fileText(live.session.openDoc(path)), presence: live.presence, name: sharing.shares.name() } };
+    void logger.log("WARN", MODULE, "A shared file opened while its share is not connected in this tab", context);
   } catch (error) {
-    void logger.error(MODULE, error, { action: "joinSharedSession", projectId, path, note: "the file opens read-only until the session starts" });
-    return { kind: "unresolved" };
+    void logger.error(MODULE, error, { action: "connect the share of a source file", ...context });
   }
+  return { kind: "unresolved" };
 }

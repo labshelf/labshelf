@@ -23,12 +23,12 @@ async function mount(rows: BrowserProjectRow[] = [ready, broken]) {
     rows: jest.fn(async () => rows), openPdf: jest.fn(),
     entryOf: jest.fn(async (id: string) => (id === "thesis" ? thesisEntry : undefined)),
   } satisfies ProjectsSource;
-  const session = { openProject: jest.fn(async () => true), closeProject: jest.fn(async () => true), attachSidebar: jest.fn(), treeClick: jest.fn(), treeAction: jest.fn(async () => undefined) } satisfies SidebarSession;
+  const session = { current: () => undefined, openProject: jest.fn(async () => true), closeProject: jest.fn(async () => true), attachSidebar: jest.fn(), treeClick: jest.fn(), treeAction: jest.fn(async () => undefined) } satisfies SidebarSession;
   const sharing = createSharingHost({ place: "this browser", logger: { log: async () => undefined, error: async () => undefined }, clipboard: { write: async () => undefined }, openLink: async () => undefined });
   const slot = document.createElement("div");
   document.body.replaceChildren(slot);
   const openTab = jest.fn();
-  mountSidebarTree(ui, slot, prefs, { post: jest.fn() }, { projects: createSidebarProjects(source, openTab, session), manageRelay: jest.fn() }, openTab, true, sharing);
+  mountSidebarTree(ui, slot, prefs, { post: jest.fn() }, { projects: createSidebarProjects(source, openTab, session, { join: jest.fn(), menu: () => [] }), manageRelay: jest.fn() }, openTab, true, sharing);
   await new Promise((resolve) => setTimeout(resolve, 0));
   return { slot, source, openTab, session };
 }

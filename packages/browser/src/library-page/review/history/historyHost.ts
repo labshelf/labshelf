@@ -20,7 +20,7 @@ export interface HistoryHostOptions {
   endpoint: MessageEnd<HostToHistory, HistoryToHost>;
   project: { id: string; folder: string };
   lastFullPdf(projectId: string): Uint8Array | undefined;
-  shares: Pick<PageShares, "active">;
+  shares: Pick<PageShares, "live">;
 }
 
 export function mountHistoryHost({ fs, logger, endpoint, project, lastFullPdf, shares }: HistoryHostOptions): { dispose(): void } {
@@ -41,7 +41,7 @@ export function mountHistoryHost({ fs, logger, endpoint, project, lastFullPdf, s
 
   // The restore writes to disk only, so a shared file's doc is brought to the restored text before the disk mirror writes the doc back.
   const syncShareToRestore = async (): Promise<void> => {
-    const share = shares.active(project.id);
+    const share = shares.live(project.id);
     if (!share) return;
     const restored = async (path: string): Promise<string | null> => {
       const file = `${project.folder}/${path}`;
