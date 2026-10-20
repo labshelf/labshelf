@@ -18,7 +18,7 @@ Runs with session 3 (disjoint Owns). Codebase facts: [research/codebase-core.md]
 ## 2.1 — View models and .ics
 
 - **Goal:** pure functions from `(space, library snapshot, projects, today)` to what the screens show.
-- **Read only:** `packages/core/src/spaces/index.ts`; `documents/contracts/spaces.md`; `packages/core/src/library/model/types.ts:4-44`; `packages/core/src/model/paperRecord.ts:9-40`; `packages/core/src/writing/allProjects/{projectRow.ts,deadlineText.ts}`.
+- **Read only:** `packages/core/src/spaces/index.ts`; `documents/contracts/spaces.md`; `packages/core/src/library/model/types.ts:4-44`; `packages/core/src/model/paperRecord.ts:9-40`; `packages/core/src/writing/allProjects/{projectRow.ts,deadlineText.ts}`; `research/mockup-reuse.md` § Logic and § Fixtures (port the timeline and catalog logic, use the mockup data as fixtures).
 - **Decided:** `packages/core/src/spaces/view/`, runtime-neutral, one file per view:
   - `SpaceProjectInfo` `{ projectId, title, format?, mainFile?, deadline?, checklist?: { done, total }, available }`, supplied by the host (2.2).
   - Catalog row: id, name, purpose, reading `{ done, total }`, next open date `{ date, title } | null`, counts `{ papers, projects }`, `shared: false`, `unreadable?`; filter by text (name, purpose) and by All / Personal / Shared.

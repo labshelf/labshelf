@@ -23,6 +23,8 @@ A user groups papers and writing projects into Spaces from VS Code and from the 
 - [ ] **D12** A Space references a project by the id in its `labshelf.yaml`. Resolving it to a `ProjectRow` (whose `id` is a host key) goes through the host port, so external projects resolve only on the device that registered them.
 - [ ] **D13** The mockup stays in `documents/ideas/` while positioned screens remain. Session 8 moves the built behaviour from `ideas/spaces.md` into `documents/` and leaves only the unbuilt parts there.
 
+- [ ] **D14** The mockup is the starting point for the UI: its CSS is token-clean and is ported into `core/src/spaces/dom/` as is, its DOM structure is rebuilt with `el()` and its timeline and catalog logic becomes tested pure functions in `view/`. Its JS is never copied, because it is string HTML on globals. The map: [research/mockup-reuse.md](research/mockup-reuse.md).
+
 Open (blocks approval): none. The user decided on 2026-10-20: local Spaces with positioned sharing, Notes positioned, manual Glossary in full, no avatars.
 
 ## 3. Acceptance

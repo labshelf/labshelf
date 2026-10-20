@@ -20,7 +20,7 @@ All four run in parallel.
 ## 4.1 — Sidebar Spaces section
 
 - **Goal:** an optional third sidebar section: All Spaces, each Space, its folders and references.
-- **Read only:** `packages/core/src/library-ui/dom/sidebar/{mountLibrarySidebar.ts,sidebarSections.ts,sidebarProjects.ts,sidebarRows.ts,sidebarView.ts}`; the sidebar-rows view in `packages/core/src/spaces/view/`; `research/ui-design.md`.
+- **Read only:** `packages/core/src/library-ui/dom/sidebar/{mountLibrarySidebar.ts,sidebarSections.ts,sidebarProjects.ts,sidebarRows.ts,sidebarView.ts}`; the sidebar-rows view in `packages/core/src/spaces/view/`; `research/ui-design.md`; `research/mockup-reuse.md` (`sidebar/spaces.js`, `sidebar/sidebar.css`).
 - **Decided:** `SectionId` gains `"spaces"`; `mountLibrarySidebar` takes `spaces?: SidebarSpaceActions` and the section appears only when it is given (like `projects`). Code in `sidebar/spaces/`. Actions: `openCatalog`, `openSpace(id, folder?)`, `openPaper(id)`, `newSpace`, `renameSpace`, `deleteSpace` (confirm), `newFolder`, `renameFolder`, `deleteFolder`, `dropPapers(spaceId, folder, paperIds)`, `removeReference`. Data in through `setSpaces(rows)`. Heading action: New Space. Row menus use `showMenu`. Collapse state joins the existing collapsed set.
 - **Done when:** jsdom tests: without `spaces` nothing renders; rows nest; Enter opens; drop of paper ids calls `dropPapers`; delete asks first. Core typecheck and test pass.
 
@@ -34,14 +34,14 @@ All four run in parallel.
 ## 4.3 — All Spaces catalog
 
 - **Goal:** `mountSpacesCatalog(el, end)` over the 2.2 protocol: header with New Space, search, All / Personal / Shared filter, one row per Space.
-- **Read only:** `packages/core/src/spaces/protocol/` and `view/` catalog row; `packages/core/src/writing/allProjects/dom/mountAllProjects.ts` (page shape); `research/ui-design.md`; mockup `catalog/catalog.js`.
+- **Read only:** `packages/core/src/spaces/protocol/` and `view/` catalog row; `packages/core/src/writing/allProjects/dom/mountAllProjects.ts` (page shape); `research/ui-design.md`; `research/mockup-reuse.md` (`catalog/catalog.js`, `catalog/catalog.css`).
 - **Decided:** row: name, purpose, reading progress, next date, counts as links (papers → Papers tab, projects → Overview), "You" member chip. Shared filter shows its empty state (sharing comes later). Unreadable Space: row with its path and reason. No avatar picker.
 - **Done when:** jsdom tests over a loopback: filter and search narrow rows; New Space posts the mutation; row click posts `openSpace`. Core typecheck and test pass.
 
 ## 4.4 — Space frame and Overview
 
 - **Goal:** `mountSpace(el, end, { id, tab })`: header, six inner tabs, and a working Overview.
-- **Read only:** `packages/core/src/spaces/protocol/`, `view/` overview; `research/ui-design.md`; mockup `space/{header,overview,timeline}.js`.
+- **Read only:** `packages/core/src/spaces/protocol/`, `view/` overview; `research/ui-design.md`; `research/mockup-reuse.md` (`space/{header,overview}.js`, `space/{space,overview}.css`).
 - **Decided:** header: name and purpose editable inline, "You" chip, Share positioned. Inner tabs Overview, Papers, Notes, Discussions, Discover, Glossary; the tab change is reported through an `onTab` callback so apps keep it in tab state. Overview blocks: Dates and goals (add with a dialog: kind, title, date, papers picker for `read`, project picker for `project`; tick; edit; remove; Export .ics), Projects (link via picker, unlink, open), Papers in focus, Members ("You"), Discussions (positioned card), Since your last visit (empty state). Create `papers/`, `glossary/`, `positioned/` and `chat/` each with an `index.ts` exporting a mount that renders the empty state; session 5 replaces them.
 - **Done when:** jsdom tests: the add-date dialog posts the right `kind` fields; ticking posts `setDone`; Export posts `exportIcs`; `onTab` fires. Core typecheck and test pass.
 
