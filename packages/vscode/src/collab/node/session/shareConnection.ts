@@ -4,7 +4,7 @@ import * as path from "node:path";
 import { connectShare, startProjectMirror, type ILogger, type InviteRelay, type ShareConnection, type ShareStart } from "@labshelf/core";
 import { deviceLocalLayout, mergeText, nodeCollabStorage, nodeMirrorDisk, nodeProjectCatalogContext } from "@labshelf/core/node";
 
-export interface ConnectOptions {
+interface ConnectOptions {
   libraryRoot: string;
   shareId: string;
   shareKey: Uint8Array;
