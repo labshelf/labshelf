@@ -1,7 +1,7 @@
 /**
- * Bundles the webview runtimes: the PDF reader into dist/reader/reader.{js,css} and the library list and sidebar into
- * dist/library/{library,sidebar}.{js,css}. The UIs live in @labshelf/core/dom (also bundled by the browser extension);
- * src/reader/main.ts and src/libraryWebview/main.ts, src/sidebarWebview/main.ts are their VS Code entries.
+ * Bundles the webview runtimes: the PDF reader into dist/reader/reader.{js,css} and the library list, sidebar and Details view into
+ * dist/library/{library,sidebar,details}.{js,css}. The UIs live in @labshelf/core/dom (also bundled by the browser extension);
+ * src/reader/main.ts and src/libraryWebview/main.ts, src/sidebarWebview/main.ts, src/detailsWebview/main.ts are their VS Code entries.
  */
 import { build, context } from "esbuild";
 import { mkdir, rm } from "node:fs/promises";
@@ -15,6 +15,7 @@ const BUNDLES = {
   "reader/reader": "src/reader/main.ts",
   "library/library": "src/libraryWebview/main.ts",
   "library/sidebar": "src/sidebarWebview/main.ts",
+  "library/details": "src/detailsWebview/main.ts",
   "templates/templates": "src/writing/templates/webview/main.ts",
   "search/search": "src/writing/search/webview/main.ts",
   "history/history": "src/writing/history/webview/main.ts",
@@ -31,8 +32,8 @@ const options = {
   bundle: true,
   format: "esm",
   platform: "browser",
-  // Matches the Chromium shipped with the Electron of engines.vscode ^1.98.
-  target: ["chrome122"],
+  // Matches the Chromium shipped with the Electron of engines.vscode ^1.106 (Electron 37, Chromium 138).
+  target: ["chrome138"],
   // pdf.js is loaded at runtime by dynamic import() of webview URIs; only its
   // types are imported. A value import must fail loudly instead of silently
   // pulling ~1 MB into the bundle.

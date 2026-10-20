@@ -48,6 +48,9 @@ const openPanels = new Map<string, ReaderPanel>();
 
 export class ReaderPanel {
   private static activePanel: ReaderPanel | undefined;
+  private static readonly _activated = new vscode.EventEmitter<string>();
+  /** Fires the paper id when a reader tab becomes active; build previews are not papers to show. */
+  static readonly onDidActivatePaper = ReaderPanel._activated.event;
 
   private readonly _panel: vscode.WebviewPanel;
   private _disposables: vscode.Disposable[] = [];
@@ -126,7 +129,7 @@ export class ReaderPanel {
       ...(source.preview ? { preview: source.preview } : {}),
     }, source.page !== undefined ? { page: source.page } : {});
     openPanels.set(source.key, this);
-    if (panel.active) { ReaderPanel.activePanel = this; }
+    if (panel.active) { ReaderPanel.activePanel = this; if (!source.preview) { ReaderPanel._activated.fire(paper.id); } }
 
     panel.webview.onDidReceiveMessage((msg: unknown) => { void this.controller.handle(msg); }, null, this._disposables);
 
@@ -172,6 +175,7 @@ export class ReaderPanel {
     this._panel.onDidChangeViewState((e) => {
       if (e.webviewPanel.active) {
         ReaderPanel.activePanel = this;
+        if (!source.preview) { ReaderPanel._activated.fire(source.paper.id); }
       } else if (ReaderPanel.activePanel === this) {
         ReaderPanel.activePanel = undefined;
       }

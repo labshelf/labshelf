@@ -5,7 +5,7 @@
   "version": "0.0.1",
   "publisher": "labshelf",
   "engines": {
-    "vscode": "^1.98.0"
+    "vscode": "^1.106.0"
   },
   "categories": [
     "Other"
@@ -613,9 +613,23 @@
           "title": "Project Search",
           "icon": "$(search)"
         }
+      ],
+      "secondarySidebar": [
+        {
+          "id": "labshelfDetails",
+          "title": "LabShelf Details",
+          "icon": "media/labshelf.svg"
+        }
       ]
     },
     "views": {
+      "labshelfDetails": [
+        {
+          "id": "labshelf.details",
+          "name": "Details",
+          "type": "webview"
+        }
+      ],
       "labshelfSearch": [
         {
           "id": "labshelf.writing.projectSearch",
@@ -1253,7 +1267,7 @@
   "devDependencies": {
     "@types/jest": "^29.5.14",
     "@types/node": "^22.13.10",
-    "@types/vscode": "^1.98.0",
+    "@types/vscode": "^1.106.0",
     "@vscode/test-web": "^0.0.81",
     "esbuild": "^0.24.0",
     "fflate": "^0.8.2",

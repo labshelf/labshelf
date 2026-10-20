@@ -1,8 +1,9 @@
 // Registers the Writing sidebar view with its commands, builds, previews, citations and editing support.
 import * as vscode from "vscode";
+import type { SelectionSources } from "../../details/index.js";
 
 import {
-  buildRootOf, publishedVersionLookup, type ILogger, type PaperRecord, type PaperStatus, type PathOps, type ProjectDeviceDirs, type PublishedVersionLookup,
+  buildRootOf, publishedVersionLookup, type ILogger, type PaperRecord, type PaperStatus, type PathOps, type ProjectLibraryPort, type ProjectDeviceDirs, type PublishedVersionLookup,
 } from "@labshelf/core";
 import {
   WritingProjects, registerMainCommands, registerMainStatusBar, registerProjectCommands,
@@ -36,6 +37,7 @@ import { registerBibliographyLint } from "../../writing/bibliography/index.js";
 import { arcIcons } from "../../ui/index.js";
 import type { LibraryRootController } from "../libraryLifecycle/index.js";
 import type { HostAdapters } from "../serviceComposition/index.js";
+import { openLibraryLogger } from "./openLibraryLogger.js";
 
 /** What other views read from the Writing view: its project list and the backlink index. */
 export interface WritingViewHandles {
@@ -46,6 +48,9 @@ export interface WritingViewHandles {
   projectsSource: SidebarProjectsSource;
   /** The library sidebar renders the open project's Files, Outline and Checklist from it. */
   projectTrees: ProjectTreeMirror;
+  /** The Details view serves the All projects protocol from the same port. */
+  projectLibrary: () => ProjectLibraryPort;
+  logger: ILogger;
 }
 
 type Controller = LibraryRootController;
@@ -60,15 +65,6 @@ function createWritingHost(controller: Controller): WritingHost {
     current,
     // Offers the library setup when none is configured.
     require: async () => { await controller.require(); return current(); },
-  };
-}
-
-/** Logs to the open library's logger; the project data lives as long as the extension while the library can change. */
-function openLibraryLogger(controller: Controller): ILogger {
-  const current = (): ILogger | undefined => controller.currentServices()?.logger;
-  return {
-    log: async (...args) => { await current()?.log(...args); },
-    error: async (...args) => { await current()?.error(...args); },
   };
 }
 
@@ -234,7 +230,7 @@ function createIncludeOnly(
 
 export function registerWritingView(
   context: vscode.ExtensionContext, controller: LibraryRootController, adapters: WritingAdapters,
-  registerPlatformWriting: RegisterPlatformWriting,
+  registerPlatformWriting: RegisterPlatformWriting, sources: Pick<SelectionSources, "projectSelected" | "projectsActivated">,
 ): WritingViewHandles {
   const host = createWritingHost(controller);
   const logger = openLibraryLogger(controller);
@@ -274,11 +270,12 @@ export function registerWritingView(
   const { projectsSource, projectTrees } = registerProjectViews({
     context, projects, figures, session, logger, arcIcon, readingLists, outcomes, previews, onDidChangeBacklinks: backlinks.onDidChange, setStatus,
   });
-  registerAllProjects({
+  const projectLibrary = registerAllProjects({
     context, host, projects, session, source: projectsSource, logger, outcomes, builds: previews.builds,
     onDidChangeRootBuild: previews.onDidChangeRootBuild, listPapers, pdfjs: adapters.pdfjs, recompile,
+    selection: { onSelect: sources.projectSelected, onActivate: sources.projectsActivated },
   });
   registerEditingSupport(parts);
   void projects.reload();
-  return { projects, backlinks, projectsSource, projectTrees };
+  return { projects, backlinks, projectsSource, projectTrees, projectLibrary, logger };
 }

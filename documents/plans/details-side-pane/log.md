@@ -4,3 +4,4 @@
 - 2026-10-20 17:00 — session 1 done: 1.1 protocol, hub, contracts (folder.open names the list-navigate message; core index, serveAllProjects and two app tests edited outside Owns to compile). Peak: main ~70k, subagent ~68k.
 - 2026-10-20 17:05 — session 2 done: 2.1 mountDetails (paperSlot/projectSlot; library-ui/dom index exports detail pane pieces; search clicks and openRelated act only inside Details).
 - 2026-10-20 17:19 — session 4 done: 4.1 split into 4.1b (page pane, sash, toggle via core EditorArea `trailing` slot, onActivateTab) and 4.1a (single merged library host, splitDetailsChannels, shared page project port, sources). Headless A7 not run.
+- 2026-10-20 17:23 — session 3 done: 3.1 split into 3.1/3.1b/3.1c and 3.2 into 3.2/3.2b/3.2c at the budget; LibraryFeed extracted from the list panel; Details rebinds on library root change; openLibraryLogger shared. A1–A5 not checked in a real extension host.
