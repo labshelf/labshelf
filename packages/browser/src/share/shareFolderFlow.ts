@@ -1,12 +1,10 @@
 // Shares a library folder as a link from the browser: the rights notice and annotations choice, the upload's progress, then the link.
 import {
   PAPERS_DIR, relayBackendFor, shareableFolders, shareFolderAsLink, shareRightsNotice, SHARE_WITH_ANNOTATIONS, SHARE_WITHOUT_ANNOTATIONS,
-  type ShareableFolder, type ShareFolderStage,
+  copiedLinkText, SHARE_STAGE_TEXT, type ShareableFolder,
 } from "@labshelf/core";
 import { showDialog } from "@labshelf/core/dom";
 import { LOG_MODULE, openLinkInTab, reportShareFailure, type ShareLinkPage } from "./shareLinkPage";
-
-const STAGE_TEXT: Record<ShareFolderStage, string> = { reading: "reading papers…", encrypting: "encrypting…", uploading: "uploading…" };
 
 async function askAnnotations(folder: ShareableFolder): Promise<boolean | undefined> {
   const notice = shareRightsNotice(folder);
@@ -39,7 +37,7 @@ async function offerLink(page: ShareLinkPage, folder: ShareableFolder, link: str
   });
   if (choice === "open") openLinkInTab(link);
   if (choice === "copy") {
-    if (await copied(page, link)) page.notice("ok", `Copied the link to "${folder.label}".`);
+    if (await copied(page, link)) page.notice("ok", copiedLinkText(folder.label));
     else page.notice("error", "The browser refused the copy; copy the link from Manage Shared Links.");
   }
 }
@@ -55,12 +53,10 @@ export async function shareFolderFlow(page: ShareLinkPage, dir: string): Promise
   const context = { folder: folder.dir, papers: folder.count, withAnnotations, relayUrl: account.relayUrl };
   let link: string;
   try {
-    const shared = await shareFolderAsLink({
+    link = await shareFolderAsLink({
       papers, folder: folder.dir, withAnnotations, relayUrl: account.relayUrl, backendFor: relayBackendFor(account), registry: page.registry,
-      logger: page.logger, sources: page.sources, onStage: (stage) => page.progress(`Sharing "${folder.label}": ${STAGE_TEXT[stage]}`),
+      logger: page.logger, sources: page.sources, onStage: (stage) => page.progress(`Sharing "${folder.label}": ${SHARE_STAGE_TEXT[stage]}`),
     });
-    link = shared.link;
-    await page.logger.log("INFO", LOG_MODULE, "Shared a folder as a link", shared.summary);
   } catch (error) {
     reportShareFailure(page, `share "${folder.label}"`, error, context);
     return;

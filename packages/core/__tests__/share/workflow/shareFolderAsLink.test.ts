@@ -19,26 +19,25 @@ async function share(withAnnotations: boolean) {
   const relay = memoryShareRelay();
   const registry = memoryShareRegistry();
   const stages: ShareFolderStage[] = [];
-  const result = await shareFolderAsLink({
+  const link = await shareFolderAsLink({
     papers, folder: `${PAPERS}/Group`, withAnnotations, relayUrl, registry, logger: h.ctx.logger,
     sources: { fs: h.fs, paths: posixPathOps, annotations: async (id) => (id === "a" ? [annotation] : []) },
     backendFor: () => relay.backend, onStage: (stage) => stages.push(stage),
   });
-  const opened = await openShare(result.link, () => relay.reader);
+  const opened = await openShare(link, () => relay.reader);
   if (!opened.ok) { throw new Error(`openShare failed: ${opened.error}`); }
-  return { result, stages, manifest: opened.share.manifest, registry };
+  return { stages, manifest: opened.share.manifest, registry };
 }
 
 describe("shareFolderAsLink", () => {
   it("uploads the folder's papers at any depth with their annotations, and lists the share", async () => {
-    const { result, stages, manifest, registry } = await share(true);
+    const { stages, manifest, registry } = await share(true);
     expect(manifest.folder).toBe("Group");
     expect(manifest.papers.map((paper) => paper.metadata.id)).toEqual(["a", "b"]);
     expect(manifest.papers[0]?.annotations).toEqual([annotation]);
     expect(manifest.papers[0]?.pdf).toBeDefined();
     expect(stages).toEqual(["reading", "encrypting", "uploading"]);
-    expect(result.summary).toEqual({ shareId: expect.any(String), folder: `${PAPERS}/Group`, papers: 2, withAnnotations: true, relayUrl });
-    expect((await loadShareRegistry(registry)).shares.map((listed) => listed.id)).toEqual([result.summary.shareId]);
+    expect((await loadShareRegistry(registry)).shares).toHaveLength(1);
   });
 
   it("leaves the annotations out when the share is made without them", async () => {

@@ -1,5 +1,5 @@
 // Lists the shares this browser made of the library's folders, newest first, and copies, opens or revokes the link picked.
-import { loadShareRegistry, relayBackendFor, revokeShare, revokeShareConfirm, shareRecordLink, type ShareRecord } from "@labshelf/core";
+import { copiedLinkText, loadShareRegistry, relayBackendFor, revokeResultText, revokeShare, revokeShareConfirm, shareRecordLink, type ShareRecord } from "@labshelf/core";
 import { quickPick, showDialog } from "@labshelf/core/dom";
 import { openLinkInTab, reportShareFailure, type ShareLinkPage } from "./shareLinkPage";
 
@@ -32,7 +32,7 @@ async function revoke(page: ShareLinkPage, share: ShareRecord): Promise<void> {
   } finally {
     page.progress(null);
   }
-  page.notice(revoked ? "ok" : "info", revoked ? `Revoked the link to "${share.folder}".` : `The link to "${share.folder}" is no longer listed in this browser.`);
+  page.notice(revoked ? "ok" : "info", revokeResultText(share.folder, revoked, "this browser"));
 }
 
 export async function manageSharesFlow(page: ShareLinkPage): Promise<void> {
@@ -45,7 +45,7 @@ export async function manageSharesFlow(page: ShareLinkPage): Promise<void> {
     if (!picked || !action) return;
     if (action === "copy") {
       await navigator.clipboard.writeText(shareRecordLink(picked));
-      page.notice("ok", `Copied the link to "${picked.folder}".`);
+      page.notice("ok", copiedLinkText(picked.folder));
     } else if (action === "open") {
       openLinkInTab(shareRecordLink(picked));
     } else {

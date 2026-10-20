@@ -1,5 +1,5 @@
 // Declares what the browser's share-link flows run over on a library page, and how they report a failure.
-import { errorMessage, type FolderShareSources, type ILogger, type PaperRecord, type RelayAccount, type ShareRegistryStore } from "@labshelf/core";
+import { shareFailureText, type FolderShareSources, type ILogger, type PaperRecord, type RelayAccount, type ShareRegistryStore } from "@labshelf/core";
 import type { LibraryMutations } from "../storage";
 
 export const LOG_MODULE = "share";
@@ -32,7 +32,7 @@ export interface ShareLinkPage {
 /** `context` must hold no link key, owner secret or token. */
 export function reportShareFailure(page: Pick<ShareLinkPage, "logger" | "notice">, action: string, error: unknown, context: Record<string, unknown>): void {
   void page.logger.error(LOG_MODULE, error, { ...context, action });
-  page.notice("error", `LabShelf could not ${action}: ${errorMessage(error)}`);
+  page.notice("error", shareFailureText(action, error));
 }
 
 /** Opens a share link in a new tab; the key stays in the fragment, which the tab never sends to a server. */

@@ -21,8 +21,6 @@ function askLink(): Promise<string | undefined> {
 export async function importShareFlow(page: ShareLinkPage): Promise<void> {
   const text = (await askLink())?.trim();
   if (!text) return;
-  const parsed = parseShareLink(text);
-  const context = parsed.ok ? { shareId: parsed.link.shareId, relayUrl: parsed.link.relayUrl } : {};
   page.progress(PROGRESS);
   let result;
   try {
@@ -32,7 +30,7 @@ export async function importShareFlow(page: ShareLinkPage): Promise<void> {
     });
     if (result.status === "imported" && result.summary.added.length > 0) await page.refresh();
   } catch (error) {
-    reportShareFailure(page, "import the shared papers", error, context);
+    reportShareFailure(page, "import the shared papers", error, {});
     return;
   } finally {
     page.progress(null);

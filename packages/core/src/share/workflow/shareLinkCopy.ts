@@ -1,6 +1,8 @@
-// Words what every app tells the user about share links, so the browser and VS Code say the same thing.
+// Words the messages and confirmations every app shows for share links.
 import type { OpenShareError } from "../openShare.js";
 import type { SharedImportSummary } from "../importSharedPapers.js";
+import { errorMessage } from "../../logging/index.js";
+import type { ShareFolderStage } from "./shareFolderAsLink.js";
 
 export const OPEN_SHARE_FAILURE: Record<OpenShareError, string> = {
   malformedLink: "LabShelf could not read that share link.",
@@ -41,4 +43,19 @@ export function revokeShareConfirm(folder: string): ShareConfirmText {
     message: `Revoke the link to "${folder}"?`,
     detail: "The shared papers are deleted from your relay. Anyone who has the link can no longer open it, within about a minute.",
   };
+}
+
+export const SHARE_STAGE_TEXT: Record<ShareFolderStage, string> = { reading: "reading papers…", encrypting: "encrypting…", uploading: "uploading…" };
+
+/** `place` is where the list of shares lives: "this device" or "this browser". */
+export function revokeResultText(folder: string, revoked: boolean, place: string): string {
+  return revoked ? `Revoked the link to "${folder}".` : `The link to "${folder}" is no longer listed on ${place}.`;
+}
+
+export function copiedLinkText(folder: string): string {
+  return `Copied the link to "${folder}".`;
+}
+
+export function shareFailureText(action: string, error: unknown): string {
+  return `LabShelf could not ${action}: ${errorMessage(error)}`;
 }
