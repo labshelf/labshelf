@@ -6,7 +6,7 @@ import type { SharedEditors } from "./editors/index.js";
 import type { ILogger, OwnRelayOffer, RelayAccountStore, ShareWorkflowPorts } from "@labshelf/core";
 import type { ActiveShares } from "./session/index.js";
 
-export const LOG_MODULE = "collab";
+const LOG_MODULE = "collab";
 
 export interface CollabHost {
   /** The open library's folder, or undefined when none is open. */

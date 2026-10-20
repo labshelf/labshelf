@@ -70,6 +70,23 @@ function sidebarProjectParts(project: ProjectWiring, relay: PageRelay): SidebarP
   return { projects: project.sidebarProjects(), manageRelay: () => { void relay.manage(); } };
 }
 
+// Share links ask for the relay on a page without projects too, where no shared project takes the relay.
+function createRelayParts(project: () => ProjectWiring | null): { relay: PageRelay; relayAccounts: ReturnType<typeof openBrowserRelayAccountStore> } {
+  const relay = createPageRelay({
+    logger: log,
+    offerToShares: async () => { await project()?.offerRelayToShares(); },
+    withdrawFromShares: async (relayUrl) => { await project()?.withdrawRelayFromShares(relayUrl); },
+  });
+  return { relay, relayAccounts: openBrowserRelayAccountStore(log) };
+}
+
+// The share key sits in the fragment, so a join link is taken off the address before anything can keep it in history.
+function takeInviteOffAddress(): ReturnType<typeof takeJoinInvite> {
+  const invite = takeJoinInvite(location.hash);
+  if (invite !== undefined) history.replaceState(null, "", location.pathname + location.search);
+  return invite;
+}
+
 async function boot(): Promise<void> {
   const plan = await readPagePlan();
   const root = document.getElementById("root");
@@ -79,14 +96,8 @@ async function boot(): Promise<void> {
   applyCodeStyle(prefs);
   const { ui: transport, host } = createLoopbackTransport();
   const details = createLoopbackTransport<DetailsToHost, HostToDetails>();
-  // Share links ask for the relay on a page without projects too, where no shared project takes the relay.
   let project: ProjectWiring | null = null;
-  const relay = createPageRelay({
-    logger: log,
-    offerToShares: async () => { await project?.offerRelayToShares(); },
-    withdrawFromShares: async (relayUrl) => { await project?.withdrawRelayFromShares(relayUrl); },
-  });
-  const relayAccounts = openBrowserRelayAccountStore(log);
+  const { relay, relayAccounts } = createRelayParts(() => project);
   const hub = createSelectionHub((target) => details.host.post({ type: "details.show", target }));
   const channels = splitDetailsChannels(details.host, {
     current: hub.current,
@@ -105,19 +116,14 @@ async function boot(): Promise<void> {
     capabilities: PAGE_CAPABILITIES, labels: PAGE_LABELS,
   });
   const fs = reportPageWrites(createLibraryFileSystem());
-  const projectServices = (): ProjectServices => {
-    if (!project) throw new Error("The project services are not loaded: this page hides Projects");
-    return project.services;
-  };
+  const projectServices = (): ProjectServices => { if (!project) throw new Error("The project services are not loaded: this page hides Projects"); return project.services; };
   const workspace: Workspace = createWorkspace(shell.centre, {
     prefs: { load: prefs.editorWidth, save: prefs.saveEditorWidth }, logger: log, plan, trailing: createDetailsToggle(shell),
     onActivateTab: (id) => { if (id === "library") hub.activate("list"); else if (id === "all-projects") hub.activate("projects"); },
     services: () => ({ libraryView, logger: log, fs, prefs, selection: hub, project: projectServices }),
   });
   const openTab = (kind: TabKindName): void => workspace.openTab(kind);
-  // The share key sits in the fragment, so a join link is taken off the address before anything can keep it in history.
-  const invite = takeJoinInvite(location.hash);
-  if (invite !== undefined) history.replaceState(null, "", location.pathname + location.search);
+  const invite = takeInviteOffAddress();
   project = await loadProjectWiring(plan, invite, { workspace, fs, logger: log, openTab, relay, relayAccounts });
   if (project) await serveProjectsToDetails(channels.projects, project.services, workspace, fs);
   mountPageDetails(shell.details, details.ui, prefs);

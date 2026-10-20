@@ -53,11 +53,13 @@ async function loadEditor(
   const { session, sharing } = project();
   const loading = body.appendChild(el("p", { class: "ls-workspace-placeholder" }, `Loading ${path}…`));
   try {
-    const [module, entry] = await Promise.all([import("../../editor/index.js"), findProject(fs, logger, session.current(), projectId)]);
+    const loadingModule = import("../../editor/index.js");
+    const entry = await findProject(fs, logger, session.current(), projectId);
+    const { mountSourceEditor } = await loadingModule;
     if (disposed()) return undefined;
     const mode = await sourceFileMode(sharing, entry, path, logger, retried);
     if (disposed()) return undefined;
-    const editor = await module.mountSourceEditor(body, editorDeps(context, entry, { projectId, path }, mode));
+    const editor = await mountSourceEditor(body, editorDeps(context, entry, { projectId, path }, mode));
     loading.remove();
     if (disposed()) { void editor.dispose(); return undefined; }
     return { editor, entry, unresolved: mode.kind === "unresolved" };

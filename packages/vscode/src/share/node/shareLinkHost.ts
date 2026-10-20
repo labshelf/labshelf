@@ -6,7 +6,7 @@ import { deviceLocalLayout, fileShareRegistryStore } from "@labshelf/core/node";
 import type { ActiveServices } from "../../commands/index.js";
 import { CONNECT_RELAY_COMMAND } from "../../relay/index.js";
 
-export const LOG_MODULE = "share";
+const LOG_MODULE = "share";
 
 export interface ShareLinkHost {
   requireServices: () => Promise<ActiveServices | null>;
