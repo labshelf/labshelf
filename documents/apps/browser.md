@@ -130,6 +130,10 @@ The project-scope `.mcp.json` registers `chrome-devtools-mcp` (version pinned, h
 - A server added to `.mcp.json` becomes available after the next session start. Project-scope servers ask for approval on first use.
 - Without a configured MCP client, the server can be driven over stdio: spawn the `.mcp.json` command, send `initialize` (declaring the `roots` capability and answering `roots/list`), `notifications/initialized`, then `tools/call`.
 
+## Checking source editor appearance
+
+Check dark and light themes: the focused cursor blinks with a solid, contrasting stroke, selected text has a blue background, and a selection remains visible on the active line, across wrapped lines and after focus moves to another control.
+
 ## Checking preview stability and latency
 
 Use an isolated project with two sections sharing a page and another with explicit page breaks. After a full build, edit a paragraph in each, including an edit that adds a page. The preview keeps neighboring content and page order; inspect the helper log for the section fallback reason. Save during a preview and click Recompile repeatedly: the preview completes before one full build starts. A build with no page changes keeps the reader mounted.

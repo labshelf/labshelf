@@ -1,6 +1,4 @@
-/**
- * Declares the type scale, spacing, radii, elevation and motion shared by every LabShelf UI.
- */
+// Defines typography, spacing, shape, elevation and motion tokens for LabShelf UI.
 import { token, type DesignToken } from "./designToken.js";
 
 export const TYPE_TOKENS = {
@@ -29,6 +27,7 @@ export const SPACE_TOKENS = {
 } satisfies Record<string, DesignToken>;
 
 export const SHAPE_TOKENS = {
+  "editor-cursor-width": token("3px"),
   "radius-sm": token("3px"),
   radius: token("4px"),
   "radius-lg": token("6px"),
