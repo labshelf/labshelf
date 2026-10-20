@@ -162,5 +162,6 @@ export async function runFor(clock: FakeClock, ms: number, stepMs = 100): Promis
 }
 
 export async function settle(): Promise<void> {
-  for (let i = 0; i < 4; i += 1) { await new Promise((resolve) => setImmediate(resolve)); }
+  // TRAP: WebCrypto sealing finishes on the libuv threadpool in real wall time, so setImmediate ticks alone return too early.
+  for (let i = 0; i < 4; i += 1) { await new Promise((resolve) => setTimeout(resolve, 1)); }
 }
