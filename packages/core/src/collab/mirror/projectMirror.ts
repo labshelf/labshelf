@@ -1,14 +1,15 @@
 // Mirrors a shared project between its share docs and its folder on disk, in both directions.
 import type * as Y from "yjs";
+import { COMMENTS_PATH } from "../comments/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { PROJECT_FILE } from "../../writing/project/index.js";
-import { indexFiles, indexSettings, isSafeSharePath, sharedPaths, type ShareFileEntry } from "../model/index.js";
+import { indexComments, indexFiles, indexSettings, isSafeSharePath, sharedPaths, type ShareFileEntry } from "../model/index.js";
 import { MirrorOwnershipLost } from "../ownership/index.js";
 import type { BlobExchange, ShareSession } from "../sync/index.js";
 import type { CollabStore } from "../state/index.js";
 import { MirrorRootUnavailable, type MirrorDisk } from "./disk/index.js";
 import {
-  DISK_ORIGIN, LOG_MODULE, PathQueue, reconcileBlob, reconcileSettings, reconcileText, reconcileUntracked,
+  DISK_ORIGIN, LOG_MODULE, PathQueue, reconcileBlob, reconcileComments, reconcileSettings, reconcileText, reconcileUntracked,
   type MergeText, type MirrorContext, type ReconcileOutcome,
 } from "./reconcile/index.js";
 
@@ -129,14 +130,20 @@ export function startProjectMirror(options: ProjectMirrorOptions): ProjectMirror
   };
 }
 
+async function refuse(context: MirrorContext, path: string, refused: Set<string>): Promise<void> {
+  if (refused.has(path)) { return; }
+  refused.add(path);
+  await context.logger.log("WARN", LOG_MODULE, "Refused a shared path that is not safe to write", { folder: context.folder, path });
+}
+
 /** Reconciles one path: refuses unsafe paths, and leaves editor-owned ones alone. */
 function reconcilePath(isEditorOwned: (path: string) => boolean, refused: Set<string>, stableMs: number) {
   return async (context: MirrorContext, path: string, settled: boolean): Promise<ReconcileOutcome> => {
     if (path !== PROJECT_FILE && !isSafeSharePath(path)) {
-      if (refused.has(path)) { return "done"; }
-      refused.add(path);
-      await context.logger.log("WARN", LOG_MODULE, "Refused a shared path that is not safe to write", { folder: context.folder, path });
-      return "done";
+      // The comments map, not a peer's file entry, writes comments.json; an entry naming it is refused all the same.
+      if (path !== COMMENTS_PATH || indexFiles(context.session.index).has(path)) { await refuse(context, path, refused); }
+      if (path !== COMMENTS_PATH) { return "done"; }
+      return reconcileComments(context, await context.disk.read(path));
     }
     const disk = await context.disk.read(path, settled ? stableMs : undefined);
     if (path === PROJECT_FILE) { return reconcileSettings(context, disk, settled); }
@@ -147,7 +154,7 @@ function reconcilePath(isEditorOwned: (path: string) => boolean, refused: Set<st
   };
 }
 
-/** Index edits from peers reach disk: a listed, changed or removed file is reconciled, and new text docs are listened to. */
+/** Index edits reach disk: a listed, changed or removed file is reconciled, new text docs are listened to, and comments.json follows the map. */
 function observe(index: Y.Doc, context: MirrorContext, attach: (path: string) => void, detach: (() => void)[]): void {
   const files = indexFiles(index);
   const onFiles = (event: Y.YMapEvent<ShareFileEntry>) => {
@@ -162,14 +169,17 @@ function observe(index: Y.Doc, context: MirrorContext, attach: (path: string) =>
     if (event.transaction.origin !== DISK_ORIGIN) { context.request(PROJECT_FILE, false); }
   };
   settings.observe(onSettings);
-  detach.push(() => files.unobserve(onFiles), () => settings.unobserve(onSettings));
+  const comments = indexComments(index);
+  const onComments = () => context.request(COMMENTS_PATH, false);
+  comments.observeDeep(onComments);
+  detach.push(() => files.unobserve(onFiles), () => settings.unobserve(onSettings), () => comments.unobserveDeep(onComments));
 }
 
 async function scan(context: MirrorContext, queue: PathQueue): Promise<void> {
   const onDisk = await context.disk.list();
   const listed = [...indexFiles(context.session.index).keys()];
   listed.forEach((path) => context.attach(path));
-  const paths = new Set([PROJECT_FILE, ...listed, ...sharedPaths(onDisk)]);
+  const paths = new Set([PROJECT_FILE, COMMENTS_PATH, ...listed, ...sharedPaths(onDisk)]);
   paths.forEach((path) => queue.request(path, false));
   await context.logger.log("INFO", LOG_MODULE, "Started mirroring a shared project", { folder: context.folder, listed: listed.length, onDisk: onDisk.length });
 }

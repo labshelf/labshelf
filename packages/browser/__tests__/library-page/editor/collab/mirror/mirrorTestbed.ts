@@ -1,4 +1,4 @@
-// Builds a browser project mirror over in-memory library sources, IndexedDB share state and a hand-driven lease clock.
+// Builds a browser project mirror over in-memory library sources, IndexedDB share state, a held tab lease and a hand-driven lease clock.
 import "fake-indexeddb/auto";
 import {
   attachBlobs, createProjectIndex, createShareSession, deriveContentKey, fileText, indexFiles, openCollabStore, replaceFileText,
@@ -7,7 +7,7 @@ import {
 import {
   startBrowserProjectMirror, type BrowserMirrorStart, type BrowserMirrorStopReason, type BrowserProjectMirror,
 } from "../../../../../src/library-page/editor/collab/mirror";
-import type { LibrarySource } from "../../../../../src/storage";
+import { acquireTabLease, tabLeaseName, type LibrarySource, type TabLease } from "../../../../../src/storage";
 import { openBrowserCollabStorage } from "../../../../../src/storage/collaboration";
 import { installFakeLocks } from "../../../../support/fakeLocks";
 import { loopback } from "../../../../support/loopbackRelay";
@@ -76,6 +76,8 @@ export interface Testbed {
   scheduler: ManualScheduler;
   session: ShareSession;
   logger: ILogger;
+  /** The share's tab lease the testbed holds, as the page does for the share session. */
+  tab: TabLease;
   /** The stop reasons of the mirrors started without their own list. */
   stops: BrowserMirrorStopReason[];
   start(stops?: BrowserMirrorStopReason[]): Promise<BrowserMirrorStart>;
@@ -108,6 +110,9 @@ export async function openTestbed(source: "browser" | "folder"): Promise<Testbed
     getLibrarySource: async () => (source === "browser" ? BROWSER : FOLDER_SOURCE),
     onLibraryFilesChanged: (listener: (paths: string[]) => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
   };
+  const held = await acquireTabLease(tabLeaseName(LIBRARY_ID, SHARE_ID));
+  if (held.kind !== "owned") { throw new Error("expected the testbed to own the tab lease"); }
+  const tab = held.lease;
   const mirrors: BrowserProjectMirror[] = [];
   const stops: BrowserMirrorStopReason[] = [];
   const track = (result: BrowserMirrorStart): BrowserMirrorStart => {
@@ -115,9 +120,9 @@ export async function openTestbed(source: "browser" | "folder"): Promise<Testbed
     return { ...result, takeOver: async () => track(await result.takeOver()) };
   };
   return {
-    browserFs, folderFs, scheduler, session, logger, stops,
+    browserFs, folderFs, scheduler, session, logger, tab, stops,
     start: async (into = stops) => track(await startBrowserProjectMirror({
-      sources, libraryId: LIBRARY_ID, shareId: SHARE_ID, folder: FOLDER, session, blobs, store, logger, scheduler,
+      sources, tab, libraryId: LIBRARY_ID, shareId: SHARE_ID, folder: FOLDER, session, blobs, store, logger, scheduler,
       onStopped: (reason) => { into.push(reason); },
     })),
     peerEdit: (path, text) => {
@@ -127,6 +132,7 @@ export async function openTestbed(source: "browser" | "folder"): Promise<Testbed
     docText: (path) => fileText(session.openDoc(path)).toString(),
     close: async () => {
       await Promise.all(mirrors.map((mirror) => mirror.close()));
+      await tab.release();
       blobs.close();
       await session.close();
       await store.close();

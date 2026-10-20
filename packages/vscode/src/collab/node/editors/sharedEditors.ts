@@ -2,9 +2,8 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { fileText, indexFiles, type ILogger } from "@labshelf/core";
+import { fileText, indexFiles, type ILogger, type ShareConnection } from "@labshelf/core";
 import { bindDocument, overrideUndoRedo, RemoteEditQueue, type DocumentBinding } from "../../binding/index.js";
-import type { ShareConnection } from "../session/index.js";
 
 export interface SharedDocument {
   share: ShareConnection;
@@ -89,7 +88,7 @@ export class SharedEditors implements vscode.Disposable {
     if (!entry) { return; }
     this.bound.delete(key);
     entry.binding.dispose();
-    if (giveBack) { entry.share.mirror.changed(entry.path); }
+    if (giveBack) { entry.share.mirror?.changed(entry.path); }
     this.changed();
   }
 

@@ -121,7 +121,7 @@ export class CommentsController implements vscode.Disposable {
       const key = share ? `share:${share.shareId}` : "file";
       if (this.views.get(folder)?.key === key) { continue; }
       this.drop(folder);
-      const store: ProjectComments = share ? new SharedComments(share, this.deps.logger) : new FileComments(folder, this.deps.logger);
+      const store: ProjectComments = share ? new SharedComments(share) : new FileComments(folder, this.deps.logger);
       const view = new ThreadView(this.controller, store, this.deps.logger);
       this.views.set(folder, { key, view, subscription: store.onDidChange(() => void view.refresh()) });
       void view.refresh();

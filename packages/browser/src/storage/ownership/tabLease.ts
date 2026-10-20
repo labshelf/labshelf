@@ -65,3 +65,10 @@ export async function takeOverTabLease(name: string): Promise<TabLease> {
   if (!lease) { throw new Error(`The browser granted no lock for ${name} on a steal request`); }
   return lease;
 }
+
+/** Waits until no other tab holds the share's lock, then takes it; rejects with the AbortError when `signal` aborts first. */
+export async function waitForTabLease(name: string, signal: AbortSignal): Promise<TabLease> {
+  const lease = await holdLock(name, { mode: "exclusive", signal });
+  if (!lease) { throw new Error(`The browser granted no lock for ${name} on a waiting request`); }
+  return lease;
+}

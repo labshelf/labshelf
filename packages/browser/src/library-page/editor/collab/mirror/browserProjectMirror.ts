@@ -4,7 +4,7 @@ import {
   libraryMirrorDisk, MirrorOwnershipLost, MirrorRootUnavailable, startProjectMirror, systemLeaseScheduler,
   type BlobExchange, type CollabStore, type ILogger, type LeaseHolder, type LeaseScheduler, type MirrorStopReason, type ShareSession,
 } from "@labshelf/core";
-import type { LibrarySource, LibrarySources } from "../../../../storage";
+import type { LibrarySource, LibrarySources, TabLease } from "../../../../storage";
 import { createFolderRescan } from "./folderRescan";
 import { browserMergeText } from "./mergeText";
 import { acquireMirrorLeases, type MirrorLeases } from "./mirrorLeases";
@@ -19,6 +19,8 @@ export interface BrowserProjectMirrorOptions {
   sources: Pick<LibrarySources, "folderFileSystem" | "browserFileSystem" | "getLibrarySource" | "onLibraryFilesChanged">;
   libraryId: string;
   shareId: string;
+  /** The share's tab lease, held by the caller; the mirror stops when it is lost but never releases it. */
+  tab: TabLease;
   /** The project folder, a "/"-separated path inside the library. */
   folder: string;
   session: ShareSession;
@@ -35,12 +37,12 @@ export interface BrowserProjectMirror {
   /** Reports a changed path relative to the project folder; also call it when an editor lets a path go. */
   changed(path: string): void;
   idle(): Promise<void>;
-  /** Stops mirroring and releases both leases; later calls return the same promise. */
+  /** Stops mirroring and releases the folder lease; later calls return the same promise. */
   close(): Promise<void>;
 }
 
 export type BrowserMirrorStart =
-  | { kind: "busy"; holder: "tab" | LeaseHolder; takeOver(): Promise<BrowserMirrorStart> }
+  | { kind: "busy"; holder: LeaseHolder; takeOver(): Promise<BrowserMirrorStart> }
   | { kind: "running"; mirror: BrowserProjectMirror };
 
 /** Thrown by the ownership check once the library uses another source than the one the mirror writes to. */
@@ -54,9 +56,9 @@ export function startBrowserProjectMirror(options: BrowserProjectMirrorOptions):
 }
 
 async function start(options: BrowserProjectMirrorOptions, takeOver: boolean): Promise<BrowserMirrorStart> {
-  const { sources, libraryId, shareId, folder, logger, scheduler } = options;
+  const { sources, tab, libraryId, shareId, folder, logger, scheduler } = options;
   const context = { libraryId, shareId, folder };
-  const result = await acquireMirrorLeases({ sources, libraryId, shareId, folder, logger, takeOver, ...(scheduler ? { scheduler } : {}) });
+  const result = await acquireMirrorLeases({ sources, tab, folder, logger, takeOver, ...(scheduler ? { scheduler } : {}) });
   if (result.kind === "owned") {
     void logger.log("INFO", LOG_MODULE, "Mirroring the shared project", { ...context, source: result.leases.source.kind, takeOver });
     return { kind: "running", mirror: runMirror(options, result.leases) };
@@ -98,8 +100,8 @@ function runMirror(options: BrowserProjectMirrorOptions, leases: MirrorLeases): 
   const detach = watchFolder(options, leases, scheduler, mirror.changed, stop);
   const shutdown = (): Promise<void> => (closing ??= (async () => {
     detach();
-    const released = Promise.all([leases.tab.release(), leases.folder?.release()]).catch((error: unknown) => {
-      void logger.error(LOG_MODULE, error, { ...context, op: "releaseMirrorLeases" });
+    const released = Promise.resolve(leases.folder?.release()).catch((error: unknown) => {
+      void logger.error(LOG_MODULE, error, { ...context, op: "releaseMirrorFolderLease" });
     });
     await Promise.all([mirror.close(), released]);
   })());
