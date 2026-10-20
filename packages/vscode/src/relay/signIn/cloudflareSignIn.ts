@@ -17,7 +17,7 @@ export async function signInToCloudflare(deps: RelayDeps): Promise<void> {
       handle: async (callbackUrl) => {
         const code = readAuthorizationCode(callbackUrl, authorization.state);
         const tokens = await exchangeAuthorizationCode({ code, verifier: authorization.verifier, fetch: globalThis.fetch, logger, now: () => Date.now() });
-        await storeCloudflareTokens(accounts.oauthTokens, tokens);
+        await storeCloudflareTokens(accounts.tokens, tokens);
       },
     });
     const consentUrl = vscode.Uri.parse(authorization.url);

@@ -100,6 +100,19 @@ LabShelf uploads the Worker through the Cloudflare API with a token from the own
 - Once per app start the owner's LabShelf compares the `worker` build of `/version` with its bundled build, as numbers in the order major, minor, patch. A deployed build below the bundled one is updated; an equal or higher one is left alone, so a Worker is never downgraded.
 - A deploy that fails midway can be repeated: it reuses the KV namespace with its title.
 
+## Owner account
+
+Every app that deploys a relay keeps the owner's account and OAuth tokens in its own secret store, as the same JSON in every app. Core's `relay/account` module reads and writes them, so a stored account means the same in every app.
+
+- VS Code keeps the account, the tokens and a stored refresh lock in SecretStorage, and signs in through its loopback server.
+- The browser extension keeps the account and the tokens in its extension-origin IndexedDB database `labshelf-relay-account`, which content scripts cannot read. Web Locks serialise the token refresh across its pages, and connect and disconnect run in one page at a time. It signs in through a tab it opens and watches until the tab reaches the registered loopback redirect; the redirect's `state` is checked before its code is used.
+
+- The account entry is JSON: `{credential, accountId, relayUrl, ownerSecret, kvNamespaceId}`, every field a string except `credential`, which is `{"kind":"oauth"}` (the tokens live in the tokens entry) or `{"kind":"token","token":"<API token>"}`. An entry that does not parse counts as not connected and is logged without its text.
+- The tokens entry is JSON `{accessToken, refreshToken, expiresAt}`, `expiresAt` in Unix milliseconds.
+- The Worker is named `labshelf-relay`.
+- The account is saved before the wait for the relay's address, so a relay that answers late is still used and can be deleted. A connection that fails or is cancelled forgets any tokens without an account.
+- A disconnect gets a token first, takes the relay out of the shares, deletes it, and only then forgets the account, so a failed deletion leaves it to retry.
+
 ## Clients
 
 How a LabShelf client meets these obligations:

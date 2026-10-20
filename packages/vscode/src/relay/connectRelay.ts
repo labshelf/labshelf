@@ -1,14 +1,12 @@
 // Connects the owner's Cloudflare account: a sign-in (or a pasted token on a remote host), the account, then the relay deployed and serving.
 import * as vscode from "vscode";
 
-import {
-  createCloudflareClient, deployRelay, listCloudflareAccounts, verifyCloudflareToken, waitUntilServing, type CloudflareClient, type ILogger,
-} from "@labshelf/core";
-import { LOG_MODULE, RELAY_WORKER_NAME, type RelayAccounts, type RelayCredential } from "./relayAccounts.js";
-import { relayClock } from "./relayClock.js";
+import { connectRelayAccount, relayWorkerScript, type CloudflareAccount, type ILogger, type RelayAccountStore, type RelayCredential } from "@labshelf/core";
+import { LOG_MODULE } from "./relayAccounts.js";
+import { relayAccountDeps } from "./relayAccountDeps.js";
+import { lazyProgress } from "./relayProgress.js";
 import { reportRelayFailure } from "./relayFailure.js";
-import { relayWorkerScript } from "./relayWorkerScript.js";
-import { accountAccessToken, LoopbackUnavailableError, signInToCloudflare } from "./signIn/index.js";
+import { LoopbackUnavailableError, signInToCloudflare } from "./signIn/index.js";
 
 export const CONNECT_RELAY_COMMAND = "labshelf.relay.connect";
 const TOKEN_PAGE = "https://dash.cloudflare.com/profile/api-tokens";
@@ -19,7 +17,7 @@ const TOKEN_PERMISSIONS = "Create a custom token with Account · Workers Scripts
   + "and Account · Account Settings: Read. The token stays on this device.";
 
 export interface RelayDeps {
-  accounts: RelayAccounts;
+  accounts: RelayAccountStore;
   logger: ILogger;
 }
 
@@ -84,40 +82,27 @@ async function chooseCredential(deps: RelayDeps): Promise<RelayCredential | unde
   return choice === "signIn" ? signIn(deps) : choice;
 }
 
-async function pickAccount(client: CloudflareClient): Promise<string | undefined> {
-  const accounts = await listCloudflareAccounts(client);
-  if (accounts.length === 0) { throw new Error("the credential reaches no Cloudflare account; give it the account permissions LabShelf asks for"); }
-  if (accounts.length === 1) { return accounts[0]?.id; }
+async function chooseAccount(accounts: CloudflareAccount[]): Promise<string | undefined> {
   const picked = await vscode.window.showQuickPick(accounts.map((account) => ({ label: account.name, description: account.id, id: account.id })), {
     title: "Connect Cloudflare", placeHolder: "Account to set up the relay in",
   });
   return picked?.id;
 }
 
-async function deploy(deps: RelayDeps, credential: RelayCredential, token: string, accountId: string): Promise<string> {
-  const { logger } = deps;
-  return vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: "Setting up your relay on Cloudflare" }, async (progress) => {
-    progress.report({ message: "uploading the relay" });
-    const deployed = await deployRelay({ token, accountId, script: relayWorkerScript(), workerName: RELAY_WORKER_NAME, logger, fetch: globalThis.fetch });
-    // Saved before the wait, so a relay that answers late is still used and can be deleted.
-    await deps.accounts.save({ credential, accountId, ...deployed });
-    progress.report({ message: "waiting for its address to answer, which takes up to 4 minutes the first time" });
-    await waitUntilServing({ relayUrl: deployed.relayUrl, fetch: globalThis.fetch, logger, clock: relayClock });
-    return deployed.relayUrl;
-  });
-}
-
-async function connectWith(deps: ConnectDeps, credential: RelayCredential): Promise<void> {
-  const token = await accountAccessToken(deps, credential)();
-  const client = createCloudflareClient({ token, fetch: globalThis.fetch, logger: deps.logger });
-  // An OAuth token has no /user/tokens/verify; listing its accounts proves it works.
-  if (credential.kind === "token") { await verifyCloudflareToken(client); }
-  const accountId = await pickAccount(client);
-  if (!accountId) { return; }
-  const relayUrl = await deploy(deps, credential, token, accountId);
-  void deps.logger.log("INFO", LOG_MODULE, "Connected Cloudflare", { accountId, relayUrl, credential: credential.kind });
-  await deps.offerToShares();
-  void vscode.window.showInformationMessage(`Cloudflare connected. Your shared projects open here and the ones you share later list your relay at ${relayUrl}.`);
+async function deployRelayAccount(deps: ConnectDeps): Promise<string | undefined> {
+  const progress = lazyProgress("Setting up your relay on Cloudflare");
+  try {
+    return await connectRelayAccount({
+      ...relayAccountDeps(deps),
+      chooseCredential: () => chooseCredential(deps),
+      chooseAccount,
+      script: relayWorkerScript(),
+      offerToShares: () => { progress.close(); return deps.offerToShares(); },
+      progress: (step) => progress.report(step === "deploying" ? "uploading the relay" : "waiting for its address to answer, which takes up to 4 minutes the first time"),
+    });
+  } finally {
+    progress.close();
+  }
 }
 
 export async function connectRelay(deps: ConnectDeps): Promise<void> {
@@ -127,11 +112,9 @@ export async function connectRelay(deps: ConnectDeps): Promise<void> {
     return;
   }
   try {
-    const credential = await chooseCredential(deps);
-    if (credential) { await connectWith(deps, credential); }
+    const relayUrl = await deployRelayAccount(deps);
+    if (relayUrl) { void vscode.window.showInformationMessage(`Cloudflare connected. Your shared projects open here and the ones you share later list your relay at ${relayUrl}.`); }
   } catch (error) {
     reportRelayFailure(deps.logger, "connect Cloudflare", error);
   }
-  // Tokens from a sign-in that never became a connection would otherwise stay in SecretStorage with nothing to delete them.
-  if (!(await deps.accounts.get())) { await deps.accounts.forget(); }
 }

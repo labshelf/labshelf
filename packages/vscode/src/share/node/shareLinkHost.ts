@@ -1,17 +1,17 @@
 // Declares what the share-link commands run over on the desktop, the device's share list of the open library, and how a failure is reported.
 import * as vscode from "vscode";
 
-import { errorMessage, type ILogger, type ShareRegistryStore } from "@labshelf/core";
+import { errorMessage, type ILogger, type RelayAccount, type RelayAccountStore, type ShareRegistryStore } from "@labshelf/core";
 import { deviceLocalLayout, fileShareRegistryStore } from "@labshelf/core/node";
 import type { ActiveServices } from "../../commands/index.js";
-import { CONNECT_RELAY_COMMAND, type RelayAccount, type RelayAccounts } from "../../relay/index.js";
+import { CONNECT_RELAY_COMMAND } from "../../relay/index.js";
 
 export const LOG_MODULE = "share";
 
 export interface ShareLinkHost {
   requireServices: () => Promise<ActiveServices | null>;
   libraryRoot: () => string | undefined;
-  relay: RelayAccounts;
+  relay: RelayAccountStore;
 }
 
 /** The share list of the open library; undefined when no library is open. */
