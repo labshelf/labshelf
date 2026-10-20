@@ -1,47 +1,55 @@
-// Routes between the Desk and the Space tabs by hash, delegates clicks to each view, and shows toasts. Mockup only.
+// Routes the mockup between the Desk and Space views.
 const VIEWS = { desk: renderDesk, overview: renderOverview, notebook: renderNotebook, discover: renderDiscover, glossary: renderGlossary };
 const ACTIONS = { desk: deskAction, overview: overviewAction, notebook: notebookAction, discover: discoverAction, glossary: glossaryAction };
-const TITLES = { desk: "Desk", overview: "Thesis — chapter 3", notebook: "Notebook · Thesis — chapter 3", discover: "Discover · Thesis — chapter 3", glossary: "Glossary · Thesis — chapter 3" };
 let current = VIEWS[location.hash.slice(1)] ? location.hash.slice(1) : "overview";
+const toast = (message) => CoreUI.toast(message);
 
-function go(view) { current = view; location.hash = view; render(); document.getElementById("view").scrollTop = 0; }
+function go(view) {
+  current = view;
+  location.hash = view;
+  render();
+  document.getElementById("view").scrollTop = 0;
+}
 
 function render() {
   VIEWS[current](document.getElementById("view"));
-  document.querySelectorAll(".vs-sidebar .nav").forEach((n) => n.classList.toggle("sel", n.dataset.view === current));
-  const dueToday = STATE.commitments.filter((c) => !c.done && c.kind !== "deadline" && bucketOf(c.due) === "today").length;
+  document.querySelectorAll(".vs-sidebar .nav").forEach((node) => {
+    const selected = node.dataset.view === current;
+    node.classList.toggle("sel", selected);
+    if (selected) node.setAttribute("aria-current", "page");
+    else node.removeAttribute("aria-current");
+  });
   document.getElementById("side-desk-count").textContent = deskCount();
   document.getElementById("side-nb-count").textContent = STATE.entries.length;
-  document.getElementById("status-desk").textContent = `Desk: ${STATE.arrived.length} arrived · ${dueToday} due today`;
-  document.getElementById("tab-title").textContent = TITLES[current];
+  document.getElementById("status-desk").textContent = "Session only · sample data";
   hydrateIcons();
 }
 
-let toastTimer;
-function toast(msg) {
-  const t = document.getElementById("toast");
-  t.textContent = msg; t.classList.add("on");
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("on"), 2600);
-}
-
-function sharedAction(act, el) {
-  if (act === "toast") return toast(el.dataset.msg), true;
+function sharedAction(act, element) {
+  if (act === "toast") return toast(element.dataset.msg), true;
   if (act === "capture") return openCapture(), true;
-  if (act === "open-entry") { Object.assign(NB, { selected: el.dataset.id, editing: false }); go("notebook"); return true; }
+  if (act === "share-space") return toast("Sharing is illustrative in this mockup."), true;
+  if (act === "global-library") { go("overview"); WORK.filter = "papers"; WORK.query = ""; render(); return true; }
+  if (act === "global-projects") { go("overview"); WORK.filter = "projects"; WORK.query = ""; render(); return true; }
+  if (act === "open-entry") { Object.assign(NB, { selected: element.dataset.id, editing: false }); go("notebook"); return true; }
   if (act === "mention") {
-    const n = el.dataset.name;
-    toast(STATE.files[n] ? `Opens ${STATE.files[n].title}` : STATE.papers[n] ? `Opens ${STATE.papers[n].title} in the Library` : `@${n}`);
+    const name = element.dataset.name;
+    if (STATE.papers[name]) { WORK.paper = name; go("overview"); }
+    else toast(`Opens ${STATE.files[name]?.title ?? name} in LabShelf.`);
     return true;
   }
   return false;
 }
 
-document.addEventListener("click", (e) => {
-  const nav = e.target.closest(".nav");
+document.addEventListener("click", (event) => {
+  const nav = event.target.closest(".nav");
   if (nav) return go(nav.dataset.view);
-  const el = e.target.closest("[data-act]");
-  if (!el || sharedAction(el.dataset.act, el)) return;
-  ACTIONS[current](el.dataset.act, el);
+  const element = event.target.closest("[data-act]");
+  if (!element || sharedAction(element.dataset.act, element)) return;
+  ACTIONS[current](element.dataset.act, element);
 });
-
+window.addEventListener("hashchange", () => {
+  const view = location.hash.slice(1);
+  if (VIEWS[view] && view !== current) { current = view; render(); }
+});
 render();

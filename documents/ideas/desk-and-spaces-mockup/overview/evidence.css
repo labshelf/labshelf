@@ -1,0 +1,31 @@
+/* Presents source passages beside contextual conversation. */
+.evidence-sheet { background: var(--ls-reader-page); color: var(--ls-reader-fg); padding: calc(var(--ls-space-7) * 1.5); border-radius: var(--ls-radius); }
+.evidence-sheet > header { display: flex; align-items: flex-start; gap: var(--ls-space-7); }
+.evidence-sheet > header > svg { width: calc(var(--ls-space-7) * 1.5); height: calc(var(--ls-space-7) * 1.5); color: var(--ls-file-pdf); flex: none; }
+.evidence-sheet h3 { margin: 0; font: 600 var(--ls-text-xl) / 1.4 var(--ls-serif); }
+.evidence-sheet header p { margin: var(--ls-space-3) 0 0; font-size: var(--ls-text-md); color: var(--ls-reader-desc); }
+.evidence-sheet blockquote { border-top: 1px solid var(--ls-reader-border); padding-top: var(--ls-space-7); margin: var(--ls-space-7) 0; font: calc(var(--ls-text-2xl) * 1.1) / 1.65 var(--ls-serif); }
+.evidence-sheet mark { background: var(--ls-reader-find-hit); color: inherit; }
+.evidence-sheet footer { display: flex; align-items: center; flex-wrap: wrap; gap: var(--ls-space-6); }
+.evidence-sheet footer span { margin-left: auto; color: var(--ls-reader-desc); font-size: var(--ls-text-xs); }
+.evidence-sheet .ls-btn-ghost { color: var(--ls-reader-fg); }
+.evidence-sheet .ls-btn-ghost:hover { color: var(--ls-reader-fg); background: var(--ls-reader-hover); }
+.excerpt-empty { padding: var(--ls-space-7) 0; line-height: 1.6; }
+.work-discussion { margin-top: calc(var(--ls-space-7) * 1.5); }
+.discussion-heading { display: flex; align-items: center; flex-wrap: wrap; gap: var(--ls-space-6); padding-bottom: var(--ls-space-6); border-bottom: 1px solid var(--ls-border-soft); }
+.discussion-heading > svg { width: var(--ls-space-7); height: var(--ls-space-7); color: var(--ls-desc); }
+.discussion-heading h3 { margin: 0; font-size: var(--ls-text-lg); font-weight: 500; }
+.discussion-heading > span { color: var(--ls-desc); font-size: var(--ls-text-sm); }
+.discussion-heading > button { margin-left: auto; font-size: var(--ls-text-sm); }
+.discussion-messages { max-height: calc(var(--ls-row-h) * 9); overflow: auto; padding: var(--ls-space-4) 0; }
+.work-message { display: flex; gap: var(--ls-space-6); padding: var(--ls-space-5) 0; }
+.initial { display: inline-flex; align-items: center; justify-content: center; width: calc(var(--ls-space-7) * 1.5); height: calc(var(--ls-space-7) * 1.5); border-radius: var(--ls-radius-pill); color: var(--ls-desc); background: var(--ls-row-open); font: var(--ls-text-sm) var(--ls-font); flex: none; }
+.work-message > div { min-width: 0; }
+.message-byline { display: flex; align-items: baseline; gap: var(--ls-space-5); }
+.message-byline strong { font-weight: 500; font-size: var(--ls-text-md); }
+.message-byline small { color: var(--ls-desc); font-size: var(--ls-text-xs); }
+.work-message p { margin: var(--ls-space-3) 0 0; line-height: 1.65; overflow-wrap: anywhere; }
+.work-reply { display: flex; align-items: center; gap: var(--ls-space-4); padding: var(--ls-space-3); border: 1px solid var(--ls-input-border); border-radius: var(--ls-radius); }
+.work-reply:focus-within { border-color: var(--ls-focus); }
+.work-reply .ls-input { flex: 1; width: 0; background: none; border: 0; }
+.work-reply .ls-input:focus { outline: none; }

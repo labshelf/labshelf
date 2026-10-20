@@ -5,7 +5,7 @@ function renderOverview(view) {
       `<button class="material-filter ${WORK.filter === id ? "on" : ""}" data-act="work-filter" data-id="${id}" aria-pressed="${WORK.filter === id}">${label}${id !== "all" ? `<span class="ls-count">${id === "projects" ? STATE.space.projects.length : STATE.space.paperCount}</span>` : ""}</button>`).join("")}</nav>
       <label class="ls-search">${icon("search")}<input id="material-search" aria-label="Search Space materials" placeholder="Search this Space…" value="${safeText(WORK.query)}"></label>
       <button class="ls-btn ls-button-soft" data-act="add-material">${icon("plus")}Add</button></div>
-    <div class="research-desk"><aside class="work-materials" aria-label="Space materials">${materialNavigator()}</aside>
+    <div class="research-desk"><details class="work-materials" ${WORK.materialsOpen ? "open" : ""}><summary class="material-toggle">Materials <span>${selectedSection().title}</span>${icon("chevron-down")}</summary>${materialNavigator()}</details>
       <div class="work-context" id="work-context">${contextMarkup()}</div></div>
     <footer class="work-footer"><span>Ana added D4RL · 20 min ago</span>
       <button class="text-action" data-act="open-entry" data-id="e1">Notebook · Lab meeting, 12 Oct</button>
@@ -48,5 +48,14 @@ function refreshWorkspace() {
 document.addEventListener("input", (event) => {
   if (event.target.id !== "material-search") return;
   WORK.query = event.target.value;
-  document.querySelector(".work-materials").innerHTML = materialNavigator();
+  document.querySelector(".material-list").outerHTML = materialNavigator();
+});
+
+document.addEventListener("toggle", (event) => {
+  if (event.target.matches(".work-materials")) WORK.materialsOpen = event.target.open;
+}, true);
+matchMedia("(max-width: 780px)").addEventListener("change", (event) => {
+  WORK.materialsOpen = !event.matches;
+  const materials = document.querySelector(".work-materials");
+  if (materials) materials.open = WORK.materialsOpen;
 });

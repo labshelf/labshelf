@@ -1,28 +1,25 @@
-// Holds the sample state every view reads and mutates: papers, commitments, the Desk, the Notebook, Discover and the Glossary. Mockup only.
+// Provides sample research data for the interactive mockup.
 const STATE = {
   space: {
     name: "Thesis — chapter 3",
-    purpose: "Offline RL with conservative value estimates: background, method and the D4RL experiments.",
-    people: [{ initials: "LN", name: "You" }],
     projects: [
       {
-        name: "thesis-ch3", ft: "tex", main: "main.tex", deadline: "Committee draft · 9 Nov",
+        name: "thesis-ch3", ft: "tex", main: "main.tex",
         sections: [
-          { n: "3.1", title: "Background", cites: 9, debt: [] },
-          { n: "3.2", title: "Conservative value estimation", cites: 4, debt: ["2 sentences without support", "1 claim uses CQL without \\cite"], active: true },
-          { n: "3.3", title: "Experimental setup", cites: 2, debt: ["Table 3.1 is stale"] },
-          { n: "3.4", title: "Results", cites: 0, debt: [], empty: true },
+          { n: "3.1", title: "Background" },
+          { n: "3.2", title: "Conservative value estimation" },
+          { n: "3.3", title: "Experimental setup" },
+          { n: "3.4", title: "Results", empty: true },
         ],
       },
       {
-        name: "workshop-paper", ft: "typ", main: "main.typ", deadline: "Offline RL workshop · 21 Nov",
+        name: "workshop-paper", ft: "typ", main: "main.typ",
         sections: [
-          { n: "1", title: "Introduction", cites: 6, debt: [] },
-          { n: "2", title: "Method", cites: 3, debt: ["1 broken reference"] },
+          { n: "1", title: "Introduction" },
+          { n: "2", title: "Method" },
         ],
       },
     ],
-    folders: [{ name: "Reinforcement Learning", count: 18 }, { name: "Benchmarks", count: 6 }],
     paperCount: 41,
   },
 

@@ -1,6 +1,6 @@
 // Holds the selected research material in the demonstration workspace.
 const WORK = {
-  project: 0, section: "3.2", paper: "CQL", filter: "all", query: "", general: false,
+  materialsOpen: !matchMedia("(max-width: 780px)").matches, project: 0, section: "3.2", paper: "CQL", filter: "all", query: "", general: false,
   papers: ["CQL", "D4RL", "BCQ"], drafts: {}, replies: {}, composers: {},
 };
 const EXCERPTS = {
