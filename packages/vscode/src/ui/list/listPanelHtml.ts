@@ -1,5 +1,5 @@
 /**
- * Builds a library webview's HTML shell (the list panel or the sidebar): a strict CSP (the bundle's script by nonce,
+ * Builds a library webview's HTML shell (the list panel, the sidebar or the Details view): a strict CSP (the bundle's script by nonce,
  * styles and assets only from the extension), the bundled stylesheet and script, and the mount point. The UI arrives with the bundle.
  */
 import * as vscode from 'vscode';
@@ -11,11 +11,13 @@ export function libraryBundleDirectory(extensionUri: vscode.Uri): vscode.Uri {
   return vscode.Uri.joinPath(extensionUri, 'dist', 'library');
 }
 
-export async function listPanelHtml(webview: vscode.Webview, extensionUri: vscode.Uri, bundle: 'library' | 'sidebar' = 'library'): Promise<string> {
+const REOPEN = { library: 'the list', sidebar: 'the sidebar', details: 'the Details view' } as const;
+
+export async function listPanelHtml(webview: vscode.Webview, extensionUri: vscode.Uri, bundle: 'library' | 'sidebar' | 'details' = 'library'): Promise<string> {
   const dir = libraryBundleDirectory(extensionUri);
   const script = vscode.Uri.joinPath(dir, `${bundle}.js`);
   if (!(await bundleExists(script))) {
-    return bundleMissingHtml({ title: 'LabShelf', heading: 'Library bundle not built', file: `dist/library/${bundle}.js`, reopen: bundle === 'sidebar' ? 'the sidebar' : 'the list' });
+    return bundleMissingHtml({ title: 'LabShelf', heading: 'Library bundle not built', file: `dist/library/${bundle}.js`, reopen: REOPEN[bundle] });
   }
   const nonce = createNonce();
   const csp = `default-src 'none'; script-src 'nonce-${nonce}'; style-src ${webview.cspSource}; img-src ${webview.cspSource} data:; font-src ${webview.cspSource};`;

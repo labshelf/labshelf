@@ -16,6 +16,8 @@ export interface LibraryHostOptions {
   log: ILogger;
   /** A paper to select once the library has loaded (the page opened from the popup or Scholar). */
   initialPaper?: string | null;
+  /** Receives the ids the UI reports as selected (an empty list when nothing is). */
+  onSelection?: (ids: string[]) => void;
 }
 
 function run(ctx: HostContext, work: () => Promise<void>): void {
@@ -25,8 +27,10 @@ function run(ctx: HostContext, work: () => Promise<void>): void {
   });
 }
 
-async function onReady(ctx: HostContext, loaded: () => Promise<void>, initialPaper: string | null | undefined): Promise<void> {
+// A repeat ready (another surface mounting after the load) gets the snapshot the first load already posted.
+async function onReady(ctx: HostContext, loaded: () => Promise<void>, initialPaper: string | null | undefined, repeat: boolean): Promise<void> {
   await loaded();
+  if (repeat) { ctx.endpoint.post({ type: "snapshot", snapshot: ctx.snapshots.current() }); return; }
   if (initialPaper && ctx.papers([initialPaper]).length) ctx.endpoint.post({ type: "select", id: initialPaper });
 }
 
@@ -35,9 +39,9 @@ interface Handlers {
   files: PaperFileHandlers;
 }
 
-function dispatch(ctx: HostContext, { pdf, files }: Handlers, loaded: () => Promise<void>, m: UiToHost, options: LibraryHostOptions): void {
+function dispatch(ctx: HostContext, { pdf, files }: Handlers, loaded: () => Promise<void>, m: UiToHost, options: LibraryHostOptions, repeat: boolean): void {
   switch (m.type) {
-    case "ready": run(ctx, () => onReady(ctx, loaded, options.initialPaper)); return;
+    case "ready": run(ctx, () => onReady(ctx, loaded, options.initialPaper, repeat)); return;
     case "navigate": ctx.folder = m.folder; return;
     case "folder.create": run(ctx, () => createFolder(ctx, m.parent, m.name)); return;
     case "folder.rename": run(ctx, () => renameFolder(ctx, m.path, m.name)); return;
@@ -49,7 +53,7 @@ function dispatch(ctx: HostContext, { pdf, files }: Handlers, loaded: () => Prom
     case "paper.askAuthor": run(ctx, () => pdf.askAuthor(m.id)); return;
     case "paper.setStatus": run(ctx, () => setStatus(ctx, m.ids, m.status)); return;
     // The page has no tree of its own to mark, so the selection needs no answer.
-    case "paper.selected": return;
+    case "paper.selected": options.onSelection?.(m.ids); return;
     case "paper.files": run(ctx, () => files.list(m.id)); return;
     case "paper.describeFile": run(ctx, () => files.describe(m.id, m.name, m.description)); return;
     case "paper.openFile": run(ctx, () => files.open(m.id, m.name)); return;
@@ -80,7 +84,12 @@ export function attachLibraryHost(
   // The router asks for a paper path while the first load is still running; both wait on the same load.
   let firstLoad: Promise<void> | null = null;
   const loaded = (): Promise<void> => (firstLoad ??= ctx.snapshots.load());
-  endpoint.subscribe((m) => dispatch(ctx, handlers, loaded, m, options));
+  let readySeen = false;
+  endpoint.subscribe((m) => {
+    const repeat = m.type === "ready" && readySeen;
+    if (m.type === "ready") readySeen = true;
+    dispatch(ctx, handlers, loaded, m, options, repeat);
+  });
   watchLibraryChanges(ctx.snapshots, ctx.log);
   watchChangeNotices(ctx);
   return {

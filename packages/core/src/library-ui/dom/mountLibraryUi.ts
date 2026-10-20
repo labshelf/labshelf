@@ -1,12 +1,11 @@
 /**
- * Mounts the library UI once into a host element (frame, header, list, citation map, detail pane) wired to a host
+ * Mounts the library UI once into a host element (frame, header, list, citation map) wired to a host
  * through a transport. The host fills the optional sidebar slot with its own folder view.
  */
 import type { LibraryUiCapabilities, LibraryUiLabels } from "../hostConfig.js";
 import type { LibraryTransport } from "../protocol/index.js";
 import { LibraryViewStore, type PrefsPort } from "../state/index.js";
 import { mountCitationMap } from "./citationMap/index.js";
-import { mountDetailPane } from "./detail/index.js";
 import { makeDropTarget } from "./dnd/index.js";
 import { confirmDeleteFolder, promptNewFolder, promptRenameFolder } from "./flows/index.js";
 import { mountListHeader } from "./header/index.js";
@@ -53,14 +52,13 @@ export function mountLibraryUi(host: HTMLElement, options: LibraryUiOptions): Li
   const saved = options.prefs.load();
   const store = new LibraryViewStore({ sortKey: saved.sortKey, sortDir: saved.sortDir, columns: saved.columns });
   const { transport, prefs, capabilities: caps, labels } = options;
-  const frame = buildFrame(host, prefs, { withSidebar: options.withSidebar ?? false, withCitationMap: true, detailLabel: "Paper details" });
+  const frame = buildFrame(host, prefs, { withSidebar: options.withSidebar ?? false, withCitationMap: true });
   const ctx = createUiContext(frame.root, { store, transport, prefs, caps, labels, readOnly: options.readOnly ?? false });
   const offs = [
     attachHostMessages(ctx),
     mountListHeader(ctx, frame.header),
     mountPaperList(ctx, frame.list),
     mountCitationMap(ctx, frame.citationMap!),
-    mountDetailPane(ctx, frame.detail),
     reportFolder(ctx),
     reportSelection(ctx),
   ];

@@ -3,9 +3,9 @@
  * capture finds no PDF, decides between searching again, saving the reference alone, saving it while opening the
  * page that stood in the way, and saving it while emailing the authors.
  */
-import { quickPick } from "../../../ui/dom/index.js";
-import type { AddSource, PdfMiss } from "../../protocol/index.js";
-import type { UiContext } from "../uiContext.js";
+import { quickPick } from "../../../../ui/dom/index.js";
+import type { AddSource, PdfMiss } from "../../../protocol/index.js";
+import type { UiContext } from "../../uiContext.js";
 import { askNoPdf } from "./pdfDialogs.js";
 
 /** Asks the host what a paper can be added from; papers land in the open folder. */

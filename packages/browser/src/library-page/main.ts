@@ -1,10 +1,13 @@
-// Mounts the browser library workspace.
-import { createLoopbackTransport } from "@labshelf/core";
+// Mounts the browser library workspace with its shared Details pane.
+import {
+  createLoopbackTransport, createSelectionHub, serveAllProjects, type AllProjectsEndpoint, type DetailsToHost, type HostToDetails, type LibraryFileSystem,
+} from "@labshelf/core";
 import { el, mountLibraryUi } from "@labshelf/core/dom";
 import { createBrowserLogger, getSettings } from "../platform";
 import { mountMoveOffer, mountSourceBanner } from "../library-source";
 import { createLibraryFileSystem } from "../storage";
 import { applyTheme } from "../ui";
+import { createDetailsToggle, mergeEndpoints, mountPageDetails, PAGE_CAPABILITIES, PAGE_LABELS, splitDetailsChannels } from "./details";
 import { attachLibraryHost } from "./host";
 import { attachLinkHandling } from "./openLink";
 import { applyCodeStyle, createLocalStoragePrefs } from "./prefs";
@@ -13,7 +16,7 @@ import type { ProjectWiring, ProjectWiringOptions } from "./projectWiring";
 import { mountSidebarTree } from "./sidebar";
 import { planPage, type PagePlan } from "./sections";
 import type { ProjectServices, TabKindName } from "./tabs";
-import { createPageShell, createWorkspace, takeJoinInvite } from "./workspace";
+import { createPageShell, createWorkspace, takeJoinInvite, type Workspace } from "./workspace";
 
 const log = createBrowserLogger();
 
@@ -51,6 +54,16 @@ async function loadProjectWiring(plan: PagePlan, invite: string | undefined, opt
   }
 }
 
+/** Serves the All projects channel of Details from the same port factory as the All projects tab; a failed load leaves that channel unanswered. */
+async function serveProjectsToDetails(endpoint: AllProjectsEndpoint, services: ProjectServices, workspace: Workspace, fs: LibraryFileSystem): Promise<void> {
+  try {
+    const { createPageProjectLibrary } = await import("./projects-data/index.js");
+    serveAllProjects(endpoint, createPageProjectLibrary({ fs, logger: log, workspace, session: services.session }), log);
+  } catch (err) {
+    void log.error("library", err, { action: "serveProjectsToDetails" });
+  }
+}
+
 async function boot(): Promise<void> {
   const plan = await readPagePlan();
   const root = document.getElementById("root");
@@ -59,20 +72,22 @@ async function boot(): Promise<void> {
   const prefs = createLocalStoragePrefs();
   applyCodeStyle(prefs);
   const { ui: transport, host } = createLoopbackTransport();
-  // The host listens before the UI mounts, so the UI's ready message finds it. Opened from the popup or a Scholar
-  // button, the page selects the paper just saved.
-  const libraryHost = attachLibraryHost(host, { log, initialPaper: new URLSearchParams(location.search).get("paper") });
+  const details = createLoopbackTransport<DetailsToHost, HostToDetails>();
+  const hub = createSelectionHub((target) => details.host.post({ type: "details.show", target }));
+  const channels = splitDetailsChannels(details.host, {
+    current: hub.current,
+    onFolderOpen: (folder) => { host.post({ type: "navigate", folder }); workspace.openTab("library"); },
+  });
+  const libraryHost = attachLibraryHost(mergeEndpoints(host, channels.library), {
+    log, initialPaper: new URLSearchParams(location.search).get("paper"),
+    onSelection: (ids) => hub.publish("list", ids.length ? { kind: "paper", ids } : null),
+  });
   attachRouter(host, libraryHost.paperIdAtPath);
   const shell = createPageShell(root, prefs);
-  // Mounted once, detached: the Library tab shows this element and the sidebar follows its store.
   const libraryView = el("div", { class: "ls-workspace-fill" });
   const ui = mountLibraryUi(libraryView, {
     transport, prefs, withSidebar: false,
-    capabilities: { findPdf: true, attachPdf: true, askAuthor: true },
-    labels: {
-      addTooltip: "Add a paper from an open tab",
-      emptyHint: "Open the paper's page in a tab and use the LabShelf toolbar button, or click Add to pick one of your open tabs.",
-    },
+    capabilities: PAGE_CAPABILITIES, labels: PAGE_LABELS,
   });
   const fs = createLibraryFileSystem();
   let project: ProjectWiring | null = null;
@@ -80,15 +95,18 @@ async function boot(): Promise<void> {
     if (!project) throw new Error("The project services are not loaded: this page hides Projects");
     return project.services;
   };
-  const workspace = createWorkspace(shell.centre, {
-    prefs: { load: prefs.editorWidth, save: prefs.saveEditorWidth }, logger: log, plan,
-    services: () => ({ libraryView, logger: log, fs, prefs, project: projectServices }),
+  const workspace: Workspace = createWorkspace(shell.centre, {
+    prefs: { load: prefs.editorWidth, save: prefs.saveEditorWidth }, logger: log, plan, trailing: createDetailsToggle(shell),
+    onActivateTab: (id) => { if (id === "library") hub.activate("list"); else if (id === "all-projects") hub.activate("projects"); },
+    services: () => ({ libraryView, logger: log, fs, prefs, selection: hub, project: projectServices }),
   });
   const openTab = (kind: TabKindName): void => workspace.openTab(kind);
   // The share key sits in the fragment, so a join link is taken off the address before anything can keep it in history.
   const invite = takeJoinInvite(location.hash);
   if (invite !== undefined) history.replaceState(null, "", location.pathname + location.search);
   project = await loadProjectWiring(plan, invite, { workspace, fs, logger: log, openTab });
+  if (project) await serveProjectsToDetails(channels.projects, project.services, workspace, fs);
+  mountPageDetails(shell.details, details.ui, prefs);
   mountSidebarTree(ui, shell.sidebar, prefs, host, plan.projects && project ? project.sidebarProjects() : null, openTab, plan.library);
   workspace.restore(location.hash);
   project?.start(invite);

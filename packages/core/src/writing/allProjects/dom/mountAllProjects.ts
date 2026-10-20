@@ -1,8 +1,8 @@
 /**
- * Mounts the All projects page: place tabs, search, the project list and the detail pane, talking to its host only through the transport.
+ * Mounts the All projects page: place tabs, search, and the project list, talking to its host only through the transport.
  * Host stylesheets: tokens.css, vscodeHost.css (VS Code), base.css, toast.css, library-ui.css, library-list.css, library-sidebar.css, library-detail.css, library-tabs.css, all-projects.css.
  */
-import { buildFrame, togglePane } from "../../../library-ui/dom/index.js";
+import { buildFrame } from "../../../library-ui/dom/index.js";
 import type { PanePrefsPort } from "../../../library-ui/state/index.js";
 import { showMenu, toast, type MenuAnchor } from "../../../ui/dom/index.js";
 import { DEFAULT_PROJECT_VIEW, deriveProjectView, firstProjectSortDir, placeCounts, type ProjectSortKey, type ProjectViewState } from "../derive/index.js";
@@ -13,7 +13,7 @@ import { emptyTrash } from "./projectActions.js";
 import { buildProjectEmptyState } from "./projectEmptyState.js";
 import { mountProjectList, type ProjectListHandlers } from "./list/index.js";
 import { projectMenuEntries } from "./projectMenu.js";
-import { createDetailRequests, mountProjectDetail, type DetailRequests, type ProjectDetailView } from "./detail/index.js";
+import { createDetailRequests } from "./detail/index.js";
 import { createProjectExpansion, type ProjectExpansion } from "./tray/index.js";
 
 interface PageState {
@@ -22,7 +22,6 @@ interface PageState {
   commands: ProjectMenuCommand[];
   newKinds: NewProjectKind[];
   selected: string | null;
-  openLabel: string;
 }
 
 export interface AllProjectsChannel {
@@ -82,20 +81,10 @@ function rowHandlers(d: RowHandlerDeps, tray: ProjectExpansion["handlers"]): Pro
   };
 }
 
-function paneView(s: PageState, details: DetailRequests): ProjectDetailView {
-  const id = s.selected;
-  return {
-    row: id ? s.rows.find((r) => r.id === id) : undefined,
-    detail: id ? details.get(id) : undefined,
-    error: id ? details.error(id) : undefined,
-    openLabel: s.openLabel,
-  };
-}
-
 export function mountAllProjects(root: HTMLElement, { transport, prefs }: AllProjectsChannel): void {
-  const s: PageState = { view: DEFAULT_PROJECT_VIEW, rows: [], commands: [], newKinds: ["blank", "template", "folder"], selected: null, openLabel: "Open" };
+  const s: PageState = { view: DEFAULT_PROJECT_VIEW, rows: [], commands: [], newKinds: ["blank", "template", "folder"], selected: null };
   const post = transport.post.bind(transport);
-  const frame = buildFrame(root, prefs, { withSidebar: false, withCitationMap: false, detailLabel: "Project details" });
+  const frame = buildFrame(root, prefs, { withSidebar: false, withCitationMap: false });
   frame.root.classList.add("ls-all-projects");
   const set = (view: Partial<ProjectViewState>): void => { s.view = { ...s.view, ...view }; render(); };
   const rowById = (id: string): ProjectRow | undefined => s.rows.find((r) => r.id === id);
@@ -103,14 +92,12 @@ export function mountAllProjects(root: HTMLElement, { transport, prefs }: AllPro
   const details = createDetailRequests(post);
   const select = (id: string): void => { if (id !== s.selected) details.request(id); s.selected = id; render(); };
   const expansion = createProjectExpansion({ post, rowById, select, detailOf: details.get, render });
-  const pane = mountProjectDetail(frame.detail, { post, menu: () => ({ rows: s.rows, commands: s.commands, post }) });
   details.onChange((id) => { if (id === s.selected || id === expansion.frame().expanded) render(); });
   const header = mountAllProjectsHeader(frame.header, {
     onPlace: (place: ProjectPlace) => { if (place !== s.view.place) { s.selected = null; set({ place }); } },
     onQuery: (query) => set({ query }),
     onNew,
     onEmptyTrash: () => void emptyTrash(placeCounts(s.rows).trash, post),
-    onToggleDetail: () => { togglePane(frame.root, prefs, "detail"); },
     onLeaveSearch: () => list.focus(),
   });
   const list = mountProjectList(frame.list, rowHandlers({ s, post, rowById, select, set }, expansion.handlers));
@@ -124,7 +111,6 @@ export function mountAllProjects(root: HTMLElement, { transport, prefs }: AllPro
     header.paint(s.view.place, placeCounts(s.rows), s.view.query);
     const empty = shown.size > 0 ? null : buildProjectEmptyState({ place: s.view.place, query: s.view.query, onClearQuery: () => set({ query: "" }), onNew });
     list.render({ view: s.view, groups, selected: s.selected, tray: expansion.frame(), empty });
-    pane.update(paneView(s, details));
     selection.update(s.selected);
   }
 
@@ -132,7 +118,7 @@ export function mountAllProjects(root: HTMLElement, { transport, prefs }: AllPro
     files: expansion.receive,
     detail: details.receive,
     projects: (message) => {
-      s.rows = message.rows; s.commands = message.commands; s.newKinds = message.newKinds; s.openLabel = message.openLabel;
+      s.rows = message.rows; s.commands = message.commands; s.newKinds = message.newKinds;
       render();
       if (s.selected) details.request(s.selected);
     },

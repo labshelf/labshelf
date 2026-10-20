@@ -2,9 +2,9 @@
  * @jest-environment jsdom
  */
 // The "Ask the author" choice in the capture and Find PDF dialogs.
-import { askNoPdf } from "../../../../src/library-ui/dom/flows/pdfDialogs";
-import type { PdfMiss } from "../../../../src/library-ui/protocol";
-import { mountForTest, paper } from "../mountHarness";
+import { askNoPdf } from "../../../../../src/library-ui/dom/flows/pdf/index";
+import type { PdfMiss } from "../../../../../src/library-ui/protocol";
+import { mountForTest, paper } from "../../mountHarness";
 
 const miss: PdfMiss = { tried: 2, sources: ["publisher"], blocked: false, needsLogin: false };
 const buttons = (): HTMLButtonElement[] => [...document.querySelectorAll<HTMLButtonElement>(".ls-dialog button")];

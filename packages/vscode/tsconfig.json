@@ -10,6 +10,7 @@
     "node_modules",
     "src/reader",
     "src/libraryWebview",
+    "src/detailsWebview",
     "src/webviewMessaging",
     "src/sidebarWebview",
     "src/writing/templates/webview",

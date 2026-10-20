@@ -27,7 +27,7 @@ function createGroup(index: EditorGroupIndex): EditorGroup {
 
 const NO_ACTIONS: readonly EditorTabAction[] = [];
 
-type Events = Pick<EditorAreaOptions, "onActivate" | "onMove">;
+type Events = Pick<EditorAreaOptions, "onActivate" | "onMove" | "trailing">;
 
 export class EditorGroups {
   readonly groups = [createGroup(0), createGroup(1)] as const;
@@ -122,6 +122,8 @@ export class EditorGroups {
 
   private relayout(): void {
     for (const g of this.groups) g.el.hidden = g.order.length === 0;
+    const rightMost = this.groups.filter((g) => !g.el.hidden).pop();
+    if (rightMost && this.events.trailing) rightMost.el.querySelector(".ls-editor-titlebar")?.append(this.events.trailing);
     this.layout(this.groups.every((g) => !g.el.hidden));
   }
 

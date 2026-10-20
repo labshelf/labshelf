@@ -1,5 +1,5 @@
 import { DEFAULT_PREFS } from "@labshelf/core";
-import { PREFS_KEY, createLocalStoragePrefs } from "../../../src/library-page/prefs/localStoragePrefs";
+import { DEFAULT_DETAIL_WIDTH, PREFS_KEY, createLocalStoragePrefs } from "../../../src/library-page/prefs/localStoragePrefs";
 
 class MemoryStorage implements Pick<Storage, "getItem" | "setItem"> {
   readonly map = new Map<string, string>();
@@ -22,8 +22,9 @@ describe("localStorage prefs", () => {
     prefs.saveTreeExpanded(["papers/A"]);
     prefs.saveCollapsedSections(["projects"]);
     prefs.save({ sortKey: "year", sortDir: -1 });
-    prefs.save({ detailCollapsed: true });
-    expect(prefs.load()).toMatchObject({ sortKey: "year", sortDir: -1, detailCollapsed: true, detailWidth: DEFAULT_PREFS.detailWidth });
+    prefs.saveDetailPane({ detailCollapsed: true });
+    expect(prefs.load()).toMatchObject({ sortKey: "year", sortDir: -1 });
+    expect(prefs.detailPane()).toEqual({ detailCollapsed: true, detailWidth: DEFAULT_DETAIL_WIDTH });
     expect(prefs.treeExpanded()).toEqual(["papers/A"]);
     expect(prefs.collapsedSections()).toEqual(["projects"]);
     expect(Object.keys(JSON.parse(storage.getItem(PREFS_KEY)!)).sort()).toEqual([

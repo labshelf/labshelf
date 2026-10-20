@@ -54,6 +54,19 @@ describe("paper menu", () => {
     expect(t.sent).toContainEqual({ type: "paper.setStatus", ids: ["a", "b"], status: "reading" });
   });
 
+  it("asks for tags in a prompt and adds them to the whole selection", async () => {
+    const t = mountForTest();
+    t.snapshot(library);
+    t.lib.store.set({ selected: new Set(["a", "b"]), anchor: "a", cursor: "a" });
+    rightClick(t, "a");
+    item("Tag 2 Papers…").click();
+    const input = document.querySelector<HTMLInputElement>(".ls-quick input")!;
+    input.value = "ml, vision";
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+    await Promise.resolve();
+    expect(t.sent).toContainEqual({ type: "paper.setTags", ids: ["a", "b"], add: ["ml", "vision"], remove: [] });
+  });
+
   it("copies BibTeX built from the records", () => {
     const t = mountForTest();
     t.snapshot(library);

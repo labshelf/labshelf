@@ -38,7 +38,7 @@ function setup(root: string | undefined, register: RegisterPlatformWriting = fak
     paths: path, uriOf: (target: string) => vscode.Uri.file(target), fs: new NodeLibraryFileSystem(), createProjectData: () => data, deviceLayout: () => { throw new Error("The fake project data reads no device dirs"); },
     reader: { locatePdfjs: () => null, isMac: false }, pdfjs, ...(convertDocument ? { convertDocument } : {}),
   };
-  registerWritingView(context as unknown as vscode.ExtensionContext, controller, adapters, register);
+  registerWritingView(context as unknown as vscode.ExtensionContext, controller, adapters, register, { projectSelected: jest.fn(), projectsActivated: jest.fn() });
   return { emitter, listProjects: data.listProjects };
 }
 

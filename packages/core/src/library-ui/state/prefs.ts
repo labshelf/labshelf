@@ -15,8 +15,6 @@ export interface LibraryUiPrefs {
   sortKey: SortKey;
   sortDir: SortDir;
   columns: ColumnKey[];
-  detailWidth: number;
-  detailCollapsed: boolean;
   sidebarWidth: number;
   sidebarCollapsed: boolean;
   secCollapsed: Record<string, boolean>;
@@ -30,26 +28,23 @@ export interface PrefsPort {
   save(patch: Partial<LibraryUiPrefs>): void;
 }
 
-/** The four keys the pane frame persists; a host that shows panes without the rest of the library prefs stores only these. */
-export type PanePrefs = Pick<LibraryUiPrefs, "detailWidth" | "detailCollapsed" | "sidebarWidth" | "sidebarCollapsed">;
+/** The two keys the pane frame persists; a host that shows panes without the rest of the library prefs stores only these. */
+export type PanePrefs = Pick<LibraryUiPrefs, "sidebarWidth" | "sidebarCollapsed">;
 
 export interface PanePrefsPort {
   load(): PanePrefs;
   save(patch: Partial<PanePrefs>): void;
 }
 
-/** Drag limits of the two side panes; dragging below `collapseAt` hides the pane. */
+/** Drag limits of the sidebar; dragging below `collapseAt` hides it. */
 export const PANE_LIMITS = {
   sidebar: { min: 160, max: 420, collapseAt: 110 },
-  detail: { min: 260, max: 760, collapseAt: 180 },
 } as const;
 
 export const DEFAULT_PREFS: LibraryUiPrefs = {
   sortKey: "title",
   sortDir: 1,
   columns: DEFAULT_COLUMNS,
-  detailWidth: 360,
-  detailCollapsed: false,
   sidebarWidth: 220,
   sidebarCollapsed: false,
   secCollapsed: {},
@@ -85,8 +80,6 @@ export function sanitizePrefs(raw: unknown): LibraryUiPrefs {
     sortKey: sortHidden ? "title" : sortKey,
     sortDir: sortHidden || r["sortDir"] !== -1 ? 1 : -1,
     columns,
-    detailWidth: num(r["detailWidth"], d.detailWidth, PANE_LIMITS.detail),
-    detailCollapsed: bool(r["detailCollapsed"], d.detailCollapsed),
     sidebarWidth: num(r["sidebarWidth"], d.sidebarWidth, PANE_LIMITS.sidebar),
     sidebarCollapsed: bool(r["sidebarCollapsed"], d.sidebarCollapsed),
     secCollapsed: isBoolMap(r["secCollapsed"]) ? r["secCollapsed"] : { ...d.secCollapsed },

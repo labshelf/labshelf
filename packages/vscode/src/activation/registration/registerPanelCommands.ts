@@ -2,8 +2,9 @@
 // annotation export and the reader's own contributed keybindings.
 import * as vscode from "vscode";
 
-import { exportAnnotations, findSimilarPapers, type AiService, type ReaderCommandId } from "@labshelf/core";
+import { exportAnnotations, findSimilarPapers, type AiService, type ILogger, type ProjectLibraryPort, type ReaderCommandId } from "@labshelf/core";
 import { PdfViewerPanel, ReaderPanel, createVsCodeExportPorts } from "../../pdf-viewer/index.js";
+import { DetailsView, registerDetailsView, type SelectionSources } from "../../details/index.js";
 import { ListWebviewPanel, type ListPanelDeps } from "../../ui/list/index.js";
 import { citationMapPorts } from "../../citationMap/index.js";
 import { PaperFileService } from "../../core/index.js";
@@ -11,6 +12,7 @@ import type { LibraryNode } from "../../ui/library/index.js";
 import { resolvePaper, ensurePaperPdf, folderActions, type FolderCommandHost, type ActiveServices, currentTextLayerJobs, onTextLayerJobsChanged } from "../../commands/index.js";
 import type { LibraryEvents } from "../../events/index.js";
 import type { HostAdapters } from "../serviceComposition/index.js";
+import { wireDetailsSources } from "./wireDetailsSources.js";
 
 const READER_COMMANDS: readonly ReaderCommandId[] = [
   "zoomIn", "zoomOut", "zoomReset", "find", "historyBack", "historyForward", "toggleSidebar",
@@ -28,10 +30,18 @@ export interface PanelCommandsDeps {
   /** The writing projects' backlink index, shown in the detail pane as "Cited in". */
   projectBacklinks: NonNullable<ListPanelDeps["projectBacklinks"]>;
   adapters: HostAdapters;
+  /** The open library's services, or null while none is open. */
+  currentServices: () => ActiveServices | null;
+  /** Fires when the library root changes, so the Details view serves the new library. */
+  onDidChangeRoot: vscode.Event<unknown>;
+  /** The All projects library port, which the Details view serves on its projects channel. */
+  projectLibrary: () => ProjectLibraryPort;
+  logger: ILogger;
+  sources: SelectionSources;
 }
 
 function listPanelDeps(deps: PanelCommandsDeps, services: ActiveServices): ListPanelDeps {
-  const { context, events, papersRootUri, folderHost, showFolderInSidebar, showPaperInSidebar, getAiService, adapters, projectBacklinks } = deps;
+  const { context, events, papersRootUri, folderHost, showFolderInSidebar, showPaperInSidebar, getAiService, adapters, projectBacklinks, sources } = deps;
   return {
     extensionUri: context.extensionUri, paperService: services.paperService, events, logger: services.logger, pathOps: adapters.paths,
     getPapersRoot: () => papersRootUri()?.fsPath ?? null,
@@ -39,6 +49,8 @@ function listPanelDeps(deps: PanelCommandsDeps, services: ActiveServices): ListP
     citationMap: citationMapPorts(services),
     onDidNavigate: showFolderInSidebar,
     onDidSelectPaper: showPaperInSidebar,
+    onDidChangeSelection: sources.listSelected,
+    onDidActivate: sources.listActivated,
     textLayerJobs: { current: currentTextLayerJobs, onDidChange: onTextLayerJobsChanged },
     loadSidecar: (paperId) => services.paperDataStore.load(paperId),
     findSimilar: (paper) => findSimilarPapers(getAiService(), paper),
@@ -120,7 +132,18 @@ function registerReaderPanelCommands(deps: PanelCommandsDeps): void {
   );
 }
 
-export function registerPanelCommands(deps: PanelCommandsDeps): void {
+/** @returns the Details view, so callers can show a target in it and route the folders it asks to open */
+export function registerPanelCommands(deps: PanelCommandsDeps): DetailsView {
   registerOpenListTabCommand(deps);
   registerReaderPanelCommands(deps);
+  deps.context.subscriptions.push(ReaderPanel.onDidActivatePaper(deps.sources.readerActivated));
+  const details = registerDetailsView(deps.context, {
+    extensionUri: deps.context.extensionUri, projectLibrary: deps.projectLibrary, logger: deps.logger,
+    listDeps: () => { const services = deps.currentServices(); return services ? listPanelDeps(deps, services) : null; },
+  });
+  wireDetailsSources({
+    context: deps.context, details, currentServices: deps.currentServices, onDidChangeRoot: deps.onDidChangeRoot,
+    adapters: deps.adapters, papersRootUri: deps.papersRootUri, listPanelDeps: (services) => listPanelDeps(deps, services), logger: deps.logger,
+  });
+  return details;
 }

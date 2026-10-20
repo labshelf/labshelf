@@ -5,12 +5,12 @@
  * both offer to email the authors for a copy. A preprint's search for
  * its published version asks first, because the new file replaces the old one.
  */
-import { PDF_VERSION_LABEL, isPrePublication } from "../../../model/index.js";
-import { showDialog, type DialogButton } from "../../../ui/dom/index.js";
-import { ASK_AUTHOR_LABEL, findMissMessage, noPdfDialogCopy, pdfAccessLabel } from "../../pdfCopy.js";
-import type { PdfMiss } from "../../protocol/index.js";
-import type { UiContext } from "../uiContext.js";
-import { askAuthor, attachPdf, findPdf } from "./paperCommands.js";
+import { PDF_VERSION_LABEL, isPrePublication } from "../../../../model/index.js";
+import { showDialog, type DialogButton } from "../../../../ui/dom/index.js";
+import { ASK_AUTHOR_LABEL, findMissMessage, noPdfDialogCopy, pdfAccessLabel } from "../../../pdfCopy.js";
+import type { PdfMiss } from "../../../protocol/index.js";
+import type { UiContext } from "../../uiContext.js";
+import { askAuthor, attachPdf, findPdf } from "../paper/index.js";
 
 export async function onPdfMissing(ctx: UiContext, id: string): Promise<void> {
   const choice = await showDialog({

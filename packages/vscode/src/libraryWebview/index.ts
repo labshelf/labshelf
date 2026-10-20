@@ -1,2 +1,3 @@
-/** Exports the VS Code library webview channel. */
+/** Exports the VS Code library webview channel and the capabilities and labels shared by the webview entries. */
 export { createWebviewChannel } from "./webviewChannel.js";
+export { libraryUiCapabilities, libraryUiLabels } from "./libraryUiHost.js";

@@ -8,18 +8,18 @@ describe("sanitizePrefs", () => {
 
   it("validates every field and clamps widths", () => {
     const prefs = sanitizePrefs({
-      sortKey: "bogus", sortDir: -1, detailWidth: 9999, sidebarWidth: 10,
-      detailCollapsed: true, secCollapsed: { info: true, notes: "x" },
+      sortKey: "bogus", sortDir: -1, sidebarWidth: 10,
+      sidebarCollapsed: true, secCollapsed: { info: true, notes: "x" },
     });
     expect(prefs).toEqual({
-      ...DEFAULT_PREFS, sortKey: "title", sortDir: -1, detailWidth: 760, sidebarWidth: 160,
-      detailCollapsed: true, secCollapsed: DEFAULT_PREFS.secCollapsed,
+      ...DEFAULT_PREFS, sortKey: "title", sortDir: -1, sidebarWidth: 160,
+      sidebarCollapsed: true, secCollapsed: DEFAULT_PREFS.secCollapsed,
     });
   });
 
   it("reads a width of 0 as never resized, and checks the tab and the citation style", () => {
-    expect(sanitizePrefs({ detailWidth: 0, detailTab: "notes", citeFormat: "apa" }))
-      .toMatchObject({ detailWidth: DEFAULT_PREFS.detailWidth, detailTab: "notes", citeFormat: "apa" });
+    expect(sanitizePrefs({ sidebarWidth: 0, detailTab: "notes", citeFormat: "apa" }))
+      .toMatchObject({ sidebarWidth: DEFAULT_PREFS.sidebarWidth, detailTab: "notes", citeFormat: "apa" });
     expect(sanitizePrefs({ detailTab: "bogus", citeFormat: 3 })).toMatchObject({ detailTab: "details", citeFormat: "bibtex" });
   });
 

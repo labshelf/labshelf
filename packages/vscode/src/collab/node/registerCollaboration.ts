@@ -1,8 +1,8 @@
 // Wires project collaboration on the desktop: the share, join and leave commands, the owner's relay, editor binding, presence, comments and status bar.
 import * as vscode from "vscode";
 
-import type { ILogger } from "@labshelf/core";
 import type { LibraryRootController } from "../../activation/libraryLifecycle/index.js";
+import { openLibraryLogger } from "../../activation/registration/index.js";
 import { RelayAccounts, registerRelay } from "../../relay/index.js";
 import type { WritingProjects } from "../../writing/index.js";
 import type { CollabHost } from "./collabHost.js";
@@ -18,14 +18,6 @@ import { ActiveShares, connectDesktopShare, ShareKeys } from "./session/index.js
 import { userName } from "./userName.js";
 
 type Controller = Pick<LibraryRootController, "currentRoot" | "currentServices" | "require">;
-
-function openLibraryLogger(controller: Controller): ILogger {
-  const current = (): ILogger | undefined => controller.currentServices()?.logger;
-  return {
-    log: async (...args) => { await current()?.log(...args); },
-    error: async (...args) => { await current()?.error(...args); },
-  };
-}
 
 function createHost(context: vscode.ExtensionContext, controller: Controller, projects: WritingProjects): CollabHost {
   const logger = openLibraryLogger(controller);

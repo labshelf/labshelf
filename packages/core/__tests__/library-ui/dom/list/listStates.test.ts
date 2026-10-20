@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-// Tests the states of the paper list: empty, loading, a failed file listing, long text, narrow width and the details toggle.
+// Tests the states of the paper list: empty, loading, a failed file listing, long text, and narrow width.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { mountForTest, paper } from "../mountHarness";
@@ -86,15 +86,6 @@ describe("long text and layout", () => {
     expect(t.container.querySelector(".title-cell")?.getAttribute("title")).toBe(long);
     expect(readFileSync(join(__dirname, "../../../../src/library-ui/dom/styles/library-list.css"), "utf8"))
       .toMatch(/\.title-cell > \.title-text \{[^}]*text-overflow: ellipsis/);
-  });
-
-  it("toggles the details pane from the header", () => {
-    const t = mountForTest();
-    expect(t.container.querySelector(".ls-library")!.classList.contains("detail-collapsed")).toBe(false);
-    t.click('[data-act="detail"]');
-    expect(t.container.querySelector(".ls-library")!.classList.contains("detail-collapsed")).toBe(true);
-    t.click('[data-act="detail"]');
-    expect(t.container.querySelector(".ls-library")!.classList.contains("detail-collapsed")).toBe(false);
   });
 
   it("marks the Year cell and head so the narrow layout can hide them", () => {
