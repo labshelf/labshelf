@@ -1,10 +1,8 @@
-// Stops sharing a project on this device: disconnects it, forgets its key and its share id, and keeps every file.
-import { promises as fs } from "node:fs";
-import * as path from "node:path";
+// Asks which shared project to stop sharing on this device and runs the core leave workflow, which keeps every file.
 import * as vscode from "vscode";
 
-import { PROJECT_FILE, updateProjectFile } from "@labshelf/core";
-import { LOG_MODULE, projectName, reportFailure, type CollabHost } from "../collabHost.js";
+import { leaveSharedProject } from "@labshelf/core";
+import { projectName, reportFailure, type CollabHost } from "../collabHost.js";
 import { pickProject, type ProjectTarget } from "./projectTarget.js";
 
 export const LEAVE_COMMAND = "labshelf.collab.leave";
@@ -31,14 +29,7 @@ export async function leaveProject(host: CollabHost, target: ProjectTarget): Pro
   const name = projectName(project);
   if (target === undefined && !(await confirmLeave(name))) { return false; }
   try {
-    await host.shares.hold(shareId, async () => {
-      await host.keys.forget(shareId);
-      await host.shares.remove(shareId);
-      const file = path.join(project.folder, PROJECT_FILE);
-      await fs.writeFile(file, updateProjectFile(await fs.readFile(file, "utf8"), { shared: undefined }));
-      await host.projects.reload();
-    });
-    void host.logger.log("INFO", LOG_MODULE, "Stopped sharing a project on this device", { folder: project.folder, shareId });
+    await leaveSharedProject(host.ports, { folder: project.folder, shareId });
     void vscode.window.showInformationMessage(`"${name}" is no longer shared on this device. Its files stay.`);
     return true;
   } catch (error) {

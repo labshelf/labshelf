@@ -2,9 +2,8 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
+import { currentInvite, type ShareConnection } from "@labshelf/core";
 import { projectName, type CollabHost } from "../collabHost.js";
-import { rememberInvite } from "../ownRelay.js";
-import type { ShareConnection } from "@labshelf/core";
 import { copyInvite } from "./copyInvite.js";
 import { LEAVE_COMMAND } from "./leaveCommand.js";
 
@@ -55,7 +54,7 @@ async function manage(host: CollabHost): Promise<void> {
   const leave = { label: "$(debug-disconnect) Stop Sharing on This Device", description: name };
   const picked = await vscode.window.showQuickPick([copy, leave], { placeHolder: `Shared project "${name}"` });
   if (picked === copy) {
-    await copyInvite(await rememberInvite(host, share), name);
+    await copyInvite(await currentInvite(host.ports, share), name);
   } else if (picked === leave) {
     await vscode.commands.executeCommand(LEAVE_COMMAND, share.folder);
   }

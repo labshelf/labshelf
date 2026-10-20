@@ -1,12 +1,12 @@
 // Tracks the shares connected in this window and tells views when one opens, closes, or its peers, status or relay change.
 import * as vscode from "vscode";
 
-import type { ShareConnection } from "@labshelf/core";
+import type { ShareConnection, ShareConnections } from "@labshelf/core";
 
 /** What else runs while a share is connected, such as the editor binding; disposed when it closes. */
 type OnOpen = (share: ShareConnection) => vscode.Disposable;
 
-export class ActiveShares implements vscode.Disposable {
+export class ActiveShares implements ShareConnections, vscode.Disposable {
   private readonly open = new Map<string, { share: ShareConnection; attached: vscode.Disposable }>();
   private readonly busy = new Set<string>();
   private readonly changeEmitter = new vscode.EventEmitter<void>();
@@ -18,7 +18,7 @@ export class ActiveShares implements vscode.Disposable {
     return [...this.open.values()].map(({ share }) => share);
   }
 
-  get(shareId: string): ShareConnection | undefined {
+  active(shareId: string): ShareConnection | undefined {
     return this.open.get(shareId)?.share;
   }
 
@@ -46,7 +46,7 @@ export class ActiveShares implements vscode.Disposable {
     fire();
   }
 
-  /** Disconnects the share; its files and stored state stay. */
+  /** Disconnects the share; its files and stored state stay. Rejects when the close leaves an update unstored. */
   async remove(shareId: string): Promise<void> {
     const entry = this.open.get(shareId);
     if (!entry) { return; }
