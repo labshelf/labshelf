@@ -34,7 +34,7 @@ function answer(ports: ShareHostPorts, m: UiToHost, post: (m: HostToUi) => void,
       post({ type: "snapshot", snapshot: library.snapshot });
       return;
     case "navigate": return;
-    case "paper.selected": ports.selected(m.id); return;
+    case "paper.selected": ports.selected(m.ids.length === 1 ? m.ids[0]! : null); return;
     case "paper.details": {
       const { pdf, annotations = [] } = known(m.id);
       const file = pdf ? { size: pdf.size, relPath: `${folderOf(m.id)}/${PDF_FILE}` } : null;

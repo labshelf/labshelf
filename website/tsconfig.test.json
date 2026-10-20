@@ -7,7 +7,10 @@
     "types": ["jest", "node"],
     "noEmit": false,
     "rootDir": "..",
-    "paths": { "@labshelf/core": ["../packages/core/src/index.ts"] }
+    "paths": {
+      "@labshelf/core": ["../packages/core/src/index.ts"],
+      "node-diff3": ["../packages/core/node_modules/node-diff3/src/diff3.d.ts"]
+    }
   },
   "include": ["src/**/*", "__tests__/**/*"]
 }
