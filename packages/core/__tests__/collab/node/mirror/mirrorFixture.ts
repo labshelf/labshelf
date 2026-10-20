@@ -3,7 +3,8 @@ import { promises as fs } from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { createProjectIndex } from "../../../../src/collab/model/index";
-import { openCollabStore, startProjectMirror, type CollabStore, type ProjectMirror } from "../../../../src/collab/node/index";
+import { nodeCollabStorage, startProjectMirror, type ProjectMirror } from "../../../../src/collab/node/index";
+import { openCollabStore, type CollabStore } from "../../../../src/collab/state/index";
 import { deriveRelayToken } from "../../../../src/collab/crypto/index";
 import { attachBlobs, attachRelaySync, createShareSession, type BlobExchange, type ShareSession } from "../../../../src/collab/sync/index";
 import { createRelayTransport, type PeerTransport } from "../../../../src/collab/transport/index";
@@ -43,7 +44,7 @@ export async function openMirror(options: FixtureOptions = {}): Promise<MirrorFi
   const folder = options.folder ?? await tempDir("mirror-folder");
   const stateDir = options.stateDir ?? await tempDir("mirror-state");
   const logger = fakeLogger();
-  const store = await openCollabStore({ dir: stateDir, shareId: SHARE_ID, logger });
+  const store = await openCollabStore({ storage: nodeCollabStorage({ dir: stateDir, shareId: SHARE_ID }), logger });
   const relay = options.relay ? createRelayTransport({
     relayUrl: RELAY_URL, shareId: SHARE_ID, relayToken: await deriveRelayToken(SHARE_KEY), logger,
     socketFactory: options.relay.socketFactory, fetch: options.relay.fetch, scheduler: clock,

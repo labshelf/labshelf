@@ -6,7 +6,7 @@ import { listProjectFiles, PROJECT_FILE } from "../../../writing/project/index.j
 import { nodeFileReads } from "../../../writing/project/node/index.js";
 import { indexFiles, indexSettings, isSafeSharePath, SHARED_TOOL_FILES, sharedPaths, type ShareFileEntry } from "../../model/index.js";
 import type { BlobExchange, ShareSession } from "../../sync/index.js";
-import type { CollabStore } from "../state/index.js";
+import type { CollabStore } from "../../state/index.js";
 import { reconcileBlob } from "./blobMirror.js";
 import { diskPath, DISK_ORIGIN, LOG_MODULE, type MirrorContext } from "./mirrorContext.js";
 import { reconcileSettings } from "./settingsMirror.js";

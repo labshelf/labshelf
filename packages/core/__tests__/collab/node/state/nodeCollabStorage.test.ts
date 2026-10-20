@@ -1,17 +1,22 @@
-/** Pins that a share's Yjs state and blobs survive a restart on this device, compacted, without leaking paths into file names. */
+/** Pins that a share's state survives a restart in its on-disk format, compacted, without leaking paths into file names. */
 import { promises as fs } from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import * as Y from "yjs";
 import { deriveContentKey } from "../../../../src/collab/crypto/index";
 import { fileText, indexFiles } from "../../../../src/collab/model/index";
-import { docFileStem, openCollabStore } from "../../../../src/collab/node/index";
+import { docFileStem, nodeCollabStorage } from "../../../../src/collab/node/index";
+import { openCollabStore as openStore } from "../../../../src/collab/state/index";
+import type { ILogger } from "../../../../src/ports/index";
 import { createShareSession, deriveDocId, INDEX_DOC_KEY } from "../../../../src/collab/sync/index";
 import { sha256Hex } from "../../../../src/hash/index";
 import { FakeClock, FakeNetwork } from "../../sync/fakeNetwork";
 import { fakeLogger, SHARE_ID, SHARE_KEY } from "../../sync/testSession";
 
 const hex = (bytes: Uint8Array) => Buffer.from(bytes).toString("hex");
+const openCollabStore = ({ dir, logger }: { dir: string; shareId: string; logger: ILogger }) =>
+  openStore({ storage: nodeCollabStorage({ dir, shareId: SHARE_ID }), logger });
+const record = (update: Uint8Array) => Buffer.concat([Buffer.from([0, 0, 0, 0].map((_, i) => (update.length >>> (24 - 8 * i)) & 0xff)), update]);
 
 describe("collab store", () => {
   let dir: string;
@@ -112,5 +117,35 @@ describe("collab store", () => {
     expect(second.relayCursors("https://c.example").get("main.typ")).toBeUndefined();
     expect(fileText(second.createDoc("main.typ")).toString()).toBe("from the relay");
     await second.close();
+  });
+
+  it("reads a snapshot and log written in the stored format and leaves one snapshot of both", async () => {
+    const base = new Y.Doc();
+    fileText(base).insert(0, "snap");
+    const snapshot = Y.encodeStateAsUpdate(base);
+    const before = Y.encodeStateVector(base);
+    fileText(base).insert(4, "+log");
+    const update = Y.encodeStateAsUpdate(base, before);
+    const stem = docFileStem(SHARE_ID, "a.typ");
+    await fs.mkdir(path.join(dir, "docs"), { recursive: true });
+    await fs.writeFile(path.join(dir, "docs", `${stem}.snapshot`), snapshot);
+    await fs.writeFile(path.join(dir, "docs", `${stem}.log`), Buffer.concat([record(update), record(update)]));
+    await fs.writeFile(path.join(dir, "relay-cursors.json"), JSON.stringify({ "https://a.example a.typ": 5 }));
+    const store = await openCollabStore({ dir, shareId: SHARE_ID, logger: fakeLogger() });
+    expect(fileText(store.createDoc("a.typ")).toString()).toBe("snap+log");
+    expect(store.relayCursors("https://a.example").get("a.typ")).toBe(5);
+    expect(await fs.readdir(path.join(dir, "docs"))).toEqual([`${stem}.snapshot`]);
+    await store.close();
+  });
+
+  it("appends each update as a 4-byte big-endian length and the update", async () => {
+    const store = await openCollabStore({ dir, shareId: SHARE_ID, logger: fakeLogger() });
+    const doc = store.createDoc("a.typ");
+    const updates: Uint8Array[] = [];
+    doc.on("update", (update: Uint8Array) => updates.push(update));
+    fileText(doc).insert(0, "x");
+    await store.close();
+    const log = await fs.readFile(path.join(dir, "docs", `${docFileStem(SHARE_ID, "a.typ")}.log`));
+    expect(log).toEqual(record(updates[0]!));
   });
 });

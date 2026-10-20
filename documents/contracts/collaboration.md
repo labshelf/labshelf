@@ -103,6 +103,8 @@ collab/<share id>/
 ```
 
 - The log is append-only. Opening the share merges the log into the snapshot and removes it; a torn final record from an interrupted append is dropped.
+- After a failed append, a doc appends nothing more until its full state is written as the snapshot and its log removed, so a torn record is always the last one.
+- `relay-cursors.json` is saved only once every doc update received so far is stored; while one is not, the cursors are held back.
 - A file whose disk hash differs from its `known.json` hash was changed outside the share since disk and doc last agreed, so that change enters the doc. A file with no entry there is compared as new.
 
 ## Project shares

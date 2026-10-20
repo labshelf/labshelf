@@ -4,11 +4,11 @@ import * as path from "node:path";
 
 import {
   attachAwareness, attachBlobs, COMMENTS_PATH, createShareSession, createSwitchableTransport, deriveAwarenessKey,
-  deriveContentKey, deriveRelayToken, importCommentsFile, indexSettings, joinShare, readIndexKind, startShare, type ILogger,
-  type InviteRelay, type PresenceHandle, type ShareSession,
+  deriveContentKey, deriveRelayToken, importCommentsFile, indexSettings, joinShare, openCollabStore, readIndexKind, startShare,
+  type CollabStore, type ILogger, type InviteRelay, type PresenceHandle, type ShareSession,
 } from "@labshelf/core";
 import {
-  deviceLocalLayout, nodeProjectCatalogContext, openCollabStore, startProjectMirror, type CollabStore, type ProjectMirror,
+  deviceLocalLayout, nodeCollabStorage, nodeProjectCatalogContext, startProjectMirror, type ProjectMirror,
 } from "@labshelf/core/node";
 import { followShareRelays, type ShareRelays } from "./shareRelays.js";
 
@@ -137,11 +137,13 @@ async function connectSession(options: ConnectOptions, store: CollabStore, start
 
 export async function connectShare(options: ConnectOptions, start: ShareStart): Promise<ShareConnection> {
   const dir = path.join(deviceLocalLayout(options.libraryRoot).collabDir, options.shareId);
-  const store = await openCollabStore({ dir, shareId: options.shareId, logger: options.logger });
+  const store = await openCollabStore({ storage: nodeCollabStorage({ dir, shareId: options.shareId }), logger: options.logger });
   try {
     return await connectSession(options, store, start);
   } catch (error) {
-    await store.close();
+    // The connect error is the one to surface; a state that failed to store is logged beside it.
+    await store.close().catch((closeError: unknown) =>
+      options.logger.error("collab.share", closeError, { shareId: options.shareId, action: "close share state" }));
     throw error;
   }
 }

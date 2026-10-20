@@ -6,7 +6,7 @@ import { sha256Hex } from "../../../hash/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import type { SharedSettings } from "../../model/index.js";
 import type { BlobExchange, ShareSession } from "../../sync/index.js";
-import type { CollabStore } from "../state/index.js";
+import type { CollabStore } from "../../state/index.js";
 
 export const LOG_MODULE = "collab.mirror";
 /** The transaction origin of every edit the mirror makes to the share from disk. */
