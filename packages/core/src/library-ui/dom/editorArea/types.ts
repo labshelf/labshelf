@@ -54,6 +54,8 @@ export interface EditorAreaOptions {
   onClose?(id: string): boolean | void | Promise<boolean | void>;
   onMove?(id: string, group: EditorGroupIndex): void;
   prefs?: EditorAreaPrefsPort;
+  /** Kept at the end of the titlebar of the right-most group that shows tabs, after the actions bar. */
+  trailing?: HTMLElement;
 }
 
 export interface EditorArea {

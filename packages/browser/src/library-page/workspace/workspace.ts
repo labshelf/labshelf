@@ -29,13 +29,17 @@ export interface WorkspaceOptions {
   plan: PagePlan;
   /** Where the last tabs hash is kept for the session; defaults to sessionStorage. */
   storage?: Pick<Storage, "getItem" | "setItem">;
+  /** Kept at the end of the right-most group's titlebar (the Details toggle). */
+  trailing?: HTMLElement;
+  /** Runs with the id of every tab that gains focus. */
+  onActivateTab?: (tabId: string) => void;
 }
 
 function readStored(storage: Pick<Storage, "getItem">): string | null {
   try { return storage.getItem(STORED_HASH_KEY); } catch { return null; }
 }
 
-export function createWorkspace(slot: HTMLElement, { prefs, services, logger, plan, storage = sessionStorage }: WorkspaceOptions): Workspace {
+export function createWorkspace(slot: HTMLElement, { prefs, services, logger, plan, storage = sessionStorage, trailing, onActivateTab }: WorkspaceOptions): Workspace {
   // While true the hash is left alone: a restore writes once at its end, and a hash change must not rewrite the hash it answers.
   let quiet = false;
   let area: EditorArea;
@@ -110,9 +114,10 @@ export function createWorkspace(slot: HTMLElement, { prefs, services, logger, pl
   window.addEventListener("beforeunload", onBeforeUnload);
 
   area = mountEditorArea(slot, {
-    onActivate: writeHash,
+    onActivate: (id) => { writeHash(); onActivateTab?.(id); },
     onMove: writeHash,
     prefs,
+    ...(trailing ? { trailing } : {}),
     onClose: async (id) => {
       const handler = beforeClose.get(id);
       if (handler) {
