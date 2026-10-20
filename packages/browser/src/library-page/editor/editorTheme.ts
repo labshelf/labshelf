@@ -1,4 +1,4 @@
-// Styles the source editor and its LaTeX highlighting from the core design tokens.
+// Styles the source editor and its LaTeX and Typst highlighting from the core design tokens.
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import type { Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
@@ -7,7 +7,7 @@ import { tags } from "@lezer/highlight";
 const theme = EditorView.theme({
   "&": { height: "100%", color: "var(--ls-fg)", backgroundColor: "var(--ls-bg)", fontSize: "var(--ls-font-size)" },
   "&.cm-focused": { outline: "none" },
-  ".cm-scroller": { fontFamily: "var(--ls-mono)" },
+  ".cm-scroller": { fontFamily: "var(--ls-code-font)" },
   ".cm-content": { caretColor: "var(--ls-editor-cursor)" },
   ".cm-cursor, .cm-dropCursor": { borderLeftColor: "var(--ls-editor-cursor)", borderLeftWidth: "var(--ls-editor-cursor-width)" },
   ".cm-gutters": { backgroundColor: "var(--ls-bg)", color: "var(--ls-section-fg)", borderRight: "1px solid var(--ls-border-faint)" },
@@ -40,9 +40,21 @@ const theme = EditorView.theme({
   ".cm-diagnostic-warning": { borderLeft: "3px solid var(--ls-warning)" },
 });
 
-const highlight = HighlightStyle.define([
-  { tag: [tags.keyword, tags.tagName], color: "var(--ls-mark-accent)" },
-  { tag: tags.comment, color: "var(--ls-section-fg)", fontStyle: "italic" },
+// Both languages are stream parsers: stex and the Typst parser emit the legacy style names these tags come from.
+export const codeHighlight = HighlightStyle.define([
+  { tag: tags.keyword, color: "var(--ls-code-keyword)" },
+  { tag: [tags.tagName, tags.variableName], color: "var(--ls-code-command)" },
+  { tag: tags.atom, color: "var(--ls-code-argument)" },
+  { tag: [tags.string, tags.special(tags.string)], color: "var(--ls-code-string)" },
+  { tag: tags.number, color: "var(--ls-code-number)" },
+  { tag: tags.special(tags.variableName), color: "var(--ls-code-math)" },
+  { tag: tags.comment, color: "var(--ls-code-comment)", fontStyle: "italic" },
+  { tag: tags.heading, color: "var(--ls-code-heading)", fontWeight: "bold" },
+  { tag: tags.meta, color: "var(--ls-code-reference)" },
+  { tag: tags.bracket, color: "var(--ls-code-bracket)" },
+  { tag: tags.strong, fontWeight: "bold" },
+  { tag: tags.emphasis, fontStyle: "italic" },
+  { tag: tags.invalid, color: "var(--ls-error)" },
 ]);
 
-export const editorTheme: Extension = [theme, syntaxHighlighting(highlight)];
+export const editorTheme: Extension = [theme, syntaxHighlighting(codeHighlight)];

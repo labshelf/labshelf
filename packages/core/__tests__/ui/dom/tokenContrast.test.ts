@@ -3,6 +3,7 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { CODE_THEME_NAMES } from "@labshelf/core";
 
 const TOKENS_CSS = join(__dirname, "../../../src/ui/dom/tokens.css");
 const MIN_RATIO = 4.5;
@@ -105,6 +106,17 @@ const READER_THEMES: Record<string, string[]> = {
   "reader high-contrast": [":root", '[data-pdf-theme="high-contrast"]'],
 };
 
+const CODE_ROLES = ["keyword", "command", "argument", "string", "number", "math", "comment", "heading", "reference", "bracket"];
+const CODE_PAIRS: Record<string, [string, string]> = Object.fromEntries(
+  CODE_ROLES.map((role) => [`code ${role} on editor background`, [`--ls-code-${role}`, "--ls-bg"]]),
+);
+
+const CODE_THEMES: Record<string, string[]> = Object.fromEntries(CODE_THEME_NAMES.flatMap((name) => {
+  const pick = name === "labshelf" ? [] : [`:root[data-code-theme="${name}"]`];
+  const pickLight = name === "labshelf" ? [] : [`:root[data-theme="light"][data-code-theme="${name}"]`];
+  return [[`code ${name} dark`, [":root", ...pick]], [`code ${name} light`, [":root", ':root[data-theme="light"]', ...pickLight]]];
+}));
+
 function describePairs(themes: Record<string, string[]>, pairs: Record<string, [string, string]>): void {
   for (const [theme, selectors] of Object.entries(themes)) {
     describe(`${theme} theme`, () => {
@@ -122,6 +134,7 @@ function describePairs(themes: Record<string, string[]>, pairs: Record<string, [
 describe("design token text contrast", () => {
   describePairs(THEMES, PAIRS);
   describePairs(READER_THEMES, READER_PAIRS);
+  describePairs(CODE_THEMES, CODE_PAIRS);
 
   it("computes the WCAG reference ratios", () => {
     const tokens: TokenMap = new Map([["--a", "#000000"], ["--b", "#ffffff"]]);

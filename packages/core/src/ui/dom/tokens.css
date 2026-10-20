@@ -88,6 +88,16 @@
   --ls-file-typ: #4cc4c9;
   --ls-file-dir: #d2a865;
   --ls-sheet-light: #f4f3f0;
+  --ls-code-keyword: #c586c0;
+  --ls-code-command: #569cd6;
+  --ls-code-argument: #4ec9b0;
+  --ls-code-string: #ce9178;
+  --ls-code-number: #b5cea8;
+  --ls-code-math: #dcdcaa;
+  --ls-code-comment: #6a9955;
+  --ls-code-heading: #569cd6;
+  --ls-code-reference: #9cdcfe;
+  --ls-code-bracket: #ffd700;
   --ls-hl-yellow: #f5c518;
   --ls-hl-green: #4caf50;
   --ls-hl-blue: #2196f3;
@@ -104,6 +114,7 @@
   --ls-text-lg: 14px;
   --ls-text-xl: 15px;
   --ls-text-2xl: 17px;
+  --ls-code-font: var(--ls-mono);
   --ls-space-1: 2px;
   --ls-space-2: 4px;
   --ls-space-3: 6px;
@@ -207,6 +218,16 @@
   --ls-file-tex: #4a8a3a;
   --ls-file-typ: #1f8a93;
   --ls-file-dir: #946618;
+  --ls-code-keyword: #af00db;
+  --ls-code-command: #0000ff;
+  --ls-code-argument: #267e97;
+  --ls-code-string: #a31515;
+  --ls-code-number: #098658;
+  --ls-code-math: #795e26;
+  --ls-code-comment: #008000;
+  --ls-code-heading: #800000;
+  --ls-code-reference: #001080;
+  --ls-code-bracket: #0431fa;
   --ls-widget-shadow: 0 0 8px 2px rgba(0, 0, 0, .16);
   --ls-popup-shadow: 0 4px 18px rgba(0, 0, 0, .18);
 }
@@ -271,4 +292,123 @@
   --ls-reader-find-hit: rgba(0, 255, 255, .4);
   --ls-reader-find-current: rgba(255, 0, 255, .6);
   --ls-reader-change: rgba(255, 0, 255, .3);
+}
+
+:root[data-code-theme="one"] {
+  --ls-code-keyword: #c678dd;
+  --ls-code-command: #61afef;
+  --ls-code-argument: #d19a66;
+  --ls-code-string: #98c379;
+  --ls-code-number: #d19a66;
+  --ls-code-math: #56b6c2;
+  --ls-code-comment: #838891;
+  --ls-code-heading: #e06c75;
+  --ls-code-reference: #e5c07b;
+  --ls-code-bracket: #abb2bf;
+}
+
+:root[data-theme="light"][data-code-theme="one"] {
+  --ls-code-keyword: #a626a4;
+  --ls-code-command: #3b6edf;
+  --ls-code-argument: #986801;
+  --ls-code-string: #418240;
+  --ls-code-number: #986801;
+  --ls-code-math: #017cb1;
+  --ls-code-comment: #696c77;
+  --ls-code-heading: #c64b40;
+  --ls-code-reference: #9c6b01;
+  --ls-code-bracket: #383a42;
+}
+
+:root[data-code-theme="github"] {
+  --ls-code-keyword: #ff7b72;
+  --ls-code-command: #d2a8ff;
+  --ls-code-argument: #79c0ff;
+  --ls-code-string: #a5d6ff;
+  --ls-code-number: #79c0ff;
+  --ls-code-math: #ffa657;
+  --ls-code-comment: #8b949e;
+  --ls-code-heading: #58a6ff;
+  --ls-code-reference: #7ee787;
+  --ls-code-bracket: #c9d1d9;
+}
+
+:root[data-theme="light"][data-code-theme="github"] {
+  --ls-code-keyword: #cf222e;
+  --ls-code-command: #8250df;
+  --ls-code-argument: #0550ae;
+  --ls-code-string: #0a3069;
+  --ls-code-number: #0550ae;
+  --ls-code-math: #953800;
+  --ls-code-comment: #6d7680;
+  --ls-code-heading: #0550ae;
+  --ls-code-reference: #116329;
+  --ls-code-bracket: #24292f;
+}
+
+:root[data-code-theme="catppuccin"] {
+  --ls-code-keyword: #cba6f7;
+  --ls-code-command: #89b4fa;
+  --ls-code-argument: #fab387;
+  --ls-code-string: #a6e3a1;
+  --ls-code-number: #fab387;
+  --ls-code-math: #94e2d5;
+  --ls-code-comment: #9399b2;
+  --ls-code-heading: #f38ba8;
+  --ls-code-reference: #f9e2af;
+  --ls-code-bracket: #bac2de;
+}
+
+:root[data-theme="light"][data-code-theme="catppuccin"] {
+  --ls-code-keyword: #8839ef;
+  --ls-code-command: #1e66f5;
+  --ls-code-argument: #c64e09;
+  --ls-code-string: #358524;
+  --ls-code-number: #c64e09;
+  --ls-code-math: #148087;
+  --ls-code-comment: #717486;
+  --ls-code-heading: #d20f39;
+  --ls-code-reference: #a36815;
+  --ls-code-bracket: #5c5f77;
+}
+
+:root[data-code-theme="solarized"] {
+  --ls-code-keyword: #859900;
+  --ls-code-command: #2d8ed3;
+  --ls-code-argument: #2aa198;
+  --ls-code-string: #2aa198;
+  --ls-code-number: #db5a99;
+  --ls-code-math: #7e82cb;
+  --ls-code-comment: #839496;
+  --ls-code-heading: #d46a3e;
+  --ls-code-reference: #b58900;
+  --ls-code-bracket: #93a1a1;
+}
+
+:root[data-theme="light"][data-code-theme="solarized"] {
+  --ls-code-keyword: #6c7c00;
+  --ls-code-command: #217ab9;
+  --ls-code-argument: #22827b;
+  --ls-code-string: #22827b;
+  --ls-code-number: #d13581;
+  --ls-code-math: #686cbc;
+  --ls-code-comment: #62777f;
+  --ls-code-heading: #cb4b16;
+  --ls-code-reference: #936f00;
+  --ls-code-bracket: #586e75;
+}
+:root[data-code-font="jetbrains-mono"] {
+  --ls-code-font: "JetBrains Mono", var(--ls-mono);
+}
+
+:root[data-code-font="fira-code"] {
+  --ls-code-font: "Fira Code", var(--ls-mono);
+}
+
+:root[data-code-font="atkinson-hyperlegible-mono"] {
+  --ls-code-font: "Atkinson Hyperlegible Mono", var(--ls-mono);
+}
+
+:root[data-code-font="opendyslexic"] {
+  --ls-code-font: "OpenDyslexic", var(--ls-mono);
 }

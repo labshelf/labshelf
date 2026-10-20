@@ -4,6 +4,7 @@ import { mkdir, rm } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { copyAssets } from "./copyAssets.mjs";
+import { vendorFonts } from "./vendorFonts.mjs";
 import { vendorReader } from "./vendorReader.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -69,6 +70,7 @@ async function buildOne(target) {
 
   await copyAssets({ srcRoot, outDir, target, pkgRoot });
   await vendorReader({ outDir, pkgRoot });
+  await vendorFonts({ outDir, pkgRoot });
   // eslint-disable-next-line no-console
   console.log(`[labshelf-browser] built ${target} → ${outDir}`);
 }

@@ -1,8 +1,11 @@
 /**
  * Stores the library page's preferences in localStorage under one key: the shared library UI prefs plus the
- * sidebar tree's expanded folders and collapsed sections and the editor area's first-group width. A corrupt or missing entry falls back to the defaults field by field.
+ * sidebar tree's expanded folders and collapsed sections, the editor area's first-group width and the source editor's code
+ * colours and font. A corrupt or missing entry falls back to the defaults field by field.
  */
-import { sanitizePrefs, type LibraryUiPrefs, type PrefsPort } from "@labshelf/core";
+import {
+  CODE_FONT_NAMES, CODE_THEME_NAMES, sanitizePrefs, type CodeFontName, type CodeThemeName, type LibraryUiPrefs, type PrefsPort,
+} from "@labshelf/core";
 
 export const PREFS_KEY = "labshelf.library.prefs";
 
@@ -16,6 +19,13 @@ export interface PagePrefs extends PrefsPort {
   /** The first editor group's width in pixels while two groups show; null until the user drags the sash. */
   editorWidth(): number | null;
   saveEditorWidth(width: number): void;
+  codeStyle(): CodeStyle;
+  saveCodeStyle(patch: Partial<CodeStyle>): void;
+}
+
+interface CodeStyle {
+  codeTheme: CodeThemeName;
+  codeFont: CodeFontName;
 }
 
 function readRaw(storage: PrefsStorage): Record<string, unknown> {
@@ -33,7 +43,7 @@ export function createLocalStoragePrefs(storage: PrefsStorage = localStorage): P
     const editorWidth = widthOf(raw);
     const next = {
       ...sanitizePrefs(raw), treeExpanded: stringsOf(raw, "treeExpanded"), collapsedSections: stringsOf(raw, "collapsedSections"),
-      ...(editorWidth === null ? {} : { editorWidth }), ...patch,
+      ...(editorWidth === null ? {} : { editorWidth }), ...codeStyleOf(raw), ...patch,
     };
     // Private windows can refuse writes; the page then works with the in-memory state only.
     try { storage.setItem(PREFS_KEY, JSON.stringify(next)); } catch { /* storage unavailable */ }
@@ -47,6 +57,8 @@ export function createLocalStoragePrefs(storage: PrefsStorage = localStorage): P
     saveCollapsedSections: (ids) => write({ collapsedSections: ids }),
     editorWidth: () => widthOf(readRaw(storage)),
     saveEditorWidth: (width) => write({ editorWidth: width }),
+    codeStyle: () => codeStyleOf(readRaw(storage)),
+    saveCodeStyle: (patch) => write(patch),
   };
 }
 
@@ -58,4 +70,9 @@ function stringsOf(raw: Record<string, unknown>, field: string): string[] {
 function widthOf(raw: Record<string, unknown>): number | null {
   const v = raw["editorWidth"];
   return typeof v === "number" && Number.isFinite(v) && v > 0 ? v : null;
+}
+
+function codeStyleOf(raw: Record<string, unknown>): CodeStyle {
+  const pick = <T extends string>(names: readonly T[], v: unknown): T => (names.includes(v as T) ? (v as T) : names[0]!);
+  return { codeTheme: pick(CODE_THEME_NAMES, raw["codeTheme"]), codeFont: pick(CODE_FONT_NAMES, raw["codeFont"]) };
 }

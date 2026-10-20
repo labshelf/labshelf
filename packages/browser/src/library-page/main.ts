@@ -96,7 +96,7 @@ async function boot(): Promise<void> {
   workspace.restore(location.hash);
   project?.start(invite);
   mountSourceSurfaces(root, libraryHost.reloadSnapshots);
-  mountStatusBar(root, (listener) => ui.store.select((s) => s.papers.length, listener));
+  mountStatusBar(root, prefs, (listener) => ui.store.select((s) => s.papers.length, listener));
   attachLinkHandling(log);
   void log.log("INFO", "library", "library page mounted");
 }

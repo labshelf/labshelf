@@ -15,6 +15,10 @@ describe("tokens.css", () => {
     expect(readFileSync(TOKENS_CSS, "utf8")).toBe(renderTokensCss());
   });
 
+  it("points each picked code font at its family, falling back to the monospace stack", () => {
+    expect(renderTokensCss()).toContain(':root[data-code-font="opendyslexic"] {\n  --ls-code-font: "OpenDyslexic", var(--ls-mono);\n}');
+  });
+
   it("lists the serif title face", () => {
     expect(renderTokensCss()).toContain('--ls-serif: "Source Serif 4", Georgia, serif;');
   });

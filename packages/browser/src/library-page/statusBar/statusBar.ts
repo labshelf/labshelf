@@ -1,13 +1,17 @@
-// Draws the bottom status bar like VS Code's: paper count, theme toggle and settings on the right.
+// Draws the bottom status bar like VS Code's: code colours and font, paper count, theme toggle and settings on the right.
 import { icon } from "@labshelf/core";
 import { $, el, type ThemePref } from "@labshelf/core/dom";
 import { bx } from "../../platform";
+import type { PagePrefs } from "../prefs";
 import { cycleThemePref, onThemeChange } from "../../ui";
+import { mountCodeStyleItems } from "./codeStyleItems";
 
 const THEME_LABEL: Record<ThemePref, string> = { auto: "Theme: follows the system", light: "Theme: light", dark: "Theme: dark" };
 
 /** Builds the status bar and appends it to `host`; `onPaperCount` subscribes to the library's paper count. */
-export function mountStatusBar(host: HTMLElement, onPaperCount: (listener: (count: number) => void) => () => void): () => void {
+export function mountStatusBar(
+  host: HTMLElement, prefs: PagePrefs, onPaperCount: (listener: (count: number) => void) => () => void,
+): () => void {
   const bar = el("footer", { class: "status-bar", html: `
     <div class="status-right">
       <span class="status-item" id="countItem"></span>
@@ -19,6 +23,7 @@ export function mountStatusBar(host: HTMLElement, onPaperCount: (listener: (coun
   themeItem.addEventListener("click", () => cycleThemePref());
   $("settingsItem", bar).addEventListener("click", () => { void bx.runtime.openOptionsPage(); });
   const offs = [
+    mountCodeStyleItems(bar.querySelector<HTMLElement>(".status-right")!, prefs),
     onThemeChange((theme, pref) => {
       themeItem.innerHTML = icon(theme === "dark" ? "moon" : "sun");
       themeItem.title = `${THEME_LABEL[pref]} — click to change`;
