@@ -17,3 +17,4 @@ export type {
 } from "./latexHelper.js";
 export { decodeSocketMessage, encodeSocketMessage } from "./socketFrame.js";
 export type { SocketMessage } from "./socketFrame.js";
+export type { TemplatePublishRequest, TemplatePublishEvent } from "./publishing/index.js";

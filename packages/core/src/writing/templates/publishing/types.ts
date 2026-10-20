@@ -1,8 +1,9 @@
-// Declares the ports the Publish screen's host needs and the project shape it works on.
-import type {
-  GalleryToHost, HostToGallery, ILogger, PublishBuildResult, PublishCheckInput, PublishCheckReport, SubmitTemplateInput, SubmitTemplateResult,
-  TemplateManifest,
-} from "@labshelf/core";
+// Declares the ports of the shared template publication workflow.
+import type { ILogger } from "../../../ports/index.js";
+import type { GalleryToHost, HostToGallery } from "../protocol/index.js";
+import type { PublishBuildResult, PublishCheckInput, PublishCheckReport } from "../publishTypes.js";
+import type { SubmitTemplateInput, SubmitTemplateResult } from "../../../github/index.js";
+import type { TemplateManifest } from "../manifest/index.js";
 
 /** A writing project ready to publish: its build engine is already resolved. */
 export interface PublishableProject {

@@ -1,6 +1,8 @@
 // Turns the Publish form and its project into the template manifest the checks and the submission carry.
-import { projectIdSlug, serializeTemplateManifest, TEMPLATE_CATEGORIES, type PublishDraft, type TemplateManifest } from "@labshelf/core";
-import type { PublishFile } from "@labshelf/core";
+import { projectIdSlug } from "../../project/index.js";
+import { serializeTemplateManifest, TEMPLATE_CATEGORIES, type TemplateManifest } from "../manifest/index.js";
+import type { PublishDraft } from "../protocol/index.js";
+import type { PublishFile } from "../publishTypes.js";
 import type { PublishableProject } from "./types.js";
 
 const MAX_ID_LENGTH = 60;

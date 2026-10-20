@@ -1,5 +1,6 @@
 // Runs the Publish screen's work: opens a project, runs its checks, signs in to GitHub and submits the pull request.
-import type { PublishDraft, PublishHost, PublishProject } from "@labshelf/core";
+import type { PublishDraft, PublishProject } from "../protocol/index.js";
+import type { PublishHost } from "../host/index.js";
 import { noteFailure, requireProject, type PublishContext } from "./publishContext.js";
 import { runPublishChecks } from "./runPublishChecks.js";
 import { submitPublish } from "./submitPublish.js";

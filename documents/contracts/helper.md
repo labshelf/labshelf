@@ -27,12 +27,12 @@ Firefox upgrades `ws://` to `wss://` under the CSP directive `upgrade-insecure-r
 Every message has the same envelope:
 
 ```json
-{ "v": 4, "id": "7", "type": "compile", "projectId": "thesis", "main": "main.tex", "mode": "preview" }
+{ "v": 5, "id": "7", "type": "compile", "projectId": "thesis", "main": "main.tex", "mode": "preview" }
 ```
 
 | Key | Type | Notes |
 |---|---|---|
-| `v` | integer | the protocol version, `4`. A message whose `v` differs is rejected |
+| `v` | integer | the protocol version, `5`. A message whose `v` differs is rejected |
 | `id` | string | 1 to 64 characters, chosen by the page. A reply carries the `id` of the request it answers, and every `progress` message of a request carries that request's `id`. An `error` for a frame that carried no valid `id` has none |
 | `type` | string | one of the messages below for its direction and transport; any other value is rejected |
 
@@ -59,10 +59,12 @@ Keys a message does not define are dropped when it is read.
 | `cancel` | `projectId` | the running build ends with `built` `status: "cancelled"` |
 | `installTex` | `kind`: `"tinytex"` or `"texlive"` | `progress`, then `ready` |
 | `installAllPackages` | none | `progress`, then `ready` |
+| `publishTemplate` | `projectId`; `action`: `"open"`, `"check"` or `"submit"`; `draft` for check/submit; `token` for submit | `templatePublish` events, optional `templatePreview`, then `templatePublish` with `done: true` |
+| `templateThumbnail` | `requestId`: the publication request's id; PNG bytes as payload, or `error`: a rendering failure | resumes the pending publication; an unknown request id is refused |
 
 `openProject` resolves `root` under the library root of the shared configuration ([library-format.md#shared-configuration](library-format.md#shared-configuration)) with the bridge's confinement: a path that leaves the library, also through a symlink, is refused with `path`. Every later `path`, `main` and `editedFile` of the project is resolved under that folder with the same rule. A `projectId` that is not open is refused with `project-id`.
 
-`edit` changes only the helper's copy of the text. The helper never writes into the library folder. A `.tex` `compile` builds the project's files from disk with the unsaved text of each edited path in their place. `mode: "preview"` runs one engine pass; `"full"` runs latexmk with the bibliography and every pass it needs. The page asks for `"full"` on save and after 2 s without typing. A save waits for an active preview of the same source revision; repeated requests coalesce into one full build. A source edit cancels the superseded build.
+`edit` changes only the helper's copy of the text. Build and edit requests never write into the library folder; a successful template publication saves its checked copy into My templates. A `.tex` `compile` builds the project's files from disk with the unsaved text of each edited path in their place. `mode: "preview"` runs one engine pass; `"full"` runs latexmk with the bibliography and every pass it needs. The page asks for `"full"` on save and after 2 s without typing. A save waits for an active preview of the same source revision; repeated requests coalesce into one full build. A source edit cancels the superseded build.
 
 A `.typ` `compile` runs Typst 0.14.2 through the bundled WASM compiler, and `mode` makes no difference. Its fonts are in `typst-fonts/` and its packages in `typst-packages/` of the helper's data folder; the helper never reads or fills the user's own Typst folders.
 
@@ -78,6 +80,8 @@ A `.typ` `compile` runs Typst 0.14.2 through the bundled WASM compiler, and `mod
 | `progress` | socket | `phase`: `"installing-tex"`, `"installing-package"`, `"building"` or `"updating"`; `message`: one line for the user; `fraction?`: 0 to 1 |
 | `built` | socket | `status`: `"succeeded"`, `"failed"`, `"cancelled"`, `"toolchain-missing"` or `"needs-shell-escape"`; `problems`; `pdfSha256?` |
 | `pages` | socket | `pdfSha256`; `pageCount`; `changed`: `{ index, offset, length }[]`; the payload |
+| `templatePublish` | socket | `done`: boolean; optional `event`: a gallery `publish.*` event or `notice` |
+| `templatePreview` | socket | the complete sample PDF as payload, at most 10 MiB; the browser answers with `templateThumbnail` |
 | `error` | native, socket | `code`: non-empty string; `message`: string |
 
 `tex.source` is `"none"`, `"tinytex"`, `"texlive"` or `"system"`; `year` is the TeX Live release year; `complete` is true when every package is installed, so a build never stops to install one.
@@ -95,6 +99,14 @@ A successful build still sends its result and page count when no page changed. T
 A message the helper cannot accept gets an `error` reply with the request's `id` when it had one, and `code` set to the rejection: `malformed`, `version`, `unknown-type`, `invalid-field`, `path`, `project-id`, `stale`, `no-library` or `limit`. A handler that fails while working replies `io` (a project file could not be read) or `internal` (any other failure), with the failure in `message`.
 
 `installTex` and `installAllPackages` end with an `error` instead of `ready` when they cannot finish: `texlive-rollover` when a managed full TeX Live is a year behind the repository, so the page asks before reinstalling it; `no-managed-tex` when `installAllPackages` finds no managed install; `tex-install-failed` for any other failure. A managed TinyTeX that falls behind is reinstalled with its packages without asking. A system TeX is never changed.
+
+## Template publication
+
+The gallery uses the [template publishing contract](templates.md#publish). `publishTemplate` resolves `projectId` under the configured library's `projects/` folder and refuses a project or main file that escapes the library. It reads the engine from `labshelf.yaml`, with `pdflatex` as the LaTeX default. It publishes saved files; unsaved editor text is excluded.
+
+A draft contains `name`, `category`, `license` and `description`. `open` supplies the gallery's project and draft; `check` validates and builds without contacting GitHub. `submit` verifies the token's identity through GitHub, repeats every check on a temporary source snapshot, then submits those checked bytes and saves the same files and compiled previews into My templates. A failed local save reports that the pull request is open and the local copy failed. The helper keeps no access token on disk and never logs publication payloads.
+
+Snapshots and their build output live under `publishing/` in the helper data folder and are deleted when the request finishes. The browser renders the first sample page to an 800-pixel-wide PNG with its bundled PDF.js. The helper validates that response against the catalog thumbnail limits. A thumbnail must answer the pending request within 60 seconds. `templateThumbnail` bypasses the ordered request queue so a publication waiting for rendering can continue. Closing the session cancels its outstanding rendering, build and network work.
 
 ## Paths
 
@@ -141,7 +153,7 @@ biber-wasm/             biber's preloaded Perl tree, written once from the execu
 logs/
 ```
 
-The managed TeX lives in the folder all LabShelf apps share: see [managed-tools.md](managed-tools.md). The helper writes nowhere else.
+The managed TeX lives in the folder all LabShelf apps share: see [managed-tools.md](managed-tools.md). Template publication also writes its checked copy to the configured library’s My templates folder.
 
 On macOS and Linux the data folder and `logs/` are `0o700` and log files `0o600`; the helper fixes the modes of the paths it writes. The standalone helper checks at start that its binary, the folder holding it (unless root owns that folder), its data folder and the `bin/` folder in it are not writable by group or others, and reports the path and mode on stderr and exits non-zero when one is. Every log line passes one redaction step that hides the session's socket token, `Bearer` tokens, `key=` and `token=` query values and URL fragments, and no message payload is logged, only its type, id and size.
 

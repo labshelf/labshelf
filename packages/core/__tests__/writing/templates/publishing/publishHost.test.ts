@@ -1,9 +1,9 @@
 // Pins the Publish screen's host: checks, sign-in, the pull request and every failure path (logged, posted and noticed).
-import type { HostToGallery, PublishDraft } from "@labshelf/core";
-import type { PublishCheckReport } from "@labshelf/core";
-import { createPublishHost } from "../../../../src/writing/templates/publish/publishHost.js";
-import type { PublishableProject, PublishPorts } from "../../../../src/writing/templates/publish/types.js";
-import { fakeLogger } from "../../../support/writingFixtures.js";
+import type { HostToGallery, PublishDraft } from "../../../../src/index";
+import type { PublishCheckReport } from "../../../../src/index";
+import { createPublishHost } from "../../../../src/writing/templates/publishing/index.js";
+import type { PublishableProject, PublishPorts } from "../../../../src/writing/templates/publishing/index.js";
+import { jestLogger as fakeLogger } from "../host/jestLogger.js";
 
 const project: PublishableProject = {
   id: "thesis", title: "My thesis", folder: "/lib/projects/thesis", engineLabel: "pdfLaTeX",

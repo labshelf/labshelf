@@ -46,7 +46,11 @@ export interface HelperCompileResult {
 /** The whole text of a file, or edits against the text of the previous version. */
 export type HelperEdit = { text: string } | { changes: TextChange[] };
 
+import type { TemplatePublishRequest, TemplatePublishEvent } from "./publishing/index.js";
+
 export interface ILatexHelper {
+  publishTemplate(projectId: string, request: TemplatePublishRequest, onEvent: (event: TemplatePublishEvent) => void, renderThumbnail: (pdf: Uint8Array) => Promise<Uint8Array>): Promise<void>;
+  disconnect(): void;
   /** Opens the native host, exchanges hello/ready and, when the helper is ready, opens and authenticates the session socket. */
   connect(): Promise<HelperStatus>;
   /** The status the last connect reached, or undefined before the first connect and after the connection closes. */

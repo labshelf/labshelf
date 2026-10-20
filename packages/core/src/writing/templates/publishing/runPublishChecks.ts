@@ -1,6 +1,8 @@
 // Runs the publish checks for a project and draft, streams the result to the page and caches a passing report.
-import { PUBLISH_CHECK_IDS, thumbnailDataUri, type PublishDraft } from "@labshelf/core";
-import type { PublishCheckReport } from "@labshelf/core";
+import { PUBLISH_CHECK_IDS } from "../publishCheckLabels.js";
+import { thumbnailDataUri } from "../host/index.js";
+import type { PublishDraft } from "../protocol/index.js";
+import type { PublishCheckReport } from "../publishTypes.js";
 import { draftKey, type PublishContext } from "./publishContext.js";
 import { buildPublishManifest } from "./publishManifest.js";
 import type { PublishableProject } from "./types.js";

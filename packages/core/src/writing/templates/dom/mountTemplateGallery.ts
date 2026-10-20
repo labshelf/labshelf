@@ -48,10 +48,13 @@ function routeHostMessage(message: HostToGallery, { state, grid, sidebar, detail
     case "publish.open":
       publishing.open(message.project, message.draft);
       return;
+    case "publish.failed":
+      if (publishing.current()) publishing.route(message);
+      else toast(message.error, "error");
+      return;
     case "publish.checks":
     case "publish.auth":
     case "publish.submitted":
-    case "publish.failed":
       publishing.route(message);
       return;
   }

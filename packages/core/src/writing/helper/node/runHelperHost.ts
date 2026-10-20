@@ -7,6 +7,7 @@ import type { HelperHost } from "../index.js";
 import { TypstCompilerHost } from "../../typst/node/index.js";
 import { createSharedTexProvider } from "../../latex/toolchain/node/managed/index.js";
 import type { HelperLogger } from "./log/index.js";
+import { createTemplatePublishHandlers } from "./publishing/index.js";
 import { createBuildHandlers } from "./build/index.js";
 import { answerHello, createDispatcher, runHelperLoop, type HelloAnswer } from "./dispatch/index.js";
 import { createLibraryProjects, createProjectHandlers } from "./projectHandlers/index.js";
@@ -48,10 +49,14 @@ export async function runHelperHost(options: HelperHostOptions): Promise<void> {
   // PLATFORM: latexmk runs `$biber` through cmd.exe on Windows, which the POSIX-quoted command does not suit, so Windows keeps native biber.
   const biber = process.platform === "win32" ? undefined : options.biber;
   const builds = createBuildHandlers({ dataDir, logger, projects, tex, openTypst, ...(biber && { biber }) });
+  const publishing = createTemplatePublishHandlers({ dataDir, logger, fetch, build: {
+    logger, tex, typst: openTypst((run) => run()), ...(biber && { biber }),
+  } });
   const dispatcher = createDispatcher(
     {
       ...createProjectHandlers({ dataDir, projects, forgetBuilds: builds.forget }),
       compile: builds.compile, cancel: builds.cancel,
+      ...publishing.handlers,
       ...createTexInstallHandlers({ tex, helperVersion, host, logger }),
     },
     logger,
@@ -73,6 +78,7 @@ export async function runHelperHost(options: HelperHostOptions): Promise<void> {
     await runHelperLoop(options.input ?? process.stdin, hello, send, logger, onVersionRejected);
   } finally {
     builds.cancelAll();
+    publishing.dispose();
     await socket?.close();
     await dispatcher.drain();
     await versionRejected;

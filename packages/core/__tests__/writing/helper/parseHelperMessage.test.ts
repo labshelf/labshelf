@@ -38,7 +38,7 @@ const reject = (raw: unknown, direction: "toHelper" | "toPage" = "toHelper") => 
 };
 
 describe("parseHelperMessage round trip", () => {
-  it("is protocol version 4", () => { expect(PROTOCOL_VERSION).toBe(4); });
+  it("is protocol version 5", () => { expect(PROTOCOL_VERSION).toBe(5); });
 
   it.each(toHelper.map((m) => [m.type, m]))("reads %s sent to the helper", (_type, message) => {
     expect(parseHelperMessage(roundTrip(message), "toHelper")).toEqual({ ok: true, message });

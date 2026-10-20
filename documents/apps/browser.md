@@ -47,9 +47,15 @@ The minimum versions are the floor for pdf.js 6.3.
 - The LaTeX setup card offers LabShelf Helper first. As the alternative to installing an unsigned program, it points to VS Code or the terminal app, either of which serves the same helper host ([registration](../contracts/helper.md#registration)).
 - Cloudflare-protected publishers (ACM, SIAM, ScienceDirect) block headless browsers and plain `fetch`. Real downloads from them can only be tested by hand.
 
+## Verifying template publication
+
+Use a scratch library configured for both the browser and Helper. In Templates, choose Publish a template, select a saved LaTeX or Typst project, complete the form and run its checks. Verify the first-page preview, reject a project containing a symlink, hard link or `.latexmkrc`, and confirm a failed build leaves submission unavailable. Sign in with GitHub, enter the displayed code and verify the authorized account. Submit only to an authorized test catalog; check that its pull request includes the source, manifest, sample PDF and thumbnail, and that My templates contains the same files. Test cancellation of sign-in and a disconnected or mismatched Helper.
+
+The OAuth App’s public Client ID ships with the extension. Its registration belongs to the LabShelf organization; enable Device Flow in GitHub’s organization settings under Developer settings → OAuth Apps. No Client Secret is bundled. VS Code uses its host’s GitHub authentication provider.
+
 ## Library page sidebar
 
-The sidebar is core's library sidebar, as in VS Code: Library, then Projects. Projects lists the library's writing projects with their tooltip (main file, compiler, reading progress over the papers a project lists). A click opens the project in the library page's project session, and the row menu offers Open PDF when a built PDF sits beside the main file. The browser hides what it cannot do: new blank projects, adding a folder and project folders. Explore templates opens the Templates tab, the same gallery as VS Code over the same sources; only publishing needs VS Code or the terminal.
+The sidebar is core's library sidebar, as in VS Code: Library, then Projects. Projects lists the library's writing projects with their tooltip (main file, compiler, reading progress over the papers a project lists). A click opens the project in the library page's project session, and the row menu offers Open PDF when a built PDF sits beside the main file. The browser hides what it cannot do: new blank projects, adding a folder and project folders. Explore templates opens the Templates tab, the same gallery as VS Code over the same sources; publishing uses the connected Helper for validation, compilation and submission ([contract](../contracts/helper.md#template-publication)). GitHub authorization uses the LabShelf organization’s OAuth App with Device Flow enabled and the `public_repo` scope. The token lives only in the Templates tab’s memory and is sent to the Helper on submission.
 
 ## Library page workspace
 

@@ -35,6 +35,8 @@ export async function runSourceChecks(
   let files: FoundFile[];
   try {
     files = await listProjectFiles(projectFolder);
+    const linked = files.find((file) => file.nlink > 1);
+    if (linked) throw new Error(`"${linked.path}" is a hard link`);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     return { files: undefined, checks: [license, result("paths", reason), result("latexmkrc", NOT_LISTED), result("sizes", NOT_LISTED)] };

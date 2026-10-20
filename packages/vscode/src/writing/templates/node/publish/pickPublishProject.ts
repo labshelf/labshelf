@@ -6,7 +6,7 @@ import { ensureToolchain } from "../../../build/node/index.js";
 import type { ToolchainDeps } from "../../../build/toolchain/index.js";
 import type { ReadyProject } from "../../../mainDocument.js";
 import type { WritingHost, WritingProjects } from "../../../session/index.js";
-import type { PublishableProject } from "../../publish/index.js";
+import type { PublishableProject } from "@labshelf/core";
 
 export interface PublishProjectDeps {
   tex: ToolchainDeps["tex"];

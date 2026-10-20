@@ -11,6 +11,8 @@ import {
   readProjectId, readSha256, readString, readText, optional, type Body,
 } from "./messageFields.js";
 
+import { readTemplatePublishEvent } from "./publishing/index.js";
+
 type Envelope = { v: number; id: string };
 type Readers = { [T in ToPageMessage["type"]]: (body: Body, envelope: Envelope) => Extract<ToPageMessage, { type: T }> };
 
@@ -53,6 +55,9 @@ function readChangedPages(body: Body): ChangedPage[] {
 }
 
 const READERS: Readers = {
+  templatePreview: (_body, envelope) => ({ ...envelope, type: "templatePreview" }),
+  templatePublish: (body, envelope) => ({ ...envelope, type: "templatePublish", done: readBoolean(body, "done"),
+    ...(body.event === undefined ? {} : { event: readTemplatePublishEvent(body) }) }),
   ready: (body, envelope) => ({
     ...envelope, type: "ready", protocol: readNumber(body, "protocol", isPositiveInteger),
     helperVersion: readText(body, "helperVersion"), host: readChoice(body, "host", HELPER_HOSTS), tex: readTex(body),

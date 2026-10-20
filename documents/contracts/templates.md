@@ -142,7 +142,7 @@ Publishing sends a project to the Community catalog as a pull request. It runs t
 3. `build`: the project is built with the declared engine and without shell-escape.
 4. `thumbnail`: the first page of the built PDF is rendered as the thumbnail and must meet the `preview/` limits in [Manifest](#manifest).
 
-The submission uses the fork that `POST /forks` returns, not `<login>/<repo>`. It commits the files under `templates/<id>/` on the branch `template/<id>-<date>` (UTC date, `YYYY-MM-DD`) and opens the pull request against the upstream's `main`. When the pull request is open, the template is saved into [My templates](#my-templates).
+The submission uses the fork that `POST /forks` returns, not `<login>/<repo>`. It commits the files under `templates/<id>/` on the branch `template/<id>-<date>` (UTC date, `YYYY-MM-DD`) and opens the pull request against the upstream's `main`. When the pull request is open, the template is saved into [My templates](#my-templates). Browser publication uses [LabShelf Helper](helper.md#template-publication) to build and submit a snapshot of the saved sources; the browser renders the thumbnail and authorizes GitHub through Device Flow. Its local copy preserves the exact submitted sources and both preview files.
 
 ## Cache
 
