@@ -22,6 +22,11 @@
 .ls-workspace-fill > .cm-editor { flex: 1; min-width: 0; }
 .ls-workspace-fill .ls-history, .ls-workspace-fill .ls-psearch { flex: 1; min-width: 0; height: 100%; }
 .ls-workspace-placeholder { padding: var(--ls-space-4); color: var(--ls-desc); }
+.ls-workspace-fill.ls-source-unresolved { flex-direction: column; }
+.ls-source-notice { display: flex; align-items: center; gap: var(--ls-space-2); padding: var(--ls-space-2) var(--ls-space-4); border-bottom: 1px solid var(--ls-border-soft); color: var(--ls-fg); }
+.ls-source-notice-icon { display: flex; color: var(--ls-warning); }
+.ls-source-notice-icon svg { width: 1em; height: 1em; }
+.ls-source-notice-text { flex: 1; min-width: 0; }
 
 .ls-preview-frame { width: 100%; height: 100%; border: 0; }
 .ls-preview-setup { padding: var(--ls-space-4); }

@@ -3,7 +3,7 @@
 import type { Doc } from "yjs";
 import { compareThreads, readThread, type CommentThread } from "./commentThread.js";
 import { parseCommentsFile, serializeCommentsFile, type CommentsDocument } from "./commentsFile.js";
-import { addLiveThread, rawLiveThreads } from "./liveComments.js";
+import { addLiveThread, rawLiveThreads } from "./live/index.js";
 
 /**
  * The map's threads in member order, then the entries of `existing` that are not valid threads, under its other keys.

@@ -4,3 +4,4 @@ export { createLiveCommentThreads } from "./liveCommentThreads";
 export { loadDisplayName, loadShare, saveDisplayName, saveShare } from "./shareKeyStore";
 export { createPageShares, type PageShares } from "./pageShares";
 export { runJoinDialog } from "./joinDialog";
+export { reportLocalFileChanges } from "./mirror";

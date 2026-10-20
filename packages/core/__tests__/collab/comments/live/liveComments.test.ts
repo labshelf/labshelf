@@ -2,7 +2,7 @@
 import * as Y from "yjs";
 import {
   addLiveThread, liveThreads, replyToLiveThread, setLiveThreadResolved, type CommentThread,
-} from "../../../src/collab/comments/index";
+} from "../../../../src/collab/comments/index";
 
 const comment = (id: string, createdAt: string) => ({ id, author: "Ana", body: `body ${id}`, createdAt });
 const thread = (id: string, createdAt: string): CommentThread => ({
