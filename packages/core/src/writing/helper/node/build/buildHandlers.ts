@@ -21,6 +21,8 @@ export interface BuildHandlerOptions {
   /** Opens the one Typst compiler every project builds with; its font download reports through `withFontDownload`. */
   openTypst(withFontDownload: <T>(run: () => Promise<T>) => Promise<T>): ProjectBuildDeps["typst"];
   logger: ILogger;
+  /** Starts the helper's `--biber` mode, for latexmk's `$biber`. */
+  biber?: readonly string[];
 }
 
 export interface BuildHandlers {
@@ -45,7 +47,7 @@ function createProjectBuilds(options: BuildHandlerOptions, typst: ProjectBuildDe
   const deps: ProjectBuildDeps = {
     logger: options.logger, tex: options.tex, prompt,
     projects: { projectBuildDir: (id) => path.join(options.dataDir, "projects", id, "build") },
-    typst,
+    typst, ...(options.biber && { biber: options.biber }),
   };
   return { deps, queue: new ProjectBuildQueue(deps), sent: { hashes: [] } };
 }

@@ -33,6 +33,13 @@ describe("latexBuildCommand", () => {
       .toContain("-pretex=\\RequirePackage{labshelf-state}");
   });
 
+  it("runs biber through the host's command only when the host gives one", () => {
+    const toolchain = { engine: "pdflatex" as const, executable: "latexmk" };
+    expect(latexBuildCommand(toolchain, "m.tex", "/o").args.some((arg) => arg.startsWith("$biber"))).toBe(false);
+    const { args } = latexBuildCommand(toolchain, "m.tex", "/o", { biber: { command: ["/opt/LabShelf Helper"], root: "/p" } });
+    expect(args.slice(-3)).toEqual(["-e", "$biber = '\\'/opt/LabShelf Helper\\' \\'--biber\\' \\'--root\\' \\'/p\\' %O %S';", "m.tex"]);
+  });
+
   it("ignores every latexmkrc, which latexmk would run as Perl", () => {
     expect(latexBuildCommand({ engine: "pdflatex", executable: "latexmk" }, "m.tex", "/o").args[0]).toBe("-norc");
   });

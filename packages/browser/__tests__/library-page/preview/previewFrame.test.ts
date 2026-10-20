@@ -95,3 +95,18 @@ describe("createPreviewFrame loading", () => {
     }
   });
 });
+
+
+it("delivers only the latest PDF when builds finish before the frame loads", () => {
+  const frame = createPreviewFrame(document.body, { id: "p", title: "P" });
+  const post = jest.spyOn(frame.element.contentWindow!, "postMessage");
+  const urls = ["blob:one", "blob:two", "blob:three"];
+  URL.createObjectURL = jest.fn().mockImplementation(() => urls.shift());
+  URL.revokeObjectURL = jest.fn();
+  frame.showPdf(new Uint8Array([1]));
+  frame.showPdf(new Uint8Array([2]));
+  frame.showPdf(new Uint8Array([3]));
+  frame.element.dispatchEvent(new Event("load"));
+  expect(post.mock.calls).toEqual([[{ type: "reloadDocument", pdfUrl: "blob:three" }, location.origin]]);
+  frame.dispose();
+});

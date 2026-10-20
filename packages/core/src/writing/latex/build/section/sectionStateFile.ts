@@ -3,6 +3,8 @@
 export interface SectionState {
   /** The sectioning command without backslash, e.g. `section`; a starred one is recorded too. */
   command: string;
+  /** True only when the full build records an empty page with no pending floats. */
+  pageBoundary?: boolean;
   /** The 1-based number of the page the heading lands on, counting every shipped-out page. */
   absolutePage: number;
   /** The 1-based number of the page being filled when the command started, which holds the previous section's tail. */
@@ -21,8 +23,7 @@ export interface ParsedSectionStates {
   skipped: number;
 }
 
-// CONTRACT: the line shapes are written by `sectionStatePackage`: command|page|line|file|name=value name=value…, then at
-// shipout P|record number|absolute page|page counter, where the record number counts command lines from 1.
+// CONTRACT: documents/contracts/helper.md#messages
 const LINE = /^([a-z]+)\|(\d+)\|(\d+)\|([^|]+)\|(.*)$/;
 const LANDING = /^P\|(\d+)\|(\d+)\|(-?\d+)$/;
 const COUNTER = /^([^=\s]+)=(-?\d+)$/;
@@ -52,8 +53,14 @@ interface Landing { absolutePage: number; page: number }
 export function parseSectionStates(text: string): ParsedSectionStates {
   const slots: (SectionState | undefined)[] = [];
   const landings = new Map<number, Landing>();
+  const boundaries = new Set<number>();
   let skipped = 0;
   for (const line of text.split(/\r?\n/).filter((entry) => entry !== "")) {
+    if (line.startsWith("B|")) {
+      const match = /^B\|(\d+)$/.exec(line);
+      if (match) boundaries.add(Number(match[1])); else skipped += 1;
+      continue;
+    }
     if (line.startsWith("P|")) {
       const match = LANDING.exec(line);
       if (match) { landings.set(Number(match[1]), { absolutePage: Number(match[2]), page: Number(match[3]) }); } else { skipped += 1; }
@@ -66,6 +73,7 @@ export function parseSectionStates(text: string): ParsedSectionStates {
   const states = slots.flatMap((state, index) => {
     if (!state) { return []; }
     const landing = landings.get(index + 1);
+    if (landing && boundaries.has(index + 1)) state.pageBoundary = true;
     return [landing ? { ...state, absolutePage: landing.absolutePage, counters: { ...state.counters, page: landing.page } } : state];
   });
   return { states, skipped };

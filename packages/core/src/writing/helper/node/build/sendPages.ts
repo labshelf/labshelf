@@ -10,16 +10,18 @@ import { diffPages } from "../pages/index.js";
 import { HelperProjectError } from "../projects/index.js";
 
 /** The hashes of the pages last sent for one project; the next `pages` carries only the pages that differ. */
-export interface SentPages { hashes: string[] }
+export interface SentPages { hashes: string[]; pdfSha256?: string }
 
-// The socket message is a 4-byte length, the JSON envelope, then the payload (CONTRACT: documents/contracts/helper.md#limits).
+// CONTRACT: documents/contracts/helper.md#limits
 const LENGTH_PREFIX_BYTES = 4;
 
 /** @throws limit when the changed pages would not fit one socket message */
 export async function sendPages(id: string, pdfPath: string, problems: LocatedProblem[], sent: SentPages, send: HelperSend): Promise<void> {
   const bytes = await readFile(pdfPath);
   const pdfSha256 = createHash("sha256").update(bytes).digest("hex");
-  const diff = await diffPages(sent.hashes, bytes);
+  const diff = sent.pdfSha256 === pdfSha256
+    ? { pageCount: sent.hashes.length, hashes: sent.hashes, changed: [] }
+    : await diffPages(sent.hashes, bytes);
   let offset = 0;
   const changed = diff.changed.map(({ index, bytes: page }): ChangedPage => {
     const entry = { index, offset, length: page.length };
@@ -34,4 +36,5 @@ export async function sendPages(id: string, pdfPath: string, problems: LocatedPr
   send({ v: PROTOCOL_VERSION, id, type: "built", status: "succeeded", problems, pdfSha256 });
   send(pages, Buffer.concat(diff.changed.map((page) => page.bytes)));
   sent.hashes = diff.hashes;
+  sent.pdfSha256 = pdfSha256;
 }

@@ -24,6 +24,8 @@ export interface HelperHostOptions {
   args: readonly string[];
   /** The typst.ts compiler's WASM, which each composition root locates in its own bundle. */
   typstWasm(): Promise<Uint8Array>;
+  /** The program and arguments that start this helper's `--biber` mode; latexmk then runs biber's WASM build through it. Native biber when absent. */
+  biber?: readonly string[];
   /** Runs after the hello opened the session. */
   afterHello?: () => void;
   /** Runs once when the page's `hello` is refused for its protocol version; the host waits for it before exiting. */
@@ -43,7 +45,9 @@ export async function runHelperHost(options: HelperHostOptions): Promise<void> {
   const packageDirs = { data: path.join(dataDir, "typst-packages", "local"), cache: path.join(dataDir, "typst-packages", "cache") };
   const openTypst = (withFontDownload: <T>(run: () => Promise<T>) => Promise<T>): TypstCompilerHost =>
     new TypstCompilerHost({ wasm: options.typstWasm, fontsDir: path.join(dataDir, "typst-fonts"), packageDirs, withFontDownload });
-  const builds = createBuildHandlers({ dataDir, logger, projects, tex, openTypst });
+  // PLATFORM: latexmk runs `$biber` through cmd.exe on Windows, which the POSIX-quoted command does not suit, so Windows keeps native biber.
+  const biber = process.platform === "win32" ? undefined : options.biber;
+  const builds = createBuildHandlers({ dataDir, logger, projects, tex, openTypst, ...(biber && { biber }) });
   const dispatcher = createDispatcher(
     {
       ...createProjectHandlers({ dataDir, projects, forgetBuilds: builds.forget }),

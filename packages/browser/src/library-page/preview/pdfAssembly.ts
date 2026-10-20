@@ -17,6 +17,7 @@ export async function assemblePdf(previous: Uint8Array | undefined, pages: Chang
   const out = await PDFDocument.create();
   const needsPrevious = Array.from({ length: pageCount }, (_, i) => i).some((i) => !byIndex.has(i));
   const base = needsPrevious && previous ? await PDFDocument.load(previous) : undefined;
+  if (changed.length === 0 && base?.getPageCount() === pageCount) return previous!;
   for (let index = 0; index < pageCount; index++) {
     const bytes = byIndex.get(index);
     if (bytes) {

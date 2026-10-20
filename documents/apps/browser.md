@@ -55,7 +55,7 @@ The sidebar is core's library sidebar, as in VS Code: Library, then Projects. Pr
 The library page is a tabbed workspace. Tab kinds are Library, Templates, All projects, a project's Source, Preview, History, Comments and Search. The open tabs and the active one are written to the page hash as `#/tabs/<id>,<id>;active=<id>`, and to `sessionStorage["labshelf.library.tabs"]`, so a reload restores them. A folder deep link (`#/papers/...`) and the tabs hash coexist: the router leaves the open folder alone while the hash is a tabs hash. A paper's path in the hash (`#/papers/<folder>/<id>`) opens its folder and selects it.
 
 - Source edits a project file in a CodeMirror editor; edits go to LabShelf Helper for builds ([helper.md](../contracts/helper.md)). Cmd/Ctrl+S in the editor saves the file and asks the helper for a build. The editor's title bar carries the VS Code actions: Show Project History, Insert Symbol, Insert Table, Insert Image, Search in Project, Cite from Library, and Bold and Italic in the overflow menu.
-- Preview shows the built PDF in the core reader and updates page by page from `pages`. The page serves the reader's header and footer actions: Recompile, a problem's source line, Compare, Mark version and the check limits.
+- Preview shows the built PDF in the core reader and updates page by page from `pages`. Repeated Recompile requests share an active full build until a source edit supersedes it. A helper request failure ends the build status with an error and keeps the displayed PDF. The page serves the reader's header and footer actions: Recompile, a problem's source line, Compare, Mark version and the check limits.
 - Search finds and replaces text across the project's files.
 - Typst completion, hover and go to definition run in the page, from the core Typst language service, with or without the helper.
 - History lists the project's recorded edits, versions and restores, with Restore this point and Mark Version. Open editors reload after a restore. The history is kept in the browser's storage, not in the project folder. Compare Versions is desktop-only: the page toasts that it needs the VS Code extension or the terminal app.
@@ -128,3 +128,9 @@ The project-scope `.mcp.json` registers `chrome-devtools-mcp` (version pinned, h
 - The server launches Playwright's Chrome for Testing through `--executablePath` (see [README.md → verifying changes](README.md#verifying-changes)).
 - A server added to `.mcp.json` becomes available after the next session start. Project-scope servers ask for approval on first use.
 - Without a configured MCP client, the server can be driven over stdio: spawn the `.mcp.json` command, send `initialize` (declaring the `roots` capability and answering `roots/list`), `notifications/initialized`, then `tools/call`.
+
+## Checking preview stability and latency
+
+Use an isolated project with two sections sharing a page and another with explicit page breaks. After a full build, edit a paragraph in each, including an edit that adds a page. The preview keeps neighboring content and page order; inspect the helper log for the section fallback reason. Save during a preview and click Recompile repeatedly: the preview completes before one full build starts. A build with no page changes keeps the reader mounted.
+
+Compare the helper's `syncMs`, `compileMs` and `pagesMs` with the browser's build-reply and assembly times. The request time includes the helper's work; it is not a network-only measurement. Use a warmed preamble cache and the same document when comparing runs.

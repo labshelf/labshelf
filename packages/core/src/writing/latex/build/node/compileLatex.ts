@@ -9,6 +9,7 @@ import { engineLabel, type LatexToolchain } from "../../toolchain/index.js";
 import type { LatexBuildResult } from "../buildResult.js";
 import type { BuildCommand } from "../latexBuildCommand.js";
 import { withToolchainOnPath } from "../../toolchain/node/system/index.js";
+import { biberProblems } from "./biberProblems.js";
 import { locateProblems, type ProblemPlaces } from "./locateProblems.js";
 import { BuildCancelled, runCancellable } from "./runCancellable.js";
 
@@ -50,6 +51,11 @@ export async function compileLatex(request: CompileRequest, places: ProblemPlace
   const problems = await locateProblems(mapProblems ? mapProblems(parsed) : parsed, places);
   const pdf = path.join(request.outDir, `${job}.pdf`);
   if (outcome.code === 0 && await fs.stat(pdf).then(() => true, () => false)) { return { status: "succeeded", pdf, problems }; }
+  const biber = await biberProblems(outcome.output, request.outDir, job, places.mainFile);
+  if (biber.length > 0) {
+    await request.logger.log("WARN", MODULE, "Biber failed", { main: places.mainFile, job, errors: biber.map((problem) => problem.message) });
+    problems.unshift(...biber);
+  }
   if (!problems.some((problem) => problem.severity === "error")) {
     problems.unshift({ severity: "error", message: failureReason(outcome.output, request.toolchain.engine, outcome.code), file: places.mainFile });
   }

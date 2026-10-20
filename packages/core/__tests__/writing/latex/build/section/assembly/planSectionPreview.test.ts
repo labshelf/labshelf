@@ -15,7 +15,7 @@ const MAIN = [
 ].join("\n");
 const CHAP = "\\section{Method}\nm\n\\subsection{Detail}\nd\n";
 
-const state = (command: string, line: number, file: string): SectionState => ({ command, absolutePage: 1, fillingPage: 1, line, file, counters: {} });
+const state = (command: string, line: number, file: string): SectionState => ({ command, absolutePage: 1, fillingPage: 1, line, file, pageBoundary: true, counters: {} });
 // The first record is the kernel's `\section*` inside `\tableofcontents`, which has no heading in the source.
 const STATES = [
   state("section", 3, "main.tex"), state("section", 4, "main.tex"), state("section", 6, "main.tex"),
@@ -73,4 +73,12 @@ describe("planSectionPreview", () => {
   it("previews a section with includegraphics, a closed float and an input without definitions", () => {
     expect(plan(withSection("\\includegraphics{a}\\begin{figure*}x\\end{figure*}\\input{plain}")).kind).toBe("section");
   });
+});
+
+
+it("requires page boundaries at both ends of an isolated section", () => {
+  for (const index of [1, 2]) {
+    const states = STATES.map((state, at) => at === index ? { ...state, pageBoundary: false } : state);
+    expect(plan({ states })).toEqual({ kind: "fallback", reason: "shared-page" });
+  }
 });

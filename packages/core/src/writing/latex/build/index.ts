@@ -1,4 +1,5 @@
 /** Exports the runtime-neutral part of a LaTeX build: its command line, the classes of its problems and the section state it captures. */
+export { latexPreviewCommand } from "./latexPreviewCommand.js";
 export { latexBuildCommand } from "./latexBuildCommand.js";
 export type { LatexBuildResult, LocatedProblem } from "./buildResult.js";
 export type { BuildCommand, LatexBuildOptions, PartialBuild } from "./latexBuildCommand.js";

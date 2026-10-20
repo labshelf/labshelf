@@ -1,36 +1,38 @@
-sha: 2ffdab1d
-files: packages/terminal/src/cli/**, packages/terminal/src/app/context.ts, packages/terminal/src/library/**
-source: packages/terminal/src/cli/usage.ts, documents/apps/terminal.md, this plan's synthesis
+sha: 0b367695
+files: packages/terminal/src/cli/**, packages/terminal/src/app/context.ts, packages/core/src/ai/**
+source: repository architecture; user direction, 2026-10-19; linked context-cost reports
 
-# CLI ⇄ MCP: one surface, two doors
+# Expose bounded library operations to external agents
 
-## Server commands
+## Shared operations
 
-- `labshelf mcp` — stdio server on the shared composition root. `--http` serves Streamable HTTP on 127.0.0.1 with a token, for clients that need a URL. `--mode read|propose|write`, `--tools default|all`, `--project <dir>`.
-- `labshelf mcp install <client>` — vscode, claude-desktop (writes `labshelf.mcpb` and opens it), claude-code (`claude mcp add`), cursor, codex, goose. `labshelf mcp status` lists where it is installed and whether each client can start it; `labshelf doctor` includes it.
-- `labshelf mcp tools [--json]` and `labshelf mcp call <tool> --args '<json>'` run any tool from the shell, for scripts and for tests.
+Core owns retrieval, metadata, annotations, citation formatting and validated mutations. CLI, embedded AI and MCP call those operations through ports; apps do not import each other. A shared schema/command declaration is a candidate only where it removes actual duplication, not a requirement to expose every CLI command as a tool.
 
-## One command catalogue
+The Node MCP entry belongs to the terminal composition root. Starting that process must not depend on opening a GUI. It does not choose or host the external agent's language model.
 
-- Each command is declared once: name, arguments schema, output schema, handler, write class (read, propose, write). The CLI parser, `--help`, `--json` output, MCP `inputSchema`/`outputSchema` and tool annotations (`readOnlyHint`, `destructiveHint`) come from that declaration.
-- A test asserts parity: every tool is a command, and a command's `--json` equals the tool's `structuredContent`.
-- The default MCP profile groups commands into ≤ 12 intent-level tools (search, read, cite, edit, build, check, organise, import, focus, activity); `--tools all` exposes one tool per command.
+## Initial experiment
 
-## Agent-friendly CLI (works without MCP)
+Evaluate two read-only capabilities against the [selected user tasks](user-needs/review-workflows.md):
 
-- `--json` everywhere, stable ids, exit codes that mean one thing (0 ok, 1 findings, 2 missing toolchain or unanswerable question).
-- A `SKILL.md` installed by `labshelf mcp install claude-code` teaches the CLI in a few hundred tokens; agents that prefer the shell use it instead of the tool list (the Zotero CLI + skill route costs ~100 tokens against ~17k for its MCP tool list).
-- Answers print `labshelf:key#p5` links as OSC 8 hyperlinks; `labshelf open <link>` opens the PDF at the page.
+- Search the authorised library's paper metadata, text and personal annotations, returning a small set of located results.
+- Read one paper's metadata, outline, annotations or requested section/pages. Include bibliographic output with relevant results rather than require another call for every citation.
 
-## Shared live state with the TUI
+Names and schemas follow task validation. Do not collapse unrelated actions into an unrestricted command interpreter to obtain an artificially low tool count. Return continuations, honest partial results and explicit missing-text/OCR errors.
 
-- The TUI writes the focus record (selected folder, paper, preview page, search query, project and problem under the cursor) on every move; `labshelf://focus` serves it.
-- The server appends each AI action to an activity journal in the state folder. The TUI shows it live: a status-line segment ("AI: tagging 14 papers"), a mark on the row and page the AI touches, and `:activity` with undo per entry.
-- `labshelf undo [--last | <activity-id>]` reverts one AI request; the TUI binds it to `u` in `:activity`.
-- In propose mode, writes wait in `:inbox` (TUI) and `labshelf review` (CLI): a diff per item, `a` accept, `r` reject, `A` accept all.
-- `labshelf build --watch` and the server share the project build queue; `build_status(wait: true)` returns as soon as the running build ends, so the AI never starts a second build.
+Paper image output is a reading capability, not a reason to create a reader widget or one tool per figure type.
 
-## Recipes
+## CLI alternative
 
-- `labshelf recipes` lists the prompts the server also serves (explain, related-work, fix-build, review, rebuttal), and `labshelf recipe <name> [args]` prints the filled prompt, ready to pipe into any agent CLI.
-- CI: `labshelf check --json` output feeds an agent step that opens review comments; the same tools run headless with `--mode propose`.
+An agent with shell access may use the existing CLI plus concise guidance. Compare that route with MCP on task success, context, result size and calls, using the same backend and library.
+
+Stable identifiers, structured JSON and useful errors matter in both routes. Follow the [paper link contract](../../../contracts/links.md) rather than invent another link grammar. Client-specific install commands and support are verified only after selecting the first client.
+
+## Conditional capabilities
+
+- Writes use core mutations and review/undo contracts; never let an external model edit library files or construct bibliography records unchecked.
+- Live focus is optional and machine-local. Stale focus cannot represent an unsaved editor selection.
+- External recipes and style/citation guidance are selected for a task; do not load every prompt or skill into every session.
+- Long-running selected operations need cancellation and progress. Decide protocol support after choosing the host.
+- Build, OCR, import and organisation do not automatically become MCP tools because a CLI command exists.
+
+[Usability evidence](user-needs/usability.md) records why tool surface and result budgets require measurement rather than a fixed count promise.

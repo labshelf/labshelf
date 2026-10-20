@@ -11,6 +11,14 @@ const COMMANDS = ["part", "chapter", "section", "subsection", "subsubsection"];
 
 const LANDING_COMMANDS = ["@part", "@spart", "@chapter", "@schapter"];
 
+// A mid-page heading or pending float cannot be reproduced by restoring counters alone.
+function boundaryRecord(): string {
+  const conditions = ["\\ifvmode", "\\ifinner\\else", "\\if@twocolumn\\else", "\\ifdim\\pagetotal=\\z@",
+    ...["@deferlist", "@dbldeferlist", "@toplist", "@botlist", "@dbltoplist"].map((name) => `\\ifx\\${name}\\@empty`)];
+  return "\\def\\labshelf@boundary{" + conditions.join("")
+    + "\\immediate\\write\\labshelf@state{B|\\the\\labshelf@index}" + "\\fi".repeat(conditions.length) + "}";
+}
+
 // INVARIANT: `\immediate\write` adds no node, so the counters record cannot change the spacing or page breaks around a heading.
 // The landing record is a delayed `\write`, expanded at shipout, so it names the page the heading actually lands on rather than
 // the page being filled before the heading's `\@secpenalty` break. Its whatsit sits beside LaTeX's own `\addcontentsline` one
@@ -27,11 +35,12 @@ export function sectionStatePackage(): string {
     "\\immediate\\openout\\labshelf@state=\\jobname.lsstate\\relax",
     "\\newcount\\labshelf@index",
     "\\let\\labshelf@pending\\relax",
+    boundaryRecord(),
     "\\def\\labshelf@counter#1{ #1=\\the\\csname c@#1\\endcsname}",
     "\\def\\labshelf@file{\\ifx\\CurrentFilePath\\@empty\\else\\CurrentFilePath/\\fi\\CurrentFile}",
     "\\def\\labshelf@record#1{{\\let\\@elt\\labshelf@counter\\immediate\\write\\labshelf@state"
       + "{#1|\\the\\numexpr\\ReadonlyShipoutCounter+1\\relax|\\the\\inputlineno|\\labshelf@file|\\cl@@ckpt}}"
-      + "\\global\\advance\\labshelf@index\\@ne"
+      + "\\global\\advance\\labshelf@index\\@ne\\labshelf@boundary"
       + "\\xdef\\labshelf@pending{\\write\\labshelf@state"
       + "{P|\\the\\labshelf@index|\\noexpand\\the\\noexpand\\ReadonlyShipoutCounter|\\noexpand\\the\\noexpand\\c@page}}}",
     "\\def\\labshelf@land{\\labshelf@pending\\global\\let\\labshelf@pending\\relax}",

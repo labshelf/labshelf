@@ -1,5 +1,6 @@
 /** Builds the command line that compiles a LaTeX main file with every output file in one build folder. */
 
+import { biberAssignment, type BiberCommand } from "../biber/index.js";
 import type { LatexToolchain } from "../toolchain/index.js";
 import { SECTION_STATE_PACKAGE } from "./section/index.js";
 import { NO_SHELL_ESCAPE, TEX_FILE_ACCESS_ENV } from "./texSandbox.js";
@@ -23,6 +24,8 @@ export interface PartialBuild {
 export interface LatexBuildOptions extends PartialBuild {
   /** Loads the section state package, which the caller has put into `outDir`, before the document. */
   capturesSectionState?: boolean;
+  /** Runs biber through this command instead of the TeX's own biber. */
+  biber?: BiberCommand;
 }
 
 /**
@@ -44,6 +47,7 @@ export function latexBuildCommand(toolchain: LatexToolchain, mainFile: string, o
       // PLATFORM: latexmk has no flag for the engine's options; its command string is set from Perl. `-usepretex` would
       // replace that string, dropping the shell-escape guard; `%P` reads the pretex, and the job keeps main's name.
       "-e", `$${engine} = '${engine} ${NO_SHELL_ESCAPE} -jobname=%R %O %P';`,
+      ...(options.biber ? ["-e", biberAssignment(options.biber)] : []),
       ...partialArgs, mainFile,
     ],
     env: TEX_FILE_ACCESS_ENV,

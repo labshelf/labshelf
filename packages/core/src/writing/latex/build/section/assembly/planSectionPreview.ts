@@ -1,7 +1,7 @@
 /** Decides whether an edit can be previewed by typesetting its section alone, and which recorded section and lines that is. */
 import type { LatexSourceFacts, SectionFact } from "../../../source/index.js";
 import { scanLatexSource, stripComments } from "../../../source/index.js";
-import type { SectionState } from "../sectionStateFile.js";
+import type { SectionState } from "../index.js";
 import { sectionTextFallback } from "./sectionFallbacks.js";
 import type { SectionTextFallback } from "./sectionFallbacks.js";
 import { sourcePathKey, sourcesByKey } from "./sourcePaths.js";
@@ -22,7 +22,7 @@ export interface SectionPreviewInput {
 }
 
 type SectionFallbackReason =
-  | "no-full-build" | "engine" | "no-format" | "outside-section" | "no-matching-state" | SectionTextFallback;
+  | "shared-page" | "no-full-build" | "engine" | "no-format" | "outside-section" | "no-matching-state" | SectionTextFallback;
 
 export type SectionPreviewPlan =
   /** Lines are 0-based in `file`, `endLine` exclusive; `file` is the state's name for it. */
@@ -73,6 +73,8 @@ export function planSectionPreview(input: SectionPreviewInput): SectionPreviewPl
   const startLine = headings[at]!.range.start.line;
   const sectionIndex = input.states.findIndex((state) => sourcePathKey(state.file) === file && state.line === startLine + 1);
   if (sectionIndex < 0) { return fallback("no-matching-state"); }
+  const next = input.states[sectionIndex + 1];
+  if (!input.states[sectionIndex]!.pageBoundary || (next && !next.pageBoundary)) return fallback("shared-page");
   const endLine = sectionEndLine(text, scan, headings[at + 1], startLine, sources);
   if (input.editedLine >= endLine) { return fallback("outside-section"); }
   const reason = sectionTextFallback(text.split("\n").slice(startLine, endLine).join("\n"), sources);

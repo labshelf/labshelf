@@ -1,10 +1,11 @@
-// Builds dist/sea/labshelf-helper-<os>-<arch>, a Node single executable of LabShelf Helper for the host, and checks that it answers `hello` with `ready` and `session`.
+// Builds dist/sea/labshelf-helper-<os>-<arch>, a Node single executable of LabShelf Helper for the host, and checks that it answers `hello` with `ready` and `session` and, when it carries biber's WASM, that its `--biber` mode writes a .bbl.
 import { build } from "esbuild";
 import { execFileSync, spawn } from "node:child_process";
-import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { inject } from "postject";
+import { BIBER_WASM_FILES, biberWasmDir } from "./biberWasm.mjs";
 import { TYPST_WASM_FILE, typstWasmPath } from "./typstWasm.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -42,11 +43,19 @@ async function bundleCommonJs(outfile) {
   });
 }
 
+// biber's files go in as `biber-wasm/<file>`, the names `seaBiberAssets` reads; without a biber build the helper keeps the TeX's own biber.
+function biberAssets() {
+  const dir = biberWasmDir();
+  if (!dir) { console.log("[labshelf-helper-sea] no biber WASM build; the helper runs the TeX's own biber"); }
+  return dir ? Object.fromEntries(BIBER_WASM_FILES.map((file) => [`biber-wasm/${file}`, join(dir, file)])) : {};
+}
+
 // The executable has no node_modules, so the compiler WASM is a SEA asset that `main.ts` reads with getAsset.
 async function writeBlob(tmpDir, mainFile) {
   const config = join(tmpDir, "sea-config.json");
   const blob = join(tmpDir, "sea-prep.blob");
-  await writeFile(config, JSON.stringify({ main: mainFile, output: blob, disableExperimentalSEAWarning: true, assets: { [TYPST_WASM_FILE]: typstWasmPath() } }));
+  const assets = { [TYPST_WASM_FILE]: typstWasmPath(), ...biberAssets() };
+  await writeFile(config, JSON.stringify({ main: mainFile, output: blob, disableExperimentalSEAWarning: true, assets }));
   try {
     execFileSync(process.execPath, ["--experimental-sea-config", config], { stdio: "inherit" });
   } catch {
@@ -114,6 +123,24 @@ async function smokeCheck(binary, scratchHome) {
   }
 }
 
+// The control file and bibliography core's biber tests use.
+const BIBER_FIXTURES = resolve(root, "../core/__tests__/writing/latex/biber/fixtures");
+
+async function biberSmokeCheck(binary, tmpDir, scratchHome) {
+  const project = join(tmpDir, "biber project");
+  await cp(BIBER_FIXTURES, project, { recursive: true });
+  await rm(join(project, "main.bbl"));
+  const env = { ...process.env, HOME: scratchHome, USERPROFILE: scratchHome, LOCALAPPDATA: scratchHome, XDG_DATA_HOME: scratchHome };
+  try {
+    execFileSync(binary, ["--biber", "--root", project, join(project, "main.bcf")], { cwd: project, env, stdio: ["ignore", "ignore", "pipe"] });
+  } catch (error) {
+    throw new Error(`--biber failed: ${error.stderr?.toString().trim() || error.message}`);
+  }
+  const entries = (await readFile(join(project, "main.bbl"), "utf8")).match(/\\entry\{/g)?.length ?? 0;
+  if (entries === 0) { throw new Error("--biber wrote a .bbl without entries"); }
+  return entries;
+}
+
 async function main() {
   const binary = join(seaDir, targetName());
   await mkdir(seaDir, { recursive: true });
@@ -127,6 +154,7 @@ async function main() {
     await injectBlob(binary, blob);
     const reply = await smokeCheck(binary, join(tmpDir, "home"));
     console.log(`[labshelf-helper-sea] built ${binary}; hello answered with ${JSON.stringify(reply)}`);
+    if (biberWasmDir()) { console.log(`[labshelf-helper-sea] --biber wrote ${await biberSmokeCheck(binary, tmpDir, join(tmpDir, "home"))} entries`); }
   } finally {
     await rm(tmpDir, { recursive: true, force: true });
   }

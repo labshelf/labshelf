@@ -16,18 +16,13 @@ describe("swapSectionPages", () => {
     const full = await pdfOf(["p1", "p2", "p3", "p4", "p5"]);
     const before = await diffPages([], full);
     const swapped = await swapSectionPages(full, await pdfOf(["s2", "s3"]), { start: 1, end: 2 });
-    const after = await diffPages(before.hashes, swapped);
+    const after = await diffPages(before.hashes, swapped!);
     expect(after.pageCount).toBe(5);
     expect(after.changed.map((page) => page.index)).toEqual([1, 2]);
   });
 
-  it("shifts the pages after the range when the section's page count changes", async () => {
+  it("rejects a section whose page count would shift the following pages", async () => {
     const full = await pdfOf(["p1", "p2", "p3", "p4"]);
-    const before = await diffPages([], full);
-    const swapped = await swapSectionPages(full, await pdfOf(["s2", "s2b", "s3"]), { start: 1, end: 2 });
-    const after = await diffPages(before.hashes, swapped);
-    expect(after.pageCount).toBe(5);
-    expect(after.hashes[0]).toBe(before.hashes[0]);
-    expect(after.hashes.slice(4)).toEqual(before.hashes.slice(3));
+    expect(await swapSectionPages(full, await pdfOf(["s2", "s2b", "s3"]), { start: 1, end: 2 })).toBeUndefined();
   });
 });

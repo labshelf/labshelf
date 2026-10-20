@@ -13,7 +13,7 @@ afterEach(cleanupTempDirs);
 const posixOnly = process.platform === "win32" ? describe.skip : describe;
 
 const MAIN = "\\documentclass{article}\n\\begin{document}\n\\section{One}\none\n\\section{Two}\ntwo\n\\end{document}\n";
-const STATES = "section|1|3|main.tex|page=1 section=0\nsection|2|5|main.tex|page=2 section=1\n";
+const STATES = "section|1|3|main.tex|page=1 section=0\nB|1\nP|1|1|1\nsection|2|5|main.tex|page=2 section=1\nB|2\nP|2|2|2\n";
 
 interface SectionSetup { request: LatexBuildRequest; logger: RecordingLogger; args: string; full: Uint8Array }
 
@@ -44,7 +44,7 @@ async function setup(): Promise<SectionSetup> {
   for (const name of ["etex", "pdflatex", "latexmk"]) {
     await fs.writeFile(path.join(bin, name), fakeEngine(outDir, args, sectionPdf), { mode: 0o755 });
   }
-  const full = await pdfOf(3);
+  const full = await pdfOf(2);
   await fs.mkdir(outDir, { recursive: true });
   await fs.writeFile(path.join(outDir, "main.aux"), "\\relax\n\\@writefile{toc}{x}\n\\newlabel{a}{{1}{1}}\n");
   await fs.writeFile(path.join(outDir, "main.lsstate"), STATES);
@@ -123,5 +123,18 @@ posixOnly("runLatexBuild section preview", () => {
     await fs.rm(path.join(s.request.outDir, "main-full.pdf"));
     await runLatexBuild({ ...s.request, mode: "full" });
     expect(await fs.readFile(path.join(s.request.outDir, "main-full.pdf"))).toEqual(await fs.readFile(path.join(s.request.outDir, "main.pdf")));
+  });
+
+  it("falls back without publishing a section that changes the page count", async () => {
+    const s = await setup();
+    await fs.writeFile(path.join(s.request.outDir, "main-full.pdf"), await pdfOf(3));
+    const result = await runLatexBuild({ ...s.request, editedLine: 6 });
+    expect(result.status).toBe("succeeded");
+    expect((await lines(s.args)).at(-1)).toBe("main.tex");
+    expect(s.logger.logs).toContainEqual(expect.objectContaining({ message: expect.stringContaining("section-page-count-changed") }));
+    await expect(fs.stat(path.join(s.request.outDir, "main.lsstate"))).rejects.toMatchObject({ code: "ENOENT" });
+    await runLatexBuild({ ...s.request, editedLine: 4 });
+    expect((await lines(s.args)).at(-1)).toBe("main.tex");
+    expect(s.logger.logs).toContainEqual(expect.objectContaining({ message: expect.stringContaining("no-full-build") }));
   });
 });

@@ -62,7 +62,7 @@ Keys a message does not define are dropped when it is read.
 
 `openProject` resolves `root` under the library root of the shared configuration ([library-format.md#shared-configuration](library-format.md#shared-configuration)) with the bridge's confinement: a path that leaves the library, also through a symlink, is refused with `path`. Every later `path`, `main` and `editedFile` of the project is resolved under that folder with the same rule. A `projectId` that is not open is refused with `project-id`.
 
-`edit` changes only the helper's copy of the text. The helper never writes into the library folder. A `.tex` `compile` builds the project's files from disk with the unsaved text of each edited path in their place. `mode: "preview"` runs one engine pass; `"full"` runs latexmk with the bibliography and every pass it needs. The page asks for `"full"` on save and after 2 s without typing.
+`edit` changes only the helper's copy of the text. The helper never writes into the library folder. A `.tex` `compile` builds the project's files from disk with the unsaved text of each edited path in their place. `mode: "preview"` runs one engine pass; `"full"` runs latexmk with the bibliography and every pass it needs. The page asks for `"full"` on save and after 2 s without typing. A save waits for an active preview of the same source revision; repeated requests coalesce into one full build. A source edit cancels the superseded build.
 
 A `.typ` `compile` runs Typst 0.14.2 through the bundled WASM compiler, and `mode` makes no difference. Its fonts are in `typst-fonts/` and its packages in `typst-packages/` of the helper's data folder; the helper never reads or fills the user's own Typst folders.
 
@@ -86,7 +86,11 @@ Each entry of `problems` has `severity` (`"error"`, `"warning"` or `"info"`), `m
 
 `pages` carries only the pages whose content differs from the last `pages` the helper sent for that project on this socket; the first one after `openProject` carries every page. Each entry of `changed` is a page `index` from 0 and the `offset` and `length` in the payload of a standalone one-page PDF of that page. A page index at or past `pageCount` no longer exists.
 
-A `.tex` `compile` in `preview` mode that edits one section builds only that section, as `<base>-section.tex` in the build directory, and swaps its pages into `<base>-full.pdf`, the PDF the build directory keeps for display (`<base>` is the main file's name without extension). The section build needs an earlier full build of the same main; without one, when the edit lies outside a section, or when the compile names no edit, the preview builds the whole document. `pages` and `pdfSha256` describe `<base>-full.pdf` in both cases, so the page never tells the two builds apart.
+A LaTeX build in `preview` mode can typeset the edited section alone on a cached preamble and swap its pages into `<base>-full.pdf`, the full build's PDF kept for display. This requires recorded empty-page boundaries with no pending floats at both ends (or the document end), single-column layout, and the same number of replacement pages. Otherwise it previews the whole document in one engine pass, retaining the cached preamble when supported. Editing an included chapter does not implicitly select include-only. A document preview invalidates section positions until a full build records them again. The transport describes the resulting complete PDF in every case.
+
+The disposable `.lsstate` build cache records `command|filling page|source line|file|counter=value ...`, `P|record number|absolute page|page counter` at shipout, and `B|record number` for an empty-page boundary. Records are numbered from 1. Absence of `B` disallows page swapping at that boundary. This cache is not a library file or a transport message.
+
+A successful build still sends its result and page count when no page changed. The helper reuses page hashes for identical PDF bytes; the browser retains the displayed PDF when its page count and pages are unchanged. Helper logs report working-copy sync, compilation and page-delivery time separately; browser logs report request latency and PDF assembly time.
 
 A message the helper cannot accept gets an `error` reply with the request's `id` when it had one, and `code` set to the rejection: `malformed`, `version`, `unknown-type`, `invalid-field`, `path`, `project-id`, `stale`, `no-library` or `limit`. A handler that fails while working replies `io` (a project file could not be read) or `internal` (any other failure), with the failure in `message`.
 
@@ -133,6 +137,7 @@ projects/<projectId>/
   src/                  the copy TeX builds: the project's files from disk with the unsaved text in their place
   build/                latexmk's output folder, kept so latexmk reruns only what changed
 bin/
+biber-wasm/             biber's preloaded Perl tree, written once from the executable, named by its sha256
 logs/
 ```
 
@@ -155,3 +160,9 @@ A helper run by VS Code or the terminal app never updates itself; it updates wit
 ## No shell-escape
 
 The helper never runs TeX with shell-escape. A project that needs it ends with `built` `status: "needs-shell-escape"`. TeX runs with `-no-shell-escape` and with `openout_any` and `openin_any` set to `p`, so a source writes only inside its project and output folders. latexmk runs with `-norc`, so no `latexmkrc` runs: not the system's, the user's or the project's.
+
+## Biber
+
+On macOS and Linux, a helper that carries biber's WASM build sets latexmk's `$biber` to itself with `--biber --root <project folder>`. latexmk then starts biber as the helper, which runs the WASM build in its own process and starts no TeX executable. When the `.bcf`'s `<bcf:controlfile version>` differs from the version the WASM build reads, or a data source is remote, `--biber` runs the TeX's own `biber` with the same arguments. On Windows, and in a helper without the WASM build, latexmk runs the TeX's own `biber`.
+
+`--biber` reads only the `.bcf` and its file data sources. It looks for each one from the main file's folder, then beside the `.bcf`, then through `kpsewhich`. It refuses a data source that resolves outside the project folder, the build folder and the TeX tree (`TEXMFROOT`). It writes the `.bbl` and the `.blg` beside the `.bcf`, prints biber's output, and exits with biber's code. A biber failure ends the build as `failed`, with the `ERROR` lines of the `.blg` as problems on the main file.

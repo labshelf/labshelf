@@ -1,6 +1,4 @@
-/**
- * Handles zoom interactions: cursor-anchored ctrl/cmd+wheel and pinch, ladder steps, fit modes, and refit on resize.
- */
+// Controls the PDF zoom within the visible reader viewport.
 import type { ZoomPreset } from "../../index.js";
 import {
   createDebouncer,
@@ -30,14 +28,17 @@ export class ZoomController {
 
     // pdf.js does not refit on resize; re-apply the preset, but never touch a numeric zoom the reader chose.
     const refit = createDebouncer(() => {
+      if (container.clientWidth === 0 || container.clientHeight === 0) return;
       const value = ctx.pdfViewer.currentScaleValue;
       if (isPresetScale(value)) { ctx.pdfViewer.currentScaleValue = value; }
       ctx.pdfViewer.update();
     }, REFIT_DEBOUNCE_MS);
     let lastWidth = container.clientWidth;
+    let lastHeight = container.clientHeight;
     new ResizeObserver(() => {
-      if (container.clientWidth === lastWidth) { return; }
+      if (container.clientWidth === lastWidth && container.clientHeight === lastHeight) { return; }
       lastWidth = container.clientWidth;
+      lastHeight = container.clientHeight;
       refit.call();
     }).observe(container);
   }

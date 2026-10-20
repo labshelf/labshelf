@@ -1,46 +1,32 @@
-sha: 2ffdab1d
+sha: 0b367695
 files: —
-source: web scouts 2026-10-18 (MCP spec, client docs, GitHub READMEs, arXiv)
+source: primary-source user research, 2026-10-19; linked protocol documentation
 
-# Landscape
+# Evaluate external research integration
 
-## Protocol (spec 2026-07-28)
+## Evidence map
 
-- Stateless core: no `initialize` handshake or session id; servers implement `server/discover`. Flows that need state pass an explicit handle between tool calls.
-- `subscriptions/listen` replaces `resources/subscribe`; list-changed and resource updates arrive on one stream.
-- Elicitation works as "pause the tool call, ask the user, retry" (`resultType: "input_required"`), in form and URL modes.
-- Deprecated: sampling, roots, logging, HTTP+SSE. Build on none of them.
-- Official extensions: MCP Apps (`io.modelcontextprotocol/ui`), Tasks (long jobs, polled), Skills over MCP.
-- Tool results carry text, images, audio, resource links and embedded resources; `outputSchema` + `structuredContent` for typed output.
-- Sources: https://modelcontextprotocol.io/specification/2026-07-28/changelog, https://modelcontextprotocol.io/extensions/client-matrix
+The research is qualitative and concentrates on Zotero, Paperpile, DEVONthink and Overleaf. Announcements, author prototypes, feature requests and reports of routine use have different evidentiary weight. Repeated posts by one person are not independent demand.
 
-## Client support (verified unless marked)
+- [Library access](user-needs/library-access.md): reuse owned PDFs, retrieve personal notes, locate evidence and inspect actual figures.
+- [Review workflows](user-needs/review-workflows.md): fill review tables, recover sources and explore references.
+- [Write-back](user-needs/writeback-workflows.md): return notes/annotations, organise/import papers and connect an external editor.
+- [Usability](user-needs/usability.md): context overhead, result size, setup, runtime reliability and remote-access expectations.
 
-| Client | MCP Apps | Prompts as slash commands | Local stdio | Notes |
-|---|---|---|---|---|
-| VS Code Copilot | yes | yes | yes | Extension can register servers; BYOK and Ollama without a Copilot plan |
-| Claude Desktop / web | yes, all plans | unverified | Desktop yes | `.mcpb` double-click install; `claude://` deep links |
-| Claude Code | no | yes | yes | Elicitation forms; images inline; 25k-token result cap by default |
-| ChatGPT | yes | unverified | no | Remote HTTPS or tunnel; plan rules conflict between sources |
-| Cursor, Goose | yes | unverified | yes | — |
+The reports establish tasks worth testing. They do not establish a market size, a final tool list, universal client support or demand for a widget inside a chat.
 
-Gemini CLI was replaced by Antigravity CLI on 2026-06-18 for unpaid users, with a smaller free tier.
+## Research boundaries
 
-## Existing research servers
+Embedded provider setup and contextual in-app interaction belong to [embedded AI](../../ai-embedded/plan.md). An external agent may already read/edit manuscript files through its own tools; the MCP must demonstrate value from LabShelf-specific retrieval, metadata, annotation or mutation semantics.
 
-- Zotero MCP (54yyyu, ~5.5k stars): 53 tools, semantic search, PDF pages as images. Complaints: setup, Python crashes on PDFs, scans return stamp text only, ~17k tokens of tool list.
-- arXiv MCP (~3.2k): outline-then-section reading, LaTeX source per section, topic watches.
-- paper-search MCP (~2.9k): one search over ~25 sources, open-access download chain.
-- Overleaf MCP (~20): static checks, explained compile log; cannot see the rendered PDF, no BibTeX lookup.
-- Typst MCP (~183): docs on demand, LaTeX-to-Typst, render to PNG.
+The initial read-only experiment compares bounded library access against manual attachment and CLI use. Additional tools and MCP Apps need their own task justification.
 
-No server combines library, PDF and manuscript; none ties a citation to the passage that supports it; none sees the user's selection or open page; almost none previews writes.
+## Protocol references
 
-## Researcher pain points
+- [Local and remote connections](https://ts.sdk.modelcontextprotocol.io/v2/clients/connect).
+- [MCP Apps overview](https://apps.extensions.modelcontextprotocol.io/api/documents/overview.html).
+- [Advanced tool use and context overhead](https://www.anthropic.com/engineering/advanced-tool-use).
 
-- BibTeX from GPT-5, Sonnet 4.6 and Gemini 3 Flash: 50.9% of entries fully correct; deterministic retrieval raises it to 78.3% (https://arxiv.org/abs/2604.03159).
-- Generated LaTeX that does not compile; references that change between attempts (Prism reviews, https://library.smu.edu.sg/topics-insights/goodbye-overleaf-exploration-openais-prism).
-- PDF parsing of equations, tables and scans; context windows filled by whole papers.
-- Tool bloat: 58 tools ≈ 55k tokens per turn; guidance is 10–15 intent-level tools.
-- Unreviewable or irreversible writes; unauthenticated HTTP servers.
-- Paper text can carry prompt injection.
+Select a supported protocol revision against the first client's actual behaviour before implementation. Sampling, elicitation, tasks, prompt discovery, subscriptions and authentication require verification against that revision; none is necessary to establish the two read-only product tasks.
+
+Server tool definitions and returned paper contents are separate context costs. Discovery strategies, caching and lazy loading vary by client; measure observed behaviour rather than assuming every client injects every schema into every model turn.

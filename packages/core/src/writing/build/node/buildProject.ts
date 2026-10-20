@@ -23,6 +23,8 @@ type ReadyProject = Extract<ProjectEntry, { kind: "ready" }>;
 export interface ProjectBuildDeps extends ToolchainDeps {
   projects: Pick<ProjectDataPort, "projectBuildDir">;
   typst: { get(logger: ILogger): Promise<{ session: TypstSession; packages: TypstPackageStore }> };
+  /** The command latexmk runs biber's WASM build through; the TeX's own biber when absent. */
+  biber?: readonly string[];
 }
 
 export interface ProjectBuildOptions {
@@ -66,7 +68,7 @@ async function buildLatex(project: ReadyProject, root: string, deps: ProjectBuil
   return compileInstallingPackages<LatexBuildResult>({
     compile: ({ force }) => runLatexBuild({
       toolchain, projectFolder: project.folder, main: root, outDir,
-      signal: options.signal ?? new AbortController().signal, logger: deps.logger,
+      signal: options.signal ?? new AbortController().signal, logger: deps.logger, ...(deps.biber && { biber: deps.biber }),
       ...(options.includeOnly !== undefined && { includeOnly: options.includeOnly }), ...((force || options.force) && { force: true }),
       ...(options.mode !== undefined && { mode: options.mode }), ...(options.editedFile !== undefined && { editedFile: options.editedFile }),
       ...(options.editedLine !== undefined && { editedLine: options.editedLine }),

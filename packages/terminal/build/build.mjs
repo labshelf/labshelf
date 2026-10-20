@@ -1,9 +1,10 @@
 /** Bundles @labshelf/terminal into dist/labshelf.mjs (the `labshelf` command), dist/thumbnailWorker.mjs, dist/labshelf-helper.mjs (LabShelf Helper) and dist/helperHost.mjs (the terminal app as the browser's LaTeX helper), which are self-contained (pdf-lib is bundled; no PDF renderer, canvas or OCR), and dist/bridgeHost.js (the browser bridge host, an ES module that the launcher starts with Node). @labshelf/core is bundled from source; pdfjs-dist, Tesseract and the native canvas stay external and are loaded from node_modules at run time, only when a PDF is parsed, read by OCR or rendered. */
 import { build, context } from "esbuild";
 import { builtinModules } from "node:module";
-import { chmod, copyFile, mkdir } from "node:fs/promises";
+import { chmod, copyFile, mkdir, rm } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { BIBER_WASM_FILES, biberWasmDir } from "./biberWasm.mjs";
 import { TYPST_WASM_FILE, typstWasmPath } from "./typstWasm.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -62,6 +63,15 @@ function assertHelperBundle(result, name) {
 // The helper script loads nothing from node_modules, so its Typst compiler WASM sits beside it (`runHelperScriptHost` reads it there).
 await mkdir(resolve(root, "dist"), { recursive: true });
 await copyFile(typstWasmPath(), resolve(root, "dist", TYPST_WASM_FILE));
+// `runHelperScriptHost` reads biber's WASM from dist/biber-wasm/ beside the script.
+const biberDir = biberWasmDir();
+if (biberDir) {
+  await mkdir(resolve(root, "dist/biber-wasm"), { recursive: true });
+  await Promise.all(BIBER_WASM_FILES.map((file) => copyFile(resolve(biberDir, file), resolve(root, "dist/biber-wasm", file))));
+} else {
+  await rm(resolve(root, "dist/biber-wasm"), { recursive: true, force: true });
+  console.log("[labshelf-terminal] no biber WASM build; LaTeX builds run the TeX's own biber");
+}
 
 if (watch) {
   for (const options of entries) {

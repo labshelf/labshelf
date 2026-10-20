@@ -117,13 +117,13 @@ posixOnly("runLatexBuild preview with a preamble format", () => {
     expect(s.logger.logs).toContainEqual(expect.objectContaining({ level: "INFO", message: expect.stringContaining("format") }));
   });
 
-  it("typesets the edited chapter through the include-only file and removes it afterwards", async () => {
+  it("keeps every chapter in the cached-format preview unless include-only is selected", async () => {
     const s = await setup();
     await runLatexBuild({ ...s.request, editedFile: "chapters/intro.tex" });
     const args = await lines(s.args);
     expect(args.at(-1)).toBe("main.tex");
     expect(args).not.toContain("-jobname=main");
-    expect((await lines(s.seen))[1]).toBe("\\includeonly{chapters/intro}");
+    expect((await lines(s.seen))[1]).toBeUndefined();
     await expect(fs.stat(path.join(s.request.outDir, "labshelf-includeonly.tex"))).rejects.toThrow();
   });
 

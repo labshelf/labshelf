@@ -47,3 +47,9 @@ describe("assemblePdf", () => {
     await expect(assemblePdf(undefined, { pageCount: 2, changed: await pages(101) })).rejects.toThrow(/page 2/);
   });
 });
+
+
+it("reuses the PDF when no page or page count changed", async () => {
+  const first = await assemblePdf(undefined, { pageCount: 2, changed: await pages(101, 102) });
+  expect(await assemblePdf(first, { pageCount: 2, changed: [] })).toBe(first);
+});

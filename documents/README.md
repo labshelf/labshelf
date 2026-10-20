@@ -41,6 +41,8 @@ Read when you look for the document that answers a question about LabShelf; the 
 | How do I build and run the terminal app? | [apps/terminal.md](apps/terminal.md#build-and-run) |
 | How do I verify the terminal app? | [apps/terminal.md](apps/terminal.md#verification) |
 | What is the plan template and where are active plans? | [plans/TEMPLATE/plan.md](plans/TEMPLATE/plan.md) |
+| How is in-app AI with API credentials or local models planned? | [plans/ai-embedded/plan.md](plans/ai-embedded/plan.md) |
+| How is external AI access through MCP or MCP Apps planned? | [plans/ai-mcp/plan.md](plans/ai-mcp/plan.md) |
 | Which ideas are kept without a plan? | [ideas/](ideas/) |
 | When is a finished document archived? | [archive/README.md](archive/README.md) |
 

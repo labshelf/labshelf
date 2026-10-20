@@ -26,3 +26,9 @@ describe("sectionPageRange", () => {
     expect(sectionPageRange([at("section", 9), at("section", 12)], 0, 5)).toEqual({ start: 4, end: 4 });
   });
 });
+
+
+it("excludes the empty page on which the next isolated section starts", () => {
+  const states = [at("section", 2), { ...at("section", 4), pageBoundary: true }];
+  expect(sectionPageRange(states, 0, 10)).toEqual({ start: 1, end: 2 });
+});

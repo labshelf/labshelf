@@ -33,20 +33,22 @@ function setup() {
   const timers = fakeTimers();
   const requests: HelperCompileRequest[] = [];
   const resolvers: ((r: HelperCompileResult) => void)[] = [];
+  const rejects: ((error: Error) => void)[] = [];
   const cancels: string[] = [];
   const results: { mode: string; result: HelperCompileResult }[] = [];
   const helper = {
     compile: (req: HelperCompileRequest) => {
       requests.push(req);
-      return new Promise<HelperCompileResult>((resolve) => resolvers.push(resolve));
+      return new Promise<HelperCompileResult>((resolve, reject) => { resolvers.push(resolve); rejects.push(reject); });
     },
     cancel: async (projectId: string) => { cancels.push(projectId); },
   };
   const scheduler = createBuildScheduler({
+    onStart: jest.fn(),
     helper, target: { projectId: "p1", main: "main.tex", engine: "pdflatex" }, timers, logger,
     onResult: (result, mode) => results.push({ mode, result }),
   });
-  return { timers, requests, resolvers, cancels, results, scheduler };
+  return { timers, requests, resolvers, rejects, cancels, results, scheduler };
 }
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
@@ -109,4 +111,62 @@ describe("createBuildScheduler", () => {
     timers.advance(5000);
     expect(requests).toEqual([]);
   });
+});
+
+
+describe("build completion", () => {
+  it("keeps a full build running when recompile is requested repeatedly without edits", async () => {
+    const { scheduler, requests, resolvers, cancels, results } = setup();
+    scheduler.save();
+    scheduler.save();
+    scheduler.save();
+    expect(requests).toHaveLength(1);
+    expect(cancels).toEqual([]);
+    resolvers[0]!(RESULT);
+    await flush();
+    expect(results).toEqual([{ mode: "full", result: RESULT }]);
+    scheduler.save();
+    expect(requests).toHaveLength(2);
+  });
+
+  it("reports a failed build when the helper rejects, allowing a retry", async () => {
+    const { scheduler, rejects, results, requests } = setup();
+    scheduler.save();
+    rejects[0]!(new Error("Helper disconnected"));
+    await flush();
+    expect(results).toEqual([{ mode: "full", result: {
+      status: "failed", changed: [], problems: [{ severity: "error", file: "main.tex", message: "Helper disconnected" }],
+    } }]);
+    scheduler.save();
+    expect(requests).toHaveLength(2);
+  });
+});
+
+
+it("allows a full build of edited sources to supersede an active full build", async () => {
+  const { scheduler, requests, rejects, resolvers, cancels, results } = setup();
+  scheduler.save();
+  scheduler.edit("main.tex", 5);
+  scheduler.save();
+  expect(requests).toHaveLength(2);
+  expect(cancels).toEqual(["p1"]);
+  rejects[0]!(new Error("Superseded request disconnected"));
+  resolvers[1]!(RESULT);
+  await flush();
+  expect(results).toEqual([{ mode: "full", result: RESULT }]);
+});
+
+
+it("lets a preview finish before an automatic save starts the full build", async () => {
+  const { scheduler, timers, requests, resolvers, cancels, results } = setup();
+  scheduler.edit("main.tex", 3);
+  timers.advance(500);
+  scheduler.save();
+  scheduler.save();
+  expect(requests.map((request) => request.mode)).toEqual(["preview"]);
+  expect(cancels).toEqual([]);
+  resolvers[0]!(RESULT);
+  await flush();
+  expect(results).toEqual([{ mode: "preview", result: RESULT }]);
+  expect(requests.map((request) => request.mode)).toEqual(["preview", "full"]);
 });

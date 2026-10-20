@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 // Tests the reader theme controller: the effective theme reaches the document and its listeners from any source.
-import { ThemeController } from "../../../../src/reader/dom/chrome/theme";
+import { ThemeController } from "../../../../src/reader/dom/chrome/index";
 import { presetFor } from "../../../../src/reader/index";
 
 describe("ThemeController", () => {
@@ -51,5 +51,38 @@ describe("ThemeController", () => {
     expect(theme.pageTheme).toBe("dark");
     expect(theme.colors.bg).toBe(presetFor("dark").bg);
     expect(document.documentElement.dataset["pdfPages"]).toBe("dark");
+  });
+});
+
+
+describe("page recolouring", () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  it("invalidates raster and detail canvases before drawing with the selected colours", () => {
+    const page = { pageColors: null, reset: jest.fn() };
+    const viewer = { pageColors: null, pagesCount: 1, getPageView: () => page, update: jest.fn(), refresh: jest.fn() };
+    const theme = new ThemeController(document.createElement("div"), "light", "light");
+    theme.attach(viewer as unknown as Parameters<ThemeController["attach"]>[0]);
+    theme.lockPages("dark");
+    jest.runAllTimers();
+    expect(page.pageColors).toEqual(theme.pageColors);
+    expect(page.reset).toHaveBeenCalledTimes(1);
+    expect(viewer.update).toHaveBeenCalledTimes(1);
+  });
+
+  it("recolours the current document when a build replaces it during the debounce", () => {
+    const first = { pageColors: null, reset: jest.fn() };
+    const replacement = { pageColors: null, reset: jest.fn() };
+    let page = first;
+    const viewer = { pageColors: null, pagesCount: 1, getPageView: () => page, update: jest.fn(), refresh: jest.fn() };
+    const theme = new ThemeController(document.createElement("div"), "light", "light");
+    theme.attach(viewer as unknown as Parameters<ThemeController["attach"]>[0]);
+    theme.lockPages("dark");
+    page = replacement;
+    jest.runAllTimers();
+    expect(first.reset).not.toHaveBeenCalled();
+    expect(replacement.pageColors).toEqual(theme.pageColors);
+    expect(replacement.reset).toHaveBeenCalledTimes(1);
   });
 });

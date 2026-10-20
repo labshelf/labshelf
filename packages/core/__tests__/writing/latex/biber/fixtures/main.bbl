@@ -1,0 +1,324 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.3 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{nyt/global//global/global/global}
+    \entry{birkl2017degradation}{article}{}{}
+      \name{author}{5}{}{%
+        {{un=0,uniquepart=base,hash=baf641ca48045dddf0ce669ea80044ca}{%
+           family={Birkl},
+           familyi={B\bibinitperiod},
+           given={Christoph\bibnamedelima R.},
+           giveni={C\bibinitperiod\bibinitdelim R\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=5a167776a55146ced0f22bc478c765c7}{%
+           family={Roberts},
+           familyi={R\bibinitperiod},
+           given={Matthew\bibnamedelima R.},
+           giveni={M\bibinitperiod\bibinitdelim R\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=e8792cd19286fd954c504d16550cce72}{%
+           family={McTurk},
+           familyi={M\bibinitperiod},
+           given={Euan},
+           giveni={E\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=4a4a36b3b7becacea9d42edd2841c460}{%
+           family={Bruce},
+           familyi={B\bibinitperiod},
+           given={Peter\bibnamedelima G.},
+           giveni={P\bibinitperiod\bibinitdelim G\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=301522086d949ec2e46ae206f84aca35}{%
+           family={Howey},
+           familyi={H\bibinitperiod},
+           given={David\bibnamedelima A.},
+           giveni={D\bibinitperiod\bibinitdelim A\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{0a9ea611789056bbc1ad21d275fcc872}
+      \strng{fullhash}{373953abe2717efcc945c95d8f6a660f}
+      \strng{fullhashraw}{373953abe2717efcc945c95d8f6a660f}
+      \strng{bibnamehash}{0a9ea611789056bbc1ad21d275fcc872}
+      \strng{authorbibnamehash}{0a9ea611789056bbc1ad21d275fcc872}
+      \strng{authornamehash}{0a9ea611789056bbc1ad21d275fcc872}
+      \strng{authorfullhash}{373953abe2717efcc945c95d8f6a660f}
+      \strng{authorfullhashraw}{373953abe2717efcc945c95d8f6a660f}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Journal of Power Sources}
+      \field{title}{Degradation Diagnostics for Lithium Ion Cells}
+      \field{volume}{341}
+      \field{year}{2017}
+      \field{pages}{373\bibrangedash 386}
+      \range{pages}{14}
+      \verb{doi}
+      \verb 10.1016/j.jpowsour.2016.12.011
+      \endverb
+    \endentry
+    \entry{halvorsen2023bms}{article}{}{}
+      \name{author}{3}{}{%
+        {{un=0,uniquepart=base,hash=8769d41d547e52de759b0dc32129643d}{%
+           family={Halvorsen},
+           familyi={H\bibinitperiod},
+           given={Ingrid\bibnamedelima M.},
+           giveni={I\bibinitperiod\bibinitdelim M\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=a1bf08eae6a245885aba1e2a80b92bf3}{%
+           family={Okafor},
+           familyi={O\bibinitperiod},
+           given={Daniel\bibnamedelima C.},
+           giveni={D\bibinitperiod\bibinitdelim C\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=acaf5685fb2cf8685eb3da2e72f0a981}{%
+           family={Lindqvist},
+           familyi={L\bibinitperiod},
+           given={Petra},
+           giveni={P\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{d7daff12e3b9767de518a66951670b9c}
+      \strng{fullhash}{150213cbe33f573b7be5ee08fe922d9a}
+      \strng{fullhashraw}{150213cbe33f573b7be5ee08fe922d9a}
+      \strng{bibnamehash}{150213cbe33f573b7be5ee08fe922d9a}
+      \strng{authorbibnamehash}{150213cbe33f573b7be5ee08fe922d9a}
+      \strng{authornamehash}{d7daff12e3b9767de518a66951670b9c}
+      \strng{authorfullhash}{150213cbe33f573b7be5ee08fe922d9a}
+      \strng{authorfullhashraw}{150213cbe33f573b7be5ee08fe922d9a}
+      \field{sortinit}{H}
+      \field{sortinithash}{23a3aa7c24e56cfa16945d55545109b5}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Journal of Energy Storage}
+      \field{title}{Field Evidence of Capacity Fade in Stationary Lithium-Ion Storage: Two Years of Battery-Management Data from Twelve Sites}
+      \field{volume}{68}
+      \field{year}{2023}
+      \field{pages}{107842}
+      \range{pages}{1}
+      \verb{doi}
+      \verb 10.1016/j.est.2023.107842
+      \endverb
+    \endentry
+    \entry{iea2025storage}{report}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=b33b47b3008c8c47f90a77e0c2dd3060}{%
+           family={{International Energy Agency}},
+           familyi={I\bibinitperiod}}}%
+      }
+      \list{institution}{1}{%
+        {IEA}%
+      }
+      \list{location}{1}{%
+        {Paris}%
+      }
+      \strng{namehash}{b33b47b3008c8c47f90a77e0c2dd3060}
+      \strng{fullhash}{b33b47b3008c8c47f90a77e0c2dd3060}
+      \strng{fullhashraw}{b33b47b3008c8c47f90a77e0c2dd3060}
+      \strng{bibnamehash}{b33b47b3008c8c47f90a77e0c2dd3060}
+      \strng{authorbibnamehash}{b33b47b3008c8c47f90a77e0c2dd3060}
+      \strng{authornamehash}{b33b47b3008c8c47f90a77e0c2dd3060}
+      \strng{authorfullhash}{b33b47b3008c8c47f90a77e0c2dd3060}
+      \strng{authorfullhashraw}{b33b47b3008c8c47f90a77e0c2dd3060}
+      \field{sortinit}{I}
+      \field{sortinithash}{8d291c51ee89b6cd86bf5379f0b151d8}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Batteries and Secure Energy Transitions: Grid-Scale Storage Outlook}
+      \field{type}{Technical report}
+      \field{year}{2025}
+    \endentry
+    \entry{plett2004ekf}{article}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=13ab27c34025c411651590b79efc6d71}{%
+           family={Plett},
+           familyi={P\bibinitperiod},
+           given={Gregory\bibnamedelima L.},
+           giveni={G\bibinitperiod\bibinitdelim L\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{13ab27c34025c411651590b79efc6d71}
+      \strng{fullhash}{13ab27c34025c411651590b79efc6d71}
+      \strng{fullhashraw}{13ab27c34025c411651590b79efc6d71}
+      \strng{bibnamehash}{13ab27c34025c411651590b79efc6d71}
+      \strng{authorbibnamehash}{13ab27c34025c411651590b79efc6d71}
+      \strng{authornamehash}{13ab27c34025c411651590b79efc6d71}
+      \strng{authorfullhash}{13ab27c34025c411651590b79efc6d71}
+      \strng{authorfullhashraw}{13ab27c34025c411651590b79efc6d71}
+      \field{sortinit}{P}
+      \field{sortinithash}{ff3bcf24f47321b42cb156c2cc8a8422}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Journal of Power Sources}
+      \field{number}{2}
+      \field{title}{Extended {Kalman} Filtering for Battery Management Systems of {LiPB}-Based {HEV} Battery Packs, Part 3: State and Parameter Estimation}
+      \field{volume}{134}
+      \field{year}{2004}
+      \field{pages}{277\bibrangedash 292}
+      \range{pages}{16}
+    \endentry
+    \entry{rasmussen2006gp}{book}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=58d90ed7b7348c7a5a9b4a2a8f46df7b}{%
+           family={Rasmussen},
+           familyi={R\bibinitperiod},
+           given={Carl\bibnamedelima Edward},
+           giveni={C\bibinitperiod\bibinitdelim E\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=d34fdfcbfcb5412397b946351370db22}{%
+           family={Williams},
+           familyi={W\bibinitperiod},
+           given={Christopher\bibnamedelimb K.\bibnamedelimi I.},
+           giveni={C\bibinitperiod\bibinitdelim K\bibinitperiod\bibinitdelim I\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{location}{1}{%
+        {Cambridge, MA}%
+      }
+      \list{publisher}{1}{%
+        {MIT Press}%
+      }
+      \strng{namehash}{f0ccf4a09a3a6a91719405724e3ae5da}
+      \strng{fullhash}{f0ccf4a09a3a6a91719405724e3ae5da}
+      \strng{fullhashraw}{f0ccf4a09a3a6a91719405724e3ae5da}
+      \strng{bibnamehash}{f0ccf4a09a3a6a91719405724e3ae5da}
+      \strng{authorbibnamehash}{f0ccf4a09a3a6a91719405724e3ae5da}
+      \strng{authornamehash}{f0ccf4a09a3a6a91719405724e3ae5da}
+      \strng{authorfullhash}{f0ccf4a09a3a6a91719405724e3ae5da}
+      \strng{authorfullhashraw}{f0ccf4a09a3a6a91719405724e3ae5da}
+      \field{sortinit}{R}
+      \field{sortinithash}{5e1c39a9d46ffb6bebd8f801023a9486}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Gaussian Processes for Machine Learning}
+      \field{year}{2006}
+    \endentry
+    \entry{schmalstieg2014holistic}{article}{}{}
+      \name{author}{4}{}{%
+        {{un=0,uniquepart=base,hash=2cb93d7fbbbee3d2e2c4131b4766df77}{%
+           family={Schmalstieg},
+           familyi={S\bibinitperiod},
+           given={Johannes},
+           giveni={J\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=5d48dc631166b278fb798984e15d8962}{%
+           family={Käbitz},
+           familyi={K\bibinitperiod},
+           given={Stefan},
+           giveni={S\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=ad5eb9d131143a4164257e9eea5bfd78}{%
+           family={Ecker},
+           familyi={E\bibinitperiod},
+           given={Madeleine},
+           giveni={M\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=cfc0b0c038ce2330d66fc8d991e748e1}{%
+           family={Sauer},
+           familyi={S\bibinitperiod},
+           given={Dirk\bibnamedelima Uwe},
+           giveni={D\bibinitperiod\bibinitdelim U\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{126c7bd4403ccde2a9441442856ad08d}
+      \strng{fullhash}{6ea70f1c9a460d57393793656a9e41c1}
+      \strng{fullhashraw}{6ea70f1c9a460d57393793656a9e41c1}
+      \strng{bibnamehash}{126c7bd4403ccde2a9441442856ad08d}
+      \strng{authorbibnamehash}{126c7bd4403ccde2a9441442856ad08d}
+      \strng{authornamehash}{126c7bd4403ccde2a9441442856ad08d}
+      \strng{authorfullhash}{6ea70f1c9a460d57393793656a9e41c1}
+      \strng{authorfullhashraw}{6ea70f1c9a460d57393793656a9e41c1}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Journal of Power Sources}
+      \field{title}{A Holistic Aging Model for {Li(NiMnCo)O2} Based 18650 Lithium-Ion Batteries}
+      \field{volume}{257}
+      \field{year}{2014}
+      \field{pages}{325\bibrangedash 334}
+      \range{pages}{10}
+      \verb{doi}
+      \verb 10.1016/j.jpowsour.2014.02.012
+      \endverb
+    \endentry
+    \entry{severson2019data}{article}{}{}
+      \true{moreauthor}
+      \true{morelabelname}
+      \name{author}{3}{}{%
+        {{un=0,uniquepart=base,hash=7172f8e19c5dab571c8b9e625716fd7f}{%
+           family={Severson},
+           familyi={S\bibinitperiod},
+           given={Kristen\bibnamedelima A.},
+           giveni={K\bibinitperiod\bibinitdelim A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=249d6ac28574ee1219b06f162dac35b9}{%
+           family={Attia},
+           familyi={A\bibinitperiod},
+           given={Peter\bibnamedelima M.},
+           giveni={P\bibinitperiod\bibinitdelim M\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=286dfe01c8cda26a536e944f99fea4b4}{%
+           family={Jin},
+           familyi={J\bibinitperiod},
+           given={Norman},
+           giveni={N\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{aa68c8fb844aec4c70049eca87645bc1}
+      \strng{fullhash}{8d0cabc11f6ff18586d573a47ab146cc}
+      \strng{fullhashraw}{8d0cabc11f6ff18586d573a47ab146cc}
+      \strng{bibnamehash}{8d0cabc11f6ff18586d573a47ab146cc}
+      \strng{authorbibnamehash}{8d0cabc11f6ff18586d573a47ab146cc}
+      \strng{authornamehash}{aa68c8fb844aec4c70049eca87645bc1}
+      \strng{authorfullhash}{8d0cabc11f6ff18586d573a47ab146cc}
+      \strng{authorfullhashraw}{8d0cabc11f6ff18586d573a47ab146cc}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Nature Energy}
+      \field{title}{Data-Driven Prediction of Battery Cycle Life before Capacity Degradation}
+      \field{volume}{4}
+      \field{year}{2019}
+      \field{pages}{383\bibrangedash 391}
+      \range{pages}{9}
+      \verb{doi}
+      \verb 10.1038/s41560-019-0356-8
+      \endverb
+    \endentry
+  \enddatalist
+\endrefsection
+\endinput
+

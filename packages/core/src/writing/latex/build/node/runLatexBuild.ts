@@ -5,9 +5,10 @@ import * as path from "node:path";
 import { writeFileAtomic } from "../../../../library/node/index.js";
 import type { ILogger } from "../../../../ports/index.js";
 import type { LatexToolchain } from "../../toolchain/index.js";
-import type { LatexBuildResult } from "../buildResult.js";
-import { latexBuildCommand, type PartialBuild } from "../latexBuildCommand.js";
+import type { LatexBuildResult } from "../index.js";
+import { latexBuildCommand, type PartialBuild } from "../index.js";
 import { writeSectionStatePackage } from "../section/node/index.js";
+import { sectionStateFileName } from "../section/index.js";
 import { compileLatex } from "./compileLatex.js";
 import type { ProblemPlaces } from "./locateProblems.js";
 import { planLatexPreview } from "./planLatexPreview.js";
@@ -21,7 +22,7 @@ export interface LatexBuildRequest extends PartialBuild {
   main: string;
   /** A preview runs the engine once, without bibliography or reruns; a full build runs latexmk. Full when absent. */
   mode?: "preview" | "full";
-  /** The file being edited, relative to the project folder; a preview typesets only it when main `\include`s it. */
+  /** The file being edited, relative to the project folder. */
   editedFile?: string;
   /** 1-based line of the edit in `editedFile`. */
   editedLine?: number;
@@ -29,6 +30,8 @@ export interface LatexBuildRequest extends PartialBuild {
   outDir: string;
   signal: AbortSignal;
   logger: ILogger;
+  /** The command latexmk runs biber's WASM build through; the TeX's own biber when absent. */
+  biber?: readonly string[];
 }
 
 const MODULE = "writing/build";
@@ -50,7 +53,7 @@ async function wholeDocumentReason(request: LatexBuildRequest, base: string): Pr
   return hasFullPdf ? undefined : "no full PDF yet";
 }
 
-/** A preview tries the edited section alone, then the chapter preview; with no edit or no full PDF yet it builds the whole document. */
+// A section that shares page layout needs a document preview to preserve its surroundings.
 async function build(request: LatexBuildRequest, places: ProblemPlaces, base: string): Promise<{ result: LatexBuildResult; mode: string }> {
   const reason = request.mode === "preview" ? await wholeDocumentReason(request, base) : undefined;
   if (reason) { await request.logger.log("INFO", MODULE, `LaTeX preview builds the whole document: ${reason}`, { main: request.main, reason }); }
@@ -60,8 +63,13 @@ async function build(request: LatexBuildRequest, places: ProblemPlaces, base: st
     if (section) { return { result: section, mode: "section" }; }
   }
   const preview = isPreview ? await planLatexPreview(request) : undefined;
+  // INVARIANT: a document preview can change pagination without refreshing the full build's section state.
+  if (preview) { await fs.rm(path.join(request.outDir, sectionStateFileName(base)), { force: true }); }
   if (!preview) { await writeSectionStatePackage(request.outDir); }
-  const command = preview?.command ?? latexBuildCommand(request.toolchain, path.basename(request.main), request.outDir, { ...request, capturesSectionState: true });
+  const { biber, ...partial } = request;
+  const command = preview?.command ?? latexBuildCommand(request.toolchain, path.basename(request.main), request.outDir, {
+    ...partial, capturesSectionState: true, ...(biber && { biber: { command: biber, root: request.projectFolder } }),
+  });
   const run = (): Promise<LatexBuildResult> => compileLatex(request, places, { job: base, command });
   const result = await (preview ? withIncludeOnlyFile(request.outDir, preview.includeOnlyFile, run) : run());
   return { result: await publishPdf(request, places, base, result, !preview), mode: preview ? "preview" : "full" };
@@ -79,7 +87,8 @@ export async function runLatexBuild(request: LatexBuildRequest): Promise<LatexBu
     if (request.mode === "preview") { await dropDatabase(); }
     throw error;
   });
-  if (mode !== "full") { await dropDatabase(); }
+  // TRAP: latexmk records a failed step (e.g. biber blocked by macOS) and refuses every later run until a source changes.
+  if (mode !== "full" || result.status === "failed") { await dropDatabase(); }
   const errors = result.status === "cancelled" ? 0 : result.problems.filter((problem) => problem.severity === "error").length;
   await request.logger.log(result.status === "failed" ? "WARN" : "INFO", MODULE, `LaTeX build ${result.status}`, {
     main: mainFile, engine: request.toolchain.engine, mode, outDir: request.outDir, errors, ms: Date.now() - started,

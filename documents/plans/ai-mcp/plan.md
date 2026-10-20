@@ -1,37 +1,43 @@
-# Plan: LabShelf over MCP
+# Plan: External AI integration through MCP
 
 Status: draft
-Size: not split — the idea catalogue in [research/](research/) comes first; sessions follow once the decisions below are approved.
+Size: not split — select and validate a small external workflow before scheduling implementation sessions.
 
 ## 1. Goal
 
-Researchers use the AI they already have (Copilot, Claude, Codex, a local model) on their library and writing projects, at no cost to LabShelf. The app knows what the user is looking at, the MCP server gives the AI hands, and every AI change shows up in LabShelf where the user reviews and undoes it.
+Researchers use their preferred external AI agent with the papers, full text and personal annotations already organised in LabShelf. MCP supplies bounded access to those operations; optional MCP Apps supply an interface inside a compatible external chat.
+
+[Embedded AI](../ai-embedded/plan.md) owns provider/API/local-model setup and the in-app experience. Neither plan requires the other to ship. User requests are recorded in [library access](research/user-needs/library-access.md), [review workflows](research/user-needs/review-workflows.md), [write-back](research/user-needs/writeback-workflows.md) and [usability](research/user-needs/usability.md); they are evidence, not approved scope.
 
 ## 2. Decisions
 
-- [ ] **D1** One MCP server, `labshelf mcp`, in `packages/terminal`, started from the composition root the CLI and TUI share (`packages/terminal/src/app/context.ts`). VS Code registers it and the browser reaches it through the native host; no second server — one implementation, Node only, no Python install.
-- [ ] **D2** One command catalogue feeds CLI arguments, `--help`, `--json` output and MCP tool schemas; a test asserts that every tool is a command and every command's JSON matches its tool's output schema — [research/cli-integration.md](research/cli-integration.md).
-- [ ] **D3** The default tool profile holds at most 12 intent-level tools and reads in tiers: outline, then section, then page — a long tool list costs tens of thousands of tokens per turn ([research/landscape.md](research/landscape.md)).
-- [ ] **D4** The model never writes BibTeX or library files itself: it cites by paper id, edits arrive as suggestions, and one AI request is one undo step — [research/interaction-patterns.md](research/interaction-patterns.md).
-- [ ] **D5** The focus record (what the user is looking at) lives in the per-machine state folder, outside the library, so sync tools never copy it. Its shape becomes a contract in `documents/contracts/`.
-- [ ] **D6** No sampling (deprecated in the 2026-07-28 spec). Confirmations use elicitation; content reaches a chat only through MCP Apps or a hand-off the user starts.
-- [ ] **D7** `labshelf.yaml` is never writable over MCP, because it holds commands the apps run. Paths stay confined to the library root, and paper text is marked as untrusted data in every tool result.
+- [x] **D1** MCP targets an external agent. It is not the implementation of embedded chat, model downloading or provider switching.
+- [ ] **D2** A local process, `labshelf mcp`, starts from the terminal composition root and delegates to core operations. GUI apps are not required for saved-library reads; live selection and unsaved editor state require an active app connection — [access boundaries](research/hosts.md).
+- [ ] **D3** Evaluate a two-tool read-only surface: library search plus bounded paper reading, including metadata, annotations and source locations. These are candidates, not a final schema. Keep write-back, import and organisation contingent on workflow evidence — [CLI integration](research/cli-integration.md).
+- [ ] **D4** Measure schema/instruction cost, result size, calls per task and answer quality in each target client. Page results, retrieve sections/pages on demand and return only requested images. A small tool count alone does not establish a small context cost.
+- [ ] **D5** Reuse core operations across CLI, embedded AI and MCP. Do not expose every CLI command, add a broad tool profile or require a separate model inside the server.
+- [ ] **D6** Restrict reads and writes to explicitly authorised library/project roots, including resolved paths. Never expose credentials or `labshelf.yaml` writes. Treat retrieved text as untrusted data; surface and log failures without paper text or secrets.
+- [ ] **D7** If writes are selected, reuse core validation, suggestion review and request-level undo from [interaction patterns](../ai-embedded/research/interaction-patterns.md). Define additional formats and external-client permissions before implementation.
+- [ ] **D8** MCP Apps is optional. A useful text/data result is required; an embedded widget needs evidence of an interaction that plain tool results do not serve — [widget candidates](research/mcp-apps-experiences.md).
 
 Open (blocks approval):
 
-- **Q1** First client — VS Code (extension registers the server; Copilot, BYOK keys or Ollama) / Claude Desktop (`.mcpb` and MCP Apps); recommendation: VS Code, because it needs no install step and runs with a local model.
-- **Q2** Default write mode — read-only / propose / write; recommendation: propose, so every write lands in the review inbox first.
-- **Q3** TUI chat pane that drives an agent CLI (`claude -p`, `codex exec`, Ollama) — depends on each vendor's terms for being driven by another app; recommendation: Ollama and Codex first, Claude after a terms check ([research/cli-agent-pane.md](research/cli-agent-pane.md)).
-- **Q4** MCP App bundle — reuse the core reader in one inlined HTML / write a lighter viewer; recommendation: spike the core reader first and measure bundle size and pdf.js worker inlining.
+- **Q1** First external task — evidence/source lookup, review-table extraction or saving sourced notes; recommendation: validate the first two using read-only access.
+- **Q2** First client and installation — select by a real user workflow and verify local/remote transport, model/image support, permissions and context behaviour in that exact client.
+- **Q3** Exposure — local access first, remote access or cloud-provider integration; recommendation: local first. Sync alone does not make a local MCP reachable from another computer or a phone.
+- **Q4** Writes — none, proposals or direct writes; recommendation: keep the read-only experiment separate from any write-back acceptance.
+- **Q5** MCP Apps — whether to build any widget; no initial widget is required by the evidence. Reader bundling is investigated only after selecting an external visual workflow.
 
 ## 3. Acceptance (draft)
 
-- [ ] **A1** After installing the VS Code extension, Copilot Chat lists LabShelf tools, and "what am I reading?" answers with the open paper and page.
-- [ ] **A2** In Claude Desktop, double-clicking `labshelf.mcpb` installs the server, and "show me Figure 3 of vaswani2017" renders the reader widget at that page.
-- [ ] **A3** An AI edit to `main.tex` appears in the editor as a suggestion, and one undo reverts the whole request.
-- [ ] **A4** The cite tool rejects keys that are not in the library, and bib entries come from `metadata.yaml`.
-- [ ] **A5** In the TUI, `A` on a paper opens an agent pane beside the explorer that already knows the paper, and the explorer shows what the agent is reading.
+- [ ] **A1** An external agent finds an existing library paper and retrieves a relevant passage with metadata, page and source link, without manual PDF attachment or either extension's UI being open.
+- [ ] **A2** A selected evidence task can search full text and personal annotations, distinguish their provenance, and report missing data or retrieval failure without presenting it as no matching evidence.
+- [ ] **A3** A selected review-table task can read multiple papers in bounded portions and associate each extracted value with its source passage; figures are delivered as images only when requested and supported.
+- [ ] **A4** Compare the selected task against manual attachment and CLI use. Record startup context, response sizes, round trips and correctness; set the release budget from those measurements.
+- [ ] **A5** Verify confinement, read-only permissions, malformed inputs and untrusted text with regression tests. The server uses ILogger for important actions and failures.
+- [ ] **A6** If write-back is approved, reject invalid paper ids and out-of-scope paths, preserve source/provenance, and verify review plus request-level undo.
+- [ ] **A7** If MCP Apps is approved, its supported host renders the chosen interaction and a host without UI support receives a useful textual result. Image access alone does not require a widget.
 
 ## 4. Sessions
 
-Not split yet.
+Execution sessions follow Q1–Q5. The broader [reading](../ai-embedded/research/reading.md) and [writing](../ai-embedded/research/writing.md) catalogues preserve product ideas without registering a tool for every idea. [Landscape](research/landscape.md) and [MCP Apps mechanics](research/mcp-apps-mechanics.md) are implementation research, not client-support guarantees.

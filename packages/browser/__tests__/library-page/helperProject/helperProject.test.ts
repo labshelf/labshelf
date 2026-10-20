@@ -77,7 +77,7 @@ describe("createHelperProject", () => {
     await port.save("a", "main.tex");
     await flush();
     expect(fake.calls.slice(2)).toEqual(["edit a main.tex 1", "save a main.tex", "compile full"]);
-    expect(events).toEqual(["building", "building", "pdf", "result"]);
+    expect(events).toEqual(["building", "pdf", "result"]);
   });
 
   it("passes the line of an edit to the preview build", async () => {
@@ -189,4 +189,22 @@ describe("createHelperProject", () => {
     expect(logger.error).toHaveBeenCalled();
     expect(hp.lastFullPdf("a")).toBeUndefined();
   });
+});
+
+
+it("retains the displayed PDF when a full build reports no changed pages", async () => {
+  const fake = fakeHelper(READY, await succeededWith(101));
+  const hp = createHelperProject({ helper: fake.helper, logger, timers: instantTimers });
+  await hp.projectChanged(project("a"));
+  const events: BuildEvent[] = [];
+  hp.onBuild((event) => events.push(event));
+  await hp.build("a");
+  await flush();
+  const first = hp.lastFullPdf("a");
+  fake.setResult({ status: "succeeded", pageCount: 1, changed: [], problems: [] });
+  await hp.build("a");
+  await flush();
+  expect(events.filter((event) => event.type === "pdf")).toHaveLength(1);
+  expect(events.filter((event) => event.type === "result")).toHaveLength(2);
+  expect(hp.lastFullPdf("a")).toBe(first);
 });

@@ -1,13 +1,14 @@
-// Composition root of LabShelf Helper, the native-messaging host the browser extension launches to build LaTeX projects and, under the labshelf-bridge name, to read the library folder.
+// Composition root of LabShelf Helper, the native-messaging host the browser extension launches to build LaTeX projects and, under the labshelf-bridge name, to read the library folder; latexmk also starts it in `--biber` mode.
 // CONTRACT: documents/contracts/helper.md#transport
 import * as os from "node:os";
 import { getAsset } from "node:sea";
 
 import { runBridgeHost } from "@labshelf/core/bridge/node";
-import { assertHelperPrivatePaths, createHelperLogger, helperDataDir, runHelperHost } from "@labshelf/core/helper/node";
+import { assertHelperPrivatePaths, BIBER_FLAG, createHelperLogger, helperDataDir, runHelperBiber, runHelperHost } from "@labshelf/core/helper/node";
 import { HELPER_VERSION } from "@labshelf/core/helper";
 import { systemNativeHostEnv } from "@labshelf/core/nativeHost/node";
 
+import { seaBiberAssets } from "./biber/index.js";
 import { registerStandaloneHosts, servedHost, uninstallStandaloneHelper, unregisterStandaloneHosts } from "./register/index.js";
 import { createSelfUpdater } from "./update/index.js";
 
@@ -18,6 +19,12 @@ const MANAGEMENT_FLAGS = ["--register", "--unregister", "--uninstall"];
 async function main(): Promise<number | undefined> {
   const dataDir = helperDataDir(process.env, process.platform, os.homedir());
   const flag = process.argv[2];
+  const biberAssets = seaBiberAssets(dataDir);
+  // latexmk starts this mode as its `$biber` during a build; it speaks no Native Messaging.
+  if (flag === BIBER_FLAG) {
+    if (!biberAssets) { throw new Error(`${BIBER_FLAG} needs an executable built with biber's WASM`); }
+    return runHelperBiber(process.argv.slice(3), biberAssets);
+  }
   // PLATFORM: process.execPath resolves the labshelf-bridge symlink to the helper binary; argv0 keeps the name the browser used.
   const host = servedHost(process.argv0, process.argv.slice(2));
   const managing = host === "helper" && MANAGEMENT_FLAGS.includes(flag ?? "");
@@ -45,6 +52,7 @@ async function main(): Promise<number | undefined> {
   await runHelperHost({ dataDir, logger, helperVersion: HELPER_VERSION, host: "helper", args: process.argv.slice(2),
     // PLATFORM: getAsset returns a view of the executable's memory; slice copies it before the compiler takes it.
     typstWasm: async () => new Uint8Array(getAsset(TYPST_WASM_ASSET).slice(0)),
+    ...(biberAssets && { biber: [process.execPath] }),
     afterHello: () => updater.checkInBackground(),
     afterVersionRejected: async () => { await updater.check({ bypassThrottle: true }); } });
   return undefined;

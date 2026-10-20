@@ -1,4 +1,4 @@
-/** Verifies a preview LaTeX build: one engine pass, only the edited chapter, a full build when none ran yet. */
+/** Verifies a preview LaTeX build: one engine pass, the whole document, a full build when none ran yet. */
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
@@ -60,12 +60,12 @@ posixOnly("runLatexBuild preview", () => {
     expect(await fs.readFile(path.join(s.request.outDir, "main.aux"), "utf8")).toBe("aux\n");
   });
 
-  it("typesets only the edited \\include chapter without changing the source", async () => {
+  it("keeps other chapters in the preview when an included chapter is edited", async () => {
     const s = await setup();
     await withPriorBuild(s);
     await runLatexBuild({ ...s.request, mode: "preview", editedFile: "chapters/intro.tex", editedLine: 1 });
     expect(await lines(s.calls)).toEqual(["xelatex"]);
-    expect((await lines(s.args)).slice(-2)).toEqual(["-jobname=main", "\\includeonly{chapters/intro}\\input{main.tex}"]);
+    expect((await lines(s.args)).at(-1)).toBe("main.tex");
   });
 
   it("compiles main as is when the edited file is \\input, not \\include", async () => {

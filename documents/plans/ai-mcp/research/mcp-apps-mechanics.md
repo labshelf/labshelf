@@ -1,35 +1,28 @@
-sha: 2ffdab1d
+sha: 0b367695
 files: packages/core/src/reader/**, packages/core/src/**/dom/**
-source: web scout 2026-10-18 (github.com/modelcontextprotocol/ext-apps spec 2026-01-26, examples/pdf-server, Patterns guide, developers.openai.com/apps-sdk)
+source: https://apps.extensions.modelcontextprotocol.io/api/documents/overview.html; https://apps.extensions.modelcontextprotocol.io/
 
-# How an MCP App works, and what it means for LabShelf
+# Render optional LabShelf views in external chats
 
 ## Mechanism
 
-- A tool sets `_meta.ui.resourceUri` to a `ui://` resource with mime `text/html;profile=mcp-app`. The host renders that HTML in a sandboxed iframe and talks to it over postMessage (JSON-RPC).
-- The UI is one self-contained HTML file (Vite + `vite-plugin-singlefile`); any framework or none. SDK: `@modelcontextprotocol/ext-apps` (`App`), `/server` (`registerAppTool`, `registerAppResource`).
-- Host → view: `tool-input`, `tool-input-partial` (streamed arguments, last item may be cut), `tool-result`, `tool-cancelled`, `host-context-changed` (theme, CSS variables, fonts, locale, container size), `resource-teardown`.
-- View → host: `tools/call` to our server, `resources/read`, `ui/message` (posts a chat message and starts a turn; host may ask consent), `ui/update-model-context` (replaces what the model knows; may be deferred to the next user message), `ui/open-link`, `ui/request-display-mode` (inline, fullscreen, pip).
-- Tools with `_meta.ui.visibility: ["app"]` are hidden from the model: use them for byte streaming, saving and polling.
-- Hosts without MCP Apps show the tool's text `content`, so every app tool returns a useful text answer too.
+An MCP App associates a tool with an HTML UI resource. A compatible host fetches it, renders it in a sandboxed iframe and mediates communication between the view and server. A host without UI support receives useful text/data from the tool.
 
-## Constraints
+This places a LabShelf view inside an external host. It does not provide embedded inference inside LabShelf, model downloading, file synchronisation or remote access.
 
-- Default CSP blocks the network (`connect-src 'none'`); inline fonts, scripts and the pdf.js worker, or list domains in the resource's `csp`.
-- Popups and plain links are blocked; links go through `openLink` (a `labshelf:` link opens LabShelf at the page).
-- PDF bytes travel through an app-only tool in chunks (the reference viewer uses 500 KB base64 chunks with `hasMore`).
-- The iframe can remount; keep state on the server and use a view id as a localStorage key.
-- Host CSS variables (`--color-*`, `--font-*`, `--border-radius-*`) map onto `--ls-*` tokens; spacing is not provided, so tokens supply it.
-- Claude needs domain signing; ChatGPT has extra `window.openai` APIs — feature-detect, never branch on host name.
+The SDK, resource metadata, notifications, UI-only tool visibility and supported display modes need checking against the selected protocol/host before implementation.
 
-## Reference: the official PDF viewer
+## Candidate constraints to verify
 
-Chunked bytes, real PDF annotations through pdf-lib, the visible page's text sent with `updateModelContext`, and an `interact` tool the model uses to navigate, search, annotate and screenshot. Our reader in core does more and already matches the product look.
+- Measure a self-contained view before selecting a bundler, dependency or reader implementation. Reuse core components and design tokens; do not build a second reader without a measured constraint.
+- Verify CSP, network permissions, worker packaging and PDF-byte transfer. Do not assume access to the desktop filesystem or browser extension origin.
+- Use the host's supported bridge for source links, navigation, tool calls and model-context updates.
+- Preserve state through a defined server/view identity when the host remounts the iframe. Do not assume iframe localStorage or lifecycle behaviour across hosts.
+- Distinguish a user viewing a figure from the model receiving that figure as an image. Either route needs explicit size and capability checks.
+- UI-only tools should not enlarge the model-visible catalogue where the host/protocol supports that separation.
+- A tool call from a widget uses the same confinement, authorisation and write-review rules as a tool called by an agent.
+- A context update is not permission to start another model turn or mutate data. Verify host confirmation behaviour.
 
-## Two-way editing recipe
+## Selection gate
 
-User edits in the widget → saved through an app-only tool → a short summary or a screenshot goes into `updateModelContext` → only then, optionally, a short `ui/message` starts a turn.
-
-## Streaming recipe (Excalidraw)
-
-Parse `tool-input-partial`, drop the incomplete last item, re-render only when the item count grows, fade in the added items, and send a final screenshot to the model.
+Choose a workflow from [widget candidates](mcp-apps-experiences.md), compare it with plain results plus opening LabShelf, and measure whether the interaction earns its payload and setup cost. Reader bundling, chunk sizes, inlining and fullscreen are implementation questions after that gate.

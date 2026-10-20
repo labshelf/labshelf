@@ -3,6 +3,8 @@ export { helperDataDir } from "./helperDataDir.js";
 export { createHelperLogger } from "./log/index.js";
 export type { HelperLogger } from "./log/index.js";
 export { assertHelperPrivatePaths } from "./privacy/index.js";
+export { runHelperBiber } from "./runHelperBiber.js";
+export { BIBER_ASSET_FILES, BIBER_FLAG, parseBiberManifest, type BiberWasmAssets } from "../../latex/biber/index.js";
 export { runHelperHost } from "./runHelperHost.js";
 export type { HelperHostOptions } from "./runHelperHost.js";
 export { runHelperScriptHost } from "./runHelperScriptHost.js";

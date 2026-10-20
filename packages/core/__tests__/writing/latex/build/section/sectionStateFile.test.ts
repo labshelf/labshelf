@@ -51,3 +51,16 @@ describe("parseSectionStates", () => {
     expect(parseSectionStates("section|1|3|main.tex|page=1\r\n").states).toHaveLength(1);
   });
 });
+
+
+it("recognizes only explicitly recorded empty-page boundaries", () => {
+  const text = "section|1|3|main.tex|page=1\nB|1\nP|1|1|1\nsection|1|8|main.tex|page=1\n";
+  const parsed = parseSectionStates(text);
+  expect(parsed.skipped).toBe(0);
+  expect(parsed.states.map((state) => state.pageBoundary === true)).toEqual([true, false]);
+});
+
+it("does not trust a boundary without the heading's shipout record", () => {
+  const parsed = parseSectionStates("section|1|3|main.tex|page=1\nB|1\n");
+  expect(parsed.states[0]?.pageBoundary).toBeUndefined();
+});

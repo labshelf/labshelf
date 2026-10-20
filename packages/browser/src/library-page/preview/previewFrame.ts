@@ -1,4 +1,4 @@
-// Shows a project's build in the reader page embedded in preview mode, handing each assembled PDF over as a blob: URL and taking the reader's requests back.
+// Connects the project preview frame to its library page.
 import { checkPreviewRequest, type HostToWebview, type PreviewRequest, type PreviewRoots } from "@labshelf/core";
 
 const READER_PAGE = "../reader/index.html";
@@ -26,20 +26,8 @@ export function createPreviewFrame(container: HTMLElement, project: { id: string
   const element = document.createElement("iframe");
   element.className = "ls-preview-frame";
   element.title = project.title;
-  // Messages sent before the reader page loaded would reach about:blank; hold them until it loads.
-  let loaded = false;
-  const held: PreviewFrameMessage[] = [];
-  // The newest URL is last; at most two stay alive.
+  const messages = createFrameMessages(element);
   const urls: string[] = [];
-
-  const post = (msg: PreviewFrameMessage): void => {
-    if (!loaded) { held.push(msg); return; }
-    element.contentWindow?.postMessage(msg, location.origin);
-  };
-  element.addEventListener("load", () => {
-    loaded = true;
-    for (const msg of held.splice(0)) post(msg);
-  });
   const listeners = new Set<(request: PreviewRequest) => void>();
   const onMessage = (event: MessageEvent): void => {
     if (event.origin !== location.origin || event.source === null || event.source !== element.contentWindow) return;
@@ -59,13 +47,13 @@ export function createPreviewFrame(container: HTMLElement, project: { id: string
       const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: "application/pdf" }));
       urls.push(url);
       if (urls.length > 2) URL.revokeObjectURL(urls.shift()!);
-      post({ type: "reloadDocument", pdfUrl: url });
+      messages.post({ type: "reloadDocument", pdfUrl: url });
     },
     setBuildStatus(status) {
-      post({ type: "buildStatus", ...status });
+      messages.post({ type: "buildStatus", ...status });
     },
     setPreviewRoots(roots) {
-      post({ type: "previewRoots", roots });
+      messages.post({ type: "previewRoots", roots });
     },
     onRequest(listener) {
       listeners.add(listener);
@@ -73,10 +61,27 @@ export function createPreviewFrame(container: HTMLElement, project: { id: string
     },
     dispose() {
       for (const url of urls.splice(0)) URL.revokeObjectURL(url);
-      held.length = 0;
+      messages.dispose();
       listeners.clear();
       window.removeEventListener("message", onMessage);
       element.remove();
     },
   };
+}
+
+function createFrameMessages(element: HTMLIFrameElement) {
+  let loaded = false;
+  // PLATFORM: messages sent before load reach about:blank; only the latest state can reference a live PDF URL.
+  const held = new Map<PreviewFrameMessage["type"], PreviewFrameMessage>();
+  const post = (message: PreviewFrameMessage): void => {
+    if (!loaded) { held.set(message.type, message); return; }
+    element.contentWindow?.postMessage(message, location.origin);
+  };
+  const onLoad = (): void => {
+    loaded = true;
+    for (const message of held.values()) post(message);
+    held.clear();
+  };
+  element.addEventListener("load", onLoad);
+  return { post, dispose() { held.clear(); element.removeEventListener("load", onLoad); } };
 }

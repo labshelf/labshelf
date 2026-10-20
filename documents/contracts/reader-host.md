@@ -23,6 +23,7 @@ One host controller in core answers every message the reader sends. Each host im
 - **Preferences are validated once.** Both hosts pass stored preferences through the shared `normalizeReaderPrefs`. VS Code reads them from settings; the browser reads them from extension storage.
 - **The sidecar format is shared.** The host persists annotations, theme and reading position through the shared `PaperDataStore` over a `SidecarPort`, which keeps the bytes identical everywhere ([library-format.md](library-format.md#sidecar-datajson)).
 - **Highlights are drawn on their page.** A highlight the reader creates carries its selection's box in the page as `position` ([library-format.md](library-format.md#sidecar-datajson)); the reader draws every annotation with a `position` over its text on that page, and lists the ones without one in the Annotations tab only.
+- **Theme and viewport changes redraw the PDF without requesting a build.** Page colours apply to both the page canvas and the detail canvas at high zoom. Fit modes follow the visible viewport after resizing settles; hidden viewports preserve the zoom.
 - **Reading position is saved only after restore.** The reader does not report a position until it has restored the stored one, so the initial page-1 layout never overwrites it.
 - **`PROTOCOL_VERSION` changes whenever a message changes shape.**
 
@@ -47,7 +48,7 @@ A host can show a build's output in the reader, e.g. a writing project's compile
   - LaTeX: a destination named `cite.<key>` (hyperref; biblatex writes `cite.<n>@<key>`) names its key, and any other LaTeX link names none. Text without a link, from a build without hyperref, goes through SyncTeX to the keys cited on its source line.
   - Typst: a link names the citation that the last build placed inside it.
   - Hovering a single citation shows a card with the byline and year, the REF or BIB tag, the title, the venue and folder, the source line of the citing command, the highlights on the cited page followed by the rest folded, and Open at p. N or Go to source; several citations show one row per key. Clicking a citation link whose key has a library paper opens that paper (`openCitedPaper`) instead of jumping to the bibliography; any other link keeps its jump.
-- **The browser preview runs in a frame of the library page.** Page and frame exchange `postMessage`; the frame forwards each preview request to the page, which serves Recompile, a problem's source line, Compare (opens the project's History tab), Mark version and the check limits, and logs every other request as a warning. Its roots carry `sourceLinks: false`, so the reader hides Comment in the selection bubble; the reader shows Comment only while the shown root has `sourceLinks`.
+- **The browser preview runs in a frame of the library page.** Until the frame loads, the page keeps only the latest PDF, build status and roots. Page and frame exchange `postMessage`; the frame forwards each preview request to the page, which serves Recompile, a problem's source line, Compare (opens the project's History tab), Mark version and the check limits, and logs every other request as a warning. Its roots carry `sourceLinks: false`, so the reader hides Comment in the selection bubble; the reader shows Comment only while the shown root has `sourceLinks`.
 
 ## Changes
 

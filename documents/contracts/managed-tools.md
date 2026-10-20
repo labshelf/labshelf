@@ -54,3 +54,11 @@ Once a year the package repository moves to the next TeX Live release and tlmgr 
 ## Download all packages
 
 "Download all packages" installs `scheme-full` into a managed TinyTeX, so a build never stops to install one. It needs a managed TeX; a full TeX Live already counts as complete.
+
+## macOS executable approval
+
+macOS assesses downloaded executables such as `biber` separately from the app that installed them. Signing LabShelf Helper does not notarize a later TeX package download. A distribution release needs Developer ID signing and Apple notarization for the Helper and an accepted distribution of its executable dependencies ([Apple distribution guidance](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution)).
+
+LaTeX builds run through LabShelf Helper run biber as WASM inside the helper when its `.bcf` version matches (see [helper.md](helper.md#biber)), so macOS assesses no TeX `biber` executable for them.
+
+For a trusted executable blocked because Apple cannot verify its developer or notarization, macOS offers **System Settings → Privacy & Security → Open Anyway** after the failed launch. Confirm that the entry names the executable involved. An alert about malware or damage requires replacing the affected installation with a verified distribution, rather than approving it ([Apple's alert and approval guidance](https://support.apple.com/en-au/102445)).

@@ -36,3 +36,9 @@ credentials/*.json
 /.udd-*
 /.ext-*
 website/dist/
+
+# biber WebAssembly build output (tools/biber-wasm/build.sh)
+tools/biber-wasm/dist/
+
+# Codex agent definitions and local mockup sites
+.codex/

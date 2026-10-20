@@ -1,185 +1,151 @@
-// Connects the page to LabShelf Helper lazily and keeps the open project open there, with its builds and problems.
-import type { ILogger, ProjectEntry } from "@labshelf/core";
-import type { CompileMode, HelperCompileResult, HelperStatus, ILatexHelper } from "@labshelf/core/helper";
-import { assemblePdf, createBuildScheduler, type BuildScheduler, type BuildTimers } from "../preview";
-import { createProblemStore, type ProblemStore } from "./problemStore";
+// Maintains the browser project's connection to the compilation helper.
+import type { ProjectEntry } from "@labshelf/core";
+import type { CompileMode, HelperCompileResult, HelperStatus } from "@labshelf/core/helper";
+import { assemblePdf, createBuildScheduler, type BuildScheduler } from "../preview";
+import { createProblemStore } from "./problemStore";
+import type { BuildEvent, EditorHelperPort, HelperProject, HelperProjectOptions } from "./helperProjectTypes";
 
 const MODULE = "library-page.helperProject";
-
-export type BuildEvent =
-  | { type: "building" }
-  /** The whole PDF after a succeeded build; always sent before that build's `result`. */
-  | { type: "pdf"; bytes: Uint8Array; mode: CompileMode }
-  | { type: "result"; result: HelperCompileResult; mode: CompileMode };
-
-/** What a source editor needs from the helper, available only while its project is open there. */
-export type EditorHelperPort = Pick<ILatexHelper, "status" | "save"> & {
-  /** `line` is the 1-based line of the edit; it goes to the build scheduler, not to the helper's `edit` message. */
-  edit(...args: [...Parameters<ILatexHelper["edit"]>, line?: number]): Promise<void>;
-};
-
-export interface HelperProject {
-  status(): HelperStatus | undefined;
-  /** Connects to the helper and opens the session's project there once it is ready. */
-  connect(): Promise<HelperStatus>;
-  /** The helper for the setup card: its `connect` also opens the session's project. */
-  setupHelper: ILatexHelper;
-  /** The helper while it is ready, else undefined. */
-  helper(): ILatexHelper | undefined;
-  isOpen(projectId: string): boolean;
-  editorPort(projectId: string): EditorHelperPort;
-  problems: Pick<ProblemStore, "subscribe">;
-  /** The whole PDF of the latest succeeded full build of the open project, else undefined. */
-  lastFullPdf(projectId: string): Uint8Array | undefined;
-  /** Starts a full build now; resolves once it has started, and its result arrives through `onBuild`. */
-  build(projectId: string): Promise<void>;
-  onBuild(listener: (event: BuildEvent) => void): () => void;
-  onOpened(listener: (projectId: string) => void): () => void;
-  /** The session opened `entry`, or closed its project (undefined). */
-  projectChanged(entry: ProjectEntry | undefined): Promise<void>;
-}
-
-export interface HelperProjectOptions {
-  helper: ILatexHelper;
-  logger: ILogger;
-  timers?: BuildTimers;
-}
-
 type ReadyEntry = Extract<ProjectEntry, { kind: "ready" }>;
 interface PdfState { latest?: Uint8Array | undefined; full?: Uint8Array | undefined; queue: Promise<void>; closed: boolean }
 interface OpenProject { id: string; scheduler: BuildScheduler | undefined; pdf: PdfState }
 
-export function createHelperProject({ helper, logger, timers }: HelperProjectOptions): HelperProject {
-  const store = createProblemStore();
-  const buildListeners = new Set<(event: BuildEvent) => void>();
-  const openedListeners = new Set<(projectId: string) => void>();
-  let wanted: ReadyEntry | undefined;
-  let open: OpenProject | undefined;
-  let opening: ReadyEntry | undefined;
+class HelperProjectSession {
+  readonly store = createProblemStore();
+  readonly buildListeners = new Set<(event: BuildEvent) => void>();
+  readonly openedListeners = new Set<(projectId: string) => void>();
+  private wanted: ReadyEntry | undefined;
+  private open: OpenProject | undefined;
+  private opening: ReadyEntry | undefined;
 
-  const emit = (event: BuildEvent): void => { for (const listener of [...buildListeners]) listener(event); };
-  const isOpen = (id: string): boolean => open?.id === id;
-
+  constructor(private readonly options: HelperProjectOptions) {}
+  isOpen(id: string): boolean { return this.open?.id === id; }
+  lastFullPdf(id: string): Uint8Array | undefined { return this.isOpen(id) ? this.open?.pdf.full : undefined; }
+  private emit(event: BuildEvent): void { for (const listener of [...this.buildListeners]) listener(event); }
   // INVARIANT: each result builds on the previous PDF, so results are assembled one at a time through `pdf.queue`.
-  async function assemble(pdf: PdfState, projectId: string, main: string, result: HelperCompileResult, mode: CompileMode): Promise<void> {
+  private async assemble(pdf: PdfState, projectId: string, main: string, result: HelperCompileResult, mode: CompileMode): Promise<void> {
     let outcome = result;
     if (result.status === "succeeded") {
       try {
+        const started = Date.now();
+        const previous = pdf.latest;
         pdf.latest = await assemblePdf(pdf.latest, { pageCount: result.pageCount ?? 0, changed: result.changed });
         if (mode === "full") pdf.full = pdf.latest;
-        if (!pdf.closed) emit({ type: "pdf", bytes: pdf.latest, mode });
+        if (!pdf.closed && pdf.latest !== previous) this.emit({ type: "pdf", bytes: pdf.latest, mode });
+        void this.options.logger.log("INFO", MODULE, "Preview PDF assembled", { projectId, mode, changedPages: result.changed.length, reused: pdf.latest === previous, ms: Date.now() - started });
       } catch (error) {
-        await logger.error(MODULE, error, { action: "assemble pdf", projectId, mode });
+        await this.options.logger.error(MODULE, error, { action: "assemble pdf", projectId, mode });
         const message = error instanceof Error ? error.message : String(error);
         outcome = { status: "failed", changed: [], problems: [{ severity: "error", message, file: main }] };
       }
     }
-    if (!pdf.closed) emit({ type: "result", result: outcome, mode });
+    if (!pdf.closed) this.emit({ type: "result", result: outcome, mode });
   }
 
-  function schedulerFor(entry: ReadyEntry, pdf: PdfState): BuildScheduler | undefined {
+  private schedulerFor(entry: ReadyEntry, pdf: PdfState): BuildScheduler | undefined {
     const { main } = entry;
     if (main === undefined) return undefined;
     const { id, engine } = entry.settings;
     return createBuildScheduler({
-      helper, logger, ...(timers ? { timers } : {}),
+      onStart: () => {
+        pdf.queue = pdf.queue.then(() => { if (!pdf.closed) this.emit({ type: "building" }); });
+      },
+      helper: this.options.helper, logger: this.options.logger, ...(this.options.timers ? { timers: this.options.timers } : {}),
       target: { projectId: id, main, ...(engine ? { engine } : {}) },
-      onResult(result, mode) {
-        if (result.status !== "cancelled") store.publish(result.problems);
-        pdf.queue = pdf.queue.then(() => assemble(pdf, id, main, result, mode));
+      onResult: (result, mode) => {
+        if (result.status !== "cancelled") this.store.publish(result.problems);
+        pdf.queue = pdf.queue.then(() => this.assemble(pdf, id, main, result, mode));
       },
     });
   }
 
-  async function openWanted(): Promise<void> {
-    const entry = wanted;
+  private async openWanted(): Promise<void> {
+    const entry = this.wanted;
     // TRAP: the session reports one project again with a new entry (restore, then the records rebuild), so ids decide, not identity.
-    if (entry === undefined || open?.id === entry.settings.id || opening?.settings.id === entry.settings.id) return;
-    if (helper.status()?.state !== "ready") return;
-    opening = entry;
+    if (entry === undefined || this.open?.id === entry.settings.id || this.opening?.settings.id === entry.settings.id) return;
+    if (this.options.helper.status()?.state !== "ready") return;
+    this.opening = entry;
     const id = entry.settings.id;
     try {
-      await helper.openProject(id, entry.folder);
-      const latest = wanted;
-      if (latest?.settings.id !== id) { await helper.closeProject(id); return; }
+      await this.options.helper.openProject(id, entry.folder);
+      const latest = this.wanted;
+      if (latest?.settings.id !== id) { await this.options.helper.closeProject(id); return; }
       const pdf: PdfState = { queue: Promise.resolve(), closed: false };
-      open = { id, scheduler: schedulerFor(latest, pdf), pdf };
-      void logger.log("INFO", MODULE, "project opened in the helper", { projectId: id });
-      for (const listener of [...openedListeners]) listener(id);
+      this.open = { id, scheduler: this.schedulerFor(latest, pdf), pdf };
+      void this.options.logger.log("INFO", MODULE, "project opened in the helper", { projectId: id });
+      for (const listener of [...this.openedListeners]) listener(id);
     } catch (error) {
-      await logger.error(MODULE, error, { action: "open project in helper", projectId: id });
+      await this.options.logger.error(MODULE, error, { action: "open project in helper", projectId: id });
     } finally {
-      opening = undefined;
+      this.opening = undefined;
     }
   }
 
-  async function closeOpen(): Promise<void> {
-    const closing = open;
+  private async closeOpen(): Promise<void> {
+    const closing = this.open;
     if (closing === undefined) return;
-    open = undefined;
+    this.open = undefined;
     closing.scheduler?.dispose();
     closing.pdf.closed = true;
     closing.pdf.full = undefined;
-    store.publish([]);
+    this.store.publish([]);
     try {
-      await helper.closeProject(closing.id);
+      await this.options.helper.closeProject(closing.id);
     } catch (error) {
-      await logger.error(MODULE, error, { action: "close project in helper", projectId: closing.id });
+      await this.options.logger.error(MODULE, error, { action: "close project in helper", projectId: closing.id });
     }
   }
 
-  async function connect(): Promise<HelperStatus> {
-    const status = await helper.connect();
-    await openWanted();
+  async connect(): Promise<HelperStatus> {
+    const status = await this.options.helper.connect();
+    await this.openWanted();
     return status;
   }
 
-  const onOpened = (listener: (projectId: string) => void): (() => void) => {
-    openedListeners.add(listener);
-    return () => { openedListeners.delete(listener); };
-  };
+  editorPort(id: string): EditorHelperPort {
+    const { helper } = this.options;
+    return {
+      status: () => this.isOpen(id) ? helper.status() : undefined,
+      edit: async (projectId, path, version, edit, line) => {
+        if (!this.isOpen(id)) return;
+        await helper.edit(projectId, path, version, edit);
+        this.open?.scheduler?.edit(path, line);
+      },
+      save: async (projectId, path) => {
+        if (!this.isOpen(id)) return;
+        await helper.save(projectId, path);
+        this.open?.scheduler?.save();
+      },
+    };
+  }
 
-  const port = (id: string): EditorHelperPort => ({
-    status: () => (isOpen(id) ? helper.status() : undefined),
-    async edit(projectId, path, version, edit, line) {
-      if (!isOpen(id)) return;
-      await helper.edit(projectId, path, version, edit);
-      open?.scheduler?.edit(path, line);
-      emit({ type: "building" });
-    },
-    async save(projectId, path) {
-      if (!isOpen(id)) return;
-      await helper.save(projectId, path);
-      open?.scheduler?.save();
-      emit({ type: "building" });
-    },
-  });
+  async build(id: string): Promise<void> {
+    if (this.isOpen(id)) this.open?.scheduler?.save();
+  }
 
+  async projectChanged(entry: ProjectEntry | undefined): Promise<void> {
+    this.wanted = entry?.kind === "ready" ? entry : undefined;
+    if (this.open !== undefined && this.open.id !== this.wanted?.settings.id) await this.closeOpen();
+    if (this.wanted === undefined) return;
+    try {
+      if (this.options.helper.status() === undefined) await this.connect(); else await this.openWanted();
+    } catch (error) {
+      await this.options.logger.error(MODULE, error, { action: "connect to the helper" });
+    }
+  }
+}
+
+export function createHelperProject(options: HelperProjectOptions): HelperProject {
+  const session = new HelperProjectSession(options);
+  const { helper } = options;
+  const connect = () => session.connect();
   return {
-    status: () => helper.status(),
-    connect,
-    setupHelper: { ...helper, connect },
-    helper: () => (helper.status()?.state === "ready" ? helper : undefined),
-    isOpen,
-    editorPort: port,
-    problems: store,
-    lastFullPdf: (id) => (isOpen(id) ? open?.pdf.full : undefined),
-    async build(id) {
-      if (!isOpen(id) || open?.scheduler === undefined) return;
-      open.scheduler.save();
-      emit({ type: "building" });
-    },
-    onBuild(listener) { buildListeners.add(listener); return () => { buildListeners.delete(listener); }; },
-    onOpened,
-    async projectChanged(entry) {
-      wanted = entry?.kind === "ready" ? entry : undefined;
-      if (open !== undefined && open.id !== wanted?.settings.id) await closeOpen();
-      if (wanted === undefined) return;
-      try {
-        if (helper.status() === undefined) await connect(); else await openWanted();
-      } catch (error) {
-        await logger.error(MODULE, error, { action: "connect to the helper" });
-      }
-    },
+    status: () => helper.status(), connect, setupHelper: { ...helper, connect },
+    helper: () => helper.status()?.state === "ready" ? helper : undefined,
+    isOpen: (id) => session.isOpen(id), editorPort: (id) => session.editorPort(id), problems: session.store,
+    lastFullPdf: (id) => session.lastFullPdf(id), build: (id) => session.build(id),
+    onBuild(listener) { session.buildListeners.add(listener); return () => { session.buildListeners.delete(listener); }; },
+    onOpened(listener) { session.openedListeners.add(listener); return () => { session.openedListeners.delete(listener); }; },
+    projectChanged: (entry) => session.projectChanged(entry),
   };
 }

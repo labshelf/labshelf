@@ -1,6 +1,4 @@
-/**
- * Applies the reader theme to the chrome (CSS variables keyed on data-pdf-theme) and to the page pixels (pdf.js pageColors).
- */
+// Applies the selected colour preset to the PDF reader.
 import type { PdfTheme } from "../../../model/index.js";
 import type { PDFViewer } from "pdfjs-dist/web/pdf_viewer.mjs" with { "resolution-mode": "import" };
 import { type EffectiveTheme, presetFor, toPageColors } from "../../index.js";
@@ -94,15 +92,16 @@ export class ThemeController {
       || (colors !== null && cur !== null && cur.background === colors.background && cur.foreground === colors.foreground);
     if (same) { return; }
     viewer.pageColors = colors;
-    // pdf.js copies pageColors into each PDFPageView at construction and offers no public setter;
-    // `_pages` is private API, pinned by the ~6.3 version range in package.json.
-    const pages = (viewer as unknown as { _pages?: Array<{ pageColors: PageColors }> })._pages;
-    if (Array.isArray(pages)) {
-      for (const pv of pages) { pv.pageColors = colors; }
-    }
     if (this.refreshTimer) { clearTimeout(this.refreshTimer); }
     this.refreshTimer = setTimeout(() => {
-      viewer.refresh();
+      this.refreshTimer = null;
+      // PLATFORM: refresh can CSS-scale capped canvases, retaining their colours and detail view; reset forces a fresh raster.
+      for (let index = 0; index < viewer.pagesCount; index++) {
+        const page = viewer.getPageView(index);
+        page.pageColors = viewer.pageColors;
+        page.reset();
+      }
+      viewer.update();
       for (const fn of this.listeners) { fn(); }
     }, REFRESH_DELAY_MS);
   }

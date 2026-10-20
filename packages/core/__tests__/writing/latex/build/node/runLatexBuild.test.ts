@@ -81,6 +81,12 @@ posixOnly("runLatexBuild", () => {
     });
   });
 
+  it("drops latexmk's database after a failed full build so the next one reruns the failed step", async () => {
+    const request = await setup('echo "biber gave an error" > "$OUT/main.fdb_latexmk"; exit 12');
+    expect(await runLatexBuild(request)).toMatchObject({ status: "failed" });
+    await expect(fs.stat(path.join(request.outDir, "main.fdb_latexmk"))).rejects.toThrow();
+  });
+
   it("reports a toolchain that cannot be started", async () => {
     const request = await setup("");
     request.toolchain = { engine: "xelatex", executable: path.join(request.outDir, "missing") };

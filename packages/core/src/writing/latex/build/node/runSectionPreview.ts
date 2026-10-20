@@ -5,8 +5,8 @@ import { PDFDocument } from "pdf-lib";
 
 import { readOptionalFile, writeFileAtomic } from "../../../../library/node/index.js";
 import { collectProjectSources } from "../../source/index.js";
-import type { LatexBuildResult } from "../buildResult.js";
-import { latexPreviewCommand } from "../latexPreviewCommand.js";
+import type { LatexBuildResult } from "../index.js";
+import { latexPreviewCommand } from "../index.js";
 import {
   assembleSectionDocument, definitionsBeforeSection, filterAuxForSection, mapSectionProblems, planSectionPreview, sectionPageRange,
   type SectionState,
@@ -48,7 +48,7 @@ async function readSources(request: LatexBuildRequest, mainDir: string): Promise
 }
 
 async function fallBack(request: LatexBuildRequest, reason: string): Promise<undefined> {
-  await request.logger.log("INFO", MODULE, `LaTeX section preview gives way to the one-pass preview of the edited chapter or the whole document: ${reason}`, { main: request.main, reason });
+  await request.logger.log("INFO", MODULE, `LaTeX section preview gives way to the one-pass preview of the document: ${reason}`, { main: request.main, reason });
   return undefined;
 }
 
@@ -83,13 +83,11 @@ async function writeSectionDocument(request: LatexBuildRequest, base: string, jo
 /** The swapped PDF goes to the build folder, the shown copy and next to main. */
 async function publishSwap(request: LatexBuildRequest, places: ProblemPlaces, base: string, job: SectionJob, sectionPdf: string): Promise<string | undefined> {
   const shown = await fs.readFile(path.join(request.outDir, shownPdfName(base))).catch(() => undefined);
-  if (!shown) { return undefined; }
+  if (!shown) return fallBack(request, "no-shown-pdf");
   const section = await fs.readFile(sectionPdf);
   const pageCount = (await PDFDocument.load(shown, { updateMetadata: false })).getPageCount();
-  // TRAP: the swap replaces whole pages, so until the next full build a section that starts mid-page drops the previous
-  // section's tail from its first page, and a next section that starts mid-page loses its opening from the last page;
-  // the page asks for a full build after 2 s idle and on save.
   const swapped = await swapSectionPages(shown, section, sectionPageRange(job.states, job.sectionIndex, pageCount));
+  if (!swapped) return fallBack(request, "section-page-count-changed");
   const pdf = path.join(places.workDir, `${base}.pdf`);
   for (const file of [path.join(request.outDir, `${base}.pdf`), path.join(request.outDir, shownPdfName(base)), pdf]) {
     await writeFileAtomic(file, swapped);
@@ -97,7 +95,7 @@ async function publishSwap(request: LatexBuildRequest, places: ProblemPlaces, ba
   return pdf;
 }
 
-/** The section preview's result, or none after logging why the chapter preview runs instead. */
+/** The section preview's result, or none after logging why the document preview runs instead. */
 export async function runSectionPreview(request: LatexBuildRequest, places: ProblemPlaces, base: string): Promise<LatexBuildResult | undefined> {
   const job = await planJob(request, places, base);
   if (typeof job === "string") { return fallBack(request, job); }
@@ -114,12 +112,12 @@ export async function runSectionPreview(request: LatexBuildRequest, places: Prob
   }));
   if (result.status === "cancelled") { return result; }
   if (result.status === "failed") {
-    await request.logger.log("WARN", MODULE, "LaTeX section preview failed; the chapter preview runs instead", {
+    await request.logger.log("WARN", MODULE, "LaTeX section preview failed; the document preview runs instead", {
       main: request.main, section: job.sectionIndex, problems: result.problems.slice(0, 3).map((problem) => problem.message),
     });
     return undefined;
   }
   const pdf = await publishSwap(request, places, base, job, result.pdf);
-  if (!pdf) { return fallBack(request, "no-shown-pdf"); }
+  if (!pdf) return undefined;
   return { status: "succeeded", pdf, problems: result.problems };
 }
