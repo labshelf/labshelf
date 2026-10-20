@@ -6,7 +6,7 @@ export type { BuildShareInput, BuiltShare, SharePaperInput, SharePartLimits, Sto
 export type { ShareBackend, ShareReader } from "./shareBackend.js";
 export { openShare } from "./openShare.js";
 export type { LoadPdfError, LoadPdfResult, OpenedShare, OpenShareError, OpenShareResult } from "./openShare.js";
-export { loadShareRegistry, saveShareRegistry, shareRecordLink } from "./shareRegistry.js";
+export { loadShareRegistry, shareRecordLink, updateShareRegistry } from "./shareRegistry.js";
 export type { ShareRecord, ShareRegistry, ShareRegistryStore } from "./shareRegistry.js";
 export { uploadShare } from "./uploadShare.js";
 export type { UploadShareOptions } from "./uploadShare.js";
@@ -14,3 +14,4 @@ export { importSharedPapers } from "./importSharedPapers.js";
 export type { ImportSharedPapersOptions, SharedImportSummary } from "./importSharedPapers.js";
 export { revokeShare } from "./revokeShare.js";
 export type { RevokeShareOptions } from "./revokeShare.js";
+export * from "./workflow/index.js";

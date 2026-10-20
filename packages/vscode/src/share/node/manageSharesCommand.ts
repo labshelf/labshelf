@@ -1,7 +1,7 @@
 // Lists the shares this device made of library folders, and copies, opens or revokes the link of the one picked.
 import * as vscode from "vscode";
 
-import { createWorkerShareBackend, loadShareRegistry, revokeShare, shareRecordLink, type ShareRecord, type ShareRegistryStore } from "@labshelf/core";
+import { loadShareRegistry, relayBackendFor, revokeShare, revokeShareConfirm, shareRecordLink, type ShareRecord, type ShareRegistryStore } from "@labshelf/core";
 import type { ActiveServices } from "../../commands/index.js";
 import { reportShareFailure, shareRegistry, type ShareLinkHost } from "./shareLinkHost.js";
 
@@ -26,17 +26,9 @@ async function pickAction(share: ShareRecord): Promise<Action | undefined> {
 }
 
 async function revoke(host: ShareLinkHost, services: ActiveServices, registry: ShareRegistryStore, share: ShareRecord): Promise<void> {
-  const choice = await vscode.window.showWarningMessage(
-    `Revoke the link to "${share.folder}"?`,
-    { modal: true, detail: "The shared papers are deleted from your relay. Anyone who has the link can no longer open it, within about a minute." },
-    "Revoke",
-  );
-  if (choice !== "Revoke") { return; }
-  const account = await host.relay.get();
-  const backendFor = (relayUrl: string) => {
-    if (account?.relayUrl !== relayUrl) { throw new Error(`the link lives on ${new URL(relayUrl).host}, a relay this device is not connected to`); }
-    return createWorkerShareBackend({ relayUrl, ownerSecret: account.ownerSecret });
-  };
+  const confirm = revokeShareConfirm(share.folder);
+  if ((await vscode.window.showWarningMessage(confirm.message, { modal: true, detail: confirm.detail }, "Revoke")) !== "Revoke") { return; }
+  const backendFor = relayBackendFor(await host.relay.get());
   const revoked = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `Revoking the link to "${share.folder}"` }, () =>
     revokeShare(share.id, { registry, backendFor, logger: services.logger }));
   void vscode.window.showInformationMessage(revoked ? `Revoked the link to "${share.folder}".` : `The link to "${share.folder}" is no longer listed on this device.`);

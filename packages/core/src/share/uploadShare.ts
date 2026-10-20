@@ -5,7 +5,7 @@ import type { BuiltShare } from "./buildShare.js";
 import { formatShareLink } from "./format/index.js";
 import { revokeShare } from "./revokeShare.js";
 import type { ShareBackend } from "./shareBackend.js";
-import { loadShareRegistry, saveShareRegistry, type ShareRegistryStore } from "./shareRegistry.js";
+import { updateShareRegistry, type ShareRegistryStore } from "./shareRegistry.js";
 
 export interface UploadShareOptions {
   share: BuiltShare;
@@ -33,13 +33,12 @@ async function putShare(share: BuiltShare, backend: ShareBackend): Promise<numbe
 // CONTRACT: documents/contracts/share-link.md#upload-and-revoke
 /** Returns the share link. */
 export async function uploadShare({ share, relayUrl, backend, registry, logger, now = () => new Date() }: UploadShareOptions): Promise<string> {
-  const listed = await loadShareRegistry(registry);
   const record = {
     id: share.shareId, folder: share.manifest.folder, relayUrl, key: bytesToBase64Url(share.key),
     createdAt: now().toISOString(), blobs: share.blobs.map((blob) => blob.hash),
   };
   // The share is listed before anything is uploaded, so whatever reaches the Worker can be revoked.
-  await saveShareRegistry(registry, { shares: [...listed.shares, record] });
+  await updateShareRegistry(registry, (listed) => ({ shares: [...listed.shares, record] }));
   const context = { shareId: share.shareId, relayUrl, papers: share.manifest.papers.length, blobs: share.blobs.length };
   try {
     const uploaded = await putShare(share, backend);

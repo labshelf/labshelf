@@ -14,7 +14,7 @@ describe("share over the relay Worker", () => {
     const { env } = fakeEnv();
     const workerFetch = ((input: RequestInfo | URL, init?: RequestInit) => worker.fetch(new Request(input, init), env)) as typeof fetch;
     const store: ShareRegistryStore & { text?: string } = {
-      read: async () => store.text, write: async (text) => { store.text = text; },
+      read: async () => store.text, write: async (text) => { store.text = text; }, exclusive: (run) => run(),
     };
     const pdf = new Uint8Array(3000).map((_, index) => (index * 7) % 251);
     const share = await buildShare({

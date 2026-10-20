@@ -1,15 +1,16 @@
 // Shares a library folder as a link: the rights notice and annotations choice, then reading, encrypting and uploading its papers.
 import * as vscode from "vscode";
 
-import { buildShare, createWorkerShareBackend, uploadShare, type PaperRecord } from "@labshelf/core";
+import {
+  relayBackendFor, shareableFolders, shareFolderAsLink, shareRightsNotice, SHARE_WITH_ANNOTATIONS, SHARE_WITHOUT_ANNOTATIONS,
+  type PaperRecord, type ShareableFolder, type ShareFolderStage,
+} from "@labshelf/core";
 import type { ActiveServices } from "../../commands/index.js";
-import { papersInFolder, shareableFolders, sharePaperInputs, type ShareableFolder } from "../index.js";
 import { connectedRelay, LOG_MODULE, reportShareFailure, shareRegistry, type ShareLinkHost } from "./shareLinkHost.js";
 
 export const SHARE_FOLDER_COMMAND = "labshelf.share.folder";
 
-const WITH_ANNOTATIONS = "Share with my annotations";
-const WITHOUT_ANNOTATIONS = "Share without annotations";
+const STAGE_TEXT: Record<ShareFolderStage, string> = { reading: "reading papers…", encrypting: "encrypting…", uploading: "uploading…" };
 
 /** A Library view node names its folder; anything else means the user picks one. */
 function folderOf(target: unknown, services: ActiveServices): string | undefined {
@@ -31,12 +32,9 @@ async function pickFolder(papers: PaperRecord[], services: ActiveServices, prese
 }
 
 async function askAnnotations(folder: ShareableFolder): Promise<boolean | undefined> {
-  const choice = await vscode.window.showWarningMessage(
-    "You are responsible for having the right to share these papers.",
-    { modal: true, detail: `Anyone with the link can read the ${folder.count} papers of "${folder.label}" and download their PDFs, until you revoke it.` },
-    WITH_ANNOTATIONS, WITHOUT_ANNOTATIONS,
-  );
-  return choice === undefined ? undefined : choice === WITH_ANNOTATIONS;
+  const notice = shareRightsNotice(folder);
+  const choice = await vscode.window.showWarningMessage(notice.message, { modal: true, detail: notice.detail }, SHARE_WITH_ANNOTATIONS, SHARE_WITHOUT_ANNOTATIONS);
+  return choice === undefined ? undefined : choice === SHARE_WITH_ANNOTATIONS;
 }
 
 export async function shareFolder(host: ShareLinkHost, target?: unknown): Promise<void> {
@@ -51,19 +49,14 @@ export async function shareFolder(host: ShareLinkHost, target?: unknown): Promis
   const { fs, paths } = services.mutations;
   const context = { folder: folder.dir, papers: folder.count, withAnnotations, relayUrl: account.relayUrl };
   try {
-    const link = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `Sharing "${folder.label}"` }, async (progress) => {
-      progress.report({ message: "reading papers…" });
-      const inputs = await sharePaperInputs(papersInFolder(papers, folder.dir, paths.sep), withAnnotations, {
-        fs, paths, annotations: (paperId) => services.paperDataStore.getAnnotations(paperId),
-      });
-      progress.report({ message: "encrypting…" });
-      const share = await buildShare({ folderName: paths.basename(folder.dir), papers: inputs, withAnnotations });
-      progress.report({ message: "uploading…" });
-      const backend = createWorkerShareBackend({ relayUrl: account.relayUrl, ownerSecret: account.ownerSecret });
-      return uploadShare({ share, relayUrl: account.relayUrl, backend, registry, logger: services.logger });
-    });
+    const { link, summary } = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `Sharing "${folder.label}"` }, (progress) =>
+      shareFolderAsLink({
+        papers, folder: folder.dir, withAnnotations, relayUrl: account.relayUrl, backendFor: relayBackendFor(account), registry, logger: services.logger,
+        sources: { fs, paths, annotations: (paperId) => services.paperDataStore.getAnnotations(paperId) },
+        onStage: (stage) => progress.report({ message: STAGE_TEXT[stage] }),
+      }));
     await vscode.env.clipboard.writeText(link);
-    await services.logger.log("INFO", LOG_MODULE, "Shared a folder as a link", context);
+    await services.logger.log("INFO", LOG_MODULE, "Shared a folder as a link", summary);
     const open = "Open Link";
     const choice = await vscode.window.showInformationMessage(`Copied the link to "${folder.label}". Anyone who has it can open these papers.`, open);
     if (choice === open) { await vscode.env.openExternal(vscode.Uri.parse(link)); }

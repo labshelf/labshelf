@@ -2,7 +2,7 @@
 
 Read when you change how a folder of papers is shared as a link, what the owner's Worker stores for it, or how the share page opens it.
 
-A *share link* gives anyone who has it a read-only copy of a folder of papers: their metadata, BibTeX, PDFs and, when the sharer chose so, their annotations. LabShelf uploads the copies, encrypted, to the owner's [relay Worker](relay.md); the share page of the LabShelf site decrypts them in the browser. The owner's account holds only ciphertext. Core's `share` module is the one implementation, and every app and the site use it.
+A *share link* gives anyone who has it a read-only copy of a folder of papers: their metadata, BibTeX, PDFs and, when the sharer chose so, their annotations. LabShelf uploads the copies, encrypted, to the owner's [relay Worker](relay.md); the share page of the LabShelf site decrypts them in the browser. The owner's account holds only ciphertext. Core's `share` module is the one implementation, and every app and the site use it: its workflows share a folder, revoke a share and import a link, and also hold the words the apps show, so an app adds only its pickers, dialogs, progress and clipboard.
 
 ## Link
 
@@ -74,6 +74,8 @@ The owner's Worker serves shares from protocol `1.1` of the [relay](relay.md#ver
 - Upload writes the share to the device's [share list](#share-list) first, so whatever reaches the Worker can be revoked. It then puts every blob the Worker does not hold yet, and the manifest last, so a link never names a missing blob. A failed upload revokes what it wrote; if that fails too, the share stays listed for the user to revoke.
 - Revoke deletes the manifest first, which ends the link once Cloudflare KV drops its edge copies (up to about 60 s), then every blob of the share that no other share in the list names, then removes the share from the list. A failure keeps the share listed; the deletes are idempotent, so revoking again finishes.
 - The share list is per device. A blob that a share made on another device also uses is deleted by a revoke here, and that share's PDF reads as missing.
+- A share is written and revoked only through the relay account the device is connected to; a share listed with another relay URL is refused, naming its host.
+- The network calls run outside the share list's exclusive section (see [Share list](#share-list)). A share uploaded while a revoke deletes a blob it also names keeps a missing PDF; the revoke logs it.
 
 ## Open in LabShelf
 
@@ -98,3 +100,4 @@ The shares a device made live in its state dir, outside the library: `<state dir
 
 - `key` is the link key in base64url, so the device can show the link again. `blobs` lists every blob hash the share's manifest names.
 - A missing file reads as no shares. A file that is not this JSON is never overwritten: upload and revoke stop with an error, since writing over it would lose the shares the device can still revoke. An entry with a malformed field is dropped. Every write is atomic.
+- Every change of the list reads it again and writes it inside the store's exclusive section, so two pages or windows that add and remove shares at once keep both changes. A revoke removes only its own entry from the list as it is when the deletes finish. The desktop file store serializes the sections of one process; two VS Code windows over one library are not serialized against each other.
