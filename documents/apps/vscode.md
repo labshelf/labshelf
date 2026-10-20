@@ -108,6 +108,16 @@ A cheaper middle ground reproduces pdf.js's environment but not the host lifecyc
 
 To test scans, render a real paper's pages to PNG and rebuild an image-only PDF with pdf-lib.
 
+### Collaboration against a local relay
+
+Use a local `wrangler dev --local --local-protocol https` relay as in [browser.md](browser.md#collaboration-against-a-local-relay), with the scratch CA in `NODE_EXTRA_CA_CERTS` and `NO_PROXY=127.0.0.1,localhost`.
+
+- Launch hosts from a `@vscode/test-electron` copy under `xvfb-run -a` with a short `--user-data-dir`, `--remote-debugging-port` and `--inspect-extensions`. A dev extension with `activationEvents ["*"]` polls a control directory and runs the `{command,args}` files it finds. Never use `--inspect-brk-extensions`: the renderer restarts the host after 10 s.
+- User settings: `http.proxySupport: "off"`, `http.fetchAdditionalSupport: false`, `http.webSocketAdditionalSupport: false`. VS Code patches the host's global `fetch` and `WebSocket` with its own CA list, which drops `NODE_EXTRA_CA_CERTS`.
+- Seed the relay account in SecretStorage key `labshelf.relay.account`: another extension cannot read it, so set a conditional breakpoint `(globalThis.__sec = secrets, false)` on the secret-slot `get` in `out/extension.js` through the inspector, trigger one read, then call `__sec.store(...)` from the runner.
+- `labshelf.collab.share` needs the full project folder path as its argument; a bare id opens nothing.
+- Stop a host with `kill -9` of its own PID. A plain `kill` can leave the main process alive and the relaunch exits silently.
+
 ## Webview harness
 
 Webview UI (the reader and the list panel) can only be verified in a real browser:

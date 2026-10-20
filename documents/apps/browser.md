@@ -147,6 +147,23 @@ Playwright's full Chrome for Testing can load the unpacked extension. Run it out
 - To test the popup against an article tab, open `popup/index.html` in a 340 px target, overriding `chrome.tabs.query` through `Page.addScriptToEvaluateOnNewDocument`.
 - For reader parity with VS Code, render both readers on the same real paper and pixel-diff the toolbar and sidebar. CDP drags do not create text selections in either reader; select with a `Range` plus a synthetic `mouseup` instead.
 
+### Collaboration against a local relay
+
+Relay URLs must be `https:`, so a local relay needs TLS and no Cloudflare account.
+
+- Bundle the Worker with `bundleRelayWorker` from `packages/core/tools/relayWorker/`. Run it with `wrangler dev --local --local-protocol https --ip 127.0.0.1 --persist-to <scratch>`, binding the Durable Object `ROOM` (class `Room`, `new_sqlite_classes`) and a KV namespace `KV`, with `OWNER_SECRET` in `.dev.vars`.
+- Launch Chromium with `--ignore-certificate-errors` (it covers `wss`) and `--no-proxy-server`. Set `NO_PROXY=127.0.0.1,localhost` for Node tooling.
+- Seed the owner profile's relay account in IndexedDB `labshelf-relay-account` (store `secrets`, key `account`) as the JSON of `{accountId, relayUrl, ownerSecret, kvNamespaceId, credential:{kind:"token", token}}`. A current local relay needs no Cloudflare API call. The joining profile needs no account.
+- Join in a second profile at `library-page/index.html#/join/<invite>`. Read the `labshelf` and `labshelf-collab` databases to check stored content.
+
+### Headless Firefox
+
+Stock Firefox is driven through geckodriver, because Playwright's Firefox needs its patched build.
+
+- Start geckodriver with `--allow-system-access`; without it, extension pages are unscriptable.
+- Run Firefox with `-headless` and the pref `extensions.webextensions.uuids={"labshelf@lucanaasser.dev":"<fixed uuid>"}` so the page URL is known. Install `dist/firefox` as a temporary add-on.
+- Navigation to `moz-extension://` is refused. Load an http page, then set `location.href` to `moz-extension://<uuid>/library-page/index.html` from `executeScript`. Only web-accessible pages open this way.
+
 ### Chrome DevTools MCP
 
 The project-scope `.mcp.json` registers `chrome-devtools-mcp` (version pinned, headless, isolated profile, extension tools on, usage statistics and CrUX lookups off). An agent loads and inspects the unpacked extension without a hand-written CDP harness:
