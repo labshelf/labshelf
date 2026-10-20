@@ -98,6 +98,16 @@ describe("createPageShares", () => {
     expect(await profile.fs.readText(MAIN)).toBe("hello");
   });
 
+  it("keeps an edit made while no relay is reachable (the testbed is offline) in the stored share state, so it is there after a reconnect", async () => {
+    const page = profile.openPage();
+    await connect(page);
+    await until(() => page.docText("main.typ") === "hello");
+    edit(page, "edited offline");
+    await page.shares.closeAll();
+    await connect(page);
+    await until(() => page.docText("main.typ") === "edited offline");
+  });
+
   it("fails a connect for a share whose key was never stored", async () => {
     const page = profile.openPage();
     await expect(page.shares.connect("other", "f".repeat(32), "projects/other")).rejects.toThrow("f".repeat(32));

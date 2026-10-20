@@ -6,18 +6,31 @@ import type { PagePrefs } from "../prefs";
 import type { TabKindName } from "../tabs";
 import type { SidebarProjects } from "./sidebarProjects";
 
+/** The page's sidebar Projects section and the Cloudflare relay its shares use; both exist only on a page that shows projects. */
+export interface SidebarProjectParts {
+  projects: SidebarProjects;
+  manageRelay(): void;
+}
+
+function headButton(label: string, glyph: "gear" | "cloud", onClick: () => void): HTMLElement {
+  const button = el("button", { class: "ls-icon-btn", type: "button", title: label, "aria-label": label, html: icon(glyph) });
+  button.addEventListener("click", onClick);
+  return button;
+}
+
 /**
  * Fills the sidebar slot with the brand and the tree; returns the tree's unsubscribe function.
- * Without `projects` the tree has no Projects section; with `showLibrary` false it has no Library section.
+ * Without `project` the tree has no Projects section; with `showLibrary` false it has no Library section.
  */
 export function mountSidebarTree(
   ui: Pick<LibraryUi, "store" | "folders" | "dropTarget">, slot: HTMLElement, prefs: PagePrefs, host: Pick<HostEndpoint, "post">,
-  projects: SidebarProjects | null, openTab: (kind: TabKindName) => void, showLibrary: boolean,
+  project: SidebarProjectParts | null, openTab: (kind: TabKindName) => void, showLibrary: boolean,
 ): () => void {
   slot.innerHTML = `<div class="tree-head"><span class="ls-brand">LabShelf</span></div>`;
-  const settings = el("button", { class: "ls-icon-btn", type: "button", title: "LabShelf settings", "aria-label": "LabShelf settings", html: icon("gear") });
-  settings.addEventListener("click", () => { void bx.runtime.openOptionsPage(); });
-  slot.querySelector(".tree-head")!.append(settings);
+  const head = slot.querySelector(".tree-head")!;
+  if (project) head.append(headButton("Cloudflare relay for shared projects", "cloud", project.manageRelay));
+  head.append(headButton("LabShelf settings", "gear", () => { void bx.runtime.openOptionsPage(); }));
+  const projects = project?.projects;
   const treeEl = slot.appendChild(document.createElement("div"));
   const { store, folders } = ui;
   const sidebar = mountLibrarySidebar(treeEl, {

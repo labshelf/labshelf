@@ -40,7 +40,7 @@ function mount(expanded: string[] = [], sections = { library: true, projects: tr
     { rows: async () => [], entryOf: async () => undefined, openPdf: jest.fn() }, openTab,
     { openProject: jest.fn(), closeProject: jest.fn(), attachSidebar: jest.fn(), treeClick: jest.fn(), treeAction: jest.fn() }, jest.fn(),
   ) : null;
-  mountSidebarTree(ui, slot, prefs, host, projects, openTab, sections.library);
+  mountSidebarTree(ui, slot, prefs, host, projects && { projects, manageRelay: jest.fn() }, openTab, sections.library);
   return { store, slot, posted, prefs, saved, openTab };
 }
 

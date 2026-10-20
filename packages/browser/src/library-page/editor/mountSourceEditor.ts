@@ -37,6 +37,8 @@ export interface SourceEditorDeps {
   comments?: EditorComments;
   /** The file's shared text: the editor edits it in place, and the share's file writer saves the file. */
   collab?: { text: Y.Text; presence: PresenceHandle; name: string };
+  /** Shows the file without letting the user edit it, as a shared file whose session could not start is shown. */
+  readOnly?: boolean;
   logger: ILogger;
   onDirty(dirty: boolean): void;
   /** Runs after each successful write of the file. */
@@ -130,7 +132,8 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
     helperEdits.changed(update.changes, update.state.doc);
     if (path.endsWith(".tex")) labels.schedule(path, () => update.view.state.doc.toString());
   });
-  const extensions = [formattingKeymap(kind), ...documentExtensions(deps, language, lineBreak, saveNow), ...(commentsSupport?.extensions ?? []), onUpdate];
+  const readOnly = deps.readOnly ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : [];
+  const extensions = [formattingKeymap(kind), ...documentExtensions(deps, language, lineBreak, saveNow), ...(commentsSupport?.extensions ?? []), onUpdate, ...readOnly];
   view = new EditorView({ parent: host, state: EditorState.create({ doc: text, extensions }) });
   helperEdits.changed(view.state.changes(), view.state.doc);
   const stopProblems = deps.problems?.(path, (problems) => applyProblems(view!, problems));

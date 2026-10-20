@@ -1,9 +1,12 @@
 // Reads what a share of a library folder holds: the folders that can be shared, and each paper's bib, PDF and annotations.
-import { countPapersUnder, folderPathLabel, isUnderDir, paperFiles, type Annotation, type LibraryFileSystem, type PaperRecord, type PathOps, type SharePaperInput } from "@labshelf/core";
+import { countPapersUnder, folderPathLabel, isUnderDir, paperFiles, type PathOps } from "../../library/index.js";
+import type { Annotation, PaperRecord } from "../../model/index.js";
+import type { LibraryFileSystem } from "../../ports/index.js";
+import type { SharePaperInput } from "../buildShare.js";
 
 export interface FolderShareSources {
   fs: Pick<LibraryFileSystem, "exists" | "readText" | "readFile">;
-  paths: Pick<PathOps, "join">;
+  paths: Pick<PathOps, "join" | "basename" | "sep">;
   annotations(paperId: string): Promise<Annotation[]>;
 }
 

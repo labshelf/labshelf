@@ -1,8 +1,8 @@
 // Reads and edits the comment threads of a shared project in its index doc's comments map.
 // CONTRACT: documents/contracts/collaboration.md#comments
 import * as Y from "yjs";
-import { indexComments } from "../model/index.js";
-import { compareThreads, readThread, type Comment, type CommentThread } from "./commentThread.js";
+import { indexComments } from "../../model/index.js";
+import { compareThreads, readThread, type Comment, type CommentThread } from "../commentThread.js";
 
 // INVARIANT: every key of a thread is a plain value except `comments`, a Y.Array, so concurrent replies merge.
 function threadMap(thread: Record<string, unknown>): Y.Map<unknown> {

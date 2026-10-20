@@ -1,59 +1,55 @@
-// Keeps the comment threads of a shared project in its index doc's comments map; the share's disk mirror writes comments.json from it.
+// Shows a shared project's comment threads through the core lifecycle over its session; the share's disk mirror writes comments.json.
 // CONTRACT: documents/contracts/collaboration.md#comments
 import * as vscode from "vscode";
 
-import {
-  addLiveThread, fileText, indexComments, indexFiles, liveAnchorFor, liveThreads, locateThread,
-  replyToLiveThread, setLiveThreadResolved, type Comment, type CommentThread, type TextRange,
-} from "@labshelf/core";
+import { sharedProjectComments, type Comment, type CommentThread, type SharedProjectComments, type TextRange } from "@labshelf/core";
 import type { CommentShare, ProjectComments } from "./projectComments.js";
 
 /** A shared project's threads, live with every member. */
 export class SharedComments implements ProjectComments {
   readonly folder: string;
+  private readonly comments: SharedProjectComments;
   private readonly changeEmitter = new vscode.EventEmitter<void>();
   readonly onDidChange = this.changeEmitter.event;
-  private readonly onMap = () => this.changeEmitter.fire();
+  private readonly stopWatching: () => void;
 
-  constructor(private readonly share: CommentShare) {
+  constructor(share: CommentShare) {
     this.folder = share.folder;
-    indexComments(share.session.index).observeDeep(this.onMap);
+    this.comments = sharedProjectComments(share.session);
+    this.stopWatching = this.comments.onChange(() => this.changeEmitter.fire());
   }
 
   threads(): readonly CommentThread[] {
-    return liveThreads(this.share.session.index);
+    return this.comments.threads();
   }
 
   async textOf(file: string): Promise<string | undefined> {
-    return indexFiles(this.share.session.index).get(file)?.kind === "text" ? this.yText(file).toString() : undefined;
+    return this.comments.textOf(file);
   }
 
-  locate(thread: CommentThread, text: string) {
-    return locateThread(thread, text, this.yText(thread.file));
+  // The live text is the text `textOf` returned, so the thread is placed in it directly.
+  locate(thread: CommentThread) {
+    return this.comments.locate(thread);
   }
 
   anchor(file: string, _text: string, range: TextRange) {
-    return liveAnchorFor(this.yText(file), range.start, range.end);
+    return this.comments.anchor(file, range);
   }
 
   async add(thread: CommentThread): Promise<void> {
-    if (!addLiveThread(this.share.session.index, thread)) { throw new Error(`the share already holds a thread with id ${thread.id}`); }
+    this.comments.add(thread);
   }
 
   async reply(threadId: string, comment: Comment): Promise<void> {
-    if (!replyToLiveThread(this.share.session.index, threadId, comment)) { throw new Error(`the share holds no thread ${threadId}`); }
+    this.comments.reply(threadId, comment);
   }
 
   async setResolved(threadId: string, resolved: boolean): Promise<void> {
-    if (!setLiveThreadResolved(this.share.session.index, threadId, resolved)) { throw new Error(`the share holds no thread ${threadId}`); }
+    this.comments.setResolved(threadId, resolved);
   }
 
   dispose(): void {
-    indexComments(this.share.session.index).unobserveDeep(this.onMap);
+    this.stopWatching();
     this.changeEmitter.dispose();
-  }
-
-  private yText(file: string) {
-    return fileText(this.share.session.openDoc(file));
   }
 }

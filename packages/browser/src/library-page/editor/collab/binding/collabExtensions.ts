@@ -35,8 +35,10 @@ export function collabExtensions(options: CollabExtensionsOptions): Extension {
   return [
     // INVARIANT: the bound Y.Text holds LF line ends only, so CodeMirror must not split or join on CR.
     EditorState.lineSeparator.of("\n"),
-    // Undo of this user's edits only: peers' edits are never undone here.
-    yCollab(text, null, { undoManager: new Y.UndoManager(text) }),
+    // Undo of this user's edits only: yCollab tracks the origin of the editor's own edits, and no other origin is tracked, not even
+    // the null one Yjs tracks by default, so a peer's edit or a write without an origin is never undone here.
+    // Kept over core's TextUndoManager, which groups VS Code change events and treats every origin but its own as remote.
+    yCollab(text, null, { undoManager: new Y.UndoManager(text, { trackedOrigins: new Set() }) }),
     keymap.of(yUndoManagerKeymap),
     publishSelection(options),
     remoteCursors(options),

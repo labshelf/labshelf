@@ -17,10 +17,14 @@ export interface ShareRecord {
 
 export interface ShareRegistry { shares: ShareRecord[] }
 
-/** The text of `shares.json`; `read` answers undefined when the file does not exist, and `write` replaces it atomically. */
+/**
+ * The text of `shares.json`; `read` answers undefined when the file does not exist, and `write` replaces it atomically.
+ * `exclusive` runs one section at a time across every store of the same list, so a read-modify-write loses no other edit.
+ */
 export interface ShareRegistryStore {
   read(): Promise<string | undefined>;
   write(text: string): Promise<void>;
+  exclusive<T>(run: () => Promise<T>): Promise<T>;
 }
 
 type Json = Record<string, unknown>;
@@ -49,8 +53,13 @@ export async function loadShareRegistry(store: ShareRegistryStore): Promise<Shar
   return { shares: shares.map(recordOf).filter((record): record is ShareRecord => record !== undefined) };
 }
 
-export function saveShareRegistry(store: ShareRegistryStore, registry: ShareRegistry): Promise<void> {
-  return store.write(`${JSON.stringify(registry, null, 2)}\n`);
+// CONTRACT: documents/contracts/share-link.md#share-list
+/** Re-reads the list inside the store's exclusive section, so the change applies to what is listed now. */
+export function updateShareRegistry(store: ShareRegistryStore, change: (registry: ShareRegistry) => ShareRegistry): Promise<void> {
+  return store.exclusive(async () => {
+    const changed = change(await loadShareRegistry(store));
+    await store.write(`${JSON.stringify(changed, null, 2)}\n`);
+  });
 }
 
 export function shareRecordLink(record: ShareRecord): string {

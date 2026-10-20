@@ -2,3 +2,4 @@
 export { mountSidebarTree } from "./sidebarTree";
 export { createSidebarProjects } from "./sidebarProjects";
 export type { SidebarProjects } from "./sidebarProjects";
+export type { SidebarProjectParts } from "./sidebarTree";

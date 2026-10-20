@@ -6,6 +6,7 @@ import {
 } from "@labshelf/core";
 import type { LibrarySource, LibrarySources, TabLease } from "../../../../storage";
 import { createFolderRescan } from "./folderRescan";
+import { onLocalFileChanges } from "./localFileChanges";
 import { browserMergeText } from "./mergeText";
 import { acquireMirrorLeases, type MirrorLeases } from "./mirrorLeases";
 
@@ -27,7 +28,6 @@ export interface BrowserProjectMirrorOptions {
   blobs: BlobExchange;
   store: CollabStore;
   logger: ILogger;
-  isEditorOwned?: (path: string) => boolean;
   /** Called once when the mirror stops by itself; the share docs keep every edit, only the disk stops following them. */
   onStopped(reason: BrowserMirrorStopReason): void;
   scheduler?: LeaseScheduler;
@@ -94,8 +94,8 @@ function runMirror(options: BrowserProjectMirrorOptions, leases: MirrorLeases): 
   const disk = libraryMirrorDisk(leases.fs, folder);
   const mirror = startProjectMirror({
     folder, disk, mergeText: browserMergeText, session: options.session, blobs: options.blobs, store: options.store, logger,
+    // An open editor edits the shared text itself and never writes the file, so the mirror writes every path, open ones included.
     ownership: { assertOwned }, onStopped: (reason) => stop(reasonOf(reason)),
-    ...(options.isEditorOwned ? { isEditorOwned: options.isEditorOwned } : {}),
   });
   const detach = watchFolder(options, leases, scheduler, mirror.changed, stop);
   const shutdown = (): Promise<void> => (closing ??= (async () => {
@@ -116,7 +116,7 @@ function runMirror(options: BrowserProjectMirrorOptions, leases: MirrorLeases): 
   return { changed: (path) => mirror.changed(path), idle: () => mirror.idle(), close: shutdown };
 }
 
-/** Feeds the mirror the paths the bridge reports and, for a folder, those a rescan finds; returns the function that stops both. */
+/** Feeds the mirror the paths the bridge and this page report and, for a folder, those a rescan finds; returns the function that stops them. */
 function watchFolder(
   options: BrowserProjectMirrorOptions, leases: MirrorLeases, scheduler: LeaseScheduler,
   changed: (path: string) => void, stop: (reason: BrowserMirrorStopReason) => void,
@@ -134,8 +134,10 @@ function watchFolder(
     }
   };
   void check(false);
+  const inFolder = (paths: readonly string[]): void => paths.filter((path) => path.startsWith(prefix)).forEach((path) => changed(path.slice(prefix.length)));
   const stops = [
-    sources.onLibraryFilesChanged((paths) => paths.filter((path) => path.startsWith(prefix)).forEach((path) => changed(path.slice(prefix.length)))),
+    sources.onLibraryFilesChanged(inFolder),
+    onLocalFileChanges(inFolder),
     scheduler.every(RESCAN_INTERVAL_MS, () => void check(true)),
     onVisible(() => void check(false)),
   ];

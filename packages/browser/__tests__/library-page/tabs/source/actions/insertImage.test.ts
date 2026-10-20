@@ -5,6 +5,7 @@
 // Copying a picked image into the project's images folder, and inserting the figure that shows it.
 import type { ILogger, LibraryFileSystem, ProjectEntry } from "@labshelf/core";
 import { toast } from "@labshelf/core/dom";
+import { onLocalFileChanges } from "../../../../../src/library-page/editor/collab/mirror/localFileChanges";
 import { insertImage, type ImageInsertion } from "../../../../../src/library-page/tabs/source/actions/insertImage";
 
 jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), toast: jest.fn() }));
@@ -103,14 +104,17 @@ describe("insertImage", () => {
     expect(toast).toHaveBeenCalledWith("Could not copy the image into the project: disk full", "error");
   });
 
-  it("copies nothing in a shared project and says why", async () => {
-    const click = userPicks(png);
+  it("copies the image into a shared project and tells the share's mirror at once", async () => {
+    userPicks(png);
     const { fs, written } = fakeFs();
-    const { edits, run } = insertion(fs, { entry: entry({ shared: { relay: "r" } }) });
+    const reported: (readonly string[])[] = [];
+    const stop = onLocalFileChanges((paths) => reported.push(paths));
+    const { edits, run } = insertion(fs, { entry: entry({ shared: "f".repeat(32) }) });
     await run();
-    expect(click).not.toHaveBeenCalled();
-    expect(written.size).toBe(0);
-    expect(edits.insertSnippet).not.toHaveBeenCalled();
-    expect(toast).toHaveBeenCalledWith("Images are not shared with collaborators yet.");
+    stop();
+    expect([...written.keys()]).toEqual(["lib/p/images/plot.png"]);
+    expect(reported).toEqual([["lib/p/images/plot.png"]]);
+    expect(edits.insertSnippet).toHaveBeenCalled();
+    expect(toast).not.toHaveBeenCalled();
   });
 });

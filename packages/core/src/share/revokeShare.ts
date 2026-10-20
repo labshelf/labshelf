@@ -1,7 +1,7 @@
 // Revokes one of the device's shares: deletes its manifest, the blobs no other listed share names, then its entry.
 import type { ILogger } from "../ports/index.js";
 import type { ShareBackend } from "./shareBackend.js";
-import { loadShareRegistry, saveShareRegistry, type ShareRegistryStore } from "./shareRegistry.js";
+import { loadShareRegistry, updateShareRegistry, type ShareRegistryStore } from "./shareRegistry.js";
 
 export interface RevokeShareOptions {
   registry: ShareRegistryStore;
@@ -30,7 +30,16 @@ export async function revokeShare(shareId: string, { registry, backendFor, logge
     await logger.error("share", error, { shareId, relayUrl: record.relayUrl, action: "revoke" });
     throw error;
   }
-  await saveShareRegistry(registry, { shares: others });
+  // INVARIANT: the network deletes run outside the section, so the entry is removed from the list as it is now, not as it was read.
+  let racing: string[] = [];
+  await updateShareRegistry(registry, (listed) => {
+    const shares = listed.shares.filter((share) => share.id !== shareId);
+    racing = shares.filter((share) => share.blobs.some((hash) => doomed.includes(hash))).map((share) => share.id);
+    return { shares };
+  });
+  if (racing.length > 0) {
+    await logger.log("WARN", "share", "A share listed during a revoke names a blob the revoke deleted; its PDF reads as missing", { shareId, racing });
+  }
   await logger.log("INFO", "share", "Revoked share", { shareId, deletedBlobs: doomed.length, keptBlobs: record.blobs.length - doomed.length });
   return true;
 }

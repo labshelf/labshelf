@@ -1,7 +1,7 @@
 // Tests that a library folder's papers become share inputs with their bib, PDF and, when asked, annotations, and which folders can be shared.
-import { posixPathOps, type Annotation, type PaperRecord } from "@labshelf/core";
-
-import { shareableFolders, sharePaperInputs } from "../../src/share/index";
+import { posixPathOps } from "../../../src/library/index";
+import type { Annotation, PaperRecord } from "../../../src/model/index";
+import { papersInFolder, shareableFolders, sharePaperInputs } from "../../../src/share/index";
 
 const ROOT = "/lib/papers";
 
@@ -34,12 +34,20 @@ describe("sharePaperInputs", () => {
   });
 });
 
+describe("papersInFolder", () => {
+  it("holds the papers of nested folders and none of a sibling whose name starts the same", () => {
+    const papers = [record("a", "Group"), record("b", "Group/Week 1/Day 2"), record("c", "Group 2"), record("d", "Other")];
+    expect(papersInFolder(papers, `${ROOT}/Group`, "/").map((paper) => paper.id)).toEqual(["a", "b"]);
+  });
+});
+
 describe("shareableFolders", () => {
   it("lists every folder that holds papers at any depth, with its count, without the library root", () => {
-    const papers = [record("a", "Group"), record("b", "Group/Week 1"), record("c", "Other")];
+    const papers = [record("a", "Group"), record("b", "Group/Week 1/Day 2"), record("c", "Other")];
     expect(shareableFolders(papers, ROOT, "/")).toEqual([
       { dir: `${ROOT}/Group`, label: "Group", count: 2 },
       { dir: `${ROOT}/Group/Week 1`, label: "Group / Week 1", count: 1 },
+      { dir: `${ROOT}/Group/Week 1/Day 2`, label: "Group / Week 1 / Day 2", count: 1 },
       { dir: `${ROOT}/Other`, label: "Other", count: 1 },
     ]);
   });
