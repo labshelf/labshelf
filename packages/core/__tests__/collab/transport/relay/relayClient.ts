@@ -1,7 +1,7 @@
 /** Opens share sessions that reach each other only through a fake relay, with the relay sync and presence attached. */
 import * as Y from "yjs";
 import { deriveAwarenessKey, deriveContentKey, deriveRelayToken } from "../../../../src/collab/crypto/index";
-import { attachAwareness, attachRelaySync, createShareSession, type PresenceHandle, type RelaySync, type ShareSession } from "../../../../src/collab/sync/index";
+import { attachAwareness, attachRelaySync, createShareSession, type PresenceHandle, type RelayCursorStore, type RelaySync, type ShareSession } from "../../../../src/collab/sync/index";
 import { createRelayTransport, type RelayTransport } from "../../../../src/collab/transport/index";
 import type { FakeClock } from "../../sync/fakeNetwork";
 import { fakeLogger, SHARE_ID, SHARE_KEY, type FakeLogger } from "../../sync/testSession";
@@ -20,7 +20,7 @@ export interface RelayClient {
   close(): Promise<void>;
 }
 
-export async function openRelayClient(fake: FakeRelay, clock: FakeClock, docs: Y.Doc[] = []): Promise<RelayClient> {
+export async function openRelayClient(fake: FakeRelay, clock: FakeClock, docs: Y.Doc[] = [], cursors?: RelayCursorStore): Promise<RelayClient> {
   const logger = fakeLogger();
   const contentKey = await deriveContentKey(SHARE_KEY);
   const relay = createRelayTransport({
@@ -34,7 +34,7 @@ export async function openRelayClient(fake: FakeRelay, clock: FakeClock, docs: Y
     createDoc: (path) => byPath.get(path) ?? new Y.Doc(),
   });
   const presence = attachAwareness(session, { awarenessKey: await deriveAwarenessKey(SHARE_KEY), logger });
-  const relaySync = attachRelaySync(session, { relay, shareId: SHARE_ID, contentKey, logger, scheduler: clock, isSnapshotWriter: () => presence.isLowestId() });
+  const relaySync = attachRelaySync(session, { relay, shareId: SHARE_ID, contentKey, logger, scheduler: clock, isSnapshotWriter: () => presence.isLowestId(), ...(cursors ? { cursors } : {}) });
   session.openDoc(DOC_PATH);
   return {
     session, relay, relaySync, presence, logger,

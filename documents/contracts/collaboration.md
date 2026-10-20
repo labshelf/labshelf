@@ -100,14 +100,15 @@ collab/<share id>/
   blobs/<sha256>               a blob of the share, served to peers that ask for it
   known.json                   per shared path, the SHA-256 of the content disk and doc last agreed on
   relay-cursors.json           per relay and doc, the last relay row applied; keys are `<relay url> <doc key>`
+  relay-held.json              per relay and doc, the Yjs state the relay holds as a base64 Yjs snapshot (see relay.md#clients); keys as in relay-cursors.json
 ```
 
 - The log is append-only. Opening the share merges the log into the snapshot and removes it; a torn final record from an interrupted append is dropped.
 - After a failed append, a doc appends nothing more until its full state is written as the snapshot and its log removed, so a torn record is always the last one.
-- `relay-cursors.json` is saved only once every doc update received so far is stored; while one is not, the cursors are held back.
+- `relay-cursors.json` is saved only once every doc update received so far is stored; while one is not, the cursors are held back. `relay-held.json` describes the relay, not the docs, so it is saved without that wait.
 - A file whose disk hash differs from its `known.json` hash was changed outside the share since disk and doc last agreed, so that change enters the doc. A file with no entry there is compared as new.
 
-The browser extension keeps the same state in its IndexedDB database `labshelf-collab`, outside the library files, with every key starting with the library id and share id. It stores each doc under its doc key, with a snapshot and its appended updates; the known hashes and relay cursors as one record each; and blobs by SHA-256. A write is durable when its transaction completes. Replacing a snapshot and removing that doc's updates is one transaction, so no torn record exists, and the rules above hold unchanged.
+The browser extension keeps the same state in its IndexedDB database `labshelf-collab`, outside the library files, with every key starting with the library id and share id. It stores each doc under its doc key, with a snapshot and its appended updates; the known hashes, relay cursors and relay held states as one record each; and blobs by SHA-256. A write is durable when its transaction completes. Replacing a snapshot and removing that doc's updates is one transaction, so no torn record exists, and the rules above hold unchanged.
 
 ## Connection lifecycle
 

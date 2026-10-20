@@ -1,5 +1,7 @@
-// Holds one doc's relay state: local updates waiting for a put, requests awaiting an answer, and the cursor it holds rows up to.
-import type * as Y from "yjs";
+// Holds one doc's relay state: local updates waiting for a put, requests awaiting an answer, the cursor it holds rows up to and the state the relay holds.
+import * as Y from "yjs";
+import type { RelayCursorStore } from "./relayCursors.js";
+import { growHeld, missingUpdate } from "./relayHeldState.js";
 
 /** The relay answers each store request of a doc in order, so answers match these first in, first out. */
 export type OutstandingRequest = { type: "put"; update: Uint8Array } | { type: "since" } | { type: "snapshot" };
@@ -15,16 +17,24 @@ export class RelayDocLane {
   seen = 0;
   /** Rows of the doc stored after its last snapshot that this device saw. */
   rowsSinceSnapshot = 0;
-  /** The Yjs clocks the relay holds, gathered while catching up from cursor 0. */
-  relayVector: Map<number, number> | undefined;
 
-  constructor(readonly docKey: string, readonly doc: Y.Doc, readonly docId: Promise<Uint8Array>, public cursor: number) {}
+  /** `held` is what the relay is known to hold: rows this device applied and puts the relay accepted. */
+  constructor(readonly docKey: string, readonly doc: Y.Doc, readonly docId: Promise<Uint8Array>, public cursor: number, public held: Y.Snapshot) {}
 
   startCatchUp(): void {
     this.catching = true;
     this.caughtUp = false;
     this.seen = this.cursor;
-    this.relayVector = this.cursor === 0 ? new Map() : undefined;
+  }
+
+  relayHolds(update: Uint8Array): void {
+    this.held = growHeld(this.held, update);
+  }
+
+  /** What the doc holds beyond the relay's state and the puts in flight, as one update; undefined when nothing. */
+  missing(): Uint8Array | undefined {
+    const expected = this.outstanding.reduce((state, request) => (request.type === "put" ? growHeld(state, request.update) : state), this.held);
+    return missingUpdate(this.doc, expected);
   }
 
   /** Puts sent on a socket that dropped go back to pending, since the relay may never have stored them. */
@@ -34,6 +44,11 @@ export class RelayDocLane {
     this.outstanding = [];
     this.catching = false;
     this.caughtUp = false;
+  }
+
+  saveTo(store: RelayCursorStore): void {
+    store.set(this.docKey, this.cursor);
+    store.setHeld(this.docKey, Y.encodeSnapshot(this.held));
   }
 
   /** True when the cursor moved and should be persisted. */

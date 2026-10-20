@@ -9,7 +9,7 @@ export interface StoredDoc {
   torn: boolean;
 }
 
-export type StateMapName = "known" | "relay-cursors";
+export type StateMapName = "known" | "relay-cursors" | "relay-held";
 
 export interface CollabStateStorage {
   /** The id a doc is stored under; synchronous because a share session creates docs synchronously. */

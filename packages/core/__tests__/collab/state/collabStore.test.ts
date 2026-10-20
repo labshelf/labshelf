@@ -117,4 +117,27 @@ describe("collab store rules", () => {
     expect(await store.blobs.get("../../etc/passwd")).toBeUndefined();
     await store.close();
   });
+
+  it("restores a relay's held state byte for byte after a restart", async () => {
+    const storage = memoryStorage();
+    const bytes = Y.encodeSnapshot(Y.snapshot(new Y.Doc()));
+    const store = await openCollabStore({ storage, logger: fakeLogger() });
+    store.relayCursors(RELAY).setHeld("a.typ", bytes);
+    await store.flush();
+    await store.close();
+    const reopened = await openCollabStore({ storage, logger: fakeLogger() });
+    expect(reopened.relayCursors(RELAY).held("a.typ")).toEqual(bytes);
+    expect(reopened.relayCursors("https://other.example").held("a.typ")).toBeUndefined();
+    await reopened.close();
+  });
+
+  it("keeps a malformed held value as bytes that do not decode, so the caller reports it unreadable", async () => {
+    const storage = memoryStorage();
+    storage.maps.set("relay-held", { [`${RELAY} a.typ`]: "not base64!" });
+    const store = await openCollabStore({ storage, logger: fakeLogger() });
+    const held = store.relayCursors(RELAY).held("a.typ");
+    expect(held).toBeDefined();
+    expect(() => Y.decodeSnapshot(held as Uint8Array)).toThrow();
+    await store.close();
+  });
 });

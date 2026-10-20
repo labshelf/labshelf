@@ -1,6 +1,7 @@
-// Keeps a share's Yjs docs, blobs, known hashes and relay cursors on this device, so a restart restores them without a peer.
+// Keeps a share's Yjs docs, blobs, known hashes, relay cursors and the state each relay holds on this device, so a restart restores them without a peer.
 // CONTRACT: documents/contracts/collaboration.md#device-local-state
 import * as Y from "yjs";
+import { base64ToBytes, bytesToBase64, isCanonicalBase64 } from "../../encoding/index.js";
 import type { ILogger } from "../../ports/index.js";
 import type { RelayCursorStore } from "../sync/index.js";
 import { INDEX_DOC_KEY } from "../sync/index.js";
@@ -27,7 +28,7 @@ export interface CollabStore {
   readonly blobs: BlobCache;
   /** Per shared path, the SHA-256 of the content disk and doc last agreed on. */
   readonly known: PersistedMap<string>;
-  /** The relay cursor of each doc on one relay, saved only while every doc update is stored. */
+  /** The relay cursor of each doc on one relay, saved only while every doc update is stored, and the state the relay holds. */
   relayCursors(relayUrl: string): RelayCursorStore;
   /** Retries unstored doc updates and waits for every pending write; rejects when any state stays unstored. */
   flush(): Promise<void>;
@@ -38,9 +39,18 @@ export interface CollabStore {
 const isString = (value: unknown): value is string => typeof value === "string";
 const isCursor = (value: unknown): value is number => Number.isInteger(value) && (value as number) >= 0;
 
-function cursorsOf(cursors: PersistedMap<number>, relayUrl: string): RelayCursorStore {
+// Bytes that fail to decode make the caller log the held state as unreadable instead of dropping it silently.
+const heldBytes = (value: string): Uint8Array => isCanonicalBase64(value) ? base64ToBytes(value) : new Uint8Array();
+
+function cursorsOf(cursors: PersistedMap<number>, held: PersistedMap<string>, relayUrl: string): RelayCursorStore {
   // INVARIANT: a URL holds no space, so the `<relay url> <doc key>` keys of two relays never collide.
-  return { get: (docKey) => cursors.get(`${relayUrl} ${docKey}`), set: (docKey, cursor) => cursors.set(`${relayUrl} ${docKey}`, cursor) };
+  const key = (docKey: string) => `${relayUrl} ${docKey}`;
+  return {
+    get: (docKey) => cursors.get(key(docKey)),
+    set: (docKey, cursor) => cursors.set(key(docKey), cursor),
+    held: (docKey) => { const value = held.get(key(docKey)); return value === undefined ? undefined : heldBytes(value); },
+    setHeld: (docKey, snapshot) => held.set(key(docKey), bytesToBase64(snapshot)),
+  };
 }
 
 async function flushAll(docs: DocPersistence[], maps: { flush(): Promise<void> }[]): Promise<void> {
@@ -64,6 +74,8 @@ export async function openCollabStore({ storage, logger }: CollabStoreOptions): 
   const cursors = await PersistedMap.load({
     storage, name: "relay-cursors", label: "relay cursors", isValue: isCursor, logger, maySave: allDocsStored,
   });
+  // The held state describes the relay, not this device's docs, so it saves without waiting for doc updates.
+  const held = await PersistedMap.load({ storage, name: "relay-held", label: "relay held states", isValue: isString, logger });
 
   function restore(docKey: string): Y.Doc {
     const doc = new Y.Doc();
@@ -74,14 +86,14 @@ export async function openCollabStore({ storage, logger }: CollabStoreOptions): 
     return doc;
   }
 
-  const flush = () => flushAll(docs, [known, cursors]);
+  const flush = () => flushAll(docs, [known, cursors, held]);
   await logger.log("INFO", LOG_MODULE, "Opened the share state", { docs: stored.size });
   return {
     index: restore(INDEX_DOC_KEY),
     createDoc: (docPath) => restore(docPath),
     blobs: new BlobCache(storage, logger),
     known,
-    relayCursors: (relayUrl) => cursorsOf(cursors, relayUrl),
+    relayCursors: (relayUrl) => cursorsOf(cursors, held, relayUrl),
     flush,
     close: async () => {
       try { await flush(); } finally { docs.forEach((doc) => doc.stop()); }
