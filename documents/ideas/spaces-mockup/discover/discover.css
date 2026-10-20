@@ -1,0 +1,43 @@
+/* Lays out the Discover tab: search, filter chips, the ranked feed with reasons, and the arXiv alerts and Watch cards. Mockup only. */
+.dc-grid { display: grid; grid-template-columns: minmax(0, 1fr) calc(var(--ls-gallery-card-w) + var(--ls-space-7) * 5); gap: calc(var(--ls-space-7) * 2); align-items: start; }
+.dc-main { min-width: 0; }
+.dc-search { height: calc(var(--ls-row-h) + var(--ls-space-4)); }
+.dc-search input { font-size: var(--ls-text-md); }
+.dc-chips { display: flex; flex-wrap: wrap; gap: var(--ls-space-3); margin: var(--ls-space-6) 0 var(--ls-space-4); }
+.dc-chip { display: inline-flex; align-items: center; gap: var(--ls-space-3); height: calc(var(--ls-row-h) + var(--ls-space-1)); padding: 0 var(--ls-space-5);
+  border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius-pill); background: none; color: var(--ls-desc); font: var(--ls-text-md) var(--ls-font); cursor: pointer; }
+.dc-chip:hover { color: var(--ls-fg); background: var(--ls-list-hover); }
+.dc-chip.on { color: var(--ls-button-soft-fg); background: var(--ls-button-soft-bg); border-color: transparent; }
+.dc-n { font: var(--ls-text-xs) var(--ls-mono); opacity: .8; }
+
+.dc-feed { list-style: none; margin: 0; padding: 0; }
+.dc-item { display: grid; grid-template-columns: var(--ls-space-7) minmax(0, 1fr) auto; gap: var(--ls-space-5); align-items: center; padding: var(--ls-space-5) var(--ls-space-2);
+  border-top: 1px solid var(--ls-row-rule); }
+.dc-item:hover { background: var(--ls-list-hover); }
+.dc-rank { align-self: start; padding-top: var(--ls-space-1); font: var(--ls-text-sm) var(--ls-mono); color: var(--ls-desc); text-align: right; }
+.dc-body { min-width: 0; }
+.dc-title { font-family: var(--ls-serif); font-size: var(--ls-text-xl); line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dc-authors { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-5); margin-top: var(--ls-space-1); font-size: var(--ls-text-sm); color: var(--ls-desc); }
+.dc-owned { display: inline-flex; align-items: center; gap: var(--ls-space-1); color: var(--ls-mark-ok); }
+.dc-owned svg { width: var(--ls-text-sm); height: var(--ls-text-sm); }
+.dc-why { display: flex; align-items: center; gap: var(--ls-space-2); margin-top: var(--ls-space-1); font-size: var(--ls-text-sm); color: var(--ls-mark-accent); }
+.dc-why svg { width: var(--ls-text-sm); height: var(--ls-text-sm); flex: none; }
+.dc-acts { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--ls-space-2); align-items: center; }
+
+.dc-side { display: flex; flex-direction: column; gap: var(--ls-space-7); }
+.dc-card { display: flex; flex-direction: column; gap: var(--ls-space-4); padding: var(--ls-space-6) var(--ls-space-7); background: var(--ls-sidebar-bg);
+  border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius-lg); }
+.dc-card .ls-btn { align-self: flex-start; }
+.dc-card .ls-btn svg { width: var(--ls-text-md); height: var(--ls-text-md); }
+.dc-card-head { display: flex; align-items: center; gap: var(--ls-space-3); margin: 0; font-size: var(--ls-text-lg); font-weight: 600; }
+.dc-card-head svg { width: var(--ls-text-lg); height: var(--ls-text-lg); color: var(--ls-desc); }
+.dc-dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--ls-space-3) var(--ls-space-5); margin: 0; font-size: var(--ls-text-md); }
+.dc-dl dt { color: var(--ls-desc); }
+.dc-dl dd { display: flex; flex-wrap: wrap; gap: var(--ls-space-2); margin: 0; }
+.dc-tag { padding: 0 var(--ls-space-3); border-radius: var(--ls-radius-sm); background: var(--ls-code-bg); font-size: var(--ls-text-sm); }
+.dc-big { font: 600 var(--ls-text-2xl) var(--ls-font); }
+.dc-watch-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--ls-space-2); font-size: var(--ls-text-md); }
+.dc-watch-list li { display: flex; align-items: center; gap: var(--ls-space-3); }
+.dc-watch-list svg { width: var(--ls-space-6); height: var(--ls-space-6); color: var(--ls-desc); flex: none; }
+.dc-meta { font-size: var(--ls-text-sm); color: var(--ls-desc); line-height: 1.5; }
+@media (max-width: 1000px) { .dc-grid { grid-template-columns: minmax(0, 1fr); } .dc-item { grid-template-columns: var(--ls-space-7) minmax(0, 1fr); } .dc-acts { grid-column: 2; justify-content: flex-start; } }

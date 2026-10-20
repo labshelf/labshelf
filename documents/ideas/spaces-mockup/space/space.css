@@ -1,0 +1,25 @@
+/* Lays out a Space tab: the header with name, purpose, members and Share, and the row of view tabs. Mockup only. */
+.sp { max-width: calc(var(--ls-gallery-card-w) * 6); margin: 0 auto; padding: calc(var(--ls-space-7) * 1.5) calc(var(--ls-space-7) * 2) calc(var(--ls-space-7) * 2); }
+.sp-head { display: flex; align-items: center; gap: var(--ls-space-6); }
+.sp-title { flex: 1; min-width: 0; }
+.sp-name { margin: 0; font: 600 calc(var(--ls-text-2xl) * 1.5) / 1.2 var(--ls-font); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sp-purpose { margin: var(--ls-space-2) 0 0; color: var(--ls-desc); font-size: var(--ls-text-lg); line-height: 1.4; }
+.sp-add-purpose { border: 0; background: none; padding: 0; cursor: pointer; font-style: italic; }
+.sp-add-purpose:hover { color: var(--ls-link); }
+.sp-people { display: flex; flex: none; }
+.sp-people .mk-avatar { box-shadow: 0 0 0 var(--ls-space-1) var(--ls-bg); }
+.sp-people .mk-avatar + .mk-avatar { margin-left: calc(-1 * var(--ls-space-2)); }
+.sp-head .ls-btn svg, .pp-bar .ls-btn svg { width: var(--ls-text-lg); height: var(--ls-text-lg); }
+.sp-tabs { display: flex; gap: var(--ls-space-6); margin-top: var(--ls-space-7); border-bottom: 1px solid var(--ls-border-soft); overflow-x: auto; }
+.sp-tab { flex: none; border: 0; border-bottom: var(--ls-space-1) solid transparent; background: none; color: var(--ls-desc); padding: var(--ls-space-4) var(--ls-space-1);
+  font: var(--ls-text-lg) var(--ls-font); cursor: pointer; }
+.sp-tab:hover { color: var(--ls-fg); }
+.sp-tab.on { color: var(--ls-fg); border-bottom-color: var(--ls-tab-active-border); }
+.sp-body { padding-top: var(--ls-space-7); }
+.pp-bar { display: flex; align-items: center; gap: var(--ls-space-6); margin-bottom: var(--ls-space-7); font-size: var(--ls-text-md); }
+.pp-bar > .muted { flex: 1; min-width: 0; }
+.pp-group-head { display: flex; align-items: center; gap: var(--ls-space-3); margin: 0 0 var(--ls-space-3); font-size: var(--ls-text-md); font-weight: 600; color: var(--ls-desc);
+  text-transform: uppercase; letter-spacing: .04em; }
+.pp-group-head .tree-count { margin-left: 0; }
+@media (max-width: 900px) { .sp { padding: var(--ls-space-7); } }
+@media (max-width: 560px) { .sp-head { flex-wrap: wrap; } .sp-name { white-space: normal; } .pp-bar { flex-wrap: wrap; } }

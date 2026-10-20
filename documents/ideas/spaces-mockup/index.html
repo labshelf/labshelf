@@ -1,62 +1,64 @@
-<!-- Presents the LabShelf research workspace mockup. -->
+<!-- Presents the LabShelf Spaces idea as an interactive mockup: the core sidebar, a Spaces section and Space tabs in an editor. -->
 <!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>LabShelf — Thesis, chapter 3</title>
+<title>LabShelf Spaces mockup</title>
 <link rel="stylesheet" href=".generated/core.css">
-<link rel="stylesheet" href="chrome.css">
-<link rel="stylesheet" href="commands/commands.css">
-<link rel="stylesheet" href="space.css">
-<link rel="stylesheet" href="overview/workspace.css">
-<link rel="stylesheet" href="overview/evidence.css">
-<link rel="stylesheet" href="views/desk.css">
-<link rel="stylesheet" href="views/notebook.css">
-<link rel="stylesheet" href="views/discover.css">
-<link rel="stylesheet" href="views/glossary.css">
-<link rel="stylesheet" href="capture/capture.css">
+<link rel="stylesheet" href="markup.css">
+<link rel="stylesheet" href="editor/frame.css">
+<link rel="stylesheet" href="sidebar/sidebar.css">
+<link rel="stylesheet" href="space/space.css">
+<link rel="stylesheet" href="space/overview.css">
+<link rel="stylesheet" href="space/papers.css">
+<link rel="stylesheet" href="notes/notes.css">
+<link rel="stylesheet" href="discover/discover.css">
+<link rel="stylesheet" href="glossary/glossary.css">
+<link rel="stylesheet" href="insert/insert.css">
 </head>
 <body>
 <div class="win">
-  <aside class="vs-sidebar" aria-label="LabShelf navigation">
-    <div class="vs-title"><span class="ls-brand"><span data-i="logo"></span>LabShelf</span>
-      <button class="ls-icon-btn" data-act="capture" title="Capture (Cmd+Shift+L)" aria-label="Capture"><span data-i="plus"></span></button></div>
-    <nav class="global-nav" aria-label="Library">
-      <button class="node nav" data-view="desk"><span data-i="target"></span><span>Desk</span><span class="cnt" id="side-desk-count"></span></button>
-      <button class="node" data-act="global-library"><span data-i="library"></span>Library</button>
-      <button class="node" data-act="global-projects"><span data-i="folder"></span>Projects</button>
-    </nav>
-    <div class="vs-sec">Spaces</div>
-    <div class="space-label"><span data-i="chevron-down"></span>Thesis — chapter 3</div>
-    <nav class="space-nav" aria-label="Thesis — chapter 3">
-      <button class="node nav" data-view="overview"><span data-i="layers"></span>Overview</button>
-      <button class="node nav" data-view="notebook"><span data-i="note"></span>Notebook<span class="cnt" id="side-nb-count"></span></button>
-      <button class="node nav" data-view="discover"><span data-i="search"></span>Discover</button>
-      <button class="node nav" data-view="glossary"><span data-i="book"></span>Glossary</button>
-    </nav>
-    <button class="node other-space" data-act="toast" data-msg="RL seminar is outside this mockup."><span data-i="chevron-right"></span>RL seminar</button>
-    <div class="sidebar-foot">Interactive mockup<span id="status-desk"></span></div>
+  <aside class="side" aria-label="LabShelf">
+    <div class="side-title"><span class="ls-brand"><span class="side-logo" id="side-logo"></span>LabShelf</span></div>
+    <div id="library-tree"></div>
+    <div id="spaces-tree" class="tree" role="tree" aria-label="Spaces"></div>
   </aside>
-  <main class="editor"><div class="webview" id="view"></div></main>
+  <main class="ls-editor-area">
+    <div class="ls-editor-group">
+      <div class="ls-editor-titlebar">
+        <div class="ls-editor-tabs" id="tabs" role="tablist" aria-label="Open editors"></div>
+        <div class="ls-editor-actions"><button class="ls-icon-btn" id="theme-btn" data-act="theme" title="Switch light and dark" aria-label="Switch light and dark"></button></div>
+      </div>
+      <div class="ls-editor-panels"><div class="ls-editor-panel" id="panel" role="tabpanel"></div></div>
+    </div>
+  </main>
 </div>
-<div class="scrim" id="scrim" hidden></div>
 <script src=".generated/core.js"></script>
-<script src="icons.js"></script>
-<script src="data.js"></script>
-<script src="commands/dates.js"></script>
-<script src="commands/commands.js"></script>
-<script src="commands/apply.js"></script>
-<script src="space.js"></script>
-<script src="overview/materials.js"></script>
-<script src="overview/discussion.js"></script>
-<script src="overview/workspace.js"></script>
-<script src="overview/actions.js"></script>
-<script src="views/desk.js"></script>
-<script src="views/notebook.js"></script>
-<script src="views/discover.js"></script>
-<script src="views/glossary.js"></script>
-<script src="capture/capture.js"></script>
+<script src="data/library.js"></script>
+<script src="data/spaces.js"></script>
+<script src="data/notes.js"></script>
+<script src="data/discover.js"></script>
+<script src="data/glossary.js"></script>
+<script src="data/insert.js"></script>
+<script src="markup.js"></script>
+<script src="actions.js"></script>
+<script src="sidebar/library.js"></script>
+<script src="sidebar/spaces.js"></script>
+<script src="editor/tabs.js"></script>
+<script src="space/header.js"></script>
+<script src="space/timeline.js"></script>
+<script src="space/overview.js"></script>
+<script src="space/papers.js"></script>
+<script src="notes/notes.js"></script>
+<script src="notes/paperPage.js"></script>
+<script src="notes/noteBody.js"></script>
+<script src="discover/discover.js"></script>
+<script src="glossary/glossaryPreviews.js"></script>
+<script src="glossary/glossary.js"></script>
+<script src="insert/insertSyntax.js"></script>
+<script src="insert/insertPanel.js"></script>
+<script src="insert/project.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

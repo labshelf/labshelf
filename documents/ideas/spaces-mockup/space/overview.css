@@ -1,0 +1,47 @@
+/* Lays out the Overview tab: blocks in two columns, the dates and goals timeline, project and paper rows, and recent events. Mockup only. */
+.ov-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--ls-space-7); align-items: start; }
+.ov-col { display: flex; flex-direction: column; gap: var(--ls-space-7); min-width: 0; }
+.ov-block { padding: var(--ls-space-6) var(--ls-space-7); background: var(--ls-sidebar-bg); border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius-lg); }
+.ov-head { display: flex; align-items: center; gap: var(--ls-space-4); margin-bottom: var(--ls-space-4); }
+.ov-head h2 { flex: 1; margin: 0; font-size: var(--ls-text-lg); font-weight: 600; }
+.ov-acts { display: flex; gap: var(--ls-space-2); }
+.ov-acts .ls-btn svg { width: var(--ls-text-md); height: var(--ls-text-md); }
+.ov-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.ov-row { display: flex; align-items: center; gap: var(--ls-space-5); width: 100%; padding: var(--ls-space-3) var(--ls-space-3); border: 0; border-radius: var(--ls-radius);
+  background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.ov-row:hover { background: var(--ls-list-hover); }
+.ov-main { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.ov-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ov-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--ls-text-sm); color: var(--ls-desc); }
+.ov-side { display: flex; flex-direction: column; align-items: flex-end; gap: var(--ls-space-1); flex: none; font-size: var(--ls-text-sm); color: var(--ls-desc); }
+.ov-check { display: inline-flex; align-items: center; gap: var(--ls-space-2); }
+.mem-row { display: flex; align-items: center; gap: var(--ls-space-5); padding: var(--ls-space-3); }
+.mem-row .ov-name { flex: 1; min-width: 0; }
+
+.tl { list-style: none; margin: 0; padding: 0; }
+.tl-row { display: grid; grid-template-columns: calc(var(--ls-space-7) * 5) minmax(0, 1fr); gap: var(--ls-space-6); align-items: baseline; padding: var(--ls-space-3) 0;
+  border-top: 1px solid var(--ls-row-rule); }
+.tl-row:first-child { border-top: 0; }
+.tl-row.past { opacity: .7; }
+.tl-day { display: flex; flex-direction: column; font: var(--ls-text-md) var(--ls-mono); font-variant-numeric: tabular-nums; }
+.tl-when { font: var(--ls-text-xs) var(--ls-font); color: var(--ls-desc); }
+.tl-when.late { color: var(--ls-mark-warn); }
+.tl-item { display: flex; align-items: center; gap: var(--ls-space-4); cursor: pointer; }
+.tl-done { text-decoration: line-through; color: var(--ls-desc); }
+.tl-deadline { display: inline-flex; align-items: center; gap: var(--ls-space-4); font-weight: 600; }
+.tl-deadline svg { width: var(--ls-space-6); height: var(--ls-space-6); color: var(--ls-mark-err); flex: none; }
+.tl-goal { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-2) var(--ls-space-4); }
+.tl-goal-text { font-weight: 600; }
+.tl-progress { font-size: var(--ls-text-sm); color: var(--ls-desc); }
+.tl-papers { display: inline-flex; gap: var(--ls-space-2); }
+.tl-today { display: flex; align-items: center; gap: var(--ls-space-4); padding: var(--ls-space-2) 0; color: var(--ls-link); font-size: var(--ls-text-sm); font-weight: 600; }
+.tl-today::after { content: ""; flex: 1; border-top: 1px solid var(--ls-link); }
+
+.act-row { display: flex; align-items: center; gap: var(--ls-space-4); padding: var(--ls-space-3) 0; border-top: 1px solid var(--ls-row-rule); font-size: var(--ls-text-md); }
+.act-row:first-child { border-top: 0; }
+.act-icon { display: inline-flex; color: var(--ls-desc); }
+.act-icon svg { width: var(--ls-space-6); height: var(--ls-space-6); }
+.act-text { flex: 1; min-width: 0; }
+.act-text b { font-weight: 600; }
+.act-when { flex: none; font-size: var(--ls-text-sm); color: var(--ls-desc); }
+@media (max-width: 1000px) { .ov-grid { grid-template-columns: minmax(0, 1fr); } }

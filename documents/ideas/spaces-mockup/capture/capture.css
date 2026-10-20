@@ -1,8 +1,0 @@
-/* Styles the global capture quick input: VS Code quick input, top-centred, with the command preview. Mockup only. */
-.cap-scrim { align-items: flex-start; background: transparent; }
-.cap { top: 44px; width: min(640px, 92vw); background: var(--ls-menu-bg); border-color: var(--ls-menu-border); box-shadow: var(--ls-popup-shadow); }
-.cap-input { width: 100%; box-sizing: border-box; font-family: var(--ls-mono); font-size: var(--ls-text-md); }
-.cap-preview { padding: 0 6px; }
-.cap-foot { display: flex; align-items: center; gap: 6px; padding: 4px 6px 2px; border-top: 1px solid var(--ls-menu-separator); font-size: var(--ls-text-sm); color: var(--ls-desc); }
-.cap-foot .sp { flex: 1; }
-.cap-foot kbd { font: var(--ls-text-xs) var(--ls-mono); padding: 1px 5px; color: var(--ls-kbd-fg); background: var(--ls-kbd-bg); border: 1px solid var(--ls-kbd-border); border-bottom-color: var(--ls-kbd-bottom); border-radius: var(--ls-radius-sm); }

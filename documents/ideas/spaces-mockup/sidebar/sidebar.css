@@ -1,0 +1,7 @@
+/* Sizes the Spaces section below the core Library and Projects panes and marks its focused rows. Mockup only. */
+#spaces-tree { flex: 0 1 auto; max-height: 42%; border-top: 1px solid var(--ls-border-soft); }
+#spaces-tree .tree-pane.open { flex: 1 1 auto; }
+#spaces-tree .tree-section { height: calc(var(--ls-row-h) + var(--ls-space-4)); padding-top: var(--ls-space-2); }
+#spaces-tree .tree-row:focus-visible, #spaces-tree .tree-section:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
+#spaces-tree .tree-row.current { background: var(--ls-list-active-bg); color: var(--ls-list-active-fg); }
+#spaces-tree .tree-row.current .tree-count, #spaces-tree .tree-row.current .tree-icon { color: inherit; }

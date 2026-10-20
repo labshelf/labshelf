@@ -1,47 +1,52 @@
-// Routes between the Desk and the Space tabs by hash, delegates clicks to each view, and shows toasts. Mockup only.
-const VIEWS = { desk: renderDesk, overview: renderOverview, notebook: renderNotebook, discover: renderDiscover, glossary: renderGlossary };
-const ACTIONS = { desk: deskAction, overview: overviewAction, notebook: notebookAction, discover: discoverAction, glossary: glossaryAction };
-const TITLES = { desk: "Desk", overview: "Thesis — chapter 3", notebook: "Notebook · Thesis — chapter 3", discover: "Discover · Thesis — chapter 3", glossary: "Glossary · Thesis — chapter 3" };
-let current = VIEWS[location.hash.slice(1)] ? location.hash.slice(1) : "overview";
+// Holds which editor tabs are open and repaints the editor area and the Spaces section on every change. Mockup only.
+const APP = {
+  tabs: [{ kind: "space", id: "research" }],
+  active: "space:research",
+  view: {},
+  folder: {},
+};
+const tabKey = (t) => `${t.kind}:${t.id}`;
+const activeTab = () => APP.tabs.find((t) => tabKey(t) === APP.active);
 
-function go(view) { current = view; location.hash = view; render(); document.getElementById("view").scrollTop = 0; }
-
-function render() {
-  VIEWS[current](document.getElementById("view"));
-  document.querySelectorAll(".vs-sidebar .nav").forEach((n) => n.classList.toggle("sel", n.dataset.view === current));
-  const dueToday = STATE.commitments.filter((c) => !c.done && c.kind !== "deadline" && bucketOf(c.due) === "today").length;
-  document.getElementById("side-desk-count").textContent = deskCount();
-  document.getElementById("side-nb-count").textContent = STATE.entries.length;
-  document.getElementById("status-desk").textContent = `Desk: ${STATE.arrived.length} arrived · ${dueToday} due today`;
-  document.getElementById("tab-title").textContent = TITLES[current];
-  hydrateIcons();
+// Every render rebuilds the panel, so the focused field and its caret are carried over by id.
+function render({ keepScroll = true } = {}) {
+  const panel = document.getElementById("panel");
+  const scroll = keepScroll ? panel.scrollTop : 0;
+  const focused = panel.contains(document.activeElement) ? document.activeElement : null;
+  const caret = focused?.id && focused.selectionStart !== undefined ? focused.selectionStart : null;
+  document.getElementById("tabs").innerHTML = tabStrip();
+  const tab = activeTab();
+  panel.innerHTML = !tab ? emptyState("No editor is open.", "Open a Space or a project from the sidebar.")
+    : tab.kind === "space" ? renderSpace(spaceById(tab.id)) : renderProject(tab.id);
+  panel.scrollTop = scroll;
+  const again = focused?.id && document.getElementById(focused.id);
+  if (again) { again.focus(); if (caret !== null) again.setSelectionRange(caret, caret); }
+  renderSpacesSection();
 }
 
-let toastTimer;
-function toast(msg) {
-  const t = document.getElementById("toast");
-  t.textContent = msg; t.classList.add("on");
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("on"), 2600);
+function openTab(kind, id) {
+  if (!APP.tabs.some((t) => t.kind === kind && t.id === id)) APP.tabs.push({ kind, id });
+  APP.active = `${kind}:${id}`;
+  render({ keepScroll: false });
 }
 
-function sharedAction(act, el) {
-  if (act === "toast") return toast(el.dataset.msg), true;
-  if (act === "capture") return openCapture(), true;
-  if (act === "open-entry") { Object.assign(NB, { selected: el.dataset.id, editing: false }); go("notebook"); return true; }
-  if (act === "mention") {
-    const n = el.dataset.name;
-    toast(STATE.files[n] ? `Opens ${STATE.files[n].title}` : STATE.papers[n] ? `Opens ${STATE.papers[n].title} in the Library` : `@${n}`);
-    return true;
-  }
-  return false;
+function openSpace(id, view = "overview", folder = null) {
+  APP.view[id] = view;
+  APP.folder[id] = folder;
+  openTab("space", id);
 }
 
-document.addEventListener("click", (e) => {
-  const nav = e.target.closest(".nav");
-  if (nav) return go(nav.dataset.view);
-  const el = e.target.closest("[data-act]");
-  if (!el || sharedAction(el.dataset.act, el)) return;
-  ACTIONS[current](el.dataset.act, el);
-});
+const openProject = (id) => openTab("project", id);
 
+// tokens.css is dark by default and switches on data-theme="light"; the button shows the theme it switches to.
+const paintThemeButton = () => { document.getElementById("theme-btn").innerHTML = icon(document.documentElement.dataset.theme === "light" ? "moon" : "sun"); };
+ACTIONS.theme = () => {
+  const root = document.documentElement;
+  root.dataset.theme = root.dataset.theme === "light" ? "dark" : "light";
+  paintThemeButton();
+};
+
+document.getElementById("side-logo").innerHTML = icon("logo");
+mountLibraryTree();
+paintThemeButton();
 render();
