@@ -6,9 +6,7 @@
 .sp-purpose { margin: var(--ls-space-2) 0 0; color: var(--ls-desc); font-size: var(--ls-text-lg); line-height: 1.4; }
 .sp-add-purpose { border: 0; background: none; padding: 0; cursor: pointer; font-style: italic; }
 .sp-add-purpose:hover { color: var(--ls-link); }
-.sp-people { display: flex; flex: none; }
-.sp-people .mk-avatar { box-shadow: 0 0 0 var(--ls-space-1) var(--ls-bg); }
-.sp-people .mk-avatar + .mk-avatar { margin-left: calc(-1 * var(--ls-space-2)); }
+.sp-people { display: flex; flex: none; gap: var(--ls-space-4); }
 .sp-head .ls-btn svg, .pp-bar .ls-btn svg { width: var(--ls-text-lg); height: var(--ls-text-lg); }
 .sp-tabs { display: flex; gap: var(--ls-space-6); margin-top: var(--ls-space-7); border-bottom: 1px solid var(--ls-border-soft); overflow-x: auto; }
 .sp-tab { flex: none; border: 0; border-bottom: var(--ls-space-1) solid transparent; background: none; color: var(--ls-desc); padding: var(--ls-space-4) var(--ls-space-1);

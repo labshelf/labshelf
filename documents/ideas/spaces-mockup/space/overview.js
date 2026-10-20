@@ -32,7 +32,7 @@ function membersBlock(s) {
 }
 
 function renderOverview(s) {
-  return `<div class="ov-grid"><div class="ov-col">${timelineBlock(s)}${activityBlock(s)}</div>
+  return `<div class="ov-grid"><div class="ov-col">${timelineBlock(s)}${discussionOverview(s)}${activityBlock(s)}</div>
     <div class="ov-col">${projectsBlock(s)}${focusBlock(s)}${membersBlock(s)}</div></div>`;
 }
 

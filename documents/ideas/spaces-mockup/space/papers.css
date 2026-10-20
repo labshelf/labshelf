@@ -22,7 +22,7 @@
 .pp-title:hover { color: var(--ls-link); }
 .pp-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-2) var(--ls-space-5); margin-top: var(--ls-space-1); font-size: var(--ls-text-sm); color: var(--ls-desc); }
 .pp-by { display: inline-flex; align-items: center; gap: var(--ls-space-2); }
-.pp-by .mk-avatar { width: var(--ls-space-7); height: var(--ls-space-7); font-size: calc(var(--ls-text-xs) * .8); }
+.pp-by .mk-avatar { width: var(--ls-space-7); height: var(--ls-space-7); }
 .pp-also { display: inline-flex; align-items: center; gap: var(--ls-space-2); padding: 0 var(--ls-space-3); border-radius: var(--ls-radius-pill); background: var(--ls-button-soft-bg); color: var(--ls-button-soft-fg); }
 .pp-also svg { width: var(--ls-text-sm); height: var(--ls-text-sm); }
 .pp-nopdf { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-4); margin-top: var(--ls-space-3); padding: var(--ls-space-3) var(--ls-space-4);

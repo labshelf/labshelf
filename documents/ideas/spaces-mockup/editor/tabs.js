@@ -1,5 +1,6 @@
 // Builds the editor tab strip, one tab per open Space or project, and switches and closes tabs. Mockup only.
 function tabLabel(t) {
+  if (t.kind === "catalog") return "All Spaces";
   return t.kind === "space" ? spaceById(t.id).name : `${PROJECTS[t.id].file.split("/").pop()} · ${t.id}`;
 }
 
@@ -8,7 +9,7 @@ function tabStrip() {
     const key = tabKey(t);
     const on = key === APP.active;
     const label = esc(tabLabel(t));
-    const lead = t.kind === "space" ? icon("space") : formatTag(PROJECTS[t.id].format);
+    const lead = t.kind === "project" ? formatTag(PROJECTS[t.id].format) : icon("space");
     return `<div class="ls-editor-tab${on ? " active" : ""}" role="tab" aria-selected="${on}" tabindex="0" data-act="tab" data-key="${key}" title="${label}">
       <span class="ls-editor-tab-icon">${lead}</span><span class="ls-editor-tab-label">${label}</span>
       <button class="ls-editor-tab-close" data-act="tab-close" data-key="${key}" aria-label="Close ${label}" title="Close">${icon("x")}</button></div>`;

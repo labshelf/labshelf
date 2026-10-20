@@ -17,6 +17,7 @@
     "verify:library": "sh scripts/verify-library/run.sh"
   },
   "devDependencies": {
+    "boring-avatars-vanilla": "1.0.2",
     "dependency-cruiser": "^18.5.0",
     "esbuild": "^0.24.0",
     "eslint": "^10.12.0",

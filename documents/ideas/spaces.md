@@ -4,6 +4,14 @@ A Space gathers one piece of work: the papers it uses, its writing projects, its
 
 An interactive mockup lives in [spaces-mockup/](spaces-mockup/index.html). Build it with `node build.mjs` from that folder, then open `index.html` in a browser. It bundles the core sidebar, tokens and icons from `packages/core`, so it works only from inside the repository.
 
+## Browsing Spaces and research chat
+
+All Spaces opens an editor tab from the Spaces sidebar. Search and Personal / Shared filters narrow the list. Each row brings together reading progress, links to papers and notes, the project count, the next unfinished task and members. Opening a Space keeps this catalog available in its own tab.
+
+Research chat opens in a collapsible right panel beside the active editor. Conversations belong to a Space or project and stay private to the user. The panel names the active context and offers explicit source selection; viewing a Space does not imply sending all its contents to a model. The mockup previews conversations without contacting a model or executing tools.
+
+The identity preview uses [Boring Avatars](https://github.com/hustcc/boring-avatars-vanilla), bundled locally with its license notice. A style selector offers Beam, Pixel and Bauhaus using a faded blue, green, terracotta and yellow core palette with circular avatars. Member icons stay compact; the picker shows larger previews. Generate options creates eight candidates; choosing one updates that member throughout the mockup. The person selector previews each sample member. Choices live only in memory and reset on reload.
+
 ## Why a Space
 
 A student with three pieces of work (a course assignment, a research internship, a personal project) needs papers X, Y and Z for the internship and H, Y, Z and J for the course. A Library folder is physical, so Y and Z cannot sit in both without copies. A group that works together also rebuilds the same organisation of papers, tasks and dates on every member's machine.
@@ -21,7 +29,7 @@ Spaces is a third section after Library and Projects, with the same tree rows. E
 
 ## Tabs
 
-A Space opens on **Overview**. The other tabs are **Papers**, **Notes**, **Discover** and **Glossary**.
+A Space opens on **Overview**. The other tabs are **Papers**, **Notes**, **Discussions**, **Discover** and **Glossary**.
 
 ### Overview
 
@@ -45,10 +53,17 @@ Notes are rich documents. A note holds text, quotes from papers, images, tables,
 
 - **The paper note.** Every paper can have one note, opened beside the PDF in the reader. "Add to note" on a selection inserts the passage as a quote with a `labshelf:` link back to its page.
 - **Space notes.** Meeting notes, ideas and comparisons that belong to the Space.
-- **Storage.** A note is a `.qmd` file, which is Markdown with extras and reads well outside LabShelf. LabShelf renders it itself, in core, so a note looks and edits the same in VS Code and in the browser with nothing installed.
-- **Quarto runs only when asked.** Running a code cell (a Python plot, a table built from data) and exporting to PDF or HTML use Quarto when it is installed. Without it, the note stays fully editable and the Run action says what is missing. Opening a note never runs code.
+- **Editing and calculations.** [Computational notes](computational-notes.md) defines the `.qmd` editing experience, live rendering, automatic cell execution, local engines and export boundaries.
 
 Paper notes and highlights are personal by default. "Share in Space" puts a note or a highlight into the Space.
+
+### Discussions
+
+Participants discuss one named topic at a time, linked to a paper, a shared note, a project or the Space itself. A topic keeps its conversation, an editable working summary and an Open / Resolved state. Search covers titles, summaries and message text. Overview surfaces open topics so a question remains visible beyond its latest reply. The private AI panel remains available alongside this shared conversation.
+
+A participant explicitly keeps a message as a decision or creates a task from it. Decisions collect in their own view and link to the original message; summaries are written by participants rather than inferred by AI. Tasks carry an owner and due date, belong to the Space checklist, and appear in both Tasks and Overview. Completing an item in either view updates the same item. Resolving a topic preserves its messages, decisions and tasks, which remain accessible through All topics and the outcome views.
+
+The mockup supports creating topics, replies, summary edits, decisions and assigned tasks in memory. It does not send messages to other people or persist them across reloads. Real sharing, durable history, permissions, notifications and concurrent edits require a storage and collaboration contract before implementation.
 
 ### Discover
 
@@ -95,6 +110,7 @@ A shared Space uses the relay, keys and invite of [plan `project-collaboration`]
 Each format needs a contract in `documents/contracts/` before it is built:
 
 - the Space file: members, paper ids, folders, linked projects, checklist, dates and goals;
+- participant topics, message history, summaries, explicit decisions and task provenance;
 - the note format and where notes live in the library;
 - the Glossary and its generated macro files;
 - the `labshelf:` link grammar, extended to a passage or highlight ([contract](../contracts/links.md));
@@ -106,10 +122,10 @@ Each format needs a contract in `documents/contracts/` before it is built:
 - **A command language in notes.** Checklist items and dates are set with controls.
 - **A global Discover tab.** A feed without a Space's scope is generic.
 - **A calendar of events.** The user's calendar already does that job.
-- **A free chat.** Comments stay anchored to a project, a note or a paper.
+- **A single chronological group feed.** Participant conversations belong to named topics; decisions and follow-ups have dedicated views.
 - **Git activity in the Space.** The Space records only its own events.
 - **A `.ls` format.** `.qmd`, `.md` and documented side files cover the need.
-- **Running code on open.** Execution is always an explicit action.
+- **Running code on open.** Opening or receiving a note does not enable its calculations; the execution behavior is defined in [Computational notes](computational-notes.md#live-rendering-and-computation).
 - **DOI as the paper id.** Many papers have none, a preprint and its published version have different DOIs, and DOIs contain slashes.
 
 ## Open questions

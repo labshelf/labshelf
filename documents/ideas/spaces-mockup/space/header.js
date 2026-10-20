@@ -1,7 +1,7 @@
 // Renders a Space tab: its header with name, purpose, members and Share, the view tabs, and the chosen view. Mockup only.
-const SPACE_VIEWS = [["overview", "Overview"], ["papers", "Papers"], ["notes", "Notes"], ["discover", "Discover"], ["glossary", "Glossary"]];
+const SPACE_VIEWS = [["overview", "Overview"], ["papers", "Papers"], ["notes", "Notes"], ["discussions", "Discussions"], ["discover", "Discover"], ["glossary", "Glossary"]];
 // A lookup at render time: each view lives in a script that loads after this one.
-const spaceRenderer = (view) => ({ overview: renderOverview, papers: renderPapers, notes: renderNotes, discover: renderDiscover, glossary: renderGlossary })[view];
+const spaceRenderer = (view) => ({ overview: renderOverview, papers: renderPapers, notes: renderNotes, discussions: renderDiscussions, discover: renderDiscover, glossary: renderGlossary })[view];
 
 function spaceHeader(s, view) {
   const others = s.members.length - 1;

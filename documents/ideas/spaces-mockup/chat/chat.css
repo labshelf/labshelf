@@ -1,0 +1,27 @@
+/* Docks research chat beside the editor while preserving the document workspace. */
+.win.with-chat { grid-template-columns: calc(var(--ls-gallery-sidebar-w) + var(--ls-space-7) * 3) minmax(0, 1fr) minmax(0, calc(var(--ls-gallery-sidebar-w) + var(--ls-space-7) * 6)); }
+.chat-panel[hidden] { display: none; }
+.chat-panel { display: flex; flex-direction: column; min-height: 0; background: var(--ls-sidebar-bg); border-left: 1px solid var(--ls-border); }
+.chat-head { display: flex; justify-content: space-between; align-items: center; padding: var(--ls-space-6); border-bottom: 1px solid var(--ls-border); }
+.chat-context { display: flex; flex-direction: column; gap: var(--ls-space-4); padding: var(--ls-space-6); border-bottom: 1px solid var(--ls-border); font-size: var(--ls-text-md); }
+.chat-context > span { color: var(--ls-desc); line-height: 1.5; }
+.chat-context button { align-self: start; }
+.chat-panel svg { width: var(--ls-space-7); height: var(--ls-space-7); flex: none; }
+.chat-messages { flex: 1; overflow: auto; padding: var(--ls-space-6); }
+.chat-welcome h2 { margin-top: var(--ls-space-7); font-size: var(--ls-text-xl); }
+.chat-welcome p, .chat-message p { line-height: 1.7; color: var(--ls-desc); overflow-wrap: anywhere; white-space: pre-wrap; }
+.chat-suggestion { display: flex; justify-content: space-between; align-items: center; gap: var(--ls-space-4); width: 100%; text-align: left; margin: var(--ls-space-4) 0; padding: var(--ls-space-6); font: inherit; color: var(--ls-fg); background: var(--ls-bg); border: 1px solid var(--ls-border); border-radius: var(--ls-radius); cursor: pointer; }
+.chat-suggestion:hover { background: var(--ls-list-hover); }
+.chat-message { margin-bottom: var(--ls-space-7); }
+.chat-compose { margin: var(--ls-space-6); padding: var(--ls-space-6); border: 1px solid var(--ls-input-border); border-radius: var(--ls-radius); background: var(--ls-input-bg); }
+.chat-compose label { display: block; margin-bottom: var(--ls-space-4); font-size: var(--ls-text-md); }
+.chat-compose textarea { width: 100%; box-sizing: border-box; resize: vertical; border: 0; background: transparent; color: var(--ls-input-fg); font: inherit; }
+.chat-compose > div { display: flex; align-items: center; justify-content: space-between; gap: var(--ls-space-4); color: var(--ls-desc); font-size: var(--ls-text-sm); }
+.chat-privacy { margin: 0 var(--ls-space-6) var(--ls-space-6); color: var(--ls-desc); font-size: var(--ls-text-sm); line-height: 1.5; }
+@media (max-width: 900px) {
+  .win.with-chat { grid-template-columns: calc(var(--ls-gallery-sidebar-w) + var(--ls-space-7) * 3) minmax(0, 1fr); }
+  .with-chat .ls-editor-area { display: none; }
+}
+@media (max-width: 760px) {
+  .win.with-chat { grid-template-columns: minmax(0, 1fr); }
+}

@@ -39,8 +39,13 @@ function renderSpacesSection() {
       <span class="tree-section-chevron">${icon("chevron-right")}</span><span class="tree-section-label">Spaces</span>
       <span class="tree-heading-actions"><button class="ls-icon-btn" data-act="toast" data-msg="Creates a Space with a name; papers, folders and members come later." title="New Space" aria-label="New Space">${icon("plus")}</button></span>
     </div>
-    <div class="tree-pane-body" role="group">${open ? SPACES.map(spaceRows).join("") : ""}</div></div>`;
+    <div class="tree-pane-body" role="group">${open ? treeRow("all-spaces", 0,
+      { current: activeTab()?.kind === "catalog", act: "all-spaces", title: "Browse all Spaces" },
+      `${twisty(true)}<span class="tree-icon">${icon("space")}</span><span class="tree-label">All Spaces</span><span class="tree-count">${SPACES.length}</span>`)
+      + SPACES.map(spaceRows).join("") : ""}</div></div>`;
 }
+
+ACTIONS["all-spaces"] = () => openTab("catalog", "spaces");
 
 const toggleExpanded = (key) => { if (SPACES_TREE.expanded.has(key)) SPACES_TREE.expanded.delete(key); else SPACES_TREE.expanded.add(key); };
 

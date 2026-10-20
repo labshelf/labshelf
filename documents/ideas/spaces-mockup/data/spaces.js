@@ -1,10 +1,10 @@
 // Holds the three sample Spaces: members, own folders of paper references, linked projects, dates, goals and activity. Mockup only.
 const PEOPLE = {
-  you: { name: "You", initials: "LN" },
-  lima: { name: "Prof. Lima", initials: "PL" },
-  ana: { name: "Ana", initials: "AS" },
-  bruno: { name: "Bruno", initials: "BR" },
-  carla: { name: "Carla", initials: "CM" },
+  you: { name: "You" },
+  lima: { name: "Prof. Lima" },
+  ana: { name: "Ana" },
+  bruno: { name: "Bruno" },
+  carla: { name: "Carla" },
 };
 
 // Dates are days in October and November 2026; today is Tue 20 Oct. A goal counts Done papers or a project's checklist.

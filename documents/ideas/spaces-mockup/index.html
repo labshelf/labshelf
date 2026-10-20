@@ -16,6 +16,10 @@
 <link rel="stylesheet" href="discover/discover.css">
 <link rel="stylesheet" href="glossary/glossary.css">
 <link rel="stylesheet" href="insert/insert.css">
+<link rel="stylesheet" href="catalog/catalog.css">
+<link rel="stylesheet" href="identity/identity.css">
+<link rel="stylesheet" href="chat/chat.css">
+<link rel="stylesheet" href="discussions/discussions.css">
 </head>
 <body>
 <div class="win">
@@ -28,11 +32,12 @@
     <div class="ls-editor-group">
       <div class="ls-editor-titlebar">
         <div class="ls-editor-tabs" id="tabs" role="tablist" aria-label="Open editors"></div>
-        <div class="ls-editor-actions"><button class="ls-icon-btn" id="theme-btn" data-act="theme" title="Switch light and dark" aria-label="Switch light and dark"></button></div>
+        <div class="ls-editor-actions"><button class="ls-icon-btn" id="chat-btn" data-act="chat-toggle" title="Open research chat" aria-label="Open research chat" aria-expanded="false"></button><button class="ls-icon-btn" id="theme-btn" data-act="theme" title="Switch light and dark" aria-label="Switch light and dark"></button></div>
       </div>
       <div class="ls-editor-panels"><div class="ls-editor-panel" id="panel" role="tabpanel"></div></div>
     </div>
   </main>
+  <aside id="chat-panel" class="chat-panel" aria-label="Research chat" hidden></aside>
 </div>
 <script src=".generated/core.js"></script>
 <script src="data/library.js"></script>
@@ -41,6 +46,7 @@
 <script src="data/discover.js"></script>
 <script src="data/glossary.js"></script>
 <script src="data/insert.js"></script>
+<script src="identity/characters.js"></script>
 <script src="markup.js"></script>
 <script src="actions.js"></script>
 <script src="sidebar/library.js"></script>
@@ -59,6 +65,13 @@
 <script src="insert/insertSyntax.js"></script>
 <script src="insert/insertPanel.js"></script>
 <script src="insert/project.js"></script>
+<script src="discussions/data.js"></script>
+<script src="discussions/topics.js"></script>
+<script src="discussions/outcomes.js"></script>
+<script src="discussions/actions.js"></script>
+<script src="identity/picker.js"></script>
+<script src="catalog/catalog.js"></script>
+<script src="chat/chat.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

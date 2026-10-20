@@ -1,13 +1,8 @@
-/* Styles the markup pieces every view shares: status marks, member initials, format labels, empty states and code colours. Mockup only. */
+/* Styles the markup pieces every view shares: status marks, member characters, format labels, empty states and code colours. Mockup only. */
 .muted { color: var(--ls-desc); }
 .mono { font-family: var(--ls-mono); }
 .mk-status { display: inline-flex; width: var(--ls-space-6); height: var(--ls-space-6); flex: none; }
 .mk-status svg { width: 100%; height: 100%; }
-.mk-avatar {
-  display: inline-flex; align-items: center; justify-content: center; flex: none;
-  width: calc(var(--ls-space-7) * 1.5); height: calc(var(--ls-space-7) * 1.5); border-radius: var(--ls-radius-pill);
-  background: var(--ls-badge-bg); color: var(--ls-badge-fg); font: 600 var(--ls-text-xs) var(--ls-font); letter-spacing: .02em;
-}
 .mk-ft { flex: none; font: 600 var(--ls-text-xs) var(--ls-mono); }
 .mk-ft.tex { color: var(--ls-file-tex); }
 .mk-ft.typ { color: var(--ls-file-typ); }

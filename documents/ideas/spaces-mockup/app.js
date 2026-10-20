@@ -1,7 +1,7 @@
 // Holds which editor tabs are open and repaints the editor area and the Spaces section on every change. Mockup only.
 const APP = {
-  tabs: [{ kind: "space", id: "research" }],
-  active: "space:research",
+  tabs: [{ kind: "catalog", id: "spaces" }],
+  active: "catalog:spaces",
   view: {},
   folder: {},
 };
@@ -17,11 +17,13 @@ function render({ keepScroll = true } = {}) {
   document.getElementById("tabs").innerHTML = tabStrip();
   const tab = activeTab();
   panel.innerHTML = !tab ? emptyState("No editor is open.", "Open a Space or a project from the sidebar.")
+    : tab.kind === "catalog" ? renderAllSpaces()
     : tab.kind === "space" ? renderSpace(spaceById(tab.id)) : renderProject(tab.id);
   panel.scrollTop = scroll;
   const again = focused?.id && document.getElementById(focused.id);
   if (again) { again.focus(); if (caret !== null) again.setSelectionRange(caret, caret); }
   renderSpacesSection();
+  renderChat();
 }
 
 function openTab(kind, id) {
