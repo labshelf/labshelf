@@ -36,6 +36,7 @@ export function parseAllProjectsMessage(raw: unknown): AllProjectsToHost | undef
   const { type, id, kind, title, folder, archived, trashed, command, path, venue, deadline } = raw as Record<string, unknown>;
   if (type === "ready" || type === "emptyTrash") { return { type }; }
   if (type === "create") { return KINDS.includes(kind) ? { type, kind: kind as "blank" | "template" | "folder" } : undefined; }
+  if (type === "project.selected") { return id === null || isText(id) ? { type, id } : undefined; }
   if (typeof id !== "string") { return undefined; }
   switch (type) {
     case "open": case "deleteForever": case "files": case "detail": case "build": case "preview": case "openLog": return { type, id };

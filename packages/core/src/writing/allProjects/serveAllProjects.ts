@@ -26,11 +26,13 @@ const ACTION_LABELS: Record<AllProjectsToHost["type"], string> = {
   openLog: "Open log",
   createFile: "Create file",
   setTarget: "Set target",
+  "project.selected": "Select",
 };
 
 function run(port: ProjectLibraryPort, message: Exclude<AllProjectsToHost, { type: "files" | "detail" }>): Promise<void> {
   switch (message.type) {
-    case "ready": return Promise.resolve();
+    // The apps route the selection to the Details surface themselves.
+    case "ready": case "project.selected": return Promise.resolve();
     case "open": return port.open(message.id);
     case "create": return port.create(message.kind);
     case "rename": return port.rename(message.id, message.title);

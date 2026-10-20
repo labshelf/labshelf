@@ -69,17 +69,17 @@ describe("reveal", () => {
 describe("paper.selected", () => {
   const selectedPosts = (t: ReturnType<typeof mountForTest>) => t.sent.filter((m) => m.type === "paper.selected");
 
-  it("posts the id when one paper becomes selected and null when several or none are", () => {
+  it("posts every selected id, and an empty list when none is selected", () => {
     const t = mountForTest();
     t.snapshot(library, [], folders);
     t.lib.store.selectOnly("r");
-    expect(selectedPosts(t).at(-1)).toEqual({ type: "paper.selected", id: "r" });
+    expect(selectedPosts(t).at(-1)).toEqual({ type: "paper.selected", ids: ["r"] });
     t.lib.store.toggleSelected("x");
-    expect(selectedPosts(t).at(-1)).toEqual({ type: "paper.selected", id: null });
+    expect(selectedPosts(t).at(-1)).toEqual({ type: "paper.selected", ids: ["r", "x"] });
     t.lib.store.selectOnly("x");
-    expect(selectedPosts(t).at(-1)).toEqual({ type: "paper.selected", id: "x" });
+    expect(selectedPosts(t).at(-1)).toEqual({ type: "paper.selected", ids: ["x"] });
     t.lib.store.clearSelection();
-    expect(selectedPosts(t).at(-1)).toEqual({ type: "paper.selected", id: null });
+    expect(selectedPosts(t).at(-1)).toEqual({ type: "paper.selected", ids: [] });
   });
 
   it("does not repeat a post for the same value", () => {
@@ -90,7 +90,7 @@ describe("paper.selected", () => {
     t.lib.store.selectOnly("r");
     expect(selectedPosts(t)).toHaveLength(count);
     t.lib.store.set({ selected: new Set(["r", "x"]) });
-    t.lib.store.set({ selected: new Set(["x", "y"]) });
+    t.lib.store.set({ selected: new Set(["r", "x"]) });
     expect(selectedPosts(t)).toHaveLength(count + 1);
   });
 
@@ -98,6 +98,6 @@ describe("paper.selected", () => {
     const t = mountForTest();
     t.snapshot(library, [], folders);
     t.host.post({ type: "reveal", id: "x" });
-    expect(selectedPosts(t).at(-1)).toEqual({ type: "paper.selected", id: "x" });
+    expect(selectedPosts(t).at(-1)).toEqual({ type: "paper.selected", ids: ["x"] });
   });
 });

@@ -6,7 +6,7 @@ import { buildFrame, togglePane } from "../../../library-ui/dom/index.js";
 import type { PanePrefsPort } from "../../../library-ui/state/index.js";
 import { showMenu, toast, type MenuAnchor } from "../../../ui/dom/index.js";
 import { DEFAULT_PROJECT_VIEW, deriveProjectView, firstProjectSortDir, placeCounts, type ProjectSortKey, type ProjectViewState } from "../derive/index.js";
-import type { AllProjectsTransport, HostToAllProjects } from "../protocol/index.js";
+import type { AllProjectsToHost, AllProjectsTransport, HostToAllProjects } from "../protocol/index.js";
 import type { NewProjectKind, ProjectMenuCommand, ProjectPlace, ProjectRow } from "../projectRow.js";
 import { mountAllProjectsHeader } from "./allProjectsHeader.js";
 import { emptyTrash } from "./projectActions.js";
@@ -114,6 +114,7 @@ export function mountAllProjects(root: HTMLElement, { transport, prefs }: AllPro
     onLeaveSearch: () => list.focus(),
   });
   const list = mountProjectList(frame.list, rowHandlers({ s, post, rowById, select, set }, expansion.handlers));
+  const selection = reportSelection(post);
 
   function render(): void {
     const groups = deriveProjectView(s.rows, s.view);
@@ -124,6 +125,7 @@ export function mountAllProjects(root: HTMLElement, { transport, prefs }: AllPro
     const empty = shown.size > 0 ? null : buildProjectEmptyState({ place: s.view.place, query: s.view.query, onClearQuery: () => set({ query: "" }), onNew });
     list.render({ view: s.view, groups, selected: s.selected, tray: expansion.frame(), empty });
     pane.update(paneView(s, details));
+    selection.update(s.selected);
   }
 
   routeMessages(transport, {
@@ -137,4 +139,13 @@ export function mountAllProjects(root: HTMLElement, { transport, prefs }: AllPro
   });
   render();
   post({ type: "ready" });
+  selection.start(s.selected);
+}
+
+/** Posts `project.selected` once per change, from the selection current when `start` runs after `ready`. */
+function reportSelection(post: (m: AllProjectsToHost) => void): { start(id: string | null): void; update(id: string | null): void } {
+  // INVARIANT: undefined until `start`, so the host never hears a selection before the page's `ready`.
+  let reported: string | null | undefined;
+  const send = (id: string | null): void => { reported = id; post({ type: "project.selected", id }); };
+  return { start: send, update: (id) => { if (reported !== undefined && id !== reported) send(id); } };
 }

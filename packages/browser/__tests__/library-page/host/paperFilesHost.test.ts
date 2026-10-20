@@ -152,8 +152,8 @@ describe("paper.openFile", () => {
 describe("paper.selected", () => {
   it("is handled silently", async () => {
     const { ui, received, logs } = await setup();
-    ui.post({ type: "paper.selected", id: "p1" });
-    ui.post({ type: "paper.selected", id: null });
+    ui.post({ type: "paper.selected", ids: ["p1"] });
+    ui.post({ type: "paper.selected", ids: [] });
     await tick();
     expect(logs.filter((l) => l[2] === "Unhandled library UI message")).toEqual([]);
     expect(received).toEqual([]);

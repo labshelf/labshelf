@@ -42,6 +42,7 @@ export function isLibraryPath(v: unknown): v is string {
 const SHAPES: Record<UiToHost["type"], Record<string, FieldCheck>> = {
   "ready": {},
   "navigate": { folder: isLibraryPath },
+  "folder.open": { folder: isLibraryPath },
   "folder.create": { parent: isLibraryPath, name: isId },
   "folder.rename": { path: isLibraryPath, name: isId },
   "folder.delete": { path: isLibraryPath },
@@ -50,7 +51,7 @@ const SHAPES: Record<UiToHost["type"], Record<string, FieldCheck>> = {
   "paper.reveal": { id: isId },
   "paper.details": { id: isId },
   "paper.similar": { id: isId },
-  "paper.selected": { id: (v) => v === null || isId(v) },
+  "paper.selected": { ids: isIds },
   "paper.files": { id: isId },
   "paper.describeFile": { id: isId, name: isEntryName, description: isText },
   "paper.openFile": { id: isId, name: isEntryName },

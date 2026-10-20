@@ -10,6 +10,8 @@ import type {
 export type UiToHost =
   | { type: "ready" }
   | { type: "navigate"; folder: string }
+  /** Asks the host to open the folder in the paper list, for a surface that does not hold the list itself. */
+  | { type: "folder.open"; folder: string }
   | { type: "folder.create"; parent: string; name: string }
   | { type: "folder.rename"; path: string; name: string }
   | { type: "folder.delete"; path: string }
@@ -18,8 +20,8 @@ export type UiToHost =
   | { type: "paper.reveal"; id: string }
   | { type: "paper.details"; id: string }
   | { type: "paper.similar"; id: string }
-  /** The single selected paper changed; null when none or several are selected. */
-  | { type: "paper.selected"; id: string | null }
+  /** The selection changed; `ids` holds every selected paper and is empty when none is. */
+  | { type: "paper.selected"; ids: string[] }
   | { type: "paper.files"; id: string }
   /** `name` is one entry of the paper folder; an empty `description` removes the stored one. */
   | { type: "paper.describeFile"; id: string; name: string; description: string }
