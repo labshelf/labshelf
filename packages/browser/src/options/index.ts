@@ -15,6 +15,7 @@ import { createProxySection } from "./proxy";
 import { createReaderForm, type ReaderForm } from "./readerForm";
 import { createSavedFlag } from "./savedFlag";
 import { createSidebarSectionsForm } from "./sidebarSectionsForm";
+import { createSharingSection } from "./sharingSection";
 
 const ring = new StorageRingLogSink();
 const logger = createBrowserLogger(ring);
@@ -91,6 +92,7 @@ async function init(): Promise<void> {
       getPlatformInfo: () => bx.runtime.getPlatformInfo(),
       openUrl: (url) => void bx.tabs.create({ url }),
     }),
+    createSharingSection(logger),
     sidebar.section,
     createAppearanceSection(saved.flash),
     log.element,
