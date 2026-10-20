@@ -5,7 +5,7 @@
 import { mountLibrarySidebar } from "../../../../src/library-ui/dom";
 
 function mount(collapsed: string[] = []) {
-  const actions = { openFolder: jest.fn(), revealPaper: jest.fn(), createFolder: jest.fn(), renameFolder: jest.fn(), removeFolder: jest.fn(), searchTag: jest.fn() };
+  const actions = { openFolder: jest.fn(), revealPaper: jest.fn(), createFolder: jest.fn(), renameFolder: jest.fn(), removeFolder: jest.fn(), shareFolder: jest.fn(), searchTag: jest.fn() };
   const saveCollapsed = jest.fn();
   const slot = document.createElement("div");
   document.body.replaceChildren(slot);

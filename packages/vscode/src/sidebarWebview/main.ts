@@ -36,6 +36,7 @@ const sidebar = mountLibrarySidebar(root.appendChild(document.createElement("div
     refresh: () => post({ type: "refresh" }),
     renameFolder: (path) => post({ type: "renameFolder", path }),
     removeFolder: (path) => post({ type: "removeFolder", path }),
+    shareFolder: (path) => post({ type: "shareFolder", path }),
   },
   expanded: state()[EXPANDED_KEY] ?? [],
   saveExpanded: (paths) => saveState({ [EXPANDED_KEY]: paths }),

@@ -47,7 +47,7 @@ function start() {
   const received: HostToUi[] = [];
   ui.subscribe((m) => received.push(m));
   const listenersBefore = mockApi.runtime.onMessage.addListener.mock.calls.length;
-  attachLibraryHost(host, { log: { log: async () => undefined, error: async () => undefined } });
+  attachLibraryHost(host, { log: { log: async () => undefined, error: async () => undefined }, shareRelay: { requireRelay: async () => undefined, connectedRelay: async () => undefined } });
   const send = async (m: UiToHost): Promise<void> => { ui.post(m); await flush(); };
   const last = <T extends HostToUi["type"]>(type: T) => received.filter((m): m is Extract<HostToUi, { type: T }> => m.type === type).at(-1);
   // Delivers a runtime message to every listener this host registered, as the browser does.

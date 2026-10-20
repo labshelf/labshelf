@@ -36,7 +36,7 @@ describe("library page host", () => {
 
   it("opens the file picker for Attach PDF before the UI's post returns, inside the user's click", () => {
     const { ui, host } = createLoopbackTransport();
-    attachLibraryHost(host, { log: { log: async () => undefined, error: async () => undefined } });
+    attachLibraryHost(host, { log: { log: async () => undefined, error: async () => undefined }, shareRelay: { requireRelay: async () => undefined, connectedRelay: async () => undefined } });
     ui.post({ type: "paper.attachPdf", id: "p1" });
     expect(input.click).toHaveBeenCalledTimes(1);
     expect(input.accept).toBe(".pdf,application/pdf");
@@ -45,7 +45,7 @@ describe("library page host", () => {
   it("resolves a library path to the paper stored there, once the library has loaded", async () => {
     mockRecords.push({ id: "vaswani2017attention", path: "papers/ml/vaswani2017attention" });
     const { host } = createLoopbackTransport();
-    const { paperIdAtPath } = attachLibraryHost(host, { log: { log: async () => undefined, error: async () => undefined } });
+    const { paperIdAtPath } = attachLibraryHost(host, { log: { log: async () => undefined, error: async () => undefined }, shareRelay: { requireRelay: async () => undefined, connectedRelay: async () => undefined } });
     await expect(paperIdAtPath("papers/ml/vaswani2017attention")).resolves.toBe("vaswani2017attention");
     await expect(paperIdAtPath("papers/ml")).resolves.toBeNull();
     await expect(paperIdAtPath("papers/ml/unknown")).resolves.toBeNull();
@@ -54,14 +54,14 @@ describe("library page host", () => {
   it("reports the papers the UI selected through onSelection", () => {
     const { ui, host } = createLoopbackTransport();
     const onSelection = jest.fn();
-    attachLibraryHost(host, { log: { log: async () => undefined, error: async () => undefined }, onSelection });
+    attachLibraryHost(host, { log: { log: async () => undefined, error: async () => undefined }, onSelection, shareRelay: { requireRelay: async () => undefined, connectedRelay: async () => undefined } });
     ui.post({ type: "paper.selected", ids: ["p1", "p2"] });
     expect(onSelection).toHaveBeenCalledWith(["p1", "p2"]);
   });
 
   it("answers a repeat ready with the current snapshot once the first load is done", async () => {
     const { ui, host } = createLoopbackTransport();
-    attachLibraryHost(host, { log: { log: async () => undefined, error: async () => undefined } });
+    attachLibraryHost(host, { log: { log: async () => undefined, error: async () => undefined }, shareRelay: { requireRelay: async () => undefined, connectedRelay: async () => undefined } });
     const snapshots: unknown[] = [];
     ui.subscribe((m) => { if (m.type === "snapshot") snapshots.push(m); });
     ui.post({ type: "ready" });

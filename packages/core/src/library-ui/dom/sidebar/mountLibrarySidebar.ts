@@ -135,6 +135,8 @@ function onContextMenu(e: MouseEvent, t: SidebarState): void {
     { label: "Open", icon: "list", onSelect: () => activate(t, r) },
     { label: "New Subfolder…", icon: "folder-plus", onSelect: () => t.actions.createFolder(path) },
     "separator",
+    { label: "Share as Link…", icon: "link", onSelect: () => t.actions.shareFolder(path) },
+    "separator",
     { label: "Rename…", icon: "edit", hint: "F2", onSelect: () => t.actions.renameFolder(path) },
     { label: "Delete Folder…", icon: "trash", danger: true, onSelect: () => t.actions.removeFolder(path) },
   ]);

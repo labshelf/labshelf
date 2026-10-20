@@ -8,8 +8,6 @@ import {
 import type { ActiveServices } from "../../commands/index.js";
 import { connectedRelay, LOG_MODULE, reportShareFailure, shareRegistry, type ShareLinkHost } from "./shareLinkHost.js";
 
-export const SHARE_FOLDER_COMMAND = "labshelf.share.folder";
-
 const STAGE_TEXT: Record<ShareFolderStage, string> = { reading: "reading papers…", encrypting: "encrypting…", uploading: "uploading…" };
 
 /** A Library view node names its folder; anything else means the user picks one. */

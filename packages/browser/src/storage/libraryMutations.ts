@@ -1,11 +1,11 @@
 /** Applies the core library mutations to the IndexedDB library and keeps the paper-record cache in step with the files. */
 import {
-  BibTeXService, createFolder, describePaperFileOnDisk, editPaperTags, listPaperFiles, movePapers, posixPathOps, readPaperOnDisk, relocatePapersUnder, removePapersUnder, renameFolder, setPaperStatus,
+  BibTeXService, createFolder, describePaperFileOnDisk, editPaperTags, importShareLink, listPaperFiles, movePapers, posixPathOps, readPaperOnDisk, relocatePapersUnder, removePapersUnder, renameFolder, setPaperStatus,
   trashFolder, trashPapers, updatePaperFields, writeImportedPaper, writePaperRecord, PAPERS_DIR,
 } from "@labshelf/core";
 import type {
-  BatchOutcome, FieldsBatchOutcome, ILogger, ImportedPaper, IPaperRecordIndex, MoveOutcome, MutationContext, PaperFilesState, PaperRecord, PaperRef, PaperStatus,
-  PdfVersion,
+  BatchOutcome, FieldsBatchOutcome, ILogger, ImportedPaper, ImportShareLinkOptions, ImportShareLinkResult, IPaperRecordIndex, MoveOutcome, MutationContext,
+  PaperFilesState, PaperRecord, PaperRef, PaperStatus, PdfVersion,
 } from "@labshelf/core";
 import { createLibraryFileSystem } from "./libraryFileSystem";
 import { deleteRecord, listAllRecords, upsertRecord } from "./paperRecordStore";
@@ -13,6 +13,8 @@ import { deleteRecord, listAllRecords, upsertRecord } from "./paperRecordStore";
 export interface LibraryMutations {
   /** Writes a new paper folder under targetDir, with a cite key no cached paper or existing folder holds. */
   importPaper(targetDir: string, paper: ImportedPaper): Promise<PaperRecord>;
+  /** Copies a share link's papers into a new folder under papers/, skipping the papers the library holds, and caches their records. */
+  importShareLink(options: Pick<ImportShareLinkOptions, "text" | "readerFor" | "onProgress">): Promise<ImportShareLinkResult>;
   setStatus(papers: PaperRef[], status: PaperStatus): Promise<FieldsBatchOutcome>;
   /** Adds and removes tags on several papers. */
   editTags(papers: PaperRef[], add: string[], remove: string[]): Promise<FieldsBatchOutcome>;
@@ -89,6 +91,13 @@ export function createLibraryMutations(logger: ILogger): LibraryMutations {
       const record = await writeImportedPaper(ctx, (await listAllRecords()).map((r) => r.id), targetDir, paper);
       await upsertRecord(record, record.path);
       return record;
+    },
+    async importShareLink(options) {
+      const result = await importShareLink({ ...options, ctx, parentDir: PAPERS_DIR, known: await listAllRecords() });
+      if (result.status === "imported") {
+        for (const record of result.summary.added) { await upsertRecord(record, record.path); }
+      }
+      return result;
     },
     async setStatus(papers, status) {
       const outcome = await setPaperStatus(ctx, papers, status);

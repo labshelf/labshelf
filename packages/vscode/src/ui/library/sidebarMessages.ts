@@ -43,6 +43,7 @@ export type SidebarToHost =
   | { type: "addFiles"; path: string }
   | { type: "renameFolder"; path: string }
   | { type: "removeFolder"; path: string }
+  | { type: "shareFolder"; path: string }
   /** Files dropped from the OS onto a folder: `uris` is the drop's text/uri-list. */
   | { type: "import"; path: string; uris: string }
   | { type: "moveFolder"; path: string; target: string }
@@ -77,7 +78,7 @@ function isProjectTreeMessage(m: Record<string, unknown>): boolean {
 
 // A project folder path is "" or "/"-joined names, none of them blank.
 const isProjectFolderPath = (v: unknown): v is string => typeof v === "string" && (v === "" || !v.split("/").some((s) => s.trim() === ""));
-const PATH_KEYS = ["openFolder", "createFolder", "addFiles", "renameFolder", "removeFolder", "import", "moveFolder"];
+const PATH_KEYS = ["openFolder", "createFolder", "addFiles", "renameFolder", "removeFolder", "shareFolder", "import", "moveFolder"];
 
 // A tree path starts at papers/ and never climbs out of it.
 const isTreePath = (v: unknown): v is string =>
@@ -89,7 +90,7 @@ export function parseSidebarMessage(raw: unknown): SidebarToHost | null {
   const m = raw as Record<string, unknown>;
   if (PATH_KEYS.includes(m["type"] as string) && !isTreePath(m["path"])) { return null; }
   switch (m["type"]) {
-    case "ready": case "refresh": case "openFolder": case "createFolder": case "addFiles": case "renameFolder": case "removeFolder":
+    case "ready": case "refresh": case "openFolder": case "createFolder": case "addFiles": case "renameFolder": case "removeFolder": case "shareFolder":
       return m as SidebarToHost;
     case "searchTag": return typeof m["tag"] === "string" ? (m as SidebarToHost) : null;
     case "revealPaper": return typeof m["id"] === "string" ? (m as SidebarToHost) : null;

@@ -25,6 +25,8 @@ export interface SidebarActions {
   refresh?(): void;
   renameFolder(path: string): void;
   removeFolder(path: string): void;
+  /** Shares the folder's papers as a link. */
+  shareFolder(path: string): void;
   /** Narrows the list to the papers with this tag. */
   searchTag(tag: string): void;
 }

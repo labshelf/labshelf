@@ -91,7 +91,7 @@ vscode://labshelf.labshelf/importShare?link=<percent-encoded share link>
 
 ## Share list
 
-The shares a device made live in its state dir, outside the library: `<state dir>/libraries/<library key>/shares.json` (see [library-format.md](library-format.md#device-local-files)).
+The shares a device made live in its state dir, outside the library: `<state dir>/libraries/<library key>/shares.json` (see [library-format.md](library-format.md#device-local-files)). The browser extension keeps the same text in `chrome.storage.local["labshelf:share-links:<library id>"]`, never in sync storage, with the library id of [browser.md](../apps/browser.md#joining-a-shared-project).
 
 ```json
 { "shares": [ { "id": "<share id>", "folder": "Reading group", "relayUrl": "https://labshelf-relay.example.workers.dev",
@@ -100,4 +100,4 @@ The shares a device made live in its state dir, outside the library: `<state dir
 
 - `key` is the link key in base64url, so the device can show the link again. `blobs` lists every blob hash the share's manifest names.
 - A missing file reads as no shares. A file that is not this JSON is never overwritten: upload and revoke stop with an error, since writing over it would lose the shares the device can still revoke. An entry with a malformed field is dropped. Every write is atomic.
-- Every change of the list reads it again and writes it inside the store's exclusive section, so two pages or windows that add and remove shares at once keep both changes. A revoke removes only its own entry from the list as it is when the deletes finish. The desktop file store serializes the sections of one process; two VS Code windows over one library are not serialized against each other.
+- Every change of the list reads it again and writes it inside the store's exclusive section, so two pages or windows that add and remove shares at once keep both changes. A revoke removes only its own entry from the list as it is when the deletes finish. The desktop file store serializes the sections of one process; two VS Code windows over one library are not serialized against each other. The browser store holds the Web Lock `labshelf:share-links:<library id>` for each section, so every tab of the profile takes its turn.
