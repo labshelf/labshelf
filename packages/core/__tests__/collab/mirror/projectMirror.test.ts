@@ -1,9 +1,10 @@
 /** Pins that project files on disk follow the share docs and that outside edits, new files and deletes enter the docs. */
 import * as Y from "yjs";
-import { fileText, indexFiles, indexSettings, readSettingsMap, replaceFileText } from "../../../../src/collab/model/index";
-import { DISK_ORIGIN } from "../../../../src/collab/node/index";
-import { sha256Hex } from "../../../../src/hash/index";
-import { exists, openMirror, pause, readFile, STABLE_MS, tempDir, writeFile, type MirrorFixture } from "./mirrorFixture";
+import { fileText, indexFiles, indexSettings, readSettingsMap, replaceFileText } from "../../../src/collab/model/index";
+import { DISK_ORIGIN } from "../../../src/collab/mirror/index";
+import { sha256Hex } from "../../../src/hash/index";
+import { memoryFiles, nodeFiles } from "./mirrorFiles";
+import { exists, openMirror, pause, readFile, STABLE_MS, writeFile, type FixtureOptions, type MirrorFixture } from "./mirrorFixture";
 
 function textFile(fixture: MirrorFixture, file: string, text: string): Y.Doc {
   const doc = fixture.session.openDoc(file);
@@ -18,12 +19,13 @@ function diskUpdates(doc: Y.Doc): Uint8Array[] {
   return updates;
 }
 
-describe("project mirror", () => {
+describe.each([nodeFiles, memoryFiles()])("project mirror over a $name", (files) => {
   let fixture: MirrorFixture;
+  const open = (options: FixtureOptions = {}) => openMirror({ files, ...options });
   afterEach(async () => { await fixture.close(); });
 
   it("writes a doc to disk and does not take its own write back", async () => {
-    fixture = await openMirror();
+    fixture = await open();
     const doc = textFile(fixture, "main.typ", "Hello");
     const fromDisk = diskUpdates(doc);
     await fixture.mirror.idle();
@@ -38,7 +40,7 @@ describe("project mirror", () => {
   });
 
   it("turns an outside edit into one small doc edit", async () => {
-    fixture = await openMirror();
+    fixture = await open();
     const body = `${"intro ".repeat(2000)}MIDDLE${" outro".repeat(2000)}`;
     const doc = textFile(fixture, "main.typ", body);
     await fixture.mirror.idle();
@@ -52,7 +54,7 @@ describe("project mirror", () => {
   });
 
   it("ignores a half-written file until it is stable", async () => {
-    fixture = await openMirror();
+    fixture = await open();
     const doc = textFile(fixture, "notes.md", "start");
     await fixture.mirror.idle();
     const seen: string[] = [];
@@ -70,7 +72,7 @@ describe("project mirror", () => {
   });
 
   it("takes only the last of quick successive writes", async () => {
-    fixture = await openMirror();
+    fixture = await open();
     const doc = textFile(fixture, "main.typ", "a");
     await fixture.mirror.idle();
     const seen: string[] = [];
@@ -85,13 +87,12 @@ describe("project mirror", () => {
   });
 
   it("removes the index entry of a file that stays deleted, and keeps one that comes back", async () => {
-    fixture = await openMirror();
+    fixture = await open();
     textFile(fixture, "gone.typ", "bye");
     textFile(fixture, "saved.typ", "kept");
     await fixture.mirror.idle();
-    const { rm } = await import("node:fs/promises");
-    await rm(`${fixture.folder}/gone.typ`);
-    await rm(`${fixture.folder}/saved.typ`);
+    await files.remove(fixture.folder, "gone.typ");
+    await files.remove(fixture.folder, "saved.typ");
     fixture.mirror.changed("gone.typ");
     fixture.mirror.changed("saved.typ");
     await writeFile(fixture, "saved.typ", "kept again");
@@ -103,7 +104,7 @@ describe("project mirror", () => {
   });
 
   it("deletes the file of a removed index entry", async () => {
-    fixture = await openMirror();
+    fixture = await open();
     textFile(fixture, "chapters/old.typ", "old");
     await fixture.mirror.idle();
     expect(await exists(fixture, "chapters/old.typ")).toBe(true);
@@ -113,7 +114,7 @@ describe("project mirror", () => {
   });
 
   it("adds a new text file and a new binary file on disk to the share, and leaves unshared files out", async () => {
-    fixture = await openMirror();
+    fixture = await open();
     await fixture.mirror.idle();
     const png = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0, 255, 1]);
     await writeFile(fixture, "sections/intro.typ", "= Intro");
@@ -130,10 +131,9 @@ describe("project mirror", () => {
   });
 
   it("writes shared settings into labshelf.yaml keeping local keys, and takes local edits of shared keys", async () => {
-    const folder = await tempDir("mirror-yaml");
-    const local = "# my copy\nid: paper-a\nfolder: Work\nshared: abc\nformat: typst\nmain: main.typ\n";
-    await (await import("node:fs/promises")).writeFile(`${folder}/labshelf.yaml`, local);
-    fixture = await openMirror({ folder });
+    const folder = await files.newFolder("mirror-yaml");
+    await files.write(folder, "labshelf.yaml", "# my copy\nid: paper-a\nfolder: Work\nshared: abc\nformat: typst\nmain: main.typ\n");
+    fixture = await open({ folder });
     await fixture.mirror.idle();
     const settings = indexSettings(fixture.session.index);
     expect(readSettingsMap(settings)).toEqual({ format: "typst", main: "main.typ" });
@@ -152,9 +152,9 @@ describe("project mirror", () => {
   });
 
   it("takes only the keys a local labshelf.yaml edit changed, so a concurrent remote change of another key stays", async () => {
-    const folder = await tempDir("mirror-yaml-race");
-    await (await import("node:fs/promises")).writeFile(`${folder}/labshelf.yaml`, "id: p\nformat: typst\nmain: main.typ\n");
-    fixture = await openMirror({ folder });
+    const folder = await files.newFolder("mirror-yaml-race");
+    await files.write(folder, "labshelf.yaml", "id: p\nformat: typst\nmain: main.typ\n");
+    fixture = await open({ folder });
     await fixture.mirror.idle();
     const settings = indexSettings(fixture.session.index);
     await writeFile(fixture, "labshelf.yaml", "id: p\nformat: typst\nmain: paper.typ\n");
@@ -168,20 +168,20 @@ describe("project mirror", () => {
   });
 
   it("leaves a path the editor owns to the editor", async () => {
-    fixture = await openMirror({ isEditorOwned: (file) => file === "open.typ" });
+    fixture = await open({ isEditorOwned: (file) => file === "open.typ" });
     textFile(fixture, "open.typ", "from peers");
     await fixture.mirror.idle();
     expect(await exists(fixture, "open.typ")).toBe(false);
   });
 
   it("restores files from the stored state after a restart and takes an offline edit", async () => {
-    fixture = await openMirror();
+    fixture = await open();
     textFile(fixture, "main.typ", "one");
     await fixture.mirror.idle();
     const { folder, stateDir } = fixture;
     await fixture.close();
     await writeFile(fixture, "main.typ", "one two");
-    fixture = await openMirror({ folder, stateDir, project: false });
+    fixture = await open({ folder, stateDir, project: false });
     await fixture.mirror.idle();
     expect(fileText(fixture.session.openDoc("main.typ")).toString()).toBe("one two");
     expect(await readFile(fixture, "main.typ")).toBe("one two");

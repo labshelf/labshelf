@@ -1,7 +1,6 @@
 // Reads a mirrored file, optionally only once two reads a moment apart agree, so a half-written file is never taken.
 import { promises as fs } from "node:fs";
-
-export type DiskRead = { state: "missing" } | { state: "present"; bytes: Uint8Array } | { state: "changing" };
+import type { DiskRead } from "../../mirror/index.js";
 
 interface Sample { size: number; mtimeMs: number; bytes: Uint8Array }
 

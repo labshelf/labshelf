@@ -1,7 +1,8 @@
 // Reconciles a file on disk that the index does not list: a new file to share, or one the share removed.
 import { indexFiles, replaceFileText, sharedFileKind, sharedPaths, type ShareFileEntry } from "../../model/index.js";
 import { deleteMirrored, DISK_ORIGIN, forget, hashOf, LOG_MODULE, type MirrorContext } from "./mirrorContext.js";
-import type { DiskRead, ReconcileOutcome } from "./watch/index.js";
+import type { DiskRead } from "../disk/index.js";
+import type { ReconcileOutcome } from "./pathQueue.js";
 
 export async function reconcileUntracked(context: MirrorContext, path: string, disk: DiskRead, settled: boolean): Promise<ReconcileOutcome> {
   const { session, store, logger } = context;

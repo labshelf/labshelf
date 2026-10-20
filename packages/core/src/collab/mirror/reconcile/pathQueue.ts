@@ -1,5 +1,5 @@
 // Runs one reconcile at a time per path, coalescing requests and waiting for settled files, and tells when all are done.
-import type { ILogger } from "../../../../ports/index.js";
+import type { ILogger } from "../../../ports/index.js";
 
 const LOG_MODULE = "collab.mirror";
 /** A file still changing after this many settle rounds is left alone until it changes again. */

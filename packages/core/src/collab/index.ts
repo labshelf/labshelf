@@ -11,3 +11,4 @@ export * from "./share/index.js";
 export * from "./relays/index.js";
 export * from "./state/index.js";
 export * from "./ownership/index.js";
+export * from "./mirror/index.js";

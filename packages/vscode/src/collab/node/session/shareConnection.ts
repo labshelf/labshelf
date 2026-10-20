@@ -5,10 +5,10 @@ import * as path from "node:path";
 import {
   attachAwareness, attachBlobs, COMMENTS_PATH, createShareSession, createSwitchableTransport, deriveAwarenessKey,
   deriveContentKey, deriveRelayToken, importCommentsFile, indexSettings, joinShare, openCollabStore, readIndexKind, startShare,
-  type CollabStore, type ILogger, type InviteRelay, type PresenceHandle, type ShareSession,
+  startProjectMirror, type CollabStore, type ILogger, type InviteRelay, type PresenceHandle, type ProjectMirror, type ShareSession,
 } from "@labshelf/core";
 import {
-  deviceLocalLayout, nodeCollabStorage, nodeProjectCatalogContext, startProjectMirror, type ProjectMirror,
+  deviceLocalLayout, mergeText, nodeCollabStorage, nodeMirrorDisk, nodeProjectCatalogContext,
 } from "@labshelf/core/node";
 import { followShareRelays, type ShareRelays } from "./shareRelays.js";
 
@@ -110,7 +110,10 @@ async function connectSession(options: ConnectOptions, store: CollabStore, start
   });
   try {
     const folder = await placeProject(options, session, start);
-    const mirror = startProjectMirror({ folder, session, blobs, store, logger, isEditorOwned: (file) => options.isEditorOwned(folder, file) });
+    const mirror = startProjectMirror({
+      folder, disk: nodeMirrorDisk(folder, logger), mergeText, session, blobs, store, logger,
+      isEditorOwned: (file) => options.isEditorOwned(folder, file),
+    });
     // A joiner opens the project right after this returns, so the files already on hand must be on disk first.
     if (start.mode === "join") { await mirror.idle(); }
     return {

@@ -1,8 +1,8 @@
 // Reconciles one shared text file between its doc and its disk copy.
 import { fileText, indexFiles, replaceFileText } from "../../model/index.js";
-import { mergeText } from "../../../writing/merge/node/index.js";
 import { DISK_ORIGIN, forget, hashOf, LOG_MODULE, writeMirrored, type MirrorContext } from "./mirrorContext.js";
-import type { DiskRead, ReconcileOutcome } from "./watch/index.js";
+import type { DiskRead } from "../disk/index.js";
+import type { ReconcileOutcome } from "./pathQueue.js";
 
 const decodeText = (bytes: Uint8Array): string | undefined => {
   try { return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes); } catch { return undefined; }
@@ -53,7 +53,7 @@ async function mergedWithDoc(
     await context.logger.log("WARN", LOG_MODULE, "Doc and disk both changed with no common text; took the disk text", { folder: context.folder, path });
     return diskText;
   }
-  const merged = mergeText({ base, local: docText, other: diskText, otherLabel: "disk" });
+  const merged = context.mergeText({ base, local: docText, other: diskText, otherLabel: "disk" });
   if (merged.conflicted) {
     await context.logger.log("WARN", LOG_MODULE, "Doc and disk changed the same lines; marked both", { folder: context.folder, path });
   }

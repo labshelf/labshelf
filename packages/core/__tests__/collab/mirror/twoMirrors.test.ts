@@ -1,13 +1,14 @@
 /** Pins that two members' project folders converge, text and blobs, through a fake relay only. */
 import { readFileSync, existsSync, promises as fs } from "node:fs";
 import * as path from "node:path";
-import { indexSettings } from "../../../../src/collab/model/index";
-import { joinShare, startShare } from "../../../../src/collab/share/index";
-import { nodeProjectCatalogContext } from "../../../../src/writing/project/node/index";
-import { FakeClock, runUntil } from "../../sync/fakeNetwork";
-import { fakeLogger, SHARE_ID } from "../../sync/testSession";
-import { FakeRelay } from "../../transport/relay/fakeRelay";
-import { openMirror, tempDir, type MirrorFixture } from "./mirrorFixture";
+import { indexSettings } from "../../../src/collab/model/index";
+import { joinShare, startShare } from "../../../src/collab/share/index";
+import { nodeProjectCatalogContext } from "../../../src/writing/project/node/index";
+import { FakeClock, runUntil } from "../sync/fakeNetwork";
+import { fakeLogger, SHARE_ID } from "../sync/testSession";
+import { FakeRelay } from "../transport/relay/fakeRelay";
+import { tempDir } from "./mirrorFiles";
+import { openMirror, type MirrorFixture } from "./mirrorFixture";
 
 const read = (folder: string, file: string) => {
   const full = path.join(folder, file);

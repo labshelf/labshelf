@@ -3,7 +3,8 @@
 import { applySharedSettings, indexSettings, readSettingsMap, sharedSettings, writeSettingsChanges, writeSettingsMap } from "../../model/index.js";
 import { PROJECT_FILE } from "../../../writing/project/index.js";
 import { DISK_ORIGIN, hashOf, LOG_MODULE, writeMirrored, type MirrorContext } from "./mirrorContext.js";
-import type { DiskRead, ReconcileOutcome } from "./watch/index.js";
+import type { DiskRead } from "../disk/index.js";
+import type { ReconcileOutcome } from "./pathQueue.js";
 
 export async function reconcileSettings(context: MirrorContext, disk: DiskRead, settled: boolean): Promise<ReconcileOutcome> {
   const { session, store, logger } = context;

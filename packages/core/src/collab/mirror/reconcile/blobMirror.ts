@@ -1,7 +1,8 @@
 // Reconciles one shared binary file between its index entry, the blob cache and its disk copy.
 import { indexFiles, type ShareFileEntry } from "../../model/index.js";
 import { DISK_ORIGIN, forget, hashOf, LOG_MODULE, writeMirrored, type MirrorContext } from "./mirrorContext.js";
-import type { DiskRead, ReconcileOutcome } from "./watch/index.js";
+import type { DiskRead } from "../disk/index.js";
+import type { ReconcileOutcome } from "./pathQueue.js";
 
 export async function reconcileBlob(
   context: MirrorContext, path: string, entry: ShareFileEntry, disk: DiskRead, settled: boolean,

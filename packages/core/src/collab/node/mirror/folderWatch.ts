@@ -1,7 +1,7 @@
 // Reports the files that change under a project folder, as POSIX paths relative to it.
 import { watch } from "node:fs";
 import * as path from "node:path";
-import type { ILogger } from "../../../../ports/index.js";
+import type { ILogger } from "../../../ports/index.js";
 
 const LOG_MODULE = "collab.mirror";
 
