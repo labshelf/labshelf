@@ -1,10 +1,11 @@
 // Pins how the library picks the folder or browser storage, keeps that choice and routes every call to one source.
 import type { LibraryFileSystem } from "@labshelf/core";
-import { createLibrarySources } from "../../src/storage/libraryFileSystem";
+import { createLibrarySources, type PickedFolder } from "../../src/storage/libraryFileSystem";
 import { FakeBridgeHost, silentLogger } from "./bridge/fakeBridgeHost";
 
 function setup(configure: (host: FakeBridgeHost, index: number) => void = () => undefined) {
   const hosts: FakeBridgeHost[] = [];
+  const picked: { folder?: PickedFolder; failure?: Error; announce: () => void } = { announce: () => undefined };
   const browserFs = { readText: jest.fn(async () => "from browser") } as unknown as LibraryFileSystem;
   const rebuild = jest.fn(async (_fs: LibraryFileSystem) => undefined);
   const logger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
@@ -16,17 +17,22 @@ function setup(configure: (host: FakeBridgeHost, index: number) => void = () => 
       hosts.push(host);
       return host;
     },
+    pickedFolder: async () => {
+      if (picked.failure) throw picked.failure;
+      return picked.folder;
+    },
+    onPickedFolderAnnounced: (listener) => { picked.announce = listener; },
     logger: { ...silentLogger, ...logger },
     browserFs,
     rebuild,
   });
-  return { hosts, browserFs, rebuild, logger, ...sources };
+  return { hosts, browserFs, rebuild, logger, picked, ...sources };
 }
 
 describe("library source choice", () => {
   it("uses the folder through the bridge when hello succeeds", async () => {
     const { fileSystem, getLibrarySource, browserFs } = setup();
-    await expect(getLibrarySource()).resolves.toEqual({ kind: "folder", root: "/home/me/Library" });
+    await expect(getLibrarySource()).resolves.toEqual({ kind: "folder", root: "/home/me/Library", via: "bridge" });
     await expect(fileSystem.readText("a.txt")).resolves.toBe("from folder");
     expect(browserFs.readText).not.toHaveBeenCalled();
   });
@@ -72,13 +78,13 @@ describe("library source choice", () => {
     await expect(pending).rejects.toThrow();
     await expect(fileSystem.readText("a.txt")).rejects.toThrow();
     await expect(fileSystem.writeText("b.txt", "x")).rejects.toThrow();
-    await expect(getLibrarySource()).resolves.toEqual({ kind: "folder", root: "/home/me/Library" });
+    await expect(getLibrarySource()).resolves.toEqual({ kind: "folder", root: "/home/me/Library", via: "bridge" });
     expect(browserFs.readText).not.toHaveBeenCalled();
     expect(hosts.length).toBeGreaterThan(1);
 
     hostUp = true;
     await expect(fileSystem.readText("a.txt")).resolves.toBe("from folder");
-    await expect(getLibrarySource()).resolves.toEqual({ kind: "folder", root: "/home/me/Moved" });
+    await expect(getLibrarySource()).resolves.toEqual({ kind: "folder", root: "/home/me/Moved", via: "bridge" });
     expect(browserFs.readText).not.toHaveBeenCalled();
   });
 
@@ -87,8 +93,8 @@ describe("library source choice", () => {
       if (index === 0) host.missingReason = "Specified native messaging host not found.";
     });
     await expect(getLibrarySource()).resolves.toMatchObject({ kind: "browser", reason: "not-installed" });
-    await expect(recheckLibrarySource()).resolves.toEqual({ kind: "folder", root: "/home/me/Library" });
-    await expect(getLibrarySource()).resolves.toEqual({ kind: "folder", root: "/home/me/Library" });
+    await expect(recheckLibrarySource()).resolves.toEqual({ kind: "folder", root: "/home/me/Library", via: "bridge" });
+    await expect(getLibrarySource()).resolves.toEqual({ kind: "folder", root: "/home/me/Library", via: "bridge" });
     await expect(fileSystem.readText("a.txt")).resolves.toBe("from folder");
     expect(browserFs.readText).not.toHaveBeenCalled();
   });
@@ -103,7 +109,7 @@ describe("library source choice", () => {
     await expect(getLibrarySource()).resolves.toMatchObject({ kind: "browser" });
     expect(hosts).toHaveLength(1);
     now.mockReturnValue(61_000);
-    await expect(getLibrarySource()).resolves.toEqual({ kind: "folder", root: "/home/me/Library" });
+    await expect(getLibrarySource()).resolves.toEqual({ kind: "folder", root: "/home/me/Library", via: "bridge" });
     now.mockRestore();
   });
 
@@ -145,7 +151,7 @@ describe("library source choice", () => {
     it("keeps the folder and logs when the rebuild fails", async () => {
       const { getLibrarySource, rebuild, logger } = setup();
       rebuild.mockRejectedValueOnce(new Error("scan failed"));
-      await expect(getLibrarySource()).resolves.toEqual({ kind: "folder", root: "/home/me/Library" });
+      await expect(getLibrarySource()).resolves.toEqual({ kind: "folder", root: "/home/me/Library", via: "bridge" });
       await settle();
       expect(logger.error).toHaveBeenCalledTimes(1);
     });
@@ -185,6 +191,49 @@ describe("library source choice", () => {
       await getLibrarySource();
       await settle();
       expect(heard).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("folder picked in the browser", () => {
+    const pickedFs = (): LibraryFileSystem => ({ readText: jest.fn(async () => "from picked") }) as unknown as LibraryFileSystem;
+    const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
+
+    it("wins over the bridge, routes every call to it and rebuilds from it", async () => {
+      const { fileSystem, folderFileSystem, getLibrarySource, recheckLibrarySource, picked, hosts, rebuild } = setup();
+      picked.folder = { name: "Papers", fs: pickedFs() };
+      await expect(getLibrarySource()).resolves.toEqual({ kind: "folder", root: "Papers", via: "picked" });
+      await expect(fileSystem.readText("a.txt")).resolves.toBe("from picked");
+      await expect(folderFileSystem.readText("a.txt")).resolves.toBe("from picked");
+      await expect(recheckLibrarySource()).resolves.toEqual({ kind: "folder", root: "Papers", via: "picked" });
+      await settle();
+      expect(hosts).toHaveLength(0);
+      expect(rebuild).toHaveBeenCalledWith(picked.folder.fs);
+    });
+
+    it("switches from browser storage to the folder when another context announces a pick", async () => {
+      const { fileSystem, getLibrarySource, picked, browserFs } = setup((host) => { host.missingReason = "Specified native messaging host not found."; });
+      await expect(getLibrarySource()).resolves.toMatchObject({ kind: "browser" });
+      picked.folder = { name: "Papers", fs: pickedFs() };
+      picked.announce();
+      await settle();
+      await expect(getLibrarySource()).resolves.toEqual({ kind: "folder", root: "Papers", via: "picked" });
+      await expect(fileSystem.readText("a.txt")).resolves.toBe("from picked");
+      expect(browserFs.readText).not.toHaveBeenCalled();
+    });
+
+    it("leaves the bridge folder for a folder picked in this context", async () => {
+      const { fileSystem, getLibrarySource, switchToPickedFolder, picked } = setup();
+      await expect(getLibrarySource()).resolves.toMatchObject({ via: "bridge" });
+      picked.folder = { name: "Papers", fs: pickedFs() };
+      await expect(switchToPickedFolder()).resolves.toEqual({ kind: "folder", root: "Papers", via: "picked" });
+      await expect(fileSystem.readText("a.txt")).resolves.toBe("from picked");
+    });
+
+    it("logs a failed read of the stored folder and probes the bridge", async () => {
+      const { getLibrarySource, logger, picked } = setup();
+      picked.failure = new Error("IndexedDB is closed");
+      await expect(getLibrarySource()).resolves.toEqual({ kind: "folder", root: "/home/me/Library", via: "bridge" });
+      expect(logger.error).toHaveBeenCalledWith(expect.any(String), picked.failure, expect.objectContaining({ op: "loadPickedFolder" }));
     });
   });
 });

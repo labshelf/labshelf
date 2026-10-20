@@ -2,17 +2,18 @@
 
 Read when you build, load, change or verify the browser extension.
 
-A Chrome and Firefox MV3 extension. It captures papers from any tab or from Google Scholar and Google search results, keeps its library in the user's library folder through the bridge, or in this browser when the bridge is unavailable, and reads PDFs with the same reader as VS Code.
+A Chrome and Firefox MV3 extension. It captures papers from any tab or from Google Scholar and Google search results, keeps its library in a folder on disk (picked in the browser, or served by the bridge), or in this browser when it has neither, and reads PDFs with the same reader as VS Code.
 
 ## Where the library lives
 
-Every extension context (background, library page, popup, options) probes the bridge once ([bridge.md](../contracts/bridge.md)) and keeps the answer.
+Every extension context (background, library page, popup, options) looks for a picked folder, then probes the bridge once ([bridge.md](../contracts/bridge.md)), and keeps the answer.
 
+- A folder picked in the browser wins. Chromium browsers open it with the File System Access API: the banner's **Choose a folder on this computer** and the options page's Library row pick it, and the handle is kept in the `labshelf-library-folder` IndexedDB database. The other contexts switch to it when the pick is announced on the `labshelf-library-folder` broadcast channel. After a browser restart Chrome may ask for permission again: the library page then shows **Allow access**, and until the user allows it, calls on the folder fail instead of reaching browser storage. Firefox cannot open folders on disk, so there the folder comes only through the bridge.
 - When `hello` succeeds, the context reads and writes the library folder through the bridge, with the same layout as the desktop apps. Folder changes rebuild the paper records and reach open pages as a `folder` broadcast.
-- When the first probe fails, the context stores the library in this browser (IndexedDB, same layout). The library page shows a warning that uninstalling the extension deletes it, why the bridge is unavailable, and how to connect it. A context on browser storage probes again on **Check again** and after a minute, so a bridge connected later is found without a restart.
+- When the first probe fails, the context stores the library in this browser (IndexedDB, same layout). The library page shows a warning that uninstalling the extension deletes it and why the bridge is unavailable. It offers the folder picker where the browser has one, otherwise the LabShelf Helper download (which registers the bridge host) and the desktop apps' Connect the Browser; when the host runs without a library, it asks for the folder's path (`setLibrary`). A context on browser storage probes again on **Check again** and after a minute, so a bridge connected later is found without a restart.
 - A context that chose the folder never falls back to browser storage. A later bridge failure surfaces as an error, so a paper is never saved where the folder does not see it.
 - Once the folder is chosen and the browser still holds papers, the library page offers "Move N papers to <folder>". The move copies each paper, verifies it, then clears it from browser storage. A paper whose id already exists in the folder stays in the browser and is listed.
-- The options page has a **Library** row that shows the folder or "This browser" with the reason, and a **Check again** button.
+- The options page has a **Library** row that shows the folder or "This browser" with the reason, a **Check again** button and, in Chromium browsers, the folder picker.
 
 ## Build
 
