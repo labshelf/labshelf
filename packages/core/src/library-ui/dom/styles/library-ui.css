@@ -91,6 +91,7 @@ body, #root { display: flex; flex-direction: column; }
   padding: var(--ls-space-3); background: var(--ls-workspace-bg);
 }
 .ls-pane-frame > .sidebar,
+.ls-pane-frame > .ls-pane,
 .ls-pane-frame .ls-editor-group {
   border: thin solid var(--ls-border); border-radius: var(--ls-radius-lg); overflow: hidden;
   box-shadow: var(--ls-pane-shadow);
