@@ -1,7 +1,7 @@
-// Builds the Library section: where the library lives, and a re-check of the connection to LabShelf on this computer.
+// Builds the Library section: where the library lives, the choice of a folder, and a re-check of the connection.
 import { errorMessage, type ILogger } from "@labshelf/core";
-import { actionButton, el, inlineCode, settingRow, settingsSection, statusLine, textField } from "@labshelf/core/dom";
-import { chooseLibraryFolder, recheckSource, sourceReason } from "../library-source";
+import { actionButton, el, inlineCode, settingRow, settingsSection, statusLine } from "@labshelf/core/dom";
+import { canPickFolder, folderPathForm, pickLibraryFolder, recheckSource, sourceReason } from "../library-source";
 import { getLibrarySource, type LibrarySource } from "../storage";
 
 function sourceRow(source: LibrarySource): HTMLElement {
@@ -9,32 +9,27 @@ function sourceRow(source: LibrarySource): HTMLElement {
   return settingRow({ label: "Stored in", description: sourceReason(source) }, el("span", { text: "This browser" }));
 }
 
-/** Offered when the host runs but names no library, so a user with only the standalone Helper can pick one. */
-function folderForm(logger: ILogger, show: (source: LibrarySource) => void): HTMLElement {
-  const input = textField({ id: "library-folder", type: "text", placeholder: "/Users/you/LabShelf" });
-  const status = statusLine();
-  const apply = actionButton({
-    label: "Use this folder", icon: "folder", primary: true,
-    onClick: async () => {
-      status.set("Setting the folder…", "idle");
-      try {
-        show(await chooseLibraryFolder(input.control.value.trim(), logger));
-      } catch (err) {
-        await logger.error("options", err, { action: "choose library folder" });
-        status.set("Could not use this folder", "error", errorMessage(err));
-      }
-    },
-  });
-  return el("div", {}, settingRow({ label: "Library folder", labelFor: "library-folder" }, input.element), settingRow({}, apply), status.element);
-}
-
 export function createLibrarySourceSection(logger: ILogger): HTMLElement {
   const status = statusLine();
   const row = el("div");
   const show = (source: LibrarySource): void => {
     row.replaceChildren(sourceRow(source));
-    if (source.kind === "browser" && source.reason === "no-library") row.append(folderForm(logger, show));
+    if (source.kind === "browser" && source.reason === "no-library") row.append(folderPathForm(logger, show));
+    // A bridge folder belongs to the desktop apps, which change it themselves.
+    if (canPickFolder() && (source.kind === "browser" || source.via === "picked")) row.append(settingRow({}, pick(source)));
   };
+  const pick = (source: LibrarySource): HTMLElement => actionButton({
+    label: source.kind === "folder" ? "Choose another folder" : "Choose a folder on this computer", icon: "folder",
+    onClick: async () => {
+      try {
+        const next = await pickLibraryFolder(logger);
+        if (next) show(next);
+      } catch (err) {
+        await logger.error("options", err, { action: "pick library folder" });
+        status.set("Could not use this folder", "error", errorMessage(err));
+      }
+    },
+  });
   const check = actionButton({
     label: "Check again", icon: "refresh",
     onClick: async () => {

@@ -19,3 +19,5 @@
 .lsrc-spin { animation: lsrc-spin 1.2s linear infinite; }
 .lsrc-banner code { font-family: var(--ls-mono); font-size: var(--ls-text-sm); }
 @keyframes lsrc-spin { to { transform: rotate(360deg); } }
+.lsrc-folder-form { margin-top: var(--ls-space-3); }
+.lsrc-folder-form .ls-input { flex: 1; }
