@@ -93,7 +93,7 @@ vscode://labshelf.labshelf/importShare?link=<percent-encoded share link>
 
 ## Share list
 
-The shares a device made live in its state dir, outside the library: `<state dir>/libraries/<library key>/shares.json` (see [library-format.md](library-format.md#device-local-files)). The browser extension keeps the same text in `chrome.storage.local["labshelf:share-links:<library id>"]`, never in sync storage, with the library id of [browser.md](../apps/browser.md#joining-a-shared-project).
+The shares a device made live in its state dir, outside the library: `<state dir>/libraries/<library key>/shares.json` (see [library-format.md](library-format.md#device-local-files)). The browser extension keeps the same text in `chrome.storage.local["labshelf:share-links:<library id>"]`, never in sync storage, with the library id of [browser.md](../apps/browser.md#shared-projects).
 
 ```json
 { "shares": [ { "id": "<share id>", "folder": "Reading group", "relayUrl": "https://labshelf-relay.example.workers.dev",

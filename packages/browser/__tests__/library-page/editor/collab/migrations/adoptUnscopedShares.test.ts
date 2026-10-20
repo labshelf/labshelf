@@ -7,12 +7,14 @@ jest.mock("../../../../../src/platform", () => ({
   } } },
 }));
 
-import { loadShare } from "../../../../../src/library-page/editor/collab";
+import { libraryShares, readSharesRecord, toShare } from "../../../../../src/library-page/editor/collab/shareKeyRecord";
 import { adoptUnscopedShares } from "../../../../../src/library-page/editor/collab/migrations";
 
 const A = "a".repeat(32);
 const B = "b".repeat(32);
 const entry = { key: "AQID", relays: [{ url: "https://relay.test" }] };
+/** The library's entry for the share as stored, read past the key store, which would run the migration itself. */
+const loadShare = async (libraryId: string, shareId: string) => toShare(libraryShares(await readSharesRecord(), libraryId)[shareId]);
 const stored = (): { shares?: Record<string, unknown>; libraries?: Record<string, Record<string, unknown>>; displayName?: string } =>
   local["collabShares"] as never;
 
@@ -24,7 +26,7 @@ beforeEach(() => {
 describe("adoptUnscopedShares", () => {
   it("moves the entries of this library's projects under its id and leaves the rest", async () => {
     await adoptUnscopedShares("browser", [A]);
-    expect(await loadShare("browser", A)).toEqual({ shareKey: new Uint8Array([1, 2, 3]), relays: entry.relays });
+    expect(await loadShare("browser", A)).toEqual(entry);
     expect(await loadShare("browser", B)).toBeUndefined();
     expect(stored().shares).toEqual({ [B]: entry, ["c".repeat(32)]: 7 });
     expect(stored().displayName).toBe("Ada");
@@ -54,6 +56,6 @@ describe("adoptUnscopedShares", () => {
   it("keeps a key the library already holds over an unscoped one", async () => {
     local["collabShares"] = { shares: { [A]: entry }, libraries: { browser: { [A]: { key: "BA", relays: [] } } } };
     await adoptUnscopedShares("browser", [A]);
-    expect(await loadShare("browser", A)).toEqual({ shareKey: new Uint8Array([4]), relays: [] });
+    expect(await loadShare("browser", A)).toEqual({ key: "BA", relays: [] });
   });
 });

@@ -46,15 +46,16 @@ function editorDeps({ fs, logger, tab, workspace, project }: TabContext, entry: 
 
 /** Mounts the file's editor in `body`; undefined when the tab closed first or the file could not be opened, which the body then says. */
 async function loadEditor(
-  body: HTMLElement, context: TabContext, projectId: string, path: string, disposed: () => boolean,
+  body: HTMLElement, context: TabContext, file: { projectId: string; path: string; retried: boolean }, disposed: () => boolean,
 ): Promise<{ editor: SourceEditor; entry: ProjectEntry; unresolved: boolean } | undefined> {
   const { fs, logger, project } = context;
-  const { session, shares } = project();
+  const { projectId, path, retried } = file;
+  const { session, sharing } = project();
   const loading = body.appendChild(el("p", { class: "ls-workspace-placeholder" }, `Loading ${path}…`));
   try {
     const [module, entry] = await Promise.all([import("../../editor/index.js"), findProject(fs, logger, session.current(), projectId)]);
     if (disposed()) return undefined;
-    const mode = await sourceFileMode(shares, entry, path, logger);
+    const mode = await sourceFileMode(sharing, entry, path, logger, retried);
     if (disposed()) return undefined;
     const editor = await module.mountSourceEditor(body, editorDeps(context, entry, { projectId, path }, mode));
     loading.remove();
@@ -95,8 +96,8 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   let editor: SourceEditor | undefined;
   let loaded: ProjectEntry | undefined;
   const stopGuard = guardUnsavedEdits(context, { projectId, path }, () => editor);
-  const open = (): void => {
-    void loadEditor(body, context, projectId, path, () => disposed).then((opened) => {
+  const open = (retried: boolean): void => {
+    void loadEditor(body, context, { projectId, path, retried }, () => disposed).then((opened) => {
       if (!opened) return;
       editor = opened.editor;
       // INVARIANT: an unresolved file offers the insert actions no target, so none of them edits it outside the share.
@@ -113,9 +114,9 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
     if (disposed) return;
     body.replaceChildren();
     body.classList.remove("ls-source-unresolved");
-    open();
+    open(true);
   };
-  open();
+  open(false);
   const actions = sourceActions({
     projectId, path, language: sourceLanguageOf(path), fs, logger,
     target: () => (editor && loaded ? { edits: editor, flush: editor.flush, entry: loaded } : undefined),
