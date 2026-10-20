@@ -21,17 +21,12 @@ export interface PlacedProject {
   joinedId: string | undefined;
 }
 
-const isMissing = (error: unknown): boolean => (error as { code?: unknown }).code === "ENOENT";
-
 /** Seeds the share's comments map from the project's comments.json, which the map stands for from then on. */
 async function importComments({ fs, paths }: ProjectCatalogContext, folder: string, session: ShareSession, logger: ILogger): Promise<void> {
-  let text: string;
-  try {
-    text = await fs.readText(paths.join(folder, ...COMMENTS_PATH.split("/")));
-  } catch (error) {
-    if (isMissing(error)) { return; }
-    throw error;
-  }
+  const file = paths.join(folder, ...COMMENTS_PATH.split("/"));
+  // PLATFORM: adapters report a missing file differently (ENOENT, a bridge `notFound`, a plain Error), so absence is asked of `exists`.
+  if (!(await fs.exists(file))) { return; }
+  const text = await fs.readText(file);
   const added = importCommentsFile(session.index, text);
   if (added === undefined) {
     void logger.log("WARN", "collab", "comments.json is not valid, so its threads are not shared", { folder, path: COMMENTS_PATH });
