@@ -61,14 +61,17 @@ function listPanelDeps(deps: PanelCommandsDeps, services: ActiveServices): ListP
   };
 }
 
-function registerOpenListTabCommand(deps: PanelCommandsDeps): void {
+function registerOpenListTabCommand(deps: PanelCommandsDeps, details: DetailsView): void {
   const { context, requireServices } = deps;
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("labshelf.openListTab", (node?: LibraryNode) => {
-      requireServices().then((services) => {
-        if (services) { ListWebviewPanel.createOrShow(listPanelDeps(deps, services), node); }
-      });
+    vscode.commands.registerCommand("labshelf.openListTab", async (node?: LibraryNode) => {
+      const services = await requireServices();
+      if (!services) { return; }
+      // Details opens with the list tab, but only when the tab opens, so a user who closes it while browsing keeps it closed.
+      // Revealing it first lets the new tab take the focus back.
+      if (!ListWebviewPanel.currentPanel) { await details.reveal(); }
+      ListWebviewPanel.createOrShow(listPanelDeps(deps, services), node);
     }),
     // Run by the Library sidebar's paper rows only, so they have no package.json contribution.
     vscode.commands.registerCommand("labshelf.revealPaper", async (paperId: string) => {
@@ -134,13 +137,13 @@ function registerReaderPanelCommands(deps: PanelCommandsDeps): void {
 
 /** @returns the Details view, so callers can show a target in it and route the folders it asks to open */
 export function registerPanelCommands(deps: PanelCommandsDeps): DetailsView {
-  registerOpenListTabCommand(deps);
-  registerReaderPanelCommands(deps);
-  deps.context.subscriptions.push(ReaderPanel.onDidActivatePaper(deps.sources.readerActivated));
   const details = registerDetailsView(deps.context, {
     extensionUri: deps.context.extensionUri, projectLibrary: deps.projectLibrary, logger: deps.logger,
     listDeps: () => { const services = deps.currentServices(); return services ? listPanelDeps(deps, services) : null; },
   });
+  registerOpenListTabCommand(deps, details);
+  registerReaderPanelCommands(deps);
+  deps.context.subscriptions.push(ReaderPanel.onDidActivatePaper(deps.sources.readerActivated));
   wireDetailsSources({
     context: deps.context, details, currentServices: deps.currentServices, onDidChangeRoot: deps.onDidChangeRoot,
     adapters: deps.adapters, papersRootUri: deps.papersRootUri, listPanelDeps: (services) => listPanelDeps(deps, services), logger: deps.logger,

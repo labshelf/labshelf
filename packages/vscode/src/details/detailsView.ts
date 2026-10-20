@@ -4,6 +4,8 @@ import type { DetailsTarget, ILogger, ProjectLibraryPort } from "@labshelf/core"
 import { libraryBundleDirectory, listPanelHtml, type ListPanelDeps } from "../ui/list/index.js";
 import { DetailsSession } from "./detailsSession.js";
 
+export const DETAILS_VIEW = "labshelf.details";
+
 export interface DetailsViewDeps {
   extensionUri: vscode.Uri;
   listDeps: () => ListPanelDeps | null;
@@ -13,6 +15,7 @@ export interface DetailsViewDeps {
 
 export class DetailsView implements vscode.WebviewViewProvider, vscode.Disposable {
   private _session: DetailsSession | undefined;
+  private _view: vscode.WebviewView | undefined;
   private _target: DetailsTarget | undefined;
   private readonly _folderRequests = new vscode.EventEmitter<string>();
   /** Fires with the UI path of a folder the page asked to open in the paper list. */
@@ -28,11 +31,13 @@ export class DetailsView implements vscode.WebviewViewProvider, vscode.Disposabl
       ...this._deps, target: () => this._target, onFolderOpen: (folder) => this._folderRequests.fire(folder),
     });
     this._session = session;
+    this._view = view;
     const message = webview.onDidReceiveMessage((raw: unknown) => void session.handle(raw));
     view.onDidDispose(() => {
       message.dispose();
       session.dispose();
       if (this._session === session) { this._session = undefined; }
+      if (this._view === view) { this._view = undefined; }
     });
     webview.html = await listPanelHtml(webview, this._deps.extensionUri, "details");
   }
@@ -41,6 +46,12 @@ export class DetailsView implements vscode.WebviewViewProvider, vscode.Disposabl
   show(target: DetailsTarget): void {
     this._target = target;
     this._session?.show(target);
+  }
+
+  /** Opens the secondary side bar on this view; a view VS Code has not resolved yet can only be opened through its focus command. */
+  async reveal(): Promise<void> {
+    if (this._view) { this._view.show(true); return; }
+    await vscode.commands.executeCommand(`${DETAILS_VIEW}.focus`);
   }
 
   /** Re-serves the library to the page after the library root changed. */
