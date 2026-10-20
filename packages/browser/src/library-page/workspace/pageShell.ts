@@ -1,7 +1,7 @@
 // Frames the browser workspace with a persistent Details pane.
 import { PANE_LIMITS } from "@labshelf/core";
 import { attachSash, el } from "@labshelf/core/dom";
-import { DEFAULT_DETAIL_WIDTH, type PagePrefs } from "../prefs";
+import type { PagePrefs } from "../prefs";
 
 export interface PageShell {
   root: HTMLElement;
@@ -27,8 +27,10 @@ export function createPageShell(host: HTMLElement, prefs: PagePrefs): PageShell 
   const centre = el("div", { class: "ls-workspace-centre" });
   const details = el("aside", { class: "ls-page-details", "aria-label": "Details" });
   const detailSash = el("div", { class: "sash sash-detail", title: "Drag to resize" });
+  // Until the user resizes Details, it opens as wide as the sidebar, within its own minimum.
+  const detailDefault = Math.max(DETAILS_LIMITS.min, saved.sidebarWidth);
   sidebar.style.width = `${saved.sidebarWidth}px`;
-  details.style.width = `${saved.detailWidth}px`;
+  details.style.width = `${saved.detailWidth ?? detailDefault}px`;
   root.classList.toggle("sidebar-collapsed", saved.sidebarCollapsed);
   root.classList.toggle(DETAILS_COLLAPSED, saved.detailCollapsed);
   attachSash(sash, {
@@ -37,7 +39,7 @@ export function createPageShell(host: HTMLElement, prefs: PagePrefs): PageShell 
     persist: (sidebarWidth, sidebarCollapsed) => prefs.save({ sidebarWidth, sidebarCollapsed }),
   });
   attachSash(detailSash, {
-    root, pane: details, collapsedClass: DETAILS_COLLAPSED, limits: DETAILS_LIMITS, defaultWidth: DEFAULT_DETAIL_WIDTH,
+    root, pane: details, collapsedClass: DETAILS_COLLAPSED, limits: DETAILS_LIMITS, defaultWidth: detailDefault,
     widthFromPointer: (x) => root.getBoundingClientRect().right - x,
     persist: (detailWidth, detailCollapsed) => prefs.saveDetailPane({ detailWidth, detailCollapsed }),
   });
