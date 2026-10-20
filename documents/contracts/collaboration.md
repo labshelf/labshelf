@@ -107,6 +107,8 @@ collab/<share id>/
 - `relay-cursors.json` is saved only once every doc update received so far is stored; while one is not, the cursors are held back.
 - A file whose disk hash differs from its `known.json` hash was changed outside the share since disk and doc last agreed, so that change enters the doc. A file with no entry there is compared as new.
 
+The browser extension keeps the same state in its IndexedDB database `labshelf-collab`, outside the library files, with every key starting with the library id and share id. It stores each doc under its doc key, with a snapshot and its appended updates; the known hashes and relay cursors as one record each; and blobs by SHA-256. A write is durable when its transaction completes. Replacing a snapshot and removing that doc's updates is one transaction, so no torn record exists, and the rules above hold unchanged.
+
 ## Project shares
 
 ### Docs

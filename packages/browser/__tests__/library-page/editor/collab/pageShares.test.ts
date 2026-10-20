@@ -39,7 +39,7 @@ describe("createPageShares", () => {
       indexFiles(owner.index).set("main.tex", { kind: "text" });
     });
     createTransport = jest.fn(() => fakeRelay(join(`joiner-${createTransport.mock.calls.length}`)));
-    shares = createPageShares({ fs: memoryLibraryFs(), logger, createTransport });
+    shares = createPageShares({ fs: memoryLibraryFs(), libraryId: async () => "browser", logger, createTransport });
     inviteText = await formatInvite({ shareKey: SHARE_KEY, relays: [{ url: "https://relay.test" }] });
   });
   afterEach(async () => { await shares.closeAll(); await owner.close(); });
