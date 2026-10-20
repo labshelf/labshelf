@@ -50,13 +50,13 @@ describe("joinSharedProject", () => {
     });
     fileText(owner.openDoc("main.tex")).insert(0, "\\documentclass{article}");
     const fs = memoryLibraryFs();
-    const joined = await joinSharedProject({ inviteText, fs, logger, createTransport });
+    const joined = await joinSharedProject({ inviteText, libraryId: "browser", fs, logger, createTransport });
     connection = joined.connection;
     expect(joined).toMatchObject({ projectId: "draft", folder: "projects/draft" });
     expect(await fs.readText("projects/draft/labshelf.yaml")).toContain("shared: ");
     await until(async () => (await fs.exists("projects/draft/main.tex")) && (await fs.readText("projects/draft/main.tex")) === "\\documentclass{article}");
     expect(await fs.exists("projects/draft/figure.png")).toBe(false);
-    expect(await loadShare(await deriveShareId(SHARE_KEY))).toEqual({ shareKey: SHARE_KEY, relays: [{ url: "https://relay.test" }] });
+    expect(await loadShare("browser", await deriveShareId(SHARE_KEY))).toEqual({ shareKey: SHARE_KEY, relays: [{ url: "https://relay.test" }] });
   });
 
   it("refuses a share of a kind this version does not know", async () => {
@@ -64,10 +64,10 @@ describe("joinSharedProject", () => {
       owner.index.getMap("share").set("kind", "notebook");
       indexSettings(owner.index).set("title", "Notes");
     });
-    await expect(joinSharedProject({ inviteText, fs: memoryLibraryFs(), logger, createTransport })).rejects.toBeInstanceOf(UnknownShareKindError);
+    await expect(joinSharedProject({ inviteText, libraryId: "browser", fs: memoryLibraryFs(), logger, createTransport })).rejects.toBeInstanceOf(UnknownShareKindError);
   });
 
   it("refuses text that holds no invite", async () => {
-    await expect(joinSharedProject({ inviteText: "hello", fs: memoryLibraryFs(), logger, createTransport })).rejects.toThrow("notAnInvite");
+    await expect(joinSharedProject({ inviteText: "hello", libraryId: "browser", fs: memoryLibraryFs(), logger, createTransport })).rejects.toThrow("notAnInvite");
   });
 });

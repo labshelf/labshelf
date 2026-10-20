@@ -1,19 +1,14 @@
-// Keeps the key and relay list of each joined share, and the member's display name, in extension storage.
+// Keeps the key and relay list of each joined share per library, and the member's display name, in extension storage.
 import { base64UrlToBytes, bytesToBase64Url, isHttpsUrl, type InviteRelay } from "@labshelf/core";
 import { bx } from "../../../platform";
 
-const STORAGE_KEY = "collabShares";
+// INVARIANT: extension-local storage only; sync storage would copy share keys to other devices.
+const SHARES_STORAGE_KEY = "collabShares";
 
 /** The relay URL lives only in the invite, so a project reconnects after a reload from what is kept here. */
 export interface StoredShare {
   shareKey: Uint8Array;
   relays: InviteRelay[];
-}
-
-interface StoredShares {
-  /** Base64url share key and relays by share id. */
-  shares: Record<string, { key: string; relays: InviteRelay[] }>;
-  displayName?: string;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
@@ -23,31 +18,43 @@ function toRelay(value: unknown): InviteRelay | undefined {
   return typeof value["relayToken"] === "string" ? { url: value["url"], relayToken: value["relayToken"] } : { url: value["url"] };
 }
 
-function toShare(value: unknown): { key: string; relays: InviteRelay[] } | undefined {
+/** One stored `{ key, relays }` entry, with the key still in base64url; undefined for an entry of the wrong shape. */
+export function toShare(value: unknown): { key: string; relays: InviteRelay[] } | undefined {
   if (!isRecord(value) || typeof value["key"] !== "string" || !Array.isArray(value["relays"])) { return undefined; }
   const relays = value["relays"].map(toRelay);
   return relays.every((relay) => relay !== undefined) ? { key: value["key"], relays: relays as InviteRelay[] } : undefined;
 }
 
-/** Storage is outside the type system, so entries of the wrong shape are dropped. */
-async function readStored(): Promise<StoredShares> {
-  const raw = ((await bx.storage.local.get(STORAGE_KEY)) as Record<string, unknown>)[STORAGE_KEY];
-  const record = isRecord(raw) ? raw : {};
-  const stored = isRecord(record["shares"]) ? record["shares"] : {};
-  const shares = Object.fromEntries(Object.entries(stored).flatMap(([id, value]) => { const share = toShare(value); return share ? [[id, share]] : []; }));
-  const displayName = typeof record["displayName"] === "string" ? record["displayName"] : undefined;
-  return displayName === undefined ? { shares } : { shares, displayName };
+/**
+ * The stored record as it is: `libraries` maps a library id to its shares by share id, `displayName` is global.
+ * INVARIANT: writes change only the entries they touch, so an entry of the wrong shape is skipped on read but never destroyed.
+ */
+export async function readSharesRecord(): Promise<Record<string, unknown>> {
+  const raw = ((await bx.storage.local.get(SHARES_STORAGE_KEY)) as Record<string, unknown>)[SHARES_STORAGE_KEY];
+  return isRecord(raw) ? raw : {};
 }
 
-const writeStored = (stored: StoredShares): Promise<void> => bx.storage.local.set({ [STORAGE_KEY]: stored });
+export const writeSharesRecord = (record: Record<string, unknown>): Promise<void> => bx.storage.local.set({ [SHARES_STORAGE_KEY]: record });
 
-export async function saveShare(shareId: string, shareKey: Uint8Array, relays: InviteRelay[]): Promise<void> {
-  const stored = await readStored();
-  await writeStored({ ...stored, shares: { ...stored.shares, [shareId]: { key: bytesToBase64Url(shareKey), relays } } });
+/** The shares of one library as stored, entries of the wrong shape included. */
+export function libraryShares(record: Record<string, unknown>, libraryId: string): Record<string, unknown> {
+  const libraries = isRecord(record["libraries"]) ? record["libraries"] : {};
+  return isRecord(libraries[libraryId]) ? libraries[libraryId] : {};
 }
 
-export async function loadShare(shareId: string): Promise<StoredShare | undefined> {
-  const share = (await readStored()).shares[shareId];
+export function withLibraryShares(record: Record<string, unknown>, libraryId: string, shares: Record<string, unknown>): Record<string, unknown> {
+  const libraries = isRecord(record["libraries"]) ? record["libraries"] : {};
+  return { ...record, libraries: { ...libraries, [libraryId]: shares } };
+}
+
+export async function saveShare(libraryId: string, shareId: string, shareKey: Uint8Array, relays: InviteRelay[]): Promise<void> {
+  const record = await readSharesRecord();
+  const shares = { ...libraryShares(record, libraryId), [shareId]: { key: bytesToBase64Url(shareKey), relays } };
+  await writeSharesRecord(withLibraryShares(record, libraryId, shares));
+}
+
+export async function loadShare(libraryId: string, shareId: string): Promise<StoredShare | undefined> {
+  const share = toShare(libraryShares(await readSharesRecord(), libraryId)[shareId]);
   if (share === undefined) { return undefined; }
   try {
     return { shareKey: base64UrlToBytes(share.key), relays: share.relays };
@@ -57,9 +64,10 @@ export async function loadShare(shareId: string): Promise<StoredShare | undefine
 }
 
 export async function saveDisplayName(name: string): Promise<void> {
-  await writeStored({ ...(await readStored()), displayName: name });
+  await writeSharesRecord({ ...(await readSharesRecord()), displayName: name });
 }
 
 export async function loadDisplayName(): Promise<string | undefined> {
-  return (await readStored()).displayName;
+  const name = (await readSharesRecord())["displayName"];
+  return typeof name === "string" ? name : undefined;
 }

@@ -55,6 +55,10 @@ export class FakeDir {
     this.children.delete(this.key(name));
   }
 
+  async isSameEntry(other: unknown): Promise<boolean> {
+    return other === this;
+  }
+
   async *keys(): AsyncGenerator<string> {
     for (const entry of this.children.values()) yield entry.name;
   }

@@ -5,6 +5,7 @@ import { startDocFileWriter } from "./docFileWriter";
 import { joinSharedProject, type JoinedSharedProject, type JoinSharedProjectOptions } from "./joinSharedProject";
 import { createLiveCommentThreads } from "./liveCommentThreads";
 import { connectShare, type ShareConnection } from "./shareConnection";
+import { adoptUnscopedShares } from "./migrations";
 import { loadDisplayName, loadShare, saveDisplayName } from "./shareKeyStore";
 
 const LOG_MODULE = "collab.shares";
@@ -29,12 +30,14 @@ export interface PageShares {
 
 export interface PageSharesOptions extends Pick<JoinSharedProjectOptions, "createTransport"> {
   fs: LibraryFileSystem;
+  /** The id of the library `fs` serves at the time of the call; the user can switch libraries while the page is open. */
+  libraryId: () => Promise<string>;
   logger: ILogger;
 }
 
 interface Entry { connection: ShareConnection; comments: CommentThreads }
 
-export function createPageShares({ fs, logger, createTransport }: PageSharesOptions): PageShares {
+export function createPageShares({ fs, libraryId, logger, createTransport }: PageSharesOptions): PageShares {
   const entries = new Map<string, Entry>();
   const connecting = new Map<string, Promise<void>>();
   const listeners = new Set<() => void>();
@@ -50,7 +53,10 @@ export function createPageShares({ fs, logger, createTransport }: PageSharesOpti
   };
 
   const open = async (projectId: string, shareId: string, folder: string): Promise<void> => {
-    const stored = await loadShare(shareId);
+    const library = await libraryId();
+    // The project was read from this library's folder, so its share id belongs to this library.
+    await adoptUnscopedShares(library, [shareId]);
+    const stored = await loadShare(library, shareId);
     if (stored === undefined) { throw new Error(`The key of share ${shareId} is not stored on this device, so project ${projectId} cannot reconnect`); }
     const connection = await connectShare({ invite: { shareId, ...stored }, logger, createTransport });
     const writer = startDocFileWriter({ session: connection.session, fs, folder, logger });
@@ -59,7 +65,7 @@ export function createPageShares({ fs, logger, createTransport }: PageSharesOpti
 
   return {
     async join(inviteText) {
-      const { projectId, folder, connection } = await joinSharedProject({ inviteText, fs, logger, createTransport });
+      const { projectId, folder, connection } = await joinSharedProject({ inviteText, libraryId: await libraryId(), fs, logger, createTransport });
       await keep(projectId, connection);
       return { projectId, folder };
     },

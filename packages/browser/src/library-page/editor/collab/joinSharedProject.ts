@@ -20,6 +20,8 @@ export class UnknownShareKindError extends Error {
 
 export interface JoinSharedProjectOptions extends Pick<ConnectShareOptions, "createTransport"> {
   inviteText: string;
+  /** The library `fs` serves; the share key is stored under it. */
+  libraryId: string;
   fs: LibraryFileSystem;
   logger: ILogger;
 }
@@ -53,7 +55,7 @@ function waitForProjectIndex(session: ShareSession): Promise<void> {
   });
 }
 
-export async function joinSharedProject({ inviteText, fs, logger, createTransport }: JoinSharedProjectOptions): Promise<JoinedSharedProject> {
+export async function joinSharedProject({ inviteText, libraryId, fs, logger, createTransport }: JoinSharedProjectOptions): Promise<JoinedSharedProject> {
   const parsed = await parseInvite(inviteText);
   if (!parsed.ok) { throw new Error(`The text holds no valid invite: ${parsed.error}`); }
   const { invite } = parsed;
@@ -65,7 +67,7 @@ export async function joinSharedProject({ inviteText, fs, logger, createTranspor
     const context = { fs, paths: posixPathOps, logger, registry: noOutsideFolders };
     const { id, folder } = await joinShare(context, { libraryRoot: "", shareId: invite.shareId, index: session.index });
     const writer = startDocFileWriter({ session, fs, folder, logger });
-    await saveShare(invite.shareId, invite.shareKey, invite.relays);
+    await saveShare(libraryId, invite.shareId, invite.shareKey, invite.relays);
     await logger.log("INFO", LOG_MODULE, "Joined a shared project", { shareId: invite.shareId, folder });
     return { projectId: id, folder, connection: { ...connection, close: async () => { await writer.close(); await connection.close(); } } };
   } catch (error) {
