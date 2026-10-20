@@ -5,6 +5,7 @@
 import {
   DEFAULT_PREFS, createLoopbackTransport, type LibraryUiCapabilities, type LibraryUiPrefs, type PaperRecord, type PaperFilesState, type PaperStats, type UiToHost,
 } from "@labshelf/core";
+import type { SharingHost } from "../../../src/library-ui/sharing";
 import { createUiContext, mountDetailPane, mountLibraryUi } from "../../../src/library-ui/dom";
 
 export function paper(id: string, dir: string, extra: Partial<PaperRecord> = {}): PaperRecord {
@@ -23,7 +24,7 @@ let disposePrevious: (() => void) | null = null;
 
 type Folders = Array<{ name: string; path: string; children: [] }>;
 
-export function mountForTest(prefs: Partial<LibraryUiPrefs> = {}, capabilities: LibraryUiCapabilities = {}) {
+export function mountForTest(prefs: Partial<LibraryUiPrefs> = {}, capabilities: LibraryUiCapabilities = {}, extra: { sharing?: SharingHost; readOnly?: boolean } = {}) {
   disposePrevious?.();
   document.body.innerHTML = "";
   Element.prototype.scrollIntoView = () => undefined;
@@ -34,7 +35,7 @@ export function mountForTest(prefs: Partial<LibraryUiPrefs> = {}, capabilities: 
   const container = document.createElement("div");
   document.body.append(container);
   const lib = mountLibraryUi(container, {
-    transport: ui, capabilities, labels: LABELS,
+    transport: ui, capabilities, labels: LABELS, ...extra,
     prefs: { load: () => ({ ...DEFAULT_PREFS, ...prefs }), save: (p) => saved.push(p) },
   });
   const detailEl = document.createElement("aside");

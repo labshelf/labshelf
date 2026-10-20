@@ -38,6 +38,8 @@ export interface ProjectRow {
   external?: boolean;
   /** Why the project cannot be read. */
   broken?: string;
+  /** The project carries a share id, so this device joined or shared it. */
+  shared?: boolean;
   /** The main file, relative to the project folder and "/"-separated. */
   main?: string;
 }

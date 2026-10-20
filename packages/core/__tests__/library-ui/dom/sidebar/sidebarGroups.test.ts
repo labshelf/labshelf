@@ -8,7 +8,7 @@ const folders = [{ name: "A", path: "papers/A", children: [] }];
 const papers = [{ record: { id: "t1", title: "one", status: "done" as const, tags: ["NLP"] }, folder: "papers/A" }];
 
 function mount(expanded: string[] = [], collapsed: string[] = []) {
-  const actions = { openFolder: jest.fn(), revealPaper: jest.fn(), createFolder: jest.fn(), renameFolder: jest.fn(), removeFolder: jest.fn(), shareFolder: jest.fn(), searchTag: jest.fn() };
+  const actions = { openFolder: jest.fn(), revealPaper: jest.fn(), createFolder: jest.fn(), renameFolder: jest.fn(), removeFolder: jest.fn(), searchTag: jest.fn() };
   const saveExpanded = jest.fn();
   const saveCollapsed = jest.fn();
   const slot = document.createElement("div");

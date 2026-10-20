@@ -7,3 +7,5 @@ export * from "../writing/search/dom/index.js";
 export * from "../writing/history/dom/index.js";
 export * from "../writing/allProjects/dom/index.js";
 export * from "../details/dom/index.js";
+export * from "../collab/dom/index.js";
+export * from "../share/dom/index.js";

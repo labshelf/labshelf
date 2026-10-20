@@ -30,6 +30,7 @@ export function toProjectRow(paths: PathOps, entry: ProjectEntry, modified: numb
     ...(cites ? { cites: cites.cites, unresolvedCites: cites.unresolved } : {}),
     ...(build ? { build } : {}),
     ...(settings.target ? { target: settings.target } : {}),
+    ...(settings.shared ? { shared: true } : {}),
     external,
   };
 }
