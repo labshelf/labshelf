@@ -73,5 +73,10 @@ export function previewPorts(logger: ILogger): PreviewPorts {
     revealCursor: () => ask({ command: "revealCursor" }),
     openProblem: (root, index) => ask({ command: "openProblem", root, index }),
     openRawLog: (root) => ask({ command: "openRawLog", root }),
+    runCommand: (id) => ask({ command: "runCommand", id }),
+    setCheckLimits: (limits) => ask({ command: "setCheckLimits", limits }),
+    setAutoCompile: (mode) => ask({ command: "setAutoCompile", mode }),
+    setEngine: (engine) => ask({ command: "setEngine", engine }),
+    setHaltOnError: (on) => ask({ command: "setHaltOnError", on }),
   };
 }

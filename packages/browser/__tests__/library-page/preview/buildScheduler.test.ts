@@ -1,5 +1,5 @@
-// Pins when the preview asks the helper for builds: debounced previews, full builds on save and idle, and cancels.
-import type { ILogger } from "@labshelf/core";
+// Pins when the preview asks the helper for builds: debounced previews, full builds on save and idle, cancels and the auto-compile modes.
+import type { AutoCompileMode, ILogger } from "@labshelf/core";
 import type { HelperCompileRequest, HelperCompileResult } from "@labshelf/core/helper";
 import { createBuildScheduler, type BuildTimers } from "../../../src/library-page/preview";
 
@@ -29,7 +29,7 @@ function fakeTimers(): BuildTimers & { advance(ms: number): void } {
 const RESULT: HelperCompileResult = { status: "succeeded", problems: [], pageCount: 1, changed: [] };
 const logger: ILogger = { log: async () => undefined, error: async () => undefined } as unknown as ILogger;
 
-function setup() {
+function setup(mode: AutoCompileMode = "typing") {
   const timers = fakeTimers();
   const requests: HelperCompileRequest[] = [];
   const resolvers: ((r: HelperCompileResult) => void)[] = [];
@@ -45,7 +45,7 @@ function setup() {
   };
   const scheduler = createBuildScheduler({
     onStart: jest.fn(),
-    helper, target: { projectId: "p1", main: "main.tex", engine: "pdflatex" }, timers, logger,
+    helper, target: { projectId: "p1", main: "main.tex", engine: "pdflatex" }, mode, timers, logger,
     onResult: (result, mode) => results.push({ mode, result }),
   });
   return { timers, requests, resolvers, rejects, cancels, results, scheduler };
@@ -68,7 +68,7 @@ describe("createBuildScheduler", () => {
   it("builds in full right away on save, dropping the pending preview", () => {
     const { timers, requests, scheduler } = setup();
     scheduler.edit("a.tex");
-    scheduler.save();
+    scheduler.save(false);
     expect(requests.map((r) => r.mode)).toEqual(["full"]);
     timers.advance(5000);
     expect(requests.map((r) => r.mode)).toEqual(["full"]);
@@ -117,27 +117,27 @@ describe("createBuildScheduler", () => {
 describe("build completion", () => {
   it("keeps a full build running when recompile is requested repeatedly without edits", async () => {
     const { scheduler, requests, resolvers, cancels, results } = setup();
-    scheduler.save();
-    scheduler.save();
-    scheduler.save();
+    scheduler.build();
+    scheduler.build();
+    scheduler.build();
     expect(requests).toHaveLength(1);
     expect(cancels).toEqual([]);
     resolvers[0]!(RESULT);
     await flush();
     expect(results).toEqual([{ mode: "full", result: RESULT }]);
-    scheduler.save();
+    scheduler.save(false);
     expect(requests).toHaveLength(2);
   });
 
   it("reports a failed build when the helper rejects, allowing a retry", async () => {
     const { scheduler, rejects, results, requests } = setup();
-    scheduler.save();
+    scheduler.save(false);
     rejects[0]!(new Error("Helper disconnected"));
     await flush();
     expect(results).toEqual([{ mode: "full", result: {
       status: "failed", changed: [], problems: [{ severity: "error", file: "main.tex", message: "Helper disconnected" }],
     } }]);
-    scheduler.save();
+    scheduler.save(false);
     expect(requests).toHaveLength(2);
   });
 });
@@ -145,9 +145,9 @@ describe("build completion", () => {
 
 it("allows a full build of edited sources to supersede an active full build", async () => {
   const { scheduler, requests, rejects, resolvers, cancels, results } = setup();
-  scheduler.save();
+  scheduler.save(false);
   scheduler.edit("main.tex", 5);
-  scheduler.save();
+  scheduler.save(false);
   expect(requests).toHaveLength(2);
   expect(cancels).toEqual(["p1"]);
   rejects[0]!(new Error("Superseded request disconnected"));
@@ -161,12 +161,54 @@ it("lets a preview finish before an automatic save starts the full build", async
   const { scheduler, timers, requests, resolvers, cancels, results } = setup();
   scheduler.edit("main.tex", 3);
   timers.advance(500);
-  scheduler.save();
-  scheduler.save();
+  scheduler.save(false);
+  scheduler.save(false);
   expect(requests.map((request) => request.mode)).toEqual(["preview"]);
   expect(cancels).toEqual([]);
   resolvers[0]!(RESULT);
   await flush();
   expect(results).toEqual([{ mode: "preview", result: RESULT }]);
   expect(requests.map((request) => request.mode)).toEqual(["preview", "full"]);
+});
+
+
+describe("auto-compile modes", () => {
+  it("builds nothing on edits or autosaves in save mode, and in full on an explicit save", () => {
+    const { timers, requests, scheduler } = setup("save");
+    scheduler.edit("a.tex");
+    timers.advance(5000);
+    scheduler.save(false);
+    expect(requests).toEqual([]);
+    scheduler.save(true);
+    expect(requests.map((r) => r.mode)).toEqual(["full"]);
+  });
+
+  it("builds only on recompile in off mode", () => {
+    const { timers, requests, scheduler } = setup("off");
+    scheduler.edit("a.tex");
+    timers.advance(5000);
+    scheduler.save(true);
+    expect(requests).toEqual([]);
+    scheduler.build();
+    expect(requests.map((r) => r.mode)).toEqual(["full"]);
+  });
+
+  it("follows a mode change for the next edit, dropping builds the old mode scheduled", () => {
+    const { timers, requests, scheduler } = setup();
+    scheduler.edit("a.tex");
+    scheduler.setMode("off");
+    timers.advance(5000);
+    expect(requests).toEqual([]);
+    scheduler.setMode("typing");
+    scheduler.edit("a.tex");
+    timers.advance(500);
+    expect(requests.map((r) => r.mode)).toEqual(["preview"]);
+  });
+
+  it("sends a changed target with the next build", () => {
+    const { requests, scheduler } = setup();
+    scheduler.setTarget({ engine: "xelatex", haltOnError: true });
+    scheduler.build();
+    expect(requests).toEqual([{ projectId: "p1", main: "main.tex", engine: "xelatex", haltOnError: true, mode: "full" }]);
+  });
 });

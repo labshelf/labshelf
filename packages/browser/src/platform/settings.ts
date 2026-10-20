@@ -2,8 +2,8 @@
 // The options page edits them; the PDF search consults them (proxies, custom resolvers).
 import { bx } from "./browserApi";
 import {
-  DEFAULT_CONTACT_EMAIL, PAPERS_DIR, isCustomResolverTemplate, isRequestLanguage, requestLanguageFrom,
-  type CustomResolver, type LibraryProxy, type RequestLanguage,
+  AUTO_COMPILE_MODES, DEFAULT_CONTACT_EMAIL, PAPERS_DIR, isCustomResolverTemplate, isRequestLanguage, requestLanguageFrom,
+  type AutoCompileMode, type CustomResolver, type LibraryProxy, type RequestLanguage,
 } from "@labshelf/core";
 import { migrateMirrorSettings } from "./migrations";
 import { DEFAULT_SIDEBAR_SECTIONS, readSidebarSections, type SidebarSections } from "./sidebarSections";
@@ -26,6 +26,10 @@ export interface LabShelfSettings {
   requestLanguage: RequestLanguage;
   /** The sections the library page sidebar shows. */
   sidebarSections: SidebarSections;
+  /** When a writing project's preview compiles. */
+  autoCompile: AutoCompileMode;
+  /** Whether a LaTeX build stops at its first error. */
+  haltOnError: boolean;
 }
 
 export const SETTINGS_STORAGE_KEY = "labshelf.settings";
@@ -39,6 +43,8 @@ const DEFAULTS: LabShelfSettings = {
   requesterAffiliation: "",
   requestLanguage: "en",
   sidebarSections: DEFAULT_SIDEBAR_SECTIONS,
+  autoCompile: "typing",
+  haltOnError: false,
 };
 
 /** Keeps the entries of a stored proxy list that have the right shape; storage is outside the type system. */
@@ -86,6 +92,8 @@ export async function getSettings(): Promise<LabShelfSettings> {
     requesterAffiliation: textOr(stored.requesterAffiliation),
     requestLanguage: isRequestLanguage(stored.requestLanguage) ? stored.requestLanguage : requestLanguageFrom(globalThis.navigator?.language),
     sidebarSections: readSidebarSections(stored.sidebarSections),
+    autoCompile: AUTO_COMPILE_MODES.find((mode) => mode === stored.autoCompile) ?? DEFAULTS.autoCompile,
+    haltOnError: typeof stored.haltOnError === "boolean" ? stored.haltOnError : DEFAULTS.haltOnError,
   };
 }
 

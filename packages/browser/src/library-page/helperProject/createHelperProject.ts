@@ -3,11 +3,12 @@ import type { ProjectEntry } from "@labshelf/core";
 import type { CompileMode, HelperCompileResult, HelperStatus } from "@labshelf/core/helper";
 import { assemblePdf, createBuildScheduler, type BuildScheduler } from "../preview";
 import { createProblemStore } from "./problemStore";
-import type { BuildEvent, EditorHelperPort, HelperProject, HelperProjectOptions } from "./helperProjectTypes";
+import type { BuildEvent, BuildPatch, BuildSettings, EditorHelperPort, HelperProject, HelperProjectOptions } from "./helperProjectTypes";
 
 const MODULE = "library-page.helperProject";
 type ReadyEntry = Extract<ProjectEntry, { kind: "ready" }>;
 interface PdfState { latest?: Uint8Array | undefined; full?: Uint8Array | undefined; queue: Promise<void>; closed: boolean }
+const DEFAULT_BUILD: BuildSettings = { autoCompile: "typing", haltOnError: false };
 interface OpenProject { id: string; scheduler: BuildScheduler | undefined; pdf: PdfState }
 
 class HelperProjectSession {
@@ -42,7 +43,17 @@ class HelperProjectSession {
     if (!pdf.closed) this.emit({ type: "result", result: outcome, mode });
   }
 
-  private schedulerFor(entry: ReadyEntry, pdf: PdfState): BuildScheduler | undefined {
+  private async buildSettings(projectId: string): Promise<BuildSettings> {
+    try {
+      return await this.options.buildSettings();
+    } catch (error) {
+      await this.options.logger.error(MODULE, error, { action: "read build settings", projectId });
+      void this.options.logger.log("WARN", MODULE, "Building with the default build settings", { projectId, ...DEFAULT_BUILD });
+      return DEFAULT_BUILD;
+    }
+  }
+
+  private schedulerFor(entry: ReadyEntry, pdf: PdfState, { autoCompile, haltOnError }: BuildSettings): BuildScheduler | undefined {
     const { main } = entry;
     if (main === undefined) return undefined;
     const { id, engine } = entry.settings;
@@ -51,7 +62,7 @@ class HelperProjectSession {
         pdf.queue = pdf.queue.then(() => { if (!pdf.closed) this.emit({ type: "building" }); });
       },
       helper: this.options.helper, logger: this.options.logger, ...(this.options.timers ? { timers: this.options.timers } : {}),
-      target: { projectId: id, main, ...(engine ? { engine } : {}) },
+      target: { projectId: id, main, haltOnError, ...(engine ? { engine } : {}) }, mode: autoCompile,
       onResult: (result, mode) => {
         if (result.status !== "cancelled") this.store.publish(result.problems);
         pdf.queue = pdf.queue.then(() => this.assemble(pdf, id, main, result, mode));
@@ -68,10 +79,11 @@ class HelperProjectSession {
     const id = entry.settings.id;
     try {
       await this.options.helper.openProject(id, entry.folder);
+      const settings = await this.buildSettings(id);
       const latest = this.wanted;
       if (latest?.settings.id !== id) { await this.options.helper.closeProject(id); return; }
       const pdf: PdfState = { queue: Promise.resolve(), closed: false };
-      this.open = { id, scheduler: this.schedulerFor(latest, pdf), pdf };
+      this.open = { id, scheduler: this.schedulerFor(latest, pdf, settings), pdf };
       void this.options.logger.log("INFO", MODULE, "project opened in the helper", { projectId: id });
       for (const listener of [...this.openedListeners]) listener(id);
     } catch (error) {
@@ -111,16 +123,26 @@ class HelperProjectSession {
         await helper.edit(projectId, path, version, edit);
         this.open?.scheduler?.edit(path, line);
       },
-      save: async (projectId, path) => {
+      save: async (projectId, path, explicit) => {
         if (!this.isOpen(id)) return;
         await helper.save(projectId, path);
-        this.open?.scheduler?.save();
+        this.open?.scheduler?.save(explicit === true);
       },
     };
   }
 
   async build(id: string): Promise<void> {
-    if (this.isOpen(id)) this.open?.scheduler?.save();
+    if (this.isOpen(id)) this.open?.scheduler?.build();
+  }
+
+  setBuild(id: string, { autoCompile, ...target }: BuildPatch): void {
+    const scheduler = this.isOpen(id) ? this.open?.scheduler : undefined;
+    void this.options.logger.log("INFO", MODULE, scheduler ? "Build settings changed" : "Build settings changed; the next open reads them", { projectId: id, autoCompile, ...target });
+    if (!scheduler) return;
+    if (autoCompile !== undefined) scheduler.setMode(autoCompile);
+    if (target.engine === undefined && target.haltOnError === undefined) return;
+    scheduler.setTarget(target);
+    scheduler.build();
   }
 
   async projectChanged(entry: ProjectEntry | undefined): Promise<void> {
@@ -144,6 +166,7 @@ export function createHelperProject(options: HelperProjectOptions): HelperProjec
     helper: () => helper.status()?.state === "ready" ? helper : undefined,
     isOpen: (id) => session.isOpen(id), editorPort: (id) => session.editorPort(id), problems: session.store,
     lastFullPdf: (id) => session.lastFullPdf(id), build: (id) => session.build(id),
+    setBuild: (id, patch) => session.setBuild(id, patch),
     onBuild(listener) { session.buildListeners.add(listener); return () => { session.buildListeners.delete(listener); }; },
     onOpened(listener) { session.openedListeners.add(listener); return () => { session.openedListeners.delete(listener); }; },
     projectChanged: (entry) => session.projectChanged(entry),

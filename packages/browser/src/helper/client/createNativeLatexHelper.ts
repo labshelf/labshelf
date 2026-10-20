@@ -22,6 +22,13 @@ interface Session { native: HelperConnection; socket: HelperConnection }
 
 const MODULE = "browser.helper";
 
+function compileBody({ projectId, main, mode, engine, editedFile, editedLine, haltOnError }: HelperCompileRequest): RequestBody {
+  return {
+    type: "compile", projectId, main, mode, ...(engine ? { engine } : {}), ...(editedFile ? { editedFile } : {}), ...(editedLine ? { editedLine } : {}),
+    ...(haltOnError !== undefined ? { haltOnError } : {}),
+  };
+}
+
 export function createNativeLatexHelper(deps: NativeLatexHelperDeps): ILatexHelper {
   const { logger } = deps;
   const edits = new EditTracker();
@@ -107,9 +114,7 @@ export function createNativeLatexHelper(deps: NativeLatexHelperDeps): ILatexHelp
   }
 
   async function compile(request: HelperCompileRequest, onProgress: HelperProgressListener) {
-    const { projectId, main, mode, engine, editedFile, editedLine } = request;
-    const body: RequestBody = { type: "compile", projectId, main, mode, ...(engine ? { engine } : {}), ...(editedFile ? { editedFile } : {}), ...(editedLine ? { editedLine } : {}) };
-    return (await readySocket()).request(body, compileStep(onProgress));
+    return (await readySocket()).request(compileBody(request), compileStep(onProgress));
   }
 
   return {

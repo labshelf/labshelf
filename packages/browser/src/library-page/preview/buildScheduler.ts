@@ -1,5 +1,5 @@
 // Schedules the project preview through the browser helper connection.
-import type { ILogger } from "@labshelf/core";
+import type { AutoCompileMode, ILogger } from "@labshelf/core";
 import type { CompileMode, HelperCompileRequest, HelperCompileResult, ILatexHelper } from "@labshelf/core/helper";
 
 import { createBuildRunner } from "./buildRunner";
@@ -12,9 +12,13 @@ export interface BuildTimers {
   clearTimeout(handle: unknown): void;
 }
 
+export type BuildTarget = Omit<HelperCompileRequest, "mode" | "editedFile" | "editedLine">;
+
 export interface BuildSchedulerOptions {
   helper: Pick<ILatexHelper, "compile" | "cancel">;
-  target: Omit<HelperCompileRequest, "mode" | "editedFile" | "editedLine">;
+  target: BuildTarget;
+  /** When edits and saves start builds; `build` always does. */
+  mode: AutoCompileMode;
   /** An edit supersedes an in-flight result; a save waits for the active preview. */
   onResult(result: HelperCompileResult, mode: CompileMode): void;
   onStart(): void;
@@ -25,8 +29,13 @@ export interface BuildSchedulerOptions {
 export interface BuildScheduler {
   /** Call after every edit of `file`. */
   edit(file: string, line?: number): void;
-  /** Call after the page wrote a source file. */
-  save(): void;
+  /** Call after the page wrote a source file; `explicit` when the user asked to save. */
+  save(explicit: boolean): void;
+  /** Builds in full whatever the mode. */
+  build(): void;
+  setMode(mode: AutoCompileMode): void;
+  /** The next build compiles with the changed target. */
+  setTarget(patch: Partial<Pick<BuildTarget, "engine" | "haltOnError">>): void;
   dispose(): void;
 }
 
@@ -37,7 +46,10 @@ const browserTimers: BuildTimers = {
 
 export function createBuildScheduler(options: BuildSchedulerOptions): BuildScheduler {
   const { timers = browserTimers } = options;
-  const { build, supersede } = createBuildRunner(options);
+  // INVARIANT: the runner reads this object on every build, so `setTarget` reaches the next compile.
+  const target: BuildTarget = { ...options.target };
+  const { build, supersede } = createBuildRunner({ ...options, target });
+  let mode = options.mode;
   let previewTimer: unknown;
   let fullTimer: unknown;
   let disposed = false;
@@ -47,18 +59,31 @@ export function createBuildScheduler(options: BuildSchedulerOptions): BuildSched
     timers.clearTimeout(fullTimer);
   };
 
+  const buildFull = (): void => {
+    if (disposed) return;
+    clearTimers();
+    build("full");
+  };
+
   return {
     edit(file, line) {
-      if (disposed) return;
+      if (disposed || mode !== "typing") return;
       clearTimers();
       supersede();
       previewTimer = timers.setTimeout(() => build("preview", file, line), PREVIEW_IDLE_MS);
       fullTimer = timers.setTimeout(() => build("full"), FULL_IDLE_MS);
     },
-    save() {
-      if (disposed) return;
+    save(explicit) {
+      if (mode === "off" || (mode === "save" && !explicit)) return;
+      buildFull();
+    },
+    build: buildFull,
+    setMode(next) {
+      mode = next;
       clearTimers();
-      build("full");
+    },
+    setTarget(patch) {
+      Object.assign(target, patch);
     },
     dispose() {
       disposed = true;

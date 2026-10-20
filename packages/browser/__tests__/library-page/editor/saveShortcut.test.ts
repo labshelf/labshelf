@@ -36,8 +36,19 @@ describe("save shortcut", () => {
     expect(write).toHaveBeenCalledTimes(1);
     expect(write).toHaveBeenCalledWith("main.tex", "xone");
     expect(helper.save).toHaveBeenCalledTimes(1);
+    expect(helper.save).toHaveBeenCalledWith("p", "main.tex", true);
     await editor.dispose();
     expect(write).toHaveBeenCalledTimes(1);
+  });
+
+  it("tells the helper an autosave is not an explicit save", async () => {
+    const { editor, view, write, helper } = await mount();
+    view.dispatch({ changes: { from: 0, insert: "x" } });
+    await editor.flush();
+    expect(write).toHaveBeenCalledTimes(1);
+    expect(helper.save).toHaveBeenCalledTimes(1);
+    expect(helper.save).toHaveBeenCalledWith("p", "main.tex", false);
+    await editor.dispose();
   });
 
   it("asks for a build when nothing is pending", async () => {
@@ -47,6 +58,7 @@ describe("save shortcut", () => {
     await Promise.resolve();
     expect(write).not.toHaveBeenCalled();
     expect(helper.save).toHaveBeenCalledTimes(1);
+    expect(helper.save).toHaveBeenCalledWith("p", "main.tex", true);
     await editor.dispose();
   });
 
@@ -61,6 +73,7 @@ describe("save shortcut", () => {
     await Promise.resolve();
     expect(write).not.toHaveBeenCalled();
     expect(helper.save).toHaveBeenCalledTimes(1);
+    expect(helper.save).toHaveBeenCalledWith("p", "main.tex", true);
     await editor.dispose();
   });
 

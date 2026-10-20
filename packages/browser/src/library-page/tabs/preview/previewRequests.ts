@@ -1,5 +1,6 @@
-// Answers a project preview frame's requests: recompile, open a problem, compare and mark versions, and save the check limits.
-import type { ILogger, LibraryFileSystem, PreviewRequest, ProjectDataPort } from "@labshelf/core";
+// Answers a project preview frame's requests: recompile, open a problem, compare and mark versions, and save the check limits and build options.
+import type { AutoCompileMode, BuildOptions, ILogger, LatexEngine, LibraryFileSystem, PreviewRequest, ProjectDataPort } from "@labshelf/core";
+import type { LabShelfSettings } from "../../../platform";
 import { revealInOpenEditor } from "../../openEditors";
 import type { FollowedBuilds, PreviewLimits } from "../../preview";
 import { markProjectVersion } from "../../review";
@@ -13,11 +14,18 @@ export interface PreviewRequestDeps {
   fs: LibraryFileSystem;
   logger: ILogger;
   workspace: Pick<Workspace, "openTab">;
-  helperProject: { build(projectId: string): Promise<unknown>; lastFullPdf(projectId: string): Uint8Array | undefined };
+  helperProject: {
+    build(projectId: string): Promise<unknown>;
+    lastFullPdf(projectId: string): Uint8Array | undefined;
+    setBuild(projectId: string, patch: { autoCompile?: AutoCompileMode; engine?: LatexEngine; haltOnError?: boolean }): void;
+  };
   data: Pick<ProjectDataPort, "updateProjectSettings">;
   builds: Pick<FollowedBuilds, "roots" | "resendRoots">;
   /** The limits the roots carry; a saved change updates them. */
   limits: PreviewLimits;
+  /** The build options the roots carry; a saved change updates them. */
+  options: BuildOptions;
+  updateSettings(patch: Partial<Pick<LabShelfSettings, "autoCompile" | "haltOnError">>): Promise<void>;
 }
 
 async function openProblem({ project, logger, workspace, builds }: PreviewRequestDeps, root: string, index: number): Promise<void> {
@@ -41,14 +49,34 @@ async function saveLimits(deps: PreviewRequestDeps, folder: string, change: Extr
   deps.builds.resendRoots();
 }
 
+/** Saves a per-user build setting, then applies it to the open build. */
+async function saveUserOption(deps: PreviewRequestDeps, patch: { autoCompile: AutoCompileMode } | { haltOnError: boolean }): Promise<void> {
+  await deps.updateSettings(patch);
+  Object.assign(deps.options, patch);
+  deps.helperProject.setBuild(deps.project.id, patch);
+  deps.builds.resendRoots();
+  await deps.logger.log("INFO", MODULE, "Saved a build setting", { projectId: deps.project.id, ...patch });
+}
+
+async function saveEngine(deps: PreviewRequestDeps, folder: string, engine: LatexEngine): Promise<void> {
+  await deps.data.updateProjectSettings(folder, { engine });
+  deps.options.engine = engine;
+  deps.helperProject.setBuild(deps.project.id, { engine });
+  deps.builds.resendRoots();
+  await deps.logger.log("INFO", MODULE, "Saved the project's LaTeX engine", { projectId: deps.project.id, engine });
+}
+
 async function answer(deps: PreviewRequestDeps, request: PreviewRequest): Promise<void> {
   const { project, logger } = deps;
   const folder = project.folder;
-  const writes = request.command === "setCheckLimits" || (request.command === "runCommand" && request.id === "markVersion");
+  const writes = request.command === "setCheckLimits" || request.command === "setEngine" || (request.command === "runCommand" && request.id === "markVersion");
   if (writes && folder === undefined) await logger.log("WARN", MODULE, "The preview's project is not open, so nothing was written", { command: request.command, projectId: project.id });
   else if (request.command === "recompile") await deps.helperProject.build(project.id);
   else if (request.command === "openProblem") await openProblem(deps, request.root, request.index);
   else if (request.command === "setCheckLimits") await saveLimits(deps, folder as string, request.limits);
+  else if (request.command === "setEngine") await saveEngine(deps, folder as string, request.engine);
+  else if (request.command === "setAutoCompile") await saveUserOption(deps, { autoCompile: request.mode });
+  else if (request.command === "setHaltOnError") await saveUserOption(deps, { haltOnError: request.on });
   else if (request.command === "runCommand" && request.id === "markVersion") await markProjectVersion({ fs: deps.fs, logger, lastFullPdf: deps.helperProject.lastFullPdf }, { id: project.id, folder: folder as string });
   // The history tab lists the versions to compare.
   else if (request.command === "runCommand" && request.id === "compareVersions") deps.workspace.openTab("history", { projectId: project.id }, 1);

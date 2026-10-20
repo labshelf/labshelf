@@ -9,8 +9,8 @@ const MODULE = "editor.helperEdits";
 export interface HelperEdits {
   /** Sends the change from the previous text to `doc`. */
   changed(changes: ChangeSet, doc: Text): void;
-  /** Tells the helper the file was written; the next edit carries the whole text again. */
-  saved(): void;
+  /** Tells the helper the file was written, `explicit` when the user asked to save; the next edit carries the whole text again. */
+  saved(explicit?: boolean): void;
 }
 
 /** CodeMirror reports each change against the text before the transaction, which is what the helper expects. */
@@ -56,10 +56,10 @@ export function createHelperEdits(helper: EditorHelper | undefined, projectId: s
         void logger.error(MODULE, error, { action: "send edit", projectId, path });
       });
     },
-    saved() {
+    saved(explicit = false) {
       if (!ready()) return;
       wholeText = true;
-      helper!.save(projectId, path).catch((error: unknown) => {
+      helper!.save(projectId, path, explicit).catch((error: unknown) => {
         void logger.error(MODULE, error, { action: "send save", projectId, path });
       });
     },

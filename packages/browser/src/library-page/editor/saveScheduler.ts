@@ -1,7 +1,6 @@
-// Saves a source file one second after the last edit and on close, keeping it dirty while a write fails.
-import type { ILogger } from "@labshelf/core";
+// Saves a source file shortly after the last edit and on close, keeping it dirty while a write fails.
+import { AUTO_SAVE_DELAY_MS, type ILogger } from "@labshelf/core";
 
-export const SAVE_DELAY_MS = 1000;
 const MODULE = "editor.save";
 
 export interface SaveSchedulerDeps {
@@ -54,7 +53,7 @@ export function createSaveScheduler(deps: SaveSchedulerDeps): SaveScheduler {
       if (!isDirty()) deps.onDirty(true);
       edits += 1;
       clearTimeout(timer);
-      timer = setTimeout(() => { void flush(); }, SAVE_DELAY_MS);
+      timer = setTimeout(() => { void flush(); }, AUTO_SAVE_DELAY_MS);
     },
     flush,
     dirty: isDirty,

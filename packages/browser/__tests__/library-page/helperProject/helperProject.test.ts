@@ -38,12 +38,13 @@ function fakeHelper(answer: HelperStatus, initial?: HelperCompileResult) {
   return { helper, calls, compiles, setAnswer: (s: HelperStatus) => { answer = s; }, setResult: (r: HelperCompileResult) => { result = r; } };
 }
 
+const buildSettings = async () => ({ autoCompile: "typing" as const, haltOnError: false });
 const instantTimers = { setTimeout: (fn: () => void) => { fn(); return 0; }, clearTimeout: () => undefined };
 
 describe("createHelperProject", () => {
   it("connects on the first project open and opens the project folder in the helper", async () => {
     const fake = fakeHelper(READY);
-    const hp = createHelperProject({ helper: fake.helper, logger, timers: instantTimers });
+    const hp = createHelperProject({ helper: fake.helper, logger, buildSettings, timers: instantTimers });
     const opened: string[] = [];
     hp.onOpened((id) => opened.push(id));
     await hp.projectChanged(project("a"));
@@ -55,7 +56,7 @@ describe("createHelperProject", () => {
 
   it("works without a helper and opens the project once the setup card connects", async () => {
     const fake = fakeHelper({ state: "not-installed" });
-    const hp = createHelperProject({ helper: fake.helper, logger, timers: instantTimers });
+    const hp = createHelperProject({ helper: fake.helper, logger, buildSettings, timers: instantTimers });
     await hp.projectChanged(project("a"));
     expect(hp.status()).toEqual({ state: "not-installed" });
     expect(hp.helper()).toBeUndefined();
@@ -68,7 +69,7 @@ describe("createHelperProject", () => {
 
   it("forwards edits and schedules a preview build; a save asks for a full build after the helper heard it", async () => {
     const fake = fakeHelper(READY, await succeededWith(101));
-    const hp = createHelperProject({ helper: fake.helper, logger, timers: { setTimeout: () => 0, clearTimeout: () => undefined } });
+    const hp = createHelperProject({ helper: fake.helper, logger, buildSettings, timers: { setTimeout: () => 0, clearTimeout: () => undefined } });
     await hp.projectChanged(project("a"));
     const events: BuildEvent["type"][] = [];
     hp.onBuild((event) => events.push(event.type));
@@ -82,7 +83,7 @@ describe("createHelperProject", () => {
 
   it("passes the line of an edit to the preview build", async () => {
     const fake = fakeHelper(READY);
-    const hp = createHelperProject({ helper: fake.helper, logger, timers: instantTimers });
+    const hp = createHelperProject({ helper: fake.helper, logger, buildSettings, timers: instantTimers });
     await hp.projectChanged(project("a"));
     await hp.editorPort("a").edit("a", "ch/a.tex", 1, { text: "x" }, 9);
     await flush();
@@ -92,7 +93,7 @@ describe("createHelperProject", () => {
 
   it("publishes the build's problems per file, clearing files without any", async () => {
     const fake = fakeHelper(READY);
-    const hp = createHelperProject({ helper: fake.helper, logger, timers: instantTimers });
+    const hp = createHelperProject({ helper: fake.helper, logger, buildSettings, timers: instantTimers });
     await hp.projectChanged(project("a"));
     const main: number[] = [];
     const intro: number[] = [];
@@ -110,7 +111,7 @@ describe("createHelperProject", () => {
 
   it("closes the project in the helper when the session closes it", async () => {
     const fake = fakeHelper(READY);
-    const hp = createHelperProject({ helper: fake.helper, logger, timers: instantTimers });
+    const hp = createHelperProject({ helper: fake.helper, logger, buildSettings, timers: instantTimers });
     await hp.projectChanged(project("a"));
     await hp.projectChanged(undefined);
     expect(fake.calls).toEqual(["connect", "open a projects/a", "close a"]);
@@ -121,7 +122,7 @@ describe("createHelperProject", () => {
 
   it("keeps the project open in the helper when the session reports it again while it is still opening", async () => {
     const fake = fakeHelper(READY);
-    const hp = createHelperProject({ helper: fake.helper, logger, timers: instantTimers });
+    const hp = createHelperProject({ helper: fake.helper, logger, buildSettings, timers: instantTimers });
     await hp.connect();
     await Promise.all([hp.projectChanged(project("a")), hp.projectChanged(project("a"))]);
     expect(fake.calls).toEqual(["connect", "open a projects/a"]);
@@ -130,7 +131,7 @@ describe("createHelperProject", () => {
 
   it("closes a project the session left while it was opening, and opens the one it went to", async () => {
     const fake = fakeHelper(READY);
-    const hp = createHelperProject({ helper: fake.helper, logger, timers: instantTimers });
+    const hp = createHelperProject({ helper: fake.helper, logger, buildSettings, timers: instantTimers });
     await hp.connect();
     await Promise.all([hp.projectChanged(project("a")), hp.projectChanged(project("b"))]);
     expect(fake.calls).toEqual(["connect", "open a projects/a", "open b projects/b", "close a"]);
@@ -141,7 +142,7 @@ describe("createHelperProject", () => {
     const fake = fakeHelper(READY, await succeededWith(101));
     const pending: Array<{ fn: () => void; ms: number }> = [];
     const timers = { setTimeout: (fn: () => void, ms: number) => { pending.push({ fn, ms }); return pending.length; }, clearTimeout: () => undefined };
-    const hp = createHelperProject({ helper: fake.helper, logger, timers });
+    const hp = createHelperProject({ helper: fake.helper, logger, buildSettings, timers });
     await hp.projectChanged(project("a"));
     await hp.editorPort("a").edit("a", "main.tex", 1, { text: "x" });
     pending.splice(0).filter(({ ms }) => ms === 500).forEach(({ fn }) => fn());
@@ -163,7 +164,7 @@ describe("createHelperProject", () => {
 
   it("sends the assembled PDF before the build's result", async () => {
     const fake = fakeHelper(READY, await succeededWith(101));
-    const hp = createHelperProject({ helper: fake.helper, logger, timers: instantTimers });
+    const hp = createHelperProject({ helper: fake.helper, logger, buildSettings, timers: instantTimers });
     await hp.projectChanged(project("a"));
     const events: BuildEvent[] = [];
     hp.onBuild((event) => events.push(event));
@@ -177,7 +178,7 @@ describe("createHelperProject", () => {
 
   it("reports a failed result and logs when a succeeded build cannot be assembled", async () => {
     const fake = fakeHelper(READY, { status: "succeeded", problems: [], pageCount: 2, changed: [] });
-    const hp = createHelperProject({ helper: fake.helper, logger, timers: instantTimers });
+    const hp = createHelperProject({ helper: fake.helper, logger, buildSettings, timers: instantTimers });
     await hp.projectChanged(project("a"));
     const events: BuildEvent[] = [];
     hp.onBuild((event) => events.push(event));
@@ -194,7 +195,7 @@ describe("createHelperProject", () => {
 
 it("retains the displayed PDF when a full build reports no changed pages", async () => {
   const fake = fakeHelper(READY, await succeededWith(101));
-  const hp = createHelperProject({ helper: fake.helper, logger, timers: instantTimers });
+  const hp = createHelperProject({ helper: fake.helper, logger, buildSettings, timers: instantTimers });
   await hp.projectChanged(project("a"));
   const events: BuildEvent[] = [];
   hp.onBuild((event) => events.push(event));
@@ -207,4 +208,42 @@ it("retains the displayed PDF when a full build reports no changed pages", async
   expect(events.filter((event) => event.type === "pdf")).toHaveLength(1);
   expect(events.filter((event) => event.type === "result")).toHaveLength(2);
   expect(hp.lastFullPdf("a")).toBe(first);
+});
+
+describe("build settings", () => {
+  it("starts the scheduler with the read settings and rebuilds with a changed engine", async () => {
+    const fake = fakeHelper(READY);
+    const hp = createHelperProject({ helper: fake.helper, logger, buildSettings: async () => ({ autoCompile: "off", haltOnError: true }), timers: instantTimers });
+    await hp.projectChanged(project("a"));
+    await hp.editorPort("a").edit("a", "main.tex", 1, { text: "x" });
+    await flush();
+    expect(fake.compiles).toEqual([]);
+    hp.setBuild("a", { engine: "xelatex" });
+    await flush();
+    expect(fake.compiles).toEqual([expect.objectContaining({ mode: "full", engine: "xelatex", haltOnError: true })]);
+  });
+
+  it("under the save mode builds on an explicit save only", async () => {
+    const fake = fakeHelper(READY);
+    const hp = createHelperProject({ helper: fake.helper, logger, buildSettings, timers: instantTimers });
+    await hp.projectChanged(project("a"));
+    hp.setBuild("a", { autoCompile: "save" });
+    const port = hp.editorPort("a");
+    await port.save("a", "main.tex");
+    await flush();
+    expect(fake.compiles).toEqual([]);
+    await port.save("a", "main.tex", true);
+    await flush();
+    expect(fake.compiles).toEqual([expect.objectContaining({ mode: "full" })]);
+  });
+
+  it("falls back to the default settings when they cannot be read", async () => {
+    const fake = fakeHelper(READY);
+    const hp = createHelperProject({ helper: fake.helper, logger, buildSettings: async () => { throw new Error("storage gone"); }, timers: instantTimers });
+    await hp.projectChanged(project("a"));
+    expect(hp.isOpen("a")).toBe(true);
+    await hp.editorPort("a").save("a", "main.tex");
+    await flush();
+    expect(fake.compiles).toEqual([expect.objectContaining({ mode: "full", haltOnError: false })]);
+  });
 });

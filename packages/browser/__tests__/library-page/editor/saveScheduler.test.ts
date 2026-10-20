@@ -1,5 +1,5 @@
-import type { ILogger } from "@labshelf/core";
-import { createSaveScheduler, SAVE_DELAY_MS, type SaveSchedulerDeps } from "../../../src/library-page/editor/saveScheduler";
+import { AUTO_SAVE_DELAY_MS, type ILogger } from "@labshelf/core";
+import { createSaveScheduler, type SaveSchedulerDeps } from "../../../src/library-page/editor/saveScheduler";
 
 const logger = (): ILogger => ({ log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) });
 
@@ -15,12 +15,12 @@ beforeEach(() => jest.useFakeTimers());
 afterEach(() => jest.useRealTimers());
 
 describe("source save scheduler", () => {
-  it("writes once, one second after the last edit", async () => {
+  it("writes once, the autosave delay after the last edit", async () => {
     const { deps, dirty, save } = setup(async () => undefined);
     save.changed();
-    jest.advanceTimersByTime(SAVE_DELAY_MS - 1);
+    jest.advanceTimersByTime(AUTO_SAVE_DELAY_MS - 1);
     save.changed();
-    jest.advanceTimersByTime(SAVE_DELAY_MS - 1);
+    jest.advanceTimersByTime(AUTO_SAVE_DELAY_MS - 1);
     expect(deps.write).not.toHaveBeenCalled();
     await jest.advanceTimersByTimeAsync(1);
     expect(deps.write).toHaveBeenCalledTimes(1);
