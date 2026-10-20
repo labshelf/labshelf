@@ -53,7 +53,7 @@ Notes are rich documents. A note holds text, quotes from papers, images, tables,
 
 - **The paper note.** Every paper can have one note, opened beside the PDF in the reader. "Add to note" on a selection inserts the passage as a quote with a `labshelf:` link back to its page.
 - **Space notes.** Meeting notes, ideas and comparisons that belong to the Space.
-- **Editing and calculations.** [Computational notes](computational-notes.md) defines the `.qmd` editing experience, live rendering, automatic cell execution, local engines and export boundaries.
+- **Checking and reusing mathematics.** [Computational notes](computational-notes.md) capture a paper's equations, check its derivations and carry the results into a manuscript.
 
 Paper notes and highlights are personal by default. "Share in Space" puts a note or a highlight into the Space.
 
@@ -125,7 +125,7 @@ Each format needs a contract in `documents/contracts/` before it is built:
 - **A single chronological group feed.** Participant conversations belong to named topics; decisions and follow-ups have dedicated views.
 - **Git activity in the Space.** The Space records only its own events.
 - **A `.ls` format.** `.qmd`, `.md` and documented side files cover the need.
-- **Running code on open.** Opening or receiving a note does not enable its calculations; the execution behavior is defined in [Computational notes](computational-notes.md#live-rendering-and-computation).
+- **Running code on open.** Opening or receiving a note does not enable its calculations; a check runs only when the user runs it ([Computational notes](computational-notes.md#difficulties-and-how-to-solve-them)).
 - **DOI as the paper id.** Many papers have none, a preprint and its published version have different DOIs, and DOIs contain slashes.
 
 ## Open questions
