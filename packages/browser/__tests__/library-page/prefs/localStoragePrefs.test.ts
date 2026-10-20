@@ -27,7 +27,7 @@ describe("localStorage prefs", () => {
     expect(prefs.treeExpanded()).toEqual(["papers/A"]);
     expect(prefs.collapsedSections()).toEqual(["projects"]);
     expect(Object.keys(JSON.parse(storage.getItem(PREFS_KEY)!)).sort()).toEqual([
-      "citeFormat", "collapsedSections", "columns", "detailCollapsed", "detailTab", "detailWidth", "secCollapsed", "sidebarCollapsed", "sidebarWidth", "sortDir", "sortKey",
+      "citeFormat", "codeFont", "codeTheme", "collapsedSections", "columns", "detailCollapsed", "detailTab", "detailWidth", "secCollapsed", "sidebarCollapsed", "sidebarWidth", "sortDir", "sortKey",
       "treeExpanded",
     ]);
   });
@@ -48,5 +48,17 @@ describe("localStorage prefs", () => {
     expect(prefs.editorWidth()).toBe(420);
     storage.setItem(PREFS_KEY, JSON.stringify({ editorWidth: "wide" }));
     expect(prefs.editorWidth()).toBeNull();
+  });
+
+  it("keeps the code colours and font across other saves and drops unknown names", () => {
+    const storage = new MemoryStorage();
+    const prefs = createLocalStoragePrefs(storage);
+    expect(prefs.codeStyle()).toEqual({ codeTheme: "labshelf", codeFont: "system" });
+    prefs.saveCodeStyle({ codeTheme: "one" });
+    prefs.saveCodeStyle({ codeFont: "opendyslexic" });
+    prefs.saveEditorWidth(300);
+    expect(prefs.codeStyle()).toEqual({ codeTheme: "one", codeFont: "opendyslexic" });
+    storage.setItem(PREFS_KEY, JSON.stringify({ codeTheme: "neon", codeFont: 3 }));
+    expect(prefs.codeStyle()).toEqual({ codeTheme: "labshelf", codeFont: "system" });
   });
 });

@@ -79,6 +79,9 @@
         "src/**/*.ts",
         "build/*.mjs",
         "__tests__/**/*.ts"
+      ],
+      "ignoreDependencies": [
+        "@fontsource/*"
       ]
     },
     "packages/terminal": {

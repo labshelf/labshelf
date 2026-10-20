@@ -33,6 +33,10 @@
     "yjs": "^13.6.33"
   },
   "devDependencies": {
+    "@fontsource/atkinson-hyperlegible-mono": "5.3.0",
+    "@fontsource/fira-code": "5.3.0",
+    "@fontsource/jetbrains-mono": "5.3.0",
+    "@fontsource/opendyslexic": "5.3.0",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.13.10",
     "@types/webextension-polyfill": "^0.12.1",
