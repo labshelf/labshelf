@@ -15,3 +15,4 @@ export { stagePdf, stagedPdf, unstagePdf, keepStagedPdfs } from "./pdfStaging";
 export { countBrowserPapers, moveBrowserLibraryToFolder } from "./move";
 export { announcePickedFolder, folderPermission, loadPickedFolder, requestFolderPermission, savePickedFolder } from "./picked";
 export { deleteBrowserCollabState, openBrowserCollabStorage } from "./collaboration";
+export { acquireTabLease, takeOverTabLease, tabLeaseName, type TabLease, type TabLeaseResult } from "./ownership";

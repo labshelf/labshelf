@@ -131,7 +131,7 @@ Typst Universe templates come from `https://packages.typst.org/preview/index.jso
 
 The user's own templates live at `<library>/templates/<template id>/`, laid out as in [Manifest](#manifest). A new id is the name folded as a project id is ([library-format.md](library-format.md#labshelfyaml)), unique case-insensitively among My templates.
 
-Saving a project as a template copies the project into `files/` without the build folder, `labshelf.yaml`, `papers:`, `.labshelf/versions/`, `.labshelf/rebuttal/`, `.labshelf/comments.json`, `.labshelf/state.json` and `.labshelf/checklist.json`. It also leaves out a `.pdf` that has a `.tex` or `.typ` file of the same name in the same folder, which is the build's copy of its output. It skips `.git/`, and refuses a symbolic link or a `latexmkrc` anywhere in the project with a message naming the path. The manifest's `engine` comes from `labshelf.yaml`, else from the engine the app resolved for the build, and the user gives the authors.
+Saving a project as a template copies the project into `files/` without the build folder, `labshelf.yaml`, `papers:`, `.labshelf/versions/`, `.labshelf/rebuttal/`, `.labshelf/comments.json`, `.labshelf/state.json`, `.labshelf/checklist.json` and `.labshelf/mirror-lease.json`. It also leaves out a `.pdf` that has a `.tex` or `.typ` file of the same name in the same folder, which is the build's copy of its output. It skips `.git/`, and refuses a symbolic link or a `latexmkrc` anywhere in the project with a message naming the path. The manifest's `engine` comes from `labshelf.yaml`, else from the engine the app resolved for the build, and the user gives the authors.
 
 ## Publish
 
