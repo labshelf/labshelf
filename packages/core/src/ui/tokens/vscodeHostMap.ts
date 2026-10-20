@@ -1,6 +1,4 @@
-/**
- * Maps the `--ls-*` tokens to the VS Code theme variables, so VS Code webviews follow the user's theme.
- */
+// Maps design tokens to the host's VS Code theme.
 import type { COLOR_TOKENS, STATUS_TOKENS } from "./colorTokens.js";
 import type { TYPE_TOKENS, ELEVATION_TOKENS } from "./scaleTokens.js";
 
@@ -15,6 +13,9 @@ const VSCODE_HOST_MAP: Partial<Record<MappedToken, string>> = {
   error: "var(--vscode-errorForeground)",
   link: "var(--vscode-textLink-foreground)",
   focus: "var(--vscode-focusBorder)",
+  "editor-cursor": "var(--vscode-editorCursor-foreground)",
+  "editor-selection-bg": "var(--vscode-editor-selectionBackground)",
+  "editor-inactive-selection-bg": "var(--vscode-editor-inactiveSelectionBackground)",
   "sidebar-bg": "var(--vscode-sideBar-background, var(--vscode-editor-background))",
   "sidebar-border": "var(--vscode-sideBar-border, var(--vscode-panel-border))",
   "section-fg": "var(--vscode-sideBarSectionHeader-foreground)",

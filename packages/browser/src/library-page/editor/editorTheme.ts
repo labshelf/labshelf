@@ -8,10 +8,13 @@ const theme = EditorView.theme({
   "&": { height: "100%", color: "var(--ls-fg)", backgroundColor: "var(--ls-bg)", fontSize: "var(--ls-font-size)" },
   "&.cm-focused": { outline: "none" },
   ".cm-scroller": { fontFamily: "var(--ls-mono)" },
-  ".cm-content": { caretColor: "var(--ls-fg)" },
+  ".cm-content": { caretColor: "var(--ls-editor-cursor)" },
+  ".cm-cursor, .cm-dropCursor": { borderLeftColor: "var(--ls-editor-cursor)", borderLeftWidth: "var(--ls-editor-cursor-width)" },
   ".cm-gutters": { backgroundColor: "var(--ls-bg)", color: "var(--ls-section-fg)", borderRight: "1px solid var(--ls-border-faint)" },
-  ".cm-activeLine, .cm-activeLineGutter": { backgroundColor: "var(--ls-list-inactive-bg)" },
-  "&.cm-focused .cm-selectionBackground, .cm-selectionBackground": { backgroundColor: "var(--ls-row-selected)" },
+  // TRAP: The active line sits above the selection layer, so its background must be translucent.
+  ".cm-activeLine, .cm-activeLineGutter": { backgroundColor: "var(--ls-row-open)" },
+  ".cm-selectionBackground": { backgroundColor: "var(--ls-editor-inactive-selection-bg)" },
+  "&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground": { backgroundColor: "var(--ls-editor-selection-bg)" },
   ".cm-tooltip": {
     backgroundColor: "var(--ls-widget-bg)", color: "var(--ls-menu-fg)", border: "1px solid var(--ls-menu-border)",
     borderRadius: "var(--ls-radius)", boxShadow: "var(--ls-widget-shadow)",
