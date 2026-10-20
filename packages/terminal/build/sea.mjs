@@ -1,7 +1,7 @@
 // Builds dist/sea/labshelf-helper-<os>-<arch>, a Node single executable of LabShelf Helper for the host, and checks that it answers `hello` with `ready` and `session` and, when it carries biber's WASM, that its `--biber` mode writes a .bbl.
 import { build } from "esbuild";
 import { execFileSync, spawn } from "node:child_process";
-import { cp, copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, cp, copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { inject } from "postject";
@@ -151,6 +151,8 @@ async function main() {
     const blob = await writeBlob(tmpDir, mainFile);
     await rm(binary, { force: true });
     await copyFile(process.execPath, binary);
+    // PLATFORM: the Linux arm64 runner's Node is mode 777, which copyFile keeps and the helper's private-path check refuses.
+    await chmod(binary, 0o755);
     await injectBlob(binary, blob);
     const reply = await smokeCheck(binary, join(tmpDir, "home"));
     console.log(`[labshelf-helper-sea] built ${binary}; hello answered with ${JSON.stringify(reply)}`);
