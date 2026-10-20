@@ -45,6 +45,17 @@ describe("sanitizePrefs", () => {
     expect(sanitizePrefs({ sortKey: "title", sortDir: -1, columns: [] })).toMatchObject({ sortKey: "title", sortDir: -1 });
   });
 
+  it("reads the Details pins: malformed entries and repeats drop out, the order stays", () => {
+    expect(sanitizePrefs({}).detailsPins).toEqual([]);
+    expect(sanitizePrefs({ detailsPins: "a" }).detailsPins).toEqual([]);
+    expect(sanitizePrefs({
+      detailsPins: [
+        { kind: "project", id: "p1" }, { kind: "paper", id: "a" }, { kind: "paper", id: "a" }, { kind: "folder", id: "x" },
+        { kind: "paper", id: 3 }, { kind: "paper", id: "" }, null, "a", { kind: "project", id: "a", extra: 1 },
+      ],
+    }).detailsPins).toEqual([{ kind: "project", id: "p1" }, { kind: "paper", id: "a" }, { kind: "project", id: "a" }]);
+  });
+
   it("drops stored keys that are not prefs", () => {
     expect(sanitizePrefs({ includeSub: false, noText: true })).toEqual(DEFAULT_PREFS);
   });

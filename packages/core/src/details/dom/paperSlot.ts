@@ -19,6 +19,10 @@ export interface PaperSlot {
   hasContent(): boolean;
   /** Calls `listener` now and whenever `hasContent` may have changed; returns the way to stop. */
   watch(listener: () => void): () => void;
+  /** The title of a paper the library holds. */
+  label(id: string): string | undefined;
+  /** Calls `listener` with the ids the library holds once the first snapshot is in, then whenever its papers change. */
+  onItems(listener: (ids: ReadonlySet<string>) => void): () => void;
   dispose(): void;
 }
 
@@ -66,6 +70,10 @@ export function mountPaperSlot(root: HTMLElement, el: HTMLElement, parts: PaperS
     show(ids) { wanted = ids; store.set({ selected: new Set(held(ids)) }); },
     hasContent: () => store.get().selected.size > 0,
     watch: (listener) => store.select((s) => s.selected.size > 0, () => listener()),
+    label: (id) => store.get().papers.find((p) => p.id === id)?.title || undefined,
+    onItems: (listener) => store.select((s) => (s.loading ? null : s.papers), (papers) => {
+      if (papers) listener(new Set(papers.map((p) => p.id)));
+    }),
     dispose: () => offs.forEach((off) => off()),
   };
 }

@@ -13,6 +13,10 @@ export interface ProjectSlot {
   hasContent(): boolean;
   /** Calls `listener` now and whenever `hasContent` may have changed. */
   watch(listener: () => void): void;
+  /** The title of a project among the host's rows. */
+  label(id: string): string | undefined;
+  /** Calls `listener` with the ids of the host's rows whenever they arrive; returns the way to stop. */
+  onItems(listener: (ids: ReadonlySet<string>) => void): () => void;
   dispose(): void;
 }
 
@@ -22,6 +26,7 @@ export function mountProjectSlot(el: HTMLElement, transport: MessageEnd<DetailsT
   const details = createDetailRequests(post);
   const pane = mountProjectDetail(el, { post, menu: () => ({ rows: s.rows, commands: s.commands, post }) });
   let changed = (): void => undefined;
+  const itemListeners = new Set<(ids: ReadonlySet<string>) => void>();
   const row = (): ProjectRow | undefined => s.rows.find((r) => r.id === s.id);
   const render = (): void => {
     const id = s.id;
@@ -38,12 +43,16 @@ export function mountProjectSlot(el: HTMLElement, transport: MessageEnd<DetailsT
       Object.assign(s, { rows: msg.rows, commands: msg.commands, openLabel: msg.openLabel });
       render();
       if (s.id) details.request(s.id);
+      const ids = new Set(s.rows.map((r) => r.id));
+      itemListeners.forEach((listener) => listener(ids));
     }
   });
   return {
     show(id) { if (id && id !== s.id) details.request(id); s.id = id; render(); },
     hasContent: () => row() !== undefined,
     watch(listener) { changed = listener; listener(); },
+    label: (id) => s.rows.find((r) => r.id === id)?.title,
+    onItems(listener) { itemListeners.add(listener); return () => { itemListeners.delete(listener); }; },
     dispose: () => { offDetail(); offMessages(); },
   };
 }

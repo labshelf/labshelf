@@ -37,14 +37,18 @@ body, #root { display: flex; flex-direction: column; }
 .ls-library .list-body { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 
 /* ── Details surface ────────────────────────────────────────────── */
-.ls-details { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+.ls-details { display: flex; flex-direction: column; flex: 1; min-height: 0; min-width: 0; overflow: hidden; }
+.ls-details > .ls-details-tabbar[hidden] { display: none; }
+.ls-details .ls-details-tab-pin { visibility: visible; }
+.ls-details .ls-editor-tab.preview .ls-editor-tab-label { font-style: italic; }
+.ls-details-body { display: flex; flex: 1; min-height: 0; min-width: 0; overflow: hidden; }
 .ls-details .detail-pane {
   position: relative; flex: 1; min-width: 0; overflow-y: auto; overflow-x: hidden;
   display: flex; flex-direction: column; background: var(--ls-sidebar-bg);
 }
 .ls-details .detail-placeholder { flex: 1; }
 /* PLATFORM: the slots set display, which beats the hidden attribute, so hidden is restated here. */
-.ls-details > :is(.detail-pane, .detail-placeholder)[hidden] { display: none; }
+.ls-details-body > :is(.detail-pane, .detail-placeholder)[hidden] { display: none; }
 
 /* ── Header and breadcrumb ──────────────────────────────────────── */
 .ls-library .list-header {

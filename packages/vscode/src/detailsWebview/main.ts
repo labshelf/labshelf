@@ -13,6 +13,7 @@ import "@labshelf/core/styles/library-tabs.css";
 import "@labshelf/core/styles/library-citation-map.css";
 import "@labshelf/core/styles/library-sidebar.css";
 import "@labshelf/core/styles/all-projects.css";
+import "@labshelf/core/styles/editor-area.css";
 import { $, mountDetails } from "@labshelf/core/dom";
 import { libraryUiCapabilities, libraryUiLabels } from "../libraryWebview/index.js";
 import { createDetailsChannel } from "./index.js";

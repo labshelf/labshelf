@@ -1,5 +1,5 @@
 /**
- * Declares the library UI preferences a host persists (sort, panes, folded sections, detail tab, citation style),
+ * Declares the library UI preferences a host persists (sort, panes, folded sections, detail tab, citation style, Details pins),
  * the port it persists them through, and `sanitizePrefs`, which turns whatever storage returns into valid prefs.
  */
 import { COLUMN_KEYS, DEFAULT_COLUMNS, type ColumnKey } from "./columns.js";
@@ -11,6 +11,12 @@ export type DetailTab = (typeof DETAIL_TABS)[number];
 export const CITE_FORMATS = ["bibtex", "apa", "mla", "chicago", "inText"] as const;
 export type CiteFormat = (typeof CITE_FORMATS)[number];
 
+/** An item the user pinned as a tab in the Details surface. */
+export interface PinnedItem {
+  kind: "paper" | "project";
+  id: string;
+}
+
 export interface LibraryUiPrefs {
   sortKey: SortKey;
   sortDir: SortDir;
@@ -20,6 +26,7 @@ export interface LibraryUiPrefs {
   secCollapsed: Record<string, boolean>;
   detailTab: DetailTab;
   citeFormat: CiteFormat;
+  detailsPins: PinnedItem[];
 }
 
 /** Where a host keeps the prefs: localStorage in the browser, webview state in VS Code. */
@@ -50,6 +57,7 @@ export const DEFAULT_PREFS: LibraryUiPrefs = {
   secCollapsed: {},
   detailTab: "details",
   citeFormat: "bibtex",
+  detailsPins: [],
 };
 
 const SORT_KEYS: readonly SortKey[] = ["title", "creator", "venue", "year", "lastRead", "status"];
@@ -61,6 +69,20 @@ function isBoolMap(v: unknown): v is Record<string, boolean> {
 // Unknown names and repeats drop out and the rest take the fixed column order; an empty list is a valid choice.
 function sanitizeColumns(v: unknown): ColumnKey[] {
   return Array.isArray(v) ? COLUMN_KEYS.filter((key) => v.includes(key)) : [...DEFAULT_COLUMNS];
+}
+
+// Malformed entries and repeats drop out; the rest keep the order the user pinned them in.
+function sanitizePins(v: unknown): PinnedItem[] {
+  if (!Array.isArray(v)) return [];
+  const seen = new Set<string>();
+  const pins: PinnedItem[] = [];
+  for (const item of v) {
+    const { kind, id } = (item && typeof item === "object" ? item : {}) as Record<string, unknown>;
+    if ((kind !== "paper" && kind !== "project") || typeof id !== "string" || id === "" || seen.has(`${kind}:${id}`)) continue;
+    seen.add(`${kind}:${id}`);
+    pins.push({ kind, id });
+  }
+  return pins;
 }
 
 /** Validates each field; a missing or corrupt one falls back to its default and widths are clamped. */
@@ -85,5 +107,6 @@ export function sanitizePrefs(raw: unknown): LibraryUiPrefs {
     secCollapsed: isBoolMap(r["secCollapsed"]) ? r["secCollapsed"] : { ...d.secCollapsed },
     detailTab: oneOf(r["detailTab"], DETAIL_TABS, d.detailTab),
     citeFormat: oneOf(r["citeFormat"], CITE_FORMATS, d.citeFormat),
+    detailsPins: sanitizePins(r["detailsPins"]),
   };
 }

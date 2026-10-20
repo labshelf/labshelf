@@ -28,7 +28,7 @@ describe("localStorage prefs", () => {
     expect(prefs.treeExpanded()).toEqual(["papers/A"]);
     expect(prefs.collapsedSections()).toEqual(["projects"]);
     expect(Object.keys(JSON.parse(storage.getItem(PREFS_KEY)!)).sort()).toEqual([
-      "citeFormat", "codeFont", "codeTheme", "collapsedSections", "columns", "detailCollapsed", "detailTab", "secCollapsed", "sidebarCollapsed", "sidebarWidth", "sortDir", "sortKey",
+      "citeFormat", "codeFont", "codeTheme", "collapsedSections", "columns", "detailCollapsed", "detailTab", "detailsPins", "secCollapsed", "sidebarCollapsed", "sidebarWidth", "sortDir", "sortKey",
       "treeExpanded",
     ]);
   });

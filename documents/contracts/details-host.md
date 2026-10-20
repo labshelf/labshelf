@@ -28,6 +28,16 @@ Host to Details: `{type: "details.show", target}`, where `target` is one of:
 
 Details shows the target and asks for its data on the matching channel (`paper.details`, `detail`).
 
+## Tabs
+
+The surface keeps its tabs itself; hosts send only `details.show`.
+
+- One preview tab, its label in italics, shows the latest target. `null` empties it.
+- The user pins the preview with its pin button or a double-click. Only one paper or one project can be pinned, never several papers. The pinned tab stays when the next target opens a new preview.
+- A target that already has a pinned tab activates that tab and leaves the preview as it is.
+- Closing the active pinned tab activates the next pinned tab, else the previous one, else the preview.
+- Pinned items persist through the `PrefsPort` as `detailsPins`; the active tab does not. A pinned paper missing from a library snapshot, or a pinned project missing from a `projects` message, drops out.
+
 ## Startup
 
 1. Details mounts and posts `ready` on both channels.
