@@ -135,6 +135,8 @@ export class LibrarySidebarView implements vscode.WebviewViewProvider {
     if (m.type === "refresh") { await vscode.commands.executeCommand("labshelf.library.refresh"); return; }
     if (m.type === "ready") {
       this._ready = true;
+      // Only the desktop registers share links; the web has no such command.
+      if ((await vscode.commands.getCommands(true)).includes(SHARE_FOLDER_COMMAND)) { await this._post({ type: "canShareFolders" }); }
       // Neither push waits for the other: a slow project count must not delay the library.
       void this._pushProjects();
       void this._pushOpenProject();

@@ -3,7 +3,7 @@ import "@labshelf/core/styles/tokens.css";
 import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
 import "@labshelf/core/styles/library-sidebar.css";
-import { $, mountLibrarySidebar } from "@labshelf/core/dom";
+import { $, mountLibrarySidebar, type SidebarActions } from "@labshelf/core/dom";
 import type { SidebarProjectItem } from "@labshelf/core";
 import type { HostToSidebar, ProjectTreeMessage, SidebarToHost } from "../ui/library/sidebarMessages.js";
 import { folderDropTarget, showOpenProjectMenu, showProjectMenu } from "./index.js";
@@ -26,18 +26,18 @@ const tree = (m: Omit<ProjectTreeMessage, "type" | "view"> & { view?: string }):
 
 const root = $("root");
 root.classList.add("sidebar-shell");
+const actions: SidebarActions = {
+  openFolder: (path) => { sidebar.setQuery(""); post({ type: "openFolder", path }); },
+  searchTag: (tag) => post({ type: "searchTag", tag }),
+  revealPaper: (id) => post({ type: "revealPaper", id }),
+  createFolder: (path) => post({ type: "createFolder", path }),
+  addFiles: (path) => post({ type: "addFiles", path }),
+  refresh: () => post({ type: "refresh" }),
+  renameFolder: (path) => post({ type: "renameFolder", path }),
+  removeFolder: (path) => post({ type: "removeFolder", path }),
+};
 const sidebar = mountLibrarySidebar(root.appendChild(document.createElement("div")), {
-  actions: {
-    openFolder: (path) => { sidebar.setQuery(""); post({ type: "openFolder", path }); },
-    searchTag: (tag) => post({ type: "searchTag", tag }),
-    revealPaper: (id) => post({ type: "revealPaper", id }),
-    createFolder: (path) => post({ type: "createFolder", path }),
-    addFiles: (path) => post({ type: "addFiles", path }),
-    refresh: () => post({ type: "refresh" }),
-    renameFolder: (path) => post({ type: "renameFolder", path }),
-    removeFolder: (path) => post({ type: "removeFolder", path }),
-    shareFolder: (path) => post({ type: "shareFolder", path }),
-  },
+  actions,
   expanded: state()[EXPANDED_KEY] ?? [],
   saveExpanded: (paths) => saveState({ [EXPANDED_KEY]: paths }),
   collapsed: state()[COLLAPSED_KEY] ?? [],
@@ -68,7 +68,8 @@ const sidebar = mountLibrarySidebar(root.appendChild(document.createElement("div
 
 window.addEventListener("message", (e: MessageEvent<HostToSidebar>) => {
   const m = e.data;
-  if (m.type === "library") { sidebar.setLibrary(m.folders, m.papers); }
+  if (m.type === "canShareFolders") { actions.shareFolder = (path) => post({ type: "shareFolder", path }); }
+  else if (m.type === "library") { sidebar.setLibrary(m.folders, m.papers); }
   else if (m.type === "current") { sidebar.setCurrent(m.folder); }
   else if (m.type === "selected") { sidebar.setSelected(m.id); }
   else if (m.type === "projects") { projects = m.projects; sidebar.setProjects(m.projects); }

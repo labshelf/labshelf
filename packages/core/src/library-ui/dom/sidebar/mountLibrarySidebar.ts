@@ -131,12 +131,12 @@ function onContextMenu(e: MouseEvent, t: SidebarState): void {
   e.preventDefault();
   t.focused = rowKey(r);
   paintFocus(t);
+  const { shareFolder } = t.actions;
   showMenu({ x: e.clientX, y: e.clientY }, [
     { label: "Open", icon: "list", onSelect: () => activate(t, r) },
     { label: "New Subfolder…", icon: "folder-plus", onSelect: () => t.actions.createFolder(path) },
     "separator",
-    { label: "Share as Link…", icon: "link", onSelect: () => t.actions.shareFolder(path) },
-    "separator",
+    ...(shareFolder ? [{ label: "Share as Link…", icon: "link" as const, onSelect: () => shareFolder.call(t.actions, path) }, "separator" as const] : []),
     { label: "Rename…", icon: "edit", hint: "F2", onSelect: () => t.actions.renameFolder(path) },
     { label: "Delete Folder…", icon: "trash", danger: true, onSelect: () => t.actions.removeFolder(path) },
   ]);

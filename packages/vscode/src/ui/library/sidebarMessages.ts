@@ -3,6 +3,8 @@ import { isSidebarProjectCommand } from "./projectCommands.js";
 import { PAPERS_DIR, type FolderTreeNode, type ProjectTreeView, type SidebarOpenProject, type SidebarProjectItem, type TreePaper } from "@labshelf/core";
 
 export type HostToSidebar =
+  /** Sent only where the share-link command is registered, which shows the folder menu's Share as Link. */
+  | { type: "canShareFolders" }
   | { type: "library"; folders: FolderTreeNode[]; papers: Array<{ record: TreePaper; folder: string }> }
   /** The folder the list panel shows; `papers` for the library root. */
   | { type: "current"; folder: string }
