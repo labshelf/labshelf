@@ -2,7 +2,7 @@
 import type { ILogger, LibraryFileSystem } from "@labshelf/core";
 import { createBrowserLatexHelper } from "../../helper/client";
 import { getSettings } from "../../platform";
-import { updateOwnRelayOnStart } from "../../relay";
+import { createPageRelay, updateOwnRelayOnStart, type PageRelay } from "../../relay";
 import { currentLibraryId, librarySources } from "../../storage";
 import { createBrowserProjects } from "../../storage/projects";
 import { createPageShares, runJoinDialog } from "../editor/collab";
@@ -24,6 +24,8 @@ export interface ProjectWiringOptions {
 
 export interface ProjectWiring {
   services: ProjectServices;
+  /** The owner's Cloudflare relay: what a share asks for, and the sidebar's connect and disconnect. */
+  relay: PageRelay;
   /** Builds the sidebar's Projects section. */
   sidebarProjects(): SidebarProjects;
   /** Reopens the project the restored tabs name, then joins the share link the page was opened with. */
@@ -49,10 +51,13 @@ export function mountProjectWiring({ workspace, fs, logger, openTab }: ProjectWi
   const comments = createRoutedCommentThreads({ files: createCommentThreads({ fs, session, logger }), shares, session });
   const joinShared = (invite?: string): Promise<void> => runJoinDialog({ shares, fs, logger, session, ...(invite === undefined ? {} : { invite }) });
   window.addEventListener("pagehide", () => { void shares.closeAll(); });
+  // No share on this page holds the owner's relay until the collaboration wiring offers it, so there is nothing to offer or withdraw.
+  const relay = createPageRelay({ logger, offerToShares: async () => undefined, withdrawFromShares: async () => undefined });
   // Never awaited: mounting does not wait on the network.
   void updateOwnRelayOnStart(logger);
   return {
     services: { session, helperProject, comments, shares },
+    relay,
     sidebarProjects: () => {
       const source = createProjectsSource({ projects: createBrowserProjects({ fileSystem: fs, logger }), fileSystem: fs, logger, showPdf: showPdfInTab });
       return createSidebarProjects(source, openTab, session, () => { void joinShared(); });

@@ -1,7 +1,7 @@
 // Connects and disconnects the owner's Cloudflare account from an extension page, one page at a time.
 import {
   connectRelayAccount, disconnectRelayAccount, relayWorkerScript, systemRelayClock,
-  type CloudflareAccount, type ILogger, type RelayAccountDeps,
+  type CloudflareAccount, type ILogger, type RelayAccount, type RelayAccountDeps,
 } from "@labshelf/core";
 import { openBrowserRelayAccountStore } from "./browserRelayAccountStore";
 import { signInInTab } from "./signInInTab";
@@ -27,6 +27,8 @@ export interface BrowserRelayAccountOptions {
 export interface BrowserRelayAccount {
   /** The connected relay's address only, never a secret, so a page may show it. */
   status(): Promise<{ relayUrl: string } | undefined>;
+  /** The whole connected account, owner secret included, for the page's own shares; never shown. */
+  account(): Promise<RelayAccount | undefined>;
   /** Resolves the relay address, or undefined when the owner cancelled at a choice. */
   connect(): Promise<string | undefined>;
   /** Resolves undefined when no account is connected. */
@@ -56,6 +58,7 @@ export function createBrowserRelayAccount(options: BrowserRelayAccountOptions): 
   };
   return {
     status: () => store.status(),
+    account: () => store.get(),
     connect: () => exclusively(async () => {
       const existing = await store.get();
       if (existing) { return existing.relayUrl; }

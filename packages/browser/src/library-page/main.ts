@@ -13,7 +13,7 @@ import { attachLinkHandling } from "./openLink";
 import { applyCodeStyle, createLocalStoragePrefs } from "./prefs";
 import { attachRouter } from "./router";
 import type { ProjectWiring, ProjectWiringOptions } from "./projectWiring";
-import { mountSidebarTree } from "./sidebar";
+import { mountSidebarTree, type SidebarProjectParts } from "./sidebar";
 import { planPage, type PagePlan } from "./sections";
 import type { ProjectServices, TabKindName } from "./tabs";
 import { createPageShell, createWorkspace, takeJoinInvite, type Workspace } from "./workspace";
@@ -64,6 +64,11 @@ async function serveProjectsToDetails(endpoint: AllProjectsEndpoint, services: P
   }
 }
 
+function sidebarProjectParts(project: ProjectWiring): SidebarProjectParts {
+  const { relay } = project;
+  return { projects: project.sidebarProjects(), manageRelay: () => { void relay.manage(); } };
+}
+
 async function boot(): Promise<void> {
   const plan = await readPagePlan();
   const root = document.getElementById("root");
@@ -107,7 +112,7 @@ async function boot(): Promise<void> {
   project = await loadProjectWiring(plan, invite, { workspace, fs, logger: log, openTab });
   if (project) await serveProjectsToDetails(channels.projects, project.services, workspace, fs);
   mountPageDetails(shell.details, details.ui, prefs);
-  mountSidebarTree(ui, shell.sidebar, prefs, host, plan.projects && project ? project.sidebarProjects() : null, openTab, plan.library);
+  mountSidebarTree(ui, shell.sidebar, prefs, host, plan.projects && project ? sidebarProjectParts(project) : null, openTab, plan.library);
   workspace.restore(location.hash);
   project?.start(invite);
   mountSourceSurfaces(root, libraryHost.reloadSnapshots);
