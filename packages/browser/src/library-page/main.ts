@@ -124,7 +124,8 @@ async function boot(): Promise<void> {
   });
   const openTab = (kind: TabKindName): void => workspace.openTab(kind);
   const invite = takeInviteOffAddress();
-  project = await loadProjectWiring(plan, invite, { workspace, fs, logger: log, openTab, relay, relayAccounts });
+  project = await loadProjectWiring(plan, invite, { workspace, fs, logger: log, openTab, relay, relayAccounts, sharing: libraryHost.sharing });
+  if (project) libraryHost.addProjectSharing(project.projectSharing);
   if (project) await serveProjectsToDetails(channels.projects, project.services, workspace, fs);
   mountPageDetails(shell.details, details.ui, prefs);
   const projectParts = plan.projects && project ? sidebarProjectParts(project, relay) : null;

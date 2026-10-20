@@ -1,14 +1,14 @@
-// Wires the page's sharing to its dialogs, the project menus and the owner's relay, and keeps it in step with the page's life.
-import { offerOwnRelayToShares, withdrawOwnRelayFromShares, type ILogger, type RelayAccount } from "@labshelf/core";
-import { toast, type MenuEntry } from "@labshelf/core/dom";
+// Wires the page's sharing to the common join dialog and the owner's relay, and keeps it in step with the page's life.
+import { offerOwnRelayToShares, withdrawOwnRelayFromShares, type ILogger, type RelayAccount, type SharingHost } from "@labshelf/core";
+import { runJoinProjectDialog, toast } from "@labshelf/core/dom";
 import type { PageRelay } from "../../relay";
 import { currentLibraryId, librarySources } from "../../storage";
-import { createPageSharing, resumeReports, runJoinDialog, shareMenuEntries, type PageSharing, type ShareDialogContext } from "../editor/collab";
-import type { ProjectSession } from "../session";
+import { createPageSharing, resumeReports, type PageSharing } from "../editor/collab";
 
 export interface PageSharingWiringOptions {
   logger: ILogger;
-  session: Pick<ProjectSession, "openProject">;
+  /** The page's sharing host, which the join dialog runs against. */
+  host: SharingHost;
   relay: Pick<PageRelay, "requireBrowserRelay">;
   relayAccounts: { get(): Promise<RelayAccount | undefined> };
 }
@@ -17,29 +17,26 @@ export interface PageSharingWiring {
   sharing: PageSharing;
   /** Asks for an invite, unless a link carried one, and joins its shared project. */
   join(invite?: string): Promise<void>;
-  /** The sharing entries of the menu of the project in `folder`. */
-  menu(folder: string): MenuEntry[];
   offerRelayToShares(): Promise<void>;
   withdrawRelayFromShares(relayUrl: string): Promise<void>;
 }
 
-export function wirePageSharing({ logger, session, relay, relayAccounts }: PageSharingWiringOptions): PageSharingWiring {
-  const join = (invite?: string): Promise<void> => runJoinDialog({ sharing, logger, session, ...(invite === undefined ? {} : { invite }) });
+export function wirePageSharing({ logger, host, relay, relayAccounts }: PageSharingWiringOptions): PageSharingWiring {
+  const join = async (invite?: string): Promise<void> => {
+    // The join finds the share's project only in a project list that was read.
+    await sharing.ready();
+    await runJoinProjectDialog(host, invite);
+  };
   const sharing = createPageSharing({
     sources: librarySources(), libraryId: currentLibraryId, logger, relay: relayAccounts,
     requireRelay: async () => (await relay.requireBrowserRelay()) !== undefined,
     reports: resumeReports(logger, () => { void join(); }),
   });
-  const dialogs: ShareDialogContext = { ports: sharing.ports, closing: sharing.closing, logger, join: () => { void join(); } };
   window.addEventListener("pagehide", () => { void sharing.closeAll(); });
   // Another tab may have shared, left or trashed a project while this one was hidden.
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") void sharing.reload(); });
   return {
     sharing, join,
-    menu: (folder) => {
-      const entry = sharing.ports.projects.list().find((candidate) => candidate.folder === folder);
-      return entry?.kind === "ready" ? shareMenuEntries(dialogs, entry) : [];
-    },
     offerRelayToShares: async () => {
       const refused = await offerOwnRelayToShares(sharing.ports);
       if (refused.length === 0) return;

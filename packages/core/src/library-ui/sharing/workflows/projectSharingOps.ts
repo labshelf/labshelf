@@ -15,7 +15,7 @@ const NOT_CONNECTED = "Connect this shared project before handing out its invite
 
 export interface ProjectSharingDeps {
   ports: ShareWorkflowPorts;
-  /** The host's key for a project: its folder in VS Code, its id in the browser. */
+  /** The project's key on every surface: its folder. */
   idOf(entry: ProjectEntry): string;
   open(entry: ProjectEntry): Promise<void>;
 }

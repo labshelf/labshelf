@@ -1,9 +1,10 @@
-// Builds the sharing host of the library page: paper-folder links over this browser's share list, library files and relay.
-import { createSharingHost, createWorkerShareReader, PAPERS_DIR, PaperDataStore, posixPathOps, relayBackendFor, type ILogger, type RelayAccount, type SharingHost } from "@labshelf/core";
+// Builds the sharing host of the library page: paper-folder links over this browser's share list, library files and relay, plus the projects the project wiring adds.
+import { createSharingHost, createWorkerShareReader, PAPERS_DIR, PaperDataStore, posixPathOps, relayBackendFor, type ILogger, type RelayAccount } from "@labshelf/core";
 import { bx } from "../../../platform";
 import { createBrowserShareRegistryStore } from "../../../share";
 import { createLibraryFileSystem, createSidecarPort, currentLibraryId } from "../../../storage";
 import type { HostContext } from "../hostContext";
+import { createPageSharingHost, type PageSharingHost } from "./pageSharingHost";
 
 /** The owner's Cloudflare relay as the share links need it. */
 export interface ShareLinkRelay {
@@ -13,12 +14,13 @@ export interface ShareLinkRelay {
   connectedRelay(): Promise<RelayAccount | undefined>;
 }
 
-export function createBrowserSharingHost(ctx: HostContext, relay: ShareLinkRelay, logger: ILogger): SharingHost {
+export function createBrowserSharingHost(ctx: HostContext, relay: ShareLinkRelay, logger: ILogger): PageSharingHost {
   const fs = createLibraryFileSystem();
   const sidecars = new PaperDataStore(createSidecarPort(fs), { logger });
-  return createSharingHost({
+  return createPageSharingHost((projects) => createSharingHost({
     place: "this browser",
     logger,
+    ...(projects ? { projects } : {}),
     links: {
       papers: () => ctx.snapshots.current().papers,
       papersRoot: PAPERS_DIR,
@@ -35,5 +37,5 @@ export function createBrowserSharingHost(ctx: HostContext, relay: ShareLinkRelay
     clipboard: { write: (text) => navigator.clipboard.writeText(text) },
     // The link key sits in the fragment, which the new tab never sends to a server.
     openLink: async (url) => { window.open(url, "_blank", "noopener"); },
-  });
+  }));
 }

@@ -16,7 +16,7 @@ export interface BuildMark {
 export type NewProjectKind = "blank" | "template" | "folder";
 
 export interface ProjectRow {
-  /** The host's key for the project: a folder path in VS Code, the project id in the browser. */
+  /** The project's key: its folder. */
   id: string;
   title: string;
   /** Absent when the project's labshelf.yaml cannot be read. */

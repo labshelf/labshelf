@@ -11,7 +11,7 @@ jest.mock("../../../../src/platform", () => ({
 }));
 
 import { replaceFileText } from "@labshelf/core";
-import { ShareOpenInAnotherTabError } from "../../../../src/library-page/editor/collab";
+import { saveDisplayName, ShareOpenInAnotherTabError } from "../../../../src/library-page/editor/collab";
 import { acquireTabLease } from "../../../../src/storage";
 import { FOLDER, MAIN, openProfile, until, type Page, type Profile } from "./pageSharesTestbed";
 
@@ -134,10 +134,10 @@ describe("createPageShares", () => {
     await until(leaseIsFree);
   });
 
-  it("uses the display name it is given", async () => {
+  it("uses the stored display name, and the default before one is stored", async () => {
+    expect(profile.openPage().shares.name()).toBe("Guest");
+    await saveDisplayName("Ada");
     const page = profile.openPage();
-    expect(page.shares.name()).toBe("Guest");
-    await page.shares.setName("Ada");
-    expect(page.shares.name()).toBe("Ada");
+    await until(() => page.shares.name() === "Ada");
   });
 });

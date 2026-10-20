@@ -28,7 +28,7 @@ async function mount(rows: BrowserProjectRow[] = [ready, broken]) {
   const slot = document.createElement("div");
   document.body.replaceChildren(slot);
   const openTab = jest.fn();
-  mountSidebarTree(ui, slot, prefs, { post: jest.fn() }, { projects: createSidebarProjects(source, openTab, session, { join: jest.fn(), menu: () => [] }), manageRelay: jest.fn() }, openTab, true, sharing);
+  mountSidebarTree(ui, slot, prefs, { post: jest.fn() }, { projects: createSidebarProjects(source, openTab, session, sharing), manageRelay: jest.fn() }, openTab, true, sharing);
   await new Promise((resolve) => setTimeout(resolve, 0));
   return { slot, source, openTab, session };
 }

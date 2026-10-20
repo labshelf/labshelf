@@ -2,7 +2,7 @@
  * Hosts the library page: dispatches every library UI message to the IndexedDB and background handlers.
  * Attach PDF runs synchronously so its file picker opens inside the click that asked for it.
  */
-import { errorMessage, type HostEndpoint, type ILogger, type SharingHost, type UiToHost } from "@labshelf/core";
+import { errorMessage, type HostEndpoint, type ILogger, type ProjectSharingDeps, type SharingHost, type UiToHost } from "@labshelf/core";
 import {
   captureTab, createFolder, createPaperFileHandlers, createPdfHandlers, createBrowserSharingHost, deleteFolder, exportAnnotations, movePapers, offerOpenTabs, removePapers,
   renameFolder, sendDetails, setNote, setStatus, setTags, writeClipboard, type PaperFileHandlers,
@@ -79,10 +79,10 @@ function dispatch(ctx: HostContext, { pdf, files }: Handlers, loaded: () => Prom
 /** Starts answering the UI on `endpoint`. */
 export function attachLibraryHost(
   endpoint: HostEndpoint, options: LibraryHostOptions,
-): { reloadSnapshots(): Promise<void>; paperIdAtPath(path: string): Promise<string | null>; sharing: SharingHost } {
+): { reloadSnapshots(): Promise<void>; paperIdAtPath(path: string): Promise<string | null>; sharing: SharingHost; addProjectSharing(deps: ProjectSharingDeps): void } {
   const ctx = createHostContext(endpoint, options.log);
   const pdf = createPdfHandlers(ctx);
-  const sharing = createBrowserSharingHost(ctx, options.shareRelay, options.log);
+  const { host: sharing, addProjects } = createBrowserSharingHost(ctx, options.shareRelay, options.log);
   const handlers: Handlers = { pdf, files: createPaperFileHandlers(ctx, pdf.open) };
   // The router asks for a paper path while the first load is still running; both wait on the same load.
   let firstLoad: Promise<void> | null = null;
@@ -98,6 +98,7 @@ export function attachLibraryHost(
   return {
     reloadSnapshots: () => ctx.snapshots.reload(),
     sharing,
+    addProjectSharing: addProjects,
     paperIdAtPath: async (path) => {
       await loaded();
       return ctx.snapshots.current().papers.find((p) => p.path === path)?.id ?? null;

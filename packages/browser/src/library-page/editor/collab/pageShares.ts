@@ -3,10 +3,10 @@ import type { ILogger, RelayNetwork, ShareConnection, ShareConnections, ShareKey
 import { acquireTabLease, tabLeaseName, type TabLease } from "../../../storage";
 import { connectBrowserShare, type ShareSources } from "./browserShareConnection";
 import { ProjectShare, type LiveShare, type ShareEntryState } from "./projectShareEntry";
-import { loadDisplayName, saveDisplayName } from "./shareKeyStore";
+import { loadDisplayName } from "./shareKeyStore";
 
 const LOG_MODULE = "collab.shares";
-const DEFAULT_NAME = "Guest";
+export const DEFAULT_DISPLAY_NAME = "Guest";
 
 /** Another tab of this profile runs the share; this page observes it until the lease comes free. */
 export class ShareOpenInAnotherTabError extends Error {
@@ -23,7 +23,6 @@ export interface PageShares extends ShareConnections {
   takeOver(shareId: string): Promise<void>;
   /** The name on this user's comments and cursor. */
   name(): string;
-  setName(name: string): Promise<void>;
   /** Called whenever a share's state or its connection's state changes. */
   onChange(listener: () => void): () => void;
   closeAll(): Promise<void>;
@@ -51,7 +50,7 @@ class PageShareRegistry implements PageShares {
   private readonly opened = new Map<string, { lease: TabLease; libraryId: string }>();
   private readonly busy = new Set<string>();
   private readonly listeners = new Set<() => void>();
-  private displayName = DEFAULT_NAME;
+  private displayName = DEFAULT_DISPLAY_NAME;
   private closed = false;
   private readonly notify = (): void => this.listeners.forEach((listener) => listener());
 
@@ -126,7 +125,6 @@ class PageShareRegistry implements PageShares {
 
   name(): string { return this.displayName; }
 
-  async setName(name: string): Promise<void> { this.displayName = name; await saveDisplayName(name); }
 
   onChange(listener: () => void): () => void {
     this.listeners.add(listener);

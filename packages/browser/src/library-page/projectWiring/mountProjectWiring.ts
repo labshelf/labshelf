@@ -1,5 +1,5 @@
 // Creates the page's project services (sharing, helper, session, comments) and starts them once the workspace has restored its tabs.
-import type { ILogger, LibraryFileSystem, RelayAccount } from "@labshelf/core";
+import type { ILogger, LibraryFileSystem, ProjectSharingDeps, RelayAccount, SharingHost } from "@labshelf/core";
 import { createBrowserLatexHelper } from "../../helper/client";
 import { getSettings } from "../../platform";
 import { updateOwnRelayOnStart, type PageRelay } from "../../relay";
@@ -22,10 +22,14 @@ export interface ProjectWiringOptions {
   /** Asks the owner to connect Cloudflare when a share needs a relay. */
   relay: Pick<PageRelay, "requireBrowserRelay">;
   relayAccounts: { get(): Promise<RelayAccount | undefined> };
+  /** The page's sharing host; the join dialog runs against it once it holds `projectSharing`. */
+  sharing: SharingHost;
 }
 
 export interface ProjectWiring {
   services: ProjectServices;
+  /** The project half of the page's sharing host. */
+  projectSharing: ProjectSharingDeps;
   /** Builds the sidebar's Projects section. */
   sidebarProjects(): SidebarProjects;
   /** Reopens the project the restored tabs name, then joins the share link the page was opened with. */
@@ -36,7 +40,7 @@ export interface ProjectWiring {
   withdrawRelayFromShares(relayUrl: string): Promise<void>;
 }
 
-export function mountProjectWiring({ workspace, fs, logger, openTab, relay, relayAccounts }: ProjectWiringOptions): ProjectWiring {
+export function mountProjectWiring({ workspace, fs, logger, openTab, relay, relayAccounts, sharing: host }: ProjectWiringOptions): ProjectWiring {
   const helperProject = createHelperProject({
     helper: createBrowserLatexHelper(logger), logger,
     buildSettings: async () => { const { autoCompile, haltOnError } = await getSettings(); return { autoCompile, haltOnError }; },
@@ -51,16 +55,18 @@ export function mountProjectWiring({ workspace, fs, logger, openTab, relay, rela
       revealInOpenEditor(open.settings.id, path, line);
     },
   });
-  const wired = wirePageSharing({ logger, session, relay, relayAccounts });
+  const wired = wirePageSharing({ logger, host, relay, relayAccounts });
   const { sharing } = wired;
   const comments = createRoutedCommentThreads({ files: createCommentThreads({ fs, session, logger }), shares: sharing.shares, session });
   // Never awaited: mounting does not wait on the network.
   void updateOwnRelayOnStart(logger);
   return {
     services: { session, helperProject, comments, sharing },
+    // Every surface keys a project by its folder, as the open-project snapshot does.
+    projectSharing: { ports: sharing.ports, idOf: (entry) => entry.folder, open: async (entry) => { await session.openProject(entry); } },
     sidebarProjects: () => {
       const source = createProjectsSource({ projects: createBrowserProjects({ fileSystem: fs, logger }), fileSystem: fs, logger, showPdf: showPdfInTab });
-      return createSidebarProjects(source, openTab, session, { join: () => { void wired.join(); }, menu: wired.menu });
+      return createSidebarProjects(source, openTab, session, host);
     },
     start: (invite) => {
       void resumeRestoredProject(workspace, session, fs, logger);

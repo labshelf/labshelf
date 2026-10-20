@@ -1,6 +1,6 @@
 // Answers the core sidebar's Projects section: lists the projects, opens one in the page's project session, opens the template and All projects tabs, and shows the menus that share and join projects.
-import type { ProjectTreeView } from "@labshelf/core";
-import { showMenu, type LibrarySidebar, type MenuEntry, type ProjectOffers, type SidebarProjectActions } from "@labshelf/core/dom";
+import type { ProjectTreeView, SharingHost } from "@labshelf/core";
+import { projectShareMenuEntries, showMenu, type LibrarySidebar, type MenuEntry, type ProjectOffers, type SidebarProjectActions } from "@labshelf/core/dom";
 import type { TabKindName } from "../tabs";
 import type { BrowserProjectRow, ProjectsSource } from "../projects";
 import type { ProjectSession } from "../session";
@@ -15,29 +15,21 @@ const isTreeView = (view: string): view is ProjectTreeView => TREE_VIEWS.include
 
 export type SidebarSession = Pick<ProjectSession, "current" | "openProject" | "closeProject" | "attachSidebar" | "treeClick" | "treeAction">;
 
-/** The sharing a project's menus offer. */
-export interface SidebarSharing {
-  /** Asks for an invite link and joins its shared project. */
-  join(): void;
-  /** The sharing entries of the menu of the project in `folder`. */
-  menu(folder: string): MenuEntry[];
-}
-
 export interface SidebarProjects {
   actions: SidebarProjectActions;
   /** Hands the sidebar to the session, hides the offers the browser cannot run yet and lists the projects; they are listed again whenever the page comes back into view. */
   attach(sidebar: LibrarySidebar): void;
 }
 
-function menuEntries(source: ProjectsSource, sharing: SidebarSharing, row: BrowserProjectRow): MenuEntry[] {
+function menuEntries(source: ProjectsSource, sharing: SharingHost, row: BrowserProjectRow): MenuEntry[] {
   const { projectId, pdf } = row;
   if (projectId === undefined) return [];
   const open: MenuEntry[] = pdf ? [{ label: "Open PDF", icon: "file-text", onSelect: () => source.openPdf(projectId, pdf) }] : [];
-  const shared = sharing.menu(row.id);
+  const shared = projectShareMenuEntries(sharing, { id: row.id, shared: row.shared === true });
   return open.length > 0 && shared.length > 0 ? [...open, "separator", ...shared] : [...open, ...shared];
 }
 
-export function createSidebarProjects(source: ProjectsSource, openTab: (kind: TabKindName) => void, session: SidebarSession, sharing: SidebarSharing): SidebarProjects {
+export function createSidebarProjects(source: ProjectsSource, openTab: (kind: TabKindName) => void, session: SidebarSession, sharing: SharingHost): SidebarProjects {
   let rows: BrowserProjectRow[] = [];
   let sidebar: LibrarySidebar | undefined;
   const row = (id: string): BrowserProjectRow | undefined => rows.find((r) => r.id === id);
@@ -57,7 +49,7 @@ export function createSidebarProjects(source: ProjectsSource, openTab: (kind: Ta
     treeAction: (action) => { void session.treeAction(action); },
     openProjectMenu: (anchor) => {
       const open = session.current();
-      const entries = open?.kind === "ready" ? sharing.menu(open.folder) : [];
+      const entries = open?.kind === "ready" ? projectShareMenuEntries(sharing, { id: open.folder, shared: open.settings.shared !== undefined }) : [];
       if (entries.length > 0) showMenu(anchor, entries);
     },
     // The offers hide the first five; check boxes and inline add are not offered here.

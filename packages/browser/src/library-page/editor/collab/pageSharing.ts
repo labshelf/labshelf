@@ -35,8 +35,6 @@ export interface PageSharing {
   reload(): Promise<void>;
   /** The live share of a shared project's file; `retry` reconnects it from its stored key instead of waiting for the resume. */
   liveShare(entry: ProjectEntry, retry: boolean): Promise<LiveShare | undefined>;
-  /** Aborts when the page closes, so a join waiting for a member stops. */
-  closing: AbortSignal;
   closeAll(): Promise<void>;
 }
 
@@ -64,7 +62,7 @@ export function createPageSharing(options: PageSharingOptions): PageSharing {
   };
   const first = reload().catch((error: unknown) => logger.error(LOG_MODULE, error, { action: "read the shared projects at page start" }));
   return {
-    ports, shares, closing: closing.signal, reload,
+    ports, shares, reload,
     ready: () => first,
     liveShare: async (entry, retry) => {
       if (entry.kind !== "ready" || entry.settings.shared === undefined) { return undefined; }

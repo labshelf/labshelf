@@ -1,7 +1,7 @@
 // Declares the sharing operations a host offers the common sharing dialogs: project invites, joins and leaves, and paper-folder links.
 import type { ShareFolderStage } from "../../share/workflow/index.js";
 
-/** A writing project as the sharing dialogs list it; `id` is the host's project key (a folder in VS Code, the project id in the browser). */
+/** A writing project as the sharing dialogs list it; `id` is the project's folder, the key every host and surface uses. */
 export interface SharingProject {
   id: string;
   name: string;

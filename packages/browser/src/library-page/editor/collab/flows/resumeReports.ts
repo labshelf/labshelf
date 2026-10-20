@@ -1,10 +1,11 @@
 // Shows what the resume of the shared projects reports at page start: a project whose key is missing, and a reconnect that failed.
-import type { ILogger, ResumeReports } from "@labshelf/core";
+import { errorMessage, type ILogger, type ResumeReports, type SharedProject } from "@labshelf/core";
 import { showDialog, toast } from "@labshelf/core/dom";
 import { ShareOpenInAnotherTabError } from "../pageShares";
-import { errorText, projectName } from "./shareDialog";
 
 const LOG_MODULE = "collab.resume";
+
+const projectName = (project: SharedProject): string => project.settings.title ?? project.settings.id;
 
 /** `join` asks for an invite. */
 export function resumeReports(logger: ILogger, join: () => void): ResumeReports {
@@ -23,7 +24,7 @@ export function resumeReports(logger: ILogger, join: () => void): ResumeReports 
         void logger.log("INFO", LOG_MODULE, "A shared project runs in another tab; this tab waits for it", { folder: project.folder, shareId: error.shareId });
         return;
       }
-      toast(`Could not reconnect the shared project "${projectName(project)}": ${errorText(error)}`, "error");
+      toast(`Could not reconnect the shared project "${projectName(project)}": ${errorMessage(error)}`, "error");
     },
   };
 }
