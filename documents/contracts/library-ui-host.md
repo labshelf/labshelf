@@ -7,7 +7,7 @@ The library UI (folder header, paper list, paper menu, detail pane, citation map
 Two hosts mount it:
 
 - **VS Code** runs it in the list webview and answers over `postMessage`. The webview is untrusted: the extension host passes every message through `parseUiMessage` and drops what fails it. Prefs live in the webview state.
-- **The browser library page** runs it in the page and answers over an in-page loopback channel. Its own glue sits around the mounted UI: the shared library sidebar (`mountLibrarySidebar`, with Projects) in the sidebar slot, the URL hash and the sync status bar. Prefs live in localStorage under `labshelf.library.prefs`, together with the tree's expanded folders.
+- **The browser library page** runs it in the page and answers over an in-page loopback channel. Its own glue sits around the mounted UI: the shared library sidebar (`mountLibrarySidebar`, with Projects) in the sidebar slot, the URL hash. Prefs live in localStorage under `labshelf.library.prefs`, together with the tree's expanded folders.
 
 ## Paths
 

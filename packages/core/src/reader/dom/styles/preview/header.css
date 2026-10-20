@@ -3,14 +3,14 @@
   display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto;
 }
 .rd-preview #toolbar { display: none; }
-.rd-preview #viewerContainer { position: relative; inset: auto; min-height: 0; padding-top: var(--ls-space-6); }
+.rd-preview #viewerContainer { position: relative; inset: auto; min-height: 0; padding: 0; }
 
 /* The logs view takes the page row; it is appended to the positioned shell. */
 .rd-preview .rd-logs { grid-row: 2; grid-column: 1; inset: 0; }
 
 .rd-preview-header {
   display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-2); flex-shrink: 0;
-  min-height: var(--ls-reader-toolbar-h); padding: 0 var(--ls-space-3);
+  min-height: calc(var(--ls-row-h) + var(--ls-space-5)); padding: 0 var(--ls-space-3);
   background: var(--ls-bg); border-bottom: 1px solid var(--ls-border); box-shadow: none;
   font-size: var(--ls-text-md); color: var(--ls-reader-fg);
 }

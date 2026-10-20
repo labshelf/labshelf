@@ -1,6 +1,7 @@
 // Adds the Add comment command, its Mod-Alt-m shortcut and a bottom-panel button that is enabled while text is selected.
 import { Prec, type Extension } from "@codemirror/state";
 import { EditorView, keymap, showPanel } from "@codemirror/view";
+import { createSourceFooter } from "../appearance";
 import { icon, type TextRange } from "@labshelf/core";
 
 /** @param add receives the selection in document offsets. */
@@ -19,10 +20,7 @@ export function addCommentSupport(add: (range: TextRange) => void): Extension {
     button.title = "Add comment on the selection (Ctrl/Cmd+Alt+M)";
     button.disabled = view.state.selection.main.empty;
     button.addEventListener("click", () => { run(view); view.focus(); });
-    const dom = document.createElement("div");
-    dom.className = "ls-add-comment-panel";
-    dom.append(button);
-    return { dom, update: (update) => { button.disabled = update.state.selection.main.empty; } };
+    return { ...createSourceFooter(button), update: (update) => { button.disabled = update.state.selection.main.empty; } };
   });
   return [Prec.high(keymap.of([{ key: "Mod-Alt-m", run }])), panel];
 }

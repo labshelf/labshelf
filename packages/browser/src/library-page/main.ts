@@ -1,7 +1,4 @@
-/**
- * Bootstraps the library page: a page-level sidebar beside a workspace of tabs, the shared library UI as the Library tab
- * (answered by an in-page host over a synchronous loopback channel), and the page's own glue (URL hash, status bar).
- */
+// Mounts the browser library workspace.
 import { createLoopbackTransport } from "@labshelf/core";
 import { el, mountLibraryUi } from "@labshelf/core/dom";
 import { createBrowserLogger, getSettings } from "../platform";
@@ -10,14 +7,13 @@ import { createLibraryFileSystem } from "../storage";
 import { applyTheme } from "../ui";
 import { attachLibraryHost } from "./host";
 import { attachLinkHandling } from "./openLink";
-import { createLocalStoragePrefs } from "./prefs";
+import { applyCodeStyle, createLocalStoragePrefs } from "./prefs";
 import { attachRouter } from "./router";
 import type { ProjectWiring, ProjectWiringOptions } from "./projectWiring";
 import { mountSidebarTree } from "./sidebar";
 import { planPage, type PagePlan } from "./sections";
 import type { ProjectServices, TabKindName } from "./tabs";
 import { createPageShell, createWorkspace, takeJoinInvite } from "./workspace";
-import { mountStatusBar } from "./statusBar";
 
 const log = createBrowserLogger();
 
@@ -61,6 +57,7 @@ async function boot(): Promise<void> {
   if (!root) throw new Error("Missing #root");
   applyTheme();
   const prefs = createLocalStoragePrefs();
+  applyCodeStyle(prefs);
   const { ui: transport, host } = createLoopbackTransport();
   // The host listens before the UI mounts, so the UI's ready message finds it. Opened from the popup or a Scholar
   // button, the page selects the paper just saved.
@@ -96,7 +93,6 @@ async function boot(): Promise<void> {
   workspace.restore(location.hash);
   project?.start(invite);
   mountSourceSurfaces(root, libraryHost.reloadSnapshots);
-  mountStatusBar(root, prefs, (listener) => ui.store.select((s) => s.papers.length, listener));
   attachLinkHandling(log);
   void log.log("INFO", "library", "library page mounted");
 }

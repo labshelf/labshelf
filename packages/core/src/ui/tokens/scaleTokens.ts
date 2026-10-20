@@ -33,11 +33,13 @@ export const SHAPE_TOKENS = {
   "radius-lg": token("6px"),
   "radius-pill": token("999px"),
   "row-h": token("22px"),
+  "pane-footer-h": token("24px"),
   "gallery-sidebar-w": token("220px"),
   "gallery-card-w": token("200px"),
 } satisfies Record<string, DesignToken>;
 
 export const ELEVATION_TOKENS = {
+  "pane-shadow": token("0 1px 3px rgba(0, 0, 0, .18)", "0 1px 3px rgba(0, 0, 0, .08)"),
   "widget-shadow": token("0 0 8px 2px rgba(0, 0, 0, .36)", "0 0 8px 2px rgba(0, 0, 0, .16)"),
   "popup-shadow": token("0 4px 18px rgba(0, 0, 0, .45)", "0 4px 18px rgba(0, 0, 0, .18)"),
   "page-shadow": token("0 1px 6px rgba(0, 0, 0, .3)"),

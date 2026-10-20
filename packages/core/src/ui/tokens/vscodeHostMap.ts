@@ -7,6 +7,7 @@ type MappedToken = keyof typeof COLOR_TOKENS | keyof typeof STATUS_TOKENS | keyo
 // Roles VS Code has no variable for (overlay, the highlight palette, the
 // type and spacing scale) keep their token value in VS Code too.
 const VSCODE_HOST_MAP: Partial<Record<MappedToken, string>> = {
+  "workspace-bg": "var(--vscode-editorGroup-emptyBackground, var(--vscode-sideBar-background))",
   bg: "var(--vscode-editor-background)",
   fg: "var(--vscode-foreground)",
   desc: "var(--vscode-descriptionForeground)",
@@ -26,12 +27,8 @@ const VSCODE_HOST_MAP: Partial<Record<MappedToken, string>> = {
   "border-faint": "var(--vscode-panel-border)",
   "widget-bg": "var(--vscode-editorWidget-background)",
   "code-bg": "var(--vscode-textCodeBlock-background)",
-  "tab-active-border": "var(--vscode-panelTitle-activeBorder)",
   "sash-hover": "var(--vscode-sash-hoverBorder)",
   progress: "var(--vscode-progressBar-background)",
-  "statusbar-bg": "var(--vscode-statusBar-background)",
-  "statusbar-fg": "var(--vscode-statusBar-foreground)",
-  "statusbar-hover": "var(--vscode-statusBarItem-hoverBackground)",
   "list-hover": "var(--vscode-list-hoverBackground)",
   "list-active-bg": "var(--vscode-list-activeSelectionBackground)",
   "list-active-fg": "var(--vscode-list-activeSelectionForeground)",

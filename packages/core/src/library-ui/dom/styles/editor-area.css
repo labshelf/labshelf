@@ -1,7 +1,4 @@
-/*
- * Styles the editor area after VS Code's editor groups: one scrolling row of tabs per group, the active tab's accent edge,
- * the unsaved dot in the close button's place, and the sash between two groups. Requires tokens.css and base.css.
- */
+/* Styles connected workspace tabs within resizable editor groups. */
 .ls-editor-area { display: flex; flex: 1; min-width: 0; min-height: 0; overflow: hidden; background: var(--ls-bg); color: var(--ls-fg); }
 .ls-editor-area.resizing, .ls-editor-area.resizing * { cursor: col-resize !important; user-select: none !important; }
 .ls-editor-area.resizing iframe { pointer-events: none; }
@@ -12,7 +9,7 @@
 .ls-editor-area.tab-dragging .ls-editor-group[hidden] { display: flex; }
 .ls-editor-group.drop-target::after { content: ""; position: absolute; inset: 0; background: var(--ls-list-drop-bg); pointer-events: none; }
 
-.ls-editor-titlebar { display: flex; flex-shrink: 0; background: var(--ls-sidebar-bg); border-bottom: thin solid var(--ls-border-soft); }
+.ls-editor-titlebar { display: flex; flex-shrink: 0; background: var(--ls-code-bg); }
 .ls-editor-tabs { display: flex; flex: 1 1 0; min-width: 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
 /* The group's editor actions sit still at the end of the strip while the tabs scroll. */
 .ls-editor-actions { display: flex; flex-shrink: 0; align-items: center; align-self: center; gap: var(--ls-space-1); padding: 0 var(--ls-space-4); }
@@ -22,16 +19,22 @@
 .ls-editor-actions .ls-icon-btn:focus-visible { outline: thin solid var(--ls-focus); outline-offset: calc(-1 * var(--ls-space-1)); }
 .ls-editor-tab {
   position: relative; display: inline-flex; align-items: center; gap: var(--ls-space-3); flex-shrink: 0;
-  height: calc(var(--ls-row-h) + var(--ls-space-6)); padding: 0 var(--ls-space-2) 0 var(--ls-space-5);
-  border-right: thin solid var(--ls-border-faint); color: var(--ls-desc); font-size: var(--ls-text-md);
+  height: calc(var(--ls-row-h) + var(--ls-space-4)); padding: 0 var(--ls-space-2) 0 var(--ls-space-5);
+  border-radius: var(--ls-radius-lg) var(--ls-radius-lg) 0 0; color: var(--ls-desc); font-size: var(--ls-text-md);
   cursor: pointer; user-select: none; white-space: nowrap;
 }
 .ls-editor-tab:hover { color: var(--ls-fg); background: var(--ls-list-hover); }
 .ls-editor-tab.active { color: var(--ls-fg); background: var(--ls-bg); }
-/* Only the focused group's active tab carries the accent edge, as in VS Code. */
-.ls-editor-group:focus-within .ls-editor-tab.active::before,
-.ls-editor-area:not(.split) .ls-editor-tab.active::before {
-  content: ""; position: absolute; left: 0; right: 0; top: 0; height: var(--ls-space-1); background: var(--ls-tab-active-border);
+.ls-editor-tab.active::before, .ls-editor-tab.active::after {
+  content: ""; position: absolute; bottom: 0; width: var(--ls-radius-lg); height: var(--ls-radius-lg); pointer-events: none;
+}
+.ls-editor-tab.active::before {
+  left: calc(-1 * var(--ls-radius-lg)); border-bottom-right-radius: var(--ls-radius-lg);
+  box-shadow: var(--ls-space-2) var(--ls-space-2) 0 var(--ls-space-1) var(--ls-bg);
+}
+.ls-editor-tab.active::after {
+  right: calc(-1 * var(--ls-radius-lg)); border-bottom-left-radius: var(--ls-radius-lg);
+  box-shadow: calc(-1 * var(--ls-space-2)) var(--ls-space-2) 0 var(--ls-space-1) var(--ls-bg);
 }
 .ls-editor-tab:focus-visible { outline: thin solid var(--ls-focus); outline-offset: calc(-1 * var(--ls-space-1)); }
 .ls-editor-tab-icon, .ls-editor-tab-close { display: inline-flex; flex-shrink: 0; }
