@@ -24,6 +24,7 @@ pnpm --filter @labshelf/browser build:firefox
 pnpm --filter @labshelf/browser lint:manifest    # web-ext lint on dist/firefox
 ```
 
+- The extension icon uses the standalone blue chevron on a transparent background, without lettering.
 - One source tree builds both targets. Only the manifest differs: Chrome uses a `service_worker`, and Firefox uses `background.scripts` plus the gecko id `labshelf@lucanaasser.dev`.
 - pdf.js is vendored from the `pdfjs-dist` legacy build into `vendor/pdfjs/`. `pdf_viewer.mjs` is lowered to es2023 so that `web-ext lint` passes.
 
