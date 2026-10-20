@@ -6,3 +6,4 @@ export * from "../writing/templates/dom/index.js";
 export * from "../writing/search/dom/index.js";
 export * from "../writing/history/dom/index.js";
 export * from "../writing/allProjects/dom/index.js";
+export * from "../details/dom/index.js";
