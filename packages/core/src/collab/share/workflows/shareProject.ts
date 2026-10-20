@@ -20,26 +20,28 @@ export type ShareOutcome =
   /** The project is shared, but this device holds no key of it. */
   | { kind: "noKey" };
 
+interface Offered { connection: ShareConnection; offer: OwnRelayOffer }
+
 export async function shareProject(ports: ShareWorkflowPorts, request: ShareRequest): Promise<ShareOutcome> {
-  const connection = request.shared === undefined ? await shareNew(ports, request) : await reconnect(ports, request.folder, request.shared);
-  if (connection === "noRelay" || connection === "noKey") { return { kind: connection }; }
-  const offer = await offerOwnRelay(ports, connection);
-  return { kind: "shared", invite: await currentInvite(ports, connection), connection, offer };
+  const shared = request.shared === undefined ? await shareNew(ports, request) : await reconnect(ports, request.folder, request.shared);
+  if (shared === "noRelay" || shared === "noKey") { return { kind: shared }; }
+  return { kind: "shared", invite: await currentInvite(ports, shared.connection), ...shared };
 }
 
-async function reconnect(ports: ShareWorkflowPorts, folder: string, shareId: string): Promise<ShareConnection | "noKey"> {
+async function reconnect(ports: ShareWorkflowPorts, folder: string, shareId: string): Promise<Offered | "noKey"> {
   const stored = await ports.keys.invite(shareId);
   if (!stored) { return "noKey"; }
-  return ports.shares.hold(shareId, async () => {
+  const connection = await ports.shares.hold(shareId, async () => {
     const active = ports.shares.active(shareId);
     if (active) { return active; }
-    const connection = await ports.connect(stored, { mode: "resume", folder });
-    ports.shares.add(connection);
-    return connection;
+    const resumed = await ports.connect(stored, { mode: "resume", folder });
+    ports.shares.add(resumed);
+    return resumed;
   });
+  return { connection, offer: await offerOwnRelay(ports, connection) };
 }
 
-async function shareNew(ports: ShareWorkflowPorts, { folder, signal }: ShareRequest): Promise<ShareConnection | "noRelay"> {
+async function shareNew(ports: ShareWorkflowPorts, { folder, signal }: ShareRequest): Promise<Offered | "noRelay"> {
   // INVARIANT: nothing is published before a relay exists, since a joiner reaches the share only through one.
   if (!(await ports.relay.get()) && !((await ports.requireRelay()) && (await ports.relay.get()))) {
     void ports.logger.log("INFO", LOG_MODULE, "Sharing cancelled: no relay is connected", { folder });
@@ -56,8 +58,11 @@ async function shareNew(ports: ShareWorkflowPorts, { folder, signal }: ShareRequ
       ports.shares.add(connection);
       if (signal.aborted) { throw new Error("Sharing was cancelled"); }
       await ports.projects.reload();
+      // A new share lists no other relay, so an invite without the owner's would reach nobody.
+      const offer = await offerOwnRelay(ports, connection);
+      if (offer.kind === "refused") { throw new Error(`Your relay refused the share: ${String(offer.error)}`, { cause: offer.error }); }
       void ports.logger.log("INFO", LOG_MODULE, "Shared a project", { folder, shareId });
-      return connection;
+      return { connection, offer };
     } catch (error) {
       await rollBack(ports, folder, shareId);
       throw error;
