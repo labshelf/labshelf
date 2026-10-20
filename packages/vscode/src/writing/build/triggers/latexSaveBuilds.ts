@@ -43,7 +43,7 @@ export function registerLatexSaveBuilds(deps: LatexSaveBuildsDeps): void {
   const onSave = async (document: vscode.TextDocument): Promise<void> => {
     if (!SOURCE_EXTENSIONS.has(deps.projects.paths.extname(document.uri.fsPath).toLowerCase())) { return; }
     const project = latexProjectOf(deps.projects, document.uri);
-    if (!project || !autoCompile.allows()) { return; }
+    if (!project || !autoCompile.allows("save")) { return; }
     const folder = project.folder;
     const root = await buildRootOf(deps.projects, folder, project.main ?? "", document.uri.fsPath);
     if (disposed) { return; } // the root resolves asynchronously, possibly after dispose

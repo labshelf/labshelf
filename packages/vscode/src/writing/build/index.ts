@@ -8,5 +8,5 @@ export { BuildDiagnostics } from "./buildDiagnostics.js";
 export { ProjectDiagnostics } from "./projectDiagnostics.js";
 export { BUILD_COMMAND, registerBuildCommand } from "./registerBuildCommand.js";
 export { registerCompilerStatusBar, registerPickCompiler } from "./toolchain/index.js";
-export { autoCompileOn, buildOptions, IncludeOnlyState, onAutoCompileChange, setAutoCompile, setEngine, type IncludeOnlyTarget } from "./options/index.js";
-export { registerLatexOpenBuild, registerLatexSaveBuilds } from "./triggers/index.js";
+export { autoCompileMode, buildOptions, haltOnErrorOn, IncludeOnlyState, onAutoCompileChange, setAutoCompile, setEngine, setHaltOnError, type IncludeOnlyTarget } from "./options/index.js";
+export { registerLatexOpenBuild, registerLatexSaveBuilds, registerLatexTypingSaves } from "./triggers/index.js";

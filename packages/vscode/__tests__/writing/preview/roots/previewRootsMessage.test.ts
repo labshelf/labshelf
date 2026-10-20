@@ -41,7 +41,7 @@ describe("previewRootsMessage limits", () => {
 
 describe("previewRootsMessage chrome fields", () => {
   it("carries the build options", async () => {
-    const options = { autoCompile: true, engine: null };
+    const options = { autoCompile: "typing" as const, engine: null };
     expect((await previewRootsMessage({ ...input(), options })).options).toEqual(options);
   });
 

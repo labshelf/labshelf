@@ -8,6 +8,7 @@ import type { ReadyProject } from "../../mainDocument.js";
 import type { WritingHost } from "../../session/index.js";
 import type { BuildDiagnostics } from "../buildDiagnostics.js";
 import type { BuildListener, BuildTrigger, FinishedBuild } from "../buildListener.js";
+import { haltOnErrorOn } from "../options/index.js";
 import { reportToolchainMissing } from "./ensureToolchain.js";
 
 export interface LatexBuildsDeps {
@@ -46,7 +47,7 @@ export class LatexBuilds {
     }
     let spinner: vscode.Disposable | undefined;
     const run = this.deps.queue.request(project, {
-      root, ...(includeOnly !== undefined && { includeOnly }),
+      root, haltOnError: haltOnErrorOn(), ...(includeOnly !== undefined && { includeOnly }),
       onCompile: () => {
         spinner = vscode.window.setStatusBarMessage(`$(sync~spin) Building ${root}`);
         this.deps.previews.building(projectFolder, root);

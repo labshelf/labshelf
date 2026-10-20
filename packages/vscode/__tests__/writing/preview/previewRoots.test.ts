@@ -72,7 +72,7 @@ describe("preview roots after a build", () => {
     previews.finished(project, "b/main.tex", ok("b/main.tex"), "save");
     await flush();
     expect(lastRoots()).toEqual({
-      main: "main.tex", focused: "main.tex", shown: "main.tex", options: { autoCompile: true, engine: null },
+      main: "main.tex", focused: "main.tex", shown: "main.tex", options: { autoCompile: "typing", engine: null, haltOnError: false },
       roots: expect.arrayContaining([
         { path: "main.tex", failed: true, rawLog: true, sourceLinks: true, problems: [{ severity: "error", message: "Undefined control sequence.", hint: "Check the spelling.", file: "chapters/a.tex", line: 4 }], pdfProblems: [], cites: 0, words: 0 },
         { path: "b/main.tex", failed: false, rawLog: false, sourceLinks: true, problems: [], pdfProblems: [], cites: 0, words: 0 },

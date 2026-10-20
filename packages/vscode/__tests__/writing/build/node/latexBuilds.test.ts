@@ -42,6 +42,14 @@ describe("LatexBuilds", () => {
     expect(window["setStatusBarMessage"]).toHaveBeenLastCalledWith("$(error) Build of a/main.tex failed: 1 error", 5000);
   });
 
+  it("passes the halt-on-error setting to the queue", async () => {
+    (vscode.workspace as unknown as { _config: Record<string, unknown> })._config["labshelf.writing"] = { haltOnError: true };
+    const { builds, request } = setup();
+    await builds.request("/p/paper", "main.tex", "command");
+    expect(request.mock.calls[0]![1]).toHaveProperty("haltOnError", true);
+    delete (vscode.workspace as unknown as { _config: Record<string, unknown> })._config["labshelf.writing"];
+  });
+
   it("leaves includeOnly out of the request when none is given", async () => {
     const { builds, request } = setup();
     await builds.request("/p/paper", "main.tex", "command");

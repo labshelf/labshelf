@@ -80,26 +80,34 @@ describe("registerLatexSaveBuilds saves", () => {
 });
 
 describe("registerLatexSaveBuilds auto compile", () => {
-  const setAutoCompile = (on: boolean) => {
-    workspace._config["labshelf.writing"] = { autoCompile: on };
+  const setAutoCompile = (mode: string) => {
+    workspace._config["labshelf.writing"] = { autoCompile: mode };
     workspace._fireConfigChange("labshelf.writing.autoCompile");
   };
 
   it("requests no build on save while auto compile is off", async () => {
-    workspace._config["labshelf.writing"] = { autoCompile: false };
+    workspace._config["labshelf.writing"] = { autoCompile: "off" };
     setup();
     save("/p/tex/main.tex");
     await jest.advanceTimersByTimeAsync(1000);
     expect(request).not.toHaveBeenCalled();
   });
 
+  it("builds on save in save mode", async () => {
+    workspace._config["labshelf.writing"] = { autoCompile: "save" };
+    setup();
+    save("/p/tex/main.tex");
+    await jest.advanceTimersByTimeAsync(300);
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+
   it("applies a change of the setting without registering again", async () => {
     setup();
-    setAutoCompile(false);
+    setAutoCompile("off");
     save("/p/tex/main.tex");
     await jest.advanceTimersByTimeAsync(1000);
     expect(request).not.toHaveBeenCalled();
-    setAutoCompile(true);
+    setAutoCompile("typing");
     save("/p/tex/main.tex");
     await jest.advanceTimersByTimeAsync(300);
     expect(request).toHaveBeenCalledWith("/p/tex", "main.tex", undefined);
@@ -107,15 +115,15 @@ describe("registerLatexSaveBuilds auto compile", () => {
 
   it("logs the skip once per setting value, not once per save", async () => {
     const host = fakeHost();
-    workspace._config["labshelf.writing"] = { autoCompile: false };
+    workspace._config["labshelf.writing"] = { autoCompile: "off" };
     setup(host);
     save("/p/tex/main.tex");
     save("/p/tex/main.tex");
     save("/p/tex/figure.png");
     await jest.advanceTimersByTimeAsync(1000);
     expect(host.session.logger.log).toHaveBeenCalledTimes(1);
-    setAutoCompile(true);
-    setAutoCompile(false);
+    setAutoCompile("typing");
+    setAutoCompile("off");
     save("/p/tex/main.tex");
     await jest.advanceTimersByTimeAsync(1000);
     expect(host.session.logger.log).toHaveBeenCalledTimes(2);

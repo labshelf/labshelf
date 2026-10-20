@@ -37,6 +37,7 @@ export class RootsPublisher implements vscode.Disposable {
     this.preprints = projectPreprints({ logger: () => deps.host.current()?.logger, lookup: publishedVersionLookup(env) });
     this.subscriptions = [
       onAutoCompileChange(() => this.resendAll()),
+      vscode.workspace.onDidChangeConfiguration((event) => { if (event.affectsConfiguration("labshelf.writing.haltOnError")) { this.resendAll(); } }),
       deps.projects.onDidChange(() => { this.measures.clear(); this.resendAll(); }),
       deps.checkCounts.onChange((folder) => this.resend(folder)),
       vscode.window.onDidChangeActiveTextEditor(() => this.resendAll()),

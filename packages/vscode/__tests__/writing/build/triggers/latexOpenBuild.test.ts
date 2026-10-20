@@ -66,7 +66,7 @@ describe("registerLatexOpenBuild", () => {
   });
 
   it("does not build while auto compile is off, and logs why", () => {
-    workspace._config["labshelf.writing"] = { autoCompile: false };
+    workspace._config["labshelf.writing"] = { autoCompile: "off" };
     const { request, register, host } = setup([readyEntry("/library/projects/paper")]);
     register();
     expect(request).not.toHaveBeenCalled();
