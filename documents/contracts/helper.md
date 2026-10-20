@@ -27,12 +27,12 @@ Firefox upgrades `ws://` to `wss://` under the CSP directive `upgrade-insecure-r
 Every message has the same envelope:
 
 ```json
-{ "v": 3, "id": "7", "type": "compile", "projectId": "thesis", "main": "main.tex", "mode": "preview" }
+{ "v": 4, "id": "7", "type": "compile", "projectId": "thesis", "main": "main.tex", "mode": "preview" }
 ```
 
 | Key | Type | Notes |
 |---|---|---|
-| `v` | integer | the protocol version, `3`. A message whose `v` differs is rejected |
+| `v` | integer | the protocol version, `4`. A message whose `v` differs is rejected |
 | `id` | string | 1 to 64 characters, chosen by the page. A reply carries the `id` of the request it answers, and every `progress` message of a request carries that request's `id`. An `error` for a frame that carried no valid `id` has none |
 | `type` | string | one of the messages below for its direction and transport; any other value is rejected |
 
@@ -55,7 +55,7 @@ Keys a message does not define are dropped when it is read.
 | `closeProject` | `projectId` | `closed`; the helper drops the project's unsaved text |
 | `edit` | `projectId`, `path`, `version`: integer from 1; either `text`, the whole file, or `changes`: `{ from, to, insert }[]`, non-overlapping ranges of UTF-16 offsets in the text of `version - 1` | none; `error` `stale` when `changes` do not apply to the helper's version, and the page then sends `text` |
 | `save` | `projectId`, `path` | none; the page wrote the file through its own storage, and the helper drops its unsaved text for it and reads the file from disk again |
-| `compile` | `projectId`; `main`; `mode`: `"preview"` or `"full"`; `engine?`: `"pdflatex"`, `"xelatex"` or `"lualatex"` for a `.tex` main; `editedFile?`; `editedLine?`: the 1-based line of the edit in `editedFile` | `progress`, then `built`, then `pages` when it succeeded |
+| `compile` | `projectId`; `main`; `mode`: `"preview"` or `"full"`; `engine?`: `"pdflatex"`, `"xelatex"` or `"lualatex"` for a `.tex` main; `editedFile?`; `editedLine?`: the 1-based line of the edit in `editedFile`; `haltOnError?`: boolean, stops the LaTeX engine at the first error | `progress`, then `built`, then `pages` when it succeeded |
 | `cancel` | `projectId` | the running build ends with `built` `status: "cancelled"` |
 | `installTex` | `kind`: `"tinytex"` or `"texlive"` | `progress`, then `ready` |
 | `installAllPackages` | none | `progress`, then `ready` |

@@ -41,7 +41,7 @@ export async function runBuildJob(job: BuildJob): Promise<void> {
   await job.sync();
   const synced = Date.now();
   if (token.cancelled) { return reply("cancelled"); }
-  const options = { mode: message.mode, ...(message.editedFile !== undefined && { editedFile: message.editedFile }), ...(message.editedLine !== undefined && { editedLine: message.editedLine }) };
+  const options = { mode: message.mode, ...(message.editedFile !== undefined && { editedFile: message.editedFile }), ...(message.editedLine !== undefined && { editedLine: message.editedLine }), ...(message.haltOnError !== undefined && { haltOnError: message.haltOnError }) };
   const result = await job.queue.request(job.project, options);
   const compiled = Date.now();
   if (token.cancelled || result.status === "cancelled") { return reply("cancelled"); }

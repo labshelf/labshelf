@@ -28,6 +28,8 @@ export interface ProjectBuildDeps extends ToolchainDeps {
 }
 
 export interface ProjectBuildOptions {
+  /** Stops the LaTeX engine at the first error. */
+  haltOnError?: boolean;
   /** The root to compile, relative to the project folder; the main file when absent. */
   root?: string;
   /** An `\include` path to typeset alone (LaTeX). */
@@ -72,6 +74,7 @@ async function buildLatex(project: ReadyProject, root: string, deps: ProjectBuil
       ...(options.includeOnly !== undefined && { includeOnly: options.includeOnly }), ...((force || options.force) && { force: true }),
       ...(options.mode !== undefined && { mode: options.mode }), ...(options.editedFile !== undefined && { editedFile: options.editedFile }),
       ...(options.editedLine !== undefined && { editedLine: options.editedLine }),
+      ...(options.haltOnError !== undefined && { haltOnError: options.haltOnError }),
     }),
     missingFile: (result) => ("problems" in result ? classifyTexProblems(result.problems).missingFile : undefined),
     tex: { installMissing: (fileName) => deps.prompt.progress(`Installing the LaTeX package for ${fileName}`, () => deps.tex.installMissing(fileName)) },

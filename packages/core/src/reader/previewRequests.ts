@@ -1,6 +1,7 @@
 /** Declares and validates the requests a preview reader sends its host. */
 // CONTRACT: documents/contracts/reader-host.md#preview
 import { LATEX_ENGINES, type CountUpTo, type LatexEngine } from "../writing/project/index.js";
+import { AUTO_COMPILE_MODES, type AutoCompileMode } from "../writing/build/index.js";
 import { isCitationQuery, isPagePoint, type CitationQuery, type PagePoint } from "./previewProtocol.js";
 
 /** The project commands a preview reader can run on the shown root's project. */
@@ -37,9 +38,10 @@ export type PreviewRequest =
   /** Reports how many pages of the PDF a build root produced hold the paper's body. */
   | { command: "bodyPages"; root: string; contentPages: number }
   | { command: "runCommand"; id: ProjectCommandId }
-  | { command: "setAutoCompile"; on: boolean }
+  | { command: "setAutoCompile"; mode: AutoCompileMode }
   | { command: "setEngine"; engine: LatexEngine }
   | { command: "setIncludeOnly"; on: boolean }
+  | { command: "setHaltOnError"; on: boolean }
   | { command: "setCheckLimits"; limits: CheckLimitsChange }
   | { command: "fixCitation"; fix: CitationFix }
   /** Opens a source line; `file` is relative to the project folder, `line` counts from 1. */
@@ -80,9 +82,10 @@ const GUARDS: { [C in PreviewRequest["command"]]: (m: Fields) => boolean } = {
   openRawLog: (m) => isFilled(m["root"]),
   bodyPages: (m) => isFilled(m["root"]) && isCount(m["contentPages"]),
   runCommand: (m) => isOneOf(PROJECT_COMMANDS, m["id"]),
-  setAutoCompile: (m) => isBool(m["on"]),
+  setAutoCompile: (m) => isOneOf(AUTO_COMPILE_MODES, m["mode"]),
   setEngine: (m) => isOneOf(LATEX_ENGINES, m["engine"]),
   setIncludeOnly: (m) => isBool(m["on"]),
+  setHaltOnError: (m) => isBool(m["on"]),
   setCheckLimits: (m) => isLimitsChange(m["limits"]),
   fixCitation: (m) => isCitationFix(m["fix"]),
   openSourceLine: (m) => isFilled(m["file"]) && isLine(m["line"]),

@@ -134,3 +134,16 @@ describe("settings sidebar sections", () => {
     expect((await getSettings()).sidebarSections).toEqual({ library: true, projects: true });
   });
 });
+
+describe("settings build options", () => {
+  it("defaults to compiling while typing and trying despite errors", async () => {
+    expect(await getSettings()).toMatchObject({ autoCompile: "typing", haltOnError: false });
+  });
+
+  it("reads back a saved choice and drops stored values of the wrong shape", async () => {
+    await updateSettings({ autoCompile: "save", haltOnError: true });
+    expect(await getSettings()).toMatchObject({ autoCompile: "save", haltOnError: true });
+    store[SETTINGS_STORAGE_KEY] = { autoCompile: "sometimes", haltOnError: "yes" };
+    expect(await getSettings()).toMatchObject({ autoCompile: "typing", haltOnError: false });
+  });
+});

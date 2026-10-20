@@ -5,8 +5,8 @@ const ok = (m: unknown) => expect(isWebviewMessage(m)).toBe(true);
 const bad = (m: unknown) => expect(isWebviewMessage(m)).toBe(false);
 
 describe('preview webview messages', () => {
-  it('is protocol version 6', () => {
-    expect(PROTOCOL_VERSION).toBe(6);
+  it('is protocol version 7', () => {
+    expect(PROTOCOL_VERSION).toBe(7);
   });
 
   it('runCommand accepts the three command ids only', () => {
@@ -16,8 +16,15 @@ describe('preview webview messages', () => {
     bad({ command: 'runCommand', id: 3 });
   });
 
-  it('setAutoCompile and setIncludeOnly need a boolean', () => {
-    for (const command of ['setAutoCompile', 'setIncludeOnly']) {
+  it('setAutoCompile accepts the three modes only', () => {
+    for (const mode of ['typing', 'save', 'off']) { ok({ command: 'setAutoCompile', mode }); }
+    bad({ command: 'setAutoCompile', mode: 'always' });
+    bad({ command: 'setAutoCompile', on: true });
+    bad({ command: 'setAutoCompile' });
+  });
+
+  it('setHaltOnError and setIncludeOnly need a boolean', () => {
+    for (const command of ['setHaltOnError', 'setIncludeOnly']) {
       ok({ command, on: true });
       ok({ command, on: false });
       bad({ command, on: 'yes' });

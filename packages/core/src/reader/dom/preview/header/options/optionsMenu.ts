@@ -1,7 +1,7 @@
-// Shows the build options of the preview as a header menu: Auto compile and, for LaTeX roots, the engine.
+// Shows the build options of the preview as a header menu: when to compile and, for LaTeX roots, the engine and whether to stop at the first error.
 import { icon } from "../../../../../ui/index.js";
 import { showMenu, type MenuEntry } from "../../../../../ui/dom/index.js";
-import { LATEX_ENGINES, engineLabel } from "../../../../../writing/index.js";
+import { AUTO_COMPILE_MODES, LATEX_ENGINES, autoCompileLabel, engineLabel } from "../../../../../writing/index.js";
 import type { BuildOptions, PreviewRoots, WebviewToHost } from "../../../../index.js";
 import { iconButton } from "../../../elements/index.js";
 
@@ -10,14 +10,21 @@ interface OptionsMenuDeps {
 }
 
 function entries(options: BuildOptions, post: OptionsMenuDeps["post"]): MenuEntry[] {
-  const list: MenuEntry[] = [
-    { label: "Auto compile on save", checked: options.autoCompile, onSelect: () => post({ command: "setAutoCompile", on: !options.autoCompile }) },
-  ];
+  const list: MenuEntry[] = AUTO_COMPILE_MODES.map((mode) => ({
+    label: autoCompileLabel(mode), checked: mode === options.autoCompile, radio: true,
+    onSelect: () => post({ command: "setAutoCompile", mode }),
+  }));
   if (options.engine === undefined) { return list; }
   list.push("separator");
   for (const engine of LATEX_ENGINES) {
     list.push({ label: engineLabel(engine), checked: engine === options.engine, radio: true, onSelect: () => post({ command: "setEngine", engine }) });
   }
+  const halt = options.haltOnError === true;
+  list.push(
+    "separator",
+    { label: "Stop on first error", checked: halt, radio: true, onSelect: () => post({ command: "setHaltOnError", on: true }) },
+    { label: "Try to compile despite errors", checked: !halt, radio: true, onSelect: () => post({ command: "setHaltOnError", on: false }) },
+  );
   return list;
 }
 

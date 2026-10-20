@@ -54,6 +54,18 @@ describe("previewPorts", () => {
       [{ command: "openProblem", root: "main.tex", index: 2 }, location.origin],
       [{ command: "showSource", point: { page: 1, x: 2, y: 3 } }, location.origin],
     ]);
+    await ports.runCommand?.("markVersion");
+    await ports.setCheckLimits?.({ pages: 8 });
+    await ports.setAutoCompile?.("save");
+    await ports.setEngine?.("xelatex");
+    await ports.setHaltOnError?.(true);
+    expect(parent.postMessage.mock.calls.slice(2)).toEqual([
+      [{ command: "runCommand", id: "markVersion" }, location.origin],
+      [{ command: "setCheckLimits", limits: { pages: 8 } }, location.origin],
+      [{ command: "setAutoCompile", mode: "save" }, location.origin],
+      [{ command: "setEngine", engine: "xelatex" }, location.origin],
+      [{ command: "setHaltOnError", on: true }, location.origin],
+    ]);
     await expect(ports.lookupCitation({ area: { page: 1, left: 0, top: 0, right: 1, bottom: 1 }, link: true })).resolves.toEqual([]);
   });
 });

@@ -132,13 +132,13 @@ describe("registerTypstBuild saves", () => {
 });
 
 describe("registerTypstBuild auto compile", () => {
-  const setAutoCompile = (on: boolean) => {
-    workspace._config["labshelf.writing"] = { autoCompile: on };
+  const setAutoCompile = (mode: string) => {
+    workspace._config["labshelf.writing"] = { autoCompile: mode };
     workspace._fireConfigChange("labshelf.writing.autoCompile");
   };
 
   it("compiles neither live nor on save while auto compile is off", async () => {
-    workspace._config["labshelf.writing"] = { autoCompile: false };
+    workspace._config["labshelf.writing"] = { autoCompile: "off" };
     setup(true);
     change("/p/typ/main.typ");
     save("/p/typ/main.typ");
@@ -146,13 +146,24 @@ describe("registerTypstBuild auto compile", () => {
     expect(run).not.toHaveBeenCalled();
   });
 
-  it("applies a change of the setting without registering again", async () => {
+  it("compiles on save but not live in save mode", async () => {
+    workspace._config["labshelf.writing"] = { autoCompile: "save" };
     setup(true);
-    setAutoCompile(false);
     change("/p/typ/main.typ");
     await jest.advanceTimersByTimeAsync(1000);
     expect(run).not.toHaveBeenCalled();
-    setAutoCompile(true);
+    save("/p/typ/main.typ");
+    await jest.advanceTimersByTimeAsync(300);
+    expect(run).toHaveBeenCalledTimes(1);
+  });
+
+  it("applies a change of the setting without registering again", async () => {
+    setup(true);
+    setAutoCompile("off");
+    change("/p/typ/main.typ");
+    await jest.advanceTimersByTimeAsync(1000);
+    expect(run).not.toHaveBeenCalled();
+    setAutoCompile("typing");
     change("/p/typ/main.typ");
     await jest.advanceTimersByTimeAsync(150);
     expect(outputsOf()).toEqual([1]);
@@ -163,15 +174,15 @@ describe("registerTypstBuild auto compile", () => {
 
   it("logs the skip once per setting value, not once per keystroke or save", async () => {
     const host = fakeHost();
-    workspace._config["labshelf.writing"] = { autoCompile: false };
+    workspace._config["labshelf.writing"] = { autoCompile: "off" };
     setup(true, host);
     change("/p/typ/main.typ");
     change("/p/typ/main.typ");
     save("/p/typ/main.typ");
     await jest.advanceTimersByTimeAsync(1000);
     expect(host.session.logger.log).toHaveBeenCalledTimes(1);
-    setAutoCompile(true);
-    setAutoCompile(false);
+    setAutoCompile("typing");
+    setAutoCompile("off");
     save("/p/typ/main.typ");
     await jest.advanceTimersByTimeAsync(1000);
     expect(host.session.logger.log).toHaveBeenCalledTimes(2);

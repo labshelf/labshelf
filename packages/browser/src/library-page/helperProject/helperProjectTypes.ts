@@ -1,5 +1,5 @@
 // Defines the browser project connection exposed to source editors and preview tabs.
-import type { ILogger, ProjectEntry } from "@labshelf/core";
+import type { AutoCompileMode, ILogger, LatexEngine, ProjectEntry } from "@labshelf/core";
 import type { CompileMode, HelperCompileResult, HelperStatus, ILatexHelper } from "@labshelf/core/helper";
 import type { BuildTimers } from "../preview";
 import type { ProblemStore } from "./problemStore";
@@ -11,7 +11,9 @@ export type BuildEvent =
   | { type: "result"; result: HelperCompileResult; mode: CompileMode };
 
 /** What a source editor needs from the helper, available only while its project is open there. */
-export type EditorHelperPort = Pick<ILatexHelper, "status" | "save"> & {
+export type EditorHelperPort = Pick<ILatexHelper, "status"> & {
+  /** `explicit` when the user asked to save; under the "save" mode only such a save builds. */
+  save(projectId: string, path: string, explicit?: boolean): Promise<void>;
   /** `line` is the 1-based line of the edit; it goes to the build scheduler, not to the helper's `edit` message. */
   edit(...args: [...Parameters<ILatexHelper["edit"]>, line?: number]): Promise<void>;
 };
@@ -31,15 +33,22 @@ export interface HelperProject {
   lastFullPdf(projectId: string): Uint8Array | undefined;
   /** Requests a full build after any active preview; its result arrives through `onBuild`. */
   build(projectId: string): Promise<void>;
+  /** Applies a changed build setting to the open project; an engine or halt change rebuilds it. */
+  setBuild(projectId: string, patch: BuildPatch): void;
   onBuild(listener: (event: BuildEvent) => void): () => void;
   onOpened(listener: (projectId: string) => void): () => void;
   /** The session opened `entry`, or closed its project (undefined). */
   projectChanged(entry: ProjectEntry | undefined): Promise<void>;
 }
 
+export interface BuildSettings { autoCompile: AutoCompileMode; haltOnError: boolean }
+export type BuildPatch = Partial<BuildSettings> & { engine?: LatexEngine };
+
 export interface HelperProjectOptions {
   helper: ILatexHelper;
   logger: ILogger;
+  /** Read each time a project opens, so the scheduler starts with the user's current settings. */
+  buildSettings(): Promise<BuildSettings>;
   timers?: BuildTimers;
 }
 

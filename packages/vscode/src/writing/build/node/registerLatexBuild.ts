@@ -6,7 +6,7 @@ import type { WritingHost, WritingProjects } from "../../session/index.js";
 import type { BuildPreviews } from "../../preview/index.js";
 import type { BuildDiagnostics } from "../buildDiagnostics.js";
 import type { IncludeOnlyTarget } from "../options/index.js";
-import { registerLatexSaveBuilds } from "../triggers/index.js";
+import { registerLatexSaveBuilds, registerLatexTypingSaves } from "../triggers/index.js";
 import { LatexBuilds } from "./latexBuilds.js";
 import { projectBuildDeps } from "./projectBuildDeps.js";
 
@@ -34,6 +34,7 @@ export function registerLatexBuild(deps: LatexBuildDeps): LatexBuilds {
     request: (folder, root, includeOnly) => builds.request(folder, root, "save", includeOnly),
     ...(deps.includeOnlyTarget && { includeOnlyTarget: deps.includeOnlyTarget }),
   });
+  registerLatexTypingSaves({ context: deps.context, host: deps.host, projects: deps.projects });
   deps.context.subscriptions.push({ dispose: () => builds.cancelAll() });
   return builds;
 }

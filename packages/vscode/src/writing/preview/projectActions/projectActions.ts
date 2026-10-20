@@ -3,14 +3,14 @@ import * as vscode from "vscode";
 
 import type { ILogger, LatexEngine, PreviewPorts } from "@labshelf/core";
 import type { IncludeOnlyState } from "../../build/index.js";
-import { setAutoCompile } from "../../build/options/index.js";
+import { setAutoCompile, setHaltOnError } from "../../build/options/index.js";
 import type { ReadyProject } from "../../mainDocument.js";
 import type { WritingProjects } from "../../session/index.js";
 import { fixCitation, type CitationFixDeps } from "../citationFixes/index.js";
 import { setCheckLimits } from "../limits/index.js";
 import { PREVIEW_LOG_MODULE } from "../previewStrings.js";
 
-export type ProjectActions = Required<Pick<PreviewPorts, "runCommand" | "setAutoCompile" | "setEngine" | "setIncludeOnly" | "setCheckLimits" | "fixCitation">>;
+export type ProjectActions = Required<Pick<PreviewPorts, "runCommand" | "setAutoCompile" | "setHaltOnError" | "setEngine" | "setIncludeOnly" | "setCheckLimits" | "fixCitation">>;
 
 export interface ProjectActionsDeps {
   logger: ILogger;
@@ -53,7 +53,8 @@ export function projectActions(deps: ProjectActionsDeps): ProjectActions {
   return {
     // The commands take the project entry as their argument, as the library's project menu passes it.
     runCommand: (id) => onProject(deps, `run ${id}`, async (project) => { await vscode.commands.executeCommand(`labshelf.writing.${id}`, project); }),
-    setAutoCompile: (on) => guarded(deps, "change auto compile", async () => { await setAutoCompile(on); }, { on }),
+    setAutoCompile: (mode) => guarded(deps, "change auto compile", async () => { await setAutoCompile(mode); }, { mode }),
+    setHaltOnError: (on) => guarded(deps, "change halt on error", async () => { await setHaltOnError(on); }, { on }),
     setEngine: (engine) => onProject(deps, "change the engine", async (project) => {
       await deps.setEngine(project, engine);
       deps.resendRoots();

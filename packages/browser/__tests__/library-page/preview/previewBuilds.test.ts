@@ -1,5 +1,5 @@
 // Pins how followBuilds mirrors helper project build events onto a preview frame.
-import type { ILogger } from "@labshelf/core";
+import type { BuildOptions, ILogger } from "@labshelf/core";
 import { followBuilds, type PreviewBuildEvent, type PreviewBuildSource } from "../../../src/library-page/preview";
 
 const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
@@ -52,6 +52,19 @@ describe("followBuilds", () => {
     follow.resendRoots();
     expect(frame.setPreviewRoots.mock.calls.map(([roots]) => [roots.pageLimit, roots.wordLimit])).toEqual([[8, undefined], [8, 4000]]);
     expect(follow.roots()?.wordLimit).toBe(4000);
+  });
+
+  it("carries the build options and posts their changes on resend", () => {
+    const { source, frame, send } = setup();
+    const options: BuildOptions = { autoCompile: "typing", engine: null, haltOnError: false };
+    const follow = followBuilds(source, frame, { id: "a", main: "main.tex", options: () => options }, logger);
+    send({ type: "result", result: { status: "succeeded", problems: [], changed: [] } });
+    options.engine = "lualatex";
+    follow.resendRoots();
+    expect(frame.setPreviewRoots.mock.calls.map(([roots]) => roots.options)).toEqual([
+      { autoCompile: "typing", engine: null, haltOnError: false },
+      { autoCompile: "typing", engine: "lualatex", haltOnError: false },
+    ]);
   });
 
   it("stops following when disposed", () => {

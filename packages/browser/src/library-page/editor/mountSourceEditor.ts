@@ -6,7 +6,7 @@ import type * as Y from "yjs";
 import { collabExtensions } from "./collab";
 import { commentSupport, type EditorComments } from "./comments";
 import { editorExtensions } from "./editorExtensions";
-import { createHelperEdits, type EditorHelper } from "./helperEdits";
+import { createHelperEdits, type EditorHelper, type HelperEdits } from "./helperEdits";
 import { createSourceEdits, formattingKeymap, sourceLanguageOf, type SourceEdits } from "./insert";
 import { createLabelIndex, latexSupport, type LabelIndex } from "./latex";
 import { applyProblems, type ProblemSource } from "./problemDiagnostics";
@@ -83,6 +83,24 @@ async function loadFromDisk(view: EditorView, { files, path, projectId, logger }
   }
 }
 
+/** Tells the helper which write the user asked for with Mod-s. */
+function explicitSaves(helperEdits: HelperEdits): { written(): void; flush(save: Pick<SaveScheduler, "flush" | "dirty">): void } {
+  // INVARIANT: set only while a Mod-s flush runs, so exactly the write it causes reaches the helper as an explicit save.
+  let requested = false;
+  return {
+    written() { helperEdits.saved(requested); requested = false; },
+    // Writing a dirty file already asks the helper for a full build; a clean or shared file asks for it here.
+    flush(save) {
+      const wasDirty = save.dirty();
+      requested = wasDirty;
+      void save.flush().then((clean) => {
+        requested = false;
+        if (clean && !wasDirty) helperEdits.saved(true);
+      });
+    },
+  };
+}
+
 export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDeps): Promise<SourceEditor> {
   const { path, logger, collab } = deps;
   const labels = createLabelIndex(logger);
@@ -97,17 +115,14 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   const language = sourceLanguage(deps, labels);
   const kind = sourceLanguageOf(path);
   let savedText = text;
+  const explicit = explicitSaves(helperEdits);
   // The share's doc file writer saves a shared file, so the editor has nothing to write.
   const save: Pick<SaveScheduler, "changed" | "flush" | "dirty"> = collab ? { changed: () => undefined, flush: async () => true, dirty: () => false } : createSaveScheduler({
     file: path, logger, text: currentText,
     write: async (content) => { await deps.files.write(path, content); savedText = content; },
-    onDirty: deps.onDirty, onSaved: () => { helperEdits.saved(); deps.onSaved?.(); },
+    onDirty: deps.onDirty, onSaved: () => { explicit.written(); deps.onSaved?.(); },
   });
-  // Writing a dirty file already asks the helper for a full build; a clean or shared file asks for it here.
-  const saveNow = (): void => {
-    const wasDirty = save.dirty();
-    void save.flush().then((clean) => { if (clean && !wasDirty) helperEdits.saved(); });
-  };
+  const saveNow = (): void => explicit.flush(save);
   const commentsSupport = deps.comments && commentSupport({ comments: deps.comments, lineBreak, savedText: collab ? currentText : () => savedText, flush: save.flush, logger });
   const onUpdate = EditorView.updateListener.of((update) => {
     if (!update.docChanged) return;

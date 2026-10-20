@@ -1,6 +1,7 @@
 // Creates the page's project services (shares, helper, session, comments) and starts them once the workspace has restored its tabs.
 import type { ILogger, LibraryFileSystem } from "@labshelf/core";
 import { createBrowserLatexHelper } from "../../helper/client";
+import { getSettings } from "../../platform";
 import { createBrowserProjects } from "../../storage/projects";
 import { createPageShares, runJoinDialog } from "../editor/collab";
 import { createHelperProject } from "../helperProject";
@@ -29,7 +30,10 @@ export interface ProjectWiring {
 
 export function mountProjectWiring({ workspace, fs, logger, openTab }: ProjectWiringOptions): ProjectWiring {
   const shares = createPageShares({ fs, logger });
-  const helperProject = createHelperProject({ helper: createBrowserLatexHelper(logger), logger });
+  const helperProject = createHelperProject({
+    helper: createBrowserLatexHelper(logger), logger,
+    buildSettings: async () => { const { autoCompile, haltOnError } = await getSettings(); return { autoCompile, haltOnError }; },
+  });
   const session = createProjectSession({
     workspace, snapshot: createOpenProjectSnapshot({ fs, logger }), logger,
     onProjectChange: helperProject.projectChanged,

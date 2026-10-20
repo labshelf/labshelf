@@ -33,7 +33,7 @@ export function registerTypstTriggers(deps: TypstTriggerDeps): void {
   let disposed = false;
   const autoCompile = autoCompileGate(() => deps.host.current()?.logger);
   const schedule = async (project: ReadyProject, file: vscode.Uri, trigger: "live" | "save", delay: number): Promise<void> => {
-    if (!autoCompile.allows()) { return; }
+    if (!autoCompile.allows(trigger === "live" ? "typing" : "save")) { return; }
     const folder = project.folder;
     const root = await buildRootOf(deps.projects, folder, project.main ?? "", file.fsPath);
     if (disposed) { return; } // the root resolves asynchronously, possibly after dispose

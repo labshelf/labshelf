@@ -5,7 +5,7 @@ import type { LocatedProblem, TexInstallKind } from "../latex/index.js";
 import type { LatexEngine } from "../project/index.js";
 
 export const HELPER_HOST_NAME = "dev.labshelf.helper";
-export const PROTOCOL_VERSION = 3;
+export const PROTOCOL_VERSION = 4;
 // The helper program's version, kept beside the program so every app that bundles it reports the same one.
 export const HELPER_VERSION = "0.2.0";
 
@@ -46,7 +46,7 @@ export type ToHelperMessage =
     | { text: string; changes?: undefined }
     | { changes: TextChange[]; text?: undefined })
   | Envelope<"save"> & { projectId: string; path: string }
-  | Envelope<"compile"> & { projectId: string; main: string; mode: CompileMode; engine?: LatexEngine; editedFile?: string; editedLine?: number }
+  | Envelope<"compile"> & { projectId: string; main: string; mode: CompileMode; engine?: LatexEngine; editedFile?: string; editedLine?: number; haltOnError?: boolean }
   | Envelope<"cancel"> & { projectId: string }
   | Envelope<"installTex"> & { kind: TexInstallKind }
   | Envelope<"installAllPackages">;

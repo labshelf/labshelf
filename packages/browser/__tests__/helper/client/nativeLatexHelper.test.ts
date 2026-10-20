@@ -131,6 +131,15 @@ describe("compile", () => {
     expect(fake.receivedOfType("compile")[0]).toMatchObject({ editedFile: "ch/a.tex", editedLine: 12 });
   });
 
+  it("forwards haltOnError only when the request sets it", async () => {
+    const { fake, helper } = setup();
+    await helper.connect();
+    await helper.compile({ ...request, haltOnError: false }, () => undefined);
+    await helper.compile(request, () => undefined);
+    expect(fake.receivedOfType("compile")[0]).toMatchObject({ haltOnError: false });
+    expect(fake.receivedOfType("compile")[1]).not.toHaveProperty("haltOnError");
+  });
+
   it("returns a failed build without pages", async () => {
     const { helper } = setup();
     await helper.connect();

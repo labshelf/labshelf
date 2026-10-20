@@ -26,6 +26,8 @@ export interface HelperCompileRequest {
   editedFile?: string;
   /** 1-based line of the edit in `editedFile`. */
   editedLine?: number;
+  /** Stops the LaTeX engine at the first error. */
+  haltOnError?: boolean;
 }
 
 /** One page of the PDF as a standalone one-page PDF. */

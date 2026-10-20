@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import type { LatexEngine } from "@labshelf/core";
-import { buildOptions, setAutoCompile, setEngine } from "../../../../src/writing/build/options";
+import { buildOptions, setAutoCompile, setEngine, setHaltOnError } from "../../../../src/writing/build/options";
 import { saveEngine } from "../../../../src/writing/build/toolchain";
 import type { ReadyProject } from "../../../../src/writing/mainDocument";
 import { fakeHost, fakeLogger, fakeProjects, readyEntry } from "../../../support/writingFixtures";
@@ -21,28 +21,46 @@ beforeEach(() => {
 
 describe("buildOptions", () => {
   it("omits the engine for a Typst project", () => {
-    expect(buildOptions(typst)).toEqual({ autoCompile: true });
+    expect(buildOptions(typst)).toEqual({ autoCompile: "typing" });
     expect("engine" in buildOptions(typst)).toBe(false);
   });
 
   it("reports the engine a LaTeX project stores", () => {
-    expect(buildOptions(latex("xelatex"))).toEqual({ autoCompile: true, engine: "xelatex" });
+    expect(buildOptions(latex("xelatex"))).toEqual({ autoCompile: "typing", engine: "xelatex", haltOnError: false });
   });
 
   it("reports a null engine for a LaTeX project that has not chosen one", () => {
-    expect(buildOptions(latex())).toEqual({ autoCompile: true, engine: null });
+    expect(buildOptions(latex())).toEqual({ autoCompile: "typing", engine: null, haltOnError: false });
   });
 
   it("reflects the auto compile setting", () => {
+    workspace._config["labshelf.writing"] = { autoCompile: "save" };
+    expect(buildOptions(typst).autoCompile).toBe("save");
+  });
+
+  it("reads an unknown auto compile value as typing", () => {
     workspace._config["labshelf.writing"] = { autoCompile: false };
-    expect(buildOptions(typst).autoCompile).toBe(false);
+    expect(buildOptions(typst).autoCompile).toBe("typing");
+  });
+
+  it("reports the halt-on-error setting for LaTeX only", () => {
+    workspace._config["labshelf.writing"] = { haltOnError: true };
+    expect(buildOptions(latex()).haltOnError).toBe(true);
+    expect("haltOnError" in buildOptions(typst)).toBe(false);
   });
 });
 
 describe("setAutoCompile", () => {
   it("writes the setting at the global target", async () => {
-    await setAutoCompile(false);
-    expect(workspace._configUpdate).toHaveBeenCalledWith("labshelf.writing", "autoCompile", false, vscode.ConfigurationTarget.Global);
+    await setAutoCompile("off");
+    expect(workspace._configUpdate).toHaveBeenCalledWith("labshelf.writing", "autoCompile", "off", vscode.ConfigurationTarget.Global);
+  });
+});
+
+describe("setHaltOnError", () => {
+  it("writes the setting at the global target", async () => {
+    await setHaltOnError(true);
+    expect(workspace._configUpdate).toHaveBeenCalledWith("labshelf.writing", "haltOnError", true, vscode.ConfigurationTarget.Global);
   });
 });
 

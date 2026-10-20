@@ -5,7 +5,7 @@ import { COMPILE_MODES, MAX_EDIT_CHANGES, type TextChange, type ToHelperMessage 
 import { TEX_INSTALL_KINDS } from "../latex/index.js";
 import { LATEX_ENGINES } from "../project/index.js";
 import {
-  FieldError, isBody, isNonNegativeInteger, isPositiveInteger, optional, readArray, readChoice, readNumber, readPath,
+  FieldError, isBody, isNonNegativeInteger, isPositiveInteger, optional, readArray, readBoolean, readChoice, readNumber, readPath,
   readProjectId, readString, readText, type Body,
 } from "./messageFields.js";
 
@@ -50,6 +50,7 @@ const READERS: Readers = {
     ...optional(body, "engine", (b, k) => readChoice(b, k, LATEX_ENGINES)),
     ...optional(body, "editedFile", readPath),
     ...optional(body, "editedLine", (b, k) => readNumber(b, k, isPositiveInteger)),
+    ...optional(body, "haltOnError", readBoolean),
   }),
   cancel: (body, envelope) => ({ ...envelope, type: "cancel", projectId: readProjectId(body) }),
   installTex: (body, envelope) => ({ ...envelope, type: "installTex", kind: readChoice(body, "kind", TEX_INSTALL_KINDS) }),

@@ -32,6 +32,8 @@ export interface LatexBuildRequest extends PartialBuild {
   logger: ILogger;
   /** The command latexmk runs biber's WASM build through; the TeX's own biber when absent. */
   biber?: readonly string[];
+  /** Stops the LaTeX engine at the first error. */
+  haltOnError?: boolean;
 }
 
 const MODULE = "writing/build";

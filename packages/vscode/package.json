@@ -1094,9 +1094,20 @@
           "description": "Open the reader beside the current editor (split view). When disabled, the reader opens full-width in the active editor group."
         },
         "labshelf.writing.autoCompile": {
+          "type": "string",
+          "enum": ["typing", "save", "off"],
+          "default": "typing",
+          "description": "When the PDF preview compiles on its own.",
+          "enumDescriptions": [
+            "Save LaTeX sources a moment after you stop typing and compile; Typst previews follow typing.",
+            "Compile when a project source is saved.",
+            "Compile only with Build Project or Recompile."
+          ]
+        },
+        "labshelf.writing.haltOnError": {
           "type": "boolean",
-          "default": true,
-          "description": "Compile the PDF preview when a project source is saved."
+          "default": false,
+          "description": "Stop a LaTeX build at the first error instead of compiling despite errors."
         }
       }
     },

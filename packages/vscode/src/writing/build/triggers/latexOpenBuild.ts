@@ -19,7 +19,7 @@ export function registerLatexOpenBuild(deps: LatexOpenBuildDeps): void {
     const open = new Set((vscode.workspace.workspaceFolders ?? []).map((folder) => folder.uri.fsPath));
     for (const project of deps.projects.list()) {
       if (project.kind !== "ready" || project.settings.format !== "latex" || !project.main) { continue; }
-      if (!open.has(project.folder) || built.has(project.folder) || !autoCompile.allows()) { continue; }
+      if (!open.has(project.folder) || built.has(project.folder) || !autoCompile.allows("save")) { continue; }
       built.add(project.folder);
       deps.request(project.folder, project.main).catch((error: unknown) =>
         deps.host.current()?.logger.error("writing/build", error, { projectFolder: project.folder, action: "open build" }));

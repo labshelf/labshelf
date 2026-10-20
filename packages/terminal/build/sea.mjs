@@ -13,7 +13,7 @@ const seaDir = resolve(root, "dist/sea");
 const OS_NAMES = { darwin: "macos", win32: "windows", linux: "linux" };
 const SENTINEL_FUSE = "NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2";
 const SMOKE_TIMEOUT_MS = 20_000;
-const PROTOCOL_VERSION = 3;
+const PROTOCOL_VERSION = 4;
 const SMOKE_ORIGIN = "chrome-extension://abcdefghijklmnopabcdefghijklmnop";
 
 function targetName() {

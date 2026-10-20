@@ -1,13 +1,13 @@
 // Tests the preview's project actions: command mapping, include-only, check limits and citation fixes without a library.
 import * as vscode from "vscode";
 
-import { setAutoCompile } from "../../../../src/writing/build/options";
+import { setAutoCompile, setHaltOnError } from "../../../../src/writing/build/options";
 import { projectActions, type ProjectActionsDeps } from "../../../../src/writing/preview/projectActions";
 import { setCheckLimits } from "../../../../src/writing/preview/limits";
 import { fixCitation } from "../../../../src/writing/preview/citationFixes";
 import { fakeLogger, readyEntry } from "../../../support/writingFixtures";
 
-jest.mock("../../../../src/writing/build/options", () => ({ setAutoCompile: jest.fn(async () => {}) }));
+jest.mock("../../../../src/writing/build/options", () => ({ setAutoCompile: jest.fn(async () => {}), setHaltOnError: jest.fn(async () => {}) }));
 jest.mock("../../../../src/writing/preview/limits", () => ({ setCheckLimits: jest.fn(async () => {}) }));
 jest.mock("../../../../src/writing/preview/citationFixes", () => ({ fixCitation: jest.fn(async () => {}) }));
 
@@ -37,8 +37,13 @@ describe("projectActions", () => {
   });
 
   it("sets the auto compile setting", async () => {
-    await setup().actions.setAutoCompile(true);
-    expect(setAutoCompile).toHaveBeenCalledWith(true);
+    await setup().actions.setAutoCompile("save");
+    expect(setAutoCompile).toHaveBeenCalledWith("save");
+  });
+
+  it("sets the halt-on-error setting", async () => {
+    await setup().actions.setHaltOnError(true);
+    expect(setHaltOnError).toHaveBeenCalledWith(true);
   });
 
   it("switches include-only for the project folder and recompiles", async () => {
