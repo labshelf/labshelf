@@ -6,6 +6,9 @@
   --ls-error: var(--vscode-errorForeground);
   --ls-link: var(--vscode-textLink-foreground);
   --ls-focus: var(--vscode-focusBorder);
+  --ls-editor-cursor: var(--vscode-editorCursor-foreground);
+  --ls-editor-selection-bg: var(--vscode-editor-selectionBackground);
+  --ls-editor-inactive-selection-bg: var(--vscode-editor-inactiveSelectionBackground);
   --ls-sidebar-bg: var(--vscode-sideBar-background, var(--vscode-editor-background));
   --ls-sidebar-border: var(--vscode-sideBar-border, var(--vscode-panel-border));
   --ls-section-fg: var(--vscode-sideBarSectionHeader-foreground);

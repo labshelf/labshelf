@@ -1,6 +1,4 @@
-/**
- * Declares the colour roles of every LabShelf UI, valued after VS Code Dark Modern (default) and Light Modern.
- */
+// Defines the colour roles for LabShelf's dark and light themes.
 import { token, type DesignToken } from "./designToken.js";
 
 // Each role stands in for the VS Code colour of the same purpose, so the browser
@@ -12,6 +10,9 @@ export const COLOR_TOKENS = {
   error: token("#f85149", "#a1260d"),
   link: token("#4daafc", "#005fb8"),
   focus: token("#0078d4", "#005fb8"),
+  "editor-cursor": token("#ffffff", "#000000"),
+  "editor-selection-bg": token("#264f78", "#add6ff"),
+  "editor-inactive-selection-bg": token("#3a3d41", "#e5ebf1"),
 
   "sidebar-bg": token("#181818", "#f8f8f8"),
   "sidebar-border": token("#2b2b2b", "#e5e5e5"),
