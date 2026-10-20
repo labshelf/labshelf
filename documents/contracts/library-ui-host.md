@@ -46,7 +46,6 @@ UI to host:
 | `navigate` | the user opened another folder | nothing; the host keeps the folder for later replies |
 | `folder.open` | Details (see [details-host.md](details-host.md)) asks to open a paper's folder in the list, which it does not hold | shows the folder in the list (VS Code navigates the list; the browser page posts `navigate` and focuses the Library tab) |
 | `folder.create`, `folder.rename`, `folder.delete` | the user confirmed the prompt | `snapshot`, then `navigate` when the open folder moved or was deleted |
-| `folder.share` | Share as Link… in a folder's sidebar menu | the host's own rights notice, `progress` while the upload runs, then the link ([share-link.md](share-link.md)); only the browser page sends it, since VS Code's sidebar starts the share command directly |
 | `paper.open` | Enter, double-click, Open PDF, an annotation (with its `page`) | opens the reader, or `pdf.missing` when the paper has no readable PDF |
 | `paper.details` | a paper is shown in the detail pane | `details` |
 | `paper.similar` | the Related tab is shown | `similar` |
@@ -97,6 +96,18 @@ Host to UI:
 | `citationMap.show` | opens the citation map in place of the paper list, or updates it while it is open; `state` is `loading`, `ready` with the `map`, or `failed` with a `message` |
 | `citationMap.imported` | drops the work's row and graph node |
 | `citationMap.importFailed` | clears the work's busy Import button |
+
+## Sharing
+
+The library UI, the library sidebar and the All projects page take an optional `sharing` mount option: a `SharingHost` with two offers, `projects` (share, join and open projects) and `links` (share a folder as a link, import a link). The controls appear only when the option is present, the offer is on, and the UI is not read-only; a host that changes its offers announces it and the controls follow. Hiding is not authorization: the host validates every sharing call itself.
+
+Where the controls sit:
+
+- **Paper subfolder.** A Share button in the list header and Share as Link… in the folder's sidebar menu.
+- **Library section heading menu.** Manage Shared Links… and Import Shared Link….
+- **My projects.** A Join Shared Project button in the section title and in its empty state, and in the heading menu; a Share button on the open project's row; Share Project…, Copy Invite Link, Share Details… and Stop Sharing on This Device… in a project row's menu, in the sidebar and on the All projects page.
+
+In a webview the UI reaches the host through the sharing channel: messages with `channel: "sharing"` that every other handler ignores. The UI sends `hello`, then `call` (an operation with JSON arguments) and `cancel`; the host answers with `result`, `progress`, and `offers` when its offers change. The host also sends `open` to ask the UI to open a dialog (share, leave or join a project, share a folder, manage links, import a link) with what it already knows filled in; palette commands and the status bar use it. The extension host serves the channel with `serveSharing`; the call and reply shapes are in core's `library-ui/sharing` module. A page that hosts the UI itself passes the `SharingHost` directly. Link sharing is described in [share-link.md](share-link.md).
 
 ## Citation map
 

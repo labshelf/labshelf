@@ -2,13 +2,12 @@
  * Hosts the library page: dispatches every library UI message to the IndexedDB and background handlers.
  * Attach PDF runs synchronously so its file picker opens inside the click that asked for it.
  */
-import { errorMessage, type HostEndpoint, type ILogger, type UiToHost } from "@labshelf/core";
+import { errorMessage, type HostEndpoint, type ILogger, type SharingHost, type UiToHost } from "@labshelf/core";
 import {
-  captureTab, createFolder, createPaperFileHandlers, createPdfHandlers, createShareLinkHandlers, deleteFolder, exportAnnotations, movePapers, offerOpenTabs, removePapers,
+  captureTab, createFolder, createPaperFileHandlers, createPdfHandlers, createBrowserSharingHost, deleteFolder, exportAnnotations, movePapers, offerOpenTabs, removePapers,
   renameFolder, sendDetails, setNote, setStatus, setTags, writeClipboard, type PaperFileHandlers,
-  type PdfHandlers, type ShareLinkHandlers,
+  type PdfHandlers, type ShareLinkRelay,
 } from "./handlers";
-import type { ShareLinkRelay } from "../../share";
 import { watchChangeNotices } from "./changeNotices";
 import { createHostContext, type HostContext } from "./hostContext";
 import { watchLibraryChanges } from "./snapshots";
@@ -40,17 +39,15 @@ async function onReady(ctx: HostContext, loaded: () => Promise<void>, initialPap
 interface Handlers {
   pdf: PdfHandlers;
   files: PaperFileHandlers;
-  shares: ShareLinkHandlers;
 }
 
-function dispatch(ctx: HostContext, { pdf, files, shares }: Handlers, loaded: () => Promise<void>, m: UiToHost, options: LibraryHostOptions, repeat: boolean): void {
+function dispatch(ctx: HostContext, { pdf, files }: Handlers, loaded: () => Promise<void>, m: UiToHost, options: LibraryHostOptions, repeat: boolean): void {
   switch (m.type) {
     case "ready": run(ctx, () => onReady(ctx, loaded, options.initialPaper, repeat)); return;
     case "navigate": ctx.folder = m.folder; return;
     case "folder.create": run(ctx, () => createFolder(ctx, m.parent, m.name)); return;
     case "folder.rename": run(ctx, () => renameFolder(ctx, m.path, m.name)); return;
     case "folder.delete": run(ctx, () => deleteFolder(ctx, m.path)); return;
-    case "folder.share": run(ctx, () => shares.shareFolder(m.path)); return;
     case "paper.open": run(ctx, () => pdf.open(m.id)); return;
     case "paper.findPdf": run(ctx, () => pdf.find(m.id, m.replace ?? false)); return;
     case "paper.attachPdf": pdf.attach(m.id); return;
@@ -82,11 +79,11 @@ function dispatch(ctx: HostContext, { pdf, files, shares }: Handlers, loaded: ()
 /** Starts answering the UI on `endpoint`. */
 export function attachLibraryHost(
   endpoint: HostEndpoint, options: LibraryHostOptions,
-): { reloadSnapshots(): Promise<void>; paperIdAtPath(path: string): Promise<string | null>; shareLinks: { manage(): void; importLink(): void } } {
+): { reloadSnapshots(): Promise<void>; paperIdAtPath(path: string): Promise<string | null>; sharing: SharingHost } {
   const ctx = createHostContext(endpoint, options.log);
   const pdf = createPdfHandlers(ctx);
-  const shares = createShareLinkHandlers(ctx, options.shareRelay);
-  const handlers: Handlers = { pdf, files: createPaperFileHandlers(ctx, pdf.open), shares };
+  const sharing = createBrowserSharingHost(ctx, options.shareRelay, options.log);
+  const handlers: Handlers = { pdf, files: createPaperFileHandlers(ctx, pdf.open) };
   // The router asks for a paper path while the first load is still running; both wait on the same load.
   let firstLoad: Promise<void> | null = null;
   const loaded = (): Promise<void> => (firstLoad ??= ctx.snapshots.load());
@@ -100,7 +97,7 @@ export function attachLibraryHost(
   watchChangeNotices(ctx);
   return {
     reloadSnapshots: () => ctx.snapshots.reload(),
-    shareLinks: { manage: () => run(ctx, shares.manage), importLink: () => run(ctx, shares.importLink) },
+    sharing,
     paperIdAtPath: async (path) => {
       await loaded();
       return ctx.snapshots.current().papers.find((p) => p.path === path)?.id ?? null;

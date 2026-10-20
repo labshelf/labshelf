@@ -81,6 +81,20 @@ function folderMutations(ctx: MutationContext): FolderMutations {
   };
 }
 
+async function importShareLinkIntoCache(ctx: MutationContext, options: Pick<ImportShareLinkOptions, "text" | "readerFor" | "onProgress">): Promise<ImportShareLinkResult> {
+  const result = await importShareLink({ ...options, ctx, parentDir: PAPERS_DIR, known: await listAllRecords() });
+  if (result.status === "imported") {
+    for (const record of result.summary.added) { await upsertRecord(record, record.path); }
+  }
+  return result;
+}
+
+async function updateFieldsInCache(ctx: MutationContext, path: string, fields: Parameters<typeof updatePaperFields>[2]): Promise<PaperRecord | undefined> {
+  const record = await updatePaperFields(ctx, path, fields);
+  if (record) { await upsertRecord(record, record.path); }
+  return record;
+}
+
 /** The mutations run on disk first and the cache follows, so a failed write never leaves the cache ahead of the files. */
 export function createLibraryMutations(logger: ILogger): LibraryMutations {
   const fs = createLibraryFileSystem();
@@ -92,13 +106,7 @@ export function createLibraryMutations(logger: ILogger): LibraryMutations {
       await upsertRecord(record, record.path);
       return record;
     },
-    async importShareLink(options) {
-      const result = await importShareLink({ ...options, ctx, parentDir: PAPERS_DIR, known: await listAllRecords() });
-      if (result.status === "imported") {
-        for (const record of result.summary.added) { await upsertRecord(record, record.path); }
-      }
-      return result;
-    },
+    importShareLink: (options) => importShareLinkIntoCache(ctx, options),
     async setStatus(papers, status) {
       const outcome = await setPaperStatus(ctx, papers, status);
       for (const record of outcome.records) { await upsertRecord(record, record.path); }
@@ -109,16 +117,8 @@ export function createLibraryMutations(logger: ILogger): LibraryMutations {
       for (const record of outcome.records) { await upsertRecord(record, record.path); }
       return outcome;
     },
-    async setNote(paper, note) {
-      const record = await updatePaperFields(ctx, paper.path, { note });
-      if (record) { await upsertRecord(record, record.path); }
-      return record;
-    },
-    async setPdfRequestedAt(paper, day) {
-      const record = await updatePaperFields(ctx, paper.path, { pdfRequestedAt: day });
-      if (record) { await upsertRecord(record, record.path); }
-      return record;
-    },
+    setNote: (paper, note) => updateFieldsInCache(ctx, paper.path, { note }),
+    setPdfRequestedAt: (paper, day) => updateFieldsInCache(ctx, paper.path, { pdfRequestedAt: day }),
     async recordPdfAttached(record, version) {
       const { textLayer: _stale, ...current } = (await readPaperOnDisk(ctx, record.path)) ?? record;
       const written = await writePaperRecord(ctx, { ...current, hasPdf: true, pdfVersion: version ?? null }, { ownsStatus: false });

@@ -9,8 +9,7 @@ import type { WritingProjects } from "../../writing/index.js";
 import { showRefusedOffer, type CollabHost } from "./collabHost.js";
 import { createCollabPorts } from "./collabPorts.js";
 import {
-  JOIN_COMMAND, joinProject, LEAVE_COMMAND, leaveProject, OFFER_RELAY_COMMAND, offerRelay, registerShareStatusBar, SHARE_COMMAND, shareProject,
-  WITHDRAW_RELAY_COMMAND, withdrawRelay, type ProjectTarget,
+  OFFER_RELAY_COMMAND, offerRelay, registerProjectDialogCommands, registerShareStatusBar, WITHDRAW_RELAY_COMMAND, withdrawRelay,
 } from "./commands/index.js";
 import { SharedEditors, SharedPresence } from "./editors/index.js";
 import { registerComments } from "./registerComments.js";
@@ -37,7 +36,8 @@ function createHost(context: vscode.ExtensionContext, controller: Controller, pr
   };
 }
 
-export function registerCollaboration(context: vscode.ExtensionContext, controller: Controller, projects: WritingProjects): void {
+/** Returns the collaboration host, which the desktop sharing host shares projects over. */
+export function registerCollaboration(context: vscode.ExtensionContext, controller: Controller, projects: WritingProjects): CollabHost {
   const host = createHost(context, controller, projects);
   registerShareStatusBar(context, host);
   registerRelay(context, {
@@ -47,17 +47,10 @@ export function registerCollaboration(context: vscode.ExtensionContext, controll
   });
   registerComments(context, { projects, shares: host.shares, userName: userName(), logger: host.logger });
   context.subscriptions.push(
-    vscode.commands.registerCommand(SHARE_COMMAND, (target?: unknown) => shareProject(host, projectTarget(target))),
-    vscode.commands.registerCommand(JOIN_COMMAND, (invite?: unknown) => joinProject(host, typeof invite === "string" ? invite : undefined)),
-    vscode.commands.registerCommand(LEAVE_COMMAND, (target?: unknown) => leaveProject(host, projectTarget(target))),
+    registerProjectDialogCommands(host.requireLibrary),
     vscode.commands.registerCommand(OFFER_RELAY_COMMAND, () => offerRelay(host)),
     vscode.commands.registerCommand(WITHDRAW_RELAY_COMMAND, () => withdrawRelay(host)),
     resumeShares(host),
   );
-}
-
-/** A folder path or a project entry from a view; anything else, such as a URI from a menu, means no target. */
-function projectTarget(target: unknown): ProjectTarget {
-  if (typeof target === "string") { return target; }
-  return typeof target === "object" && target !== null && "folder" in target && "kind" in target ? (target as ProjectTarget) : undefined;
+  return host;
 }

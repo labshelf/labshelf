@@ -16,7 +16,6 @@ export type UiToHost =
   | { type: "folder.rename"; path: string; name: string }
   | { type: "folder.delete"; path: string }
   /** Asks the host to share the folder's papers as a link, with its own notice, progress and result. */
-  | { type: "folder.share"; path: string }
   | { type: "paper.open"; id: string; page?: number }
   | { type: "paper.openExternal"; id: string }
   | { type: "paper.reveal"; id: string }

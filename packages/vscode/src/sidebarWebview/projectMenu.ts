@@ -1,7 +1,7 @@
 // Builds the menus of a project: a row's right-click menu and the open project's title menu, from the commands that apply to it.
-import { showMenu, type MenuEntry } from "@labshelf/core/dom";
+import { projectShareMenuEntries, showMenu, type MenuEntry } from "@labshelf/core/dom";
 import { OPEN_PROJECT_COMMANDS, PROJECT_COMMANDS, projectCommandApplies, type ProjectCommand } from "../ui/library/projectCommands.js";
-import type { SidebarProjectItem } from "@labshelf/core";
+import type { SharingHost, SidebarProjectItem } from "@labshelf/core";
 import type { SidebarToHost } from "../ui/library/sidebarMessages.js";
 
 /** The commands of a list that apply to the project, with a separator between command groups. */
@@ -28,11 +28,17 @@ function projectMenuEntries(project: SidebarProjectItem, post: (m: SidebarToHost
   return entries;
 }
 
-export function showProjectMenu(project: SidebarProjectItem, at: { x: number; y: number }, post: (m: SidebarToHost) => void): void {
-  showMenu(at, projectMenuEntries(project, post));
+/** @returns the sharing entries as their own group, with the separator that sets it apart */
+function shareGroup(sharing: SharingHost, project: SidebarProjectItem): MenuEntry[] {
+  const share = projectShareMenuEntries(sharing, { id: project.id, shared: !!project.shared });
+  return share.length > 0 ? ["separator", ...share] : [];
+}
+
+export function showProjectMenu(project: SidebarProjectItem, at: { x: number; y: number }, post: (m: SidebarToHost) => void, sharing: SharingHost): void {
+  showMenu(at, [...projectMenuEntries(project, post), ...shareGroup(sharing, project)]);
 }
 
 /** Opens the open project's menu below its title row, as Overleaf's project-name menu does. */
-export function showOpenProjectMenu(project: SidebarProjectItem, anchor: HTMLElement, post: (m: SidebarToHost) => void): void {
-  showMenu(anchor, commandEntries(OPEN_PROJECT_COMMANDS, project, post));
+export function showOpenProjectMenu(project: SidebarProjectItem, anchor: HTMLElement, post: (m: SidebarToHost) => void, sharing: SharingHost): void {
+  showMenu(anchor, [...commandEntries(OPEN_PROJECT_COMMANDS, project, post), ...shareGroup(sharing, project)]);
 }

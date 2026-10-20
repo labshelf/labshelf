@@ -46,7 +46,6 @@ const SHAPES: Record<UiToHost["type"], Record<string, FieldCheck>> = {
   "folder.create": { parent: isLibraryPath, name: isId },
   "folder.rename": { path: isLibraryPath, name: isId },
   "folder.delete": { path: isLibraryPath },
-  "folder.share": { path: isLibraryPath },
   "paper.open": { id: isId, page: isPage },
   "paper.openExternal": { id: isId },
   "paper.reveal": { id: isId },

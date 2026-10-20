@@ -6,4 +6,4 @@ export { movePapers, removePapers, setNote, setStatus, setTags, writeClipboard }
 export { createPaperFileHandlers, type PaperFileHandlers } from "./paperFileHandlers";
 export { createPdfHandlers } from "./pdfHandlers";
 export type { PdfHandlers } from "./pdfHandlers";
-export { createShareLinkHandlers, type ShareLinkHandlers } from "./shareLinkHandlers";
+export { createBrowserSharingHost, type ShareLinkRelay } from "./browserSharingHost";

@@ -103,6 +103,10 @@ function explicitSaves(helperEdits: HelperEdits): { written(): void; flush(save:
   };
 }
 
+function readOnlyExtensions(readOnly: boolean | undefined): Extension[] {
+  return readOnly ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : [];
+}
+
 export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDeps): Promise<SourceEditor> {
   const { path, logger, collab } = deps;
   const labels = createLabelIndex(logger);
@@ -132,8 +136,7 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
     helperEdits.changed(update.changes, update.state.doc);
     if (path.endsWith(".tex")) labels.schedule(path, () => update.view.state.doc.toString());
   });
-  const readOnly = deps.readOnly ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : [];
-  const extensions = [formattingKeymap(kind), ...documentExtensions(deps, language, lineBreak, saveNow), ...(commentsSupport?.extensions ?? []), onUpdate, ...readOnly];
+  const extensions = [formattingKeymap(kind), ...documentExtensions(deps, language, lineBreak, saveNow), ...(commentsSupport?.extensions ?? []), onUpdate, ...readOnlyExtensions(deps.readOnly)];
   view = new EditorView({ parent: host, state: EditorState.create({ doc: text, extensions }) });
   helperEdits.changed(view.state.changes(), view.state.doc);
   const stopProblems = deps.problems?.(path, (problems) => applyProblems(view!, problems));

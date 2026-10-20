@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 import { PAPERS_DIR, folderTreeFromSnapshot, type LibrarySnapshot, type PathOps, type SidebarOpenProject, type SidebarProjectItem } from "@labshelf/core";
 import { onPaperChange, type LibraryEvents } from "../../events/index.js";
-import { SHARE_FOLDER_COMMAND } from "../../share/index.js";
+import { sharingWebviews } from "../../sharing/index.js";
 import { libraryBundleDirectory, libraryPaths, listPanelHtml, type LibraryPaths } from "../list/index.js";
 import { rootNode, type LibraryNode } from "./libraryNode.js";
 import { runProjectEdit, runProjectFolderAction, type ProjectOrganizerPort } from "./projectOrganizer.js";
@@ -65,7 +65,8 @@ export class LibrarySidebarView implements vscode.WebviewViewProvider {
     this._ready = false;
     view.webview.options = { enableScripts: true, localResourceRoots: [libraryBundleDirectory(this._deps.extensionUri)] };
     view.webview.onDidReceiveMessage((raw: unknown) => { const m = parseSidebarMessage(raw); if (m) { void this._handle(m); } });
-    view.onDidDispose(() => { this._view = undefined; this._ready = false; });
+    const sharing = sharingWebviews.attach(view.webview, { opensDialogs: true });
+    view.onDidDispose(() => { this._view = undefined; this._ready = false; sharing.dispose(); });
     view.webview.html = await listPanelHtml(view.webview, this._deps.extensionUri, "sidebar");
   }
 
@@ -135,8 +136,6 @@ export class LibrarySidebarView implements vscode.WebviewViewProvider {
     if (m.type === "refresh") { await vscode.commands.executeCommand("labshelf.library.refresh"); return; }
     if (m.type === "ready") {
       this._ready = true;
-      // Only the desktop registers share links; the web has no such command.
-      if ((await vscode.commands.getCommands(true)).includes(SHARE_FOLDER_COMMAND)) { await this._post({ type: "canShareFolders" }); }
       // Neither push waits for the other: a slow project count must not delay the library.
       void this._pushProjects();
       void this._pushOpenProject();
@@ -158,7 +157,6 @@ export class LibrarySidebarView implements vscode.WebviewViewProvider {
       case "addFiles": await vscode.commands.executeCommand("labshelf.addPaperHere", node); break;
       case "renameFolder": await vscode.commands.executeCommand("labshelf.renameFolder", node); break;
       case "removeFolder": await vscode.commands.executeCommand("labshelf.deleteFolder", node); break;
-      case "shareFolder": await vscode.commands.executeCommand(SHARE_FOLDER_COMMAND, node); break;
       case "import": { const uris = parseUriList(m.uris); if (uris.length > 0) { await this._deps.importFiles(uris, node.dirPath); } break; }
       case "moveFolder": await this._deps.moveFolder(node.dirPath, this._node(m.target).dirPath); break;
     }
