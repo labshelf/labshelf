@@ -1,37 +1,25 @@
-/*
- * Styles the library page around the shared library UI: the status bar along the bottom and the brand above the
- * sidebar. Requires tokens.css, base.css and the library UI sheets.
- */
+/* Styles the browser workspace chrome and content. */
+.ls-workspace-titlebar, .ls-workspace-statusbar {
+  flex-shrink: 0; background: var(--ls-workspace-bg);
+}
+.ls-workspace-titlebar { height: var(--ls-row-h); }
+.ls-workspace-statusbar { height: var(--ls-space-7); }
 
-/* ── Storage banner and move offer above the library frame ──────── */
 .lsrc-surfaces { flex-shrink: 0; }
 .lsrc-surfaces:empty, .lsrc-surfaces > div:empty { display: none; }
 
-/* ── Status bar (22px, VS Code) ─────────────────────────────────── */
-.status-bar {
-  display: flex; align-items: center; height: var(--ls-row-h); flex-shrink: 0; padding: 0 var(--ls-space-2);
-  font-size: var(--ls-text-md); color: var(--ls-statusbar-fg); background: var(--ls-statusbar-bg);
-  border-top: 1px solid var(--ls-sidebar-border);
-}
-.status-right { display: flex; align-items: center; height: 100%; margin-left: auto; }
-.status-item {
-  display: inline-flex; align-items: center; gap: 5px; height: 100%; padding: 0 var(--ls-space-3); border: none; background: none;
-  color: inherit; font-size: var(--ls-text-md); cursor: default; white-space: nowrap; border-radius: 0;
-}
-.status-item svg { width: 14px; height: 14px; }
-.status-item.clickable { cursor: pointer; }
-.status-item.clickable:hover { background: var(--ls-statusbar-hover); }
-
 /* ── Sidebar head: the brand above the shared library sidebar ───── */
 .tree-head {
-  display: flex; align-items: center; justify-content: space-between; height: 35px; padding: 0 var(--ls-space-4) 0 var(--ls-space-2); flex-shrink: 0;
-  border-bottom: 1px solid var(--ls-sidebar-border); margin-bottom: var(--ls-space-2);
+  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  min-height: calc(var(--ls-row-h) + var(--ls-space-7)); padding: var(--ls-space-4) var(--ls-space-6);
+  margin-bottom: var(--ls-space-1);
 }
-.tree-head .ls-brand { color: var(--ls-fg); padding-left: var(--ls-space-4); }
+.tree-head .ls-brand { color: var(--ls-fg); }
 
 /* ── Workspace: the centre slot and the tab bodies ──────────────── */
 .ls-workspace-centre { flex: 1; display: flex; min-width: 0; min-height: 0; }
 .ls-workspace-fill { width: 100%; height: 100%; display: flex; min-width: 0; min-height: 0; }
+.ls-workspace-fill > .cm-editor { flex: 1; min-width: 0; }
 .ls-workspace-fill .ls-history, .ls-workspace-fill .ls-psearch { flex: 1; min-width: 0; height: 100%; }
 .ls-workspace-placeholder { padding: var(--ls-space-4); color: var(--ls-desc); }
 

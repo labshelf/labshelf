@@ -1,7 +1,7 @@
 /* Lays out the preview footer: document position on the left, build status and the check slots on the right. */
 .rd-preview-footer {
   display: flex; align-items: center; gap: var(--ls-space-3); min-width: 0;
-  height: var(--ls-reader-footer-h); padding: 0 var(--ls-space-3);
+  height: var(--ls-pane-footer-h); flex-shrink: 0; padding: 0 var(--ls-space-3);
   background: var(--ls-bg); border-top: 1px solid var(--ls-border); box-shadow: none;
   font-size: var(--ls-text-sm); color: var(--ls-reader-desc);
 }

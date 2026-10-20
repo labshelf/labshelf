@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { submitTemplatePullRequest, type ProjectFormat, type PublishBuildResult, type TemplateManifest } from "@labshelf/core";
 import { checkTemplateForPublish, renderFirstPagePng, saveProjectAsTemplate } from "@labshelf/core/node";
 import type { FinishedBuild } from "../../../build/index.js";
-import type { PublishableProject, PublishPorts } from "../../publish/index.js";
+import type { PublishableProject, PublishPorts } from "@labshelf/core";
 import { signInToGitHub } from "./githubAuth.js";
 import { pickPublishProject, publishableById, type PublishProjectDeps } from "./pickPublishProject.js";
 

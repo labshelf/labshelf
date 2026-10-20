@@ -19,3 +19,4 @@ export * from "./libraryFs/index.js";
 export { countDownloads } from "./downloads/index.js";
 export * from "./protocol/index.js";
 export * from "./host/index.js";
+export * from "./publishing/index.js";

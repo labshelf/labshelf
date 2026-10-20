@@ -84,3 +84,30 @@ body, #root { display: flex; flex-direction: column; }
 .ls-library.dragging-papers .crumb:not(.current) { border-color: var(--ls-focus); border-style: dashed; }
 .ls-library .drop-target { background: var(--ls-list-drop-bg) !important; outline: 1px dashed var(--ls-focus); outline-offset: -1px; }
 
+.ls-sash-grip { display: none; }
+
+/* INVARIANT: Pane borders sit inside their boxes so neighboring footers share a baseline. */
+.ls-pane-frame {
+  padding: var(--ls-space-3); background: var(--ls-workspace-bg);
+}
+.ls-pane-frame > .sidebar,
+.ls-pane-frame .ls-editor-group {
+  border: thin solid var(--ls-border); border-radius: var(--ls-radius-lg); overflow: hidden;
+  box-shadow: var(--ls-pane-shadow);
+}
+.ls-pane-frame .ls-editor-area { background: transparent; overflow: visible; }
+.ls-pane-frame .sash,
+.ls-pane-frame .ls-editor-sash {
+  display: flex; align-items: center; justify-content: center;
+  width: var(--ls-space-2); padding: 0; margin: 0; background: transparent; color: var(--ls-desc);
+}
+.ls-pane-frame .sash:hover,
+.ls-pane-frame .sash.dragging,
+.ls-pane-frame .ls-editor-sash:hover,
+.ls-pane-frame .ls-editor-sash.dragging { background: transparent; color: var(--ls-focus); }
+.ls-pane-frame .ls-sash-grip { display: flex; pointer-events: none; }
+.ls-pane-frame .ls-sash-grip svg {
+  width: var(--ls-space-3); height: var(--ls-space-6); transform: rotate(90deg) scale(2);
+}
+.ls-pane-frame .sash::before,
+.ls-pane-frame .ls-editor-sash::before { inset: 0; }

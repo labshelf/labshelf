@@ -1,9 +1,8 @@
 // Offers the owner's relay to a share's relay list, claiming the share on it first, withdraws it again, and keeps the invite on that list.
 import * as vscode from "vscode";
 
-import { addRelay, claimShare, deriveRelayToken, formatInvite, relayList, removeOwnRelay } from "@labshelf/core";
+import { addRelay, claimShare, deriveRelayToken, formatInvite, relayList, removeOwnRelay, type ShareConnection } from "@labshelf/core";
 import { errorText, LOG_MODULE, type CollabHost } from "./collabHost.js";
-import type { ShareConnection } from "./session/index.js";
 import { userName } from "./userName.js";
 
 /** Stores the share's invite with the relays of its index list, which is the link to hand out; resolves to that link. */

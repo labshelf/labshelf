@@ -1,26 +1,12 @@
-// Implements ILatexHelper over a native-messaging handshake and the loopback WebSocket the helper opens for the session.
+// Sends requests through an authenticated helper session.
 import {
   PROTOCOL_VERSION, type HelperCompileRequest, type HelperEdit, type HelperProgressListener,
-  type HelperStatus, type ILatexHelper, type ToPageMessage,
+  type ILatexHelper, type TemplatePublishEvent, type TemplatePublishRequest,
 } from "@labshelf/core/helper";
 import type { ILogger } from "@labshelf/core";
-import { handshake, type HandshakeDeps } from "./handshake";
-import { statusFromReady, type HelperConnection, type HelperPortFactory, type HelperWebSocketConstructor, type RequestBody } from "./connection";
+import { statusFromReady, type RequestBody } from "./connection";
 import { compileStep, EditTracker, progressOf } from "./project";
-
-interface NativeLatexHelperDeps {
-  logger: ILogger;
-  extensionVersion: string;
-  /** The page's `location.origin`; the helper accepts the socket only from this origin. */
-  origin: string;
-  connectNative: HelperPortFactory;
-  /** Defaults to the page's WebSocket. */
-  webSocket?: HelperWebSocketConstructor;
-}
-
-interface Session { native: HelperConnection; socket: HelperConnection }
-
-const MODULE = "browser.helper";
+import { NativeHelperSession, type NativeHelperSessionDeps } from "./nativeHelperSession";
 
 function compileBody({ projectId, main, mode, engine, editedFile, editedLine, haltOnError }: HelperCompileRequest): RequestBody {
   return {
@@ -29,113 +15,94 @@ function compileBody({ projectId, main, mode, engine, editedFile, editedLine, ha
   };
 }
 
-export function createNativeLatexHelper(deps: NativeLatexHelperDeps): ILatexHelper {
-  const { logger } = deps;
-  const edits = new EditTracker();
-  let session: Session | undefined;
-  let current: HelperStatus | undefined;
-  let generation = 0;
-  let connecting: Promise<HelperStatus> | undefined;
+class NativeLatexHelper implements ILatexHelper {
+  private readonly edits = new EditTracker();
+  private readonly session: NativeHelperSession;
+  private readonly logger: ILogger;
 
-  function dropSession(reason: string | undefined, forGeneration: number): void {
-    if (forGeneration !== generation) { return; }
-    const dropped = session;
-    session = undefined;
-    current = undefined;
-    dropped?.native.disconnect();
-    dropped?.socket.disconnect();
-    void logger.log("INFO", MODULE, "LabShelf Helper connection closed", { reason });
+  constructor(deps: NativeHelperSessionDeps) {
+    this.logger = deps.logger;
+    this.session = new NativeHelperSession(deps, this.edits);
   }
 
-  function resendStale(message: Extract<ToPageMessage, { type: "error" }>): void {
-    const resend = message.code === "stale" && message.id !== undefined ? edits.resend(message.id) : undefined;
-    if (!resend) {
-      void logger.log("WARN", MODULE, "LabShelf Helper reported an error no request was waiting for", { code: message.code, message: message.message });
-      return;
-    }
-    void logger.log("INFO", MODULE, "Resending the whole text after a stale edit", { projectId: resend.projectId, path: resend.path });
-    try {
-      session?.socket.post({ type: "edit", ...resend });
-    } catch (error) {
-      void logger.error(MODULE, error, { operation: "resend", projectId: resend.projectId, path: resend.path });
-    }
+  connect = () => this.session.connect();
+  status = () => this.session.status;
+  disconnect = () => this.session.disconnect();
+
+  private async logged<T>(operation: string, context: Record<string, unknown>, run: () => Promise<T>): Promise<T> {
+    try { return await run(); }
+    catch (error) { await this.logger.error("browser.helper", error, { operation, ...context }); throw error; }
   }
 
-  // INVARIANT: the helper keeps open projects per socket, so overlapping connects share one handshake instead of each replacing the socket.
-  function connect(): Promise<HelperStatus> {
-    connecting ??= openSession().finally(() => { connecting = undefined; });
-    return connecting;
-  }
-
-  async function openSession(): Promise<HelperStatus> {
-    const mine = ++generation;
-    const previous = session;
-    session = undefined;
-    previous?.native.disconnect();
-    previous?.socket.disconnect();
-    const handshakeDeps: HandshakeDeps = { ...deps, webSocket: deps.webSocket ?? globalThis.WebSocket };
-    const outcome = await handshake(handshakeDeps, {
-      onUnmatchedError: resendStale,
-      onClose: (reason) => dropSession(reason, mine),
+  openProject(projectId: string, root: string): Promise<{ files: string[] }> {
+    return this.logged("openProject", { projectId }, async () => {
+      this.edits.forget(projectId);
+      return (await this.session.readySocket()).request({ type: "openProject", projectId, root }, (m) => m.type === "opened" ? { done: { files: m.files } } : undefined);
     });
-    edits.forgetAll();
-    current = outcome.status;
-    session = outcome.native && outcome.socket ? { native: outcome.native, socket: outcome.socket } : undefined;
-    return current;
   }
 
-  async function readySocket(): Promise<HelperConnection> {
-    if (!session) { await connect(); }
-    if (!session || current?.state !== "ready") { throw new Error(`LabShelf Helper is not ready (${current?.state ?? "not connected"})`); }
-    return session.socket;
+  closeProject(projectId: string): Promise<void> {
+    return this.logged("closeProject", { projectId }, async () => {
+      this.edits.forget(projectId);
+      await (await this.session.readySocket()).request({ type: "closeProject", projectId }, (m) => m.type === "closed" ? { done: undefined } : undefined);
+    });
   }
 
-  async function logged<T>(operation: string, context: Record<string, unknown>, run: () => Promise<T>): Promise<T> {
-    try {
-      return await run();
-    } catch (error) {
-      await logger.error(MODULE, error, { operation, ...context });
-      throw error;
-    }
+  edit(projectId: string, path: string, version: number, change: HelperEdit): Promise<void> {
+    return this.logged("edit", { projectId, path }, async () => {
+      const socket = await this.session.readySocket();
+      const body = this.edits.apply(projectId, path, version, change);
+      this.edits.remember(socket.post({ type: "edit", projectId, path, version, ...body }), projectId, path);
+    });
   }
 
-  async function install(request: RequestBody, onProgress: HelperProgressListener): Promise<void> {
-    const ready = await (await readySocket()).request(request, (m) => {
-      if (m.type === "progress") { onProgress(progressOf(m)); }
+  save(projectId: string, path: string): Promise<void> {
+    return this.logged("save", { projectId, path }, async () => {
+      this.edits.forget(projectId, path);
+      (await this.session.readySocket()).post({ type: "save", projectId, path });
+    });
+  }
+
+  compile(request: HelperCompileRequest, onProgress: HelperProgressListener) {
+    return this.logged("compile", { projectId: request.projectId }, async () =>
+      (await this.session.readySocket()).request(compileBody(request), compileStep(onProgress)));
+  }
+
+  async cancel(projectId: string): Promise<void> { (await this.session.readySocket()).post({ type: "cancel", projectId }); }
+
+  private async install(request: RequestBody, onProgress: HelperProgressListener): Promise<void> {
+    const ready = await (await this.session.readySocket()).request(request, (m) => {
+      if (m.type === "progress") onProgress(progressOf(m));
       return m.type === "ready" ? { done: m } : undefined;
     });
-    current = statusFromReady(ready, PROTOCOL_VERSION);
+    this.session.status = statusFromReady(ready, PROTOCOL_VERSION);
   }
 
-  async function edit(projectId: string, path: string, version: number, change: HelperEdit): Promise<void> {
-    const socket = await readySocket();
-    const body = edits.apply(projectId, path, version, change);
-    edits.remember(socket.post({ type: "edit", projectId, path, version, ...body }), projectId, path);
+  installTex(kind: "tinytex" | "texlive", onProgress: HelperProgressListener): Promise<void> {
+    return this.logged("installTex", { kind }, () => this.install({ type: "installTex", kind }, onProgress));
   }
 
-  async function compile(request: HelperCompileRequest, onProgress: HelperProgressListener) {
-    return (await readySocket()).request(compileBody(request), compileStep(onProgress));
+  installAllPackages(onProgress: HelperProgressListener): Promise<void> {
+    return this.logged("installAllPackages", {}, () => this.install({ type: "installAllPackages" }, onProgress));
   }
 
-  return {
-    connect,
-    status: () => current,
-    openProject: (projectId, root) => logged("openProject", { projectId }, async () => {
-      edits.forget(projectId);
-      return (await readySocket()).request({ type: "openProject", projectId, root }, (m) => (m.type === "opened" ? { done: { files: m.files } } : undefined));
-    }),
-    closeProject: (projectId) => logged("closeProject", { projectId }, async () => {
-      edits.forget(projectId);
-      await (await readySocket()).request({ type: "closeProject", projectId }, (m) => (m.type === "closed" ? { done: undefined } : undefined));
-    }),
-    edit: (projectId, path, version, change) => logged("edit", { projectId, path }, () => edit(projectId, path, version, change)),
-    save: (projectId, path) => logged("save", { projectId, path }, async () => {
-      edits.forget(projectId, path);
-      (await readySocket()).post({ type: "save", projectId, path });
-    }),
-    compile: (request, onProgress) => logged("compile", { projectId: request.projectId }, () => compile(request, onProgress)),
-    cancel: async (projectId) => { (await readySocket()).post({ type: "cancel", projectId }); },
-    installTex: (kind, onProgress) => logged("installTex", { kind }, () => install({ type: "installTex", kind }, onProgress)),
-    installAllPackages: (onProgress) => logged("installAllPackages", {}, () => install({ type: "installAllPackages" }, onProgress)),
-  };
+  publishTemplate(projectId: string, request: TemplatePublishRequest, onEvent: (event: TemplatePublishEvent) => void, renderThumbnail: (pdf: Uint8Array) => Promise<Uint8Array>): Promise<void> {
+    return this.logged("publishTemplate", { projectId, action: request.action }, async () => {
+      const socket = await this.session.readySocket();
+      await socket.request({ type: "publishTemplate", projectId, ...request }, (message, payload) => {
+        if (message.type === "templatePreview") {
+          void renderThumbnail(payload).then(
+            (png) => socket.post({ type: "templateThumbnail", requestId: message.id }, png),
+            (error: unknown) => socket.post({ type: "templateThumbnail", requestId: message.id, error: error instanceof Error ? error.message : String(error) }),
+          ).catch((error: unknown) => this.logger.error("browser.helper", error, { operation: "templateThumbnail" }));
+          return undefined;
+        }
+        if (message.type !== "templatePublish") return undefined;
+        if (message.event) onEvent(message.event);
+        return message.done ? { done: undefined } : undefined;
+      });
+    });
+  }
 }
+
+export function createNativeLatexHelper(deps: NativeHelperSessionDeps): ILatexHelper { return new NativeLatexHelper(deps); }

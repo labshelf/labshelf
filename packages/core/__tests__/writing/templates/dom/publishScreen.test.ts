@@ -6,6 +6,14 @@ import { mountGallery } from "./galleryHarness";
 import { CHECK_IDS, DRAFT, LABELS, PROJECT, alert, allPassed, button, checks, edit, field, openPublish, row, screen } from "./publishHarness";
 
 describe("entry and form", () => {
+  it("shows a failure received before the publish screen opens", () => {
+    const g = mountGallery();
+    g.deliver({ type: "publish.failed", error: "Install LabShelf Helper to publish this project." });
+    expect(screen(g)).toBeNull();
+    expect(document.querySelector(".ls-toast.error")?.textContent).toContain("Install LabShelf Helper");
+    document.querySelector<HTMLButtonElement>(".ls-toast.error button")?.click();
+  });
+
   it("posts publish.start from the sidebar button", () => {
     const g = mountGallery();
     const btn = [...g.root.querySelectorAll<HTMLButtonElement>(".ls-tpl-sidebar button")].find((b) => b.textContent?.includes("Publish a template"))!;

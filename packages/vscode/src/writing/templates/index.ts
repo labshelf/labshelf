@@ -1,8 +1,7 @@
 // Exposes the template gallery: an editor tab listing templates from every source and creating projects from them.
 import type * as vscode from "vscode";
-import type { AvailableEngines, ILogger, TemplateFile, TemplateManifest, TemplateSource } from "@labshelf/core";
+import type { AvailableEngines, ILogger, TemplateFile, TemplateManifest, TemplateSource, PublishPorts } from "@labshelf/core";
 import { GalleryPanel } from "./galleryPanel.js";
-import type { PublishPorts } from "./publish/index.js";
 
 export interface TemplateGalleryDeps {
   context: vscode.ExtensionContext;

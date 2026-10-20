@@ -1,11 +1,11 @@
 // Declares what the collaboration commands and views share on the desktop, and how they report a failure.
 import * as vscode from "vscode";
 
-import type { ILogger, Invite } from "@labshelf/core";
 import type { RelayAccounts } from "../../relay/index.js";
 import type { WritingProjects } from "../../writing/index.js";
 import type { SharedEditors } from "./editors/index.js";
-import type { ActiveShares, ShareConnection, ShareKeys, ShareStart } from "./session/index.js";
+import type { ILogger, Invite, ShareConnection, ShareStart } from "@labshelf/core";
+import type { ActiveShares, ShareKeys } from "./session/index.js";
 
 export const LOG_MODULE = "collab";
 

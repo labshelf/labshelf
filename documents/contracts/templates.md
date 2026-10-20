@@ -131,7 +131,7 @@ Typst Universe templates come from `https://packages.typst.org/preview/index.jso
 
 The user's own templates live at `<library>/templates/<template id>/`, laid out as in [Manifest](#manifest). A new id is the name folded as a project id is ([library-format.md](library-format.md#labshelfyaml)), unique case-insensitively among My templates.
 
-Saving a project as a template copies the project into `files/` without the build folder, `labshelf.yaml`, `papers:`, `.labshelf/versions/`, `.labshelf/rebuttal/`, `.labshelf/comments.json`, `.labshelf/state.json` and `.labshelf/checklist.json`. It also leaves out a `.pdf` that has a `.tex` or `.typ` file of the same name in the same folder, which is the build's copy of its output. It skips `.git/`, and refuses a symbolic link or a `latexmkrc` anywhere in the project with a message naming the path. The manifest's `engine` comes from `labshelf.yaml`, else from the engine the app resolved for the build, and the user gives the authors.
+Saving a project as a template copies the project into `files/` without the build folder, `labshelf.yaml`, `papers:`, `.labshelf/versions/`, `.labshelf/rebuttal/`, `.labshelf/comments.json`, `.labshelf/state.json`, `.labshelf/checklist.json` and `.labshelf/mirror-lease.json`. It also leaves out a `.pdf` that has a `.tex` or `.typ` file of the same name in the same folder, which is the build's copy of its output. It skips `.git/`, and refuses a symbolic link or a `latexmkrc` anywhere in the project with a message naming the path. The manifest's `engine` comes from `labshelf.yaml`, else from the engine the app resolved for the build, and the user gives the authors.
 
 ## Publish
 
@@ -142,7 +142,7 @@ Publishing sends a project to the Community catalog as a pull request. It runs t
 3. `build`: the project is built with the declared engine and without shell-escape.
 4. `thumbnail`: the first page of the built PDF is rendered as the thumbnail and must meet the `preview/` limits in [Manifest](#manifest).
 
-The submission uses the fork that `POST /forks` returns, not `<login>/<repo>`. It commits the files under `templates/<id>/` on the branch `template/<id>-<date>` (UTC date, `YYYY-MM-DD`) and opens the pull request against the upstream's `main`. When the pull request is open, the template is saved into [My templates](#my-templates).
+The submission uses the fork that `POST /forks` returns, not `<login>/<repo>`. It commits the files under `templates/<id>/` on the branch `template/<id>-<date>` (UTC date, `YYYY-MM-DD`) and opens the pull request against the upstream's `main`. When the pull request is open, the template is saved into [My templates](#my-templates). Browser publication uses [LabShelf Helper](helper.md#template-publication) to build and submit a snapshot of the saved sources; the browser renders the thumbnail and authorizes GitHub through Device Flow. Its local copy preserves the exact submitted sources and both preview files.
 
 ## Cache
 

@@ -1,4 +1,4 @@
-// Builds the library page's frame: the sidebar and the Details pane with their sashes around the centre slot that holds the editor area.
+// Frames the browser workspace with a persistent Details pane.
 import { PANE_LIMITS } from "@labshelf/core";
 import { attachSash, el } from "@labshelf/core/dom";
 import { DEFAULT_DETAIL_WIDTH, type PagePrefs } from "../prefs";
@@ -21,7 +21,7 @@ const DETAILS_LIMITS = { min: 260, max: 760, collapseAt: 180 };
  */
 export function createPageShell(host: HTMLElement, prefs: PagePrefs): PageShell {
   const saved = { ...prefs.load(), ...prefs.detailPane() };
-  const root = el("div", { class: "ls-library has-sidebar" });
+  const root = el("div", { class: "ls-library has-sidebar ls-pane-frame" });
   const sidebar = el("aside", { class: "sidebar", "aria-label": "Library" });
   const sash = el("div", { class: "sash sash-sidebar", title: "Drag to resize" });
   const centre = el("div", { class: "ls-workspace-centre" });
@@ -42,7 +42,9 @@ export function createPageShell(host: HTMLElement, prefs: PagePrefs): PageShell 
     persist: (detailWidth, detailCollapsed) => prefs.saveDetailPane({ detailWidth, detailCollapsed }),
   });
   root.append(sidebar, sash, centre, detailSash, details);
-  host.append(root);
+  const titlebar = el("header", { class: "ls-workspace-titlebar", "aria-hidden": "true" });
+  const statusbar = el("footer", { class: "ls-workspace-statusbar", "aria-hidden": "true" });
+  host.append(titlebar, root, statusbar);
   const toggleDetails = (): void => {
     const collapsed = root.classList.toggle(DETAILS_COLLAPSED);
     prefs.saveDetailPane({ detailCollapsed: collapsed });

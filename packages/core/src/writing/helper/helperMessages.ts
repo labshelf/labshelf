@@ -4,10 +4,12 @@
 import type { LocatedProblem, TexInstallKind } from "../latex/index.js";
 import type { LatexEngine } from "../project/index.js";
 
+import type { TemplatePublishMessage, TemplatePublishReply } from "./publishing/index.js";
+
 export const HELPER_HOST_NAME = "dev.labshelf.helper";
-export const PROTOCOL_VERSION = 4;
+export const PROTOCOL_VERSION = 5;
 // The helper program's version, kept beside the program so every app that bundles it reports the same one.
-export const HELPER_VERSION = "0.2.0";
+export const HELPER_VERSION = "0.3.0";
 
 // CONTRACT: documents/contracts/helper.md#limits
 export const MAX_SOCKET_MESSAGE_BYTES = 16 * 1024 * 1024;
@@ -38,6 +40,8 @@ export interface ChangedPage { index: number; offset: number; length: number }
 type Envelope<T extends string> = { v: number; id: string; type: T };
 
 export type ToHelperMessage =
+  | TemplatePublishMessage
+  | Envelope<"templateThumbnail"> & { requestId: string; error?: string }
   | Envelope<"hello"> & { extensionVersion: string; origin: string }
   | Envelope<"auth"> & { token: string }
   | Envelope<"openProject"> & { projectId: string; root: string }
@@ -52,6 +56,8 @@ export type ToHelperMessage =
   | Envelope<"installAllPackages">;
 
 export type ToPageMessage =
+  | TemplatePublishReply
+  | Envelope<"templatePreview">
   | Envelope<"ready"> & { protocol: number; helperVersion: string; host: HelperHost; tex: TexStatus }
   | Envelope<"session"> & { port: number; token: string }
   | Envelope<"authed">

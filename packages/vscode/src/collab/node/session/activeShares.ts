@@ -1,7 +1,7 @@
 // Tracks the shares connected in this window and tells views when one opens, closes, or its peers, status or relay change.
 import * as vscode from "vscode";
 
-import type { ShareConnection } from "./shareConnection.js";
+import type { ShareConnection } from "@labshelf/core";
 
 /** What else runs while a share is connected, such as the editor binding; disposed when it closes. */
 type OnOpen = (share: ShareConnection) => vscode.Disposable;

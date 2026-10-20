@@ -1,5 +1,6 @@
 /* Maps the --ls-* tokens to VS Code theme variables. Generated from packages/core/src/ui/tokens by `pnpm --filter @labshelf/core tokens`. Do not edit. */
 :root {
+  --ls-workspace-bg: var(--vscode-editorGroup-emptyBackground, var(--vscode-sideBar-background));
   --ls-bg: var(--vscode-editor-background);
   --ls-fg: var(--vscode-foreground);
   --ls-desc: var(--vscode-descriptionForeground);
@@ -19,12 +20,8 @@
   --ls-border-faint: var(--vscode-panel-border);
   --ls-widget-bg: var(--vscode-editorWidget-background);
   --ls-code-bg: var(--vscode-textCodeBlock-background);
-  --ls-tab-active-border: var(--vscode-panelTitle-activeBorder);
   --ls-sash-hover: var(--vscode-sash-hoverBorder);
   --ls-progress: var(--vscode-progressBar-background);
-  --ls-statusbar-bg: var(--vscode-statusBar-background);
-  --ls-statusbar-fg: var(--vscode-statusBar-foreground);
-  --ls-statusbar-hover: var(--vscode-statusBarItem-hoverBackground);
   --ls-list-hover: var(--vscode-list-hoverBackground);
   --ls-list-active-bg: var(--vscode-list-activeSelectionBackground);
   --ls-list-active-fg: var(--vscode-list-activeSelectionForeground);

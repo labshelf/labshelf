@@ -9,6 +9,8 @@ import {
   readProjectId, readString, readText, type Body,
 } from "./messageFields.js";
 
+import { readTemplatePublishRequest } from "./publishing/index.js";
+
 type Envelope = { v: number; id: string };
 type Readers = { [T in ToHelperMessage["type"]]: (body: Body, envelope: Envelope) => Extract<ToHelperMessage, { type: T }> };
 
@@ -34,6 +36,8 @@ function readEdit(body: Body, envelope: Envelope): Extract<ToHelperMessage, { ty
 }
 
 const READERS: Readers = {
+  templateThumbnail: (body, envelope) => ({ ...envelope, type: "templateThumbnail", requestId: readText(body, "requestId"), ...optional(body, "error", readString) }),
+  publishTemplate: (body, envelope) => ({ ...envelope, type: "publishTemplate", projectId: readProjectId(body), ...readTemplatePublishRequest(body) }),
   hello: (body, envelope) => ({
     ...envelope, type: "hello", extensionVersion: readText(body, "extensionVersion"), origin: readText(body, "origin"),
   }),

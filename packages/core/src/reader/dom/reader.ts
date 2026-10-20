@@ -58,7 +58,7 @@ export function startReader({ boot, transport, perf, pdf }: ReaderStartOptions):
 
   async function start(): Promise<void> {
     const loaded = await loadPdf(boot.assets, perf, pdf);
-    const parts = createViewer(loaded.viewerLib, loaded.pdfDocument, container, $<HTMLDivElement>("viewer"), theme.pageTheme);
+    const parts = createViewer(loaded.viewerLib, loaded.pdfDocument, container, $<HTMLDivElement>("viewer"), theme.pageTheme, boot.preview);
     const ctx: ReaderContext = { boot, host, container, prefs: boot.prefs, ...loaded, ...parts };
     theme.attach(ctx.pdfViewer);
     wireReader(ctx, theme, perf, restore, loadingMsg, new DocumentReloader(ctx, pdf ?? {}));

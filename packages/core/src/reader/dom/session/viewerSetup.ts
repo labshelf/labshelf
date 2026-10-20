@@ -25,6 +25,7 @@ export function createViewer(
   container: HTMLDivElement,
   viewer: HTMLDivElement,
   pageTheme: string,
+  preview: boolean,
 ): ViewerParts {
   const eventBus = new viewerLib.EventBus();
   // A link's stored zoom ("XYZ ... 0.8") would silently undo the reader's chosen zoom on every click.
@@ -39,7 +40,8 @@ export function createViewer(
     findController,
     textLayerMode: 1,
     annotationMode: 2,
-    removePageBorders: false,
+    // PLATFORM: pdf.js reserves 40px for fit presets unless page borders are disabled.
+    removePageBorders: preview,
     // pdf.js defaults: bounded canvases, with a detail canvas keeping the visible region sharp at high zoom.
     // Uncapped canvases reach hundreds of megapixels at 8x on a HiDPI display.
     maxCanvasPixels: 2 ** 25,

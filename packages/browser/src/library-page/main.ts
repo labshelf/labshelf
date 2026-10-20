@@ -1,7 +1,4 @@
-/**
- * Bootstraps the library page: a page-level sidebar beside a workspace of tabs, the shared library UI as the Library tab
- * (answered by an in-page host over a synchronous loopback channel), and the page's own glue (URL hash, status bar).
- */
+// Mounts the browser library workspace with its shared Details pane.
 import {
   createLoopbackTransport, createSelectionHub, serveAllProjects, type AllProjectsEndpoint, type DetailsToHost, type HostToDetails, type LibraryFileSystem,
 } from "@labshelf/core";
@@ -10,17 +7,16 @@ import { createBrowserLogger, getSettings } from "../platform";
 import { mountMoveOffer, mountSourceBanner } from "../library-source";
 import { createLibraryFileSystem } from "../storage";
 import { applyTheme } from "../ui";
-import { mergeEndpoints, mountPageDetails, PAGE_CAPABILITIES, PAGE_LABELS, splitDetailsChannels } from "./details";
+import { createDetailsToggle, mergeEndpoints, mountPageDetails, PAGE_CAPABILITIES, PAGE_LABELS, splitDetailsChannels } from "./details";
 import { attachLibraryHost } from "./host";
 import { attachLinkHandling } from "./openLink";
-import { createLocalStoragePrefs } from "./prefs";
+import { applyCodeStyle, createLocalStoragePrefs } from "./prefs";
 import { attachRouter } from "./router";
 import type { ProjectWiring, ProjectWiringOptions } from "./projectWiring";
 import { mountSidebarTree } from "./sidebar";
 import { planPage, type PagePlan } from "./sections";
 import type { ProjectServices, TabKindName } from "./tabs";
-import { createDetailsToggle, createPageShell, createWorkspace, takeJoinInvite, type Workspace } from "./workspace";
-import { mountStatusBar } from "./statusBar";
+import { createPageShell, createWorkspace, takeJoinInvite, type Workspace } from "./workspace";
 
 const log = createBrowserLogger();
 
@@ -74,13 +70,10 @@ async function boot(): Promise<void> {
   if (!root) throw new Error("Missing #root");
   applyTheme();
   const prefs = createLocalStoragePrefs();
+  applyCodeStyle(prefs);
   const { ui: transport, host } = createLoopbackTransport();
-  // Details speaks both protocols over one channel; the hub decides which selection it shows.
   const details = createLoopbackTransport<DetailsToHost, HostToDetails>();
   const hub = createSelectionHub((target) => details.host.post({ type: "details.show", target }));
-  // The host listens before the UI mounts, so the UI's ready message finds it. Opened from the popup or a Scholar
-  // button, the page selects the paper just saved.
-  // One host answers the list and Details, so a change made from either reaches both.
   const channels = splitDetailsChannels(details.host, {
     current: hub.current,
     onFolderOpen: (folder) => { host.post({ type: "navigate", folder }); workspace.openTab("library"); },
@@ -91,7 +84,6 @@ async function boot(): Promise<void> {
   });
   attachRouter(host, libraryHost.paperIdAtPath);
   const shell = createPageShell(root, prefs);
-  // Mounted once, detached: the Library tab shows this element and the sidebar follows its store.
   const libraryView = el("div", { class: "ls-workspace-fill" });
   const ui = mountLibraryUi(libraryView, {
     transport, prefs, withSidebar: false,
@@ -119,7 +111,6 @@ async function boot(): Promise<void> {
   workspace.restore(location.hash);
   project?.start(invite);
   mountSourceSurfaces(root, libraryHost.reloadSnapshots);
-  mountStatusBar(root, prefs, (listener) => ui.store.select((s) => s.papers.length, listener));
   attachLinkHandling(log);
   void log.log("INFO", "library", "library page mounted");
 }

@@ -103,7 +103,49 @@ collab/<share id>/
 ```
 
 - The log is append-only. Opening the share merges the log into the snapshot and removes it; a torn final record from an interrupted append is dropped.
+- After a failed append, a doc appends nothing more until its full state is written as the snapshot and its log removed, so a torn record is always the last one.
+- `relay-cursors.json` is saved only once every doc update received so far is stored; while one is not, the cursors are held back.
 - A file whose disk hash differs from its `known.json` hash was changed outside the share since disk and doc last agreed, so that change enters the doc. A file with no entry there is compared as new.
+
+The browser extension keeps the same state in its IndexedDB database `labshelf-collab`, outside the library files, with every key starting with the library id and share id. It stores each doc under its doc key, with a snapshot and its appended updates; the known hashes and relay cursors as one record each; and blobs by SHA-256. A write is durable when its transaction completes. Replacing a snapshot and removing that doc's updates is one transaction, so no torn record exists, and the rules above hold unchanged.
+
+## Connection lifecycle
+
+A device connects to a share in this order, the same in every app: open the device-local state, start the session over it, publish this user's presence, follow the relays, start the blob exchange, find or create the project folder, start the disk mirror.
+
+- Presence is published as soon as the session starts, with no file. Only members with a presence count in the relay group and in the snapshot-writer election: the connected member with the lowest awareness id on the relay in use writes relay snapshots, and when it leaves the next lowest takes over.
+- Closing runs presence, blob exchange, mirror, relays, session, state, in that order, and completes every step even after one fails. It resolves once every update received or made is stored, and rejects while any stays unstored.
+- A start that fails closes what it started in the same order, so no socket, probe, timer or state handle outlives it; the start's error is the one reported.
+- Reconnecting restores the docs and the per-relay cursors from the device-local state. Peers and relays supply only what this device lacks.
+- A connection reports its session status, the relay in use, the error of a state write that has not succeeded since it failed, and its mirror: running, busy while another mirror owns the folder, or stopped with a reason. Logs name the share id, never an invite or a key.
+
+### Persistence acknowledgment
+
+An edit is durable on this device once the write of its update completes: an append to the doc's log on Node, a completed IndexedDB transaction in the browser. Each update is written as it happens, not when the page or window closes; a browser page that dies loses only updates whose transaction had not completed, and those reached the relay if the socket was open. The browser's close on `pagehide` is best effort and nothing depends on it.
+
+In the browser the tab that holds the share's Web Lock (see [Mirror ownership](#mirror-ownership)) is the only one that opens the share's state, session and mirror. A tab that finds the lock held waits for it; when the owner closes, dies or hands over, the waiting tab takes the lock and reconnects from the stored state. Closing every library page ends the share's connectivity on that device and drops no acknowledged edit.
+
+## Mirror ownership
+
+One mirror at a time writes a project folder's files for a share.
+
+In the browser, an exclusive Web Lock named `labshelf:collab:<library id>:<share id>` decides which tab of the profile runs the share's session and mirror. A tab that finds it held opens the share read-only with a "Use here" action, which steals the lock. The tab that loses it stops its mirror, keeps its editor buffers and pending text, and never writes to disk again in that session. A library kept in IndexedDB has no folder, so only the lock applies.
+
+Across apps, the folder holds a lease at `<project>/.labshelf/mirror-lease.json`, written through the root's own file port:
+
+```json
+{ "owner": "<random id per running mirror>", "app": "vscode", "renewedAt": 1792509862000, "ttlMs": 30000 }
+```
+
+- `app` is `vscode` or `browser`; `renewedAt` is in ms since the epoch. A lease is live while `renewedAt + ttlMs` is in the future.
+- Acquire: a live foreign lease means the folder is busy. Otherwise the mirror writes its lease, waits 1.5 s and reads it again; only a lease that is still its own makes it the owner.
+- A file that is not a valid lease counts as expired and is replaced, with a warning in the log.
+- The owner renews every 10 s. Before each renewal and each batch of disk writes it reads the lease; a foreign owner there means the lease is lost: the mirror stops writing to disk, keeps the session connected and the editor buffers, and reports the loss.
+- "Use here" writes the lease over a live foreign one; the old owner sees it at its next check.
+- A mirror that dies leaves its lease to expire after 30 s. A clean close deletes the file only while it is still its own.
+- The lease is keyed by the folder, not the share, so two local copies of one share each run a mirror.
+
+Limits: reading then writing is not atomic on any file port. Two mirrors that write inside the same 1.5 s window can both acquire; the loser yields at its first check. A folder synced to another device carries the lease too, and sync delay can make it look expired there or live after its owner stopped.
 
 ## Project shares
 
@@ -145,7 +187,7 @@ A History restore writes the restored text into each shared file's doc so peers 
 - Each thread in `comments` is a `Y.Map` with the keys of a thread in [comments.json](library-format.md#labshelfcommentsjson): `id`, `file`, `anchor` and `resolved` as plain JSON values, and `comments` as a `Y.Array` of plain comment objects. A reply is a push onto that array, so replies two members add at once both survive. Keys a client does not know are kept.
 - A live anchor adds `start` and `end` to `{quote, prefix, suffix}`: Yjs relative positions in the file doc's `content`, in base64. `start` binds to the character after it and `end` to the character before it, so text typed at either edge stays outside the thread.
 - A client places a thread in this order: the range between `start` and `end` when both resolve to a non-empty range in the file's `content`; else an exact occurrence of `quote`, the one whose surrounding text best matches `prefix` and `suffix`; else the closest approximate match of `quote` above a similarity threshold. A thread placed nowhere is detached: it stays listed, without a place in the text.
-- Each client writes its project's `.labshelf/comments.json` from the map, so every member's file holds the same threads in the same order. Top-level keys and entries that are not valid threads stay in the file they were in and do not travel. Sharing a project imports the threads of its `comments.json` into the map.
+- Each client's disk mirror writes its project's `.labshelf/comments.json` from the map, behind the same ownership checks as every other file, so every member's file holds the same threads in the same order. Top-level keys and entries that are not valid threads stay in the file they were in and do not travel. Sharing a project imports the threads of its `comments.json` into the map.
 
 ### Settings
 

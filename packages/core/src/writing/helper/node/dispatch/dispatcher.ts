@@ -10,14 +10,14 @@ import type { HelperHandlers, HelperSend } from "./handlerTypes.js";
 const LOG_MODULE = "helper-dispatch";
 // A message that never parsed has no id to answer; the envelope still needs one.
 const NO_ID = "0";
-// `cancel` must reach a running build, so it skips the queue that keeps every other message in arrival order.
-const UNQUEUED: ReadonlySet<ToHelperMessage["type"]> = new Set(["cancel"]);
+// INVARIANT: cancellation and thumbnail replies must reach work that is waiting inside the ordered queue.
+const UNQUEUED: ReadonlySet<ToHelperMessage["type"]> = new Set(["cancel", "templateThumbnail"]);
 
 type ErrorReply = (id: string, code: string, message: string) => void;
 
 const errorReply = (send: HelperSend): ErrorReply => (id, code, message) => send({ v: PROTOCOL_VERSION, id, type: "error", code, message });
 
-async function runHandler(handlers: HelperHandlers, message: ToHelperMessage, send: HelperSend, logger: ILogger): Promise<void> {
+async function runHandler(handlers: HelperHandlers, message: ToHelperMessage, send: HelperSend, logger: ILogger, payload: Uint8Array): Promise<void> {
   const reply = errorReply(send);
   const handler = handlers[message.type];
   if (!handler) {
@@ -25,7 +25,7 @@ async function runHandler(handlers: HelperHandlers, message: ToHelperMessage, se
     return;
   }
   try {
-    await handler(message, send);
+    await handler(message, send, payload);
   } catch (error) {
     if (error instanceof HelperProjectError) {
       void logger.log("WARN", LOG_MODULE, "Project request refused", { type: message.type, id: message.id, code: error.code, reason: error.message });
@@ -53,7 +53,7 @@ export interface Dispatcher {
 }
 
 export function createDispatcher(handlers: HelperHandlers, logger: ILogger): Dispatcher {
-  const backlog: Array<{ message: ToHelperMessage; send: HelperSend }> = [];
+  const backlog: Array<{ message: ToHelperMessage; send: HelperSend; payload: Uint8Array }> = [];
   const idleWaiters: Array<() => void> = [];
   let queueBusy = false;
   let inflight = 0;
@@ -64,7 +64,7 @@ export function createDispatcher(handlers: HelperHandlers, logger: ILogger): Dis
     const next = backlog.shift();
     if (!next) { return; }
     queueBusy = true;
-    track(runHandler(handlers, next.message, next.send, logger), () => { queueBusy = false; pump(); });
+    track(runHandler(handlers, next.message, next.send, logger, next.payload), () => { queueBusy = false; pump(); });
   }
 
   function track(task: Promise<void>, after?: () => void): void {
@@ -76,16 +76,16 @@ export function createDispatcher(handlers: HelperHandlers, logger: ILogger): Dis
     });
   }
 
-  const handle: Dispatcher["handle"] = (envelope, _payload, socketSend) => {
+  const handle: Dispatcher["handle"] = (envelope, payload, socketSend) => {
     // TRAP: interfaces such as HelperProgress lack an index signature, so the message needs a cast to the socket envelope.
     const send: HelperSend = (message, payload) => socketSend(message as unknown as Record<string, unknown>, payload);
     const message = parseEnvelope(envelope, errorReply(send), logger);
     if (!message) { return; }
     if (UNQUEUED.has(message.type)) {
-      track(runHandler(handlers, message, send, logger));
+      track(runHandler(handlers, message, send, logger, payload));
       return;
     }
-    backlog.push({ message, send });
+    backlog.push({ message, send, payload });
     pump();
   };
 

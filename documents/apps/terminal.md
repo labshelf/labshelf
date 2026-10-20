@@ -87,6 +87,12 @@ To verify against the unpacked extension, in Playwright's Chrome for Testing and
 3. Put a manifest for `dev.labshelf.helper` at `<user-data-dir>/NativeMessagingHosts/dev.labshelf.helper.json` with `path` the wrapper ([manifest format](../contracts/native-host.md#manifests)). The manifest's `key` gives the unpacked extension the allowed id.
 4. Launch Chrome for Testing as in [browser.md → headless run](browser.md#headless-run), with `--user-data-dir=<user-data-dir>`, and open `options/index.html`. The helper's frames are in `<scratch>/home/Library/Application Support/LabShelf Helper/logs/`.
 
+## Helper releases
+
+The `helper-v<version>` tag triggers the Helper release workflow. Its version must match the helper version declared in core. The workflow builds and smoke-tests executables for macOS arm64/x64, Linux arm64/x64 and Windows x64, packages the installers and publishes them with checksums, provenance attestations and an Ed25519-signed update manifest. The executable smoke test reads the protocol version from core.
+
+The repository secret `HELPER_UPDATE_KEY` signs updates. Windows signing uses `SIGNPATH_API_TOKEN` and the `SIGNPATH_*` repository variables when configured; without them the workflow publishes unsigned Windows assets. Publish a tag only after the code is committed and the affected packages pass their checks.
+
 ## Adding papers over the network
 
 - `labshelf add` and the explorer's add accept a DOI, PMID, PMCID, arXiv id or a landing-page URL. The core network import resolves metadata, skips a paper the library already has (DOI, arXiv id, or title and year), and finds the PDF through the core chain. A landing page without a downloadable PDF is saved without one.

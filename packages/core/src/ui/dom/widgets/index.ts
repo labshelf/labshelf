@@ -6,3 +6,4 @@ export { showDialog, confirmDialog, type DialogButton, type DialogOptions } from
 export { quickPick, inputBox, type QuickPickEntry, type QuickPickItem, type QuickPickOptions, type QuickPickSeparator, type InputBoxOptions } from "./quickInput.js";
 export { toast, type ToastKind } from "./toast.js";
 export { arcMarkElement } from "./arcMark.js";
+export { mountOverlay } from "./overlay.js";

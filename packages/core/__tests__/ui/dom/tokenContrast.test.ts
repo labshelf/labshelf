@@ -66,7 +66,6 @@ const PAIRS: Record<string, [string, string]> = {
   "link on sidebar": ["--ls-link", "--ls-sidebar-bg"],
   "body text on widget background": ["--ls-fg", "--ls-widget-bg"],
   "body text on code background": ["--ls-fg", "--ls-code-bg"],
-  "status bar text": ["--ls-statusbar-fg", "--ls-statusbar-bg"],
   "active list row text": ["--ls-list-active-fg", "--ls-list-active-bg"],
   "body text on hovered list row": ["--ls-fg", "--ls-list-hover"],
   "body text on inactive selected list row": ["--ls-fg", "--ls-list-inactive-bg"],

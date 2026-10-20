@@ -254,7 +254,6 @@ export function registerWritingView(
   });
   context.subscriptions.push(citeSections);
   const { includeOnly, includeOnlyTarget } = createIncludeOnly(controller, projects);
-  // The library root, and with it the logger, can change after activation.
   const publishedLookup = publishedVersionLookup({ fetch: globalThis.fetch, get logger() { return logger; } });
   const parts: WritingParts = {
     context, controller, host, projects, figures, readingLists, listPapers, citeSections, includeOnly, includeOnlyTarget, publishedLookup, adapters,

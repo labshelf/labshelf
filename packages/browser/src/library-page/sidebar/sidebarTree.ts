@@ -1,7 +1,7 @@
-// Mounts the sidebar: the brand and the core library sidebar, whose Library follows the page's store and whose Projects open
-// in the editor page or in workspace tabs. Choosing a folder, paper or tag shows the Library tab.
+// Connects the browser sidebar to library and project actions.
 import { icon, parentDir, type HostEndpoint } from "@labshelf/core";
-import { mountLibrarySidebar, type LibraryUi } from "@labshelf/core/dom";
+import { el, mountLibrarySidebar, type LibraryUi } from "@labshelf/core/dom";
+import { bx } from "../../platform";
 import type { PagePrefs } from "../prefs";
 import type { TabKindName } from "../tabs";
 import type { SidebarProjects } from "./sidebarProjects";
@@ -14,7 +14,10 @@ export function mountSidebarTree(
   ui: Pick<LibraryUi, "store" | "folders" | "dropTarget">, slot: HTMLElement, prefs: PagePrefs, host: Pick<HostEndpoint, "post">,
   projects: SidebarProjects | null, openTab: (kind: TabKindName) => void, showLibrary: boolean,
 ): () => void {
-  slot.innerHTML = `<div class="tree-head"><span class="ls-brand">${icon("logo")}<span>LabShelf</span></span></div>`;
+  slot.innerHTML = `<div class="tree-head"><span class="ls-brand">LabShelf</span></div>`;
+  const settings = el("button", { class: "ls-icon-btn", type: "button", title: "LabShelf settings", "aria-label": "LabShelf settings", html: icon("gear") });
+  settings.addEventListener("click", () => { void bx.runtime.openOptionsPage(); });
+  slot.querySelector(".tree-head")!.append(settings);
   const treeEl = slot.appendChild(document.createElement("div"));
   const { store, folders } = ui;
   const sidebar = mountLibrarySidebar(treeEl, {

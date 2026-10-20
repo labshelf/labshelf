@@ -1,7 +1,6 @@
-/**
- * Drags the handles beside the side panes: dragging resizes a pane, dragging below its threshold collapses it, and
- * a double-click restores a collapsed one (and, when the pane has a default width, returns to it).
- */
+// Resizes collapsible panes with pointer handles.
+import { icon } from "../../../ui/index.js";
+
 export interface SashOptions {
   root: HTMLElement;
   pane: HTMLElement;
@@ -15,6 +14,7 @@ export interface SashOptions {
 
 /** Wires one sash. The sash captures the pointer so a drag over an iframe still ends with the button. */
 export function attachSash(sash: HTMLElement, o: SashOptions): void {
+  sash.insertAdjacentHTML("afterbegin", `<span class="ls-sash-grip" aria-hidden="true">${icon("more")}</span>`);
   let dragging = false;
   const width = (): number => parseInt(o.pane.style.width, 10) || o.limits.min;
   sash.addEventListener("pointerdown", (e) => {

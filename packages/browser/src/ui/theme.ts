@@ -1,6 +1,6 @@
 // Holds the theme preference shared by every browser surface; follows the OS unless pinned light or dark.
 // Stored in localStorage so themeBoot.ts applies it before paint; a storage event syncs open surfaces.
-import { applyThemeToDocument, nextThemePref, resolveTheme, type ResolvedTheme, type ThemePref } from "@labshelf/core/dom";
+import { applyThemeToDocument, resolveTheme, type ResolvedTheme, type ThemePref } from "@labshelf/core/dom";
 
 const THEME_STORAGE_KEY = "labshelf.theme";
 
@@ -32,13 +32,6 @@ export function setThemePref(pref: ThemePref): void {
     else localStorage.setItem(THEME_STORAGE_KEY, pref);
   } catch { /* private mode — apply for this page only */ }
   applyTheme(pref);
-}
-
-/** Advances the preference one step through the cycle, the way the status-bar toggle expects. */
-export function cycleThemePref(): ThemePref {
-  const pref = nextThemePref(getThemePref());
-  setThemePref(pref);
-  return pref;
 }
 
 /** Subscribes to theme changes (OS, other surfaces, or this page). Fires immediately. */

@@ -2,6 +2,7 @@
 import type { ILogger, LibraryFileSystem } from "@labshelf/core";
 import { createBrowserLatexHelper } from "../../helper/client";
 import { getSettings } from "../../platform";
+import { currentLibraryId, librarySources } from "../../storage";
 import { createBrowserProjects } from "../../storage/projects";
 import { createPageShares, runJoinDialog } from "../editor/collab";
 import { createHelperProject } from "../helperProject";
@@ -29,7 +30,7 @@ export interface ProjectWiring {
 }
 
 export function mountProjectWiring({ workspace, fs, logger, openTab }: ProjectWiringOptions): ProjectWiring {
-  const shares = createPageShares({ fs, logger });
+  const shares = createPageShares({ sources: librarySources(), libraryId: currentLibraryId, logger });
   const helperProject = createHelperProject({
     helper: createBrowserLatexHelper(logger), logger,
     buildSettings: async () => { const { autoCompile, haltOnError } = await getSettings(); return { autoCompile, haltOnError }; },

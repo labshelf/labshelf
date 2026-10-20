@@ -1,10 +1,9 @@
 // Joins a shared project from an invite link into the library, or reconnects a shared project whose key this device lost.
 import * as vscode from "vscode";
 
-import { assertInviteHasRelay, formatInvite, InviteWithoutRelayError, parseInvite, type Invite, type InviteError } from "@labshelf/core";
+import { assertInviteHasRelay, formatInvite, InviteWithoutRelayError, parseInvite, type Invite, type InviteError, type ShareConnection } from "@labshelf/core";
 import { OPEN_PROJECT_COMMAND } from "../../../writing/session/index.js";
 import { LOG_MODULE, projectName, reportFailure, type CollabHost } from "../collabHost.js";
-import type { ShareConnection } from "../session/index.js";
 
 export const JOIN_COMMAND = "labshelf.collab.join";
 const INSTALL_PAPERS_COMMAND = "labshelf.installProjectPapers";

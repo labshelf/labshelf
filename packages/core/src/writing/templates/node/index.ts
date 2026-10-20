@@ -5,3 +5,4 @@ export type { SaveTemplateDetails } from "./saveProjectAsTemplate.js";
 export { buildCatalogIndex, validateCatalog } from "./catalog/index.js";
 export type { CatalogProblem } from "./catalog/index.js";
 export { checkTemplateForPublish } from "./publish/index.js";
+export { savePublishedTemplate } from "./savePublishedTemplate.js";

@@ -15,8 +15,8 @@ jest.mock("@labshelf/core/dom", () => ({ inputBox: (...args: unknown[]) => input
 const findProject = jest.fn();
 jest.mock("../../../../src/library-page/projects-data/findProject", () => ({ findProject: (...args: unknown[]) => findProject(...args) }));
 
-import type { ILogger, ProjectEntry } from "@labshelf/core";
-import { runJoinDialog, saveDisplayName, UnknownShareKindError } from "../../../../src/library-page/editor/collab";
+import { UnknownShareKindError, type ILogger, type ProjectEntry } from "@labshelf/core";
+import { runJoinDialog, saveDisplayName } from "../../../../src/library-page/editor/collab";
 import { memoryLibraryFs } from "../../../support/memoryLibraryFs";
 
 const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };

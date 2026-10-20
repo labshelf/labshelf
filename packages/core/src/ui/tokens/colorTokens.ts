@@ -4,6 +4,7 @@ import { token, type DesignToken } from "./designToken.js";
 // Each role stands in for the VS Code colour of the same purpose, so the browser
 // surfaces read as the same product as the VS Code webviews.
 export const COLOR_TOKENS = {
+  "workspace-bg": token("#141414", "#eeeeee"),
   bg: token("#1f1f1f", "#ffffff"),
   fg: token("#cccccc", "#3b3b3b"),
   desc: token("#9d9d9d", "#717171"),
@@ -24,12 +25,8 @@ export const COLOR_TOKENS = {
   "border-faint": token("rgba(128, 128, 128, .07)", "rgba(128, 128, 128, .1)"),
   "widget-bg": token("#202020", "#f8f8f8"),
   "code-bg": token("#2b2b2b", "#f8f8f8"),
-  "tab-active-border": token("#0078d4", "#005fb8"),
   "sash-hover": token("#0078d4", "#005fb8"),
   progress: token("#0078d4", "#005fb8"),
-  "statusbar-bg": token("#181818", "#f8f8f8"),
-  "statusbar-fg": token("#cccccc", "#3b3b3b"),
-  "statusbar-hover": token("rgba(255, 255, 255, .12)", "rgba(0, 0, 0, .12)"),
   overlay: token("rgba(0, 0, 0, .3)", "rgba(0, 0, 0, .18)"),
 
   "list-hover": token("#2a2d2e", "#f2f2f2"),
