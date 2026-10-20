@@ -1,6 +1,6 @@
 // Shows the conflict notification after a scan and walks the user through resolving the copies.
 import * as vscode from "vscode";
-import { errorMessage, type ConflictCopy, type ConflictResolution, type ILogger, type PathOps } from "@labshelf/core";
+import { conflictOwnerLabel, errorMessage, type ConflictCopy, type ConflictResolution, type ILogger, type PathOps } from "@labshelf/core";
 import type { ActiveServices } from "../../commands/index.js";
 import { conflictChoices, toolName } from "./conflictChoices.js";
 import { ConflictNotifier, conflictMessage } from "./conflictNotifier.js";
@@ -59,7 +59,7 @@ export class ConflictHandling {
   }
 
   private async ask(copy: ConflictCopy, index: number, total: number, services: ActiveServices): Promise<ConflictResolution | undefined> {
-    const title = (copy.owner.kind === "paper" && services.library.paper(copy.owner.id)?.record.title) || copy.owner.id;
+    const title = conflictOwnerLabel(copy.owner, copy.owner.kind === "paper" ? services.library.paper(copy.owner.id)?.record.title : undefined);
     const picked = await vscode.window.showQuickPick(
       conflictChoices(copy).map((choice) => ({ label: choice.label, resolution: choice.resolution })),
       {

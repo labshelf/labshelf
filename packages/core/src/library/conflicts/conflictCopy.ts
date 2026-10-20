@@ -3,8 +3,8 @@ import { METADATA_FILE } from "../layout.js";
 
 export type SyncTool = "syncthing" | "nextcloud" | "dropbox" | "rclone";
 
-/** A paper (its paper folder or its sidecar folder) or a writing project, by id. */
-export type ConflictOwner = { kind: "paper"; id: string } | { kind: "project"; id: string };
+/** A paper (its paper folder or its sidecar folder), a writing project or a Space, by id. */
+export type ConflictOwner = { kind: "paper"; id: string } | { kind: "project"; id: string } | { kind: "space"; id: string };
 
 export interface ConflictCopy {
   owner: ConflictOwner;
@@ -18,8 +18,15 @@ export interface ConflictCopy {
 /** keepMine deletes the copy, keepOther replaces the original with it, keepBoth keeps it as `<name> (copy N).<ext>`. */
 export type ConflictResolution = "keepMine" | "keepOther" | "keepBoth";
 
-/** The resolutions a copy allows: keepBoth is left out for metadata.yaml, because a paper has exactly one. */
+/** The name a conflict is shown under: "Space <id>", the paper's title when known, else the owner id. */
+export function conflictOwnerLabel(owner: ConflictOwner, paperTitle?: string): string {
+  if (owner.kind === "space") return `Space ${owner.id}`;
+  return (owner.kind === "paper" && paperTitle) || owner.id;
+}
+
+/** The resolutions a copy allows: keepBoth is left out for metadata.yaml and the Space files space.json and glossary.json, because a paper has exactly one metadata.yaml and a Space exactly one of each. */
 export function conflictResolutions(conflict: ConflictCopy): ConflictResolution[] {
   const fileName = conflict.original.split(/[\\/]/).pop();
-  return fileName === METADATA_FILE ? ["keepMine", "keepOther"] : ["keepMine", "keepOther", "keepBoth"];
+  const single = fileName === METADATA_FILE || conflict.owner.kind === "space";
+  return single ? ["keepMine", "keepOther"] : ["keepMine", "keepOther", "keepBoth"];
 }

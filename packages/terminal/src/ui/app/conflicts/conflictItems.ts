@@ -1,7 +1,7 @@
 // Builds the labels and choices the conflict overlay shows for sync conflict copies.
 import * as path from "node:path";
 
-import { conflictResolutions, type ConflictCopy, type ConflictResolution } from "@labshelf/core";
+import { conflictOwnerLabel, conflictResolutions, type ConflictCopy, type ConflictResolution } from "@labshelf/core";
 
 import type { PickerItem } from "../../overlays.js";
 
@@ -16,11 +16,11 @@ export function conflictCountLabel(count: number): string {
   return count === 0 ? "" : `${count} conflict${count === 1 ? "" : "s"}`;
 }
 
-/** One picker row per copy: the paper's title (its id when the store lacks it) or the project id, the file name and the sync tool. */
+/** One picker row per copy: the paper's title (its id when the store lacks it), the project id or "Space <id>", the file name and the sync tool. */
 export function conflictItems(copies: readonly ConflictCopy[], titleOf: (paperId: string) => string | undefined): PickerItem[] {
   return copies.map((copy, index) => ({
     id: String(index),
-    label: `${(copy.owner.kind === "paper" ? titleOf(copy.owner.id) : undefined) ?? copy.owner.id} · ${path.basename(copy.original)}`,
+    label: `${conflictOwnerLabel(copy.owner, copy.owner.kind === "paper" ? titleOf(copy.owner.id) : undefined)} · ${path.basename(copy.original)}`,
     detail: copy.tool,
   }));
 }

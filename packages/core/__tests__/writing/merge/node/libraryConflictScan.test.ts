@@ -230,3 +230,16 @@ describe("scanLibraryConflicts on project files", () => {
     expect(copies.map((c) => c.owner)).toEqual([{ kind: "paper", id: "smith2020x" }]);
   });
 });
+
+describe("scanLibraryConflicts on Space files", () => {
+  it("includes Space conflict copies", async () => {
+    const lib = await makeTempDir();
+    const dir = path.join(lib, "spaces", "s1");
+    await fs.mkdir(dir, { recursive: true });
+    const copy = path.join(dir, "space.sync-conflict-20240301-123456-ABCDEFG.json");
+    await fs.writeFile(copy, "{}");
+
+    const found = await scanLibraryConflicts(lib, memoryStore(), recordingLogger());
+    expect(found.map((c) => [c.owner, c.copy])).toEqual([[{ kind: "space", id: "s1" }, copy]]);
+  });
+});

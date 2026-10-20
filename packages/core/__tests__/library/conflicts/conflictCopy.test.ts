@@ -1,4 +1,20 @@
-import { conflictResolutions, type ConflictCopy } from "@labshelf/core";
+import { conflictOwnerLabel, conflictResolutions, type ConflictCopy } from "@labshelf/core";
+
+describe("conflictOwnerLabel", () => {
+  it("labels a Space by its id and ignores a title", () => {
+    expect(conflictOwnerLabel({ kind: "space", id: "s1" })).toBe("Space s1");
+    expect(conflictOwnerLabel({ kind: "space", id: "s1" }, "Title")).toBe("Space s1");
+  });
+
+  it("labels a paper by its title, else its id", () => {
+    expect(conflictOwnerLabel({ kind: "paper", id: "p" }, "Attention")).toBe("Attention");
+    expect(conflictOwnerLabel({ kind: "paper", id: "p" })).toBe("p");
+  });
+
+  it("labels a project by its id", () => {
+    expect(conflictOwnerLabel({ kind: "project", id: "w" })).toBe("w");
+  });
+});
 
 function copyOf(original: string): ConflictCopy {
   return { owner: { kind: "paper", id: "p" }, original, copy: `${original}.conflict`, tool: "syncthing" };
@@ -12,5 +28,14 @@ describe("conflictResolutions", () => {
   it("leaves out keepBoth for metadata.yaml, on POSIX and Windows paths", () => {
     expect(conflictResolutions(copyOf("/lib/papers/p/metadata.yaml"))).toEqual(["keepMine", "keepOther"]);
     expect(conflictResolutions(copyOf("C:\\lib\\papers\\p\\metadata.yaml"))).toEqual(["keepMine", "keepOther"]);
+  });
+});
+
+describe("conflictResolutions for Space files", () => {
+  it("leaves out keepBoth for space.json and glossary.json", () => {
+    for (const file of ["space.json", "glossary.json"]) {
+      const conflict: ConflictCopy = { owner: { kind: "space", id: "s" }, original: `/lib/spaces/s/${file}`, copy: `/lib/spaces/s/${file}.conflict1`, tool: "rclone" };
+      expect(conflictResolutions(conflict)).toEqual(["keepMine", "keepOther"]);
+    }
   });
 });
