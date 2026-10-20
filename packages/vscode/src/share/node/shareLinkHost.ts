@@ -1,7 +1,7 @@
 // Declares what the share-link commands run over on the desktop, the device's share list of the open library, and how a failure is reported.
 import * as vscode from "vscode";
 
-import { errorMessage, type ILogger, type RelayAccount, type RelayAccountStore, type ShareRegistryStore } from "@labshelf/core";
+import { shareFailureText, type ILogger, type RelayAccount, type RelayAccountStore, type ShareRegistryStore } from "@labshelf/core";
 import { deviceLocalLayout, fileShareRegistryStore } from "@labshelf/core/node";
 import type { ActiveServices } from "../../commands/index.js";
 import { CONNECT_RELAY_COMMAND } from "../../relay/index.js";
@@ -34,5 +34,5 @@ export async function connectedRelay(host: ShareLinkHost, why: string): Promise<
 /** `context` must hold no link key, owner secret or token. */
 export function reportShareFailure(logger: ILogger, action: string, error: unknown, context: Record<string, unknown>): void {
   void logger.error(LOG_MODULE, error, { ...context, action });
-  void vscode.window.showErrorMessage(`LabShelf could not ${action}: ${errorMessage(error)}`);
+  void vscode.window.showErrorMessage(shareFailureText(action, error));
 }

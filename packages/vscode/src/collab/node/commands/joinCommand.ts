@@ -1,21 +1,12 @@
-// Joins a shared project from an invite link into the library, or reconnects a shared project whose key this device lost.
+// Asks for an invite link and joins its shared project through the core join workflow, or reconnects one whose key this device lost.
 import * as vscode from "vscode";
 
-import { assertInviteHasRelay, formatInvite, InviteWithoutRelayError, parseInvite, type Invite, type InviteError, type ShareConnection } from "@labshelf/core";
+import { joinSharedProject, parseInvite, type JoinOutcome } from "@labshelf/core";
 import { OPEN_PROJECT_COMMAND } from "../../../writing/session/index.js";
-import { LOG_MODULE, projectName, reportFailure, type CollabHost } from "../collabHost.js";
+import { projectName, reportFailure, type CollabHost } from "../collabHost.js";
 
 export const JOIN_COMMAND = "labshelf.collab.join";
 const INSTALL_PAPERS_COMMAND = "labshelf.installProjectPapers";
-
-const INVITE_PROBLEMS: Record<InviteError, string> = {
-  notAnInvite: "This is not a LabShelf invite link.",
-  unsupportedVersion: "This invite comes from a newer LabShelf. Update LabShelf and try again.",
-  badShareId: "This invite link is damaged. Ask for a new one.",
-  badKey: "This invite link is damaged. Ask for a new one.",
-  badRelayList: "This invite link is damaged. Ask for a new one.",
-  shareIdMismatch: "This invite link is damaged. Ask for a new one.",
-};
 
 async function askInvite(): Promise<string | undefined> {
   return vscode.window.showInputBox({
@@ -42,12 +33,13 @@ function offerNextSteps(host: CollabHost, folder: string): void {
   });
 }
 
-function joinNew(host: CollabHost, invite: Invite): Thenable<ShareConnection> {
+/** Shows progress, since a join waits for a collaborator to answer; cancelling it aborts the join. */
+function join(host: CollabHost, text: string): Thenable<JoinOutcome> {
   const options = { location: vscode.ProgressLocation.Notification, title: "Joining the shared project: waiting for a collaborator to answer", cancellable: true };
   return vscode.window.withProgress(options, (_progress, token) => {
     const abort = new AbortController();
     token.onCancellationRequested(() => abort.abort());
-    return host.connect(invite, { mode: "join", signal: abort.signal });
+    return joinSharedProject(host.ports, text, abort.signal);
   });
 }
 
@@ -56,38 +48,17 @@ export async function joinProject(host: CollabHost, inviteText: string | undefin
   if (!(await host.requireLibrary())) { return undefined; }
   const text = typeof inviteText === "string" ? inviteText : await askInvite();
   if (!text?.trim()) { return undefined; }
-  const parsed = await parseInvite(text);
-  if (!parsed.ok) {
-    void host.logger.log("WARN", LOG_MODULE, "Refused an invite that does not parse", { error: parsed.error });
-    void vscode.window.showErrorMessage(INVITE_PROBLEMS[parsed.error]);
-    return undefined;
-  }
-  const { invite } = parsed;
-  const active = host.shares.get(invite.shareId);
-  if (active) {
-    void vscode.window.showInformationMessage("This shared project is already connected on this device.");
-    return active.folder;
-  }
   try {
-    assertInviteHasRelay(invite);
-    const link = await formatInvite({ shareKey: invite.shareKey, relays: invite.relays });
-    const known = host.projects.list().find((entry) => entry.kind === "ready" && entry.settings.shared === invite.shareId);
-    const folder = await host.shares.hold(invite.shareId, async () => {
-      const share = known ? await host.connect(invite, { mode: "resume", folder: known.folder }) : await joinNew(host, invite);
-      await host.keys.remember(link, invite.shareId);
-      await host.projects.reload();
-      return share.folder;
-    });
-    void host.logger.log("INFO", LOG_MODULE, known ? "Reconnected a shared project from its invite" : "Joined a shared project", { folder, shareId: invite.shareId });
-    if (!known) { offerNextSteps(host, folder); }
-    return folder;
-  } catch (error) {
-    if (error instanceof InviteWithoutRelayError) {
-      void host.logger.log("WARN", LOG_MODULE, "Refused an invite that lists no relay", { shareId: invite.shareId });
-      void vscode.window.showErrorMessage(error.message);
+    const outcome = await join(host, text);
+    if (outcome.kind === "refused") {
+      void vscode.window.showErrorMessage(outcome.problem);
       return undefined;
     }
-    reportFailure(host.logger, "join the shared project", error, { shareId: invite.shareId });
+    if (outcome.kind === "active") { void vscode.window.showInformationMessage("This shared project is already connected on this device."); }
+    if (outcome.kind === "joined") { offerNextSteps(host, outcome.folder); }
+    return outcome.folder;
+  } catch (error) {
+    reportFailure(host.logger, "join the shared project", error);
     return undefined;
   }
 }

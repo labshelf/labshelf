@@ -1,20 +1,21 @@
 // Wires project collaboration on the desktop: the share, join and leave commands, the owner's relay, editor binding, presence, comments and status bar.
 import * as vscode from "vscode";
 
+import { offerOwnRelayToShares, withdrawOwnRelayFromShares } from "@labshelf/core";
 import type { LibraryRootController } from "../../activation/libraryLifecycle/index.js";
 import { openLibraryLogger } from "../../activation/registration/index.js";
 import { openRelayAccounts, registerRelay } from "../../relay/index.js";
 import type { WritingProjects } from "../../writing/index.js";
-import type { CollabHost } from "./collabHost.js";
+import { showRefusedOffer, type CollabHost } from "./collabHost.js";
+import { createCollabPorts } from "./collabPorts.js";
 import {
   JOIN_COMMAND, joinProject, LEAVE_COMMAND, leaveProject, OFFER_RELAY_COMMAND, offerRelay, registerShareStatusBar, SHARE_COMMAND, shareProject,
   WITHDRAW_RELAY_COMMAND, withdrawRelay, type ProjectTarget,
 } from "./commands/index.js";
 import { SharedEditors, SharedPresence } from "./editors/index.js";
-import { offerToShares, withdrawFromShares } from "./ownRelay.js";
 import { registerComments } from "./registerComments.js";
 import { resumeShares } from "./resumeShares.js";
-import { ActiveShares, connectDesktopShare, ShareKeys } from "./session/index.js";
+import { ActiveShares } from "./session/index.js";
 import { userName } from "./userName.js";
 
 type Controller = Pick<LibraryRootController, "currentRoot" | "currentServices" | "require">;
@@ -27,20 +28,12 @@ function createHost(context: vscode.ExtensionContext, controller: Controller, pr
   const presence = new SharedPresence(editors, () => shares.list(), userName());
   const shares = new ActiveShares((share) => vscode.Disposable.from(editors.attach(share), presence.watch(share)));
   context.subscriptions.push(editors, presence, shares);
+  const relay = openRelayAccounts(context.secrets, logger);
   return {
     libraryRoot,
     requireLibrary: async () => { await controller.require(); return libraryRoot(); },
-    logger, projects, shares, editors,
-    keys: new ShareKeys(context.secrets, logger),
-    relay: openRelayAccounts(context.secrets, logger),
-    connect: async ({ shareId, shareKey, relays }, start) => {
-      const root = libraryRoot();
-      if (!root) { throw new Error("no library is open"); }
-      const isEditorOwned = (folder: string, file: string) => editors.isOwned(folder, file);
-      const share = await connectDesktopShare({ libraryRoot: root, shareId, shareKey, relays, name: userName(), logger, isEditorOwned }, start);
-      shares.add(share);
-      return share;
-    },
+    logger, projects, shares, editors, relay,
+    ports: createCollabPorts({ secrets: context.secrets, libraryRoot, logger, projects, shares, editors, relay }),
   };
 }
 
@@ -49,8 +42,8 @@ export function registerCollaboration(context: vscode.ExtensionContext, controll
   registerShareStatusBar(context, host);
   registerRelay(context, {
     accounts: host.relay, logger: host.logger,
-    offerToShares: () => offerToShares(host),
-    withdrawFromShares: (relayUrl) => withdrawFromShares(host, relayUrl),
+    offerToShares: async () => { (await offerOwnRelayToShares(host.ports)).forEach(showRefusedOffer); },
+    withdrawFromShares: (relayUrl) => withdrawOwnRelayFromShares(host.ports, relayUrl),
   });
   registerComments(context, { projects, shares: host.shares, userName: userName(), logger: host.logger });
   context.subscriptions.push(

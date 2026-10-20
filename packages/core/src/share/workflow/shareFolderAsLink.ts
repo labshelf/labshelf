@@ -22,13 +22,8 @@ export interface ShareFolderAsLinkOptions {
   onStage?: (stage: ShareFolderStage) => void;
 }
 
-/** Holds no link key, so a host can log it. */
-export type ShareFolderSummary = { shareId: string; folder: string; papers: number; withAnnotations: boolean; relayUrl: string };
-
-export interface SharedFolderLink { link: string; summary: ShareFolderSummary }
-
 // CONTRACT: documents/contracts/share-link.md#upload-and-revoke
-export async function shareFolderAsLink(options: ShareFolderAsLinkOptions): Promise<SharedFolderLink> {
+export async function shareFolderAsLink(options: ShareFolderAsLinkOptions): Promise<string> {
   const { folder, withAnnotations, sources, relayUrl, onStage } = options;
   onStage?.("reading");
   const papers = papersInFolder(options.papers, folder, sources.paths.sep);
@@ -37,5 +32,7 @@ export async function shareFolderAsLink(options: ShareFolderAsLinkOptions): Prom
   const share = await buildShare({ folderName: sources.paths.basename(folder), papers: inputs, withAnnotations });
   onStage?.("uploading");
   const link = await uploadShare({ share, relayUrl, backend: options.backendFor(relayUrl), registry: options.registry, logger: options.logger });
-  return { link, summary: { shareId: share.shareId, folder, papers: papers.length, withAnnotations, relayUrl } };
+  // The context holds no link key, so it is safe to log.
+  await options.logger.log("INFO", "share", "Shared a folder as a link", { shareId: share.shareId, folder, papers: papers.length, withAnnotations, relayUrl });
+  return link;
 }

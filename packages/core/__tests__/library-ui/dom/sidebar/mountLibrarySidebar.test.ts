@@ -24,7 +24,7 @@ const tagged = [
 ];
 
 function mount(expanded: string[] = [], collapsed: string[] = [], withProjects = false, withAddFiles = false) {
-  const actions = { ...(withAddFiles ? { addFiles: jest.fn() } : {}), openFolder: jest.fn(), revealPaper: jest.fn(), createFolder: jest.fn(), renameFolder: jest.fn(), removeFolder: jest.fn(), searchTag: jest.fn() };
+  const actions = { ...(withAddFiles ? { addFiles: jest.fn() } : {}), openFolder: jest.fn(), revealPaper: jest.fn(), createFolder: jest.fn(), renameFolder: jest.fn(), removeFolder: jest.fn(), shareFolder: jest.fn(), searchTag: jest.fn() };
   const saveExpanded = jest.fn();
   const saveCollapsed = jest.fn();
   const projects = { open: jest.fn(), menu: jest.fn(), browseTemplates: jest.fn(), allProjects: jest.fn(), newBlank: jest.fn(), addExisting: jest.fn(), joinShared: jest.fn() } as unknown as SidebarProjectActions & Record<string, jest.Mock>;
@@ -48,6 +48,24 @@ const twisty = (slot: HTMLElement, path: string): void => folder(slot, path).que
 const key = (slot: HTMLElement, k: string): void => { slot.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true })); };
 
 describe("mountLibrarySidebar", () => {
+  describe("folder menu", () => {
+    const menuText = (withShare: boolean): string => {
+      const { shareFolder, ...rest } = mount().actions;
+      const slot = document.createElement("div");
+      document.body.replaceChildren(slot);
+      const sidebar = mountLibrarySidebar(slot, { actions: withShare ? { ...rest, shareFolder } : rest, expanded: [], saveExpanded: jest.fn(), collapsed: [], saveCollapsed: jest.fn() });
+      sidebar.setLibrary(folders, papers);
+      folder(slot, "papers/A").dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+      return document.body.textContent ?? "";
+    };
+
+    it("offers Share as Link only when the host can share", () => {
+      expect(menuText(true)).toContain("Share as Link");
+      expect(menuText(false)).not.toContain("Share as Link");
+      expect(menuText(false)).toContain("Rename");
+    });
+  });
+
   it("shows the All papers row first, with the paper count", () => {
     const { slot } = mount();
     expect(compact(rows(slot)[0]!)).toMatch(/^Allpapers5/);

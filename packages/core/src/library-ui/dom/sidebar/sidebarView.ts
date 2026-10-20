@@ -25,6 +25,8 @@ export interface SidebarActions {
   refresh?(): void;
   renameFolder(path: string): void;
   removeFolder(path: string): void;
+  /** Shares the folder's papers as a link; absent when the host cannot share, which hides the menu item. */
+  shareFolder?(path: string): void;
   /** Narrows the list to the papers with this tag. */
   searchTag(tag: string): void;
 }

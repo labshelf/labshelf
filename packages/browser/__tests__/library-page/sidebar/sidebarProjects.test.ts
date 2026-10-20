@@ -18,7 +18,7 @@ const thesisEntry = { kind: "ready", folder: "projects/thesis", settings: { id: 
 async function mount(rows: BrowserProjectRow[] = [ready, broken]) {
   const store = new LibraryViewStore({ folders: [], papers: [], loading: false });
   const prefs = { treeExpanded: () => [], saveTreeExpanded: jest.fn(), collapsedSections: () => [], saveCollapsedSections: jest.fn() } as unknown as PagePrefs;
-  const ui = { sidebar: null, store, folders: { create: jest.fn(), rename: jest.fn(), remove: jest.fn() }, dropTarget: jest.fn(), dispose: jest.fn() } as unknown as LibraryUi;
+  const ui = { sidebar: null, store, folders: { create: jest.fn(), rename: jest.fn(), remove: jest.fn(), share: jest.fn() }, dropTarget: jest.fn(), dispose: jest.fn() } as unknown as LibraryUi;
   const source = {
     rows: jest.fn(async () => rows), openPdf: jest.fn(),
     entryOf: jest.fn(async (id: string) => (id === "thesis" ? thesisEntry : undefined)),
@@ -28,7 +28,7 @@ async function mount(rows: BrowserProjectRow[] = [ready, broken]) {
   document.body.replaceChildren(slot);
   const openTab = jest.fn();
   const joinShared = jest.fn();
-  mountSidebarTree(ui, slot, prefs, { post: jest.fn() }, { projects: createSidebarProjects(source, openTab, session, joinShared), manageRelay: jest.fn() }, openTab, true);
+  mountSidebarTree(ui, slot, prefs, { post: jest.fn() }, { projects: createSidebarProjects(source, openTab, session, joinShared), manageRelay: jest.fn() }, openTab, true, { manage: jest.fn(), importLink: jest.fn() });
   await new Promise((resolve) => setTimeout(resolve, 0));
   return { slot, source, openTab, session, joinShared };
 }

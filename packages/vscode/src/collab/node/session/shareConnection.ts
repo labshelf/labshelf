@@ -1,8 +1,7 @@
 // Connects a shared project on the desktop: the core share connection over this library's state dir, folder and Node disk mirror.
-import * as path from "node:path";
-
 import { connectShare, startProjectMirror, type ILogger, type InviteRelay, type ShareConnection, type ShareStart } from "@labshelf/core";
-import { deviceLocalLayout, mergeText, nodeCollabStorage, nodeMirrorDisk, nodeProjectCatalogContext } from "@labshelf/core/node";
+import { mergeText, nodeCollabStorage, nodeMirrorDisk, nodeProjectCatalogContext } from "@labshelf/core/node";
+import { shareStateDir } from "./shareState.js";
 
 interface ConnectOptions {
   libraryRoot: string;
@@ -19,10 +18,9 @@ interface ConnectOptions {
 
 export function connectDesktopShare(options: ConnectOptions, start: ShareStart): Promise<ShareConnection> {
   const { libraryRoot, shareId, shareKey, relays, name, logger } = options;
-  const dir = path.join(deviceLocalLayout(libraryRoot).collabDir, shareId);
   return connectShare({
     shareId, shareKey, relays, name, logger,
-    storage: nodeCollabStorage({ dir, shareId }),
+    storage: nodeCollabStorage({ dir: shareStateDir(libraryRoot, shareId), shareId }),
     projects: { context: nodeProjectCatalogContext(logger), libraryRoot },
     startMirror: async ({ folder, session, blobs, store, onStopped }) => ({
       kind: "running",

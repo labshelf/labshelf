@@ -46,6 +46,7 @@ UI to host:
 | `navigate` | the user opened another folder | nothing; the host keeps the folder for later replies |
 | `folder.open` | Details (see [details-host.md](details-host.md)) asks to open a paper's folder in the list, which it does not hold | shows the folder in the list (VS Code navigates the list; the browser page posts `navigate` and focuses the Library tab) |
 | `folder.create`, `folder.rename`, `folder.delete` | the user confirmed the prompt | `snapshot`, then `navigate` when the open folder moved or was deleted |
+| `folder.share` | Share as Link… in a folder's sidebar menu | the host's own rights notice, `progress` while the upload runs, then the link ([share-link.md](share-link.md)); only the browser page sends it, since VS Code's sidebar starts the share command directly |
 | `paper.open` | Enter, double-click, Open PDF, an annotation (with its `page`) | opens the reader, or `pdf.missing` when the paper has no readable PDF |
 | `paper.details` | a paper is shown in the detail pane | `details` |
 | `paper.similar` | the Related tab is shown | `similar` |

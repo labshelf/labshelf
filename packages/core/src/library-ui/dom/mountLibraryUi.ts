@@ -33,7 +33,7 @@ export interface LibraryUi {
   sidebar: HTMLElement | null;
   store: LibraryViewStore;
   /** The folder prompts, so host glue offers the same New, Rename and Delete. */
-  folders: { create(parent: string): void; rename(path: string): void; remove(path: string): void };
+  folders: { create(parent: string): void; rename(path: string): void; remove(path: string): void; share(path: string): void };
   /** Makes `el` accept dropped papers and move them into `folder`. */
   dropTarget(el: HTMLElement, folder: string): void;
   dispose(): void;
@@ -70,6 +70,8 @@ export function mountLibraryUi(host: HTMLElement, options: LibraryUiOptions): Li
       create: (parent) => { void promptNewFolder(ctx, parent); },
       rename: (path) => { void promptRenameFolder(ctx, path); },
       remove: (path) => { void confirmDeleteFolder(ctx, path); },
+      // The host shows the rights notice and the progress, so the UI only names the folder.
+      share: (path) => { transport.post({ type: "folder.share", path }); },
     },
     dropTarget: (el, folder) => makeDropTarget(ctx, el, folder),
     dispose: () => { offs.forEach((off) => off()); frame.root.remove(); },

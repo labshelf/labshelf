@@ -3,8 +3,8 @@ import * as vscode from "vscode";
 
 import type { WritingProjects } from "../../writing/index.js";
 import type { SharedEditors } from "./editors/index.js";
-import type { ILogger, Invite, RelayAccountStore, ShareConnection, ShareStart } from "@labshelf/core";
-import type { ActiveShares, ShareKeys } from "./session/index.js";
+import type { ILogger, OwnRelayOffer, RelayAccountStore, ShareWorkflowPorts } from "@labshelf/core";
+import type { ActiveShares } from "./session/index.js";
 
 export const LOG_MODULE = "collab";
 
@@ -17,12 +17,11 @@ export interface CollabHost {
   logger: ILogger;
   projects: WritingProjects;
   shares: ActiveShares;
-  keys: ShareKeys;
   editors: SharedEditors;
   /** The owner's Cloudflare relay, when this device connected one. */
   relay: RelayAccountStore;
-  /** Connects the share in the open library and adds it to `shares`. */
-  connect(invite: Invite, start: ShareStart): Promise<ShareConnection>;
+  /** What the core share, join, resume and leave workflows run on in this window. */
+  ports: ShareWorkflowPorts;
 }
 
 /** The name a project goes by in messages. */
@@ -34,4 +33,10 @@ export const errorText = (error: unknown): string => (error instanceof Error ? e
 export function reportFailure(logger: ILogger, action: string, error: unknown, context: Record<string, unknown> = {}): void {
   void logger.error(LOG_MODULE, error, { action, ...context });
   void vscode.window.showErrorMessage(`LabShelf could not ${action}: ${errorText(error)}`);
+}
+
+/** Shows a refused offer of the owner's relay; the workflow logged it already. */
+export function showRefusedOffer(offer: OwnRelayOffer): void {
+  if (offer.kind !== "refused") { return; }
+  void vscode.window.showWarningMessage(`Your relay did not take the project, so it syncs without it: ${errorText(offer.error)}`);
 }

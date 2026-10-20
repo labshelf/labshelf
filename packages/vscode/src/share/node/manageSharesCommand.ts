@@ -1,7 +1,7 @@
 // Lists the shares this device made of library folders, and copies, opens or revokes the link of the one picked.
 import * as vscode from "vscode";
 
-import { loadShareRegistry, relayBackendFor, revokeShare, revokeShareConfirm, shareRecordLink, type ShareRecord, type ShareRegistryStore } from "@labshelf/core";
+import { copiedLinkText, loadShareRegistry, relayBackendFor, revokeResultText, revokeShare, revokeShareConfirm, shareRecordLink, type ShareRecord, type ShareRegistryStore } from "@labshelf/core";
 import type { ActiveServices } from "../../commands/index.js";
 import { reportShareFailure, shareRegistry, type ShareLinkHost } from "./shareLinkHost.js";
 
@@ -31,7 +31,7 @@ async function revoke(host: ShareLinkHost, services: ActiveServices, registry: S
   const backendFor = relayBackendFor(await host.relay.get());
   const revoked = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `Revoking the link to "${share.folder}"` }, () =>
     revokeShare(share.id, { registry, backendFor, logger: services.logger }));
-  void vscode.window.showInformationMessage(revoked ? `Revoked the link to "${share.folder}".` : `The link to "${share.folder}" is no longer listed on this device.`);
+  void vscode.window.showInformationMessage(revokeResultText(share.folder, revoked, "this device"));
 }
 
 export async function manageShares(host: ShareLinkHost): Promise<void> {
@@ -50,7 +50,7 @@ export async function manageShares(host: ShareLinkHost): Promise<void> {
     if (!picked || !action) { return; }
     if (action === "copy") {
       await vscode.env.clipboard.writeText(shareRecordLink(picked));
-      void vscode.window.showInformationMessage(`Copied the link to "${picked.folder}".`);
+      void vscode.window.showInformationMessage(copiedLinkText(picked.folder));
     } else if (action === "open") {
       await vscode.env.openExternal(vscode.Uri.parse(shareRecordLink(picked)));
     } else {

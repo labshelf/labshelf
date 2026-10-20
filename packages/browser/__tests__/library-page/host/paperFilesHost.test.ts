@@ -36,7 +36,7 @@ async function setup() {
     log: async (level: string, scope: string, message: string) => { logs.push([level, scope, message]); },
     error: async (scope: string) => { logs.push(["ERROR", scope, ""]); },
   };
-  attachLibraryHost(host, { log: log as never });
+  attachLibraryHost(host, { log: log as never, shareRelay: { requireRelay: async () => undefined, connectedRelay: async () => undefined } });
   ui.subscribe((m) => received.push(m));
   ui.post({ type: "ready" });
   for (let i = 0; i < 5; i++) await tick();

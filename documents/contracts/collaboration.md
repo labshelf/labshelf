@@ -119,6 +119,16 @@ A device connects to a share in this order, the same in every app: open the devi
 - Reconnecting restores the docs and the per-relay cursors from the device-local state. Peers and relays supply only what this device lacks.
 - A connection reports its session status, the relay in use, the error of a state write that has not succeeded since it failed, and its mirror: running, busy while another mirror owns the folder, or stopped with a reason. Logs name the share id, never an invite or a key.
 
+### Sharing, joining and leaving
+
+Every app runs these steps through the same core workflows; the app supplies only the user's choices and its key store, connection registry, project list and state dir.
+
+- **Share.** Nothing is published before the owner has a relay: with none connected, the app offers to connect one, and a cancel shares nothing. The device then makes a share key, stores it, and connects with `share`, which writes `shared: <share id>` into labshelf.yaml. Once connected it offers the owner's relay to the [relay list](#relay-list) and hands out the invite. A share that fails or is cancelled at any step closes its connection, forgets the key, removes the `shared` line and the device-local state it wrote, and reports the error. Sharing a project that is shared already reconnects it from the stored key; without one, the app asks for the invite.
+- **Invite to hand out.** The invite is formatted from the stored key and the relays the index lists at that moment, or the stored invite's relays while that list is empty, and is stored again in that form.
+- **Join.** The pasted invite is checked in full (it parses, its share id derives from its key, it lists a relay) before anything is written, so a refused invite creates nothing. A share connected already is left as it is. A project whose `shared` names the share reconnects with `resume`; otherwise a new project is created under `projects/` once the index arrives, and a share that is not a project is refused. The key is stored after the connection stands, so a failed join leaves no key.
+- **Resume.** On every reload of the project list a device closes the connections whose project left the list or lost its `shared` field, and reconnects each shared project that is not in the trash from its stored key. A shared project without a stored key, and a reconnect that fails, are each reported once per share.
+- **Leave.** Leaving closes the connection first. When the close leaves an update unstored, the leave stops and reports it: the key, the `shared` field and the state stay, so a retry loses nothing. Otherwise the device forgets the key, removes `shared` from labshelf.yaml and deletes the share's [device-local state](#device-local-state). Every project file stays, the other members keep the share, and nothing on a relay is deleted. Pasting the invite again joins it as a new project.
+
 ### Persistence acknowledgment
 
 An edit is durable on this device once the write of its update completes: an append to the doc's log on Node, a completed IndexedDB transaction in the browser. Each update is written as it happens, not when the page or window closes; a browser page that dies loses only updates whose transaction had not completed, and those reached the relay if the socket was open. The browser's close on `pagehide` is best effort and nothing depends on it.

@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import {
-  createWorkerShareReader, importShareLink, OPEN_SHARE_FAILURE, parseShareLink, refusedShareLinkText, SHARE_PAGE_ORIGIN, shareImportSummaryText,
+  createWorkerShareReader, importShareLink, OPEN_SHARE_FAILURE, refusedShareLinkText, SHARE_PAGE_ORIGIN, shareImportSummaryText,
 } from "@labshelf/core";
 import { reportShareFailure, type ShareLinkHost } from "./shareLinkHost.js";
 
@@ -16,8 +16,6 @@ export async function importShare(host: ShareLinkHost, link?: unknown): Promise<
   if (!text) { return; }
   const services = await host.requireServices();
   if (!services) { return; }
-  const parsed = parseShareLink(text);
-  const context = parsed.ok ? { shareId: parsed.link.shareId, relayUrl: parsed.link.relayUrl } : {};
   try {
     const result = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: "Importing shared papers" }, async (progress) => {
       const imported = await importShareLink({
@@ -42,6 +40,6 @@ export async function importShare(host: ShareLinkHost, link?: unknown): Promise<
     const choice = await vscode.window.showInformationMessage(shareImportSummaryText(result.summary, folderName, result.withAnnotations), ...(folder ? [show] : []));
     if (choice === show && folder) { await vscode.commands.executeCommand("labshelf.openListTab", { label: folderName, dirPath: folder }); }
   } catch (error) {
-    reportShareFailure(services.logger, "import the shared papers", error, context);
+    reportShareFailure(services.logger, "import the shared papers", error, {});
   }
 }

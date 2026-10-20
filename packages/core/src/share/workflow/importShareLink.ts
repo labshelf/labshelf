@@ -32,7 +32,13 @@ export async function importShareLink(options: ImportShareLinkOptions): Promise<
     await ctx.logger.log("WARN", MODULE, "Could not open a share link", context);
     return { status: "openFailed", error: opened.error };
   }
-  const summary = await importSharedPapers({ ...options, share: opened.share });
+  let summary: SharedImportSummary;
+  try {
+    summary = await importSharedPapers({ ...options, share: opened.share });
+  } catch (error) {
+    await ctx.logger.error(MODULE, error, { action: "import the shared papers", shareId: parsed.link.shareId, relayUrl: parsed.link.relayUrl });
+    throw error;
+  }
   const withAnnotations = opened.share.manifest.papers.some((paper) => (paper.annotations?.length ?? 0) > 0);
   return { status: "imported", summary, withAnnotations };
 }

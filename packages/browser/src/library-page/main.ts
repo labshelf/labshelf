@@ -5,6 +5,7 @@ import {
 import { el, mountLibraryUi } from "@labshelf/core/dom";
 import { createBrowserLogger, getSettings } from "../platform";
 import { mountMoveOffer, mountSourceBanner } from "../library-source";
+import { createPageRelay, openBrowserRelayAccountStore, type PageRelay } from "../relay";
 import { createLibraryFileSystem } from "../storage";
 import { applyTheme } from "../ui";
 import { createDetailsToggle, mergeEndpoints, mountPageDetails, PAGE_CAPABILITIES, PAGE_LABELS, splitDetailsChannels } from "./details";
@@ -64,8 +65,7 @@ async function serveProjectsToDetails(endpoint: AllProjectsEndpoint, services: P
   }
 }
 
-function sidebarProjectParts(project: ProjectWiring): SidebarProjectParts {
-  const { relay } = project;
+function sidebarProjectParts(project: ProjectWiring, relay: PageRelay): SidebarProjectParts {
   return { projects: project.sidebarProjects(), manageRelay: () => { void relay.manage(); } };
 }
 
@@ -78,6 +78,10 @@ async function boot(): Promise<void> {
   applyCodeStyle(prefs);
   const { ui: transport, host } = createLoopbackTransport();
   const details = createLoopbackTransport<DetailsToHost, HostToDetails>();
+  // Share links ask for the relay on a page without projects too. No project share on this page holds the owner's relay
+  // until the collaboration wiring offers it, so there is nothing to offer or withdraw.
+  const relay = createPageRelay({ logger: log, offerToShares: async () => undefined, withdrawFromShares: async () => undefined });
+  const relayAccounts = openBrowserRelayAccountStore(log);
   const hub = createSelectionHub((target) => details.host.post({ type: "details.show", target }));
   const channels = splitDetailsChannels(details.host, {
     current: hub.current,
@@ -85,6 +89,7 @@ async function boot(): Promise<void> {
   });
   const libraryHost = attachLibraryHost(mergeEndpoints(host, channels.library), {
     log, initialPaper: new URLSearchParams(location.search).get("paper"),
+    shareRelay: { requireRelay: () => relay.requireBrowserRelay(), connectedRelay: () => relayAccounts.get() },
     onSelection: (ids) => hub.publish("list", ids.length ? { kind: "paper", ids } : null),
   });
   attachRouter(host, libraryHost.paperIdAtPath);
@@ -112,7 +117,8 @@ async function boot(): Promise<void> {
   project = await loadProjectWiring(plan, invite, { workspace, fs, logger: log, openTab });
   if (project) await serveProjectsToDetails(channels.projects, project.services, workspace, fs);
   mountPageDetails(shell.details, details.ui, prefs);
-  mountSidebarTree(ui, shell.sidebar, prefs, host, plan.projects && project ? sidebarProjectParts(project) : null, openTab, plan.library);
+  const projectParts = plan.projects && project ? sidebarProjectParts(project, relay) : null;
+  mountSidebarTree(ui, shell.sidebar, prefs, host, projectParts, openTab, plan.library, libraryHost.shareLinks);
   workspace.restore(location.hash);
   project?.start(invite);
   mountSourceSurfaces(root, libraryHost.reloadSnapshots);

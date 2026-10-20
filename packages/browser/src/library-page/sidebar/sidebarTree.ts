@@ -1,6 +1,6 @@
 // Connects the browser sidebar to library and project actions.
 import { icon, parentDir, type HostEndpoint } from "@labshelf/core";
-import { el, mountLibrarySidebar, type LibraryUi } from "@labshelf/core/dom";
+import { el, mountLibrarySidebar, showMenu, type LibraryUi } from "@labshelf/core/dom";
 import { bx } from "../../platform";
 import type { PagePrefs } from "../prefs";
 import type { TabKindName } from "../tabs";
@@ -12,10 +12,23 @@ export interface SidebarProjectParts {
   manageRelay(): void;
 }
 
-function headButton(label: string, glyph: "gear" | "cloud", onClick: () => void): HTMLElement {
-  const button = el("button", { class: "ls-icon-btn", type: "button", title: label, "aria-label": label, html: icon(glyph) });
-  button.addEventListener("click", onClick);
+/** The library's share-link actions that start from no folder. */
+export interface SidebarShareLinks {
+  manage(): void;
+  importLink(): void;
+}
+
+function headButton(label: string, glyph: "gear" | "cloud" | "link", onClick: (button: HTMLElement) => void): HTMLElement {
+  const button = el("button", { class: "ls-icon-btn", type: "button", title: label, "aria-label": label, "aria-haspopup": glyph === "link" ? "menu" : null, html: icon(glyph) });
+  button.addEventListener("click", () => onClick(button));
   return button;
+}
+
+function shareLinksButton(shareLinks: SidebarShareLinks): HTMLElement {
+  return headButton("Share links", "link", (button) => showMenu(button, [
+    { label: "Import Share Link…", icon: "download", onSelect: shareLinks.importLink },
+    { label: "Manage Shared Links", icon: "link", onSelect: shareLinks.manage },
+  ]));
 }
 
 /**
@@ -24,10 +37,11 @@ function headButton(label: string, glyph: "gear" | "cloud", onClick: () => void)
  */
 export function mountSidebarTree(
   ui: Pick<LibraryUi, "store" | "folders" | "dropTarget">, slot: HTMLElement, prefs: PagePrefs, host: Pick<HostEndpoint, "post">,
-  project: SidebarProjectParts | null, openTab: (kind: TabKindName) => void, showLibrary: boolean,
+  project: SidebarProjectParts | null, openTab: (kind: TabKindName) => void, showLibrary: boolean, shareLinks: SidebarShareLinks,
 ): () => void {
   slot.innerHTML = `<div class="tree-head"><span class="ls-brand">LabShelf</span></div>`;
   const head = slot.querySelector(".tree-head")!;
+  if (showLibrary) head.append(shareLinksButton({ manage: shareLinks.manage, importLink: () => { openTab("library"); shareLinks.importLink(); } }));
   if (project) head.append(headButton("Cloudflare relay for shared projects", "cloud", project.manageRelay));
   head.append(headButton("LabShelf settings", "gear", () => { void bx.runtime.openOptionsPage(); }));
   const projects = project?.projects;
@@ -40,6 +54,7 @@ export function mountSidebarTree(
       createFolder: (parent) => folders.create(parent),
       renameFolder: (path) => folders.rename(path),
       removeFolder: (path) => folders.remove(path),
+      shareFolder: (path) => folders.share(path),
       searchTag: (tag) => { openTab("library"); store.searchTag(tag); },
     },
     expanded: prefs.treeExpanded(),

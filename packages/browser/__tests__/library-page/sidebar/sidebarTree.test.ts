@@ -32,7 +32,7 @@ function mount(expanded: string[] = [], sections = { library: true, projects: tr
   const prefs = { treeExpanded: () => expanded, saveTreeExpanded: (p: string[]) => { saved.push(p); }, collapsedSections: () => [], saveCollapsedSections: jest.fn() } as unknown as PagePrefs;
   const posted: unknown[] = [];
   const host = { post: (message: unknown) => { posted.push(message); } };
-  const ui = { sidebar: null, store, folders: { create: jest.fn(), rename: jest.fn(), remove: jest.fn() }, dropTarget: jest.fn(), dispose: jest.fn() } as unknown as LibraryUi;
+  const ui = { sidebar: null, store, folders: { create: jest.fn(), rename: jest.fn(), remove: jest.fn(), share: jest.fn() }, dropTarget: jest.fn(), dispose: jest.fn() } as unknown as LibraryUi;
   const slot = document.createElement("div");
   document.body.replaceChildren(slot);
   const openTab = jest.fn();
@@ -40,7 +40,7 @@ function mount(expanded: string[] = [], sections = { library: true, projects: tr
     { rows: async () => [], entryOf: async () => undefined, openPdf: jest.fn() }, openTab,
     { openProject: jest.fn(), closeProject: jest.fn(), attachSidebar: jest.fn(), treeClick: jest.fn(), treeAction: jest.fn() }, jest.fn(),
   ) : null;
-  mountSidebarTree(ui, slot, prefs, host, projects && { projects, manageRelay: jest.fn() }, openTab, sections.library);
+  mountSidebarTree(ui, slot, prefs, host, projects && { projects, manageRelay: jest.fn() }, openTab, sections.library, { manage: jest.fn(), importLink: jest.fn() });
   return { store, slot, posted, prefs, saved, openTab };
 }
 
