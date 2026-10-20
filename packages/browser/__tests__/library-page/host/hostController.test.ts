@@ -50,4 +50,26 @@ describe("library page host", () => {
     await expect(paperIdAtPath("papers/ml")).resolves.toBeNull();
     await expect(paperIdAtPath("papers/ml/unknown")).resolves.toBeNull();
   });
+
+  it("reports the papers the UI selected through onSelection", () => {
+    const { ui, host } = createLoopbackTransport();
+    const onSelection = jest.fn();
+    attachLibraryHost(host, { log: { log: async () => undefined, error: async () => undefined }, onSelection });
+    ui.post({ type: "paper.selected", ids: ["p1", "p2"] });
+    expect(onSelection).toHaveBeenCalledWith(["p1", "p2"]);
+  });
+
+  it("answers a repeat ready with the current snapshot once the first load is done", async () => {
+    const { ui, host } = createLoopbackTransport();
+    attachLibraryHost(host, { log: { log: async () => undefined, error: async () => undefined } });
+    const snapshots: unknown[] = [];
+    ui.subscribe((m) => { if (m.type === "snapshot") snapshots.push(m); });
+    ui.post({ type: "ready" });
+    await new Promise((r) => setTimeout(r, 0));
+    const afterFirst = snapshots.length;
+    ui.post({ type: "ready" });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(afterFirst).toBeGreaterThan(0);
+    expect(snapshots.length).toBe(afterFirst + 1);
+  });
 });

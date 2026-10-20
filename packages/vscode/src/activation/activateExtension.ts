@@ -1,9 +1,10 @@
 // Activates the extension on either platform: wires services, commands, the Library sidebar, the list panel and the Writing view.
 import * as vscode from "vscode";
 
-import { libraryLayout, type AiService } from "@labshelf/core";
+import { createSelectionHub, libraryLayout, type AiService } from "@labshelf/core";
 import { resolveLibraryRoot } from "../storage/paths/index.js";
 import { migrateLibraryRootFromGlobalState } from "../storage/migrations/index.js";
+import { createSelectionSources, type DetailsView } from "../details/index.js";
 import { ListWebviewPanel } from "../ui/list/index.js";
 import { registerCommands, registerAiCommands, type FolderCommandHost, type ActiveServices } from "../commands/index.js";
 import { createLibraryEvents, type LibraryEvents } from "../events/index.js";
@@ -11,7 +12,7 @@ import { ConflictHandling, registerConflictCommand, registerSyncGuideCommand } f
 import type { ExtensionPlatform } from "./extensionPlatform.js";
 import { ExternalChangeHandling, LibraryRootController } from "./libraryLifecycle/index.js";
 import {
-  registerLibraryCommands, registerLibrarySidebar, registerPanelCommands, registerSettingsMenu, registerWritingView,
+  openLibraryLogger, registerLibraryCommands, registerLibrarySidebar, registerPanelCommands, registerSettingsMenu, registerWritingView,
 } from "./registration/index.js";
 import { startAiService } from "./serviceComposition/index.js";
 
@@ -38,7 +39,9 @@ export async function activateExtension(context: vscode.ExtensionContext, platfo
     followFolderMove: async (from, to) => { await ListWebviewPanel.currentPanel?.followFolderMove(from, to); },
   };
 
-  const writing = registerWritingView(context, controller, adapters, platform.registerWriting);
+  let details: DetailsView | undefined;
+  const sources = createSelectionSources(createSelectionHub((target) => details?.show(target)), openLibraryLogger(controller));
+  const writing = registerWritingView(context, controller, adapters, platform.registerWriting, sources);
   const { librarySidebar, showFolderInSidebar, showPaperInSidebar, refreshLibraryViews: refreshViews } = registerLibrarySidebar({
     context, events, controller, papersRootUri, folderHost, adapters, projects: writing.projectsSource, projectTrees: writing.projectTrees,
   });
@@ -46,9 +49,10 @@ export async function activateExtension(context: vscode.ExtensionContext, platfo
 
   registerSettingsMenu(context, controller);
 
-  registerPanelCommands({
+  details = registerPanelCommands({
     context, events, requireServices, papersRootUri, folderHost, showFolderInSidebar, showPaperInSidebar, adapters,
     getAiService: () => aiService, projectBacklinks: writing.backlinks,
+    currentServices: () => controller.currentServices(), onDidChangeRoot: controller.onDidChangeRoot, projectLibrary: writing.projectLibrary, logger: writing.logger, sources,
   });
 
   registerLibraryCommands({ context, controller, folderHost, librarySidebar });

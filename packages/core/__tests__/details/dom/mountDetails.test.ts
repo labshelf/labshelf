@@ -31,7 +31,7 @@ function mountForTest() {
     library({ type: "snapshot", snapshot: JSON.parse(JSON.stringify({ folders: [], papers, pdfDirs: [], stats: {} })) });
   const show = (target: DetailsTarget): void => host.post({ type: "details.show", target });
   const slot = (kind: "paper" | "project"): HTMLElement => container.querySelector<HTMLElement>(`.ls-details-${kind}`)!;
-  const shown = (el: HTMLElement): boolean => el.style.display !== "none";
+  const shown = (el: HTMLElement): boolean => !el.hidden;
   const empty = (): HTMLElement => container.querySelector<HTMLElement>(".ls-details-empty")!;
   return { host, sent, container, library, snapshot, show, slot, shown, empty };
 }
@@ -39,9 +39,9 @@ function mountForTest() {
 const papers = [paper("a", "papers/A"), paper("b", "papers/A")];
 
 describe("mountDetails", () => {
-  it("roots itself in a .ls-details.ls-library element and says ready on both channels", () => {
+  it("roots itself in a .ls-details element and says ready on both channels", () => {
     const t = mountForTest();
-    expect(t.container.querySelector(".ls-details.ls-library")).not.toBeNull();
+    expect(t.container.querySelector(".ls-details")).not.toBeNull();
     expect(t.sent).toEqual([{ channel: "library", msg: { type: "ready" } }, { channel: "projects", msg: { type: "ready" } }]);
   });
 

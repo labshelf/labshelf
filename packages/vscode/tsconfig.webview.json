@@ -10,5 +10,5 @@
     "declarationMap": false,
     "sourceMap": false
   },
-  "include": ["src/reader/**/*", "src/libraryWebview/**/*", "src/sidebarWebview/**/*", "src/writing/templates/webview/**/*", "src/writing/search/webview/**/*", "src/writing/history/webview/**/*", "src/writing/allProjects/webview/**/*", "src/library/syncGuidePanel/webview/**/*", "src/webviewMessaging/**/*", "src/webviewGlobals.d.ts"]
+  "include": ["src/reader/**/*", "src/libraryWebview/**/*", "src/detailsWebview/**/*", "src/sidebarWebview/**/*", "src/writing/templates/webview/**/*", "src/writing/search/webview/**/*", "src/writing/history/webview/**/*", "src/writing/allProjects/webview/**/*", "src/library/syncGuidePanel/webview/**/*", "src/webviewMessaging/**/*", "src/webviewGlobals.d.ts"]
 }

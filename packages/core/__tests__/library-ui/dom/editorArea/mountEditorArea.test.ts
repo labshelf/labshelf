@@ -203,3 +203,16 @@ test("dispose disposes every mounted body and removes the area", () => {
   expect(slot.children).toHaveLength(0);
   area = { dispose: () => {} } as unknown as EditorArea;
 });
+
+test("the trailing element ends the titlebar of the right-most group that shows tabs", () => {
+  const trailing = document.createElement("button");
+  mount({ trailing });
+  const titlebarOf = (i: number): Element => groups()[i]!.querySelector(".ls-editor-titlebar")!;
+  area.open(probe("a").tab);
+  expect(trailing.parentElement).toBe(titlebarOf(0));
+  expect(titlebarOf(0).lastElementChild).toBe(trailing);
+  area.open(probe("b", 1).tab);
+  expect(trailing.parentElement).toBe(titlebarOf(1));
+  area.split();
+  expect(trailing.parentElement).toBe(titlebarOf(0));
+});

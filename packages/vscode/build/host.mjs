@@ -23,7 +23,7 @@ const baseOptions = {
   bundle: true,
   platform: "node",
   format: "cjs",
-  // Matches the Node of the Electron shipped with engines.vscode ^1.98.
+  // Matches the Node of the Electron shipped with engines.vscode ^1.106.
   target: ["node20"],
   // `vscode` is provided by the host; `node:sqlite` is a builtin esbuild leaves alone.
   // TRAP: typst.ts dynamically imports its optional renderer peer, which is not installed; the host only compiles, so that import never runs.

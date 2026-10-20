@@ -1,10 +1,11 @@
 /**
- * Mounts the library UI in jsdom against an in-test host that records every message the UI sends.
+ * Mounts the library UI in jsdom against an in-test host that records every message the UI sends, with a detail pane
+ * beside it that shares the list's store.
  */
 import {
   DEFAULT_PREFS, createLoopbackTransport, type LibraryUiCapabilities, type LibraryUiPrefs, type PaperRecord, type PaperFilesState, type PaperStats, type UiToHost,
 } from "@labshelf/core";
-import { mountLibraryUi } from "../../../src/library-ui/dom";
+import { createUiContext, mountDetailPane, mountLibraryUi } from "../../../src/library-ui/dom";
 
 export function paper(id: string, dir: string, extra: Partial<PaperRecord> = {}): PaperRecord {
   return { id, title: id, path: `${dir}/${id}`, citeKey: `key-${id}`, status: "unread", ...extra };
@@ -36,7 +37,13 @@ export function mountForTest(prefs: Partial<LibraryUiPrefs> = {}, capabilities: 
     transport: ui, capabilities, labels: LABELS,
     prefs: { load: () => ({ ...DEFAULT_PREFS, ...prefs }), save: (p) => saved.push(p) },
   });
-  disposePrevious = lib.dispose;
+  const detailEl = document.createElement("aside");
+  detailEl.className = "detail-pane";
+  container.append(detailEl);
+  const prefsPort = { load: () => ({ ...DEFAULT_PREFS, ...prefs }), save: (p: Partial<LibraryUiPrefs>) => { saved.push(p); } };
+  const detailCtx = createUiContext(container, { store: lib.store, transport: ui, prefs: prefsPort, caps: capabilities, labels: LABELS, readOnly: false });
+  const offDetail = mountDetailPane(detailCtx, detailEl);
+  disposePrevious = () => { offDetail(); lib.dispose(); };
   const snapshot = (papers: PaperRecord[], pdfDirs: string[] = [], folders: Folders = [], stats: Record<string, PaperStats> = {}): void =>
     host.post({ type: "snapshot", snapshot: JSON.parse(JSON.stringify({ folders, papers, pdfDirs, stats })) });
   const rows = (): HTMLElement[] => [...container.querySelectorAll<HTMLElement>(".paper-row")];

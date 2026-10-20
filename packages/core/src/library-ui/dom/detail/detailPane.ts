@@ -2,20 +2,13 @@
  * Renders the detail pane for the selected paper (head, tabs) or a multi-selection, rebuilt from the store on every
  * change. Scroll, focus and caret survive a rebuild, and nothing is rebuilt under a note being typed or a button being pressed.
  */
-import { escapeHtml, icon } from "../../../ui/index.js";
 import type { UiContext } from "../uiContext.js";
-import { KEY_HINT } from "../uiContext.js";
 import { runDetailAction } from "./detailActions.js";
 import { onTagInput, onTagKey, paperHeadHtml } from "./head/index.js";
 import { commonTags, multiDetailHtml, selectedPapers } from "./multiDetail.js";
 import { createNoteEditor } from "./noteEditor.js";
 import { paperView, type PaneState } from "./paneState.js";
 import { annotationListHtml, annotationsTabHtml, detailsTabHtml, notesTabHtml, paperTabBarHtml, relatedTabHtml } from "./tabs/index.js";
-
-const PLACEHOLDER = `<div class="detail-placeholder"><div class="ls-empty-icon">${icon("book")}</div>` +
-  `<div>Select a paper to see its details, annotations, notes and related papers.</div><div class="kbd-help">` +
-  `<span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>/</kbd> search</span>` +
-  `<span><kbd>${escapeHtml(KEY_HINT.mod)}C</kbd> copy key</span><span><kbd>${escapeHtml(KEY_HINT.alt)}1–3</kbd> status</span></div></div>`;
 
 function singleHtml(pane: PaneState, id: string): string {
   pane.ctx.data.ensureDetails(id);
@@ -49,7 +42,7 @@ function render(pane: Pane): void {
   const keep = inPane && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")
     ? { cls: active.classList[0]!, start: active.selectionStart, end: active.selectionEnd } : null;
   const scroll = pane.el.scrollTop;
-  pane.el.innerHTML = ids.length === 0 ? PLACEHOLDER : ids.length > 1 ? multiDetailHtml(pane, ids) : singleHtml(pane, ids[0]!);
+  pane.el.innerHTML = ids.length === 0 ? "" : ids.length > 1 ? multiDetailHtml(pane, ids) : singleHtml(pane, ids[0]!);
   pane.el.scrollTop = scroll;
   if (!keep) {
     if (pane.tagEditing) pane.el.querySelector<HTMLInputElement>(".tag-input")?.focus();

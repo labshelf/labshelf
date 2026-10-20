@@ -46,6 +46,10 @@ export interface ListPanelDeps {
   onDidNavigate?: (folder: LibraryNode) => void;
   /** Called when the user selects one paper in the panel, so the sidebar tree can select its row. */
   onDidSelectPaper?: (paperId: string) => void;
+  /** Called with every selection the panel reports, empty when it clears; feeds the Details view. */
+  onDidChangeSelection?: (paperIds: string[]) => void;
+  /** Called when the panel's tab becomes the active one. */
+  onDidActivate?: () => void;
   /** Papers waiting for or undergoing OCR, shown on their rows while it runs. */
   textLayerJobs?: {
     current: () => TextLayerJobView[];

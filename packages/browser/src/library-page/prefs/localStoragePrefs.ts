@@ -19,8 +19,17 @@ export interface PagePrefs extends PrefsPort {
   /** The first editor group's width in pixels while two groups show; null until the user drags the sash. */
   editorWidth(): number | null;
   saveEditorWidth(width: number): void;
+  /** The page-level Details pane's width and collapsed state. */
+  detailPane(): DetailPanePrefs;
+  saveDetailPane(patch: Partial<DetailPanePrefs>): void;
   codeStyle(): CodeStyle;
   saveCodeStyle(patch: Partial<CodeStyle>): void;
+}
+
+interface DetailPanePrefs {
+  /** Null until the user drags the pane's sash. */
+  detailWidth: number | null;
+  detailCollapsed: boolean;
 }
 
 interface CodeStyle {
@@ -43,7 +52,7 @@ export function createLocalStoragePrefs(storage: PrefsStorage = localStorage): P
     const editorWidth = widthOf(raw);
     const next = {
       ...sanitizePrefs(raw), treeExpanded: stringsOf(raw, "treeExpanded"), collapsedSections: stringsOf(raw, "collapsedSections"),
-      ...(editorWidth === null ? {} : { editorWidth }), ...codeStyleOf(raw), ...patch,
+      ...(editorWidth === null ? {} : { editorWidth }), ...codeStyleOf(raw), ...detailPaneFields(raw), ...patch,
     };
     // Private windows can refuse writes; the page then works with the in-memory state only.
     try { storage.setItem(PREFS_KEY, JSON.stringify(next)); } catch { /* storage unavailable */ }
@@ -57,6 +66,8 @@ export function createLocalStoragePrefs(storage: PrefsStorage = localStorage): P
     saveCollapsedSections: (ids) => write({ collapsedSections: ids }),
     editorWidth: () => widthOf(readRaw(storage)),
     saveEditorWidth: (width) => write({ editorWidth: width }),
+    detailPane: () => detailPaneOf(readRaw(storage)),
+    saveDetailPane: (patch) => write(patch),
     codeStyle: () => codeStyleOf(readRaw(storage)),
     saveCodeStyle: (patch) => write(patch),
   };
@@ -75,4 +86,18 @@ function widthOf(raw: Record<string, unknown>): number | null {
 function codeStyleOf(raw: Record<string, unknown>): CodeStyle {
   const pick = <T extends string>(names: readonly T[], v: unknown): T => (names.includes(v as T) ? (v as T) : names[0]!);
   return { codeTheme: pick(CODE_THEME_NAMES, raw["codeTheme"]), codeFont: pick(CODE_FONT_NAMES, raw["codeFont"]) };
+}
+
+// An unset width is left out, so it keeps following the sidebar's.
+function detailPaneFields(raw: Record<string, unknown>): Partial<DetailPanePrefs> {
+  const { detailWidth, detailCollapsed } = detailPaneOf(raw);
+  return detailWidth === null ? { detailCollapsed } : { detailWidth, detailCollapsed };
+}
+
+function detailPaneOf(raw: Record<string, unknown>): DetailPanePrefs {
+  const w = raw["detailWidth"];
+  return {
+    detailWidth: typeof w === "number" && Number.isFinite(w) && w > 0 ? w : null,
+    detailCollapsed: raw["detailCollapsed"] === true,
+  };
 }
