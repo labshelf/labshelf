@@ -55,7 +55,7 @@ export function mountProjectWiring({ workspace, fs, logger, openTab }: ProjectWi
     services: { session, helperProject, comments, shares },
     sidebarProjects: () => {
       const source = createProjectsSource({ projects: createBrowserProjects({ fileSystem: fs, logger }), fileSystem: fs, logger, showPdf: showPdfInTab });
-      return createSidebarProjects(source, openTab, session, () => { void joinShared(); });
+      return createSidebarProjects(source, openTab, session);
     },
     start: (invite) => {
       void resumeRestoredProject(workspace, session, fs, logger);

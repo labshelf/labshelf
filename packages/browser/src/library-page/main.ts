@@ -97,7 +97,7 @@ async function boot(): Promise<void> {
   const libraryView = el("div", { class: "ls-workspace-fill" });
   const ui = mountLibraryUi(libraryView, {
     transport, prefs, withSidebar: false,
-    capabilities: PAGE_CAPABILITIES, labels: PAGE_LABELS,
+    capabilities: PAGE_CAPABILITIES, labels: PAGE_LABELS, sharing: libraryHost.sharing,
   });
   const fs = createLibraryFileSystem();
   let project: ProjectWiring | null = null;
@@ -108,7 +108,7 @@ async function boot(): Promise<void> {
   const workspace: Workspace = createWorkspace(shell.centre, {
     prefs: { load: prefs.editorWidth, save: prefs.saveEditorWidth }, logger: log, plan, trailing: createDetailsToggle(shell),
     onActivateTab: (id) => { if (id === "library") hub.activate("list"); else if (id === "all-projects") hub.activate("projects"); },
-    services: () => ({ libraryView, logger: log, fs, prefs, selection: hub, project: projectServices }),
+    services: () => ({ libraryView, logger: log, fs, prefs, selection: hub, sharing: libraryHost.sharing, project: projectServices }),
   });
   const openTab = (kind: TabKindName): void => workspace.openTab(kind);
   // The share key sits in the fragment, so a join link is taken off the address before anything can keep it in history.
@@ -118,7 +118,7 @@ async function boot(): Promise<void> {
   if (project) await serveProjectsToDetails(channels.projects, project.services, workspace, fs);
   mountPageDetails(shell.details, details.ui, prefs);
   const projectParts = plan.projects && project ? sidebarProjectParts(project, relay) : null;
-  mountSidebarTree(ui, shell.sidebar, prefs, host, projectParts, openTab, plan.library, libraryHost.shareLinks);
+  mountSidebarTree(ui, shell.sidebar, prefs, host, projectParts, openTab, plan.library, libraryHost.sharing);
   workspace.restore(location.hash);
   project?.start(invite);
   mountSourceSurfaces(root, libraryHost.reloadSnapshots);

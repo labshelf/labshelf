@@ -3,7 +3,7 @@
  * @jest-environment-options {"customExportConditions": ["node", "node-addons"]}
  */
 // The browser sidebar lists the library's projects under Projects and offers only what the browser can do.
-import { LibraryViewStore, type ProjectEntry } from "@labshelf/core";
+import { createSharingHost, LibraryViewStore, type ProjectEntry } from "@labshelf/core";
 import type { LibraryUi } from "@labshelf/core/dom";
 import type { PagePrefs } from "../../../src/library-page/prefs";
 import type { BrowserProjectRow, ProjectsSource } from "../../../src/library-page/projects";
@@ -24,13 +24,13 @@ async function mount(rows: BrowserProjectRow[] = [ready, broken]) {
     entryOf: jest.fn(async (id: string) => (id === "thesis" ? thesisEntry : undefined)),
   } satisfies ProjectsSource;
   const session = { openProject: jest.fn(async () => true), closeProject: jest.fn(async () => true), attachSidebar: jest.fn(), treeClick: jest.fn(), treeAction: jest.fn(async () => undefined) } satisfies SidebarSession;
+  const sharing = createSharingHost({ place: "this browser", logger: { log: async () => undefined, error: async () => undefined }, clipboard: { write: async () => undefined }, openLink: async () => undefined });
   const slot = document.createElement("div");
   document.body.replaceChildren(slot);
   const openTab = jest.fn();
-  const joinShared = jest.fn();
-  mountSidebarTree(ui, slot, prefs, { post: jest.fn() }, { projects: createSidebarProjects(source, openTab, session, joinShared), manageRelay: jest.fn() }, openTab, true, { manage: jest.fn(), importLink: jest.fn() });
+  mountSidebarTree(ui, slot, prefs, { post: jest.fn() }, { projects: createSidebarProjects(source, openTab, session), manageRelay: jest.fn() }, openTab, true, sharing);
   await new Promise((resolve) => setTimeout(resolve, 0));
-  return { slot, source, openTab, session, joinShared };
+  return { slot, source, openTab, session };
 }
 
 const projectRow = (slot: HTMLElement, id: string): HTMLElement => slot.querySelector<HTMLElement>(`[data-project="${id}"]`)!;
@@ -84,13 +84,5 @@ describe("sidebar projects glue", () => {
     const { slot, source } = await mount();
     slot.querySelector<HTMLElement>('[data-tree="project-refresh"]')!.click();
     expect(source.rows).toHaveBeenCalledTimes(2);
-  });
-
-  it("starts the join dialog from the Projects menu", async () => {
-    const { slot, joinShared } = await mount();
-    slot.querySelector<HTMLElement>('[data-group="projects.list"]')!.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
-    expect(menuLabels()).toContain("Join Shared Project…");
-    [...document.querySelectorAll<HTMLElement>(".ls-menu [role=menuitem]")].find((item) => item.textContent?.includes("Join Shared"))!.click();
-    expect(joinShared).toHaveBeenCalledTimes(1);
   });
 });

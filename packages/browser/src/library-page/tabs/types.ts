@@ -1,5 +1,5 @@
 // Declares a tab kind of the library page's workspace, the module its body chunk exports and what a body receives.
-import type { ILogger, IconName, LibraryFileSystem, SelectionHub } from "@labshelf/core";
+import type { ILogger, IconName, LibraryFileSystem, SelectionHub, SharingHost } from "@labshelf/core";
 import type { EditorTabBody } from "@labshelf/core/dom";
 import type { PageShares } from "../editor/collab";
 import type { HelperProject } from "../helperProject";
@@ -41,6 +41,8 @@ export interface TabContext {
   prefs: PagePrefs;
   /** Where a tab reports what the user selected, for the Details pane. */
   selection: SelectionHub;
+  /** The library page's sharing operations, which the All projects tab hands to its menus. */
+  sharing: SharingHost;
   /** The project services; throws when the page has not loaded them, which only a project tab on a page without Projects would hit. */
   project(): ProjectServices;
 }

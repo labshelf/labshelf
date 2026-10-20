@@ -1,4 +1,4 @@
-// Answers the core sidebar's Projects section: lists the projects, opens one in the page's project session, opens the template and All projects tabs, starts joining a shared project and shows a project's menu.
+// Answers the core sidebar's Projects section: lists the projects, opens one in the page's project session, opens the template and All projects tabs and shows a project's menu.
 import type { ProjectTreeView } from "@labshelf/core";
 import { showMenu, type LibrarySidebar, type MenuEntry, type ProjectOffers, type SidebarProjectActions } from "@labshelf/core/dom";
 import type { TabKindName } from "../tabs";
@@ -29,7 +29,7 @@ function menuEntries(source: ProjectsSource, row: BrowserProjectRow): MenuEntry[
   ];
 }
 
-export function createSidebarProjects(source: ProjectsSource, openTab: (kind: TabKindName) => void, session: SidebarSession, joinShared: () => void): SidebarProjects {
+export function createSidebarProjects(source: ProjectsSource, openTab: (kind: TabKindName) => void, session: SidebarSession): SidebarProjects {
   let rows: BrowserProjectRow[] = [];
   let sidebar: LibrarySidebar | undefined;
   const row = (id: string): BrowserProjectRow | undefined => rows.find((r) => r.id === id);
@@ -44,7 +44,6 @@ export function createSidebarProjects(source: ProjectsSource, openTab: (kind: Ta
     refresh: load,
     browseTemplates: () => openTab("templates"),
     allProjects: () => openTab("all-projects"),
-    joinShared,
     closeProject: () => { void session.closeProject(); },
     treeClick: (view, key) => { if (isTreeView(view)) session.treeClick(view, key); },
     treeAction: (action) => { void session.treeAction(action); },
