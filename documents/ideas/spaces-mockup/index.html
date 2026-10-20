@@ -1,0 +1,64 @@
+<!-- Presents the LabShelf Spaces idea as an interactive mockup: the core sidebar, a Spaces section and Space tabs in an editor. -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LabShelf Spaces mockup</title>
+<link rel="stylesheet" href=".generated/core.css">
+<link rel="stylesheet" href="markup.css">
+<link rel="stylesheet" href="editor/frame.css">
+<link rel="stylesheet" href="sidebar/sidebar.css">
+<link rel="stylesheet" href="space/space.css">
+<link rel="stylesheet" href="space/overview.css">
+<link rel="stylesheet" href="space/papers.css">
+<link rel="stylesheet" href="notes/notes.css">
+<link rel="stylesheet" href="discover/discover.css">
+<link rel="stylesheet" href="glossary/glossary.css">
+<link rel="stylesheet" href="insert/insert.css">
+</head>
+<body>
+<div class="win">
+  <aside class="side" aria-label="LabShelf">
+    <div class="side-title"><span class="ls-brand"><span class="side-logo" id="side-logo"></span>LabShelf</span></div>
+    <div id="library-tree"></div>
+    <div id="spaces-tree" class="tree" role="tree" aria-label="Spaces"></div>
+  </aside>
+  <main class="ls-editor-area">
+    <div class="ls-editor-group">
+      <div class="ls-editor-titlebar">
+        <div class="ls-editor-tabs" id="tabs" role="tablist" aria-label="Open editors"></div>
+        <div class="ls-editor-actions"><button class="ls-icon-btn" id="theme-btn" data-act="theme" title="Switch light and dark" aria-label="Switch light and dark"></button></div>
+      </div>
+      <div class="ls-editor-panels"><div class="ls-editor-panel" id="panel" role="tabpanel"></div></div>
+    </div>
+  </main>
+</div>
+<script src=".generated/core.js"></script>
+<script src="data/library.js"></script>
+<script src="data/spaces.js"></script>
+<script src="data/notes.js"></script>
+<script src="data/discover.js"></script>
+<script src="data/glossary.js"></script>
+<script src="data/insert.js"></script>
+<script src="markup.js"></script>
+<script src="actions.js"></script>
+<script src="sidebar/library.js"></script>
+<script src="sidebar/spaces.js"></script>
+<script src="editor/tabs.js"></script>
+<script src="space/header.js"></script>
+<script src="space/timeline.js"></script>
+<script src="space/overview.js"></script>
+<script src="space/papers.js"></script>
+<script src="notes/notes.js"></script>
+<script src="notes/paperPage.js"></script>
+<script src="notes/noteBody.js"></script>
+<script src="discover/discover.js"></script>
+<script src="glossary/glossaryPreviews.js"></script>
+<script src="glossary/glossary.js"></script>
+<script src="insert/insertSyntax.js"></script>
+<script src="insert/insertPanel.js"></script>
+<script src="insert/project.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

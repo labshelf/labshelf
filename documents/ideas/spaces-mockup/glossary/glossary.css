@@ -1,0 +1,63 @@
+/* Lays out the Glossary tab: entries and conflicts, suggestions to review, the paper and draft previews and the generated file. Mockup only. */
+.gl-grid { display: grid; grid-template-columns: minmax(0, 1fr) calc(var(--ls-gallery-card-w) * 2); gap: calc(var(--ls-space-7) * 2); align-items: start; }
+.gl-main { display: flex; flex-direction: column; gap: calc(var(--ls-space-7) * 1.5); min-width: 0; }
+.gl-group-hint { margin: 0 0 var(--ls-space-4); font-size: var(--ls-text-sm); }
+.gl-list { list-style: none; margin: 0; padding: 0; }
+.gl-term, .gl-sug { display: grid; grid-template-columns: calc(var(--ls-space-7) * 4) minmax(0, 1fr); gap: var(--ls-space-6); padding: var(--ls-space-6) 0; border-top: 1px solid var(--ls-row-rule); }
+.gl-sug { grid-template-columns: calc(var(--ls-space-7) * 4) minmax(0, 1fr) auto; align-items: start; }
+.gl-term-not { font: italic var(--ls-text-2xl) / 1.2 var(--ls-serif); text-align: center; overflow-wrap: anywhere; }
+.gl-term-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--ls-space-2) var(--ls-space-5); }
+.gl-term-name { font-weight: 600; }
+.gl-macro { font: var(--ls-text-sm) var(--ls-mono); color: var(--ls-file-tex); }
+.gl-how { font-size: var(--ls-text-sm); color: var(--ls-mark-accent); }
+.gl-def { margin-top: var(--ls-space-1); font: var(--ls-text-xl) / 1.45 var(--ls-serif); }
+.gl-src { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--ls-space-2) var(--ls-space-4); margin-top: var(--ls-space-2); font-size: var(--ls-text-sm); color: var(--ls-desc); }
+.gl-src-link { flex: none; padding: 0; border: 0; background: none; color: var(--ls-link); font: inherit; cursor: pointer; }
+.gl-src-link:hover { text-decoration: underline; }
+.gl-quote { flex: 1; min-width: calc(var(--ls-space-7) * 10); font-family: var(--ls-serif); font-style: italic; }
+.gl-found { margin-top: var(--ls-space-2); font-size: var(--ls-text-sm); color: var(--ls-desc); }
+.gl-sug-acts { display: flex; gap: var(--ls-space-2); align-items: center; }
+.gl-term.conflict .gl-term-not { color: var(--ls-mark-warn); }
+.gl-flag { display: flex; align-items: center; gap: var(--ls-space-3); margin-bottom: var(--ls-space-3); font-size: var(--ls-text-sm); color: var(--ls-mark-warn); }
+.gl-flag svg { width: var(--ls-text-md); height: var(--ls-text-md); flex: none; }
+.gl-meaning + .gl-meaning { margin-top: var(--ls-space-5); padding-top: var(--ls-space-5); border-top: 1px dashed var(--ls-row-rule); }
+
+.gl-side { display: flex; flex-direction: column; gap: var(--ls-space-4); min-width: 0; }
+.gl-side-title { margin: var(--ls-space-3) 0 0; font-size: var(--ls-text-md); font-weight: 600; color: var(--ls-desc); }
+/* A PDF passage on a light sheet, with the Glossary's terms underlined. */
+.gl-sheet { position: relative; padding: var(--ls-space-7) calc(var(--ls-space-7) + var(--ls-space-2)); background: var(--ls-reader-page); color: var(--ls-reader-fg); border-radius: var(--ls-radius-sm);
+  box-shadow: var(--ls-page-shadow); font: var(--ls-text-lg) / 1.6 var(--ls-serif); }
+.gl-sheet p { margin: 0 0 var(--ls-space-4); }
+.gl-sheet-foot { font: var(--ls-text-sm) var(--ls-font); opacity: .7; margin-bottom: 0 !important; }
+.gl-hit { text-decoration: underline dotted var(--ls-mark-accent); text-underline-offset: var(--ls-space-1); cursor: help; }
+/* INVARIANT: the sheet is the positioned box, so a card spans the sheet below the passage and never leaves the column. */
+.gl-pop { display: none; position: absolute; z-index: 5; left: 0; right: 0; top: calc(100% + var(--ls-space-2));
+  padding: var(--ls-space-4) var(--ls-space-5); background: var(--ls-menu-bg); color: var(--ls-menu-fg); border: 1px solid var(--ls-menu-border); border-radius: var(--ls-radius-lg);
+  box-shadow: var(--ls-popup-shadow); font: normal var(--ls-text-md) / 1.45 var(--ls-font); text-align: left; }
+.gl-hit:hover .gl-pop, .gl-hit:focus .gl-pop { display: block; }
+.gl-pop-not { font: italic var(--ls-text-lg) var(--ls-serif); }
+.gl-pop-def { display: block; margin-top: var(--ls-space-2); }
+.gl-pop-src { display: block; font-size: var(--ls-text-sm); color: var(--ls-desc); }
+/* A draft in the editor: a hover card and the completion list for the Glossary's macros. */
+.gl-editor { padding: var(--ls-space-5) 0; background: var(--ls-bg); border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius-sm); font: var(--ls-text-md) / 1.7 var(--ls-mono); }
+.gl-ed-line { display: flex; gap: var(--ls-space-6); white-space: nowrap; overflow: hidden; padding-right: var(--ls-space-5); }
+.ln { flex: none; width: calc(var(--ls-space-7) * 2); text-align: right; color: var(--ls-tree-guide); }
+.gl-ed-hover { background: var(--ls-row-selected); border-radius: var(--ls-radius-sm); }
+.gl-ed-card, .gl-complete { margin: var(--ls-space-1) var(--ls-space-4) var(--ls-space-2) calc(var(--ls-space-7) * 3); background: var(--ls-widget-bg); border: 1px solid var(--ls-menu-border);
+  border-radius: var(--ls-radius); box-shadow: var(--ls-widget-shadow); font-family: var(--ls-font); }
+.gl-ed-card { padding: var(--ls-space-3) var(--ls-space-5); font-size: var(--ls-text-md); }
+.gl-ed-card span { display: block; color: var(--ls-desc); font-size: var(--ls-text-sm); }
+.gl-complete { padding: var(--ls-space-1); }
+.gl-c-item { display: grid; grid-template-columns: minmax(0, 6em) 2em minmax(0, 1fr); gap: var(--ls-space-3); align-items: baseline; padding: 0 var(--ls-space-4); border-radius: var(--ls-radius-sm); font-size: var(--ls-text-md); }
+.gl-c-item.on { background: var(--ls-list-active-bg); color: var(--ls-list-active-fg); }
+.gl-c-item .tx-cmd { font-family: var(--ls-mono); overflow: hidden; text-overflow: ellipsis; }
+.gl-c-item.on .tx-cmd { color: inherit; }
+.gl-c-not { font: italic var(--ls-text-lg) var(--ls-serif); }
+.gl-c-desc { color: var(--ls-desc); font-size: var(--ls-text-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gl-c-item.on .gl-c-desc { color: inherit; opacity: .8; }
+.gl-gen { margin-top: var(--ls-space-5); font-size: var(--ls-text-md); }
+.gl-gen-hint { font-size: var(--ls-text-sm); }
+.gl-tex { margin: 0; padding: var(--ls-space-5) var(--ls-space-6); background: var(--ls-code-bg); border-radius: var(--ls-radius); font: var(--ls-text-sm) / 1.6 var(--ls-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.gl-tex .c { color: var(--ls-code-comment); }
+@media (max-width: 1100px) { .gl-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 560px) { .gl-sug { grid-template-columns: calc(var(--ls-space-7) * 3) minmax(0, 1fr); } .gl-sug-acts { grid-column: 2; } .gl-term { grid-template-columns: calc(var(--ls-space-7) * 3) minmax(0, 1fr); } }

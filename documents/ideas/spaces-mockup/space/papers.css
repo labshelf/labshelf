@@ -1,0 +1,40 @@
+/* Lays out the Papers tab: the Space folder list, paper rows with status, who added them, other Spaces and a missing PDF. Mockup only. */
+.pp-grid { display: grid; grid-template-columns: calc(var(--ls-gallery-sidebar-w) - var(--ls-space-7)) minmax(0, 1fr); gap: calc(var(--ls-space-7) * 1.5); align-items: start; }
+.pp-folders { display: flex; flex-direction: column; gap: var(--ls-space-1); }
+.pp-folder { display: flex; align-items: center; gap: var(--ls-space-4); height: calc(var(--ls-row-h) + var(--ls-space-2)); padding: 0 var(--ls-space-4); border: 0;
+  border-radius: var(--ls-radius); background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.pp-folder svg { width: var(--ls-space-7); height: var(--ls-space-7); flex: none; color: var(--ls-desc); }
+.pp-folder:hover { background: var(--ls-list-hover); }
+.pp-folder.on { background: var(--ls-list-active-bg); color: var(--ls-list-active-fg); }
+.pp-folder.on svg, .pp-folder.on .tree-count { color: inherit; }
+.pp-folder-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-new { color: var(--ls-desc); }
+.pp-groups { display: flex; flex-direction: column; gap: calc(var(--ls-space-7) * 1.5); min-width: 0; }
+.pp-list { list-style: none; margin: 0; padding: 0; }
+.pp-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--ls-space-5); align-items: start; padding: var(--ls-space-4) var(--ls-space-3);
+  border-top: 1px solid var(--ls-row-rule); }
+.pp-row:hover { background: var(--ls-list-hover); }
+.pp-status { display: inline-flex; padding: var(--ls-space-2); margin-top: var(--ls-space-1); border: 0; border-radius: var(--ls-radius-sm); background: none; cursor: pointer; }
+.pp-status:hover { background: var(--ls-toolbar-hover); }
+.pp-main { min-width: 0; }
+.pp-title { display: block; max-width: 100%; padding: 0; border: 0; background: none; color: inherit; font: var(--ls-text-lg) var(--ls-font); text-align: left; cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-title:hover { color: var(--ls-link); }
+.pp-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-2) var(--ls-space-5); margin-top: var(--ls-space-1); font-size: var(--ls-text-sm); color: var(--ls-desc); }
+.pp-by { display: inline-flex; align-items: center; gap: var(--ls-space-2); }
+.pp-by .mk-avatar { width: var(--ls-space-7); height: var(--ls-space-7); font-size: calc(var(--ls-text-xs) * .8); }
+.pp-also { display: inline-flex; align-items: center; gap: var(--ls-space-2); padding: 0 var(--ls-space-3); border-radius: var(--ls-radius-pill); background: var(--ls-button-soft-bg); color: var(--ls-button-soft-fg); }
+.pp-also svg { width: var(--ls-text-sm); height: var(--ls-text-sm); }
+.pp-nopdf { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-4); margin-top: var(--ls-space-3); padding: var(--ls-space-3) var(--ls-space-4);
+  background: var(--ls-warning-bg); border: 1px solid var(--ls-warning-border); border-radius: var(--ls-radius); font-size: var(--ls-text-md); }
+.pp-nopdf > svg { width: var(--ls-space-7); height: var(--ls-space-7); color: var(--ls-mark-warn); flex: none; }
+.pp-nopdf > span { flex: 1; min-width: calc(var(--ls-space-7) * 10); }
+.pp-nopdf .ls-btn svg { width: var(--ls-text-md); height: var(--ls-text-md); }
+.pp-acts { display: flex; gap: var(--ls-space-1); opacity: 0; }
+.pp-row:hover .pp-acts, .pp-acts:focus-within, .pp-acts:has(.on) { opacity: 1; }
+.pp-acts .on { color: var(--ls-link); }
+@media (max-width: 760px) {
+  .pp-grid { grid-template-columns: minmax(0, 1fr); }
+  .pp-folders { flex-direction: row; flex-wrap: wrap; }
+  .pp-acts { opacity: 1; }
+}

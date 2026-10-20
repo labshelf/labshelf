@@ -1,0 +1,68 @@
+/* Lays out the Notes tab: the note list, the PDF page with its selection toolbar, and the rendered note with quote, equation, table and code. Mockup only. */
+.nt-group + .nt-group { margin-top: calc(var(--ls-space-7) * 1.5); }
+.nt-row { display: flex; align-items: center; gap: var(--ls-space-5); width: 100%; padding: var(--ls-space-4) var(--ls-space-3); border: 0; border-top: 1px solid var(--ls-row-rule);
+  background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.nt-row:hover { background: var(--ls-list-hover); }
+.nt-row-icon { display: inline-flex; color: var(--ls-desc); }
+.nt-row-icon svg { width: var(--ls-space-7); height: var(--ls-space-7); }
+.nt-badge { flex: none; padding: 0 var(--ls-space-3); border-radius: var(--ls-radius-pill); background: var(--ls-button-soft-bg); color: var(--ls-button-soft-fg); font-size: var(--ls-text-sm); }
+.nt-badge.personal { background: var(--ls-code-bg); color: var(--ls-desc); }
+.nt-who { display: inline-flex; align-items: center; gap: var(--ls-space-3); flex: none; font-size: var(--ls-text-sm); color: var(--ls-desc); }
+.nt-head { display: flex; align-items: center; gap: var(--ls-space-5); margin-bottom: var(--ls-space-6); }
+.nt-head .ls-btn svg { width: var(--ls-text-md); height: var(--ls-text-md); }
+.nt-title { flex: 1; min-width: 0; margin: 0; font-size: var(--ls-text-2xl); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nt-head-side { display: flex; align-items: center; gap: var(--ls-space-4); }
+.nt-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--ls-space-7); align-items: start; }
+
+.pdf-pane { position: sticky; top: 0; padding: var(--ls-space-7); background: var(--ls-reader-bg); border-radius: var(--ls-radius-lg); }
+.pdf-page { position: relative; padding: calc(var(--ls-space-7) * 1.5) calc(var(--ls-space-7) * 2); background: var(--ls-reader-page); color: var(--ls-reader-fg);
+  box-shadow: var(--ls-reader-shadow); font: var(--ls-text-lg) / 1.6 var(--ls-serif); }
+.pdf-page p { margin: 0 0 var(--ls-space-5); text-align: justify; }
+.pdf-running { font-size: var(--ls-text-sm); color: var(--ls-reader-desc); text-align: center; margin-bottom: var(--ls-space-7); }
+.pdf-h { margin: 0 0 var(--ls-space-4); font-size: var(--ls-text-xl); }
+.pdf-foot { text-align: center; font-size: var(--ls-text-sm); color: var(--ls-reader-desc); }
+.pdf-hl { background: var(--ls-hl-yellow); }
+.pdf-hl.flash { outline: var(--ls-space-1) solid var(--ls-focus); }
+.pdf-sel { background: color-mix(in srgb, var(--ls-hl-blue) 30%, transparent); cursor: text; }
+.pdf-plain { cursor: text; }
+.pdf-sel-wrap { position: relative; }
+.pdf-sel-wrap.selecting { padding-top: calc(var(--ls-row-h) + var(--ls-space-4)); }
+.pdf-bar { position: absolute; top: 0; left: 0; display: flex; gap: var(--ls-space-1); padding: var(--ls-space-1); background: var(--ls-widget-bg); color: var(--ls-fg);
+  border: 1px solid var(--ls-menu-border); border-radius: var(--ls-radius); box-shadow: var(--ls-widget-shadow); font-family: var(--ls-font); }
+.pdf-bar-btn { display: inline-flex; align-items: center; gap: var(--ls-space-2); height: var(--ls-row-h); padding: 0 var(--ls-space-4); border: 0; border-radius: var(--ls-radius-sm);
+  background: none; color: inherit; font: var(--ls-text-md) var(--ls-font); cursor: pointer; white-space: nowrap; }
+.pdf-bar-btn:hover { background: var(--ls-toolbar-hover); }
+.pdf-bar-btn svg { width: var(--ls-text-lg); height: var(--ls-text-lg); }
+
+.nt-doc { font-size: var(--ls-text-lg); line-height: 1.6; max-width: 72ch; }
+.nt-doc h3 { margin: var(--ls-space-7) 0 var(--ls-space-3); font-size: var(--ls-text-xl); }
+.nt-doc h3:first-child { margin-top: 0; }
+.nt-doc p { margin: 0 0 var(--ls-space-5); }
+.nt-quote { margin: var(--ls-space-5) 0; padding: var(--ls-space-3) var(--ls-space-6); border-left: var(--ls-space-1) solid var(--ls-hl-yellow); background: var(--ls-code-bg); border-radius: 0 var(--ls-radius) var(--ls-radius) 0; }
+.nt-quote p { margin: 0; font-family: var(--ls-serif); font-style: italic; }
+.nt-quote footer { margin-top: var(--ls-space-2); font-size: var(--ls-text-sm); color: var(--ls-desc); }
+.nt-link { padding: 0; border: 0; background: none; color: var(--ls-link); font: inherit; cursor: pointer; }
+.nt-link:hover { text-decoration: underline; }
+.nt-eq { margin: var(--ls-space-5) 0; text-align: center; font: var(--ls-text-xl) var(--ls-serif); }
+.nt-table { min-width: 60%; border-collapse: collapse; margin: var(--ls-space-5) 0; font-size: var(--ls-text-md); }
+.nt-table caption { caption-side: bottom; padding-top: var(--ls-space-3); font-size: var(--ls-text-sm); color: var(--ls-desc); text-align: left; }
+.nt-table th, .nt-table td { padding: var(--ls-space-2) var(--ls-space-7) var(--ls-space-2) 0; border-bottom: 1px solid var(--ls-row-rule); text-align: left; }
+.nt-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.nt-cell { margin-top: var(--ls-space-7); border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius); overflow: hidden; }
+.nt-cell-bar { display: flex; align-items: center; justify-content: space-between; padding: var(--ls-space-1) var(--ls-space-2) var(--ls-space-1) var(--ls-space-5); background: var(--ls-sidebar-bg); font-size: var(--ls-text-sm); }
+.nt-cell-bar .ls-btn svg { width: var(--ls-text-md); height: var(--ls-text-md); }
+.nt-code { margin: 0; padding: var(--ls-space-5); background: var(--ls-code-bg); font: var(--ls-text-md) / 1.5 var(--ls-mono); overflow-x: auto; }
+.nt-code .k { color: var(--ls-code-keyword); }
+.nt-code .s { color: var(--ls-code-string); }
+.nt-cell-out { padding: var(--ls-space-3) var(--ls-space-5) 0; font-size: var(--ls-text-sm); color: var(--ls-desc); }
+.nt-fig { margin: 0; padding: var(--ls-space-3) var(--ls-space-5) var(--ls-space-5); }
+.nt-fig svg { display: block; width: 100%; max-width: calc(var(--ls-gallery-card-w) * 2); height: auto; }
+.nt-axis { stroke: var(--ls-desc); stroke-width: .5; }
+.nt-series { fill: none; stroke-width: 1.5; }
+.nt-series.a { stroke: var(--ls-mark-warn); }
+.nt-series.b { stroke: var(--ls-mark-accent); }
+.nt-fig figcaption { display: flex; align-items: center; flex-wrap: wrap; gap: var(--ls-space-3); font-size: var(--ls-text-sm); color: var(--ls-desc); }
+.nt-key { display: inline-block; width: var(--ls-space-6); height: var(--ls-space-1); }
+.nt-key.a { background: var(--ls-mark-warn); }
+.nt-key.b { background: var(--ls-mark-accent); }
+@media (max-width: 1100px) { .nt-split { grid-template-columns: minmax(0, 1fr); } }

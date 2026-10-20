@@ -1,0 +1,41 @@
+/* Lays out a project tab: the mock source editor with inserted lines and Reveal source, beside the Insert from LabShelf panel. Mockup only. */
+.pj { display: grid; grid-template-columns: minmax(0, 1fr) calc(var(--ls-gallery-card-w) + var(--ls-space-7) * 8); height: 100%; min-height: 0; }
+.pj-editor { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.pj-crumbs { display: flex; align-items: center; gap: var(--ls-space-4); height: var(--ls-row-h); padding: 0 var(--ls-space-6); flex: none;
+  font-size: var(--ls-text-md); color: var(--ls-desc); border-bottom: 1px solid var(--ls-border-faint); }
+.pj-crumbs > span:nth-child(2) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pj-space { display: inline-flex; align-items: center; gap: var(--ls-space-2); padding: 0 var(--ls-space-3); border: 0; border-radius: var(--ls-radius-pill);
+  background: var(--ls-button-soft-bg); color: var(--ls-button-soft-fg); font: var(--ls-text-sm) var(--ls-font); cursor: pointer; white-space: nowrap; }
+.pj-space svg { width: var(--ls-text-sm); height: var(--ls-text-sm); }
+.ed-code { flex: 1; min-height: 0; overflow: auto; padding: var(--ls-space-4) 0; font: var(--ls-text-md) / 1.6 var(--ls-mono); }
+.ed-line { display: flex; align-items: baseline; gap: var(--ls-space-6); padding-right: var(--ls-space-6); }
+.ed-line.fresh { background: var(--ls-editor-inactive-selection-bg); box-shadow: inset var(--ls-space-1) 0 var(--ls-mark-ok); }
+.ed-text { white-space: pre; }
+.ed-lens { padding: 0 var(--ls-space-3); border: 0; background: none; color: var(--ls-link); font: var(--ls-text-sm) var(--ls-font); cursor: pointer; white-space: nowrap; }
+.ed-lens:hover { text-decoration: underline; }
+
+.ins-panel { display: flex; flex-direction: column; gap: var(--ls-space-5); min-height: 0; padding: var(--ls-space-6); background: var(--ls-sidebar-bg); border-left: 1px solid var(--ls-border-soft); overflow: hidden; }
+.ins-head { margin: 0; font-size: var(--ls-text-sm); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--ls-desc); }
+.ins-tabs { display: flex; flex: none; gap: 0; overflow-x: auto; scrollbar-width: none; }
+.ins-tab { flex: none; height: calc(var(--ls-row-h) + var(--ls-space-1)); padding: 0 var(--ls-space-3); border: 0; border-radius: var(--ls-radius); background: none; color: var(--ls-desc);
+  font: var(--ls-text-md) var(--ls-font); cursor: pointer; }
+.ins-tab:hover { color: var(--ls-fg); background: var(--ls-list-hover); }
+.ins-tab.on { color: var(--ls-button-soft-fg); background: var(--ls-button-soft-bg); }
+.ins-search { flex: none; height: calc(var(--ls-row-h) + var(--ls-space-4)); }
+.ins-search input { font-size: var(--ls-text-md); }
+.ins-results { flex: 1; min-height: 0; overflow-y: auto; }
+.ins-group { display: flex; align-items: center; gap: var(--ls-space-3); margin: var(--ls-space-4) 0 var(--ls-space-3); font-size: var(--ls-text-sm); font-weight: 600; color: var(--ls-desc); }
+.ins-group .tree-count { margin-left: 0; }
+.ins-hint { font-size: var(--ls-text-sm); }
+.ins-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--ls-space-3); }
+.ins-card { padding: var(--ls-space-4) var(--ls-space-5); background: var(--ls-bg); border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius); }
+.ins-card-head { display: flex; align-items: flex-start; gap: var(--ls-space-4); }
+.ins-kind { display: inline-flex; color: var(--ls-desc); padding-top: var(--ls-space-1); }
+.ins-kind svg { width: var(--ls-space-7); height: var(--ls-space-7); }
+.ins-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ins-card-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--ls-space-3); margin-top: var(--ls-space-3); }
+.ins-modes { display: inline-flex; margin-right: auto; border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius); overflow: hidden; }
+.ins-mode { height: var(--ls-row-h); padding: 0 var(--ls-space-4); border: 0; background: none; color: var(--ls-desc); font: var(--ls-text-sm) var(--ls-font); cursor: pointer; }
+.ins-mode + .ins-mode { border-left: 1px solid var(--ls-border-soft); }
+.ins-mode.on { background: var(--ls-button-soft-bg); color: var(--ls-button-soft-fg); }
+@media (max-width: 1000px) { .pj { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); } .ins-panel { border-left: 0; border-top: 1px solid var(--ls-border-soft); } }
