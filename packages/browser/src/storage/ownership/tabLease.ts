@@ -2,7 +2,7 @@
 // CONTRACT: documents/contracts/collaboration.md#mirror-ownership
 
 export interface TabLease {
-  /** Fires once when another tab takes the lock over; the tab then stops writing to disk. */
+  /** Fires once when another tab takes the lock over, also for a listener added after that; the tab then stops writing to disk. */
   onLost(listener: () => void): void;
   release(): Promise<void>;
 }
@@ -23,11 +23,12 @@ function holdLock(name: string, options: LockOptions): Promise<TabLease | undefi
     const listeners: Array<() => void> = [];
     let acquired = false;
     let ended = false;
+    let lost = false;
     let releaseHeld: () => void = () => {};
     const held = new Promise<void>((resolve) => { releaseHeld = resolve; });
     let settled: Promise<void> = Promise.resolve();
     const lease: TabLease = {
-      onLost: (listener) => { listeners.push(listener); },
+      onLost: (listener) => { if (lost) { queueMicrotask(listener); } else { listeners.push(listener); } },
       release: async () => {
         if (ended) { return; }
         releaseHeld();
@@ -45,7 +46,7 @@ function holdLock(name: string, options: LockOptions): Promise<TabLease | undefi
       () => { ended = true; },
       (error: unknown) => {
         ended = true;
-        if (acquired && isAbort(error)) { for (const listener of listeners) { listener(); } return; }
+        if (acquired && isAbort(error)) { lost = true; for (const listener of listeners) { listener(); } return; }
         rejectAcquire(error);
       },
     );

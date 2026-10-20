@@ -1,5 +1,5 @@
 // Exports the browser storage layer's public API.
-export { createLibraryFileSystem, getLibrarySource, recheckLibrarySource, rebuildFromFiles, setLibraryFolder, switchToPickedFolder, onLibraryFilesChanged, onFolderRecordsRebuilt, type LibrarySource } from "./libraryFileSystem";
+export { createLibraryFileSystem, getLibrarySource, recheckLibrarySource, rebuildFromFiles, setLibraryFolder, switchToPickedFolder, onLibraryFilesChanged, onFolderRecordsRebuilt, type LibrarySource, type LibrarySources } from "./libraryFileSystem";
 export { currentLibraryId, libraryIdOf } from "./identity";
 export { createSidecarPort } from "./sidecarPort";
 export { createLibraryMutations } from "./libraryMutations";

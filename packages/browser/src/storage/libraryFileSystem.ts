@@ -17,6 +17,8 @@ export interface LibrarySources {
   fileSystem: LibraryFileSystem;
   /** The folder only; its calls fail when the folder is unreachable instead of reaching browser storage. */
   folderFileSystem: LibraryFileSystem;
+  /** This browser's storage only, whatever the current choice; a later choice never redirects its calls. */
+  browserFileSystem: LibraryFileSystem;
   getLibrarySource(): Promise<LibrarySource>;
   /** Probes the bridge again; only a context that chose browser storage can change its choice. */
   recheckLibrarySource(): Promise<LibrarySource>;
@@ -132,7 +134,7 @@ export function createLibrarySources(deps: SourceDeps): LibrarySources {
   });
   const setLibraryFolder = async (root: string): Promise<void> => { await setBridgeLibrary(connect, logger, root); };
   return {
-    fileSystem, folderFileSystem: routedFileSystem(async () => folderFs), getLibrarySource, recheckLibrarySource,
+    fileSystem, folderFileSystem: routedFileSystem(async () => folderFs), browserFileSystem: browserFs, getLibrarySource, recheckLibrarySource,
     switchToPickedFolder, setLibraryFolder,
     onLibraryFilesChanged: (listener) => link.onChanged(listener),
     onFolderRecordsRebuilt: (listener) => {

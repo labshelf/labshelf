@@ -199,11 +199,12 @@ describe("library source choice", () => {
     const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
     it("wins over the bridge, routes every call to it and rebuilds from it", async () => {
-      const { fileSystem, folderFileSystem, getLibrarySource, recheckLibrarySource, picked, hosts, rebuild } = setup();
+      const { fileSystem, folderFileSystem, browserFileSystem, browserFs, getLibrarySource, recheckLibrarySource, picked, hosts, rebuild } = setup();
       picked.folder = { name: "Papers", fs: pickedFs() };
       await expect(getLibrarySource()).resolves.toEqual({ kind: "folder", root: "Papers", via: "picked" });
       await expect(fileSystem.readText("a.txt")).resolves.toBe("from picked");
       await expect(folderFileSystem.readText("a.txt")).resolves.toBe("from picked");
+      expect(browserFileSystem).toBe(browserFs);
       await expect(recheckLibrarySource()).resolves.toEqual({ kind: "folder", root: "Papers", via: "picked" });
       await settle();
       expect(hosts).toHaveLength(0);
