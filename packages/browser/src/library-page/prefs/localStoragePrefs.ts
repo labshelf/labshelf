@@ -27,11 +27,10 @@ export interface PagePrefs extends PrefsPort {
 }
 
 interface DetailPanePrefs {
-  detailWidth: number;
+  /** Null until the user drags the pane's sash. */
+  detailWidth: number | null;
   detailCollapsed: boolean;
 }
-
-export const DEFAULT_DETAIL_WIDTH = 360;
 
 interface CodeStyle {
   codeTheme: CodeThemeName;
@@ -53,7 +52,7 @@ export function createLocalStoragePrefs(storage: PrefsStorage = localStorage): P
     const editorWidth = widthOf(raw);
     const next = {
       ...sanitizePrefs(raw), treeExpanded: stringsOf(raw, "treeExpanded"), collapsedSections: stringsOf(raw, "collapsedSections"),
-      ...(editorWidth === null ? {} : { editorWidth }), ...codeStyleOf(raw), ...detailPaneOf(raw), ...patch,
+      ...(editorWidth === null ? {} : { editorWidth }), ...codeStyleOf(raw), ...detailPaneFields(raw), ...patch,
     };
     // Private windows can refuse writes; the page then works with the in-memory state only.
     try { storage.setItem(PREFS_KEY, JSON.stringify(next)); } catch { /* storage unavailable */ }
@@ -89,10 +88,16 @@ function codeStyleOf(raw: Record<string, unknown>): CodeStyle {
   return { codeTheme: pick(CODE_THEME_NAMES, raw["codeTheme"]), codeFont: pick(CODE_FONT_NAMES, raw["codeFont"]) };
 }
 
+// An unset width is left out, so it keeps following the sidebar's.
+function detailPaneFields(raw: Record<string, unknown>): Partial<DetailPanePrefs> {
+  const { detailWidth, detailCollapsed } = detailPaneOf(raw);
+  return detailWidth === null ? { detailCollapsed } : { detailWidth, detailCollapsed };
+}
+
 function detailPaneOf(raw: Record<string, unknown>): DetailPanePrefs {
   const w = raw["detailWidth"];
   return {
-    detailWidth: typeof w === "number" && Number.isFinite(w) && w > 0 ? w : DEFAULT_DETAIL_WIDTH,
+    detailWidth: typeof w === "number" && Number.isFinite(w) && w > 0 ? w : null,
     detailCollapsed: raw["detailCollapsed"] === true,
   };
 }

@@ -1,5 +1,5 @@
 import { DEFAULT_PREFS } from "@labshelf/core";
-import { DEFAULT_DETAIL_WIDTH, PREFS_KEY, createLocalStoragePrefs } from "../../../src/library-page/prefs/localStoragePrefs";
+import { PREFS_KEY, createLocalStoragePrefs } from "../../../src/library-page/prefs/localStoragePrefs";
 
 class MemoryStorage implements Pick<Storage, "getItem" | "setItem"> {
   readonly map = new Map<string, string>();
@@ -24,13 +24,23 @@ describe("localStorage prefs", () => {
     prefs.save({ sortKey: "year", sortDir: -1 });
     prefs.saveDetailPane({ detailCollapsed: true });
     expect(prefs.load()).toMatchObject({ sortKey: "year", sortDir: -1 });
-    expect(prefs.detailPane()).toEqual({ detailCollapsed: true, detailWidth: DEFAULT_DETAIL_WIDTH });
+    expect(prefs.detailPane()).toEqual({ detailCollapsed: true, detailWidth: null });
     expect(prefs.treeExpanded()).toEqual(["papers/A"]);
     expect(prefs.collapsedSections()).toEqual(["projects"]);
     expect(Object.keys(JSON.parse(storage.getItem(PREFS_KEY)!)).sort()).toEqual([
-      "citeFormat", "codeFont", "codeTheme", "collapsedSections", "columns", "detailCollapsed", "detailTab", "detailWidth", "secCollapsed", "sidebarCollapsed", "sidebarWidth", "sortDir", "sortKey",
+      "citeFormat", "codeFont", "codeTheme", "collapsedSections", "columns", "detailCollapsed", "detailTab", "secCollapsed", "sidebarCollapsed", "sidebarWidth", "sortDir", "sortKey",
       "treeExpanded",
     ]);
+  });
+
+  it("keeps a dragged Details width and leaves an undragged one unset", () => {
+    const storage = new MemoryStorage();
+    const prefs = createLocalStoragePrefs(storage);
+    prefs.save({ sortKey: "year" });
+    expect(prefs.detailPane().detailWidth).toBeNull();
+    prefs.saveDetailPane({ detailWidth: 300 });
+    prefs.save({ sortKey: "title" });
+    expect(prefs.detailPane().detailWidth).toBe(300);
   });
 
   it("drops non-string tree entries", () => {
