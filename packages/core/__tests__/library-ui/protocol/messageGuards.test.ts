@@ -18,6 +18,7 @@ describe("parseUiMessage", () => {
     const messages = [
       { type: "ready" },
       { type: "navigate", folder: "papers/A" },
+      { type: "folder.open", folder: "papers/A/B" },
       { type: "paper.open", id: "p1" },
       { type: "paper.open", id: "p1", page: 3 },
       { type: "paper.setStatus", ids: ["p1", "p2"], status: "done" },
@@ -40,6 +41,7 @@ describe("parseUiMessage", () => {
     const bad = [
       null, "ready", [], { type: "toString" }, { type: "nope" },
       { type: "navigate", folder: "/etc" },
+      { type: "folder.open", folder: "papers/../x" },
       { type: "paper.move", ids: ["p1"], target: "papers/../.." },
       { type: "paper.move", ids: ["p1", 7], target: "papers/A" },
       { type: "paper.setStatus", ids: ["p1"], status: "archived" },
@@ -97,8 +99,9 @@ describe("citation map messages", () => {
 
 describe("file tray messages", () => {
   const accepted = [
-    { type: "paper.selected", id: "p1" },
-    { type: "paper.selected", id: null },
+    { type: "paper.selected", ids: ["p1"] },
+    { type: "paper.selected", ids: ["p1", "p2"] },
+    { type: "paper.selected", ids: [] },
     { type: "paper.files", id: "p1" },
     { type: "paper.describeFile", id: "p1", name: "notes.md", description: "My notes" },
     { type: "paper.describeFile", id: "p1", name: "notes.md", description: "" },
@@ -114,8 +117,10 @@ describe("file tray messages", () => {
   it("refuses missing fields and wrong types", () => {
     const bad = [
       { type: "paper.selected" },
-      { type: "paper.selected", id: 3 },
-      { type: "paper.selected", id: "" },
+      { type: "paper.selected", id: "p1" },
+      { type: "paper.selected", ids: "p1" },
+      { type: "paper.selected", ids: ["p1", ""] },
+      { type: "paper.selected", ids: [3] },
       { type: "paper.files" },
       { type: "paper.files", id: "" },
       { type: "paper.files", id: 7 },

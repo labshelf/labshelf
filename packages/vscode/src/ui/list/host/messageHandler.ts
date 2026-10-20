@@ -36,7 +36,7 @@ async function onFolderMessage(ctx: ListHostContext, m: UiToHost, toDisk: (ui: s
 async function onPaperMessage(ctx: ListHostContext, m: UiToHost): Promise<boolean> {
   switch (m.type) {
     case 'ready': await ctx.onReady(); return true;
-    case 'paper.selected': ctx.onSelect(m.id); return true;
+    case 'paper.selected': ctx.onSelect(m.ids.length === 1 ? m.ids[0]! : null); return true;
     case 'paper.open': await runCommand(ctx, 'labshelf.openPdfViewer', m.id, ...(m.page ? [m.page] : [])); return true;
     case 'paper.openExternal': await runCommand(ctx, 'labshelf.openPaperPdfExternal', m.id); return true;
     case 'paper.reveal': await revealPaper(ctx, m.id); return true;

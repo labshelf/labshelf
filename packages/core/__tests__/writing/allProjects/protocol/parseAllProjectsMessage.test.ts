@@ -46,6 +46,12 @@ describe("parseAllProjectsMessage", () => {
     expect(parseAllProjectsMessage({ type: "setTarget", id: "p", venue: "x".repeat(200) })).toEqual({ type: "setTarget", id: "p", venue: "x".repeat(200) });
   });
 
+  it("accepts the selected project, or null for none", () => {
+    expect(parseAllProjectsMessage({ type: "project.selected", id: "p" })).toEqual({ type: "project.selected", id: "p" });
+    expect(parseAllProjectsMessage({ type: "project.selected", id: null })).toEqual({ type: "project.selected", id: null });
+    for (const id of [undefined, "", 3]) expect(parseAllProjectsMessage({ type: "project.selected", id })).toBeUndefined();
+  });
+
   it("rejects wrong shapes and values", () => {
     for (const raw of [null, "ready", [], {}, { type: "nope" }, { type: "create", kind: "x" }, { type: "open" }, { type: "open", id: 1 },
       { type: "rename", id: "p", title: "  " }, { type: "duplicate", id: "p" }, { type: "move", id: "p", folder: 3 },

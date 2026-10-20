@@ -44,11 +44,12 @@ UI to host:
 |---|---|---|
 | `ready` | the UI is mounted | `navigate`, `snapshot`, optionally `select` and `jobs` |
 | `navigate` | the user opened another folder | nothing; the host keeps the folder for later replies |
+| `folder.open` | Details (see [details-host.md](details-host.md)) asks to open a paper's folder in the list, which it does not hold | forwards `navigate` with the folder to the list |
 | `folder.create`, `folder.rename`, `folder.delete` | the user confirmed the prompt | `snapshot`, then `navigate` when the open folder moved or was deleted |
 | `paper.open` | Enter, double-click, Open PDF, an annotation (with its `page`) | opens the reader, or `pdf.missing` when the paper has no readable PDF |
 | `paper.details` | a paper is shown in the detail pane | `details` |
 | `paper.similar` | the Related tab is shown | `similar` |
-| `paper.selected` | the single selected paper changed, whether the user selected it or a host message did; `id` is null when no paper or several are selected | nothing; a host with its own tree marks the paper there |
+| `paper.selected` | the selection changed, whether the user selected or a host message did; `ids` holds every selected paper and is empty when none is | nothing; a host with its own tree marks the paper there when exactly one is selected |
 | `paper.files` | a paper's files are opened in the list | `files` |
 | `paper.describeFile` | the user confirmed Describe… on a file or subfolder; an empty `description` removes the stored one | writes the `files` key of the paper's metadata.yaml, then `snapshot` and `files` |
 | `paper.openFile` | Open to the side on a file of the paper | opens it beside the list: paper.pdf in the reader, any other file in the host's own viewer |

@@ -21,6 +21,8 @@ export type AllProjectsToHost =
   | { type: "files"; id: string }
   /** `path` is one of the listed files: relative and "/"-separated. */
   | { type: "openFile"; id: string; path: string }
+  /** The selected project changed; null when none is selected. */
+  | { type: "project.selected"; id: string | null }
   /** Asks for the detail pane's data each time a row is selected. */
   | { type: "detail"; id: string }
   | { type: "build"; id: string }

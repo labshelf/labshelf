@@ -34,7 +34,22 @@ it("builds the frame with the Library and All projects classes, the list and the
   expect(t.frame.querySelector(".list-pane > .list-header .ls-place-tabs")).not.toBeNull();
   expect(t.frame.querySelector(".list-pane > .list-body")).not.toBeNull();
   expect(t.frame.querySelector('aside.detail-pane[aria-label="Project details"] .muted-note')?.textContent).toBe("Select a project to see its details.");
-  expect(t.sent).toEqual([{ type: "ready" }]);
+  expect(t.sent).toEqual([{ type: "ready" }, { type: "project.selected", id: null }]);
+});
+
+it("reports each selection change once, including a selection cleared by a place change", () => {
+  const t = mountPage();
+  t.deliver({ type: "projects", rows: [row], commands: [], newKinds: ["blank", "template", "folder"], openLabel: "Open" });
+  const selected = () => t.sent.filter((m) => m.type === "project.selected");
+  const rowMain = () => t.frame.querySelector<HTMLElement>(`.paper-row[data-id="${row.id}"] .paper-row-main`)!;
+  rowMain().click();
+  rowMain().click();
+  t.frame.querySelector<HTMLElement>('.ls-place-tabs [data-place="archived"]')!.click();
+  expect(selected()).toEqual([
+    { type: "project.selected", id: null },
+    { type: "project.selected", id: row.id },
+    { type: "project.selected", id: null },
+  ]);
 });
 
 it("shows the selected project's title in the pane and fills it when the detail arrives", () => {
