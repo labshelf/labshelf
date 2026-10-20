@@ -6,7 +6,7 @@ The full LabShelf workspace inside VS Code:
 
 - one sidebar webview in the activity bar with collapsible Library (the shared core folder tree) and Projects sections, and a Settings gear in its title bar;
 - the paper list in an editor tab;
-- the **Details** view (`labshelf.details`) in the secondary side bar, which shows the last selection made in the paper list, in All projects or in the active reader ([contract](../contracts/details-host.md)); it needs VS Code 1.106 or later;
+- the **Details** view (`labshelf.details`) in the secondary side bar, which shows the last selection made in the paper list, in All projects or in the active reader ([contract](../contracts/details-host.md)); opening the paper list tab opens it too, and an open list tab leaves it as the user set it. VS Code shows it as a tab of the secondary side bar, next to any other view placed there, such as Chat. It needs VS Code 1.106 or later;
 - the PDF reader;
 - import with OCR;
 - similar-paper indexing;
