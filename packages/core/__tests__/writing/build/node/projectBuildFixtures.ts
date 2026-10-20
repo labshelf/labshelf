@@ -43,13 +43,15 @@ function fakeProgram(runs: string, marker: string, missing: string): string {
   return `#!/bin/sh
 PATH=/bin:/usr/bin
 OUT=""
+ARGS=""
 while [ $# -gt 0 ]; do
+  ARGS="$ARGS $1"
   case "$1" in
     -outdir=*) OUT="\${1#-outdir=}";;
   esac
   shift
 done
-echo run >> "${runs}"
+echo "run$ARGS" >> "${runs}"
 if [ -f "${marker}" ]; then rm "${marker}"; sleep 5; fi
 mkdir -p "$OUT"
 if [ -f "${missing}" ]; then

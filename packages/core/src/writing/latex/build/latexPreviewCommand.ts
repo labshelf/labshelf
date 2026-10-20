@@ -15,6 +15,8 @@ export interface PreviewOptions {
   /** An `\include` argument as written; ignored with a format, which reads it from a file instead. */
   includeOnly?: string | undefined;
   format?: PreviewFormat | undefined;
+  /** Stops the engine at the first error instead of continuing. */
+  haltOnError?: boolean | undefined;
 }
 
 /**
@@ -23,11 +25,11 @@ export interface PreviewOptions {
  * and the other chapters keep the numbering of their `.aux` files.
  */
 export function latexPreviewCommand(engine: LatexToolchain["engine"], mainFile: string, outDir: string, options: PreviewOptions = {}): BuildCommand {
-  const { includeOnly, format } = options;
+  const { includeOnly, format, haltOnError } = options;
   const base = mainFile.replace(/\.tex$/, "");
   // PLATFORM: a mylatexformat format discards the first input up to `\begin{document}`, so main must be that input.
   const source = includeOnly === undefined || format ? [mainFile] : [`-jobname=${base}`, `\\includeonly{${includeOnly}}\\input{${mainFile}}`];
-  const common = ["-interaction=nonstopmode", "-file-line-error", "-synctex=1", NO_SHELL_ESCAPE, `-output-directory=${outDir}`, ...source];
+  const common = ["-interaction=nonstopmode", "-file-line-error", "-synctex=1", NO_SHELL_ESCAPE, ...(haltOnError ? ["-halt-on-error"] : []), `-output-directory=${outDir}`, ...source];
   if (!format) { return { executable: engine, args: common, env: TEX_FILE_ACCESS_ENV }; }
   return { executable: engine, args: [`-fmt=${format.name}`, ...common], env: { ...TEX_FILE_ACCESS_ENV, TEXFORMATS: format.searchPath } };
 }

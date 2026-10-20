@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-// Tests the header options menu: hidden without options, Typst has no engines, LaTeX lists four, items post their messages.
+// Tests the header options menu: hidden without options, Typst shows the compile modes, LaTeX adds engines and error handling, items post their messages.
 import { mountOptionsMenu } from "../../../../../../src/reader/dom/preview/header/options/index";
 import { closeMenu } from "../../../../../../src/ui/dom/index";
 import type { BuildOptions, PreviewRoots } from "../../../../../../src/reader/index";
@@ -29,7 +29,7 @@ describe("mountOptionsMenu", () => {
     const t = setup();
     t.menu.setRoots(roots());
     expect(t.slot.hidden).toBe(true);
-    t.menu.setRoots(roots({ autoCompile: true }));
+    t.menu.setRoots(roots({ autoCompile: "save" }));
     expect(t.slot.hidden).toBe(false);
     t.menu.setRoots(roots());
     expect(t.slot.hidden).toBe(true);
@@ -42,48 +42,65 @@ describe("mountOptionsMenu", () => {
     expect(t.button().getAttribute("aria-expanded")).toBe("false");
   });
 
-  it("shows only Auto compile for a Typst root, checked from the setting", () => {
+  it("shows only the three compile modes for a Typst root, the current one checked", () => {
     const t = setup();
-    t.menu.setRoots(roots({ autoCompile: false }));
+    t.menu.setRoots(roots({ autoCompile: "off" }));
     t.button().click();
-    expect(t.items().map((b) => b.textContent)).toEqual(["Auto compile on save"]);
-    expect(t.item("Auto compile on save").getAttribute("role")).toBe("menuitemcheckbox");
-    expect(t.item("Auto compile on save").getAttribute("aria-checked")).toBe("false");
+    expect(t.items().map((b) => b.textContent)).toEqual(["Auto compile", "Compile on save", "Compile manually"]);
+    expect(t.items().map((b) => b.getAttribute("role"))).toEqual(Array(3).fill("menuitemradio"));
+    expect(t.items().map((b) => b.getAttribute("aria-checked"))).toEqual(["false", "false", "true"]);
+    expect(document.querySelectorAll(".ls-menu-sep")).toHaveLength(0);
     expect(t.button().getAttribute("aria-expanded")).toBe("true");
   });
 
-  it("lists the three engines for a LaTeX root with the current one checked", () => {
+  it("lists modes, engines and error handling for a LaTeX root with the current choices checked", () => {
     const t = setup();
-    t.menu.setRoots(roots({ autoCompile: true, engine: "xelatex" }));
+    t.menu.setRoots(roots({ autoCompile: "typing", engine: "xelatex", haltOnError: true }));
     t.button().click();
-    expect(document.querySelectorAll(".ls-menu-sep")).toHaveLength(1);
-    const engines = t.items().slice(1);
-    expect(engines.map((b) => b.textContent)).toEqual(["pdfLaTeX", "XeLaTeX", "LuaLaTeX"]);
-    expect(engines.map((b) => b.getAttribute("role"))).toEqual(Array(3).fill("menuitemradio"));
-    expect(engines.map((b) => b.getAttribute("aria-checked"))).toEqual(["false", "true", "false"]);
+    expect(document.querySelectorAll(".ls-menu-sep")).toHaveLength(2);
+    expect(t.items().map((b) => b.textContent)).toEqual([
+      "Auto compile", "Compile on save", "Compile manually",
+      "pdfLaTeX", "XeLaTeX", "LuaLaTeX",
+      "Stop on first error", "Try to compile despite errors",
+    ]);
+    expect(t.items().map((b) => b.getAttribute("role"))).toEqual(Array(8).fill("menuitemradio"));
+    expect(t.items().map((b) => b.getAttribute("aria-checked"))).toEqual(
+      ["true", "false", "false", "false", "true", "false", "true", "false"],
+    );
   });
 
-  it("lists the three engines with none checked for a LaTeX root that has not chosen one", () => {
+  it("checks no engine and continues despite errors for a LaTeX root without those choices", () => {
     const t = setup();
-    t.menu.setRoots(roots({ autoCompile: true, engine: null }));
+    t.menu.setRoots(roots({ autoCompile: "save", engine: null }));
     t.button().click();
-    const engines = t.items().slice(1);
-    expect(engines.map((b) => b.getAttribute("role"))).toEqual(Array(3).fill("menuitemradio"));
-    expect(engines.map((b) => b.getAttribute("aria-checked"))).toEqual(Array(3).fill("false"));
+    expect(t.items().slice(3).map((b) => b.getAttribute("aria-checked"))).toEqual(
+      ["false", "false", "false", "false", "true"],
+    );
   });
 
-  it("posts setAutoCompile with the inverse of the current value", () => {
+  it("posts setAutoCompile with the picked mode", () => {
     const t = setup();
-    t.menu.setRoots(roots({ autoCompile: true }));
+    t.menu.setRoots(roots({ autoCompile: "save" }));
     t.button().click();
-    t.item("Auto compile on save").click();
-    expect(t.post).toHaveBeenCalledWith({ command: "setAutoCompile", on: false });
+    t.item("Auto compile").click();
+    expect(t.post).toHaveBeenCalledWith({ command: "setAutoCompile", mode: "typing" });
     expect(document.querySelector(".ls-menu")).toBeNull();
+  });
+
+  it("posts setHaltOnError with the picked behaviour", () => {
+    const t = setup();
+    t.menu.setRoots(roots({ autoCompile: "save", engine: "pdflatex", haltOnError: false }));
+    t.button().click();
+    t.item("Stop on first error").click();
+    expect(t.post).toHaveBeenCalledWith({ command: "setHaltOnError", on: true });
+    t.button().click();
+    t.item("Try to compile despite errors").click();
+    expect(t.post).toHaveBeenLastCalledWith({ command: "setHaltOnError", on: false });
   });
 
   it("posts setEngine with the picked engine", () => {
     const t = setup();
-    t.menu.setRoots(roots({ autoCompile: true, engine: "xelatex" }));
+    t.menu.setRoots(roots({ autoCompile: "save", engine: "xelatex" }));
     t.button().click();
     t.item("LuaLaTeX").click();
     expect(t.post).toHaveBeenCalledWith({ command: "setEngine", engine: "lualatex" });
@@ -91,7 +108,7 @@ describe("mountOptionsMenu", () => {
 
   it("closes on Escape, collapses the button and returns focus to it", () => {
     const t = setup();
-    t.menu.setRoots(roots({ autoCompile: true }));
+    t.menu.setRoots(roots({ autoCompile: "save" }));
     t.button().click();
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     expect(document.querySelector(".ls-menu")).toBeNull();

@@ -105,6 +105,7 @@ export async function runSectionPreview(request: LatexBuildRequest, places: Prob
   const documentName = `${base}-section.tex`;
   const command = latexPreviewCommand(request.toolchain.engine, documentName, request.outDir, {
     format: { name: found.name, searchPath: `${found.dir}${path.delimiter}` },
+    ...(request.haltOnError !== undefined && { haltOnError: request.haltOnError }),
   });
   const result = await withIncludeOnlyFile(request.outDir, undefined, () => compileLatex(request, places, {
     job: `${base}-section`, command,

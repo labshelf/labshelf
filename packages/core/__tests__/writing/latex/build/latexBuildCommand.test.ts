@@ -51,4 +51,13 @@ describe("latexBuildCommand", () => {
       expect(env).toEqual({ openout_any: "p", openin_any: "p" });
     }
   });
+
+  it("stops the engine at the first error only when asked", () => {
+    const toolchain = { engine: "xelatex" as const, executable: "latexmk" };
+    expect(latexBuildCommand(toolchain, "m.tex", "/o", { haltOnError: true }).args)
+      .toContain("$xelatex = 'xelatex -no-shell-escape -halt-on-error -jobname=%R %O %P';");
+    for (const options of [{}, { haltOnError: false }]) {
+      expect(latexBuildCommand(toolchain, "m.tex", "/o", options).args.some((arg) => arg.includes("-halt-on-error"))).toBe(false);
+    }
+  });
 });

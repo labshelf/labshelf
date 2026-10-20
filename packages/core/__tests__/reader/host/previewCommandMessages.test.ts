@@ -3,9 +3,10 @@ import { setupHost } from "./hostFixture";
 
 const cases: Array<[string, Record<string, unknown>, unknown[]]> = [
   ["runCommand", { id: "markVersion" }, ["markVersion"]],
-  ["setAutoCompile", { on: true }, [true]],
+  ["setAutoCompile", { mode: "save" }, ["save"]],
   ["setEngine", { engine: "xelatex" }, ["xelatex"]],
   ["setIncludeOnly", { on: false }, [false]],
+  ["setHaltOnError", { on: true }, [true]],
   ["setCheckLimits", { limits: { pages: 8, words: null, countUpTo: "end" } }, [{ pages: 8, words: null, countUpTo: "end" }]],
   ["fixCitation", { fix: { kind: "replace", key: "a", replacement: "b", file: "m.tex", line: 2 } }, [{ kind: "replace", key: "a", replacement: "b", file: "m.tex", line: 2 }]],
   ["openSourceLine", { file: "m.tex", line: 9 }, ["m.tex", 9]],

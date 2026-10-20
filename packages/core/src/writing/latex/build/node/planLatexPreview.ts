@@ -15,6 +15,7 @@ export interface PreviewPlanInput {
   /** The user's explicit include-only selection. */
   includeOnly?: string;
   outDir: string;
+  haltOnError?: boolean;
   signal: AbortSignal;
   logger: ILogger;
 }
@@ -38,6 +39,6 @@ export async function planLatexPreview(input: PreviewPlanInput): Promise<Preview
   const mainPath = path.join(input.projectFolder, input.main);
   const found = await preambleFormat({ ...input, mainPath });
   const format = found && { name: found.name, searchPath: `${found.dir}${path.delimiter}` };
-  const command = latexPreviewCommand(input.toolchain.engine, path.basename(input.main), input.outDir, { includeOnly, format });
+  const command = latexPreviewCommand(input.toolchain.engine, path.basename(input.main), input.outDir, { includeOnly, format, haltOnError: input.haltOnError });
   return { command, includeOnlyFile: format ? includeOnly : undefined };
 }

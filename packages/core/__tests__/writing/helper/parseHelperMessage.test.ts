@@ -14,6 +14,7 @@ const toHelper: ToHelperMessage[] = [
   { ...env("7"), type: "save", projectId: "thesis", path: "main.tex" },
   { ...env("8"), type: "compile", projectId: "thesis", main: "main.tex", mode: "preview" },
   { ...env("9"), type: "compile", projectId: "thesis", main: "main.tex", mode: "full", engine: "xelatex", editedFile: "chapters/a.tex", editedLine: 12 },
+  { ...env("10"), type: "compile", projectId: "thesis", main: "main.tex", mode: "full", haltOnError: true },
   { ...env("11"), type: "cancel", projectId: "thesis" },
   { ...env("12"), type: "installTex", kind: "tinytex" },
   { ...env("13"), type: "installAllPackages" },
@@ -37,7 +38,7 @@ const reject = (raw: unknown, direction: "toHelper" | "toPage" = "toHelper") => 
 };
 
 describe("parseHelperMessage round trip", () => {
-  it("is protocol version 3", () => { expect(PROTOCOL_VERSION).toBe(3); });
+  it("is protocol version 4", () => { expect(PROTOCOL_VERSION).toBe(4); });
 
   it.each(toHelper.map((m) => [m.type, m]))("reads %s sent to the helper", (_type, message) => {
     expect(parseHelperMessage(roundTrip(message), "toHelper")).toEqual({ ok: true, message });
@@ -66,6 +67,10 @@ describe("parseHelperMessage rejections", () => {
     expect(result).toMatchObject({ ok: false, code: "version", id: "4", received: 1 });
     expect(reject({ ...toHelper[3]!, v: String(PROTOCOL_VERSION) })).toBe("version");
     expect(reject({ ...toHelper[3]!, v: 2 })).toBe("version");
+  });
+
+  it("rejects a compile whose haltOnError is not a boolean", () => {
+    expect(reject({ ...env("1"), type: "compile", projectId: "thesis", main: "main.tex", mode: "full", haltOnError: "yes" })).toBe("invalid-field");
   });
 
   it.each(["sync", "file", "delete", "build"])("rejects the removed type %s as unknown-type", (type) => {
@@ -115,7 +120,7 @@ describe("parseHelperMessage rejections", () => {
   it("rejects bad compile and install fields", () => {
     expect(reject({ ...toHelper[7]!, mode: "draft" })).toBe("invalid-field");
     expect(reject({ ...toHelper[8]!, engine: "context" })).toBe("invalid-field");
-    expect(reject({ ...toHelper[10]!, kind: "miktex" })).toBe("invalid-field");
+    expect(reject({ ...toHelper[11]!, kind: "miktex" })).toBe("invalid-field");
     for (const editedLine of [0, -1, 1.5, "3"]) { expect(reject({ ...toHelper[8]!, editedLine })).toBe("invalid-field"); }
   });
 

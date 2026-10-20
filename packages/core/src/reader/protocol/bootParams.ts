@@ -4,7 +4,7 @@
  */
 import type { PdfTheme } from "../../model/index.js";
 
-export const PROTOCOL_VERSION = 6;
+export const PROTOCOL_VERSION = 7;
 
 export type EffectiveTheme = Exclude<PdfTheme, "auto">;
 export type ZoomPreset = "page-width" | "page-fit" | "page-actual" | "auto";

@@ -26,6 +26,8 @@ export interface LatexBuildOptions extends PartialBuild {
   capturesSectionState?: boolean;
   /** Runs biber through this command instead of the TeX's own biber. */
   biber?: BiberCommand;
+  /** Stops the engine at the first error instead of continuing. */
+  haltOnError?: boolean;
 }
 
 /**
@@ -46,7 +48,7 @@ export function latexBuildCommand(toolchain: LatexToolchain, mainFile: string, o
       `-auxdir=${outDir}`, `-outdir=${outDir}`,
       // PLATFORM: latexmk has no flag for the engine's options; its command string is set from Perl. `-usepretex` would
       // replace that string, dropping the shell-escape guard; `%P` reads the pretex, and the job keeps main's name.
-      "-e", `$${engine} = '${engine} ${NO_SHELL_ESCAPE} -jobname=%R %O %P';`,
+      "-e", `$${engine} = '${engine} ${NO_SHELL_ESCAPE}${options.haltOnError ? " -halt-on-error" : ""} -jobname=%R %O %P';`,
       ...(options.biber ? ["-e", biberAssignment(options.biber)] : []),
       ...partialArgs, mainFile,
     ],

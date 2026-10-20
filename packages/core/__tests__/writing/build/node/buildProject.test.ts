@@ -19,6 +19,14 @@ posixOnly("buildProject", () => {
     expect(await runCount(fixture.runs)).toBe(1);
   });
 
+  it("stops the LaTeX engine at the first error only when asked", async () => {
+    const fixture = await buildFixture();
+    await buildProject(fixture.project({ engine: "xelatex" }), fixture.deps);
+    expect(await fs.readFile(fixture.runs, "utf8")).not.toContain("-halt-on-error");
+    await buildProject(fixture.project({ engine: "xelatex" }), fixture.deps, { haltOnError: true, force: true });
+    expect(await fs.readFile(fixture.runs, "utf8")).toContain("-halt-on-error");
+  });
+
   it("installs a missing package with progress and rebuilds", async () => {
     const fixture = await buildFixture();
     await fs.writeFile(fixture.missing, "");

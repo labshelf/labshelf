@@ -62,7 +62,7 @@ export const previewHandlers: Pick<
   },
 
   setAutoCompile: async (ctx, msg) => {
-    await previewPorts(ctx, "setAutoCompile")?.setAutoCompile?.(msg.on);
+    await previewPorts(ctx, "setAutoCompile")?.setAutoCompile?.(msg.mode);
   },
 
   setEngine: async (ctx, msg) => {
@@ -71,6 +71,10 @@ export const previewHandlers: Pick<
 
   setIncludeOnly: async (ctx, msg) => {
     await previewPorts(ctx, "setIncludeOnly")?.setIncludeOnly?.(msg.on);
+  },
+
+  setHaltOnError: async (ctx, msg) => {
+    await previewPorts(ctx, "setHaltOnError")?.setHaltOnError?.(msg.on);
   },
 
   setCheckLimits: async (ctx, msg) => {
