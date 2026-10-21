@@ -1,14 +1,15 @@
-// Decides how a source tab opens a project file: local, bound to its share's text, or unresolved when the share is not connected here.
+// Decides how a source tab opens a project file: local, bound to its share's text, observing a share another tab runs, or unresolved.
 import { fileText, type ILogger, type ProjectEntry } from "@labshelf/core";
 import type { PageSharing } from "../../editor/collab";
 import type { SourceEditorDeps } from "../../editor/index.js";
 
 const MODULE = "tabs.source";
 
-/** `unresolved` keeps a shared file out of local edits: a write outside the share would never reach the collaborators. */
+/** `observing` and `unresolved` keep a shared file out of local edits: a write outside the share would never reach the collaborators. */
 export type SourceFileMode =
   | { kind: "local" }
   | { kind: "shared"; collab: NonNullable<SourceEditorDeps["collab"]> }
+  | { kind: "observing"; shareId: string }
   | { kind: "unresolved" };
 
 /** `retried`: the user asked to try again, which reconnects the share from its stored key. */
@@ -22,5 +23,7 @@ export async function sourceFileMode(sharing: Pick<PageSharing, "liveShare" | "s
   } catch (error) {
     void logger.error(MODULE, error, { action: "connect the share of a source file", ...context });
   }
+  // CONTRACT: documents/contracts/collaboration.md#mirror-ownership
+  if (sharing.shares.state(entry.settings.shared)?.kind === "observer") return { kind: "observing", shareId: entry.settings.shared };
   return { kind: "unresolved" };
 }
