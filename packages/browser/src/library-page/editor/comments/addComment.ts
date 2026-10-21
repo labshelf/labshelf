@@ -19,7 +19,7 @@ export function addCommentSupport(add: (range: TextRange) => void): Extension {
     button.innerHTML = `${icon("message")}Add comment`;
     button.title = "Add comment on the selection (Ctrl/Cmd+Alt+M)";
     button.disabled = view.state.selection.main.empty;
-    button.addEventListener("click", () => { run(view); view.focus(); });
+    button.addEventListener("click", () => run(view));
     return { ...createSourceFooter(button), update: (update) => { button.disabled = update.state.selection.main.empty; } };
   });
   return [Prec.high(keymap.of([{ key: "Mod-Alt-m", run }])), panel];
