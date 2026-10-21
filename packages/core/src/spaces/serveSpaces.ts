@@ -1,0 +1,120 @@
+// Serves the Spaces pages from the Space store and a host port: posts the open view after each change and runs the page's actions.
+import type { ILogger } from "../ports/index.js";
+import { applySpaceMutation } from "./applySpaceMutation.js";
+import { parseSpacesMessage, type HostToSpaces, type PaperPickItem, type SpacesEndpoint, type SpacesToHost } from "./protocol/index.js";
+import { ACTION_LABELS, LOAD_CATALOG, LOAD_SPACE } from "./spacesActionLabels.js";
+import type { SpacesHostPort } from "./spacesHostPort.js";
+import type { SpaceStore } from "./store/index.js";
+import { buildIcs, buildOverview, buildPapersTree, catalogRows, resolvePaper } from "./view/index.js";
+
+const MODULE = "spaces/server";
+
+export interface ServeSpacesOptions {
+  readonly store: SpaceStore;
+  readonly port: SpacesHostPort;
+  readonly logger: ILogger;
+  /** The local calendar day, YYYY-MM-DD. */
+  readonly today: () => string;
+}
+
+type OpenView = Extract<SpacesToHost, { type: "ready" }>;
+type Action = Exclude<SpacesToHost, { type: "ready" }>;
+type Post = (message: HostToSpaces) => void;
+
+async function readReadySpace(store: SpaceStore, id: string) {
+  const result = await store.read(id);
+  if (result.state === "unreadable") { throw new Error(result.reason); }
+  return result;
+}
+
+async function spaceMessage({ store, port, today }: ServeSpacesOptions, id: string): Promise<HostToSpaces> {
+  const [{ space, readOnlyReason }, glossary, projects] = await Promise.all([readReadySpace(store, id), store.readGlossary(id), port.projects()]);
+  const library = port.library();
+  return {
+    type: "space",
+    space,
+    ...(readOnlyReason !== undefined ? { readOnlyReason } : {}),
+    overview: buildOverview(space, library, projects, today()),
+    papers: buildPapersTree(space, library),
+    glossary: { terms: glossary.glossary.terms, ...(glossary.readOnlyReason !== undefined ? { readOnlyReason: glossary.readOnlyReason } : {}) },
+    projects,
+  };
+}
+
+function viewMessage(options: ServeSpacesOptions, view: OpenView): Promise<HostToSpaces> {
+  if (view.view === "space") { return spaceMessage(options, view.id); }
+  return Promise.resolve({ type: "catalog", rows: catalogRows(options.store.list(), options.port.library(), options.today()) });
+}
+
+function pickablePapers(port: SpacesHostPort): PaperPickItem[] {
+  const library = port.library();
+  return [...library.keys()].map((id) => resolvePaper(id, library)).filter((paper): paper is PaperPickItem => !paper.missing);
+}
+
+async function exportIcs({ store, port }: ServeSpacesOptions, id: string): Promise<void> {
+  const [{ space }, projects] = await Promise.all([readReadySpace(store, id), port.projects()]);
+  await port.saveFile(`${id}.ics`, buildIcs(space, projects, Date.now()));
+}
+
+async function runAction(options: ServeSpacesOptions, post: Post, message: Action): Promise<void> {
+  const { store, port } = options;
+  switch (message.type) {
+    case "openPaper": return port.openPaper(message.paperId);
+    case "selectPaper": return port.selectPaper(message.paperId);
+    case "openProject": return port.openProject(message.projectId);
+    case "openSpace": return port.openSpace(message.id, message.tab);
+    case "openCatalog": return port.openCatalog();
+    case "exportIcs": return exportIcs(options, message.id);
+    case "listPapers": post({ type: "papers", items: pickablePapers(port) }); return;
+    case "listProjects": post({ type: "projects", items: await port.projects() }); return;
+    case "createSpace": return port.openSpace(await store.createSpace(message.name));
+    default: await applySpaceMutation(store, message);
+  }
+}
+
+/** The message's ids and names, for the failure log. */
+function failureContext(message: object): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(message).filter(([, value]) => typeof value === "string"));
+}
+
+/** Returns the function that stops serving. */
+export function serveSpaces(endpoint: SpacesEndpoint, options: ServeSpacesOptions): () => void {
+  const { store, port, logger } = options;
+  const post: Post = (message) => endpoint.post(message);
+  let open: OpenView | undefined;
+  let queued = false;
+  let tail: Promise<void> = Promise.resolve();
+
+  const fail = (action: string, error: unknown, context: Record<string, unknown>): void => {
+    const reason = error instanceof Error ? error.message : String(error);
+    void logger.log("ERROR", MODULE, `${action} failed`, { ...context, error: reason });
+    post({ type: "error", action, message: `${action} failed: ${reason}` });
+  };
+  const postView = async (): Promise<void> => {
+    const view = open;
+    if (!view) { return; }
+    try {
+      post(await viewMessage(options, view));
+    } catch (error) {
+      if (view.view === "space") { fail(LOAD_SPACE, error, { id: view.id }); } else { fail(LOAD_CATALOG, error, { view: "catalog" }); }
+    }
+  };
+  // INVARIANT: at most one post waits behind the running one, so changes in one tick post once and a later change still posts.
+  const schedule = (): void => {
+    if (!open || queued) { return; }
+    queued = true;
+    tail = tail.then(() => { queued = false; return postView(); });
+  };
+
+  const stopMessages = endpoint.subscribe((raw) => {
+    const message = parseSpacesMessage(raw);
+    if (!message) {
+      void logger.log("WARN", MODULE, "Spaces page message rejected", { type: (raw as { type?: unknown } | null)?.type });
+      return;
+    }
+    if (message.type === "ready") { open = message; schedule(); return; }
+    runAction(options, post, message).catch((error: unknown) => fail(ACTION_LABELS[message.type], error, failureContext(message)));
+  });
+  const stops = [stopMessages, store.onChange(schedule), port.onLibraryChange(schedule), port.onProjectsChange(schedule)];
+  return () => { for (const stop of stops) { stop(); } };
+}
