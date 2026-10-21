@@ -1,7 +1,7 @@
 // Builds pages of one browser profile over a shared memory library, IndexedDB, fake Web Locks and a network that reaches no relay.
 import "fake-indexeddb/auto";
-import { deriveShareId, fileText, type ILogger, type LibraryFileSystem, type RelayNetwork, type StoredInvite } from "@labshelf/core";
-import { createPageShares, createShareKeyStore, ShareOpenInAnotherTabError, type PageShares } from "../../../../src/library-page/editor/collab";
+import { deriveShareId, fileText, ShareOpenInAnotherTabError, type ILogger, type LibraryFileSystem, type RelayNetwork, type StoredInvite } from "@labshelf/core";
+import { createPageShares, createShareKeyStore, type PageShares } from "../../../../src/library-page/editor/collab";
 import type { LibrarySource, LibrarySources } from "../../../../src/storage";
 import { installFakeLocks, type FakeLocks } from "../../../support/fakeLocks";
 import { memoryLibraryFs } from "../../../support/memoryLibraryFs";

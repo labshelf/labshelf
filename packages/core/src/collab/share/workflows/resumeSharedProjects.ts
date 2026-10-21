@@ -1,5 +1,5 @@
 // Keeps the connected shares in step with the project list: reconnects shared projects whose key is stored, drops the rest.
-import { isSharedProject, LOG_MODULE, type SharedProject, type ShareWorkflowPorts } from "./sharePorts.js";
+import { isSharedProject, LOG_MODULE, ShareOpenInAnotherTabError, type SharedProject, type ShareWorkflowPorts } from "./sharePorts.js";
 
 export interface ResumeReports {
   /** Once per share: the project is shared, but this device holds no key of it. */
@@ -35,6 +35,11 @@ async function syncPass(ports: ShareWorkflowPorts, reports: ResumeReports, repor
     if (ports.shares.active(shareId) || ports.shares.isBusy(shareId) || reported.has(shareId)) { continue; }
     await resume(ports, project, reports, reported).catch((error: unknown) => {
       reported.add(shareId);
+      // Expected state, not a failure: the other tab runs the share and this one takes it over once that tab closes.
+      if (error instanceof ShareOpenInAnotherTabError) {
+        void ports.logger.log("INFO", LOG_MODULE, "A shared project runs in another tab; this tab waits for it", { folder: project.folder, shareId });
+        return;
+      }
       void ports.logger.error(LOG_MODULE, error, { action: "reconnect a shared project", folder: project.folder, shareId });
       reports.failed(project, error);
     });

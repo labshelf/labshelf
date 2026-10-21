@@ -58,6 +58,11 @@ export interface ShareWorkflowPorts {
   fetch?: typeof fetch;
 }
 
+/** Another tab of this profile runs the share; the connect port rejects with it and the share stays observed until that tab closes. */
+export class ShareOpenInAnotherTabError extends Error {
+  constructor(readonly shareId: string) { super("This shared project is open in another tab"); }
+}
+
 export const LOG_MODULE = "collab.share";
 
 export type SharedProject = Extract<ProjectEntry, { kind: "ready" }> & { settings: { shared: string } };

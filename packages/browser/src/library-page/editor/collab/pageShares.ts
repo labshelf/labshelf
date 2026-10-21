@@ -1,5 +1,5 @@
 // Holds the page's shared project connections, one per share and each under its tab lease, as the core share workflows use them.
-import type { ILogger, RelayNetwork, ShareConnection, ShareConnections, ShareKeyStore, ShareStart, StoredInvite } from "@labshelf/core";
+import { ShareOpenInAnotherTabError, type ILogger, type RelayNetwork, type ShareConnection, type ShareConnections, type ShareKeyStore, type ShareStart, type StoredInvite } from "@labshelf/core";
 import { acquireTabLease, tabLeaseName, type TabLease } from "../../../storage";
 import { connectBrowserShare, type ShareSources } from "./browserShareConnection";
 import { ProjectShare, type LiveShare, type ShareEntryState } from "./projectShareEntry";
@@ -7,11 +7,6 @@ import { loadDisplayName } from "./shareKeyStore";
 
 const LOG_MODULE = "collab.shares";
 export const DEFAULT_DISPLAY_NAME = "Guest";
-
-/** Another tab of this profile runs the share; this page observes it until the lease comes free. */
-export class ShareOpenInAnotherTabError extends Error {
-  constructor(readonly shareId: string) { super("This shared project is open in another tab"); }
-}
 
 export interface PageShares extends ShareConnections {
   /** Opens a share under its tab lease; a resume the lease refuses observes the share and rejects with ShareOpenInAnotherTabError. */

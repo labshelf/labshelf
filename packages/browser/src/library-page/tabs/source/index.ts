@@ -7,7 +7,8 @@ import { recordProjectEdit } from "../../review";
 import { sourceLanguageOf } from "../../editor/insert";
 import { sourceActions } from "./actions";
 import { sourceFileMode } from "./sharedFile";
-import { unresolvedNotice } from "./unresolvedNotice";
+import { remountOnTakeover, takeSharedProjectHere } from "./sharedTakeover";
+import { observingNotice, unresolvedNotice } from "./readOnlyNotice";
 import type { SourceEditor, SourceEditorDeps, SourceFileAccess } from "../../editor/index.js";
 import type { TabContext, TabModule } from "../types";
 import type { SourceFileMode } from "./sharedFile";
@@ -23,17 +24,17 @@ function projectFiles(fs: LibraryFileSystem, entry: ProjectEntry): SourceFileAcc
   };
 }
 
-/** What the editor of a project file gets; an unresolved shared file opens read-only and takes no comments, which would land in comments.json and never reach the share. */
+/** What the editor of a project file gets; a shared file this tab does not run opens read-only and takes no comments, which would land in comments.json and never reach the share. */
 function editorDeps({ fs, logger, tab, workspace, project }: TabContext, entry: ProjectEntry, file: { projectId: string; path: string }, mode: SourceFileMode): SourceEditorDeps {
   const { helperProject, comments } = project();
   const { projectId, path } = file;
-  const unresolved = mode.kind === "unresolved";
+  const readOnly = mode.kind === "unresolved" || mode.kind === "observing";
   return {
     projectId, path, files: projectFiles(fs, entry), papers: listAllRecords,
     helper: helperProject.editorPort(projectId), problems: helperProject.problems.subscribe,
     openTab: workspace.openTab, logger, onDirty: tab.setDirty,
     ...(mode.kind === "shared" ? { collab: mode.collab } : {}),
-    ...(unresolved ? { readOnly: true } : {
+    ...(readOnly ? { readOnly: true } : {
       comments: {
         subscribe: comments.commentAnchorsFor(projectId, path).subscribe,
         add: (range, text) => comments.addComment(projectId, path, range, text),
@@ -47,7 +48,7 @@ function editorDeps({ fs, logger, tab, workspace, project }: TabContext, entry: 
 /** Mounts the file's editor in `body`; undefined when the tab closed first or the file could not be opened, which the body then says. */
 async function loadEditor(
   body: HTMLElement, context: TabContext, file: { projectId: string; path: string; retried: boolean }, disposed: () => boolean,
-): Promise<{ editor: SourceEditor; entry: ProjectEntry; unresolved: boolean } | undefined> {
+): Promise<{ editor: SourceEditor; entry: ProjectEntry; mode: SourceFileMode } | undefined> {
   const { fs, logger, project } = context;
   const { projectId, path, retried } = file;
   const { session, sharing } = project();
@@ -62,7 +63,7 @@ async function loadEditor(
     const editor = await mountSourceEditor(body, editorDeps(context, entry, { projectId, path }, mode));
     loading.remove();
     if (disposed()) { void editor.dispose(); return undefined; }
-    return { editor, entry, unresolved: mode.kind === "unresolved" };
+    return { editor, entry, mode };
   } catch (error) {
     loading.textContent = `Could not open ${path}.`;
     void logger.error(MODULE, error, { action: "openSource", projectId, path });
@@ -89,6 +90,11 @@ function guardUnsavedEdits({ logger, tab }: TabContext, { projectId, path }: { p
   };
 }
 
+function prependNotice(body: HTMLElement, mode: SourceFileMode, on: { retry: () => void; useHere: () => void }): void {
+  if (mode.kind === "unresolved") body.prepend(unresolvedNotice(on.retry));
+  if (mode.kind === "observing") body.prepend(observingNotice(on.useHere));
+}
+
 export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   const { fs, logger, workspace } = context;
   const projectId = params["projectId"] ?? "";
@@ -97,40 +103,43 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   let disposed = false;
   let editor: SourceEditor | undefined;
   let loaded: ProjectEntry | undefined;
+  let mode: SourceFileMode | undefined;
   const stopGuard = guardUnsavedEdits(context, { projectId, path }, () => editor);
   const open = (retried: boolean): void => {
     void loadEditor(body, context, { projectId, path, retried }, () => disposed).then((opened) => {
       if (!opened) return;
       editor = opened.editor;
-      // INVARIANT: an unresolved file offers the insert actions no target, so none of them edits it outside the share.
-      loaded = opened.unresolved ? undefined : opened.entry;
-      body.classList.toggle("ls-source-unresolved", opened.unresolved);
-      if (opened.unresolved) body.prepend(unresolvedNotice(() => void retry()));
+      mode = opened.mode;
+      const readOnly = mode.kind === "unresolved" || mode.kind === "observing";
+      // INVARIANT: a read-only shared file offers the insert actions no target, so none of them edits it outside the share.
+      loaded = readOnly ? undefined : opened.entry;
+      body.classList.toggle("ls-source-unresolved", readOnly);
+      prependNotice(body, mode, { retry: () => void retry(true), useHere: () => void takeSharedProjectHere(context, { projectId, path }, opened.mode, () => retry(false)) });
     });
   };
-  const retry = async (): Promise<void> => {
-    void logger.log("INFO", MODULE, "retrying the shared session of a source tab", { projectId, path });
+  const retry = async (retried: boolean): Promise<void> => {
+    void logger.log("INFO", MODULE, "reopening the shared session of a source tab", { projectId, path, retried });
     const previous = editor;
-    editor = loaded = undefined;
+    editor = loaded = mode = undefined;
     await previous?.dispose();
     if (disposed) return;
     body.replaceChildren();
     body.classList.remove("ls-source-unresolved");
-    open(true);
+    open(retried);
   };
+  const stopShares = remountOnTakeover(context, () => ({ loaded, mode, disposed }), () => void retry(false));
   open(false);
   const actions = sourceActions({
     projectId, path, language: sourceLanguageOf(path), fs, logger,
     target: () => (editor && loaded ? { edits: editor, flush: editor.flush, entry: loaded } : undefined),
-    openHistory: () => workspace.openTab("history", { projectId }, 1),
-    openSearch: () => workspace.openTab("search", { projectId }, 1),
+    openHistory: () => workspace.openTab("history", { projectId }, 1), openSearch: () => workspace.openTab("search", { projectId }, 1),
     papers: listAllRecords,
   });
   return {
     actions,
     dispose: () => {
       disposed = true;
-      stopGuard();
+      stopGuard(); stopShares();
       if (editor) void editor.dispose().then(() => body.remove()); else body.remove();
     },
   };

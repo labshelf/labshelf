@@ -13,6 +13,12 @@ function parentIndex(rows: HTMLElement[], idx: number): number {
   return -1;
 }
 
+/** Raises the row's right-click event at the row's bottom-left, so the keyboard opens exactly the menu the pointer does. */
+function openRowMenu(row: HTMLElement): void {
+  const { left, bottom } = row.getBoundingClientRect();
+  row.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: left, clientY: bottom }));
+}
+
 export function onSidebarKey(e: KeyboardEvent, t: SidebarState, activate: (row: HTMLElement) => void): void {
   if (e.target instanceof Element && e.target.closest("button, input, select, textarea, a, [contenteditable=true]")) return;
   const rows = Array.from(t.el.querySelectorAll<HTMLElement>(NAV_ROWS));
@@ -35,6 +41,7 @@ export function onSidebarKey(e: KeyboardEvent, t: SidebarState, activate: (row: 
   else if (e.key === "Enter" || e.key === " ") activate(current);
   else if (e.key === "F2" && path) t.actions.renameFolder(path);
   else if ((e.key === "Delete" || e.key === "Backspace") && path) t.actions.removeFolder(path);
+  else if (e.key === "ContextMenu" || (e.key === "F10" && e.shiftKey)) openRowMenu(current);
   else return;
   e.preventDefault();
   paintFocus(t);

@@ -153,6 +153,7 @@ Across apps, the folder holds a lease at `<project>/.labshelf/mirror-lease.json`
 - A file that is not a valid lease counts as expired and is replaced, with a warning in the log.
 - The owner renews every 10 s. Before each renewal and each batch of disk writes it reads the lease; a foreign owner there means the lease is lost: the mirror stops writing to disk, keeps the session connected and the editor buffers, and reports the loss.
 - "Use here" writes the lease over a live foreign one; the old owner sees it at its next check.
+- A VS Code window whose folder is busy runs the share without a mirror, shows the folder as busy in the share status bar item, and retries the lease every 5 s until it owns the folder or the share closes.
 - A mirror that dies leaves its lease to expire after 30 s. A clean close deletes the file only while it is still its own.
 - The lease is keyed by the folder, not the share, so two local copies of one share each run a mirror.
 

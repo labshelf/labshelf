@@ -4,50 +4,14 @@
 // Tests the library sidebar through its mount handle: rows, counts, expansion, current folder, selection and keyboard.
 import { fakeHost, tick } from "../../../collab/dom/fakeHost";
 import type { SharingHost } from "../../../../src/library-ui/sharing";
-import { mountLibrarySidebar, type SidebarPaper, type SidebarProjectActions } from "../../../../src/library-ui/dom";
+import { mountLibrarySidebar } from "../../../../src/library-ui/dom";
+import { compact, folder, folders, key, mount, paper, papers, rows, tagged } from "./sidebarFixture";
 
-const paper = (id: string, folder: string, title: string, status: "unread" | "reading" | "done"): SidebarPaper =>
-  ({ record: { id, title, status }, folder });
-
-const folders = [
-  { name: "A", path: "papers/A", children: [{ name: "B", path: "papers/A/B", children: [] }] },
-  { name: "Z", path: "papers/Z", children: [] },
-];
-const papers = [
-  paper("r1", "papers", "zeta root", "done"),
-  paper("a1", "papers/A", "beta", "unread"),
-  paper("a2", "papers/A", "Alpha", "done"),
-  paper("b1", "papers/A/B", "deep", "reading"),
-  paper("b2", "papers/A/B", "deeper", "reading"),
-];
-const tagged = [
-  { record: { id: "t1", title: "one", status: "done" as const, tags: ["NLP", "Deep learning"] }, folder: "papers" },
-  { record: { id: "t2", title: "two", status: "unread" as const, tags: ["nlp"] }, folder: "papers" },
-];
-
-function mount(expanded: string[] = [], collapsed: string[] = [], withProjects = false, withAddFiles = false, sharing?: SharingHost) {
-  const actions = { ...(withAddFiles ? { addFiles: jest.fn() } : {}), openFolder: jest.fn(), revealPaper: jest.fn(), createFolder: jest.fn(), renameFolder: jest.fn(), removeFolder: jest.fn(), searchTag: jest.fn() };
-  const saveExpanded = jest.fn();
-  const saveCollapsed = jest.fn();
-  const projects = { open: jest.fn(), menu: jest.fn(), browseTemplates: jest.fn(), allProjects: jest.fn(), newBlank: jest.fn(), addExisting: jest.fn() } as unknown as SidebarProjectActions & Record<string, jest.Mock>;
-  const slot = document.createElement("div");
-  document.body.replaceChildren(slot);
-  const sidebar = mountLibrarySidebar(slot, { actions, expanded, saveExpanded, collapsed, saveCollapsed, ...(withProjects ? { projects } : {}), ...(sharing ? { sharing } : {}) });
-  sidebar.setLibrary(folders, papers);
-  return { slot, sidebar, actions, saveExpanded, saveCollapsed, projects };
-}
-
-const project = (id: string, group = "", count?: string) =>
-  ({ id, name: `P ${id}`, format: "latex" as const, tooltip: `tip ${id}`, ...(group ? { folder: group } : {}), ...(count ? { count } : {}) });
 const section = (slot: HTMLElement, id: string): HTMLElement => slot.querySelector<HTMLElement>(`[data-section="${id}"]`)!;
-const rows = (slot: HTMLElement): HTMLElement[] => [...slot.querySelectorAll<HTMLElement>(".tree-row")];
-const compact = (el: Element | null): string => (el?.textContent ?? "").replace(/\s+/g, "");
 const allPapers = (slot: HTMLElement): HTMLElement => slot.querySelector<HTMLElement>("[data-all-papers]")!;
-const folder = (slot: HTMLElement, path: string): HTMLElement => slot.querySelector<HTMLElement>(`[data-path="${path}"]`)!;
 const paperEl = (slot: HTMLElement, id: string): HTMLElement | null => slot.querySelector<HTMLElement>(`[data-id="${id}"]`);
 const order = (slot: HTMLElement): string[] => rows(slot).slice(1).map((r) => r.dataset["path"] ?? r.dataset["id"] ?? "");
 const twisty = (slot: HTMLElement, path: string): void => folder(slot, path).querySelector<HTMLElement>(".tree-twisty")!.click();
-const key = (slot: HTMLElement, k: string): void => { slot.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true })); };
 
 describe("mountLibrarySidebar", () => {
   describe("folder menu", () => {
@@ -304,136 +268,6 @@ describe("mountLibrarySidebar", () => {
     });
   });
 
-  describe("projects", () => {
-    it("renders project rows with mark, name and count, and opens one on click", () => {
-      const { slot, sidebar, projects } = mount([], [], true);
-      sidebar.setProjects([project("/a", "", "3"), project("/b")]);
-      const row = slot.querySelector<HTMLElement>('[data-project="/a"]')!;
-      expect(row.querySelector(".tree-ref")?.textContent).toBe("TEX");
-      expect(row.querySelector(".tree-label")?.textContent).toBe("P /a");
-      expect(row.querySelector(".tree-count")?.textContent).toBe("3");
-      expect(row.getAttribute("title")).toBe("tip /a");
-      expect(slot.querySelector('[data-project="/b"] .tree-count')).toBeNull();
-      row.click();
-      expect(projects.open).toHaveBeenCalledWith("/a");
-    });
-
-    it("opens the focused project with Enter", () => {
-      const { slot, sidebar, projects } = mount([], ["library"], true);
-      sidebar.setProjects([project("/a")]);
-      for (let i = 0; i < 5; i++) { key(slot, "ArrowDown"); }
-      key(slot, "Enter");
-      expect(projects.open).toHaveBeenCalledWith("/a");
-    });
-
-    it("asks the host for its menu on right-click, with the pointer position", () => {
-      const { slot, sidebar, projects } = mount([], [], true);
-      sidebar.setProjects([project("/a")]);
-      const e = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 12, clientY: 34 });
-      slot.querySelector('[data-project="/a"]')!.dispatchEvent(e);
-      expect(e.defaultPrevented).toBe(true);
-      expect(projects.menu).toHaveBeenCalledWith("/a", { x: 12, y: 34 });
-    });
-
-    const projectsMenu = (sharing?: SharingHost): string => {
-      const { slot, sidebar } = mount([], [], true, false, sharing);
-      sidebar.setProjects([project("/a")]);
-      slot.querySelector('[data-group="projects.list"]')!.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
-      return document.body.textContent ?? "";
-    };
-
-    it("offers Join Shared Project in the menu and as a button only when the host offers projects", () => {
-      expect(projectsMenu(fakeHost())).toContain("Join Shared Project");
-      expect(projectsMenu(fakeHost({ offers: () => ({ projects: false, links: true }) }))).not.toContain("Join Shared Project");
-      expect(projectsMenu()).not.toContain("Join Shared Project");
-      const on = mount([], [], true, false, fakeHost());
-      expect(on.slot.querySelector('[data-tree="join"]')).not.toBeNull();
-      const off = mount([], [], true, false, fakeHost({ offers: () => ({ projects: false, links: false }) }));
-      expect(off.slot.querySelector('[data-tree="join"]')).toBeNull();
-    });
-
-    it("re-renders when the host's offers change", () => {
-      let listener = (): void => {};
-      let projectsOn = false;
-      const host = fakeHost({ offers: () => ({ projects: projectsOn, links: false }), onOffersChange: (l) => { listener = l; return () => {}; } });
-      const { slot } = mount([], [], true, false, host);
-      expect(slot.querySelector('[data-tree="join"]')).toBeNull();
-      projectsOn = true;
-      listener();
-      expect(slot.querySelector('[data-tree="join"]')).not.toBeNull();
-    });
-
-    it("nests projects under their folder row, folders first, and shows them only while the folder is expanded", () => {
-      const list = [project("/a", "Thesis"), project("/b"), project("/c", "Thesis")];
-      const closed = mount([], [], true);
-      closed.sidebar.setProjects(list);
-      expect([...closed.slot.querySelectorAll<HTMLElement>("[data-project-folder]")].map((r) => compact(r))).toEqual(["Thesis2"]);
-      expect(rows(closed.slot).map((r) => r.dataset["project"]).filter(Boolean)).toEqual(["/b"]);
-      const open = mount(["project-folder:Thesis"], [], true);
-      open.sidebar.setProjects(list);
-      expect(rows(open.slot).map((r) => r.dataset["project"]).filter(Boolean)).toEqual(["/a", "/c", "/b"]);
-    });
-
-    it("opens the All projects tab from its row under Explore templates, and keeps archived projects out of the tree", () => {
-      const { slot, sidebar, projects } = mount([], [], true);
-      sidebar.setProjects([project("/a"), { ...project("/b"), hidden: true }]);
-      const keys = [...slot.querySelectorAll<HTMLElement>(".tree-row[data-key]")].map((r) => r.dataset["key"]);
-      expect(keys.indexOf("allProjects")).toBe(keys.indexOf("templates") + 1);
-      expect(slot.querySelector('[data-project="/b"]')).toBeNull();
-      slot.querySelector<HTMLElement>("[data-all-projects]")!.click();
-      expect(projects.allProjects).toHaveBeenCalledTimes(1);
-    });
-
-    it("leaves out the templates row and the buttons of actions the host cannot run", () => {
-      const { slot, sidebar } = mount([], [], true);
-      sidebar.setProjects([]);
-      sidebar.setProjectOffers({ templates: false, addExisting: false });
-      expect(slot.querySelector("[data-templates]")).toBeNull();
-      expect(slot.querySelector('.tree-empty-actions [data-tree="browse"]')).toBeNull();
-      expect(slot.querySelector('.tree-empty-actions [data-tree="add"]')).toBeNull();
-      expect(slot.querySelector('.tree-empty-actions [data-tree="blank"]')).not.toBeNull();
-    });
-
-    it("leaves out creating projects, project folders and the All projects row for a host that has none of them", () => {
-      const { slot, sidebar } = mount([], [], true);
-      sidebar.setProjects([project("/a", "Thesis")]);
-      sidebar.setProjectOffers({ templates: false, addExisting: false, newBlank: false, projectFolders: false, allProjects: false });
-      expect(slot.querySelector("[data-all-projects]")).toBeNull();
-      expect(slot.querySelector('[data-tree="blank"]')).toBeNull();
-      expect(slot.querySelector('[data-tree="project-folder"]')).toBeNull();
-      expect(slot.querySelector('[data-tree="project-refresh"]')).not.toBeNull();
-      expect(slot.querySelector('[data-project-folder="Thesis"]')).not.toBeNull();
-      for (const target of [slot.querySelector('[data-project-folder="Thesis"]')!, slot.querySelector('[data-group="projects.list"]')!]) {
-        const e = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
-        target.dispatchEvent(e);
-        expect(e.defaultPrevented).toBe(false);
-      }
-      sidebar.setProjects([]);
-      expect(slot.querySelector(".tree-empty")?.textContent).toBe("No projects yet.");
-      expect(slot.querySelector(".tree-empty-actions")).toBeNull();
-    });
-
-    it("shows an empty state whose buttons call the host actions", () => {
-      const { slot, sidebar, projects } = mount([], [], true);
-      expect(slot.querySelector(".tree-empty-actions")).not.toBeNull();
-      sidebar.setProjects([]);
-      const click = (a: string): void => slot.querySelector<HTMLElement>(`.tree-empty-actions [data-tree="${a}"]`)!.click();
-      click("browse"); click("blank"); click("add");
-      expect(projects.browseTemplates).toHaveBeenCalledTimes(1);
-      expect(projects.newBlank).toHaveBeenCalledTimes(1);
-      expect(projects.addExisting).toHaveBeenCalledTimes(1);
-      expect(slot.textContent).toContain("No projects yet.");
-    });
-
-    it("opens the template gallery from the Explore templates row and creates a blank project from the list header", () => {
-      const { slot, sidebar, projects } = mount([], [], true);
-      sidebar.setProjects([project("/a")]);
-      slot.querySelector<HTMLElement>("[data-templates]")!.click();
-      slot.querySelector<HTMLElement>('[data-tree="blank"]')!.click();
-      expect(projects.browseTemplates).toHaveBeenCalledTimes(1);
-      expect(projects.newBlank).toHaveBeenCalledTimes(1);
-    });
-  });
 
   describe("tags", () => {
     const headings = (slot: HTMLElement): string[] => [...slot.querySelectorAll(".tree-heading:not(.tree-section)")].map((h) => h.textContent!.trim());

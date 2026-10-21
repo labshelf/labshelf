@@ -54,6 +54,8 @@ describe("a leased mirror", () => {
     expect(waiting.state().mirror).toMatchObject({ kind: "busy", holder: { app: "vscode" } });
     expect(waiting.mirror).toBeUndefined();
 
+    // The owner's first scan adds main.typ to the share after real-time settle waits, so the edit must come after it.
+    await net.drive(owner.mirror!.idle());
     fileText(owner.session.openDoc("main.typ")).insert(0, "Draft ");
     await runFor(net.clock, 3000);
     expect(ada.read(`${FOLDER}/main.typ`)).toBe("Draft = Hello\n");

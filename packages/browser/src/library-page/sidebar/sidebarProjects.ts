@@ -52,7 +52,8 @@ export function createSidebarProjects(
     treeAction: (action) => { void session.treeAction(action); },
     openProjectMenu: (anchor) => {
       const open = session.current();
-      const entries = open?.kind === "ready" ? projectShareMenuEntries(sharing, { id: open.folder, shared: open.settings.shared !== undefined }) : [];
+      // The session keeps the settings it opened with; the project list is what a share, join or leave refreshes.
+      const entries = open?.kind === "ready" ? projectShareMenuEntries(sharing, { id: open.folder, shared: row(open.folder)?.shared === true }) : [];
       if (entries.length > 0) showMenu(anchor, entries);
     },
     // The offers hide the first five; check boxes and inline add are not offered here.

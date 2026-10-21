@@ -162,7 +162,9 @@ function bindSidebar(slot: HTMLElement, o: LibrarySidebarOptions, t: SidebarStat
   slot.addEventListener("click", (e) => onClick(e, t));
   slot.addEventListener("dblclick", (e) => { const path = rowAt(e)?.dataset["path"]; if (path) t.actions.renameFolder(path); });
   slot.addEventListener("contextmenu", (e) => onContextMenu(e, t));
-  slot.addEventListener("keydown", (e) => { if (!isTreeInput(e.target)) onSidebarKey(e, t, (r) => activate(t, r)); });
+  // A focused button handles Enter and Space itself; row activation would cancel its click.
+  const isButton = (target: EventTarget | null): boolean => target instanceof Element && target.closest("button") !== null;
+  slot.addEventListener("keydown", (e) => { if (!isTreeInput(e.target) && !isButton(e.target)) onSidebarKey(e, t, (r) => activate(t, r)); });
   slot.addEventListener("focus", () => { t.focused ??= (slot.querySelector<HTMLElement>(".tree-row.current") ?? slot.querySelector<HTMLElement>(NAV_ROWS))?.dataset["key"] ?? null; paintFocus(t); });
   slot.addEventListener("blur", () => { t.focused = null; paintFocus(t); });
 }

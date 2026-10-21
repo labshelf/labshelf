@@ -30,7 +30,7 @@ export function wirePageSharing({ logger, host, relay, relayAccounts }: PageShar
   const sharing = createPageSharing({
     sources: librarySources(), libraryId: currentLibraryId, logger, relay: relayAccounts,
     requireRelay: async () => (await relay.requireBrowserRelay()) !== undefined,
-    reports: resumeReports(logger, () => { void join(); }),
+    reports: resumeReports(() => { void join(); }),
   });
   sharing.shares.onChange(persistenceFailureNotices(sharing.ports, "page", (message) => toast(message, "error")));
   window.addEventListener("pagehide", () => { void sharing.closeAll(); });

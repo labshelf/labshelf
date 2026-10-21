@@ -2,7 +2,7 @@
 import { parseInvite } from "../../../src/collab/invite/index";
 import { addRelay, relayList } from "../../../src/collab/relays/index";
 import {
-  createShareResumer, currentInvite, leaveSharedProject, offerOwnRelay, shareProject, withdrawOwnRelay, withdrawOwnRelayFromShares,
+  createShareResumer, currentInvite, leaveSharedProject, offerOwnRelay, ShareOpenInAnotherTabError, shareProject, withdrawOwnRelay, withdrawOwnRelayFromShares,
 } from "../../../src/collab/share/index";
 import { encodeRelayBody } from "../../../src/relay/index";
 import { runFor } from "../transport/relay/fakeRelay";
@@ -94,6 +94,18 @@ describe("resuming shared projects", () => {
     await resumer.sync();
     await resumer.sync();
     expect(reports.failed).toHaveBeenCalledTimes(1);
+  }, 60_000);
+
+  it("does not log an error when another tab runs the share", async () => {
+    const net = new Network();
+    const ada = workflowDevice(net, "ada");
+    const { shareId } = await sharedOn(net, ada);
+    await ada.ports.shares.remove(shareId);
+    ada.ports.connect = async () => { throw new ShareOpenInAnotherTabError(shareId); };
+    const error = jest.spyOn(ada.ports.logger, "error");
+
+    await createShareResumer(ada.ports, noReports()).sync();
+    expect(error).not.toHaveBeenCalled();
   }, 60_000);
 });
 
