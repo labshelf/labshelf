@@ -7,6 +7,7 @@ import { recordProjectEdit } from "../../review";
 import { sourceLanguageOf } from "../../editor/insert";
 import { sourceActions } from "./actions";
 import { sourceFileMode } from "./sharedFile";
+import { remountOnTakeover, takeSharedProjectHere } from "./sharedTakeover";
 import { observingNotice, unresolvedNotice } from "./readOnlyNotice";
 import type { SourceEditor, SourceEditorDeps, SourceFileAccess } from "../../editor/index.js";
 import type { TabContext, TabModule } from "../types";
@@ -89,8 +90,13 @@ function guardUnsavedEdits({ logger, tab }: TabContext, { projectId, path }: { p
   };
 }
 
+function prependNotice(body: HTMLElement, mode: SourceFileMode, on: { retry: () => void; useHere: () => void }): void {
+  if (mode.kind === "unresolved") body.prepend(unresolvedNotice(on.retry));
+  if (mode.kind === "observing") body.prepend(observingNotice(on.useHere));
+}
+
 export const mountTab: TabModule["mountTab"] = (host, params, context) => {
-  const { fs, logger, workspace, project } = context;
+  const { fs, logger, workspace } = context;
   const projectId = params["projectId"] ?? "";
   const path = params["path"] ?? "";
   const body = host.appendChild(el("div", { class: "ls-workspace-fill" }));
@@ -108,52 +114,32 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
       // INVARIANT: a read-only shared file offers the insert actions no target, so none of them edits it outside the share.
       loaded = readOnly ? undefined : opened.entry;
       body.classList.toggle("ls-source-unresolved", readOnly);
-      if (mode.kind === "unresolved") body.prepend(unresolvedNotice(() => void retry(true)));
-      if (mode.kind === "observing") body.prepend(observingNotice(() => void useHere(opened.mode)));
-    });
-  };
-  const useHere = async (observing: SourceFileMode): Promise<void> => {
-    if (observing.kind !== "observing") return;
-    void logger.log("INFO", MODULE, "taking a shared project over from another tab", { projectId, path, shareId: observing.shareId });
-    // The share's state change remounts this tab once the takeover connects.
-    await project().sharing.shares.takeOver(observing.shareId).catch((error: unknown) => {
-      void logger.error(MODULE, error, { action: "take a shared project over from another tab", projectId, path, shareId: observing.shareId });
-      toast("Could not use the shared project here. Try again, or close the other tab.", "error");
-      void retry(false);
+      prependNotice(body, mode, { retry: () => void retry(true), useHere: () => void takeSharedProjectHere(context, { projectId, path }, opened.mode, () => retry(false)) });
     });
   };
   const retry = async (retried: boolean): Promise<void> => {
     void logger.log("INFO", MODULE, "reopening the shared session of a source tab", { projectId, path, retried });
     const previous = editor;
-    editor = loaded = undefined;
-    mode = undefined;
+    editor = loaded = mode = undefined;
     await previous?.dispose();
     if (disposed) return;
     body.replaceChildren();
     body.classList.remove("ls-source-unresolved");
     open(retried);
   };
-  // A takeover in either direction flips this tab between running the share and observing it, so the editor remounts.
-  const stopShares = project().sharing.shares.onChange(() => {
-    const shareId = loaded?.kind === "ready" ? loaded.settings.shared : mode?.kind === "observing" ? mode.shareId : undefined;
-    if (shareId === undefined || disposed) return;
-    const connected = project().sharing.shares.state(shareId)?.kind === "connected";
-    if (connected !== (mode?.kind === "shared")) void retry(false);
-  });
+  const stopShares = remountOnTakeover(context, () => ({ loaded, mode, disposed }), () => void retry(false));
   open(false);
   const actions = sourceActions({
     projectId, path, language: sourceLanguageOf(path), fs, logger,
     target: () => (editor && loaded ? { edits: editor, flush: editor.flush, entry: loaded } : undefined),
-    openHistory: () => workspace.openTab("history", { projectId }, 1),
-    openSearch: () => workspace.openTab("search", { projectId }, 1),
+    openHistory: () => workspace.openTab("history", { projectId }, 1), openSearch: () => workspace.openTab("search", { projectId }, 1),
     papers: listAllRecords,
   });
   return {
     actions,
     dispose: () => {
       disposed = true;
-      stopGuard();
-      stopShares();
+      stopGuard(); stopShares();
       if (editor) void editor.dispose().then(() => body.remove()); else body.remove();
     },
   };

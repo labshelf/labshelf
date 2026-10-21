@@ -7,5 +7,5 @@ export { offerOwnRelay, offerOwnRelayToShares, withdrawOwnRelay, withdrawOwnRela
 export { createShareResumer, type ResumeReports, type ShareResumer } from "./resumeSharedProjects.js";
 export { shareProject, type ShareOutcome, type ShareRequest } from "./shareProject.js";
 export {
-  isSharedProject, type SharedProject, type SharedProjectCatalog, type ShareKeyStore, type ShareConnections, type ShareWorkflowPorts, type StoredInvite,
+  isSharedProject, ShareOpenInAnotherTabError, type SharedProject, type SharedProjectCatalog, type ShareKeyStore, type ShareConnections, type ShareWorkflowPorts, type StoredInvite,
 } from "./sharePorts.js";

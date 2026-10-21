@@ -2,6 +2,6 @@
 export { collabExtensions } from "./binding";
 export { resumeReports } from "./flows";
 export { reportPageWrites } from "./mirror";
-export { createPageShares, DEFAULT_DISPLAY_NAME, ShareOpenInAnotherTabError, type PageShares } from "./pageShares";
+export { createPageShares, DEFAULT_DISPLAY_NAME, type PageShares } from "./pageShares";
 export { createPageSharing, type PageSharing } from "./pageSharing";
 export { createShareKeyStore, loadDisplayName, saveDisplayName } from "./shareKeyStore";

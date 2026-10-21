@@ -10,8 +10,8 @@ jest.mock("../../../../src/platform", () => ({
   } } },
 }));
 
-import { replaceFileText } from "@labshelf/core";
-import { saveDisplayName, ShareOpenInAnotherTabError } from "../../../../src/library-page/editor/collab";
+import { replaceFileText, ShareOpenInAnotherTabError } from "@labshelf/core";
+import { saveDisplayName } from "../../../../src/library-page/editor/collab";
 import { acquireTabLease } from "../../../../src/storage";
 import { FOLDER, MAIN, openProfile, until, type Page, type Profile } from "./pageSharesTestbed";
 
