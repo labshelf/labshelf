@@ -6,3 +6,4 @@ export type { LibraryNode } from './libraryNode.js';
 export { validateFolderNameInput } from './folderNameInput.js';
 export type { ProjectTreeMessage } from './sidebarMessages.js';
 export { PROJECT_COMMANDS, isSidebarProjectCommand } from './projectCommands.js';
+export type { SidebarSpacesDep } from "./spaces/index.js";

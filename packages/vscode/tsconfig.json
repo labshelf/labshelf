@@ -9,6 +9,8 @@
   "exclude": [
     "node_modules",
     "src/reader",
+    "src/spaces/webview",
+    "src/spaces/chat/webview",
     "src/libraryWebview",
     "src/detailsWebview",
     "src/webviewMessaging",

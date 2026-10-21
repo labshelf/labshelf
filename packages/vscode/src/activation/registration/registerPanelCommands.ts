@@ -19,6 +19,7 @@ const READER_COMMANDS: readonly ReaderCommandId[] = [
 ];
 
 export interface PanelCommandsDeps {
+  addToSpace?: (ids: string[]) => Promise<boolean>;
   context: vscode.ExtensionContext;
   events: LibraryEvents;
   requireServices: () => Promise<ActiveServices | null>;
@@ -54,7 +55,7 @@ function listPanelDeps(deps: PanelCommandsDeps, services: ActiveServices): ListP
     textLayerJobs: { current: currentTextLayerJobs, onDidChange: onTextLayerJobsChanged },
     loadSidecar: (paperId) => services.paperDataStore.load(paperId),
     findSimilar: (paper) => findSimilarPapers(getAiService(), paper),
-    projectBacklinks,
+    projectBacklinks, ...(deps.addToSpace ? { addToSpace: deps.addToSpace } : {}),
     paperFiles: new PaperFileService(
       services.fileSystem, (id) => services.paperService.findPaper(id), services.mutations, services.logger, services.reindexLibrary,
     ),

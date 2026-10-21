@@ -1,6 +1,6 @@
 // Hosts the Library sidebar webview: sends it the folders and papers, and runs what its rows ask for.
 import * as vscode from "vscode";
-import { PAPERS_DIR, folderTreeFromSnapshot, type LibrarySnapshot, type PathOps, type SidebarOpenProject, type SidebarProjectItem } from "@labshelf/core";
+import { PAPERS_DIR, sidebarRows, folderTreeFromSnapshot, type LibrarySnapshot, type PathOps, type SidebarOpenProject, type SidebarProjectItem } from "@labshelf/core";
 import { onPaperChange, type LibraryEvents } from "../../events/index.js";
 import { sharingWebviews } from "../../sharing/index.js";
 import { libraryBundleDirectory, libraryPaths, listPanelHtml, type LibraryPaths } from "../list/index.js";
@@ -8,6 +8,8 @@ import { rootNode, type LibraryNode } from "./libraryNode.js";
 import { runProjectEdit, runProjectFolderAction, type ProjectOrganizerPort } from "./projectOrganizer.js";
 import { handleProjectMessage, isProjectMessage, type SidebarProjectsPort } from "./sidebarProjectMessages.js";
 import { parseSidebarMessage, type HostToSidebar, type ProjectTreeMessage, type SidebarToHost } from "./sidebarMessages.js";
+
+import { handleSidebarSpaceMessage, type SidebarSpacesDep } from "./spaces/index.js";
 
 const REFRESH_DEBOUNCE_MS = 60;
 
@@ -33,6 +35,7 @@ export interface LibrarySidebarDeps {
   importFiles: (uris: vscode.Uri[], targetDir: string) => Promise<void>;
   moveFolder: (sourceDir: string, targetDir: string) => Promise<void>;
   projects: SidebarProjectsDep;
+  spaces?: SidebarSpacesDep;
   projectTrees: SidebarProjectTreesDep;
 }
 
@@ -47,6 +50,8 @@ export class LibrarySidebarView implements vscode.WebviewViewProvider {
   private _ready = false;
   private _papersRoot: vscode.Uri | null = null;
   private _timer: ReturnType<typeof setTimeout> | null = null;
+  private readonly _subscriptions: vscode.Disposable[] = [];
+  private _stopSpaces: (() => void) | undefined;
   private _projectsTimer: ReturnType<typeof setTimeout> | null = null;
   // Replayed once the webview is ready, so a hidden sidebar still opens on the list's folder and paper.
   private _current: HostToSidebar | null = null;
@@ -55,9 +60,30 @@ export class LibrarySidebarView implements vscode.WebviewViewProvider {
   constructor(private readonly _deps: LibrarySidebarDeps) {
     // A folder move emits one paper:updated per paper, so event refreshes are coalesced.
     const refresh = (): void => this.refresh();
-    onPaperChange(_deps.events, refresh);
-    _deps.projects.onDidChange(() => this._refreshProjects());
-    _deps.projectTrees.onDidChange(() => void this._pushOpenProject());
+    this._subscriptions.push(onPaperChange(_deps.events, refresh));
+    this._bindSpaces();
+    if (_deps.spaces) this._subscriptions.push(_deps.spaces.onDidChange(() => { this._bindSpaces(); this.refresh(); }));
+    this._subscriptions.push(_deps.projects.onDidChange(() => this._refreshProjects()));
+    this._subscriptions.push(_deps.projectTrees.onDidChange(() => void this._pushOpenProject()));
+  }
+
+  dispose(): void {
+    this._stopSpaces?.();
+    for (const subscription of this._subscriptions) subscription.dispose();
+    if (this._timer) clearTimeout(this._timer);
+    if (this._projectsTimer) clearTimeout(this._projectsTimer);
+    this._ready = false;
+    this._view = undefined;
+  }
+
+  private _bindSpaces(): void {
+    this._stopSpaces?.();
+    this._stopSpaces = this._deps.spaces?.current()?.store.onChange(() => this.refresh());
+  }
+
+  private async _pushSpaces(): Promise<void> {
+    const current = this._deps.spaces?.current();
+    await this._post({ type: "spaces", rows: current ? sidebarRows(current.store.list(), current.port.library()) : [] });
   }
 
   async resolveWebviewView(view: vscode.WebviewView): Promise<void> {
@@ -110,6 +136,7 @@ export class LibrarySidebarView implements vscode.WebviewViewProvider {
   }
 
   private async _push(): Promise<void> {
+    await this._pushSpaces();
     const snapshot = this._deps.getSnapshot();
     if (!snapshot || !this._papersRoot || !this._ready) { return; }
     const papers = [...snapshot.papers.values()].map(({ record: { id, title, status, tags }, collection }) =>
@@ -133,6 +160,10 @@ export class LibrarySidebarView implements vscode.WebviewViewProvider {
   }
 
   private async _handle(m: SidebarToHost): Promise<void> {
+    if (m.type === "spaceAction") {
+      if (this._deps.spaces) await handleSidebarSpaceMessage(m, this._deps.spaces);
+      return;
+    }
     if (m.type === "refresh") { await vscode.commands.executeCommand("labshelf.library.refresh"); return; }
     if (m.type === "ready") {
       this._ready = true;

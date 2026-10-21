@@ -14,6 +14,7 @@ import { ExternalChangeHandling, LibraryRootController } from "./libraryLifecycl
 import {
   openLibraryLogger, registerLibraryCommands, registerLibrarySidebar, registerPanelCommands, registerSettingsMenu, registerWritingView,
 } from "./registration/index.js";
+import { registerSpaces, addToSpace } from "../spaces/index.js";
 import { startAiService } from "./serviceComposition/index.js";
 
 export async function activateExtension(context: vscode.ExtensionContext, platform: ExtensionPlatform): Promise<void> {
@@ -29,21 +30,20 @@ export async function activateExtension(context: vscode.ExtensionContext, platfo
   const papersRootUri = papersRootResolver(controller);
   const aiService = await loadConfiguredLibrary(context, events, controller, platform);
 
-  // Returns current services or triggers the setup wizard and builds services from the chosen root.
   const requireServices = (): Promise<ActiveServices | null> => controller.require();
 
-  const folderHost: FolderCommandHost = {
-    requireServices,
-    papersRoot: () => papersRootUri()?.fsPath ?? null,
-    refreshViews: () => refreshLibraryViews(),
-    followFolderMove: async (from, to) => { await ListWebviewPanel.currentPanel?.followFolderMove(from, to); },
-  };
+  const folderHost = createFolderHost(requireServices, papersRootUri, () => refreshLibraryViews());
 
   let details: DetailsView | undefined;
   const sources = createSelectionSources(createSelectionHub((target) => details?.show(target)), openLibraryLogger(controller));
   const writing = registerWritingView(context, controller, adapters, platform.registerWriting, sources);
+  const spaces = registerSpaces(context, controller, adapters, writing, async id => {
+    await vscode.commands.executeCommand("labshelf.revealPaper", id);
+    sources.listSelected([id]);
+    sources.listActivated();
+  });
   const { librarySidebar, showFolderInSidebar, showPaperInSidebar, refreshLibraryViews: refreshViews } = registerLibrarySidebar({
-    context, events, controller, papersRootUri, folderHost, adapters, projects: writing.projectsSource, projectTrees: writing.projectTrees,
+    context, events, controller, papersRootUri, folderHost, adapters, projects: writing.projectsSource, projectTrees: writing.projectTrees, spaces,
   });
   refreshLibraryViews = refreshViews;
 
@@ -51,7 +51,7 @@ export async function activateExtension(context: vscode.ExtensionContext, platfo
 
   details = registerPanelCommands({
     context, events, requireServices, papersRootUri, folderHost, showFolderInSidebar, showPaperInSidebar, adapters,
-    getAiService: () => aiService, projectBacklinks: writing.backlinks,
+    getAiService: () => aiService, projectBacklinks: writing.backlinks, addToSpace: ids => addToSpace(spaces, ids),
     currentServices: () => controller.currentServices(), onDidChangeRoot: controller.onDidChangeRoot, projectLibrary: writing.projectLibrary, logger: writing.logger, sources,
   });
 
@@ -63,6 +63,15 @@ export async function activateExtension(context: vscode.ExtensionContext, platfo
   registerAiCommands(context, () => aiService);
 
   logPaperEvents(events, controller.currentServices());
+}
+
+function createFolderHost(
+  requireServices: () => Promise<ActiveServices | null>, papersRoot: () => vscode.Uri | null, refreshViews: () => void,
+): FolderCommandHost {
+  return {
+    requireServices, papersRoot: () => papersRoot()?.fsPath ?? null, refreshViews,
+    followFolderMove: async (from, to) => { await ListWebviewPanel.currentPanel?.followFolderMove(from, to); },
+  };
 }
 
 function papersRootResolver(controller: LibraryRootController): () => vscode.Uri | null {

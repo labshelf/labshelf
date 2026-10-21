@@ -21,3 +21,20 @@ describe('handleListMessage', () => {
     expect(logger.log).toHaveBeenCalledWith('WARN', expect.any(String), expect.any(String), { type: 'nonsense' });
   });
 });
+
+
+it('adds paper references through the Space host and confirms success', async () => {
+  const { ctx } = context();
+  ctx.deps.addToSpace = jest.fn(async () => true);
+  await handleListMessage(ctx, { type: 'paper.addToSpace', ids: ['paper-a'] });
+  expect(ctx.deps.addToSpace).toHaveBeenCalledWith(['paper-a']);
+  expect(ctx.notice).toHaveBeenCalledWith('ok', 'Added to Space');
+});
+
+it('surfaces failures adding paper references', async () => {
+  const { ctx, logger } = context();
+  ctx.deps.addToSpace = jest.fn(async () => { throw new Error('Disk unavailable'); });
+  await handleListMessage(ctx, { type: 'paper.addToSpace', ids: ['paper-a'] });
+  expect(logger.log).toHaveBeenCalledWith('ERROR', expect.any(String), expect.any(String), expect.any(Object));
+  expect(ctx.notice).toHaveBeenCalledWith('error', expect.stringContaining('Disk unavailable'));
+});

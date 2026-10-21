@@ -51,6 +51,26 @@
     ],
     "commands": [
       {
+        "command": "labshelf.spaces.all",
+        "title": "All Spaces",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.spaces.open",
+        "title": "Open Space",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.spaces.new",
+        "title": "New Space\u2026",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.researchChat.toggle",
+        "title": "Research Chat",
+        "category": "LabShelf"
+      },
+      {
         "command": "labshelf.addPaper",
         "title": "Research: Add Paper",
         "category": "LabShelf",
@@ -624,6 +644,11 @@
     },
     "views": {
       "labshelfDetails": [
+        {
+          "type": "webview",
+          "id": "labshelf.researchChat",
+          "name": "Research Chat"
+        },
         {
           "id": "labshelf.details",
           "name": "Details",

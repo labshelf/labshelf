@@ -5,3 +5,4 @@ export { registerSettingsMenu } from "./registerSettingsMenu.js";
 export { registerPanelCommands } from "./registerPanelCommands.js";
 export { registerWritingView } from "./registerWritingView.js";
 export { openLibraryLogger } from "./openLibraryLogger.js";
+export type { WritingViewHandles } from "./registerWritingView.js";

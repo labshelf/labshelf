@@ -1,8 +1,4 @@
-/**
- * Bundles the webview runtimes: the PDF reader into dist/reader/reader.{js,css} and the library list, sidebar and Details view into
- * dist/library/{library,sidebar,details}.{js,css}. The UIs live in @labshelf/core/dom (also bundled by the browser extension);
- * src/reader/main.ts and src/libraryWebview/main.ts, src/sidebarWebview/main.ts, src/detailsWebview/main.ts are their VS Code entries.
- */
+// Bundles browser runtimes for VS Code webviews.
 import { build, context } from "esbuild";
 import { mkdir, rm } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -19,6 +15,8 @@ const BUNDLES = {
   "templates/templates": "src/writing/templates/webview/main.ts",
   "search/search": "src/writing/search/webview/main.ts",
   "history/history": "src/writing/history/webview/main.ts",
+  "spaces/chat": "src/spaces/chat/webview/main.ts",
+  "spaces/spaces": "src/spaces/webview/main.ts",
   "projects/projects": "src/writing/allProjects/webview/main.ts",
   "syncGuide/syncGuide": "src/library/syncGuidePanel/webview/main.ts",
 };

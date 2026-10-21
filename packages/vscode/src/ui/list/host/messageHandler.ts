@@ -1,7 +1,4 @@
-/**
- * Answers the library UI in the list webview: validates each message (the webview is untrusted), maps its paths to
- * disk, and dispatches it. A failure is logged and shown as an error notice.
- */
+// Validates list messages before dispatching host actions with visible failure notices.
 import { errorMessage, isSharingMessage, parseUiMessage, type UiToHost } from '@labshelf/core';
 import { LOG_MODULE, type ListHostContext } from './hostContext.js';
 import { movePapers, removePapers, revealPaper, runCommand, setNote, setStatus, setTags, writeClipboard } from './paperHandlers.js';
@@ -10,8 +7,8 @@ import { sendDetails, sendSimilar } from './paperData.js';
 import { openProjectSource } from './projectSource.js';
 import { onPaperFileMessage } from './paperFileHandlers.js';
 
-// What a failure notice says the action was.
 const FAILURE: Partial<Record<UiToHost['type'], string>> = {
+  'paper.addToSpace': 'Could not add papers to Space',
   'folder.create': 'Could not create the folder', 'folder.rename': 'Could not rename the folder', 'folder.delete': 'Could not delete the folder',
   'paper.move': 'Could not move the papers', 'paper.remove': 'Could not remove the papers', 'paper.setStatus': 'Could not change the status',
   'paper.setTags': 'Could not change the tags', 'project.openSource': 'Could not open the source', 'paper.setNote': 'Could not save the note', 'clipboard.write': 'Could not copy',
@@ -19,7 +16,6 @@ const FAILURE: Partial<Record<UiToHost['type'], string>> = {
   'paper.revealFile': 'Could not reveal the file', 'paper.copyFilePath': 'Could not copy the path',
 };
 
-// Folder and add-paper messages, whose paths the guard kept inside papers/.
 async function onFolderMessage(ctx: ListHostContext, m: UiToHost, toDisk: (ui: string) => string): Promise<boolean> {
   switch (m.type) {
     case 'navigate': ctx.onNavigate(toDisk(m.folder)); return true;
@@ -36,6 +32,9 @@ async function onFolderMessage(ctx: ListHostContext, m: UiToHost, toDisk: (ui: s
 async function onPaperMessage(ctx: ListHostContext, m: UiToHost): Promise<boolean> {
   switch (m.type) {
     case 'ready': await ctx.onReady(); return true;
+    case 'paper.addToSpace':
+      if (ctx.deps.addToSpace && await ctx.deps.addToSpace(m.ids)) { ctx.notice('ok', 'Added to Space'); }
+      return true;
     case 'paper.selected': ctx.onSelect(m.ids); return true;
     case 'paper.open': await runCommand(ctx, 'labshelf.openPdfViewer', m.id, ...(m.page ? [m.page] : [])); return true;
     case 'paper.openExternal': await runCommand(ctx, 'labshelf.openPaperPdfExternal', m.id); return true;
@@ -57,7 +56,6 @@ async function onPaperMessage(ctx: ListHostContext, m: UiToHost): Promise<boolea
   }
 }
 
-/** Handles one raw message from the webview. */
 export async function handleListMessage(ctx: ListHostContext, raw: unknown): Promise<void> {
   const m = parseUiMessage(raw);
   const paths = ctx.paths();

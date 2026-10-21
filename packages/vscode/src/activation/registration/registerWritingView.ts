@@ -42,6 +42,7 @@ import { openLibraryLogger } from "./openLibraryLogger.js";
 /** What other views read from the Writing view: its project list and the backlink index. */
 export interface WritingViewHandles {
   projects: WritingProjects;
+  readingLists: ProjectReadingLists;
   /** The list panel reads it to show where papers are cited. */
   backlinks: ProjectBacklinkIndex;
   /** The library sidebar renders it as the Projects section. */
@@ -276,5 +277,5 @@ export function registerWritingView(
   });
   registerEditingSupport(parts);
   void projects.reload();
-  return { projects, backlinks, projectsSource, projectTrees, projectLibrary, logger };
+  return { projects, readingLists, backlinks, projectsSource, projectTrees, projectLibrary, logger };
 }

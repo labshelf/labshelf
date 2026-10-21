@@ -3,7 +3,7 @@ import type { LibraryUiCapabilities, LibraryUiLabels } from "@labshelf/core";
 
 export const libraryUiCapabilities: LibraryUiCapabilities = {
   textLayer: true, similar: true, reveal: true, openExternal: true,
-  fetchMetadata: true,
+  fetchMetadata: true, spaces: true,
 };
 
 export const libraryUiLabels: LibraryUiLabels = {

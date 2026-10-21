@@ -66,13 +66,27 @@ const sidebar = mountLibrarySidebar(root.appendChild(document.createElement("div
     treeMenu: (view, key, action) => tree({ op: "menu", view, key, action }),
     treeAdd: (view, key, text) => tree({ op: "add", view, key, text }),
   },
+  spaces: {
+    openCatalog: () => post({ type: "spaceAction", action: "openCatalog" }),
+    openSpace: (id, folder) => post({ type: "spaceAction", action: "openSpace", id, ...(folder ? { folder } : {}) }),
+    openPaper: (id) => post({ type: "spaceAction", action: "openPaper", id }),
+    newSpace: () => post({ type: "spaceAction", action: "newSpace" }),
+    renameSpace: (id) => post({ type: "spaceAction", action: "renameSpace", id }),
+    deleteSpace: (id) => post({ type: "spaceAction", action: "deleteSpace", id }),
+    newFolder: (spaceId, parent) => post({ type: "spaceAction", action: "newFolder", spaceId, ...(parent ? { parent } : {}) }),
+    renameFolder: (spaceId, folder) => post({ type: "spaceAction", action: "renameFolder", spaceId, folder }),
+    deleteFolder: (spaceId, folder) => post({ type: "spaceAction", action: "deleteFolder", spaceId, folder }),
+    dropPapers: (spaceId, folder, paperIds) => post({ type: "spaceAction", action: "dropPapers", spaceId, paperIds, ...(folder ? { folder } : {}) }),
+    removeReference: (spaceId, paperId) => post({ type: "spaceAction", action: "removeReference", spaceId, paperId }),
+  },
   dropTarget: folderDropTarget(post),
 });
 
 window.addEventListener("message", (e: MessageEvent<HostToSidebar>) => {
   if (isSharingMessage(e.data)) { return; }
   const m = e.data;
-  if (m.type === "library") { sidebar.setLibrary(m.folders, m.papers); }
+  if (m.type === "spaces") { sidebar.setSpaces(m.rows); }
+  else if (m.type === "library") { sidebar.setLibrary(m.folders, m.papers); }
   else if (m.type === "current") { sidebar.setCurrent(m.folder); }
   else if (m.type === "selected") { sidebar.setSelected(m.id); }
   else if (m.type === "projects") { projects = m.projects; sidebar.setProjects(m.projects); }

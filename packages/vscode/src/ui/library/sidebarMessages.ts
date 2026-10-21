@@ -1,8 +1,10 @@
 // Declares the messages between the Library sidebar webview and the extension host, and checks the ones the webview sends.
+import { isSidebarSpaceMessage, type SidebarSpaceMessage } from "./spaces/index.js";
 import { isSidebarProjectCommand } from "./projectCommands.js";
-import { PAPERS_DIR, type FolderTreeNode, type ProjectTreeView, type SidebarOpenProject, type SidebarProjectItem, type TreePaper } from "@labshelf/core";
+import { PAPERS_DIR, type FolderTreeNode, type ProjectTreeView, type SidebarOpenProject, type SidebarProjectItem, type TreePaper, type SidebarRow } from "@labshelf/core";
 
 export type HostToSidebar =
+  | { type: "spaces"; rows: SidebarRow[] }
   | { type: "library"; folders: FolderTreeNode[]; papers: Array<{ record: TreePaper; folder: string }> }
   /** The folder the list panel shows; `papers` for the library root. */
   | { type: "current"; folder: string }
@@ -52,7 +54,8 @@ export type SidebarToHost =
   | { type: "projectAction"; action: ProjectAction }
   | { type: "projectFolder"; action: ProjectFolderAction; path: string }
   | { type: "projectEdit"; id: string; edit: ProjectEdit }
-  | ProjectTreeMessage;
+  | ProjectTreeMessage
+  | SidebarSpaceMessage;
 
 const PROJECT_ACTIONS: readonly string[] = ["browseTemplates", "allProjects", "newBlank", "addExisting", "refresh"];
 const PROJECT_FOLDER_ACTIONS: readonly string[] = ["new", "rename", "delete"];
@@ -89,6 +92,7 @@ export function parseSidebarMessage(raw: unknown): SidebarToHost | null {
   const m = raw as Record<string, unknown>;
   if (PATH_KEYS.includes(m["type"] as string) && !isTreePath(m["path"])) { return null; }
   switch (m["type"]) {
+    case "spaceAction": return isSidebarSpaceMessage(m) ? (m as SidebarToHost) : null;
     case "ready": case "refresh": case "openFolder": case "createFolder": case "addFiles": case "renameFolder": case "removeFolder":
       return m as SidebarToHost;
     case "searchTag": return typeof m["tag"] === "string" ? (m as SidebarToHost) : null;

@@ -1,7 +1,4 @@
-/**
- * Declares what the list panel needs from the extension: the paper service, events, the library root, the library snapshot and
- * folder changes, the citation map, OCR jobs, reader sidecars, the AI index, the writing projects' citations and paper files.
- */
+// Declares the host services consumed by the paper list.
 import type * as vscode from 'vscode';
 import type { Annotation, BacklinkIndex, ILogger, LibrarySnapshot, PaperFilesState, PaperRecord, PathOps, SimilarPaper, TextLayerJobView } from '@labshelf/core';
 import type { PaperService } from '../../core/index.js';
@@ -31,6 +28,7 @@ interface ListProjectBacklinks {
 }
 
 export interface ListPanelDeps {
+  addToSpace?: (ids: string[]) => Promise<boolean>;
   extensionUri: vscode.Uri;
   paperService: PaperService;
   events: LibraryEvents;

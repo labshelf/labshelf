@@ -54,3 +54,31 @@ describe('parseSidebarMessage', () => {
     expect(parseSidebarMessage(message)).toBeNull();
   });
 });
+
+
+describe('Space messages', () => {
+  const messages = [
+    { type: 'spaceAction', action: 'openCatalog' },
+    { type: 'spaceAction', action: 'newSpace' },
+    { type: 'spaceAction', action: 'openSpace', id: 's', folder: 'f' },
+    { type: 'spaceAction', action: 'openPaper', id: 'p' },
+    { type: 'spaceAction', action: 'renameSpace', id: 's' },
+    { type: 'spaceAction', action: 'deleteSpace', id: 's' },
+    { type: 'spaceAction', action: 'newFolder', spaceId: 's', parent: 'f' },
+    { type: 'spaceAction', action: 'renameFolder', spaceId: 's', folder: 'f' },
+    { type: 'spaceAction', action: 'deleteFolder', spaceId: 's', folder: 'f' },
+    { type: 'spaceAction', action: 'dropPapers', spaceId: 's', paperIds: ['p'] },
+    { type: 'spaceAction', action: 'removeReference', spaceId: 's', paperId: 'p' },
+  ];
+  it.each(messages)('accepts $action', (message) => expect(parseSidebarMessage(message)).toEqual(message));
+  it.each([
+    { action: 'unknown' }, { action: 'openSpace' }, { action: 'openPaper', id: 1 },
+    { action: 'renameSpace', id: '' }, { action: 'deleteSpace', id: '../s' },
+    { action: 'newFolder', spaceId: 's', parent: 3 },
+    { action: 'renameFolder', spaceId: 's' }, { action: 'deleteFolder', spaceId: 's', folder: '' },
+    { action: 'dropPapers', spaceId: 's', paperIds: ['p', 1] },
+    { action: 'dropPapers', spaceId: 's', paperIds: [] },
+    { action: 'dropPapers', spaceId: 's', paperIds: ['p'], folder: 1 },
+    { action: 'removeReference', spaceId: 's', paperId: '' },
+  ])('rejects malformed $action', (fields) => expect(parseSidebarMessage({ type: 'spaceAction', ...fields })).toBeNull());
+});

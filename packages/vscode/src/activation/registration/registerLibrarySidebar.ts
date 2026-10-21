@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import { libraryLayout } from "@labshelf/core";
-import { LibrarySidebarView, type SidebarProjectTreesDep, type SidebarProjectsDep } from "../../ui/library/index.js";
+import { LibrarySidebarView, type SidebarProjectTreesDep, type SidebarProjectsDep, type SidebarSpacesDep } from "../../ui/library/index.js";
 import type { LibraryNode } from "../../ui/library/index.js";
 import { ListWebviewPanel } from "../../ui/list/index.js";
 import { importPapers, moveFolders, type FolderCommandHost } from "../../commands/index.js";
@@ -19,6 +19,7 @@ export interface LibrarySidebarDeps {
   adapters: HostAdapters;
   /** The writing projects the Projects section lists. */
   projects: SidebarProjectsDep;
+  spaces?: SidebarSpacesDep;
   /** The open project's trees the Projects section shows. */
   projectTrees: SidebarProjectTreesDep;
 }
@@ -41,13 +42,14 @@ export function registerLibrarySidebar(deps: LibrarySidebarDeps): LibrarySidebar
     paths: adapters.paths,
     projects,
     projectTrees,
+    ...(deps.spaces ? { spaces: deps.spaces } : {}),
     importFiles: async (uris, targetDir) => {
       const services = await folderHost.requireServices();
       if (services) { await importPapers(services, uris, targetDir); }
     },
     moveFolder: (sourceDir, targetDir) => moveFolders(folderHost, [sourceDir], targetDir),
   });
-  context.subscriptions.push(vscode.window.registerWebviewViewProvider("labshelf.library", view));
+  context.subscriptions.push(view, vscode.window.registerWebviewViewProvider("labshelf.library", view));
   const initialRoot = papersRootUri();
   if (initialRoot) { view.setLibrary(initialRoot); }
   controller.onDidChangeRoot(({ root }) => {
