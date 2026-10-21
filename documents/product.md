@@ -32,3 +32,4 @@ When a user moves from one app to another, it should feel like the same product:
 4. **Keyboard everywhere.** Every action has a key. The reader offers optional vim keys, and the terminal follows yazi's columns and keys while keeping Zotero's pane model (folders | papers | preview).
 5. **Never lose the user's work.** LabShelf never deletes a file because of something it cannot explain. Destructive actions ask for confirmation.
 6. **No emoji or Unicode glyphs as icons.** Icons are inline SVGs from the shared icon set. The terminal uses plain text or its own glyphs.
+7. **Preview-led templates.** The gallery gives document previews the main area. Sources, search and filters support browsing without a second navigation pane. Template details put the preview and the choice to create a project before technical metadata.

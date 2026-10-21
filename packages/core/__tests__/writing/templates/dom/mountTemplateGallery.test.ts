@@ -1,4 +1,5 @@
 /**
+ * Checks template browsing over host listings and keyboard filters.
  * @jest-environment jsdom
  */
 import { key, listAll, mountGallery } from "./galleryHarness";
@@ -77,6 +78,25 @@ describe("facets", () => {
     expect(g.cardNames()).toEqual(["Name u1"]);
     expect(sourceRow(g, "Typst Universe").getAttribute("aria-selected")).toBe("true");
     sourceRow(g, "All sources").click();
+    expect(g.cards()).toHaveLength(4);
+  });
+
+  it("selects horizontal sources with arrow keys and keeps focus on the selected source", () => {
+    const g = mountGallery();
+    listAll(g);
+    const sources = g.root.querySelector('[role="listbox"]')!;
+    expect(sources.getAttribute("aria-orientation")).toBe("horizontal");
+    const all = sourceRow(g, "All sources");
+    all.focus();
+    all.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
+    expect(g.cardNames()).toEqual(["Name c1", "Name c2"]);
+    expect(document.activeElement).toBe(sourceRow(g, "LabShelf Community"));
+    document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "End", bubbles: true }));
+    expect(g.cardNames()).toEqual(["Name m1"]);
+    document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }));
+    expect(g.cardNames()).toEqual(["Name u1"]);
+    document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "Home", bubbles: true }));
+    expect(document.activeElement).toBe(all);
     expect(g.cards()).toHaveLength(4);
   });
 

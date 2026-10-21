@@ -11,7 +11,6 @@ export interface PublishController {
   route(message: HostToGallery): void;
   /** Returns to the grid; does nothing when the screen is not open. */
   close(): void;
-  /** Returns to the grid and focuses the sidebar's Publish button; does nothing when the screen is not open. */
   closeAndFocus(): void;
 }
 

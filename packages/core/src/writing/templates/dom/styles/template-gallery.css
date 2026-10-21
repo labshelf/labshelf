@@ -1,68 +1,64 @@
-/*
- * Styles the template gallery under .ls-tpl: the sources sidebar, the facet bar, the card grid and the detail page.
- * A narrow gallery stacks the sidebar above the main column.
- */
-/*
- * The gallery fills whatever holds it: a webview's #root or a browser workspace tab. #root gets a height so the frame,
- * and so the sidebar background, does not end at the content.
- * TRAP: inline-size containment gives .ls-tpl no intrinsic width, so inside a flex parent it collapses to 0 without width: 100%.
- */
+/* Styles the template catalog navigation, filters, previews and detail views. */
 html, body, #root { height: 100%; }
 body { overflow: hidden; }
-.ls-tpl { container: ls-tpl / inline-size; width: 100%; height: 100%; min-width: 0; min-height: 0; background: var(--ls-bg); color: var(--ls-fg); font: var(--ls-font-size) var(--ls-font); }
-.ls-tpl-frame { display: grid; grid-template-columns: var(--ls-gallery-sidebar-w) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); height: 100%; }
-.ls-tpl-frame > main { min-width: 0; overflow-y: auto; }
-.ls-tpl-section {
-  display: flex; align-items: center; justify-content: space-between; gap: var(--ls-space-4);
-  padding: var(--ls-space-4) var(--ls-space-7); font-size: var(--ls-text-sm); text-transform: uppercase; color: var(--ls-section-fg);
+/* TRAP: Inline-size containment needs an explicit width inside a flex parent. */
+.ls-tpl {
+  container: ls-tpl / inline-size; width: 100%; height: 100%; min-width: 0; min-height: 0;
+  background: var(--ls-bg); color: var(--ls-fg); font: var(--ls-font-size) var(--ls-font);
 }
-
-/* ── Sources sidebar ────────────────────────────────────────────── */
-.ls-tpl-sidebar { background: var(--ls-sidebar-bg); border-right: 1px solid var(--ls-sidebar-border); padding: var(--ls-space-4) 0; overflow-y: auto; }
-.ls-tpl-sources { list-style: none; margin: 0; padding: 0; }
+.ls-tpl-frame { height: 100%; overflow-y: auto; scrollbar-gutter: stable; }
+.ls-tpl-header, .ls-tpl-frame > main { width: 100%; max-width: var(--ls-gallery-content-w); margin-inline: auto; padding-inline: var(--ls-space-9); }
+.ls-tpl-frame > main { min-width: 0; padding-bottom: var(--ls-space-9); }
+.ls-tpl-header { padding-top: var(--ls-space-9); }
+.ls-tpl-heading-row { display: flex; align-items: center; justify-content: space-between; gap: var(--ls-space-7); margin-bottom: var(--ls-space-8); }
+.ls-tpl-heading { min-width: 0; }
+.ls-tpl-title { margin: 0; font-size: var(--ls-text-3xl); font-weight: 600; }
+.ls-tpl-intro { margin: var(--ls-space-2) 0 0; color: var(--ls-desc); }
+.ls-tpl-actions { display: flex; flex-shrink: 0; gap: var(--ls-space-4); }
+.ls-tpl-actions .ls-btn { min-height: var(--ls-space-9); padding-inline: var(--ls-space-6); font-size: var(--ls-text-md); }
+.ls-tpl-navigation { display: flex; align-items: center; justify-content: space-between; gap: var(--ls-space-7); border-bottom: 1px solid var(--ls-border); }
+.ls-tpl-sources { display: flex; gap: var(--ls-space-8); list-style: none; margin: 0; padding: 0; min-width: 0; overflow-x: auto; }
 .ls-tpl-source {
-  display: flex; align-items: center; gap: var(--ls-space-4); height: var(--ls-row-h); padding: 0 var(--ls-space-7); cursor: pointer; user-select: none;
+  display: flex; align-items: center; gap: var(--ls-space-3); flex-shrink: 0; cursor: pointer; user-select: none;
+  padding-block: var(--ls-space-6); border-bottom: var(--ls-space-1) solid transparent; color: var(--ls-desc);
 }
-.ls-tpl-source:hover { background: var(--ls-list-hover); }
-.ls-tpl-source[aria-selected="true"] { background: var(--ls-list-active-bg); color: var(--ls-list-active-fg); }
-.ls-tpl-source > :first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ls-tpl-source-note { flex-shrink: 0; display: inline-flex; align-items: center; gap: var(--ls-space-2); font-size: var(--ls-text-sm); color: var(--ls-desc); }
-.ls-tpl-source[aria-selected="true"] .ls-tpl-source-note { color: inherit; }
-.ls-tpl-source-note svg { width: 12px; height: 12px; }
-.ls-tpl-source-error {
-  display: flex; align-items: flex-start; gap: var(--ls-space-3); padding: var(--ls-space-2) var(--ls-space-7);
-  font-size: var(--ls-text-sm); color: var(--ls-error);
-}
-.ls-tpl-source-error svg { width: 12px; height: 12px; flex-shrink: 0; margin-top: var(--ls-space-1); }
-.ls-tpl-formats { display: flex; flex-direction: column; }
-.ls-tpl-sidebar .ls-checkbox { height: var(--ls-row-h); padding: 0 var(--ls-space-7); }
-
-/* ── Facet bar ──────────────────────────────────────────────────── */
-.ls-tpl-facets { display: flex; flex-direction: column; gap: var(--ls-space-4); padding: var(--ls-space-7); }
+.ls-tpl-source:hover { color: var(--ls-fg); }
+.ls-tpl-source[aria-selected="true"] { border-bottom-color: var(--ls-focus); color: var(--ls-fg); font-weight: 600; }
+.ls-tpl-source-note { display: inline-flex; align-items: center; gap: var(--ls-space-2); color: var(--ls-desc); font-size: var(--ls-text-sm); font-weight: 400; }
+.ls-tpl-source-note svg { width: var(--ls-space-6); height: var(--ls-space-6); }
+.ls-tpl-source-error { display: flex; align-items: flex-start; gap: var(--ls-space-4); margin-top: var(--ls-space-5); color: var(--ls-error); font-size: var(--ls-text-md); overflow-wrap: anywhere; }
+.ls-tpl-source-error svg { width: var(--ls-space-7); height: var(--ls-space-7); }
+.ls-tpl-format-filter, .ls-tpl-formats { display: flex; align-items: center; gap: var(--ls-space-6); }
+.ls-tpl-format-filter { flex-shrink: 0; }
+.ls-tpl-filter-label { color: var(--ls-desc); font-size: var(--ls-text-md); }
+.ls-tpl-formats .ls-checkbox { gap: var(--ls-space-2); font-size: var(--ls-text-md); }
+.ls-tpl-formats input { width: var(--ls-space-6); height: var(--ls-space-6); }
+.ls-tpl-facets { display: flex; flex-direction: column; gap: var(--ls-space-7); padding-block: var(--ls-space-8); }
 .ls-tpl-facets-row { display: flex; align-items: center; gap: var(--ls-space-7); }
-.ls-tpl-title { margin: 0; flex-shrink: 0; font-size: var(--ls-text-lg); font-weight: 600; }
-.ls-tpl-facets .ls-search { flex: 1; min-width: 0; }
+.ls-tpl-facets .ls-search { flex: 1; min-width: 0; height: calc(var(--ls-space-9) + var(--ls-space-4)); padding-inline: var(--ls-space-6); gap: var(--ls-space-4); border-radius: var(--ls-radius-lg); background: var(--ls-section-bg); border-color: var(--ls-border); }
+.ls-tpl-facets .ls-search:focus-within { border-color: var(--ls-focus); }
+.ls-tpl-facets .ls-search > span { color: var(--ls-desc); }
+.ls-tpl-facets .ls-search > span svg { width: var(--ls-space-7); height: var(--ls-space-7); }
+.ls-tpl-facets .ls-search input { font-size: var(--ls-font-size); }
 .ls-tpl-facets input[type=search]::-webkit-search-cancel-button { appearance: none; }
 .ls-tpl-sort {
-  display: inline-flex; align-items: center; gap: var(--ls-space-2); flex-shrink: 0; height: var(--ls-row-h); padding: 0 var(--ls-space-5);
-  border: 1px solid var(--ls-border); border-radius: var(--ls-radius-sm); background: transparent; color: var(--ls-fg);
+  display: inline-flex; align-items: center; gap: var(--ls-space-3); flex-shrink: 0; padding: var(--ls-space-5) var(--ls-space-6);
+  border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg); background: transparent; color: var(--ls-fg);
   font: inherit; font-size: var(--ls-text-md); cursor: pointer;
 }
 .ls-tpl-sort:hover { background: var(--ls-list-hover); }
-.ls-tpl-sort-chevron { display: flex; color: var(--ls-desc); }
-.ls-tpl-sort-chevron svg { width: 12px; height: 12px; }
-.ls-tpl-categories { display: flex; flex-wrap: wrap; gap: var(--ls-space-4); }
+.ls-tpl-sort-label, .ls-tpl-sort-chevron { color: var(--ls-desc); }
+.ls-tpl-sort-chevron svg { width: var(--ls-space-6); height: var(--ls-space-6); }
+.ls-tpl-categories { display: flex; flex-wrap: wrap; gap: var(--ls-space-3); }
 .ls-tpl-category {
-  height: var(--ls-row-h); padding: 0 var(--ls-space-5); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-sm);
-  background: transparent; color: var(--ls-fg); font: inherit; font-size: var(--ls-text-md); cursor: pointer;
+  padding: var(--ls-space-3) var(--ls-space-6); border: 1px solid transparent; border-radius: var(--ls-radius-pill);
+  background: transparent; color: var(--ls-desc); font: inherit; font-size: var(--ls-text-md); cursor: pointer;
 }
-.ls-tpl-category:hover { background: var(--ls-list-hover); }
-.ls-tpl-category[aria-pressed="true"] { background: var(--ls-list-active-bg); color: var(--ls-list-active-fg); border-color: var(--ls-focus); }
-
-/* ── Card grid ──────────────────────────────────────────────────── */
+.ls-tpl-category:hover { background: var(--ls-list-hover); color: var(--ls-fg); }
+.ls-tpl-category[aria-pressed="true"] { background: var(--ls-button-soft-bg); color: var(--ls-button-soft-fg); }
 .ls-tpl-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--ls-gallery-card-w), 1fr)); gap: var(--ls-space-7);
-  list-style: none; margin: 0; padding: 0 var(--ls-space-7) var(--ls-space-7);
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--ls-gallery-card-w)), 1fr)); gap: var(--ls-space-7);
+  list-style: none; margin: 0; padding: 0;
 }
 .ls-tpl-grid > li { min-width: 0; display: flex; }
 .ls-tpl-card {
@@ -86,20 +82,21 @@ body { overflow: hidden; }
 .ls-tpl-card.is-loading .ls-tpl-card-name, .ls-tpl-card.is-loading .ls-tpl-card-by { height: var(--ls-text-md); border-radius: var(--ls-radius-sm); background: var(--ls-section-bg); }
 .ls-tpl .ls-empty { grid-column: 1 / -1; }
 
-/* ── Detail page ────────────────────────────────────────────────── */
-.ls-tpl-detail-nav { padding: var(--ls-space-7) var(--ls-space-7) 0; }
-.ls-tpl-detail-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--ls-space-7); padding: var(--ls-space-7); align-items: start; }
+.ls-tpl-detail-nav { padding-block: var(--ls-space-8); }
+.ls-tpl-detail-nav .ls-btn { background: transparent; color: var(--ls-desc); padding-inline: 0; }
+.ls-tpl-detail-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--ls-space-9); align-items: start; }
 .ls-tpl-preview {
-  display: flex; align-items: center; justify-content: center; margin: 0; padding: var(--ls-space-7);
-  background: var(--ls-section-bg); border: 1px solid var(--ls-border); border-radius: var(--ls-radius);
+  display: flex; align-items: center; justify-content: center; margin: 0; padding: var(--ls-space-8);
+  background: var(--ls-section-bg); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg);
 }
 .ls-tpl-preview img { width: 100%; height: auto; display: block; box-shadow: var(--ls-page-shadow); }
 .ls-tpl-preview .ls-tpl-thumb-icon { aspect-ratio: 210 / 297; width: 100%; align-items: center; justify-content: center; }
-.ls-tpl-info { display: flex; flex-direction: column; align-items: flex-start; gap: var(--ls-space-6); min-width: 0; width: 100%; }
-.ls-tpl-detail-title { margin: 0; font-size: var(--ls-text-lg); font-weight: 600; overflow-wrap: anywhere; }
+.ls-tpl-info { display: flex; flex-direction: column; align-items: flex-start; gap: var(--ls-space-8); min-width: 0; width: 100%; }
+.ls-tpl-detail-heading { display: flex; flex-direction: column; gap: var(--ls-space-4); }
+.ls-tpl-detail-title { margin: 0; font-size: var(--ls-text-3xl); font-weight: 600; overflow-wrap: anywhere; }
 .ls-tpl-detail-title:focus { outline: none; }
-.ls-tpl-description { margin: 0; color: var(--ls-fg); font-size: var(--ls-font-size); white-space: pre-line; overflow-wrap: anywhere; }
-.ls-tpl-detail .ls-btn-primary { gap: var(--ls-space-4); }
+.ls-tpl-description { margin: 0; color: var(--ls-desc); font-size: var(--ls-font-size); white-space: pre-line; overflow-wrap: anywhere; line-height: 1.6; }
+.ls-tpl-detail .ls-btn-primary { gap: var(--ls-space-4); min-height: calc(var(--ls-space-9) + var(--ls-space-4)); padding-inline: var(--ls-space-7); }
 .ls-tpl-detail .ls-btn-primary[aria-busy="true"] { cursor: progress; }
 .ls-tpl-engine-slot { width: 100%; }
 .ls-tpl-engine-slot:empty { display: none; }
@@ -108,25 +105,30 @@ body { overflow: hidden; }
   background: var(--ls-warning-bg); border: 1px solid var(--ls-warning-border); border-radius: var(--ls-radius);
 }
 .ls-tpl-engine-icon { display: flex; flex-shrink: 0; color: var(--ls-warning); }
-.ls-tpl-engine-icon svg { width: 14px; height: 14px; }
-.ls-tpl-meta { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--ls-space-3) var(--ls-space-7); margin: 0; width: 100%; }
+.ls-tpl-engine-icon svg { width: var(--ls-text-lg); height: var(--ls-text-lg); }
+.ls-tpl-meta { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--ls-space-6) var(--ls-space-8); margin: 0; padding-block: var(--ls-space-7); border-block: 1px solid var(--ls-border); width: 100%; }
 .ls-tpl-meta dt { color: var(--ls-desc); font-size: var(--ls-text-md); }
 .ls-tpl-meta dd { margin: 0; color: var(--ls-fg); font-size: var(--ls-text-md); overflow-wrap: anywhere; }
 .ls-tpl-files-block { width: 100%; }
-.ls-tpl-files-block .ls-tpl-section { justify-content: flex-start; padding-left: 0; padding-right: 0; }
+.ls-tpl-section { margin: 0 0 var(--ls-space-5); font-size: var(--ls-text-md); color: var(--ls-desc); font-weight: 500; }
 .ls-tpl-files { list-style: none; margin: 0; padding: 0; }
-.ls-tpl-files li { display: flex; align-items: center; gap: var(--ls-space-4); height: var(--ls-row-h); }
+.ls-tpl-files li { display: flex; align-items: center; gap: var(--ls-space-4); min-height: var(--ls-row-h); }
 .ls-tpl-file-icon { display: flex; flex-shrink: 0; color: var(--ls-desc); }
-.ls-tpl-file-icon svg { width: 14px; height: 14px; }
+.ls-tpl-file-icon svg { width: var(--ls-text-lg); height: var(--ls-text-lg); }
 .ls-tpl-file-path { font-family: var(--ls-mono); font-size: var(--ls-text-md); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-/* ── Busy spinner ───────────────────────────────────────────────── */
 @keyframes ls-tpl-spin { to { transform: rotate(360deg); } }
 .ls-tpl .spin, .ls-tpl-spin { display: inline-flex; animation: ls-tpl-spin 1s linear infinite; }
-
-/* The gallery shares the window with nothing else, but a narrow panel still needs the sidebar out of the way. */
-@container ls-tpl (max-width: 640px) {
-  .ls-tpl-frame { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
-  .ls-tpl-sidebar { border-right: none; border-bottom: 1px solid var(--ls-sidebar-border); }
-  .ls-tpl-detail-body { grid-template-columns: minmax(0, 1fr); }
+@container ls-tpl (max-width: 800px) {
+  .ls-tpl-navigation { align-items: flex-start; flex-direction: column; gap: 0; }
+  .ls-tpl-sources { max-width: 100%; gap: var(--ls-space-7); }
+  .ls-tpl-format-filter { padding-block: var(--ls-space-6); }
+}
+@container ls-tpl (max-width: 560px) {
+  .ls-tpl-header, .ls-tpl-frame > main { padding-inline: var(--ls-space-7); }
+  .ls-tpl-header { padding-top: var(--ls-space-8); }
+  .ls-tpl-heading-row { align-items: flex-start; flex-direction: column; }
+  .ls-tpl-facets-row { flex-wrap: wrap; gap: var(--ls-space-4); }
+  .ls-tpl-facets .ls-search { flex-basis: 100%; }
+  .ls-tpl-detail-body { grid-template-columns: minmax(0, 1fr); gap: var(--ls-space-8); }
+  .ls-tpl-preview { padding: var(--ls-space-7); }
 }

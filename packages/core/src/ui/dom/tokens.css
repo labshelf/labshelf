@@ -111,6 +111,7 @@
   --ls-text-lg: 14px;
   --ls-text-xl: 15px;
   --ls-text-2xl: 17px;
+  --ls-text-3xl: 24px;
   --ls-code-font: var(--ls-mono);
   --ls-space-1: 2px;
   --ls-space-2: 4px;
@@ -119,6 +120,8 @@
   --ls-space-5: 10px;
   --ls-space-6: 12px;
   --ls-space-7: 16px;
+  --ls-space-8: 24px;
+  --ls-space-9: 32px;
   --ls-editor-cursor-width: 3px;
   --ls-radius-sm: 3px;
   --ls-radius: 4px;
@@ -128,6 +131,7 @@
   --ls-pane-footer-h: 24px;
   --ls-gallery-sidebar-w: 220px;
   --ls-gallery-card-w: 200px;
+  --ls-gallery-content-w: 1200px;
   --ls-pane-shadow: 0 1px 3px rgba(0, 0, 0, .18);
   --ls-widget-shadow: 0 0 8px 2px rgba(0, 0, 0, .36);
   --ls-popup-shadow: 0 4px 18px rgba(0, 0, 0, .45);

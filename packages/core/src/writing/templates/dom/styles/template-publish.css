@@ -1,32 +1,22 @@
-/*
- * Styles the Publish screen of the template gallery under .ls-tpl-publish, and the sidebar button that opens it.
- * It reuses the detail page's nav, columns and preview; a narrow panel stacks the columns the same way.
- */
-.ls-tpl-sidebar { display: flex; flex-direction: column; }
-.ls-tpl-sidebar-publish { margin-top: auto; padding: var(--ls-space-7) var(--ls-space-7) var(--ls-space-4); }
-.ls-tpl-sidebar-publish .ls-btn { width: 100%; justify-content: center; gap: var(--ls-space-4); }
-
-/* ── Heading and columns ────────────────────────────────────────── */
-.ls-tpl-publish-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+/* Styles template publication forms, validation and GitHub submission. */
+.ls-tpl-publish-title { white-space: normal; max-width: 100%; }
 .ls-tpl-publish-workflow { display: flex; flex-direction: column; gap: var(--ls-space-7); width: 100%; }
 .ls-tpl-publish-workflow[hidden], .ls-tpl-publish-done[hidden], .ls-tpl-github[hidden] { display: none; }
 .ls-tpl-publish .ls-btn { gap: var(--ls-space-4); }
 .ls-tpl-publish .ls-btn[aria-busy="true"] { cursor: progress; }
 .ls-tpl-publish-section { display: flex; align-items: center; justify-content: space-between; gap: var(--ls-space-4); }
-.ls-tpl-publish-section h2 { margin: 0; font-size: var(--ls-text-md); font-weight: 600; text-transform: uppercase; color: var(--ls-section-fg); }
+.ls-tpl-publish-section h2 { margin: 0; font-size: var(--ls-text-lg); font-weight: 600; color: var(--ls-section-fg); }
 
-/* ── Form ───────────────────────────────────────────────────────── */
 .ls-tpl-form { display: flex; flex-direction: column; gap: var(--ls-space-5); width: 100%; }
 .ls-tpl-field { display: flex; flex-direction: column; gap: var(--ls-space-2); }
 .ls-tpl-field label { font-size: var(--ls-text-md); color: var(--ls-desc); }
 .ls-tpl-field textarea.ls-input { height: auto; padding: var(--ls-space-3) var(--ls-space-4); font-family: inherit; resize: vertical; }
 
-/* ── Checks ─────────────────────────────────────────────────────── */
 .ls-tpl-checks { display: flex; flex-direction: column; gap: var(--ls-space-4); width: 100%; }
 .ls-tpl-check-list { list-style: none; margin: 0; padding: 0; }
 .ls-tpl-check { display: flex; align-items: flex-start; gap: var(--ls-space-4); min-height: var(--ls-row-h); padding: var(--ls-space-2) 0; }
 .ls-tpl-check-icon { display: flex; flex-shrink: 0; margin-top: var(--ls-space-1); color: var(--ls-desc); }
-.ls-tpl-check-icon svg { width: 14px; height: 14px; }
+.ls-tpl-check-icon svg { width: var(--ls-text-lg); height: var(--ls-text-lg); }
 .ls-tpl-check-text { min-width: 0; overflow-wrap: anywhere; }
 .ls-tpl-check[data-state="passed"] .ls-tpl-check-icon { color: var(--ls-mark-ok); }
 .ls-tpl-check[data-state="failed"] .ls-tpl-check-icon, .ls-tpl-check-message { color: var(--ls-error); }
@@ -35,7 +25,6 @@
 .ls-tpl-check-summary { margin: 0; font-size: var(--ls-text-sm); color: var(--ls-desc); }
 .ls-tpl-check-summary:empty { display: none; }
 
-/* ── GitHub step and result ─────────────────────────────────────── */
 .ls-tpl-github { display: flex; flex-direction: column; align-items: flex-start; gap: var(--ls-space-5); width: 100%; }
 .ls-tpl-github-intro { margin: 0; }
 .ls-tpl-publish-alert { width: 100%; margin: 0; color: var(--ls-fg); }
@@ -46,10 +35,5 @@
 .ls-tpl-publish-actions a { text-decoration: none; }
 .ls-tpl-publish-actions a[hidden] { display: none; }
 
-/* ── Preview column ─────────────────────────────────────────────── */
 .ls-tpl-publish-aside { display: flex; flex-direction: column; gap: var(--ls-space-4); min-width: 0; }
 .ls-tpl-publish-caption { margin: 0; font-size: var(--ls-text-sm); color: var(--ls-desc); }
-
-@container ls-tpl (max-width: 640px) {
-  .ls-tpl-sidebar-publish { margin-top: 0; }
-}

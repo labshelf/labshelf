@@ -13,9 +13,9 @@ export const TYPE_TOKENS = {
   "text-lg": token("14px"),
   "text-xl": token("15px"),
   "text-2xl": token("17px"),
+  "text-3xl": token("24px"),
 } satisfies Record<string, DesignToken>;
 
-// The steps are the padding and gap values the three UIs already use most.
 export const SPACE_TOKENS = {
   "space-1": token("2px"),
   "space-2": token("4px"),
@@ -24,6 +24,8 @@ export const SPACE_TOKENS = {
   "space-5": token("10px"),
   "space-6": token("12px"),
   "space-7": token("16px"),
+  "space-8": token("24px"),
+  "space-9": token("32px"),
 } satisfies Record<string, DesignToken>;
 
 export const SHAPE_TOKENS = {
@@ -36,6 +38,7 @@ export const SHAPE_TOKENS = {
   "pane-footer-h": token("24px"),
   "gallery-sidebar-w": token("220px"),
   "gallery-card-w": token("200px"),
+  "gallery-content-w": token("1200px"),
 } satisfies Record<string, DesignToken>;
 
 export const ELEVATION_TOKENS = {

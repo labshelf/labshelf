@@ -1,4 +1,4 @@
-// Renders the detail page of one template: preview, description, Use button, engine warning, metadata and files.
+// Presents a template preview with project creation and source details.
 import { icon } from "../../../ui/index.js";
 import { el } from "../../../ui/dom/index.js";
 import type { TemplateEntry } from "../templateEntry.js";
@@ -8,7 +8,6 @@ import { fillThumb } from "./templateCard.js";
 export interface TemplateDetailOptions {
   entry: TemplateEntry;
   thumbnail: string | undefined;
-  /** The engine problem already known for this template, shown as a warning. */
   problem: string | undefined;
   busy: boolean;
   onBack(): void;
@@ -17,11 +16,9 @@ export interface TemplateDetailOptions {
 
 export interface TemplateDetail {
   element: HTMLElement;
-  /** Shows the engine warning with this text, or removes it when there is none. */
   setProblem(problem: string | undefined): void;
   setBusy(busy: boolean): void;
   setThumbnail(dataUri: string | undefined): void;
-  /** Moves focus to the heading, the page's accessible name. */
   focus(): void;
   dispose(): void;
 }
@@ -48,7 +45,6 @@ function renderMeta(entry: TemplateEntry): HTMLElement {
   return dl;
 }
 
-/** Lists `entry.main` first, then the other paths sorted. */
 function orderedFiles(entry: TemplateEntry, files: string[]): string[] {
   const rest = files.filter((path) => path !== entry.main).sort();
   return files.includes(entry.main) ? [entry.main, ...rest] : rest;
@@ -101,9 +97,9 @@ export function renderTemplateDetail(options: TemplateDetailOptions): TemplateDe
   setBusy(options.busy);
 
   const info = el("div", { class: "ls-tpl-info" },
-    heading,
-    el("div", { class: "ls-tpl-card-by", text: by, title: by }),
-    el("p", { class: "ls-tpl-description", text: entry.description }),
+    el("div", { class: "ls-tpl-detail-heading" }, heading,
+      el("div", { class: "ls-tpl-card-by", text: by, title: by }),
+      el("p", { class: "ls-tpl-description", text: entry.description })),
     use, warningSlot, renderMeta(entry),
     entry.files ? renderFiles(entry, entry.files) : null);
   const element = el("section", { class: "ls-tpl-detail", "aria-labelledby": headingId },

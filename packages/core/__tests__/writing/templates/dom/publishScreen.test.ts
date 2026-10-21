@@ -1,7 +1,7 @@
 /**
+ * Checks template publication from project selection through submission.
  * @jest-environment jsdom
  */
-// Tests the publish screen of the template gallery: entry, form, checks, GitHub steps and leaving.
 import { mountGallery } from "./galleryHarness";
 import { CHECK_IDS, DRAFT, LABELS, PROJECT, alert, allPassed, button, checks, edit, field, openPublish, row, screen } from "./publishHarness";
 
@@ -14,9 +14,9 @@ describe("entry and form", () => {
     document.querySelector<HTMLButtonElement>(".ls-toast.error button")?.click();
   });
 
-  it("posts publish.start from the sidebar button", () => {
+  it("posts publish.start from the header button", () => {
     const g = mountGallery();
-    const btn = [...g.root.querySelectorAll<HTMLButtonElement>(".ls-tpl-sidebar button")].find((b) => b.textContent?.includes("Publish a template"))!;
+    const btn = [...g.root.querySelectorAll<HTMLButtonElement>(".ls-tpl-actions button")].find((b) => b.textContent?.includes("Publish a template"))!;
     btn.click();
     expect(g.ofType("publish.start")).toHaveLength(1);
   });

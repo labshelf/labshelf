@@ -1,4 +1,4 @@
-// Renders the gallery sidebar: source rows with counts and errors, the refresh button and the format checkboxes.
+// Renders the template gallery header.
 import { icon } from "../../../ui/index.js";
 import { el } from "../../../ui/dom/index.js";
 import { PROJECT_FORMATS, type ProjectFormat } from "../../project/index.js";
@@ -7,24 +7,18 @@ import { TEMPLATE_SOURCES, type TemplateSourceId } from "../templateEntry.js";
 import { FORMAT_LABELS, SOURCE_LABELS } from "../templateLabels.js";
 import type { GalleryState } from "./galleryState.js";
 
-export interface SourcesSidebarHandlers {
-  /** The filter changed (source or formats); the sidebar has already patched itself. */
+export interface GalleryHeaderHandlers {
   onFilterChange(): void;
-  /** Refresh was pressed; the state's listings are already back to loading. */
   onRefresh(): void;
-  /** "Publish a template" was pressed. */
   onPublish(): void;
 }
 
-export interface SourcesSidebar {
+export interface GalleryHeader {
   element: HTMLElement;
-  /** Patches counts, loading markers, errors and the selected row from the state. */
   update(): void;
-  /** Moves focus to the "Publish a template" button. */
   focusPublish(): void;
 }
 
-/** `undefined` is "All sources". */
 type Choice = TemplateSourceId | undefined;
 const CHOICES: readonly Choice[] = [undefined, ...TEMPLATE_SOURCES];
 const CACHED_TITLE = "Listed from this device; refreshes when online.";
@@ -76,19 +70,27 @@ function patchErrors(errors: HTMLElement, state: GalleryState): void {
   }));
 }
 
-export function createSourcesSidebar(state: GalleryState, handlers: SourcesSidebarHandlers): SourcesSidebar {
+function buildHeader(list: HTMLElement, errors: HTMLElement, refresh: HTMLElement, publish: HTMLElement, formats: HTMLElement): HTMLElement {
+  return el("header", { class: "ls-tpl-header" },
+    el("div", { class: "ls-tpl-heading-row" },
+      el("div", { class: "ls-tpl-heading" },
+        el("h1", { class: "ls-tpl-title", text: "Templates" }),
+        el("p", { class: "ls-tpl-intro", text: "A starting point for your next paper." })),
+      el("div", { class: "ls-tpl-actions" }, refresh, publish)),
+    el("nav", { class: "ls-tpl-navigation", "aria-label": "Template filters" }, list,
+      el("div", { class: "ls-tpl-format-filter", role: "group", "aria-label": "Format" },
+        el("span", { class: "ls-tpl-filter-label", text: "Format" }), formats)),
+    errors);
+}
+
+export function createGalleryHeader(state: GalleryState, handlers: GalleryHeaderHandlers): GalleryHeader {
   const rows = CHOICES.map(buildRow);
-  const list = el("ul", { class: "ls-tpl-sources", role: "listbox", "aria-label": "Sources" }, ...rows.map((row) => row.item));
+  const list = el("ul", { class: "ls-tpl-sources", role: "listbox", "aria-label": "Sources", "aria-orientation": "horizontal" }, ...rows.map((row) => row.item));
   const errors = el("div", { class: "ls-tpl-source-errors" });
-  const refresh = el("button", { class: "ls-icon-btn", type: "button", "aria-label": "Refresh templates", title: "Refresh templates", html: icon("refresh") });
+  const refresh = el("button", { class: "ls-btn ls-btn-ghost", type: "button", "aria-label": "Refresh templates", title: "Refresh templates" }, el("span", { html: icon("refresh") }), "Refresh");
   const publish = el("button", { class: "ls-btn", type: "button" }, el("span", { html: icon("arrow-up") }), "Publish a template");
   publish.addEventListener("click", handlers.onPublish);
-  const element = el("nav", { class: "ls-tpl-sidebar", "aria-label": "Template filters" },
-    el("div", { class: "ls-tpl-section" }, el("span", { text: "Sources" }), refresh),
-    list, errors,
-    el("div", { class: "ls-tpl-section" }, el("span", { text: "Format" })),
-    buildFormats(state, handlers.onFilterChange),
-    el("div", { class: "ls-tpl-sidebar-publish" }, publish));
+  const element = buildHeader(list, errors, refresh, publish, buildFormats(state, handlers.onFilterChange));
 
   const update = (): void => {
     patchRows(rows, state);
@@ -106,7 +108,7 @@ export function createSourcesSidebar(state: GalleryState, handlers: SourcesSideb
   rows.forEach((row, index) => row.item.addEventListener("click", () => select(index)));
   list.addEventListener("keydown", (event) => {
     const current = rows.findIndex((row) => row.item === event.target);
-    const target = { ArrowDown: current + 1, ArrowUp: current - 1, Home: 0, End: rows.length - 1 }[event.key];
+    const target = { ArrowRight: current + 1, ArrowLeft: current - 1, ArrowDown: current + 1, ArrowUp: current - 1, Home: 0, End: rows.length - 1 }[event.key];
     if (current < 0 || target === undefined) return;
     event.preventDefault();
     select(target);

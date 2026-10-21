@@ -1,4 +1,5 @@
 /**
+ * Checks template details over host replies and project actions.
  * @jest-environment jsdom
  */
 import { entry, key, listAll, mountGallery, type Gallery } from "./galleryHarness";
@@ -152,7 +153,7 @@ describe("notices, accessibility, dispose", () => {
       expect((b.getAttribute("aria-label") ?? b.textContent ?? "").trim()).not.toBe("");
     }
     expect(g.root.querySelectorAll("span.ls-tpl-category")).toHaveLength(0);
-    expect(g.root.querySelector("nav.ls-tpl-sidebar")?.getAttribute("aria-label")).toBe("Template filters");
+    expect(g.root.querySelector("nav.ls-tpl-navigation")?.getAttribute("aria-label")).toBe("Template filters");
     expect(g.root.querySelector("ul.ls-tpl-grid")?.getAttribute("aria-label")).toBe("Templates");
   });
 
