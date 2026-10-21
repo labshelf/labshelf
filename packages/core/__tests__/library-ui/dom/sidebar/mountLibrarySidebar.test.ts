@@ -352,6 +352,19 @@ describe("mountLibrarySidebar", () => {
       expect(off.slot.querySelector('[data-tree="join"]')).toBeNull();
     });
 
+    it("leaves Enter and Space on a heading button to the browser instead of activating the focused row", () => {
+      const { slot, sidebar, projects } = mount([], ["library"], true, false, fakeHost());
+      sidebar.setProjects([project("/a")]);
+      for (let i = 0; i < 5; i++) { key(slot, "ArrowDown"); }
+      const join = slot.querySelector<HTMLElement>('[data-tree="join"]')!;
+      for (const k of ["Enter", " "]) {
+        const e = new KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true });
+        join.dispatchEvent(e);
+        expect(e.defaultPrevented).toBe(false);
+      }
+      expect(projects.open).not.toHaveBeenCalled();
+    });
+
     it("re-renders when the host's offers change", () => {
       let listener = (): void => {};
       let projectsOn = false;
