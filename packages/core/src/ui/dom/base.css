@@ -187,7 +187,7 @@ kbd {
 .ls-dialog-head svg { width: 22px; height: 22px; flex-shrink: 0; color: var(--ls-yellow); }
 .ls-dialog-head svg.danger { color: var(--ls-error); }
 .ls-dialog-title { font-size: 13px; font-weight: 600; line-height: 1.4; }
-.ls-dialog-msg { margin-top: 4px; font-size: 12px; color: var(--ls-desc); line-height: 1.5; }
+.ls-dialog-msg { margin-top: 4px; font-size: 12px; color: var(--ls-desc); line-height: 1.5; overflow-wrap: anywhere; }
 .ls-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; margin-top: 16px; }
 
 @keyframes ls-pop { from { opacity: 0; transform: translateX(-50%) translateY(-4px); } to { opacity: 1; } }
