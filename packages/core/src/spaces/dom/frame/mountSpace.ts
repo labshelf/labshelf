@@ -9,6 +9,7 @@ import { spaceHeader } from "./spaceHeader.js";
 export interface MountSpaceOptions {
   id: string;
   tab?: SpaceTab;
+  folder?: string;
   onTab?: (tab: SpaceTab) => void;
 }
 let nextPanel = 0;
@@ -17,7 +18,7 @@ export function mountSpace(root: HTMLElement, end: SpacesTransport, opts: MountS
   const head = el("div");
   const error = el("div", { role: "alert" });
   const body = el("div", { class: "sp-body", id: `ls-space-panel-${++nextPanel}`, tabindex: "0" });
-  let tab = opts.tab ?? "overview";
+  let tab = opts.tab ?? (opts.folder ? "papers" : "overview");
   let data: SpaceSnapshot | undefined;
   let mounted: SpaceBody | undefined;
   const paint = (): void => {
@@ -27,7 +28,7 @@ export function mountSpace(root: HTMLElement, end: SpacesTransport, opts: MountS
     }
     error.textContent = data.readOnlyReason ?? "";
     if (mounted) mounted.update(data);
-    else mounted = mountBody(body, end, tab, data);
+    else mounted = mountBody(body, end, tab, data, opts.folder);
   };
   const tabs = mountPageTabs(body, { label: "Space views", selected: tab,
     tabs: SPACE_TABS.map(id => ({ id, label: id[0]!.toUpperCase() + id.slice(1) })),
@@ -40,8 +41,11 @@ export function mountSpace(root: HTMLElement, end: SpacesTransport, opts: MountS
   paint(); end.post({ type: "ready", view: "space", id: opts.id });
   return () => { unsubscribe(); mounted?.dispose(); page.remove(); };
 }
-function mountBody(body: HTMLElement, end: SpacesTransport, tab: SpaceTab, data: SpaceSnapshot): SpaceBody {
-  if (tab === "overview") return mountOverview(body, { data, end, readOnly: !!data.readOnlyReason });
-  const dispose = tab === "papers" ? mountSpacePapers(body) : tab === "glossary" ? mountSpaceGlossary(body) : mountSpacePositioned(body);
+function mountBody(body: HTMLElement, end: SpacesTransport, tab: SpaceTab, data: SpaceSnapshot, folder?: string): SpaceBody {
+  const context = { data, end, readOnly: !!data.readOnlyReason };
+  if (tab === "overview") return mountOverview(body, context);
+  if (tab === "papers") return mountSpacePapers(body, { ...context, ...(folder ? { folder } : {}) });
+  if (tab === "glossary") return mountSpaceGlossary(body, context);
+  const dispose = mountSpacePositioned(body, tab);
   return { update: () => {}, dispose };
 }

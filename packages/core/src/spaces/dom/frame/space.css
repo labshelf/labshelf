@@ -1,4 +1,7 @@
 /* Styles the Space frame and date editor with core tokens. */
+@import "../papers/papers.css";
+@import "../glossary/glossary.css";
+@import "../positioned/positioned.css";
 .sp { max-width: calc(var(--ls-gallery-card-w) * 6); margin: 0 auto; padding: calc(var(--ls-space-7) * 1.5) calc(var(--ls-space-7) * 2) calc(var(--ls-space-7) * 2); }
 .sp-head { display: flex; align-items: center; gap: var(--ls-space-6); }
 .sp-title { flex: 1; min-width: 0; }

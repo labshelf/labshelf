@@ -71,6 +71,7 @@
     "./styles/all-projects.css": "./src/writing/allProjects/dom/styles/all-projects.css",
     "./styles/spaces-catalog.css": "./src/spaces/dom/catalog/catalog.css",
     "./styles/spaces.css": "./src/spaces/dom/frame/space.css",
+    "./styles/research-chat.css": "./src/spaces/dom/chat/chat.css",
     "./styles/spaces-overview.css": "./src/spaces/dom/overview/overview.css",
     "./styles/tokens.css": "./src/ui/dom/tokens.css",
     "./styles/vscodeHost.css": "./src/ui/dom/vscodeHost.css",

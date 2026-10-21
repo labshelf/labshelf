@@ -250,3 +250,33 @@ test('preserves a focused header draft during background updates', () => {
   expect(c.sent).toContainEqual({ type: 'renameSpace', id: 'research', name: 'Typing a name' });
   c.dispose();
 });
+
+test('mounts working Papers and Glossary tabs and each positioned surface', () => {
+  const c = mount();
+  click('Papers');
+  expect(c.root.textContent).toContain('Add papers');
+  click('Glossary');
+  expect(c.root.textContent).toContain('Add term');
+  click('Notes');
+  expect(c.root.textContent).toContain('Space notes');
+  click('Discussions');
+  expect(c.root.textContent).toContain('New topic');
+  click('Discover');
+  expect(c.root.textContent).toContain('arXiv');
+  c.dispose();
+});
+
+test('opens the Papers tab at the folder supplied by the host', () => {
+  const c = channel();
+  const root = document.createElement('div'); document.body.append(root);
+  const dispose = mountSpace(root, c.transport, { id: 'research', folder: 'methods' });
+  const data = snapshot();
+  data.space = { ...data.space, folders: [{ id: 'methods', name: 'Methods', extra: {} }] };
+  data.papers = { ...data.papers, folders: [{ id: 'methods', name: 'Methods', folders: [], papers: [
+    { id: 'method-paper', missing: false, title: 'A method', authors: [], status: 'unread' },
+  ] }] };
+  c.receive(data);
+  expect(root.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toBe('Papers');
+  expect(root.textContent).toContain('A method');
+  dispose();
+});
