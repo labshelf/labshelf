@@ -1,5 +1,6 @@
+// Verifies persistence and validation of browser workspace preferences.
 import { DEFAULT_PREFS } from "@labshelf/core";
-import { PREFS_KEY, createLocalStoragePrefs } from "../../../src/library-page/prefs/localStoragePrefs";
+import { PREFS_KEY, createLocalStoragePrefs } from "../../../src/library-page/prefs";
 
 class MemoryStorage implements Pick<Storage, "getItem" | "setItem"> {
   readonly map = new Map<string, string>();
@@ -14,6 +15,8 @@ describe("localStorage prefs", () => {
     storage.setItem(PREFS_KEY, "{not json");
     expect(createLocalStoragePrefs(storage).load()).toEqual(DEFAULT_PREFS);
     expect(createLocalStoragePrefs(storage).treeExpanded()).toEqual([]);
+    storage.setItem(PREFS_KEY, JSON.stringify({ rightPane: "unknown" }));
+    expect(createLocalStoragePrefs(storage).detailPane().rightPane).toBe("details");
   });
 
   it("merges patches and keeps the tree's expanded folders under the same key", () => {
@@ -24,11 +27,11 @@ describe("localStorage prefs", () => {
     prefs.save({ sortKey: "year", sortDir: -1 });
     prefs.saveDetailPane({ detailCollapsed: true });
     expect(prefs.load()).toMatchObject({ sortKey: "year", sortDir: -1 });
-    expect(prefs.detailPane()).toEqual({ detailCollapsed: true, detailWidth: null });
+    expect(prefs.detailPane()).toEqual({ detailCollapsed: true, detailWidth: null, rightPane: "details" });
     expect(prefs.treeExpanded()).toEqual(["papers/A"]);
     expect(prefs.collapsedSections()).toEqual(["projects"]);
     expect(Object.keys(JSON.parse(storage.getItem(PREFS_KEY)!)).sort()).toEqual([
-      "citeFormat", "codeFont", "codeTheme", "collapsedSections", "columns", "detailCollapsed", "detailTab", "detailsPins", "secCollapsed", "sidebarCollapsed", "sidebarWidth", "sortDir", "sortKey",
+      "citeFormat", "codeFont", "codeTheme", "collapsedSections", "columns", "detailCollapsed", "detailTab", "detailsPins", "rightPane", "secCollapsed", "sidebarCollapsed", "sidebarWidth", "sortDir", "sortKey",
       "treeExpanded",
     ]);
   });

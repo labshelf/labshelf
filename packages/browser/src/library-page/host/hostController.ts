@@ -1,19 +1,19 @@
-/**
- * Hosts the library page: dispatches every library UI message to the IndexedDB and background handlers.
- * Attach PDF runs synchronously so its file picker opens inside the click that asked for it.
- */
+// Dispatches browser library UI messages to storage and background handlers.
 import { errorMessage, type HostEndpoint, type ILogger, type ProjectSharingDeps, type SharingHost, type UiToHost } from "@labshelf/core";
 import {
   captureTab, createFolder, createPaperFileHandlers, createPdfHandlers, createBrowserSharingHost, deleteFolder, exportAnnotations, movePapers, offerOpenTabs, removePapers,
   renameFolder, sendDetails, setNote, setStatus, setTags, writeClipboard, type PaperFileHandlers,
   type PdfHandlers, type ShareLinkRelay,
 } from "./handlers";
+import type { PageSpaces } from "../spaces";
+import { addToSpace } from "./spaces";
 import { watchChangeNotices } from "./changeNotices";
 import { createHostContext, type HostContext } from "./hostContext";
 import { watchLibraryChanges } from "./snapshots";
 
 export interface LibraryHostOptions {
   log: ILogger;
+  spaces?: PageSpaces;
   /** A paper to select once the library has loaded (the page opened from the popup or Scholar). */
   initialPaper?: string | null;
   /** Receives the ids the UI reports as selected (an empty list when nothing is). */
@@ -64,6 +64,12 @@ function dispatch(ctx: HostContext, { pdf, files }: Handlers, loaded: () => Prom
     case "paper.setTags": run(ctx, () => setTags(ctx, m.ids, m.add, m.remove)); return;
     case "paper.setNote": run(ctx, () => setNote(ctx, m.id, m.note)); return;
     case "annotations.export": run(ctx, () => exportAnnotations(ctx, m.id)); return;
+    case "paper.addToSpace":
+      run(ctx, async () => {
+        if (!options.spaces) throw new Error("Spaces are unavailable on this page");
+        await addToSpace(options.spaces.store, m.ids, ctx.notice, ctx.log);
+      });
+      return;
     case "paper.move": run(ctx, () => movePapers(ctx, m.ids, m.target)); return;
     case "paper.remove": run(ctx, () => removePapers(ctx, m.ids)); return;
     case "paper.add": run(ctx, () => offerOpenTabs(ctx, m.folder)); return;

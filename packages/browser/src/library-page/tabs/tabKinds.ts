@@ -11,6 +11,8 @@ const baseName = (path: string): string => path.slice(path.lastIndexOf("/") + 1)
 
 // Each body is a dynamic import, so the bundler emits it as its own chunk and the page loads it on first open.
 export const TAB_KINDS: Record<TabKindName, TabKind> = {
+  spaces: define("spaces", [], () => "All Spaces", "grid", () => import("./spaces/index.js")),
+  space: define("space", ["id", "tab"], () => "Space", "folder", () => import("./space/index.js")),
   library: define("library", [], () => "Library", "book-open", () => import("./library/index.js")),
   "all-projects": define("all-projects", [], () => "All projects", "folder", () => import("./all-projects/index.js")),
   templates: define("templates", [], () => "Templates", "grid", () => import("./templates/index.js")),

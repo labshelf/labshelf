@@ -6,9 +6,10 @@ import type { HelperProject } from "../helperProject";
 import type { PagePrefs } from "../prefs";
 import type { CommentThreads } from "../review";
 import type { ProjectSession } from "../session";
+import type { PageSpaces } from "../spaces";
 import type { Workspace } from "../workspace";
 
-export type TabKindName = "library" | "all-projects" | "templates" | "source" | "preview" | "comments" | "history" | "search";
+export type TabKindName = "library" | "spaces" | "space" | "all-projects" | "templates" | "source" | "preview" | "comments" | "history" | "search";
 
 export type TabParams = Readonly<Record<string, string>>;
 
@@ -31,6 +32,7 @@ export interface ProjectServices {
 }
 
 export interface TabContext {
+  spaces: PageSpaces;
   /** The library UI, mounted once at page level so the sidebar's Library section follows its store. */
   libraryView: HTMLElement;
   workspace: Workspace;

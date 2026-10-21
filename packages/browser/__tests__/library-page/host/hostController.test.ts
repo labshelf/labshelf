@@ -1,3 +1,4 @@
+// Checks browser host routing over the library UI channel.
 const mockSendRuntime = jest.fn();
 const mockRecords: Array<{ id: string; path: string }> = [];
 jest.mock("../../../src/platform", () => ({
@@ -15,6 +16,9 @@ jest.mock("../../../src/storage", () => ({
 jest.mock("../../../src/capture", () => ({ attachPdfToPaper: jest.fn() }));
 jest.mock("../../../src/reader/access", () => ({ openReader: jest.fn() }));
 
+jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), quickPick: jest.fn(async () => "research") }));
+
+import type { PageSpaces } from "../../../src/library-page/spaces";
 import { createLoopbackTransport } from "@labshelf/core";
 import { attachLibraryHost } from "../../../src/library-page/host";
 
@@ -57,6 +61,16 @@ describe("library page host", () => {
     attachLibraryHost(host, { log: { log: async () => undefined, error: async () => undefined }, onSelection, shareRelay: { requireRelay: async () => undefined, connectedRelay: async () => undefined } });
     ui.post({ type: "paper.selected", ids: ["p1", "p2"] });
     expect(onSelection).toHaveBeenCalledWith(["p1", "p2"]);
+  });
+
+  it("routes Add to Space to the chosen Space store", async () => {
+    const addPapers = jest.fn(async () => undefined);
+    const spaces = { store: { list: () => [{ state: "ready", space: { id: "research", name: "Research" } }], addPapers } } as unknown as PageSpaces;
+    const { ui, host } = createLoopbackTransport();
+    attachLibraryHost(host, { spaces, log: { log: async () => undefined, error: async () => undefined }, shareRelay: { requireRelay: async () => undefined, connectedRelay: async () => undefined } });
+    ui.post({ type: "paper.addToSpace", ids: ["p1"] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(addPapers).toHaveBeenCalledWith("research", ["p1"]);
   });
 
   it("answers a repeat ready with the current snapshot once the first load is done", async () => {

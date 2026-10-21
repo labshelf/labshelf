@@ -5,6 +5,7 @@ import { bx } from "../../platform";
 import type { PagePrefs } from "../prefs";
 import type { TabKindName } from "../tabs";
 import type { SidebarProjects } from "./sidebarProjects";
+import type { SidebarSpaces } from "./sidebarSpaces";
 
 /** The page's sidebar Projects section and the Cloudflare relay its shares use; both exist only on a page that shows projects. */
 export interface SidebarProjectParts {
@@ -24,7 +25,7 @@ function headButton(label: string, glyph: "gear" | "cloud", onClick: () => void)
  */
 export function mountSidebarTree(
   ui: Pick<LibraryUi, "store" | "folders" | "dropTarget">, slot: HTMLElement, prefs: PagePrefs, host: Pick<HostEndpoint, "post">,
-  project: SidebarProjectParts | null, openTab: (kind: TabKindName) => void, showLibrary: boolean, sharing: SharingHost,
+  project: SidebarProjectParts | null, openTab: (kind: TabKindName) => void, showLibrary: boolean, sharing: SharingHost, spaces?: SidebarSpaces,
 ): () => void {
   slot.innerHTML = `<div class="tree-head"><span class="ls-brand">LabShelf</span></div>`;
   const head = slot.querySelector(".tree-head")!;
@@ -48,9 +49,11 @@ export function mountSidebarTree(
     collapsed: prefs.collapsedSections(),
     saveCollapsed: (ids) => prefs.saveCollapsedSections(ids),
     ...(projects ? { projects: projects.actions } : {}),
+    ...(showLibrary && spaces ? { spaces: spaces.actions } : {}),
     dropTarget: (row, path) => ui.dropTarget(row, path),
   });
   projects?.attach(sidebar);
+  const offSpaces = showLibrary ? spaces?.attach(sidebar) : undefined;
   if (!showLibrary) return () => undefined;
   // Browser record paths are IndexedDB keys relative to the library root, so the parent is the tree folder.
   const offLibrary = store.select((s) => ({ folders: s.folders, papers: s.papers }), ({ folders: tree, papers }) =>
@@ -58,5 +61,5 @@ export function mountSidebarTree(
   const offView = store.select((s) => s.folder, (folder) => sidebar.setCurrent(folder));
   const offSelection = store.select((s) => (s.selected.size === 1 ? [...s.selected][0]! : null), (id) => sidebar.setSelected(id));
   const offQuery = store.select((s) => s.query, (query) => sidebar.setQuery(query));
-  return () => { offLibrary(); offView(); offSelection(); offQuery(); };
+  return () => { offSpaces?.(); offLibrary(); offView(); offSelection(); offQuery(); };
 }

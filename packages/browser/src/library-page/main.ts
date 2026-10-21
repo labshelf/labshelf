@@ -1,6 +1,6 @@
 // Mounts the browser library workspace with its shared Details pane.
 import {
-  createLoopbackTransport, createSelectionHub, serveAllProjects, type AllProjectsEndpoint, type DetailsToHost, type HostToDetails, type LibraryFileSystem,
+  createLoopbackTransport, createSelectionHub, serveAllProjects, type AllProjectsEndpoint, type DetailsToHost, type HostToDetails, type LibraryFileSystem, type ProjectLibraryPort,
 } from "@labshelf/core";
 import { el, mountLibraryUi } from "@labshelf/core/dom";
 import { createBrowserLogger, getSettings } from "../platform";
@@ -9,13 +9,14 @@ import { createPageRelay, openBrowserRelayAccountStore, type PageRelay } from ".
 import { createLibraryFileSystem } from "../storage";
 import { applyTheme } from "../ui";
 import { reportPageWrites } from "./editor/collab";
-import { createDetailsToggle, mergeEndpoints, mountPageDetails, PAGE_CAPABILITIES, PAGE_LABELS, splitDetailsChannels } from "./details";
+import { createRightPane, mergeEndpoints, mountPageDetails, PAGE_CAPABILITIES, PAGE_LABELS, splitDetailsChannels } from "./details";
 import { attachLibraryHost } from "./host";
 import { attachLinkHandling } from "./openLink";
 import { applyCodeStyle, createLocalStoragePrefs } from "./prefs";
 import { attachRouter } from "./router";
 import type { ProjectWiring, ProjectWiringOptions } from "./projectWiring";
-import { mountSidebarTree, type SidebarProjectParts } from "./sidebar";
+import { mountSidebarTree, createSidebarSpaces, type SidebarProjectParts } from "./sidebar";
+import { createPageSpaces } from "./spaces";
 import { planPage, type PagePlan } from "./sections";
 import type { ProjectServices, TabKindName } from "./tabs";
 import { createPageShell, createWorkspace, takeJoinInvite, type Workspace } from "./workspace";
@@ -57,12 +58,15 @@ async function loadProjectWiring(plan: PagePlan, invite: string | undefined, opt
 }
 
 /** Serves the All projects channel of Details from the same port factory as the All projects tab; a failed load leaves that channel unanswered. */
-async function serveProjectsToDetails(endpoint: AllProjectsEndpoint, services: ProjectServices, workspace: Workspace, fs: LibraryFileSystem): Promise<void> {
+async function serveProjectsToDetails(endpoint: AllProjectsEndpoint, services: ProjectServices, workspace: Workspace, fs: LibraryFileSystem): Promise<ProjectLibraryPort | null> {
   try {
     const { createPageProjectLibrary } = await import("./projects-data/index.js");
-    serveAllProjects(endpoint, createPageProjectLibrary({ fs, logger: log, workspace, session: services.session }), log);
+    const library = createPageProjectLibrary({ fs, logger: log, workspace, session: services.session });
+    serveAllProjects(endpoint, library, log);
+    return library;
   } catch (err) {
     void log.error("library", err, { action: "serveProjectsToDetails" });
+    return null;
   }
 }
 
@@ -87,7 +91,7 @@ function takeInviteOffAddress(): ReturnType<typeof takeJoinInvite> {
   return invite;
 }
 
-async function boot(): Promise<void> {
+async function preparePage() {
   const plan = await readPagePlan();
   const root = document.getElementById("root");
   if (!root) throw new Error("Missing #root");
@@ -96,6 +100,13 @@ async function boot(): Promise<void> {
   applyCodeStyle(prefs);
   const { ui: transport, host } = createLoopbackTransport();
   const details = createLoopbackTransport<DetailsToHost, HostToDetails>();
+  const fs = reportPageWrites(createLibraryFileSystem());
+  const shell = createPageShell(root, prefs);
+  return { plan, root, prefs, transport, host, details, fs, shell };
+}
+
+async function boot(): Promise<void> {
+  const { plan, root, prefs, transport, host, details, fs, shell } = await preparePage();
   let project: ProjectWiring | null = null;
   const { relay, relayAccounts } = createRelayParts(() => project);
   const hub = createSelectionHub((target) => details.host.post({ type: "details.show", target }));
@@ -103,36 +114,43 @@ async function boot(): Promise<void> {
     current: hub.current,
     onFolderOpen: (folder) => { host.post({ type: "navigate", folder }); workspace.openTab("library"); },
   });
+  let projectsLibrary: ProjectLibraryPort | null = null;
+  const spaces = createPageSpaces({ fs, logger: log, transport, selection: hub, workspace: () => workspace, projects: () => projectsLibrary,
+    openProject: async entry => {
+      if (!project) throw new Error(`Project ${entry.settings.id} is not on this device`);
+      await project.services.session.openProject(entry);
+    },
+  });
+  await spaces.reload();
   const libraryHost = attachLibraryHost(mergeEndpoints(host, channels.library), {
-    log, initialPaper: new URLSearchParams(location.search).get("paper"),
+    log, spaces, initialPaper: new URLSearchParams(location.search).get("paper"),
     shareRelay: { requireRelay: () => relay.requireBrowserRelay(), connectedRelay: () => relayAccounts.get() },
     onSelection: (ids) => hub.publish("list", ids.length ? { kind: "paper", ids } : null),
   });
   attachRouter(host, libraryHost.paperIdAtPath);
-  const shell = createPageShell(root, prefs);
+  const rightPane = createRightPane(shell, spaces.store);
   const libraryView = el("div", { class: "ls-workspace-fill" });
   const ui = mountLibraryUi(libraryView, {
     transport, prefs, withSidebar: false,
     capabilities: PAGE_CAPABILITIES, labels: PAGE_LABELS, sharing: libraryHost.sharing,
   });
-  const fs = reportPageWrites(createLibraryFileSystem());
   const projectServices = (): ProjectServices => { if (!project) throw new Error("The project services are not loaded: this page hides Projects"); return project.services; };
   const workspace: Workspace = createWorkspace(shell.centre, {
-    prefs: { load: prefs.editorWidth, save: prefs.saveEditorWidth }, logger: log, plan, trailing: createDetailsToggle(shell),
-    onActivateTab: (id) => { if (id === "library") hub.activate("list"); else if (id === "all-projects") hub.activate("projects"); },
-    services: () => ({ libraryView, logger: log, fs, prefs, selection: hub, sharing: libraryHost.sharing, project: projectServices }),
+    prefs: { load: prefs.editorWidth, save: prefs.saveEditorWidth }, logger: log, plan, trailing: rightPane.buttons,
+    onActivateTab: (id) => { rightPane.activateTab(id); if (id === "library") hub.activate("list"); else if (id === "all-projects") hub.activate("projects"); else if (id.startsWith("space:")) hub.activate("spaces"); },
+    services: () => ({ spaces, libraryView, logger: log, fs, prefs, selection: hub, sharing: libraryHost.sharing, project: projectServices }),
   });
   const openTab = (kind: TabKindName): void => workspace.openTab(kind);
   const invite = takeInviteOffAddress();
   project = await loadProjectWiring(plan, invite, { workspace, fs, logger: log, openTab, relay, relayAccounts, sharing: libraryHost.sharing });
   if (project) libraryHost.addProjectSharing(project.projectSharing);
-  if (project) await serveProjectsToDetails(channels.projects, project.services, workspace, fs);
+  if (project) projectsLibrary = await serveProjectsToDetails(channels.projects, project.services, workspace, fs);
   mountPageDetails(shell.details, details.ui, prefs);
   const projectParts = plan.projects && project ? sidebarProjectParts(project, relay) : null;
-  mountSidebarTree(ui, shell.sidebar, prefs, host, projectParts, openTab, plan.library, libraryHost.sharing);
+  mountSidebarTree(ui, shell.sidebar, prefs, host, projectParts, openTab, plan.library, libraryHost.sharing, plan.library ? createSidebarSpaces(spaces, log) : undefined);
   workspace.restore(location.hash);
   project?.start(invite);
-  mountSourceSurfaces(root, libraryHost.reloadSnapshots);
+  mountSourceSurfaces(root, async () => { await Promise.all([libraryHost.reloadSnapshots(), spaces.reload()]); });
   attachLinkHandling(log);
   void log.log("INFO", "library", "library page mounted");
 }

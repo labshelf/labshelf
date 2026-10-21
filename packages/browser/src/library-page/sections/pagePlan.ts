@@ -11,7 +11,7 @@ export function planPage(sections: SidebarSections): PagePlan {
   return { ...sections, defaultTab: sections.library ? "library" : "all-projects" };
 }
 
-/** True when the tab kind belongs to a shown section; the Library tab is the Library section, every other kind is a project tab. */
+/** Keeps Library and Spaces tabs under the Library section setting. */
 export function isKindShown(plan: PagePlan, kind: string): boolean {
-  return kind === "library" ? plan.library : plan.projects;
+  return ["library", "spaces", "space"].includes(kind) ? plan.library : plan.projects;
 }

@@ -14,6 +14,12 @@ describe("tab kinds", () => {
     expect(TAB_KINDS.source.title(params)).toBe("intro, part 1.tex");
   });
 
+  it("round-trips a Space inner tab", () => {
+    const params = { id: "reading:group", tab: "glossary" };
+    expect(parseTabId(TAB_KINDS.space.id(params))).toEqual({ kind: "space", params });
+    expect(parseTabId(TAB_KINDS.spaces.id({}))).toEqual({ kind: "spaces", params: {} });
+  });
+
   it("round-trips a comments tab id by project", () => {
     const params = { projectId: "thesis" };
     expect(parseTabId(TAB_KINDS.comments.id(params))).toEqual({ kind: "comments", params });

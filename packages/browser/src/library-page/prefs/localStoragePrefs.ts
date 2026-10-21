@@ -1,8 +1,4 @@
-/**
- * Stores the library page's preferences in localStorage under one key: the shared library UI prefs plus the
- * sidebar tree's expanded folders and collapsed sections, the editor area's first-group width and the source editor's code
- * colours and font. A corrupt or missing entry falls back to the defaults field by field.
- */
+// Persists browser workspace preferences in localStorage.
 import {
   CODE_FONT_NAMES, CODE_THEME_NAMES, sanitizePrefs, type CodeFontName, type CodeThemeName, type LibraryUiPrefs, type PrefsPort,
 } from "@labshelf/core";
@@ -19,7 +15,6 @@ export interface PagePrefs extends PrefsPort {
   /** The first editor group's width in pixels while two groups show; null until the user drags the sash. */
   editorWidth(): number | null;
   saveEditorWidth(width: number): void;
-  /** The page-level Details pane's width and collapsed state. */
   detailPane(): DetailPanePrefs;
   saveDetailPane(patch: Partial<DetailPanePrefs>): void;
   codeStyle(): CodeStyle;
@@ -30,6 +25,7 @@ interface DetailPanePrefs {
   /** Null until the user drags the pane's sash. */
   detailWidth: number | null;
   detailCollapsed: boolean;
+  rightPane: "details" | "chat";
 }
 
 interface CodeStyle {
@@ -88,10 +84,10 @@ function codeStyleOf(raw: Record<string, unknown>): CodeStyle {
   return { codeTheme: pick(CODE_THEME_NAMES, raw["codeTheme"]), codeFont: pick(CODE_FONT_NAMES, raw["codeFont"]) };
 }
 
-// An unset width is left out, so it keeps following the sidebar's.
+// INVARIANT: An unset width keeps following the sidebar width.
 function detailPaneFields(raw: Record<string, unknown>): Partial<DetailPanePrefs> {
-  const { detailWidth, detailCollapsed } = detailPaneOf(raw);
-  return detailWidth === null ? { detailCollapsed } : { detailWidth, detailCollapsed };
+  const { detailWidth, detailCollapsed, rightPane } = detailPaneOf(raw);
+  return detailWidth === null ? { detailCollapsed, rightPane } : { detailWidth, detailCollapsed, rightPane };
 }
 
 function detailPaneOf(raw: Record<string, unknown>): DetailPanePrefs {
@@ -99,5 +95,6 @@ function detailPaneOf(raw: Record<string, unknown>): DetailPanePrefs {
   return {
     detailWidth: typeof w === "number" && Number.isFinite(w) && w > 0 ? w : null,
     detailCollapsed: raw["detailCollapsed"] === true,
+    rightPane: raw["rightPane"] === "chat" ? "chat" : "details",
   };
 }

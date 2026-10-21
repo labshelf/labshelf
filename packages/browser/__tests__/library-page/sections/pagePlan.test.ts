@@ -16,10 +16,10 @@ describe("page plan", () => {
 
   it("allows a tab kind only while its section is shown", () => {
     const noProjects = planPage({ library: true, projects: false });
-    expect(isKindShown(noProjects, "library")).toBe(true);
+    for (const kind of ["library", "spaces", "space"]) expect(isKindShown(noProjects, kind)).toBe(true);
     for (const kind of ["all-projects", "templates", "source", "preview"] as const) expect(isKindShown(noProjects, kind)).toBe(false);
     const noLibrary = planPage({ library: false, projects: true });
-    expect(isKindShown(noLibrary, "library")).toBe(false);
+    for (const kind of ["library", "spaces", "space"]) expect(isKindShown(noLibrary, kind)).toBe(false);
     expect(isKindShown(noLibrary, "templates")).toBe(true);
   });
 });

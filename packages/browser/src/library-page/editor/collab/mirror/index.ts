@@ -2,4 +2,4 @@
 export {
   startBrowserProjectMirror, type BrowserMirrorStart, type BrowserMirrorStopReason, type BrowserProjectMirror, type BrowserProjectMirrorOptions,
 } from "./browserProjectMirror";
-export { reportPageWrites } from "./localFileChanges";
+export { reportPageWrites, onLocalFileChanges } from "./localFileChanges";
