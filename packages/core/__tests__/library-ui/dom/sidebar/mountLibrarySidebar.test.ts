@@ -2,6 +2,8 @@
  * @jest-environment jsdom
  */
 // Tests the library sidebar through its mount handle: rows, counts, expansion, current folder, selection and keyboard.
+import { fakeHost, tick } from "../../../collab/dom/fakeHost";
+import type { SharingHost } from "../../../../src/library-ui/sharing";
 import { mountLibrarySidebar, type SidebarPaper, type SidebarProjectActions } from "../../../../src/library-ui/dom";
 
 const paper = (id: string, folder: string, title: string, status: "unread" | "reading" | "done"): SidebarPaper =>
@@ -23,14 +25,14 @@ const tagged = [
   { record: { id: "t2", title: "two", status: "unread" as const, tags: ["nlp"] }, folder: "papers" },
 ];
 
-function mount(expanded: string[] = [], collapsed: string[] = [], withProjects = false, withAddFiles = false) {
-  const actions = { ...(withAddFiles ? { addFiles: jest.fn() } : {}), openFolder: jest.fn(), revealPaper: jest.fn(), createFolder: jest.fn(), renameFolder: jest.fn(), removeFolder: jest.fn(), shareFolder: jest.fn(), searchTag: jest.fn() };
+function mount(expanded: string[] = [], collapsed: string[] = [], withProjects = false, withAddFiles = false, sharing?: SharingHost) {
+  const actions = { ...(withAddFiles ? { addFiles: jest.fn() } : {}), openFolder: jest.fn(), revealPaper: jest.fn(), createFolder: jest.fn(), renameFolder: jest.fn(), removeFolder: jest.fn(), searchTag: jest.fn() };
   const saveExpanded = jest.fn();
   const saveCollapsed = jest.fn();
-  const projects = { open: jest.fn(), menu: jest.fn(), browseTemplates: jest.fn(), allProjects: jest.fn(), newBlank: jest.fn(), addExisting: jest.fn(), joinShared: jest.fn() } as unknown as SidebarProjectActions & Record<string, jest.Mock>;
+  const projects = { open: jest.fn(), menu: jest.fn(), browseTemplates: jest.fn(), allProjects: jest.fn(), newBlank: jest.fn(), addExisting: jest.fn() } as unknown as SidebarProjectActions & Record<string, jest.Mock>;
   const slot = document.createElement("div");
   document.body.replaceChildren(slot);
-  const sidebar = mountLibrarySidebar(slot, { actions, expanded, saveExpanded, collapsed, saveCollapsed, ...(withProjects ? { projects } : {}) });
+  const sidebar = mountLibrarySidebar(slot, { actions, expanded, saveExpanded, collapsed, saveCollapsed, ...(withProjects ? { projects } : {}), ...(sharing ? { sharing } : {}) });
   sidebar.setLibrary(folders, papers);
   return { slot, sidebar, actions, saveExpanded, saveCollapsed, projects };
 }
@@ -49,21 +51,38 @@ const key = (slot: HTMLElement, k: string): void => { slot.dispatchEvent(new Key
 
 describe("mountLibrarySidebar", () => {
   describe("folder menu", () => {
-    const menuText = (withShare: boolean): string => {
-      const { shareFolder, ...rest } = mount().actions;
-      const slot = document.createElement("div");
-      document.body.replaceChildren(slot);
-      const sidebar = mountLibrarySidebar(slot, { actions: withShare ? { ...rest, shareFolder } : rest, expanded: [], saveExpanded: jest.fn(), collapsed: [], saveCollapsed: jest.fn() });
-      sidebar.setLibrary(folders, papers);
+    const menuText = (sharing?: SharingHost): string => {
+      const { slot } = mount([], [], false, false, sharing);
       folder(slot, "papers/A").dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
       return document.body.textContent ?? "";
     };
 
-    it("offers Share as Link only when the host can share", () => {
-      expect(menuText(true)).toContain("Share as Link");
-      expect(menuText(false)).not.toContain("Share as Link");
-      expect(menuText(false)).toContain("Rename");
+    it("offers Share as Link only when the host offers links", () => {
+      expect(menuText(fakeHost())).toContain("Share as Link");
+      expect(menuText(fakeHost({ offers: () => ({ projects: true, links: false }) }))).not.toContain("Share as Link");
+      expect(menuText()).not.toContain("Share as Link");
+      expect(menuText()).toContain("Rename");
     });
+
+    it("runs the share dialog for the folder", async () => {
+      const host = fakeHost();
+      const { slot } = mount([], [], false, false, host);
+      folder(slot, "papers/A").dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+      [...document.querySelectorAll<HTMLElement>(".ls-menu-item")].find((i) => i.textContent?.includes("Share as Link"))!.click();
+      await tick();
+      expect(host.shareableFolder).toHaveBeenCalledWith("papers/A");
+    });
+  });
+
+  it("offers the shared-link entries on the Library heading only when the host offers links", () => {
+    const heading = (sharing?: SharingHost): string => {
+      const { slot } = mount([], [], false, false, sharing);
+      slot.querySelector('[data-section="library"]')!.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+      return document.body.textContent ?? "";
+    };
+    expect(heading(fakeHost())).toContain("Manage Shared Links");
+    expect(heading(fakeHost())).toContain("Import Shared Link");
+    expect(heading(fakeHost({ offers: () => ({ projects: true, links: false }) }))).not.toContain("Shared Link");
   });
 
   it("shows the All papers row first, with the paper count", () => {
@@ -316,22 +335,32 @@ describe("mountLibrarySidebar", () => {
       expect(projects.menu).toHaveBeenCalledWith("/a", { x: 12, y: 34 });
     });
 
-    it("offers Join Shared Project in the My projects menu and runs the host action", () => {
-      const { slot, sidebar, projects } = mount([], [], true);
+    const projectsMenu = (sharing?: SharingHost): string => {
+      const { slot, sidebar } = mount([], [], true, false, sharing);
       sidebar.setProjects([project("/a")]);
       slot.querySelector('[data-group="projects.list"]')!.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
-      const entry = [...document.querySelectorAll<HTMLElement>(".ls-menu-item")].find((i) => i.textContent?.includes("Join Shared Project"));
-      expect(entry).toBeDefined();
-      entry!.click();
-      expect(projects.joinShared).toHaveBeenCalledTimes(1);
+      return document.body.textContent ?? "";
+    };
+
+    it("offers Join Shared Project in the menu and as a button only when the host offers projects", () => {
+      expect(projectsMenu(fakeHost())).toContain("Join Shared Project");
+      expect(projectsMenu(fakeHost({ offers: () => ({ projects: false, links: true }) }))).not.toContain("Join Shared Project");
+      expect(projectsMenu()).not.toContain("Join Shared Project");
+      const on = mount([], [], true, false, fakeHost());
+      expect(on.slot.querySelector('[data-tree="join"]')).not.toBeNull();
+      const off = mount([], [], true, false, fakeHost({ offers: () => ({ projects: false, links: false }) }));
+      expect(off.slot.querySelector('[data-tree="join"]')).toBeNull();
     });
 
-    it("leaves Join Shared Project out of the menu when the host does not offer it", () => {
-      const { slot, sidebar } = mount([], [], true);
-      sidebar.setProjects([project("/a")]);
-      sidebar.setProjectOffers({ joinShared: false });
-      slot.querySelector('[data-group="projects.list"]')!.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
-      expect([...document.querySelectorAll(".ls-menu-item")].some((i) => i.textContent?.includes("Join Shared Project"))).toBe(false);
+    it("re-renders when the host's offers change", () => {
+      let listener = (): void => {};
+      let projectsOn = false;
+      const host = fakeHost({ offers: () => ({ projects: projectsOn, links: false }), onOffersChange: (l) => { listener = l; return () => {}; } });
+      const { slot } = mount([], [], true, false, host);
+      expect(slot.querySelector('[data-tree="join"]')).toBeNull();
+      projectsOn = true;
+      listener();
+      expect(slot.querySelector('[data-tree="join"]')).not.toBeNull();
     });
 
     it("nests projects under their folder row, folders first, and shows them only while the folder is expanded", () => {
@@ -368,7 +397,7 @@ describe("mountLibrarySidebar", () => {
     it("leaves out creating projects, project folders and the All projects row for a host that has none of them", () => {
       const { slot, sidebar } = mount([], [], true);
       sidebar.setProjects([project("/a", "Thesis")]);
-      sidebar.setProjectOffers({ templates: false, addExisting: false, newBlank: false, projectFolders: false, allProjects: false, joinShared: false });
+      sidebar.setProjectOffers({ templates: false, addExisting: false, newBlank: false, projectFolders: false, allProjects: false });
       expect(slot.querySelector("[data-all-projects]")).toBeNull();
       expect(slot.querySelector('[data-tree="blank"]')).toBeNull();
       expect(slot.querySelector('[data-tree="project-folder"]')).toBeNull();

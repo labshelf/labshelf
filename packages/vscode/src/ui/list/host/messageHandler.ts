@@ -2,7 +2,7 @@
  * Answers the library UI in the list webview: validates each message (the webview is untrusted), maps its paths to
  * disk, and dispatches it. A failure is logged and shown as an error notice.
  */
-import { errorMessage, parseUiMessage, type UiToHost } from '@labshelf/core';
+import { errorMessage, isSharingMessage, parseUiMessage, type UiToHost } from '@labshelf/core';
 import { LOG_MODULE, type ListHostContext } from './hostContext.js';
 import { movePapers, removePapers, revealPaper, runCommand, setNote, setStatus, setTags, writeClipboard } from './paperHandlers.js';
 import { importCitationWork, showCitationMap } from './citationMapHandlers.js';
@@ -62,6 +62,7 @@ export async function handleListMessage(ctx: ListHostContext, raw: unknown): Pro
   const m = parseUiMessage(raw);
   const paths = ctx.paths();
   if (!m) {
+    if (isSharingMessage(raw)) { return; }
     await ctx.deps.logger.log('WARN', LOG_MODULE, 'List webview sent a message that is not valid', { type: (raw as { type?: unknown } | null)?.type });
     return;
   }

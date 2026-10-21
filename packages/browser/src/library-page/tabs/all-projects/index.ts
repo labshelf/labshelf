@@ -13,6 +13,6 @@ export const mountTab: TabModule["mountTab"] = (host, _params, ctx) => {
     if (m.type === "project.selected") ctx.selection.publish("projects", m.id ? { kind: "project", id: m.id } : null);
   });
   const body = host.appendChild(el("div", { class: "ls-workspace-fill" }));
-  mountAllProjects(body, { transport: ui, prefs: ctx.prefs });
+  mountAllProjects(body, { transport: ui, prefs: ctx.prefs, sharing: ctx.sharing });
   return { dispose: () => { stopSelection(); stop(); body.remove(); } };
 };

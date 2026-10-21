@@ -71,13 +71,23 @@ The page-level Details pane sits right of the tabs. It shows the last selection 
 - History lists the project's recorded edits, versions and restores, with Restore this point and Mark Version. Open editors reload after a restore. The history is kept in the browser's storage, not in the project folder. Compare Versions is desktop-only: the page toasts that it needs the VS Code extension or the terminal app.
 - Comments lists a project's comment threads from `comments.json`; in a joined project the threads are live over the share.
 
-### Joining a shared project
+### Shared projects
 
-A join link ([share-link.md](../contracts/share-link.md)) opened as `library-page/index.html#/join/<invite>` joins the project over the relay, with the invite in the fragment so it never reaches a server. The page asks for a display name, waits for a member to answer, mirrors the project's files into the library through the bridge (or browser storage), and edits it with live cursors and comments ([collaboration.md](../contracts/collaboration.md)). The key and relays of each joined project are kept in `chrome.storage.local["collabShares"]` under the library id and then the share id, so a reload reconnects without the invite and two libraries never see each other's keys; the display name is kept there once for all libraries. The library id is `browser` for browser storage, `bridge:` plus the first 16 hex characters of the SHA-256 of the root the helper reports for a bridged folder, and a random id stored with the handle of a picked folder (picking the same folder again keeps it). Keys stored without a library id move under a library once one of its projects names their share id.
+The page shares, joins, resumes and leaves projects through the core workflows, the same steps VS Code runs ([collaboration.md](../contracts/collaboration.md#sharing-joining-and-leaving)). Share, invite, leave and join open the common core sharing dialogs from the sidebar's project menus, the open project's menu, the All projects menus and `#join` links. Every surface keys a project by its folder.
+
+- **Share.** A project's context menu in the sidebar, and the open project's menu, offer Share Project… for an unshared project. With no Cloudflare relay connected the page first offers to connect one, and a cancel shares nothing. The page then offers the owner's relay to the share, copies the invite link and shows it in a dialog, with Copy Link when the clipboard refused the write.
+- **Copy Invite Link.** A shared project's menus offer Copy Invite Link, which reconnects the project from its stored key when this tab does not run it and hands out the invite with the relays the share lists at that moment. A shared project whose key this device lacks offers to join it again instead.
+- **Stop Sharing on This Device….** After a confirmation, the page closes the connection, forgets the key, removes `shared` from labshelf.yaml and deletes the share's IndexedDB state. Every file stays. When the close cannot store the last edits, nothing is forgotten and a toast says the project stays shared.
+- **Join.** Join Shared Project… in the Projects section, or a join link ([share-link.md](../contracts/share-link.md)) opened as `library-page/index.html#/join/<invite>`, with the invite in the fragment so it never reaches a server, waits for a member to answer, and offers to open the project. The collaborators see the stored display name, or Guest when none is stored. A refused invite shows why in a dialog and creates nothing; joining a project this library holds already reconnects it. The page mirrors the project's files into the library through the bridge (or browser storage) and edits it with live cursors and comments.
+- **Resume.** At page start, when the page becomes visible again, and after every share, join or leave, the page reads the project list and reconnects each shared project from its stored key. A shared project without a stored key asks once to join it again; a reconnect that fails is shown once. A project that another tab runs is left to that tab.
+
+Connecting Cloudflare offers the new relay to the shares this page runs; disconnecting it takes the relay out of the library's shares and stored invites.
+
+The key and relays of each shared project are kept in `chrome.storage.local["collabShares"]` under the library id and then the share id, so a reload reconnects without the invite and two libraries never see each other's keys; the display name is kept there once for all libraries. The library id is `browser` for browser storage, `bridge:` plus the first 16 hex characters of the SHA-256 of the root the helper reports for a bridged folder, and a random id stored with the handle of a picked folder (picking the same folder again keeps it). Keys stored without a library id move under a library once one of its projects names their share id.
 
 The mirror writes each project to the storage of the library source it started on and to no other. One tab per library and share owns the mirror; another tab reports it busy and can take it over, which stops the first. A folder source also takes the project's lease file, shared with VS Code, so only one app mirrors a folder ([collaboration.md](../contracts/collaboration.md#mirror-ownership)). Edits made to a folder outside the browser are picked up by a rescan when the tab becomes visible and every 30 seconds.
 
-A source tab of a shared project edits the file's shared text, which the page stores durably in IndexedDB, so edits made while no relay is reachable sync once one is. Files the page itself writes into a shared project, such as an inserted image, reach the share's mirror at once, without waiting for a rescan; a binary file travels as a blob. When the share's session cannot start, the tab shows the file read-only, without comments or insert actions, under a notice with Retry, so no edit stays outside the share. Undo in a shared file reverts only this user's edits.
+A source tab of a shared project edits the file's shared text, which the page stores durably in IndexedDB, so edits made while no relay is reachable sync once one is. Every file the page itself writes, renames or deletes in a shared project, such as an inserted image or a Replace All, reaches the share's mirror at once, without waiting for a rescan; a binary file travels as a blob. When the share is not connected in the tab, the tab shows the file read-only, without comments or insert actions, under a notice with Retry, which reconnects the share from its stored key, so no edit stays outside the share. Undo in a shared file reverts only this user's edits.
 
 ### Cloudflare relay
 
@@ -85,7 +95,7 @@ The cloud button in the sidebar heading, shown when the page shows Projects, con
 
 ### Share links
 
-A folder's context menu in the sidebar offers Share as Link…, and the link button in the sidebar heading offers Import Share Link… and Manage Shared Links; they work as VS Code's commands of the same names, with the core dialog, quick pick and toasts ([share-link.md](../contracts/share-link.md)). Sharing asks for the owner's relay (connecting Cloudflare when none is connected, on a page with or without Projects), shows the rights notice with the choice to share with or without annotations, shows the upload's progress in the list header, and copies the link, offering Open Link. Manage Shared Links lists this browser's shares of the library newest first, to copy, open or revoke after a confirmation. Import takes a pasted link, refused as the user types when it does not parse, copies the shared papers into a new folder under the library root, refreshes the view and sums up what was added, what the library already held and which PDFs the relay could not serve, offering Open Folder. Shared annotations are not imported. A share page's Open in LabShelf button opens VS Code only, so in the browser a pasted link is the way to import.
+A folder's context menu in the sidebar offers Share as Link…, and the Library heading menu offers Manage Shared Links… and Import Shared Link…; they open the common core sharing dialogs, which VS Code's commands of the same names also open ([library-ui-host.md](../contracts/library-ui-host.md#sharing), [share-link.md](../contracts/share-link.md)). Sharing asks for the owner's relay (connecting Cloudflare when none is connected, on a page with or without Projects), shows the rights notice with the choice to share with or without annotations, shows the upload's progress in the list header, and copies the link, offering Open Link. Manage Shared Links lists this browser's shares of the library newest first, to copy, open or revoke after a confirmation. Import takes a pasted link, refused as the user types when it does not parse, copies the shared papers into a new folder under the library root, refreshes the view and sums up what was added, what the library already held and which PDFs the relay could not serve, offering Open Folder. Shared annotations are not imported. A share page's Open in LabShelf button opens VS Code only, so in the browser a pasted link is the way to import.
 
 ## Capture structure
 
@@ -136,6 +146,23 @@ Playwright's full Chrome for Testing can load the unpacked extension. Run it out
 - To test the search page content script on a fixture, `Fetch.enable` for `https://scholar.google.com/scholar*` or `https://www.google.com/search*` and fulfil the request with the fixture HTML.
 - To test the popup against an article tab, open `popup/index.html` in a 340 px target, overriding `chrome.tabs.query` through `Page.addScriptToEvaluateOnNewDocument`.
 - For reader parity with VS Code, render both readers on the same real paper and pixel-diff the toolbar and sidebar. CDP drags do not create text selections in either reader; select with a `Range` plus a synthetic `mouseup` instead.
+
+### Collaboration against a local relay
+
+Relay URLs must be `https:`, so a local relay needs TLS and no Cloudflare account.
+
+- Bundle the Worker with `bundleRelayWorker` from `packages/core/tools/relayWorker/`. Run it with `wrangler dev --local --local-protocol https --ip 127.0.0.1 --persist-to <scratch>`, binding the Durable Object `ROOM` (class `Room`, `new_sqlite_classes`) and a KV namespace `KV`, with `OWNER_SECRET` in `.dev.vars`.
+- Launch Chromium with `--ignore-certificate-errors` (it covers `wss`) and `--no-proxy-server`. Set `NO_PROXY=127.0.0.1,localhost` for Node tooling.
+- Seed the owner profile's relay account in IndexedDB `labshelf-relay-account` (store `secrets`, key `account`) as the JSON of `{accountId, relayUrl, ownerSecret, kvNamespaceId, credential:{kind:"token", token}}`. A current local relay needs no Cloudflare API call. The joining profile needs no account.
+- Join in a second profile at `library-page/index.html#/join/<invite>`. Read the `labshelf` and `labshelf-collab` databases to check stored content.
+
+### Headless Firefox
+
+Stock Firefox is driven through geckodriver, because Playwright's Firefox needs its patched build.
+
+- Start geckodriver with `--allow-system-access`; without it, extension pages are unscriptable.
+- Run Firefox with `-headless` and the pref `extensions.webextensions.uuids={"labshelf@lucanaasser.dev":"<fixed uuid>"}` so the page URL is known. Install `dist/firefox` as a temporary add-on.
+- Navigation to `moz-extension://` is refused. Load an http page, then set `location.href` to `moz-extension://<uuid>/library-page/index.html` from `executeScript`. Only web-accessible pages open this way.
 
 ### Chrome DevTools MCP
 

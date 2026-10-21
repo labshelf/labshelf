@@ -3,7 +3,7 @@
  * @jest-environment-options {"customExportConditions": ["node", "node-addons"]}
  */
 // The browser sidebar glue maps core sidebar actions to the page store and the host.
-import { LibraryViewStore, PAPERS_DIR, type PaperRecord } from "@labshelf/core";
+import { createSharingHost, LibraryViewStore, PAPERS_DIR, type PaperRecord } from "@labshelf/core";
 import type { LibraryUi } from "@labshelf/core/dom";
 import type { PagePrefs } from "../../../src/library-page/prefs";
 import { createSidebarProjects } from "../../../src/library-page/sidebar/sidebarProjects";
@@ -33,14 +33,16 @@ function mount(expanded: string[] = [], sections = { library: true, projects: tr
   const posted: unknown[] = [];
   const host = { post: (message: unknown) => { posted.push(message); } };
   const ui = { sidebar: null, store, folders: { create: jest.fn(), rename: jest.fn(), remove: jest.fn(), share: jest.fn() }, dropTarget: jest.fn(), dispose: jest.fn() } as unknown as LibraryUi;
+  const sharing = createSharingHost({ place: "this browser", logger: { log: async () => undefined, error: async () => undefined }, clipboard: { write: async () => undefined }, openLink: async () => undefined });
   const slot = document.createElement("div");
   document.body.replaceChildren(slot);
   const openTab = jest.fn();
   const projects = sections.projects ? createSidebarProjects(
     { rows: async () => [], entryOf: async () => undefined, openPdf: jest.fn() }, openTab,
-    { openProject: jest.fn(), closeProject: jest.fn(), attachSidebar: jest.fn(), treeClick: jest.fn(), treeAction: jest.fn() }, jest.fn(),
+    { current: () => undefined, openProject: jest.fn(), closeProject: jest.fn(), attachSidebar: jest.fn(), treeClick: jest.fn(), treeAction: jest.fn() },
+    sharing,
   ) : null;
-  mountSidebarTree(ui, slot, prefs, host, projects && { projects, manageRelay: jest.fn() }, openTab, sections.library, { manage: jest.fn(), importLink: jest.fn() });
+  mountSidebarTree(ui, slot, prefs, host, projects && { projects, manageRelay: jest.fn() }, openTab, sections.library, sharing);
   return { store, slot, posted, prefs, saved, openTab };
 }
 

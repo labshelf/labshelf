@@ -4,6 +4,7 @@
  */
 import type { LibraryUiCapabilities, LibraryUiLabels } from "../hostConfig.js";
 import type { LibraryTransport } from "../protocol/index.js";
+import type { SharingHost } from "../sharing/index.js";
 import type { LibraryViewStore, PrefsPort } from "../state/index.js";
 import { createPaperData, type PaperDataRequests } from "./paperData.js";
 
@@ -27,6 +28,8 @@ export interface UiContext {
   labels: LibraryUiLabels;
   /** The library is shown for reading only; components render no editing control. */
   readOnly: boolean;
+  /** The host's sharing operations; absent when the host offers no sharing controls. */
+  sharing?: SharingHost | undefined;
   /** The `.ls-library` element. */
   root: HTMLElement;
   /** Set by the paper list when it mounts. */
@@ -46,6 +49,7 @@ export interface UiContextParts {
   caps: LibraryUiCapabilities;
   labels: LibraryUiLabels;
   readOnly: boolean;
+  sharing?: SharingHost | undefined;
 }
 
 export function createUiContext(root: HTMLElement, parts: UiContextParts): UiContext {

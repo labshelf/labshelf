@@ -8,6 +8,7 @@ import { requestAddPaper } from "../flows/index.js";
 import { toggleSidebar } from "../shell/index.js";
 import type { UiContext } from "../uiContext.js";
 import { renderCrumbs } from "./breadcrumb.js";
+import { mountShareFolderButton } from "./shareFolderButton.js";
 
 const SEARCH_SYNTAX_TIP = SYNTAX_HELP.map((row) => `${row.syntax}   ${row.description}`).join("\n");
 const SEARCH_DEBOUNCE_MS = 80;
@@ -58,7 +59,8 @@ export function mountListHeader(ctx: UiContext, container: HTMLElement): () => v
     const btn = (e.target as HTMLElement).closest<HTMLElement>("[data-act]");
     if (btn) onToolbarClick(ctx, btn.dataset["act"], search);
   });
-  return ctx.store.select(
+  const offShare = mountShareFolderButton(ctx, container);
+  const offScope = ctx.store.select(
     (s) => ({ folder: s.folder, papers: s.papers, query: s.query, pdfDirs: s.pdfDirs }),
     (slice) => {
       if (search.value !== slice.query) search.value = slice.query;
@@ -68,4 +70,5 @@ export function mountListHeader(ctx: UiContext, container: HTMLElement): () => v
       renderCrumbs(ctx, crumbs, slice.folder, narrowed ? `${view.shown.length} / ${view.inFolder.length}` : "");
     },
   );
+  return () => { offShare(); offScope(); };
 }

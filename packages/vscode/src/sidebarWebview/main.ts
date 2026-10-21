@@ -3,9 +3,10 @@ import "@labshelf/core/styles/tokens.css";
 import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
 import "@labshelf/core/styles/library-sidebar.css";
-import { $, mountLibrarySidebar, type SidebarActions } from "@labshelf/core/dom";
-import type { SidebarProjectItem } from "@labshelf/core";
+import { $, mountLibrarySidebar, runSharingDialog, type SidebarActions } from "@labshelf/core/dom";
+import { isSharingMessage, type SidebarProjectItem } from "@labshelf/core";
 import type { HostToSidebar, ProjectTreeMessage, SidebarToHost } from "../ui/library/sidebarMessages.js";
+import { createWebviewSharingClient } from "../webviewMessaging/index.js";
 import { folderDropTarget, showOpenProjectMenu, showProjectMenu } from "./index.js";
 
 const EXPANDED_KEY = "treeExpanded";
@@ -15,6 +16,8 @@ interface SidebarState { [EXPANDED_KEY]?: string[]; [COLLAPSED_KEY]?: string[] }
 
 const api = acquireVsCodeApi();
 const post = (m: SidebarToHost): void => api.postMessage(m);
+const sharing = createWebviewSharingClient(api);
+sharing.onOpen((request) => void runSharingDialog(sharing, request));
 // setState replaces the whole state, so each save merges into what the other key holds.
 const state = (): SidebarState => (api.getState() as SidebarState | undefined) ?? {};
 const saveState = (patch: SidebarState): void => api.setState({ ...state(), ...patch });
@@ -38,24 +41,24 @@ const actions: SidebarActions = {
 };
 const sidebar = mountLibrarySidebar(root.appendChild(document.createElement("div")), {
   actions,
+  sharing,
   expanded: state()[EXPANDED_KEY] ?? [],
   saveExpanded: (paths) => saveState({ [EXPANDED_KEY]: paths }),
   collapsed: state()[COLLAPSED_KEY] ?? [],
   saveCollapsed: (sections) => saveState({ [COLLAPSED_KEY]: sections }),
   projects: {
     open: (id) => post({ type: "openProject", id }),
-    menu: (id, at) => { const project = projects.find((p) => p.id === id); if (project) { showProjectMenu(project, at, post); } },
+    menu: (id, at) => { const project = projects.find((p) => p.id === id); if (project) { showProjectMenu(project, at, post, sharing); } },
     browseTemplates: () => post({ type: "projectAction", action: "browseTemplates" }),
     allProjects: () => post({ type: "projectAction", action: "allProjects" }),
     newBlank: () => post({ type: "projectAction", action: "newBlank" }),
     addExisting: () => post({ type: "projectAction", action: "addExisting" }),
-    joinShared: () => post({ type: "projectAction", action: "joinShared" }),
     refresh: () => post({ type: "projectAction", action: "refresh" }),
     newFolder: (path) => post({ type: "projectFolder", action: "new", path }),
     renameFolder: (path) => post({ type: "projectFolder", action: "rename", path }),
     deleteFolder: (path) => post({ type: "projectFolder", action: "delete", path }),
     closeProject: () => tree({ op: "close" }),
-    openProjectMenu: (anchor) => { const project = projects.find((p) => p.id === openProjectId); if (project) { showOpenProjectMenu(project, anchor, post); } },
+    openProjectMenu: (anchor) => { const project = projects.find((p) => p.id === openProjectId); if (project) { showOpenProjectMenu(project, anchor, post, sharing); } },
     treeAction: (action) => tree({ op: "action", action }),
     treeClick: (view, key) => tree({ op: "click", view, key }),
     treeToggle: (view, key, open) => tree({ op: "toggle", view, key, open }),
@@ -67,9 +70,9 @@ const sidebar = mountLibrarySidebar(root.appendChild(document.createElement("div
 });
 
 window.addEventListener("message", (e: MessageEvent<HostToSidebar>) => {
+  if (isSharingMessage(e.data)) { return; }
   const m = e.data;
-  if (m.type === "canShareFolders") { actions.shareFolder = (path) => post({ type: "shareFolder", path }); }
-  else if (m.type === "library") { sidebar.setLibrary(m.folders, m.papers); }
+  if (m.type === "library") { sidebar.setLibrary(m.folders, m.papers); }
   else if (m.type === "current") { sidebar.setCurrent(m.folder); }
   else if (m.type === "selected") { sidebar.setSelected(m.id); }
   else if (m.type === "projects") { projects = m.projects; sidebar.setProjects(m.projects); }

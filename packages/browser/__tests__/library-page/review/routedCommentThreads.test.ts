@@ -23,7 +23,7 @@ function setup() {
   const live = fakeStore("live", [{ start: 5, end: 6 }]);
   let active: { comments: CommentThreads } | undefined;
   const changes = new Set<() => void>();
-  const shares = { active: () => active, onChange: (l: () => void) => { changes.add(l); return () => void changes.delete(l); } };
+  const shares = { live: () => active, onChange: (l: () => void) => { changes.add(l); return () => void changes.delete(l); } };
   const routed = createRoutedCommentThreads({ files: file.store, shares: shares as never, session: { current: () => entry } });
   const setActive = (on: boolean): void => { active = on ? { comments: live.store } : undefined; changes.forEach((l) => l()); };
   return { file, live, routed, setActive };

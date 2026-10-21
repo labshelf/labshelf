@@ -14,3 +14,4 @@ export { iconBtn, kv, loading, mountDetailPane, muted, section, tabBarHtml, type
 export { attachHostMessages } from "./hostMessages.js";
 export { createUiContext, type UiContext } from "./uiContext.js";
 export { mountEditorArea, type EditorArea, type EditorAreaOptions, type EditorAreaPrefsPort, type EditorGroupIndex, type EditorTab, type EditorTabAction, type EditorTabBody, type EditorTabInfo } from "./editorArea/index.js";
+export { runSharingDialog } from "./sharing/index.js";

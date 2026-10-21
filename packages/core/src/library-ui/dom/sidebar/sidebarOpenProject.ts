@@ -1,4 +1,5 @@
 // Renders the open project at the top of Projects (its title row, then its Files, Outline and Checklist trees) and acts on their rows.
+import { runShareProjectDialog } from "../../../collab/dom/index.js";
 import { el, showMenu } from "../../../ui/dom/index.js";
 import { escapeHtml, icon } from "../../../ui/index.js";
 import type { SidebarNodeIcon, SidebarOpenProject, SidebarProjectTree, SidebarTreeNode } from "../../sidebarTrees.js";
@@ -53,12 +54,14 @@ function toggleRow(toggle: NonNullable<SidebarProjectTree["toggle"]>): HTMLEleme
   return el("div", { class: "tree-toggle-row", style: `--depth:${GROUP_ROW_DEPTH}`, html: `<span class="tree-toggle">${options}</span>` });
 }
 
-function openProjectRow(p: SidebarOpenProject): HTMLElement {
+function openProjectRow(p: SidebarOpenProject, canShare: boolean): HTMLElement {
+  const label = escapeHtml(`Share "${p.name}"`);
+  const shareButton = canShare ? `<button class="ls-icon-btn" data-tree="share-project" title="${label}" aria-label="${label}">${icon("link")}</button>` : "";
   return el("div", {
     class: "tree-row tree-open-project", role: "treeitem", "data-key": "open-project", "data-open-project": p.id, style: "--depth:0", title: p.name,
     "aria-haspopup": "menu",
     html: `${formatLabel(p.format)}<span class="tree-label">${escapeHtml(p.name)}</span><span class="tree-open-project-chevron" aria-hidden="true">${icon("chevron-down")}</span>` +
-      `<span class="tree-row-actions"><button class="ls-icon-btn" data-tree="close-project" title="Close project">${icon("x")}</button></span>`,
+      `<span class="tree-row-actions">${shareButton}<button class="ls-icon-btn" data-tree="close-project" title="Close project">${icon("x")}</button></span>`,
   });
 }
 
@@ -68,7 +71,7 @@ export function appendOpenProject(
 ): void {
   const p = t.openProject;
   if (!p) return;
-  body.append(openProjectRow(p));
+  body.append(openProjectRow(p, t.sharing?.offers().projects === true));
   for (const tree of p.trees) {
     const id = `project.${tree.view}` as const;
     const open = !t.collapsed.has(id);
@@ -130,6 +133,7 @@ export function onOpenProjectClick(e: MouseEvent, t: SidebarState, render: () =>
   const target = e.target as HTMLElement;
   const action = target.closest<HTMLElement>("[data-tree]");
   if (action?.dataset["tree"] === "close-project") { t.projects?.closeProject(); return true; }
+  if (action?.dataset["tree"] === "share-project") { if (t.sharing && t.openProject) void runShareProjectDialog(t.sharing, t.openProject.id); return true; }
   const projectRow = target.closest<HTMLElement>("[data-open-project]");
   if (projectRow) { t.projects?.openProjectMenu(projectRow); return true; }
   if (action?.dataset["tree"] === "node-add") {

@@ -4,6 +4,7 @@
  */
 import * as vscode from 'vscode';
 import { isUnderDir } from '@labshelf/core';
+import { sharingWebviews } from '../../sharing/index.js';
 import { rootNode, type LibraryNode } from '../library/index.js';
 import { labshelfTabIcon } from '../tabIcon.js';
 import { handleListMessage, showCitationMap, type ListHostContext } from './host/index.js';
@@ -72,6 +73,7 @@ export class ListWebviewPanel {
       if (!this._disposed) { this._panel.webview.html = html; }
     });
     this._panel.webview.onDidReceiveMessage((raw: unknown) => handleListMessage(this._host, raw), null, this._disposables);
+    this._disposables.push(sharingWebviews.attach(this._panel.webview));
     this._panel.onDidChangeViewState((e) => { if (e.webviewPanel.active) { this._deps.onDidActivate?.(); } }, null, this._disposables);
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
   }

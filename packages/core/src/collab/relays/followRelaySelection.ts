@@ -37,7 +37,12 @@ export interface RelayFollower {
 interface Active { url: string; transport: RelayTransport; sync: RelaySync }
 
 /** Every later attachment catches up from cursor 0, so the relay gets what it lacks from the time the group was elsewhere. */
-const fromStart = (store: RelayCursorStore): RelayCursorStore => ({ get: () => undefined, set: (docKey, cursor) => store.set(docKey, cursor) });
+const fromStart = (store: RelayCursorStore): RelayCursorStore => ({
+  get: () => undefined,
+  set: (docKey, cursor) => store.set(docKey, cursor),
+  held: () => undefined,
+  setHeld: (docKey, snapshot) => store.setHeld(docKey, snapshot),
+});
 
 function startRelay(options: RelayFollowOptions, scheduler: SessionScheduler, url: string, replayFromStart: boolean): Active {
   const { session, slot, selector, shareId, relayToken, contentKey, logger, isSnapshotWriter } = options;

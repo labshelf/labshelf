@@ -27,7 +27,7 @@ describe("createOpenProjectSnapshot", () => {
   it("lists files folders first, hides .git and .labshelf, and marks the main file", async () => {
     const snapshot = await createOpenProjectSnapshot({ fs: memoryFs(files), logger })(entry("main.tex"), "kind");
     const filesTree = tree(snapshot.trees, "files");
-    expect(snapshot).toMatchObject({ id: "thesis", name: "thesis", format: "latex" });
+    expect(snapshot).toMatchObject({ id: "/projects/thesis", name: "thesis", format: "latex" });
     expect(filesTree).toMatchObject({ title: "Files", empty: "No files." });
     expect(labels(filesTree.nodes)).toEqual(["Zed", "b.tex", "main.tex"]);
     expect(filesTree.nodes[0]!.children!.map((n) => n.key)).toEqual(["Zed/inner.tex"]);

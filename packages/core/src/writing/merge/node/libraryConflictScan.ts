@@ -1,6 +1,6 @@
-// Scans a whole library for sync conflict copies: paper folders, sidecars and writing projects.
+// Scans a whole library for sync conflict copies: paper folders, sidecars, Spaces and writing projects.
 import type { ConflictCopy } from "../../../library/conflicts/index.js";
-import { scanConflictCopies } from "../../../library/conflicts/node/index.js";
+import { scanConflictCopies, scanSpaceConflicts } from "../../../library/conflicts/node/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import type { IMergeBaseStore } from "../mergeBaseStore.js";
 import { scanProjectConflicts } from "./projectConflictScan.js";
@@ -11,7 +11,8 @@ const queued = new Map<string, Promise<unknown>>();
 async function scan(root: string, store: IMergeBaseStore, logger: ILogger): Promise<ConflictCopy[]> {
   const papers = await scanConflictCopies(root, logger);
   const projects = await scanProjectConflicts(root, store, logger);
-  return [...papers, ...projects].sort((a, b) => a.copy.localeCompare(b.copy));
+  const spaces = await scanSpaceConflicts(root, logger);
+  return [...papers, ...spaces, ...projects].sort((a, b) => a.copy.localeCompare(b.copy));
 }
 
 /**

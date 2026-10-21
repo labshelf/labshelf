@@ -26,7 +26,7 @@ async function setup() {
   const { ui, host } = createLoopbackTransport<HistoryToHost, HostToHistory>();
   const rows: Extract<HostToHistory, { type: "history" }>["rows"][] = [];
   ui.subscribe((message) => { if (message.type === "history") rows.push(message.rows); });
-  mountHistoryHost({ fs, logger, endpoint: host, project, lastFullPdf: () => undefined, shares: { active: () => ({ session } as never) } });
+  mountHistoryHost({ fs, logger, endpoint: host, project, lastFullPdf: () => undefined, shares: { live: () => ({ session } as never) } });
   await fs.writeText("proj/main.tex", "one");
   ui.post({ type: "ready" });
   await settle();

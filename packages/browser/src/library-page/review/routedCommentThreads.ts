@@ -6,12 +6,12 @@ import type { CommentThreads } from "./commentThreads";
 export interface RoutedCommentThreadsOptions {
   /** The store over comments.json. */
   files: CommentThreads;
-  shares: Pick<PageShares, "active" | "onChange">;
+  shares: Pick<PageShares, "live" | "onChange">;
   session: Pick<ProjectSession, "current">;
 }
 
 export function createRoutedCommentThreads({ files, shares, session }: RoutedCommentThreadsOptions): CommentThreads {
-  const storeFor = (projectId: string | undefined): CommentThreads => (projectId === undefined ? undefined : shares.active(projectId)?.comments) ?? files;
+  const storeFor = (projectId: string | undefined): CommentThreads => (projectId === undefined ? undefined : shares.live(projectId)?.comments) ?? files;
   const openProject = (): string | undefined => {
     const entry = session.current();
     return entry?.kind === "ready" ? entry.settings.id : undefined;
@@ -29,7 +29,7 @@ export function createRoutedCommentThreads({ files, shares, session }: RoutedCom
       },
     }),
     onDidChange(listener) {
-      const live = (): CommentThreads | undefined => { const id = openProject(); return id === undefined ? undefined : shares.active(id)?.comments; };
+      const live = (): CommentThreads | undefined => { const id = openProject(); return id === undefined ? undefined : shares.live(id)?.comments; };
       let stopLive = live()?.onDidChange(listener);
       const stopFiles = files.onDidChange(listener);
       const stopShares = shares.onChange(() => { stopLive?.(); stopLive = live()?.onDidChange(listener); listener(); });

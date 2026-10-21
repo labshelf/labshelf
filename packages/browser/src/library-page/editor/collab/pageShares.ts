@@ -1,28 +1,29 @@
-// Holds the page's shared projects: joins one, reconnects one after a reload, and hands the editor its session, presence and comments.
-import type { ILogger, RelayNetwork } from "@labshelf/core";
-import type { ShareSources } from "./browserShareConnection";
-import { joinProjectShare } from "./joinProjectShare";
-import { adoptUnscopedShares } from "./migrations";
-import { ProjectShare, type ShareEntryOptions, type ShareEntryState } from "./projectShareEntry";
-import { loadDisplayName, loadShare, saveDisplayName } from "./shareKeyStore";
+// Holds the page's shared project connections, one per share and each under its tab lease, as the core share workflows use them.
+import type { ILogger, RelayNetwork, ShareConnection, ShareConnections, ShareKeyStore, ShareStart, StoredInvite } from "@labshelf/core";
+import { acquireTabLease, tabLeaseName, type TabLease } from "../../../storage";
+import { connectBrowserShare, type ShareSources } from "./browserShareConnection";
+import { ProjectShare, type LiveShare, type ShareEntryState } from "./projectShareEntry";
+import { loadDisplayName } from "./shareKeyStore";
 
 const LOG_MODULE = "collab.shares";
-const DEFAULT_NAME = "Guest";
+export const DEFAULT_DISPLAY_NAME = "Guest";
 
-type ActiveShare = NonNullable<ReturnType<ProjectShare["active"]>>;
+/** Another tab of this profile runs the share; this page observes it until the lease comes free. */
+export class ShareOpenInAnotherTabError extends Error {
+  constructor(readonly shareId: string) { super("This shared project is open in another tab"); }
+}
 
-export interface PageShares {
-  join(inviteText: string): Promise<{ projectId: string; folder: string }>;
-  /** Runs a project joined earlier from its stored key and relays, or observes it while another tab runs it; repeated calls do nothing. */
-  connect(projectId: string, shareId: string, folder: string): Promise<void>;
-  /** Takes a project over from the tab that runs it ("Use here"). */
-  takeOver(projectId: string): Promise<void>;
-  active(projectId: string): ActiveShare | undefined;
-  state(projectId: string): ShareEntryState | undefined;
+export interface PageShares extends ShareConnections {
+  /** Opens a share under its tab lease; a resume the lease refuses observes the share and rejects with ShareOpenInAnotherTabError. */
+  connect(invite: StoredInvite, start: ShareStart): Promise<ShareConnection>;
+  /** The live share of a project, while this page runs its connection. */
+  live(projectId: string): LiveShare | undefined;
+  state(shareId: string): ShareEntryState | undefined;
+  /** Takes a share over from the tab that runs it ("Use here"). */
+  takeOver(shareId: string): Promise<void>;
   /** The name on this user's comments and cursor. */
   name(): string;
-  setName(name: string): Promise<void>;
-  /** Called whenever a project's state or its connection's state changes. */
+  /** Called whenever a share's state or its connection's state changes. */
   onChange(listener: () => void): () => void;
   closeAll(): Promise<void>;
 }
@@ -31,9 +32,12 @@ export interface PageSharesOptions {
   sources: ShareSources;
   /** The id of the library the sources serve at the time of the call; the user can switch libraries while the page is open. */
   libraryId: () => Promise<string>;
+  keys: Pick<ShareKeyStore, "invite">;
+  /** The id of the project in `folder`, from the project list. */
+  projectIdOf(folder: string): string | undefined;
   logger: ILogger;
   /** Tests pass relays that run in process. */
-  network?: RelayNetwork;
+  network?: RelayNetwork | undefined;
 }
 
 export function createPageShares(options: PageSharesOptions): PageShares {
@@ -42,11 +46,12 @@ export function createPageShares(options: PageSharesOptions): PageShares {
 
 class PageShareRegistry implements PageShares {
   private readonly entries = new Map<string, ProjectShare>();
-  private readonly connecting = new Map<string, Promise<void>>();
-  private readonly failed = new Set<string>();
-  private readonly joins = new Set<AbortController>();
+  /** Leases of connections opened but not yet added. */
+  private readonly opened = new Map<string, { lease: TabLease; libraryId: string }>();
+  private readonly busy = new Set<string>();
   private readonly listeners = new Set<() => void>();
-  private displayName = DEFAULT_NAME;
+  private displayName = DEFAULT_DISPLAY_NAME;
+  private closed = false;
   private readonly notify = (): void => this.listeners.forEach((listener) => listener());
 
   constructor(private readonly options: PageSharesOptions) {
@@ -56,52 +61,70 @@ class PageShareRegistry implements PageShares {
     );
   }
 
-  async join(inviteText: string): Promise<{ projectId: string; folder: string }> {
-    const library = await this.options.libraryId();
-    const abort = new AbortController();
-    this.joins.add(abort);
+  async connect(invite: StoredInvite, start: ShareStart): Promise<ShareConnection> {
+    if (this.closed) { throw new Error(`The page is closing, so it opens no connection of share ${invite.shareId}`); }
+    const libraryId = await this.options.libraryId();
+    const held = await acquireTabLease(tabLeaseName(libraryId, invite.shareId));
+    if (held.kind === "busy") {
+      if (start.mode === "resume") { this.entry(invite.shareId, libraryId, start.folder).observe(); }
+      throw new ShareOpenInAnotherTabError(invite.shareId);
+    }
     try {
-      const { projectId, share } = await joinProjectShare({
-        inviteText, libraryId: library, sources: this.options.sources, name: this.displayName, logger: this.options.logger,
-        network: this.options.network, signal: abort.signal, entry: (id, folder, invite) => this.entryOptions(id, folder, library, invite),
-      });
-      if (abort.signal.aborted) {
-        await share.close();
-        throw new Error("Joining was cancelled because the page closed");
-      }
-      this.entries.set(projectId, share);
-      return { projectId, folder: share.folder };
-    } finally {
-      this.joins.delete(abort);
+      const connection = await this.open(invite, libraryId, held.lease, start);
+      this.opened.set(invite.shareId, { lease: held.lease, libraryId });
+      return connection;
+    } catch (error) {
+      await held.lease.release();
+      throw error;
     }
   }
 
-  connect(projectId: string, shareId: string, folder: string): Promise<void> {
-    const running = this.connecting.get(projectId);
-    if (running) { return running; }
-    if (this.entries.has(projectId)) { return Promise.resolve(); }
-    this.failed.delete(projectId);
-    const pending = this.open(projectId, shareId, folder).catch((error: unknown) => {
-      this.entries.delete(projectId);
-      this.failed.add(projectId);
-      this.notify();
-      throw error;
-    }).finally(() => this.connecting.delete(projectId));
-    this.connecting.set(projectId, pending);
-    return pending;
+  add(connection: ShareConnection): void {
+    const opened = this.opened.get(connection.shareId);
+    if (!opened) { throw new Error(`Share ${connection.shareId} was not opened by this page, so this page holds no tab lease of it`); }
+    this.opened.delete(connection.shareId);
+    if (this.closed) {
+      // The page closed while the share connected; nothing waits for this close.
+      void connection.close().catch((error: unknown) => this.options.logger.error(LOG_MODULE, error, { action: "close a share that connected as the page closed", shareId: connection.shareId }))
+        .finally(() => opened.lease.release());
+      return;
+    }
+    this.entry(connection.shareId, opened.libraryId, connection.folder, connection.joinedId).adopt(opened.lease, connection);
   }
 
-  async takeOver(projectId: string): Promise<void> { await this.entries.get(projectId)?.takeOver(); }
-
-  active(projectId: string): ActiveShare | undefined { return this.entries.get(projectId)?.active(); }
-
-  state(projectId: string): ShareEntryState | undefined {
-    return this.failed.has(projectId) ? { kind: "failed" } : this.entries.get(projectId)?.state();
+  async remove(shareId: string): Promise<void> {
+    const entry = this.entries.get(shareId);
+    if (!entry) { return; }
+    this.entries.delete(shareId);
+    this.notify();
+    await entry.close();
   }
+
+  active(shareId: string): ShareConnection | undefined { return this.entries.get(shareId)?.running; }
+
+  list(): ShareConnection[] { return [...this.entries.values()].flatMap((entry) => (entry.running ? [entry.running] : [])); }
+
+  isBusy(shareId: string): boolean { return this.busy.has(shareId); }
+
+  async hold<T>(shareId: string, run: () => Promise<T>): Promise<T> {
+    this.busy.add(shareId);
+    try {
+      return await run();
+    } finally {
+      this.busy.delete(shareId);
+    }
+  }
+
+  live(projectId: string): LiveShare | undefined {
+    return [...this.entries.values()].find((entry) => entry.projectId === projectId)?.live();
+  }
+
+  state(shareId: string): ShareEntryState | undefined { return this.entries.get(shareId)?.state(); }
+
+  async takeOver(shareId: string): Promise<void> { await this.entries.get(shareId)?.takeOver(); }
 
   name(): string { return this.displayName; }
 
-  async setName(name: string): Promise<void> { this.displayName = name; await saveDisplayName(name); }
 
   onChange(listener: () => void): () => void {
     this.listeners.add(listener);
@@ -109,26 +132,38 @@ class PageShareRegistry implements PageShares {
   }
 
   async closeAll(): Promise<void> {
-    this.joins.forEach((abort) => abort.abort());
-    const closing = [...this.entries.values()];
+    this.closed = true;
+    const closing = [...this.entries.entries()];
     this.entries.clear();
-    await Promise.all(closing.map((entry) => entry.close()));
+    const results = await Promise.allSettled(closing.map(([, entry]) => entry.close()));
+    results.forEach((result, index) => {
+      if (result.status === "rejected") { void this.options.logger.error(LOG_MODULE, result.reason, { action: "close a share as the page closed", shareId: closing[index]?.[0] }); }
+    });
     this.notify();
   }
 
-  private async open(projectId: string, shareId: string, folder: string): Promise<void> {
-    const library = await this.options.libraryId();
-    // The project was read from this library's folder, so its share id belongs to this library.
-    await adoptUnscopedShares(library, [shareId]);
-    const stored = await loadShare(library, shareId);
-    if (stored === undefined) { throw new Error(`The key of share ${shareId} is not stored on this device, so project ${projectId} cannot reconnect`); }
-    const entry = new ProjectShare(this.entryOptions(projectId, folder, library, { shareId, ...stored }));
-    this.entries.set(projectId, entry);
-    await entry.open();
+  private open(invite: StoredInvite, libraryId: string, tab: TabLease, start: ShareStart): Promise<ShareConnection> {
+    const { sources, logger, network } = this.options;
+    return connectBrowserShare({ invite, libraryId, tab, sources, name: this.displayName, logger, network, start });
   }
 
-  private entryOptions(projectId: string, folder: string, libraryId: string, invite: ShareEntryOptions["invite"]): ShareEntryOptions {
-    const { sources, logger, network } = this.options;
-    return { projectId, folder, libraryId, invite, sources, name: () => this.displayName, logger, network, notify: this.notify };
+  /** The share's entry, made when the page has none; `joinedId` names the project a join created. */
+  private entry(shareId: string, libraryId: string, folder: string, joinedId?: string): ProjectShare {
+    const existing = this.entries.get(shareId);
+    if (existing) { return existing; }
+    const projectId = joinedId ?? this.options.projectIdOf(folder);
+    if (projectId === undefined) {
+      void this.options.logger.log("WARN", LOG_MODULE, "The project list does not hold a shared project, so its comments stay off the share", { shareId, folder });
+    }
+    const entry: ProjectShare = new ProjectShare({
+      shareId, libraryId, projectId, logger: this.options.logger, name: () => this.displayName, notify: this.notify,
+      reopen: async (lease) => {
+        const stored = await this.options.keys.invite(shareId);
+        return stored && this.open(stored, libraryId, lease, { mode: "resume", folder });
+      },
+      ended: () => { if (this.entries.get(shareId) === entry) { this.entries.delete(shareId); this.notify(); } },
+    });
+    this.entries.set(shareId, entry);
+    return entry;
   }
 }

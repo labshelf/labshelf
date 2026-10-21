@@ -14,5 +14,5 @@ import "@labshelf/core/styles/library-citation-map.css";
 import { $, mountLibraryUi } from "@labshelf/core/dom";
 import { createWebviewChannel, libraryUiCapabilities, libraryUiLabels } from "./index.js";
 
-const { transport, prefs } = createWebviewChannel();
-mountLibraryUi($("root"), { transport, prefs, capabilities: libraryUiCapabilities, labels: libraryUiLabels });
+const { transport, prefs, sharing } = createWebviewChannel();
+mountLibraryUi($("root"), { transport, prefs, sharing, capabilities: libraryUiCapabilities, labels: libraryUiLabels });

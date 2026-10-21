@@ -4,11 +4,15 @@
 export const PAPERS_DIR = "papers";
 export const RESEARCH_DIR = ".research";
 export const PROJECTS_DIR = "projects";
+export const SPACES_DIR = "spaces";
 
 export const PDF_FILE = "paper.pdf";
 export const METADATA_FILE = "metadata.yaml";
 export const BIB_FILE = "bib.bib";
 export const SIDECAR_FILE = "data.json";
+// CONTRACT: documents/contracts/spaces.md#layout
+export const SPACE_FILE = "space.json";
+export const GLOSSARY_FILE = "glossary.json";
 
 export type Join<T> = (base: T, ...segments: string[]) => T;
 
@@ -22,6 +26,11 @@ export interface LibraryLayout<T> {
   papersRoot(): T;
   /** Writing projects created by LabShelf, one folder each. */
   projectsRoot(): T;
+  /** One folder per Space, named by its space id. */
+  spacesRoot(): T;
+  spaceDir(spaceId: string): T;
+  spaceFilePath(spaceId: string): T;
+  glossaryFilePath(spaceId: string): T;
   researchRoot(): T;
   /** Scratch space for atomic writes: same volume as the library. */
   tmpDir(): T;
@@ -38,10 +47,15 @@ export function libraryLayout<T>(root: T, join: Join<T>): LibraryLayout<T> {
   const research = () => join(root, RESEARCH_DIR);
   const paperDataRoot = () => join(research(), PAPERS_DIR);
   const paperDataDir = (paperId: string) => join(paperDataRoot(), paperId);
+  const spaceDir = (spaceId: string) => join(root, SPACES_DIR, spaceId);
   return {
     root,
     papersRoot: () => join(root, PAPERS_DIR),
     projectsRoot: () => join(root, PROJECTS_DIR),
+    spacesRoot: () => join(root, SPACES_DIR),
+    spaceDir,
+    spaceFilePath: (spaceId) => join(spaceDir(spaceId), SPACE_FILE),
+    glossaryFilePath: (spaceId) => join(spaceDir(spaceId), GLOSSARY_FILE),
     researchRoot: research,
     tmpDir: () => join(research(), "tmp"),
     paperDataRoot,

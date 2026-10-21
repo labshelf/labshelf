@@ -72,7 +72,7 @@ export function createOpenProjectSnapshot({ fs, logger }: OpenProjectSnapshotOpt
       guard("checklist", entry, () => checklistNodes(context, entry, grouping)),
     ]);
     return {
-      id: entry.settings.id, name: entry.settings.title ?? entry.settings.id, format: entry.settings.format,
+      id: entry.folder, name: entry.settings.title ?? entry.settings.id, format: entry.settings.format,
       trees: [
         { view: "files", title: "Files", actions: [{ action: "history", label: "History", icon: "history" }, { action: "comments", label: "Comments", icon: "message" }], nodes: files, empty: "No files." },
         { view: "outline", title: "Outline", actions: [], nodes: outline, empty: "Open a source file to see its outline." },

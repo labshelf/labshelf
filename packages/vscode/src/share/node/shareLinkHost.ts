@@ -1,15 +1,11 @@
-// Declares what the share-link commands run over on the desktop, the device's share list of the open library, and how a failure is reported.
+// Declares what the desktop folder links run over: the open library's device share list and the owner's connected relay.
 import * as vscode from "vscode";
 
-import { shareFailureText, type ILogger, type RelayAccount, type RelayAccountStore, type ShareRegistryStore } from "@labshelf/core";
+import type { RelayAccount, RelayAccountStore, ShareRegistryStore } from "@labshelf/core";
 import { deviceLocalLayout, fileShareRegistryStore } from "@labshelf/core/node";
-import type { ActiveServices } from "../../commands/index.js";
 import { CONNECT_RELAY_COMMAND } from "../../relay/index.js";
 
-export const LOG_MODULE = "share";
-
 export interface ShareLinkHost {
-  requireServices: () => Promise<ActiveServices | null>;
   libraryRoot: () => string | undefined;
   relay: RelayAccountStore;
 }
@@ -29,10 +25,4 @@ export async function connectedRelay(host: ShareLinkHost, why: string): Promise<
     if (choice === connect) { void vscode.commands.executeCommand(CONNECT_RELAY_COMMAND); }
   });
   return undefined;
-}
-
-/** `context` must hold no link key, owner secret or token. */
-export function reportShareFailure(logger: ILogger, action: string, error: unknown, context: Record<string, unknown>): void {
-  void logger.error(LOG_MODULE, error, { ...context, action });
-  void vscode.window.showErrorMessage(shareFailureText(action, error));
 }

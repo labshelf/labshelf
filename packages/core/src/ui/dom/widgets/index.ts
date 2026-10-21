@@ -5,5 +5,6 @@ export { showMenu, closeMenu, type MenuItem, type MenuEntry, type MenuAnchor, ty
 export { showDialog, confirmDialog, type DialogButton, type DialogOptions } from "./dialog.js";
 export { quickPick, inputBox, type QuickPickEntry, type QuickPickItem, type QuickPickOptions, type QuickPickSeparator, type InputBoxOptions } from "./quickInput.js";
 export { toast, type ToastKind } from "./toast.js";
+export { progressDialog, type ProgressDialog, type ProgressDialogOptions } from "./progressDialog.js";
 export { arcMarkElement } from "./arcMark.js";
 export { mountOverlay } from "./overlay.js";

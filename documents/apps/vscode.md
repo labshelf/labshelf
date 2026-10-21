@@ -72,12 +72,12 @@ pnpm dev:vscode                        # watches the host and the webview bundle
 
 ## Collaboration and sharing
 
-Everything here is the desktop extension host only: sharing needs a disk mirror. Each command also appears in the command palette; the contracts hold the behaviour.
+Everything here is the desktop extension host only: sharing needs a disk mirror. The sharing dialogs are the common core dialogs of the library sidebar ([contract](../contracts/library-ui-host.md#sharing)). Each command below appears in the command palette, reveals the library sidebar and opens the same dialog there; no native input box or quick pick is involved. The contracts hold the behaviour. The web build offers no sharing.
 
-- **Share Project…**, **Join Shared Project…** and **Stop Sharing Project on This Device…** share a writing project live with an invite link and keep a full local copy of it ([contract](../contracts/collaboration.md)). Sharing needs a connected Cloudflare relay: Share Project runs Connect Cloudflare first and stops, saying why, when it is cancelled; Join Shared Project refuses an invite that lists no relay. Stop Sharing keeps every file and deletes the project's sync state on this device; when its last edits cannot be stored, the project stays shared and the error says why ([lifecycle](../contracts/collaboration.md#sharing-joining-and-leaving)). Other members' cursors show in the editor, and **Undo My Edit in Shared File** and **Redo My Edit in Shared File** (the undo and redo keys in a shared file) undo only the user's own edits.
+- **Share Project…**, **Join Shared Project…** and **Stop Sharing Project on This Device…** share a writing project live with an invite link and keep a full local copy of it ([contract](../contracts/collaboration.md)). Sharing needs a connected Cloudflare relay: Share Project runs Connect Cloudflare first and stops, saying why, when it is cancelled; Join Shared Project refuses an invite that lists no relay. Stop Sharing keeps every file and deletes the project's sync state on this device; when its last edits cannot be stored, the project stays shared and the error says why ([lifecycle](../contracts/collaboration.md#sharing-joining-and-leaving)). Other members' cursors show in the editor, and **Undo My Edit in Shared File** and **Redo My Edit in Shared File** (the undo and redo keys in a shared file) undo only the user's own edits. While the active file belongs to a shared project, a status bar item on the left shows whether collaborators are online and which relay is in use; clicking it opens the project's share dialog.
 - **Connect Cloudflare…** and **Disconnect Cloudflare** deploy and remove the owner's relay Worker in the account the owner signs in to in the browser; on a remote host, or when port 8976 is busy, the owner pastes a Cloudflare API token instead. **Offer My Relay to This Project** and **Withdraw My Relay from This Project** add and remove it in a shared project's relay list ([contract](../contracts/relay.md)).
 - Comment threads on the source (the editor's comment gutter, **Comment**, **Resolve** and **Reopen**) are shared with the project, and a note written in a review PDF becomes a thread on its source line ([contract](../contracts/collaboration.md#comments)).
-- **Share Folder as Link…** uploads a library folder, encrypted, as a read-only link that opens on the website's share page. **Manage Shared Links…** lists the links and revokes them. **Import Papers from Share Link…** copies the papers of a link into the library ([contract](../contracts/share-link.md)).
+- **Share Folder as Link…** (also in the list header and the folder's sidebar menu) uploads a library folder, encrypted, as a read-only link that opens on the website's share page. **Manage Shared Links…** and **Import Papers from Share Link…** are also in the Library heading menu. Manage Shared Links lists the links and revokes them. Import copies the papers of a link into the library ([contract](../contracts/share-link.md)).
 
 ## Adding papers
 
@@ -107,6 +107,16 @@ Jest mocks `vscode`, and plain Node passes pdf.js's "am I Node?" check, so both 
 A cheaper middle ground reproduces pdf.js's environment but not the host lifecycle. Run the script with `ELECTRON_RUN_AS_NODE=1 ".../Code Helper (Plugin).app/Contents/MacOS/Code Helper (Plugin)"`, after setting `process.type = "utility"`.
 
 To test scans, render a real paper's pages to PNG and rebuild an image-only PDF with pdf-lib.
+
+### Collaboration against a local relay
+
+Use a local `wrangler dev --local --local-protocol https` relay as in [browser.md](browser.md#collaboration-against-a-local-relay), with the scratch CA in `NODE_EXTRA_CA_CERTS` and `NO_PROXY=127.0.0.1,localhost`.
+
+- Launch hosts from a `@vscode/test-electron` copy under `xvfb-run -a` with a short `--user-data-dir`, `--remote-debugging-port` and `--inspect-extensions`. A dev extension with `activationEvents ["*"]` polls a control directory and runs the `{command,args}` files it finds. Never use `--inspect-brk-extensions`: the renderer restarts the host after 10 s.
+- User settings: `http.proxySupport: "off"`, `http.fetchAdditionalSupport: false`, `http.webSocketAdditionalSupport: false`. VS Code patches the host's global `fetch` and `WebSocket` with its own CA list, which drops `NODE_EXTRA_CA_CERTS`.
+- Seed the relay account in SecretStorage key `labshelf.relay.account`: another extension cannot read it, so set a conditional breakpoint `(globalThis.__sec = secrets, false)` on the secret-slot `get` in `out/extension.js` through the inspector, trigger one read, then call `__sec.store(...)` from the runner.
+- `labshelf.collab.share` needs the full project folder path as its argument; a bare id opens nothing.
+- Stop a host with `kill -9` of its own PID. A plain `kill` can leave the main process alive and the relaunch exits silently.
 
 ## Webview harness
 

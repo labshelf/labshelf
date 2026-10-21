@@ -1,8 +1,9 @@
 // Opens the editor tab that shows every project and connects its webview to the All projects server.
 import * as vscode from "vscode";
 import {
-  parseAllProjectsMessage, serveAllProjects, type AllProjectsEndpoint, type AllProjectsToHost, type ILogger, type ProjectLibraryPort,
+  isSharingMessage, parseAllProjectsMessage, serveAllProjects, type AllProjectsEndpoint, type AllProjectsToHost, type ILogger, type ProjectLibraryPort,
 } from "@labshelf/core";
+import { sharingWebviews } from "../../sharing/index.js";
 import { labshelfTabIcon } from "../../ui/index.js";
 import { allProjectsBundleDirectory, allProjectsHtml } from "./allProjectsHtml.js";
 
@@ -26,10 +27,15 @@ export class AllProjectsPanel {
     };
     panel.webview.onDidReceiveMessage((raw: unknown) => {
       const message = parseAllProjectsMessage(raw);
-      if (!message) { void logger.log("WARN", "writing.allProjects", "unparseable message from the page", { type: (raw as { type?: unknown } | null)?.type }); return; }
+      if (!message) {
+        if (isSharingMessage(raw)) { return; }
+        void logger.log("WARN", "writing.allProjects", "unparseable message from the page", { type: (raw as { type?: unknown } | null)?.type });
+        return;
+      }
       if (message.type === "project.selected") { selection.onSelect(message.id); }
       handlers.forEach((handler) => handler(message));
     }, null, this.disposables);
+    this.disposables.push(sharingWebviews.attach(panel.webview));
     this.stopServing = serveAllProjects(endpoint, port, logger);
     void allProjectsHtml(panel.webview, extensionUri).then((html) => { if (!this.disposed) { panel.webview.html = html; } });
     panel.onDidChangeViewState((e) => { if (e.webviewPanel.active) { selection.onActivate(); } }, null, this.disposables);

@@ -16,7 +16,7 @@ export interface BuildMark {
 export type NewProjectKind = "blank" | "template" | "folder";
 
 export interface ProjectRow {
-  /** The host's key for the project: a folder path in VS Code, the project id in the browser. */
+  /** The project's key: its folder. */
   id: string;
   title: string;
   /** Absent when the project's labshelf.yaml cannot be read. */
@@ -38,6 +38,8 @@ export interface ProjectRow {
   external?: boolean;
   /** Why the project cannot be read. */
   broken?: string;
+  /** The project carries a share id, so this device joined or shared it. */
+  shared?: boolean;
   /** The main file, relative to the project folder and "/"-separated. */
   main?: string;
 }

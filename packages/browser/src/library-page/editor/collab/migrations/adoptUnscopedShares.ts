@@ -1,8 +1,6 @@
 // Moves share keys stored without a library under the library whose projects hold their share ids.
 // Delete when no installed extension can still hold a `collabShares.shares` record, which only versions that kept shares without library ids wrote.
-import { libraryShares, readSharesRecord, toShare, withLibraryShares, writeSharesRecord } from "../shareKeyStore";
-
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
+import { isRecord, libraryShares, readSharesRecord, toShare, withLibraryShares, writeSharesRecord } from "../shareKeyRecord";
 
 /**
  * `shareIds` are the share ids of projects in the library's folder; an unscoped entry no project of this library holds stays

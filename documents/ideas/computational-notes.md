@@ -1,76 +1,113 @@
 # Computational notes
 
-A LabShelf note is a responsive research document stored as `.qmd`: prose, equations, paper excerpts and executable cells in one editable surface. Writing updates the document live; calculations appear beneath their cells without requiring Save or Compile. This is an idea, not an implementation plan or an on-disk contract.
+A computational note checks the mathematics of the papers you read and carries it into what you write. You select equation (12) in a PDF, it enters a note as editable LaTeX linked to its page, becomes a symbolic expression, and the note tells you whether (12) really follows from (11). Later, writing in LaTeX, you call the same note back and insert its verified results into the manuscript. This is an idea, not an implementation plan or an on-disk contract.
 
-## Working beside a project
+LabShelf does not build a notebook. Cells, kernels, execution and reactivity come from Jupyter, marimo, Quarto and the engines they already run. What LabShelf adds is what those tools cannot know: the paper, its equations, and the manuscript that cites them.
 
-A researcher opens `notes/derivation.qmd` inside a LaTeX project. The note opens in a central editor tab, like a source file. It can sit beside LaTeX code, a compiled PDF, another note or a paper. Notes also belong to papers or [Spaces](spaces.md#notes); creating a writing project is not required.
+## The note lives everywhere
 
-The note flows to the panel width. It has no fixed paper dimensions or PDF page breaks. Resizing a split reflows text, equations, tables and figures without changing the source. Wide content gets its own scrolling area rather than widening the entire document.
+A note is a `.qmd` file in the library, attached to a paper, a [Space](spaces.md#notes) or a writing project. The same note opens from the reader while reading, from the LaTeX editor while writing, and as a file in Jupyter, marimo or VS Code's Quarto extension, which run its cells. Equations carry Quarto labels (`$$ … $$ {#eq-smith-12}`), so the note stays a valid, renderable Quarto document outside LabShelf.
 
-The primary editing surface mixes formatted prose with editable cells and their outputs. Source view exposes the `.qmd` text. Both views edit the same document, and switching preserves the content. Automatic saving is independent of rendering and execution.
+The terminal app is out of scope for this idea.
 
-## Live rendering and computation
+## 1. From the paper to the calculation
 
-Two paths keep the note responsive:
+**Capture.** In the reader, selecting an equation offers "Add to note". The note gets a block with:
 
-- **Document rendering.** Text, headings, lists, equations, images and supported citations update inside LabShelf while the user types. This path requires neither the helper nor Quarto.
-- **Cell execution.** After a pause in editing, a local execution session evaluates affected cells in the background. Existing output remains visible while the replacement is calculated. The editor stays usable throughout.
+- the equation as LaTeX, rendered;
+- its number in the paper and a `labshelf:` link back to the page and region;
+- the expression in SymPy, rendered back as an equation so you see how it was read.
 
-The user does not save or press a compile button to refresh ordinary results. Expensive calculations can take longer and expose their running state and an interrupt action. A document edit supersedes pending work; results from an earlier revision cannot replace results for the current revision. Interrupting a kernel does not imply that file writes or other side effects are undone.
+**Verify.** Selecting two captured equations, or one equation and the step before it, offers "Check this step". LabShelf writes the check for a computer algebra system (CAS): SymPy by default, or SageMath or Mathematica through their kernels. The check is an ordinary code cell in the note: visible, editable and runnable in any Jupyter. The kernel the user already has runs it. The cell's result is one of:
 
-Opening or receiving a note does not execute its code. Automatic execution follows a deliberate decision to enable calculations for that note. Text-only edits do not rerun unrelated code. Missing runtimes leave the note editable and identify which calculation is unavailable.
+| Result | Meaning |
+|---|---|
+| Holds symbolically | The CAS reduced the difference to zero under the stated assumptions |
+| Holds numerically | Equal at many random points in the stated domain, but not proved |
+| Holds to order *n* | The series agree up to the stated order, for steps the paper calls approximations |
+| Fails at a point | A concrete counterexample: the values, and both sides evaluated |
+| Undecided | The CAS could not decide; the cell says which part it could not simplify |
 
-A persistent session retains variables and functions between evaluations. Session lifetime, cell order and dependency rules are visible product behavior: changing a definition must identify dependent outputs as stale. The execution model must specify which cells rerun and in what order before automatic recalculation ships. Arbitrary Python or Wolfram Language cannot be assumed to have a complete, statically discoverable dependency graph.
+The honest middle results matter more than the extremes. Papers skip steps, approximate silently and rely on conventions, so a check states what it assumed: the domain of each symbol, the order of an expansion, a convention such as ħ = 1. A step the user fills in becomes its own equation, checked against its neighbours, so a long derivation turns into a chain where every link shows its status.
 
-## Mathematics inside a note
+## 2. From the calculation to the manuscript
 
-The target experience is a computational notebook: explain a derivation, manipulate its expressions, inspect an exact result, plot a function and continue writing below. Mathematical results display as formatted equations, with access to the expression that produced them. Interactive controls are a possible extension; they require their own execution and dependency behavior.
+In the LaTeX editor, "Insert from note" lists the note's equations and results with their status. Inserting one writes an ordinary `equation` environment with a trailing comment that names its origin:
 
-For example, a note defines a positive parameter, evaluates a Gaussian integral, differentiates the result and compares curves for several parameter values. Its definitions and outputs remain beside the explanation and the relevant paper passage.
+```latex
+\begin{equation}
+  \frac{\partial I}{\partial a} = -\frac{\sqrt{\pi}}{2a^{3/2}}
+  \label{eq:gauss-derivative}
+\end{equation} % labshelf: notes/derivation.qmd#eq-gauss-derivative
+```
 
-The calculation engine determines mathematical coverage. A notebook-like interface does not imply symbolic equivalence with Mathematica.
+The comment never reaches the PDF, and the `.tex` compiles anywhere. Through it, the editor knows the equation's source:
 
-| Engine | Proposed role | Installation responsibility |
-|---|---|---|
-| Python with SymPy | Default candidate for algebra, calculus and symbolic matrices | Evaluate bundling Python, SymPy and its required dependency with the helper |
-| SageMath | Optional access to a broader mathematical environment | User installs it; LabShelf connects to the local session |
-| Mathematica | Optional use of the user's actual Wolfram kernel | User installs and activates a suitable license; LabShelf connects to that installation |
+- **The note changed.** The equation shows as stale beside the source, with the new form and a one-click update.
+- **The manuscript was edited by hand.** The equation shows as diverged; LabShelf never overwrites it and offers the difference instead.
+- **The status is visible while writing.** Hovering the equation shows its check result and opens the note at that equation; an unverified or failing equation is listed among the project's problems.
 
-The Mathematica path uses the official [Wolfram Client Library for Python](https://reference.wolfram.com/language/WolframClientForPython/) or another supported interface. It targets the installed kernel's symbolic capabilities. Rendering its results inside LabShelf does not provide the Mathematica notebook front end or automatically reproduce its dynamic interfaces.
+Backlinks run the other way: the note shows every manuscript that uses each of its equations.
 
-LabShelf does not issue Mathematica licenses or bundle its proprietary kernel. Connecting a licensed installation and redistributing a runtime are separate decisions; the user's license governs their use. The free developer engine is not assumed to be a production runtime available for redistribution.
+## 3. Notation
 
-## What Quarto does
+The same quantity is `\alpha` in the paper, `a` in the note and `\lambda` in the manuscript. Each note keeps a notation table in its front matter:
 
-The `.qmd` source remains readable outside LabShelf. The live editor supports a defined subset of Quarto syntax; a `.qmd` extension alone does not promise support for every filter, extension, computational engine or output format.
+```yaml
+labshelf:
+  notation:
+    - symbol: a
+      paper: "\\alpha"        # in the paper this note checks
+      manuscript: "\\lambda"
+      assumptions: [positive]
+    - symbol: f
+      kind: function
+```
 
-Quarto is a candidate for complete document export and rendering that needs its official engine. It does not sit between every keystroke and the visible note. Individual live cells communicate with their execution session rather than rebuilding the whole document through the Quarto CLI.
+The table does three jobs at once:
 
-Bundling Quarto with the helper or downloading it on demand is a distribution decision. Python, R, SageMath and Mathematica are distinct runtimes; including Quarto does not provide all of them. A Wolfram-backed cell needs a defined source representation and export path; it is not assumed to be a built-in Quarto engine.
+- **Capture translates.** An equation from the paper arrives in the note's notation.
+- **Insertion translates.** A result arrives in the manuscript's notation.
+- **Parsing is decided.** `kind: function` makes `f(x)` a call, not `f·x`; `assumptions` reach the CAS, so `sqrt(a**2)` simplifies to `a`.
 
-## Boundaries and portability
+The table grows as you work: when the parser meets an ambiguity, it asks once ("Is `f` a function?") and records the answer.
 
-The shared note editor, rendering and execution protocol belong in core. Host adapters connect the browser and VS Code surfaces to local execution. The helper provides the browser's route to installed tools. VS Code can supply a local adapter without requiring a separate helper installation. Every surface follows the same document and calculation semantics.
+## 4. AI and the CAS complement each other
 
-Execution requests identify the note, cell and source revision. Responses distinguish formatted output, diagnostics and cancellation. Helper failures surface in the note and are logged with enough context to diagnose; they preserve the source and the last available output.
+Each covers what the other cannot. An LLM reads prose, guesses intent and proposes: the next step of a derivation, the assumption hidden in the paper's text, SymPy code for LaTeX the parser rejects. It guarantees none of it. A CAS guarantees what it proves, but proposes nothing: it cannot read the paper, fill a skipped step or know that the authors meant "for small *x*". The AI proposes, the CAS decides:
 
-The file remains the source of truth. Kernel memory is session state, not the only copy of a derivation. Any persisted outputs, generated figures or cached execution state need a documented storage contract before implementation. Cached output identifies its producing revision and engine; it is not presented as current after its inputs change.
+- **Fill a gap.** "Explain this step" proposes intermediate equations between (11) and (12); each enters the note as a step and gets checked like any other.
+- **Find the assumption.** The model reads the paragraph around the equation and proposes the domain or approximation the step uses ("for small *x*"); the user accepts it into the check.
+- **Repair a parse.** When the parser fails, the model proposes SymPy code, and the note renders it back as an equation for the user to compare with the paper.
 
-Shared notes carry their source and agreed artifacts, not another person's kernel process, credentials or license. A received note stays readable when its calculation engine is absent.
+Every equation and step shows its origin (paper, you, AI) and its check status. AI never marks anything verified; only a check can. Provider, credentials and review behaviour follow the [embedded AI plan](../plans/ai-embedded/plan.md).
+
+## Difficulties and how to solve them
+
+**Getting the LaTeX of an equation out of a PDF.** A PDF's text layer turns mathematics into scrambled glyphs. Sources, tried in order and labelled in the note:
+
+1. **arXiv HTML.** For papers with an arXiv id, arXiv's HTML rendering carries each formula's TeX in the MathML `alttext` and its equation number. The capture matches the selected region to the formula by number and by the PDF text, giving exact LaTeX. Coverage per paper is to be validated.
+2. **arXiv source.** When the HTML rendering is missing, the e-print source has the formula; the paper's own `\newcommand`s expand before parsing. Downloads are per paper, rate-limited, for the user's own use; the note keeps only the captured equation.
+3. **Formula recognition.** For anything else, the selected region goes to an image-to-LaTeX model: a local recognition model, or the user's configured AI provider. The note then shows the crop of the PDF beside the rendered result and asks for confirmation before the equation counts as captured.
+
+**Reading LaTeX as mathematics.** `sympy.parsing.latex` exists but stays ambiguous: `f(x)`, `dx` inside integrals, subscripts as indices or names. The notation table settles most cases. Rendering the parsed expression back makes a wrong reading visible. AI repair handles what the grammar cannot.
+
+**What "follows from" means.** The table of results above is the answer: never a bare yes or no, always what was proved, under which assumptions, or the counterexample.
+
+**Running the checks.** Checks are plain cells, so they run where the user's notes already run: a Jupyter kernel, marimo, or VS Code's Jupyter extension. In the browser, the helper starts the local Jupyter kernel over its socket ([helper.md](../contracts/helper.md#transport)), and [Pyodide](https://pyodide.org/) with SymPy covers users without Python, at the cost of a slow first start. Mathematica users point the note at the Wolfram Language Jupyter kernel; no check requires a license.
+
+**The manuscript is the user's.** An inserted equation is only ever updated on request, and a hand edit is never overwritten. The origin comment is the whole link; deleting it detaches the equation and nothing breaks.
+
+**Trust.** Opening a note runs nothing. A check cell, whether the user, the paper capture or AI wrote it, runs when the user runs it. A received note shows its recorded results, marked with the engine that produced them.
 
 ## Decisions to validate
 
-- Which Quarto features form the initial editable subset, and how unsupported syntax survives editing without loss.
-- Whether ordered execution, explicit dependencies or a constrained reactive cell model gives understandable automatic updates.
-- How restart, interrupt, failed cells and edits during execution affect subsequent cells and stale outputs.
-- How a note resolves local data files, working directories and environments consistently across hosts.
-- Whether Python and SymPy fit the helper's installation, update and runtime requirements on each supported platform.
-- How Wolfram-backed cells round-trip through `.qmd` and export without a hidden LabShelf-only interpretation.
-- Where outputs and assets live, how they synchronize, and what remains available without the helper.
+- How often arXiv HTML and source recover the exact equation, and which recognition model is good enough for the rest.
+- Whether numeric spot checks with stated domains catch the errors researchers actually find in papers.
+- Where the notation table lives when one note checks several papers.
+- Which `labshelf:` front-matter keys and origin comments become contracts, and how backlinks are indexed.
+- Whether the browser runs checks through the helper's Jupyter, Pyodide or both.
 
 ## Evidence before implementation scope
 
-Use representative research notes to measure typing response separately from cell execution. Exercise a text-only note, a symbolic derivation, a plot and an expensive calculation. Resize the editor beside source and PDF views. Confirm that editing during execution cannot apply obsolete output, that interruption leaves the document intact, and that unavailable runtimes do not block reading or writing.
-
-Round-trip supported and unsupported `.qmd` constructs without discarding source. Reopen a note without its original kernel session and distinguish persisted output from recomputed results. Test a locally licensed Mathematica session separately from SymPy before promising either integration.
+Take ten derivations from papers in physics and applied mathematics, including one with a known error. Measure how many equations capture exactly from each source, how many steps check symbolically, numerically or not at all, and whether the known error is found. Insert results into a manuscript, edit both sides, and confirm that nothing is overwritten and every divergence is shown.

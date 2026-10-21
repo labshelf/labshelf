@@ -9,6 +9,7 @@ import type { SidebarProject } from "../../projectRows/index.js";
 import { GROUP_ROW_DEPTH, allProjectsRow, exploreTemplatesRow, folderRow, paperRow, rowKey, allPapersRow, tagRow } from "./sidebarRows.js";
 import { groupRow, sectionRow, type GroupId, type SectionId } from "./sidebarSections.js";
 import { appendOpenProject } from "./sidebarOpenProject.js";
+import type { SharingHost } from "../../sharing/index.js";
 import type { SidebarOpenProject } from "../../sidebarTrees.js";
 
 /** Every focusable row: section headers, group headings and tree rows. */
@@ -25,8 +26,6 @@ export interface SidebarActions {
   refresh?(): void;
   renameFolder(path: string): void;
   removeFolder(path: string): void;
-  /** Shares the folder's papers as a link; absent when the host cannot share, which hides the menu item. */
-  shareFolder?(path: string): void;
   /** Narrows the list to the papers with this tag. */
   searchTag(tag: string): void;
 }
@@ -48,6 +47,7 @@ export interface SidebarState {
   treeOpen: Map<string, boolean>;
   /** The open inline add input of a project tree, with its text so far, kept across renders. */
   treeInput: { view: string; key: string; placeholder: string; text: string } | null;
+  sharing?: SharingHost | undefined;
   /** Lets the host accept drops on a folder row; called on every render. */
   dropTarget?: ((row: HTMLElement, path: string) => void) | undefined;
   /** The focused row's key (see `rowKey`). */
@@ -126,6 +126,8 @@ function appendLibrary(t: SidebarState, tree: LibraryTree, frag: DocumentFragmen
   if (t.tags.length > 0) appendTags(t, body);
 }
 
+const canJoin = (t: SidebarState): boolean => t.sharing?.offers().projects === true;
+
 function appendProjects(t: SidebarState, frag: DocumentFragment): void {
   const open = !t.collapsed.has("projects");
   const body = appendPane(frag, "projects", sectionRow("projects", "Projects", open), open);
@@ -136,8 +138,8 @@ function appendProjects(t: SidebarState, frag: DocumentFragment): void {
   if (t.offers.templates) body.append(exploreTemplatesRow());
   if (t.offers.allProjects) body.append(allProjectsRow());
   const listOpen = !t.collapsed.has("projects.list");
-  const list = appendPane(body, "projects.list", groupRow("projects.list", "My projects", listOpen, projectListActions(t.offers)), listOpen);
-  if (listOpen) list.append(...projectTreeNodes(t.projectList, t.expanded, t.offers));
+  const list = appendPane(body, "projects.list", groupRow("projects.list", "My projects", listOpen, projectListActions(t.offers, canJoin(t))), listOpen);
+  if (listOpen) list.append(...projectTreeNodes(t.projectList, t.expanded, t.offers, canJoin(t)));
 }
 
 export function render(t: SidebarState): void {

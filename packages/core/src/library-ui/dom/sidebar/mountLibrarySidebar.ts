@@ -1,6 +1,8 @@
 // Mounts the library sidebar: collapsible Library and Projects sections, driven by the host through the returned handle.
 import { PAPERS_DIR, parentDir, type FolderTreeNode } from "../../../library/index.js";
-import { showMenu, type MenuEntry } from "../../../ui/dom/index.js";
+import { runJoinProjectDialog } from "../../../collab/dom/index.js";
+import type { SharingHost } from "../../sharing/index.js";
+import { libraryHeadingMenu, projectContextMenu, showFolderMenu } from "./menus/index.js";
 import { libraryTags, libraryTree, type TreePaper } from "../../derive/index.js";
 import { tagQuery } from "../../searchQueries.js";
 import { onSidebarKey } from "./sidebarKeys.js";
@@ -23,6 +25,8 @@ export interface LibrarySidebarOptions {
   /** Absent → the sidebar has no Projects section. */
   projects?: SidebarProjectActions;
   dropTarget?: (row: HTMLElement, path: string) => void;
+  /** Absent → no sharing controls. The sidebar shows the ones the host offers. */
+  sharing?: SharingHost;
 }
 
 /** A paper as the sidebar needs it; `folder` is its tree path (`papers` for the root). */
@@ -78,6 +82,7 @@ function onClick(e: MouseEvent, t: SidebarState): void {
   if (action === "collapse") { t.expanded.clear(); t.saveExpanded([]); render(t); return; }
   if (action === "browse") { t.projects?.browseTemplates(); return; }
   if (action === "blank") { t.projects?.newBlank(); return; }
+  if (action === "join" && t.sharing) { void runJoinProjectDialog(t.sharing); return; }
   if (action === "add") { t.projects?.addExisting(); return; }
   if (action === "project-folder") { t.projects?.newFolder(""); return; }
   if (action === "project-refresh") { t.projects?.refresh(); return; }
@@ -93,61 +98,28 @@ function onClick(e: MouseEvent, t: SidebarState): void {
   activate(t, r);
 }
 
-/** The menus of a project folder and of the My projects heading; false when the row is neither. */
-function projectContextMenu(e: MouseEvent, r: HTMLElement | null, p: SidebarProjectActions, offers: ProjectOffers): boolean {
-  const folder = r?.dataset["projectFolder"];
-  const at = { x: e.clientX, y: e.clientY };
-  if (folder !== undefined) {
-    if (!offers.projectFolders) return false;
-    showMenu(at, [
-      { label: "New Subfolder…", icon: "folder-plus", onSelect: () => p.newFolder(folder) },
-      "separator",
-      { label: "Rename…", icon: "edit", onSelect: () => p.renameFolder(folder) },
-      { label: "Delete Folder", icon: "trash", danger: true, onSelect: () => p.deleteFolder(folder) },
-    ]);
-  } else if (r?.dataset["group"] === "projects.list") {
-    const entries: MenuEntry[] = [
-      ...(offers.newBlank ? [{ label: "New Blank Project…", icon: "new-file" as const, onSelect: () => p.newBlank() }] : []),
-      ...(offers.projectFolders ? [{ label: "New Folder…", icon: "new-folder" as const, onSelect: () => p.newFolder("") }] : []),
-      ...(offers.addExisting ? [{ label: "Add Existing Folder…", icon: "folder-open" as const, onSelect: () => p.addExisting() }] : []),
-      ...(offers.joinShared ? [{ label: "Join Shared Project…", icon: "link" as const, onSelect: () => p.joinShared() }] : []),
-      ...(offers.templates ? ["separator" as const, { label: "Explore Templates", icon: "layers" as const, onSelect: () => p.browseTemplates() }] : []),
-    ];
-    if (entries.length === 0) return false;
-    showMenu(at, entries);
-  } else return false;
-  e.preventDefault();
-  return true;
-}
-
 function onContextMenu(e: MouseEvent, t: SidebarState): void {
   const r = rowAt(e);
   const project = r?.dataset["project"];
   if (project) { e.preventDefault(); t.projects?.menu(project, { x: e.clientX, y: e.clientY }); return; }
-  if (t.projects && projectContextMenu(e, r, t.projects, t.offers)) return;
+  if (libraryHeadingMenu(e, r, t.sharing)) return;
+  if (t.projects && projectContextMenu(e, r, t.projects, t.offers, t.sharing)) return;
   if (r && onOpenProjectMenu(e, t, r)) return;
   const path = r?.dataset["path"];
   if (!r || !path) return;
   e.preventDefault();
   t.focused = rowKey(r);
   paintFocus(t);
-  const { shareFolder } = t.actions;
-  showMenu({ x: e.clientX, y: e.clientY }, [
-    { label: "Open", icon: "list", onSelect: () => activate(t, r) },
-    { label: "New Subfolder…", icon: "folder-plus", onSelect: () => t.actions.createFolder(path) },
-    "separator",
-    ...(shareFolder ? [{ label: "Share as Link…", icon: "link" as const, onSelect: () => shareFolder.call(t.actions, path) }, "separator" as const] : []),
-    { label: "Rename…", icon: "edit", hint: "F2", onSelect: () => t.actions.renameFolder(path) },
-    { label: "Delete Folder…", icon: "trash", danger: true, onSelect: () => t.actions.removeFolder(path) },
-  ]);
+  showFolderMenu({ x: e.clientX, y: e.clientY }, t.actions, t.sharing, path, () => activate(t, r));
 }
 
 export function mountLibrarySidebar(slot: HTMLElement, o: LibrarySidebarOptions): LibrarySidebar {
   const t: SidebarState = {
-    el: slot, actions: o.actions, expanded: new Set(o.expanded), saveExpanded: o.saveExpanded, dropTarget: o.dropTarget,
+    el: slot, actions: o.actions, expanded: new Set(o.expanded), saveExpanded: o.saveExpanded, dropTarget: o.dropTarget, sharing: o.sharing,
     collapsed: new Set(o.collapsed), saveCollapsed: o.saveCollapsed, projects: o.projects, projectList: [], offers: ALL_PROJECT_OFFERS, openProject: null, treeOpen: new Map(), treeInput: null,
     focused: null, selectedId: null, current: PAPERS_DIR, target: PAPERS_DIR, tree: null, tags: [], query: "",
   };
+  o.sharing?.onOffersChange(() => render(t));
   slot.classList.add("tree");
   slot.setAttribute("role", "tree");
   slot.setAttribute("aria-label", "Library");

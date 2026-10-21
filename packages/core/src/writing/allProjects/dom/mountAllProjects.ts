@@ -3,6 +3,7 @@
  * Host stylesheets: tokens.css, vscodeHost.css (VS Code), base.css, toast.css, library-ui.css, library-list.css, library-sidebar.css, library-detail.css, library-tabs.css, all-projects.css.
  */
 import { buildFrame } from "../../../library-ui/dom/index.js";
+import type { SharingHost } from "../../../library-ui/sharing/index.js";
 import type { PanePrefsPort } from "../../../library-ui/state/index.js";
 import { showMenu, toast, type MenuAnchor } from "../../../ui/dom/index.js";
 import { DEFAULT_PROJECT_VIEW, deriveProjectView, firstProjectSortDir, placeCounts, type ProjectSortKey, type ProjectViewState } from "../derive/index.js";
@@ -27,6 +28,8 @@ interface PageState {
 export interface AllProjectsChannel {
   transport: AllProjectsTransport;
   prefs: PanePrefsPort;
+  /** The host's sharing operations; the project menu offers sharing only when present. */
+  sharing?: SharingHost | undefined;
 }
 
 const NEW_ENTRIES: ReadonlyArray<{ kind: NewProjectKind; label: string; icon: "file" | "layers" | "folder-open" }> = [
@@ -65,6 +68,7 @@ interface RowHandlerDeps {
   rowById: (id: string) => ProjectRow | undefined;
   select: (id: string) => void;
   set: (view: Partial<ProjectViewState>) => void;
+  sharing: SharingHost | undefined;
 }
 
 function rowHandlers(d: RowHandlerDeps, tray: ProjectExpansion["handlers"]): ProjectListHandlers {
@@ -75,13 +79,13 @@ function rowHandlers(d: RowHandlerDeps, tray: ProjectExpansion["handlers"]): Pro
     onOpen: (id) => { const row = rowById(id); if (row && row.place !== "trash" && !row.broken) post({ type: "open", id }); },
     onMenu: (id, anchor: MenuAnchor | HTMLElement) => {
       const row = rowById(id);
-      if (row) showMenu(anchor, projectMenuEntries(row, { rows: s.rows, commands: s.commands, post }));
+      if (row) showMenu(anchor, projectMenuEntries(row, { rows: s.rows, commands: s.commands, post, sharing: d.sharing }));
     },
     onSort: (key: ProjectSortKey) => d.set({ sort: toggledSort(s.view.sort, key) }),
   };
 }
 
-export function mountAllProjects(root: HTMLElement, { transport, prefs }: AllProjectsChannel): void {
+export function mountAllProjects(root: HTMLElement, { transport, prefs, sharing }: AllProjectsChannel): void {
   const s: PageState = { view: DEFAULT_PROJECT_VIEW, rows: [], commands: [], newKinds: ["blank", "template", "folder"], selected: null };
   const post = transport.post.bind(transport);
   const frame = buildFrame(root, prefs, { withSidebar: false, withCitationMap: false });
@@ -100,7 +104,7 @@ export function mountAllProjects(root: HTMLElement, { transport, prefs }: AllPro
     onEmptyTrash: () => void emptyTrash(placeCounts(s.rows).trash, post),
     onLeaveSearch: () => list.focus(),
   });
-  const list = mountProjectList(frame.list, rowHandlers({ s, post, rowById, select, set }, expansion.handlers));
+  const list = mountProjectList(frame.list, rowHandlers({ s, post, rowById, select, set, sharing }, expansion.handlers));
   const selection = reportSelection(post);
 
   function render(): void {

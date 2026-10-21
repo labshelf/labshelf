@@ -1,11 +1,10 @@
-// Shows the sharing state of the active project's share in the status bar, with the invite and leave actions on click.
+// Shows the sharing state of the active project's share in the status bar, and opens its share dialog on click.
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { currentInvite, type ShareConnection } from "@labshelf/core";
-import { projectName, type CollabHost } from "../collabHost.js";
-import { copyInvite } from "./copyInvite.js";
-import { LEAVE_COMMAND } from "./leaveCommand.js";
+import type { ShareConnection } from "@labshelf/core";
+import { sharingWebviews } from "../../../sharing/index.js";
+import type { CollabHost } from "../collabHost.js";
 
 const MANAGE_COMMAND = "labshelf.collab.manage";
 const STATUS_COMMAND = "labshelf.collab.status";
@@ -45,21 +44,6 @@ function describe(share: ShareConnection): { text: string; tooltip: string } {
   return { text: `$(broadcast) Shared · ${online} online${relay.text}`, tooltip: `${online} collaborator${online === 1 ? "" : "s"} connected.${relay.tooltip}` };
 }
 
-async function manage(host: CollabHost): Promise<void> {
-  const share = currentShare(host);
-  if (!share) { return; }
-  const project = host.projects.list().find((entry) => entry.kind === "ready" && entry.folder === share.folder);
-  const name = project?.kind === "ready" ? projectName(project) : share.folder;
-  const copy = { label: "$(link) Copy Invite Link", description: name };
-  const leave = { label: "$(debug-disconnect) Stop Sharing on This Device", description: name };
-  const picked = await vscode.window.showQuickPick([copy, leave], { placeHolder: `Shared project "${name}"` });
-  if (picked === copy) {
-    await copyInvite(await currentInvite(host.ports, share), name);
-  } else if (picked === leave) {
-    await vscode.commands.executeCommand(LEAVE_COMMAND, share.folder);
-  }
-}
-
 export function registerShareStatusBar(context: vscode.ExtensionContext, host: CollabHost): void {
   const item = vscode.window.createStatusBarItem("labshelf.collab", vscode.StatusBarAlignment.Left, 49);
   item.name = "LabShelf Sharing";
@@ -69,14 +53,17 @@ export function registerShareStatusBar(context: vscode.ExtensionContext, host: C
     if (!share) { item.hide(); return; }
     const { text, tooltip } = describe(share);
     item.text = text;
-    item.tooltip = `${tooltip} Click to copy the invite link or stop sharing.`;
+    item.tooltip = `${tooltip} Click to manage the project's sharing.`;
     item.show();
   };
   context.subscriptions.push(
     item,
     host.shares.onDidChange(update),
     vscode.window.onDidChangeActiveTextEditor(update),
-    vscode.commands.registerCommand(MANAGE_COMMAND, () => manage(host)),
+    vscode.commands.registerCommand(MANAGE_COMMAND, async () => {
+      const share = currentShare(host);
+      if (share) { await sharingWebviews.open({ kind: "shareProject", projectId: share.folder }); }
+    }),
     // For scripts and end-to-end runs: the connected shares as plain data.
     vscode.commands.registerCommand(STATUS_COMMAND, () => host.shares.list().map((share) => ({
       shareId: share.shareId, folder: share.folder, status: share.session.status, peers: share.session.peers.length,

@@ -12,6 +12,8 @@ export interface SidebarProject {
   folder?: string;
   /** Archived or trashed: left out of the tree, listed only in the All projects tab. */
   hidden?: true;
+  /** The project carries a share id, so this device joined or shared it. */
+  shared?: true;
   /** Right-aligned text, like a folder's count. */
   count?: string;
   /** Multi-line `title` attribute. */
@@ -60,6 +62,7 @@ export function readyProjectItem(
     format: entry.settings.format,
     ...(entry.settings.folder ? { folder: entry.settings.folder } : {}),
     ...(entry.settings.archived || entry.settings.trashed ? { hidden: true as const } : {}),
+    ...(entry.settings.shared ? { shared: true as const } : {}),
     ...(counted && counted.open > 0 ? { count: String(counted.open) } : {}),
     tooltip: tooltip.join("\n"),
     kind: "ready",
