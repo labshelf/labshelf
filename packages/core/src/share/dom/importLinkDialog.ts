@@ -1,6 +1,8 @@
 // Imports the papers of a share link: asks for the link, shows progress, then offers the new folder.
 import { inputBox, progressDialog, showDialog, toast } from "../../ui/dom/index.js";
 import type { ImportLinkResult, SharingHost } from "../../library-ui/sharing/index.js";
+import { parseShareLink } from "../format/index.js";
+import { refusedShareLinkText } from "../workflow/index.js";
 import { infoDialog } from "./infoDialog.js";
 import { reportingFailure } from "./reportFailure.js";
 
@@ -9,7 +11,7 @@ export function runImportLinkDialog(host: SharingHost, link?: string): Promise<v
     const text = link ?? await inputBox({
       title: "Import Shared Link",
       prompt: "Paste a share link",
-      validate: (v) => (v.trim() === "" ? "Paste a share link" : null),
+      validate: linkProblem,
     });
     if (!text) return;
     const progress = progressDialog({ title: "Importing shared papers", message: "Importing shared papers…" });
@@ -32,4 +34,10 @@ export function runImportLinkDialog(host: SharingHost, link?: string): Promise<v
     });
     if (choice === "open") await host.openFolder(folder);
   });
+}
+
+function linkProblem(text: string): string | null {
+  if (text.trim() === "") return "Paste a share link";
+  const parsed = parseShareLink(text);
+  return parsed.ok ? null : refusedShareLinkText(parsed.error);
 }
