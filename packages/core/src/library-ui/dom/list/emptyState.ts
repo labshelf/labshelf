@@ -2,8 +2,8 @@
  * Renders what the list shows instead of rows: a loading state before the first snapshot, otherwise the empty state
  * that fits (nothing matches, the folder or the library is empty) with its way out.
  */
-import { el } from "../../../ui/dom/index.js";
-import { escapeHtml, icon } from "../../../ui/index.js";
+import { el, emptyState } from "../../../ui/dom/index.js";
+import { icon } from "../../../ui/index.js";
 
 export interface EmptyStateOptions {
   narrowed: boolean;
@@ -24,29 +24,17 @@ export function buildLoading(): HTMLElement {
 
 function matchText(o: EmptyStateOptions): string {
   const query = o.query.trim();
-  const scope = escapeHtml(o.folderLabel);
-  return `No papers match ${query ? `“${escapeHtml(query)}” ` : ""}in ${scope}`;
+  return `No papers match ${query ? `“${query}” ` : ""}in ${o.folderLabel}`;
 }
 
 function emptyText(o: EmptyStateOptions): string {
-  return o.libraryEmpty ? "Your library has no papers yet" : `No papers in ${escapeHtml(o.folderLabel)} yet`;
-}
-
-function narrowedState(o: EmptyStateOptions): string {
-  return `<div class="ls-empty-icon">${icon("search")}</div><div class="ls-empty-text">${matchText(o)}</div><button class="ls-btn" type="button">Clear filters</button>`;
+  return o.libraryEmpty ? "Your library has no papers yet" : `No papers in ${o.folderLabel} yet`;
 }
 
 export function buildEmptyState(o: EmptyStateOptions): HTMLElement {
-  const box = el("div", { class: "ls-empty" });
-  if (o.narrowed) {
-    box.innerHTML = narrowedState(o);
-    box.querySelector("button")!.addEventListener("click", o.onClearFilters);
-    return box;
-  }
-  box.innerHTML = `<div class="ls-empty-icon">${icon("book")}</div>` +
-    `<div class="ls-empty-text">${emptyText(o)}</div>` +
-    (o.onAdd ? `<button class="ls-btn ls-btn-primary" type="button">${icon("plus")}<span>Add a paper</span></button>` : "") +
-    `<div class="ls-empty-hint">${escapeHtml(o.hint)}</div>`;
-  if (o.onAdd) box.querySelector("button")!.addEventListener("click", o.onAdd);
-  return box;
+  if (o.narrowed) return emptyState({ icon: "search", text: matchText(o), action: { label: "Clear filters", onClick: o.onClearFilters } });
+  return emptyState({
+    icon: "book", text: emptyText(o), hint: o.hint,
+    ...(o.onAdd && { action: { label: "Add a paper", icon: "plus", primary: true, onClick: o.onAdd } }),
+  });
 }
