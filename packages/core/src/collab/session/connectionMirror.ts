@@ -10,14 +10,21 @@ export interface ConnectionMirror {
   close(): Promise<void>;
 }
 
-/** `busy` while another mirror owns the folder; the connection then runs without one. */
-export type MirrorStart = { kind: "running"; mirror: ConnectionMirror } | { kind: "busy"; holder: LeaseHolder | "tab" };
+/**
+ * `busy` while another mirror owns the folder; the connection then runs without one.
+ * `running` resolves with the mirror once the folder frees, or undefined when the connection closes first.
+ */
+export type MirrorStart =
+  | { kind: "running"; mirror: ConnectionMirror }
+  | { kind: "busy"; holder: LeaseHolder | "tab"; running?: Promise<ConnectionMirror | undefined> };
 
 export interface MirrorInput {
   folder: string;
   session: ShareSession;
   blobs: BlobExchange;
   store: CollabStore;
+  /** Aborts when the connection closes; a mirror still waiting for the folder then gives up. */
+  signal: AbortSignal;
   /** Called once when the mirror stops by itself; the share docs keep every edit, only the disk stops following them. */
   onStopped(reason: string): void;
 }

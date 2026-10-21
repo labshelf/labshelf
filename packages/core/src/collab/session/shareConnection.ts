@@ -9,7 +9,7 @@ import { openCollabStore, type CollabStateStorage, type CollabStore } from "../s
 import {
   attachAwareness, attachBlobs, createShareSession, type BlobExchange, type PresenceHandle, type SessionStatus, type ShareSession,
 } from "../sync/index.js";
-import type { ConnectionMirror, MirrorFactory, MirrorStart, MirrorState } from "./connectionMirror.js";
+import type { ConnectionMirror, MirrorFactory, MirrorInput, MirrorStart, MirrorState } from "./connectionMirror.js";
 import { placeSharedProject, type ShareProjects, type ShareStart } from "./placeSharedProject.js";
 import { followShareRelays, type RelayNetwork, type ShareRelays } from "./shareRelays.js";
 import { watchStorageHealth, type StorageHealth } from "./storageHealth.js";
@@ -133,7 +133,7 @@ async function connectParts(options: ShareConnectionOptions, start: ShareStart, 
     ...(scheduler ? { scheduler } : {}),
   });
   const placed = await placeSharedProject(options.projects, shareId, session, start);
-  const mirrors = trackMirror(options.startMirror, { folder: placed.folder, session, blobs, store }, parts);
+  const mirrors = trackMirror(options.startMirror, { folder: placed.folder, session, blobs, store }, parts, logger);
   await mirrors.start();
   // A joiner opens the project right after this returns, so the files already on hand must be on disk first.
   if (start.mode === "join") { await parts.mirror?.idle(); }
@@ -149,6 +149,7 @@ async function connectParts(options: ShareConnectionOptions, start: ShareStart, 
     onStateChange: (listener) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
     close: () => (closing ??= (async () => {
       stops.forEach((stop) => stop());
+      mirrors.stop();
       listeners.clear();
       await closeParts(parts, logger, shareId);
       await logger.log("INFO", LOG_MODULE, "Closed a shared project connection", { shareId });
@@ -156,23 +157,32 @@ async function connectParts(options: ShareConnectionOptions, start: ShareStart, 
   };
 }
 
-/** Starts the mirror into `parts.mirror` and keeps what the connection reports of it. */
-function trackMirror(startMirror: MirrorFactory, input: Omit<Parameters<MirrorFactory>[0], "onStopped">, parts: Parts) {
+/** Starts the mirror into `parts.mirror`, also once a busy folder frees, and keeps what the connection reports of it. */
+function trackMirror(startMirror: MirrorFactory, input: Omit<MirrorInput, "onStopped" | "signal">, parts: Parts, logger: ILogger) {
   let state: MirrorState = { kind: "stopped", reason: "not started" };
   const listeners = new Set<() => void>();
+  const closed = new AbortController();
   const set = (next: MirrorState): void => { state = next; listeners.forEach((listener) => listener()); };
-  const apply = (result: MirrorStart): void => {
-    if (result.kind === "running") {
-      parts.mirror = result.mirror;
-      set({ kind: "running" });
-    } else {
-      set({ kind: "busy", holder: result.holder });
+  const run = (mirror: ConnectionMirror): void => {
+    if (closed.signal.aborted) {
+      void mirror.close().catch((error: unknown) => logger.error(LOG_MODULE, error, { folder: input.folder, action: "close late mirror" }));
+      return;
     }
+    parts.mirror = mirror;
+    set({ kind: "running" });
+  };
+  const apply = (result: MirrorStart): void => {
+    if (result.kind === "running") { run(result.mirror); return; }
+    set({ kind: "busy", holder: result.holder });
+    result.running?.then((mirror) => { if (mirror) { run(mirror); } }, (error: unknown) => {
+      void logger.error(LOG_MODULE, error, { folder: input.folder, action: "start mirror after the folder freed" });
+    });
   };
   const onStopped = (reason: string): void => set({ kind: "stopped", reason });
   return {
     state: () => state,
     onChange: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
-    start: async () => apply(await startMirror({ ...input, onStopped })),
+    start: async () => apply(await startMirror({ ...input, onStopped, signal: closed.signal })),
+    stop: () => closed.abort(),
   };
 }
