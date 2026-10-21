@@ -1,7 +1,4 @@
-/**
- * Declares the messages the library UI and its host exchange. Every payload is plain JSON so the same union crosses a
- * webview postMessage boundary or an in-page loopback unchanged.
- */
+// Declares JSON messages exchanged between the library UI and its host.
 import type { PaperStatus } from "../../model/index.js";
 import type {
   AddSource, CitationMapState, IfNoPdf, LibraryUiSnapshot, PaperDetails, PaperFilesState, PdfAccess, PdfMiss, SimilarPaper, TextLayerJobView,
@@ -40,6 +37,7 @@ export type UiToHost =
   | { type: "paper.setStatus"; ids: string[]; status: PaperStatus }
   | { type: "paper.setTags"; ids: string[]; add: string[]; remove: string[] }
   | { type: "paper.setNote"; id: string; note: string }
+  | { type: "paper.addToSpace"; ids: string[] }
   | { type: "paper.move"; ids: string[]; target: string }
   | { type: "paper.remove"; ids: string[] }
   | { type: "paper.add"; folder: string }

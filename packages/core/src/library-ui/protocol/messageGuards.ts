@@ -1,7 +1,4 @@
-/**
- * Validates what a host receives from the library UI when the UI runs in another context (a webview): every message
- * is untrusted until its type and every field check out, and folder paths must stay inside "papers".
- */
+// Validates untrusted library UI messages before a host handles them.
 import { PAPERS_DIR } from "../../library/index.js";
 import { PAPER_STATUSES, type PaperStatus } from "../../model/index.js";
 import type { UiToHost } from "./messages.js";
@@ -66,6 +63,7 @@ const SHAPES: Record<UiToHost["type"], Record<string, FieldCheck>> = {
   "paper.setStatus": { ids: isIds, status: isStatus },
   "paper.setTags": { ids: isIds, add: isTexts, remove: isTexts },
   "paper.setNote": { id: isId, note: isText },
+  "paper.addToSpace": { ids: (v) => isIds(v) && v.length > 0 },
   "paper.move": { ids: isIds, target: isLibraryPath },
   "paper.remove": { ids: isIds },
   "paper.add": { folder: isLibraryPath },

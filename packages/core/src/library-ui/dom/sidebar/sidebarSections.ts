@@ -3,7 +3,7 @@ import { el } from "../../../ui/dom/index.js";
 import { escapeHtml, icon } from "../../../ui/index.js";
 
 /** Ids of the sections the sidebar can collapse. */
-export type SectionId = "library" | "projects";
+export type SectionId = "library" | "projects" | "spaces";
 
 /** Ids of the groups the Library section can collapse; they share the collapsed set with the sections. */
 export type GroupId = "library.folders" | "library.tags" | "projects.list" | `project.${string}`;

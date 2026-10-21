@@ -1,4 +1,5 @@
 /**
+ * Tests paper actions offered by host capabilities.
  * @jest-environment jsdom
  */
 import { ALL_CAPABILITIES, menuLabels, mountForTest, paper } from "../mountHarness";
@@ -54,6 +55,9 @@ describe("paper menu", () => {
     expect(t.sent).toContainEqual({ type: "paper.setStatus", ids: ["a", "b"], status: "reading" });
   });
 
+});
+
+describe("paper menu actions", () => {
   it("asks for tags in a prompt and adds them to the whole selection", async () => {
     const t = mountForTest();
     t.snapshot(library);
@@ -87,5 +91,27 @@ describe("paper menu", () => {
     t.key("Escape");
     t.key("F10", { shiftKey: true });
     expect(document.querySelector(".ls-menu")).not.toBeNull();
+  });
+});
+
+
+describe("Add to Space", () => {
+  it.each([["a"], ["a", "b"]])("sends the selected papers %j to the host picker", (...ids: string[]) => {
+    const capabilities = { ...ALL_CAPABILITIES, spaces: true };
+    const t = mountForTest({}, capabilities);
+    t.snapshot(library);
+    t.lib.store.set({ selected: new Set(ids), anchor: "a", cursor: "a" });
+    rightClick(t, "a");
+    expect(menuLabels()).toContain("Add to Space…");
+    item("Add to Space…").click();
+    expect(t.sent).toContainEqual({ type: "paper.addToSpace", ids });
+  });
+
+  it("hides the entry when the capability is disabled", () => {
+    const capabilities = { ...ALL_CAPABILITIES, spaces: false };
+    const t = mountForTest({}, capabilities);
+    t.snapshot(library);
+    rightClick(t, "a");
+    expect(menuLabels()).not.toContain("Add to Space…");
   });
 });

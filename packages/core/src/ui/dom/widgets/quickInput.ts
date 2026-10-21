@@ -21,9 +21,11 @@ export type QuickPickEntry<T> = QuickPickItem<T> | QuickPickSeparator;
 export interface QuickPickOptions {
   title?: string;
   placeholder?: string;
+  signal?: AbortSignal;
 }
 
 export interface InputBoxOptions {
+  signal?: AbortSignal;
   title?: string;
   prompt?: string;
   value?: string;
@@ -58,67 +60,69 @@ function filterEntries<T>(entries: QuickPickEntry<T>[], toks: string[]): QuickPi
   return kept;
 }
 
+function renderPickRows<T>(list: HTMLElement, rows: QuickPickEntry<T>[], active: number, tokens: string[], hover: (i: number) => void, pick: (i: number) => void): void {
+  list.replaceChildren();
+  let index = 0;
+  for (const entry of rows) {
+    if ("kind" in entry) { list.append(el("div", { class: "ls-quick-sep", role: "presentation", text: entry.label })); continue; }
+    const i = index++;
+    const row = el("div", {
+      class: `ls-quick-item${i === active ? " active" : ""}`, role: "option",
+      html: `${entry.icon ? icon(entry.icon) : ""}<span class="label">${highlight(entry.label, tokens)}</span>${entry.description ? `<span class="desc">${highlight(entry.description, tokens)}</span>` : ""}`,
+    });
+    row.addEventListener("mousemove", () => hover(i));
+    row.addEventListener("click", () => pick(i));
+    list.append(row);
+  }
+  if (!index) list.append(el("div", { class: "ls-quick-empty", text: "No matching results" }));
+}
+
 /** Shows a filterable list; resolves with the chosen item's value. */
 export function quickPick<T>(entries: QuickPickEntry<T>[], opts: QuickPickOptions = {}): Promise<T | undefined> {
+  if (opts.signal?.aborted) return Promise.resolve(undefined);
   return new Promise((resolve) => {
     const input = el("input", { class: "ls-input", type: "text", placeholder: opts.placeholder ?? "", spellcheck: "false", autocomplete: "off" });
     const list = el("div", { class: "ls-quick-list", role: "listbox" });
     const box = quickBox(opts.title, input, list);
-    const { close } = mountOverlay(box, () => resolve(undefined));
-
+    const { close } = mountOverlay(box, () => resolve(undefined), opts.signal ? { signal: opts.signal } : {});
     let visible: QuickPickItem<T>[] = [];
     let active = 0;
-
-    const render = (): void => {
-      const toks = input.value.toLowerCase().split(" ").filter(Boolean);
-      const rows = filterEntries(entries, toks);
-      visible = rows.filter((entry): entry is QuickPickItem<T> => !("kind" in entry));
-      active = Math.min(active, Math.max(0, visible.length - 1));
-      list.innerHTML = visible.length === 0 ? `<div class="ls-quick-empty">No matching results</div>` : "";
-      let index = 0;
-      for (const entry of rows) {
-        if ("kind" in entry) { list.append(el("div", { class: "ls-quick-sep", role: "presentation", text: entry.label })); continue; }
-        const i = index++;
-        const row = el("div", {
-          class: `ls-quick-item${i === active ? " active" : ""}`,
-          role: "option",
-          html: `${entry.icon ? icon(entry.icon) : ""}<span class="label">${highlight(entry.label, toks)}</span>${entry.description ? `<span class="desc">${highlight(entry.description, toks)}</span>` : ""}`,
-        });
-        row.addEventListener("mousemove", () => { if (active !== i) { active = i; paintActive(); } });
-        row.addEventListener("click", () => pick(i));
-        list.append(row);
-      }
-    };
-    const paintActive = (): void => {
-      list.querySelectorAll(".ls-quick-item").forEach((r, i) => r.classList.toggle("active", i === active));
+    const hover = (i: number): void => {
+      if (active === i) return;
+      active = i;
+      list.querySelectorAll(".ls-quick-item").forEach((r, n) => r.classList.toggle("active", n === active));
       list.querySelector(".ls-quick-item.active")?.scrollIntoView({ block: "nearest" });
     };
     const pick = (i: number): void => {
+      if (opts.signal?.aborted) return;
       const it = visible[i];
-      if (!it) return;
-      close();
-      resolve(it.value);
+      if (it) { close(); resolve(it.value); }
     };
-
+    const render = (): void => {
+      const rows = filterEntries(entries, input.value.toLowerCase().split(" ").filter(Boolean));
+      visible = rows.filter((entry): entry is QuickPickItem<T> => !("kind" in entry));
+      active = Math.min(active, Math.max(0, visible.length - 1));
+      renderPickRows(list, rows, active, input.value.toLowerCase().split(" ").filter(Boolean), hover, pick);
+    };
     input.addEventListener("input", render);
     input.addEventListener("keydown", (e) => {
-      if (e.key === "ArrowDown") { e.preventDefault(); active = Math.min(visible.length - 1, active + 1); paintActive(); }
-      else if (e.key === "ArrowUp") { e.preventDefault(); active = Math.max(0, active - 1); paintActive(); }
+      if (e.key === "ArrowDown") { e.preventDefault(); hover(Math.min(visible.length - 1, active + 1)); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); hover(Math.max(0, active - 1)); }
       else if (e.key === "Enter") { e.preventDefault(); pick(active); }
     });
-    render();
-    input.focus();
+    render(); input.focus();
   });
 }
 
 /** Shows a single-line input; resolves with the trimmed value or undefined when cancelled. */
 export function inputBox(opts: InputBoxOptions = {}): Promise<string | undefined> {
+  if (opts.signal?.aborted) return Promise.resolve(undefined);
   return new Promise((resolve) => {
     const input = el("input", { class: "ls-input", type: "text", value: opts.value ?? "", placeholder: opts.placeholder ?? "", spellcheck: "false", autocomplete: "off" });
     const msg = el("div", { class: "ls-quick-msg", id: `ls-quick-msg-${++quickCount}`, text: opts.prompt ?? "" });
     const box = quickBox(opts.title, input, msg);
     box.setAttribute("aria-describedby", msg.id);
-    const { close } = mountOverlay(box, () => resolve(undefined));
+    const { close } = mountOverlay(box, () => resolve(undefined), opts.signal ? { signal: opts.signal } : {});
 
     const validate = (): string | null => {
       const error = opts.validate?.(input.value) ?? null;
@@ -129,7 +133,7 @@ export function inputBox(opts: InputBoxOptions = {}): Promise<string | undefined
     };
     input.addEventListener("input", validate);
     input.addEventListener("keydown", (e) => {
-      if (e.key !== "Enter") return;
+      if (e.key !== "Enter" || opts.signal?.aborted) return;
       e.preventDefault();
       if (validate()) return;
       close();

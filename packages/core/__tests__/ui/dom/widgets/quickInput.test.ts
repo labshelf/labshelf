@@ -75,3 +75,39 @@ describe("quick input accessible name", () => {
     expect(textOf("aria-describedby")).toBe("Paste a share link");
   });
 });
+
+describe('quick input cancellation', () => {
+  const openers = [
+    (signal: AbortSignal) => inputBox({ signal }),
+    (signal: AbortSignal) => quickPick(entries, { signal }),
+  ];
+  test.each(openers)('dismisses on abort and releases overlay listeners', async open => {
+    const controller = new AbortController();
+    const removeAbort = jest.spyOn(controller.signal, 'removeEventListener');
+    const removeKey = jest.spyOn(document, 'removeEventListener');
+    const result = open(controller.signal);
+    expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+    controller.abort();
+    expect(await result).toBeUndefined();
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.querySelector('.ls-scrim')).toBeNull();
+    expect(removeAbort).toHaveBeenCalledWith('abort', expect.any(Function));
+    expect(removeKey).toHaveBeenCalledWith('keydown', expect.any(Function), true);
+    removeAbort.mockRestore(); removeKey.mockRestore();
+  });
+  test.each(openers)('does not mount for an already aborted signal', async open => {
+    const controller = new AbortController(); controller.abort();
+    expect(await open(controller.signal)).toBeUndefined();
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+  });
+  test('releases its abort listener when a value is accepted', async () => {
+    const controller = new AbortController();
+    const removeAbort = jest.spyOn(controller.signal, 'removeEventListener');
+    const result = inputBox({ signal: controller.signal });
+    input().value = 'Keep'; key('Enter');
+    expect(await result).toBe('Keep');
+    expect(removeAbort).toHaveBeenCalledWith('abort', expect.any(Function));
+    controller.abort();
+    removeAbort.mockRestore();
+  });
+});

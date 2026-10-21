@@ -1,0 +1,33 @@
+/* Styles the Overview cards, reference rows and dates timeline. */
+.ov-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--ls-space-7); align-items: start; }
+.ov-col { display: flex; flex-direction: column; gap: var(--ls-space-7); min-width: 0; }
+.ov-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.ov-row { display: flex; align-items: center; gap: var(--ls-space-5); width: 100%; padding: var(--ls-space-3) var(--ls-space-3); border: 0; border-radius: var(--ls-radius);
+  background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.ov-row:hover { background: var(--ls-list-hover); }
+.ov-main { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.ov-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ov-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--ls-text-sm); color: var(--ls-desc); }
+.mem-row { display: flex; align-items: center; gap: var(--ls-space-5); padding: var(--ls-space-3); }
+
+.tl-list { list-style: none; margin: 0; padding: 0; }
+.tl-row { display: grid; grid-template-columns: calc(var(--ls-space-7) * 5) minmax(0, 1fr); gap: var(--ls-space-6); align-items: baseline; padding: var(--ls-space-3) 0;
+  border-top: 1px solid var(--ls-row-rule); }
+.tl-row:first-child { border-top: 0; }
+.tl-row.past { opacity: .7; }
+.tl-day { display: flex; flex-direction: column; font: var(--ls-text-md) var(--ls-mono); font-variant-numeric: tabular-nums; }
+.tl-when { font: var(--ls-text-xs) var(--ls-font); color: var(--ls-desc); }
+.tl-when.late { color: var(--ls-mark-err); }
+.tl-item { display: flex; align-items: center; gap: var(--ls-space-4); cursor: pointer; }
+.tl-done { text-decoration: line-through; color: var(--ls-desc); }
+.tl-today { display: flex; align-items: center; gap: var(--ls-space-4); padding: var(--ls-space-2) 0; color: var(--ls-link); font-size: var(--ls-text-sm); font-weight: 600; }
+.tl-today::after { content: ""; flex: 1; border-top: 1px solid var(--ls-link); }
+.tl-item { flex-wrap: wrap; }
+.tl-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.ov-name.ls-btn { padding: 0; justify-content: flex-start; text-align: left; background: none; color: var(--ls-fg); font: inherit; }
+.ov-name.ls-btn:hover { color: var(--ls-link); }
+.ov-row svg { width: var(--ls-space-6); height: var(--ls-space-6); }
+@media (max-width: 1000px) { .ov-grid { grid-template-columns: minmax(0, 1fr); } }
+
+.tl-progress { font-size: var(--ls-text-sm); color: var(--ls-desc); }
+.tl-deadline svg { width: var(--ls-space-6); height: var(--ls-space-6); color: var(--ls-mark-err); }
