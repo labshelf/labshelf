@@ -4,6 +4,7 @@ import {
   type CloudflareAccount, type ILogger, type RelayAccount, type RelayAccountDeps,
 } from "@labshelf/core";
 import { openBrowserRelayAccountStore } from "./browserRelayAccountStore";
+import { requestLoopbackAccess } from "./requestLoopbackAccess";
 import { signInInTab } from "./signInInTab";
 
 const LIFECYCLE_LOCK = "labshelf:relay-account:lifecycle";
@@ -52,25 +53,31 @@ export function createBrowserRelayAccount(options: BrowserRelayAccountOptions): 
     store, fetch, logger, clock: systemRelayClock,
     signInAgain: async () => {
       if (!(await options.confirmSignInAgain())) { return false; }
+      await requestLoopbackAccess();
       await signInInTab({ store, fetch, logger });
       return true;
     },
   };
+  const connectOnce = async (): Promise<string | undefined> => {
+    const existing = await store.get();
+    if (existing) { return existing.relayUrl; }
+    return connectRelayAccount({
+      ...deps,
+      // The browser has no pasted-token path: a sign-in tab always reaches the registered loopback redirect.
+      chooseCredential: async () => { await signInInTab({ store, fetch, logger }); return { kind: "oauth" }; },
+      chooseAccount: options.chooseAccount,
+      offerToShares: options.offerToShares,
+      script: relayWorkerScript(),
+    });
+  };
   return {
     status: () => store.status(),
     account: () => store.get(),
-    connect: () => exclusively(async () => {
-      const existing = await store.get();
-      if (existing) { return existing.relayUrl; }
-      return connectRelayAccount({
-        ...deps,
-        // The browser has no pasted-token path: a sign-in tab always reaches the registered loopback redirect.
-        chooseCredential: async () => { await signInInTab({ store, fetch, logger }); return { kind: "oauth" }; },
-        chooseAccount: options.chooseAccount,
-        offerToShares: options.offerToShares,
-        script: relayWorkerScript(),
-      });
-    }),
+    // INVARIANT: callers reach connect from the owner's dialog click through microtasks only, so the request keeps the gesture.
+    connect: async () => {
+      await requestLoopbackAccess();
+      return exclusively(connectOnce);
+    },
     disconnect: () => exclusively(async () => {
       const disconnected = await disconnectRelayAccount({ ...deps, withdrawFromShares: options.withdrawFromShares });
       return disconnected && { relayUrl: disconnected.relayUrl };

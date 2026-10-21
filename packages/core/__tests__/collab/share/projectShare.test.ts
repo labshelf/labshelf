@@ -14,13 +14,20 @@ function sharedIndex(settings: Record<string, unknown>): Y.Doc {
 }
 
 describe("startShare", () => {
-  it("writes the share id into labshelf.yaml, keeping the rest, and marks the index as a project's", async () => {
+  it("writes the share id into labshelf.yaml, keeping the rest and the title, and marks the index as a project's", async () => {
     const context = memoryCatalog();
-    await writeTree(context.fs, "/p", { "labshelf.yaml": "# note\nid: p\nformat: typst\n" });
+    await writeTree(context.fs, "/p", { "labshelf.yaml": "# note\nid: p\nformat: typst\ntitle: Paper\n" });
     const index = new Y.Doc();
     await startShare(context, { folder: "/p", shareId: SHARE_ID, index });
-    expect(readText(context.fs, "/p/labshelf.yaml")).toBe(`# note\nid: p\nformat: typst\nshared: ${SHARE_ID}\n`);
+    expect(readText(context.fs, "/p/labshelf.yaml")).toBe(`# note\nid: p\nformat: typst\ntitle: Paper\nshared: ${SHARE_ID}\n`);
     expect(readIndexKind(index)).toEqual({ ok: true, kind: "project" });
+  });
+
+  it("writes the id as the title of a project without one, so a joiner's copy takes the owner's name", async () => {
+    const context = memoryCatalog();
+    await writeTree(context.fs, "/p", { "labshelf.yaml": "id: deep-survey\nformat: typst\n" });
+    await startShare(context, { folder: "/p", shareId: SHARE_ID, index: new Y.Doc() });
+    expect(readText(context.fs, "/p/labshelf.yaml")).toBe(`id: deep-survey\nformat: typst\ntitle: deep-survey\nshared: ${SHARE_ID}\n`);
   });
 });
 

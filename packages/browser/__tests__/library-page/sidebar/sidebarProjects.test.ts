@@ -28,9 +28,11 @@ async function mount(rows: BrowserProjectRow[] = [ready, broken]) {
   const slot = document.createElement("div");
   document.body.replaceChildren(slot);
   const openTab = jest.fn();
-  mountSidebarTree(ui, slot, prefs, { post: jest.fn() }, { projects: createSidebarProjects(source, openTab, session, sharing), manageRelay: jest.fn() }, openTab, true, sharing);
+  let projectsChanged = (): void => undefined;
+  const onProjectsChange = (listener: () => void): void => { projectsChanged = listener; };
+  mountSidebarTree(ui, slot, prefs, { post: jest.fn() }, { projects: createSidebarProjects(source, openTab, session, sharing, onProjectsChange), manageRelay: jest.fn() }, openTab, true, sharing);
   await new Promise((resolve) => setTimeout(resolve, 0));
-  return { slot, source, openTab, session };
+  return { slot, source, openTab, session, projectsChanged: () => projectsChanged() };
 }
 
 const projectRow = (slot: HTMLElement, id: string): HTMLElement => slot.querySelector<HTMLElement>(`[data-project="${id}"]`)!;
@@ -84,5 +86,14 @@ describe("sidebar projects glue", () => {
     const { slot, source } = await mount();
     slot.querySelector<HTMLElement>('[data-tree="project-refresh"]')!.click();
     expect(source.rows).toHaveBeenCalledTimes(2);
+  });
+
+  it("lists the projects again when a share, join or leave changes them", async () => {
+    const { slot, source, projectsChanged } = await mount();
+    source.rows.mockResolvedValueOnce([{ ...ready, name: "Thesis (shared)", shared: true }, broken]);
+    projectsChanged();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(source.rows).toHaveBeenCalledTimes(2);
+    expect(projectRow(slot, "projects/thesis").textContent).toContain("Thesis (shared)");
   });
 });

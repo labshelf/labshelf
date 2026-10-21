@@ -66,7 +66,7 @@ export function mountProjectWiring({ workspace, fs, logger, openTab, relay, rela
     projectSharing: { ports: sharing.ports, idOf: (entry) => entry.folder, open: async (entry) => { await session.openProject(entry); } },
     sidebarProjects: () => {
       const source = createProjectsSource({ projects: createBrowserProjects({ fileSystem: fs, logger }), fileSystem: fs, logger, showPdf: showPdfInTab });
-      return createSidebarProjects(source, openTab, session, host);
+      return createSidebarProjects(source, openTab, session, host, sharing.onProjectsChange);
     },
     start: (invite) => {
       void resumeRestoredProject(workspace, session, fs, logger);

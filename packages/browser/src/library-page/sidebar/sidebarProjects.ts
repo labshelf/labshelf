@@ -17,7 +17,7 @@ export type SidebarSession = Pick<ProjectSession, "current" | "openProject" | "c
 
 export interface SidebarProjects {
   actions: SidebarProjectActions;
-  /** Hands the sidebar to the session, hides the offers the browser cannot run yet and lists the projects; they are listed again whenever the page comes back into view. */
+  /** Hands the sidebar to the session, hides the offers the browser cannot run yet and lists the projects; they are listed again whenever the project list changes. */
   attach(sidebar: LibrarySidebar): void;
 }
 
@@ -29,7 +29,10 @@ function menuEntries(source: ProjectsSource, sharing: SharingHost, row: BrowserP
   return open.length > 0 && shared.length > 0 ? [...open, "separator", ...shared] : [...open, ...shared];
 }
 
-export function createSidebarProjects(source: ProjectsSource, openTab: (kind: TabKindName) => void, session: SidebarSession, sharing: SharingHost): SidebarProjects {
+export function createSidebarProjects(
+  source: ProjectsSource, openTab: (kind: TabKindName) => void, session: SidebarSession, sharing: SharingHost,
+  onProjectsChange: (listener: () => void) => void,
+): SidebarProjects {
   let rows: BrowserProjectRow[] = [];
   let sidebar: LibrarySidebar | undefined;
   const row = (id: string): BrowserProjectRow | undefined => rows.find((r) => r.id === id);
@@ -65,7 +68,8 @@ export function createSidebarProjects(source: ProjectsSource, openTab: (kind: Ta
         collapseLibrary: () => target.setSectionCollapsed("library", true),
       });
       target.setProjectOffers(BROWSER_OFFERS);
-      document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") load(); });
+      // The page's sharing re-reads the project list after a share, join or leave and when the page comes back into view.
+      onProjectsChange(load);
       load();
     },
   };

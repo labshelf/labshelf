@@ -19,12 +19,22 @@ function mirrorProblem(mirror: ShareConnectionState["mirror"]): string | undefin
   return `${who} mirrors this project's files; edits here are not written to disk.`;
 }
 
+/** The name a project goes by in messages. */
+export function projectName(entry: ProjectEntry): string {
+  return entry.kind === "ready" ? entry.settings.title ?? entry.settings.id : entry.folder.split(/[\\/]/).filter(Boolean).pop() ?? entry.folder;
+}
+
+/** What keeps a connected share's edits from this device's storage or disk; undefined when nothing does. */
+export function connectionProblem(connection: ShareConnection): string | undefined {
+  const state = connection.state();
+  return state.persistenceFailure ?? mirrorProblem(state.mirror);
+}
+
 export function projectShareStatus(entry: ProjectEntry, connection: ShareConnection | undefined): ProjectShareStatus {
   const reason = ineligibleReason(entry);
   if (reason !== undefined) { return { kind: "ineligible", reason }; }
   if (entry.kind !== "ready" || entry.settings.shared === undefined) { return { kind: "notShared" }; }
   if (!connection) { return { kind: "shared", connected: false }; }
-  const state = connection.state();
-  const problem = state.persistenceFailure ?? mirrorProblem(state.mirror);
-  return { kind: "shared", connected: state.status === "open", ...(problem === undefined ? {} : { problem }) };
+  const problem = connectionProblem(connection);
+  return { kind: "shared", connected: connection.state().status === "open", ...(problem === undefined ? {} : { problem }) };
 }

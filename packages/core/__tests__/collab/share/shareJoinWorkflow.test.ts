@@ -106,6 +106,18 @@ describe("sharing and joining a project", () => {
     expect(ada.read(`${FOLDER}/labshelf.yaml`)).toBe("id: thesis\ntitle: Thesis\nformat: typst\nmain: main.typ\n");
   }, 60_000);
 
+  it("leaves the labshelf.yaml of an untitled project byte-identical when a new share rolls back", async () => {
+    const net = new Network();
+    const ada = workflowDevice(net, "ada");
+    await writeProject(ada);
+    const untitled = "id: thesis\n# kept\nformat: typst\nmain: main.typ\n";
+    await ada.catalog.fs.writeText(`${FOLDER}/labshelf.yaml`, untitled);
+    ada.ports.fetch = async () => { throw new TypeError("fetch failed"); };
+
+    await expect(net.drive(shareProject(ada.ports, { folder: FOLDER, shared: undefined, signal: never() }))).rejects.toThrow(/relay/);
+    expect(ada.read(`${FOLDER}/labshelf.yaml`)).toBe(untitled);
+  }, 60_000);
+
   it("publishes nothing when no relay gets connected", async () => {
     const net = new Network();
     const ada = workflowDevice(net, "ada");

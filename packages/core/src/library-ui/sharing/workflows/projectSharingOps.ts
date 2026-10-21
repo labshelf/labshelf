@@ -5,7 +5,7 @@ import {
 import type { ILogger } from "../../../ports/index.js";
 import type { ProjectEntry } from "../../../writing/project/index.js";
 import type { JoinProjectResult, SharingHost, ShareProjectResult } from "../sharingHost.js";
-import { ineligibleReason, projectShareStatus } from "./projectShareStatus.js";
+import { ineligibleReason, projectName, projectShareStatus } from "./projectShareStatus.js";
 
 const LOG_MODULE = "library-ui.sharing";
 const UNKNOWN = "This project is not in the open library.";
@@ -23,10 +23,6 @@ export interface ProjectSharingDeps {
 export type ProjectSharingOps = Pick<
   SharingHost, "projects" | "projectStatus" | "shareProject" | "inviteLink" | "joinProject" | "leaveProject" | "openProject"
 >;
-
-function nameOf(entry: ProjectEntry): string {
-  return entry.kind === "ready" ? entry.settings.title ?? entry.settings.id : entry.folder.split(/[\\/]/).filter(Boolean).pop() ?? entry.folder;
-}
 
 async function shareEntry(ports: ShareWorkflowPorts, entry: ProjectEntry, signal: AbortSignal): Promise<ShareProjectResult> {
   const reason = ineligibleReason(entry);
@@ -46,7 +42,7 @@ async function joinProject({ ports, idOf }: ProjectSharingDeps, logger: ILogger,
     // INVARIANT: the join workflow reloads the catalog, so the joined folder is listed once it resolves.
     const entry = ports.projects.list().find((candidate) => candidate.folder === outcome.folder);
     if (!entry) { throw new Error("LabShelf joined the share but cannot find its project in the open library."); }
-    return { kind: outcome.kind, id: idOf(entry), name: nameOf(entry) };
+    return { kind: outcome.kind, id: idOf(entry), name: projectName(entry) };
   } catch (error) {
     void logger.error(LOG_MODULE, error, { op: "joinProject", folder });
     throw error;
@@ -78,7 +74,7 @@ export function createProjectSharingOps({ ports, idOf, open }: ProjectSharingDep
   return {
     projects: async () => ports.projects.list()
       .filter((entry) => entry.kind === "ready" && !entry.settings.trashed)
-      .map((entry) => ({ id: idOf(entry), name: nameOf(entry), shared: isSharedProject(entry) })),
+      .map((entry) => ({ id: idOf(entry), name: projectName(entry), shared: isSharedProject(entry) })),
     projectStatus: async (id) => {
       const entry = find(id);
       if (!entry) { return { kind: "ineligible", reason: UNKNOWN }; }

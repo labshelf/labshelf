@@ -1,6 +1,7 @@
 /**
  * Shows context and dropdown menus after VS Code's: at a point or under an anchor, clamped to the viewport, closed by an
- * outside click or Escape, arrow keys to move; one at a time, on document.body or inside a shadow root.
+ * outside click or Escape, arrow keys to move, focus handed back to the invoker; one at a time, on document.body or inside a
+ * shadow root.
  */
 import { escapeHtml } from "../../escapeHtml.js";
 import { icon, type IconName } from "../../icons/index.js";
@@ -77,6 +78,7 @@ export function showMenu(anchor: MenuAnchor | HTMLElement, entries: MenuEntry[],
     else if (e.key === "Tab") { e.preventDefault(); }
   };
   document.addEventListener("keydown", onKey, true);
+  const invoker = focusScope.activeElement as HTMLElement | null;
   menu.querySelector<HTMLButtonElement>(".ls-menu-item:not(:disabled)")?.focus();
 
   let closed = false;
@@ -84,8 +86,11 @@ export function showMenu(anchor: MenuAnchor | HTMLElement, entries: MenuEntry[],
     if (closed) return;
     closed = true;
     document.removeEventListener("keydown", onKey, true);
+    // INVARIANT: focus goes back before onSelect runs, so a dialog the item opens saves the invoker, not a removed item.
+    const hadFocus = menu.contains(focusScope.activeElement);
     scrim.remove();
     menu.remove();
+    if (hadFocus) invoker?.focus?.();
     if (closeCurrent === close) closeCurrent = null;
     opts.onClose?.();
   }

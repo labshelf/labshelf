@@ -1,8 +1,8 @@
 /**
  * @jest-environment jsdom
  */
-// Tests that separators in a quick pick are skipped by the arrow keys, not picked, and hidden when nothing under them matches.
-import { quickPick, type QuickPickEntry } from "../../../../src/ui/dom/widgets/quickInput";
+// Tests quick pick separators (skipped by the arrow keys, hidden when nothing under them matches) and quick input accessible names.
+import { inputBox, quickPick, type QuickPickEntry } from "../../../../src/ui/dom/widgets/quickInput";
 
 const entries: QuickPickEntry<string>[] = [
   { kind: "separator", label: "Greek" },
@@ -52,5 +52,26 @@ describe("quickPick separators", () => {
     input().dispatchEvent(new Event("input"));
     expect(headings()).toEqual([]);
     expect(document.querySelector(".ls-quick-empty")).not.toBeNull();
+  });
+});
+
+describe("quick input accessible name", () => {
+  const box = (): Element => document.querySelector('.ls-quick[role="dialog"]')!;
+  const textOf = (attr: string): string => document.getElementById(box().getAttribute(attr) ?? "")?.textContent ?? "";
+
+  it("labels a quick pick with its title", () => {
+    void quickPick(entries, { title: "Shared Links", placeholder: "Pick a shared folder" });
+    expect(textOf("aria-labelledby")).toBe("Shared Links");
+  });
+
+  it("labels an untitled quick pick with its placeholder", () => {
+    void quickPick(entries, { placeholder: "Move paper to…" });
+    expect(box().getAttribute("aria-label")).toBe("Move paper to…");
+  });
+
+  it("labels an input box with its title and describes it with its prompt", () => {
+    void inputBox({ title: "Import Shared Link", prompt: "Paste a share link" });
+    expect(textOf("aria-labelledby")).toBe("Import Shared Link");
+    expect(textOf("aria-describedby")).toBe("Paste a share link");
   });
 });

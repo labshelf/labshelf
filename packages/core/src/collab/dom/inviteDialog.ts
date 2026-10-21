@@ -13,14 +13,16 @@ export async function copyInvite(host: SharingHost, name: string, invite: string
   return copied;
 }
 
-/** Keeps the dialog (and so the text) on screen until the copy works or the user moves on. */
+/** Keeps the dialog (and so the text) on screen until the copy works or the user moves on; it leads with what keeps the edits from this device. */
 export function showInviteDialog(host: SharingHost, projectId: string, name: string, invite: string): Promise<void> {
   return reportingFailure("show the invite link", async () => {
+    const status = await host.projectStatus(projectId);
+    const problem = status.kind === "shared" ? status.problem : undefined;
     for (;;) {
       const choice = await showDialog({
         title: `Invite link for "${name}"`,
-        message: `${invite}\n\nAnyone with it can read and edit the project.`,
-        severity: "info",
+        message: `${problem === undefined ? "" : `${problem}\n\n`}${invite}\n\nAnyone with it can read and edit the project.`,
+        severity: problem === undefined ? "info" : "warning",
         buttons: [
           { id: "leave", label: "Stop Sharing on This Device…", danger: true },
           { id: "copy", label: "Copy Invite Link", primary: true },

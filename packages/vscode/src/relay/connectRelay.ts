@@ -105,16 +105,22 @@ async function deployRelayAccount(deps: ConnectDeps): Promise<string | undefined
   }
 }
 
-export async function connectRelay(deps: ConnectDeps): Promise<void> {
+/**
+ * Resolves true once a relay is connected and serving. A cancel or a failure resolves false even when the account was
+ * saved before the relay answered, so a caller decides by this outcome and not by the stored account.
+ */
+export async function connectRelay(deps: ConnectDeps): Promise<boolean> {
   const existing = await deps.accounts.get();
   if (existing) {
     void vscode.window.showInformationMessage(`Cloudflare is connected, with your relay at ${existing.relayUrl}. Disconnect it first to use another account.`);
-    return;
+    return true;
   }
   try {
     const relayUrl = await deployRelayAccount(deps);
     if (relayUrl) { void vscode.window.showInformationMessage(`Cloudflare connected. Your shared projects open here and the ones you share later list your relay at ${relayUrl}.`); }
+    return relayUrl !== undefined;
   } catch (error) {
     reportRelayFailure(deps.logger, "connect Cloudflare", error);
+    return false;
   }
 }

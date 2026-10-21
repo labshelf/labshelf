@@ -33,10 +33,7 @@ export function createCollabPorts(deps: CollabPortsDeps): ShareWorkflowPorts {
     projects: deps.projects,
     files: nodeProjectReadContext(logger),
     relay: deps.relay,
-    requireRelay: async () => {
-      await vscode.commands.executeCommand(CONNECT_RELAY_COMMAND);
-      return (await deps.relay.get()) !== undefined;
-    },
+    requireRelay: async () => (await vscode.commands.executeCommand<boolean>(CONNECT_RELAY_COMMAND)) === true,
     connect: ({ shareId, shareKey, relays }, start) => {
       const isEditorOwned = (folder: string, file: string) => editors.isOwned(folder, file);
       return connectDesktopShare({ libraryRoot: openRoot(deps.libraryRoot), shareId, shareKey, relays, name: userName(), logger, isEditorOwned }, start);

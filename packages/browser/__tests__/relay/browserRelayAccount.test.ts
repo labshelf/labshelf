@@ -23,9 +23,11 @@ const mockCreate = jest.fn(async ({ url }: { url: string }) => {
   });
   return { id: tabId, url };
 });
+const mockPermissionRequest = jest.fn(async (_request: { origins: string[] }) => true);
 
 jest.mock("../../src/platform", () => ({
   bx: {
+    permissions: { request: (request: { origins: string[] }) => mockPermissionRequest(request) },
     tabs: {
       create: (options: { url: string }) => mockCreate(options),
       remove: async () => undefined,
@@ -79,6 +81,22 @@ it("signs in through a tab, deploys, stores the account and offers it to the sha
   expect(cloud.requests.some(isScriptUpload)).toBe(true);
   expect(events).toEqual(["offer"]);
   expect(await relay.status()).toEqual({ relayUrl: RELAY_URL });
+});
+
+const LOOPBACK_REFUSED = "LabShelf needs access to 127.0.0.1 to finish signing in to Cloudflare. "
+  + "Allow it in the add-on's site access settings and try again.";
+
+it("asks for access to the loopback redirect before opening the sign-in tab", async () => {
+  await account().connect();
+  expect(mockPermissionRequest).toHaveBeenCalledWith({ origins: ["http://127.0.0.1/*"] });
+  expect(mockPermissionRequest.mock.invocationCallOrder[0]).toBeLessThan(mockCreate.mock.invocationCallOrder[0] ?? 0);
+});
+
+it("fails at once without a tab when the owner refuses access to the loopback redirect", async () => {
+  mockPermissionRequest.mockResolvedValueOnce(false);
+  await expect(account().connect()).rejects.toThrow(LOOPBACK_REFUSED);
+  expect(mockCreate).not.toHaveBeenCalled();
+  expect(cloud.requests).toEqual([]);
 });
 
 it("refuses a second connect while another page holds the lifecycle lock", async () => {

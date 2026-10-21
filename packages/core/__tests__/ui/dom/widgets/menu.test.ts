@@ -1,8 +1,10 @@
 /**
  * @jest-environment jsdom
  */
-// Tests how a menu closes, which roles its items get and how the keyboard moves focus.
+// Tests how a menu closes, which roles its items get, how the keyboard moves focus and where focus returns.
+import { showDialog } from "../../../../src/ui/dom/widgets/dialog";
 import { closeMenu, showMenu } from "../../../../src/ui/dom/widgets/menu";
+import { inputBox } from "../../../../src/ui/dom/widgets/quickInput";
 
 function open(onClose: () => void, onSelect = (): void => undefined): void {
   showMenu({ x: 0, y: 0 }, [{ label: "Pick", onSelect }], { onClose });
@@ -75,5 +77,43 @@ describe("showMenu keys", () => {
     expect(document.activeElement?.textContent).toContain("Last");
     expect(press("Home")).toBe(false);
     expect(document.activeElement?.textContent).toContain("First");
+  });
+});
+
+describe("showMenu focus return", () => {
+  let row: HTMLElement;
+  beforeEach(() => {
+    row = document.createElement("div");
+    row.tabIndex = 0;
+    document.body.append(row);
+    row.focus();
+  });
+  afterEach(() => { closeMenu(); document.body.innerHTML = ""; });
+
+  const pick = (onSelect: () => void): void => {
+    showMenu(row, [{ label: "Share as Link…", onSelect }]);
+    document.querySelector<HTMLButtonElement>(".ls-menu-item")!.click();
+  };
+  const escape = (): void => { document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })); };
+
+  it("returns focus to the invoker on Escape", () => {
+    showMenu(row, [{ label: "Pick", onSelect: () => undefined }]);
+    expect(document.activeElement).not.toBe(row);
+    escape();
+    expect(document.activeElement).toBe(row);
+  });
+
+  it("returns focus to the invoker when a dialog opened by an item is dismissed", () => {
+    pick(() => { void showDialog({ title: "Share", buttons: [{ id: "ok", label: "OK", primary: true }] }); });
+    expect(document.activeElement?.textContent).toBe("OK");
+    escape();
+    expect(document.activeElement).toBe(row);
+  });
+
+  it("returns focus to the invoker when an input box opened by an item is dismissed", () => {
+    pick(() => { void inputBox({ title: "Import" }); });
+    expect(document.activeElement?.tagName).toBe("INPUT");
+    escape();
+    expect(document.activeElement).toBe(row);
   });
 });

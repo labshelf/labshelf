@@ -1,4 +1,4 @@
-// Tracks the shares connected in this window and tells views when one opens, closes, or its peers, status or relay change.
+// Tracks the shares connected in this window and tells views when one opens, closes, or its peers or state change.
 import * as vscode from "vscode";
 
 import type { ShareConnection, ShareConnections } from "@labshelf/core";
@@ -38,10 +38,10 @@ export class ActiveShares implements ShareConnections, vscode.Disposable {
 
   add(share: ShareConnection): void {
     const fire = () => this.changeEmitter.fire();
-    const stopStatus = share.session.onStatus(fire);
+    // The state covers the session status, the relay, storage health and the mirror.
+    const stopState = share.onStateChange(fire);
     const stopPeers = share.session.onPeer(fire);
-    const stopRelay = share.relays.onChange(fire);
-    const attached = vscode.Disposable.from(this.onOpen(share), { dispose: () => { stopStatus(); stopPeers(); stopRelay(); } });
+    const attached = vscode.Disposable.from(this.onOpen(share), { dispose: () => { stopState(); stopPeers(); } });
     this.open.set(share.shareId, { share, attached });
     fire();
   }

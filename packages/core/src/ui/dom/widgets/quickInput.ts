@@ -32,6 +32,18 @@ export interface InputBoxOptions {
   validate?: (value: string) => string | null | undefined;
 }
 
+let quickCount = 0;
+
+/** Builds the dialog box, named by its title or, untitled, by the input's placeholder. */
+function quickBox(title: string | undefined, input: HTMLInputElement, below: HTMLElement): HTMLDivElement {
+  const id = `ls-quick-${++quickCount}`;
+  const box = el("div", { class: "ls-quick", role: "dialog", "aria-modal": "true" },
+    title ? el("div", { class: "ls-quick-title", id: `${id}-title`, text: title }) : null, input, below);
+  if (title) box.setAttribute("aria-labelledby", `${id}-title`);
+  else if (input.placeholder) box.setAttribute("aria-label", input.placeholder);
+  return box;
+}
+
 /** The entries that match every token, each separator kept only when a matching item follows it. */
 function filterEntries<T>(entries: QuickPickEntry<T>[], toks: string[]): QuickPickEntry<T>[] {
   const matches = (it: QuickPickItem<T>): boolean => toks.every((t) => `${it.label} ${it.description ?? ""}`.toLowerCase().includes(t));
@@ -51,8 +63,7 @@ export function quickPick<T>(entries: QuickPickEntry<T>[], opts: QuickPickOption
   return new Promise((resolve) => {
     const input = el("input", { class: "ls-input", type: "text", placeholder: opts.placeholder ?? "", spellcheck: "false", autocomplete: "off" });
     const list = el("div", { class: "ls-quick-list", role: "listbox" });
-    const box = el("div", { class: "ls-quick", role: "dialog" },
-      opts.title ? el("div", { class: "ls-quick-title", text: opts.title }) : null, input, list);
+    const box = quickBox(opts.title, input, list);
     const { close } = mountOverlay(box, () => resolve(undefined));
 
     let visible: QuickPickItem<T>[] = [];
@@ -104,9 +115,9 @@ export function quickPick<T>(entries: QuickPickEntry<T>[], opts: QuickPickOption
 export function inputBox(opts: InputBoxOptions = {}): Promise<string | undefined> {
   return new Promise((resolve) => {
     const input = el("input", { class: "ls-input", type: "text", value: opts.value ?? "", placeholder: opts.placeholder ?? "", spellcheck: "false", autocomplete: "off" });
-    const msg = el("div", { class: "ls-quick-msg", text: opts.prompt ?? "" });
-    const box = el("div", { class: "ls-quick", role: "dialog" },
-      opts.title ? el("div", { class: "ls-quick-title", text: opts.title }) : null, input, msg);
+    const msg = el("div", { class: "ls-quick-msg", id: `ls-quick-msg-${++quickCount}`, text: opts.prompt ?? "" });
+    const box = quickBox(opts.title, input, msg);
+    box.setAttribute("aria-describedby", msg.id);
     const { close } = mountOverlay(box, () => resolve(undefined));
 
     const validate = (): string | null => {

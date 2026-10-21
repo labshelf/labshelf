@@ -20,6 +20,13 @@ class PeerCaret extends WidgetType {
     caret.title = this.name;
     caret.setAttribute("aria-label", this.name);
     caret.style.borderLeftColor = this.colour;
+    const label = document.createElement("span");
+    label.className = "ls-peer-caret-label";
+    // The caret's aria-label already names the peer.
+    label.setAttribute("aria-hidden", "true");
+    label.textContent = this.name;
+    label.style.backgroundColor = this.colour;
+    caret.append(label);
     return caret;
   }
 }
@@ -55,6 +62,11 @@ function decorationsOf(options: RemoteCursorsOptions, view: EditorView): Decorat
 
 const caretTheme = EditorView.baseTheme({
   ".ls-peer-caret": { position: "relative", borderLeft: "2px solid", marginLeft: "-1px", marginRight: "-1px" },
+  ".ls-peer-caret-label": {
+    position: "absolute", bottom: "100%", left: "calc(-1 * var(--ls-space-1))", zIndex: "1", pointerEvents: "none", userSelect: "none", whiteSpace: "nowrap",
+    padding: "0 var(--ls-space-1)", borderRadius: "var(--ls-radius-sm)",
+    color: "var(--ls-button-fg)", font: "var(--ls-text-xs) var(--ls-font)", lineHeight: "normal",
+  },
 });
 
 export function remoteCursors(options: RemoteCursorsOptions): Extension {

@@ -1,7 +1,7 @@
 // Wires project collaboration on the desktop: the share, join and leave commands, the owner's relay, editor binding, presence, comments and status bar.
 import * as vscode from "vscode";
 
-import { offerOwnRelayToShares, withdrawOwnRelayFromShares } from "@labshelf/core";
+import { offerOwnRelayToShares, persistenceFailureNotices, withdrawOwnRelayFromShares } from "@labshelf/core";
 import type { LibraryRootController } from "../../activation/libraryLifecycle/index.js";
 import { openLibraryLogger } from "../../activation/registration/index.js";
 import { openRelayAccounts, registerRelay } from "../../relay/index.js";
@@ -40,6 +40,7 @@ function createHost(context: vscode.ExtensionContext, controller: Controller, pr
 export function registerCollaboration(context: vscode.ExtensionContext, controller: Controller, projects: WritingProjects): CollabHost {
   const host = createHost(context, controller, projects);
   registerShareStatusBar(context, host);
+  const noticeFailures = persistenceFailureNotices(host.ports, "window", (message) => { void vscode.window.showErrorMessage(message); });
   registerRelay(context, {
     accounts: host.relay, logger: host.logger,
     offerToShares: async () => { (await offerOwnRelayToShares(host.ports)).forEach(showRefusedOffer); },
@@ -51,6 +52,7 @@ export function registerCollaboration(context: vscode.ExtensionContext, controll
     vscode.commands.registerCommand(OFFER_RELAY_COMMAND, () => offerRelay(host)),
     vscode.commands.registerCommand(WITHDRAW_RELAY_COMMAND, () => withdrawRelay(host)),
     resumeShares(host),
+    host.shares.onDidChange(noticeFailures),
   );
   return host;
 }

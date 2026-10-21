@@ -2,7 +2,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import type { ShareConnection } from "@labshelf/core";
+import { connectionProblem, type ShareConnection } from "@labshelf/core";
 import { sharingWebviews } from "../../../sharing/index.js";
 import type { CollabHost } from "../collabHost.js";
 
@@ -52,8 +52,10 @@ export function registerShareStatusBar(context: vscode.ExtensionContext, host: C
     const share = currentShare(host);
     if (!share) { item.hide(); return; }
     const { text, tooltip } = describe(share);
-    item.text = text;
-    item.tooltip = `${tooltip} Click to manage the project's sharing.`;
+    const problem = connectionProblem(share);
+    item.text = problem === undefined ? text : text.replace("$(broadcast)", "$(warning)");
+    item.tooltip = `${problem === undefined ? "" : `${problem}\n`}${tooltip} Click to manage the project's sharing.`;
+    item.backgroundColor = problem === undefined ? undefined : new vscode.ThemeColor("statusBarItem.errorBackground");
     item.show();
   };
   context.subscriptions.push(

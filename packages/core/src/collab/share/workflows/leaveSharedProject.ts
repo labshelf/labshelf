@@ -4,7 +4,7 @@ import { parseProjectFile, PROJECT_FILE, updateProjectFile, type ProjectReadCont
 import { LOG_MODULE, type ShareWorkflowPorts } from "./sharePorts.js";
 
 /** Removes `shared` from labshelf.yaml when it names this share, keeping every other key and comment. */
-export async function clearSharedField({ fs, paths }: ProjectReadContext, folder: string, shareId: string): Promise<void> {
+async function clearSharedField({ fs, paths }: ProjectReadContext, folder: string, shareId: string): Promise<void> {
   const file = paths.join(folder, PROJECT_FILE);
   const text = await fs.readText(file);
   const parsed = parseProjectFile(text);

@@ -2,7 +2,7 @@
 import { deriveShareId, generateShareKey } from "../../crypto/index.js";
 import type { ShareConnection } from "../../session/index.js";
 import { currentInvite } from "./currentInvite.js";
-import { clearSharedField } from "./leaveSharedProject.js";
+import { parseProjectFile, PROJECT_FILE } from "../../../writing/project/index.js";
 import { offerOwnRelay, type OwnRelayOffer } from "./ownRelay.js";
 import { LOG_MODULE, type ShareWorkflowPorts } from "./sharePorts.js";
 
@@ -50,6 +50,8 @@ async function shareNew(ports: ShareWorkflowPorts, { folder, signal }: ShareRequ
   if (signal.aborted) { throw new Error("Sharing was cancelled"); }
   const shareKey = generateShareKey();
   const shareId = await deriveShareId(shareKey);
+  const projectFile = ports.files.paths.join(folder, PROJECT_FILE);
+  const original = await ports.files.fs.readText(projectFile);
   return ports.shares.hold(shareId, async () => {
     // The key is stored before connecting, so the project list reload that the new `shared` field causes finds it.
     await ports.keys.remember({ shareId, shareKey, relays: [] });
@@ -64,18 +66,18 @@ async function shareNew(ports: ShareWorkflowPorts, { folder, signal }: ShareRequ
       void ports.logger.log("INFO", LOG_MODULE, "Shared a project", { folder, shareId });
       return { connection, offer };
     } catch (error) {
-      await rollBack(ports, folder, shareId);
+      await rollBack(ports, folder, shareId, original);
       throw error;
     }
   });
 }
 
 /** Undoes what a failed or cancelled share wrote; the share id is fresh, so all of it belongs to this operation. */
-async function rollBack(ports: ShareWorkflowPorts, folder: string, shareId: string): Promise<void> {
+async function rollBack(ports: ShareWorkflowPorts, folder: string, shareId: string, original: string): Promise<void> {
   const steps: [string, () => Promise<unknown>][] = [
     ["close the connection", () => ports.shares.remove(shareId)],
     ["forget the key", () => ports.keys.forget(shareId)],
-    ["clear the shared field", () => clearSharedField(ports.files, folder, shareId)],
+    ["restore labshelf.yaml", () => restoreProjectFile(ports, folder, shareId, original)],
     ["delete the share state", () => ports.deleteState(shareId)],
     ["reload the projects", () => ports.projects.reload()],
   ];
@@ -83,4 +85,12 @@ async function rollBack(ports: ShareWorkflowPorts, folder: string, shareId: stri
     await step().catch((error: unknown) => ports.logger.error(LOG_MODULE, error, { action: `roll back a share: ${action}`, folder, shareId }));
   }
   void ports.logger.log("INFO", LOG_MODULE, "Rolled back a share that did not complete", { folder, shareId });
+}
+
+/** Puts back the text from before the share, which also drops the title the share added, unless the file names another share. */
+async function restoreProjectFile(ports: ShareWorkflowPorts, folder: string, shareId: string, original: string): Promise<void> {
+  const file = ports.files.paths.join(folder, PROJECT_FILE);
+  const parsed = parseProjectFile(await ports.files.fs.readText(file));
+  if (parsed.ok && parsed.settings.shared !== shareId) { return; }
+  await ports.files.fs.writeText(file, original);
 }

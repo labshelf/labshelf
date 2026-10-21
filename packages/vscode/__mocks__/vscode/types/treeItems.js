@@ -1,4 +1,4 @@
-// Mocks tree view items, theme icons and drag-and-drop data transfer.
+// Mocks tree view items, theme icons and colours, and drag-and-drop data transfer.
 
 class TreeItem {
   constructor(label, collapsibleState) {
@@ -8,6 +8,10 @@ class TreeItem {
 }
 
 class ThemeIcon {
+  constructor(id) { this.id = id; }
+}
+
+class ThemeColor {
   constructor(id) { this.id = id; }
 }
 
@@ -25,4 +29,4 @@ class DataTransfer {
   [Symbol.iterator]() { return this._map.entries(); }
 }
 
-module.exports = { TreeItem, ThemeIcon, DataTransfer, DataTransferItem };
+module.exports = { TreeItem, ThemeIcon, ThemeColor, DataTransfer, DataTransferItem };

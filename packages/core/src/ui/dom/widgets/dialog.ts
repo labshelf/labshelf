@@ -3,6 +3,8 @@ import { icon } from "../../icons/index.js";
 import { el } from "../dom.js";
 import { mountOverlay } from "./overlay.js";
 
+let dialogCount = 0;
+
 export interface DialogButton<T extends string> {
   id: T;
   label: string;
@@ -24,12 +26,16 @@ export function showDialog<T extends string>(opts: DialogOptions<T>): Promise<T 
   return new Promise((resolve) => {
     const actions = el("div", { class: "ls-dialog-actions" });
     const glyph = opts.severity === "info" ? "info" : "warning";
-    const box = el("div", { class: "ls-dialog", role: "alertdialog", "aria-modal": "true" },
+    const id = `ls-dialog-${++dialogCount}`;
+    const box = el("div", {
+      class: "ls-dialog", role: "alertdialog", "aria-modal": "true",
+      "aria-labelledby": `${id}-title`, "aria-describedby": opts.message ? `${id}-msg` : undefined,
+    },
       el("div", { class: "ls-dialog-head" },
         el("span", { html: icon(glyph) }),
         el("div", {},
-          el("div", { class: "ls-dialog-title", text: opts.title }),
-          opts.message ? el("div", { class: "ls-dialog-msg", text: opts.message }) : null,
+          el("div", { class: "ls-dialog-title", id: `${id}-title`, text: opts.title }),
+          opts.message ? el("div", { class: "ls-dialog-msg", id: `${id}-msg`, text: opts.message }) : null,
         ),
       ),
       actions,

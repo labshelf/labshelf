@@ -88,6 +88,12 @@ class Selector implements RelaySelector {
   }
 
   reportConnected(relayUrl: string): void {
+    // A socket opens only with a ticket the relay granted, which disproves its down mark.
+    if (this.holds.isDown(relayUrl)) {
+      this.holds.release(relayUrl);
+      void this.options.logger.log("INFO", LOG_MODULE, "A relay held down opened a socket", { url: relayUrl });
+      this.evaluate();
+    }
     this.holds.succeeded(relayUrl);
     this.group.connectedTo(relayUrl);
     this.group.watchOthers(this.urls(), this.current);
@@ -124,7 +130,7 @@ class Selector implements RelaySelector {
     this.group.retryGroupRelays(this.urls(), this.current, peers.map((peer) => peer.relay), this.failing);
     let chosen: string | undefined;
     for (const url of this.urls()) {
-      if (this.holds.isDown(url)) { continue; }
+      if (this.down(url, this.urls())) { continue; }
       // The relay in use is tested before `failing`, so one failed re-probe does not move the client.
       if (url === this.current) { chosen = url; break; }
       if (this.failing.has(url) || (await this.probe(url)) !== "ok") { continue; }
@@ -138,12 +144,19 @@ class Selector implements RelaySelector {
     this.group.watchOthers(this.urls(), this.current);
   }
 
-  /** The relays to keep probing: the one in use and those listed before it, or all while none is usable, unless a peer or the connection holds them down. */
+  /** The relays to keep probing: the one in use and those listed before it, or all while none is usable or all are down, unless a peer or the connection holds them down. */
   private watched(): string[] {
     const urls = this.urls();
-    const end = this.current === undefined ? urls.length : urls.indexOf(this.current) + 1;
-    return urls.slice(0, end).filter((url) => !this.holds.isDown(url) || this.probeHeld.has(url));
+    const end = this.current === undefined || this.allDown(urls) ? urls.length : urls.indexOf(this.current) + 1;
+    return urls.slice(0, end).filter((url) => !this.down(url, urls) || this.probeHeld.has(url));
   }
+
+  /** A down mark counts only while another listed relay is not down, so a client whose relays are all down keeps retrying them. */
+  private down(url: string, urls: readonly string[]): boolean {
+    return this.holds.isDown(url) && !this.allDown(urls);
+  }
+
+  private allDown(urls: readonly string[]): boolean { return urls.length > 0 && urls.every((url) => this.holds.isDown(url)); }
 
   private check(url: string, delayMs: number): void {
     this.checks.get(url)?.();
@@ -165,9 +178,10 @@ class Selector implements RelaySelector {
     if (verdict === "ok") {
       this.failing.delete(url);
       this.holds.succeeded(url);
-      if (this.probeHeld.delete(url)) {
+      // While every relay is down, an answered probe ends any mark, so the client moves to the first relay that is back.
+      if (this.probeHeld.delete(url) || this.allDown(this.urls())) {
         this.holds.release(url);
-        void this.options.logger.log("INFO", LOG_MODULE, "A relay held down by this client's probes answered again", { url });
+        void this.options.logger.log("INFO", LOG_MODULE, "A relay held down answered a probe", { url });
       }
       return;
     }

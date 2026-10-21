@@ -79,15 +79,17 @@ export interface GroupClientOptions {
   cursors?: Map<string, RelayCursorStore>;
   /** Hosts this client cannot reach, as behind a network that blocks them. */
   blocked?: ReadonlySet<string>;
+  /** The relays the owner lists and the invite carries; both by default. */
+  relays?: readonly string[];
 }
 
 export async function openGroupClient(hosts: RelayHosts, clock: FakeClock, name: string, options: GroupClientOptions = {}): Promise<GroupClient> {
-  const { owner = false, cursors, blocked = new Set<string>() } = options;
+  const { owner = false, cursors, blocked = new Set<string>(), relays = [ONE, TWO] } = options;
   const logger = fakeLogger();
   const contentKey = await deriveContentKey(SHARE_KEY);
   const slot = createSwitchableTransport();
   const session = createShareSession({ shareId: SHARE_ID, contentKey, transport: slot, logger, scheduler: clock });
-  if (owner) { [ONE, TWO].forEach((url) => addRelay(session.index, { url, addedBy: name })); }
+  if (owner) { relays.forEach((url) => addRelay(session.index, { url, addedBy: name })); }
   const awarenessKey = await deriveAwarenessKey(SHARE_KEY);
   const relayToken = await deriveRelayToken(SHARE_KEY);
   const presence = attachAwareness(session, { awarenessKey, logger });
@@ -96,7 +98,7 @@ export async function openGroupClient(hosts: RelayHosts, clock: FakeClock, name:
   const socketFactory = hosts.socketFactoryFor(blocked);
   const watch = createRelayWatch({ shareId: SHARE_ID, relayToken, contentKey, awarenessKey, logger, scheduler: clock, fetch, socketFactory });
   const selector = createRelaySelector({
-    index: session.index, inviteRelays: [ONE, TWO], probe: relayProbe({ logger, fetch, scheduler: clock }),
+    index: session.index, inviteRelays: relays, probe: relayProbe({ logger, fetch, scheduler: clock }),
     presence: relayPresence(presence, watch), clock, logger,
   });
   const follower = followRelaySelection({

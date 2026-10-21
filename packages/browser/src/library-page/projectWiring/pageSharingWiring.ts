@@ -1,5 +1,5 @@
-// Wires the page's sharing to the common join dialog and the owner's relay, and keeps it in step with the page's life.
-import { offerOwnRelayToShares, withdrawOwnRelayFromShares, type ILogger, type RelayAccount, type SharingHost } from "@labshelf/core";
+// Wires the page's sharing to the common join dialog, the owner's relay and the storage-failure notice, and keeps it in step with the page's life.
+import { offerOwnRelayToShares, persistenceFailureNotices, withdrawOwnRelayFromShares, type ILogger, type RelayAccount, type SharingHost } from "@labshelf/core";
 import { runJoinProjectDialog, toast } from "@labshelf/core/dom";
 import type { PageRelay } from "../../relay";
 import { currentLibraryId, librarySources } from "../../storage";
@@ -32,6 +32,7 @@ export function wirePageSharing({ logger, host, relay, relayAccounts }: PageShar
     requireRelay: async () => (await relay.requireBrowserRelay()) !== undefined,
     reports: resumeReports(logger, () => { void join(); }),
   });
+  sharing.shares.onChange(persistenceFailureNotices(sharing.ports, "page", (message) => toast(message, "error")));
   window.addEventListener("pagehide", () => { void sharing.closeAll(); });
   // Another tab may have shared, left or trashed a project while this one was hidden.
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") void sharing.reload(); });

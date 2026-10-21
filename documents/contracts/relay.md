@@ -83,7 +83,7 @@ The free plan allows 100,000 Worker and Durable Object requests a day and 100,00
 - sends awareness, acknowledgements and sync steps with `forward`, never with `put`;
 - writes a `snapshot`, a `syncStep2` message with epoch and `seq` 0 holding the doc's whole state, after 500 `put`s of a doc since its last snapshot, only when it holds every row up to `covers` and has the lowest awareness id among the clients it sees, so one client writes it; a `staleSnapshot` refusal is expected and not a failure;
 - asks `since` for the index doc and then for every doc it holds when its socket opens, from the last cursor it received for that doc;
-- reconnects with exponential backoff, because a Worker update can drop a socket at any time;
+- reconnects with exponential backoff, from 1 s doubling up to 60 s and back to 1 s once a socket opens, because a Worker update can drop a socket at any time;
 - reads `/version` at most once per app start and once before it moves to a relay, and a ticket only to open a socket.
 
 ## Deploy

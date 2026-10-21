@@ -33,6 +33,8 @@ export interface PageSharing {
   ready(): Promise<void>;
   /** Re-reads the project list and resumes or closes the shares it changed. */
   reload(): Promise<void>;
+  /** Calls `listener` after every re-read of the project list, the ones a share, join or leave makes included. */
+  onProjectsChange(listener: () => void): void;
   /** The live share of a shared project's file; `retry` reconnects it from its stored key instead of waiting for the resume. */
   liveShare(entry: ProjectEntry, retry: boolean): Promise<LiveShare | undefined>;
   closeAll(): Promise<void>;
@@ -44,7 +46,12 @@ export function createPageSharing(options: PageSharingOptions): PageSharing {
   const closing = new AbortController();
   // The resumer runs on every reload of the catalog, which the workflows call too; it exists once the ports do.
   let sync = (): Promise<void> => Promise.resolve();
-  const catalog = createBrowserShareCatalog(sources, logger, () => { if (!closing.signal.aborted) void sync(); });
+  const listeners = new Set<() => void>();
+  const catalog = createBrowserShareCatalog(sources, logger, () => {
+    if (closing.signal.aborted) return;
+    void sync();
+    for (const listener of listeners) listener();
+  });
   const projectIdOf = (folder: string): string | undefined => {
     const entry = catalog.list().find((candidate) => candidate.folder === folder);
     return entry?.kind === "ready" ? entry.settings.id : undefined;
@@ -63,6 +70,7 @@ export function createPageSharing(options: PageSharingOptions): PageSharing {
   const first = reload().catch((error: unknown) => logger.error(LOG_MODULE, error, { action: "read the shared projects at page start" }));
   return {
     ports, shares, reload,
+    onProjectsChange: (listener) => { listeners.add(listener); },
     ready: () => first,
     liveShare: async (entry, retry) => {
       if (entry.kind !== "ready" || entry.settings.shared === undefined) { return undefined; }

@@ -61,6 +61,21 @@ describe("createPageSharing", () => {
     expect(await sharedField(member, joined.folder)).toBe(shareId);
   });
 
+  it("tells its listeners after a share and a leave re-read the project list", async () => {
+    const owner = await library(true);
+    const page = owner.open();
+    await page.sharing.ready();
+    const changed = jest.fn();
+    page.sharing.onProjectsChange(changed);
+    const outcome = await shareProject(page.sharing.ports, { folder: FOLDER, shared: undefined, signal });
+    expect(outcome.kind).toBe("shared");
+    const afterShare = changed.mock.calls.length;
+    expect(afterShare).toBeGreaterThan(0);
+    if (outcome.kind !== "shared") { return; }
+    await leaveSharedProject(page.sharing.ports, { folder: FOLDER, shareId: outcome.connection.shareId });
+    expect(changed.mock.calls.length).toBeGreaterThan(afterShare);
+  });
+
   it("resumes a joined project after a reload, and joining its invite again creates nothing", async () => {
     const owner = await library(true);
     const { invite, shareId } = await shareSeeded(owner);
