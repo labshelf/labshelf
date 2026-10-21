@@ -31,7 +31,7 @@ export interface ShareConfirmText { message: string; detail: string }
 export function shareRightsNotice(folder: { label: string; count: number }): ShareConfirmText {
   return {
     message: "You are responsible for having the right to share these papers.",
-    detail: `Anyone with the link can read the ${folder.count} papers of "${folder.label}" and download their PDFs, until you revoke it.`,
+    detail: `Anyone with the link can read the ${folder.count} ${folder.count === 1 ? "paper" : "papers"} of "${folder.label}" and download their PDFs, until you revoke it.`,
   };
 }
 
