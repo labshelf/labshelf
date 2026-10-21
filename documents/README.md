@@ -32,6 +32,8 @@ Read when you look for the document that answers a question about LabShelf; the 
 | Which rules bind the reader and its host? | [contracts/reader-host.md](contracts/reader-host.md#rules) |
 | Which messages does the library UI exchange with its host? | [contracts/library-ui-host.md](contracts/library-ui-host.md#messages) |
 | Which rules bind the library UI and its host? | [contracts/library-ui-host.md](contracts/library-ui-host.md#rules) |
+| What persists in a Space and how is its page hosted? | [contracts/spaces.md](contracts/spaces.md) |
+| How do I check Spaces in VS Code and the browser? | [apps/spaces.md](apps/spaces.md) |
 | How do I set up the toolchain? | [apps/README.md](apps/README.md#prerequisites) |
 | How do I verify an app for real? | [apps/README.md](apps/README.md#verifying-changes) |
 | How do I build and run the VS Code extension? | [apps/vscode.md](apps/vscode.md#build-and-run) |

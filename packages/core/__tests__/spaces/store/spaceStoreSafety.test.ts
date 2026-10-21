@@ -1,4 +1,4 @@
-/** Verifies that Space writes run one at a time, space ids are guarded, and timestamps are whole seconds. */
+// Verifies safe Space persistence at concurrency and filesystem boundaries.
 import { seededFixture, ROOT } from "./spaceStoreFixture";
 import { SpaceStore } from "../../../src/spaces/store/index";
 import { posixPathOps } from "../../../src/library/mutations/index";
@@ -31,6 +31,18 @@ describe("SpaceStore serialises writes", () => {
     expect(new Set(ids).size).toBe(2);
     for (const id of ids) { expect((await f.json(id)).name).toBe("X"); }
   });
+
+  it("reserves a folder created by another device after the directory listing", async () => {
+    const f = await seededFixture({});
+    const listDir = f.fs.listDir.bind(f.fs);
+    f.fs.listDir = async (path) => {
+      const names = await listDir(path);
+      await f.fs.ensureDir(`${ROOT}/spaces/x`);
+      return names;
+    };
+    expect(await f.store.createSpace("X")).toBe("x-2");
+    expect(await f.fs.exists(`${ROOT}/spaces/x/space.json`)).toBe(false);
+  });
 });
 
 describe("SpaceStore guards space ids", () => {
@@ -38,6 +50,7 @@ describe("SpaceStore guards space ids", () => {
     const f = await seededFixture({ s: base });
     await expect(f.store.renameSpace(id, "N")).rejects.toThrow(/space id/i);
     await expect(f.store.read(id)).rejects.toThrow(/space id/i);
+    await expect(f.store.readGlossary(id)).rejects.toThrow(/space id/i);
     await expect(f.store.addTerm(id, { term: "a", definition: "b" })).rejects.toThrow(/space id/i);
     expect(f.logs.some((l) => l.level === "ERROR")).toBe(true);
   });
@@ -48,6 +61,21 @@ describe("SpaceStore guards space ids", () => {
     await expect(f.store.deleteSpace("")).rejects.toThrow();
     await expect(f.store.deleteSpace("stray")).rejects.toThrow(/does not exist/);
     expect(f.fs.trashed).toEqual([]);
+  });
+});
+
+describe("SpaceStore glossary read failures", () => {
+  it.each(["exists", "readText"] as const)("returns an empty read-only glossary and logs a rejecting %s", async (operation) => {
+    const f = await seededFixture({ s: base });
+    await f.putGlossary("s", { version: 1, terms: [{ id: "t", term: "a", definition: "b" }] });
+    f.fs[operation] = async () => { throw new Error("permission denied"); };
+    const result = await f.store.readGlossary("s");
+    expect(result.glossary.terms).toEqual([]);
+    expect(result.readOnlyReason).toContain("permission denied");
+    expect(f.logs).toContainEqual(expect.objectContaining({
+      level: "WARN",
+      context: { path: `${ROOT}/spaces/s/glossary.json`, reason: result.readOnlyReason },
+    }));
   });
 });
 

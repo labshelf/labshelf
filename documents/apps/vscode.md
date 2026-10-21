@@ -4,7 +4,7 @@ Read when you build, change or verify the VS Code extension.
 
 The full LabShelf workspace inside VS Code:
 
-- one sidebar webview in the activity bar with collapsible Library (the shared core folder tree) and Projects sections, and a Settings gear in its title bar;
+- one sidebar webview in the activity bar with collapsible Library (the shared core folder tree), Projects and Spaces sections, and a Settings gear in its title bar;
 - the paper list in an editor tab;
 - the **Details** view (`labshelf.details`) in the secondary side bar, which shows the last selection made in the paper list, in All projects or in the active reader ([contract](../contracts/details-host.md)); opening the paper list tab opens it too, and an open list tab leaves it as the user set it. VS Code shows it as a tab of the secondary side bar, next to any other view placed there, such as Chat. It needs VS Code 1.106 or later;
 - the PDF reader;
@@ -27,8 +27,14 @@ pnpm dev:vscode                        # watches the host and the webview bundle
 - **LabShelf: How to Sync Between Computers** opens the guide panel.
 - **LabShelf: Connect the Browser** installs the browser bridge (a Native Messaging host) for every installed Chrome, Chromium, Edge, Brave, Vivaldi and Firefox, then lists the browsers it set up and any it could not ([contract](../contracts/bridge.md#host)).
 - **LabShelf: Build LaTeX for the Browser** installs the LaTeX helper host so the browser builds LaTeX through VS Code's bundled helper script. When a standalone LabShelf Helper is registered it is left in place and the message offers "Use VS Code instead". Activation rewrites the launchers of both hosts when the extension moves, without installing or prompting ([install rules](../contracts/native-host.md)).
-- **LabShelf: Resolve Conflicting Copies**, also offered by the notification "N files have conflicting copies", asks per copy **Keep mine**, **Keep the other** or **Keep both**; `metadata.yaml` has no Keep both ([contract](../contracts/sync.md)).
+- **LabShelf: Resolve Conflicting Copies**, also offered by the notification "N files have conflicting copies", asks per copy **Keep mine**, **Keep the other** or **Keep both**; `metadata.yaml`, `space.json` and `glossary.json` have no Keep both ([contract](../contracts/sync.md)).
 - The paper list is an in-memory library store rebuilt from the library files on activation. The device-local `index.sqlite` ([contract](../contracts/library-format.md#device-local-files)) holds the embeddings and the content hash of each indexed PDF; deleting it drops them and papers re-index on rebuild.
+
+## Spaces
+
+All Spaces opens a singleton catalog editor; each Space has its own editor panel with an inner tab restored from webview state. The sidebar exposes Space folders and paper references. The All Spaces, Open Space and New Space… commands also open these surfaces. Research chat occupies a view in the Details secondary-sidebar container; The Research Chat command reveals or hides it and its context follows the active Space. Its model-dependent controls explain why they are unavailable.
+
+File watching refreshes Spaces after edits under the active library's `spaces/` directory. Project links resolve against the projects registered on this device. Storage, missing references and conflict resolution follow the [Spaces contract](../contracts/spaces.md). Use the shared [Spaces hand checks](spaces.md) in the Extension Development Host.
 
 ## Writing projects
 

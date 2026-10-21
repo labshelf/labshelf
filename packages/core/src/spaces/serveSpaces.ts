@@ -72,12 +72,10 @@ async function runAction(options: ServeSpacesOptions, post: Post, message: Actio
   }
 }
 
-/** The message's ids and names, for the failure log. */
 function failureContext(message: object): Record<string, unknown> {
   return Object.fromEntries(Object.entries(message).filter(([, value]) => typeof value === "string"));
 }
 
-/** Returns the function that stops serving. */
 export function serveSpaces(endpoint: SpacesEndpoint, options: ServeSpacesOptions): () => void {
   const { store, port, logger } = options;
   const post: Post = (message) => endpoint.post(message);

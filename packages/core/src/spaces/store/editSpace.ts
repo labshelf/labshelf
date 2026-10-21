@@ -15,7 +15,6 @@ async function refuse(ctx: StoreContext, action: string, id: string, path: strin
 
 const asError = (error: unknown): Error => (error instanceof Error ? error : new Error(String(error)));
 
-/** @returns the Space as read, when it may be written */
 async function writableSpace(ctx: StoreContext, id: string): Promise<Space> {
   const current = await readSpaceFile(ctx, id);
   if (current.state === "unreadable") { throw new Error(`the Space is unreadable: ${current.reason}`); }
@@ -23,7 +22,6 @@ async function writableSpace(ctx: StoreContext, id: string): Promise<Space> {
   return current.space;
 }
 
-/** @returns the edit's value and the Space as written */
 export function editSpace<T>(
   ctx: StoreContext, id: string, action: string, edit: (space: Space) => Edited<T>,
 ): Promise<{ value: T; written: ReadySpace }> {

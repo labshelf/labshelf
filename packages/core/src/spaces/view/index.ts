@@ -5,6 +5,7 @@ export type {
 export { resolvePaper } from "./resolvePaper.js";
 export type { LibraryPapers } from "./resolvePaper.js";
 export { localDay } from "./localDay.js";
+export { spaceChecklistProgress } from "./checklistProgress.js";
 export { catalogRows, filterCatalog } from "./catalogRows.js";
 export type { CatalogFilter } from "./catalogRows.js";
 export { buildOverview } from "./overview/index.js";

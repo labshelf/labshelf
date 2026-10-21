@@ -45,6 +45,8 @@
         "src/writing/history/webview/main.ts",
         "src/writing/allProjects/webview/main.ts",
         "src/library/syncGuidePanel/webview/main.ts",
+        "src/spaces/chat/webview/main.ts",
+        "src/spaces/webview/main.ts",
         "build/*.mjs",
         "__tests__/**/*.ts"
       ],

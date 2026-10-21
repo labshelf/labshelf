@@ -44,13 +44,11 @@ export class SpaceStore {
     return this.spaces;
   }
 
-  /** @returns an unsubscribe function */
   onChange(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   }
 
-  /** @returns the new Space's id */
   async createSpace(name: string): Promise<string> {
     const space = await createSpaceFile(this.ctx, name);
     this.remember({ state: "ready", path: this.ctx.layout.spaceFilePath(space.id), space, warnings: [] });
@@ -80,19 +78,16 @@ export class SpaceStore {
     return this.change(id, "Reference moved", (s) => keep(edit.withMovedReference(s, paperId, folder)));
   }
 
-  /** @returns the new folder's id */
   createFolder(id: string, name: string, parent?: string) { return this.change(id, "Folder created", (s) => edit.withFolder(s, name, parent)); }
   renameFolder(id: string, folderId: string, name: string) { return this.change(id, "Folder renamed", (s) => keep(edit.withRenamedFolder(s, folderId, name))); }
   /** References and child folders move to the folder's parent. */
   deleteFolder(id: string, folderId: string) { return this.change(id, "Folder deleted", (s) => keep(edit.withoutFolder(s, folderId))); }
 
-  /** @returns the new date's id */
   addDate(id: string, draft: SpaceDateDraft) { return this.change(id, "Date added", (s) => edit.withDate(s, draft)); }
   updateDate(id: string, dateId: string, draft: SpaceDateDraft) { return this.change(id, "Date updated", (s) => keep(edit.withUpdatedDate(s, dateId, draft))); }
   removeDate(id: string, dateId: string) { return this.change(id, "Date removed", (s) => keep(edit.withoutDate(s, dateId))); }
   setDone(id: string, dateId: string, done: boolean) { return this.change(id, "Task done set", (s) => keep(edit.withDone(s, dateId, done))); }
 
-  /** @returns the new term's id */
   addTerm(id: string, draft: TermDraft) { return this.changeGlossary(id, "Term added", (g) => edit.withTerm(g, draft)); }
   updateTerm(id: string, termId: string, draft: TermDraft) {
     return this.changeGlossary(id, "Term updated", (g) => ({ glossary: edit.withUpdatedTerm(g, termId, draft), value: undefined }));

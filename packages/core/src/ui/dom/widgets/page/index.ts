@@ -1,6 +1,4 @@
-/**
- * Exports the page-level widgets: tabs, segmented filter, progress mark, section card, empty state, member chip and positioned.
- */
+// Exports shared page widgets.
 export { mountPageTabs, type PageTabs, type PageTabsOptions } from "./pageTabs.js";
 export { moveTabFocus } from "./tablistFocus.js";
 export { segmentedFilter, type SegmentedFilterOptions, type SegmentedOption } from "./segmentedFilter.js";

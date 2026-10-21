@@ -1,4 +1,4 @@
-// Creates a Space folder with its space.json and moves a Space folder to the trash.
+// Persists Space folder lifecycle operations.
 import { serializeSpaceFile, spaceIdFromName } from "../model/index.js";
 import type { Space } from "../model/index.js";
 import { serially } from "./serialWrites.js";
@@ -9,7 +9,7 @@ const message = (error: unknown): string => (error instanceof Error ? error.mess
 /** TRAP: another device may create the same folder between the listing and the write, so the id is re-checked last. */
 async function freeSpaceId(ctx: StoreContext, name: string, taken: Set<string>): Promise<string> {
   let id = spaceIdFromName(name, taken);
-  while (await ctx.fs.exists(ctx.layout.spaceFilePath(id))) {
+  while (await ctx.fs.exists(ctx.layout.spaceDir(id))) {
     taken.add(id);
     id = spaceIdFromName(name, taken);
   }

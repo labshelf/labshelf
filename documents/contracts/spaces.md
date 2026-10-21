@@ -63,7 +63,7 @@ Hidden entries in `spaces/` and folders without `space.json` are not Spaces.
 
 ## Reading
 
-Reading never throws.
+For a valid Space id, filesystem read failures return the states below without throwing. Invalid ids are rejected before accessing the file system.
 
 - A `space.json` that cannot be read or is not a JSON object gives an unreadable Space (`{ state: "unreadable", id, path, reason }`), which the apps list so the user can see it and fix it.
 - A `glossary.json` that cannot be read or is not a JSON object reads as an empty glossary that is read-only, so a write never erases it.

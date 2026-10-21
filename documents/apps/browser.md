@@ -180,13 +180,7 @@ The project-scope `.mcp.json` registers `chrome-devtools-mcp` (version pinned, h
 
 ## Checking Spaces
 
-Use a scratch library with papers and a writing project.
-
-1. Create a Space from the sidebar and another from All Spaces. Check both appear in the catalog and sidebar; search the catalog and open a Space while keeping the catalog tab.
-2. Add a paper to both Spaces through Add to Space…. Create a Space folder, move the reference, then delete the folder and remove the reference. Check the sidebar follows each edit and the paper remains in Library.
-3. Link the project, set a focus paper, add a date and a glossary term, and export the calendar. Reload with Glossary selected and confirm the inner tab is restored. Return to the page after editing the Space through another app and check its contents refresh.
-4. Switch between Details and Research chat, focus different Space tabs, resize and collapse the pane, then reload. Check the mode, width and collapsed state persist and chat names the active Space.
-5. Check keyboard navigation and light and dark themes. Inspect unavailable controls for their explanatory tooltips, then delete a Space and confirm its papers and project remain.
+Run the shared [Spaces hand checks](spaces.md) with a scratch library. Also switch between Details and Research chat, focus different Space tabs, resize and collapse the pane, then reload. Check the mode, width and collapsed state persist and chat names the active Space. Reload with Glossary selected to check inner-tab restoration. After editing a Space outside the page, return to the page and check it refreshes.
 
 ## Checking source editor appearance
 

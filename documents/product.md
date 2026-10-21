@@ -24,6 +24,12 @@ When a user moves from one app to another, it should feel like the same product:
 - **Same first run.** LabShelf suggests a folder inside a sync tool the user already runs and never calls a cloud API itself.
 - **Same data.** A paper added, read or annotated in one app shows up in the others: through the shared folder, which the user's sync tool carries between devices ([contracts/sync.md](contracts/sync.md)). The browser extension reaches the folder through a small desktop host; without it, it keeps the library in the browser and warns that uninstalling the extension deletes it ([apps/browser.md](apps/browser.md#where-the-library-lives)).
 
+## Spaces
+
+A Space groups references to papers, writing projects, dates and a manual glossary around one piece of work. Library and Projects remain global: a paper can belong to several Spaces without a copy, and removing a reference leaves the paper in the Library. Space folders organise references independently of Library folders.
+
+VS Code and the browser share the Space catalog and pages. Spaces are personal; Members shows You. Sharing, activity, Notes, Discussions, Discover, Research chat and Glossary suggestions show unavailable controls that explain the missing capability. Their intended behaviour lives in [remaining ideas](ideas/spaces.md); storage and host rules live in the [Spaces contract](contracts/spaces.md).
+
 ## UX principles
 
 1. **Paper-first, not a file explorer.** Zotero is the reference. Folders are for navigation and papers are the content, so a list shows papers only and never mixes folder rows into it. Folder structure appears as a path header, chips or a separate pane. Avoid file-manager idioms such as an "up" button or Backspace to go to the parent folder.

@@ -4,7 +4,6 @@ import type { SpaceDateDraft, TermDraft } from "../store/index.js";
 
 const isText = (value: unknown): value is string => isString(value) && value.trim() !== "";
 
-/** The draft, or undefined when a field is missing or of the wrong type. */
 export function parseDateDraft(raw: unknown): SpaceDateDraft | undefined {
   if (!isRecord(raw) || !isText(raw["title"]) || !isDay(raw["date"])) { return undefined; }
   const { kind, title, date, done, paperIds, projectId } = raw;
@@ -28,7 +27,6 @@ function parseSource(raw: unknown): TermDraft["source"] | null {
   return isPage(page) ? { paperId, page } : null;
 }
 
-/** The draft, or undefined when a field is missing or of the wrong type. */
 export function parseTermDraft(raw: unknown): TermDraft | undefined {
   if (!isRecord(raw) || !isText(raw["term"]) || !isString(raw["definition"])) { return undefined; }
   const { term, definition, symbol, source } = raw;
