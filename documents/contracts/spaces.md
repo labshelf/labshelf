@@ -1,6 +1,6 @@
 # Contract: Spaces
 
-Read when you change how a Space is stored, read or written.
+Read when you change Space storage or the page-to-host boundary.
 
 A Space groups papers, writing projects, dates and a glossary around one piece of work. Every app reads and writes the same two files, and the user's sync tool moves them between devices, so changing a file name, a key or a rule here changes the contract for every app and for libraries already on disk.
 
@@ -86,3 +86,13 @@ Reading never throws.
 ## Conflict copies
 
 A conflict copy of `space.json` or `glossary.json` (names from [library-format.md#conflict-copies](library-format.md#conflict-copies)) directly inside `spaces/<space id>/` is shown to the user, who resolves it: keep mine (delete the copy) or keep the other (the copy replaces the original). Keep both is not offered, because a Space has exactly one of each file.
+
+## Page hosting
+
+The catalog and Space page share a transport. Each subscriber receives every host message; removing one subscriber leaves the others active. A mount subscribes before sending `ready` with `view: "catalog"` or `view: "space"` plus its id. The host sends the requested snapshot after `ready` and after changes. A Space page ignores snapshots for other ids. Mount disposers release subscriptions and modal controls.
+
+The host validates page messages with the Spaces parser before acting. Mutations identify the Space by `id`; a date draft carries only fields for its `kind`. Export sends `exportIcs`; the host saves the generated calendar. Paper selection and opening are separate actions. Project links use the id from `labshelf.yaml`, resolved by the host on that device.
+
+The host persists the Space's inner tab through `onTab` and supplies it when mounting again. A sidebar folder supplies `folder` when mounting the Space; without an explicit tab, this opens Papers at that folder. Read-only snapshots show their reason and disable mutations while preserving navigation and calendar export. Missing references remain visible with a removal action. Unreadable catalog entries show the relative contract path and reason.
+
+Hosts load core tokens, base styles, Arc mark styles and page widget styles. The catalog also needs `spaces-catalog.css`; the Space page needs `spaces.css` and `spaces-overview.css`, exported by core. The Space stylesheet includes Papers, Glossary and the positioned tabs. The Research chat panel uses `research-chat.css`. Positioned controls remain focusable with `aria-disabled` and a tooltip naming the missing capability. Host theme mapping applies before these surfaces mount.

@@ -1,7 +1,4 @@
-/**
- * Declares what a host tells the library UI at mount: the actions it can perform beyond the shared ones, and the
- * few texts that name its own way of adding papers. A capability left out hides every control that would send its message.
- */
+// Declares optional host actions available to the library UI.
 export interface LibraryUiCapabilities {
   /** Knows which PDFs lack a text layer, runs OCR (`paper.makeSearchable`) and reports its `jobs`. */
   textLayer?: boolean;
@@ -19,6 +16,7 @@ export interface LibraryUiCapabilities {
   attachPdf?: boolean;
   /** Drafts an email asking the authors for a copy of a paper without a PDF (`paper.askAuthor`). */
   askAuthor?: boolean;
+  spaces?: boolean;
 }
 
 export interface LibraryUiLabels {

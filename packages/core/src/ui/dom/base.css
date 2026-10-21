@@ -35,14 +35,14 @@ svg { display: block; }
   background: var(--ls-button2-bg); color: var(--ls-button2-fg);
   transition: background var(--ls-fast);
 }
-.ls-btn:hover:not(:disabled) { background: var(--ls-button2-hover); }
+.ls-btn:hover:not(:disabled, [aria-disabled="true"]) { background: var(--ls-button2-hover); }
 .ls-btn:disabled { opacity: .45; cursor: default; }
 .ls-btn-primary { background: var(--ls-button-bg); color: var(--ls-button-fg); }
-.ls-btn-primary:hover:not(:disabled) { background: var(--ls-button-hover); }
+.ls-btn-primary:hover:not(:disabled, [aria-disabled="true"]) { background: var(--ls-button-hover); }
 .ls-button-soft { background: var(--ls-button-soft-bg); color: var(--ls-button-soft-fg); }
-.ls-button-soft:hover:not(:disabled) { background: var(--ls-button-soft-hover); }
+.ls-button-soft:hover:not(:disabled, [aria-disabled="true"]) { background: var(--ls-button-soft-hover); }
 .ls-btn-ghost { background: none; color: var(--ls-desc); }
-.ls-btn-ghost:hover:not(:disabled) { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
+.ls-btn-ghost:hover:not(:disabled, [aria-disabled="true"]) { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
 .ls-btn-danger { color: var(--ls-error); }
 .ls-btn-lg { padding: 6px 14px; font-size: 13px; line-height: 18px; }
 .ls-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
@@ -55,7 +55,7 @@ svg { display: block; }
   transition: background var(--ls-fast), opacity var(--ls-fast);
 }
 .ls-icon-btn svg { width: 16px; height: 16px; }
-.ls-icon-btn:hover:not(:disabled) { opacity: 1; background: var(--ls-toolbar-hover); }
+.ls-icon-btn:hover:not(:disabled, [aria-disabled="true"]) { opacity: 1; background: var(--ls-toolbar-hover); }
 .ls-icon-btn:active:not(:disabled), .ls-icon-btn[aria-pressed="true"], .ls-icon-btn.active {
   opacity: 1; background: var(--ls-toolbar-active); color: var(--ls-link);
 }

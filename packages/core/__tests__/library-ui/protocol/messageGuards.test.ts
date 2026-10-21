@@ -1,3 +1,4 @@
+// Tests validation of untrusted library UI messages.
 import { isLibraryPath, parseUiMessage } from "../../../src/library-ui/protocol";
 
 describe("isLibraryPath", () => {
@@ -143,5 +144,17 @@ describe("file tray messages", () => {
       expect(parseUiMessage({ type, id: "p1", name })).toBeNull();
     }
     expect(parseUiMessage({ type: "paper.describeFile", id: "p1", name, description: "x" })).toBeNull();
+  });
+});
+
+
+describe("paper.addToSpace", () => {
+  it.each([["p1"], ["p1", "p2"]])("accepts selected paper ids %j", (...ids: string[]) => {
+    const message = { type: "paper.addToSpace", ids };
+    expect(parseUiMessage(message)).toEqual(message);
+  });
+
+  it.each([undefined, null, "p1", [], [""], ["p1", 7], [null]].map((ids) => [ids]))("rejects invalid ids %j", (ids) => {
+    expect(parseUiMessage({ type: "paper.addToSpace", ids })).toBeNull();
   });
 });

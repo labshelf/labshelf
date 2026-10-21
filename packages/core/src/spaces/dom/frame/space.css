@@ -1,0 +1,25 @@
+/* Styles the Space frame and date editor with core tokens. */
+@import "../papers/papers.css";
+@import "../glossary/glossary.css";
+@import "../positioned/positioned.css";
+.sp { max-width: calc(var(--ls-gallery-card-w) * 6); margin: 0 auto; padding: calc(var(--ls-space-7) * 1.5) calc(var(--ls-space-7) * 2) calc(var(--ls-space-7) * 2); }
+.sp-head { display: flex; align-items: center; gap: var(--ls-space-6); }
+.sp-title { flex: 1; min-width: 0; }
+.sp-name { margin: 0; font: 600 calc(var(--ls-text-2xl) * 1.5) / 1.2 var(--ls-font); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sp-purpose { margin: var(--ls-space-2) 0 0; color: var(--ls-desc); font-size: var(--ls-text-lg); line-height: 1.4; }
+.sp-people { display: flex; flex: none; gap: var(--ls-space-4); }
+.sp-head .ls-btn svg { width: var(--ls-text-lg); height: var(--ls-text-lg); }
+.sp-body { padding-top: var(--ls-space-7); }
+.sp-title h1 { margin: 0; }
+.sp-name, .sp-purpose { display: block; width: 100%; border: 0; padding: 0; background: none; color: inherit; }
+.sp-purpose { color: var(--ls-desc); }
+.sp-name:disabled, .sp-purpose:disabled { opacity: 1; }
+.sp-date-fields, .sp-goal-fields { display: flex; flex-direction: column; gap: var(--ls-space-4); }
+.sp-date-fields label, .sp-goal-fields label { display: flex; flex-direction: column; gap: var(--ls-space-2); }
+.sp-goal-fields fieldset { max-height: calc(var(--ls-row-h) * 8); overflow: auto; margin: var(--ls-space-4) 0; padding: var(--ls-space-3); border: 1px solid var(--ls-border-soft); }
+.sp-goal-fields fieldset label { flex-direction: row; align-items: center; }
+.sp-date-dialog { max-height: calc(100vh - var(--ls-space-7) * 2); overflow: auto; }
+.sp [role="alert"] { color: var(--ls-error); margin-top: var(--ls-space-3); }
+@media (max-width: 900px) { .sp { padding: var(--ls-space-7); } }
+@media (max-width: 560px) { .sp-head { flex-wrap: wrap; } }
+.sp-date-dialog h2 { margin: 0 0 var(--ls-space-5); font-size: var(--ls-text-lg); }

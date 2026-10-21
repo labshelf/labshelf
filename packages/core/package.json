@@ -54,6 +54,7 @@
     "./styles/base.css": "./src/ui/dom/base.css",
     "./styles/toast.css": "./src/ui/dom/widgets/toast.css",
     "./styles/arc-mark.css": "./src/ui/dom/widgets/arcMark.css",
+    "./styles/page-widgets.css": "./src/ui/dom/widgets/page/page.css",
     "./styles/settings.css": "./src/ui/dom/settings/settings.css",
     "./styles/sync-guide.css": "./src/ui/dom/syncGuide/syncGuide.css",
     "./styles/library-ui.css": "./src/library-ui/dom/styles/library-ui.css",
@@ -68,6 +69,10 @@
     "./styles/project-search.css": "./src/writing/search/dom/styles/project-search.css",
     "./styles/project-history.css": "./src/writing/history/dom/styles/project-history.css",
     "./styles/all-projects.css": "./src/writing/allProjects/dom/styles/all-projects.css",
+    "./styles/spaces-catalog.css": "./src/spaces/dom/catalog/catalog.css",
+    "./styles/spaces.css": "./src/spaces/dom/frame/space.css",
+    "./styles/research-chat.css": "./src/spaces/dom/chat/chat.css",
+    "./styles/spaces-overview.css": "./src/spaces/dom/overview/overview.css",
     "./styles/tokens.css": "./src/ui/dom/tokens.css",
     "./styles/vscodeHost.css": "./src/ui/dom/vscodeHost.css",
     "./package.json": "./package.json"

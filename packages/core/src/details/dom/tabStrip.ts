@@ -1,5 +1,5 @@
 // Paints the Details tab strip in the editor tab look and turns clicks and keys on it into tab actions.
-import { el, icon, type IconName } from "../../ui/dom/index.js";
+import { el, icon, moveTabFocus, type IconName } from "../../ui/dom/index.js";
 
 /** One painted tab; `index` is the pinned tab's position, null for the preview. */
 export interface StripTab {
@@ -43,7 +43,7 @@ function paintTab(tab: StripTab, panel: HTMLElement): HTMLElement {
 
 const indexOf = (tabEl: HTMLElement): number | null => (tabEl.dataset.tab === "preview" ? null : Number(tabEl.dataset.tab));
 
-/** Arrow keys move focus between tabs; Enter and Space activate the focused one. */
+/** Arrow, Home and End keys move focus between tabs; Enter and Space activate the focused one. */
 function onKey(list: HTMLElement, e: KeyboardEvent, actions: StripActions): void {
   const tabEl = (e.target as HTMLElement).closest<HTMLElement>('[role="tab"]');
   if (!tabEl) return;
@@ -52,11 +52,7 @@ function onKey(list: HTMLElement, e: KeyboardEvent, actions: StripActions): void
     actions.select(indexOf(tabEl));
     return;
   }
-  if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-  e.preventDefault();
-  const tabs = [...list.querySelectorAll<HTMLElement>('[role="tab"]')];
-  const next = tabs.indexOf(tabEl) + (e.key === "ArrowRight" ? 1 : -1);
-  tabs[(next + tabs.length) % tabs.length]?.focus();
+  moveTabFocus(list, tabEl, e);
 }
 
 function onClick(e: MouseEvent, actions: StripActions): void {

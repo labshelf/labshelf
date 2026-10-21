@@ -1,7 +1,4 @@
-/**
- * Builds the paper menu: everything you can do to one paper or a selection, in the order you reach for it.
- * Host-only actions appear only when the host has the capability.
- */
+// Builds paper menus from the host capabilities.
 import { PAPERS_DIR } from "../../../library/index.js";
 import { PAPER_STATUSES, STATUS_LABEL, isPrePublication } from "../../../model/index.js";
 import { showMenu, type MenuAnchor, type MenuEntry } from "../../../ui/dom/index.js";
@@ -50,6 +47,7 @@ function organizeEntries(ctx: UiContext, ids: string[], one: ListPaper | null): 
   const entries: MenuEntry[] = [];
   entries.push({ icon: "tag", label: ids.length > 1 ? `Tag ${ids.length} Papers…` : "Add Tag…", onSelect: () => { void promptAddTags(ctx, ids); } });
   entries.push({ icon: "folder-move", label: "Move to…", onSelect: () => { void pickMoveTarget(ctx, ids); } });
+  if (ctx.caps.spaces) entries.push({ icon: "folder", label: "Add to Space…", onSelect: () => ctx.transport.post({ type: "paper.addToSpace", ids }) });
   if (one && ctx.caps.reveal) entries.push({ icon: "folder", label: ctx.labels.revealPaper ?? "Reveal Folder", onSelect: () => hostFileAction(ctx, "paper.reveal", one.id) });
   const fix = ctx.caps.textLayer ? fixableIds(ctx, ids) : [];
   if (fix.length) entries.push({ icon: "file-no-text", label: ids.length > 1 ? `Make ${fix.length} Searchable` : "Make Searchable (OCR)", onSelect: () => makeSearchable(ctx, fix) });
@@ -60,7 +58,6 @@ function organizeEntries(ctx: UiContext, ids: string[], one: ListPaper | null): 
   return [...entries, "separator"];
 }
 
-/** The menu entries for the papers `ids`. */
 function paperMenuEntries(ctx: UiContext, ids: string[]): MenuEntry[] {
   const s = ctx.store.get();
   const one = ids.length === 1 ? listPapersUnder(s.papers, PAPERS_DIR, s.pdfDirs).find((p) => p.id === ids[0]) ?? null : null;
@@ -76,7 +73,6 @@ function paperMenuEntries(ctx: UiContext, ids: string[]): MenuEntry[] {
   ];
 }
 
-/** Opens the paper menu for the selection at a point or under an element; `onClose` runs when it closes. */
 export function showPaperMenu(ctx: UiContext, at: MenuAnchor | HTMLElement, onClose?: () => void): void {
   const ids = [...ctx.store.get().selected];
   if (ids.length > 0) showMenu(at, paperMenuEntries(ctx, ids), onClose ? { onClose } : {});

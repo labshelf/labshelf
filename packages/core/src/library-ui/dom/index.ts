@@ -2,7 +2,7 @@
 export { mountLibraryUi } from "./mountLibraryUi.js";
 export type { LibraryUi, LibraryUiOptions } from "./mountLibraryUi.js";
 export { askNoPdf, type NoPdfChoice } from "./flows/index.js";
-export { mountLibrarySidebar, type LibrarySidebar, type LibrarySidebarOptions, type SidebarActions, type SidebarPaper, type ProjectOffers, type SidebarProjectActions, formatLabel } from "./sidebar/index.js";
+export { mountLibrarySidebar, type LibrarySidebar, type LibrarySidebarOptions, type SidebarActions, type SidebarPaper, type ProjectOffers, type SidebarProjectActions, type SidebarSpaceActions, formatLabel } from "./sidebar/index.js";
 export {
   GroupedRows, RowReconciler, paintSortableHeads, sortableHeadHtml, wireSortableHeads, type GroupAccess, type RowGroup, type SortableHead,
   buildFailedRow, buildLoadingRow, buildTrayRow, replaceTrayRows, type TrayEntry,

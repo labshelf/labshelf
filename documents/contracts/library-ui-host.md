@@ -32,6 +32,7 @@ Shared actions (open, status, move, remove, copy, folders, tags, notes, annotati
 | `similar` | `paper.similar` | yes | no |
 | `reveal`, `openExternal`, `fetchMetadata` | the message of the same name; `reveal` also covers `paper.revealFile` | yes | no |
 | `findPdf`, `attachPdf` | `paper.findPdf`, `paper.attachPdf` | no | yes |
+| `spaces` | `paper.addToSpace`; the host opens the Space picker | optional | optional |
 | `askAuthor` | `paper.askAuthor` | no | yes |
 
 Labels are the few texts that name a host's own way of working: the Add button's tooltip, the empty folder's hint, and the name of the reveal action.
@@ -58,6 +59,7 @@ UI to host:
 | `paper.setStatus` | badge click, detail status button, menu, Alt+1 to Alt+3 | `snapshot`; a `notice` for papers that failed |
 | `paper.setTags` | a tag added or removed in the detail pane, or entered in the input box that the list's Add Tag… opens | `snapshot`; a `notice` for papers that failed |
 | `paper.setNote` | the note was typed and paused, or left | `snapshot` |
+| `paper.addToSpace` | Add to Space… on one paper or a selection; `ids` is a nonempty array of nonempty paper ids | opens the host's Space picker; this action is available only with `spaces: true` |
 | `paper.move` | drop on a folder, Move to | `snapshot` and a `notice` |
 | `paper.remove` | the user confirmed Remove | moves the folders to the trash; `snapshot` and a `notice` |
 | `paper.makeSearchable` | Make searchable | `jobs` while OCR runs, then `snapshot` |
@@ -119,7 +121,7 @@ The citation map lists the works that at least three of the library's papers cit
 
 ## Rules
 
-- **The host never shows UI for a list action.** Prompts, confirmations, menus and pickers run in the UI before the message is sent; the host only does the work and replies with `notice`, `progress` or a result message. Native dialogs a platform requires (a file picker, a save dialog) are the exception.
+- **The host never shows UI for a list action.** Prompts, confirmations, menus and pickers run in the UI before the message is sent; the host only does the work and replies with `notice`, `progress` or a result message. Native dialogs a platform requires (a file picker, a save dialog) and the Space picker for `paper.addToSpace` are the exceptions.
 - **Remove asks once.** The UI confirms, then sends `paper.remove`; every host moves the paper folders to the trash.
 - **Every failure becomes an error notice.** A handler that throws is logged by the host and reported with `notice`.
 - **Attach PDF is answered synchronously.** Browsers allow a file picker only inside a user gesture, so the UI sends `paper.attachPdf` from the click itself and an in-page host opens the picker before the post returns.
@@ -128,3 +130,7 @@ The citation map lists the works that at least three of the library's papers cit
 - **Heavy data is pulled.** Annotations, file size and similar papers arrive only for the paper on show, once per paper, and again after `sidecarChanged`. A file listing arrives only for a paper whose files are open, each time they open.
 - **Files are named inside their paper.** File messages carry the paper id and one entry name of its folder, never a path. The host lists, opens and describes only direct entries of that paper folder, and hides `metadata.yaml`, `bib.bib` and names starting with "." (see [library-format.md](library-format.md#layout)). A listing that fails is logged with the paper folder and answered with `files` in state `failed`.
 - **Preferences are validated once.** Hosts pass stored values through `sanitizePrefs`.
+
+## Paper drag operations
+
+Library paper drags carry a JSON array of nonempty paper ids under `application/x-labshelf-papers`. The source permits `copyMove`: folder targets request `move`, while Space targets request `copy` to add references without moving Library papers. Targets reject malformed payloads before posting a host action.

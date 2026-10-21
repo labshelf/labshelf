@@ -1,4 +1,4 @@
-// Mounts the library sidebar: collapsible Library and Projects sections, driven by the host through the returned handle.
+// Mounts the Library, Projects and Spaces sidebar sections through host actions.
 import { PAPERS_DIR, parentDir, type FolderTreeNode } from "../../../library/index.js";
 import { runJoinProjectDialog } from "../../../collab/dom/index.js";
 import type { SharingHost } from "../../sharing/index.js";
@@ -14,16 +14,19 @@ import type { SidebarProject } from "../../projectRows/index.js";
 import { rowKey } from "./sidebarRows.js";
 import type { GroupId, SectionId } from "./sidebarSections.js";
 import { NAV_ROWS, expandTo, paintFocus, render, setExpanded, toggleSection, type SidebarActions, type SidebarState } from "./sidebarView.js";
+import { activateSpaceRow, spaceContextMenu, type SidebarSpaceActions } from "./spaces/index.js";
+import type { SidebarRow } from "../../../spaces/view/index.js";
 
 export interface LibrarySidebarOptions {
   actions: SidebarActions;
   expanded: readonly string[];
   saveExpanded(paths: string[]): void;
-  /** Ids of the collapsed sections and groups: `library`, `projects`, `library.folders`, `library.tags` or `projects.list`. */
+  /** Ids of the collapsed sections and groups: `library`, `projects`, `spaces`, `library.folders`, `library.tags` or `projects.list`. */
   collapsed: readonly string[];
   saveCollapsed(ids: string[]): void;
   /** Absent → the sidebar has no Projects section. */
   projects?: SidebarProjectActions;
+  spaces?: SidebarSpaceActions;
   dropTarget?: (row: HTMLElement, path: string) => void;
   /** Absent → no sharing controls. The sidebar shows the ones the host offers. */
   sharing?: SharingHost;
@@ -40,6 +43,7 @@ export interface LibrarySidebar {
   setSelected(id: string | null): void;
   /** Marks the tag row whose search is `query`; any other text clears the mark. */
   setQuery(query: string): void;
+  setSpaces(rows: readonly SidebarRow[]): void;
   setProjects(projects: readonly SidebarProject[]): void;
   /** Leaves out the Projects buttons and menu items whose action the host cannot run; an offer left out stays available. */
   setProjectOffers(offers: Partial<ProjectOffers>): void;
@@ -54,6 +58,7 @@ const rowAt = (e: Event): HTMLElement | null => (e.target as HTMLElement).closes
 /** Opens a project, folder (All papers opens the root) or tag search, reveals a paper or toggles a section or group; a folder or tag is marked at once, before the host answers. */
 function activate(t: SidebarState, r: HTMLElement): void {
   const { allPapers, allProjects, id, project, section, group, tag, templates, projectFolder } = r.dataset;
+  if (activateSpaceRow(t, r, () => render(t))) return;
   if (activateTreeRow(t, r, () => render(t))) return;
   if (projectFolder !== undefined) { const key = projectFolderKey(projectFolder); setExpanded(t, key, !t.expanded.has(key)); return; }
   if (templates !== undefined) { t.projects?.browseTemplates(); return; }
@@ -76,6 +81,7 @@ function onClick(e: MouseEvent, t: SidebarState): void {
   if (isTreeInput(target)) return;
   if (onOpenProjectClick(e, t, () => render(t))) return;
   const action = target.closest<HTMLElement>("[data-tree]")?.dataset["tree"];
+  if (action === "space-new") { t.spaces?.newSpace(); return; }
   if (action === "new") { t.actions.createFolder(t.target); return; }
   if (action === "add-files") { t.actions.addFiles?.(t.target); return; }
   if (action === "refresh") { t.actions.refresh?.(); return; }
@@ -91,6 +97,7 @@ function onClick(e: MouseEvent, t: SidebarState): void {
   if (!r) return;
   const path = r.dataset["path"];
   t.focused = rowKey(r);
+  if (activateSpaceRow(t, r, () => render(t), !!target.closest(".tree-twisty"))) return;
   if (r.dataset["treeKey"] !== undefined && activateTreeRow(t, r, () => render(t), !!target.closest(".tree-twisty"))) return;
   if (path && target.closest(".tree-twisty") && r.getAttribute("aria-expanded") !== null) { setExpanded(t, path, !t.expanded.has(path)); return; }
   // Clicking a collapsed parent opens it and expands it, as VS Code does.
@@ -100,6 +107,7 @@ function onClick(e: MouseEvent, t: SidebarState): void {
 
 function onContextMenu(e: MouseEvent, t: SidebarState): void {
   const r = rowAt(e);
+  if (spaceContextMenu(e, t, r)) return;
   const project = r?.dataset["project"];
   if (project) { e.preventDefault(); t.projects?.menu(project, { x: e.clientX, y: e.clientY }); return; }
   if (libraryHeadingMenu(e, r, t.sharing)) return;
@@ -116,25 +124,14 @@ function onContextMenu(e: MouseEvent, t: SidebarState): void {
 export function mountLibrarySidebar(slot: HTMLElement, o: LibrarySidebarOptions): LibrarySidebar {
   const t: SidebarState = {
     el: slot, actions: o.actions, expanded: new Set(o.expanded), saveExpanded: o.saveExpanded, dropTarget: o.dropTarget, sharing: o.sharing,
-    collapsed: new Set(o.collapsed), saveCollapsed: o.saveCollapsed, projects: o.projects, projectList: [], offers: ALL_PROJECT_OFFERS, openProject: null, treeOpen: new Map(), treeInput: null,
+    collapsed: new Set(o.collapsed), saveCollapsed: o.saveCollapsed, spaces: o.spaces, spaceList: [], projects: o.projects, projectList: [], offers: ALL_PROJECT_OFFERS, openProject: null, treeOpen: new Map(), treeInput: null,
     focused: null, selectedId: null, current: PAPERS_DIR, target: PAPERS_DIR, tree: null, tags: [], query: "",
   };
-  o.sharing?.onOffersChange(() => render(t));
-  slot.classList.add("tree");
-  slot.setAttribute("role", "tree");
-  slot.setAttribute("aria-label", "Library");
-  slot.tabIndex = 0;
-  slot.addEventListener("click", (e) => onClick(e, t));
-  slot.addEventListener("dblclick", (e) => { const path = rowAt(e)?.dataset["path"]; if (path) t.actions.renameFolder(path); });
-  slot.addEventListener("contextmenu", (e) => onContextMenu(e, t));
-  // A focused button handles Enter and Space itself; row activation would cancel its click.
-  const isButton = (target: EventTarget | null): boolean => target instanceof Element && target.closest("button") !== null;
-  slot.addEventListener("keydown", (e) => { if (!isTreeInput(e.target) && !isButton(e.target)) onSidebarKey(e, t, (r) => activate(t, r)); });
-  slot.addEventListener("focus", () => { t.focused ??= slot.querySelector<HTMLElement>(".tree-row.current")?.dataset["key"] ?? null; paintFocus(t); });
-  slot.addEventListener("blur", () => { t.focused = null; paintFocus(t); });
+  bindSidebar(slot, o, t);
   return {
     setLibrary: (folders, papers) => { t.tree = libraryTree({ folders, papers }); t.tags = libraryTags(papers.map((p) => p.record)); render(t); },
     setQuery: (query) => { t.query = query; render(t); },
+    setSpaces: (rows) => { t.spaceList = rows; render(t); },
     setProjects: (projects) => { t.projectList = projects; render(t); },
     setProjectOffers: (offers) => { t.offers = { ...ALL_PROJECT_OFFERS, ...offers }; render(t); },
     setOpenProject: (project) => {
@@ -154,4 +151,20 @@ export function mountLibrarySidebar(slot: HTMLElement, o: LibrarySidebarOptions)
       render(t);
     },
   };
+}
+
+function bindSidebar(slot: HTMLElement, o: LibrarySidebarOptions, t: SidebarState): void {
+  o.sharing?.onOffersChange(() => render(t));
+  slot.classList.add("tree");
+  slot.setAttribute("role", "tree");
+  slot.setAttribute("aria-label", "Library");
+  slot.tabIndex = 0;
+  slot.addEventListener("click", (e) => onClick(e, t));
+  slot.addEventListener("dblclick", (e) => { const path = rowAt(e)?.dataset["path"]; if (path) t.actions.renameFolder(path); });
+  slot.addEventListener("contextmenu", (e) => onContextMenu(e, t));
+  // A focused button handles Enter and Space itself; row activation would cancel its click.
+  const isButton = (target: EventTarget | null): boolean => target instanceof Element && target.closest("button") !== null;
+  slot.addEventListener("keydown", (e) => { if (!isTreeInput(e.target) && !isButton(e.target)) onSidebarKey(e, t, (r) => activate(t, r)); });
+  slot.addEventListener("focus", () => { t.focused ??= (slot.querySelector<HTMLElement>(".tree-row.current") ?? slot.querySelector<HTMLElement>(NAV_ROWS))?.dataset["key"] ?? null; paintFocus(t); });
+  slot.addEventListener("blur", () => { t.focused = null; paintFocus(t); });
 }

@@ -1,22 +1,15 @@
-/**
- * Mounts the modal overlay shared by the dialog and quick input widgets: a dimmed scrim with Escape
- * dismissal and a focus trap, on the body or inside a shadow root.
- */
+// Mounts cancellable modal overlays with trapped keyboard focus.
 import { el } from "../dom.js";
 
 /** Options for where an overlay mounts. */
 export interface OverlayOptions {
+  signal?: AbortSignal;
   /** Mount inside this shadow root (a content script's overlay) instead of document.body. */
   root?: ShadowRoot;
 }
 
-/**
- * Renders `content` inside a dimmed scrim; Escape or clicking the scrim runs
- * `onDismiss`. With `opts.root` the overlay mounts inside a shadow root (the
- * Scholar content script's overlay), and focus is read and trapped against
- * that root; without it the behaviour is identical to mounting on the body.
- */
 export function mountOverlay(content: HTMLElement, onDismiss: () => void, opts: OverlayOptions = {}): { close: () => void } {
+  if (opts.signal?.aborted) { onDismiss(); return { close: () => {} }; }
   const parent: ShadowRoot | HTMLElement = opts.root ?? document.body;
   const scope: DocumentOrShadowRoot = opts.root ?? document;
   const scrim = el("div", { class: "ls-scrim dim" });
@@ -25,16 +18,21 @@ export function mountOverlay(content: HTMLElement, onDismiss: () => void, opts: 
     if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); dismiss(); }
     else if (e.key === "Tab") { trapFocus(e, content, scope); }
   };
+  let closed = false;
   const close = (): void => {
+    if (closed) return;
+    closed = true;
+    opts.signal?.removeEventListener("abort", dismiss);
     document.removeEventListener("keydown", onKey, true);
     scrim.remove();
     content.remove();
     previous?.focus?.();
   };
-  const dismiss = (): void => { close(); onDismiss(); };
+  const dismiss = (): void => { if (!closed) { close(); onDismiss(); } };
   scrim.addEventListener("mousedown", dismiss);
   document.addEventListener("keydown", onKey, true);
   parent.append(scrim, content);
+  opts.signal?.addEventListener("abort", dismiss, { once: true });
   return { close };
 }
 

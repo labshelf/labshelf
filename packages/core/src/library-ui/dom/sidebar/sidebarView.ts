@@ -8,6 +8,7 @@ import { projectListActions, projectTreeNodes, type ProjectOffers, type SidebarP
 import type { SidebarProject } from "../../projectRows/index.js";
 import { GROUP_ROW_DEPTH, allProjectsRow, exploreTemplatesRow, folderRow, paperRow, rowKey, allPapersRow, tagRow } from "./sidebarRows.js";
 import { groupRow, sectionRow, type GroupId, type SectionId } from "./sidebarSections.js";
+import { spaceRows, type SidebarSpacesState } from "./spaces/index.js";
 import { appendOpenProject } from "./sidebarOpenProject.js";
 import type { SharingHost } from "../../sharing/index.js";
 import type { SidebarOpenProject } from "../../sidebarTrees.js";
@@ -30,7 +31,7 @@ export interface SidebarActions {
   searchTag(tag: string): void;
 }
 
-export interface SidebarState {
+export interface SidebarState extends SidebarSpacesState {
   el: HTMLElement;
   actions: SidebarActions;
   expanded: Set<string>;
@@ -70,10 +71,19 @@ const folderActions = (a: SidebarActions): string =>
   (a.refresh ? `<button class="ls-icon-btn" data-tree="refresh" title="Refresh">${icon("reload")}</button>` : "") +
   `<button class="ls-icon-btn" data-tree="collapse" title="Collapse all">${icon("collapse-all")}</button>`;
 
+let nextTreeId = 0;
+const treeIds = new WeakMap<HTMLElement, number>();
+
 export function paintFocus(t: SidebarState): void {
   const active = document.activeElement === t.el;
-  t.el.querySelectorAll<HTMLElement>(NAV_ROWS).forEach((r) => r.classList.toggle("focused", active && rowKey(r) === t.focused));
-  if (active) t.el.querySelector(".focused")?.scrollIntoView({ block: "nearest" });
+  if (!treeIds.has(t.el)) treeIds.set(t.el, ++nextTreeId);
+  t.el.querySelectorAll<HTMLElement>(NAV_ROWS).forEach(r => {
+    r.id = `ls-tree-${treeIds.get(t.el)}-${encodeURIComponent(rowKey(r))}`;
+    r.classList.toggle("focused", active && rowKey(r) === t.focused);
+  });
+  const focused = t.el.querySelector<HTMLElement>(".focused");
+  if (focused) { t.el.setAttribute("aria-activedescendant", focused.id); focused.scrollIntoView({ block: "nearest" }); }
+  else t.el.removeAttribute("aria-activedescendant");
 }
 
 function appendFolders(t: SidebarState, tree: LibraryTree, frag: HTMLElement): void {
@@ -148,6 +158,7 @@ export function render(t: SidebarState): void {
   const frag = document.createDocumentFragment();
   if (t.tree) appendLibrary(t, t.tree, frag);
   if (t.projects) appendProjects(t, frag);
+  if (t.spaces) appendSpaces(t, frag);
   t.el.replaceChildren(frag);
   t.el.querySelectorAll<HTMLElement>(".tree-pane").forEach((p) => { p.lastElementChild!.scrollTop = scrolled.get(p.dataset["pane"]) ?? 0; });
   paintFocus(t);
@@ -169,4 +180,12 @@ export function setExpanded(t: SidebarState, path: string, open: boolean): void 
 /** Expands a folder and its ancestors without saving them, as VS Code's tree.reveal does. */
 export function expandTo(t: SidebarState, path: string): void {
   for (let p = path; p !== PAPERS_DIR && isUnderDir(p, PAPERS_DIR, "/"); p = parentDir(p, "/")) t.expanded.add(p);
+}
+
+function appendSpaces(t: SidebarState, frag: DocumentFragment): void {
+  const open = !t.collapsed.has("spaces");
+  const action = `<button class="ls-icon-btn" data-tree="space-new" title="New Space" aria-label="New Space">${icon("plus")}</button>`;
+  const body = appendPane(frag, "spaces", sectionRow("spaces", "Spaces", open, action), open);
+  body.setAttribute("role", "group");
+  if (open) body.append(...spaceRows(t));
 }
