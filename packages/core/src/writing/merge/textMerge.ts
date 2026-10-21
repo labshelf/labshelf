@@ -1,4 +1,5 @@
 // Merges two edited versions of a text against their common base, line by line, marking overlaps.
+import { textLines } from "./textLines.js";
 import type * as NodeDiff3 from "node-diff3" with { "resolution-mode": "import" };
 
 /** node-diff3's merge, injected because each runtime loads that package its own way. */
@@ -18,11 +19,6 @@ export interface TextMergeResult {
   conflicted: boolean;
 }
 
-/** Splits into lines without the final line ending, so a trailing-newline difference alone is no change. */
-function lines(text: string): string[] {
-  return text === "" ? [] : text.replace(/\r?\n$/, "").split(/\r?\n/);
-}
-
 /**
  * Non-overlapping edits merge; overlapping ones keep both sides in full between `<<<<<<< local`,
  * `=======` and `>>>>>>> <otherLabel>`. The same change on both sides is not a conflict.
@@ -33,7 +29,7 @@ export function createTextMerge(diff3Merge: Diff3Merge): (input: TextMergeInput)
     const eol = local.includes("\r\n") ? "\r\n" : "\n";
     const out: string[] = [];
     let conflicted = false;
-    for (const region of diff3Merge(lines(local), lines(base), lines(other), { excludeFalseConflicts: true })) {
+    for (const region of diff3Merge(textLines(local), textLines(base), textLines(other), { excludeFalseConflicts: true })) {
       if (region.ok) {
         out.push(...region.ok);
       } else if (region.conflict) {

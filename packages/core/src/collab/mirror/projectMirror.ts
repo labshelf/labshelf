@@ -4,10 +4,11 @@ import { COMMENTS_PATH } from "../comments/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { PROJECT_FILE } from "../../writing/project/index.js";
 import { indexComments, indexFiles, indexSettings, isSafeSharePath, sharedPaths, type ShareFileEntry } from "../model/index.js";
-import { MirrorOwnershipLost } from "../ownership/index.js";
+import type { MirrorOwnershipLost } from "../ownership/index.js";
 import type { BlobExchange, ShareSession } from "../sync/index.js";
 import type { CollabStore } from "../state/index.js";
-import { MirrorRootUnavailable, type MirrorDisk } from "./disk/index.js";
+import type { MirrorRootUnavailable, MirrorDisk } from "./disk/index.js";
+import { createMirrorLifecycle, gateDisk } from "./mirrorLifecycle.js";
 import {
   DISK_ORIGIN, LOG_MODULE, PathQueue, reconcileBlob, reconcileComments, reconcileSettings, reconcileText, reconcileUntracked,
   type MergeText, type MirrorContext, type ReconcileOutcome,
@@ -46,69 +47,24 @@ export interface ProjectMirror {
   close(): Promise<void>;
 }
 
-const isStopReason = (error: unknown): error is MirrorStopReason =>
-  error instanceof MirrorOwnershipLost || error instanceof MirrorRootUnavailable;
-
-/** The disk with every write and delete behind `gate`, so a stopped or displaced mirror cannot change the folder. */
-function gateDisk(disk: MirrorDisk, gate: () => Promise<void>): MirrorDisk {
-  return {
-    read: (path, stableMs) => disk.read(path, stableMs),
-    write: async (path, bytes) => { await gate(); await disk.write(path, bytes); },
-    remove: async (path) => { await gate(); await disk.remove(path); },
-    list: () => disk.list(),
-  };
-}
-
 /** Starts mirroring and reconciles every listed and every shared file once. */
 export function startProjectMirror(options: ProjectMirrorOptions): ProjectMirror {
   const { folder, session, logger } = options;
   const stableMs = options.stableMs ?? DEFAULT_STABLE_MS;
   const detach: (() => void)[] = [];
-  const stopListeners = () => detach.splice(0).forEach((stop) => stop());
-  const attached = new Set<string>();
   const refused = new Set<string>();
-  let stopped: MirrorStopReason | undefined;
-  const gate = async () => {
-    if (stopped) { throw stopped; }
-    await options.ownership?.assertOwned();
-  };
+  const lifecycle = createMirrorLifecycle(options, detach, () => { void queue.close(); });
+  const { guarded } = lifecycle;
   const queue = new PathQueue({ stableMs, logger, run: (path, settled) => guarded(() => reconcile(context, path, settled), "done") });
   const context: MirrorContext = {
-    folder, disk: gateDisk(options.disk, gate), mergeText: options.mergeText, session, blobs: options.blobs, store: options.store, logger,
-    bases: new Map(), settingsBase: undefined, missingBlobs: new Set(),
+    folder, disk: gateDisk(options.disk, lifecycle.gate), mergeText: options.mergeText, session, blobs: options.blobs, store: options.store, logger,
+    settingsBase: undefined, missingBlobs: new Set(),
     request: (path, settle) => queue.request(path, settle),
     attach: (path) => attach(path),
   };
   const reconcile = reconcilePath(options.isEditorOwned ?? (() => false), refused, stableMs);
 
-  function stop(reason: MirrorStopReason): void {
-    if (stopped) { return; }
-    stopped = reason;
-    stopListeners();
-    // TRAP: awaiting here would wait for the very run that called this, inside the queue.
-    void queue.close();
-    void logger.log("WARN", LOG_MODULE, "Stopped mirroring a shared project", { folder, reason: reason.name, message: reason.message });
-    options.onStopped?.(reason);
-  }
-
-  async function guarded<T>(work: () => Promise<T>, fallback: T): Promise<T> {
-    try {
-      return await work();
-    } catch (error) {
-      if (!isStopReason(error)) { throw error; }
-      stop(error);
-      return fallback;
-    }
-  }
-
-  function attach(path: string): void {
-    if (stopped || attached.has(path) || !isSafeSharePath(path) || indexFiles(session.index).get(path)?.kind !== "text") { return; }
-    attached.add(path);
-    const doc = session.openDoc(path);
-    const onUpdate = (_update: Uint8Array, origin: unknown) => { if (origin !== DISK_ORIGIN) { queue.request(path, false); } };
-    doc.on("update", onUpdate);
-    detach.push(() => doc.off("update", onUpdate));
-  }
+  const attach = observeDocuments(context, detach, lifecycle.isStopped);
 
   function changed(path: string): void {
     if (path === PROJECT_FILE || sharedPaths([path]).length > 0) { queue.request(path, true); }
@@ -117,16 +73,28 @@ export function startProjectMirror(options: ProjectMirrorOptions): ProjectMirror
   observe(session.index, context, attach, detach);
   detach.push(session.onPeer((_peer, joined) => { if (joined) { context.missingBlobs.forEach((path) => queue.request(path, false)); } }));
   if (options.disk.watch) { detach.push(options.disk.watch(changed)); }
-  const firstScan = guarded(async () => { await gate(); await scan(context, queue); }, undefined);
+  const firstScan = guarded(async () => { await lifecycle.gate(); await scan(context, queue); }, undefined);
   queue.track(firstScan.catch((error: unknown) => logger.error(LOG_MODULE, error, { folder, action: "first scan" })));
 
   return {
     changed,
     idle: () => queue.idle(),
     close: async () => {
-      stopListeners();
+      detach.splice(0).forEach((stop) => stop());
       await queue.close();
     },
+  };
+}
+
+function observeDocuments(context: MirrorContext, detach: (() => void)[], stopped: () => boolean): (path: string) => void {
+  const attached = new Set<string>();
+  return (path) => {
+    if (stopped() || attached.has(path) || !isSafeSharePath(path) || indexFiles(context.session.index).get(path)?.kind !== "text") { return; }
+    attached.add(path);
+    const doc = context.session.openDoc(path);
+    const onUpdate = (_update: Uint8Array, origin: unknown) => { if (origin !== DISK_ORIGIN) { context.request(path, false); } };
+    doc.on("update", onUpdate);
+    detach.push(() => doc.off("update", onUpdate));
   };
 }
 

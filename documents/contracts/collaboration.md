@@ -99,6 +99,8 @@ collab/<share id>/
   docs/<doc id hex>.log        the updates made since the snapshot, each a 4-byte big-endian length and the update
   blobs/<sha256>               a blob of the share, served to peers that ask for it
   known.json                   per shared path, the SHA-256 of the content disk and doc last agreed on
+  versions.json                per shared path, the newest 50 agreed text versions as [{hash, text}]
+  bases.json                   per shared text path, the last text disk and doc agreed on
   relay-cursors.json           per relay and doc, the last relay row applied; keys are `<relay url> <doc key>`
   relay-held.json              per relay and doc, the Yjs state the relay holds as a base64 Yjs snapshot (see relay.md#clients); keys as in relay-cursors.json
 ```
@@ -106,9 +108,12 @@ collab/<share id>/
 - The log is append-only. Opening the share merges the log into the snapshot and removes it; a torn final record from an interrupted append is dropped.
 - After a failed append, a doc appends nothing more until its full state is written as the snapshot and its log removed, so a torn record is always the last one.
 - `relay-cursors.json` is saved only once every doc update received so far is stored; while one is not, the cursors are held back. `relay-held.json` describes the relay, not the docs, so it is saved without that wait.
-- A file whose disk hash differs from its `known.json` hash was changed outside the share since disk and doc last agreed, so that change enters the doc. A file with no entry there is compared as new.
+- Each mirror records every text or blob it writes or agrees with on disk in the index's [`written`](#docs) map. For text it also remembers the version in `versions.json` and updates `bases.json`; both survive restarting the app.
+- When disk and doc differ, a disk hash matching `known.json` means the doc moved on: the mirror writes the doc to disk. A changing file waits until it settles, and an empty doc waiting for sync keeps its disk copy until its peers supply its state.
+- A settled disk hash in `written` is a recognized version of the share. The mirror writes the current shared text or blob over it and leaves the doc or blob index entry unchanged.
+- Any other disk text is an outside edit. It merges into the current doc against the stored version with the most equal lines, counting repeated lines only as often as both texts contain them, divided by the larger line count. Line endings and a final newline do not affect similarity. The persisted base wins a tie; otherwise the most recent stored version wins. Non-overlapping edits survive on both sides; overlapping edits keep both sides in conflict markers. With no stored version, the disk text enters the doc with a warning. An unrecognized blob replaces the indexed blob without a text merge.
 
-The browser extension keeps the same state in its IndexedDB database `labshelf-collab`, outside the library files, with every key starting with the library id and share id. It stores each doc under its doc key, with a snapshot and its appended updates; the known hashes, relay cursors and relay held states as one record each; and blobs by SHA-256. A write is durable when its transaction completes. Replacing a snapshot and removing that doc's updates is one transaction, so no torn record exists, and the rules above hold unchanged.
+The browser extension keeps the same state in its IndexedDB database `labshelf-collab`, outside the library files, with every key starting with the library id and share id. It stores each doc under its doc key, with a snapshot and its appended updates; the known hashes, stored text versions, bases, relay cursors and relay held states as one map record each; and blobs by SHA-256. A write is durable when its transaction completes. Replacing a snapshot and removing that doc's updates is one transaction, so no torn record exists, and the rules above hold unchanged.
 
 ## Connection lifecycle
 
@@ -171,9 +176,12 @@ The index doc holds:
 |---|---|
 | `share` | `kind: "project"`; a client that reads another kind, or none, refuses the share with a typed error |
 | `files` | path → `{kind: "text" \| "blob", hash?}`; `hash` is the SHA-256 hex of a blob; a rename or delete is an edit of this map |
+| `written` | path → `Y.Array<{hash: string, at: number}>`, the newest 200 agreed disk versions, with `at` in milliseconds since the epoch; a consecutive duplicate hash is omitted |
 | `settings` | the shared `labshelf.yaml` keys |
 | `comments` | thread id → [comment thread](#comments) |
 | `relays` | a `Y.Array`, the [relay list](#relay-list) |
+
+Removing a path from `files` removes its `written` history. Concurrent appends preserve each mirror’s written versions.
 
 A History restore writes the restored text into each shared file's doc so peers receive it, and a file the restore removes leaves the `files` map.
 

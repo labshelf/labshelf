@@ -1,0 +1,15 @@
+// Chooses the closest stored text as the base for an outside disk edit.
+import { lineSimilarity } from "../../../../writing/merge/index.js";
+import type { MirrorContext } from "../mirrorContext.js";
+
+export function mergeDiskText(context: MirrorContext, path: string, docText: string, diskText: string) {
+  const versions = context.store.storedVersions(path);
+  const agreed = context.store.bases.get(path);
+  let base = versions.find((version) => version.text === agreed)?.text;
+  let similarity = base === undefined ? -1 : lineSimilarity(base, diskText);
+  for (const version of [...versions].reverse()) {
+    const score = lineSimilarity(version.text, diskText);
+    if (score > similarity) { base = version.text; similarity = score; }
+  }
+  return base === undefined ? undefined : context.mergeText({ base, local: docText, other: diskText, otherLabel: "disk" });
+}

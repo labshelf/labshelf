@@ -1,6 +1,7 @@
-// Reconciles one shared text file between its doc and its disk copy.
-import { fileText, indexFiles, replaceFileText } from "../../model/index.js";
-import { DISK_ORIGIN, forget, hashOf, LOG_MODULE, writeMirrored, type MirrorContext } from "./mirrorContext.js";
+// Reconciles a shared text file with its disk copy while preserving edits across versions.
+import { fileText, indexFiles, replaceFileText, writtenHashes } from "../../model/index.js";
+import { DISK_ORIGIN, forget, hashOf, LOG_MODULE, rememberMirrored, writeMirrored, type MirrorContext } from "./mirrorContext.js";
+import { mergeDiskText } from "./versions/index.js";
 import type { DiskRead } from "../disk/index.js";
 import type { ReconcileOutcome } from "./pathQueue.js";
 
@@ -8,54 +9,50 @@ const decodeText = (bytes: Uint8Array): string | undefined => {
   try { return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes); } catch { return undefined; }
 };
 
-/** A doc that never received an update is still waiting for its peers, so disk text must not be fed into it yet. */
-const awaitsSync = (doc: { store: { clients: Map<number, unknown> } }) => doc.store.clients.size === 0;
-
 export async function reconcileText(context: MirrorContext, path: string, disk: DiskRead, settled: boolean): Promise<ReconcileOutcome> {
   const { session, store, logger } = context;
-  const doc = session.openDoc(path);
-  const docText = fileText(doc).toString();
   const known = store.known.get(path);
   if (disk.state === "changing") { return "changing"; }
-  if (disk.state === "missing") {
-    if (known === undefined) { await writeMirrored(context, path, docText); return "done"; }
-    if (!settled) { context.request(path, true); return "done"; }
-    session.index.transact(() => indexFiles(session.index).delete(path), DISK_ORIGIN);
-    forget(context, path);
-    await logger.log("INFO", LOG_MODULE, "Removed a file deleted on disk from the share", { folder: context.folder, path });
-    return "done";
-  }
+  if (disk.state === "missing") { return reconcileMissing(context, path, settled); }
   const diskText = decodeText(disk.bytes);
-  // A text file cut inside a UTF-8 sequence is mid-write.
+  // TRAP: A text file cut inside a UTF-8 sequence is mid-write.
   if (diskText === undefined) { return settled ? "changing" : (context.request(path, true), "done"); }
   const diskHash = await hashOf(diskText);
-  if (diskText === docText) { store.known.set(path, diskHash); context.bases.set(path, docText); return "done"; }
+  const doc = session.openDoc(path);
+  const docText = fileText(doc).toString();
+  if (diskText === docText) { rememberMirrored(context, path, docText, diskHash); return "done"; }
   if (diskHash === known) { await writeMirrored(context, path, docText); return "done"; }
   if (!settled) { context.request(path, true); return "done"; }
-  if (awaitsSync(doc)) {
+  if (doc.store.clients.size === 0) {
     await logger.log("INFO", LOG_MODULE, "Kept a local file until its doc syncs", { folder: context.folder, path });
     return "done";
   }
-  const next = await mergedWithDoc(context, path, { docText, diskText, known });
+  if (writtenHashes(session.index, path).has(diskHash)) {
+    await writeMirrored(context, path, docText);
+    await logger.log("INFO", LOG_MODULE, "Wrote the shared text over an old version on disk", { path, diskHash });
+    return "done";
+  }
+  const merged = mergeDiskText(context, path, docText, diskText);
+  const next = merged?.text ?? diskText;
+  // INVARIANT: No await separates reading the doc for merging from applying the outside edit.
   replaceFileText(doc, next, DISK_ORIGIN);
-  if (next === diskText) { store.known.set(path, diskHash); context.bases.set(path, next); } else { await writeMirrored(context, path, next); }
+  if (next === diskText) { rememberMirrored(context, path, next, diskHash); } else { await writeMirrored(context, path, next); }
+  if (!merged || merged.conflicted) {
+    const message = merged ? "Doc and disk changed the same lines; marked both" : "Doc and disk both changed with no common text; took the disk text";
+    await logger.log("WARN", LOG_MODULE, message, { folder: context.folder, path });
+  }
   await logger.log("INFO", LOG_MODULE, "Took an outside edit into the share", { folder: context.folder, path, length: next.length });
   return "done";
 }
 
-/** The disk text, merged with the doc's own changes when both moved on since they last agreed. */
-async function mergedWithDoc(
-  context: MirrorContext, path: string, { docText, diskText, known }: { docText: string; diskText: string; known: string | undefined },
-): Promise<string> {
-  if (known === undefined || await hashOf(docText) === known) { return diskText; }
-  const base = context.bases.get(path);
-  if (base === undefined) {
-    await context.logger.log("WARN", LOG_MODULE, "Doc and disk both changed with no common text; took the disk text", { folder: context.folder, path });
-    return diskText;
+async function reconcileMissing(context: MirrorContext, path: string, settled: boolean): Promise<ReconcileOutcome> {
+  if (context.store.known.get(path) === undefined) {
+    await writeMirrored(context, path, fileText(context.session.openDoc(path)).toString());
+    return "done";
   }
-  const merged = context.mergeText({ base, local: docText, other: diskText, otherLabel: "disk" });
-  if (merged.conflicted) {
-    await context.logger.log("WARN", LOG_MODULE, "Doc and disk changed the same lines; marked both", { folder: context.folder, path });
-  }
-  return merged.text;
+  if (!settled) { context.request(path, true); return "done"; }
+  context.session.index.transact(() => indexFiles(context.session.index).delete(path), DISK_ORIGIN);
+  forget(context, path);
+  await context.logger.log("INFO", LOG_MODULE, "Removed a file deleted on disk from the share", { folder: context.folder, path });
+  return "done";
 }

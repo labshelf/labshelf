@@ -1,6 +1,7 @@
-/** Reads and initialises the index doc of a share: its kind, its file entries, its shared settings and its comment threads. */
+// Describes the shared project index.
 
 import type { Doc, Map as YMap } from "yjs";
+import { observeWritten } from "./written/index.js";
 
 export const SHARE_KINDS = ["project"] as const;
 export type ShareKind = (typeof SHARE_KINDS)[number];
@@ -18,8 +19,8 @@ export type IndexKindResult =
 
 const shareMap = (doc: Doc): YMap<unknown> => doc.getMap("share");
 
-/** Marks a fresh index doc as the index of a project. */
 export function createProjectIndex(doc: Doc): void {
+  observeWritten(doc);
   shareMap(doc).set("kind", "project");
 }
 
@@ -32,11 +33,11 @@ export function readIndexKind(doc: Doc): IndexKindResult {
     : { ok: false, error: "unknownShareKind", kind };
 }
 
-/** POSIX relative path to its entry; renames and deletes are edits of this map. */
-export const indexFiles = (doc: Doc): YMap<ShareFileEntry> => doc.getMap("files");
+export function indexFiles(doc: Doc): YMap<ShareFileEntry> {
+  observeWritten(doc);
+  return doc.getMap("files");
+}
 
-/** The shared labshelf.yaml keys as plain JSON values. */
 export const indexSettings = (doc: Doc): YMap<unknown> => doc.getMap("settings");
 
-/** Comment threads by thread id. */
 export const indexComments = (doc: Doc): YMap<unknown> => doc.getMap("comments");

@@ -1,7 +1,8 @@
-// Keeps a share's Yjs docs, blobs, known hashes, relay cursors and the state each relay holds on this device, so a restart restores them without a peer.
+// Persists a share's device-local collaboration state.
 // CONTRACT: documents/contracts/collaboration.md#device-local-state
 import * as Y from "yjs";
 import { base64ToBytes, bytesToBase64, isCanonicalBase64 } from "../../encoding/index.js";
+import { indexFiles } from "../model/index.js";
 import type { ILogger } from "../../ports/index.js";
 import type { RelayCursorStore } from "../sync/index.js";
 import { INDEX_DOC_KEY } from "../sync/index.js";
@@ -10,6 +11,7 @@ import type { CollabStateStorage } from "./collabStateStorage.js";
 import { persistDoc, type DocPersistence } from "./docPersistence.js";
 import { PersistedMap } from "./persistedMap.js";
 import { loadStoredDocStates } from "./storedDocStates.js";
+import { loadVersionHistory, type StoredVersion } from "./versionHistory.js";
 
 const LOG_MODULE = "collab.state";
 /** Marks the stored state applied on load, so it is not stored again. */
@@ -28,6 +30,9 @@ export interface CollabStore {
   readonly blobs: BlobCache;
   /** Per shared path, the SHA-256 of the content disk and doc last agreed on. */
   readonly known: PersistedMap<string>;
+  readonly bases: PersistedMap<string>;
+  rememberVersion(path: string, hash: string, text: string): void;
+  storedVersions(path: string): readonly StoredVersion[];
   /** The relay cursor of each doc on one relay, saved only while every doc update is stored, and the state the relay holds. */
   relayCursors(relayUrl: string): RelayCursorStore;
   /** Retries unstored doc updates and waits for every pending write; rejects when any state stays unstored. */
@@ -71,6 +76,8 @@ export async function openCollabStore({ storage, logger }: CollabStoreOptions): 
     return docs.every((doc) => !doc.unstored);
   };
   const known = await PersistedMap.load({ storage, name: "known", label: "known file hashes", isValue: isString, logger });
+  const bases = await PersistedMap.load({ storage, name: "bases", label: "file merge bases", isValue: isString, logger });
+  const versions = await loadVersionHistory(storage, logger);
   const cursors = await PersistedMap.load({
     storage, name: "relay-cursors", label: "relay cursors", isValue: isCursor, logger, maySave: allDocsStored,
   });
@@ -86,13 +93,17 @@ export async function openCollabStore({ storage, logger }: CollabStoreOptions): 
     return doc;
   }
 
-  const flush = () => flushAll(docs, [known, cursors, held]);
+  const flush = () => flushAll(docs, [known, bases, versions, cursors, held]);
   await logger.log("INFO", LOG_MODULE, "Opened the share state", { docs: stored.size });
+  const index = restore(INDEX_DOC_KEY);
+  indexFiles(index);
   return {
-    index: restore(INDEX_DOC_KEY),
+    index,
     createDoc: (docPath) => restore(docPath),
     blobs: new BlobCache(storage, logger),
-    known,
+    known, bases,
+    rememberVersion: versions.rememberVersion,
+    storedVersions: versions.storedVersions,
     relayCursors: (relayUrl) => cursorsOf(cursors, held, relayUrl),
     flush,
     close: async () => {

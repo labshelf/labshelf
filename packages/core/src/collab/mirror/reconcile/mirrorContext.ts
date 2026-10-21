@@ -1,7 +1,7 @@
-// Declares what the reconciles of one mirrored project share, and writes and deletes its files through the disk port.
+// Provides the state for mirroring shared project files.
 import { sha256Hex } from "../../../hash/index.js";
 import type { ILogger } from "../../../ports/index.js";
-import type { SharedSettings } from "../../model/index.js";
+import { indexFiles, recordWritten, type SharedSettings } from "../../model/index.js";
 import type { BlobExchange, ShareSession } from "../../sync/index.js";
 import type { CollabStore } from "../../state/index.js";
 import type { MirrorDisk } from "../disk/index.js";
@@ -22,8 +22,6 @@ export interface MirrorContext {
   blobs: BlobExchange;
   store: CollabStore;
   logger: ILogger;
-  /** Text disk and doc last had in common during this run: the base of a three-way merge when both changed. */
-  bases: Map<string, string>;
   /** The shared settings labshelf.yaml and the index last agreed on during this run; undefined until they first do. */
   settingsBase: SharedSettings | undefined;
   /** Blob paths whose fetch failed, retried when a peer joins. */
@@ -41,8 +39,7 @@ export const hashOf = (content: string | Uint8Array): Promise<string> => sha256H
 /** Writes the file atomically and records its content as the one disk and doc agree on. */
 export async function writeMirrored(context: MirrorContext, relative: string, content: string | Uint8Array): Promise<void> {
   await context.disk.write(relative, encode(content));
-  context.store.known.set(relative, await hashOf(content));
-  if (typeof content === "string") { context.bases.set(relative, content); }
+  rememberMirrored(context, relative, content, await hashOf(content));
   await context.logger.log("INFO", LOG_MODULE, "Wrote a shared file from the share", { folder: context.folder, path: relative, length: content.length });
 }
 
@@ -54,5 +51,15 @@ export async function deleteMirrored(context: MirrorContext, relative: string): 
 
 export function forget(context: MirrorContext, relative: string): void {
   context.store.known.delete(relative);
-  context.bases.delete(relative);
+  context.store.bases.delete(relative);
+}
+
+export function rememberMirrored(context: MirrorContext, path: string, content: string | Uint8Array, hash: string): void {
+  context.store.known.set(path, hash);
+  if (!indexFiles(context.session.index).has(path)) { return; }
+  recordWritten(context.session.index, path, hash, Date.now());
+  if (typeof content === "string") {
+    context.store.rememberVersion(path, hash, content);
+    context.store.bases.set(path, content);
+  }
 }
