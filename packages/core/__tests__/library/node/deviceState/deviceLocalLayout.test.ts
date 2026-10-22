@@ -58,6 +58,7 @@ describe("deviceLocalLayout", () => {
     expect(l.logsDir).toBe(path.join(state, "logs"));
     expect(l.appLogPath).toBe(path.join(state, "logs", "app.log"));
     expect(l.terminalLogPath).toBe(path.join(state, "logs", "terminal.log"));
+    expect(l.deviceIdPath).toBe(path.join(state, "device-id"));
     expect(l.projectRegistryPath).toBe(path.join(state, "projects.json"));
     expect(l.mergeBasesDir).toBe(path.join(state, "merge-bases"));
     expect(l.collabDir).toBe(path.join(state, "collab"));

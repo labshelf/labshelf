@@ -37,6 +37,7 @@ The library folder may be synced between devices by any file sync tool, so every
   index.sqlite                     VS Code's text index for the Related tab: chunk embeddings and the content hash of each indexed PDF
   openalex/                        OpenAlex citation data for the citation map
 <state dir>/libraries/<library key>/      $XDG_STATE_HOME/labshelf (default ~/Library/Application Support/labshelf on macOS, ~/.local/state/labshelf elsewhere, Windows included)
+  device-id                        stable random UUID identifying this device for this library
   projects.json                    project folders registered outside the library
   merge-bases/<project id>/<path>  per writing-project text file, the content this device last knew to be common with other devices: the base of a three-way merge of a conflict copy
   collab/<share id>/               per shared project, its Yjs state, blob cache and last agreed file hashes, see collaboration.md#device-local-state
@@ -205,6 +206,18 @@ The citation map's cache of OpenAlex works. It can be rebuilt from OpenAlex at a
 - Each file is `{ "fetchedAt": "<ISO timestamp>", "doi": "<DOI looked up>", "work": { "workId": "W…", "doi", "title", "authors": [], "year", "citedByCount", "references": ["W…"] } }`. `doi` at the top is present only under `papers/`, and `references` is empty under `works/`.
 - An entry older than 30 days, or a paper entry whose `doi` differs from the paper's current DOI, is fetched again. A DOI OpenAlex does not return leaves no file.
 - A file that is not valid JSON or lacks `fetchedAt`, a `W<digits>` work id, or the `authors` and `references` arrays reads as missing and is overwritten on the next fetch.
+
+## .labshelf/writes/
+
+Each device records versions it writes to a project in `<project>/.labshelf/writes/<device id>.json`. The device id is a UUID created on first use, retained in the library’s device-local `device-id` file; the browser retains it in its device state store. It is independent of app sessions and share ids. A missing identity is created atomically; an invalid identity is reported without overwriting it.
+
+```json
+{"version":1,"files":{"sections/intro.tex":[{"hash":"<SHA-256>","parent":null,"by":"mirror","at":1792674000000}]}}
+```
+
+Paths are POSIX paths relative to the project, without empty, `.` or `..` segments, absolute roots, backslashes or control characters. `hash` is the lowercase hex SHA-256 of the written bytes; `parent` is the hash known before the write, or `null`. `by` is `"mirror"` or `"app"`; `at` is a non-negative finite timestamp in epoch milliseconds. Each path retains its latest 50 appended entries, oldest first. The timestamp describes the write; it does not order versions across devices.
+
+A device writes only its own record file, atomically through the file port. Appends to that file are serialized within an app, including writes to different paths. Readers merge every device’s entries by path. A malformed JSON file, unsupported version, invalid path or invalid entry makes that device file count as empty with a warning; filesystem failures are reported. Write records travel with the project through the user’s sync tool. Their role in collaboration is described in [collaboration.md](collaboration.md#device-local-state).
 
 ## .labshelf/checklist.json
 

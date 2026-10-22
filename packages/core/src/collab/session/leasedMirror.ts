@@ -1,6 +1,7 @@
 // Starts a share connection's disk mirror only while this app holds the project folder's lease, waiting for a busy folder to free.
 // CONTRACT: documents/contracts/collaboration.md#mirror-ownership
 import type { ILogger, LibraryFileSystem } from "../../ports/index.js";
+import { createWriteRecordStore, type DeviceIdentity } from "../../library/writeRecords/index.js";
 import { startProjectMirror, type MergeText, type MirrorDisk } from "../mirror/index.js";
 import { acquireFolderLease, systemLeaseScheduler, type FolderLease, type LeaseScheduler, type MirrorApp } from "../ownership/index.js";
 import type { ConnectionMirror, MirrorFactory, MirrorInput } from "./connectionMirror.js";
@@ -12,6 +13,7 @@ const RETRY_MS = 5_000;
 export interface LeasedMirrorOptions {
   /** The file port the folder paths the connection reports resolve on. */
   fs: LibraryFileSystem;
+  identity: DeviceIdentity;
   app: MirrorApp;
   logger: ILogger;
   mergeText: MergeText;
@@ -73,6 +75,7 @@ function runMirror(options: LeasedMirrorOptions, input: MirrorInput, lease: Fold
   const mirror = startProjectMirror({
     folder, disk: options.disk(folder), mergeText: options.mergeText, session: input.session, blobs: input.blobs, store: input.store, logger,
     ownership: lease, onStopped: (reason) => stop(reason.message),
+    writeRecords: createWriteRecordStore(options.fs, folder, options.identity, logger),
     ...(isEditorOwned ? { isEditorOwned: (path: string) => isEditorOwned(folder, path) } : {}),
   });
   const close = (): Promise<void> => (closing ??= (async () => {

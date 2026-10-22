@@ -1,4 +1,5 @@
 // Reconciles a shared text file with its disk copy while preserving edits across versions.
+import { waitsForWrite } from "./inFlight/index.js";
 import { fileText, indexFiles, replaceFileText, writtenHashes } from "../../model/index.js";
 import { DISK_ORIGIN, forget, hashOf, LOG_MODULE, rememberMirrored, writeMirrored, type MirrorContext } from "./mirrorContext.js";
 import { mergeDiskText } from "./versions/index.js";
@@ -32,7 +33,19 @@ export async function reconcileText(context: MirrorContext, path: string, disk: 
     await logger.log("INFO", LOG_MODULE, "Wrote the shared text over an old version on disk", { path, diskHash });
     return "done";
   }
-  const merged = mergeDiskText(context, path, docText, diskText);
+  const entry = indexFiles(session.index).get(path);
+  const wait = await waitsForWrite(context, path, diskHash);
+  if (wait.waiting) { return "done"; }
+  if (indexFiles(session.index).get(path) !== entry) { context.request(path, false); return "done"; }
+  return takeOutsideText(context, path, diskText, diskHash, wait.parent);
+}
+
+async function takeOutsideText(context: MirrorContext, path: string, diskText: string, diskHash: string, parent?: string): Promise<ReconcileOutcome> {
+  const { session, logger } = context;
+  const doc = session.openDoc(path);
+  const docText = fileText(doc).toString();
+  if (writtenHashes(session.index, path).has(diskHash)) { context.request(path, false); return "done"; }
+  const merged = mergeDiskText(context, path, docText, diskText, parent);
   const next = merged?.text ?? diskText;
   // INVARIANT: No await separates reading the doc for merging from applying the outside edit.
   replaceFileText(doc, next, DISK_ORIGIN);

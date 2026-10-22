@@ -27,6 +27,7 @@ function leaseScheduler(clock: FakeClock): LeaseScheduler {
 function host(net: Network, device: Device) {
   const writes: string[] = [];
   const startMirror = leasedMirrorFactory({
+    identity: { id: async () => "11111111-1111-4111-8111-111111111111" },
     fs: device.catalog.fs, app: "vscode", logger: device.catalog.logger, mergeText, scheduler: leaseScheduler(net.clock),
     disk: (folder) => {
       const disk = libraryMirrorDisk(device.catalog.fs, folder);

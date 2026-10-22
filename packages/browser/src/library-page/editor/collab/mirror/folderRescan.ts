@@ -1,5 +1,5 @@
 // Finds files changed outside the browser in a mirrored folder by comparing each file's modification time and size between scans.
-import { posixPathOps, type ILogger, type LibraryFileSystem, type MirrorDisk } from "@labshelf/core";
+import { DEVICE_ID, posixPathOps, type ILogger, type LibraryFileSystem, type MirrorDisk } from "@labshelf/core";
 
 /** Bounds the stat calls of one scan; a project folder past this is not mirrored in full. */
 const RESCAN_MAX_PATHS = 2_000;
@@ -34,7 +34,8 @@ export function createFolderRescan(options: FolderRescanOptions): FolderRescan {
   };
 
   const run = async (): Promise<void> => {
-    const listed = await disk.list();
+    const [listed, records] = await Promise.all([disk.list(), fs.listDir(posixPathOps.join(folder, ".labshelf", "writes"))]);
+    listed.push(...records.filter(name => name.endsWith(".json") && DEVICE_ID.test(name.slice(0, -5))).map(name => `.labshelf/writes/${name}`));
     if (listed.length > RESCAN_MAX_PATHS) {
       void logger.log("WARN", LOG_MODULE, "Folder rescan covers only the first files", { folder, files: listed.length, max: RESCAN_MAX_PATHS });
     }

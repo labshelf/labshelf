@@ -15,12 +15,9 @@ describe.each([nodeFiles, memoryFiles()])("a stopping mirror over a $name", (fil
   afterEach(async () => { await fixture.close(); });
 
   it("stops writing once the lease is lost mid-queue, and keeps peer edits in the share", async () => {
-    let checks = 0;
     const ownership = {
-      // The first check guards the first scan, the second lets one write through.
       assertOwned: async () => {
-        checks += 1;
-        if (checks > 2) { throw new MirrorOwnershipLost(fixture.folder, { app: "browser", renewedAt: 0 }); }
+        if (fixture?.diskChanges.length > 0) { throw new MirrorOwnershipLost(fixture.folder, { app: "browser", renewedAt: 0 }); }
       },
     };
     const onStopped = jest.fn<void, [MirrorStopReason]>();

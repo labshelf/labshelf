@@ -26,6 +26,7 @@ export interface MirrorFixture {
   blobs: BlobExchange;
   mirror: ProjectMirror;
   logger: FakeLogger;
+  writeRecords: ReturnType<MirrorFiles["records"]>;
   close(): Promise<void>;
 }
 
@@ -73,14 +74,15 @@ export async function openMirror(options: FixtureOptions = {}): Promise<MirrorFi
   if (options.project !== false) { createProjectIndex(session.index); }
   const blobs = attachBlobs(session, { contentKey: await contentKey(), getBlob: (hash) => store.blobs.get(hash), logger, scheduler: clock, skipPeer: () => false });
   const diskChanges: string[] = [];
+  const writeRecords = files.records(folder, logger);
   const mirror = startProjectMirror({
-    folder, disk: recordingDisk(files.disk(folder, logger), diskChanges), mergeText, session, blobs, store, logger, stableMs: STABLE_MS,
+    writeRecords, folder, disk: recordingDisk(files.disk(folder, logger), diskChanges), mergeText, session, blobs, store, logger, stableMs: STABLE_MS,
     ...(options.isEditorOwned ? { isEditorOwned: options.isEditorOwned } : {}),
     ...(options.ownership ? { ownership: options.ownership } : {}),
     ...(options.onStopped ? { onStopped: options.onStopped } : {}),
   });
   return {
-    files, folder, stateDir, diskChanges, store, session, blobs, mirror, logger,
+    writeRecords, files, folder, stateDir, diskChanges, store, session, blobs, mirror, logger,
     close: async () => {
       blobs.close();
       await mirror.close();

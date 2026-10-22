@@ -8,6 +8,10 @@ A library is a folder. The user's sync tool (Dropbox, Google Drive for desktop, 
 
 Everything inside the library folder is synced; files that belong to one device live outside it. Which file is which: [library-format.md#device-local-files](library-format.md#device-local-files).
 
+## Project write records
+
+Project write records travel with the project: [library-format.md#labshelfwrites](library-format.md#labshelfwrites). Each device writes its own UUID-named file, so devices never compete to update the same record file and the sync tool has no concurrent-device conflict copies to create for these records. A source file and its record may arrive independently. The collaboration mirror waits for in-flight versions under [collaboration.md](collaboration.md#device-local-state).
+
 ## Conflict copies
 
 When two devices change the same file before the sync tool reconciles them, the tool keeps both versions. The apps recognise the copies, merge sidecar copies without asking and let the user resolve the others: [library-format.md#conflict-copies](library-format.md#conflict-copies). After each batch of external changes, the apps scan for conflict copies first and reindex after, so a merged sidecar is what the reindex reads.

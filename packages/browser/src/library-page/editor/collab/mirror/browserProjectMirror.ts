@@ -1,10 +1,10 @@
 // Mirrors a shared project to the library source chosen when it starts, while this tab and no other app own the mirror.
 // CONTRACT: documents/contracts/collaboration.md#mirror-ownership
 import {
-  libraryMirrorDisk, MirrorOwnershipLost, MirrorRootUnavailable, startProjectMirror, systemLeaseScheduler,
+  createWriteRecordStore, libraryMirrorDisk, MirrorOwnershipLost, MirrorRootUnavailable, startProjectMirror, systemLeaseScheduler,
   type BlobExchange, type CollabStore, type ILogger, type LeaseHolder, type LeaseScheduler, type MirrorStopReason, type ShareSession,
 } from "@labshelf/core";
-import type { LibrarySource, LibrarySources, TabLease } from "../../../../storage";
+import { browserDeviceIdentity, type LibrarySource, type LibrarySources, type TabLease } from "../../../../storage";
 import { createFolderRescan } from "./folderRescan";
 import { onLocalFileChanges } from "./localFileChanges";
 import { browserMergeText } from "./mergeText";
@@ -93,6 +93,7 @@ function runMirror(options: BrowserProjectMirrorOptions, leases: MirrorLeases): 
         : tabLost ? "tab-taken" : "folder-taken";
   const disk = libraryMirrorDisk(leases.fs, folder);
   const mirror = startProjectMirror({
+    writeRecords: createWriteRecordStore(leases.fs, folder, browserDeviceIdentity(options.libraryId, logger), logger),
     folder, disk, mergeText: browserMergeText, session: options.session, blobs: options.blobs, store: options.store, logger,
     // An open editor edits the shared text itself and never writes the file, so the mirror writes every path, open ones included.
     ownership: { assertOwned }, onStopped: (reason) => stop(reasonOf(reason)),

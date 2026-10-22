@@ -25,6 +25,9 @@ export interface ShareSessionOptions {
 
 export interface ShareSession {
   readonly index: Y.Doc;
+  onIndexRoundTripAvailable(listener: () => void): () => void;
+  indexRoundTrip(): Promise<boolean> | undefined;
+  registerIndexRoundTrip(request: () => Promise<boolean> | undefined): () => void;
   /** The doc of a relative POSIX path, created and synced on first open. */
   openDoc(path: string): Y.Doc;
   docs(): ReadonlyMap<string, Y.Doc>;
@@ -44,6 +47,8 @@ export interface ShareSession {
 }
 
 export function createShareSession(options: ShareSessionOptions): ShareSession {
+  const roundTripListeners = new Set<() => void>();
+  let roundTrip: (() => Promise<boolean> | undefined) | undefined;
   const scheduler = options.scheduler ?? systemScheduler;
   const mesh = createSecureMesh({ shareId: options.shareId, key: options.contentKey, transport: options.transport, logger: options.logger, scheduler });
   const index = options.index ?? new Y.Doc();
@@ -56,6 +61,13 @@ export function createShareSession(options: ShareSessionOptions): ShareSession {
   });
   return {
     index,
+    indexRoundTrip: () => roundTrip?.(),
+    onIndexRoundTripAvailable: (listener) => { roundTripListeners.add(listener); return () => { roundTripListeners.delete(listener); }; },
+    registerIndexRoundTrip: (request) => {
+      roundTrip = request;
+      roundTripListeners.forEach((listener) => listener());
+      return () => { if (roundTrip === request) { roundTrip = undefined; } };
+    },
     openDoc: (path) => sync.open(path),
     docs: () => sync.docs,
     onDoc: (listener) => sync.onHold(listener),

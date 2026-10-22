@@ -4,7 +4,7 @@ export { ensurePrivateDir, isGroupOrOtherWritable, PRIVATE_DIR_MODE, PRIVATE_FIL
 export { readOptionalFile } from "./readOptionalFile.js";
 export { cacheDir } from "./cacheDirectory.js";
 export { resolveConflictCopy } from "../conflicts/node/index.js";
-export { deviceLocalLayout, libraryKey, stateDir, type DeviceLocalLayout } from "./deviceState/index.js";
+export { createDeviceIdentity, deviceLocalLayout, libraryKey, stateDir, type DeviceLocalLayout } from "./deviceState/index.js";
 export { NodeLibraryFileSystem } from "./nodeLibraryFileSystem.js";
 export {
   loadSharedConfig, readSharedLibraryRoot, sharedConfigDir, sharedConfigPath, updateSharedConfig,

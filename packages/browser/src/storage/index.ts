@@ -14,5 +14,5 @@ export { idbHistoryStorage } from "./idb";
 export { stagePdf, stagedPdf, unstagePdf, keepStagedPdfs } from "./pdfStaging";
 export { countBrowserPapers, moveBrowserLibraryToFolder } from "./move";
 export { announcePickedFolder, folderPermission, loadPickedFolder, requestFolderPermission, savePickedFolder } from "./picked";
-export { deleteBrowserCollabState, openBrowserCollabStorage } from "./collaboration";
+export { browserDeviceIdentity, deleteBrowserCollabState, openBrowserCollabStorage } from "./collaboration";
 export { acquireTabLease, takeOverTabLease, tabLeaseName, waitForTabLease, type TabLease, type TabLeaseResult } from "./ownership";

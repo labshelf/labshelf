@@ -1,14 +1,15 @@
 // Mirrors a shared project between its share docs and its folder on disk, in both directions.
+import type { WriteRecordStore } from "../../library/writeRecords/index.js";
 import type * as Y from "yjs";
 import { COMMENTS_PATH } from "../comments/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { PROJECT_FILE } from "../../writing/project/index.js";
-import { indexComments, indexFiles, indexSettings, isSafeSharePath, sharedPaths, type ShareFileEntry } from "../model/index.js";
+import { indexComments, indexFiles, indexSettings, indexWritten, isSafeSharePath, sharedPaths, type ShareFileEntry } from "../model/index.js";
 import type { MirrorOwnershipLost } from "../ownership/index.js";
 import type { BlobExchange, ShareSession } from "../sync/index.js";
 import type { CollabStore } from "../state/index.js";
 import type { MirrorRootUnavailable, MirrorDisk } from "./disk/index.js";
-import { createMirrorLifecycle, gateDisk } from "./mirrorLifecycle.js";
+import { createMirrorLifecycle, gateDisk, gateWriteRecords } from "./mirrorLifecycle.js";
 import {
   DISK_ORIGIN, LOG_MODULE, PathQueue, reconcileBlob, reconcileComments, reconcileSettings, reconcileText, reconcileUntracked,
   type MergeText, type MirrorContext, type ReconcileOutcome,
@@ -23,6 +24,7 @@ export interface ProjectMirrorOptions {
   /** Names the project in logs. */
   folder: string;
   disk: MirrorDisk;
+  writeRecords: WriteRecordStore;
   mergeText: MergeText;
   session: ShareSession;
   blobs: BlobExchange;
@@ -58,7 +60,7 @@ export function startProjectMirror(options: ProjectMirrorOptions): ProjectMirror
   const queue = new PathQueue({ stableMs, logger, run: (path, settled) => guarded(() => reconcile(context, path, settled), "done") });
   const context: MirrorContext = {
     folder, disk: gateDisk(options.disk, lifecycle.gate), mergeText: options.mergeText, session, blobs: options.blobs, store: options.store, logger,
-    settingsBase: undefined, missingBlobs: new Set(),
+    settingsBase: undefined, missingBlobs: new Set(), writeRecords: gateWriteRecords(options.writeRecords, lifecycle.gate, options.disk), waitingWrites: new Map(),
     request: (path, settle) => queue.request(path, settle),
     attach: (path) => attach(path),
   };
@@ -67,10 +69,16 @@ export function startProjectMirror(options: ProjectMirrorOptions): ProjectMirror
   const attach = observeDocuments(context, detach, lifecycle.isStopped);
 
   function changed(path: string): void {
+    if (path.startsWith(".labshelf/writes/")) { context.waitingWrites.forEach((_wait, waitingPath) => queue.request(waitingPath, false)); return; }
     if (path === PROJECT_FILE || sharedPaths([path]).length > 0) { queue.request(path, true); }
   }
 
   observe(session.index, context, attach, detach);
+  detach.push(session.onIndexRoundTripAvailable(() => {
+    for (const [path, wait] of context.waitingWrites) {
+      if (!wait.mirror) { context.waitingWrites.delete(path); context.request(path, true); }
+    }
+  }));
   detach.push(session.onPeer((_peer, joined) => { if (joined) { context.missingBlobs.forEach((path) => queue.request(path, false)); } }));
   if (options.disk.watch) { detach.push(options.disk.watch(changed)); }
   const firstScan = guarded(async () => { await lifecycle.gate(); await scan(context, queue); }, undefined);
@@ -132,6 +140,16 @@ function observe(index: Y.Doc, context: MirrorContext, attach: (path: string) =>
     }
   };
   files.observe(onFiles);
+  const written = indexWritten(index);
+  const onWritten = (events: Y.YEvent<Y.AbstractType<unknown>>[]) => {
+    for (const event of events) {
+      if (event.target === written) {
+        for (const path of (event as Y.YMapEvent<unknown>).keysChanged) { context.request(path, false); }
+      } else if (typeof event.path[0] === "string") { context.request(event.path[0], false); }
+    }
+  };
+  written.observeDeep(onWritten);
+  detach.push(() => written.unobserveDeep(onWritten));
   const settings = indexSettings(index);
   const onSettings = (event: Y.YMapEvent<unknown>) => {
     if (event.transaction.origin !== DISK_ORIGIN) { context.request(PROJECT_FILE, false); }

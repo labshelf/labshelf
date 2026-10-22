@@ -1,5 +1,5 @@
 /** Pins that files the page writes in a shared project reach the share at once, with no rescan: created, renamed and binary files. */
-import { indexFiles } from "@labshelf/core";
+import { appendWriteRecord, indexFiles, sha256Hex } from "@labshelf/core";
 import { reportPageWrites } from "../../../../../src/library-page/editor/collab/mirror";
 import { FOLDER, openTestbed, running, until, type Testbed } from "./mirrorTestbed";
 
@@ -29,5 +29,22 @@ describe("browser project mirror and the page's own writes", () => {
     await pageFs.writeText("projects/other/ignored.tex", "outside the share");
     await until(() => indexFiles(bed.session.index).get("images/plot.png")?.kind === "blob");
     expect(indexFiles(bed.session.index).get("images/plot.png")?.hash).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("rescans cloud record files that arrive after their source file", async () => {
+    bed = await openTestbed("folder");
+    bed.peerEdit("main.tex", "Base");
+    const mirror = running(await bed.start());
+    await mirror.idle();
+    const roundTrip = jest.fn(() => new Promise<boolean>(() => undefined));
+    bed.session.registerIndexRoundTrip(roundTrip);
+    await bed.folderFs.writeText(`${FOLDER}/main.tex`, "Cloud");
+    await until(() => roundTrip.mock.calls.length > 0, () => bed.scheduler.fire());
+    await appendWriteRecord(bed.folderFs, FOLDER, "11111111-1111-4111-8111-111111111111", {
+      path: "main.tex", hash: await sha256Hex(new TextEncoder().encode("Cloud")), parent: null, by: "mirror", at: 1,
+    }, bed.logger);
+    const waiting = () => (bed.logger.log as jest.Mock).mock.calls.some(call => call[2] === "Waiting for an in-flight mirror write");
+    await until(waiting, () => bed.scheduler.fire());
+    expect(bed.docText("main.tex")).toBe("Base");
   });
 });

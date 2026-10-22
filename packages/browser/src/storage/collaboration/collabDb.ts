@@ -2,7 +2,7 @@
 // CONTRACT: documents/contracts/collaboration.md#device-local-state
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 
-/** Every key starts with the share namespace `<library id>/<share id>`. */
+/** Namespaces keep library identity separate from each share's state. */
 export interface CollabSchema extends DBSchema {
   docs: { key: [string, string]; value: Uint8Array };
   /** Keyed by namespace, doc id and an append sequence number. */

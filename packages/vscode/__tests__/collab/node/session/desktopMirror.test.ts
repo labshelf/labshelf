@@ -23,7 +23,7 @@ describe('desktopMirrorFactory', () => {
     const lease = await readFile(leaseFile, 'utf8');
     const closed = new AbortController();
 
-    const start = await desktopMirrorFactory(logger, () => false)({
+    const start = await desktopMirrorFactory(folder, logger, () => false)({
       folder, signal: closed.signal, onStopped: jest.fn(), session: {}, blobs: {}, store: {},
     } as unknown as MirrorInput);
 

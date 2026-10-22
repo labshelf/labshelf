@@ -1,5 +1,4 @@
-/** Locates a library's device-local files (AI index, OpenAlex cache, logs, project registry, merge bases, share state, builds) outside the synced
- * library folder, in per-library folders of the cache and state directories. */
+// Locates a library’s device-local files outside its synced folder.
 import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
 import * as path from "node:path";
@@ -10,6 +9,7 @@ import { stateDir } from "./stateDirectory.js";
 export interface DeviceLocalLayout {
   /** Holds only the AI text index (embeddings and content hashes). */
   readonly aiDatabasePath: string;
+  readonly deviceIdPath: string;
   /** OpenAlex citation data per paper and per cited work. */
   readonly openAlexCacheDir: string;
   readonly logsDir: string;
@@ -57,6 +57,7 @@ export function deviceLocalLayout(libraryRoot: string, env: NodeJS.ProcessEnv = 
   const logsDir = path.join(state, "logs");
   return {
     aiDatabasePath: path.join(cache, "index.sqlite"),
+    deviceIdPath: path.join(state, "device-id"),
     openAlexCacheDir: path.join(cache, "openalex"),
     logsDir,
     appLogPath: path.join(logsDir, "app.log"),

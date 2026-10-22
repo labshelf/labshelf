@@ -1,4 +1,5 @@
 // Stops a project mirror when its folder or ownership is lost.
+import type { WriteRecordStore } from "../../library/writeRecords/index.js";
 import { MirrorOwnershipLost } from "../ownership/index.js";
 import { MirrorRootUnavailable, type MirrorDisk } from "./disk/index.js";
 import { LOG_MODULE } from "./reconcile/index.js";
@@ -33,5 +34,12 @@ export function gateDisk(disk: MirrorDisk, gate: () => Promise<void>): MirrorDis
     write: async (path, bytes) => { await gate(); await disk.write(path, bytes); },
     remove: async (path) => { await gate(); await disk.remove(path); },
     list: () => disk.list(),
+  };
+}
+
+export function gateWriteRecords(records: WriteRecordStore, gate: () => Promise<void>, disk: MirrorDisk): WriteRecordStore {
+  return {
+    read: () => records.read(),
+    append: async (entry) => { await gate(); await disk.list(); await records.append(entry); },
   };
 }

@@ -55,6 +55,8 @@ describe("stale versions through the relay", () => {
     await writeFile(b, "plot.png", after);
     b.mirror.changed("plot.png");
     await b.mirror.idle();
+    const nextHash = await b.store.blobs.put(after);
+    expect(await runUntil(clock, () => indexFiles(b.session.index).get("plot.png")?.hash === nextHash)).toBe(true);
     const hash = indexFiles(b.session.index).get("plot.png")?.hash;
     expect(await runUntil(clock, () => a.store.known.get("plot.png") === hash)).toBe(true);
     await writeFile(a, "plot.png", before);
@@ -96,9 +98,9 @@ describe("stale versions through the relay", () => {
       return result;
     });
     const reconciliation = reconcileText({
-      folder: a.folder, disk: a.files.disk(a.folder, a.logger), mergeText, session: a.session,
+      folder: a.folder, disk: a.files.disk(a.folder, a.logger), mergeText, session: { ...a.session, indexRoundTrip: () => undefined },
       blobs: a.blobs, store: a.store, logger: a.logger, settingsBase: undefined,
-      missingBlobs: new Set(), request: () => {}, attach: () => {},
+      writeRecords: a.writeRecords, waitingWrites: new Map(), missingBlobs: new Set(), request: () => {}, attach: () => {},
     }, "main.tex", { state: "present", bytes: new TextEncoder().encode(edited) }, true);
     try {
       expect(await runUntil(clock, () => held)).toBe(true);

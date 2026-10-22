@@ -1,4 +1,5 @@
 // Reconciles one shared binary file between its index entry, the blob cache and its disk copy.
+import { waitsForWrite } from "./inFlight/index.js";
 import { indexFiles, writtenHashes, type ShareFileEntry } from "../../model/index.js";
 import { DISK_ORIGIN, forget, hashOf, LOG_MODULE, rememberMirrored, writeMirrored, type MirrorContext } from "./mirrorContext.js";
 import type { DiskRead } from "../disk/index.js";
@@ -19,7 +20,10 @@ export async function reconcileBlob(
         await writeFetched(context, path, entry);
         return "done";
       }
+      if ((await waitsForWrite(context, path, diskHash)).waiting) { return "done"; }
+      if (indexFiles(session.index).get(path) !== entry || writtenHashes(session.index, path).has(diskHash)) { context.request(path, false); return "done"; }
       await store.blobs.put(disk.bytes);
+      if (indexFiles(session.index).get(path) !== entry || writtenHashes(session.index, path).has(diskHash)) { context.request(path, false); return "done"; }
       session.index.transact(() => indexFiles(session.index).set(path, { kind: "blob", hash: diskHash }), DISK_ORIGIN);
       rememberMirrored(context, path, disk.bytes, diskHash);
       await logger.log("INFO", LOG_MODULE, "Took an outside change of a binary file into the share", { folder: context.folder, path, hash: diskHash });

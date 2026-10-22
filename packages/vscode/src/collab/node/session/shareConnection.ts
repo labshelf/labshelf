@@ -23,6 +23,6 @@ export function connectDesktopShare(options: ConnectOptions, start: ShareStart):
     shareId, shareKey, relays, name, logger,
     storage: nodeCollabStorage({ dir: shareStateDir(libraryRoot, shareId), shareId }),
     projects: { context: nodeProjectCatalogContext(logger), libraryRoot },
-    startMirror: desktopMirrorFactory(logger, (folder, path) => options.isEditorOwned(folder, path)),
+    startMirror: desktopMirrorFactory(libraryRoot, logger, (folder, path) => options.isEditorOwned(folder, path)),
   }, start);
 }

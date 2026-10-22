@@ -1,4 +1,5 @@
 // Reconciles a file on disk that the index does not list: a new file to share, or one the share removed.
+import { waitsForWrite } from "./inFlight/index.js";
 import { indexFiles, replaceFileText, sharedFileKind, sharedPaths, type ShareFileEntry } from "../../model/index.js";
 import { deleteMirrored, DISK_ORIGIN, forget, hashOf, LOG_MODULE, rememberMirrored, type MirrorContext } from "./mirrorContext.js";
 import type { DiskRead } from "../disk/index.js";
@@ -14,6 +15,8 @@ export async function reconcileUntracked(context: MirrorContext, path: string, d
   if (known === diskHash) { await deleteMirrored(context, path); return "done"; }
   if (sharedPaths([path]).length === 0) { return "done"; }
   if (!settled) { context.request(path, true); return "done"; }
+  if ((await waitsForWrite(context, path, diskHash)).waiting) { return "done"; }
+  if (indexFiles(session.index).has(path)) { context.request(path, false); return "done"; }
   const kind = sharedFileKind(path, disk.bytes);
   const content = kind === "text" ? new TextDecoder("utf-8", { ignoreBOM: true }).decode(disk.bytes) : disk.bytes;
   let entry: ShareFileEntry = { kind };
@@ -22,6 +25,7 @@ export async function reconcileUntracked(context: MirrorContext, path: string, d
   } else {
     entry = { kind, hash: await store.blobs.put(disk.bytes) };
   }
+  if (indexFiles(session.index).has(path)) { context.request(path, false); return "done"; }
   session.index.transact(() => indexFiles(session.index).set(path, entry), DISK_ORIGIN);
   rememberMirrored(context, path, content, diskHash);
   context.attach(path);

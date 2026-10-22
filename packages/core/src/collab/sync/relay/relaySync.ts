@@ -4,6 +4,7 @@ import { bytesToHex } from "../../../encoding/index.js";
 import type { RelayStoreAnswer } from "../../transport/index.js";
 import { systemScheduler } from "../mesh/index.js";
 import type { ShareSession } from "../shareSession.js";
+import { INDEX_DOC_KEY } from "../docSync.js";
 import { docIdCache, MESSAGE_KIND } from "../wire/index.js";
 import { memoryCursorStore, type RelayCursorStore } from "./relayCursors.js";
 import { RELAY_ERROR_CODE } from "../../../relay/index.js";
@@ -28,6 +29,9 @@ class RelayDocSync implements RelaySync {
   private readonly frames: StoredFrameContext;
   private readonly puts: RelayDocPuts;
   private readonly cursors: RelayCursorStore;
+  private unregisterRoundTrip = () => {};
+  private readonly indexWaiters = new Set<(answered: boolean) => void>();
+  private pendingIndexRoundTrip = false;
   private queue: Promise<void> = Promise.resolve();
 
   constructor(private session: ShareSession, private options: RelaySyncOptions) {
@@ -36,10 +40,12 @@ class RelayDocSync implements RelaySync {
     this.puts = new RelayDocPuts({ relay, logger, shareId, scheduler: options.scheduler ?? systemScheduler, seal: (lane, kind, payload) => this.seal(lane, kind, payload) });
     this.cursors = options.cursors ?? memoryCursorStore();
     this.stops.push(
+      () => this.unregisterRoundTrip(),
       relay.onStore((answer) => this.enqueue(() => this.answer(answer))),
       relay.onConnection((open) => this.enqueue(() => (open ? this.opened() : this.dropped()))),
       session.onDoc((docKey, doc) => this.hold(docKey, doc, relay.connected)),
     );
+    this.announceIndexRoundTrip();
     for (const [docKey, doc] of session.docs()) { this.hold(docKey, doc, false); }
     if (relay.connected) { this.enqueue(() => this.opened()); }
   }
@@ -50,8 +56,35 @@ class RelayDocSync implements RelaySync {
 
   async close(): Promise<void> {
     this.stops.forEach((stop) => stop());
+    this.finishIndexRoundTrip(false);
     await this.flush();
     await this.queue;
+  }
+
+  private announceIndexRoundTrip(): void {
+    this.unregisterRoundTrip();
+    this.unregisterRoundTrip = this.session.registerIndexRoundTrip(() => this.indexRoundTrip());
+  }
+
+  private indexRoundTrip(): Promise<boolean> | undefined {
+    if (!this.options.relay.connected) { return; }
+    return new Promise((resolve) => {
+      this.indexWaiters.add(resolve);
+      this.pendingIndexRoundTrip = true;
+      this.enqueue(() => this.requestIndexRoundTrip());
+    });
+  }
+
+  private requestIndexRoundTrip(): Promise<void> | undefined {
+    const lane = this.lanes.get(INDEX_DOC_KEY);
+    if (!this.pendingIndexRoundTrip || !lane || lane.catching) { return; }
+    this.pendingIndexRoundTrip = false;
+    return this.catchUp(lane);
+  }
+
+  private finishIndexRoundTrip(answered: boolean): void {
+    this.indexWaiters.forEach((resolve) => resolve(answered));
+    this.indexWaiters.clear();
   }
 
   /** Answers are handled one at a time, so a cursor is saved only after the rows below it are applied. */
@@ -87,6 +120,7 @@ class RelayDocSync implements RelaySync {
   }
 
   private async opened(): Promise<void> {
+    this.announceIndexRoundTrip();
     for (const lane of this.lanes.values()) {
       lane.outstanding = [];
       await this.catchUp(lane);
@@ -96,6 +130,7 @@ class RelayDocSync implements RelaySync {
 
   private dropped(): void {
     this.lanes.forEach((lane) => lane.socketDropped());
+    if (this.indexWaiters.size > 0) { this.pendingIndexRoundTrip = true; }
   }
 
   /** `from` continues a paged answer; without it the catch-up starts at the lane's cursor. */
@@ -121,7 +156,10 @@ class RelayDocSync implements RelaySync {
       const request = lane.outstanding.shift();
       if (answer.type === "error") {
         this.logRefusal(lane, answer.code, request?.type);
-        if (request?.type === "since") { lane.catching = false; }
+        if (request?.type === "since") {
+          lane.catching = false;
+          if (lane.docKey === INDEX_DOC_KEY) { this.finishIndexRoundTrip(false); }
+        }
       }
       if (request?.type === "snapshot") { lane.rowsSinceSnapshot = 0; }
       if (request?.type === "put" && answer.type === "accepted") { lane.relayHolds(request.update); lane.rowsSinceSnapshot += 1; this.advance(lane, answer.cursor); }
@@ -155,6 +193,10 @@ class RelayDocSync implements RelaySync {
     if (answer.more) { return this.catchUp(lane, last); }
     const before = lane.cursor;
     lane.finishCatchUp(last);
+    if (lane.docKey === INDEX_DOC_KEY) {
+      if (this.pendingIndexRoundTrip) { await this.requestIndexRoundTrip(); }
+      else { this.finishIndexRoundTrip(true); }
+    }
     if (lane.cursor !== before) { lane.saveTo(this.cursors); }
     this.putMissing(lane);
     await this.snapshotIfDue(lane);
