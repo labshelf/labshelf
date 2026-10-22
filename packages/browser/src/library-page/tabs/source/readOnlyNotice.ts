@@ -11,7 +11,7 @@ function readOnlyNotice(iconName: IconName, text: string, action: { label: strin
 }
 
 export function unresolvedNotice(retry: () => void): HTMLElement {
-  return readOnlyNotice("cloud-off", "Could not start the shared session. This file is read-only until it starts, so no edit stays outside the share.", { label: "Retry", icon: "refresh", run: retry });
+  return readOnlyNotice("cloud-off", "This shared file is not ready to edit. It stays read-only until sharing is ready.", { label: "Retry", icon: "refresh", run: retry });
 }
 
 export function observingNotice(useHere: () => void): HTMLElement {

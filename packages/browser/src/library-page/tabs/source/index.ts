@@ -13,6 +13,8 @@ import type { SourceEditor, SourceEditorDeps, SourceFileAccess } from "../../edi
 import type { TabContext, TabModule } from "../types";
 import type { SourceFileMode } from "./sharedFile";
 
+export { sourceFileMode };
+
 const MODULE = "tabs.source";
 
 function projectFiles(fs: LibraryFileSystem, entry: ProjectEntry): SourceFileAccess {

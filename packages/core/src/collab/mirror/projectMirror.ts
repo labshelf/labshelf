@@ -43,7 +43,7 @@ export interface ProjectMirrorOptions {
 export interface ProjectMirror {
   /** Reports a changed, created or deleted file by its POSIX path relative to the folder; also call it when an editor lets a path go. */
   changed(path: string): void;
-  /** Resolves when no change is waiting or being applied. */
+  /** Waits for queued reconciliations and disk operations; paths waiting for relay history stay deferred. */
   idle(): Promise<void>;
   /** Stops and waits for the writes in flight; close the blob exchange first, or a fetch in flight holds this open. */
   close(): Promise<void>;

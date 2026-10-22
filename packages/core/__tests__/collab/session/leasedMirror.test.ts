@@ -1,10 +1,10 @@
 /** Pins that one mirror at a time writes a shared project folder, and that a waiting mirror takes over once the lease frees. */
-import { fileText } from "../../../src/collab/model/index";
+import { fileText, indexFiles } from "../../../src/collab/model/index";
 import type { LeaseScheduler } from "../../../src/collab/ownership/index";
 import { libraryMirrorDisk } from "../../../src/collab/mirror/index";
 import { leasedMirrorFactory, type ShareConnection } from "../../../src/collab/session/index";
 import { mergeText } from "../../../src/writing/merge/node/index";
-import type { FakeClock } from "../sync/fakeNetwork";
+import { runUntil, type FakeClock } from "../sync/fakeNetwork";
 import { runFor } from "../transport/relay/fakeRelay";
 import { FOLDER, Network, newDevice, writeProject, type Device } from "./connectionTestbed";
 
@@ -57,8 +57,10 @@ describe("a leased mirror", () => {
 
     // The owner's first scan adds main.typ to the share after real-time settle waits, so the edit must come after it.
     await net.drive(owner.mirror!.idle());
+    expect(await runUntil(net.clock, () => indexFiles(owner.session.index).has("main.typ"))).toBe(true);
     fileText(owner.session.openDoc("main.typ")).insert(0, "Draft ");
     await runFor(net.clock, 3000);
+    await net.drive(owner.mirror!.idle());
     expect(ada.read(`${FOLDER}/main.typ`)).toBe("Draft = Hello\n");
     expect(second.writes).toEqual([]);
 
