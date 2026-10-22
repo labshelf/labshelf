@@ -15,12 +15,13 @@ export function mountSpaceGlossary(root: HTMLElement, initial: OverviewContext):
   const edit = (term?: GlossaryTerm): void => { closeDialog?.(); closeDialog = termDialog(ctx, term); };
   const remove = (term: GlossaryTerm): void => { closeDialog?.(); closeDialog = deleteTerm(ctx, term); };
   const render = (): void => {
+    const add = overviewAction("Add term", () => edit(), ctx.readOnly);
     const main = el("section", { class: "gl-main", "aria-label": "Glossary" },
-      el("div", { class: "gl-bar" }, el("h2", { text: "Glossary" }), overviewAction("Add term", () => edit(), ctx.readOnly)));
+      el("div", { class: "gl-bar" }, el("h2", { text: "Glossary" }), add));
     const reason = ctx.data.readOnlyReason ?? ctx.data.glossary.readOnlyReason;
     if (reason) main.append(el("p", { role: "status", text: reason }));
     main.append(ctx.data.glossary.terms.length ? termList(ctx, edit, remove, papers)
-      : emptyState({ text: "No terms yet.", hint: "Select a term in a paper to add it." }));
+      : emptyState({ text: "No terms yet.", hint: "Add a term, its definition and an optional paper source." }));
     root.replaceChildren(el("div", { class: "gl-grid" }, main, plannedColumn()));
   };
   render();

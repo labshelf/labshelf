@@ -3,8 +3,8 @@
 .gl-main { display: flex; flex-direction: column; gap: var(--ls-space-6); min-width: 0; }
 .gl-bar, .gl-term-head, .gl-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-4); }
 .gl-bar { justify-content: space-between; }
-.gl-bar h2 { margin: 0; font-size: var(--ls-text-lg); }
-.gl-list { list-style: none; margin: 0; padding: 0; }
+.gl-bar h2 { margin: 0; font-size: var(--ls-text-md); }
+.gl-list { display: flex; flex-direction: column; gap: 0; list-style: none; margin: 0; padding: 0; }
 .gl-term { display: grid; grid-template-columns: calc(var(--ls-space-7) * 4) minmax(0, 1fr); gap: var(--ls-space-6); padding: var(--ls-space-6) 0; border-top: 1px solid var(--ls-row-rule); }
 .gl-term-not { font: italic var(--ls-text-2xl) / 1.2 var(--ls-serif); text-align: center; overflow-wrap: anywhere; }
 .gl-term-name { font-weight: 600; overflow-wrap: anywhere; }
@@ -22,8 +22,8 @@
 .gl-fields, .gl-fields label { display: flex; flex-direction: column; gap: var(--ls-space-2); }
 .gl-fields { gap: var(--ls-space-4); }
 .gl-dialog { max-height: calc(100vh - var(--ls-space-7) * 2); overflow: auto; }
-.gl-dialog h2 { margin: 0 0 var(--ls-space-5); font-size: var(--ls-text-lg); }
+.gl-dialog h2 { margin: 0 0 var(--ls-space-5); font-size: var(--ls-text-md); }
 .gl-error { color: var(--ls-error); }
 .gl-grid :focus-visible, .gl-dialog :focus-visible { outline: 1px solid var(--ls-focus); outline-offset: var(--ls-space-1); }
-@media (max-width: 1100px) { .gl-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 1100px) { .gl-grid { grid-template-columns: minmax(0, 1fr); } .gl-side { padding: var(--ls-space-6) 0 0; border-left: 0; border-top: 1px solid var(--ls-border-soft); } }
 @media (max-width: 560px) { .gl-term { grid-template-columns: calc(var(--ls-space-7) * 3) minmax(0, 1fr); } }

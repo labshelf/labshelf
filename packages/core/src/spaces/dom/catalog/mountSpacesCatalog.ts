@@ -2,7 +2,7 @@
 import { el, emptyState } from "../../../ui/dom/index.js";
 import type { SpacesTransport } from "../../protocol/index.js";
 import { filterCatalog, type CatalogFilter, type CatalogRow } from "../../view/index.js";
-import { catalogHeader, catalogToolbar } from "./catalogHeader.js";
+import { catalogHeader, catalogToolbar, createSpace } from "./catalogHeader.js";
 import { catalogRow } from "./catalogRow.js";
 
 export function mountSpacesCatalog(root: HTMLElement, end: SpacesTransport): () => void {
@@ -16,13 +16,16 @@ export function mountSpacesCatalog(root: HTMLElement, end: SpacesTransport): () 
     const visible = filterCatalog(rows, filter);
     count.textContent = `${visible.length} ${visible.length === 1 ? "Space" : "Spaces"}`;
     list.replaceChildren(...(visible.length ? visible.map((row) => catalogRow(row, end)) : [
-      emptyState({ text: "No matching Spaces.", hint: "Try another name or filter." }),
+      emptyState(rows.length || filter.text || filter.scope !== "all"
+        ? { text: "No matching Spaces.", hint: "Try another name or filter.", icon: "search" }
+        : { text: "No Spaces yet.", hint: "Create a Space to organise papers and projects around a topic.", icon: "layers",
+          action: { label: "Create your first Space", primary: true, onClick: () => void createSpace(end, lifecycle.signal) } }),
     ]));
   };
   const page = el("div", { class: "catalog" }, catalogHeader(end, lifecycle.signal), catalogToolbar(filter, render), error,
-    el("div", { class: "catalog-columns", "aria-hidden": "true" }, count,
-      el("span", { text: "Reading" }), el("span", { text: "Up next" }), el("span", { text: "Members" })), list,
-    el("p", { class: "catalog-hint", text: "Papers stay in your Library. Spaces bring them together with notes, projects and people." }));
+    el("div", { class: "catalog-columns", "aria-hidden": "true" }, count, el("span", { text: "Reading" }),
+      el("span", { text: "Up next" }), el("span", { text: "Members" })), list,
+    el("p", { class: "catalog-hint", text: "Spaces group references. Papers stay in your Library." }));
   root.replaceChildren(page);
   const unsubscribe = end.subscribe((message) => {
     if (message.type === "catalog") { rows = message.rows; error.hidden = true; error.textContent = ""; render(); }

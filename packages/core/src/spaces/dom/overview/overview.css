@@ -1,33 +1,58 @@
-/* Styles the Overview cards, reference rows and dates timeline. */
-.ov-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--ls-space-7); align-items: start; }
-.ov-col { display: flex; flex-direction: column; gap: var(--ls-space-7); min-width: 0; }
+/* Arranges planning and research panels around the Space timeline. */
+.ov-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); grid-template-areas: "schedule research" "planned research"; gap: var(--ls-space-8); align-items: start; }
+.ov-grid > .ls-card { grid-area: schedule; }
+.ov-research { grid-area: research; }
+.ov-planning { grid-area: planned; }
+.ov-col { display: flex; flex-direction: column; gap: var(--ls-space-8); min-width: 0; }
 .ov-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.ov-row { display: flex; align-items: center; gap: var(--ls-space-5); width: 100%; padding: var(--ls-space-3) var(--ls-space-3); border: 0; border-radius: var(--ls-radius);
-  background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.ov-row { display: flex; align-items: center; gap: var(--ls-space-5); width: 100%; padding: var(--ls-space-4); border: 0; border-radius: var(--ls-radius);
+  background: none; color: inherit; font: inherit; text-align: left; transition: background var(--ls-fast); }
 .ov-row:hover { background: var(--ls-list-hover); }
 .ov-main { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 .ov-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ov-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--ls-text-sm); color: var(--ls-desc); }
+.ov-sub { line-height: 1.6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--ls-text-sm); color: var(--ls-desc); }
 .mem-row { display: flex; align-items: center; gap: var(--ls-space-5); padding: var(--ls-space-3); }
 
 .tl-list { list-style: none; margin: 0; padding: 0; }
-.tl-row { display: grid; grid-template-columns: calc(var(--ls-space-7) * 5) minmax(0, 1fr); gap: var(--ls-space-6); align-items: baseline; padding: var(--ls-space-3) 0;
+.tl-row { display: grid; grid-template-columns: calc(var(--ls-space-7) * 7) minmax(0, 1fr); gap: var(--ls-space-6); align-items: baseline; padding: var(--ls-space-3) 0;
   border-top: 1px solid var(--ls-row-rule); }
 .tl-row:first-child { border-top: 0; }
 .tl-row.past { opacity: .7; }
 .tl-day { display: flex; flex-direction: column; font: var(--ls-text-md) var(--ls-mono); font-variant-numeric: tabular-nums; }
 .tl-when { font: var(--ls-text-xs) var(--ls-font); color: var(--ls-desc); }
 .tl-when.late { color: var(--ls-mark-err); }
-.tl-item { display: flex; align-items: center; gap: var(--ls-space-4); cursor: pointer; }
+.tl-item { display: flex; align-items: center; gap: var(--ls-space-4); flex-wrap: wrap; cursor: pointer; }
 .tl-done { text-decoration: line-through; color: var(--ls-desc); }
 .tl-today { display: flex; align-items: center; gap: var(--ls-space-4); padding: var(--ls-space-2) 0; color: var(--ls-link); font-size: var(--ls-text-sm); font-weight: 600; }
 .tl-today::after { content: ""; flex: 1; border-top: 1px solid var(--ls-link); }
-.tl-item { flex-wrap: wrap; }
 .tl-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.ov-name.ls-btn { padding: 0; justify-content: flex-start; text-align: left; background: none; color: var(--ls-fg); font: inherit; }
+.ov-grid .ov-name.ls-btn { display: block; max-width: 100%; padding: 0; justify-content: flex-start; text-align: left; background: none; color: var(--ls-fg); font: inherit; }
 .ov-name.ls-btn:hover { color: var(--ls-link); }
-.ov-row svg { width: var(--ls-space-6); height: var(--ls-space-6); }
-@media (max-width: 1000px) { .ov-grid { grid-template-columns: minmax(0, 1fr); } }
+.ov-row svg { flex: none; width: var(--ls-space-6); height: var(--ls-space-6); }
+@media (max-width: 850px) { .ov-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "schedule" "research" "planned"; } }
 
 .tl-progress { font-size: var(--ls-text-sm); color: var(--ls-desc); }
 .tl-deadline svg { width: var(--ls-space-6); height: var(--ls-space-6); color: var(--ls-mark-err); }
+
+.ov-grid .ls-card { padding: calc(var(--ls-space-7) + var(--ls-space-2)); border-color: var(--ls-row-rule); background: color-mix(in srgb, var(--ls-sidebar-bg) 55%, var(--ls-bg)); }
+.ov-grid .ls-card-head { flex-wrap: wrap; gap: var(--ls-space-4); margin-bottom: var(--ls-space-6); }
+.ov-grid .ls-card.ov-planned { background: none; border-style: dashed; }
+.ov-planned .ls-card-head h2 { color: var(--ls-desc); }
+.ov-grid .ls-empty-inline { padding: var(--ls-space-4) 0; }
+.ov-grid .ls-empty-inline .ls-empty-text { color: var(--ls-fg); }
+.ov-planned .ls-empty-inline .ls-empty-text { color: var(--ls-desc); }
+.ov-grid .ls-card-actions { flex-wrap: wrap; }
+.ov-grid .ls-card-head h2 { min-width: 0; }
+@media (max-width: 420px) { .tl-row { grid-template-columns: minmax(0, 1fr); gap: var(--ls-space-3); } }
+
+.ov-grid .ov-paper.ls-btn { display: flex; justify-content: flex-start; gap: var(--ls-space-5); width: 100%; padding: var(--ls-space-5) var(--ls-space-4); background: none; font: inherit; text-align: left; white-space: normal; }
+.ov-paper.ls-btn:hover { background: var(--ls-list-hover); }
+.ov-paper .ov-name { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal; line-height: 1.5; }
+.ov-glyph { display: inline-flex; flex: none; }
+.ov-status { flex: none; color: var(--ls-desc); font-size: var(--ls-text-xs); }
+.ov-status.done { color: var(--ls-status-done); }
+.ov-status.reading { color: var(--ls-mark-accent); }
+.ov-side { display: flex; flex: none; flex-direction: column; align-items: flex-end; gap: var(--ls-space-2); }
+.ov-check { display: inline-flex; align-items: center; gap: var(--ls-space-3); }
+@media (hover: hover) and (pointer: fine) { .ov-unlink { opacity: 0; } .ov-row:hover .ov-unlink, .ov-row:focus-within .ov-unlink { opacity: 1; } }
+@media (max-width: 560px) { .ov-grid .ls-card { padding: var(--ls-space-7); } .ov-status { display: none; } .ov-grid > .ls-card .ls-card-actions { flex-basis: 100%; justify-content: flex-end; } }

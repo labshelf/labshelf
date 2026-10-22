@@ -21,6 +21,7 @@ export function mountSpace(root: HTMLElement, end: SpacesTransport, opts: MountS
   let tab = opts.tab ?? (opts.folder ? "papers" : "overview");
   let data: SpaceSnapshot | undefined;
   let mounted: SpaceBody | undefined;
+  const scroll = new Map<SpaceTab, number>();
   const paint = (): void => {
     if (!data) { body.replaceChildren(emptyState({ text: "Loading Space…" })); return; }
     if (data.readOnlyReason || !head.contains(document.activeElement)) {
@@ -32,7 +33,13 @@ export function mountSpace(root: HTMLElement, end: SpacesTransport, opts: MountS
   };
   const tabs = mountPageTabs(body, { label: "Space views", selected: tab,
     tabs: SPACE_TABS.map(id => ({ id, label: id[0]!.toUpperCase() + id.slice(1) })),
-    onSelect: id => { mounted?.dispose(); mounted = undefined; tab = id as SpaceTab; paint(); opts.onTab?.(tab); } });
+    onSelect: id => {
+      if (id === tab) return;
+      scroll.set(tab, page.scrollTop);
+      mounted?.dispose(); mounted = undefined; tab = id as SpaceTab; paint();
+      page.scrollTop = scroll.get(tab) ?? 0;
+      opts.onTab?.(tab);
+    } });
   page.append(head, tabs.el, error, body); root.replaceChildren(page);
   const unsubscribe = end.subscribe(message => {
     if (message.type === "space" && message.space.id === opts.id) { data = message; paint(); }

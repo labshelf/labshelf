@@ -1,4 +1,5 @@
 // Builds a Space catalog row with navigation to its overview or papers.
+import { formatDay } from "../../../library/index.js";
 import { el, icon, memberChip, progressMark } from "../../../ui/dom/index.js";
 import type { SpacesTransport, SpaceTab } from "../../protocol/index.js";
 import type { CatalogRow } from "../../view/index.js";
@@ -27,10 +28,10 @@ export function catalogRow(row: CatalogRow, end: SpacesTransport): HTMLElement {
     el("div", { class: "catalog-links" },
       countLink(row.counts.papers, "paper", () => open("papers")),
       countLink(row.counts.projects, "project", () => open("overview")))),
-  el("div", { class: "catalog-reading" }, progressMark(row.reading.done, row.reading.total),
+  el("div", { class: "catalog-reading", "aria-label": "Reading progress" }, progressMark(row.reading.done, row.reading.total),
     el("span", { text: `${row.reading.done} / ${row.reading.total} Done` })),
   el("div", { class: "catalog-next" }, row.next
-    ? el("time", { datetime: row.next.date, text: row.next.date }) : el("span", { text: "No upcoming dates" }),
+    ? el("time", { datetime: row.next.date, title: row.next.date, text: formatDay(row.next.date) }) : el("span", { text: "No upcoming dates" }),
     row.next ? el("span", { text: row.next.title }) : null),
   el("div", { class: "catalog-members" }, el("span", { text: "Personal" }), el("div", {}, memberChip("You"))));
   return article;

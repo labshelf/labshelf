@@ -21,7 +21,7 @@ function snapshot(): Extract<HostToSpaces, { type: 'space' }> {
   };
 }
 const click = (text: string) => {
-  const b = [...document.querySelectorAll<HTMLButtonElement>('button')].find(n => n.textContent === text);
+  const b = [...document.querySelectorAll<HTMLButtonElement>('button')].find(n => n.getAttribute('aria-label') === text || n.textContent === text);
   if (!b) throw new Error(`Missing button ${text}`);
   b.click();
 };
@@ -279,4 +279,39 @@ test('opens the Papers tab at the folder supplied by the host', () => {
   expect(root.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toBe('Papers');
   expect(root.textContent).toContain('A method');
   dispose();
+});
+
+test('adds papers from Overview and cancels its picker on navigation', () => {
+  const c = mount();
+  click('Add papers');
+  expect(c.sent).toContainEqual({ type: 'listPapers' });
+  c.receive({ type: 'papers', items: [{ id: 'a', title: 'Attention', missing: false, status: 'unread', authors: [] }] });
+  document.querySelector<HTMLInputElement>('[name="paperIds"]')!.click();
+  click('Add');
+  expect(c.sent).toContainEqual({ type: 'addPapers', id: 'research', paperIds: ['a'] });
+  click('Add papers'); click('Glossary');
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
+  c.dispose();
+});
+
+test('keeps a date draft open when activating the selected tab', () => {
+  const c = mount();
+  click('Add date'); field('title', 'Keep this draft');
+  click('Overview');
+  expect(document.querySelector<HTMLInputElement>('[name="title"]')?.value).toBe('Keep this draft');
+  c.dispose();
+});
+
+test('restores the reading position of each Space view', () => {
+  const c = mount();
+  const page = c.root.querySelector<HTMLElement>('.sp')!;
+  page.scrollTop = 240;
+  click('Papers');
+  expect(page.scrollTop).toBe(0);
+  page.scrollTop = 120;
+  click('Overview');
+  expect(page.scrollTop).toBe(240);
+  click('Papers');
+  expect(page.scrollTop).toBe(120);
+  c.dispose();
 });

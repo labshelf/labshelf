@@ -1,4 +1,5 @@
 // Renders date rows with task completion, goal progress and the Today marker.
+import { formatDay } from "../../../../library/index.js";
 import { el, icon, progressMark } from "../../../../ui/dom/index.js";
 import type { TimelineEntry } from "../../../view/index.js";
 import type { SpaceDate } from "../../../model/index.js";
@@ -18,7 +19,7 @@ const todayMarker = (): HTMLElement => el("li", { class: "tl-today", text: "Toda
 function timelineRow(entry: TimelineEntry, ctx: OverviewContext, edit: (date: SpaceDate) => void): HTMLElement {
   const row = el("li", { class: `tl-row ${entry.when}` });
   const content = el("div", { class: "tl-item" });
-  row.append(el("div", { class: "tl-day" }, el("time", { datetime: entry.date, text: entry.date }),
+  row.append(el("div", { class: "tl-day" }, el("time", { datetime: entry.date, title: entry.date, text: formatDay(entry.date) }),
     el("span", { class: entry.overdue ? "tl-when late" : "tl-when", text: entry.overdue ? "Overdue" : entry.when === "today" ? "Today" : `${Math.abs(entry.daysAway)} days ${entry.when === "past" ? "ago" : "away"}` })), content);
   if (entry.kind === "task") {
     const box = el("input", { type: "checkbox", "aria-label": entry.title, disabled: ctx.readOnly });

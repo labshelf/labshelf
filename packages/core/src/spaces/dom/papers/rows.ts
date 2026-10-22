@@ -26,7 +26,7 @@ export function paperRow(ctx: PapersContext, paper: ResolvedPaper): HTMLElement 
   return row;
 }
 export function action(ctx: PapersContext, label: string, handler: () => void): HTMLButtonElement {
-  const button = el('button', { type: 'button', class: 'ls-btn', text: label, disabled: ctx.readOnly });
+  const button = el('button', { type: 'button', class: 'ls-btn ls-btn-ghost', text: label, disabled: ctx.readOnly });
   button.addEventListener('click', () => { if (!ctx.readOnly && !ctx.signal?.aborted) handler(); }); return button;
 }
 function showMoveMenu(ctx: PapersContext, paperId: string, anchor: HTMLElement): void {

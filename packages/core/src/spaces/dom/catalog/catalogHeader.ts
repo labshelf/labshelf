@@ -3,8 +3,8 @@ import { el, icon, inputBox, segmentedFilter } from "../../../ui/dom/index.js";
 import type { SpacesTransport } from "../../protocol/index.js";
 import type { CatalogFilter } from "../../view/index.js";
 
-async function createSpace(end: SpacesTransport, signal: AbortSignal): Promise<void> {
-  const name = await inputBox({ signal, title: "New Space", prompt: "Name your Space", validate: (value) => value.trim() ? null : "Enter a Space name" });
+export async function createSpace(end: SpacesTransport, signal: AbortSignal): Promise<void> {
+  const name = await inputBox({ signal, title: "New Space", prompt: "Choose a topic, a course or a research question. Press Enter to create.", placeholder: "e.g. Thesis literature review", validate: (value) => value.trim() ? null : "Enter a Space name" });
   if (name && !signal.aborted) end.post({ type: "createSpace", name });
 }
 
@@ -13,7 +13,8 @@ export function catalogHeader(end: SpacesTransport, signal: AbortSignal): HTMLEl
     el("span", { "aria-hidden": "true", html: icon("plus") }), "New Space");
   create.addEventListener("click", () => void createSpace(end, signal));
   return el("header", { class: "catalog-head" }, el("div", {},
-    el("h1", { text: "All Spaces" }), el("p", { text: "Keep your reading, notes and writing together." })), create);
+    el("h1", { text: "All Spaces" }),
+    el("p", { text: "Keep your reading, notes and writing together." })), create);
 }
 
 export function catalogToolbar(filter: { text: string; scope: CatalogFilter["scope"] }, onChange: () => void): HTMLElement {
@@ -25,5 +26,5 @@ export function catalogToolbar(filter: { text: string; scope: CatalogFilter["sco
     onSelect: (id) => { filter.scope = id as CatalogFilter["scope"]; onChange(); },
   });
   return el("div", { class: "catalog-toolbar" },
-    el("label", { class: "catalog-search" }, el("span", { "aria-hidden": "true", html: icon("search") }), search), filters);
+    el("label", { class: "ls-search catalog-search" }, el("span", { "aria-hidden": "true", html: icon("search") }), search), filters);
 }

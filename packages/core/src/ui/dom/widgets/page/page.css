@@ -15,6 +15,8 @@
 .ls-card { padding: var(--ls-space-6) var(--ls-space-7); background: var(--ls-sidebar-bg); border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius-lg); }
 .ls-card-head { display: flex; align-items: center; gap: var(--ls-space-4); margin-bottom: var(--ls-space-4); }
 .ls-card-head h2 { flex: 1; margin: 0; font-size: var(--ls-text-lg); font-weight: 600; }
+.ls-card-icon { display: inline-flex; flex: none; color: var(--ls-desc); }
+.ls-card-icon svg { width: var(--ls-text-lg); height: var(--ls-text-lg); }
 .ls-card-actions { display: flex; gap: var(--ls-space-2); }
 .ls-card-actions .ls-btn svg { width: var(--ls-text-md); height: var(--ls-text-md); }
 

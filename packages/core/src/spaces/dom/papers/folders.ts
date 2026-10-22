@@ -1,5 +1,5 @@
 // Renders nested Space folders as reference drop targets.
-import { el } from '../../../ui/dom/index.js';
+import { el, icon } from '../../../ui/dom/index.js';
 import type { PapersTreeFolder } from '../../view/index.js';
 import type { PapersContext } from './context.js';
 import { action, PAPER_DRAG_TYPE } from './rows.js';
@@ -8,6 +8,7 @@ export function folderNav(ctx: PapersContext, select: (id?: string) => void): HT
   const nav = el('nav', { class: 'pp-folders', 'aria-label': 'Space folders' });
   const item = (label: string, count: number, id?: string): HTMLElement => {
     const button = el('button', { type: 'button', class: 'pp-folder', 'aria-label': label, 'aria-current': ctx.folder === id ? 'true' : undefined },
+      el('span', { 'aria-hidden': 'true', html: icon(id ? 'folder' : 'layers') }),
       el('span', { class: 'pp-folder-name', text: label }), el('span', { class: 'tree-count', text: String(count) }));
     button.addEventListener('click', () => select(id)); wireDrop(button, ctx, id); return button;
   };

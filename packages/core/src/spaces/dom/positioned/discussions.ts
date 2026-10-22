@@ -14,7 +14,7 @@ export function spaceDiscussions(): HTMLElement {
     el("header", { class: "ds-heading" },
       el("div", {}, el("h2", { text: "Discussions" }),
         el("p", { text: "Discuss papers and keep decisions and tasks together." })),
-      plannedButton("New topic", reason, "ls-btn ls-btn-primary")),
+      plannedButton("New topic", reason, "ls-btn ls-btn-ghost")),
     el("div", { class: "ds-toolbar" },
       el("div", { role: "group", "aria-label": "Discussion views" }, ...views),
       plannedSearch("Search discussions", reason)),

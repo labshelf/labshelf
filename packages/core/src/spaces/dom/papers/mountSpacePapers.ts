@@ -25,8 +25,9 @@ export function mountSpacePapers(root: HTMLElement, initial: PapersContext): Spa
   };
 }
 function papersSurface(ctx: PapersContext, select: (id?: string) => void): HTMLElement {
-  const bar = el('div', { class: 'pp-bar' }, el('span', { class: 'muted', text: 'Removing a reference from this Space keeps the paper in your Library.' }),
-    action(ctx, 'Add papers', () => paperPicker(ctx)));
+  const add = action(ctx, 'Add papers', () => paperPicker(ctx));
+  const bar = el('div', { class: 'pp-bar' }, el('div', {}, el('h2', { text: 'Papers' }),
+    el('p', { class: 'pp-hint', text: 'Papers stay in your Library.' })), add);
   const groups = el('div', { class: 'pp-groups' });
   const folder = ctx.data.space.folders.find(f => f.id === ctx.folder);
   if (folder) groups.append(el('div', { class: 'pp-bar' }, el('h2', { text: folder.name }),

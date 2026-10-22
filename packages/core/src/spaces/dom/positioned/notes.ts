@@ -6,7 +6,7 @@ export function spaceNotes(): HTMLElement {
   return el("div", { class: "nt-notes" },
     el("div", { class: "nt-bar" },
       el("p", { text: "Keep ideas, comparisons and quotes alongside this Space's papers." }),
-      plannedButton("New note", "Notes need a connected note editor", "ls-btn ls-btn-primary")),
+      plannedButton("New note", "Notes need a connected note editor", "ls-btn ls-btn-ghost")),
     group("Space notes", "No Space notes yet.", "Space notes will keep meeting notes and ideas together."),
     group("Paper notes", "No Paper notes yet.", "Paper notes will keep your notes beside their paper."));
 }
