@@ -58,6 +58,17 @@ describe('PaperDataStore', () => {
     expect(await s.getAnnotations('p')).toEqual([]);
   });
 
+  it('records a deletion marker and drops markers older than 90 days on every write', async () => {
+    const old = { id: 'gone', deletedAt: '2026-06-01T00:00:00.000Z' };
+    const fresh = { id: 'kept', deletedAt: '2026-09-01T00:00:00.000Z' };
+    const port = memoryPort({ p: JSON.stringify({ annotations: [], theme: 'auto', deleted: [old, fresh] }) });
+    const s = store(port);
+    const a = await s.addNote('p', 1, 'n');
+    expect(JSON.parse(port.files['p']!).deleted).toEqual([fresh]);
+    await s.deleteAnnotation('p', a.id);
+    expect(JSON.parse(port.files['p']!).deleted).toEqual([{ id: a.id, deletedAt: '2026-10-07T12:00:00.000Z' }, fresh]);
+  });
+
   it('serializes concurrent writes so none is lost', async () => {
     const port = memoryPort();
     const s = store(port);

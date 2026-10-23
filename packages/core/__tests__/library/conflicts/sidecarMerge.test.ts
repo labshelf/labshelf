@@ -46,4 +46,52 @@ describe("mergeSidecars", () => {
     expect(mergeSidecars(good, { text: "{ broken", mtimeMs: 2 })).toBeNull();
     expect(mergeSidecars({ text: "", mtimeMs: 2 }, good)).toBeNull();
   });
+
+  describe("deletions", () => {
+    const at = (updatedAt: string, id = "a", content = "x"): Annotation => ({ ...note(id, content), updatedAt });
+    const parse = (merged: string | null) => JSON.parse(merged ?? "") as PaperData;
+
+    it("a deletion beats an older copy of the annotation", () => {
+      const deleted = { text: text({ annotations: [], theme: "auto", deleted: [{ id: "a", deletedAt: "2024-03-01" }] }), mtimeMs: 1 };
+      const stale = { text: text({ annotations: [at("2024-02-01")], theme: "auto" }), mtimeMs: 9 };
+      const merged = parse(mergeSidecars(deleted, stale));
+      expect(merged.annotations).toEqual([]);
+      expect(merged.deleted).toEqual([{ id: "a", deletedAt: "2024-03-01" }]);
+    });
+
+    it("an edit after the deletion keeps the annotation and drops the marker", () => {
+      const deleted = { text: text({ annotations: [], theme: "auto", deleted: [{ id: "a", deletedAt: "2024-03-01" }] }), mtimeMs: 9 };
+      const edited = { text: text({ annotations: [at("2024-04-01")], theme: "auto" }), mtimeMs: 1 };
+      const merged = parse(mergeSidecars(deleted, edited));
+      expect(merged.annotations).toEqual([at("2024-04-01")]);
+      expect(merged.deleted).toBeUndefined();
+    });
+
+    it("merges two edits per annotation by updatedAt regardless of file mtime", () => {
+      const mine = { text: text({ annotations: [at("2024-05-01", "a", "newer"), at("2024-01-01", "b", "older")], theme: "auto" }), mtimeMs: 1 };
+      const other = { text: text({ annotations: [at("2024-02-01", "a", "older"), at("2024-06-01", "b", "newer")], theme: "auto" }), mtimeMs: 9 };
+      const merged = parse(mergeSidecars(mine, other));
+      expect(merged.annotations.map((a) => [a.id, a.content])).toEqual([["a", "newer"], ["b", "newer"]]);
+    });
+
+    it("a deletion at the same time as the last edit removes the annotation", () => {
+      const deleted = { text: text({ annotations: [], theme: "auto", deleted: [{ id: "a", deletedAt: "2024-03-01" }] }), mtimeMs: 1 };
+      const stale = { text: text({ annotations: [at("2024-03-01")], theme: "auto" }), mtimeMs: 9 };
+      expect(parse(mergeSidecars(deleted, stale)).annotations).toEqual([]);
+    });
+
+    it("keeps the union of markers with the later deletedAt per id", () => {
+      const mine = { text: text({ annotations: [], theme: "auto", deleted: [{ id: "a", deletedAt: "2024-03-01" }, { id: "c", deletedAt: "2024-01-01" }] }), mtimeMs: 9 };
+      const other = { text: text({ annotations: [], theme: "auto", deleted: [{ id: "a", deletedAt: "2024-04-01" }, { id: "b", deletedAt: "2024-02-01" }] }), mtimeMs: 1 };
+      expect(parse(mergeSidecars(mine, other)).deleted).toEqual([
+        { id: "a", deletedAt: "2024-04-01" }, { id: "b", deletedAt: "2024-02-01" }, { id: "c", deletedAt: "2024-01-01" },
+      ]);
+    });
+
+    it("a marker removes an annotation that has no updatedAt", () => {
+      const legacy = JSON.stringify({ annotations: [{ id: "a", paperId: "p", type: "note", pageNumber: 1, content: "x", createdAt: "2024-01-01" }], theme: "auto" });
+      const deleted = { text: text({ annotations: [], theme: "auto", deleted: [{ id: "a", deletedAt: "2024-03-01" }] }), mtimeMs: 1 };
+      expect(parse(mergeSidecars(deleted, { text: legacy, mtimeMs: 9 })).annotations).toEqual([]);
+    });
+  });
 });

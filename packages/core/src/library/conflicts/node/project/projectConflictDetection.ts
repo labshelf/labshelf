@@ -10,12 +10,12 @@ import { isMergeableTextFile, type IProjectVersionStore } from '../../../../writ
 import { listProjectFiles } from '../../../../writing/project/folder/index.js';
 import { nodeFileReads } from '../../../../writing/project/node/index.js';
 
-export interface ProjectConflictLocation { root: string; folder: string; projectId: string; logger: ILogger }
+interface ProjectConflictLocation { root: string; folder: string; projectId: string; logger: ILogger }
 export function conflictDismissalFile(root: string): string {
   return path.join(path.dirname(deviceLocalLayout(root).mergeBasesDir), 'conflict-dismissals.json');
 }
 const disk = new NodeLibraryFileSystem();
-export async function projectConflictSnapshot(input: ProjectConflictLocation) {
+async function projectConflictSnapshot(input: ProjectConflictLocation) {
   const files: ProjectConflictText[] = [];
   for (const relative of await listProjectFiles(nodeFileReads, input.folder)) {
     if (!eligibleProjectConflictPath(relative)) continue;
@@ -36,7 +36,7 @@ export async function findProjectConflict(input: ProjectConflictLocation & { fil
   const conflict = await detectProjectConflict({ ...candidate, ...snapshot, siblings: snapshot.files, projectId: input.projectId });
   return conflict && absoluteConflict(input.folder, conflict);
 }
-export function absoluteConflict(folder: string, conflict: ConflictCopy): ConflictCopy {
+function absoluteConflict(folder: string, conflict: ConflictCopy): ConflictCopy {
   return { ...conflict, original: path.join(folder, conflict.original), copy: path.join(folder, conflict.copy) };
 }
 export async function scanProjectContentConflicts(input: ProjectConflictLocation, store: IProjectVersionStore, knownPaths?: ReadonlySet<string>): Promise<ConflictCopy[]> {

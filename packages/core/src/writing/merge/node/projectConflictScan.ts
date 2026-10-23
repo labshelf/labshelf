@@ -64,6 +64,7 @@ async function scanProject(root: string, folder: string, projectId: string, stor
   const unresolved: ConflictCopy[] = [];
   for (const [file, relativePath] of tree.files) {
     if (!hasMergeableExtension(path.basename(file))) continue;
+    if (tree.copies.get(file)?.some(copy => copy.tool === "app") && !await store.pending(projectId, relativePath)) continue;
     const conflict = await mergeProjectDivergence({ root, folder, projectId, file, relativePath, store, logger, onMerged });
     if (conflict) { unresolved.push(conflict); tree.copies.delete(file); }
   }
