@@ -1,5 +1,5 @@
 // Describes a sync tool's conflict copy of a library file and the ways the user can resolve it.
-import { METADATA_FILE } from "../layout.js";
+import { METADATA_FILE, PAPER_NOTES_FILE } from "../layout.js";
 
 export type SyncTool = "syncthing" | "nextcloud" | "dropbox" | "rclone" | "app" | "unknown";
 
@@ -25,10 +25,10 @@ export function conflictOwnerLabel(owner: ConflictOwner, paperTitle?: string): s
   return (owner.kind === "paper" && paperTitle) || owner.id;
 }
 
-/** The resolutions a copy allows: keepBoth is left out for metadata.yaml and the Space files space.json and glossary.json, because a paper has exactly one metadata.yaml and a Space exactly one of each. */
+/** The resolutions a copy allows: keepBoth is left out for a paper's metadata.yaml and notes.qmd and for Space files, because a renamed copy of them is read by nothing. */
 export function conflictResolutions(conflict: ConflictCopy): ConflictResolution[] {
   if (conflict.match === "record" || conflict.match === "similar") return ["mergeAutomatically", "notAVersion"];
   const fileName = conflict.original.split(/[\\/]/).pop();
-  const single = fileName === METADATA_FILE || conflict.owner.kind === "space";
+  const single = fileName === METADATA_FILE || (conflict.owner.kind === "paper" && fileName === PAPER_NOTES_FILE) || conflict.owner.kind === "space";
   return single ? ["keepMine", "keepOther"] : ["keepMine", "keepOther", "keepBoth"];
 }

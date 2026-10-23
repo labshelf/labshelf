@@ -7,9 +7,9 @@ import { writeFileAtomic } from "../../../library/node/index.js";
 import type { DeviceIdentity } from "../../../library/writeRecords/index.js";
 import { prepareProjectSave } from "./projectSaveRecord.js";
 import type { ILogger } from "../../../ports/index.js";
-import { isMergeableTextFile } from "../index.js";
+import { isItemFileName, isMergeableTextFile } from "../index.js";
 import type { IProjectVersionStore } from "../index.js";
-import { mergeText } from "./mergeText.js";
+import { mergeFileText } from "./mergeText.js";
 
 const MODULE = "writing-merge";
 
@@ -30,10 +30,10 @@ async function readText(file: string, name: string): Promise<string | undefined>
 }
 
 /** Folds every copy into the local text against the same base; chaining keeps each side's edits. */
-function mergeAll(base: string, local: string, copies: ConflictCopy[], others: string[]): { text: string; conflicted: boolean } {
+function mergeAll(name: string, base: string | undefined, local: string, copies: ConflictCopy[], others: string[]): { text: string; conflicted: boolean } {
   let result = { text: local, conflicted: false };
   copies.forEach((copy, i) => {
-    const next = mergeText({ base, local: result.text, other: others[i] ?? "", otherLabel: copy.tool });
+    const next = mergeFileText(name, { base, local: result.text, other: others[i] ?? "", otherLabel: copy.tool });
     result = { text: next.text, conflicted: result.conflicted || next.conflicted };
   });
   return result;
@@ -51,10 +51,10 @@ export async function mergeProjectCopies(
   const context = { projectId: first.owner.id, path: relativePath, copies: copies.map((copy) => copy.copy) };
   try {
     const base = selectedBase ?? await store.read(first.owner.id, relativePath);
-    const local = base === undefined ? undefined : await readText(first.original, name);
+    const local = base === undefined && !isItemFileName(name) ? undefined : await readText(first.original, name);
     const others = await Promise.all(copies.map((copy) => readText(copy.copy, name)));
-    if (base === undefined || local === undefined || others.some((other) => other === undefined)) { return false; }
-    const merged = mergeAll(base, local, copies, others as string[]);
+    if (local === undefined || others.some((other) => other === undefined)) { return false; }
+    const merged = mergeAll(name, base, local, copies, others as string[]);
     if (await readText(first.original, name) !== local) {
       void logger.log("INFO", MODULE, "File changed during the merge; the next scan merges it", context);
       return false;
@@ -70,7 +70,8 @@ export async function mergeProjectCopies(
     }
     for (const copy of copies) { await fs.rm(copy.copy); }
     void logger.log("INFO", MODULE, "Merged project conflict copies", { ...context, conflicted: merged.conflicted });
-    if (copies.length === 1 && others[0] !== undefined) {
+    // An item file keeps its base: a copy may be this device's own version, and a stale base only brings items back.
+    if (copies.length === 1 && others[0] !== undefined && !isItemFileName(name)) {
       await store.write(first.owner.id, relativePath, others[0]).catch((error: unknown) => {
         void logger.error(MODULE, error, { ...context, action: "store the merged copy as the base" });
       });

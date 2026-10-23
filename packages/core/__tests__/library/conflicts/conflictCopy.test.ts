@@ -29,6 +29,12 @@ describe("conflictResolutions", () => {
     expect(conflictResolutions(copyOf("/lib/papers/p/metadata.yaml"))).toEqual(["keepMine", "keepOther"]);
     expect(conflictResolutions(copyOf("C:\\lib\\papers\\p\\metadata.yaml"))).toEqual(["keepMine", "keepOther"]);
   });
+
+  it("leaves out keepBoth for a paper's notes.qmd only", () => {
+    expect(conflictResolutions(copyOf("/lib/.research/papers/p/notes.qmd"))).toEqual(["keepMine", "keepOther"]);
+    const project: ConflictCopy = { owner: { kind: "project", id: "w" }, original: "/lib/projects/w/notes.qmd", copy: "/lib/projects/w/notes.qmd.conflict1", tool: "rclone" };
+    expect(conflictResolutions(project)).toEqual(["keepMine", "keepOther", "keepBoth"]);
+  });
 });
 
 describe("conflictResolutions for Space files", () => {

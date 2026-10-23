@@ -14,4 +14,5 @@ export {
   type NewItem,
   type Segment,
 } from "./items/index.js";
+export * from "./merge/index.js";
 export * from "./outputs/index.js";

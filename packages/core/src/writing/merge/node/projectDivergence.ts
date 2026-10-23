@@ -9,7 +9,7 @@ import type { ConflictCopy } from '../../../library/conflicts/index.js';
 import type { ILogger } from '../../../ports/index.js';
 import { textHash, isMergeableTextFile, type IProjectVersionStore } from '../index.js';
 import { prepareProjectSave } from './projectSaveRecord.js';
-import { mergeText } from './mergeText.js';
+import { mergeFileText } from './mergeText.js';
 
 export interface DivergenceFile {
   root: string; folder: string; projectId: string; file: string; relativePath: string;
@@ -74,7 +74,7 @@ export async function mergeProjectDivergence(input: DivergenceFile): Promise<Con
     await store.remember(projectId, relativePath, other);
     return undefined;
   }
-  const merged = mergeText({ base, local, other, otherLabel: 'other device' });
+  const merged = mergeFileText(path.basename(file), { base, local, other, otherLabel: 'other device' });
   if (await fs.readFile(file, 'utf8') !== other) throw new Error(`Project file changed during divergence recovery: ${file}`);
   if (merged.conflicted) return preserveOverlap(input, local, other);
   await prepareProjectSave({ ...input, text: merged.text, parentText: other, identity });

@@ -34,7 +34,7 @@ Answered (recommendations accepted 2026-10-22):
 ## 3. Acceptance
 
 - [x] **A1** `qmd-items` contract tests: parse → serialize is byte-identical on fixtures; text outside items survives; unknown attributes survive; a malformed fence never loses text.
-- [ ] **A2** Two devices each add a note to the same `notes.qmd` offline; after sync both notes are there, no conflict markers. A note deleted on one device and untouched on the other stays deleted; deleted on one and edited on the other stays, edited.
+- [x] **A2** Two devices each add a note to the same `notes.qmd` offline; after sync both notes are there, no conflict markers. A note deleted on one device and untouched on the other stays deleted; deleted on one and edited on the other stays, edited.
 - [ ] **A3** In VS Code and in the browser, a note shows headings, lists, task lists, rendered display and inline math, a code cell and its result, with no Markdown syntax visible; Source mode shows the `.qmd`.
 - [ ] **A4** After upgrading, a paper's old note text and its old note annotations appear as items in `notes.qmd`, and `metadata.yaml` has no `note` key; the terminal shows the same notes.
 - [ ] **A5** In the reader, the text-box tool draws a box in an empty area of page 10; it shows its rendered content on the page at any zoom, and opening the paper on another device shows it in the same place.

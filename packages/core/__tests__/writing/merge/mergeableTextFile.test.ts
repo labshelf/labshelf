@@ -4,7 +4,7 @@ import { isMergeableTextFile } from "../../../src/writing/merge/index";
 const utf8 = (text: string) => new TextEncoder().encode(text);
 
 describe("isMergeableTextFile", () => {
-  it.each(["main.tex", "paper.typ", "refs.bib", "notes.md", "meta.yaml", "x.json", "a.sty", "a.cls", "a.txt", "d.csv"])(
+  it.each(["main.tex", "paper.typ", "refs.bib", "notes.md", "meta.yaml", "x.json", "a.sty", "a.cls", "a.txt", "d.csv", "notes.qmd"])(
     "accepts UTF-8 %s", (name) => { expect(isMergeableTextFile(name, utf8("café"))).toBe(true); },
   );
 

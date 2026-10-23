@@ -217,6 +217,34 @@ describe("scanLibraryConflicts on project files", () => {
       .toBe(doc(["Local intro.", ...PARAGRAPHS.slice(1, 5), "Other conclusion."]));
   });
 
+  it("merges a Syncthing copy of a project notes.qmd item by item, keeping both added items", async () => {
+    const { lib, folder, store, logger } = await libraryProject();
+    const item = (id: string, body: string) => `::: {#${id} .labshelf-item}\n${body}\n:::\n`;
+    const base = item("n-01JB2QN0000000000000000000", "Base.");
+    await fs.writeFile(path.join(folder, "notes.qmd"), base);
+    await scanLibraryConflicts(lib, store, logger);
+    const copy = path.join(folder, "notes.sync-conflict-20240301-123456-ABCDEFG.qmd");
+    await fs.writeFile(path.join(folder, "notes.qmd"), `${base}\n${item("n-01JB2QR0000000000000000000", "Local.")}`);
+    await fs.writeFile(copy, `${base}\n${item("n-01JB2QQ0000000000000000000", "Other.")}`);
+
+    expect(await scanLibraryConflicts(lib, store, logger)).toEqual([]);
+    expect(await fs.readFile(path.join(folder, "notes.qmd"), "utf8")).toBe(
+      `${base}\n${item("n-01JB2QQ0000000000000000000", "Other.")}\n${item("n-01JB2QR0000000000000000000", "Local.")}`,
+    );
+    await expect(fs.stat(copy)).rejects.toThrow();
+  });
+
+  it("merges a project notes.qmd first seen with a copy as a union by id", async () => {
+    const { lib, folder, store, logger } = await libraryProject();
+    const item = (id: string, body: string) => `::: {#${id} .labshelf-item}\n${body}\n:::\n`;
+    await fs.writeFile(path.join(folder, "notes.qmd"), item("n-01JB2QN0000000000000000000", "Mine."));
+    await fs.writeFile(path.join(folder, "notes.sync-conflict-20240301-123456-ABCDEFG.qmd"), item("n-01JB2QQ0000000000000000000", "Theirs."));
+
+    expect(await scanLibraryConflicts(lib, store, logger)).toEqual([]);
+    expect(await fs.readFile(path.join(folder, "notes.qmd"), "utf8"))
+      .toBe(`${item("n-01JB2QN0000000000000000000", "Mine.")}\n${item("n-01JB2QQ0000000000000000000", "Theirs.")}`);
+  });
+
   it("returns paper conflicts with a paper owner alongside project ones", async () => {
     const { lib, store, logger } = await libraryProject();
     const paper = path.join(lib, "papers", "ml", "smith2020x");

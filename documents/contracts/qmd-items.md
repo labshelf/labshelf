@@ -111,4 +111,17 @@ $$\sqrt{\pi}$$
 
 ## Merge
 
-How two devices' edits of one item file are combined: [sync.md](sync.md#conflict-copies).
+Two versions of one item file merge item by item, three-way against the device's base for the file. "The file" is the version on disk and "the other" is the sync tool's conflict copy or the divergent version. When and where merges run: [sync.md](sync.md#conflict-copies).
+
+- Items match by id; a repeated id matches by its rank among the items with that id.
+- An item new on one side is kept; an item both sides added with the same id is kept once, in the file's place.
+- An item one side edited and the other left as in the base takes the edit.
+- An item one side deleted and the other left as in the base is deleted. An item one side deleted and the other edited is kept, edited. An item both sides deleted is deleted.
+- An item both sides edited merges in parts:
+  - opening line: each attribute and class comes from the side that changed it; an attribute both sides changed differently keeps the file's value, unless the file removed it.
+  - cell results: a cell whose result differs on the two sides keeps the result with the later `ran`; a tie keeps the file's result.
+  - body: merged line by line; overlapping edits are kept in full between `<<<<<<< local`, `=======` and `>>>>>>> <other>` lines inside the body. When the merged body would open or close a fence it does not close or open, both versions are kept as two items with the same id.
+- Order: items of the base keep base order. Items one side added follow the base item that precedes them on that side, as one run; when both sides add runs at the same place, the run whose first id is smaller goes first. One empty line separates an added item from an adjacent item.
+- Loose text after the same item (or at the start of the file) merges line by line, with the same markers.
+- Without a base, every item counts as added on its side: the result is the union by id, a delete is not honoured, and an item both sides hold with different bodies gets markers inside its body. A base that shares no item with one of the sides counts as no base, because that side was created apart from it.
+- The merged file is read again; when it would not hold the merged item ids in the merged order, the merge fails and both files stay.

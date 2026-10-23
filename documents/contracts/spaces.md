@@ -85,6 +85,8 @@ For a valid Space id, filesystem read failures return the states below without t
 
 ## Conflict copies
 
+A conflict copy of a `.qmd` file anywhere inside `spaces/<space id>/` is merged into it without asking, item by item: [sync.md#conflict-copies](sync.md#conflict-copies); a copy whose merge fails is shown to the user with keep mine and keep the other.
+
 A conflict copy of `space.json` or `glossary.json` (names from [library-format.md#conflict-copies](library-format.md#conflict-copies)) directly inside `spaces/<space id>/` is shown to the user, who resolves it: keep mine (delete the copy) or keep the other (the copy replaces the original). Keep both is not offered, because a Space has exactly one of each file.
 
 ## Page hosting

@@ -39,7 +39,7 @@ The library folder may be synced between devices by any file sync tool, so every
 <state dir>/libraries/<library key>/      $XDG_STATE_HOME/labshelf (default ~/Library/Application Support/labshelf on macOS, ~/.local/state/labshelf elsewhere, Windows included)
   device-id                        stable random UUID identifying this device for this library
   projects.json                    project folders registered outside the library
-  merge-bases/<project id>/<path>  per writing-project text file, the content this device last knew to be common with other devices: the base of a three-way merge of a conflict copy
+  merge-bases/<scope>/<path>       per writing-project text file (scope: the project id) and per qmd item file of a paper (scope `paper_<paper id>`, path `notes.qmd`) or of a Space (scope `space_<space id>`, path inside the Space folder), the content this device last knew to be common with other devices: the base of a three-way merge of a conflict copy
   conflict-dismissals.json         device-local array of {path, hash} decisions for project content copies
   collab/<share id>/               per shared project, its Yjs state, blob cache and last agreed file hashes, see collaboration.md#device-local-state
   shares.json                      the paper-folder share links this device made, see share-link.md#share-list
@@ -326,10 +326,11 @@ When two devices change the same file before the sync tool reconciles them, the 
 Copies with unknown names, including Google Drive, OneDrive and iCloud Drive names such as `name (1).ext`, `name-Computer.ext` and `name 2.ext`, are found by content inside writing projects under [sync.md#conflict-copies](sync.md#conflict-copies). Paper folders use the name table only. Folders are never treated as conflict copies, and hidden files and folders are skipped.
 
 - A conflict copy of a sidecar is merged into `data.json` without asking. The copies of one sidecar are folded into `data.json` from the oldest modification time to the newest: annotations are the union by `id`; for an `id` in both, `theme` and `reading`, the side with the newer modification time wins, where the merged result counts as old as the newest file folded into it. Every annotation that has an `id` is kept; annotations without an `id` and unknown top-level fields are dropped, as by any LabShelf write of `data.json`. A deleted annotation may come back. If `data.json` changes during the merge, the merge starts again (at most three times, then the copies are kept and shown to the user). The result is written atomically, read back, and only when `data.json` holds exactly the merged result are the copies deleted. A copy whose `data.json` is missing takes its place if it is a sidecar (a JSON object). A copy that is not, or whose `data.json` is not, is kept and shown to the user like any other copy.
+- A conflict copy of a paper's notes, `.research/papers/<paper id>/notes.qmd`, is merged into it without asking, item by item: [sync.md#conflict-copies](sync.md#conflict-copies). A copy whose merge fails is shown to the user with keep mine and keep the other.
 - A conflict copy of any other file inside a paper folder (`metadata.yaml`, the PDF, an attachment) is shown to the user, who resolves it: keep mine (delete the copy), keep the other (the copy replaces the original), or keep both (the copy is renamed to `<name> (copy <n>).<ext>` with the lowest free `n`). Keep both is not offered for `metadata.yaml`, because a paper has exactly one.
 - A named conflict copy of an unshared writing project's text file is merged three-way when the device has a base for it; otherwise it is shown to the user with the same three choices. Content matches ask for Merge Automatically, Merge Myself or Not a Version; detection, dismissals and shared-project handling follow [sync.md#conflict-copies](sync.md#conflict-copies).
 - A conflict copy of a Space file is shown to the user: [spaces.md#conflict-copies](spaces.md#conflict-copies).
-- A conflict copy is deleted only by a resolution or after a successful sidecar or project-file merge.
+- A conflict copy is deleted only by a resolution or after a successful sidecar, item-file or project-file merge.
 
 ## Shared configuration
 

@@ -1,5 +1,5 @@
 /** Verifies the three-way line merge of project text: clean merges, conflict markers, line endings, no lost text. */
-import { mergeText } from "../../../../src/writing/merge/node/mergeText";
+import { mergeFileText, mergeText } from "../../../../src/writing/merge/node/mergeText";
 
 const PARAGRAPHS = [
   "\\section{Introduction}\nDeep networks learn hierarchical features from raw data.\nWe study their robustness.",
@@ -57,5 +57,19 @@ describe("mergeText", () => {
     expect(text).toContain("trade off.\r\nFuture work");
     expect(text.replace(/\r\n/g, "")).not.toContain("\n");
     expect(text.endsWith("larger models.")).toBe(true);
+  });
+});
+
+describe("mergeFileText", () => {
+  const item = (id: string, body: string) => `::: {#${id} .labshelf-item}\n${body}\n:::\n`;
+
+  it("merges a qmd file item by item, also without a base", () => {
+    const local = item("n-01JB2QN0000000000000000000", "Mine.");
+    const other = item("n-01JB2QQ0000000000000000000", "Theirs.");
+    expect(mergeFileText("Notes.QMD", { base: undefined, local, other, otherLabel: "x" })).toEqual({ text: `${local}\n${other}`, conflicted: false });
+  });
+
+  it("refuses to merge any other file without a base", () => {
+    expect(() => mergeFileText("main.tex", { base: undefined, local: "a\n", other: "b\n", otherLabel: "x" })).toThrow("without a base");
   });
 });

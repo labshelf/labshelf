@@ -10,6 +10,8 @@ export const PDF_FILE = "paper.pdf";
 export const METADATA_FILE = "metadata.yaml";
 export const BIB_FILE = "bib.bib";
 export const SIDECAR_FILE = "data.json";
+// CONTRACT: documents/contracts/library-format.md#conflict-copies
+export const PAPER_NOTES_FILE = "notes.qmd";
 // CONTRACT: documents/contracts/spaces.md#layout
 export const SPACE_FILE = "space.json";
 export const GLOSSARY_FILE = "glossary.json";

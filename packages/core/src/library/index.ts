@@ -5,7 +5,7 @@ export { paperRecordFromMetadata, parsePaperMetadata } from "./paperMetadata.js"
 export type { PaperLocation } from "./paperMetadata.js";
 export {
   PAPERS_DIR, RESEARCH_DIR, PROJECTS_DIR, SPACES_DIR,
-  PDF_FILE, METADATA_FILE, BIB_FILE, SIDECAR_FILE, SPACE_FILE, GLOSSARY_FILE,
+  PDF_FILE, METADATA_FILE, BIB_FILE, SIDECAR_FILE, PAPER_NOTES_FILE, SPACE_FILE, GLOSSARY_FILE,
   joinWith, libraryLayout, paperFiles,
 } from "./layout.js";
 export type { Join, LibraryLayout, PaperFiles } from "./layout.js";

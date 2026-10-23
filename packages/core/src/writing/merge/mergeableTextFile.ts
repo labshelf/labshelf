@@ -1,6 +1,11 @@
 // Decides whether a project file is text that can have a merge base.
 
-const MERGEABLE_EXTENSIONS = new Set([".tex", ".typ", ".bib", ".md", ".yaml", ".json", ".sty", ".cls", ".txt", ".csv"]);
+const MERGEABLE_EXTENSIONS = new Set([".tex", ".typ", ".bib", ".md", ".yaml", ".json", ".sty", ".cls", ".txt", ".csv", ".qmd"]);
+
+/** A qmd item file, which merges item by item rather than line by line. */
+export function isItemFileName(fileName: string): boolean {
+  return fileName.toLowerCase().endsWith(".qmd");
+}
 
 /** Checked before a file is read, so binary project files are never loaded to be rejected. */
 export function hasMergeableExtension(fileName: string): boolean {
