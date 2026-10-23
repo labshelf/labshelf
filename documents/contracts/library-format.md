@@ -301,16 +301,19 @@ The sidecar holds per-paper state from the reader: annotations, the reader theme
   "theme": "auto",
   "reading": { "page": 6, "scaleValue": "page-width", "left": 0, "top": 512,
                "sidebar": { "open": true, "tab": "outline", "width": 240 },
-               "updatedAt": "…" }
+               "updatedAt": "…" },
+  "deleted": [ { "id": "…", "deletedAt": "…" } ]
 }
 ```
 
-- Every app writes the exact same bytes: this key order, two-space indent, and `reading` omitted until the paper is first opened. Two apps writing different bytes for the same state would cause conflicts in the user's sync tool.
+- Every app writes the exact same bytes: this key order, two-space indent, `reading` omitted until the paper is first opened, and `deleted` omitted while empty, with its markers sorted by `id`. Two apps writing different bytes for the same state would cause conflicts in the user's sync tool.
 - `theme` is one of `auto`, `light`, `dark`, `sepia`, `high-contrast`.
 - An annotation `color` is one of `yellow`, `green`, `blue`, `red`, `pink`.
 - `position` is normalised to the page: every value is in 0..1, width and height are positive, and the box stays inside the page.
 - `scaleValue` is a pdf.js preset (`page-width`, `page-fit`, `page-actual`, `auto`) or a number in (0, 64] written as a string. `left` and `top` are in PDF points from the top-left of the page.
-- Reading is defensive. A corrupt or hand-edited sidecar never throws: invalid fields fall back to their defaults, and annotations without an `id` are dropped.
+- `deleted` holds one marker per removed annotation, so a sync tool's stale copy of `data.json` cannot bring it back. A marker older than 90 days is dropped the next time the reader writes the file. A file without `deleted` has no deletions.
+- Merging two copies of a sidecar works per annotation, not per file: for an id in both, the larger `updatedAt` wins; markers are the union by id, keeping the larger `deletedAt`. A marker removes the annotation of its id when `deletedAt >= updatedAt`; an annotation edited after its deletion stays and its marker is dropped. `theme` and `reading` follow the file with the newer modification time.
+- Reading is defensive. A corrupt or hand-edited sidecar never throws: invalid fields fall back to their defaults, annotations without an `id` and markers without an `id` or a parseable `deletedAt` are dropped, and an annotation without `updatedAt` counts as older than any marker or edit.
 
 ## Conflict copies
 
@@ -325,7 +328,7 @@ When two devices change the same file before the sync tool reconciles them, the 
 
 Copies with unknown names, including Google Drive, OneDrive and iCloud Drive names such as `name (1).ext`, `name-Computer.ext` and `name 2.ext`, are found by content inside writing projects under [sync.md#conflict-copies](sync.md#conflict-copies). Paper folders use the name table only. Folders are never treated as conflict copies, and hidden files and folders are skipped.
 
-- A conflict copy of a sidecar is merged into `data.json` without asking. The copies of one sidecar are folded into `data.json` from the oldest modification time to the newest: annotations are the union by `id`; for an `id` in both, `theme` and `reading`, the side with the newer modification time wins, where the merged result counts as old as the newest file folded into it. Every annotation that has an `id` is kept; annotations without an `id` and unknown top-level fields are dropped, as by any LabShelf write of `data.json`. A deleted annotation may come back. If `data.json` changes during the merge, the merge starts again (at most three times, then the copies are kept and shown to the user). The result is written atomically, read back, and only when `data.json` holds exactly the merged result are the copies deleted. A copy whose `data.json` is missing takes its place if it is a sidecar (a JSON object). A copy that is not, or whose `data.json` is not, is kept and shown to the user like any other copy.
+- A conflict copy of a sidecar is merged into `data.json` without asking. The copies of one sidecar are folded into `data.json` from the oldest modification time to the newest: annotations are the union by `id`; for an `id` in both, the larger `updatedAt` wins (the newer file on a tie), and `theme` and `reading` follow the file with the newer modification time, where the merged result counts as old as the newest file folded into it. An annotation that has an `id` is kept unless a deletion marker removes it; annotations without an `id` and unknown top-level fields are dropped, as by any LabShelf write of `data.json`. Deletion markers apply as described under "Sidecar: `data.json`". If `data.json` changes during the merge, the merge starts again (at most three times, then the copies are kept and shown to the user). The result is written atomically, read back, and only when `data.json` holds exactly the merged result are the copies deleted. A copy whose `data.json` is missing takes its place if it is a sidecar (a JSON object). A copy that is not, or whose `data.json` is not, is kept and shown to the user like any other copy.
 - A conflict copy of any other file inside a paper folder (`metadata.yaml`, the PDF, an attachment) is shown to the user, who resolves it: keep mine (delete the copy), keep the other (the copy replaces the original), or keep both (the copy is renamed to `<name> (copy <n>).<ext>` with the lowest free `n`). Keep both is not offered for `metadata.yaml`, because a paper has exactly one.
 - A named conflict copy of an unshared writing project's text file is merged three-way when the device has a base for it; otherwise it is shown to the user with the same three choices. Content matches ask for Merge Automatically, Merge Myself or Not a Version; detection, dismissals and shared-project handling follow [sync.md#conflict-copies](sync.md#conflict-copies).
 - A conflict copy of a Space file is shown to the user: [spaces.md#conflict-copies](spaces.md#conflict-copies).

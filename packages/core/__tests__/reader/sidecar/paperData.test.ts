@@ -28,4 +28,23 @@ describe('serializePaperData', () => {
     const withReading = serializePaperData({ reading: { page: 2, scaleValue: '1.5', updatedAt: 't' }, theme: 'dark', annotations: [] });
     expect(Object.keys(JSON.parse(withReading))).toEqual(['annotations', 'theme', 'reading']);
   });
+
+  it('writes deletion markers after reading and omits them when empty', () => {
+    const marker = { id: 'a', deletedAt: '2026-10-01T00:00:00.000Z' };
+    const withDeleted = serializePaperData({ annotations: [], theme: 'dark', deleted: [marker], reading: { page: 2, scaleValue: '1.5', updatedAt: 't' } });
+    expect(Object.keys(JSON.parse(withDeleted))).toEqual(['annotations', 'theme', 'reading', 'deleted']);
+    expect(serializePaperData({ annotations: [], theme: 'auto', deleted: [] })).toBe('{\n  "annotations": [],\n  "theme": "auto"\n}');
+  });
+
+  it('writes deletion markers sorted by id', () => {
+    const deleted = [{ id: 'b', deletedAt: '2026-10-02T00:00:00.000Z' }, { id: 'a', deletedAt: '2026-10-01T00:00:00.000Z' }];
+    const written = JSON.parse(serializePaperData({ annotations: [], theme: 'auto', deleted })) as { deleted: { id: string }[] };
+    expect(written.deleted.map((m) => m.id)).toEqual(['a', 'b']);
+  });
+
+  it('drops invalid deletion markers on read', () => {
+    const marker = { id: 'a', deletedAt: '2026-10-01T00:00:00.000Z' };
+    expect(normalizePaperData({ annotations: [], theme: 'auto', deleted: [marker, { id: 1 }, null, { id: 'b' }, { id: 'c', deletedAt: 'zzz' }] }).deleted).toEqual([marker]);
+    expect(normalizePaperData({ annotations: [], theme: 'auto' }).deleted).toBeUndefined();
+  });
 });
