@@ -1,5 +1,5 @@
 // Exports item file parsing, writing and editing, and the fenced-div reading other qmd folders build on.
-export { unclosedCodeFences } from "./codeFences.js";
+export { codeFences, unclosedCodeFences } from "./codeFences.js";
 export { attributeValue, formatDivOpener, parseDivOpener, type DivAttributes } from "./divAttributes.js";
 export { isBalanced, topLevelDivs, type DivRange } from "./fencedDivs.js";
 export { addItem, removeItem, replaceItemBody, type NewItem } from "./itemEdit.js";

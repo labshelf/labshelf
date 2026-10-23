@@ -27,6 +27,8 @@ Any other Markdown (tables, block quotes, callouts, raw HTML, YAML front matter)
 - Line endings are whatever the file uses. LabShelf writes new lines with the line ending of the file's first line, and `\n` in a file without one.
 - A file that LabShelf reads and writes back without an edit is byte-identical, including its line endings, a missing final newline and a leading byte order mark.
 - A code fence is three or more `` ` `` or `~`, indented at most three spaces, followed by nothing, by one word, by an attribute block `{…}`, or by one word and an attribute block, as in Pandoc. It counts only when a closing fence of the same character, at least as long, follows it; until then it is ordinary text.
+- The editor reads an item body into these constructs without changing its bytes. An unclosed code fence and everything after it in its container stay one raw block. A block whose reading would not write back to its exact bytes (a lazy list line, mixed line endings) stays a raw block, and inline syntax that would not write back stays literal text.
+- Text typed in the editor is written as typed, without escaping. A block built in the editor is written with `-` bullets, `*` emphasis, `**` strong, three-backtick fences and one empty line between blocks.
 
 ## Items
 
