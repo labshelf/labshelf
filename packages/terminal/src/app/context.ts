@@ -3,7 +3,7 @@
 import * as path from "node:path";
 
 import {
-  BibTeXService, FileMergeBaseStore, Logger, PdfImportParser, errorMessage,
+  BibTeXService, FileProjectVersionStore, Logger, PdfImportParser, errorMessage,
   processChangeBatch, type ILogger, type LibraryStore, type PdfjsLoader,
 } from "@labshelf/core";
 import {
@@ -90,8 +90,8 @@ function createThumbnails(env: NodeJS.ProcessEnv, workerUrl: URL, logger: ILogge
   return { renderer, thumbnails: new ThumbnailService(cacheDir(env), renderer.render, logger) };
 }
 
-function mergeBaseStore(root: string): FileMergeBaseStore {
-  return new FileMergeBaseStore(new NodeLibraryFileSystem(), path, deviceLocalLayout(root).mergeBasesDir);
+function mergeBaseStore(root: string): FileProjectVersionStore {
+  return new FileProjectVersionStore(new NodeLibraryFileSystem(), path, deviceLocalLayout(root).mergeBasesDir);
 }
 
 function startWatcher(

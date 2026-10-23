@@ -1,3 +1,4 @@
+// Verifies conflict choices preserve files and record project writes before replacement.
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
@@ -89,4 +90,48 @@ describe("resolveConflictCopy", () => {
     expect(await fs.readFile(conflict.original, "utf8")).toBe("mine");
     expect(await fs.readFile(conflict.copy, "utf8")).toBe("other");
   });
+});
+
+it('records project keepOther before replacement and commits after it', async () => {
+  const { copy } = await paperWith('main.tex', 'main.tex.conflict1');
+  const beforeSave = jest.fn(async () => { expect(await fs.readFile(copy.original, 'utf8')).toBe('mine'); });
+  const afterSave = jest.fn(async () => { expect(await fs.readFile(copy.original, 'utf8')).toBe('other'); });
+  await resolveConflictCopy(copy, 'keepOther', fakeLogger(), { beforeSave, afterSave });
+  expect(beforeSave).toHaveBeenCalledWith(copy.original, 'other');
+  expect(afterSave).toHaveBeenCalledWith(copy.original, 'other');
+});
+
+it('keeps the original intact when recording a project replacement fails', async () => {
+  const { copy } = await paperWith('main.tex', 'main.tex.conflict1');
+  const afterSave = jest.fn(async () => {});
+  await expect(resolveConflictCopy(copy, 'keepOther', fakeLogger(), {
+    beforeSave: async () => { throw new Error('record failed'); }, afterSave,
+  })).rejects.toThrow('record failed');
+  expect(await fs.readFile(copy.original, 'utf8')).toBe('mine');
+  expect(await fs.readFile(copy.copy, 'utf8')).toBe('other');
+  expect(afterSave).not.toHaveBeenCalled();
+});
+
+it('records keepBoth before copying without replacing occupied destinations', async () => {
+  const { dir, copy } = await paperWith('main.tex', 'main.tex.conflict1');
+  const afterSave = jest.fn(async (file: string) => { expect(await fs.readFile(file, 'utf8')).toBe('other'); });
+  const beforeSave = jest.fn(async (file: string) => {
+    await expect(fs.readFile(file)).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+  await resolveConflictCopy(copy, 'keepBoth', fakeLogger(), { beforeSave, afterSave });
+  const destination = path.join(dir, 'main (copy 1).tex');
+  expect(beforeSave).toHaveBeenCalledWith(destination, 'other');
+  expect(afterSave).toHaveBeenCalledWith(destination, 'other');
+});
+
+it('keeps invalid UTF-8 bytes outside project text history', async () => {
+  const { copy } = await paperWith('main.tex', 'main.tex.conflict1');
+  const bytes = Buffer.from([0xff, 0xfe, 0x61]);
+  await fs.writeFile(copy.copy, bytes);
+  const beforeSave = jest.fn(async () => {});
+  const afterSave = jest.fn(async () => {});
+  await resolveConflictCopy(copy, 'keepOther', fakeLogger(), { beforeSave, afterSave });
+  expect(await fs.readFile(copy.original)).toEqual(bytes);
+  expect(beforeSave).not.toHaveBeenCalled();
+  expect(afterSave).not.toHaveBeenCalled();
 });

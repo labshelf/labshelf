@@ -1,13 +1,15 @@
-// Finds conflict copies in writing projects: seeds missing merge bases, merges text copies and lists the rest.
+// Finds unresolved project conflicts from recorded versions or sync copies.
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
+import { createDeviceIdentity, deviceLocalLayout } from "../../../library/node/index.js";
 import { parseConflictName, type ConflictCopy } from "../../../library/conflicts/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import { listProjectFiles } from "../../project/folder/index.js";
 import { listProjectsOnDisk, nodeFileReads } from "../../project/node/index.js";
-import { hasMergeableExtension, isMergeableTextFile } from "../mergeableTextFile.js";
-import type { IMergeBaseStore } from "../mergeBaseStore.js";
+import { hasMergeableExtension, isMergeableTextFile } from "../index.js";
+import type { IProjectVersionStore } from "../index.js";
+import { mergeProjectDivergence } from "./projectDivergence.js";
 import { mergeProjectCopies } from "./projectCopyMerge.js";
 
 const MODULE = "writing-merge";
@@ -35,11 +37,8 @@ async function projectTree(folder: string, projectId: string): Promise<ProjectTr
   return tree;
 }
 
-/**
- * A text file seen with no base gets its content as the base. A file with a conflict copy is not seeded:
- * its content may already differ from the other device's, and a base equal to it would let the copy win.
- */
-async function seedBases(projectId: string, tree: ProjectTree, store: IMergeBaseStore, logger: ILogger): Promise<void> {
+// A conflict copy makes the original unsafe as an ancestor: seeding it would discard its edits.
+async function seedBases(projectId: string, tree: ProjectTree, store: IProjectVersionStore, logger: ILogger): Promise<void> {
   for (const [file, rel] of tree.files) {
     if (tree.copies.has(file) || !hasMergeableExtension(path.basename(file))) { continue; }
     try {
@@ -52,24 +51,29 @@ async function seedBases(projectId: string, tree: ProjectTree, store: IMergeBase
   }
 }
 
-async function scanProject(folder: string, projectId: string, store: IMergeBaseStore, logger: ILogger): Promise<ConflictCopy[]> {
+async function scanProject(root: string, folder: string, projectId: string, store: IProjectVersionStore, logger: ILogger, onMerged: (file: string) => void): Promise<ConflictCopy[]> {
   const tree = await projectTree(folder, projectId);
-  await seedBases(projectId, tree, store, logger);
   const unresolved: ConflictCopy[] = [];
+  for (const [file, relativePath] of tree.files) {
+    if (!hasMergeableExtension(path.basename(file))) continue;
+    const conflict = await mergeProjectDivergence({ root, folder, projectId, file, relativePath, store, logger, onMerged });
+    if (conflict) { unresolved.push(conflict); tree.copies.delete(file); }
+  }
+  await seedBases(projectId, tree, store, logger);
   for (const [original, copies] of tree.copies) {
     const rel = path.relative(folder, original).split(path.sep).join("/");
-    if (!await mergeProjectCopies(copies, rel, store, logger)) { unresolved.push(...copies); }
+    if (copies.some(copy => copy.tool === "app") || !await mergeProjectCopies(copies, rel, store, logger, { folder, identity: createDeviceIdentity(deviceLocalLayout(root), logger) })) { unresolved.push(...copies); }
   }
   return unresolved;
 }
 
 /** @returns the project conflict copies left for the user; a project that cannot be listed is logged and skipped. */
-export async function scanProjectConflicts(libraryRoot: string, store: IMergeBaseStore, logger: ILogger): Promise<ConflictCopy[]> {
+export async function scanProjectConflicts(libraryRoot: string, store: IProjectVersionStore, logger: ILogger, onMerged: (file: string) => void): Promise<ConflictCopy[]> {
   const unresolved: ConflictCopy[] = [];
   for (const entry of await listProjectsOnDisk(libraryRoot, logger)) {
-    if (entry.kind !== "ready") { continue; }
+    if (entry.kind !== "ready" || entry.settings.shared) { continue; }
     try {
-      unresolved.push(...await scanProject(entry.folder, entry.settings.id, store, logger));
+      unresolved.push(...await scanProject(libraryRoot, entry.folder, entry.settings.id, store, logger, onMerged));
     } catch (error) {
       void logger.error(MODULE, error, { projectId: entry.settings.id, folder: entry.folder, action: "scan project conflicts" });
     }

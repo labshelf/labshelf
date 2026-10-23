@@ -79,6 +79,7 @@ const onDocumentEvent = (kind) => jest.fn((handler) => {
   _documentListeners[kind].push(handler);
   return { dispose: () => { _documentListeners[kind].splice(_documentListeners[kind].indexOf(handler), 1); } };
 });
+workspace.onWillSaveTextDocument = jest.fn(() => ({ dispose: () => {} }));
 workspace.onDidSaveTextDocument = onDocumentEvent('save');
 workspace.onDidOpenTextDocument = onDocumentEvent('open');
 workspace.onDidCloseTextDocument = onDocumentEvent('close');

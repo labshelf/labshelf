@@ -28,6 +28,17 @@ const project = (folder: string, main: string | undefined, over: Partial<Project
   ({ folder, main, settings: { id: "p", format: "latex" as const, values: ["results.json"], ...over } });
 
 describe("updateProjectValues", () => {
+  it("routes generated text and main-file edits through the injected writer", async () => {
+    const dir = await folderWith({ "results.json": '{}', "main.tex": DOCUMENT });
+    const writes: Array<[string, string]> = [];
+    await updateProjectValues(project(dir, "main.tex"), fakeLogger(), undefined, {
+      writeText: async (file, text) => { writes.push([file, text]); },
+    });
+    expect(writes.map(([file]) => path.basename(file))).toEqual(["labshelf-values.tex", "main.tex"]);
+    expect(writes[1]?.[1]).toContain("\\input{labshelf-values}");
+    expect(await read(dir, "main.tex")).toBe(DOCUMENT);
+  });
+
   it("writes labshelf-values.tex next to the main file and loads it before \\begin{document}", async () => {
     const dir = await folderWith({ "results.json": '{"acc":0.91,"name":"a_b"}', "paper/main.tex": DOCUMENT });
     const result = await updateProjectValues(project(dir, "paper/main.tex"), fakeLogger());

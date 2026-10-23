@@ -1,6 +1,5 @@
 // Recognises the file names sync tools give conflict copies and recovers the original name.
-// TRAP: only patterns from official sources are matched. Google Drive's `name (1).ext`, OneDrive's
-// `name-Computer.ext` and iCloud's `name 2.ext` are unconfirmed and look like ordinary user file names.
+// TRAP: unconfirmed provider suffixes resemble ordinary user file names.
 import type { SyncTool } from "./conflictCopy.js";
 
 export interface ParsedConflictName {
@@ -10,6 +9,7 @@ export interface ParsedConflictName {
 
 /** Each pattern captures the base name and, when the tool puts its marker before the extension, the extension. */
 const PATTERNS: ReadonlyArray<{ tool: SyncTool; pattern: RegExp }> = [
+  { tool: "app", pattern: /^(.+)\.labshelf-conflict-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}()$/ },
   // name.sync-conflict-<yyyyMMdd>-<HHmmss>-<short device id>.ext
   { tool: "syncthing", pattern: /^(.+?)\.sync-conflict-\d{8}-\d{6}-[A-Z0-9]{7}(\.[^.]+)?$/ },
   // name (conflicted copy [user ]yyyy-MM-dd hhmmss).ext

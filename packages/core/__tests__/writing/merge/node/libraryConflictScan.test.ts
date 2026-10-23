@@ -7,7 +7,8 @@ import { addExistingFolder, createProjectFromTemplate } from "../../../../src/wr
 import { blankTemplate } from "../../../../src/writing/templates/index";
 import { NodeLibraryFileSystem } from "../../../../src/library/node/index";
 import { scanLibraryConflicts } from "../../../../src/writing/merge/node/index";
-import { FileMergeBaseStore, type IMergeBaseStore } from "../../../../src/writing/merge/index";
+import { FileProjectVersionStore, type IProjectVersionStore } from "../../../../src/writing/merge/index";
+import { MemoryLibraryFs } from "../../../support/memoryLibraryFs";
 import type { ILogger } from "../../../../src/ports/index";
 import { cleanupTempDirs, makeTempDir } from "../../../support/tempDirs";
 
@@ -44,13 +45,8 @@ function recordingLogger(): ILogger & { logs: RecordedLog[]; errors: Array<Recor
   };
 }
 
-function memoryStore(): IMergeBaseStore & { bases: Map<string, string> } {
-  const bases = new Map<string, string>();
-  return {
-    bases,
-    read: async (projectId, relativePath) => bases.get(`${projectId}/${relativePath}`),
-    write: async (projectId, relativePath, text) => { bases.set(`${projectId}/${relativePath}`, text); },
-  };
+function memoryStore(): IProjectVersionStore {
+  return new FileProjectVersionStore(new MemoryLibraryFs(), path.posix, '/state/merge-bases');
 }
 
 /** A library with one project projects/<id>/ whose main.tex holds the base document; the base is seeded by a first scan. */
@@ -80,6 +76,7 @@ describe("scanLibraryConflicts on project files", () => {
     expect(merged).not.toContain("<<<<<<<");
     await expect(fs.stat(path.join(folder, SYNCTHING_COPY))).rejects.toThrow();
     expect(await store.read(id, "main.tex")).toBe(doc(other));
+    expect(await store.latest(id, "main.tex")).toBe(merged);
   });
 
   it("keeps the local edit when the other device edits again before it receives the merge", async () => {
@@ -210,7 +207,7 @@ describe("scanLibraryConflicts on project files", () => {
     await fs.writeFile(path.join(folder, "main.tex"), doc(PARAGRAPHS));
     const logger = recordingLogger();
     await addExistingFolder(nodeProjectCatalogContext(logger), lib, { folder, format: "latex" });
-    const store = new FileMergeBaseStore(new NodeLibraryFileSystem(), path, path.join(state, "merge-bases"));
+    const store = new FileProjectVersionStore(new NodeLibraryFileSystem(), path, path.join(state, "merge-bases"));
     await scanLibraryConflicts(lib, store, logger);
 
     await fs.writeFile(path.join(folder, "main.tex"), doc(edit(0, "Local intro.")));

@@ -7,7 +7,7 @@ import { sessionLogger } from "./sessionLogger.js";
 
 export interface ProjectBuildDepsSource {
   host: Pick<WritingHost, "current">;
-  projects: Pick<WritingProjects, "data">;
+  projects: Pick<WritingProjects, "data" | "fs">;
   tex: ProjectBuildDeps["tex"];
   typst: ProjectBuildDeps["typst"];
 }
@@ -15,6 +15,7 @@ export interface ProjectBuildDepsSource {
 export function projectBuildDeps(source: ProjectBuildDepsSource): ProjectBuildDeps {
   return {
     logger: sessionLogger(source.host),
+    projectWriter: source.projects.fs,
     prompt: vscodeToolchainPrompt(),
     tex: source.tex,
     projects: { projectBuildDir: (id) => source.projects.data.projectBuildDir(id) },

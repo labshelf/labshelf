@@ -1,7 +1,7 @@
 // Builds one root of a writing project with its format's compiler, preparing TeX first and installing the LaTeX packages it misses.
 import * as path from "node:path";
 
-import type { ILogger } from "../../../ports/index.js";
+import type { ILogger, LibraryFileSystem } from "../../../ports/index.js";
 import { classifyTexProblems, type LatexBuildResult } from "../../latex/build/index.js";
 import { runLatexBuild } from "../../latex/build/node/index.js";
 import type { ProjectEntry } from "../../project/index.js";
@@ -21,6 +21,7 @@ const MODULE = "writing/build";
 type ReadyProject = Extract<ProjectEntry, { kind: "ready" }>;
 
 export interface ProjectBuildDeps extends ToolchainDeps {
+  projectWriter?: Pick<LibraryFileSystem, "writeText">;
   projects: Pick<ProjectDataPort, "projectBuildDir">;
   typst: { get(logger: ILogger): Promise<{ session: TypstSession; packages: TypstPackageStore }> };
   /** The command latexmk runs biber's WASM build through; the TeX's own biber when absent. */
@@ -50,10 +51,10 @@ export interface ProjectBuildOptions {
 }
 
 // A failure leaves the macro undefined, which LaTeX reports itself, so the build still runs.
-async function generateValues(project: ReadyProject, logger: ILogger): Promise<void> {
+async function generateValues(project: ReadyProject, logger: ILogger, writer: ProjectBuildDeps["projectWriter"]): Promise<void> {
   if (!project.settings.values?.length) { return; }
   try {
-    await updateProjectValues(project, logger);
+    await updateProjectValues(project, logger, undefined, writer);
   } catch (error) {
     await logger.error(MODULE, error, { projectFolder: project.folder, action: "generate-values" });
   }
@@ -63,7 +64,7 @@ async function buildLatex(project: ReadyProject, root: string, deps: ProjectBuil
   const toolchain = await ensureToolchain(project, deps);
   if ("status" in toolchain) { return toolchain; }
   options.onCompile?.(root);
-  await generateValues(project, deps.logger);
+  await generateValues(project, deps.logger, deps.projectWriter);
   const buildDir = deps.projects.projectBuildDir(project.settings.id);
   await clearFlatBuildFiles(buildDir, root, deps.logger);
   const outDir = path.join(buildDir, rootBuildFolder(root));

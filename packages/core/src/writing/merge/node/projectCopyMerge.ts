@@ -4,9 +4,11 @@ import * as path from "node:path";
 
 import type { ConflictCopy } from "../../../library/conflicts/index.js";
 import { writeFileAtomic } from "../../../library/node/index.js";
+import type { DeviceIdentity } from "../../../library/writeRecords/index.js";
+import { prepareProjectSave } from "./projectSaveRecord.js";
 import type { ILogger } from "../../../ports/index.js";
-import { isMergeableTextFile } from "../mergeableTextFile.js";
-import type { IMergeBaseStore } from "../mergeBaseStore.js";
+import { isMergeableTextFile } from "../index.js";
+import type { IProjectVersionStore } from "../index.js";
 import { mergeText } from "./mergeText.js";
 
 const MODULE = "writing-merge";
@@ -37,16 +39,11 @@ function mergeAll(base: string, local: string, copies: ConflictCopy[], others: s
   return result;
 }
 
-/**
- * Writes the merged text to the file, checks it by reading it back, and only then deletes the copies.
- * INVARIANT: a base is a common ancestor of every later version. After one copy that is the copy's text,
- * because the other device's next edits start from it; after several copies only the old base is.
- * CONTRACT: documents/contracts/sync.md#conflict-copies
- * @param copies the conflict copies of one file, all with that file as `original`
- * @returns true when the copies are merged and deleted; false leaves every copy on disk, for the user
- */
+// INVARIANT: only a single copy supplies the ancestor from which the other device keeps editing.
+// CONTRACT: documents/contracts/sync.md#conflict-copies
 export async function mergeProjectCopies(
-  copies: ConflictCopy[], relativePath: string, store: IMergeBaseStore, logger: ILogger,
+  copies: ConflictCopy[], relativePath: string, store: IProjectVersionStore, logger: ILogger,
+  recording: { folder: string; identity: DeviceIdentity },
 ): Promise<boolean> {
   const [first] = copies;
   if (!first) { return true; }
@@ -62,10 +59,12 @@ export async function mergeProjectCopies(
       void logger.log("INFO", MODULE, "File changed during the merge; the next scan merges it", context);
       return false;
     }
+    await prepareProjectSave({ ...recording, projectId: first.owner.id, relativePath, store, logger, text: merged.text, parentText: local });
     await writeFileAtomic(first.original, merged.text);
     if (await fs.readFile(first.original, "utf8") !== merged.text) {
       throw new Error(`Merged file ${first.original} reads back different content`);
     }
+    await store.remember(first.owner.id, relativePath, merged.text);
     for (const copy of copies) { await fs.rm(copy.copy); }
     void logger.log("INFO", MODULE, "Merged project conflict copies", { ...context, conflicted: merged.conflicted });
     if (copies.length === 1 && others[0] !== undefined) {

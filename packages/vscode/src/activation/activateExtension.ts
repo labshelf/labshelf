@@ -89,7 +89,11 @@ function createLibraryController(
     getServices: () => controller.currentServices(),
     getRoot: () => controller.currentRoot()?.fsPath ?? null,
     scanConflicts: adapters.scanLibraryConflicts,
-    resolveCopy: adapters.resolveConflictCopy,
+    resolveCopy: (copy, resolution, logger) => {
+      const root = controller.currentRoot();
+      if (!root) throw new Error("Open a library before resolving a conflict");
+      return adapters.resolveConflictCopy(copy, resolution, logger, root.fsPath);
+    },
     paths: adapters.paths,
   });
   registerConflictCommand(context, conflicts);

@@ -2,10 +2,10 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { FileMergeBaseStore, createProjectData } from "@labshelf/core";
+import { FileProjectVersionStore, createProjectData } from "@labshelf/core";
 import {
   NodeLibraryFileSystem, NodePdfOpener, convertWithPandoc, createNodeSidecarPort, deviceLocalLayout, openAiStorage, resolveConflictCopy,
-  scanLibraryConflicts,
+  scanLibraryConflicts, createProjectSaveTracking,
 } from "@labshelf/core/node";
 import { createExtensionLogger } from "../../core/node/index.js";
 import { createOcrEngine, createTextLayerBuilder, hostPdfjs } from "../../pdf/node/index.js";
@@ -29,10 +29,12 @@ export function createNodeAdapters(context: vscode.ExtensionContext): HostAdapte
     createSidecarPort: createNodeSidecarPort,
     openAiStorage,
     deviceLayout: deviceLocalLayout,
-    createProjectData: (logger, deviceDirs) => createProjectData({ fs, path, logger, deviceDirs }),
+    createProjectSaveTracking: (root, logger) => createProjectSaveTracking(fs, root, logger),
+    createProjectData: (logger, deviceDirs, projectFs) => createProjectData({ fs: projectFs, path, logger, deviceDirs }),
     scanLibraryConflicts: (root, logger) =>
-      scanLibraryConflicts(root, new FileMergeBaseStore(fs, path, deviceLocalLayout(root).mergeBasesDir), logger),
-    resolveConflictCopy,
+      scanLibraryConflicts(root, new FileProjectVersionStore(fs, path, deviceLocalLayout(root).mergeBasesDir), logger,
+        (file) => { void vscode.window.showInformationMessage(`Combined changes from another device in ${path.basename(file)}.`); }),
+    resolveConflictCopy: (copy, resolution, logger, root) => resolveConflictCopy(copy, resolution, logger, createProjectSaveTracking(fs, () => root, logger)),
     convertDocument: convertWithPandoc,
     sharedLibraryConfig: nodeSharedLibraryConfig,
     reader: { locatePdfjs, isMac: process.platform === "darwin" },

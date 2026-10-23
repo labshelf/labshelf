@@ -84,7 +84,7 @@ export function registerProjectViews(deps: ProjectViewsDeps): ProjectViewsHandle
     vscode.commands.registerCommand(REVEAL_OUTLINE_COMMAND, revealOutline),
     registerTypstOutline(),
   );
-  registerProjectFileCommands({ context, session, logger });
+  registerProjectFileCommands({ context, session, logger, fs: projects.fs });
   const checklist = registerChecklistView({ context, session, projects, previews: deps.previews, readingLists, onDidChangeBacklinks: deps.onDidChangeBacklinks, setStatus: deps.setStatus, logger });
   const outlineSpec: ProjectTreeSpec<unknown> = {
     view: "outline", title: "Outline", provider: outline, empty: "Open a source file to see its outline.", actions: [], menus: {},

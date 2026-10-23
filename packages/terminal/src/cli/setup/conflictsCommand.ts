@@ -1,7 +1,7 @@
 // Runs `labshelf conflicts`: lists the sync-tool conflict copies in the library and, on a terminal, resolves each.
 import * as path from "node:path";
 
-import { FileMergeBaseStore, conflictResolutions, type ConflictCopy, type ConflictResolution, type ILogger } from "@labshelf/core";
+import { FileProjectVersionStore, conflictResolutions, type ConflictCopy, type ConflictResolution, type ILogger } from "@labshelf/core";
 import {
   NodeLibraryFileSystem, deviceLocalLayout, resolveConflictCopy, scanLibraryConflicts,
 } from "@labshelf/core/node";
@@ -39,7 +39,7 @@ async function resolveInteractively(root: string, conflict: ConflictCopy, io: Ou
  * @returns the exit code: 0
  */
 export async function runConflicts(root: string, io: Output, ask: Ask | undefined, logger: ILogger): Promise<number> {
-  const store = new FileMergeBaseStore(new NodeLibraryFileSystem(), path, deviceLocalLayout(root).mergeBasesDir);
+  const store = new FileProjectVersionStore(new NodeLibraryFileSystem(), path, deviceLocalLayout(root).mergeBasesDir);
   const conflicts = await scanLibraryConflicts(root, store, logger);
   if (conflicts.length === 0) {
     io.out("No conflicting copies.");

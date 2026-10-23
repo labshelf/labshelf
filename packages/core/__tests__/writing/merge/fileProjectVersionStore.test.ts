@@ -1,17 +1,17 @@
 /** Verifies the merge base store: round trip, location under its folder, no deletion, path rejection. */
 import * as path from "node:path";
 
-import { FileMergeBaseStore } from "../../../src/writing/merge/index";
+import { FileProjectVersionStore, textHash } from "../../../src/writing/merge/index";
 import { MemoryLibraryFs } from "../../support/memoryLibraryFs";
 
 const basesDir = "/state/lib-key/merge-bases";
 
 function makeStore() {
   const fs = new MemoryLibraryFs();
-  return { fs, store: new FileMergeBaseStore(fs, path.posix, basesDir) };
+  return { fs, store: new FileProjectVersionStore(fs, path.posix, basesDir) };
 }
 
-describe("FileMergeBaseStore", () => {
+describe("FileProjectVersionStore", () => {
   it("reads back what it wrote, including nested paths", async () => {
     const { store } = makeStore();
     await store.write("p1", "chapters/intro.tex", "hello");
@@ -38,7 +38,7 @@ describe("FileMergeBaseStore", () => {
   it("stores under its folder, one segment per path part", async () => {
     const { fs, store } = makeStore();
     await store.write("p1", "sub/main.tex", "text");
-    expect([...fs.files.keys()]).toEqual([`${basesDir}/p1/sub/main.tex`]);
+    expect([...fs.files.keys()]).toEqual([`${basesDir}/p1/sub/main.tex`, `${basesDir}/p1/.versions/sub/main.tex`]);
   });
 
   it.each([
@@ -49,4 +49,29 @@ describe("FileMergeBaseStore", () => {
     await expect(store.write(projectId, relativePath, "x")).rejects.toThrow(/merge base/i);
     await expect(store.read(projectId, relativePath)).rejects.toThrow(/merge base/i);
   });
+});
+
+it('retains the newest twenty texts without promoting an unsuccessful save', async () => {
+  const { store } = makeStore();
+  await store.remember('p', 'main.tex', 'saved');
+  await store.retain('p', 'main.tex', 'unsaved');
+  expect(await store.latest('p', 'main.tex')).toBe('saved');
+  for (let i = 0; i < 21; i++) await store.remember('p', 'main.tex', `version ${i}`);
+  expect(await store.version('p', 'main.tex', await textHash('version 0'))).toBeUndefined();
+  expect(await store.version('p', 'main.tex', await textHash('version 1'))).toBe('version 1');
+  expect(await store.latest('p', 'main.tex')).toBe('version 20');
+});
+
+it('rejects journals with altered text hashes or escaping pending copies', async () => {
+  const { fs, store } = makeStore();
+  await fs.writeText(`${basesDir}/p/.versions/main.tex`, JSON.stringify({ versions: [{ hash: 'a'.repeat(64), text: 'bad' }] }));
+  await expect(store.latest('p', 'main.tex')).rejects.toThrow('Cannot read project versions');
+  await expect(async () => store.setPending('p', 'main.tex', '../outside.tex')).rejects.toThrow('Invalid pending conflict path');
+});
+
+it('pins the last successful version while retaining twenty failed save attempts', async () => {
+  const { store } = makeStore();
+  await store.remember('p', 'main.tex', 'saved');
+  for (let i = 0; i < 25; i++) await store.retain('p', 'main.tex', `attempt ${i}`);
+  expect(await store.latest('p', 'main.tex')).toBe('saved');
 });

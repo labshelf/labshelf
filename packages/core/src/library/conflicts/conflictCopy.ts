@@ -1,7 +1,7 @@
 // Describes a sync tool's conflict copy of a library file and the ways the user can resolve it.
 import { METADATA_FILE } from "../layout.js";
 
-export type SyncTool = "syncthing" | "nextcloud" | "dropbox" | "rclone";
+export type SyncTool = "syncthing" | "nextcloud" | "dropbox" | "rclone" | "app";
 
 /** A paper (its paper folder or its sidecar folder), a writing project or a Space, by id. */
 export type ConflictOwner = { kind: "paper"; id: string } | { kind: "project"; id: string } | { kind: "space"; id: string };

@@ -2,17 +2,23 @@
 import { constants as fsConstants, promises as fs } from "node:fs";
 import * as path from "node:path";
 
+import { isMergeableTextFile, type ProjectSaveTracking } from "../../../writing/merge/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import { conflictResolutions, type ConflictCopy, type ConflictResolution } from "../conflictCopy.js";
 import { parseConflictName } from "../conflictNames.js";
 
 /** Copies `copy` to the first free `<name> (copy N).<ext>` next to the original, then deletes it. */
-async function keepBoth(original: string, copy: string): Promise<void> {
+async function keepBoth(original: string, copy: string, tracking: Pick<ProjectSaveTracking, "beforeSave" | "afterSave"> | undefined): Promise<void> {
   const { dir, name, ext } = path.parse(original);
   for (let n = 1; ; n++) {
     try {
       // TRAP: an existence check before a rename could still overwrite a file created in between; EXCL cannot.
-      await fs.copyFile(copy, path.join(dir, `${name} (copy ${n})${ext}`), fsConstants.COPYFILE_EXCL);
+      const destination = path.join(dir, `${name} (copy ${n})${ext}`);
+      const bytes = tracking ? await fs.readFile(copy) : undefined;
+      const text = bytes && isMergeableTextFile(path.basename(original), bytes) ? bytes.toString('utf8') : undefined;
+      if (text !== undefined) await tracking?.beforeSave(destination, text);
+      await fs.copyFile(copy, destination, fsConstants.COPYFILE_EXCL);
+      if (text !== undefined) await tracking?.afterSave(destination, text);
       break;
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "EEXIST") { throw error; }
@@ -33,7 +39,7 @@ function assertConflictPair(conflict: ConflictCopy): void {
  * Resolves a conflict copy: keepMine deletes it, keepOther moves it over the original, keepBoth moves it
  * to `<name> (copy N).<ext>`. Refuses a resolution `conflictResolutions` does not offer.
  */
-export async function resolveConflictCopy(conflict: ConflictCopy, resolution: ConflictResolution, logger: ILogger): Promise<void> {
+export async function resolveConflictCopy(conflict: ConflictCopy, resolution: ConflictResolution, logger: ILogger, tracking?: Pick<ProjectSaveTracking, "beforeSave" | "afterSave">): Promise<void> {
   try {
     assertConflictPair(conflict);
     if (!conflictResolutions(conflict).includes(resolution)) {
@@ -42,9 +48,13 @@ export async function resolveConflictCopy(conflict: ConflictCopy, resolution: Co
     if (resolution === "keepMine") {
       await fs.rm(conflict.copy);
     } else if (resolution === "keepOther") {
+      const bytes = tracking ? await fs.readFile(conflict.copy) : undefined;
+      const text = bytes && isMergeableTextFile(path.basename(conflict.original), bytes) ? bytes.toString('utf8') : undefined;
+      if (text !== undefined) await tracking?.beforeSave(conflict.original, text);
       await fs.rename(conflict.copy, conflict.original);
+      if (text !== undefined) await tracking?.afterSave(conflict.original, text);
     } else {
-      await keepBoth(conflict.original, conflict.copy);
+      await keepBoth(conflict.original, conflict.copy, tracking);
     }
   } catch (error) {
     void logger.error("conflicts", error, { ...conflict, resolution });

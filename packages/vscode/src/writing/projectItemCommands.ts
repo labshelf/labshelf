@@ -51,7 +51,7 @@ export async function duplicateProject({ host, projects }: Pick<ItemCommandsDeps
   const copied = updateProjectFile(projectFileWithId(text, copy.settings.id), {
     title: title === copy.settings.id ? undefined : title, archived: undefined, trashed: undefined,
   });
-  await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(vscode.Uri.file(copy.folder), PROJECT_FILE), new TextEncoder().encode(copied));
+  await projects.fs.writeText(projects.paths.join(copy.folder, PROJECT_FILE), copied);
   await session.logger.log("INFO", "writing.project", "project copied", { from: entry.folder, to: copy.folder });
   await projects.reload();
   await vscode.commands.executeCommand(OPEN_PROJECT_COMMAND, projects.list().find((p) => p.folder === copy.folder) ?? copy);

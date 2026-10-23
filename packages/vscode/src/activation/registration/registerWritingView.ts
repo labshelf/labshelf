@@ -36,6 +36,7 @@ import { registerWritingValues } from "../../writing/values/index.js";
 import { registerBibliographyLint } from "../../writing/bibliography/index.js";
 import { arcIcons } from "../../ui/index.js";
 import type { LibraryRootController } from "../libraryLifecycle/index.js";
+import { registerProjectSaveEvents } from "../../writing/session/index.js";
 import type { HostAdapters } from "../serviceComposition/index.js";
 import { openLibraryLogger } from "./openLibraryLogger.js";
 
@@ -113,7 +114,7 @@ interface WritingParts {
 }
 
 /** The host values the Writing view reads; `convertDocument` is absent where documents cannot be converted. */
-type WritingAdapters = Pick<HostAdapters, "paths" | "uriOf" | "fs" | "createProjectData" | "deviceLayout" | "reader" | "pdfjs" | "convertDocument">;
+type WritingAdapters = Pick<HostAdapters, "paths" | "uriOf" | "fs" | "createProjectSaveTracking" | "createProjectData" | "deviceLayout" | "reader" | "pdfjs" | "convertDocument">;
 
 function registerProjectAndFigureCommands(parts: WritingParts): void {
   const { context, controller, host, projects, figures, readingLists, listPapers, adapters: { convertDocument } } = parts;
@@ -229,14 +230,24 @@ function createIncludeOnly(
   return { includeOnly, includeOnlyTarget };
 }
 
+function createTrackedProjects(
+  context: vscode.ExtensionContext, controller: LibraryRootController, adapters: WritingAdapters,
+  host: WritingHost, logger: ILogger,
+) {
+  const saves = adapters.createProjectSaveTracking(() => host.current()?.root, logger);
+  const data = adapters.createProjectData(logger, openLibraryDeviceDirs(controller, adapters.deviceLayout), saves.fs);
+  const projects = new WritingProjects(host, adapters.paths, saves.fs, data);
+  registerProjectSaveEvents(context, saves, logger);
+  return { projects, data };
+}
+
 export function registerWritingView(
   context: vscode.ExtensionContext, controller: LibraryRootController, adapters: WritingAdapters,
   registerPlatformWriting: RegisterPlatformWriting, sources: Pick<SelectionSources, "projectSelected" | "projectsActivated">,
 ): WritingViewHandles {
   const host = createWritingHost(controller);
   const logger = openLibraryLogger(controller);
-  const data = adapters.createProjectData(logger, openLibraryDeviceDirs(controller, adapters.deviceLayout));
-  const projects = new WritingProjects(host, adapters.paths, adapters.fs, data);
+  const { projects, data } = createTrackedProjects(context, controller, adapters, host, logger);
   const figures = new ProjectFigures(host, data);
   const backlinks = new ProjectBacklinkIndex(projects, host);
   const readingLists = createReadingLists(controller, backlinks);

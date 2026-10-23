@@ -7,7 +7,7 @@ import type { ILogger } from "../../../ports/index.js";
 import { dropboxFolders, nextcloudFolders, syncthingFolders, type ClientConfigSite } from "./syncClientConfigs.js";
 
 /** The tools whose folders can be detected; rclone has no fixed folder. */
-export type SyncFolderTool = Exclude<SyncTool, "rclone"> | "googledrive" | "onedrive" | "icloud";
+export type SyncFolderTool = Exclude<SyncTool, "rclone" | "app"> | "googledrive" | "onedrive" | "icloud";
 
 export interface SyncFolder {
   tool: SyncFolderTool;

@@ -12,6 +12,7 @@ const TOOL_NAMES: Record<SyncTool, string> = {
   nextcloud: "Nextcloud",
   dropbox: "Dropbox",
   rclone: "rclone",
+  app: "LabShelf",
 };
 
 export interface ConflictChoice {

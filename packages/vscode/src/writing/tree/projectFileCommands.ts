@@ -1,7 +1,7 @@
 // Registers the Files view commands that create, rename and delete files and folders of the open project.
 import * as vscode from "vscode";
 
-import type { ILogger } from "@labshelf/core";
+import type { ILogger, LibraryFileSystem } from "@labshelf/core";
 import type { ProjectSession } from "../session/index.js";
 import { projectFolderUri, type ProjectFileNode } from "./projectFilesProvider.js";
 
@@ -11,6 +11,7 @@ interface ProjectFileCommandsDeps {
   context: vscode.ExtensionContext;
   session: Pick<ProjectSession, "project">;
   logger: ILogger;
+  fs: Pick<LibraryFileSystem, "writeFile">;
 }
 
 const baseName = (uri: vscode.Uri): string => uri.path.split("/").pop() ?? uri.path;
@@ -68,7 +69,7 @@ async function create(deps: ProjectFileCommandsDeps, kind: "file" | "folder", ta
   }
   if (kind === "folder") {
     await run(deps.logger, "create folder", uri, () => vscode.workspace.fs.createDirectory(uri));
-  } else if (await run(deps.logger, "create file", uri, () => vscode.workspace.fs.writeFile(uri, new Uint8Array()))) {
+  } else if (await run(deps.logger, "create file", uri, () => deps.fs.writeFile(uri.fsPath, new Uint8Array()))) {
     await vscode.commands.executeCommand("vscode.open", uri);
   }
 }

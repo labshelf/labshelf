@@ -12,7 +12,7 @@ const { File, Directory } = vscode.FileType;
 
 function setup(project: ReadyProject | null = readyEntry("/code/paper") as ReadyProject) {
   const logger = fakeLogger();
-  registerProjectFileCommands({ context: { subscriptions: [] } as never, session: { project: project ?? undefined }, logger });
+  registerProjectFileCommands({ context: { subscriptions: [] } as never, session: { project: project ?? undefined }, logger, fs: { writeFile: async (file, bytes) => { await vscode.workspace.fs.writeFile(vscode.Uri.file(file), bytes); } } });
   return { logger };
 }
 
