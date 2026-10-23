@@ -19,7 +19,7 @@ export interface DeletionMarker {
 }
 
 /** How long a deletion marker is kept; a stale copy older than this is assumed not to exist. */
-export const DELETION_MARKER_DAYS = 90;
+const DELETION_MARKER_DAYS = 90;
 
 function isDeletionMarker(value: unknown): value is DeletionMarker {
   if (!value || typeof value !== "object") { return false; }
