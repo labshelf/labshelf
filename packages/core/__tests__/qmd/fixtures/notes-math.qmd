@@ -1,0 +1,22 @@
+---
+title: Notes on Vaswani 2017
+---
+
+::: {#n-01JB2Q8Z5K7M3V9X4C6T8R2W0Y .labshelf-item anchor="hl:3f1c2a9e-8b7d-4c1e-9a2b-5d6e7f809a1b" author="Ana" created="2026-10-22T09:12:00.000Z"}
+## Attention
+
+The scaling factor is $\frac{1}{\sqrt{d_k}}$, see [page 4](labshelf:vaswani2017#p4) and [@bahdanau2015; @luong2015].
+
+$$
+\mathrm{Attention}(Q, K, V) = \mathrm{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right) V
+$$ {#eq-attention}
+:::
+
+::: {#n-01JB2QA0000000000000000000 .labshelf-item anchor="p10 box 0.12 0.4 0.3 0.1" author="Bruno" created="2026-10-22T10:00:00.000Z"}
+*Emphasis*, **strong** and `code`.
+
+1. first
+2. second
+
+![The model](figures/model.png)
+:::

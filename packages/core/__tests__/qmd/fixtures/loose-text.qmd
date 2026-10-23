@@ -1,0 +1,24 @@
+Loose text a user typed before any item.
+
+::: {#n-01JB2QD0000000000000000000 .labshelf-item}
+First.
+:::
+
+Text between items.
+
+::: {.callout-note}
+A callout that is not an item.
+
+::: {#n-01JB2QE0000000000000000000 .labshelf-item}
+An item inside a callout is not at the top level.
+:::
+:::
+
+::: {.labshelf-item}
+A labshelf-item fence without an id.
+:::
+
+::: {#n-01JB2QF0000000000000000000 .labshelf-item}
+Second.
+:::
+Trailing loose text.

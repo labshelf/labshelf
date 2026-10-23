@@ -1,0 +1,5 @@
+::: {#n-01JB2QC0000000000000000000 .labshelf-item}
+- [ ] Reproduce table 2
+- [x] Read section 3
+  - nested bullet
+:::

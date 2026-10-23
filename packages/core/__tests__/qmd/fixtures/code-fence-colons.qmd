@@ -1,0 +1,9 @@
+::: {#n-01JB2QH0000000000000000000 .labshelf-item}
+```{python}
+s = """
+:::
+"""
+```
+:::
+
+Above, a line of colons inside a cell does not close the item.

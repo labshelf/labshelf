@@ -27,6 +27,7 @@ Read when you look for the document that answers a question about LabShelf; the 
 | What does the owner's relay Worker accept and answer? | [contracts/relay.md](contracts/relay.md) |
 | How is a folder of papers shared as a link? | [contracts/share-link.md](contracts/share-link.md) |
 | How is a link to a paper page written? | [contracts/links.md](contracts/links.md#grammar) |
+| How are notes, comments and messages stored in `.qmd` files? | [contracts/qmd-items.md](contracts/qmd-items.md) |
 | What is a project template and its catalog index? | [contracts/templates.md](contracts/templates.md#manifest) |
 | How does a host start the PDF reader? | [contracts/reader-host.md](contracts/reader-host.md#startup) |
 | Which rules bind the reader and its host? | [contracts/reader-host.md](contracts/reader-host.md#rules) |

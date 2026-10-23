@@ -1,0 +1,12 @@
+::: {#n-01JB2QB0000000000000000000 .labshelf-item created="2026-10-22T09:15:00.000Z"}
+```{python}
+#| label: bound
+import sympy as sp
+x = sp.symbols("x")
+sp.integrate(sp.exp(-x**2), (x, -sp.oo, sp.oo))
+```
+
+::: {.labshelf-output cell="bound" source="3f9a1c0b7d2e" engine="python-3.12 sympy-1.13" ran="2026-10-22T09:15:03.000Z"}
+$$\sqrt{\pi}$$
+:::
+:::

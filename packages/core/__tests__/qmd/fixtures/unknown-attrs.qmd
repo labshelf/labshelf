@@ -1,0 +1,7 @@
+::: {#n-01JB2QG0000000000000000000 .labshelf-item .pinned anchor="quote:eyJxdW90ZSI6ImEgc3Ryb25nIGJhc2VsaW5lIiwicHJlZml4IjoiV2UgY29tcGFyZSBhZ2FpbnN0ICIsInN1ZmZpeCI6IiBvbiB0aHJlZSBkYXRhc2V0cyJ9" author="Ana \"the reviewer\" Lima" created="2026-10-22T09:12:00.000Z" color=yellow x-future="kept as is"}
+Unknown classes and attributes survive.
+:::
+
+::: {#hand-written .labshelf-item anchor="somewhere new"}
+A hand-written id and an anchor in no known form.
+:::

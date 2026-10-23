@@ -1,0 +1,13 @@
+::: {#n-01JB2QJ0000000000000000000 .labshelf-item}
+This item lost its closing line.
+
+::: {#n-01JB2QK0000000000000000000 .labshelf-item}
+This item is intact.
+:::
+
+```
+an unclosed code fence is ordinary text
+
+::: {#n-01JB2QM0000000000000000000 .labshelf-item author="Ana}
+A bad attribute block.
+:::
