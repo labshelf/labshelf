@@ -2,7 +2,7 @@
 import type { Annotation, PdfTheme } from "../../model/index.js";
 import type { ILogger, SidecarPort } from "../../ports/index.js";
 import { validateAnnotationColor, validateAnnotationPosition, validatePageNumber } from "./annotationValidation.js";
-import { byPageThenCreated, emptyPaperData, normalizePaperData, serializePaperData, type PaperData } from "./paperData.js";
+import { byPageThenCreated, emptyPaperData, normalizePaperData, pruneDeletionMarkers, serializePaperData, type PaperData } from "./paperData.js";
 import type { ReadingState } from "./readingState.js";
 
 export interface PaperDataStoreOptions {
@@ -58,7 +58,10 @@ export class PaperDataStore {
     return this.enqueue(paperId, async () => {
       const data = await this.load(paperId);
       const result = change(data);
-      if (result !== null) { await this.port.write(paperId, serializePaperData(data)); }
+      if (result !== null) {
+        if (data.deleted) { data.deleted = pruneDeletionMarkers(data.deleted, this.now()); }
+        await this.port.write(paperId, serializePaperData(data));
+      }
       return result;
     });
   }
@@ -137,6 +140,7 @@ export class PaperDataStore {
       const kept = data.annotations.filter((a) => a.id !== id);
       if (kept.length === data.annotations.length) { return null; }
       data.annotations = kept;
+      data.deleted = [...(data.deleted ?? []).filter((m) => m.id !== id), { id, deletedAt: this.now() }];
       return true;
     });
     return removed === true;
