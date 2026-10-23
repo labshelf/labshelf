@@ -138,6 +138,9 @@ class Selector implements RelaySelector {
       break;
     }
     if (this.closed) { return; }
+    // CONTRACT: documents/contracts/collaboration.md#relay-list
+    // A down mark can land during a probe's await; once every relay is down the one in use is kept.
+    if (chosen === undefined && this.current !== undefined && this.allDown(this.urls())) { chosen = this.current; }
     this.choose(chosen);
     this.probeHeld.forEach((url) => { if (!this.holds.isDown(url)) { this.probeHeld.delete(url); } });
     this.watched().forEach((url) => { if (!this.checks.has(url)) { this.check(url, RELAY_CHECK_MS); } });
