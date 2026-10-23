@@ -1,5 +1,6 @@
 // Starts a share connection's disk mirror only while this app holds the project folder's lease, waiting for a busy folder to free.
 // CONTRACT: documents/contracts/collaboration.md#mirror-ownership
+import type { ConflictCopy, ConflictDismissal } from "../../library/conflicts/index.js";
 import type { ILogger, LibraryFileSystem } from "../../ports/index.js";
 import { createWriteRecordStore, type DeviceIdentity } from "../../library/writeRecords/index.js";
 import { startProjectMirror, type MergeText, type MirrorDisk } from "../mirror/index.js";
@@ -20,6 +21,8 @@ export interface LeasedMirrorOptions {
   disk(folder: string): MirrorDisk;
   /** True for a path an open editor holds; the editor binding syncs it. */
   isEditorOwned?(folder: string, path: string): boolean;
+  onConflictCopy?(folder: string, copy: ConflictCopy): void | Promise<void>;
+  readConflictDismissals?(folder: string): Promise<readonly ConflictDismissal[]>;
   scheduler?: LeaseScheduler;
 }
 
@@ -76,6 +79,8 @@ function runMirror(options: LeasedMirrorOptions, input: MirrorInput, lease: Fold
     folder, disk: options.disk(folder), mergeText: options.mergeText, session: input.session, blobs: input.blobs, store: input.store, logger,
     ownership: lease, onStopped: (reason) => stop(reason.message),
     writeRecords: createWriteRecordStore(options.fs, folder, options.identity, logger),
+    ...(options.onConflictCopy ? { onConflictCopy: (copy: ConflictCopy) => options.onConflictCopy!(folder, copy) } : {}),
+    ...(options.readConflictDismissals ? { readConflictDismissals: () => options.readConflictDismissals!(folder) } : {}),
     ...(isEditorOwned ? { isEditorOwned: (path: string) => isEditorOwned(folder, path) } : {}),
   });
   const close = (): Promise<void> => (closing ??= (async () => {

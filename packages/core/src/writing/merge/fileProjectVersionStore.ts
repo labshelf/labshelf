@@ -56,6 +56,10 @@ export class FileProjectVersionStore implements IProjectVersionStore {
     }
   }
 
+  async versions(projectId: string, relativePath: string): Promise<string[]> {
+    return (await this.journal(projectId, relativePath)).versions.map(entry => entry.text);
+  }
+
   async latest(projectId: string, relativePath: string): Promise<string | undefined> {
     const journal = await this.journal(projectId, relativePath);
     return journal.versions.find(entry => entry.hash === journal.known)?.text;

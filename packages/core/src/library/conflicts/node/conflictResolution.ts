@@ -41,6 +41,7 @@ function assertConflictPair(conflict: ConflictCopy): void {
  */
 export async function resolveConflictCopy(conflict: ConflictCopy, resolution: ConflictResolution, logger: ILogger, tracking?: Pick<ProjectSaveTracking, "beforeSave" | "afterSave">): Promise<void> {
   try {
+    if (resolution === 'mergeAutomatically' || resolution === 'notAVersion') throw new Error(`Project conflict resolution requires project context: ${conflict.copy}`);
     assertConflictPair(conflict);
     if (!conflictResolutions(conflict).includes(resolution)) {
       throw new Error(`${resolution} is not offered for ${conflict.original}: ${conflict.copy}`);

@@ -43,14 +43,14 @@ function mergeAll(base: string, local: string, copies: ConflictCopy[], others: s
 // CONTRACT: documents/contracts/sync.md#conflict-copies
 export async function mergeProjectCopies(
   copies: ConflictCopy[], relativePath: string, store: IProjectVersionStore, logger: ILogger,
-  recording: { folder: string; identity: DeviceIdentity },
+  recording: { folder: string; identity: DeviceIdentity }, selectedBase?: string,
 ): Promise<boolean> {
   const [first] = copies;
   if (!first) { return true; }
   const name = path.basename(first.original);
   const context = { projectId: first.owner.id, path: relativePath, copies: copies.map((copy) => copy.copy) };
   try {
-    const base = await store.read(first.owner.id, relativePath);
+    const base = selectedBase ?? await store.read(first.owner.id, relativePath);
     const local = base === undefined ? undefined : await readText(first.original, name);
     const others = await Promise.all(copies.map((copy) => readText(copy.copy, name)));
     if (base === undefined || local === undefined || others.some((other) => other === undefined)) { return false; }
@@ -65,6 +65,9 @@ export async function mergeProjectCopies(
       throw new Error(`Merged file ${first.original} reads back different content`);
     }
     await store.remember(first.owner.id, relativePath, merged.text);
+    for (const [index, copy] of copies.entries()) {
+      if (await readText(copy.copy, name) !== others[index]) throw new Error(`Conflict copy changed during merge: ${copy.copy}`);
+    }
     for (const copy of copies) { await fs.rm(copy.copy); }
     void logger.log("INFO", MODULE, "Merged project conflict copies", { ...context, conflicted: merged.conflicted });
     if (copies.length === 1 && others[0] !== undefined) {
@@ -76,5 +79,16 @@ export async function mergeProjectCopies(
   } catch (error) {
     void logger.error(MODULE, error, { ...context, action: "merge project conflict copies" });
     return false;
+  }
+}
+
+// CONTRACT: documents/contracts/sync.md#conflict-copies
+export async function mergeProjectContentCopy(
+  conflict: ConflictCopy, relativePath: string, store: IProjectVersionStore, logger: ILogger,
+  recording: { folder: string; identity: DeviceIdentity }, base: string | undefined,
+): Promise<void> {
+  if (base === undefined) await logger.log('INFO', MODULE, 'Falling back to the project copy merge base', { path: relativePath, projectId: conflict.owner.id });
+  if (!await mergeProjectCopies([conflict], relativePath, store, logger, recording, base)) {
+    throw new Error(`Cannot merge project copy without readable text and a base: ${conflict.copy}`);
   }
 }

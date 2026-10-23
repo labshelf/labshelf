@@ -3,7 +3,7 @@ import type { ConflictCopy } from "../../../library/conflicts/index.js";
 import { scanConflictCopies, scanSpaceConflicts } from "../../../library/conflicts/node/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import type { IProjectVersionStore } from "../index.js";
-import { scanProjectConflicts } from "./projectConflictScan.js";
+import { scanProjectConflicts, scanSharedProjectConflicts } from "./projectConflictScan.js";
 
 /** The last scan queued per library root. */
 const queued = new Map<string, Promise<unknown>>();
@@ -11,8 +11,9 @@ const queued = new Map<string, Promise<unknown>>();
 async function scan(root: string, store: IProjectVersionStore, logger: ILogger, onMerged: (file: string) => void): Promise<ConflictCopy[]> {
   const papers = await scanConflictCopies(root, logger);
   const projects = await scanProjectConflicts(root, store, logger, onMerged);
+  const shared = await scanSharedProjectConflicts(root, store, logger);
   const spaces = await scanSpaceConflicts(root, logger);
-  return [...papers, ...spaces, ...projects].sort((a, b) => a.copy.localeCompare(b.copy));
+  return [...papers, ...spaces, ...projects, ...shared].sort((a, b) => a.copy.localeCompare(b.copy));
 }
 
 /**

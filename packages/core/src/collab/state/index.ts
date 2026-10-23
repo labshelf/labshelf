@@ -3,4 +3,4 @@ export { BlobCache } from "./blobCache.js";
 export { openCollabStore, type CollabStore, type CollabStoreOptions } from "./collabStore.js";
 export type { CollabStateStorage, StateMapName, StoredDoc } from "./collabStateStorage.js";
 export { PersistedMap } from "./persistedMap.js";
-export { VERSIONS_PER_PATH, type StoredVersion } from "./versionHistory.js";
+export { loadVersionHistory, VERSIONS_PER_PATH, type StoredVersion } from "./versionHistory.js";

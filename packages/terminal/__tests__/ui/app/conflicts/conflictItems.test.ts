@@ -1,3 +1,4 @@
+// Checks the choices offered for conflict copies.
 import type { ConflictCopy } from "@labshelf/core";
 
 import { conflictChoices, conflictCountLabel, conflictItems } from "../../../../src/ui/app/conflicts/conflictItems.js";
@@ -25,6 +26,12 @@ describe("conflictItems", () => {
 });
 
 describe("conflictChoices", () => {
+  it("offers the content-match question's three choices", () => {
+    const content = { ...copy("main.tex"), owner: { kind: "project" as const, id: "draft" }, match: "similar", tool: "unknown" } as ConflictCopy;
+    expect(conflictChoices(content).map((choice) => choice.label)).toEqual(["Merge Automatically", "Merge Myself", "Not a Version"]);
+    expect(conflictChoices(content).map((choice) => choice.id)).toEqual(["mergeAutomatically", "mergeMyself", "notAVersion"]);
+  });
+
   it("offers three choices for ordinary files", () => {
     expect(conflictChoices(copy("paper.pdf")).map((c) => c.id)).toEqual(["keepMine", "keepOther", "keepBoth"]);
   });

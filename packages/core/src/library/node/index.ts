@@ -3,7 +3,6 @@ export { writeFileAtomic, writeSyncedFile } from "./atomicWrite.js";
 export { ensurePrivateDir, isGroupOrOtherWritable, PRIVATE_DIR_MODE, PRIVATE_FILE_MODE } from "./privateDir.js";
 export { readOptionalFile } from "./readOptionalFile.js";
 export { cacheDir } from "./cacheDirectory.js";
-export { resolveConflictCopy } from "../conflicts/node/index.js";
 export { createDeviceIdentity, deviceLocalLayout, libraryKey, stateDir, type DeviceLocalLayout } from "./deviceState/index.js";
 export { NodeLibraryFileSystem } from "./nodeLibraryFileSystem.js";
 export {
@@ -13,3 +12,4 @@ export {
   countPaperFolders, detectSyncFolders, inspectLibraryFolder, moveLibrary,
   type DetectSyncFoldersOptions, type LibraryFolderInfo, type MoveLibraryOptions, type SyncFolder, type SyncFolderTool,
 } from "./location/index.js";
+export { resolveConflictCopy, conflictDismissalFile, findProjectConflict, resolveProjectConflictCopy, type ProjectConflictResolutionContext } from '../conflicts/node/index.js';

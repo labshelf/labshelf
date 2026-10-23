@@ -1,35 +1,46 @@
 // Runs `labshelf conflicts`: lists the sync-tool conflict copies in the library and, on a terminal, resolves each.
 import * as path from "node:path";
 
-import { FileProjectVersionStore, conflictResolutions, type ConflictCopy, type ConflictResolution, type ILogger } from "@labshelf/core";
+import { FileProjectVersionStore, conflictPromptChoices, conflictResolutions, contentConflictMessage, type ConflictCopy, type ConflictResolution, type ILogger } from "@labshelf/core";
 import {
-  NodeLibraryFileSystem, deviceLocalLayout, resolveConflictCopy, scanLibraryConflicts,
+  NodeLibraryFileSystem, deviceLocalLayout, resolveConflictCopy, resolveProjectConflictCopy, scanLibraryConflicts,
 } from "@labshelf/core/node";
 
 import type { Output } from "../usage.js";
 import type { Ask } from "./prompt.js";
 
-const RESOLUTIONS: Record<string, ConflictResolution> = { m: "keepMine", o: "keepOther", b: "keepBoth" };
+const RESOLUTIONS: Record<string, ConflictResolution> = { m: "keepMine", o: "keepOther", b: "keepBoth", a: "mergeAutomatically", n: "notAVersion" };
 
 function describe(root: string, conflict: ConflictCopy): string {
   return `${conflict.owner.id}  ${path.relative(root, conflict.copy)}  (${conflict.tool})`;
 }
 
-const PROMPTS: Record<ConflictResolution, string> = { keepMine: "[m]ine", keepOther: "[o]ther", keepBoth: "[b]oth" };
+const PROMPTS: Partial<Record<ConflictResolution, string>> = { keepMine: "[m]ine", keepOther: "[o]ther", keepBoth: "[b]oth" };
+const CONTENT_KEYS: Record<string, string> = { mergeAutomatically: "a", mergeMyself: "m", notAVersion: "n" };
 
 function question(conflict: ConflictCopy): string {
-  return `  ${conflictResolutions(conflict).map((resolution) => PROMPTS[resolution]).join(" / ")} / [s]kip: `;
+  const choices = conflict.match && conflict.match !== "name"
+    ? conflictPromptChoices(conflict).map(({ resolution, label }) => `[${CONTENT_KEYS[resolution]}] ${label}`)
+    : conflictResolutions(conflict).map((resolution) => PROMPTS[resolution]);
+  return `  ${choices.join(" / ")} / [s]kip: `;
 }
 
-async function resolveInteractively(root: string, conflict: ConflictCopy, io: Output, ask: Ask, logger: ILogger): Promise<boolean> {
-  io.out(describe(root, conflict));
+async function resolveInteractively(root: string, conflict: ConflictCopy, io: Output, ask: Ask, logger: ILogger, store: FileProjectVersionStore): Promise<boolean> {
+  const content = conflict.match && conflict.match !== "name";
+  io.out(content ? contentConflictMessage(conflict) : describe(root, conflict));
   for (;;) {
     const answer = (await ask(question(conflict)))?.toLowerCase();
     if (answer === undefined) { return false; }
     if (answer === "s") { return true; }
+    if (content && answer === "m") {
+      io.out(`${conflict.original}\n${conflict.copy}`);
+      return true;
+    }
     const resolution = RESOLUTIONS[answer];
     if (!resolution || !conflictResolutions(conflict).includes(resolution)) { continue; }
-    await resolveConflictCopy(conflict, resolution, logger);
+    if (resolution === "mergeAutomatically" || resolution === "notAVersion") {
+      await resolveProjectConflictCopy(conflict, resolution, { root, store, logger });
+    } else { await resolveConflictCopy(conflict, resolution, logger); }
     return true;
   }
 }
@@ -50,7 +61,7 @@ export async function runConflicts(root: string, io: Output, ask: Ask | undefine
     return 0;
   }
   for (const conflict of conflicts) {
-    if (!(await resolveInteractively(root, conflict, io, ask, logger))) { break; }
+    if (!(await resolveInteractively(root, conflict, io, ask, logger, store))) { break; }
   }
   return 0;
 }

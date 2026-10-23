@@ -1,15 +1,15 @@
 // Builds the labels and choices the conflict overlay shows for sync conflict copies.
 import * as path from "node:path";
 
-import { conflictOwnerLabel, conflictResolutions, type ConflictCopy, type ConflictResolution } from "@labshelf/core";
+import { conflictOwnerLabel, conflictPromptChoices, type ConflictCopy, type ConflictResolution } from "@labshelf/core";
 
 import type { PickerItem } from "../../overlays.js";
 
-const CHOICES: Array<{ id: ConflictResolution; label: string; detail: string }> = [
-  { id: "keepMine", label: "Keep mine", detail: "deletes the other copy" },
-  { id: "keepOther", label: "Keep the other", detail: "replaces your file with the other copy" },
-  { id: "keepBoth", label: "Keep both", detail: "saves the other copy as (copy N)" },
-];
+const DETAILS: Partial<Record<ConflictResolution, string>> = {
+  keepMine: "deletes the other copy",
+  keepOther: "replaces your file with the other copy",
+  keepBoth: "saves the other copy as (copy N)",
+};
 
 /** "2 conflicts" for the status bar; empty when there are none. */
 export function conflictCountLabel(count: number): string {
@@ -26,6 +26,7 @@ export function conflictItems(copies: readonly ConflictCopy[], titleOf: (paperId
 }
 
 export function conflictChoices(copy: ConflictCopy): PickerItem[] {
-  const allowed = conflictResolutions(copy);
-  return CHOICES.filter((choice) => allowed.includes(choice.id));
+  return conflictPromptChoices(copy).map(({ resolution, label }) => ({
+    id: resolution, label, ...(resolution === "mergeMyself" || !DETAILS[resolution] ? {} : { detail: DETAILS[resolution] }),
+  }));
 }

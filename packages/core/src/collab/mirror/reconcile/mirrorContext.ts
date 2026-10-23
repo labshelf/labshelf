@@ -1,4 +1,5 @@
 // Provides the state for mirroring shared project files.
+import type { ConflictCopy } from "../../../library/conflicts/index.js";
 import type { WriteRecordStore } from "../../../library/writeRecords/index.js";
 import type { WaitingWrite } from "./inFlight/index.js";
 import { sha256Hex } from "../../../hash/index.js";
@@ -26,6 +27,9 @@ export interface MirrorContext {
   blobs: BlobExchange;
   store: CollabStore;
   logger: ILogger;
+  conflictReports?: Map<string, string>;
+  onConflictCopy?(copy: ConflictCopy): void | Promise<void>;
+  readConflictDismissals?(): Promise<readonly { path: string; hash: string }[]>;
   /** The shared settings labshelf.yaml and the index last agreed on during this run; undefined until they first do. */
   settingsBase: SharedSettings | undefined;
   /** Blob paths whose fetch failed, retried when a peer joins. */

@@ -1,11 +1,5 @@
-// Lists the choices offered for a conflict copy, with the labels the quick pick shows.
-import { conflictResolutions, type ConflictCopy, type ConflictResolution, type SyncTool } from "@labshelf/core";
-
-const LABELS: Record<ConflictResolution, string> = {
-  keepMine: "Keep mine",
-  keepOther: "Keep the other",
-  keepBoth: "Keep both",
-};
+// Maps shared conflict choices to VS Code quick-pick items.
+import { conflictPromptChoices, type ConflictCopy, type ConflictPromptResolution, type SyncTool } from "@labshelf/core";
 
 const TOOL_NAMES: Record<SyncTool, string> = {
   syncthing: "Syncthing",
@@ -13,15 +7,16 @@ const TOOL_NAMES: Record<SyncTool, string> = {
   dropbox: "Dropbox",
   rclone: "rclone",
   app: "LabShelf",
+  unknown: "unknown",
 };
 
 export interface ConflictChoice {
   label: string;
-  resolution: ConflictResolution;
+  resolution: ConflictPromptResolution;
 }
 
 export function conflictChoices(copy: ConflictCopy): ConflictChoice[] {
-  return conflictResolutions(copy).map((resolution) => ({ label: LABELS[resolution], resolution }));
+  return conflictPromptChoices(copy);
 }
 
 export function toolName(tool: SyncTool): string {

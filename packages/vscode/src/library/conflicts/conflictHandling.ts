@@ -1,6 +1,6 @@
 // Shows the conflict notification after a scan and walks the user through resolving the copies.
 import * as vscode from "vscode";
-import { conflictOwnerLabel, errorMessage, type ConflictCopy, type ConflictResolution, type ILogger, type PathOps } from "@labshelf/core";
+import { conflictOwnerLabel, contentConflictMessage, errorMessage, type ConflictCopy, type ConflictResolution, type ILogger, type PathOps } from "@labshelf/core";
 import type { ActiveServices } from "../../commands/index.js";
 import { conflictChoices, toolName } from "./conflictChoices.js";
 import { ConflictNotifier, conflictMessage } from "./conflictNotifier.js";
@@ -42,6 +42,7 @@ export class ConflictHandling {
       if (copies.length === 0) { void vscode.window.showInformationMessage("No conflicting copies"); return; }
       remaining = await walkConflicts(copies, {
         ask: (copy, index, total) => this.ask(copy, index, total, services),
+        mergeMyself: async (copy) => { await vscode.commands.executeCommand("vscode.diff", vscode.Uri.file(copy.original), vscode.Uri.file(copy.copy)); },
         apply: (copy, resolution) => this.deps.resolveCopy(copy, resolution, services.logger),
         onFailure: (copy, error) => {
           void services.logger.error(MODULE, error, { copy: copy.copy });
@@ -58,13 +59,13 @@ export class ConflictHandling {
     }
   }
 
-  private async ask(copy: ConflictCopy, index: number, total: number, services: ActiveServices): Promise<ConflictResolution | undefined> {
+  private async ask(copy: ConflictCopy, index: number, total: number, services: ActiveServices): Promise<ConflictResolution | "mergeMyself" | undefined> {
     const title = conflictOwnerLabel(copy.owner, copy.owner.kind === "paper" ? services.library.paper(copy.owner.id)?.record.title : undefined);
     const picked = await vscode.window.showQuickPick(
       conflictChoices(copy).map((choice) => ({ label: choice.label, resolution: choice.resolution })),
       {
         title: `${title} (${index + 1} of ${total})`,
-        placeHolder: `${this.deps.paths.basename(copy.original)}: a conflicting copy from ${toolName(copy.tool)}`,
+        placeHolder: copy.match && copy.match !== "name" ? contentConflictMessage(copy) : `${this.deps.paths.basename(copy.original)}: a conflicting copy from ${toolName(copy.tool)}`,
       },
     );
     return picked?.resolution;

@@ -1,6 +1,6 @@
 /** Opens a project mirror on a project folder over a share session, alone or on a fake relay, for the tests of the disk mirror. */
 import { createProjectIndex } from "../../../src/collab/model/index";
-import { startProjectMirror, type MirrorDisk, type MirrorStopReason, type ProjectMirror } from "../../../src/collab/mirror/index";
+import { startProjectMirror, type MirrorDisk, type MirrorStopReason, type ProjectMirror, type ProjectMirrorOptions } from "../../../src/collab/mirror/index";
 import { nodeCollabStorage } from "../../../src/collab/node/index";
 import { mergeText } from "../../../src/writing/merge/node/index";
 import { openCollabStore, type CollabStore } from "../../../src/collab/state/index";
@@ -33,6 +33,8 @@ export interface MirrorFixture {
 export interface FixtureOptions {
   /** The relay the mirror's members meet on; without one the session has no peers. */
   relay?: FakeRelay;
+  onConflictCopy?: ProjectMirrorOptions["onConflictCopy"];
+  readConflictDismissals?: ProjectMirrorOptions["readConflictDismissals"];
   clock?: FakeClock;
   /** Marks the index as a project's before the mirror starts. */
   project?: boolean;
@@ -79,6 +81,8 @@ export async function openMirror(options: FixtureOptions = {}): Promise<MirrorFi
     writeRecords, folder, disk: recordingDisk(files.disk(folder, logger), diskChanges), mergeText, session, blobs, store, logger, stableMs: STABLE_MS,
     ...(options.isEditorOwned ? { isEditorOwned: options.isEditorOwned } : {}),
     ...(options.ownership ? { ownership: options.ownership } : {}),
+    ...(options.onConflictCopy ? { onConflictCopy: options.onConflictCopy } : {}),
+    ...(options.readConflictDismissals ? { readConflictDismissals: options.readConflictDismissals } : {}),
     ...(options.onStopped ? { onStopped: options.onStopped } : {}),
   });
   return {

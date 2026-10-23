@@ -3,7 +3,8 @@ import type { ConflictCopy, ConflictResolution } from "@labshelf/core";
 
 export interface ConflictWalkDeps {
   /** Resolves to undefined when the user dismisses the question. */
-  ask: (copy: ConflictCopy, index: number, total: number) => Promise<ConflictResolution | undefined>;
+  ask: (copy: ConflictCopy, index: number, total: number) => Promise<ConflictResolution | "mergeMyself" | undefined>;
+  mergeMyself: (copy: ConflictCopy) => Promise<void>;
   apply: (copy: ConflictCopy, resolution: ConflictResolution) => Promise<void>;
   onFailure: (copy: ConflictCopy, error: unknown) => void;
 }
@@ -15,8 +16,8 @@ export async function walkConflicts(copies: ConflictCopy[], deps: ConflictWalkDe
     const resolution = await deps.ask(copy, index, copies.length);
     if (!resolution) { break; }
     try {
-      await deps.apply(copy, resolution);
-      remaining -= 1;
+      if (resolution === "mergeMyself") { await deps.mergeMyself(copy); }
+      else { await deps.apply(copy, resolution); remaining -= 1; }
     } catch (error) {
       deps.onFailure(copy, error);
     }

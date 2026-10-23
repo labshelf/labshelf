@@ -1,3 +1,4 @@
+// Checks conflict walking without resolving files opened for manual merging.
 import type { ConflictCopy, ConflictResolution } from '@labshelf/core';
 import { walkConflicts } from '../../../src/library/conflicts/conflictWalk';
 
@@ -5,13 +6,14 @@ const copies: ConflictCopy[] = ['a', 'b', 'c'].map((id) => ({
   owner: { kind: 'paper', id }, original: `/l/${id}/f`, copy: `/l/${id}/f.conflict`, tool: 'dropbox',
 }));
 
-function deps(answers: Array<ConflictResolution | undefined>, failOn?: string) {
+function deps(answers: Array<ConflictResolution | "mergeMyself" | undefined>, failOn?: string) {
   const applied: string[] = [];
   const failures: string[] = [];
   return {
     applied, failures,
     walk: {
       ask: async () => answers.shift(),
+      mergeMyself: async () => undefined,
       apply: async (copy: ConflictCopy, resolution: ConflictResolution) => {
         if (copy.owner.id === failOn) { throw new Error('boom'); }
         applied.push(`${copy.owner.id}:${resolution}`);
@@ -22,6 +24,12 @@ function deps(answers: Array<ConflictResolution | undefined>, failOn?: string) {
 }
 
 describe('walkConflicts', () => {
+  it('leaves manually opened copies unresolved', async () => {
+    const d = deps(['mergeMyself', 'keepMine', 'keepMine']);
+    expect(await walkConflicts(copies, d.walk)).toBe(1);
+    expect(d.applied).toEqual(['b:keepMine', 'c:keepMine']);
+  });
+
   it('applies each choice and leaves none remaining', async () => {
     const d = deps(['keepMine', 'keepOther', 'keepBoth']);
     expect(await walkConflicts(copies, d.walk)).toBe(0);

@@ -1,4 +1,5 @@
 // Mirrors a shared project between its share docs and its folder on disk, in both directions.
+import type { ConflictCopy } from "../../library/conflicts/index.js";
 import type { WriteRecordStore } from "../../library/writeRecords/index.js";
 import type * as Y from "yjs";
 import { COMMENTS_PATH } from "../comments/index.js";
@@ -30,6 +31,8 @@ export interface ProjectMirrorOptions {
   blobs: BlobExchange;
   store: CollabStore;
   logger: ILogger;
+  onConflictCopy?(copy: ConflictCopy): void | Promise<void>;
+  readConflictDismissals?(): Promise<readonly { path: string; hash: string }[]>;
   /** True for a path an open editor holds; the editor binding syncs it, so the mirror leaves it alone until `changed`. */
   isEditorOwned?: (path: string) => boolean;
   /** How long a changed file must stay the same before it is read. */
@@ -60,6 +63,9 @@ export function startProjectMirror(options: ProjectMirrorOptions): ProjectMirror
   const queue = new PathQueue({ stableMs, logger, run: (path, settled) => guarded(() => reconcile(context, path, settled), "done") });
   const context: MirrorContext = {
     folder, disk: gateDisk(options.disk, lifecycle.gate), mergeText: options.mergeText, session, blobs: options.blobs, store: options.store, logger,
+    conflictReports: new Map(),
+    ...(options.onConflictCopy ? { onConflictCopy: options.onConflictCopy } : {}),
+    ...(options.readConflictDismissals ? { readConflictDismissals: options.readConflictDismissals } : {}),
     settingsBase: undefined, missingBlobs: new Set(), writeRecords: gateWriteRecords(options.writeRecords, lifecycle.gate, options.disk), waitingWrites: new Map(),
     request: (path, settle) => queue.request(path, settle),
     attach: (path) => attach(path),

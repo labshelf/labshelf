@@ -4,11 +4,11 @@ import * as path from "node:path";
 
 import {
   BibTeXService, FileProjectVersionStore, Logger, PdfImportParser, errorMessage,
-  processChangeBatch, type ILogger, type LibraryStore, type PdfjsLoader,
+  processChangeBatch, type ConflictCopy, type ConflictResolution, type ILogger, type LibraryStore, type PdfjsLoader,
 } from "@labshelf/core";
 import {
   FileLogSink, NodeLibraryFileSystem, NodePdfOpener, TesseractOcrEngine, cacheDir, createPdfjsLoader,
-  deviceLocalLayout, scanLibraryConflicts,
+  createProjectSaveTracking, deviceLocalLayout, resolveConflictCopy, resolveProjectConflictCopy, scanLibraryConflicts,
 } from "@labshelf/core/node";
 
 import { ConflictFeed } from "./conflictFeed.js";
@@ -39,6 +39,7 @@ export interface AppContext {
   conflicts: ConflictFeed;
   /** Scans for conflict copies now and updates `conflicts`. */
   rescanConflicts(): Promise<void>;
+  resolveConflict(copy: ConflictCopy, resolution: ConflictResolution): Promise<void>;
   /** Calls the listener when the library folder disappears (unmounted drive, sync client). */
   onRootLost(listener: () => void): void;
   /** Stops watchers and releases the OCR engine. */
@@ -165,19 +166,18 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
   });
 
   return {
-    paths,
-    config: options.config,
-    logger,
-    logPath,
-    store,
-    papers,
-    sidecars,
+    paths, config: options.config,
+    logger, logPath,
+    store, papers, sidecars,
     thumbnails,
     thumbnailRenderer: renderer.name,
     imageProtocol,
     annotationsReady,
     conflicts,
     rescanConflicts,
+    resolveConflict: (copy, resolution) => resolution === "mergeAutomatically" || resolution === "notAVersion"
+      ? resolveProjectConflictCopy(copy, resolution, { root: paths.root, store: mergeBaseStore(paths.root), logger })
+      : resolveConflictCopy(copy, resolution, logger, createProjectSaveTracking(new NodeLibraryFileSystem(), () => paths.root, logger)),
     onRootLost: (listener) => { rootLostListeners.push(listener); },
     async dispose() {
       watcher?.stop();

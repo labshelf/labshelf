@@ -1,3 +1,4 @@
+// Checks CLI conflict choices without losing manually merged copies.
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
@@ -25,6 +26,27 @@ describe("runConflicts", () => {
     io = { out: (t) => lines.push(t), err: (t) => lines.push(t), columns: 80 };
   });
   afterEach(async () => { await fs.rm(root, { recursive: true, force: true }); });
+
+  it("prints both paths for Merge Myself and preserves the content copy", async () => {
+    const folder = path.join(root, "projects", "draft");
+    await fs.mkdir(folder, { recursive: true });
+    await fs.writeFile(path.join(folder, "labshelf.yaml"), "id: draft\nformat: latex\nmain: main.tex\n");
+    const original = path.join(folder, "main.tex");
+    const copy = path.join(folder, "main (1).tex");
+    const text = Array.from({ length: 10 }, (_, i) => `Line ${i}`).join("\n");
+    await fs.writeFile(original, text);
+    await fs.writeFile(copy, text.replace("Line 9", "Edited 9"));
+    const asked: string[] = [];
+    await runConflicts(root, io, async (question) => {
+      asked.push(question);
+      return question.includes("Merge Myself") ? "m" : "s";
+    }, logger);
+    expect(asked.some(question => question.includes("Merge Automatically") && question.includes("Not a Version"))).toBe(true);
+    expect(lines).toContain("main (1).tex appeared in draft and looks like a version of main.tex.");
+    expect(lines).toContain(`${original}\n${copy}`);
+    expect(await fs.readFile(original, "utf8")).toBe(text);
+    expect(await fs.readFile(copy, "utf8")).toContain("Edited 9");
+  });
 
   it("only lists the copies without a prompt", async () => {
     expect(await runConflicts(root, io, undefined, logger)).toBe(0);
