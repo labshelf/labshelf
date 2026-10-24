@@ -1,6 +1,6 @@
 # Rules for changes
 
-Read when you write, review or plan code, UI or docs. Fetch one section with `node scripts/doc.mjs rules#<section>`; lint and the hooks enforce everything a machine can check.
+Read when you write, review or plan code, UI or docs. Fetch one section with `node scripts/docs/doc.mjs rules#<section>`; lint and the hooks enforce everything a machine can check.
 
 ## Placement
 
@@ -25,4 +25,4 @@ Read when you write, review or plan code, UI or docs. Fetch one section with `no
 
 - `documents/` holds only what the code cannot say: contracts, rules, product principles, verification recipes and active plans.
 - Update the affected doc in the same change as the code. Docs describe what is, never what was, and each fact lives in one place.
-- Read docs one section at a time with `node scripts/doc.mjs`; a whole-file Read of `documents/` is denied outside `plans/`.
+- Read docs one section at a time with `node scripts/docs/doc.mjs`; a whole-file Read of `documents/` is denied outside `plans/`.

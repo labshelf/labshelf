@@ -74,7 +74,7 @@ downloads.json
 templates/<template id>/       one template folder per id, laid out as in Manifest
 ```
 
-The CI validates every pull request with the same validator the apps use and never compiles. Its `validate.mjs` and `build-index.mjs` are generated from core by `scripts/template-catalog.mjs`, so the CI and the apps share one validator. On `main`, it builds `index.json` from commit `C`, which changed `templates/`, commits it, and purges jsDelivr's copy of `index.json`.
+The CI validates every pull request with the same validator the apps use and never compiles. Its `validate.mjs` and `build-index.mjs` are generated from core by `scripts/templateCatalog/templateCatalog.mjs`, so the CI and the apps share one validator. On `main`, it builds `index.json` from commit `C`, which changed `templates/`, commits it, and purges jsDelivr's copy of `index.json`.
 
 ```json
 {

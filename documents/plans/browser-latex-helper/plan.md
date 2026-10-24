@@ -74,7 +74,7 @@ A person who uses only the browser extension can compile a LaTeX project. The fi
 User tasks (outside the code, before session 5 can fully pass):
 
 - **U1** Make the repository public under an OSI license and apply to the SignPath Foundation. Session 6 writes the code signing policy page their review needs.
-- **U2** Run `scripts/helperReleaseKey.mjs` (session 3b) once and store the private key as the `HELPER_UPDATE_KEY` Actions secret.
+- **U2** Run `scripts/release/helperReleaseKey.mjs` (session 3b) once and store the private key as the `HELPER_UPDATE_KEY` Actions secret.
 - **U3** When the extension is on the Chrome Web Store, add its id to the helper's allowed origins.
 
 ## 3. Acceptance
@@ -100,7 +100,7 @@ User tasks (outside the code, before session 5 can fully pass):
 | 1b | [sessions/1b-research.md](sessions/1b-research.md) | research, browser-editor amended, extension key | `research/`, `documents/plans/browser-editor/`, `key` in `manifest.chrome.json` | 1a |
 | 2 | [sessions/2-host.md](sessions/2-host.md) | helper process: framing, mirror, build | `packages/core/src/writing/helper/node/`, its tests, `packages/terminal/build/build.mjs` | 4 |
 | 3a | [sessions/3a-tex.md](sessions/3a-tex.md) | managed TinyTeX / TeX Live, packages, rollover | `packages/core/src/writing/latex/toolchain/node/managed/`, its tests | 4 |
-| 3b | [sessions/3b-register-update.md](sessions/3b-register-update.md) | browser registration, verified self-update | `packages/terminal/src/helper/register/`, `helper/update/`, `helper/main.ts`, `scripts/helperReleaseKey.mjs` | 4 |
+| 3b | [sessions/3b-register-update.md](sessions/3b-register-update.md) | browser registration, verified self-update | `packages/terminal/src/helper/register/`, `helper/update/`, `helper/main.ts`, `scripts/release/helperReleaseKey.mjs` | 4 |
 | 4 | [sessions/4-browser.md](sessions/4-browser.md) | `ILatexHelper` adapter, manifests, setup card | `packages/browser/src/helper/`, its tests, manifest permissions, `options/index.ts` | 2, 3a or 3b |
 | 5 | [sessions/5-release.md](sessions/5-release.md) | SEA binary, installers, release workflow | `.github/`, `packages/terminal/build/sea.mjs`, `packages/terminal/installers/` | alone |
 | 6 | [sessions/6-docs-run.md](sessions/6-docs-run.md) | macOS tutorial, signing policy, docs, real run, finish | `website/`, `documents/apps/`, `documents/architecture.md` | alone |

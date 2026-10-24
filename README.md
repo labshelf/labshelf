@@ -27,4 +27,4 @@ packages/terminal/   terminal app
 documents/           architecture, contracts between apps, setup, plans
 ```
 
-Rules for contributors and coding agents are in [documents/rules.md](documents/rules.md); `node scripts/doc.mjs` lists every document.
+Rules for contributors and coding agents are in [documents/rules.md](documents/rules.md); `node scripts/docs/doc.mjs` lists every document.
