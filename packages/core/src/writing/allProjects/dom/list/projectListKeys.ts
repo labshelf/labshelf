@@ -1,5 +1,5 @@
 // Moves through the project treegrid's flat rows from the keyboard: arrows, Home/End, paging, expanding and collapsing, opening and the row menu.
-import { listKeyAction } from "../../../../library-ui/index.js";
+import { listKeyAction } from "../../../../libraryUi/index.js";
 import type { ProjectListRow } from "./projectListModel.js";
 import { ariaRowOf } from "./projectRowState.js";
 

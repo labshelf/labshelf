@@ -1,5 +1,5 @@
 // Builds a SharingHost whose operations are jest mocks, for the sharing dialog tests.
-import type { SharingHost } from "../../../src/library-ui/sharing/index.js";
+import type { SharingHost } from "../../../src/libraryUi/sharing/index.js";
 
 export function fakeHost(over: Partial<SharingHost> = {}): jest.Mocked<SharingHost> {
   return {

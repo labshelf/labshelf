@@ -1,5 +1,5 @@
 // Declares the messages between the Spaces page and its host, and the channel that carries them.
-import type { MessageEnd } from "../../library-ui/protocol/index.js";
+import type { MessageEnd } from "../../libraryUi/protocol/index.js";
 import type { GlossaryTerm, Space } from "../model/index.js";
 import type { SpaceDateDraft, TermDraft } from "../store/index.js";
 import type { CatalogRow, PapersTree, ResolvedPaper, SpaceOverview, SpaceProjectInfo } from "../view/index.js";

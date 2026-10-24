@@ -1,6 +1,6 @@
 // Builds the Versions tab of the All projects detail pane: one row per saved version, newest first.
 import { compactTime } from "../../../../../library/index.js";
-import { muted } from "../../../../../library-ui/dom/index.js";
+import { muted } from "../../../../../libraryUi/dom/index.js";
 import { escapeHtml } from "../../../../../ui/index.js";
 import type { ProjectDetail } from "../../../projectDetail.js";
 

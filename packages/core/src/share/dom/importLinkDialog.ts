@@ -1,6 +1,6 @@
 // Imports the papers of a share link: asks for the link, shows progress, then offers the new folder.
 import { inputBox, progressDialog, showDialog, toast } from "../../ui/dom/index.js";
-import type { ImportLinkResult, SharingHost } from "../../library-ui/sharing/index.js";
+import type { ImportLinkResult, SharingHost } from "../../libraryUi/sharing/index.js";
 import { parseShareLink } from "../format/index.js";
 import { refusedShareLinkText } from "../workflow/index.js";
 import { infoDialog } from "./infoDialog.js";

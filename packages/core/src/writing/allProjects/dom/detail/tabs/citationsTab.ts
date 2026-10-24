@@ -1,5 +1,5 @@
 // Builds the Citations tab of the All projects detail pane: one row per cited key, saying where it resolves.
-import { muted } from "../../../../../library-ui/dom/index.js";
+import { muted } from "../../../../../libraryUi/dom/index.js";
 import { escapeHtml } from "../../../../../ui/index.js";
 import type { ProjectCitation, ProjectDetail } from "../../../projectDetail.js";
 

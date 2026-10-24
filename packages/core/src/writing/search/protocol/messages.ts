@@ -1,5 +1,5 @@
 // Declares the messages between the project search page and its host, and the channel that carries them.
-import type { MessageEnd } from "../../../library-ui/protocol/index.js";
+import type { MessageEnd } from "../../../libraryUi/protocol/index.js";
 import type { SearchOptions } from "../searchPattern.js";
 import type { SearchResults } from "../searchResults.js";
 

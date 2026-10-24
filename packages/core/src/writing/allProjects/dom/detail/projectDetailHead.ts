@@ -1,5 +1,5 @@
 // Builds the head of the All projects detail pane: title, meta line, Open and Preview buttons, build status and target.
-import { iconBtn } from "../../../../library-ui/dom/index.js";
+import { iconBtn } from "../../../../libraryUi/dom/index.js";
 import { escapeHtml, icon } from "../../../../ui/index.js";
 import { deadlineText } from "../../deadlineText.js";
 import type { ProjectDetail } from "../../projectDetail.js";

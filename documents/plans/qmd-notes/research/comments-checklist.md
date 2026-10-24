@@ -33,6 +33,6 @@ source: Explore scout
 
 ## Backlinks
 - `projectBacklinks` (backlinks/projectBacklinks.ts) loops ready projects, `projectSources` (citations/sources/projectSources.ts:18; only files ending .tex or .typ, hidden dirs skipped, open editor text preferred) -> `citationSites` (citedKeys + nearest heading) -> `addBacklinks`. Index: citeKey -> Backlink{project,file,line,section}.
-- Wired via createProjectData.ts:57 (`projectBacklinks(projects, open)`). Shown as "Cited in": core/library-ui/dom/detail/tabs/citedInSection.ts; vscode ui/list/host/paperData.ts:28. To list paper notes for cited papers, join index by cite key; qmd sources are not scanned today.
+- Wired via createProjectData.ts:57 (`projectBacklinks(projects, open)`). Shown as "Cited in": core/libraryUi/dom/detail/tabs/citedInSection.ts; vscode ui/list/host/paperData.ts:28. To list paper notes for cited papers, join index by cite key; qmd sources are not scanned today.
 
 - Anchors are quote-based; one `file` per thread. comments.json contract, mirror and Y.Map change together.

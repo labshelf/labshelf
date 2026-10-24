@@ -2,7 +2,7 @@
  * Tests catalog filtering, navigation, creation and subscription cleanup.
  * @jest-environment jsdom
  */
-import { createLoopbackTransport } from "../../../../src/library-ui/protocol/index.js";
+import { createLoopbackTransport } from "../../../../src/libraryUi/protocol/index.js";
 import type { HostToSpaces, SpacesToHost } from "../../../../src/spaces/protocol/index.js";
 import type { CatalogRow } from "../../../../src/spaces/view/index.js";
 import { mountSpacesCatalog } from "../../../../src/spaces/dom/catalog/index.js";

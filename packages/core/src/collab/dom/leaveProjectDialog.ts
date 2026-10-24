@@ -1,6 +1,6 @@
 // Stops sharing a project on this device after a confirmation; the files stay.
 import { showDialog, toast } from "../../ui/dom/index.js";
-import type { SharingHost } from "../../library-ui/sharing/index.js";
+import type { SharingHost } from "../../libraryUi/sharing/index.js";
 import { reportingFailure } from "../../share/dom/index.js";
 import { pickProject } from "./pickProject.js";
 

@@ -1,5 +1,5 @@
 // Mounts the All projects detail pane: head, tabs and folds for the selected project, with the pane's actions.
-import { loading, muted, tabBarHtml } from "../../../../library-ui/dom/index.js";
+import { loading, muted, tabBarHtml } from "../../../../libraryUi/dom/index.js";
 import type { ProjectDetail } from "../../projectDetail.js";
 import type { ProjectRow } from "../../projectRow.js";
 import { runProjectDetailAction, type ProjectDetailActionDeps } from "./projectDetailActions.js";

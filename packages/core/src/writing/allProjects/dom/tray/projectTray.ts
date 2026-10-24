@@ -1,5 +1,5 @@
 // Builds the expanded project's tray rows (file tree, log and Add file), reusing the last rows while their inputs stay the same.
-import { buildFailedRow, buildLoadingRow, buildTrayRow } from "../../../../library-ui/dom/index.js";
+import { buildFailedRow, buildLoadingRow, buildTrayRow } from "../../../../libraryUi/dom/index.js";
 import { icon } from "../../../../ui/index.js";
 import type { ProjectDetail } from "../../projectDetail.js";
 import type { ProjectRow } from "../../projectRow.js";

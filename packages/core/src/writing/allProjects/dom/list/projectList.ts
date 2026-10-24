@@ -1,5 +1,5 @@
 // Renders the project treegrid: sortable heads, then a windowed flat list of folder headers, projects and the expanded project's files.
-import { paintSortableHeads, sortableHeadHtml, wireSortableHeads } from "../../../../library-ui/dom/index.js";
+import { paintSortableHeads, sortableHeadHtml, wireSortableHeads } from "../../../../libraryUi/dom/index.js";
 import type { MenuAnchor } from "../../../../ui/dom/index.js";
 import type { ProjectGroup, ProjectSortKey, ProjectViewState } from "../../derive/index.js";
 import type { ProjectPlace } from "../../projectRow.js";

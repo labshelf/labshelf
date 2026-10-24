@@ -1,5 +1,5 @@
 // Tests that serveSpaces answers the page from the Space store and host port, re-posts on changes and reports failures.
-import { createLoopbackTransport } from "../../src/library-ui/protocol/index";
+import { createLoopbackTransport } from "../../src/libraryUi/protocol/index";
 import type { ILogger } from "../../src/ports/index";
 import { serveSpaces, type HostToSpaces, type SpacesHostPort, type SpacesToHost } from "../../src/spaces/index";
 import { seededFixture } from "./store/spaceStoreFixture";

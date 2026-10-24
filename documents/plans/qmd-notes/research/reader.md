@@ -1,5 +1,5 @@
 sha: 0069f02
-files: packages/core/src/model/{annotation,textLayer,paperRecord}.ts, packages/core/src/reader/**, packages/core/src/library/{layout,paperMetadata,conflicts,mutations,search}/**, packages/core/src/library-ui/**, packages/{vscode,browser,terminal}/src/**, documents/contracts/{library-format,reader-host}.md
+files: packages/core/src/model/{annotation,textLayer,paperRecord}.ts, packages/core/src/reader/**, packages/core/src/library/{layout,paperMetadata,conflicts,mutations,search}/**, packages/core/src/libraryUi/**, packages/{vscode,browser,terminal}/src/**, documents/contracts/{library-format,reader-host}.md
 source: Explore scout
 
 ## Annotations and sidecar

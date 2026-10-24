@@ -1,5 +1,5 @@
 // Renders one Checklist item as a sidebar row: its label, location or status, and what clicking it does.
-import type { DotTone, SidebarTreeNode } from "../../../library-ui/index.js";
+import type { DotTone, SidebarTreeNode } from "../../../libraryUi/index.js";
 import { familyName } from "../../../library/format/index.js";
 import type { PathOps } from "../../../library/mutations/index.js";
 import { STATUS_LABEL, type PaperStatus } from "../../../model/index.js";

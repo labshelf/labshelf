@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 // Tests the All projects page's frame: list, header, and the selection it reports to the host.
-import type { PanePrefs } from "../../../../src/library-ui/state/index";
+import type { PanePrefs } from "../../../../src/libraryUi/state/index";
 import { mountAllProjects } from "../../../../src/writing/allProjects/dom/index";
 import type { AllProjectsToHost, HostToAllProjects } from "../../../../src/writing/allProjects/protocol/index";
 import { row } from "./detail/fixtures";

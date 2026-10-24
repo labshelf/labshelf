@@ -1,5 +1,5 @@
 // Lists the tabs of the All projects detail pane, with the citation and version counts as badges.
-import type { TabSpec } from "../../../../../library-ui/dom/index.js";
+import type { TabSpec } from "../../../../../libraryUi/dom/index.js";
 import type { ProjectDetail } from "../../../projectDetail.js";
 
 const tab = (id: string, label: string, n: number | undefined): TabSpec => (n ? { id, label, badge: String(n) } : { id, label });

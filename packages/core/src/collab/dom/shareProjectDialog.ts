@@ -1,6 +1,6 @@
 // Shares a writing project through the user's relay, or shows the invite when it is already shared.
 import { progressDialog, showDialog } from "../../ui/dom/index.js";
-import type { ShareProjectResult, SharingHost } from "../../library-ui/sharing/index.js";
+import type { ShareProjectResult, SharingHost } from "../../libraryUi/sharing/index.js";
 import { infoDialog, reportingFailure } from "../../share/dom/index.js";
 import { showInviteDialog } from "./inviteDialog.js";
 import { runJoinProjectDialog } from "./joinProjectDialog.js";

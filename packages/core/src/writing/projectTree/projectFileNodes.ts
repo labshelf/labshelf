@@ -1,6 +1,6 @@
 // Lists a project folder's entries as Files-tree rows: hidden entries dropped, folders first, the main file and format sources marked.
-import type { SidebarTreeNode } from "../../library-ui/index.js";
-import { fileIcon } from "../../library-ui/index.js";
+import type { SidebarTreeNode } from "../../libraryUi/index.js";
+import { fileIcon } from "../../libraryUi/index.js";
 import type { ProjectFormat } from "../project/index.js";
 
 /** An entry of a folder as read from disk. */

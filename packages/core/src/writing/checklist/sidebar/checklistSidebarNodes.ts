@@ -1,5 +1,5 @@
 // Lays a built checklist out as the sidebar's Checklist tree: ordered groups with dots, the folded "N read" rows and the manual items.
-import type { DotTone, SidebarTreeNode } from "../../../library-ui/index.js";
+import type { DotTone, SidebarTreeNode } from "../../../libraryUi/index.js";
 import type { PathOps } from "../../../library/mutations/index.js";
 import type { Checklist, ChecklistGroup, ChecklistGrouping, ChecklistItem, PageOverflow } from "../buildChecklist.js";
 import { itemKey, itemRow, pagesHead, type ReadingPaper } from "./checklistRows.js";
