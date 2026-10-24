@@ -1,4 +1,4 @@
-// Pins the standalone validate.mjs, build-index.mjs and count-downloads.mjs that scripts/template-catalog.mjs emits for the catalog repository.
+// Pins the standalone validate.mjs, build-index.mjs and count-downloads.mjs that scripts/templateCatalog/templateCatalog.mjs emits for the catalog repository.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const generator = join(dirname(fileURLToPath(import.meta.url)), '..', 'template-catalog.mjs');
+const generator = join(dirname(fileURLToPath(import.meta.url)), '..', 'templateCatalog.mjs');
 const COMMIT = '3f2c9a1b4d5e6f708192a3b4c5d6e7f801234567';
 
 const write = (root, rel, content) => {

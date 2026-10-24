@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
 import * as themes from './vscodeThemes.mjs';
 
-const outDir = process.argv[2] ?? path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../.verify/library');
+const outDir = process.argv[2] ?? path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../.verify/library');
 const out = (name) => path.join(outDir, name);
 mkdirSync(outDir, { recursive: true });
 // PLATFORM: playwright-core looks only for the headless shell of its pinned revision; any installed revision renders these pages the same.

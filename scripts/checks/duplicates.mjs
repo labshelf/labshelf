@@ -1,12 +1,12 @@
-// Runs jscpd and fails if the duplicate clone count grew past scripts/jscpd-baseline.json.
+// Runs jscpd and fails if the duplicate clone count grew past scripts/checks/duplicatesBaseline.json.
 // `--update` rewrites the baseline with the current count instead of gating.
 import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const baselineFile = join(root, "scripts", "jscpd-baseline.json");
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const baselineFile = join(root, "scripts", "checks", "duplicatesBaseline.json");
 const reportFile = join(root, ".jscpd-report", "jscpd-report.json");
 
 const run = spawnSync("pnpm", ["exec", "jscpd", "--silent"], {

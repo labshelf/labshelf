@@ -5,11 +5,11 @@ import { fileURLToPath } from 'node:url';
 
 const outDir = process.argv[2];
 if (outDir === undefined) {
-  console.error('usage: template-catalog.mjs <outDir>');
+  console.error('usage: templateCatalog.mjs <outDir>');
   process.exit(1);
 }
 
-const entries = join(dirname(fileURLToPath(import.meta.url)), 'template-catalog');
+const entries = dirname(fileURLToPath(import.meta.url));
 await build({
   entryPoints: {
     validate: join(entries, 'validateCli.mjs'),

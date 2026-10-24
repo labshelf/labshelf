@@ -15,7 +15,7 @@
     "build:helper-sea": "node build/sea.mjs",
     "watch": "node build/build.mjs --watch",
     "typecheck": "tsc --noEmit -p ./",
-    "lint": "node ../../scripts/run-eslint.mjs",
+    "lint": "node ../../scripts/checks/eslint.mjs",
     "test": "jest",
     "test:coverage": "jest --coverage",
     "start": "node dist/labshelf.mjs"

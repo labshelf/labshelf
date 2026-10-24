@@ -1,4 +1,4 @@
-// Pins how scripts/doc.mjs slugs headings and cuts one section out of a document.
+// Pins how scripts/docs/doc.mjs slugs headings and cuts one section out of a document.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { extractSection, listHeadings, slugify } from '../doc.mjs';

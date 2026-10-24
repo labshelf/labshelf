@@ -4,7 +4,7 @@ import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const LIMIT = 8;
-const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 const isSourceFile = (name) => /\.(ts|tsx|css)$/.test(name) && name !== "index.ts" && !name.endsWith(".d.ts");
 

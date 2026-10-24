@@ -1,7 +1,7 @@
-// Pins which file names, comment tags and emoji scripts/check-banned-words.mjs rejects.
+// Pins which file names, comment tags and emoji scripts/checks/bannedWords.mjs rejects.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { findBannedWords } from '../check-banned-words.mjs';
+import { findBannedWords } from '../bannedWords.mjs';
 
 const SRC = 'packages/core/src/library';
 const fails = (rel, text = '') => findBannedWords(rel, text).length > 0;

@@ -1,10 +1,10 @@
 // Fails when package sources use a banned word: a grab-bag or history file name, a comment tag outside the four allowed, or an emoji.
-// Usage: node scripts/check-banned-words.mjs [file...] — with no files, scans every packages/*/src and packages/*/__tests__.
+// Usage: node scripts/checks/bannedWords.mjs [file...] — with no files, scans every packages/*/src and packages/*/__tests__.
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const SOURCE = /\.(ts|tsx|css|mjs)$/;
 
 const GRAB_BAG = new Set(["util", "utils", "helpers", "misc", "common", "manager"]);

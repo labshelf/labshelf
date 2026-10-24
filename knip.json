@@ -3,12 +3,12 @@
   "workspaces": {
     ".": {
       "entry": [
-        "scripts/*.mjs",
-        "scripts/verify-library/shoot.mjs"
+        "scripts/*/*.mjs",
+        "scripts/verify/library/shoot.mjs"
       ],
       "project": [
-        "scripts/*.mjs",
-        "scripts/verify-library/*.mjs"
+        "scripts/*/*.mjs",
+        "scripts/verify/library/*.mjs"
       ],
       "ignoreBinaries": [
         "tsc"

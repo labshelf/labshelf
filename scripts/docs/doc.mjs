@@ -1,12 +1,12 @@
 // Prints one section of a document in documents/, or the headings of a document, so agents never load a whole doc.
-// Usage: node scripts/doc.mjs                 lists the documents and what each is for
-//        node scripts/doc.mjs <doc>           lists the headings of documents/<doc>.md with their anchors
-//        node scripts/doc.mjs <doc>#<anchor>  prints that section, subsections included
+// Usage: node scripts/docs/doc.mjs                 lists the documents and what each is for
+//        node scripts/docs/doc.mjs <doc>           lists the headings of documents/<doc>.md with their anchors
+//        node scripts/docs/doc.mjs <doc>#<anchor>  prints that section, subsections included
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const docsRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "documents");
+const docsRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "documents");
 // Plans and ideas are read through their own files, never through this script.
 const SKIPPED = new Set(["plans", "ideas"]);
 

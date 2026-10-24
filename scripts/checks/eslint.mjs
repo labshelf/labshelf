@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const packageDir = `packages/${basename(process.cwd())}`;
 
 const run = spawnSync("pnpm", ["exec", "eslint", ...process.argv.slice(2), packageDir], { cwd: root, stdio: "inherit" });
