@@ -196,30 +196,62 @@ function removeEmptyFolders(root, file) {
   }
 }
 
-/** Files that still mention an old path after the move: configs, docs, scripts and odd string paths. */
-function findLeftovers(root, entries, folders, plan, rewritten) {
-  const skip = new Set([...rewritten.keys()].map((file) => plan.get(file) ?? file));
-  const needles = new Set();
+const packageOf = (file) => /^packages\/([^/]+)\//.exec(file)?.[1];
+// Code under src/ and __tests__/ gets its imports rewritten already; only its odd string paths remain, so they are not reported.
+const isRewrittenCode = (file) => /^packages\/[^/]+\/(src|__tests__)\//.test(file) && isCode(file);
+
+/**
+ * Needles per moved path: the full path (`packages/core/src/bridge`, matches anywhere), the sibling form
+ * (`core/src/bridge`, as build scripts write `../core/src/bridge`; matches anywhere outside rewritten code) and the
+ * package-relative form (`src/bridge`; matches only files of the same package and root configs such as knip.json).
+ */
+function needlesFor(entries, folders) {
+  const needles = [];
   for (const [from] of entries) {
     const base = folders.has(from) ? from : stripExtension(from);
-    needles.add(base);
-    const packageRelative = /^packages\/[^/]+\/(.+)$/.exec(base);
-    if (packageRelative) needles.add(packageRelative[1]);
+    const parts = /^packages\/([^/]+)\/(.+)$/.exec(base);
+    needles.push({ text: base, pkg: null, rewrittenCodeToo: true });
+    if (!parts) continue;
+    needles.push({ text: `${parts[1]}/${parts[2]}`, pkg: null, rewrittenCodeToo: false });
+    needles.push({ text: parts[2], pkg: parts[1], rewrittenCodeToo: false });
   }
+  return needles;
+}
+
+/** True when `content` mentions the package-relative needle other than as `<otherPackage>/<needle>`. */
+function mentionsOwnPath(needle, content, packages) {
+  const others = packages.filter((name) => name !== needle.pkg).map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const foreign = others.length === 0 ? null : new RegExp(`(${others.join("|")})/$`);
+  for (let at = content.indexOf(needle.text); at !== -1; at = content.indexOf(needle.text, at + 1)) {
+    if (!foreign || !foreign.test(content.slice(0, at))) return true;
+  }
+  return false;
+}
+
+function wantsHit(needle, file, content, packages) {
+  if (!needle.rewrittenCodeToo && isRewrittenCode(file)) return false;
+  if (needle.pkg !== null && !mentionsOwnPath(needle, content, packages)) return false;
+  if (needle.pkg === null) return true;
+  const filePackage = packageOf(file);
+  if (filePackage) return filePackage === needle.pkg;
+  return CONFIG_FILE.test(file) && !file.startsWith("website/");
+}
+
+/** Files that still mention an old path after the move: configs, build scripts, docs and odd string paths. */
+function findLeftovers(root, entries, folders, plan, rewritten) {
+  const skip = new Set([...rewritten.keys()].map((file) => plan.get(file) ?? file).filter(isRewrittenCode));
   const hits = new Map();
-  for (const needle of needles) {
+  const packages = existsSync(join(root, "packages")) ? readdirSync(join(root, "packages")) : [];
+  for (const needle of needlesFor(entries, folders)) {
     let output = "";
     try {
-      output = execFileSync("git", ["grep", "-n", "-I", "-F", "-e", needle, "--", ".", ":!pnpm-lock.yaml"], { cwd: root, maxBuffer: 64 * 1024 * 1024 }).toString("utf8");
+      output = execFileSync("git", ["grep", "-n", "-I", "-F", "-e", needle.text, "--", ".", ":!pnpm-lock.yaml"], { cwd: root, maxBuffer: 64 * 1024 * 1024 }).toString("utf8");
     } catch {
       continue; // git grep exits 1 when nothing matches
     }
     for (const line of output.split("\n").filter(Boolean)) {
-      const file = line.split(":")[0];
-      if (skip.has(file)) continue;
-      const packageRelativeNeedle = !needle.startsWith("packages/");
-      if (packageRelativeNeedle && isCode(file) && !CONFIG_FILE.test(file)) continue;
-      hits.set(line, true);
+      const [file, , ...rest] = line.split(":");
+      if (!skip.has(file) && wantsHit(needle, file, rest.join(":"), packages)) hits.set(line, true);
     }
   }
   return [...hits.keys()];

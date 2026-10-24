@@ -156,7 +156,7 @@ function freeWordViolations(tokens, context) {
   return [{ rule: "free-words", message, hint: "name it with known terms or add the word to scripts/checks/vocabulary.yaml", words: free }];
 }
 
-function globToRegExp(glob) {
+export function globToRegExp(glob) {
   const parts = glob.split("/");
   const source = parts.map((part, i) => {
     const last = i === parts.length - 1;
