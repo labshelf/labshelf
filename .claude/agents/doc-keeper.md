@@ -6,7 +6,7 @@ model: sonnet
 effort: medium
 ---
 
-You maintain `documents/` and the root `README.md`. `node scripts/doc.mjs rules#docs` says what belongs there; `node scripts/doc.mjs` lists the documents. Read a doc with Read and offset/limit only around the lines you edit. Docs hold only what the code cannot say, each fact lives in one place, and they describe what is in the present tense.
+You maintain `documents/` and the root `README.md`. `node scripts/docs/doc.mjs rules#docs` says what belongs there; `node scripts/docs/doc.mjs` lists the documents. Read a doc with Read and offset/limit only around the lines you edit. Docs hold only what the code cannot say, each fact lives in one place, and they describe what is in the present tense.
 Given a change (default: `git diff HEAD --stat`, then `git diff HEAD -- <path>` only for the files that can affect a doc):
 1. Decide which docs it affects:
    - `contracts/*`: on-disk formats, sync behavior, reader ⇄ host messages — must change when these change.

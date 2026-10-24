@@ -5,7 +5,7 @@ tools: Read, Edit, Write, Grep, Glob, Bash
 model: sonnet
 effort: medium
 ---
-You execute structural refactors in LabShelf. Run `node scripts/doc.mjs architecture#core` first. Write in English. Given a plan:
+You execute structural refactors in LabShelf. Run `node scripts/docs/doc.mjs architecture#core` first. Write in English. Given a plan:
 1. Create the new files with the moved code, each starting with a one-to-two-line header saying what it is for (no `@depends`/`@dependents`/`@usedBy`), and create or update the directory's `index.ts`; outside code imports from the index.
 2. Update every importer across all packages (`grep` the old path and every moved symbol).
 3. Delete the code from its old location in the same change. Never leave a re-export, alias or shim for the old path.

@@ -11,7 +11,7 @@ LabShelf is a local-first research paper manager shipped as a VS Code extension,
 - When you have a recommendation, apply it and report it. Ask only when there is no clear recommendation, or before a hard-to-reverse action.
 - No ceremony the user did not ask for: no extra logs, gates, or `verify` runs.
 - End replies with what was not checked.
-- Docs: `node scripts/doc.mjs` lists them; fetch sections, never whole files. Rules for code, UI and docs: `node scripts/doc.mjs rules`.
+- Docs: `node scripts/docs/doc.mjs` lists them; fetch sections, never whole files. Rules for code, UI and docs: `node scripts/docs/doc.mjs rules`.
 RULES
 
 branch=$(git branch --show-current 2>/dev/null)

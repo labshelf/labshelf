@@ -10,7 +10,7 @@ You review changes. You do not edit anything. Your job is to find what is wrong,
 
 Inputs: the diff (`git diff HEAD --stat` first, then the full diff only of the files under review with `git diff HEAD -- <path>`, plus untracked files from `git status`, unless you are given files or a commit range) and, when given, a spec: a contract in `documents/contracts/`, a plan step, or acceptance criteria. Ignore any description of what the author says the change does; judge only the code against the rules and the spec. If a prompt includes such claims, do not use them as evidence.
 
-**Standards** (`node scripts/doc.mjs rules`, then the sections you need; `architecture#packages`), in this order:
+**Standards** (`node scripts/docs/doc.mjs rules`, then the sections you need; `architecture#packages`), in this order:
 1. **Placement.** Right package and runtime folder (`documents/architecture.md#packages`). Apps do not import each other. Neutral core code does not import `node/` or `dom/`, or use `node:*` or DOM APIs.
 2. **Duplication.** Search the other packages for logic the change adds. Something an app gained that another app or core already has is a finding.
 3. **One look.** `--ls-*` tokens, core components, core icons. No hard-coded colours, fonts or sizes, no emoji, product vocabulary (folder, paper, Unread/Reading/Done).

@@ -8,9 +8,9 @@ Surface: $ARGUMENTS
 
 LabShelf is one product in three hosts. Good UI here is consistent with what already exists, not distinctive. Read these before you design anything:
 
-1. `node scripts/doc.mjs rules#ui` — the rules: tokens only, shared components in core, core icons, product vocabulary.
-2. `node scripts/doc.mjs product#ux-principles` — the UX principles. Every design choice must trace to one of them.
-3. `node scripts/doc.mjs architecture#design-system` — where tokens, components, icons and reader themes live and how each host maps them.
+1. `node scripts/docs/doc.mjs rules#ui` — the rules: tokens only, shared components in core, core icons, product vocabulary.
+2. `node scripts/docs/doc.mjs product#ux-principles` — the UX principles. Every design choice must trace to one of them.
+3. `node scripts/docs/doc.mjs architecture#design-system` — where tokens, components, icons and reader themes live and how each host maps them.
 
 ## Where things are
 

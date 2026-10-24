@@ -31,7 +31,7 @@ Drive them with the `mcp__chrome-devtools__*` tools. The server in `.mcp.json` r
 ## Always
 1. Rebuild the app first; a stale bundle shows old behavior.
 2. Work on a copy: `cp -R ~/Documents/LabShelfLibrary <scratchpad>/lib`. Point `XDG_CONFIG_HOME`/`XDG_CACHE_HOME` at the scratchpad and use a throwaway `--user-data-dir`. Never touch the real library, config, keychain or Drive.
-3. One-off scripts go in the session scratchpad. A harness more than one session uses lives in the repo (a plan's wave-1 tooling): the library list harness is `scripts/verify-library/`.
+3. One-off scripts go in the session scratchpad. A harness more than one session uses lives in the repo (a plan's wave-1 tooling): the library list harness is `scripts/verify/library/`.
 4. Launch browsers and VS Code outside the sandbox (they fail inside it). Use Playwright's Chrome for Testing / headless shell; `/Applications/Google Chrome.app` crashes headless on this machine. Stop only the processes you started, by PID.
 5. Exercise the change with a real paper from the copy, not only synthetic fixtures.
 6. Read the screenshots or text frames yourself before reporting.

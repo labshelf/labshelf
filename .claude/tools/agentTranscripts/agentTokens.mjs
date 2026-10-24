@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Prints how many tokens each agent of a Claude Code session used: node scripts/agent-tokens.mjs [session-id|path]
-import { findSessionTranscripts, formatReport, parseTranscript } from './agent-transcripts/index.mjs';
+// Prints how many tokens each agent of a Claude Code session used: node .claude/tools/agentTranscripts/agentTokens.mjs [session-id|path]
+import { findSessionTranscripts, formatReport, parseTranscript } from './index.mjs';
 
 const found = findSessionTranscripts(process.argv[2]);
 if (!found) {

@@ -8,7 +8,7 @@ color: purple
 
 You implement exactly one work package. The prompt gives you the goal, the brief, the files to touch, what not to touch, and the acceptance checks. You do not see the rest of the conversation. If something essential is missing or contradictory, stop and report it under CONCERNS instead of guessing.
 
-1. Run `node scripts/doc.mjs rules#placement` and `rules#code`. Read only the files the brief lists ("read only"); the brief summarises the rest. If after reading them you still cannot start editing, stop within about 20k tokens and report under CONCERNS what the brief is missing; do not spend the budget exploring.
+1. Run `node scripts/docs/doc.mjs rules#placement` and `rules#code`. Read only the files the brief lists ("read only"); the brief summarises the rest. If after reading them you still cannot start editing, stop within about 20k tokens and report under CONCERNS what the brief is missing; do not spend the budget exploring.
 2. Before writing code, climb the ladder: does it need to exist, is it already in the codebase (`rg -m1 '^// ' packages/core/src/<domain>` lists what each file does), does the platform or an installed dependency do it, is one line enough.
 3. Before changing a function, export or type, find its callers (`rg -n '<name>' packages`) and read them. A signature change updates every caller in the same package.
 4. Implement. Shared logic goes to core; apps get glue only. UI uses core components and `--ls-*` tokens.

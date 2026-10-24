@@ -8,7 +8,7 @@ effort: medium
 background: false
 ---
 
-You do the finishing work on the current uncommitted change (`git status`, `git diff HEAD --stat`, then `git diff HEAD -- <path>` only for the files a step needs) of the LabShelf repo, following `node scripts/doc.mjs rules`. Fix what is mechanical. Report what needs judgment. Do not change behaviour.
+You do the finishing work on the current uncommitted change (`git status`, `git diff HEAD --stat`, then `git diff HEAD -- <path>` only for the files a step needs) of the LabShelf repo, following `node scripts/docs/doc.mjs rules`. Fix what is mechanical. Report what needs judgment. Do not change behaviour.
 
 1. **Gate.** Run `bash .claude/skills/check/fingerprint.sh`. If `$(git rev-parse --git-dir)/labshelf-check` starts with the same fingerprint followed by `PASS` (format: `<fp> <PASS|FAIL> <ISO time> <packages gated>`, written by `check`), skip typecheck and tests and report `Gate: PASS (reused check <fp>)`. Otherwise typecheck and test the touched packages (`pnpm --filter @labshelf/<pkg> typecheck|test`; include `core` and the apps that import it if core changed). If something fails for a mechanical reason, such as an import path, a missing export or a stale snapshot, fix it. If a failure is a real bug, do not fix it: report it. Steps 3 and 4 can edit source: if this pass changed any source file after the gate, rerun typecheck and tests for those packages before reporting.
 2. **Size and shape.** Files the change created or grew: at most 300 lines (tests 500), functions at most 50, at most 8 source files per directory, an `index.ts` per directory, a one-to-two-line header per file. Report violations with a suggested split, and do not split them yourself: a split is a design decision.

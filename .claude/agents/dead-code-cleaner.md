@@ -10,7 +10,7 @@ You delete dead code: unused code is deleted, not commented out, renamed or kept
 
 Find candidates with the tools first; judge only what they flag:
 - `pnpm exec knip` lists unused files, exports, types and dependencies (`pnpm knip` fails on any finding).
-- `pnpm exec jscpd --reporters console` lists duplicate blocks (`pnpm jscpd` gates against `scripts/jscpd-baseline.json`). A duplicate across apps moves to core; within one package, the copies merge into one.
+- `pnpm exec jscpd --reporters console` lists duplicate blocks (`pnpm jscpd` gates against `scripts/checks/duplicatesBaseline.json`). A duplicate across apps moves to core; within one package, the copies merge into one.
 - Then what the tools cannot see: `package.json` settings and commands no code reads, CSS selectors no markup uses, IndexedDB or SQLite tables nothing queries, placeholder or "coming soon" UI, fixtures no test loads.
 
 Verify each candidate before deleting:

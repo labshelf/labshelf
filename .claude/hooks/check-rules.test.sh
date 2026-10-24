@@ -303,7 +303,7 @@ export const x = 2;
 " \
   0 ""
 
-# Banned words come from scripts/check-banned-words.mjs.
+# Banned words come from scripts/checks/bannedWords.mjs.
 run_case "TODO tag added" \
   "packages/core/src/sample.ts" \
   "// Sample.

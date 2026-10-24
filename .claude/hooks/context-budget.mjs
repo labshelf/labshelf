@@ -3,7 +3,7 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { BUDGETS, latestContext } from '../../scripts/agent-transcripts/index.mjs';
+import { BUDGETS, latestContext } from '../tools/agentTranscripts/index.mjs';
 
 const REWARN_STEP = 40_000;
 

@@ -113,9 +113,9 @@ if [ "$code_scope" = true ]; then
   fi
 fi
 
-# Banned file names, comment tags and emoji (scripts/check-banned-words.mjs).
+# Banned file names, comment tags and emoji (scripts/checks/bannedWords.mjs).
 if [ "$code_scope" = true ]; then
-  banned=$(node "$(dirname "$0")/../../scripts/check-banned-words.mjs" "$file" 2>&1)
+  banned=$(node "$(dirname "$0")/../../scripts/checks/bannedWords.mjs" "$file" 2>&1)
   [ -n "$banned" ] && problems+=("$banned")
 fi
 

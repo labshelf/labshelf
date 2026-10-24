@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { assistant, tempDir, writeJsonl, writeSession } from './transcriptFixtures.mjs';
 
-const hook = new URL('../../../.claude/hooks/context-budget.mjs', import.meta.url).pathname;
+const hook = new URL('../../../hooks/context-budget.mjs', import.meta.url).pathname;
 
 function run(input, stateDir) {
   const result = spawnSync('node', [hook], { input: JSON.stringify(input), encoding: 'utf8', env: { ...process.env, LABSHELF_BUDGET_STATE_DIR: stateDir } });
