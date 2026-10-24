@@ -1,5 +1,5 @@
 /** Rendering page 1 yields a PNG whose width is the one asked for, and leaves the caller's bytes intact; pdf.js is faked because Jest cannot load it. */
-import { readPngWidth } from '../../../src/writing/templates/node/catalog/pngWidth.js';
+import { readPngWidth } from '../../../src/templates/node/catalog/pngWidth.js';
 import { loadNativeCanvas } from '../../../src/import/node/nativeCanvas.js';
 
 const PAGE_POINTS = { width: 612, height: 792 };

@@ -14,7 +14,7 @@ import { FileProjectVersionStore } from '../../../../../src/writing/merge/index'
 import { NodeLibraryFileSystem } from '../../../../../src/library/node/index';
 import { nodeProjectCatalogContext } from '../../../../../src/writing/project/node/index';
 import { createProjectFromTemplate } from '../../../../../src/writing/project/index';
-import { blankTemplate } from '../../../../../src/writing/templates/index';
+import { blankTemplate } from '../../../../../src/templates/index';
 
 afterEach(cleanupTempDirs);
 

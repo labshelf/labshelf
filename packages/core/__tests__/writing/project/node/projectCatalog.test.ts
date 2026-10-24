@@ -4,7 +4,7 @@ import * as path from "node:path";
 
 import { listProjectsOnDisk, nodeProjectCatalogContext } from "../../../../src/writing/project/node/index";
 import { addExistingFolder, createProjectFromTemplate } from "../../../../src/writing/project/index";
-import { blankTemplate } from "../../../../src/writing/templates/index";
+import { blankTemplate } from "../../../../src/templates/index";
 import type { ProjectFormat } from "../../../../src/writing/project/index";
 import type { ILogger } from "../../../../src/ports/index";
 import { fakeLogger } from "../../../support/fakeLogger";

@@ -1,7 +1,7 @@
 // Writes downloads.json for the template catalog in the current folder; the entry bundled into count-downloads.mjs.
 import { readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { countDownloads } from '../../packages/core/src/writing/templates/downloads/index.ts';
+import { countDownloads } from '../../packages/core/src/templates/countDownloads.ts';
 
 function readTemplates(path) {
   const index = JSON.parse(readFileSync(path, 'utf8'));

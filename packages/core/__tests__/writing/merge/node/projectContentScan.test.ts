@@ -7,7 +7,7 @@ import { resolveProjectConflictCopy } from '../../../../src/library/conflicts/no
 import { NodeLibraryFileSystem } from '../../../../src/library/node/index';
 import { nodeProjectCatalogContext } from '../../../../src/writing/project/node/index';
 import { createProjectFromTemplate } from '../../../../src/writing/project/index';
-import { blankTemplate } from '../../../../src/writing/templates/index';
+import { blankTemplate } from '../../../../src/templates/index';
 import { fakeLogger } from '../../../support/fakeLogger';
 import { cleanupTempDirs, makeTempDir } from '../../../support/tempDirs';
 afterEach(cleanupTempDirs);

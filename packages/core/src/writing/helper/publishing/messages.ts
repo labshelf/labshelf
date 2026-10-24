@@ -1,5 +1,5 @@
 // Declares template publication socket messages.
-import type { HostToGallery, PublishDraft, PublishFromHost } from "../../templates/protocol/index.js";
+import type { HostToGallery, PublishDraft, PublishFromHost } from "../../../templates/protocol/index.js";
 
 type Envelope = { v: number; id: string; type: "publishTemplate"; projectId: string };
 export type TemplatePublishRequest =

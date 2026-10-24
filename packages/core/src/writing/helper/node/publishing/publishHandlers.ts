@@ -1,9 +1,9 @@
 // Runs template publication over authenticated helper sockets.
 import type { HelperLogger } from "../log/index.js";
-import { submitTemplatePullRequest, readGitHubIdentity } from "../../../../github/index.js";
-import { createPublishHost, type PublishPorts } from "../../../templates/publishing/index.js";
-import { savePublishedTemplate } from "../../../templates/node/index.js";
-import type { PublishFile } from "../../../templates/index.js";
+import { submitTemplatePullRequest, readGitHubIdentity } from "../../../../templates/client/index.js";
+import { createPublishHost, type PublishPorts } from "../../../../templates/host/index.js";
+import { savePublishedTemplate } from "../../../../templates/node/index.js";
+import type { PublishFile } from "../../../../templates/index.js";
 import type { ProjectBuildDeps } from "../../../build/node/index.js";
 import { PROTOCOL_VERSION, type ToHelperMessage } from "../../index.js";
 import type { HelperHandler, HelperSend } from "../dispatch/index.js";

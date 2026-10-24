@@ -1,7 +1,6 @@
 /** Exports the writing domain's runtime-neutral API: projects written in LaTeX or Typst, their citations and backlinks, figures and values, the pre-submission check, the Checklist, versions and their comparison, the project history, SyncTeX and the citations behind a compiled PDF. */
 export * from "./citations/index.js";
 export * from "./project/index.js";
-export * from "./templates/index.js";
 export * from "./review/index.js";
 export * from "./synctex/index.js";
 export * from "./figures/index.js";

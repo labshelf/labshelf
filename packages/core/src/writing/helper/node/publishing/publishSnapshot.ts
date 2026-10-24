@@ -1,9 +1,9 @@
 // Checks an isolated copy of the source so the compiled sample and submitted files match.
 import { constants, promises as fs } from "node:fs";
 import * as path from "node:path";
-import type { PublishCheckInput, PublishCheckReport } from "../../../templates/index.js";
-import { checkTemplateForPublish, runSourceChecks } from "../../../templates/node/publish/index.js";
-import { templateTreeProblem } from "../../../templates/manifest/index.js";
+import type { PublishCheckInput, PublishCheckReport } from "../../../../templates/index.js";
+import { checkTemplateForPublish, runSourceChecks } from "../../../../templates/node/index.js";
+import { templateTreeProblem } from "../../../../templates/templateManifest/index.js";
 
 export async function checkPublishSnapshot(dataDir: string, input: PublishCheckInput, build: (folder: string) => ReturnType<PublishCheckInput["buildPdf"]>): Promise<PublishCheckReport> {
   const source = await runSourceChecks(input.projectFolder, input.manifest);

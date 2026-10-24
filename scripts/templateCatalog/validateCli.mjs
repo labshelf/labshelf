@@ -1,5 +1,5 @@
 // Validates the template catalog in the current folder; the entry bundled into validate.mjs.
-import { validateCatalog } from '../../packages/core/src/writing/templates/node/index.ts';
+import { validateCatalog } from '../../packages/core/src/templates/node/index.ts';
 
 const problems = await validateCatalog(process.cwd());
 if (problems.length === 0) {

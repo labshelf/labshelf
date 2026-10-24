@@ -150,5 +150,5 @@ test('readingStatus lives under library/readingStatus; its feature words are spe
   assert.deepEqual(realPath('library/readingStatus/readingStatus.ts'), []);
   assert.ok(realPath('hash/readingStatus.ts').includes('feature-home'));
   assert.ok(realPath('hash/unreadPaper.ts').includes('feature-home'));
-  assert.ok(!realPath('writing/templates/dom/publish/publishDone.ts').includes('feature-home'));
+  assert.ok(!realPath('templates/dom/publishDone.ts').includes('feature-home'));
 });

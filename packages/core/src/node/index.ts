@@ -5,7 +5,7 @@ export * from "../import/node/index.js";
 export * from "../reader/node/index.js";
 export * from "../ai/node/index.js";
 export * from "../writing/project/node/index.js";
-export * from "../writing/templates/node/index.js";
+export * from "../templates/node/index.js";
 export * from "../writing/project/roots/node/index.js";
 export * from "../latex/toolchain/node/index.js";
 export * from "../latex/build/node/index.js";

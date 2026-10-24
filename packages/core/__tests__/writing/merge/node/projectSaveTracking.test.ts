@@ -5,7 +5,7 @@ import { createProjectSaveTracking, recordProjectSave, scanLibraryConflicts } fr
 import { FileProjectVersionStore } from '../../../../src/writing/merge/index';
 import { createProjectFromTemplate } from '../../../../src/writing/project/index';
 import { nodeProjectCatalogContext } from '../../../../src/writing/project/node/index';
-import { blankTemplate } from '../../../../src/writing/templates/index';
+import { blankTemplate } from '../../../../src/templates/index';
 import { deviceLocalLayout, NodeLibraryFileSystem } from '../../../../src/library/node/index';
 import { readWriteRecords } from '../../../../src/library/writeRecords/index';
 import { cleanupTempDirs, makeTempDir } from '../../../support/tempDirs';

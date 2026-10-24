@@ -1,6 +1,6 @@
 // Installs a template as a new library project through a staging folder, so a failure never leaves half a project.
 import { libraryLayout } from "../../../library/index.js";
-import { templatePathProblem, templateTreeProblem, type ProjectTemplate, type TemplateFile } from "../../templates/index.js";
+import { templatePathProblem, templateTreeProblem, type ProjectTemplate, type TemplateFile } from "../../../templates/index.js";
 import { readProject } from "../folder/index.js";
 import type { ProjectEntry } from "../projectEntry.js";
 import { PROJECT_FILE, serializeProjectFile, type ProjectSettings } from "../projectFile.js";

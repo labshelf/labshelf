@@ -6,7 +6,7 @@ import type { FigureState } from "../figures/index.js";
 import type {
   FigureRecipe, OpenSources, ProjectEntry, ProjectFormat, ProjectSettingsPatch,
 } from "../project/index.js";
-import type { ProjectTemplate, TemplateFile } from "../templates/index.js";
+import type { ProjectTemplate, TemplateFile } from "../../templates/index.js";
 import type { SynctexRead } from "../synctex/index.js";
 import type { ValueLeaf, ValueProject } from "../values/index.js";
 import type { MarkVersionRequest, ProjectVersion } from "../versions/index.js";

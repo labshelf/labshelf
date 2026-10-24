@@ -4,7 +4,7 @@ import * as path from "node:path";
 
 import { nodeProjectCatalogContext } from "../../../../src/writing/project/node/index";
 import { addExistingFolder, createProjectFromTemplate } from "../../../../src/writing/project/index";
-import { blankTemplate } from "../../../../src/writing/templates/index";
+import { blankTemplate } from "../../../../src/templates/index";
 import { NodeLibraryFileSystem } from "../../../../src/library/node/index";
 import { scanLibraryConflicts } from "../../../../src/writing/merge/node/index";
 import { FileProjectVersionStore, type IProjectVersionStore } from "../../../../src/writing/merge/index";

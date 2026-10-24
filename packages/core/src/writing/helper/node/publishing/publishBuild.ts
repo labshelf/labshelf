@@ -3,8 +3,8 @@ import { readFile } from "node:fs/promises";
 import * as path from "node:path";
 import { buildProject, type ProjectBuildDeps } from "../../../build/node/index.js";
 import { builtPdfPath } from "../../../build/index.js";
-import type { PublishableProject } from "../../../templates/publishing/index.js";
-import type { PublishBuildResult } from "../../../templates/index.js";
+import type { PublishableProject } from "../../../../templates/host/index.js";
+import type { PublishBuildResult } from "../../../../templates/index.js";
 
 export async function buildPublication(project: PublishableProject, folder: string, deps: Omit<ProjectBuildDeps, "projects">, signal: AbortSignal): Promise<PublishBuildResult> {
   const settings = { id: project.id, format: project.format, ...(project.engine === "typst" ? {} : { engine: project.engine }) };

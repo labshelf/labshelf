@@ -1,6 +1,6 @@
 // Validates template publication fields crossing the helper socket.
-import { TEMPLATE_CATEGORIES } from "../../templates/manifest/index.js";
-import { PUBLISH_CHECK_IDS } from "../../templates/publishCheckLabels.js";
+import { TEMPLATE_CATEGORIES } from "../../../templates/templateManifest/index.js";
+import { PUBLISH_CHECK_IDS } from "../../../templates/publishCheckLabels.js";
 import {
   FieldError, readBody, readBoolean, readChoice, readProjectId, readString, readText, readArray,
   optional, isBody, type Body,

@@ -2,7 +2,7 @@
 import * as path from "node:path";
 
 import { createProjectData, type ProjectDeviceDirs } from "../../../src/writing/projectData/index";
-import { blankTemplate } from "../../../src/writing/templates/index";
+import { blankTemplate } from "../../../src/templates/index";
 import { fakeLogger } from "../../support/fakeLogger";
 import { MemoryLibraryFs } from "../../support/memoryLibraryFs";
 
