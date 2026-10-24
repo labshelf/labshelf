@@ -3,7 +3,8 @@
  * region such as a figure located from its caption.
  */
 import type { PageViewport, RenderTask } from "pdfjs-dist";
-import { type PdfRegion, cropRectForPreview, type Rect } from "../../logic/index.js";
+import { type PdfRegion } from "../../text/index.js";
+import { cropRectForPreview, type Rect } from "../../index.js";
 import { DOCUMENT_REPLACED, type ReaderContext } from "../session/index.js";
 import type { ThemeController } from "../chrome/index.js";
 

@@ -2,7 +2,7 @@
 export { BuildBanner } from "./buildBanner.js";
 export { Cheatsheet } from "./cheatsheet.js";
 export { SelectionBubble } from "./selectionBubble.js";
-export { StatusPill } from "./statusPill.js";
+export { StatusPill } from "./pagePill.js";
 export { TabList } from "./tabList.js";
 export { ThemeController } from "./theme.js";
 export { openThemePopover } from "./themePopover.js";

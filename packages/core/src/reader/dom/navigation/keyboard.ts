@@ -1,15 +1,7 @@
 /**
  * Turns keydown events into reader actions via the pure keymap, and drives held-key scrolling with a rAF loop (key-repeat + smooth scrolling stutters).
  */
-import {
-  isDuplicateDelivery,
-  type ActionSource,
-  type ActionStamp,
-  ACTIONS_BLOCKED_WHILE_TYPING,
-  CHORD_TIMEOUT_MS,
-  resolveKey,
-  type ReaderAction,
-} from "../../logic/index.js";
+import { isDuplicateDelivery, type ActionSource, type ActionStamp, ACTIONS_BLOCKED_WHILE_TYPING, CHORD_TIMEOUT_MS, resolveKey, type ReaderAction } from "../../navigation/index.js";
 import type { ReaderContext } from "../session/index.js";
 import { isTextInput } from "../elements/index.js";
 

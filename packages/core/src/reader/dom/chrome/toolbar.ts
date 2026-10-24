@@ -1,7 +1,7 @@
 /**
  * Renders the overlay toolbar. It floats above the page (never part of the layout) so showing or hiding it cannot resize the viewer and trigger a re-raster.
  */
-import { initialAutohide, toolbarVisibility, type AutohideEvent, type AutohideState } from "../../logic/index.js";
+import { initialAutohide, toolbarVisibility, type AutohideEvent, type AutohideState } from "../../index.js";
 import { iconButton, isPopoverOpen, onPopoverToggle } from "../elements/index.js";
 import { icon } from "../../../ui/index.js";
 import { $, el } from "../../../ui/dom/index.js";

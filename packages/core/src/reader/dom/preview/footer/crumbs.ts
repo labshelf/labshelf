@@ -1,7 +1,7 @@
 // Renders the breadcrumb of the shown file and the outline section the page sits in, with a menu to jump between sections.
 import { icon } from "../../../../ui/index.js";
 import { el } from "../../../../ui/dom/index.js";
-import { outlineTrail, type OutlineRow } from "../../../logic/index.js";
+import { outlineTrail, type OutlineRow } from "../../../index.js";
 import { buildMenu, togglePopover } from "../../elements/index.js";
 import type { PreviewOutlineSource } from "../mountPreviewChrome.js";
 import { pdfName } from "../fileName.js";

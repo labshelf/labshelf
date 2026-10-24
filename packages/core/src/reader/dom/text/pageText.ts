@@ -2,7 +2,7 @@
  * Extracts page text lazily and caches it per page: reading-order lines plus the column split. Shared by the citation and float
  * resolvers so a page is extracted and analysed once.
  */
-import { detectColumns, groupItemsIntoLines, readableItems, runOrientation, type TextItemBox, type TextLine } from "../../logic/index.js";
+import { detectColumns, groupItemsIntoLines, readableItems, runOrientation, type TextItemBox, type TextLine } from "../../text/index.js";
 import type { ReaderContext } from "../session/index.js";
 
 export interface PageText {

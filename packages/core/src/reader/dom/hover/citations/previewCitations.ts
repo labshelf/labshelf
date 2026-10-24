@@ -2,10 +2,10 @@
 import type { CitationEntry } from "../../../index.js";
 import type { ReaderContext } from "../../session/index.js";
 import type { PageViewportLike } from "../../navigation/index.js";
-import type { HoverTarget, PopupContent } from "../hoverTarget.js";
+import type { HoverTarget, PopupContent } from "../hoverAnchor.js";
 import { citationContent } from "./card/index.js";
-import { CitationLookup } from "./citationLookup.js";
-import { LinkAnnotations } from "./linkAnnotations.js";
+import { CitationLookup } from "./findCitation.js";
+import { LinkAnnotations } from "./pdfAnnotations.js";
 import { rectArea, screenArea } from "./pageAreas.js";
 
 interface PageViewLike { viewport?: PageViewportLike }

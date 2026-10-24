@@ -1,6 +1,6 @@
 // Resolves each outline entry's destination to a 1-based page number.
 import type { PDFDocumentProxy } from "pdfjs-dist";
-import type { OutlineRow } from "../../logic/index.js";
+import type { OutlineRow } from "../../index.js";
 
 /**
  * @returns one page per row in order; an entry whose destination cannot be resolved stays null and never becomes active.

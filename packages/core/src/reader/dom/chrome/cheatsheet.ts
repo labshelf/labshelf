@@ -1,7 +1,7 @@
 /**
  * Shows the `?` overlay listing every active shortcut, generated from the keymap so it can never drift from the real bindings.
  */
-import { cheatsheetRows } from "../../logic/index.js";
+import { cheatsheetRows } from "../../navigation/index.js";
 import type { ReaderContext } from "../session/index.js";
 import { $, el } from "../../../ui/dom/index.js";
 

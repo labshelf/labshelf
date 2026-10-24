@@ -4,7 +4,7 @@ source: Explore scout
 
 ## Annotations and sidecar
 - model/annotation.ts: {id, paperId, type highlight|note|comment|tag, pageNumber, content, color?, position?, createdAt, updatedAt}; position is 0..1 of the page.
-- reader/sidecar/paperDataStore.ts: per-paper queue 33-41; addHighlight 79-92; addNote 97-100 (type "note", no position); updateAnnotation 117-128 (content only); deleteAnnotation 134-142. paperData.ts normalises (drops unknown top-level keys), fixed key order.
+- reader/sidecar/paperSidecarStore.ts: per-paper queue 33-41; addHighlight 79-92; addNote 97-100 (type "note", no position); updateAnnotation 117-128 (content only); deleteAnnotation 134-142. paperData.ts normalises (drops unknown top-level keys), fixed key order.
 - Path: .research/papers/<id>/data.json (library/layout.ts:12,48-63); browser IndexedDB appdata/<id>/data.json (library-format.md:55).
 - Merge: library/conflicts/sidecarMerge.ts:20-37 (union by id, newer mtime wins); node pass conflicts/node/sidecarConflictMerge.ts:115-137 matches only original===data.json. Contract library-format.md:327.
 - type "note" is only created via protocol (reader/host/annotationMessages.ts:36-40); no reader UI sends it (selectionBubble.ts:119 sends highlight). sidecar/previewStore.ts:27 refuses addNote.

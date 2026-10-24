@@ -1,7 +1,7 @@
 /**
  * Maps each keyboard or host ReaderAction to the UI piece that performs it.
  */
-import type { ReaderAction } from "../../logic/index.js";
+import type { ReaderAction } from "../../navigation/index.js";
 import { closePopover, isPopoverOpen } from "../elements/index.js";
 import type { ReaderContext } from "../session/index.js";
 import type { ReaderUi } from "./buildReaderUi.js";

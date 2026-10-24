@@ -4,11 +4,11 @@ import type { CitationResolver, FloatResolver } from "../text/index.js";
 import type { ReaderContext } from "../session/index.js";
 import type { PreviewCitations } from "./citations/index.js";
 import type { DestPreview } from "./destPreview.js";
-import { sameTarget, type HoverTarget, type PopupContent } from "./hoverTarget.js";
-import { findLink, LinkContent, linkHoverTarget } from "./linkTarget.js";
+import { sameTarget, type HoverTarget, type PopupContent } from "./hoverAnchor.js";
+import { findLink, LinkContent, linkHoverTarget } from "./destAnchor.js";
 import { HoverPopup } from "./popup.js";
 import { ReferenceContent } from "./referenceContent.js";
-import { runUnderPointer, TextTargets } from "./textTarget.js";
+import { runUnderPointer, TextTargets } from "./textAnchor.js";
 import { $ } from "../../../ui/dom/index.js";
 
 const CLOSE_GRACE_MS = 150;

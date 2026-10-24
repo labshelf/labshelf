@@ -1,7 +1,7 @@
 /**
  * Renders the Outline tab: the PDF's table of contents as a collapsible tree whose active entry follows the current page.
  */
-import { activeOutlineIndex, flattenOutline, visibleRows, type OutlineRow, type RawOutlineNode } from "../../logic/index.js";
+import { activeOutlineIndex, flattenOutline, visibleRows, type OutlineRow, type RawOutlineNode } from "../../index.js";
 import { DOCUMENT_REPLACED, type ReaderContext } from "../session/index.js";
 import { icon } from "../../../ui/index.js";
 import { resolveOutlinePages } from "./outlinePages.js";

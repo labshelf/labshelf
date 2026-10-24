@@ -1,16 +1,7 @@
 /**
  * Locates the References section and extracts the entry a citation link points at. Text extraction and layout analysis are lazy and cached per page.
  */
-import {
-  entryAtY,
-  entryByNumber,
-  findReferencesStart,
-  matchAuthorYear,
-  splitReferenceEntries,
-  type AuthorYearQuery,
-  type ReferenceEntry,
-  type TextLine,
-} from "../../logic/index.js";
+import { entryAtY, entryByNumber, findReferencesStart, matchAuthorYear, splitReferenceEntries, type AuthorYearQuery, type ReferenceEntry, type TextLine } from "../../text/index.js";
 import type { PageTextCache } from "./pageText.js";
 
 export interface ResolvedEntry {
