@@ -7,8 +7,8 @@ import type { TexSetupPrompt } from "../../../../src/writing/build/index";
 import type { ProjectBuildDeps } from "../../../../src/writing/build/node/index";
 import type { TexInstallKind } from "../../../../src/latex/toolchain/index";
 import type { ManagedTexProvider } from "../../../../src/latex/toolchain/node/managedTex/index";
-import type { TypstSession } from "../../../../src/writing/typst/index";
-import { TypstPackageStore } from "../../../../src/writing/typst/node/index";
+import type { TypstSession } from "../../../../src/typst/index";
+import { TypstPackageStore } from "../../../../src/typst/node/index";
 import { fakeLogger } from "../../../support/fakeLogger";
 import { makeTempDir } from "../../../support/tempDirs";
 

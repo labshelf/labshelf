@@ -4,8 +4,8 @@ import { promises as fs, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import * as path from "node:path";
 
-import { nodeTypstFiles } from "../../src/writing/typst/node/index";
-import { openTypstSession, type TypstPackageResolver } from "../../src/writing/typst/index";
+import { nodeTypstFiles } from "../../src/typst/node/index";
+import { openTypstSession, type TypstPackageResolver } from "../../src/typst/index";
 import { makeTempDir } from "./tempDirs";
 
 const nodeRequire = createRequire(__filename);

@@ -9,8 +9,8 @@ import { PROTOCOL_VERSION, type ToPageMessage } from "../../../../../src/writing
 import { createBuildHandlers } from "../../../../../src/writing/helper/node/build/index";
 import { createHelperProjects, type HelperProjects } from "../../../../../src/writing/helper/node/projects/index";
 import type { ManagedTexProvider } from "../../../../../src/latex/toolchain/node/managedTex/index";
-import { TypstPackageStore } from "../../../../../src/writing/typst/node/index";
-import type { TypstSession } from "../../../../../src/writing/typst/index";
+import { TypstPackageStore } from "../../../../../src/typst/node/index";
+import type { TypstSession } from "../../../../../src/typst/index";
 import { openTestSession, TYPST_TEST_FONT_SETTING } from "../../../../support/typstFixtures";
 
 // Writes main.log and main.pdf into -outdir= by the `%FAKE:<mode>` line of the main file, and records its arguments.
