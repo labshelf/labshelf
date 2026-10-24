@@ -1,5 +1,5 @@
 // Chooses what the preview footer's status says from the build state and the build roots.
-import { compactTime } from "../../../../library/format/elapsedTime.js";
+import { compactTime } from "../../../../library/paper/elapsed.js";
 import type { BuildState, PreviewRoot, PreviewRoots } from "../../../index.js";
 import { fileName } from "../fileName.js";
 

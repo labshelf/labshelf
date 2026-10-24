@@ -3,8 +3,8 @@ import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
 import * as path from "node:path";
 
-import { cacheDir } from "../cacheDirectory.js";
-import { stateDir } from "./stateDirectory.js";
+import { cacheDir } from "../cacheDir.js";
+import { stateDir } from "./deviceStateDir.js";
 
 export interface DeviceLocalLayout {
   /** Holds only the AI text index (embeddings and content hashes). */

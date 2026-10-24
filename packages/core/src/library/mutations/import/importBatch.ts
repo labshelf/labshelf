@@ -1,5 +1,5 @@
 /** Imports several PDFs in a row, each one seeing the ids and DOIs the earlier ones took. */
-import type { MutationContext } from "../context.js";
+import type { MutationContext } from "../mutationDeps.js";
 import { importPdf, type ImportDeps, type ImportOutcome } from "./paperImport.js";
 import { discoverPdfs } from "./pdfDiscovery.js";
 

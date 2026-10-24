@@ -1,4 +1,4 @@
-import { concurrencyLimit as limit } from "../../../src/library/scan/concurrencyLimit";
+import { concurrencyLimit as limit } from "../../../src/library/folder/concurrencyLimit";
 
 describe("concurrencyLimit", () => {
   it("never runs more than max tasks at once and finishes them all", async () => {

@@ -1,6 +1,6 @@
 /** Moves paper folders between folders and sends them to the trash; sidecars stay, so a restored paper keeps its notes. */
 import { errorMessage } from "../../logging/index.js";
-import { MUTATIONS_MODULE, type BatchOutcome, type MutationContext, type PaperRef } from "./context.js";
+import { MUTATIONS_MODULE, type BatchOutcome, type MutationContext, type PaperRef } from "./mutationDeps.js";
 
 export interface PaperMove {
   id: string;

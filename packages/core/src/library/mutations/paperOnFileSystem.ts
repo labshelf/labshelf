@@ -2,7 +2,7 @@
 import { isPaperStatus, type PaperRecord } from "../../model/index.js";
 import { METADATA_FILE, PDF_FILE } from "../layout.js";
 import { paperRecordFromMetadata, parsePaperMetadata } from "../paperMetadata.js";
-import type { MutationContext } from "./context.js";
+import type { MutationContext } from "./mutationDeps.js";
 
 /** @returns the paper in `folder`, or undefined when its metadata.yaml is missing or not a mapping */
 export async function readPaperOnDisk(ctx: MutationContext, folder: string): Promise<PaperRecord | undefined> {

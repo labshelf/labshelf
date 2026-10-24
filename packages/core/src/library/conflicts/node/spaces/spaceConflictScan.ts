@@ -1,11 +1,11 @@
 // Lists sync-tool conflict copies of space.json and glossary.json inside each Space folder.
 import * as path from "node:path";
 
-import type { ILogger } from "../../../ports/index.js";
-import { GLOSSARY_FILE, SPACES_DIR, SPACE_FILE } from "../../layout.js";
-import type { ConflictCopy } from "../conflictCopy.js";
-import { parseConflictName } from "../conflictNames.js";
-import { readDirOrEmpty } from "./readDirOrEmpty.js";
+import type { ILogger } from "../../../../ports/index.js";
+import { GLOSSARY_FILE, SPACES_DIR, SPACE_FILE } from "../../../layout.js";
+import type { ConflictCopy } from "../../conflictCopy.js";
+import { parseConflictName } from "../../conflictNames.js";
+import { readDirOrEmpty } from "../readDirOrEmpty.js";
 
 const SPACE_FILES: ReadonlySet<string> = new Set([SPACE_FILE, GLOSSARY_FILE]);
 

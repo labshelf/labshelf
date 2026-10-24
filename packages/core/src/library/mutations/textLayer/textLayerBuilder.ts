@@ -1,5 +1,5 @@
 // Declares the text-layer step apps run on PDFs, so callers never depend on how it reads pages.
-import type { TextLayerDetection, TextLayerOutcome } from "./textLayerTypes.js";
+import type { TextLayerDetection, TextLayerOutcome } from "./textLayerOutcome.js";
 
 export interface TextLayerProgress {
   // 1-based position among the pages being read, not the page number.

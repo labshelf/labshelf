@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { inspectLibraryFolder } from "../../../../src/library/node/location/index";
+import { inspectLibraryFolder } from "../../../../src/library/node/libraryLocation/index";
 import { cleanupTempDirs, makeTempDir } from "../../../support/tempDirs";
 
 afterEach(cleanupTempDirs);

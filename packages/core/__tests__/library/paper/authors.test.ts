@@ -1,4 +1,4 @@
-import { authorKey, familyName, formatAuthors, splitName } from "../../../src/library/format/index";
+import { authorKey, familyName, formatAuthors, splitName } from "../../../src/library/paper/index";
 
 describe("familyName", () => {
   it("takes the surname of 'First Last' and of 'Last, First'", () => {

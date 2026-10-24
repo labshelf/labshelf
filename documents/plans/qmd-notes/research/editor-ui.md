@@ -4,7 +4,7 @@ source: Explore scout
 
 ## Reuse
 - `packages/core/src/writing/latex/math/renderMathSvg.ts:1-40` `renderMathSvg(tex, display, macros)`: MathJax SVG string (liteAdaptor, fontCache local), throws on parse error. Import only via `@labshelf/core/math` (TRAP: ~2.5 MB CJS with side effects; never from the core root).
-- `packages/core/src/library/links/labshelfLink.ts:17-34`: `labshelf:` regex, parse, format, find.
+- `packages/core/src/library/paper/paperLink.ts:17-34`: `labshelf:` regex, parse, format, find.
 - `packages/core/src/ui/dom/widgets/{menu,dialog,quickInput,toast,overlay}.ts`; icons `packages/core/src/ui/icons/{icon,glyphs,codiconGlyphs}.ts` (add a name to glyphs).
 - `packages/core/src/writing/insert/*`: runtime-neutral LaTeX/Typst snippet builders.
 - LaTeX scan `packages/core/src/writing/latex/source/scan/scanLatexSource.ts` + `commands/{scanReferences,scanSections,scanMacros,scanIncludes}`; `facts.ts:1-70` `LatexSourceFacts {labels, refs, sections, macros, includes}` with zero-based `LatexRange`. Cite positions: confirm in scan/ before relying.

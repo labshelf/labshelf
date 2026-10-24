@@ -1,4 +1,4 @@
-import { formatBytes } from "../../../src/library/format/index";
+import { formatBytes } from "../../../src/library/paper/index";
 
 describe("formatBytes", () => {
   it("shows plain bytes under 1 KB", () => {

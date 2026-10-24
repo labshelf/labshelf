@@ -1,4 +1,4 @@
-import { formatDay } from "../../../src/library/format/dateTime";
+import { formatDay } from "../../../src/library/paper/date";
 
 describe("formatDay", () => {
   it("formats a YYYY-MM-DD day as a medium English date", () => {

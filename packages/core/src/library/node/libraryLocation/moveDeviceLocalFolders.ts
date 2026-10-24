@@ -3,7 +3,7 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import type { ILogger } from "../../../ports/index.js";
-import { cacheDir } from "../cacheDirectory.js";
+import { cacheDir } from "../cacheDir.js";
 import { stateDir } from "../deviceState/index.js";
 
 /** A folder that cannot move stays where it is and is logged; the library move has already succeeded. */

@@ -1,4 +1,4 @@
-import { compactTime } from "../../../src/library/format/index.js";
+import { compactTime } from "../../../src/library/paper/index.js";
 
 const S = 1000;
 const MIN = 60 * S;

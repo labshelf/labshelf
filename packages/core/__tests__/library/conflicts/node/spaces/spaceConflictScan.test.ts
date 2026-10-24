@@ -1,9 +1,9 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { scanSpaceConflicts } from "../../../../src/library/conflicts/node/index";
-import { fakeLogger } from "../../../support/fakeLogger";
-import { cleanupTempDirs, makeTempDir } from "../../../support/tempDirs";
+import { scanSpaceConflicts } from "../../../../../src/library/conflicts/node/index";
+import { fakeLogger } from "../../../../support/fakeLogger";
+import { cleanupTempDirs, makeTempDir } from "../../../../support/tempDirs";
 
 afterEach(cleanupTempDirs);
 

@@ -1,6 +1,6 @@
 // Resolves paper ids to the folders a batch mutation acts on, through the app's own index lookup.
 import type { PaperRecord } from "../../model/index.js";
-import type { BatchOutcome, PaperRef } from "./context.js";
+import type { BatchOutcome, PaperRef } from "./mutationDeps.js";
 
 /** What an app's index knows about one paper: its folder, and its record when the index holds one. */
 export interface PaperLookupHit {

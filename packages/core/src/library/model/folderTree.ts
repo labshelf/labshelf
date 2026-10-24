@@ -3,7 +3,7 @@ import { METADATA_FILE, PAPERS_DIR, PDF_FILE } from "../layout.js";
 import { countPapersUnder } from "./folderNavigation.js";
 import { isUnderDir } from "./folderNavigation.js";
 import { nameCollator } from "./paperSort.js";
-import type { LibrarySnapshot, PaperEntry } from "./types.js";
+import type { LibrarySnapshot, PaperEntry } from "./librarySnapshot.js";
 
 export interface FolderTreeNode {
   name: string;

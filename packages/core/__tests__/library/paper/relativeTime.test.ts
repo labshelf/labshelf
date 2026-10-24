@@ -1,4 +1,4 @@
-import { relativeTime } from "../../../src/library/format/index";
+import { relativeTime } from "../../../src/library/paper/index";
 
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;

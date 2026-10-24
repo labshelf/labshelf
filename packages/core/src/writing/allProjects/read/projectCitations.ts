@@ -1,5 +1,5 @@
 // Lists the keys a project cites and where each resolves: a library paper, a .bib entry or nowhere.
-import { formatAuthors } from "../../../library/format/index.js";
+import { formatAuthors } from "../../../library/paper/index.js";
 import type { PaperRecord } from "../../../model/index.js";
 import { bibEntries } from "../../bibLint/index.js";
 import { papersByCiteKey, scanCitationKeys } from "../../citations/index.js";

@@ -1,5 +1,5 @@
 /** Holds the text of the "How to sync between computers" guide: which sync tools carry a library, and how to set each up. */
-import type { SyncGuide } from "./syncGuideTypes.js";
+import type { SyncGuide } from "./syncGuideSpec.js";
 
 export const syncGuide: SyncGuide = {
   title: "How to sync between computers",

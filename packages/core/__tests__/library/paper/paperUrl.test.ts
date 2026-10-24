@@ -1,4 +1,4 @@
-import { paperLink } from "../../../src/library/format/index";
+import { paperLink } from "../../../src/library/paper/index";
 
 describe("paperLink", () => {
   it("builds a doi.org link from a bare DOI", () => {

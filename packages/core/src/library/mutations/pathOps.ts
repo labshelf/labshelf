@@ -1,5 +1,5 @@
 /** Implements PathOps for "/"-separated paths, for runtimes without node:path (the browser's relative store keys). */
-import type { PathOps } from "./context.js";
+import type { PathOps } from "./mutationDeps.js";
 
 function join(...parts: string[]): string {
   const joined = parts.filter((part) => part !== "").join("/").replace(/\/{2,}/g, "/");

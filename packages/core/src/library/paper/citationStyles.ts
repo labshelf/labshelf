@@ -4,7 +4,7 @@
  */
 import type { PaperRecord } from "../../model/index.js";
 import { formatAuthors, splitName, type PersonName } from "./authors.js";
-import { paperLink } from "./paperLink.js";
+import { paperLink } from "./paperUrl.js";
 
 export type CitedPaper = Pick<PaperRecord, "title" | "authors" | "year" | "journal" | "publisher" | "volume" | "issue" | "pages" | "doi" | "url">;
 

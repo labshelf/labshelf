@@ -14,7 +14,7 @@ source: Explore scout
 - library/conflicts/conflictNames.ts:27 parseConflictName. conflictCopy.ts:9 ConflictCopy {owner paper|project|space, original, copy, tool}.
 - writing/merge/node/libraryConflictScan.ts:22 scanLibraryConflicts: serialized per root; papers, projects, spaces.
 - library/conflicts/node/conflictScan.ts:31 scanConflictCopies: sidecar merge, then lists copies under <root>/papers/** (list only).
-- library/conflicts/node/spaceConflictScan.ts:23 only space.json/glossary.json directly in spaces/<id>/.
+- library/conflicts/node/spaces/spaceConflictScan.ts:23 only space.json/glossary.json directly in spaces/<id>/.
 - writing/merge/node/projectConflictScan.ts:67 scanProjectConflicts (projects/ + registered folders, via listProjectsOnDisk); seedBases :42 skips files with copies; hidden names skipped.
 - writing/merge/node/projectCopyMerge.ts:48 mergeProjectCopies: base, local, copies folded vs same base (mergeAll :31), recheck, writeFileAtomic, read back :66, rm copies, base=copy if 1 copy.
 - writing/merge/textMerge.ts:27 createTextMerge (diff3, markers); node/mergeText.ts:9; browser binds its own for the collab mirror only (packages/browser/src/library-page/editor/collab/mirror/mergeText.ts).
