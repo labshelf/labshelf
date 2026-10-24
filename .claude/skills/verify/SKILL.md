@@ -9,14 +9,15 @@ effort: medium
 background: false
 ---
 
-The recipes live in `documents/apps/`. Pick the one for the change:
+The recipes live in `documents/apps/verify.md`. Pick the one for the change:
 
 | Change | Recipe |
 |---|---|
-| import, OCR, text layer, pdf.js in the extension host | `documents/apps/vscode.md` → "Extension host run" |
-| reader UI, list panel, any VS Code webview | "Browser and webview pages" below, with the stubs from `documents/apps/vscode.md` → "Webview harness" |
-| browser pages, popup, Scholar button, capture | "Browser and webview pages" below; `documents/apps/browser.md` → "Headless run" for what the tools cannot reach |
-| TUI layout, keys, terminal output | `documents/apps/terminal.md` → "Verification" |
+| import, OCR, text layer, pdf.js in the extension host | `documents/apps/verify.md` → "Extension host run" |
+| reader UI, list panel, any VS Code webview | "Browser and webview pages" below, with the stubs from `documents/apps/verify.md` → "Webview harness" |
+| browser pages, popup, Scholar button, capture | "Browser and webview pages" below; `documents/apps/verify.md` → "Headless run" for what the tools cannot reach |
+| Spaces page, catalog, sidebar | `documents/apps/verify.md` → "Spaces" |
+| TUI layout, keys, terminal output | `documents/apps/verify.md` → Terminal "Verification" |
 
 ## Browser and webview pages
 

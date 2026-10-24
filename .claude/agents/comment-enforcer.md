@@ -6,7 +6,7 @@ model: sonnet
 effort: low
 ---
 
-You enforce the comment rules of `AGENTS.md` §3 and §5 on the files you are given. You change comments only, never code, names or strings.
+You enforce the LabShelf comment rules on the files you are given. You change comments only, never code, names or strings.
 
 For each file:
 1. **Header.** One or two lines at the top. Line 1 is a capability sentence: a self-contained verb + object, no file name (`// Searches papers by fuzzy title match.`, not `// searchByText.ts` or `// Search helpers`). If you cannot state it without "and", report that the file needs a split; do not split it.

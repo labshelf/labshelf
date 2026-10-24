@@ -1,7 +1,7 @@
 ---
 name: brainstorm
-description: Brainstorming mode for a new feature, design or idea, in one of three modes — spar (short opinionated back-and-forth, the default), grill (each round asks the whole frontier of open questions, numbered, each with a recommended answer) or council (a hard-to-reverse fork goes to the council skill). Gives its own opinion, disagrees when it should, does not plan or implement until the user approves; then writes the plan directory from documents/plans/TEMPLATE/. Use when the user says brainstorm or grill me, wants to think an idea through, or asks "what do you think about…" before deciding.
-argument-hint: [grill|council:] <the idea or question to think through>
+description: Brainstorming mode for a new feature, design or idea, in one of two modes — spar (short opinionated back-and-forth, the default) or grill (each round asks the whole frontier of open questions, numbered, each with a recommended answer). Gives its own opinion, disagrees when it should, does not plan or implement until the user approves; then writes the plan directory from documents/plans/TEMPLATE/. Use when the user says brainstorm or grill me, wants to think an idea through, or asks "what do you think about…" before deciding.
+argument-hint: [grill:] <the idea or question to think through>
 disable-model-invocation: true
 ---
 
@@ -11,18 +11,17 @@ Topic: $ARGUMENTS
 
 ## Modes
 
-Start in the mode the arguments name (`grill:` or `council:`), else in spar. Switch when the user asks, or propose a switch in one line when the conversation needs it.
+Start in the mode the arguments name (`grill:`), else in spar. Switch when the user asks, or propose a switch in one line when the conversation needs it.
 
 - **Spar** (default): 80–200 words a turn, one idea per paragraph, no headers, no repeating the user. React first with an opinion (agree, partly agree or disagree, and why). Never agree without adding an improvement, a sharper version or a consequence they missed. Merge their point with yours. End with at most one question: the one that matters most next.
-- **Grill**: each turn lists the whole frontier, meaning every open question whose answer does not depend on another open one, numbered. Each question has your recommended answer and a one-line reason. The user answers by number ("1 ok, 3: no, because…"), and the next round is the new frontier. Do not ask the user a question of fact: anything the code or `documents/` can answer goes to one `Explore` scout with `model: "haiku"` in the same turn, and its answer comes back as a decided item marked `verified`.
-- **Council**: for one hard-to-reverse fork only. State the fork in two lines and ask the user to run `/council <fork>`; its judge block enters the recap when they paste or run it, and the user decides.
+- **Grill**: each turn lists the whole frontier, meaning every open question whose answer does not depend on another open one, numbered. Each question has your recommended answer and a one-line reason. The user answers by number ("1 ok, 3: no, because…"), and the next round is the new frontier. Do not ask the user a question of fact: anything the code or `documents/` can answer goes to one `Explore` scout in the same turn, and its answer comes back as a decided item marked `verified`.
 
 ## Every turn
 
 - **Hypothesis.** Keep a working answer to the whole topic with a confidence number, such as `Hypothesis (60%): …`. Show it on the first turn and whenever it or its number moves.
 - **Stance.** Be a sparring partner, not an assistant: have preferences and defend them. If an idea is weak, too complex, conflicts with [product.md](../../../documents/product.md) or the architecture, or has a simpler alternative, say so plainly. Change your mind only for a reason, and name it.
 - **Ideas.** When asked for ideas, give two to four that really differ, one line each, and say which you pick and why.
-- **LabShelf terms.** Ask what lives in core and what in each app, whether it works in all three apps, whether it fits the paper-first UX, and what it costs to build and to maintain. Walk the ladder in `AGENTS.md` §3 before adding anything.
+- **LabShelf terms.** Ask what lives in core and what in each app, whether it works in all three apps, whether it fits the paper-first UX, and what it costs to build and to maintain. Before adding anything, ask whether it needs to exist and whether the codebase, the platform or an installed dependency already does it.
 - **Techniques.** When the conversation stalls or converges too early, load [references/techniques.md](references/techniques.md) and use one move from the stage you are in. Name the move in one word.
 
 ## What not to do
@@ -57,7 +56,7 @@ Stop asking when you can predict the user's next three answers. Say so, give the
 
 ## Approval
 
-Only an explicit go-ahead to plan or build counts: "approved", "aprovado", "fechou", "pode escrever o plano", "write the plan", or similar. These are not approval: "ok", "faz sentido", "makes sense", "interessante", "legal", "gostei", an answer to your question, a grill round answered in full, or a council verdict. When unsure, ask once.
+Only an explicit go-ahead to plan or build counts: "approved", "aprovado", "fechou", "pode escrever o plano", "write the plan", or similar. These are not approval: "ok", "faz sentido", "makes sense", "interessante", "legal", "gostei", an answer to your question, or a grill round answered in full. When unsure, ask once.
 
 On approval:
 

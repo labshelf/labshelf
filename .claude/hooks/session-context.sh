@@ -1,9 +1,18 @@
 #!/usr/bin/env bash
-# SessionStart hook: prints a few lines of repo state (branch, uncommitted work, active plans)
-# so the model knows where things stand without reading files. Plain stdout becomes context.
+# SessionStart hook: prints the session rules and a few lines of repo state (branch, uncommitted work, active plans,
+# other worktrees) so the model knows how to work and where things stand without reading files. Plain stdout becomes context.
 set -u
 root="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 cd "$root" 2>/dev/null || exit 0
+
+cat <<'RULES'
+LabShelf is a local-first research paper manager shipped as a VS Code extension, a browser extension and a terminal app (packages core, vscode, browser, terminal).
+- Talk to the user in the language they write in. Everything committed is in English.
+- When you have a recommendation, apply it and report it. Ask only when there is no clear recommendation, or before a hard-to-reverse action.
+- No ceremony the user did not ask for: no extra logs, gates, or `verify` runs.
+- End replies with what was not checked.
+- Docs: `node scripts/doc.mjs` lists them; fetch sections, never whole files. Rules for code, UI and docs: `node scripts/doc.mjs rules`.
+RULES
 
 branch=$(git branch --show-current 2>/dev/null)
 status=$(git status --porcelain 2>/dev/null)
@@ -35,33 +44,7 @@ else
   done
 fi
 
-# Memory lint: flag memory entries whose linked file is missing, and repo paths
-# named in memory files that no longer exist.
-slug=$(printf '%s' "$root" | tr '/' '-')
-mem_dir="$HOME/.claude/projects/$slug/memory"
-mem_md="$mem_dir/MEMORY.md"
-if [ -f "$mem_md" ]; then
-  while IFS= read -r entry_line; do
-    case "$entry_line" in
-      "- ["*)
-        title=$(printf '%s' "$entry_line" | sed -E 's/^- \[([^]]*)\].*/\1/')
-        mdfile=$(printf '%s' "$entry_line" | sed -E 's/^- \[[^]]*\]\(([^)]*)\).*/\1/')
-        [ -n "$mdfile" ] || continue
-        [ -f "$mem_dir/$mdfile" ] || echo "STALE?: $title -> $mdfile (missing memory file)"
-        ;;
-    esac
-  done < "$mem_md"
-
-  # Only tokens rooted at a real top-level directory are checked; a shorthand
-  # fragment like `ui/styles/tokens.css` (relative to some package's src/) is
-  # not a repo-root path and would false-positive on every memory.
-  for memfile in "$mem_dir"/*.md; do
-    [ -f "$memfile" ] || continue
-    while IFS= read -r token; do
-      token=${token%%\**}; token=${token%.}; token=${token%/}
-      [ -n "$token" ] || continue
-      [ -e "$root/$token" ] || echo "STALE?: $(basename "$memfile") -> $token"
-    done < <(grep -oE '(packages|documents|scripts|website|credentials|test-workspace|\.claude)/[A-Za-z0-9_.*/-]+' "$memfile" | sort -u)
-  done
-fi
+# Plans may run in sibling worktrees; list them so a session works where its plan lives.
+worktrees=$(git worktree list 2>/dev/null | tail -n +2)
+[ -n "$worktrees" ] && printf -- "- Other worktrees:\n%s\n" "$(echo "$worktrees" | sed 's/^/  /')"
 exit 0

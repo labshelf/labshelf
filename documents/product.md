@@ -22,7 +22,7 @@ When a user moves from one app to another, it should feel like the same product:
 - **Same words.** A folder is a "folder" and a paper is a "paper" in every app. The reading statuses are Unread, Reading and Done.
 - **Same behaviour.** A feature that exists in two apps behaves the same in both, because its logic lives once in core. Examples are search and filters, citation formats, metadata lookup, and the reader with its keys.
 - **Same first run.** LabShelf suggests a folder inside a sync tool the user already runs and never calls a cloud API itself.
-- **Same data.** A paper added, read or annotated in one app shows up in the others: through the shared folder, which the user's sync tool carries between devices ([contracts/sync.md](contracts/sync.md)). The browser extension reaches the folder through a small desktop host; without it, it keeps the library in the browser and warns that uninstalling the extension deletes it ([apps/browser.md](apps/browser.md#where-the-library-lives)).
+- **Same data.** A paper added, read or annotated in one app shows up in the others: through the shared folder, which the user's sync tool carries between devices ([contracts/sync.md](contracts/sync.md)). The browser extension reaches the folder through a folder picked in Chromium or a small desktop host; without either, it keeps the library in the browser and warns that uninstalling the extension deletes it.
 
 ## Spaces
 
@@ -38,4 +38,5 @@ VS Code and the browser share the Space catalog and pages. Spaces are personal; 
 4. **Keyboard everywhere.** Every action has a key. The reader offers optional vim keys, and the terminal follows yazi's columns and keys while keeping Zotero's pane model (folders | papers | preview).
 5. **Never lose the user's work.** LabShelf never deletes a file because of something it cannot explain. Destructive actions ask for confirmation.
 6. **No emoji or Unicode glyphs as icons.** Icons are inline SVGs from the shared icon set. The terminal uses plain text or its own glyphs.
-7. **Preview-led templates.** The gallery gives document previews the main area. Sources, search and filters support browsing without a second navigation pane. Template details put the preview and the choice to create a project before technical metadata.
+7. **Redesign within the structure.** A redesign polishes the existing structure (pane dividers, sortable column headers, tree twisties on the left) instead of stripping it; familiar structure is what makes the UI unambiguous.
+8. **Preview-led templates.** The gallery gives document previews the main area. Sources, search and filters support browsing without a second navigation pane. Template details put the preview and the choice to create a project before technical metadata.

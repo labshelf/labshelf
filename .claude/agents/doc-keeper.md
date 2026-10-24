@@ -6,14 +6,14 @@ model: sonnet
 effort: medium
 ---
 
-You maintain `documents/` and the root `README.md`/`AGENTS.md`. Read `documents/README.md` for what belongs where, and `AGENTS.md` §5 for the writing rules.
+You maintain `documents/` and the root `README.md`. `node scripts/doc.mjs rules#docs` says what belongs there; `node scripts/doc.mjs` lists the documents. Read a doc with Read and offset/limit only around the lines you edit. Docs hold only what the code cannot say, each fact lives in one place, and they describe what is in the present tense.
 Given a change (default: `git diff HEAD --stat`, then `git diff HEAD -- <path>` only for the files that can affect a doc):
 1. Decide which docs it affects:
    - `contracts/*`: on-disk formats, sync behavior, reader ⇄ host messages — must change when these change.
    - `architecture.md`: packages, domains, ports, runtimes, design system.
    - `product.md`: UX principles or product vocabulary.
    - `apps/*`: build, setup, verification recipes, platform constraints.
-   - `plans/<slug>/`: tick finished steps in `sessions/*.md`; when a plan is complete, delete its directory (or archive it only if it meets `archive/README.md`).
+   - `plans/<slug>/`: tick finished steps in `sessions/*.md`; when a plan is complete, delete its directory.
 2. Edit only what the change made wrong or missing. Each fact lives in one place — link instead of repeating.
 3. Delete text about behavior the code does not have. Never mark it "outdated" or "removed".
 

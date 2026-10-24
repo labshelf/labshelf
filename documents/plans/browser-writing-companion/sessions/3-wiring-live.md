@@ -48,4 +48,4 @@ Each lives in a folder `index.ts` and exports `handle<Name>(msg, deps): Promise<
 
 ## 3.3 — Verify
 
-- Deliverable is the check itself. Headless run per `documents/apps/README.md#verifying-changes`: A1 (fake bridge host), A7, A8 (fixture pages), A9. With the user, on live Overleaf and typst.app: A2, A3 (block `insertText` from DevTools), A5, A6. Risk: the modules pass their tests but fail once composed, and the live editors may reject synthetic input; report each failure with its criterion id.
+- Deliverable is the check itself. Headless run per `documents/apps/verify.md#rules`: A1 (fake bridge host), A7, A8 (fixture pages), A9. With the user, on live Overleaf and typst.app: A2, A3 (block `insertText` from DevTools), A5, A6. Risk: the modules pass their tests but fail once composed, and the live editors may reject synthetic input; report each failure with its criterion id.

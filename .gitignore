@@ -15,10 +15,6 @@ coverage/
 .env
 .env.local
 
-# Local-only Google OAuth credentials — never commit
-credentials/*.json
-!credentials/*.example.json
-
 
 # Tesseract OCR language data (downloaded on demand at runtime)
 *.traineddata

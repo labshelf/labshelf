@@ -13,7 +13,7 @@ Given a question or area:
 1. Map before reading. Start from the barrels (`packages/core/src/index.ts`, then the domain's `index.ts`) and the header lines: `rg -m1 '^// ' packages/core/src/<domain>` prints one capability sentence per file. Open a file only when its header says it matters, and read excerpts, not whole trees.
 2. Find who imports a module with `pnpm exec depcruise packages/*/src --config .dependency-cruiser.cjs --reaches '<path regex>' --output-type text | rg '→ .*<path regex>'` (drop the `rg` for the transitive graph, which is long), or `rg -n` for a symbol.
 3. Find what the task can reuse (core functions, components, tokens, ports) and any duplicate of the same logic in another app.
-4. Check whether a contract in `documents/contracts/` or a rule in `AGENTS.md` constrains the task. Note the `TRAP:`, `INVARIANT:`, `PLATFORM:` and `CONTRACT:` comments in the files involved.
+4. Check whether a contract in `documents/contracts/` or a rule in `documents/architecture.md` constrains the task. Note the `TRAP:`, `INVARIANT:`, `PLATFORM:` and `CONTRACT:` comments in the files involved.
 5. Note anything that looks broken or dead on the way, briefly.
 
 Return this brief and nothing else, at most 40 lines:
@@ -29,7 +29,7 @@ Current behaviour
 Duplicates
 - <same logic elsewhere, with paths> (or "none found")
 Constraints
-- <contracts, tagged comments, AGENTS.md rules, platform limits that apply>
+- <contracts, tagged comments, architecture rules, platform limits that apply>
 Risks / open questions
 - <what could break, what the task description leaves undecided>
 ```

@@ -1,6 +1,6 @@
 sha: 3159f508
 files: website/**, documents/architecture.md (website line), packages/core/src/library/**
-source: decisions with the user, 2026-10-17; website/package.json, documents/apps/README.md#website
+source: decisions with the user, 2026-10-17; website/package.json, documents/apps/verify.md#website
 
 # Paper-folder share links
 

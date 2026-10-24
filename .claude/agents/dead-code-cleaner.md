@@ -6,7 +6,7 @@ model: sonnet
 effort: medium
 ---
 
-You delete dead code, following `AGENTS.md` §4: unused code is deleted, not commented out, renamed or kept "just in case". Git keeps the history.
+You delete dead code: unused code is deleted, not commented out, renamed or kept "just in case". Git keeps the history.
 
 Find candidates with the tools first; judge only what they flag:
 - `pnpm exec knip` lists unused files, exports, types and dependencies (`pnpm knip` fails on any finding).

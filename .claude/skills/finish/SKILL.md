@@ -8,15 +8,15 @@ effort: medium
 background: false
 ---
 
-You do the finishing work on the current uncommitted change (`git status`, `git diff HEAD --stat`, then `git diff HEAD -- <path>` only for the files a step needs) of the LabShelf repo, following `AGENTS.md`. Fix what is mechanical. Report what needs judgment. Do not change behaviour.
+You do the finishing work on the current uncommitted change (`git status`, `git diff HEAD --stat`, then `git diff HEAD -- <path>` only for the files a step needs) of the LabShelf repo, following `node scripts/doc.mjs rules`. Fix what is mechanical. Report what needs judgment. Do not change behaviour.
 
 1. **Gate.** Run `bash .claude/skills/check/fingerprint.sh`. If `$(git rev-parse --git-dir)/labshelf-check` starts with the same fingerprint followed by `PASS` (format: `<fp> <PASS|FAIL> <ISO time> <packages gated>`, written by `check`), skip typecheck and tests and report `Gate: PASS (reused check <fp>)`. Otherwise typecheck and test the touched packages (`pnpm --filter @labshelf/<pkg> typecheck|test`; include `core` and the apps that import it if core changed). If something fails for a mechanical reason, such as an import path, a missing export or a stale snapshot, fix it. If a failure is a real bug, do not fix it: report it. Steps 3 and 4 can edit source: if this pass changed any source file after the gate, rerun typecheck and tests for those packages before reporting.
 2. **Size and shape.** Files the change created or grew: at most 300 lines (tests 500), functions at most 50, at most 8 source files per directory, an `index.ts` per directory, a one-to-two-line header per file. Report violations with a suggested split, and do not split them yourself: a split is a design decision.
 3. **Dead code.** Run `pnpm knip` and `pnpm jscpd` from the repo root (whole monorepo, gated against committed baselines; a nonzero exit is a finding). Then find what the change made unused (replaced functions, old files, exports, CSS, settings, tests of removed code). Verify each one with a repo-wide search, then delete it.
 4. **Comments.** In the changed files: add or fix headers, remove `@depends`/`@usedBy` lists, remove comments that restate the code, and remove history language. Translate any Portuguese to English.
-5. **Docs.** Update the `documents/` files the change affects: contracts if formats, sync or reader messages changed; architecture; apps; and plan ticks. Follow `AGENTS.md` §5. Do not document what the code says.
+5. **Docs.** Update the `documents/` files the change affects: contracts if formats, sync or reader messages changed; architecture; apps; and plan ticks. Do not document what the code says.
 6. **Review.** You cannot launch agents, so review the diff yourself on two axes and report them separately. The main thread may run the `architecture-reviewer` agent for a deeper pass.
-   - **Standards**, against `AGENTS.md`: placement and runtime boundaries; duplication with other apps; design-system use (tokens, components, icons); every reader host handles new messages; behaviour changes have tests.
+   - **Standards**, against `documents/rules.md` and `documents/architecture.md`: placement and runtime boundaries; duplication with other apps; design-system use (tokens, components, icons); every reader host handles new messages; behaviour changes have tests.
    - **Spec**: does the diff satisfy the acceptance criteria or brief given in the skill args, or the active plan's session acceptance? If none is given, write "Spec: no spec given".
 
 Return only this:

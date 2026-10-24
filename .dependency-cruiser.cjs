@@ -1,4 +1,4 @@
-// Enforces the import boundaries from AGENTS.md sections 1 and 3; any violation fails the run.
+// Enforces the import boundaries between packages, runtime folders and directory indexes; any violation fails the run.
 const { readdirSync } = require("node:fs");
 const { join } = require("node:path");
 

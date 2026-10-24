@@ -3,7 +3,7 @@
 - **Goal:** Close every A1–A11 case that [real-run-evidence.md](../research/real-run-evidence.md) records as NOT VERIFIED or FAIL, including real Cloudflare through each app.
 - **Starts from:** HEAD with 43ef127, 149b13b, f1543a5, 00867ca and 7225dba on main; a Mac with the user present for Cloudflare sign-in.
 - **Ends with:** A1–A11 each have recorded evidence or an explicit failure; the plan is complete only when all required cases pass. Then remove this plan directory under the plan-retention rules.
-- **Owns:** Mirrored tests in affected packages, `documents/apps/browser.md`, `documents/apps/vscode.md`, plan evidence/session/log. Production fixes stay minimal and come with a failing test first. Preserve unrelated working-tree edits.
+- **Owns:** Mirrored tests in affected packages, `documents/apps/verify.md`, plan evidence/session/log. Production fixes stay minimal and come with a failing test first. Preserve unrelated working-tree edits.
 
 | Id | Package | Level | Runner | Done when | OK |
 |---|---|---|---|---|---|
@@ -17,9 +17,9 @@ Read the repository rules and the contracts named below. This session is self-co
 ### Read only
 
 - `documents/plans/browser-sharing-parity/research/real-run-evidence.md` (what ran, what remains)
-- `documents/apps/browser.md` sections "Headless run", "Collaboration against a local relay", "Headless Firefox"
-- `documents/apps/vscode.md` section "Collaboration against a local relay"
-- `documents/apps/README.md:1–39`
+- `documents/apps/verify.md` Browser sections "Headless run", "Collaboration against a local relay", "Headless Firefox"
+- `documents/apps/verify.md` VS Code section "Collaboration host run"
+- `documents/apps/verify.md` Rules
 - `documents/contracts/collaboration.md:1–156`
 - `documents/contracts/share-link.md:1–100`
 

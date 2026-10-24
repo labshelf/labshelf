@@ -1,5 +1,5 @@
 sha: 0069f02
-files: documents/contracts/{spaces,collaboration}.md, documents/ideas/spaces.md, documents/apps/spaces.md, packages/core/src/spaces/**, packages/core/src/collab/**, packages/core/src/writing/merge/mergeableTextFile.ts
+files: documents/contracts/{spaces,collaboration}.md, documents/ideas/spaces.md, packages/core/src/spaces/**, packages/core/src/collab/**, packages/core/src/writing/merge/mergeableTextFile.ts
 source: Explore scout
 
 ## Spaces on disk

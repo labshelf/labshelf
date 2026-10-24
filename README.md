@@ -15,7 +15,7 @@ pnpm install
 pnpm -r typecheck && pnpm -r test
 ```
 
-Building and running each app, plus OAuth setup for Drive, are covered in [documents/apps/](documents/apps/README.md).
+Building, running and verifying each app is covered in [documents/apps/verify.md](documents/apps/verify.md).
 
 ## Repository
 
@@ -27,4 +27,4 @@ packages/terminal/   terminal app
 documents/           architecture, contracts between apps, setup, plans
 ```
 
-Start with [documents/README.md](documents/README.md). Rules for contributors and coding agents are in [AGENTS.md](AGENTS.md).
+Rules for contributors and coding agents are in [documents/rules.md](documents/rules.md); `node scripts/doc.mjs` lists every document.

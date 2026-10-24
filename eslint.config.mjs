@@ -1,4 +1,4 @@
-// Enforces the size limits from AGENTS.md section 3.
+// Enforces the file and function size limits.
 import tseslint from "typescript-eslint";
 
 const sourceLimits = {

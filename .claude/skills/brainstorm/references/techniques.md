@@ -26,7 +26,7 @@ Load this file when a brainstorm stalls or converges too early. Pick one move fr
 
 ## Converge: which one?
 
-- **Reversibility.** Sort the open decisions by cost to undo. Decide the cheap ones fast, and give the expensive ones a spike or a council.
+- **Reversibility.** Sort the open decisions by cost to undo. Decide the cheap ones fast, and give the expensive ones a spike.
 - **Smallest slice.** What is the thinnest version that proves the idea in one session? Ship that and decide the rest with data.
 - **Cut the middle.** When two options are both "a bit of each", pick one end and say what you lose.
 - **Criteria.** Name two or three criteria from the frame, score the options against them in one line each, and stop.

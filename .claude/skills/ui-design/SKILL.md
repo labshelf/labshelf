@@ -8,9 +8,9 @@ Surface: $ARGUMENTS
 
 LabShelf is one product in three hosts. Good UI here is consistent with what already exists, not distinctive. Read these before you design anything:
 
-1. [AGENTS.md §2](../../../AGENTS.md) — the rules: tokens only, shared components in core, core icons, product vocabulary.
-2. [documents/product.md](../../../documents/product.md) — the UX principles. Every design choice must trace to one of them.
-3. [documents/architecture.md#design-system](../../../documents/architecture.md#design-system) — where tokens, components, icons and reader themes live and how each host maps them.
+1. `node scripts/doc.mjs rules#ui` — the rules: tokens only, shared components in core, core icons, product vocabulary.
+2. `node scripts/doc.mjs product#ux-principles` — the UX principles. Every design choice must trace to one of them.
+3. `node scripts/doc.mjs architecture#design-system` — where tokens, components, icons and reader themes live and how each host maps them.
 
 ## Where things are
 
@@ -24,7 +24,7 @@ LabShelf is one product in three hosts. Good UI here is consistent with what alr
 
 1. Find the closest surface that already exists in any app and start from its structure. Two apps showing the same thing use the same core component, and the apps add only host glue.
 2. Use the product words exactly: folder, paper, Unread / Reading / Done. Use no synonyms.
-3. Design the states as well as the happy path: empty, loading, error, long titles, narrow width, light and dark, keyboard focus. Accessibility is not optional (AGENTS.md §3).
+3. Design the states as well as the happy path: empty, loading, error, long titles, narrow width, light and dark, keyboard focus. Accessibility is not optional.
 4. Describe the design in the plan step as the components, the tokens and the states. Do not use pixel values or colours.
 
 ## How to check

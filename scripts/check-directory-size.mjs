@@ -1,4 +1,4 @@
-// Fails when a directory under packages/*/src holds more than 8 source files directly (AGENTS.md section 3).
+// Fails when a directory under packages/*/src holds more than 8 source files directly.
 import { existsSync, readdirSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";

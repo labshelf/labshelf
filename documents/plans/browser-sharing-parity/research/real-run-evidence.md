@@ -1,7 +1,7 @@
 # Real-run evidence: sharing parity (session 9, partial)
 
 - sha: 7225dba
-- source: a Linux cloud container run of Chromium 141, VS Code 1.142.0 (test-electron), Firefox 158.0.1 (geckodriver) and wrangler 4.151.3 local relays (`wrangler dev --local`, https). Recipes: [browser.md](../../../apps/browser.md#collaboration-against-a-local-relay), [vscode.md](../../../apps/vscode.md#collaboration-against-a-local-relay).
+- source: a Linux cloud container run of Chromium 141, VS Code 1.142.0 (test-electron), Firefox 158.0.1 (geckodriver) and wrangler 4.151.3 local relays (`wrangler dev --local`, https). Recipes: [verify.md](../../../apps/verify.md#collaboration-against-a-local-relay), [verify.md, VS Code](../../../apps/verify.md#collaboration-host-run).
 - date: 2026-10-20
 
 The container has no Cloudflare access (the dashboard is blocked by the proxy, no credentials, no user present). Every real-Cloudflare item is NOT VERIFIED: sign-in, deploy, token expiry and refresh rotation, Worker update, fresh-socket refusal, a second real relay, resource ownership and costs.

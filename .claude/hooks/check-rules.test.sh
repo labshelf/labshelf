@@ -303,6 +303,57 @@ export const x = 2;
 " \
   0 ""
 
+# Banned words come from scripts/check-banned-words.mjs.
+run_case "TODO tag added" \
+  "packages/core/src/sample.ts" \
+  "// Sample.
+export const x = 1;
+" \
+  "// Sample.
+// TODO: make it 2
+export const x = 1;
+" \
+  2 "TODO tag"
+
+run_case "commented-out code added" \
+  "packages/core/src/sample.ts" \
+  "// Sample.
+export const x = 1;
+" \
+  "// Sample.
+// const y = 2;
+export const x = 1;
+" \
+  2 "commented-out"
+
+run_case "hard-coded colour in app CSS" \
+  "packages/browser/src/popup/popup.css" \
+  "/* Styles the popup. */
+.a { color: var(--ls-fg); }
+" \
+  "/* Styles the popup. */
+.a { color: #ff0000; }
+" \
+  2 "design token"
+
+run_case "core CSS may define token values" \
+  "packages/core/src/ui/tokens.css" \
+  "/* Defines the tokens. */
+:root { --ls-fg: #000; }
+" \
+  "/* Defines the tokens. */
+:root { --ls-fg: #111; --ls-bg: #fff; }
+" \
+  0 ""
+
+run_case "new test file without a mirrored source" \
+  "packages/core/__tests__/library/missing.test.ts" \
+  "" \
+  "// Tests nothing real.
+it('a', () => {});
+" \
+  2 "no source file"
+
 echo "----"
 echo "$((total - fail))/$total passed"
 [ "$fail" -eq 0 ] && exit 0 || exit 1

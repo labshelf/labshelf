@@ -96,16 +96,12 @@ The design system gives the three apps one look:
 - **Tokens** are defined once, as data in `core/src/ui/tokens/`: colour roles for light and dark, the status colours, one highlight palette keyed by annotation colour, the type scale, spacing, radii and elevation, plus the source editor's syntax colour themes and code fonts (`ui/tokens/code/`). `pnpm --filter @labshelf/core tokens` renders them into the committed `core/src/ui/dom/tokens.css` (`--ls-*` custom properties), and a core test fails when the file drifts from the data. The terminal maps the colour roles onto the 16 ANSI colours, so it follows the user's terminal theme.
 - **In VS Code**, a host stylesheet maps each `--ls-*` token to the matching `--vscode-*` variable, so the UI follows the user's VS Code theme. **In the browser**, `tokens.css` supplies values that match VS Code Dark Modern and Light Modern. Components use only `--ls-*`, so the same component looks the same in both hosts.
 - **Components** (`core/src/ui/dom/`) and **icons** (one inline-SVG set) are shared by the VS Code webviews, the browser pages, the reader and the website. The icon geometry is Lucide, hand-copied into `core/src/ui/icons/glyphs.ts` and drawn at stroke 1.5; the Lucide (ISC) and Feather (MIT) licences are in `core/src/ui/icons/LICENSE-lucide.md`. Filled 16 px glyphs are VS Code codicons: `core/tools/codicons/codicons.json` maps each glyph name to a codicon file name, `pnpm --filter @labshelf/core codicons` writes the SVG bodies into `codiconGlyphs.ts` from `@vscode/codicons`, and `lint` fails when the file is stale. To add a codicon, add a line to the map and run the script; the CC BY 4.0 attribution is in `core/src/ui/icons/LICENSE-codicons.md`.
+- **Surface and brand.** Surface tokens (backgrounds, panels, text, dividers, selection, controls) follow the host theme. Brand tokens stay the same in every theme and app: the Unread / Reading / Done marks, the highlight colours, Source Serif 4 for paper text and the PDF sheet presets.
 - **The reader** derives its page themes (light, dark, sepia, high contrast) from the same tokens. Its pdf.js page colours and its CSS read from one table.
 
 ## Build and test
 
 - Every app bundles core from source with esbuild, the VS Code extension host included. Core has no build step of its own: its `package.json` `exports` map points at source. Typecheck runs `tsc --noEmit` per runtime tsconfig.
 - Tests live next to the package they test (`packages/<pkg>/__tests__/` mirrors `src/`). Core has its own jest suite, and app suites test only app code.
-- Lint enforces the rules in [AGENTS.md](../AGENTS.md) that a machine can check:
-  - ESLint `max-lines` and `max-lines-per-function`;
-  - import boundaries (dependency-cruiser): no app-to-app imports, no neutral → `node/` or `dom/` imports, no deep imports past an `index.ts`, and in VS Code no `node:*`, core `node/` or Node-only package (Tesseract, native canvas, pdfjs-dist) outside a `node/` folder, and no import of a VS Code `node/` folder except from `extension.ts` or another `node/` folder;
-  - unused files, exports and dependencies (knip);
-  - directory size and per-runtime tsconfigs in core (`scripts/check-directory-size.mjs`, `scripts/check-runtime-tsconfigs.mjs`).
-
-  Any violation fails `pnpm lint`. Neutral core compiles against the `ES2022` and `WebWorker` libs: the web-platform globals every runtime has (`fetch`, `URL`, timers, `TextEncoder`, Web Crypto) and no DOM.
+- `pnpm lint` fails on every shape rule a machine can check; the lint configs and `scripts/check-*.mjs` are the list.
+- Neutral core compiles against the `ES2022` and `WebWorker` libs: the web-platform globals every runtime has (`fetch`, `URL`, timers, `TextEncoder`, Web Crypto) and no DOM.

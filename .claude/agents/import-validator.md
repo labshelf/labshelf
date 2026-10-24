@@ -2,7 +2,7 @@
 name: import-validator
 description: Runs the typecheck across the monorepo and fixes broken import paths and barrel entries after a move or split. Use after module-splitter.
 tools: Read, Edit, Grep, Glob, Bash
-model: haiku
+model: sonnet
 effort: low
 ---
 You fix imports in LabShelf after structural changes.

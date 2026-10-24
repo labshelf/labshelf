@@ -9,7 +9,7 @@ A person who uses only the browser extension can compile a LaTeX project. The fi
 
 ## 2. Decisions
 
-- [ ] **D1** Placement, following AGENTS.md section 1:
+- [ ] **D1** Placement, following documents/architecture.md#packages:
   - **Core:** the runtime-neutral protocol (message types, validation, chunking, `PROTOCOL_VERSION`) and the client port `ILatexHelper`, in `packages/core/src/writing/helper/`, and the helper runtime (framing, mirror, dispatch, build) in `packages/core/src/writing/helper/node/`, so VS Code and the terminal app can host it too.
   - **Helper:** the standalone shell (registration, self-update, binary packaging) is a second entry of the terminal package, in `packages/terminal/src/helper/`, built to `dist/labshelf-helper.mjs` and packaged as a single binary `labshelf-helper`.
   - **Browser:** the `connectNative` adapter and the setup card, in `packages/browser/src/helper/`.
@@ -56,7 +56,7 @@ A person who uses only the browser extension can compile a LaTeX project. The fi
   - **Verification:** every artifact gets `SHA256SUMS` and a GitHub artifact attestation (`actions/attest-build-provenance`).
   - **Self-update:** the helper checks `latest.json` from GitHub Releases at most once a day, on `hello`. It verifies an Ed25519 signature with `node:crypto` against a public key embedded in the binary, then downloads through core's `downloadVerified`. On Windows it swaps the binary by rename-then-replace.
 
-  Why Ed25519 through `node:crypto` and not minisign: the stdlib does it, so no tool or dependency is needed (AGENTS.md section 3, ladder). Self-update also means the macOS Gatekeeper step happens once.
+  Why Ed25519 through `node:crypto` and not minisign: the stdlib does it, so no tool or dependency is needed (ladder). Self-update also means the macOS Gatekeeper step happens once.
 - [ ] **D10** Extension manifests:
   - add `nativeMessaging` to `manifest.chrome.json` and `manifest.firefox.json`;
   - add a `key` to `manifest.chrome.json` so the unpacked id is stable;

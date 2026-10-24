@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# PostToolUse hook for Edit/Write: reports AGENTS.md rule violations the edit introduces —
-# size/shape, history language, ts-ignore/eslint-disable/skip/empty-catch, deleted tests, bad CONTRACT anchors, new files without a capability header.
+# Reports the rule violations an Edit/Write introduces: size and shape, history language, banned words, suppressions,
+# commented-out code, hard-coded CSS values, unmirrored or deleted tests, bad CONTRACT anchors and missing capability headers.
 set -u
 root="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 file=$(jq -r '.tool_input.file_path // empty')
@@ -17,7 +17,7 @@ while IFS= read -r line; do
   case "$line" in
     "D "*|" D"*)
       path="${line:3}"
-      problems+=("$path was deleted. Tests of deleted code are deleted together with the code, not left as a stray diff — confirm this is intended (AGENTS.md §3, §4).")
+      problems+=("$path was deleted. Tests of deleted code are deleted together with the code, not left as a stray diff — confirm this is intended.")
       ;;
   esac
 done < <(git -C "$root" status --porcelain -- 'packages/*/__tests__/*.ts' 2>/dev/null)
@@ -38,13 +38,13 @@ if [ "$limit" -gt 0 ]; then
   lines=$(wc -l < "$file" | tr -d ' ')
   before=$(head_text | wc -l | tr -d ' ')
   if [ "$lines" -gt "$limit" ] && { ! in_head || [ "$lines" -gt "$before" ]; }; then
-    problems+=("$rel has $lines lines (limit $limit). Split it by responsibility (AGENTS.md §3).")
+    problems+=("$rel has $lines lines (limit $limit). Split it by responsibility.")
   fi
   case "$rel" in packages/*/src/*)
     if ! in_head; then
       dir=$(dirname "$file")
       count=$(find "$dir" -maxdepth 1 -type f \( -name '*.ts' -o -name '*.tsx' -o -name '*.css' \) ! -name 'index.ts' ! -name '*.d.ts' | wc -l | tr -d ' ')
-      [ "$count" -gt 8 ] && problems+=("$(dirname "$rel") now holds $count source files (limit 8). Group them into subfolders by responsibility (AGENTS.md §3).")
+      [ "$count" -gt 8 ] && problems+=("$(dirname "$rel") now holds $count source files (limit 8). Group them into subfolders by responsibility.")
     fi ;;
   esac
 fi
@@ -61,10 +61,10 @@ if [ "$chars_limit" -gt 0 ]; then
 fi
 
 # History language and dependency lists.
-pattern='no longer|previously|used to|legacy|formerly|was replaced|were replaced|backward[- ]compat|deprecated|@depends|@dependents|@usedBy'
+pattern='no longer|previously|used to|legacy|formerly|was replaced|were replaced|backward[- ]compat|deprecated|instead of the old|refactored to|changed from|now (uses|keeps|has|is|does|returns|reads|writes)|@depends|@dependents|@usedBy'
 scope=""
 case "$rel" in
-  documents/plans/*|documents/archive/*) ;;
+  documents/plans/*) ;;
   documents/*.md|README.md) scope=doc ;;
   packages/*/src/*.ts|packages/*/src/*.tsx|packages/*/src/*.css|packages/*/__tests__/*.ts) scope=code ;;
 esac
@@ -76,7 +76,7 @@ if [ -n "$scope" ]; then
   now=$(matches < "$file"); was=$(head_text | matches)
   if [ "${now:-0}" -gt "${was:-0}" ]; then
     hits=$(grep -inE "$pattern" "$file" | grep -viE 'legacy[/ ]build' | head -5)
-    problems+=("$rel gained history language or dependency lists. Describe what is, without history, and drop @depends/@usedBy (AGENTS.md §3, §5):
+    problems+=("$rel gained history language or dependency lists. Describe what is, without history, and drop @depends/@usedBy:
 $hits")
   fi
 fi
@@ -90,28 +90,66 @@ if [ "$code_scope" = true ]; then
   ts_pattern='@ts-(ignore|expect-error)[[:space:]]*([*][/])?[[:space:]]*$'
   now=$(grep -cE "$ts_pattern" "$file"); was=$(head_text | grep -cE "$ts_pattern")
   if [ "${now:-0}" -gt "${was:-0}" ]; then
-    problems+=("$rel adds a @ts-ignore or @ts-expect-error with no reason. Add a reason after it, or fix the type error (AGENTS.md §5).")
+    problems+=("$rel adds a @ts-ignore or @ts-expect-error with no reason. Add a reason after it, or fix the type error.")
   fi
 
   eslint_pattern='eslint-disable(-next-line|-line)?'
   now=$(grep -cE "$eslint_pattern" "$file"); was=$(head_text | grep -cE "$eslint_pattern")
   if [ "${now:-0}" -gt "${was:-0}" ]; then
-    problems+=("$rel adds an eslint-disable comment. Fix the lint issue instead of suppressing it (AGENTS.md §3).")
+    problems+=("$rel adds an eslint-disable comment. Fix the lint issue instead of suppressing it.")
   fi
 
   skip_pattern='\.skip\(|xit\('
   now=$(grep -cE "$skip_pattern" "$file"); was=$(head_text | grep -cE "$skip_pattern")
   if [ "${now:-0}" -gt "${was:-0}" ]; then
-    problems+=("$rel skips a test (.skip( or xit(). Fix or delete the test, do not leave it skipped (AGENTS.md §6).")
+    problems+=("$rel skips a test (.skip( or xit(). Fix or delete the test, do not leave it skipped.")
   fi
 
   catch_pattern='catch\s*\([^\)]*\)\s*\{\s*\}'
   now=$(perl -0777 -ne "print scalar(() = /$catch_pattern/gs)" "$file")
   was=$(head_text | perl -0777 -ne "print scalar(() = /$catch_pattern/gs)")
   if [ "${now:-0}" -gt "${was:-0}" ]; then
-    problems+=("$rel adds an empty catch block. Log or surface the error, never swallow it silently (AGENTS.md §6).")
+    problems+=("$rel adds an empty catch block. Log or surface the error, never swallow it silently.")
   fi
 fi
+
+# Banned file names, comment tags and emoji (scripts/check-banned-words.mjs).
+if [ "$code_scope" = true ]; then
+  banned=$(node "$(dirname "$0")/../../scripts/check-banned-words.mjs" "$file" 2>&1)
+  [ -n "$banned" ] && problems+=("$banned")
+fi
+
+# Commented-out code in added lines; the existing count may stay.
+if [ "$code_scope" = true ]; then
+  code_comment='^[[:space:]]*//[[:space:]]*(const|let|var|return|import|export|await|if[[:space:]]*\(|for[[:space:]]*\(|[A-Za-z_$.]+\(.*\);[[:space:]]*$|\}[[:space:]]*$)'
+  now=$(grep -cE "$code_comment" "$file"); was=$(head_text | grep -cE "$code_comment")
+  if [ "${now:-0}" -gt "${was:-0}" ]; then
+    problems+=("$rel adds commented-out code. Delete it; git keeps the history.")
+  fi
+fi
+
+# Hard-coded colours, sizes and fonts in app CSS; values come from the core --ls-* tokens.
+case "$rel" in
+  packages/vscode/src/*.css|packages/browser/src/*.css|packages/terminal/src/*.css)
+    literal='#[0-9a-fA-F]{3,8}\b|\b(rgba?|hsla?)\(|\b[0-9.]+(px|rem|em)\b|font-family:[^;]*[^)];'
+    now=$(grep -oE "$literal" "$file" | wc -l | tr -d ' '); was=$(head_text | grep -oE "$literal" | wc -l | tr -d ' ')
+    if [ "${now:-0}" -gt "${was:-0}" ]; then
+      problems+=("$rel adds a hard-coded colour, size or font. Use a core --ls-* design token.")
+    fi ;;
+esac
+
+# A new test file mirrors a source file: __tests__/a/b.test.ts tests src/a/b.ts.
+case "$rel" in
+  packages/*/__tests__/*.test.ts|packages/*/__tests__/*.test.tsx)
+    if ! in_head; then
+      pkg_dir="${rel%%/__tests__/*}"; base="${rel#*/__tests__/}"; base="${base%.test.ts*}"
+      mirrored=false
+      for candidate in "$base.ts" "$base.tsx" "$base.css" "$base/index.ts"; do
+        [ -f "$root/$pkg_dir/src/$candidate" ] && mirrored=true
+      done
+      [ "$mirrored" = true ] || problems+=("$rel has no source file at $pkg_dir/src/$base.ts. Name the test after the file it tests.")
+    fi ;;
+esac
 
 # New source file: a header comment whose first sentence starts with a third-person verb.
 case "$rel" in
@@ -119,7 +157,7 @@ case "$rel" in
     if ! in_head; then
       first_line=$(grep -m1 -vE '^[[:space:]]*$' "$file")
       if ! printf '%s' "$first_line" | grep -qE '^[[:space:]]*(//|/\*)'; then
-        problems+=("$rel: new source file has no header comment (AGENTS.md §3/§5).")
+        problems+=("$rel: new source file has no header comment.")
       else
         # The sentence may start on the line after a bare `/**`.
         first_word=$(grep -vE '^[[:space:]]*(/\*\*?|\*)?[[:space:]]*$' "$file" | head -1 \
@@ -127,7 +165,7 @@ case "$rel" in
         # TRAP: a plural noun ("Handlers", "Settings") also ends in s, so known ones are listed.
         if ! printf '%s' "$first_word" | grep -qE '^[A-Z][a-z]+(-[a-z]+)?[^s]s,?$' \
           || printf '%s' "$first_word" | grep -qxE 'Handlers|Settings|Types|Thumbnails|Annotations|Collections|Stylesheets|Extractors|Helpers|Utils'; then
-          problems+=("$rel: header line 1 must be a capability sentence starting with a verb, e.g. \"// Searches papers by title.\" (AGENTS.md §5).")
+          problems+=("$rel: header line 1 must be a capability sentence starting with a verb, e.g. \"// Searches papers by title.\".")
         fi
       fi
     fi
@@ -154,7 +192,7 @@ if [ -n "$contract_hits" ]; then
     anchor="${rest#*#}"
     docpath="$root/documents/contracts/$docfile"
     if [ ! -f "$docpath" ]; then
-      problems+=("$rel: CONTRACT references documents/contracts/$docfile which does not exist (AGENTS.md §5).")
+      problems+=("$rel: CONTRACT references documents/contracts/$docfile which does not exist.")
       continue
     fi
     found=false
@@ -166,7 +204,7 @@ if [ -n "$contract_hits" ]; then
       fi
     done < <(grep -E '^#{1,6}[[:space:]]+' "$docpath" | sed -E 's/^#{1,6}[[:space:]]+//')
     if [ "$found" = false ]; then
-      problems+=("$rel: CONTRACT anchor '#$anchor' not found in documents/contracts/$docfile (AGENTS.md §5).")
+      problems+=("$rel: CONTRACT anchor '#$anchor' not found in documents/contracts/$docfile.")
     fi
   done <<< "$contract_hits"
 fi

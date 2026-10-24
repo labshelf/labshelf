@@ -1,9 +1,9 @@
 ---
 name: check
-description: Quality gate for the packages touched by the current change — typecheck, tests, lint, size/shape limits — run on Haiku in its own context; returns PASS/FAIL with only the errors that matter, so long logs never reach the main model.
+description: Quality gate for the packages touched by the current change — typecheck, tests, lint, size/shape limits — run in its own context; returns PASS/FAIL with only the errors that matter, so long logs never reach the main model.
 context: fork
 agent: gate
-model: haiku
+model: sonnet
 effort: low
 background: false
 ---
