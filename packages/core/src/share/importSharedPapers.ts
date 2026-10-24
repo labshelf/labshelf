@@ -3,7 +3,7 @@ import { idsFromRecord } from "../import/index.js";
 import { citeKeySlug, createFolder, metadataFields, validateFolderName, writeNewPaper, type MutationContext } from "../library/index.js";
 import type { PaperRecord } from "../model/index.js";
 import type { OpenedShare } from "./openShare.js";
-import type { SharedPaper } from "./format/index.js";
+import type { SharedPaper } from "./shareManifest.js";
 
 export interface ImportSharedPapersOptions {
   ctx: MutationContext;

@@ -1,5 +1,11 @@
 /** Exports paper-folder share links: the link and manifest format, building, uploading, opening and revoking a share. */
-export * from "./format/index.js";
+export { formatShareImportUri, SHARE_IMPORT_PATH, VSCODE_EXTENSION_ID } from "./shareImportUri.js";
+export { formatShareLink, parseShareLink, SHARE_LINK_KEY_BYTES, SHARE_PAGE_ORIGIN } from "./shareLink.js";
+export type { ShareLinkError, ShareLinkParts, ShareLinkResult } from "./shareLink.js";
+export { decodeShareManifest, sharedMetadataOf, SHARE_MANIFEST_VERSION } from "./shareManifest.js";
+export type { ShareManifest, SharedPaper, SharedPaperMetadata, SharedPdf, SharedPdfPart } from "./shareManifest.js";
+export { BLOB_OVERHEAD_BYTES, openBlob, openManifest, sealBlob, sealManifest } from "./shareCipher.js";
+export type { SealedBlob } from "./shareCipher.js";
 export * from "./http/index.js";
 export { buildShare } from "./buildShare.js";
 export type { BuildShareInput, BuiltShare, SharePaperInput, SharePartLimits, StoredBlob } from "./buildShare.js";
@@ -14,4 +20,4 @@ export { importSharedPapers } from "./importSharedPapers.js";
 export type { ImportSharedPapersOptions, SharedImportSummary } from "./importSharedPapers.js";
 export { revokeShare } from "./revokeShare.js";
 export type { RevokeShareOptions } from "./revokeShare.js";
-export * from "./workflow/index.js";
+export * from "./flow/index.js";

@@ -1,6 +1,6 @@
 /** Pins the account's access token: a pasted token as is, a refresh stored before use, one refresh across windows, and sign-in again. */
 import { accountAccessToken, CloudflareOAuthError, createRelayAccountStore, createStoredLock } from "../../../src/relay/index";
-import { memorySlot } from "../deploy/oauth/fakeOAuthServer";
+import { memorySlot } from "../oauth/fakeOAuthServer";
 import { accountWorld, signIn } from "./fakeRelayAccount";
 
 describe("accountAccessToken", () => {

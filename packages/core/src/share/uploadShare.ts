@@ -2,7 +2,7 @@
 import { bytesToBase64Url } from "../encoding/index.js";
 import type { ILogger } from "../ports/index.js";
 import type { BuiltShare } from "./buildShare.js";
-import { formatShareLink } from "./format/index.js";
+import { formatShareLink } from "./shareLink.js";
 import { revokeShare } from "./revokeShare.js";
 import type { ShareBackend } from "./shareBackend.js";
 import { updateShareRegistry, type ShareRegistryStore } from "./shareRegistry.js";

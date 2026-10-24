@@ -1,7 +1,7 @@
 // Reads and writes the device's list of the shares it made, through a store port the app backs with a file.
 import { isSha256Hex, isShareId } from "../relay/index.js";
 import { base64UrlToBytes } from "../encoding/index.js";
-import { formatShareLink } from "./format/index.js";
+import { formatShareLink } from "./shareLink.js";
 
 // CONTRACT: documents/contracts/share-link.md#share-list
 export interface ShareRecord {

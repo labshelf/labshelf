@@ -1,10 +1,9 @@
 // Turns a folder of papers into a share: a fresh id and link key, the sealed manifest and the distinct encrypted PDF parts.
 import { bytesToHex } from "../encoding/index.js";
 import type { Annotation } from "../model/index.js";
-import {
-  BLOB_OVERHEAD_BYTES, sealBlob, sealManifest, sharedMetadataOf, SHARE_LINK_KEY_BYTES, SHARE_MANIFEST_VERSION,
-  type ShareManifest, type SharedPaper, type SharedPaperMetadata, type SharedPdf,
-} from "./format/index.js";
+import { BLOB_OVERHEAD_BYTES, sealBlob, sealManifest } from "./shareCipher.js";
+import { SHARE_LINK_KEY_BYTES } from "./shareLink.js";
+import { sharedMetadataOf, SHARE_MANIFEST_VERSION, type ShareManifest, type SharedPaper, type SharedPaperMetadata, type SharedPdf } from "./shareManifest.js";
 
 export interface SharePaperInput {
   metadata: SharedPaperMetadata;

@@ -1,7 +1,7 @@
 // Builds a relay account store over memory slots, with one fetch that serves the Cloudflare API, its OAuth server and the relay.
 import { createRelayAccountStore, createStoredLock, type RelayAccount, type RelayAccountDeps } from "../../../src/relay/index";
-import { ACCOUNT, fakeCloudflare, recordingLogger, type FakeCloudflareOptions } from "../deploy/fakeCloudflare";
-import { fakeClock, fakeOAuthServer, memorySlot } from "../deploy/oauth/fakeOAuthServer";
+import { ACCOUNT, fakeCloudflare, recordingLogger, type FakeCloudflareOptions } from "../client/fakeCloudflare";
+import { fakeClock, fakeOAuthServer, memorySlot } from "../oauth/fakeOAuthServer";
 
 const API = "https://api.cloudflare.com/client/v4";
 const OAUTH = "https://dash.cloudflare.com/oauth2/";

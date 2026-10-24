@@ -1,6 +1,6 @@
 // Brings the owner's deployed relay up to the Worker build this LabShelf bundles.
 import { RELAY_WORKER_BUILD } from "../protocolVersion.js";
-import { updateRelayIfOlder, type RelayUpdateOutcome } from "../deploy/index.js";
+import { updateRelayIfOlder, type RelayUpdateOutcome } from "../client/index.js";
 import { accountAccessToken, type RelayAccountDeps } from "./accountAccessToken.js";
 import { RELAY_ACCOUNT_LOG_MODULE, RELAY_WORKER_NAME } from "./relayAccount.js";
 
