@@ -2,9 +2,9 @@
 import { createAiService } from "../../../src/ai/service/createAiService";
 import type { AiServiceFactoryDependencies } from "../../../src/ai/service/createAiService";
 import { HashEmbeddingProvider } from "../../../src/ai/embedding/index";
-import { AiIndexer } from "../../../src/ai/indexer/aiIndexer";
+import { AiIndexer } from "../../../src/ai/aiIndexer";
 
-jest.mock("../../../src/ai/indexer/aiIndexer", () => ({
+jest.mock("../../../src/ai/aiIndexer", () => ({
   AiIndexer: jest.fn(() => ({ attach: () => () => {} })),
 }));
 

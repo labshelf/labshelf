@@ -1,8 +1,9 @@
 // Exposes the AI subsystem to UI, commands and services.
 // INVARIANT: callers reach AI data only through this facade, never the database directly.
-import type { AiIndexer } from "../indexer/index.js";
-import { retrieveTopK } from "../rag/index.js";
-import type { AiStores, IEmbeddingProvider, VectorFilter, VectorMatch } from "../types/index.js";
+import type { AiIndexer } from "../aiIndexer.js";
+import type { AiStores } from "../aiStorage.js";
+import { retrieveTopK } from "../embedding/index.js";
+import type { IEmbeddingProvider, VectorFilter, VectorMatch } from "../embedding/index.js";
 
 export interface AiServiceDependencies extends Pick<AiStores, "vectorStore"> {
   embedder: IEmbeddingProvider;

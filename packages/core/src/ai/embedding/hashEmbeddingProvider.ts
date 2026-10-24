@@ -1,5 +1,5 @@
 // Embeds text as a deterministic hashed bag-of-words vector, with no model files or native runtime.
-import type { IEmbeddingProvider } from "../types/index.js";
+import type { IEmbeddingProvider } from "./embeddingProvider.js";
 
 const TOKEN_RE = /[A-Za-z][A-Za-z0-9'-]{1,}/g;
 

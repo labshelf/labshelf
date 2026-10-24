@@ -3,10 +3,10 @@ import type { PdfDocumentOpener } from "../../import/pdf/index.js";
 import type { PaperRecord } from "../../model/index.js";
 import type { ILogger, LocalFileSystem } from "../../ports/index.js";
 import { HashEmbeddingProvider } from "../embedding/index.js";
-import { AiIndexer } from "../indexer/index.js";
-import type { AiIndexerDependencies } from "../indexer/index.js";
-import { PdfTextExtractor } from "../pipeline/index.js";
-import type { AiStorage } from "../types/index.js";
+import { AiIndexer } from "../aiIndexer.js";
+import type { AiIndexerDependencies } from "../aiIndexer.js";
+import type { AiStorage } from "../aiStorage.js";
+import { PdfTextExtractor } from "../pdfTextExtractor.js";
 import { AiService } from "./aiService.js";
 
 export interface AiServiceFactoryDependencies extends Pick<AiIndexerDependencies, "subscribe" | "resolvePdfPath"> {

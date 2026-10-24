@@ -3,7 +3,7 @@ import * as path from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import type { IFileSystem, ILogger } from "../../ports/index.js";
 import { ensureAiSchema } from "./aiSchema.js";
-import { dropForeignKeyEmbeddings } from "./migrations/index.js";
+import { dropForeignKeyEmbeddings } from "./dropEmbeddingTables.js";
 
 export async function openAiDatabase(databasePath: string, fileSystem: Pick<IFileSystem, "ensureDir">, logger: ILogger): Promise<DatabaseSync> {
   await fileSystem.ensureDir(path.dirname(databasePath));
