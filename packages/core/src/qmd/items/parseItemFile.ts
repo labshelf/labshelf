@@ -1,8 +1,8 @@
 // Parses a qmd item file into loose text and items without losing or changing a byte.
 // CONTRACT: documents/contracts/qmd-items.md#items
-import { parseAnchor } from "../anchors/index.js";
-import { attributeValue, parseDivOpener } from "./divAttributes.js";
-import { topLevelDivs } from "./fencedDivs.js";
+import { parseAnchor } from "./itemAnchor.js";
+import { attributeValue, parseDivOpener } from "./attributes.js";
+import { topLevelDivs } from "./divs.js";
 import { ITEM_CLASS, type ItemFile, type ItemSegment, type Segment } from "./itemFile.js";
 import { lineContent, splitLines } from "./lines.js";
 

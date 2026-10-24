@@ -1,7 +1,7 @@
 // Writes a Space as space.json bytes that every app produces identically.
 // CONTRACT: documents/contracts/spaces.md#writing
-import { SPACE_FORMAT_VERSION } from "./types.js";
-import type { Space, SpaceDate, SpaceFolder, SpacePaperRef } from "./types.js";
+import { SPACE_FORMAT_VERSION } from "./space.js";
+import type { Space, SpaceDate, SpaceFolder, SpacePaperRef } from "./space.js";
 import { withUnknownKeys } from "./json/index.js";
 
 const folderJson = (folder: SpaceFolder) => withUnknownKeys({ id: folder.id, name: folder.name, parent: folder.parent }, folder.extra);

@@ -1,10 +1,10 @@
 // Mounts a Space page with persistent inner-tab navigation over its host transport.
 import { el, emptyState, mountPageTabs } from "../../../ui/dom/index.js";
 import { SPACE_TABS, type SpacesTransport, type SpaceTab } from "../../protocol/index.js";
-import { mountOverview, type SpaceBody, type SpaceSnapshot } from "../overview/index.js";
+import { mountOverview, type SpaceBody, type SpaceSnapshot } from "../spaceOverview/index.js";
 import { mountSpacePapers } from "../papers/index.js";
 import { mountSpaceGlossary } from "../glossary/index.js";
-import { mountSpacePositioned } from "../positioned/index.js";
+import { mountSpacePositioned } from "./mountSpacePositioned.js";
 import { spaceHeader } from "./spaceHeader.js";
 export interface MountSpaceOptions {
   id: string;

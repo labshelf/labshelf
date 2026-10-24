@@ -4,7 +4,7 @@
  */
 import { createLoopbackTransport } from "../../../../src/libraryUi/protocol/index.js";
 import type { HostToSpaces, SpacesToHost } from "../../../../src/spaces/protocol/index.js";
-import type { CatalogRow } from "../../../../src/spaces/view/index.js";
+import type { CatalogRow } from "../../../../src/spaces/viewModel/index.js";
 import { mountSpacesCatalog } from "../../../../src/spaces/dom/catalog/index.js";
 
 const row = (id: string, name: string, purpose: string): CatalogRow => ({

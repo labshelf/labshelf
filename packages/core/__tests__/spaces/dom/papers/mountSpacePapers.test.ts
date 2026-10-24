@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import { mountSpacePapers } from '../../../../src/spaces/dom/papers/index.js';
-import type { SpaceSnapshot } from '../../../../src/spaces/dom/overview/index.js';
+import type { SpaceSnapshot } from '../../../../src/spaces/dom/spaceOverview/index.js';
 import type { HostToSpaces, SpacesToHost, SpacesTransport } from '../../../../src/spaces/protocol/index.js';
 function setup(folder?: string) {
   const data: SpaceSnapshot = { type: 'space', space: { id: 's', name: 'Space', folders: [{ id: 'f', name: 'Folder', extra: {} }],

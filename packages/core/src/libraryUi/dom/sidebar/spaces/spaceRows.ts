@@ -2,7 +2,7 @@
 import { el } from "../../../../ui/dom/index.js";
 import { escapeHtml, icon, statusMark } from "../../../../ui/index.js";
 import { STATUS_LABEL } from "../../../../model/index.js";
-import type { PapersTree, ResolvedPaper, SidebarRow } from "../../../../spaces/view/index.js";
+import type { PapersTree, ResolvedPaper, SidebarRow } from "../../../../spaces/viewModel/index.js";
 import { acceptSpaceDrop } from "./spaceDrop.js";
 import type { SidebarSpacesState } from "./spaceActions.js";
 

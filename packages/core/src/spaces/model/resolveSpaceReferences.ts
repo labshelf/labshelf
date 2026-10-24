@@ -1,6 +1,6 @@
 // Moves folders and papers whose folder reference is missing or on a parent cycle to the Space root.
 // CONTRACT: documents/contracts/spaces.md#reading
-import type { SpaceFolder, SpacePaperRef } from "./types.js";
+import type { SpaceFolder, SpacePaperRef } from "./space.js";
 
 function withoutKey<T extends object, K extends keyof T>(entry: T, key: K): T {
   const { [key]: _dropped, ...rest } = entry;

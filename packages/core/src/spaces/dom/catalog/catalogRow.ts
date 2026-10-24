@@ -2,7 +2,7 @@
 import { formatDay } from "../../../library/index.js";
 import { el, icon, memberChip, progressMark } from "../../../ui/dom/index.js";
 import type { SpacesTransport, SpaceTab } from "../../protocol/index.js";
-import type { CatalogRow } from "../../view/index.js";
+import type { CatalogRow } from "../../viewModel/index.js";
 
 function countLink(count: number, noun: string, open: () => void): HTMLButtonElement {
   const link = el("button", { type: "button", text: `${count} ${noun}${count === 1 ? "" : "s"}` });

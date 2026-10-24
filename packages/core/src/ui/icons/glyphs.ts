@@ -1,7 +1,7 @@
 /**
  * Declares the SVG bodies of every LabShelf icon, keyed by name. Stroke bodies are Lucide geometry on a 24x24 grid, filled bodies are codicons on a 16x16 grid.
  */
-import { CODICON_GLYPHS } from "./codiconGlyphs.js";
+import { CODICON_GLYPHS } from "./iconGlyphs.js";
 
 /** Outline icons: Lucide paths drawn with `currentColor` strokes on a 24x24 grid; licences in LICENSE-lucide.md. */
 export const STROKE_GLYPHS = {

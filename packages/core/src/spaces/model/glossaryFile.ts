@@ -1,7 +1,7 @@
 // Reads and writes glossary.json, keeping unknown keys and refusing writes over a file it could not understand.
 // CONTRACT: documents/contracts/spaces.md#glossaryjson
-import { SPACE_FORMAT_VERSION } from "./types.js";
-import type { Glossary, GlossaryReadResult, GlossarySource, GlossaryTerm } from "./types.js";
+import { SPACE_FORMAT_VERSION } from "./space.js";
+import type { Glossary, GlossaryReadResult, GlossarySource, GlossaryTerm } from "./space.js";
 import {
   isNonEmptyString, isOptional, isPage, isRecord, isString, readEntries, topLevelReadOnlyReason, unknownKeys, withUnknownKeys,
 } from "./json/index.js";

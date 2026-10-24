@@ -15,7 +15,7 @@ import { rowKey } from "./sidebarRows.js";
 import type { GroupId, SectionId } from "./sidebarSections.js";
 import { NAV_ROWS, expandTo, paintFocus, render, setExpanded, toggleSection, type SidebarActions, type SidebarState } from "./sidebarView.js";
 import { activateSpaceRow, spaceContextMenu, type SidebarSpaceActions } from "./spaces/index.js";
-import type { SidebarRow } from "../../../spaces/view/index.js";
+import type { SidebarRow } from "../../../spaces/viewModel/index.js";
 
 export interface LibrarySidebarOptions {
   actions: SidebarActions;

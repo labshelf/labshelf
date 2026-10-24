@@ -1,6 +1,5 @@
 // Exports LabShelf Markdown item files: ids, anchors, items and stored cell results.
-export * from "./anchors/index.js";
-export * from "./ids/index.js";
+export * from "./items/index.js";
 export {
   addItem,
   ITEM_CLASS,
@@ -14,6 +13,6 @@ export {
   type NewItem,
   type Segment,
 } from "./items/index.js";
-export * from "./merge/index.js";
-export * from "./outputs/index.js";
-export * from "./prosemirror/index.js";
+export * from "./conflict/index.js";
+export * from "./cellOutput/index.js";
+export * from "./editor/index.js";

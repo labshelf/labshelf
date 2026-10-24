@@ -1,8 +1,8 @@
 // Renders Space paper rows with reference actions and Library navigation.
 import { el, showMenu } from '../../../ui/dom/index.js';
 import { statusMark } from '../../../ui/icons/index.js';
-import type { ResolvedPaper } from '../../view/index.js';
-import type { PapersContext } from './context.js';
+import type { ResolvedPaper } from '../../viewModel/index.js';
+import type { PapersContext } from './papersContext.js';
 import { confirmRemoval } from './dialogs.js';
 export const PAPER_DRAG_TYPE = 'application/x-labshelf-space-paper';
 export function paperRow(ctx: PapersContext, paper: ResolvedPaper): HTMLElement {

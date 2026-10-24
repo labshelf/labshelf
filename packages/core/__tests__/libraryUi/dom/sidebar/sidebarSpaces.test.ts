@@ -1,7 +1,7 @@
 /** @jest-environment jsdom */
 // Verifies optional Spaces rows, navigation, reference drops and destructive confirmations.
 import { mountLibrarySidebar, type SidebarSpaceActions } from "../../../../src/libraryUi/dom/sidebar";
-import type { SidebarRow } from "../../../../src/spaces/view";
+import type { SidebarRow } from "../../../../src/spaces/viewModel";
 
 const rows: SidebarRow[] = [{ id: "s", name: "Research", tree: {
   papers: [], folders: [{ id: "f", name: "Sources", papers: [], folders: [

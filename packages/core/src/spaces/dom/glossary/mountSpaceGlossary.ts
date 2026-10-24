@@ -2,8 +2,8 @@
 import { el, emptyState, positioned } from "../../../ui/dom/index.js";
 import type { GlossaryTerm } from "../../model/index.js";
 import type { PaperPickItem } from "../../protocol/index.js";
-import { overviewAction, type OverviewContext, type SpaceBody } from "../overview/index.js";
-import { deleteTerm } from "./deleteTerm.js";
+import { overviewAction, type OverviewContext, type SpaceBody } from "../spaceOverview/index.js";
+import { deleteTerm } from "./removeTerm.js";
 import { termDialog } from "./termDialog.js";
 import { termList } from "./termList.js";
 

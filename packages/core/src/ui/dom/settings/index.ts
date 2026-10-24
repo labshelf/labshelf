@@ -3,5 +3,5 @@ export { settingsPage, type SettingsPageOptions } from "./settingsPage.js";
 export { settingsSection, inlineCode, type SettingsContent, type SettingsSectionOptions } from "./settingsSection.js";
 export { settingRow, setRowDisabled, type SettingRowOptions } from "./settingRow.js";
 export { checkboxField, numberField, textField, selectField, type Field, type FieldWidth } from "./fields.js";
-export { statusLine, type StatusLine, type StatusTone } from "./statusLine.js";
+export { statusLine, type StatusLine, type StatusTone } from "./toneLine.js";
 export { actionButton, type ActionButtonOptions } from "./actionButton.js";

@@ -2,7 +2,7 @@
 import { serializeSpaceFile, spaceIdFromName } from "../model/index.js";
 import type { Space } from "../model/index.js";
 import { serially } from "./serialWrites.js";
-import { SPACE_STORE_MODULE, type StoreContext } from "./types.js";
+import { SPACE_STORE_MODULE, type StoreContext } from "./spaceStoreOptions.js";
 
 const message = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 

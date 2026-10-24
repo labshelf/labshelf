@@ -2,8 +2,8 @@
 import { el, icon } from "../../../ui/dom/index.js";
 import type { GlossaryTerm } from "../../model/index.js";
 import type { PaperPickItem } from "../../protocol/index.js";
-import type { PapersTree } from "../../view/index.js";
-import { overviewAction, type OverviewContext } from "../overview/index.js";
+import type { PapersTree } from "../../viewModel/index.js";
+import { overviewAction, type OverviewContext } from "../spaceOverview/index.js";
 
 export function termList(ctx: OverviewContext, edit: (term: GlossaryTerm) => void, remove: (term: GlossaryTerm) => void, papers?: readonly PaperPickItem[]): HTMLElement {
   const terms = ctx.data.glossary.terms;

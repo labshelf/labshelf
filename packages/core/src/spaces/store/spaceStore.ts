@@ -1,13 +1,13 @@
 // Lists, reads and changes Spaces through the library file system, notifying listeners after each change.
 import { libraryLayout } from "../../library/index.js";
 import type { Glossary, GlossaryReadResult, Space, SpaceReadResult } from "../model/index.js";
-import * as edit from "./edits/index.js";
-import type { SpaceDateDraft, TermDraft } from "./edits/index.js";
-import { editGlossary, editSpace, type ReadySpace } from "./editSpace.js";
+import * as edit from "./mutation/index.js";
+import type { SpaceDateDraft, TermDraft } from "./mutation/index.js";
+import { editGlossary, editSpace, type ReadySpace } from "./updateSpace.js";
 import { readAllSpaces, readGlossaryFile, readSpaceFile } from "./readSpace.js";
-import { requireSpaceId } from "./requireSpaceId.js";
+import { requireSpaceId } from "./assertSpaceId.js";
 import { createSpaceFile, trashSpaceFolder } from "./spaceLifecycle.js";
-import type { SpaceStoreOptions, StoreContext } from "./types.js";
+import type { SpaceStoreOptions, StoreContext } from "./spaceStoreOptions.js";
 
 const keep = (space: Space): { space: Space; value: undefined } => ({ space, value: undefined });
 const idOf = (result: SpaceReadResult): string => (result.state === "ready" ? result.space.id : result.id);

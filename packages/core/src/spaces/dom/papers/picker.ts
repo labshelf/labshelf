@@ -1,6 +1,6 @@
 // Selects Library papers to add to the current Space folder.
 import { el, emptyState, mountOverlay } from '../../../ui/dom/index.js';
-import type { PapersContext } from './context.js';
+import type { PapersContext } from './papersContext.js';
 export function paperPicker(ctx: PapersContext): void {
   if (ctx.readOnly || ctx.signal?.aborted) return;
   const selected = new Set<string>();
