@@ -90,8 +90,8 @@ describe("the watched access tab", () => {
 
   it("stops watching after five minutes", async () => {
     const d = deps();
-    const now = Date.now();
     await openAccessTab(d, PAPER, ACCESS);
+    const now = Date.now();
     jest.spyOn(Date, "now").mockReturnValue(now + 5 * 60_000 + 1);
     fetchInTab.mockResolvedValue({ finalUrl: ACCESS.url, pdf: { bytes: PDF, url: ACCESS.url } });
     await onTabLoaded(d, 5, ACCESS.url);
