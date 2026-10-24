@@ -2,7 +2,7 @@
  * Declares the metadata of one paper as the library, the databases and the apps exchange it.
  */
 import type { BibliographicFields } from "./bibliographicFields.js";
-import type { PaperStatus } from "./paperStatus.js";
+import type { PaperStatus } from "../library/readingStatus/index.js";
 import type { PdfVersion } from "./pdfVersion.js";
 import type { TextLayerInfo } from "./textLayer.js";
 
