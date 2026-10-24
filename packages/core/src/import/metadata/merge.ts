@@ -3,7 +3,7 @@
  */
 import { BIBLIOGRAPHIC_FIELDS } from "../../model/index.js";
 import { tidyCitationFields } from "./tidyCitationFields.js";
-import type { ResolvedMetadata } from "./types.js";
+import type { ResolvedMetadata } from "./resolvedMetadata.js";
 
 /**
  * How much a source is trusted, relative to the others. Higher wins a field.

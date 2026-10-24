@@ -3,8 +3,8 @@ import type { ILogger, PdfDocumentOpener } from '@labshelf/core';
 
 import { PdfImportParser } from '../../../../src/import/pdf/parser/PdfImportParser';
 
-jest.mock('../../../../src/import/lookup/index', () => ({
-  ...jest.requireActual('../../../../src/import/lookup/index'),
+jest.mock('../../../../src/import/search/index', () => ({
+  ...jest.requireActual('../../../../src/import/search/index'),
   searchOnlineByQueries: jest.fn(() => Promise.reject(new Error('search exploded'))),
 }));
 

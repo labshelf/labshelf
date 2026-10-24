@@ -2,10 +2,10 @@
 import { asString, extractYear, SOURCE_TRUST, type MetadataSource, type ResolvedMetadata } from "../../metadata/index.js";
 import { normalizeAuthors } from "../authors.js";
 import { authorsFromBlocks } from "../frontPageLayout.js";
-import { keywordsFromText } from "../frontMatter/index.js";
-import { publisherMetadataFromInfo, timestampsAreTrustworthy } from "../infoDictionary.js";
-import { usableTitle } from "../quality/index.js";
-import { journalFromRunningHead } from "../runningHead.js";
+import { keywordsFromText } from "../keywords.js";
+import { publisherMetadataFromInfo, timestampsAreTrustworthy } from "../pdfDictionary.js";
+import { usableTitle } from "../titleQuality.js";
+import { journalFromRunningHead } from "../pageHeader.js";
 import type { PdfSignals } from "./readPdf.js";
 
 export interface LocalSourceInput {

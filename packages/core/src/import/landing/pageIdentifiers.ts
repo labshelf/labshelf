@@ -1,7 +1,7 @@
 /** Reads the DOI, arXiv id and PMID a page states in its meta tags, links and URL. */
 import { arxivIdFromDoi, arxivIdFromUrl, extractDoi, normalizeArxivId, pmidFromUrl } from "../identifiers/index.js";
 import type { DetectedIds } from "../identifiers/index.js";
-import type { RawPage } from "./types.js";
+import type { RawPage } from "./rawPage.js";
 
 const DOI_META_KEYS = ["citation_doi", "dc.identifier.doi", "prism.doi", "bepress_citation_doi", "doi", "dc.identifier", "dcterms.identifier", "og:doi"];
 

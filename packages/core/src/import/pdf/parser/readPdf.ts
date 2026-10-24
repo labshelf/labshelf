@@ -4,7 +4,7 @@ import { metadataFromXmp } from "../xmp.js";
 import { errorMessage } from "../../../logging/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import type { ResolvedMetadata } from "../../metadata/index.js";
-import type { PdfDocumentLike, PdfDocumentOpener, TextBlock } from "../types.js";
+import type { PdfDocumentLike, PdfDocumentOpener, TextBlock } from "../pdfDocument.js";
 import { describePdfError } from "./pdfErrors.js";
 
 // Front matter carrying the title, authors and DOI rarely runs past page 3.

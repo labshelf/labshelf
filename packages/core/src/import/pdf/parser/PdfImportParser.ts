@@ -6,14 +6,16 @@ import { detectIdentifiers, type DetectedIdentifier } from "../../identifiers/in
 import { isPdfBytes } from "../../../library/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import { errorMessage } from "../../../logging/index.js";
-import { resolveFirstIdentifier } from "../../lookup/index.js";
+import { resolveFirstIdentifier } from "../../search/index.js";
 import { asString } from "../../metadata/index.js";
-import { abstractFromText, titleFromPlainText } from "../frontMatter/index.js";
+import { abstractFromText } from "../abstract.js";
+import { titleFromPlainText } from "../plainTextTitle.js";
 import { titleFromBlocks } from "../frontPageLayout.js";
-import { isSparseText, looksLikeNaturalText, usableTitle } from "../quality/index.js";
-import type { ParsedPdfImport, PdfDocumentOpener, PdfOcrEngine } from "../types.js";
-import { resolveOnline, type ConfirmedIdentifier } from "./onlineRecord.js";
-import { buildParsedRecord } from "./parsedRecord.js";
+import { isSparseText, looksLikeNaturalText } from "../textQuality.js";
+import { usableTitle } from "../titleQuality.js";
+import type { ParsedPdfImport, PdfDocumentOpener, PdfOcrEngine } from "../pdfDocument.js";
+import { resolveOnline, type ConfirmedIdentifier } from "./registrySources.js";
+import { buildParsedRecord } from "./parsedImport.js";
 import { readPdf, type PdfSignals } from "./readPdf.js";
 import { localSources } from "./signalSources.js";
 
