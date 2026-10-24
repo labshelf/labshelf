@@ -1,7 +1,7 @@
 /** Validates the body of a message LabShelf Helper sends to an extension page. */
 // CONTRACT: documents/contracts/helper.md#helper-to-page
 
-import type { BuildProblemKind, LocatedProblem } from "../latex/index.js";
+import type { BuildProblemKind, LocatedProblem } from "../../latex/index.js";
 import {
   HELPER_BUILD_STATUSES, HELPER_HOSTS, PROGRESS_PHASES, TEX_SOURCES,
   type ChangedPage, type TexStatus, type ToPageMessage,

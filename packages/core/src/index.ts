@@ -13,6 +13,7 @@ export * from "./reader/index.js";
 export * from "./ui/index.js";
 export * from "./libraryUi/index.js";
 export * from "./writing/index.js";
+export * from "./latex/index.js";
 export * from "./bridge/index.js";
 export * from "./github/index.js";
 export * from "./collab/index.js";

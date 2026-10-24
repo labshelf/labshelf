@@ -4,7 +4,7 @@ import type { ILogger } from "../../../../ports/index.js";
 import { PROTOCOL_VERSION, type HelperHost, type ProgressPhase, type TexStatus } from "../../index.js";
 
 import type { HelperHandler, HelperSend } from "../dispatch/index.js";
-import { TEX_MODULE, TexInstallError, type ManagedTexProvider, type TexProgress } from "../../../latex/toolchain/node/managed/index.js";
+import { TEX_MODULE, TexInstallError, type ManagedTexProvider, type TexProgress } from "../../../../latex/toolchain/node/managedTex/index.js";
 
 export interface TexInstallHandlerOptions {
   tex: ManagedTexProvider;

@@ -1,5 +1,5 @@
 /** Turns the Typst compiler's diagnostics into build problems on project files. */
-import type { BuildProblem } from "../latex/index.js";
+import type { BuildProblem } from "../../latex/index.js";
 
 /** A diagnostic as typst.ts reports it with `diagnostics: "full"`. */
 export interface TypstDiagnostic {

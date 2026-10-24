@@ -1,5 +1,5 @@
 sha: 0069f02
-files: documents/contracts/{managed-tools,helper,native-host}.md, packages/core/src/writing/latex/toolchain/node/managed/**, packages/core/src/writing/latex/toolchain/{tinyTexPin,downloadVerified}.ts, packages/core/src/writing/helper/**, packages/core/src/writing/latex/build/node/runCancellable.ts, packages/terminal/installers/**, packages/browser/src/helper/**
+files: documents/contracts/{managed-tools,helper,native-host}.md, packages/core/src/latex/toolchain/node/managedTex/**, packages/core/src/latex/toolchain/{tinyTex.ts,node/downloadVerified.ts}, packages/core/src/writing/helper/**, packages/core/src/latex/build/node/runCancellable.ts, packages/terminal/installers/**, packages/browser/src/helper/**
 source: Explore scout
 
 ## Contracts
@@ -12,7 +12,7 @@ source: Explore scout
 - native-host.md:5-9: desktop apps register the same host with own launcher; ready.host = helper|vscode|terminal.
 - documents/ideas/computational-notes.md says terminal out of scope (task text includes it).
 
-## Managed TeX (core/src/writing/latex/toolchain/node/managed/)
+## Managed TeX (core/src/latex/toolchain/node/managedTex/)
 - Reusable as-is: sharedToolsRoot.ts, toolLock.ts:94 `withToolLock(folder, op, logger, run)`, install/{stagingDir,singleTopDir,clearQuarantine}.ts, toolchain/downloadVerified.ts (SHA-256 before write).
 - Template: install/installTinyTex.ts:44-68 (pin, download, stage, tar, swap, quarantine). Deps in install/installTypes.ts.
 - Provider: managedTexProvider.ts (status/install under lock, managed>system), texLayout.ts, sharedTexProvider.ts:1-29 (factory, root=sharedToolsRoot/"tex").
@@ -32,4 +32,4 @@ source: Explore scout
 
 ## Running processes
 - VS Code: registerNodeWriting.ts:17 OutputChannel "LabShelf Figures"; builds via vscode/src/writing/build/node/. Terminal spawn: terminal/src/platform/system.ts.
-- Runner: writing/latex/build/node/runCancellable.ts `runCancellable(exe,args,cwd,AbortSignal,{shell,onOutput,env})` -> {code, 64 KiB output tail}; detached group, SIGTERM -pid (win taskkill /T /F); rejects BuildCancelled. No timeout, no SIGKILL escalation, stdin ignored, stdout/stderr merged.
+- Runner: latex/build/node/runCancellable.ts `runCancellable(exe,args,cwd,AbortSignal,{shell,onOutput,env})` -> {code, 64 KiB output tail}; detached group, SIGTERM -pid (win taskkill /T /F); rejects BuildCancelled. No timeout, no SIGKILL escalation, stdin ignored, stdout/stderr merged.

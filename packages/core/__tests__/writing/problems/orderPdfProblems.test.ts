@@ -1,7 +1,7 @@
 // Tests that build problems and preprint entries become one ordered list of PDF problems.
 import { orderPdfProblems } from "../../../src/writing/problems";
 import type { PageArea } from "../../../src/reader";
-import type { LocatedProblem } from "../../../src/writing";
+import type { LocatedProblem } from "../../../src/latex";
 
 const area = (page: number, top: number, left = 0): PageArea => ({ page, top, left, right: left + 10, bottom: top + 10 });
 const warn = (kind: "undefinedCitation" | "undefinedReference" | "overfull", file: string, line: number, subject?: string): LocatedProblem => ({

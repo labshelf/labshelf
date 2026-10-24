@@ -2,8 +2,8 @@
 import * as path from "node:path";
 
 import type { ILogger, LibraryFileSystem } from "../../../ports/index.js";
-import { classifyTexProblems, type LatexBuildResult } from "../../latex/build/index.js";
-import { runLatexBuild } from "../../latex/build/node/index.js";
+import { classifyTexProblems, type LatexBuildResult } from "../../../latex/build/index.js";
+import { runLatexBuild } from "../../../latex/build/node/index.js";
 import type { ProjectEntry } from "../../project/index.js";
 import { rootBuildFolder } from "../../project/roots/index.js";
 import { clearFlatBuildFiles } from "../../project/roots/node/index.js";

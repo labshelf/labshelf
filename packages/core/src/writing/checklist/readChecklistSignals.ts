@@ -1,6 +1,6 @@
 // Reads the open-item signals of one writing project: sources, TODOs, broken refs, stale figures and manual items.
 import { readFigureStates } from "../figures/index.js";
-import { collectProjectSources, undefinedRefs } from "../latex/source/project/index.js";
+import { collectProjectSources, undefinedRefs } from "../../latex/source/project/index.js";
 import type { ProjectEntry } from "../project/index.js";
 import { readOptionalText, type ProjectReadContext } from "../project/folder/index.js";
 import type { BrokenRef, StaleFigure } from "./buildChecklist.js";

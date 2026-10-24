@@ -1,6 +1,6 @@
 // Orders a build's problems and preprint entries into the list the PDF preview marks, placed ones in reading order first.
 import type { PageArea, PdfProblem, PdfProblemKind } from "../../reader/index.js";
-import type { LocatedProblem } from "../latex/index.js";
+import type { LocatedProblem } from "../../latex/index.js";
 
 interface ProblemPlace {
   kind: PdfProblemKind;

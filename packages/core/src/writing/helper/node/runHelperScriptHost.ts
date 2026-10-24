@@ -3,8 +3,8 @@ import { readFile, realpath } from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { BIBER_FLAG } from "../../latex/biber/index.js";
-import { biberAssetsInFolder } from "../../latex/biber/node/index.js";
+import { BIBER_FLAG } from "../../../latex/biber/index.js";
+import { biberAssetsInFolder } from "../../../latex/biber/node/index.js";
 import { HELPER_VERSION, type HelperHost } from "../index.js";
 import { helperDataDir } from "./helperDataDir.js";
 import { createHelperLogger } from "./log/index.js";

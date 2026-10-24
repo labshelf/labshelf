@@ -127,7 +127,7 @@ async function smokeCheck(binary, scratchHome) {
 }
 
 // The control file and bibliography core's biber tests use.
-const BIBER_FIXTURES = resolve(root, "../core/__tests__/writing/latex/biber/fixtures");
+const BIBER_FIXTURES = resolve(root, "../core/__tests__/latex/biber/fixtures");
 
 async function biberSmokeCheck(binary, tmpDir, scratchHome) {
   const project = join(tmpDir, "biber project");

@@ -49,7 +49,7 @@
     ".": "./src/index.ts",
     "./dom": "./src/dom/index.ts",
     "./node": "./src/node/index.ts",
-    "./math": "./src/writing/latex/math/index.ts",
+    "./math": "./src/latex/hover/index.ts",
     "./helper": "./src/writing/helper/index.ts",
     "./helper/node": "./src/writing/helper/node/index.ts",
     "./bridge/node": "./src/bridge/node/index.ts",

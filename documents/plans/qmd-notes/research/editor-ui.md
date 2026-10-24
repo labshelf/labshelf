@@ -1,13 +1,13 @@
 sha: 0069f02
-files: packages/browser/src/library-page/editor/**, packages/core/src/writing/latex/{math,source}/**, packages/core/src/writing/insert/**, packages/core/src/ui/**, packages/core/package.json, packages/vscode/build/*.mjs, packages/browser/build/build.mjs, packages/vscode/src/**/*Html.ts, packages/browser/manifest.chrome.json
+files: packages/browser/src/library-page/editor/**, packages/core/src/latex/{hover,source}/**, packages/core/src/writing/insert/**, packages/core/src/ui/**, packages/core/package.json, packages/vscode/build/*.mjs, packages/browser/build/build.mjs, packages/vscode/src/**/*Html.ts, packages/browser/manifest.chrome.json
 source: Explore scout
 
 ## Reuse
-- `packages/core/src/writing/latex/math/renderMathSvg.ts:1-40` `renderMathSvg(tex, display, macros)`: MathJax SVG string (liteAdaptor, fontCache local), throws on parse error. Import only via `@labshelf/core/math` (TRAP: ~2.5 MB CJS with side effects; never from the core root).
+- `packages/core/src/latex/hover/renderMathSvg.ts:1-40` `renderMathSvg(tex, display, macros)`: MathJax SVG string (liteAdaptor, fontCache local), throws on parse error. Import only via `@labshelf/core/math` (TRAP: ~2.5 MB CJS with side effects; never from the core root).
 - `packages/core/src/library/paper/paperLink.ts:17-34`: `labshelf:` regex, parse, format, find.
 - `packages/core/src/ui/dom/widgets/{menu,dialog,quickInput,toast,overlay}.ts`; icons `packages/core/src/ui/icons/{icon,glyphs,codiconGlyphs}.ts` (add a name to glyphs).
 - `packages/core/src/writing/insert/*`: runtime-neutral LaTeX/Typst snippet builders.
-- LaTeX scan `packages/core/src/writing/latex/source/scan/scanLatexSource.ts` + `commands/{scanReferences,scanSections,scanMacros,scanIncludes}`; `facts.ts:1-70` `LatexSourceFacts {labels, refs, sections, macros, includes}` with zero-based `LatexRange`. Cite positions: confirm in scan/ before relying.
+- LaTeX scan `packages/core/src/latex/source/scanLatexSource.ts` + `commands/{scanReferences,scanSections,scanMacros,scanIncludes}`; `facts.ts:1-70` `LatexSourceFacts {labels, refs, sections, macros, includes}` with zero-based `LatexRange`. Cite positions: confirm in scan/ before relying.
 
 ## Current state
 - CodeMirror 6 only in `packages/browser/src/library-page/editor/` (LaTeX, Typst, BibTeX); VS Code uses its native editor. `y-codemirror.next` only in `editor/collab/binding/collabExtensions.ts:6,41`.

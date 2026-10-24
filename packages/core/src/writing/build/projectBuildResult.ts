@@ -1,5 +1,5 @@
 // Describes how a project build ended, from a built PDF to a toolchain that is not ready.
-import type { LatexBuildResult } from "../latex/build/index.js";
+import type { LatexBuildResult } from "../../latex/build/index.js";
 import type { TypstBuildResult } from "../typst/index.js";
 
 export type ProjectBuildResult =

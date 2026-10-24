@@ -1,5 +1,5 @@
 /** Finds the headings of a LaTeX or Typst source with the line each starts on. */
-import { scanLatexSource } from "../latex/index.js";
+import { scanLatexSource } from "../../latex/index.js";
 import type { ProjectFormat } from "../project/index.js";
 import { scanTypstHeadings } from "../typst/source/index.js";
 

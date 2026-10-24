@@ -2,7 +2,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
-import { findExecutable } from "../../../latex/toolchain/node/index.js";
+import { findExecutable } from "../../../../latex/toolchain/node/index.js";
 import type { ProjectFormat } from "../../projectFile.js";
 import { pandocArgs, type DocumentExport } from "../pandocArgs.js";
 

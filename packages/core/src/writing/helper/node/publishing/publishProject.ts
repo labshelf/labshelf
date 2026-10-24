@@ -5,7 +5,7 @@ import type { ILogger } from "../../../../ports/index.js";
 import { resolveInLibrary } from "../../../../bridge/node/index.js";
 import { readProject } from "../../../project/folder/index.js";
 import { nodeProjectReadContext } from "../../../project/node/index.js";
-import { engineLabel } from "../../../latex/index.js";
+import { engineLabel } from "../../../../latex/index.js";
 import type { PublishableProject } from "../../../templates/publishing/index.js";
 
 export async function publicationProject(projectId: string, logger: ILogger, sharedConfigFile?: string): Promise<{ libraryRoot: string; project: PublishableProject }> {

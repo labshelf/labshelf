@@ -1,7 +1,8 @@
 // Shows the build options of the preview as a header menu: when to compile and, for LaTeX roots, the engine and whether to stop at the first error.
 import { icon } from "../../../../ui/index.js";
 import { showMenu, type MenuEntry } from "../../../../ui/dom/index.js";
-import { AUTO_COMPILE_MODES, LATEX_ENGINES, autoCompileLabel, engineLabel } from "../../../../writing/index.js";
+import { engineLabel } from "../../../../latex/index.js";
+import { AUTO_COMPILE_MODES, LATEX_ENGINES, autoCompileLabel } from "../../../../writing/index.js";
 import type { BuildOptions, PreviewRoots, WebviewToHost } from "../../../index.js";
 import { iconButton } from "../../elements/index.js";
 

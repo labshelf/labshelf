@@ -4,7 +4,7 @@ import * as path from "node:path";
 
 import { writeFileAtomic } from "../../../library/node/index.js";
 import type { ILogger } from "../../../ports/index.js";
-import { downloadVerified, type FetchLike } from "../../latex/toolchain/node/index.js";
+import { downloadVerified, type FetchLike } from "../../../latex/toolchain/node/index.js";
 import { TYPST_FONT_BASE_URL, TYPST_FONTS, TYPST_VERSION, type TypstFontFile } from "../typstRelease.js";
 
 const MODULE = "writing/typst";

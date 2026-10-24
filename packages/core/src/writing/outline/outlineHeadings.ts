@@ -1,5 +1,5 @@
 // Lists the headings of a LaTeX or Typst source with their level, so any host can nest them into an outline.
-import { scanLatexSource } from "../latex/index.js";
+import { scanLatexSource } from "../../latex/index.js";
 import type { ProjectFormat } from "../project/index.js";
 import { scanTypstHeadings } from "../typst/source/index.js";
 

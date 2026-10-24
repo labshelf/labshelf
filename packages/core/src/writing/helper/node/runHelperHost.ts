@@ -5,7 +5,7 @@ import * as path from "node:path";
 
 import type { HelperHost } from "../index.js";
 import { TypstCompilerHost } from "../../typst/node/index.js";
-import { createSharedTexProvider } from "../../latex/toolchain/node/managed/index.js";
+import { createSharedTexProvider } from "../../../latex/toolchain/node/managedTex/index.js";
 import type { HelperLogger } from "./log/index.js";
 import { createTemplatePublishHandlers } from "./publishing/index.js";
 import { createBuildHandlers } from "./build/index.js";

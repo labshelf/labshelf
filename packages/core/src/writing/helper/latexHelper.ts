@@ -1,7 +1,7 @@
 /** Declares the port an app implements to build LaTeX projects through LabShelf Helper. */
 // CONTRACT: documents/contracts/helper.md#version
 
-import type { LocatedProblem, TexInstallKind } from "../latex/index.js";
+import type { LocatedProblem, TexInstallKind } from "../../latex/index.js";
 import type { LatexEngine } from "../project/index.js";
 import type { CompileMode, HelperBuildStatus, HelperHost, HelperProgress, TexStatus, TextChange } from "./helperMessages.js";
 

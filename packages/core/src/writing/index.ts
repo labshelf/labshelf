@@ -2,7 +2,6 @@
 export * from "./citations/index.js";
 export * from "./project/index.js";
 export * from "./templates/index.js";
-export * from "./latex/index.js";
 export * from "./review/index.js";
 export * from "./synctex/index.js";
 export * from "./figures/index.js";

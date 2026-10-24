@@ -1,7 +1,7 @@
 /** Declares every message an extension page and LabShelf Helper exchange, with the protocol's version and limits. */
 // CONTRACT: documents/contracts/helper.md#messages
 
-import type { LocatedProblem, TexInstallKind } from "../latex/index.js";
+import type { LocatedProblem, TexInstallKind } from "../../latex/index.js";
 import type { LatexEngine } from "../project/index.js";
 
 import type { TemplatePublishMessage, TemplatePublishReply } from "./publishing/index.js";

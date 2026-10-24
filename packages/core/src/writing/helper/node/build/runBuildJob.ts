@@ -3,7 +3,7 @@ import * as path from "node:path";
 
 import { builtPdfPath } from "../../../build/index.js";
 import { type ILogger } from "../../../../ports/index.js";
-import { classifyTexProblems, type LocatedProblem } from "../../../latex/build/index.js";
+import { classifyTexProblems, type LocatedProblem } from "../../../../latex/build/index.js";
 import { type ProjectEntry } from "../../../project/index.js";
 import type { ProjectBuildQueue } from "../../../build/node/index.js";
 import { PROTOCOL_VERSION, type HelperBuildStatus, type ToHelperMessage } from "../../index.js";

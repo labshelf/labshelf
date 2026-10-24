@@ -2,7 +2,7 @@
 // CONTRACT: documents/contracts/helper.md#page-to-helper
 
 import { COMPILE_MODES, MAX_EDIT_CHANGES, type TextChange, type ToHelperMessage } from "./helperMessages.js";
-import { TEX_INSTALL_KINDS } from "../latex/index.js";
+import { TEX_INSTALL_KINDS } from "../../latex/index.js";
 import { LATEX_ENGINES } from "../project/index.js";
 import {
   FieldError, isBody, isNonNegativeInteger, isPositiveInteger, optional, readArray, readBoolean, readChoice, readNumber, readPath,

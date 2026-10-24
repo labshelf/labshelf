@@ -1,6 +1,6 @@
 // Rebuilds a LaTeX document after installing each TeX file the previous build missed.
 import type { ILogger } from "../../../ports/index.js";
-import type { TexProvider } from "../../latex/toolchain/index.js";
+import type { TexProvider } from "../../../latex/toolchain/index.js";
 
 const MODULE = "writing/build";
 const MAX_INSTALL_ROUNDS = 10;

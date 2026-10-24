@@ -99,7 +99,7 @@ User tasks (outside the code, before session 5 can fully pass):
 | 1a | [sessions/1a-contract.md](sessions/1a-contract.md) | protocol contract and core protocol | `documents/contracts/helper.md`, `packages/core/src/writing/helper/`, its tests | 1b |
 | 1b | [sessions/1b-research.md](sessions/1b-research.md) | research, browser-editor amended, extension key | `research/`, `documents/plans/browser-editor/`, `key` in `manifest.chrome.json` | 1a |
 | 2 | [sessions/2-host.md](sessions/2-host.md) | helper process: framing, mirror, build | `packages/core/src/writing/helper/node/`, its tests, `packages/terminal/build/build.mjs` | 4 |
-| 3a | [sessions/3a-tex.md](sessions/3a-tex.md) | managed TinyTeX / TeX Live, packages, rollover | `packages/core/src/writing/latex/toolchain/node/managed/`, its tests | 4 |
+| 3a | [sessions/3a-tex.md](sessions/3a-tex.md) | managed TinyTeX / TeX Live, packages, rollover | `packages/core/src/latex/toolchain/node/managedTex/`, its tests | 4 |
 | 3b | [sessions/3b-register-update.md](sessions/3b-register-update.md) | browser registration, verified self-update | `packages/terminal/src/helper/register/`, `helper/update/`, `helper/main.ts`, `scripts/release/helperReleaseKey.mjs` | 4 |
 | 4 | [sessions/4-browser.md](sessions/4-browser.md) | `ILatexHelper` adapter, manifests, setup card | `packages/browser/src/helper/`, its tests, manifest permissions, `options/index.ts` | 2, 3a or 3b |
 | 5 | [sessions/5-release.md](sessions/5-release.md) | SEA binary, installers, release workflow | `.github/`, `packages/terminal/build/sea.mjs`, `packages/terminal/installers/` | alone |

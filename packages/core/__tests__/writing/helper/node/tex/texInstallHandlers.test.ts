@@ -3,7 +3,7 @@ import type { ILogger } from "../../../../../src/ports/index.js";
 import { PROTOCOL_VERSION, type ToHelperMessage, type ToPageMessage } from "../../../../../src/writing/helper/index.js";
 
 import { createTexInstallHandlers } from "../../../../../src/writing/helper/node/tex/index.js";
-import { TexInstallError, type ManagedTexProvider } from "../../../../../src/writing/latex/toolchain/node/managed/index.js";
+import { TexInstallError, type ManagedTexProvider } from "../../../../../src/latex/toolchain/node/managedTex/index.js";
 
 const logger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) } as unknown as ILogger;
 const status = { source: "tinytex" as const, year: 2026, complete: true };

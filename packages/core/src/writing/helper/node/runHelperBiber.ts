@@ -1,8 +1,8 @@
 // Runs the helper's `--biber` mode, the biber command latexmk starts during a LaTeX build, logging to the helper's log.
 import * as os from "node:os";
 
-import type { BiberWasmAssets } from "../../latex/biber/index.js";
-import { runBiber } from "../../latex/biber/node/index.js";
+import type { BiberWasmAssets } from "../../../latex/biber/index.js";
+import { runBiber } from "../../../latex/biber/node/index.js";
 import { helperDataDir } from "./helperDataDir.js";
 import { createHelperLogger } from "./log/index.js";
 
