@@ -1,7 +1,7 @@
 // Runs the project half of the sharing dialogs over the core share workflows, checking each project id against the open library.
 import {
   currentInvite, isSharedProject, joinSharedProject, leaveSharedProject, shareProject, type SharedProject, type ShareWorkflowPorts,
-} from "../../../collab/share/workflows/index.js";
+} from "../../../collab/share/flows/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import type { ProjectEntry } from "../../../writing/project/index.js";
 import type { JoinProjectResult, SharingHost, ShareProjectResult } from "../shareHost.js";

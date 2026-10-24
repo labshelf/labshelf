@@ -2,6 +2,7 @@
 export type { ConnectionMirror, MirrorFactory, MirrorInput, MirrorStart, MirrorState } from "./connectionMirror.js";
 export { leasedMirrorFactory, type LeasedMirrorOptions } from "./leasedMirror.js";
 export { placeSharedProject, type PlacedProject, type ShareProjects, type ShareStart } from "./placeSharedProject.js";
-export { projectIndexReady, UnknownShareKindError } from "./projectIndexReady.js";
+export { projectIndexReady, UnknownShareKindError } from "./shareIndexDocReady.js";
 export { connectShare, type ShareConnection, type ShareConnectionOptions, type ShareConnectionState } from "./shareConnection.js";
 export { followShareRelays, type RelayNetwork, type ShareRelays, type ShareRelayState } from "./shareRelays.js";
+export { applyRestoredFiles, type ApplyRestoredFilesOptions } from "./applyRestoredFiles.js";

@@ -1,12 +1,12 @@
 // Chooses the one relay a share's clients use: the first listed relay that is not held down and answers its probes, shared through presence.
 import type { Doc } from "yjs";
 import type { ILogger } from "../../ports/index.js";
-import type { SessionScheduler } from "../sync/index.js";
+import type { SessionScheduler } from "../peer/index.js";
 import { RelayHolds } from "./relayHolds.js";
 import { indexRelays, relayList } from "./relayList.js";
 import type { RelayPresence } from "./relayPresence.js";
 import type { RelayVerdict } from "./relayProbe.js";
-import { GroupFollow } from "./watch/index.js";
+import { GroupFollow } from "./groupRelays.js";
 
 const LOG_MODULE = "collab.relays";
 /** The relay in use, the relays listed before it and the ones this client's probes held down are probed this often. */

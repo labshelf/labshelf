@@ -3,8 +3,8 @@ import type { ILogger } from "../../ports/index.js";
 import type { ProjectCatalogContext } from "../../writing/project/index.js";
 import { COMMENTS_PATH, importCommentsFile } from "../comments/index.js";
 import { joinShare, startShare } from "../share/index.js";
-import type { ShareSession } from "../sync/index.js";
-import { projectIndexReady } from "./projectIndexReady.js";
+import type { ShareSession } from "../doc/index.js";
+import { projectIndexReady } from "./shareIndexDocReady.js";
 
 /** `share` turns a project into a share, `resume` reconnects a shared one, `join` creates the project of a share in the library. */
 export type ShareStart = { mode: "share" | "resume"; folder: string } | { mode: "join"; signal: AbortSignal };

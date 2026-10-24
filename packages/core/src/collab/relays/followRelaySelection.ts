@@ -1,9 +1,11 @@
 // Keeps a share session on the relay its selector chooses: one relay transport and relay sync at a time, swapped on a change.
 import type { ILogger } from "../../ports/index.js";
-import type { WebCryptoKey } from "../crypto/index.js";
-import {
-  attachRelaySync, memoryCursorStore, systemScheduler, type RelayCursorStore, type RelaySync, type SessionScheduler, type ShareSession,
-} from "../sync/index.js";
+import type { WebCryptoKey } from "../shareKey/index.js";
+import { attachRelaySync } from "./relaySync.js";
+import { memoryCursorStore, type RelayCursorStore } from "./relayCursors.js";
+import { systemScheduler, type SessionScheduler } from "../peer/index.js";
+import { type RelaySync } from "./relaySyncOptions.js";
+import { type ShareSession } from "../doc/index.js";
 import { createRelayTransport, globalSocketFactory, type RelaySocketFactory, type RelayTransport } from "../transport/index.js";
 import { observeConnection } from "./observedConnection.js";
 import type { RelaySelector } from "./relaySelector.js";

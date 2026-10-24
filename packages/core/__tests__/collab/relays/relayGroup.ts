@@ -1,15 +1,15 @@
 /** Runs real share sessions over two in-process relays whose hosts can refuse, page for limits or be blocked per client. */
 import * as Y from "yjs";
-import { deriveAwarenessKey, deriveContentKey, deriveRelayToken } from "../../../src/collab/crypto/index";
+import { deriveAwarenessKey, deriveContentKey, deriveRelayToken } from "../../../src/collab/shareKey/index";
 import {
   addRelay, createRelaySelector, createRelayWatch, createSwitchableTransport, followRelaySelection, relayPresence, relayProbe, type RelaySelector,
 } from "../../../src/collab/relays/index";
-import {
-  attachAwareness, createShareSession, memoryCursorStore, type PresenceHandle, type RelayCursorStore, type ShareSession,
-} from "../../../src/collab/sync/index";
+import { attachAwareness, type PresenceHandle } from "../../../src/collab/presence/index";
+import { createShareSession, type ShareSession } from "../../../src/collab/doc/shareSession";
+import { memoryCursorStore, type RelayCursorStore } from "../../../src/collab/relays/relayCursors";
 import type { RelaySocket } from "../../../src/collab/transport/index";
-import type { FakeClock } from "../sync/fakeNetwork";
-import { fakeLogger, SHARE_ID, SHARE_KEY } from "../sync/testSession";
+import type { FakeClock } from "../peer/fakeNetwork";
+import { fakeLogger, SHARE_ID, SHARE_KEY } from "../doc/testSession";
 import { FakeRelay } from "../transport/relay/fakeRelay";
 
 export const ONE = "https://one.example.workers.dev";

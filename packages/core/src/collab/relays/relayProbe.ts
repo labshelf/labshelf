@@ -1,7 +1,7 @@
 // Asks a relay's public /version whether it serves a compatible protocol, refuses for limits or fails, giving up after 3 s.
 import type { ILogger } from "../../ports/index.js";
 import { decodeVersionResponse, RELAY_PATH } from "../../relay/index.js";
-import { systemScheduler, type SessionScheduler } from "../sync/index.js";
+import { systemScheduler, type SessionScheduler } from "../peer/index.js";
 import { isLimitRefusal } from "./observedConnection.js";
 
 export const PROBE_TIMEOUT_MS = 3000;

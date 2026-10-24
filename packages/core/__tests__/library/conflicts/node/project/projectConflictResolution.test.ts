@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { findProjectConflict, resolveProjectConflictCopy } from '../../../../../src/library/conflicts/node/index';
 import { readConflictDismissals } from '../../../../../src/library/conflicts/index';
 import { conflictDismissalFile } from '../../../../../src/library/conflicts/node/index';
-import { nodeCollabStorage } from '../../../../../src/collab/node/state/index';
+import { nodeCollabStorage } from '../../../../../src/collab/node/deviceState/index';
 import { FileProjectVersionStore, textHash } from '../../../../../src/writing/merge/index';
 import { NodeLibraryFileSystem, deviceLocalLayout } from '../../../../../src/library/node/index';
 import { fakeLogger } from '../../../../support/fakeLogger';

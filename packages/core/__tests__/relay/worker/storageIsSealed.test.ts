@@ -1,5 +1,5 @@
 /** Pins A7: what a share's Durable Object stores holds no plaintext of the sealed frames it received. */
-import { deriveContentKey, generateShareKey, sealFrame } from "../../../src/collab/crypto/index";
+import { deriveContentKey, generateShareKey, sealFrame } from "../../../src/collab/shareKey/index";
 import { FakeRoom } from "./fakeRoomRuntime";
 
 const doc = "cd".repeat(16);

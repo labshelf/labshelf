@@ -6,15 +6,18 @@ import { COMMENTS_PATH } from "../comments/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { PROJECT_FILE } from "../../writing/project/index.js";
 import { indexComments, indexFiles, indexSettings, indexWritten, isSafeSharePath, sharedPaths, type ShareFileEntry } from "../model/index.js";
-import type { MirrorOwnershipLost } from "../ownership/index.js";
-import type { BlobExchange, ShareSession } from "../sync/index.js";
-import type { CollabStore } from "../state/index.js";
-import type { MirrorRootUnavailable, MirrorDisk } from "./disk/index.js";
+import type { MirrorOwnershipLost } from "./mirrorLostError.js";
+import type { BlobExchange, ShareSession } from "../doc/index.js";
+import type { CollabStore } from "../deviceState/index.js";
+import type { MirrorRootUnavailable, MirrorDisk } from "./fileSystem/index.js";
 import { createMirrorLifecycle, gateDisk, gateWriteRecords } from "./mirrorLifecycle.js";
-import {
-  DISK_ORIGIN, LOG_MODULE, PathQueue, reconcileBlob, reconcileComments, reconcileSettings, reconcileText, reconcileUntracked,
-  type MergeText, type MirrorContext, type ReconcileOutcome,
-} from "./reconcile/index.js";
+import { DISK_ORIGIN, LOG_MODULE, type MergeText, type MirrorContext } from "./mirrorContext.js";
+import { PathQueue, type ReconcileOutcome } from "./pathQueue.js";
+import { reconcileBlob } from "./blobMirror.js";
+import { reconcileComments } from "./commentsMirror.js";
+import { reconcileSettings } from "./settingsMirror.js";
+import { reconcileText } from "./textMirror.js";
+import { reconcileUntracked } from "./untrackedFile.js";
 
 const DEFAULT_STABLE_MS = 300;
 

@@ -1,10 +1,14 @@
 /** Opens share sessions that reach each other only through a fake relay, with the relay sync and presence attached. */
 import * as Y from "yjs";
-import { deriveAwarenessKey, deriveContentKey, deriveRelayToken } from "../../../../src/collab/crypto/index";
-import { attachAwareness, attachRelaySync, createShareSession, type PresenceHandle, type RelayCursorStore, type RelaySync, type ShareSession } from "../../../../src/collab/sync/index";
+import { deriveAwarenessKey, deriveContentKey, deriveRelayToken } from "../../../../src/collab/shareKey/index";
+import { attachAwareness, type PresenceHandle } from "../../../../src/collab/presence/index";
+import { attachRelaySync } from "../../../../src/collab/relays/relaySync";
+import { createShareSession, type ShareSession } from "../../../../src/collab/doc/shareSession";
+import { type RelayCursorStore } from "../../../../src/collab/relays/relayCursors";
+import { type RelaySync } from "../../../../src/collab/relays/relaySyncOptions";
 import { createRelayTransport, type RelayTransport } from "../../../../src/collab/transport/index";
-import type { FakeClock } from "../../sync/fakeNetwork";
-import { fakeLogger, SHARE_ID, SHARE_KEY, type FakeLogger } from "../../sync/testSession";
+import type { FakeClock } from "../../peer/fakeNetwork";
+import { fakeLogger, SHARE_ID, SHARE_KEY, type FakeLogger } from "../../doc/testSession";
 import type { FakeRelay } from "./fakeRelay";
 
 export const RELAY_URL = "https://relay.example.workers.dev";

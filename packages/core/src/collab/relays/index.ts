@@ -7,5 +7,9 @@ export {
   createRelaySelector, type RelayFailure, type RelaySelector, type RelaySelectorOptions,
 } from "./relaySelector.js";
 export { createSwitchableTransport, type SwitchableTransport } from "./switchableTransport.js";
-export { createRelayWatch, type RelayWatch, type RelayWatchOptions } from "./watch/index.js";
+export { createRelayWatch, type RelayWatch, type RelayWatchOptions } from "./relayWatch.js";
 export { followRelaySelection, type RelayFollower, type RelayFollowOptions } from "./followRelaySelection.js";
+export { attachRelaySync, SNAPSHOT_AFTER_PUTS } from "./relaySync.js";
+export { PUT_INTERVAL_MS } from "./relayDocPuts.js";
+export type { RelaySync, RelaySyncOptions } from "./relaySyncOptions.js";
+export { memoryCursorStore, type RelayCursorStore } from "./relayCursors.js";

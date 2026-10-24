@@ -1,11 +1,11 @@
 import type { ShareConnection, ShareConnectionState } from "../../../../src/collab/session";
-import { joinSharedProject, leaveSharedProject, shareProject, type ShareWorkflowPorts } from "../../../../src/collab/share/workflows";
+import { joinSharedProject, leaveSharedProject, shareProject, type ShareWorkflowPorts } from "../../../../src/collab/share/flows";
 import { createProjectSharingOps } from "../../../../src/libraryUi/share/flow";
 import type { ILogger } from "../../../../src/ports";
 import type { ProjectEntry, ProjectSettings } from "../../../../src/writing/project";
 
-jest.mock("../../../../src/collab/share/workflows", () => ({
-  ...jest.requireActual("../../../../src/collab/share/workflows"),
+jest.mock("../../../../src/collab/share/flows", () => ({
+  ...jest.requireActual("../../../../src/collab/share/flows"),
   shareProject: jest.fn(), joinSharedProject: jest.fn(), leaveSharedProject: jest.fn(), currentInvite: jest.fn(),
 }));
 

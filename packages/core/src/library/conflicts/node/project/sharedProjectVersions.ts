@@ -1,6 +1,6 @@
 // Reads validated shared-project history without changing live collaboration state.
 import * as path from 'node:path';
-import { loadVersionHistory, PersistedMap } from '../../../../collab/state/index.js';
+import { loadVersionHistory, PersistedMap } from '../../../../collab/deviceState/index.js';
 import type { ILogger } from '../../../../ports/index.js';
 import { textHash } from '../../../../writing/merge/index.js';
 import { parseProjectFile, PROJECT_FILE } from '../../../../writing/project/index.js';

@@ -6,7 +6,7 @@ import type { ShareWorkflowPorts, StoredInvite } from "../../../src/collab/share
 import { parseProjectFile, type ProjectEntry } from "../../../src/writing/project/index";
 import { LIB, readText } from "../../support/memoryProjectCatalog";
 import { mirrorFactory, Network, newDevice, type Device } from "../session/connectionTestbed";
-import { memoryStorage, type MemoryStorage } from "../state/memoryStorage";
+import { memoryStorage, type MemoryStorage } from "../deviceState/memoryStorage";
 import { ONE } from "../relays/relayGroup";
 
 export interface WorkflowDevice extends Device {

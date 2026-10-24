@@ -1,5 +1,5 @@
 // Tells the user once per episode that a connected share cannot store its edits on this device.
-import type { ShareWorkflowPorts } from "../../../collab/share/workflows/index.js";
+import type { ShareWorkflowPorts } from "../../../collab/share/flows/index.js";
 import { projectName } from "./projectShareState.js";
 
 /** Where the user keeps LabShelf open: a VS Code window or a browser page. */

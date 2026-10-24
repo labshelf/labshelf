@@ -1,5 +1,5 @@
 // Encrypts a share's manifest under its link key and its PDF parts convergently, and opens and verifies both.
-import { openFrame, sealFrame, type FrameContext, type WebCryptoKey } from "../../collab/crypto/index.js";
+import { openFrame, sealFrame, type FrameContext, type WebCryptoKey } from "../../collab/shareKey/index.js";
 import { sha256Hex } from "../../hash/index.js";
 import { decodeShareManifest, type ShareManifest, type SharedPdfPart } from "./shareManifest.js";
 

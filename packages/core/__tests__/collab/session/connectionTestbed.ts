@@ -4,9 +4,9 @@ import { createWriteRecordStore } from "../../../src/library/writeRecords/index"
 import { connectShare, type MirrorFactory, type ShareConnection, type ShareStart } from "../../../src/collab/session/index";
 import { mergeText } from "../../../src/writing/merge/node/index";
 import { LIB, memoryCatalog, readText, writeTree, type MemoryCatalog } from "../../support/memoryProjectCatalog";
-import { memoryStorage, type MemoryStorage } from "../state/memoryStorage";
-import { FakeClock } from "../sync/fakeNetwork";
-import { SHARE_ID, SHARE_KEY } from "../sync/testSession";
+import { memoryStorage, type MemoryStorage } from "../deviceState/memoryStorage";
+import { FakeClock } from "../peer/fakeNetwork";
+import { SHARE_ID, SHARE_KEY } from "../doc/testSession";
 import { ONE, RelayHosts } from "../relays/relayGroup";
 import { runFor } from "../transport/relay/fakeRelay";
 

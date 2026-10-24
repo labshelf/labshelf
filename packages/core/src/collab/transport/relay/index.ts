@@ -7,4 +7,4 @@ export {
   claimShare, fetchTicket, type ClaimRequestOptions, type TicketRequestOptions,
 } from "./relayRequests.js";
 export { RelayRequestError } from "./relayRequestError.js";
-export { globalSocketFactory, type RelaySocket, type RelaySocketFactory } from "./relaySocket.js";
+export { globalSocketFactory, type RelaySocket, type RelaySocketFactory } from "./relayConnection.js";
