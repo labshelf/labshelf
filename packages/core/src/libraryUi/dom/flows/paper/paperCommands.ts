@@ -3,7 +3,7 @@
  * show at once, before the host confirms them.
  */
 import type { PaperStatus } from "../../../../model/index.js";
-import { hasNoText, listPapersUnder } from "../../../derive/index.js";
+import { hasNoText, listPapersUnder } from "../../../viewModel/index.js";
 import { PAPERS_DIR } from "../../../../library/index.js";
 import type { UiContext } from "../../uiContext.js";
 

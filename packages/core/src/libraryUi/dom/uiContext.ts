@@ -4,9 +4,9 @@
  */
 import type { LibraryUiCapabilities, LibraryUiLabels } from "../hostConfig.js";
 import type { LibraryTransport } from "../protocol/index.js";
-import type { SharingHost } from "../sharing/index.js";
-import type { LibraryViewStore, PrefsPort } from "../state/index.js";
-import { createPaperData, type PaperDataRequests } from "./paperData.js";
+import type { SharingHost } from "../share/index.js";
+import type { LibraryViewStore, PrefsPort } from "../store/index.js";
+import { createPaperData, type PaperDataRequests } from "./detailPaneRequests.js";
 
 /** Moves the list cursor; the paper list provides it once mounted. */
 export interface ListCursor {

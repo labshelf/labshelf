@@ -5,7 +5,7 @@
 import { compactTime } from "../../../library/index.js";
 import { PDF_VERSION_LABEL, STATUS_LABEL, isPrePublication, nextStatus, type PaperStatus, type PdfVersion } from "../../../model/index.js";
 import { escapeHtml, icon, statusMark } from "../../../ui/index.js";
-import { hasNoText, jobText, type ListPaper } from "../../derive/index.js";
+import { hasNoText, jobText, type ListPaper } from "../../viewModel/index.js";
 import type { PaperStats, TextLayerJobView } from "../../protocol/index.js";
 
 /** An icon after the title for a PDF that needs attention; a readable PDF shows none. */

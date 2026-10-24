@@ -1,6 +1,6 @@
 // Drags an editor tab onto the other group; while a tab drags, an empty group shows as the place to drop it.
 import type { EditorGroup } from "./editorGroups.js";
-import type { EditorGroupIndex } from "./types.js";
+import type { EditorGroupIndex } from "./editorAreaOptions.js";
 
 const TAB_MIME = "application/x-labshelf-editor-tab";
 

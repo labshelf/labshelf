@@ -4,21 +4,22 @@
  */
 import { PAPERS_DIR, folderLabel } from "../../../library/index.js";
 import { nextStatus, type PaperRecord } from "../../../model/index.js";
-import { deriveListView, type ListPaper } from "../../derive/index.js";
-import { COLUMN_KEYS, type ColumnKey } from "../../state/index.js";
-import { endPaperDrag, startPaperDrag } from "../dnd/index.js";
+import { deriveListView, type ListPaper } from "../../viewModel/index.js";
+import { COLUMN_KEYS, type ColumnKey } from "../../store/index.js";
+import { endPaperDrag, startPaperDrag } from "../drag/index.js";
 import { openPaper, requestAddPaper, setPaperStatus } from "../flows/index.js";
 import { showPaperMenu } from "../menu/index.js";
 import { overlayOpen, type UiContext } from "../uiContext.js";
 import { columnHeadsHtml, wireColumnHeads } from "./columnHeads.js";
 import { buildEmptyState, buildLoading } from "./emptyState.js";
-import { GroupedRows, groupAriaLabel, groupPapers, type PaperGroup } from "./groups/index.js";
-import { attachListKeys } from "./listKeys.js";
+import { GroupedRows } from "./groupedRows.js";
+import { groupAriaLabel, groupPapers, type PaperGroup } from "./groupPapers.js";
+import { attachListKeys } from "./listShortcuts.js";
 import { paintTray, wireFilesRequest } from "./tray/index.js";
 import { buildPaperRow, type RowHandlers, type RowView } from "./paperRow.js";
 import { RowReconciler } from "./rowReconciler.js";
-import { paintSortableHeads } from "./sortableHeads.js";
-import { paintTabStop, treeCursor, wireTabStop } from "./treeNav/index.js";
+import { paintSortableHeads } from "./sortHeads.js";
+import { paintTabStop, treeCursor, wireTabStop } from "./tree/index.js";
 import { createWindowedList, type WindowedList } from "./window/index.js";
 
 interface List {

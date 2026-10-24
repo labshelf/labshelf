@@ -1,16 +1,16 @@
 // Mounts the Library, Projects and Spaces sidebar sections through host actions.
 import { PAPERS_DIR, parentDir, type FolderTreeNode } from "../../../library/index.js";
 import { runJoinProjectDialog } from "../../../collab/dom/index.js";
-import type { SharingHost } from "../../sharing/index.js";
-import { libraryHeadingMenu, projectContextMenu, showFolderMenu } from "./menus/index.js";
-import { libraryTags, libraryTree, type TreePaper } from "../../derive/index.js";
+import type { SharingHost } from "../../share/index.js";
+import { libraryHeadingMenu, projectContextMenu, showFolderMenu } from "./sidebarMenus.js";
+import { libraryTags, libraryTree, type TreePaper } from "../../viewModel/index.js";
 import { tagQuery } from "../../searchQueries.js";
-import { onSidebarKey } from "./sidebarKeys.js";
+import { onSidebarKey } from "./sidebarShortcuts.js";
 import { isTreeInput } from "./sidebarTreeInput.js";
 import { activateTreeRow, onOpenProjectClick, onOpenProjectMenu } from "./sidebarOpenProject.js";
 import type { SidebarOpenProject } from "../../sidebarTrees.js";
 import { ALL_PROJECT_OFFERS, projectFolderKey, type ProjectOffers, type SidebarProjectActions } from "./sidebarProjects.js";
-import type { SidebarProject } from "../../projectRows/index.js";
+import type { SidebarProject } from "../../viewModel/index.js";
 import { rowKey } from "./sidebarRows.js";
 import type { GroupId, SectionId } from "./sidebarSections.js";
 import { NAV_ROWS, expandTo, paintFocus, render, setExpanded, toggleSection, type SidebarActions, type SidebarState } from "./sidebarView.js";

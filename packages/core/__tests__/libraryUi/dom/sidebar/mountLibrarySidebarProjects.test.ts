@@ -3,7 +3,7 @@
  */
 // Tests the Projects section of the library sidebar: rows, host menus and sharing entries.
 import { fakeHost } from "../../../collab/dom/fakeHost";
-import type { SharingHost } from "../../../../src/libraryUi/sharing";
+import type { SharingHost } from "../../../../src/libraryUi/share";
 import { compact, folder, key, mount, rows } from "./sidebarFixture";
 
 const project = (id: string, group = "", count?: string) =>

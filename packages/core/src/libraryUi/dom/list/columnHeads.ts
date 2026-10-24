@@ -3,11 +3,11 @@
  * column sorts by it in that column's first direction (dates newest first). The Columns button and a right-click open the columns menu.
  */
 import { icon } from "../../../ui/index.js";
-import { firstSortDir } from "../../derive/index.js";
-import { COLUMN_KEYS, type ColumnKey, type SortDir, type SortKey } from "../../state/index.js";
+import { firstSortDir } from "../../viewModel/index.js";
+import { COLUMN_KEYS, type ColumnKey, type SortDir, type SortKey } from "../../store/index.js";
 import { showColumnsMenu } from "../menu/index.js";
 import type { UiContext } from "../uiContext.js";
-import { sortableHeadHtml, wireSortableHeads } from "./sortableHeads.js";
+import { sortableHeadHtml, wireSortableHeads } from "./sortHeads.js";
 
 const OPTIONAL: Record<ColumnKey, { label: string; cls: string; title?: string }> = {
   creator: { label: "Authors", cls: "col-creator" },

@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-import { DEFAULT_COLUMNS } from "../../../../src/libraryUi/state";
+import { DEFAULT_COLUMNS } from "../../../../src/libraryUi/store";
 import { mountForTest, paper } from "../mountHarness";
 
 const WITH_READ = { columns: [...DEFAULT_COLUMNS, "lastRead" as const] };

@@ -6,7 +6,7 @@
 import { LIBRARY_LABEL, PAPERS_DIR, breadcrumbFor } from "../../../library/index.js";
 import { el } from "../../../ui/dom/index.js";
 import { escapeHtml, icon } from "../../../ui/index.js";
-import { makeDropTarget } from "../dnd/index.js";
+import { makeDropTarget } from "../drag/index.js";
 import type { UiContext } from "../uiContext.js";
 
 function crumb(ctx: UiContext, label: string, path: string, last: boolean): HTMLElement {

@@ -3,7 +3,7 @@
  */
 // Tests the library sidebar through its mount handle: rows, counts, expansion, current folder, selection and keyboard.
 import { fakeHost, tick } from "../../../collab/dom/fakeHost";
-import type { SharingHost } from "../../../../src/libraryUi/sharing";
+import type { SharingHost } from "../../../../src/libraryUi/share";
 import { mountLibrarySidebar } from "../../../../src/libraryUi/dom";
 import { compact, folder, folders, key, mount, paper, papers, rows, tagged } from "./sidebarFixture";
 

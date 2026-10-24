@@ -1,5 +1,5 @@
 // Keeps keyboard focus in the grid when its focused row is rendered away, and returns it to the row when it renders again.
-import { focusedRow, paperRowOf } from "../treeNav/index.js";
+import { focusedRow, paperRowOf } from "../tree/index.js";
 
 const PARKED = "data-parked";
 

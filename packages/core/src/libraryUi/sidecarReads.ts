@@ -1,6 +1,6 @@
 /** Reads paper sidecars for the library UI: the row stats and the detail pane's summary, logging every unreadable sidecar. */
 import type { ILogger } from "../ports/index.js";
-import { paperStatsOf, type SidecarSummarySource } from "./derive/index.js";
+import { paperStatsOf, type SidecarSummarySource } from "./viewModel/index.js";
 import type { PaperStats } from "./protocol/index.js";
 
 export interface SidecarReader {

@@ -2,7 +2,7 @@
 import { icon } from "../../../ui/index.js";
 import type { LibraryUiCapabilities, LibraryUiLabels } from "../../index.js";
 import type { MessageEnd } from "../../protocol/index.js";
-import type { PrefsPort } from "../../state/index.js";
+import type { PrefsPort } from "../../store/index.js";
 import type { DetailsTarget, DetailsToHost, HostToDetails } from "../protocol/index.js";
 import { mountPaperSlot } from "./paperSlot.js";
 import { mountProjectSlot } from "./projectSlot.js";

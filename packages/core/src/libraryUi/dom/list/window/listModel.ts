@@ -1,5 +1,5 @@
 // Flattens paper groups into fixed-height rows (a label row per labelled group, then its papers) and cuts windowed groups.
-import type { PaperGroup } from "../groups/index.js";
+import type { PaperGroup } from "../groupPapers.js";
 
 /** Where one paper sits in the flat rows, and whether a sticky group label covers the top of the viewport above it. */
 export interface PaperPlace {

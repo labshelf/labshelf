@@ -1,6 +1,6 @@
 // Builds one editor tab and its panel and paints the tab's title, icon, dirty mark and selection.
 import { el, icon } from "../../../ui/dom/index.js";
-import type { EditorTab, EditorTabBody } from "./types.js";
+import type { EditorTab, EditorTabBody } from "./editorAreaOptions.js";
 
 export interface TabEntry {
   tab: EditorTab;

@@ -2,7 +2,7 @@
 import { PAPERS_DIR } from "../../../library/index.js";
 import { PAPER_STATUSES, STATUS_LABEL, isPrePublication } from "../../../model/index.js";
 import { showMenu, type MenuAnchor, type MenuEntry } from "../../../ui/dom/index.js";
-import { listPapersUnder, type ListPaper } from "../../derive/index.js";
+import { listPapersUnder, type ListPaper } from "../../viewModel/index.js";
 import {
   attachPdf, confirmFindBetterPdf, confirmRemove, copyCitation, findPdf, fixableIds, hostFileAction, makeSearchable, openPaper, pickMoveTarget, promptAddTags, setPaperStatus,
 } from "../flows/index.js";

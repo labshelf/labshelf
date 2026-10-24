@@ -3,8 +3,8 @@
  * Host stylesheets: tokens.css, vscodeHost.css (VS Code), base.css, toast.css, library-ui.css, library-list.css, library-sidebar.css, library-detail.css, library-tabs.css, all-projects.css.
  */
 import { buildFrame } from "../../../libraryUi/dom/index.js";
-import type { SharingHost } from "../../../libraryUi/sharing/index.js";
-import type { PanePrefsPort } from "../../../libraryUi/state/index.js";
+import type { SharingHost } from "../../../libraryUi/share/index.js";
+import type { PanePrefsPort } from "../../../libraryUi/store/index.js";
 import { showMenu, toast, type MenuAnchor } from "../../../ui/dom/index.js";
 import { DEFAULT_PROJECT_VIEW, deriveProjectView, firstProjectSortDir, placeCounts, type ProjectSortKey, type ProjectViewState } from "../derive/index.js";
 import type { AllProjectsToHost, AllProjectsTransport, HostToAllProjects } from "../protocol/index.js";

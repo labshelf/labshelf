@@ -1,7 +1,7 @@
 // Resizes the first editor group against the second with the frame's sash and keeps its width in the prefs port.
 import { attachSash } from "../shell/index.js";
 import { el } from "../../../ui/dom/index.js";
-import type { EditorAreaPrefsPort } from "./types.js";
+import type { EditorAreaPrefsPort } from "./editorAreaOptions.js";
 
 const MIN_GROUP_WIDTH = 160;
 

@@ -1,6 +1,6 @@
 // Accepts validated Library paper references dropped onto Spaces or their folders.
 import type { SidebarSpaceActions } from "./spaceActions.js";
-import { PAPER_DRAG_MIME, parsePaperDragIds } from "../../dnd/index.js";
+import { PAPER_DRAG_MIME, parsePaperDragIds } from "../../drag/index.js";
 
 export function acceptSpaceDrop(row: HTMLElement, actions: SidebarSpaceActions, id: string, folder?: string): void {
   const accepts = (event: DragEvent): boolean => Array.from(event.dataTransfer?.types ?? []).includes(PAPER_DRAG_MIME);

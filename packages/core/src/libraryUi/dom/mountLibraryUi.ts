@@ -4,10 +4,10 @@
  */
 import type { LibraryUiCapabilities, LibraryUiLabels } from "../hostConfig.js";
 import type { LibraryTransport } from "../protocol/index.js";
-import type { SharingHost } from "../sharing/index.js";
-import { LibraryViewStore, type PrefsPort } from "../state/index.js";
+import type { SharingHost } from "../share/index.js";
+import { LibraryViewStore, type PrefsPort } from "../store/index.js";
 import { mountCitationMap } from "./citationMap/index.js";
-import { makeDropTarget } from "./dnd/index.js";
+import { makeDropTarget } from "./drag/index.js";
 import { confirmDeleteFolder, promptNewFolder, promptRenameFolder } from "./flows/index.js";
 import { mountListHeader } from "./header/index.js";
 import { attachHostMessages } from "./hostMessages.js";

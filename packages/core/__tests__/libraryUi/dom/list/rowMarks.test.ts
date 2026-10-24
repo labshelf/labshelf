@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-import { DEFAULT_COLUMNS } from "../../../../src/libraryUi/state";
+import { DEFAULT_COLUMNS } from "../../../../src/libraryUi/store";
 import { ALL_CAPABILITIES, mountForTest, paper } from "../mountHarness";
 
 const now = new Date();

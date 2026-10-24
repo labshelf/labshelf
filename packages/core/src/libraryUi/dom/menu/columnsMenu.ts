@@ -1,6 +1,6 @@
 // Opens the menu that shows or hides the optional list columns.
 import { showMenu, type MenuAnchor } from "../../../ui/dom/index.js";
-import { COLUMN_KEYS, type ColumnKey } from "../../state/index.js";
+import { COLUMN_KEYS, type ColumnKey } from "../../store/index.js";
 import type { UiContext } from "../uiContext.js";
 
 const LABEL: Record<ColumnKey, string> = { creator: "Authors", venue: "Venue", year: "Year", lastRead: "Last read", status: "Status" };

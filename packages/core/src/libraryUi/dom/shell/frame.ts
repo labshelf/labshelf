@@ -3,7 +3,7 @@
  * citation map that takes their place while it is open). Navigation never rebuilds it; each view repaints its own slice.
  */
 import { el } from "../../../ui/dom/index.js";
-import { PANE_LIMITS, type PanePrefsPort } from "../../state/index.js";
+import { PANE_LIMITS, type PanePrefsPort } from "../../store/index.js";
 import { attachSash } from "./sash.js";
 
 export interface FrameSlots {

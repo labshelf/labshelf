@@ -1,6 +1,7 @@
 // Renders only the paper rows near the viewport, re-slicing on scroll and resize, with padding standing in for the rest.
-import type { PaperGroup } from "../groups/index.js";
-import { createRowWindow, measureRowHeight, type RowViewport } from "../rowWindow/index.js";
+import type { PaperGroup } from "../groupPapers.js";
+import { measureRowHeight } from "./rowHeight.js";
+import { createRowWindow, type RowViewport } from "./rowWindow.js";
 import { paintAriaRows } from "./ariaRows.js";
 import { parkFocus } from "./focusPark.js";
 import { buildListModel, windowGroups, type ListModel, type PaperPlace } from "./listModel.js";

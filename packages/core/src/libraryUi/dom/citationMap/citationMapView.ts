@@ -3,7 +3,7 @@
 import { icon } from "../../../ui/index.js";
 import type { CitationMapState, CitationMapView } from "../../protocol/index.js";
 import type { UiContext } from "../uiContext.js";
-import { citationGraphSvg } from "./citationGraphSvg.js";
+import { citationGraphSvg } from "./citationMapSvg.js";
 import { emptyMarkup, failedMarkup, loadingMarkup } from "./citationMapStates.js";
 import { markImporting, missingWorkList } from "./missingWorkList.js";
 

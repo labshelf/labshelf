@@ -3,9 +3,9 @@ import { el } from "../../../ui/dom/index.js";
 import { EditorGroups, otherGroup } from "./editorGroups.js";
 import { createEditorSash } from "./editorSash.js";
 import { wireTabDrag } from "./tabDrag.js";
-import { wireTabKeys } from "./tabKeys.js";
+import { wireTabKeys } from "./tabShortcuts.js";
 import { showTabMenu } from "./tabMenu.js";
-import type { EditorArea, EditorAreaOptions } from "./types.js";
+import type { EditorArea, EditorAreaOptions } from "./editorAreaOptions.js";
 
 /** Builds the area inside `slot`; the area is empty until the host opens a tab. */
 export function mountEditorArea(slot: HTMLElement, options: EditorAreaOptions = {}): EditorArea {

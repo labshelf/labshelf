@@ -3,4 +3,4 @@ export {
   askAuthor, attachPdf, changeTags, findPdf, fixableIds, hostFileAction, makeSearchable, openPaper, openSource,
   saveNote, setPaperStatus, splitTags,
 } from "./paperCommands.js";
-export { promptAddTags } from "./tagPrompt.js";
+export { promptAddTags } from "./askTag.js";

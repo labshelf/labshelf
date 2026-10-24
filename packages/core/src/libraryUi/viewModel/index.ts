@@ -1,0 +1,20 @@
+/** Exports the library UI derivations' public API: list rows, scope, sorting, folders, the folder tree, text layers, related papers, sidecar summaries. */
+export { listPapersUnder, papersInScope } from "./listPapers.js";
+export type { ListPaper } from "./listPapers.js";
+export { firstSortDir, sortPapers } from "./sortPapers.js";
+export { flattenFolders, folderNameProblem } from "./folders.js";
+export { folderTreeFromSnapshot } from "./folderTree.js";
+export type { CountedFolder } from "./folderTree.js";
+export { deriveListView, deriveScope } from "./listView.js";
+export type { ListScope, ListView } from "./listView.js";
+export { hasNoText, jobProgress, jobText, textLayerSummary } from "./textLayer.js";
+export { relatedGroups } from "./related.js";
+export type { RelatedGroups } from "./related.js";
+export { paperDetailsOf, paperStatsOf } from "./sidecarPayloads.js";
+export type { SidecarSummarySource } from "./sidecarPayloads.js";
+export { libraryTree } from "./libraryTree.js";
+export type { LibraryTree, TreeChild, TreePaper } from "./libraryTree.js";
+export { libraryTags } from "./libraryTags.js";
+export type { TagCount } from "./libraryTags.js";
+export { brokenProjectItem, detailLines, readyProjectItem } from "./projectRowItem.js";
+export type { BrokenEntry, Counted, LastBuild, ReadyEntry, SidebarProject, SidebarProjectItem } from "./projectRowItem.js";

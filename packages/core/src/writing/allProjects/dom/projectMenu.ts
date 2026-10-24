@@ -1,6 +1,6 @@
 // Lists the actions of a project row's menu for the place it sits in, including the host's own commands.
 import { projectShareMenuEntries } from "../../../collab/dom/index.js";
-import type { SharingHost } from "../../../libraryUi/sharing/index.js";
+import type { SharingHost } from "../../../libraryUi/share/index.js";
 import type { MenuEntry } from "../../../ui/dom/index.js";
 import type { ProjectMenuCommand, ProjectRow } from "../projectRow.js";
 import { deleteProjectForever, duplicateProject, moveProject, renameProject, type Post } from "./projectActions.js";

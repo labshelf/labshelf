@@ -6,8 +6,8 @@ import { formatAuthors } from "../../../library/index.js";
 import { venueOf } from "../../../model/index.js";
 import { el, highlight } from "../../../ui/dom/index.js";
 import { escapeHtml, icon } from "../../../ui/index.js";
-import type { ListPaper } from "../../derive/index.js";
-import { COLUMN_KEYS, type ColumnKey } from "../../state/index.js";
+import type { ListPaper } from "../../viewModel/index.js";
+import { COLUMN_KEYS, type ColumnKey } from "../../store/index.js";
 import type { PaperStats, TextLayerJobView } from "../../protocol/index.js";
 import { lastReadHtml, stateIconHtml, statusMarkHtml } from "./rowCells.js";
 

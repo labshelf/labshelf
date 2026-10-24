@@ -2,15 +2,15 @@
 import { PAPERS_DIR, isUnderDir, parentDir } from "../../../library/index.js";
 import { el } from "../../../ui/dom/index.js";
 import { icon } from "../../../ui/index.js";
-import type { LibraryTree, TagCount } from "../../derive/index.js";
+import type { LibraryTree, TagCount } from "../../viewModel/index.js";
 import { tagQuery } from "../../searchQueries.js";
 import { projectListActions, projectTreeNodes, type ProjectOffers, type SidebarProjectActions } from "./sidebarProjects.js";
-import type { SidebarProject } from "../../projectRows/index.js";
+import type { SidebarProject } from "../../viewModel/index.js";
 import { GROUP_ROW_DEPTH, allProjectsRow, exploreTemplatesRow, folderRow, paperRow, rowKey, allPapersRow, tagRow } from "./sidebarRows.js";
 import { groupRow, sectionRow, type GroupId, type SectionId } from "./sidebarSections.js";
 import { spaceRows, type SidebarSpacesState } from "./spaces/index.js";
 import { appendOpenProject } from "./sidebarOpenProject.js";
-import type { SharingHost } from "../../sharing/index.js";
+import type { SharingHost } from "../../share/index.js";
 import type { SidebarOpenProject } from "../../sidebarTrees.js";
 
 /** Every focusable row: section headers, group headings and tree rows. */

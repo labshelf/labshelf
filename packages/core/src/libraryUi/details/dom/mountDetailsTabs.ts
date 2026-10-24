@@ -1,5 +1,5 @@
 // Runs the Details tabs: routes each target through the tab state, keeps the pins in the prefs and paints the strip.
-import type { PrefsPort } from "../../state/index.js";
+import type { PrefsPort } from "../../store/index.js";
 import {
   closeTab, initialTabs, isPinnable, pinPreview, pruneTabs, receiveTarget, selectTab, shownTarget,
   type DetailsTabsState, type DetailsTarget,

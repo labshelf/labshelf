@@ -1,7 +1,7 @@
 // Builds the Projects section rows: the project folder tree with its projects, or an empty state with the actions the host offers.
 import { el } from "../../../ui/dom/index.js";
 import { icon } from "../../../ui/index.js";
-import type { SidebarProject } from "../../projectRows/index.js";
+import type { SidebarProject } from "../../viewModel/index.js";
 import { GROUP_ROW_DEPTH, projectFolderRow, projectRow } from "./sidebarRows.js";
 
 /** What the Projects section asks the host to do. Folder paths are project folder paths ("" for the top level). */

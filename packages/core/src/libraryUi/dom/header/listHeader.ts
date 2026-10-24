@@ -3,7 +3,7 @@
  */
 import { SYNTAX_HELP } from "../../../library/index.js";
 import { escapeHtml, icon } from "../../../ui/index.js";
-import { deriveScope } from "../../derive/index.js";
+import { deriveScope } from "../../viewModel/index.js";
 import { requestAddPaper } from "../flows/index.js";
 import { toggleSidebar } from "../shell/index.js";
 import type { UiContext } from "../uiContext.js";

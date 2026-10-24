@@ -1,5 +1,5 @@
 // Decides which tabs the Details surface holds: one preview that follows the selection, and the items the user pinned.
-import type { PinnedItem } from "../state/index.js";
+import type { PinnedItem } from "../store/index.js";
 import type { DetailsTarget } from "./protocol/index.js";
 
 /** `active` indexes `pins`; null is the preview. */

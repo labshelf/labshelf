@@ -2,7 +2,7 @@
 import type { LibraryUiCapabilities, LibraryUiLabels } from "../../index.js";
 import { attachHostMessages, createUiContext, mountDetailPane } from "../../dom/index.js";
 import type { HostToUi, LibraryTransport, MessageEnd, UiToHost } from "../../protocol/index.js";
-import { LibraryViewStore, type PrefsPort } from "../../state/index.js";
+import { LibraryViewStore, type PrefsPort } from "../../store/index.js";
 import type { DetailsToHost, HostToDetails } from "../protocol/index.js";
 
 export interface PaperSlotParts {

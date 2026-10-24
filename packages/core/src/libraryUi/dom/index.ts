@@ -10,8 +10,8 @@ export {
   createRowWindow, measureRowHeight, type RowSlice, type RowViewport, type RowWindow,
 } from "./list/index.js";
 export { attachSash, buildFrame, type FrameOptions, type FrameSlots, type SashOptions } from "./shell/index.js";
-export { iconBtn, kv, loading, mountDetailPane, muted, section, tabBarHtml, type TabSpec } from "./detail/index.js";
+export { iconBtn, kv, loading, mountDetailPane, muted, section, tabBarHtml, type TabSpec } from "./detailPane/index.js";
 export { attachHostMessages } from "./hostMessages.js";
 export { createUiContext, type UiContext } from "./uiContext.js";
 export { mountEditorArea, type EditorArea, type EditorAreaOptions, type EditorAreaPrefsPort, type EditorGroupIndex, type EditorTab, type EditorTabAction, type EditorTabBody, type EditorTabInfo } from "./editorArea/index.js";
-export { runSharingDialog } from "./sharing/index.js";
+export { runSharingDialog } from "./runShareDialog.js";

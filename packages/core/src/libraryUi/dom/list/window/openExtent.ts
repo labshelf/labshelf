@@ -1,5 +1,5 @@
 // Measures the open paper's file tray, the one variable-height block in the list, and maps scroll offsets around it.
-import { paperRowOf } from "../treeNav/index.js";
+import { paperRowOf } from "../tree/index.js";
 
 /** The open paper's tray: its rendered height in px and its row count. */
 export interface OpenExtent {

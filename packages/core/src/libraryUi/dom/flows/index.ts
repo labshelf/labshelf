@@ -3,9 +3,9 @@ export {
   askAuthor, attachPdf, changeTags, findPdf, fixableIds, hostFileAction, makeSearchable, openPaper, openSource,
   saveNote, setPaperStatus, splitTags, promptAddTags,
 } from "./paper/index.js";
-export { CITE_LABEL, copyCitation, copyText } from "./citeCopy.js";
-export { confirmRemove } from "./confirmRemove.js";
-export { pickMoveTarget } from "./pickMoveTarget.js";
-export { revealPaper } from "./revealPaper.js";
-export { confirmDeleteFolder, promptNewFolder, promptRenameFolder } from "./folderPrompts.js";
+export { CITE_LABEL, copyCitation, copyText } from "./citationCopy.js";
+export { confirmRemove } from "./askRemove.js";
+export { pickMoveTarget } from "./pickMoveFolder.js";
+export { revealPaper } from "./showPaper.js";
+export { confirmDeleteFolder, promptNewFolder, promptRenameFolder } from "./askFolder.js";
 export { askNoPdf, confirmFindBetterPdf, onFindMiss, onPdfMissing, onAddNoPdf, onAddSources, requestAddPaper, type NoPdfChoice } from "./pdf/index.js";
