@@ -1,0 +1,409 @@
+# The naming vocabulary scripts/checks/naming.mjs enforces. Every name is camelCase; a multi-word term is one compound (buildRoot).
+# Decisions live in documents; this file only encodes them. A `syn` is a spelling that is rejected in favour of its term.
+# Layers: A mechanism (anywhere), B formats (anywhere), C subjects (folders and files), D features (only in `home`), E tools (files and exports, never folders).
+version: 1
+
+runtime:
+  node: { def: "May use node:*." }
+  dom: { def: "May use the DOM." }
+  worker: { def: "Cloudflare Worker runtime (relay only)." }
+  webview: { def: "VS Code only: code bundled into a webview (DOM)." }
+
+# Top-level folders allowed under packages/<pkg>/src. `app` marks a folder that exists for one app only.
+domains:
+  ai: { def: "Embeddings, chunking, indexing, retrieval." }
+  bridge: { def: "The native host that serves the library folder to the browser." }
+  collab: { def: "Live collaboration on a shared writing project (share is the unit).", syn: [collaboration] }
+  encoding: { def: "Byte and text encodings (hex, base64)." }
+  hash: { def: "Hashing primitives." }
+  helper: { def: "LabShelf Helper only: the native host that builds and serves writing projects. Never a generic helper." }
+  import: { def: "Turning an input (PDF, identifier, URL, tab) into a paper." }
+  latex: { def: "LaTeX-specific writing code: source scan, catalog, log, toolchain, biber." }
+  library: { def: "The folder of papers on disk and everything that reads or writes it." }
+  libraryUi: { def: "The library surface (list, sidebar, detail pane) a host mounts." }
+  logging: { def: "Log format, logger, sinks." }
+  model: { def: "Data types of one domain (<domain>/model)." }
+  nativeHost: { def: "Registering a LabShelf program with the browsers for native messaging." }
+  ports: { def: "Interfaces apps implement." }
+  qmd: { def: "LabShelf Markdown items: notes, comments, discussion messages." }
+  reader: { def: "The one PDF reader surface and its host contract; preview is a mode of it.", syn: [viewer, pdfViewer] }
+  relay: { def: "The owner's Cloudflare Worker and its clients." }
+  share: { def: "Sharing a folder of papers read-only through a link.", syn: [sharing] }
+  spaces: { def: "Spaces: a personal grouping of papers, projects, dates and glossary." }
+  templates: { def: "Template gallery: list, download, publish." }
+  typst: { def: "Typst-specific writing code: language, compiler, source." }
+  ui: { def: "The design system: tokens, components, icons." }
+  writing: { def: "Writing projects: sources, builds, citations, checks." }
+  activation: { def: "VS Code extension activation.", app: vscode }
+  command: { def: "VS Code or CLI command registration.", app: vscode }
+  background: { def: "Browser extension service worker.", app: browser }
+  content: { def: "Browser extension content scripts.", app: browser }
+  popup: { def: "Browser extension toolbar popup.", app: browser }
+  options: { def: "Browser extension options page.", app: browser }
+  capture: { def: "Browser tab capture.", app: browser }
+  platform: { def: "Adapters for APIs only this app has.", app: browser }
+  storage: { def: "The app's persistent storage (IndexedDB, globalState).", app: browser }
+  assets: { def: "Static files bundled with the app.", app: browser }
+  libraryPage: { def: "The browser library page.", app: browser }
+  cli: { def: "Command-line entry.", app: terminal }
+  screen: { def: "Terminal screen primitives and drawing.", app: terminal, syn: [tui] }
+
+mechanism:
+  verbs:
+    create: { group: PURE, syn: [make, new, construct] }
+    build: { group: PURE, def: "Only for writing builds (compile a project). Otherwise create." }
+    parse: { group: PURE }
+    serialize: { group: PURE, syn: [stringify] }
+    encode: { group: PURE }
+    decode: { group: PURE }
+    format: { group: PURE, def: "Value to display text." }
+    normalize: { group: PURE }
+    derive: { group: PURE, syn: [compute, calc] }
+    merge: { group: PURE }
+    compare: { group: PURE }
+    split: { group: PURE }
+    match: { group: PURE }
+    count: { group: PURE }
+    order: { group: PURE }
+    escape: { group: PURE }
+    describe: { group: PURE, def: "Object to a user-facing sentence." }
+    extract: { group: PURE }
+    with: { group: PURE, def: "Returns a copy with a change: with<Field>." }
+    render: { group: PURE, def: "Build DOM or HTML without attaching it." }
+    is: { group: PREDICATE }
+    has: { group: PREDICATE }
+    can: { group: PREDICATE }
+    should: { group: PREDICATE }
+    read: { group: READ, def: "From disk or a port.", syn: [get] }
+    fetch: { group: READ, def: "Over the network." }
+    find: { group: READ, syn: [locate, lookup] }
+    list: { group: READ }
+    resolve: { group: READ, def: "Reference to the thing it names." }
+    search: { group: READ, def: "Run a user query." }
+    scan: { group: READ, def: "Read papers/." }
+    watch: { group: READ }
+    detect: { group: READ }
+    walk: { group: READ }
+    load: { group: READ, def: "Code or heavy resource, lazily." }
+    verify: { group: READ, def: "Only a signature or a hash." }
+    write: { group: ACTION, syn: [save, persist] }
+    update: { group: ACTION, syn: [edit, patch] }
+    add: { group: ACTION }
+    remove: { group: ACTION, syn: [delete] }
+    move: { group: ACTION }
+    copy: { group: ACTION }
+    rename: { group: ACTION }
+    import: { group: ACTION }
+    export: { group: ACTION }
+    download: { group: ACTION }
+    upload: { group: ACTION }
+    install: { group: ACTION }
+    uninstall: { group: ACTION }
+    register: { group: ACTION, def: "Register commands or providers with an app API." }
+    mount: { group: ACTION, def: "Attach a UI to a DOM node and return its disposer." }
+    show: { group: ACTION, syn: [reveal, display] }
+    open: { group: ACTION }
+    close: { group: ACTION }
+    ask: { group: ACTION, syn: [prompt, confirm] }
+    pick: { group: ACTION, syn: [select, choose] }
+    run: { group: ACTION, def: "Until it finishes.", syn: [execute, exec] }
+    start: { group: ACTION, def: "Long-running; pair with stop." }
+    stop: { group: ACTION }
+    send: { group: ACTION }
+    connect: { group: ACTION }
+    attach: { group: ACTION, syn: [wire, bind] }
+    sync: { group: ACTION }
+    check: { group: ACTION, def: "Returns a verdict.", syn: [validate] }
+    assert: { group: ACTION, def: "Throws unless the condition holds." }
+    ensure: { group: ACTION, def: "Create if missing.", syn: [require] }
+    offer: { group: ACTION }
+    serve: { group: ACTION }
+    join: { group: ACTION }
+    leave: { group: ACTION }
+    sign: { group: ACTION }
+    seal: { group: ACTION }
+    reconcile: { group: ACTION }
+    refresh: { group: ACTION }
+    apply: { group: ACTION }
+    report: { group: ACTION }
+    draw: { group: ACTION, def: "Terminal or canvas.", syn: [paint] }
+    set: { group: ACTION, def: "Replace one value." }
+    publish: { group: ACTION, syn: [submit] }
+    deploy: { group: ACTION }
+    on: { group: EVENT, def: "Event handler: on<Event>." }
+    answer: { group: EVENT, def: "Answer one protocol message." }
+  # Layer A nouns: allowed anywhere, in folders, files and exports.
+  nouns:
+    file: { def: "A file on disk or in a project." }
+    path: { def: "A file path." }
+    text: { def: "Text." }
+    bytes: { def: "Bytes." }
+    error: { def: "A thrown error type." }
+    log: { def: "A log." }
+    logger: { def: "The ILogger implementation." }
+    logSink: { def: "Where logs go.", syn: [sink] }
+    logLine: { def: "One line of a log." }
+    schema: { def: "A file schema." }
+    extension: { def: "The browser or VS Code extension itself." }
+    startup: { def: "App startup.", syn: [boot] }
+    connection: { def: "A live link to a bridge, helper or share session.", syn: [socket] }
+    config: { def: "The configuration file.", syn: [configuration] }
+    globalConfig: { def: "Configuration shared by all apps." }
+    prefs: { def: "UI memory a host keeps for a surface.", syn: [preferences] }
+    setting: { def: "A value the user edits on a settings page." }
+    layout: { def: "Arrangement on disk (libraryLayout, texLayout)." }
+    dir: { def: "A disk directory that is not a library folder.", syn: [directory] }
+    fileSystem: { def: "Reading and writing files.", syn: [fs, disk] }
+    message: { def: "One message of a protocol or a thread." }
+    line: { def: "One line of text." }
+    bundle: { def: "The output of an app build." }
+    app: { def: "A LabShelf application (browser extension, VS Code extension, terminal, Helper)." }
+    browser: { def: "The web browser; also the name of the browser app. Not a tool." }
+  roles:
+    host: "App-side implementation of a core surface or protocol."
+    port: "An interface the caller implements."
+    store: { def: "In-memory state that notifies subscribers.", syn: [persistence] }
+    cache: "Persistent copy of derived data."
+    registry: "A list of known things."
+    client: "Talks to a remote service."
+    channel: "A bidirectional message pipe."
+    transport: "Carries bytes or frames for a channel."
+    messages: "The message union of a protocol."
+    handlers: { def: "The map that answers protocol messages.", syn: [messageHandler, dispatcher, router] }
+    copy: "User-facing wording."
+    command: "App command registration."
+    provider: "VS Code provider class."
+    protocol: "Folder holding a surface-host message protocol."
+    service: "Facade over a domain an app calls."
+    entry: "Process or bundle entry point."
+    parser: "A stateful parser."
+    adapter: "Wraps an API only one app has."
+    binding: "Connects a shared document to its transport."
+    engine: "Compiles or renders a language (Typst, LaTeX)."
+  # A function name of one of these forms is accepted without a leading verb when every word of each side is a term of a kind in `sides`.
+  namePatterns:
+    conversion: { form: ["to<to>", "<from>To<to>"], def: "Converts a value of one named type into another.", sides: [subjects, nouns, formats, tools, compounds] }
+  uiParts: [view, panel, tab, section, row, card, dialog, menu, tray, sidebar, header, footer, banner, form, button, toolbar, bar, popover, overlay, pane, frame, shell, screen, list, tree, grid, column, chrome, toast, picker, meter, badge, marks, mark, quickInput, extPage, offscreen, statusBar, widget, element, editor, editorArea, field, input, notice, layer, action, hover, window, focus, drop, drag]
+  qualifiers: [shared, local, remote, live, stored, pending, missing, stale, open, current, own, system, managed, native, standalone, external, first, last, all, empty, private, public, published, verified, custom, optional, inline, direct, network, unscoped, lazy, sealed, max, min, raw, plain]
+  connectors: [to, from, in, at, by, for, of, with, without, and, or, only, as, on, into]
+  typeSuffixes: [options, deps, result, outcome, state, context, kind, event, change, request, reply, response, input, spec, id, error]
+
+formats: [pdf, latex, tex, typst, bibtex, biber, synctex, yaml, json, html, css, markdown, qmd, doi, isbn, arxiv, svg, png, webp, url, mailto, http, oauth, pkce, utf8, base64, hex, sha256, ed25519, ics, ocr, wasm, ulid]
+
+subjects:
+  paper: { def: "One stored work with its PDF and metadata.", syn: [article] }
+  paperFile: { def: "A file attached to a paper (PDF, supplement)." }
+  folder: { def: "A library folder grouping papers. Any disk folder is a dir.", syn: [collection, category] }
+  metadata: { def: "Bibliographic fields (title, authors, venue), on disk as metadata.yaml." }
+  author: { def: "A paper's author." }
+  venue: { def: "Where a paper appeared." }
+  title: { def: "A paper's title." }
+  year: { def: "A paper's year." }
+  tag: { def: "A user label on a paper." }
+  abstract: { def: "A paper's abstract.", syn: [summary] }
+  annotation: { def: "A mark a user leaves on a PDF page." }
+  highlight: { def: "A text annotation on a PDF. Editor highlights are decorations." }
+  decoration: { def: "A highlight in the editor." }
+  sidecar: { def: "Per-paper data next to the paper (reading position, annotations).", syn: [appdata, appData] }
+  snapshot: { def: "An immutable in-memory copy of the library sent to the UI." }
+  mutation: { def: "A library write operation (import, move, rename, trash, update)." }
+  conflict: { def: "A sync conflict and its resolution." }
+  conflictCopy: { def: "The copy a sync conflict leaves behind.", syn: [divergenceCopy] }
+  externalChange: { def: "A change to the library folder made outside this app." }
+  syncFolder: { def: "A folder kept in step by a sync app." }
+  device: { def: "This computer, for per-device state." }
+  deviceLocal: { def: "Stored per device." }
+  textLayer: { def: "A PDF's text layer and its verdict.", syn: [searchable, noText] }
+  query: { def: "A search query in the query language." }
+  search: { def: "Searching papers or project text." }
+  filter: { def: "A list filter." }
+  sort: { def: "A list order." }
+  trash: { def: "Where removed papers go." }
+  libraryLocation: { def: "Where the library is stored.", syn: [librarySource, location] }
+  libraryRoot: { def: "The disk root of a library." }
+  identifier: { def: "An external id of a work (DOI, arXiv, ISBN, PMID)." }
+  landing: { def: "A publisher's landing page.", syn: [landingPage] }
+  pdfFinder: { def: "Finding and downloading a work's PDF.", syn: [pdfFinding] }
+  resolver: { def: "One PDF-finder strategy." }
+  pdfStage: { def: "Preprint, accepted or published." }
+  publisher: { def: "A paper's publisher." }
+  page: { def: "A PDF page. App pages are <x>Page." }
+  optionsPage: { def: "The browser options page." }
+  settingsPage: { def: "A settings page." }
+  citation: { def: "A citation in a PDF or a \\cite in a project.", syn: [cite] }
+  navigation: { def: "Moving through a PDF.", syn: [nav] }
+  outline: { def: "A heading tree of a PDF or a project." }
+  preview: { def: "The reader mode that shows a project's built PDF." }
+  thumbnail: { def: "A small image of page 1." }
+  selection: { def: "What is selected in a list." }
+  reference: { def: "A pointer to a paper or a project.", syn: [ref, paperReference] }
+  project: { def: "A writing project." }
+  projectFile: { def: "Any file of a project." }
+  projectList: { def: "A list of projects." }
+  externalProject: { def: "A project outside the library." }
+  projectValue: { def: "A value from labshelf.yaml." }
+  source: { def: "A project's source file as opposed to its built PDF." }
+  importOrigin: { def: "Where an import came from." }
+  citationOrigin: { def: "A place citations come from." }
+  templateOrigin: { def: "Where a template comes from." }
+  build: { def: "Compiling a project." }
+  quickBuild: { def: "A Helper build for preview." }
+  fullBuild: { def: "A complete Helper build." }
+  problem: { def: "A diagnostic shown to the user from a build or a check.", syn: [finding, diagnostic, issue] }
+  check: { def: "A rule run over a project that yields problems.", syn: [lint, bibLint] }
+  bibliography: { def: "A .bib file (bib is only the BibTeX term).", syn: [bib] }
+  bibEntry: { def: "An entry of a BibTeX file." }
+  label: { def: "A LaTeX label and its refs." }
+  history: { def: "A project's edit history." }
+  historyEvent: { def: "One entry of a history." }
+  version: { def: "A named saved version of a project." }
+  saveVersion: { def: "Marking a version." }
+  protocolVersion: { def: "The version of a message protocol." }
+  schemaVersion: { def: "The version of a file schema." }
+  typstVersion: { def: "The Typst release in use." }
+  release: { def: "A published app release." }
+  toolchain: { def: "An installed TeX or Typst distribution." }
+  typstCompiler: { def: "The Typst compiler." }
+  managedTex: { def: "The TeX LabShelf installs itself." }
+  systemTex: { def: "The TeX already on the machine." }
+  toolsDir: { def: "Tools shared by the apps." }
+  latexMacros: { def: "The catalog of LaTeX macros." }
+  macro: { def: "A LaTeX macro (command is an app command).", syn: [latexMacro] }
+  catalog: { def: "A catalog of templates." }
+  template: { def: "A project template." }
+  invite: { def: "A link that lets someone join a share.", syn: [inviteLink, joinLink] }
+  member: { def: "A person in a share." }
+  peer: { def: "A connected device in a share." }
+  session: { def: "The live session of a share." }
+  helperSession: { def: "A Helper session." }
+  readerSession: { def: "A reader session." }
+  doc: { def: "A Yjs document." }
+  docState: { def: "A Yjs document state." }
+  editorDoc: { def: "A ProseMirror document." }
+  textDocument: { def: "A VS Code text document." }
+  readerHtml: { def: "The HTML a reader shows." }
+  presence: { def: "Who is online in a share.", syn: [awareness] }
+  mirror: { def: "The disk copy of a shared project." }
+  comment: { def: "A .qmd comment item (a thread groups them). Review notes are comments." }
+  thread: { def: "A group of comments." }
+  account: { def: "A relay account." }
+  relayToken: { def: "A relay credential." }
+  authToken: { def: "A sign-in credential." }
+  syntaxToken: { def: "A token of highlighted code." }
+  token: { def: "A design token." }
+  item: { def: "A .qmd item: note, comment or discussion message." }
+  note: { def: "A .qmd note item." }
+  paperNote: { def: "The note field of a paper." }
+  anchor: { def: "Where a .qmd item attaches." }
+  cell: { def: "A .qmd cell." }
+  cellOutput: { def: "The result of running a .qmd cell." }
+  body: { def: "The body of a .qmd item." }
+  completion: { def: "Editor completion for LaTeX and Typst." }
+  syntax: { def: "Syntax of a language, for highlighting." }
+  figure: { def: "A figure of a paper or a project." }
+  rule: { def: "A rule of a check." }
+  limit: { def: "A limit a check enforces." }
+  task: { def: "A checklist task." }
+  embedding: { def: "A text embedding." }
+  chunk: { def: "A piece of text for embedding." }
+  aiDb: { def: "The AI database." }
+  theme: { def: "A UI theme." }
+  icon: { def: "A core icon.", syn: [codicon] }
+  shortcut: { def: "A key binding." }
+  keymap: { def: "A map of shortcuts." }
+  docLogEntry: { def: "One entry of a document log." }
+  diskFileSystem: { def: "The file system of the local disk." }
+  pickedDir: { def: "A directory the user picked.", syn: [pickedFolder] }
+  projectDir: { def: "A project's directory." }
+  lineOffsets: { def: "Where each line of a text starts." }
+  language: { def: "Language services (LaTeX, Typst)." }
+  locale: { def: "A UI or e-mail language." }
+  offlineRules: { def: "BibTeX rules that need no network." }
+  codeHash: { def: "The hash of code in a .qmd cell." }
+  nativeConnection: { def: "The browser's native messaging connection." }
+  readerTransport: { def: "How a host talks to a reader." }
+  workspace: { def: "A VS Code workspace. The browser calls it editorArea." }
+  detailPane: { def: "The detail panel of the library UI." }
+  listView: { def: "A list panel." }
+  viewModel: { def: "The data a view shows." }
+  shareLink: { def: "A link to a folder of papers." }
+  shareDialog: { def: "The dialog that shares a project or a folder." }
+  bridgeEntry: { def: "The bridge process entry." }
+  helperEntry: { def: "The app acting as the Helper." }
+  platformAdapters: { def: "The adapters an app gives core." }
+  readerInput: { def: "What a reader opens." }
+  importedFrom: { def: "The yaml key that records an import origin." }
+  transientTab: { def: "A Details tab that is not kept." }
+  browserTab: { def: "A browser tab." }
+  citeLocation: { def: "Where a Typst citation sits." }
+  dropZone: { def: "Where a drag may land." }
+  readingPosition: { def: "Where the user stopped in a PDF." }
+  screenBuffer: { def: "The terminal cell grid." }
+  dirty: { def: "A tab with unsaved changes." }
+  graphNode: { def: "A node of a graph." }
+  domNode: { def: "A DOM node." }
+  urlHash: { def: "The hash of a URL." }
+  compositionRoot: { def: "Where an app wires its parts." }
+  libraryScreen: { def: "The terminal library screen." }
+  scannedPdf: { def: "A PDF without a text layer." }
+  publishBuild: { def: "A build made to publish." }
+  editorArea: { def: "The tabbed editor area of the browser library page." }
+  flow: { def: "A step-by-step user flow (onboarding, import).", syn: [workflow] }
+
+# Layer D: volatile product features. A term may appear in a path only under one of its `home` globs (relative to packages/*/src; ** crosses folders).
+features:
+  space: { def: "A personal grouping of papers, projects, dates and glossary.", home: ["**/spaces/**"], words: [spaceDir, spaceFolder, spaceFiles, spaceList, spacePage] }
+  spaceOverview: { def: "The overview of a Space.", home: ["**/spaces/**"] }
+  researchChat: { def: "The research chat panel of a Space.", home: ["**/spaces/**"] }
+  glossary: { def: "The glossary of a Space.", home: ["**/glossary/**", "**/spaces/**"] }
+  readingStatus: { def: "Whether a paper is unread, being read or done.", home: ["library/readingStatus/**"], words: [unread] }
+  details: { def: "The Details surface.", home: ["**/details/**", "detailsWebview/**"], syn: [detail], words: [detailsSelection] }
+  allProjects: { def: "The All projects page.", home: ["**/allProjects/**"] }
+  checklist: { def: "The user's list of open items for a project.", home: ["**/checklist/**"] }
+  readingList: { def: "A project's reading list.", home: ["**/readingList/**"] }
+  gallery: { def: "The template gallery.", home: ["**/templates/**"] }
+  citationMap: { def: "The graph of who cites whom around the library.", home: ["**/citationMap/**"], syn: [citationGraph] }
+  tabRestore: { def: "Restoring the tabs of a session.", home: ["**/session/**"] }
+  quotes: { def: "Quotes pulled from papers into a project.", home: ["**/quotes/**"] }
+  syncGuide: { def: "The guide for putting the library in a sync tool.", home: ["**/syncGuide/**"] }
+  submission: { def: "A venue and a deadline.", home: ["writing/project/**"] }
+  setup: { def: "The Helper setup flow.", home: ["**/helper/setup/**"] }
+  copyRequest: { def: "Asking an author for a copy.", home: ["**/copyRequest/**"], syn: [requestCopy, askAuthor] }
+
+# Layer E: libraries and products. Allowed in file and export names, never as a folder.
+tools: [pdfjs, prosemirror, tesseract, cloudflare, github, crossref, openalex, pubmed, pmc, semanticScholar, googleScholar, unpaywall, datacite, latexmk, openPgp, vscode, idb, kv, canvas, undoManager]
+
+# A bare word with a banned or ambiguous sense: allowed only inside one of `use`; `instead` names what the other senses became.
+compoundOnly:
+  root: { use: [libraryRoot, buildRoot], instead: [spaceDir, projectDir] }
+  link: { use: [paperLink, shareLink, linkKey], instead: [invite, connection, synctex] }
+  record: { use: [paperRecord, writeRecord], instead: [docLogEntry] }
+  status: { use: [], instead: [buildState] }
+  manifest: { use: [shareManifest, templateManifest, hostManifest, extensionManifest, releaseManifest] }
+  key: { use: [citeKey, shareKey, linkKey, docKey, libraryKey], instead: [shortcut, keymap] }
+  id: { use: [paperId] }
+  state: { use: [buildState, deviceState], instead: [readingPosition] }
+  options: { use: [optionsPage] }
+  index: { use: [shareIndexDoc, catalogIndex, searchIndex, embeddingIndex, vectorIndex], instead: [lineOffsets, synctexMap] }
+
+banned:
+  data: name what the data is
+  info: name what the info is
+  util: name the domain it serves
+  utils: name the domain it serves
+  helpers: name the domain it serves
+  misc: name the domain it serves
+  common: name the domain it serves
+  manager: use a store, host or registry
+  handle: use on<Event> or answer<Message>
+  process: name what the process does
+  main: use an Entry or buildRoot
+  logic: runtime-neutral code is the default; drop the folder
+  value: only projectValue
+  result: only as a type suffix
+  types: put types next to the code that uses them
+  stuff: name what it is
+  thing: name what it is
+  review: use quotes or history
+  target: use submission, dropZone, detailsSelection or citeLocation
+  context: only as a type suffix; for wiring use compositionRoot
